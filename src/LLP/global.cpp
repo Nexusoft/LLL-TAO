@@ -69,6 +69,7 @@ namespace LLP
             /* Generate our config object and use correct settings. */
             LLP::Config CONFIG     = LLP::Config(GetTimePort());
             CONFIG.ENABLE_LISTEN   = fServer;
+            CONFIG.ENABLE_UPNP     = fServer;
             CONFIG.ENABLE_METERS   = false;
             CONFIG.ENABLE_DDOS     = true;
             CONFIG.ENABLE_MANAGER  = true;
@@ -99,10 +100,11 @@ namespace LLP
                 (!config::fClient.load() && config::fIndexProofs.load() && config::fIndexRegister.load());
 
             CONFIG.ENABLE_METERS   = false;
+            CONFIG.ENABLE_UPNP     = CONFIG.ENABLE_LISTEN;
             CONFIG.ENABLE_DDOS     = true;
             CONFIG.ENABLE_MANAGER  = false;
             CONFIG.ENABLE_SSL      = false;
-            CONFIG.ENABLE_REMOTE   = true;
+            CONFIG.ENABLE_REMOTE   = CONFIG.ENABLE_LISTEN;
             CONFIG.REQUIRE_SSL     = false;
             CONFIG.PORT_SSL        = 0; //TODO: this is disabled until SSL code can be refactored
             CONFIG.MAX_INCOMING    = 128;
@@ -124,6 +126,7 @@ namespace LLP
             /* Generate our config object and use correct settings. */
             LLP::Config CONFIG     = LLP::Config(GetDefaultPort());
             CONFIG.ENABLE_LISTEN   = config::GetBoolArg(std::string("-listen"), (config::fClient.load() ? false : true));
+            CONFIG.ENABLE_UPNP     = true; //we want UPNP for main tritium protocol
             CONFIG.ENABLE_METERS   = config::GetBoolArg(std::string("-meters"), false);
             CONFIG.ENABLE_DDOS     = config::GetBoolArg(std::string("-ddos"), false);
             CONFIG.ENABLE_MANAGER  = config::GetBoolArg(std::string("-manager"), true);
@@ -151,6 +154,7 @@ namespace LLP
             /* Generate our config object and use correct settings. */
             LLP::Config CONFIG     = LLP::Config(80); //default http uses port 80
             CONFIG.ENABLE_LISTEN   = true;
+            CONFIG.ENABLE_UPNP     = true; //we want UPNP for main fileserver protocol
             CONFIG.ENABLE_METERS   = config::GetBoolArg(std::string("-httpmeters"), false);
             CONFIG.ENABLE_DDOS     = true;
             CONFIG.ENABLE_MANAGER  = false;
@@ -181,6 +185,7 @@ namespace LLP
             /* Generate our config object and use correct settings. */
             LLP::Config CONFIG     = LLP::Config(GetAPIPort());
             CONFIG.ENABLE_LISTEN   = true;
+            CONFIG.ENABLE_UPNP     = false;
             CONFIG.ENABLE_METERS   = config::GetBoolArg(std::string("-apimeters"), false);
             CONFIG.ENABLE_DDOS     = true;
             CONFIG.ENABLE_MANAGER  = false;
@@ -216,6 +221,7 @@ namespace LLP
             /* Generate our config object and use correct settings. */
             LLP::Config CONFIG     = LLP::Config(GetRPCPort());
             CONFIG.ENABLE_LISTEN   = true;
+            CONFIG.ENABLE_UPNP     = false;
             CONFIG.ENABLE_METERS   = config::GetBoolArg(std::string("-rpcmeters"), false);
             CONFIG.ENABLE_DDOS     = true;
             CONFIG.ENABLE_MANAGER  = false;

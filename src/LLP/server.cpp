@@ -127,7 +127,7 @@ namespace LLP
 
                 /* Initialize the UPnP thread if remote connections are allowed. */
                 #ifdef USE_UPNP
-                if(CONFIG.ENABLE_REMOTE)
+                if(CONFIG.ENABLE_REMOTE && CONFIG.ENABLE_UPNP)
                 {
                     THREAD_UPNP.push_back
                     (
@@ -165,7 +165,7 @@ namespace LLP
 
                 /* Initialize the UPnP thread if remote connections are allowed. */
                 #ifdef USE_UPNP
-                if(CONFIG.ENABLE_REMOTE)
+                if(CONFIG.ENABLE_REMOTE && CONFIG.ENABLE_UPNP)
                 {
                     THREAD_UPNP.push_back
                     (
