@@ -84,6 +84,10 @@ namespace LLP
         std::vector<std::thread> THREAD_LISTEN;
 
 
+        /** Upnp Threads for accepting incoming connections. **/
+        std::vector<std::thread> THREAD_UPNP;
+
+
         /** Meter Thread for tracking incoming and outgoing packet counts. **/
         std::thread THREAD_METER;
 
@@ -432,6 +436,16 @@ namespace LLP
          *
          **/
         void Meter();
+
+
+        /** UPnP
+         *
+         *  LLP UPnP listener thread to open up our listening ports.
+         *
+         *  @param[in] nPort The port number that we are using.
+         *
+         **/
+        void UPnP(const uint16_t nPort);
 
 
         /** get_listening_socket
