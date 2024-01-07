@@ -200,19 +200,19 @@ namespace LLC
 
         zero = BN_CTX_get(ctx);
 
-        if(!BN_zero(zero))
+            /*if(!BN_zero(zero))
         {
-            ret=-1;
-            goto err;
-        }
+        ret=-1;
+        goto err;
+        }*/
 
+        BN_zero(zero);
+        
         if(!BN_mod_sub(e, zero, e, order, ctx))
         {
             ret=-1;
             goto err;
         }
-
-        rr = BN_CTX_get(ctx);
 
         if(!BN_mod_inverse(rr, sig_r, order, ctx))
         {
