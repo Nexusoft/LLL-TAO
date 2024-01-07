@@ -214,6 +214,8 @@ namespace LLC
             goto err;
         }
 
+            rr = BN_CTX_get(ctx);
+                
         if(!BN_mod_inverse(rr, sig_r, order, ctx))
         {
             ret=-1;
