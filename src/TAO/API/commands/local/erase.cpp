@@ -31,12 +31,12 @@ namespace TAO::API
             jParams["table"].get<std::string>();
 
         /* Check for our parameters. */
-        if(!CheckParameter(jParams, "key", "string"))
+        if(!CheckParameter(jParams, "key", "string, number"))
             throw Exception(-81, "missing or invalid parameter [key=string]");
 
         /* Get our table to list items from. */
         const std::string& strKey =
-            jParams["key"].get<std::string>();
+            jParams["key"].is_number() ? debug::safe_printstr(jParams["key"].get<uint64_t>()) : jParams["key"].get<std::string>();
 
         /* Check local database for record. */
         return {{ "success", LLD::Local->EraseRecord(strTable, strKey) }};
