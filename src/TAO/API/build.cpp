@@ -257,7 +257,7 @@ namespace TAO::API
                 break;
 
             /* Check that our last transaction was more than 10 seconds ago. */
-            if((nUnlockedActions & TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS) && !CheckTimespan(hashGenesis, 10))
+            if((nUnlockedActions & TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS) && !CheckTimespan(hashGenesis, config::fHybrid.load() ? 1 : 10))
             {
                 runtime::sleep(500);
                 continue;
