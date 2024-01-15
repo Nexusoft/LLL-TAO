@@ -16,6 +16,11 @@ ________________________________________________________________________________
 #include <thread>
 #include <vector>
 
+#include <Util/types/lock_unique_ptr.h>
+
+//forward declaration
+namespace TAO::Operation { class Contract; }
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -31,6 +36,11 @@ namespace TAO::API
 
 
     public:
+
+
+        /** Queue to handle dispatch requests. **/
+        static util::atomic::lock_unique_ptr<std::map<uint256_t, std::vector<TAO::Operation::Contract>>> mapDispatch;
+
 
         /** Initialize
          *
@@ -65,11 +75,12 @@ namespace TAO::API
          *
          *  @param[out] rContract The contract to sanitize
          *  @param[out] mapStates map of register states used by Build()
+         *  @param[in] fLogError Flag to determine if we output errors or not.
          *
          *  @return True if the contract was sanitized without errors.
          *
          **/
-        static bool SanitizeContract(TAO::Operation::Contract &rContract, std::map<uint256_t, TAO::Register::State> &mapStates);
+        static bool SanitizeContract(TAO::Operation::Contract &rContract, std::map<uint256_t, TAO::Register::State> &mapStates, const bool fLogError = false);
 
 
         /** SanitizeContract

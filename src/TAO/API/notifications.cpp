@@ -39,9 +39,23 @@ namespace TAO::API
     std::vector<std::thread> Notifications::vThreads;
 
 
+    /* Track all of our outgoing dispatched contracts. */
+    util::atomic::lock_unique_ptr<std::map<uint256_t, std::vector<TAO::Operation::Contract>>> Notifications::mapDispatch;
+
+
     /* Initializes the current notification systems. */
     void Notifications::Initialize()
     {
+        /* Build our dispatch queue. */
+        if(config::GetBoolArg("-autotx", false))
+        {
+            mapDispatch =
+                util::atomic::lock_unique_ptr<std::map<uint256_t, std::vector<TAO::Operation::Contract>>>
+                (
+                    new std::map<uint256_t, std::vector<TAO::Operation::Contract>>()
+                );
+        }
+
         /* Get the total manager threads. */
         const uint64_t nThreads =
             config::GetArg("-notificationsthreads", 1);
@@ -115,6 +129,32 @@ namespace TAO::API
 
                     /* Build our list of contracts. */
                     std::vector<TAO::Operation::Contract> vContracts;
+
+                    /* Check for -autotx enabled. */
+                    std::vector<TAO::Operation::Contract> vDispatch;
+                    if(config::GetBoolArg("-autotx", false))
+                    {
+                        /* Copy our contracts into local dispatch. */
+                        vDispatch =
+                            Notifications::mapDispatch->at(hashSession);
+
+                        /* Check that we have work to do. */
+                        if(!vDispatch.empty())
+                        {
+                            /* Don't proceed with -autotx if we are awaiting a new timespan. */
+                            if(!CheckTimespan(hashGenesis, 10))
+                                continue;
+
+                            /* Now clear so we don't double our work. We will add failures back later. */
+                            Notifications::mapDispatch->at(hashSession).clear();
+
+                            /* Build our pending transactions now. */
+                            const std::vector<uint512_t> vHashes =
+                                BuildAndAccept(jSession, vDispatch, TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS, true);
+
+                            debug::log(0, FUNCTION, "[AUTOTX] Built ", vHashes.size(), " transactions for ", vDispatch.size(), " contracts");
+                        }
+                    }
 
                     /* Track our unique events as we progress forward. */
                     std::set<std::pair<uint512_t, uint32_t>> setUnique;
@@ -350,7 +390,7 @@ namespace TAO::API
 
                     /* Now build our official transaction. */
                     const std::vector<uint512_t> vHashes =
-                        BuildAndAccept(jSession, vSanitized, TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS);
+                        BuildAndAccept(jSession, vSanitized, TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS, true);
 
                     debug::log(0, FUNCTION, "Built ", vHashes.size(), " transactions for ", vSanitized.size(), " contracts");
                 }
@@ -370,7 +410,7 @@ namespace TAO::API
 
 
     /* Checks that the contract passes both Build() and Execute() */
-    bool Notifications::SanitizeContract(TAO::Operation::Contract &rContract, std::map<uint256_t, TAO::Register::State> &mapStates)
+    bool Notifications::SanitizeContract(TAO::Operation::Contract &rContract, std::map<uint256_t, TAO::Register::State> &mapStates, const bool fLogError)
     {
         LOCK(LLP::TritiumNode::CLIENT_MUTEX);
 
@@ -381,7 +421,8 @@ namespace TAO::API
         LLD::TxnBegin(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
 
         /* Temporarily disable error logging so that we don't log errors for contracts that fail to execute. */
-        debug::fLogError = false;
+        if(!fLogError)
+            debug::fLogError = false;
 
         try
         {
