@@ -145,4 +145,73 @@ namespace LLD
         return Exists(std::make_pair(std::string("session"), hashGenesis));
     }
 
+
+    /* Check if a record exists for a table. */
+    bool LocalDB::HasRecord(const std::string& strTable, const std::string& strKey)
+    {
+        return Exists(std::make_tuple(std::string("record.proof"), strKey, strTable));
+    }
+
+
+    /* Erase a record from a table. */
+    bool LocalDB::EraseRecord(const std::string& strTable, const std::string& strKey)
+    {
+        return Erase(std::make_tuple(std::string("record.proof"), strKey, strTable));
+    }
+
+
+    /* Push a new record to a given table. */
+    bool LocalDB::PushRecord(const std::string& strTable, const std::string& strKey, const std::string& strValue)
+    {
+        /* Check for already existing order. */
+        if(HasRecord(strTable, strKey))
+            return false;
+
+        /* Get our current sequence number. */
+        uint32_t nSequence = 0;
+
+        /* Read our sequences from disk. */
+        Read(std::make_pair(std::string("record.sequence"), strTable), nSequence);
+
+        /* Add our indexing entry by owner sequence number. */
+        if(!Write(std::make_tuple(std::string("record.index"), nSequence, strTable), std::make_pair(strKey, strValue)))
+            return false;
+
+        /* Write our new events sequence to disk. */
+        if(!Write(std::make_pair(std::string("record.sequence"), strTable), ++nSequence))
+            return false;
+
+        /* Write our order proof. */
+        if(!Write(std::make_tuple(std::string("record.proof"), strKey, strTable)))
+            return false;
+
+        return true;
+    }
+
+
+    /* List the current records for a given table. */
+    bool LocalDB::ListRecords(const std::string& strTable, std::vector<std::pair<std::string, std::string>> &vRecords)
+    {
+        /* Loop until we have failed. */
+        uint32_t nSequence = 0;
+        while(!config::fShutdown.load()) //we want to early terminate on shutdown
+        {
+            /* Use this to keep a local record of our pairs. */
+            std::pair<std::string, std::string> pairRecord;
+
+            /* Read our current record. */
+            if(!Read(std::make_tuple(std::string("record.index"), nSequence, strTable), pairRecord))
+                break;
+
+            /* Check for transfer keys. */
+            if(!HasRecord(strTable, pairRecord.first))
+                continue; //NOTE: we skip over transfer keys
+
+            /* Push our record to return value. */
+            vRecords.push_back(pairRecord);
+        }
+
+        return !vRecords.empty();
+    }
+
 }
