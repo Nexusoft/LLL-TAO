@@ -170,14 +170,14 @@ namespace TAO::API
 
     /* Builds a transaction based on a list of contracts, to be deployed as a single tx or batched. */
     std::vector<uint512_t> BuildAndAccept(const encoding::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts,
-                                          const uint8_t nUnlockedActions, const bool fNotifications)
+                                          const uint8_t nUnlockedActions)
     {
         /* Get the calling genesis-id. */
         const uint256_t hashGenesis =
             Authentication::Caller(jParams);
 
         /* Handle auto-tx feature. */
-        if(!fNotifications && config::GetBoolArg("-autotx", false))
+        if(config::GetBoolArg("-autotx", false) && !(nUnlockedActions & TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS))
         {
             /* Get the current session-id. */
             const uint256_t hashSession =
@@ -208,8 +208,6 @@ namespace TAO::API
 
                 /* Push the new contracts to our dispatch queue. */
                 rQueue.insert(rQueue.end(), vContracts.begin(), vContracts.end());
-
-                debug::log(3, "[AUTOTX] Submitted ", vContracts.size(), " to -autotx queue");
                 return std::vector<uint512_t>();
             } //otherwise we just proceed like normal
         }

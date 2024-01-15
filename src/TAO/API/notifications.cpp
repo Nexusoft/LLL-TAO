@@ -142,7 +142,7 @@ namespace TAO::API
                         if(!vDispatch.empty())
                         {
                             /* Don't proceed with -autotx if we are awaiting a new timespan. */
-                            if(!CheckTimespan(hashGenesis, 10))
+                            if(!CheckTimespan(hashGenesis, config::fHybrid.load() ? 1 : 10))
                                 continue;
 
                             /* Now clear so we don't double our work. We will add failures back later. */
@@ -150,7 +150,7 @@ namespace TAO::API
 
                             /* Build our pending transactions now. */
                             const std::vector<uint512_t> vHashes =
-                                BuildAndAccept(jSession, vDispatch, TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS, true);
+                                BuildAndAccept(jSession, vDispatch, TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS);
 
                             debug::log(0, FUNCTION, "[AUTOTX] Built ", vHashes.size(), " transactions for ", vDispatch.size(), " contracts");
                         }
@@ -390,7 +390,7 @@ namespace TAO::API
 
                     /* Now build our official transaction. */
                     const std::vector<uint512_t> vHashes =
-                        BuildAndAccept(jSession, vSanitized, TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS, true);
+                        BuildAndAccept(jSession, vSanitized, TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS);
 
                     debug::log(0, FUNCTION, "Built ", vHashes.size(), " transactions for ", vSanitized.size(), " contracts");
                 }

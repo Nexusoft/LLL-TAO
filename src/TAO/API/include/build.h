@@ -93,13 +93,12 @@ namespace TAO::API
      *  @param[in] jParams The json parameters to build the transaction with.
      *  @param[in] vContracts The list of contracts to build tx for.
      *  @param[in] nUnlockActions The specific action that is being requested in building transaction.
-     *  @param[in] fNotifications Flag to determine if this is being called from notifications thread.
      *
      *  @return a list of txid's of the transactions that were just built.
      *
      **/
     std::vector<uint512_t> BuildAndAccept(const encoding::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts,
-                                          const uint8_t nUnlockedAction, const bool fNotifications = false);
+                                          const uint8_t nUnlockedAction);
 
 
     /** AddFee
