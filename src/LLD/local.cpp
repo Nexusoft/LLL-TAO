@@ -200,7 +200,7 @@ namespace LLD
             std::pair<std::string, std::string> pairRecord;
 
             /* Read our current record. */
-            if(!Read(std::make_tuple(std::string("record.index"), nSequence, strTable), pairRecord))
+            if(!Read(std::make_tuple(std::string("record.index"), nSequence++, strTable), pairRecord))
                 break;
 
             /* Check for transfer keys. */

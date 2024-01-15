@@ -448,6 +448,11 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_ledger_metrics.o \
 		build/API_commands_ledger_submit-transaction.o \
 		build/API_commands_ledger_sync-status.o \
+		build/API_commands_local_erase.o \
+		build/API_commands_local_initialize.o \
+		build/API_commands_local_has.o \
+		build/API_commands_local_list.o \
+		build/API_commands_local_push.o \
 		build/API_commands_market_cancel.o \
 		build/API_commands_market_create.o \
 		build/API_commands_market_execute.o \
@@ -771,6 +776,9 @@ build/API_commands_invoices_%.o: ./src/TAO/API/commands/invoices/%.cpp $(HEADERS
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_commands_ledger_%.o: ./src/TAO/API/commands/ledger/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_commands_local_%.o: ./src/TAO/API/commands/local/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_commands_names_%.o: ./src/TAO/API/commands/names/%.cpp $(HEADERS)
@@ -1385,6 +1393,13 @@ build/API_commands_invoices_%.o: src/TAO/API/commands/invoices/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/API_commands_ledger_%.o: src/TAO/API/commands/ledger/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_commands_local_%.o: src/TAO/API/commands/local/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
