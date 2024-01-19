@@ -22,7 +22,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <LLP/types/tritium.h>
+#include <LLP/include/global.h>
 
 #include <TAO/Ledger/include/ambassador.h>
 #include <TAO/Ledger/include/developer.h>
@@ -891,6 +891,25 @@ namespace TAO::Ledger
             /* Check the statues. */
             if(!(nStatus & PROCESS::ACCEPTED))
                 continue;
+
+            /* Relay the block and bestchain. */
+            const uint1024_t hashBlock = block.GetHash();
+            LLP::TRITIUM_SERVER->Relay
+            (
+                LLP::TritiumNode::ACTION::NOTIFY,
+
+                /* Relay BLOCK notification. */
+                uint8_t(LLP::TritiumNode::TYPES::BLOCK),
+                hashBlock,
+
+                /* Relay BESTCHAIN notification. */
+                uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN),
+                hashBlock,
+
+                /* Relay BESTHEIGHT notification. */
+                uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT),
+                block.nHeight
+            );
         }
     }
 
