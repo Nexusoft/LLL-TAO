@@ -741,6 +741,9 @@ namespace TAO::API
                     /* Debug output so w4e can track our events indexes. */
                     debug::log(2, FUNCTION, "Building events indexes from ", VARIABLE(nTritiumSequence), " | ", VARIABLE(nLegacySequence), " for genesis=", hashGenesis.SubString());
 
+                    /* Track our last event processed so we don't double up our work. */
+                    uint512_t hashLast;
+
                     /* Loop through our ledger level events. */
                     TAO::Ledger::Transaction tTritium;
                     while(LLD::Ledger->ReadEvent(hashGenesis, nTritiumSequence++, tTritium))
@@ -753,8 +756,15 @@ namespace TAO::API
                         const uint512_t hashEvent =
                             tTritium.GetHash(true); //true to override cache
 
+                        /* Check if we have already processed this event. */
+                        if(hashEvent == hashLast)
+                            continue;
+
                         /* Index our dependant transaction. */
                         IndexDependant(hashEvent, tTritium);
+
+                        /* Set our new dependant hash. */
+                        hashLast = hashEvent;
                     }
 
                     /* Loop through our ledger level events. */
@@ -769,8 +779,15 @@ namespace TAO::API
                         const uint512_t hashEvent =
                             tLegacy.GetHash();
 
+                        /* Check if we have already processed this event. */
+                        if(hashEvent == hashLast)
+                            continue;
+
                         /* Index our dependant transaction. */
                         IndexDependant(hashEvent, tLegacy);
+
+                        /* Set our new dependant hash. */
+                        hashLast = hashEvent;
                     }
 
                     /* Check that our ledger indexes are up-to-date with our logical indexes. */
