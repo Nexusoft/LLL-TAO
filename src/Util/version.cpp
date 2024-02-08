@@ -27,7 +27,7 @@ namespace version
     const uint32_t CLIENT_PATCH = 3;
 
     /* Build version determines release candidate. */
-    const uint32_t CLIENT_REVISION = 1;
+    const uint32_t CLIENT_REVISION = 2;
 
     /* This tells us minor build tweaks rather than release candidate. */
     const uint32_t CLIENT_BUILD    = 0;
