@@ -153,6 +153,8 @@ namespace TAO::API
                                 BuildAndAccept(jSession, vDispatch, TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS);
 
                             debug::log(0, FUNCTION, "[AUTOTX] Built ", vHashes.size(), " transactions for ", vDispatch.size(), " contracts");
+
+                            continue;
                         }
                     }
 
