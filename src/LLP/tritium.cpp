@@ -2059,7 +2059,7 @@ namespace LLP
                             if(nType == TYPES::SIGCHAIN && config::fClient.load())
                             {
                                 /* Check ledger database. */
-                                if(tInventory.Expired(hashTx, 60)) //60 second exipring cache
+                                if(tInventory.Expired(hashTx, 5)) //5 second exipring cache for merkle-tx
                                 {
                                     /* Debug output. */
                                     debug::log(3, NODE, "ACTION::NOTIFY: MERKLE TRANSACTION ", hashTx.SubString());
