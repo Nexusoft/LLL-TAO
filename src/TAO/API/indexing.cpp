@@ -838,13 +838,8 @@ namespace TAO::API
                                 break;
                             }
 
-                            /* Build an API transaction. */
-                            TAO::API::Transaction tIndex =
-                                TAO::API::Transaction(tx);
-
-                            /* Index the transaction to the database. */
-                            if(!tIndex.Index(*hashTx))
-                                debug::warning(FUNCTION, "failed to build index ", hashTx->SubString());
+                            /* Index the transaction on main sigchain. */
+                            index_transaction(*hashTx, tx);
 
                             /* Log that tx was rebroadcast. */
                             debug::log(1, FUNCTION, "Built Indexes for ", hashTx->SubString(), " to logical db");
