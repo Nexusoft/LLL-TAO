@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands/assets.h>
 #include <TAO/API/types/commands/ledger.h>
+#include <TAO/API/types/commands/local.h>
 #include <TAO/API/types/commands/names.h>
 #include <TAO/API/types/commands/invoices.h>
 #include <TAO/API/types/commands/crypto.h>
@@ -53,6 +54,7 @@ namespace TAO::API
         Commands::Register<Finance>();
         Commands::Register<Invoices>();
         Commands::Register<Ledger>();
+        Commands::Register<Local>();
         Commands::Register<Network>(config::fClient.load()); //DISABLED for -client mode
         Commands::Register<Names>();
         Commands::Register<Profiles>();

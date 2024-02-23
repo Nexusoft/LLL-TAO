@@ -26,6 +26,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands.h>
 #include <TAO/API/types/commands/names.h>
 #include <TAO/API/types/indexing.h>
+#include <TAO/API/types/notifications.h>
 #include <TAO/API/types/transaction.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -171,15 +172,45 @@ namespace TAO::API
     std::vector<uint512_t> BuildAndAccept(const encoding::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts,
                                           const uint8_t nUnlockedActions)
     {
-        /* Handle auto-tx feature. */
-        if(config::GetBoolArg("-autotx", false)) //TODO: pipe in -autotx
-        {
-            return std::vector<uint512_t>();
-        }
-
         /* Get the calling genesis-id. */
         const uint256_t hashGenesis =
             Authentication::Caller(jParams);
+
+        /* Handle auto-tx feature. */
+        if(config::GetBoolArg("-autotx", false) && !(nUnlockedActions & TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS))
+        {
+            /* Get the current session-id. */
+            const uint256_t hashSession =
+                Authentication::ExtractSession(jParams);
+
+            /* Check we have an active session established. */
+            if(Notifications::mapDispatch->count(hashSession))
+            {
+                /* Make a copy of contracts to sanitize. */
+                std::vector<TAO::Operation::Contract> vSanitize =
+                    std::vector<TAO::Operation::Contract>(vContracts.begin(), vContracts.end());
+
+                /* Sanitize our contract here to make sure we build a valid transaction. */
+                std::map<uint256_t, TAO::Register::State> mapStates;
+                for(auto& rContract : vSanitize)
+                {
+                    /* Bind our contract now to a timestamp and caller. */
+                    rContract.Bind(runtime::unifiedtimestamp(), hashGenesis);
+
+                    /* Sanitize the contract. */
+                    if(!Notifications::SanitizeContract(rContract, mapStates, true))
+                        throw Exception(-32, "-autotx invalid contract: ", debug::strLastError);
+                }
+
+                /* Push to our notifications queue. */
+                std::vector<TAO::Operation::Contract>& rQueue =
+                    std::ref(Notifications::mapDispatch->at(hashSession));
+
+                /* Push the new contracts to our dispatch queue. */
+                rQueue.insert(rQueue.end(), vContracts.begin(), vContracts.end());
+                return std::vector<uint512_t>();
+            } //otherwise we just proceed like normal
+        }
 
         /* Check for sigchain maturity on mainnet. */
         if(!config::fHybrid.load())
@@ -226,7 +257,7 @@ namespace TAO::API
                 break;
 
             /* Check that our last transaction was more than 10 seconds ago. */
-            if((nUnlockedActions & TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS) && !CheckTimespan(hashGenesis, 10))
+            if((nUnlockedActions & TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS) && !CheckTimespan(hashGenesis, config::fHybrid.load() ? 1 : 10))
             {
                 runtime::sleep(500);
                 continue;

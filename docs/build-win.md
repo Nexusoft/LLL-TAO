@@ -18,7 +18,7 @@ If you have already completed `Part 1: Compiling the Dependencies`, please skip 
 
 Download and install MSYS2 with default settings.
 
-https://repo.msys2.org/distrib/x86_64/msys2-x86_64-20210419.exe
+https://repo.msys2.org/distrib/x86_64/msys2-x86_64-20230718.exe 
 
 When it is finished, ensure "Run MSYS2 64bit now" is checked and press Finish.
 In the MSYS command prompt that opens, enter:
@@ -29,7 +29,7 @@ pacman -Syyu
 
 If you receive any messages saying things are in conflict, press y then enter until it asks "Proceed with installation?", then press y and enter one more time.
 
-When it is done, it will give you 2 warnings. Close the window with the X in the top right corner. After a few seconds it will warn you that processes are running. Click OK. Then keep clicking the X until it says "Terminal is not responding". Then, click "Close the Program" and wait for it to close.
+When it is done, it will ask you to close the window to restart.  Say "yes" or close the window.
 
 After it closes, launch MinGW64 by clicking the Windows Start icon and going to "MSYS2 64bit" and selecting "MSYS2 MingGW 64-Bit". When the MingGW64 window appears, enter:
 

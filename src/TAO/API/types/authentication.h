@@ -458,6 +458,18 @@ namespace TAO::API
         static bool Caller(const encoding::json& jParams, uint256_t &hashCaller);
 
 
+        /** ExtractSession
+         *
+         *  Extract the session-id of the given caller using session from params.
+         *
+         *  @param[in] jParams The incoming parameters to parse session from.
+         *
+         *  @return the caller if found
+         *
+         **/
+        static uint256_t ExtractSession(const encoding::json& jParams);
+
+
         /** Unloacked
          *
          *  Determine if a sigchain is unlocked for given actions.

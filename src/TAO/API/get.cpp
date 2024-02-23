@@ -410,7 +410,7 @@ namespace TAO::API
                     const TAO::Operation::Contract& rContract = tx[nContract];
 
                     /* Reset the op stream */
-                    rContract.Reset();
+                    rContract.SeekToPrimitive();
 
                     /* The operation */
                     uint8_t nOp;
