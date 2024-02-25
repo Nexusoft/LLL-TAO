@@ -371,6 +371,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLC_shake.o \
 		build/LLC_sign.o \
 		build/LLC_vrfy.o \
+		build/LLC_tlse.o \
         build/LLC_x509_cert.o \
         build/LLD_address.o \
         build/LLD_ledger.o \
@@ -746,6 +747,9 @@ build/LLC_%.o: ./src/LLC/aes/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -o $@ $<
 
 build/LLC_%.o: ./src/LLC/falcon/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -o $@ $<
+
+build/LLC_%.o: ./src/LLC/tlse/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -o $@ $<
 
 build/LLD_%.o: ./src/LLD/%.cpp $(HEADERS)
@@ -1309,6 +1313,13 @@ build/LLC_%.o: src/LLC/aes/%.c $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/LLC_%.o: src/LLC/falcon/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/LLC_%.o: src/LLC/tlse/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
