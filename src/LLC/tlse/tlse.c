@@ -54,7 +54,7 @@
 #define TLS_I_MACRO
 #undef I
 #endif
-#include "libtomcrypt.c"
+#include "libtomcrypt.h"
 #ifdef TLS_I_MACRO
 #pragma pop_macro("I")
 #undef TLS_I_MACRO

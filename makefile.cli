@@ -372,6 +372,8 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLC_sign.o \
 		build/LLC_vrfy.o \
 		build/LLC_tlse.o \
+		build/LLC_libtommath.o \
+		build/LLC_libtomcrypt.o \
         build/LLC_x509_cert.o \
         build/LLD_address.o \
         build/LLD_ledger.o \
