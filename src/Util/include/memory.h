@@ -23,7 +23,7 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/allocators.h>
 
-#include <openssl/rand.h>
+//#include <openssl/rand.h>
 
 namespace memory
 {
@@ -254,8 +254,8 @@ namespace memory
             /* Set the encryption key if not set. */
             if(!fKeySet)
             {
-                RAND_bytes((uint8_t*)&vKey[0], AES_KEYLEN);
-                RAND_bytes((uint8_t*)&vIV[0], AES_BLOCKLEN);
+                //RAND_bytes((uint8_t*)&vKey[0], AES_KEYLEN);
+                //RAND_bytes((uint8_t*)&vIV[0], AES_BLOCKLEN);
 
                 fKeySet = true;
             }
@@ -284,8 +284,8 @@ namespace memory
             /* Set the encryption key if not set. */
             if(!fKeySet)
             {
-                RAND_bytes((uint8_t*)&vKey[0], AES_KEYLEN);
-                RAND_bytes((uint8_t*)&vIV[0], AES_BLOCKLEN);
+                //RAND_bytes((uint8_t*)&vKey[0], AES_KEYLEN);
+                //RAND_bytes((uint8_t*)&vIV[0], AES_BLOCKLEN);
 
                 fKeySet = true;
             }
@@ -313,8 +313,8 @@ namespace memory
             /* Set the encryption key if not set. */
             if(!fKeySet)
             {
-                RAND_bytes((uint8_t*)&vKey[0], AES_KEYLEN);
-                RAND_bytes((uint8_t*)&vIV[0], AES_BLOCKLEN);
+                //RAND_bytes((uint8_t*)&vKey[0], AES_KEYLEN);
+                //RAND_bytes((uint8_t*)&vIV[0], AES_BLOCKLEN);
 
                 fKeySet = true;
             }
@@ -343,8 +343,8 @@ namespace memory
             /* Set the encryption key if not set. */
             if(!fKeySet)
             {
-                RAND_bytes((uint8_t*)&vKey[0], AES_KEYLEN);
-                RAND_bytes((uint8_t*)&vIV[0], AES_BLOCKLEN);
+                //RAND_bytes((uint8_t*)&vKey[0], AES_KEYLEN);
+                //RAND_bytes((uint8_t*)&vIV[0], AES_BLOCKLEN);
 
                 fKeySet = true;
             }

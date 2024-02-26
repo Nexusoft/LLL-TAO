@@ -24,8 +24,8 @@ ________________________________________________________________________________
 #include <atomic>
 
 
-typedef struct ssl_st SSL;
-typedef struct ssl_ctx_st SSL_CTX;
+typedef struct TLSContext SSL;
+typedef struct TLSContext SSL_CTX;
 
 namespace LLP
 {
@@ -273,7 +273,7 @@ namespace LLP
          *  @param[in] fSSL_ The flag to set SSL on or off.
          *
          **/
-         void SetSSL(bool fSSL);
+         void SetSSL(bool fSSL, bool fOutbound = true);
 
 
          /** IsSSL

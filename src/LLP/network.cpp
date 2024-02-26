@@ -11,13 +11,13 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/include/x509_cert.h>
+//#include <LLC/include/x509_cert.h>
 
 #include <LLP/include/network.h>
 
 #include <Util/include/debug.h>
 
-#include <openssl/ssl.h>
+#include <LLC/tlse/tlse.h>
 
 namespace LLP
 {
@@ -73,25 +73,26 @@ namespace LLP
 
         /* OpenSSL initialization. */
         SSL_load_error_strings();
-        OpenSSL_add_ssl_algorithms();
 
         /* Create the global network SSL object.  NOTE we only support TLS 1.0 and greater, not previous versions of SSL */
-        #if defined(IPHONE) || defined(ANDROID)
-            pSSL_CTX = SSL_CTX_new(SSLv23_method());
-        #else
-            pSSL_CTX = SSL_CTX_new(TLS_method());
-        #endif
+        //#if defined(IPHONE) || defined(ANDROID)
+        //    pSSL_CTX = SSL_CTX_new(SSLv23_method());
+        //#else
+        //    pSSL_CTX = SSL_CTX_new(TLS_method());
+        //#endif
+
+        pSSL_CTX = SSL_CTX_new(SSLv3_client_method());
 
         /* Set the verification callback to always true. */
-        SSL_CTX_set_verify(pSSL_CTX, SSL_VERIFY_PEER, LLC::always_true_callback);
+        //SSL_CTX_set_verify(pSSL_CTX, SSL_VERIFY_PEER, LLC::always_true_callback);
 
         /* Turn off session caching as this causes issues with some browsers if they establish a new connection when an existing
            socket connection to the same host already exists. */
-        SSL_CTX_set_session_cache_mode(pSSL_CTX, SSL_SESS_CACHE_OFF);
-        SSL_CTX_set_options(pSSL_CTX, SSL_OP_NO_TICKET);
+        //SSL_CTX_set_session_cache_mode(pSSL_CTX, SSL_SESS_CACHE_OFF);
+        //SSL_CTX_set_options(pSSL_CTX, SSL_OP_NO_TICKET);
 
         /* Instantiate a certificate for use with SSL context */
-        LLC::X509Cert cert;
+        //LLC::X509Cert cert;
 
 
         /* Check to see if an external certficate is configured */
@@ -101,26 +102,19 @@ namespace LLP
             /* Get the certificate key path */
             std::string strKey = config::GetArg("-sslcertificatekey", "");
 
+            SSL_CTX_use_certificate_file(pSSL_CTX, strCert.c_str(), SSL_SERVER_RSA_CERT);
+            SSL_CTX_use_PrivateKey_file(pSSL_CTX, strKey.c_str(), SSL_SERVER_RSA_KEY);
+
             /* Get the CA bundle path */
-            std::string strCABundle = config::GetArg("-sslcabundle", "");
+            //std::string strCABundle = config::GetArg("-sslcabundle", "");
 
             /* Read the external certificate file and key */
-            cert.Read(strCert, strKey, strCABundle);
+            //cert.Read(strCert, strKey, strCABundle);
+
+            /* Check that we have loaded a valid private key. */
+            if (!SSL_CTX_check_private_key(pSSL_CTX))
+                return debug::error(FUNCTION, "certificate has invalid private key");
         }
-        else
-        {
-            /* Generate an ephemeral RSA based certificate for this session */
-            cert.GenerateRSA("localhost");
-        }
-
-
-        /* Initialize the new SSL context. */
-        if(!cert.Init_SSL(pSSL_CTX))
-            return debug::error(FUNCTION, "Certificate Init Failed for SSL Context");
-
-        /* Verify that certificate chain is valid. */
-        if(!cert.Verify(pSSL_CTX))
-            return debug::error(FUNCTION, "Certificate Verify Failed for SSL Context");
 
         /* Debug logging. */
         debug::log(3, FUNCTION, "SSL context and certificate creation complete.");

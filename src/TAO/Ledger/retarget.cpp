@@ -11,6 +11,8 @@ file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 ____________________________________________________________________________________________*/
 
+#include <LLC/types/bignum.h>
+
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/prime.h>
 #include <TAO/Ledger/include/difficulty.h>
@@ -171,7 +173,7 @@ namespace TAO
             nUpperBound *= (state.nVersion >= 7 ? 1000000 : 1);
 
             /* Get the Difficulty Stored in Bignum Compact. */
-            uint1024_t bnNew;
+            LLC::CBigNum bnNew;
             bnNew.SetCompact(first.nBits);
 
             /* Change Number from Upper and Lower Bounds. */
@@ -183,12 +185,12 @@ namespace TAO
                 bnNew.SetCompact(first.nBits);
 
             /* Don't allow Difficulty to decrease below minimum. */
-            if(bnNew > bnProofOfWorkLimit[0])
-                bnNew = bnProofOfWorkLimit[0];
+            if(bnNew.getuint1024() > bnProofOfWorkLimit[0])
+                bnNew.setuint1024(bnProofOfWorkLimit[0]);
 
             /* Handle for regression testing blocks. */
             if(config::fTestNet.load() && config::GetBoolArg("-regtest"))
-                bnNew = bnProofOfWorkLimit[0];
+                bnNew.setuint1024(bnProofOfWorkLimit[0]);
 
             /* Debug output. */
             if(fDebug)
@@ -450,7 +452,7 @@ namespace TAO
             }
 
             /* Get the Difficulty Stored in Bignum Compact. */
-            uint1024_t bnNew;
+            LLC::CBigNum bnNew;
             bnNew.SetCompact(first.nBits);
 
             /* Change Number from Upper and Lower Bounds. */
@@ -462,12 +464,12 @@ namespace TAO
                 bnNew.SetCompact(first.nBits);
 
             /* Don't allow Difficulty to decrease below minimum. */
-            if(bnNew > bnProofOfWorkLimit[2])
-                bnNew = bnProofOfWorkLimit[2];
+            if(bnNew.getuint1024() > bnProofOfWorkLimit[2])
+                bnNew.setuint1024(bnProofOfWorkLimit[2]);
 
             /* Handle for regression testing blocks. */
             if(config::fTestNet.load() && config::GetBoolArg("-regtest"))
-                bnNew = bnProofOfWorkLimit[2];
+                bnNew.setuint1024(bnProofOfWorkLimit[2]);
 
             /* Debug output. */
             if(fDebug)

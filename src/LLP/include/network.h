@@ -77,8 +77,8 @@ typedef u_int SOCKET;
 #endif // ifdef WIN32
 
 /** Forward declarations. **/
-typedef struct ssl_ctx_st SSL_CTX;
-typedef struct ssl_st SSL;
+typedef struct TLSContext SSL_CTX;
+typedef struct TLSContext SSL;
 
 namespace LLP
 {

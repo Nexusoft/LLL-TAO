@@ -26,9 +26,7 @@ ________________________________________________________________________________
 #include <sys/ioctl.h>
 #endif
 
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#include <openssl/opensslv.h>
+#include <LLC/tlse/tlse.h>
 
 namespace LLP
 {
@@ -78,18 +76,9 @@ namespace LLP
             /* Assign the SSL struct and increment the reference count so that we don't destroy it twice */
             pSSL = socket.pSSL;
 
-            /* In OpenSSL 1.0 the reference count is accessed directly.  We use CRYPTO_add to increment it so that it is threadsafe.
-               From OpenSSL 1.1.0 onwards the SSL object has been made opaque so we need to incrememt it using SSL_up_ref */
-            #if OPENSSL_VERSION_NUMBER < 0x10100000L
-                CRYPTO_add(&pSSL->references, 1, CRYPTO_LOCK_SSL);
-            #else
-                SSL_up_ref(pSSL);
-            #endif
-
             /* Set the socket file descriptor on the SSL object to this socket */
             SSL_set_fd(pSSL, fd);
         }
-
     }
 
 
@@ -113,14 +102,14 @@ namespace LLP
         events = POLLIN;
 
         /* Determine if socket should use SSL. */
-        SetSSL(fSSL);
+        SetSSL(fSSL, false);
 
         /* TCP connection is ready. Do server side SSL. */
         if(fSSL)
         {
             /* Set our initial SSL context's. */
             SSL_set_fd(pSSL, fd);
-            SSL_set_accept_state(pSSL);
+            //SSL_set_accept_state(pSSL);
 
             /* Make sure socket errors are in clean state. */
             nError.store(0);
@@ -135,7 +124,7 @@ namespace LLP
             int32_t nStatus = 0; //set to poll timeout
 
             /* Loop until success or timeout (30 max cycles for 3 seconds). */
-            for(uint32_t nSeconds = 0; nSeconds < 30 && !config::fShutdown.load() && nStatus <= 0; ++nSeconds)
+            for(uint32_t nSeconds = 0; nSeconds < 30 && !config::fShutdown.load() && nStatus == 0; ++nSeconds)
             {
                 /* Attempt to accept incoming SSL. */
                 const int32_t nAccept = SSL_accept(pSSL);
@@ -151,52 +140,13 @@ namespace LLP
                 const int32_t nErrors =
                     SSL_get_error(pSSL, nAccept);
 
-                /* Check our error messages now. */
-                switch(nErrors)
+                if(nErrors == 1)
                 {
-                    /* We will get this signal if the SSL_accept is waiting for data to read. */
-                    case SSL_ERROR_WANT_READ:
-                    {
-                        nStatus = 0; // Wait for more activity
-                        break;
-                    }
+                    // peer disconnected...
+                    debug::error(FUNCTION, "Peer disconnected on accept.");
+                    nError.store(nErrors);
 
-                    /* We will get this signal if the SSL_accept is waiting for data to write. */
-                    case SSL_ERROR_WANT_WRITE:
-                    {
-                        nStatus = 0; // Wait for more activity
-                        break;
-                    }
-
-                    /* We will get this signal if we succeeded. */
-                    case SSL_ERROR_NONE:
-                    {
-                        nStatus = 1; // success!
-                        break;
-                    }
-
-                    /* We will get this signal if peer has notified us that it is shutting down via the SSL "close_notify" */
-                    case SSL_ERROR_ZERO_RETURN:
-                    case SSL_ERROR_SYSCALL:
-                    {
-                        /* Set our internal error handle. */
-                        nError.store(nErrors); //(ERR_get_error());
-                        nStatus = -1;
-
-                        debug::log(3, FUNCTION, "SSL Handshake: Peer Closed Connection");
-                        break;
-                    }
-
-                    /* We want to treat the rest of error messages as hard-stops. */
-                    default:
-                    {
-                        /* Some other error so break out */
-                        nError.store(nErrors); //(ERR_get_error());
-                        nStatus = -1;
-
-                        debug::log(3, FUNCTION, "SSL Handshake: Unknown Error Occurred");
-                        break;
-                    }
+                    break;
                 }
 
                 /* We want to poll the socket while we are waiting for non-blocking state or a timeout */
@@ -240,7 +190,7 @@ namespace LLP
                 pSSL = nullptr;
             }
             else
-                debug::log(3, FUNCTION, "SSL Connection Accepted ", SSL_get_cipher(pSSL));
+                debug::log(3, FUNCTION, "SSL Connection Accepted ", tls_cipher_name(pSSL));
         }
 
         /* Reset the internal timers. */
@@ -271,7 +221,7 @@ namespace LLP
         Reset();
 
         /* Determine if socket should use SSL. */
-        SetSSL(fSSL);
+        SetSSL(fSSL, true);
 
         /* Connect socket to external address. */
         Attempt(addrConnect);
@@ -464,7 +414,7 @@ namespace LLP
         {
             /* Set our initial SSL context's. */
             SSL_set_fd(pSSL, fd);
-            SSL_set_connect_state(pSSL);
+            //SSL_set_connect_state(pSSL);
 
             /* Make sure socket errors are in clean state. */
             nError.store(0);
@@ -478,7 +428,7 @@ namespace LLP
             int32_t nStatus = 0; //set to poll timeout
 
             /* Loop until success or timeout (30 max cycles for 3 seconds). */
-            for(uint32_t nSeconds = 0; nSeconds < 30 && !config::fShutdown.load() && nStatus <= 0; ++nSeconds)
+            for(uint32_t nSeconds = 0; nSeconds < 30 && !config::fShutdown.load() && nStatus == 0; ++nSeconds)
             {
                 /* Attempt to accept incoming SSL. */
                 const int32_t nConnect = SSL_connect(pSSL);
@@ -494,52 +444,13 @@ namespace LLP
                 const int32_t nErrors =
                     SSL_get_error(pSSL, nConnect);
 
-                /* Check our error messages now. */
-                switch(nErrors)
+                if(nErrors == 1)
                 {
-                    /* We will get this signal if the SSL_accept is waiting for data to read. */
-                    case SSL_ERROR_WANT_READ:
-                    {
-                        nStatus = 0; // Wait for more activity
-                        break;
-                    }
+                    // peer disconnected...
+                    debug::error(FUNCTION, "Peer disconnected." );
+                    nError.store(nErrors);
 
-                    /* We will get this signal if the SSL_accept is waiting for data to write. */
-                    case SSL_ERROR_WANT_WRITE:
-                    {
-                        nStatus = 0; // Wait for more activity
-                        break;
-                    }
-
-                    /* We will get this signal if we succeeded. */
-                    case SSL_ERROR_NONE:
-                    {
-                        nStatus = 1; // success!
-                        break;
-                    }
-
-                    /* We will get this signal if peer has notified us that it is shutting down via the SSL "close_notify" */
-                    case SSL_ERROR_ZERO_RETURN:
-                    case SSL_ERROR_SYSCALL:
-                    {
-                        /* Set our internal error handle. */
-                        nError.store(nErrors); //(ERR_get_error());
-                        nStatus = -1;
-
-                        debug::log(3, FUNCTION, "SSL Handshake: Peer Closed Connection");
-                        break;
-                    }
-
-                    /* We want to treat the rest of error messages as hard-stops. */
-                    default:
-                    {
-                        /* Some other error so break out */
-                        nError.store(nErrors); //(ERR_get_error());
-                        nStatus = -1;
-
-                        debug::log(3, FUNCTION, "SSL Handshake: Unknown Error Occurred");
-                        break;
-                    }
+                    break;
                 }
 
                 /* We want to poll the socket while we are waiting for non-blocking state or a timeout */
@@ -583,7 +494,7 @@ namespace LLP
                 pSSL = nullptr;
             }
             else
-                debug::log(3, FUNCTION, "SSL Connection Established ", SSL_get_cipher(pSSL));
+                debug::log(3, FUNCTION, "SSL Connection Established ", tls_cipher_name(pSSL));
         }
 
         /* Reset the internal timers. */
@@ -679,53 +590,16 @@ namespace LLP
             if(pSSL)
             {
                 int nSSLError = SSL_get_error(pSSL, nRead);
-
-                switch (nSSLError)
+                if(nSSLError == 1)
                 {
-                    case SSL_ERROR_NONE:
-                    {
-                        // no real error, just try again...
-                        break;
-                    }
-
-                    case SSL_ERROR_SSL:
-                    {
-                        // peer disconnected...
-                        debug::error(FUNCTION, "Peer disconnected." );
-                        nError.store(ERR_get_error());
-                        break;
-                    }
-
-                    case SSL_ERROR_ZERO_RETURN:
-                    {
-                        // peer disconnected...
-                        debug::error(FUNCTION, "Peer disconnected." );
-                        nError.store(ERR_get_error());
-                        break;
-                    }
-
-                    case SSL_ERROR_WANT_READ:
-                    {
-                        // no data available right now as it needs to read more from the underlying socket
-                        break;
-                    }
-
-                    case SSL_ERROR_WANT_WRITE:
-                    {
-                        // socket not writable right now, wait and try again
-                        break;
-                    }
-
-                    default:
-                    {
-                        nError.store(ERR_get_error());
-                        break;
-                    }
+                    // peer disconnected...
+                    debug::error(FUNCTION, "Peer disconnected." );
+                    nError.store(nSSLError);
                 }
 
                 /* Check if an error occurred before logging */
                 if(nError.load() > 0)
-                    debug::log(3, FUNCTION, "SSL_read failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
+                    debug::log(3, FUNCTION, "SSL_read failed ",  addr.ToString(), " (", nError, ")");
 
             }
             else
@@ -768,53 +642,16 @@ namespace LLP
             if(pSSL)
             {
                 int nSSLError = SSL_get_error(pSSL, nRead);
-
-                switch (nSSLError)
+                if(nSSLError == 1)
                 {
-                    case SSL_ERROR_NONE:
-                    {
-                        // no real error, just try again...
-                        break;
-                    }
-
-                    case SSL_ERROR_SSL:
-                    {
-                        // peer disconnected...
-                        debug::error(FUNCTION, "Peer disconnected." );
-                        nError.store(ERR_get_error());
-                        break;
-                    }
-
-                    case SSL_ERROR_ZERO_RETURN:
-                    {
-                        // peer disconnected...
-                        debug::error(FUNCTION, "Peer disconnected." );
-                        nError.store(ERR_get_error());
-                        break;
-                    }
-
-                    case SSL_ERROR_WANT_READ:
-                    {
-                        // no data available right now as it needs to read more from the underlying socket
-                        break;
-                    }
-
-                    case SSL_ERROR_WANT_WRITE:
-                    {
-                        // socket not writable right now, wait and try again
-                        break;
-                    }
-
-                    default:
-                    {
-                        nError.store(ERR_get_error());
-                        break;
-                    }
+                    // peer disconnected...
+                    debug::error(FUNCTION, "Peer disconnected." );
+                    nError.store(nSSLError);
                 }
 
                 /* Check if an error occurred before logging */
                 if(nError.load() > 0)
-                    debug::log(3, FUNCTION, "SSL_read failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
+                    debug::log(3, FUNCTION, "SSL_read failed ",  addr.ToString(), " (", nError, ")");
 
             }
             else
@@ -1004,7 +841,7 @@ namespace LLP
     const char *Socket::Error() const
     {
         if(pSSL)
-            return ERR_reason_error_string(error_code());
+            return "Unknown error";//ERR_reason_error_string(error_code());
 
         return strerror(error_code());
     }
@@ -1015,10 +852,6 @@ namespace LLP
     {
         if(pSSL)
         {
-            /* Check for errors from reads or writes. */
-            if(nError == SSL_ERROR_WANT_READ || nError == SSL_ERROR_WANT_WRITE)
-                return 0;
-
             return nError;
         }
 
@@ -1031,11 +864,14 @@ namespace LLP
     }
 
     /*  Creates or destroys the SSL object depending on the flag set. */
-    void Socket::SetSSL(bool fSSL)
+    void Socket::SetSSL(bool fSSL, bool fOutbound)
     {
         if(fSSL && pSSL == nullptr)
         {
-            pSSL = SSL_new(pSSL_CTX);
+            if(fOutbound)
+                pSSL = SSL_CTX_new(SSLv3_client_method());
+            else
+                pSSL = SSL_new(pSSL_CTX);
         }
         else if(pSSL)
         {
@@ -1049,7 +885,7 @@ namespace LLP
     bool Socket::IsSSL() const
     {
         if(pSSL != nullptr)
-            return SSL_is_init_finished(pSSL);
+            return true;//SSL_is_init_finished(pSSL);
 
         return false;
     }

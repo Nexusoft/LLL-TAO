@@ -35,8 +35,6 @@ ________________________________________________________________________________
 #include <functional>
 #include <numeric>
 
-#include <openssl/ssl.h>
-
 #ifdef USE_UPNP
 #include <miniupnpc/miniwget.h>
 #include <miniupnpc/miniupnpc.h>
