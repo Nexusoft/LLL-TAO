@@ -135,7 +135,7 @@ namespace LLP
             int32_t nStatus = 0; //set to poll timeout
 
             /* Loop until success or timeout (30 max cycles for 3 seconds). */
-            for(uint32_t nSeconds = 0; nSeconds < 30 && !config::fShutdown.load() && nStatus <= 0; ++nSeconds)
+            for(uint32_t nSeconds = 0; nSeconds < 30 && !config::fShutdown.load() && nStatus == 0; ++nSeconds)
             {
                 /* Attempt to accept incoming SSL. */
                 const int32_t nAccept = SSL_accept(pSSL);
@@ -478,7 +478,7 @@ namespace LLP
             int32_t nStatus = 0; //set to poll timeout
 
             /* Loop until success or timeout (30 max cycles for 3 seconds). */
-            for(uint32_t nSeconds = 0; nSeconds < 30 && !config::fShutdown.load() && nStatus <= 0; ++nSeconds)
+            for(uint32_t nSeconds = 0; nSeconds < 30 && !config::fShutdown.load() && nStatus == 0; ++nSeconds)
             {
                 /* Attempt to accept incoming SSL. */
                 const int32_t nConnect = SSL_connect(pSSL);
