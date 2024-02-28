@@ -191,11 +191,11 @@ endif
 
 #Configure Build Environment
 ifneq ($(detected_OS),Windows)
-    INCLUDEPATHS+= $(addprefix -I, $(CURDIR) $(CURDIR)/build $(CURDIR)/src $(CURDIR)/tests)\
+    INCLUDEPATHS+= $(addprefix -I, $(CURDIR) $(CURDIR)/build $(CURDIR)/src $(CURDIR)/src/LLC/include $(CURDIR)/tests)\
 	-I$(OPENSSL_INCLUDE_PATH)
 endif
 ifeq ($(detected_OS),Windows)
-    INCLUDEPATHS+= -I"$(CURDIR)" -I"$(CURDIR)/build" -I"$(CURDIR)/src" -I"$(CURDIR)/tests" \
+    INCLUDEPATHS+= -I"$(CURDIR)" -I"$(CURDIR)/build" -I"$(CURDIR)/src" -I"$(CURDIR)/src/LLC/include" -I"$(CURDIR)/tests" \
 	-I$(OPENSSL_INCLUDE_PATH)
 endif
 ifneq ($(detected_OS),OSX)
@@ -338,6 +338,9 @@ else ifdef LIVE_TESTS
 else
 	OBJS = build/main.o
 endif
+
+TLS = $(subst src/,$e,$(wildcard src/LLC/tls/*.c))
+OBJS += $(foreach file,$(TLS),build/$(subst /,_,$(subst .c,.o,$(file))))
 
 OBJS+=  build/LLC_base_uint.o \
 		build/LLC_bignum.o \
@@ -746,6 +749,9 @@ build/LLC_%.o: ./src/LLC/aes/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -o $@ $<
 
 build/LLC_%.o: ./src/LLC/falcon/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -o $@ $<
+
+build/LLC_tls_%.o: ./src/LLC/tls/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -o $@ $<
 
 build/LLD_%.o: ./src/LLD/%.cpp $(HEADERS)
@@ -1309,6 +1315,13 @@ build/LLC_%.o: src/LLC/aes/%.c $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/LLC_%.o: src/LLC/falcon/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/LLC_tls_%.o: src/LLC/tls/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
