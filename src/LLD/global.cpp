@@ -76,9 +76,10 @@ namespace LLD
 
 
         /* Create the local database instance. */
+        uint32_t nLogicalCacheSize = config::GetArg("-logicalcache", 2);
         Logical    = new LogicalDB(
                         FLAGS::CREATE | FLAGS::FORCE,
-                        (256 * 256 * 16));
+                        (256 * 256 * 16), nLogicalCacheSize * 1024 * 1024);
 
 
         if(config::fClient.load())
