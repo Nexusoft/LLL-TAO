@@ -30,6 +30,8 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/build.h>
 
+#include <TAO/Ledger/types/mempool.h>
+
 #include <Util/include/args.h>
 
 /* Global TAO namespace. */
@@ -121,11 +123,15 @@ namespace TAO::API
                     };
 
                     /* Check if we need to cleanup any unconfirmed transaction chains. */
-                    if(!SanitizeUnconfirmed(hashGenesis, jSession))
-                        continue;
+                    if(!config::fHybrid.load())
+                    {
+                        /* Sanitize our unconfirmed transactions. */
+                        if(!SanitizeUnconfirmed(hashGenesis, jSession))
+                            continue;
 
-                    /* Broadcast our unconfirmed transactions first. */
-                    Indexing::BroadcastUnconfirmed(hashGenesis);
+                        /* Broadcast our unconfirmed transactions first. */
+                        Indexing::BroadcastUnconfirmed(hashGenesis);
+                    }
 
                     /* Build our list of contracts. */
                     std::vector<TAO::Operation::Contract> vContracts;
@@ -583,6 +589,10 @@ namespace TAO::API
             /* Delete our transaction from logical database. */
             if(!tx.Delete(rHash))
                 debug::warning(FUNCTION, "failed to delete tx ", rHash.SubString());
+
+            /* Remove from mepool. */
+            if(TAO::Ledger::mempool.Has(rHash))
+                TAO::Ledger::mempool.Remove(rHash);
 
             /* Check if we are at our root now. */
             if(rHash == hashRoot)
