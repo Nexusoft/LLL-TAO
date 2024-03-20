@@ -2633,7 +2633,7 @@ namespace TAO::API
                     }
 
                     /* Otherwise just copy string argument over. */
-                    jRet[strKey] = strValue;
+                    jRet[strKey] = VariableToJSON(strValue);
                 }
             }
             else
