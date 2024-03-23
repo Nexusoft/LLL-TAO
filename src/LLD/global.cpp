@@ -79,7 +79,7 @@ namespace LLD
         uint32_t nLogicalCacheSize = config::GetArg("-logicalcache", 2);
         Logical    = new LogicalDB(
                         FLAGS::CREATE | FLAGS::FORCE,
-                        (256 * 256 * 16), nLogicalCacheSize * 1024 * 1024);
+                        256 * 256 * config::GetArg("-logicalbuckets", 16), nLogicalCacheSize * 1024 * 1024);
 
 
         if(config::fClient.load())
