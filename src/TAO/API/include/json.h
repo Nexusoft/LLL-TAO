@@ -209,6 +209,16 @@ namespace TAO::API
     __attribute__((pure)) encoding::json QueryToJSON(const std::string& strWhere);
 
 
+    /** VariableToJSON
+     *
+     *  Converts a query variable into a json string.
+     *
+     *  Varibles needs to be modular functional statements with return type specifications.
+     *  This function is hard coded variables for now, need to make it modular.
+     */
+    __attribute__((pure)) std::string VariableToJSON(const std::string& strValue);
+
+
     /** ClauseToJSON
      *
      *  Turns a where clause string in url encoding into a formatted JSON object.

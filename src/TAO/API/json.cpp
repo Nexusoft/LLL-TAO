@@ -2252,19 +2252,13 @@ namespace TAO::API
     }
 
 
-    /** VariableToJSON
-     *
-     *  Converts a query variable into a json string.
-     *
-     *  Varibles needs to be modular functional statements with return type specifications.
-     *  This function is hard coded variables for now, need to make it modular.
-     */
+    /* Converts a query variable into a json string.*/
     std::string VariableToJSON(const std::string& strValue)
     {
         /* Find where parameters start. */
         const auto nBegin = strValue.find('(');
         if(nBegin == strValue.npos)
-            throw Exception(-120, "Query Syntax Error: variable format must be variable(`params`);", strValue);
+            throw Exception(-120, "variable format must be variable(`params`);", strValue);
 
         /* Parse out our variable name. */
         const std::string strVariable =
@@ -2273,7 +2267,7 @@ namespace TAO::API
         /* Find our ending iterator. */
         const auto nEnd = strValue.find(')');
         if(nEnd == strValue.npos)
-            throw Exception(-120, "Query Syntax Error: variable format must be variable(`params`);", strValue);
+            throw Exception(-120, "variable format must be variable(`params`);", strValue);
 
         /* Get our parameter values. */
         const std::string strParams =
@@ -2282,20 +2276,30 @@ namespace TAO::API
         /* Date variable requires a string argument. */
         const auto nOpen = strParams.find('`');
         if(nOpen == strParams.npos)
-            throw Exception(-120, "Query Syntax Error: variable format requires string ", strVariable, "(`params`); | ", strValue);
+            throw Exception(-120, "variable format requires string ", strVariable, "(`params`); | ", strValue);
 
         /* Check for closing string. */
         const auto nClose = strParams.rfind('`');
         if(nClose == strParams.npos)
-            throw Exception(-120, "Query Syntax Error: variable format requires string ", strVariable, "(`params`); | ", strValue);
+            throw Exception(-120, "variable format requires string ", strVariable, "(`params`); | ", strValue);
 
         /* Check we have both open and close. */
         if(nOpen == nClose)
-            throw Exception(-120, "Query Syntax Error: variable string must close ", strVariable, "(`params`); | ", strValue);
+            throw Exception(-120, "variable string must close ", strVariable, "(`params`); | ", strValue);
 
         /* Now get our parameter values. */
         const std::string strParam =
             strParams.substr(nOpen + 1, nClose - 1);
+
+        /* Handle for a checksum function. */
+        if(strVariable == "checksum")
+        {
+            /* Get a copy of our checksum. */
+            const uint64_t nChecksum =
+                LLC::SK64(strParam.begin(), strParam.end());
+
+            return debug::safe_printstr(nChecksum);
+        }
 
         /* Handle for date variable types. */
         if(strVariable == "date")

@@ -164,6 +164,14 @@ namespace LLP
                     {
                         /* Parse JSON like normal. */
                         jParams = encoding::json::parse(INCOMING.strContent);
+
+                        /* Loop through all params and process the variables. */
+                        for(auto& jParam : jParams)
+                        {
+                            /* Process variables from string arguments. */
+                            if(jParam.is_string())
+                                jParam = TAO::API::VariableToJSON(jParam.get<std::string>());
+                        }
                     }
                     else
                         throw TAO::API::Exception(-5, "content-type [", INCOMING.mapHeaders["content-type"], "] not supported");
