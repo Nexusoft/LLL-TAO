@@ -190,57 +190,6 @@ namespace LLC
     }
 
 
-    /* Generate a certificate using EC signature scheme, signed with the specified prigate key.  This method is useful when
-       creating and regenerating self-signed certificates where the private key is persistant.
-       The certificate validity is set to 1 year. */
-    bool X509Cert::GenerateEC(const uint512_t& hashSecret, const std::string& strCN, const uint64_t nValidFrom)
-    {
-        /* Generate CSecret from the hashSecret */
-        std::vector<uint8_t> vBytes = hashSecret.GetBytes();
-        LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
-
-        /* The EC key wrapper class */
-        ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-
-        /* Set the secret key. */
-        if(!key.SetSecret(vchSecret, true))
-            return debug::error(FUNCTION, "failed to set brainpool secret key");
-
-        /* Assign EC key to the EVP key. */
-        if(!EVP_PKEY_set1_EC_KEY(pkey, key.GetEC()))
-            return debug::error(FUNCTION, "Unable to assign EC key.");
-
-        /* Set the serial number of certificate to '1'. Some open-source HTTP servers refuse to accept a certificate with a
-           serial number of '0', which is the default. */
-        ASN1_INTEGER_set(X509_get_serialNumber(px509), 1);
-
-        /* Set the notBefore property to the current time and notAfter property to current time plus 365 days.*/
-        X509_set_notBefore(px509, ASN1_TIME_set( nullptr, nValidFrom));
-        X509_set_notAfter(px509, ASN1_TIME_set( nullptr, nValidFrom +  31536000L));
-        //X509_gmtime_adj(X509_get_notBefore(px509), 0);
-        //X509_gmtime_adj(X509_get_notAfter(px509), 31536000L);
-
-        /*Set the public key for the certificate. */
-        X509_set_pubkey(px509, pkey);
-
-        /* Self-signed certificate, set the name of issuer to the name of the subject. */
-        X509_NAME *name = X509_get_subject_name(px509);
-
-        /* Provide country code "C", organization "O", and common name "CN" */
-        X509_NAME_add_entry_by_txt(name, "C", MBSTRING_ASC, (uint8_t *)"ORG", -1, -1, 0);
-        X509_NAME_add_entry_by_txt(name, "O", MBSTRING_ASC, (uint8_t *)"Nexus", -1, -1, 0);
-        X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, (uint8_t *)strCN.c_str(), -1, -1, 0);
-
-        /* Set the issuer name. */
-        X509_set_issuer_name(px509, name);
-
-        /* Peform the sign. */
-        X509_sign(px509, pkey, EVP_sha1());
-
-        return true;
-    }
-
-
     /*  Modifies the SSL internal state with certificate and key information. */
     bool X509Cert::Init_SSL(SSL *ssl)
     {
@@ -625,20 +574,6 @@ namespace LLC
         uint256_t hashCert = LLC::SK256(ssData.Bytes());
 
         return hashCert;
-    }
-
-
-    /* Returns the content of the Common Name (CN) field from the certificate. */
-    std::string X509Cert::GetCN()
-    {
-        /* Temp buffer to receive the data */
-        char strCN[256];
-
-        /* Get the common name from the subject */
-        X509_NAME_get_text_by_NID(X509_get_subject_name(px509), NID_commonName, strCN, 256);
-
-        return std::string(strCN);
-
     }
 
 }
