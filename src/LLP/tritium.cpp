@@ -2505,6 +2505,23 @@ namespace LLP
                         /* Process the block. */
                         TAO::Ledger::Process(block, nStatus);
 
+                        /* Check for duplicate and ask for previous block. */
+                        if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
+                        && !(nStatus & TAO::Ledger::PROCESS::IGNORED)
+                        &&  (nStatus & TAO::Ledger::PROCESS::ORPHAN))
+                        {
+                            /* Ask for list of blocks. */
+                            PushMessage(ACTION::LIST,
+                                #ifndef DEBUG_MISSING
+                                (config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::TRANSACTIONS)),
+                                #endif
+                                uint8_t(TYPES::BLOCK),
+                                uint8_t(TYPES::LOCATOR),
+                                TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                                uint1024_t(block.hashPrevBlock)
+                            );
+                        }
+
                         /* Check for missing transactions. */
                         if(nStatus & TAO::Ledger::PROCESS::INCOMPLETE)
                         {
@@ -2565,24 +2582,6 @@ namespace LLP
                                     }
                                 }
                             }
-                        }
-
-                        /* Check for duplicate and ask for previous block. */
-                        if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
-                        && !(nStatus & TAO::Ledger::PROCESS::IGNORED)
-                        && !(nStatus & TAO::Ledger::PROCESS::INCOMPLETE)
-                        &&  (nStatus & TAO::Ledger::PROCESS::ORPHAN))
-                        {
-                            /* Ask for list of blocks. */
-                            PushMessage(ACTION::LIST,
-                                #ifndef DEBUG_MISSING
-                                (config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::TRANSACTIONS)),
-                                #endif
-                                uint8_t(TYPES::BLOCK),
-                                uint8_t(TYPES::LOCATOR),
-                                TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
-                                uint1024_t(block.hashPrevBlock)
-                            );
                         }
 
                         break;
