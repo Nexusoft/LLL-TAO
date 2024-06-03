@@ -84,7 +84,7 @@ namespace LLP
 {
 
     /* The global SSL Context for the LLP */
-    extern SSL_CTX *pSSL_CTX;
+    extern mbedtls_ssl_context *pSSL_CTX;
 
 
     /** NetworkInitialize

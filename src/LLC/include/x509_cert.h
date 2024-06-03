@@ -23,13 +23,8 @@ ________________________________________________________________________________
 #include <string>
 #include <vector>
 
-/** Forward declarations. **/
-typedef struct ssl_ctx_st SSL_CTX;
-typedef struct ssl_st SSL;
-typedef struct rsa_st RSA;
-typedef struct evp_pkey_st EVP_PKEY;
-typedef struct x509_st X509;
-typedef struct x509_store_ctx_st X509_STORE_CTX;
+#include <LLC/include/mbedtls/x509_crt.h>
+#include <LLC/include/mbedtls/ssl.h>
 
 
 namespace LLC
@@ -84,20 +79,7 @@ namespace LLC
          *  @return Returns true if successfully applied, false otherwise.
          *
          **/
-        bool Init_SSL(SSL *ssl);
-
-
-        /** Init_SSL_CTX
-         *
-         *  Modifies the SSL context internal state with certificate and key information. Every SSL object created with
-         *  this context will share the same certification info.
-         *
-         *  @param[in/out] ssl_ctx The ssl context to load certificate and private key information into.
-         *
-         *  @return Returns true if successfully applied, false otherwise.
-         *
-         **/
-        bool Init_SSL(SSL_CTX *ssl_ctx);
+        bool Init_SSL(mbedtls_ssl_context *ssl);
 
 
         /** Verify
@@ -110,32 +92,6 @@ namespace LLC
          *
          **/
         bool Verify(bool fCheckPrivate = true);
-
-
-        /** Verify
-         *
-         *  Check that the private key matches the public key in the x509 certificate and then checks the signature
-         *
-         *  @param[in] ssl The ssl object to check.
-         *  @param[in] fCheckPrivate Flag indicating the private key should be checked
-         *
-         *  @return Returns true if verified, false otherwise.
-         *
-         **/
-        bool Verify(SSL *ssl, bool fCheckPrivate = true);
-
-
-        /** Verify
-         *
-         *  Check that the private key matches the public key in the x509 certificate and then checks the signature
-         *
-         *  @param[in] ssl_ctx The ssl context object to check.
-         *  @param[in] fCheckPrivate Flag indicating the private key should be checked
-         *
-         *  @return Returns true if verified, false otherwise.
-         *
-         **/
-        bool Verify(SSL_CTX *ssl_ctx, bool fCheckPrivate = true);
 
 
         /** Print
@@ -208,20 +164,12 @@ namespace LLC
 
     private:
 
-        /** init
-         *
-         *  Initializes a new certificate and private key.
-         *
-         **/
-        void init();
+        /* The OpenSSL x509 certificate object. */
+        mbedtls_x509_crt *pCert;
 
 
-        /** shutdown
-         *
-         *  Frees memory associated with the certificate and private key.
-         *
-         **/
-        void shutdown();
+        /* The number of bits for the RSA key generation. */
+        uint32_t nBits;
 
 
         /** verify
@@ -233,46 +181,7 @@ namespace LLC
          **/
         bool verify();
 
-
-        /* The OpenSSL x509 certificate object. */
-        X509 *px509;
-
-        /* The OpenSSL key object. */
-        EVP_PKEY *pkey;
-
-
-        /* The number of bits for the RSA key generation. */
-        uint32_t nBits;
-
-        /* The path to the Certificate Authority cert bundle */
-        std::string strCertBundle;
-
     };
-
-
-    /** PeerCertificateInfo
-     *
-     *  Print information about peer certificate.
-     *
-     **/
-    void PeerCertificateInfo(SSL *ssl);
-
-
-    /** PrintCert
-     *
-     *  Print information about certificate.
-     *
-     **/
-    void PrintCert(X509 *cert);
-
-
-
-    /** always_true_callback
-     *
-     * Always returns true. Callback function.
-     *
-     **/
-    int always_true_callback(int ok, X509_STORE_CTX *ctx);
 
 }
 

@@ -23,7 +23,7 @@ namespace LLP
 {
 
     /* The global SSL Context for the LLP */
-    SSL_CTX *pSSL_CTX = nullptr;
+    mbedtls_ssl_context *pSSL_CTX = nullptr;
 
     /* Perform any necessary processing to initialize the underlying network
      * resources such as sockets, etc.
@@ -69,30 +69,10 @@ namespace LLP
 
     #endif
 
-
-
-        /* OpenSSL initialization. */
-        SSL_load_error_strings();
-        OpenSSL_add_ssl_algorithms();
-
-        /* Create the global network SSL object.  NOTE we only support TLS 1.0 and greater, not previous versions of SSL */
-        #if defined(IPHONE) || defined(ANDROID)
-            pSSL_CTX = SSL_CTX_new(SSLv23_method());
-        #else
-            pSSL_CTX = SSL_CTX_new(TLS_method());
-        #endif
-
-        /* Set the verification callback to always true. */
-        SSL_CTX_set_verify(pSSL_CTX, SSL_VERIFY_PEER, LLC::always_true_callback);
-
-        /* Turn off session caching as this causes issues with some browsers if they establish a new connection when an existing
-           socket connection to the same host already exists. */
-        SSL_CTX_set_session_cache_mode(pSSL_CTX, SSL_SESS_CACHE_OFF);
-        SSL_CTX_set_options(pSSL_CTX, SSL_OP_NO_TICKET);
+        //SSL init code here
 
         /* Instantiate a certificate for use with SSL context */
         LLC::X509Cert cert;
-
 
         /* Check to see if an external certficate is configured */
         std::string strCert = config::GetArg("-sslcertificate", "");
@@ -119,7 +99,7 @@ namespace LLP
             return debug::error(FUNCTION, "Certificate Init Failed for SSL Context");
 
         /* Verify that certificate chain is valid. */
-        if(!cert.Verify(pSSL_CTX))
+        if(!cert.Verify())
             return debug::error(FUNCTION, "Certificate Verify Failed for SSL Context");
 
         /* Debug logging. */
@@ -147,7 +127,7 @@ namespace LLP
     #endif
 
         /* Free the SSL context. */
-        SSL_CTX_free(pSSL_CTX);
+        mbedtls_ssl_free(pSSL_CTX);
 
         return true;
     }
