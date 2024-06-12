@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -109,7 +109,7 @@ namespace TAO::API
             else
             {
                 /* Grab latest checkpoint from best block. */
-                tLastBlock = TAO::Ledger::ChainState::stateBest.load();
+                tLastBlock = TAO::Ledger::ChainState::tStateBest.load();
 
                 /* Set starting based on second to last checkpoint block. */
                 while(tLastBlock.nHeight + nLimit > TAO::Ledger::ChainState::nBestHeight.load())

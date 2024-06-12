@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2021
+			(c) Copyright The Nexus Developers 2014 - 2023
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLP/types/tritium.h>
 #include <LLP/types/time.h>
 #include <LLP/types/apinode.h>
+#include <LLP/types/filenode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
 #include <LLP/types/lookup.h>
@@ -593,7 +594,13 @@ namespace LLP
 
         /* Adjust our internal counters for incoming/outbound. */
         if(CONNECTIONS->at(nIndex)->Incoming())
+        {
             --nIncoming;
+
+            /* Handle Meters and DDOS. */
+            if(fMETER)
+                ++ProtocolType::DISCONNECTS;
+        }
         else
             --nOutbound;
 
@@ -624,6 +631,7 @@ namespace LLP
     template class DataThread<LookupNode>;
     template class DataThread<TimeNode>;
     template class DataThread<APINode>;
+    template class DataThread<FileNode>;
     template class DataThread<RPCNode>;
     template class DataThread<Miner>;
 }

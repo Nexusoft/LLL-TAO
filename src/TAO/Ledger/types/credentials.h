@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -193,6 +193,29 @@ namespace TAO
              *  @return The 512 bit hash of the generated public key.
              **/
             uint512_t Generate(const SecureString& strSecret) const;
+
+
+            /** Generate
+             *
+             *  This function is to remain backwards compatible if recovery was created after 5.0.6 and before 5.1.1.
+             *
+             *  @param[in] strSecret The secret seed phrase to use
+             *
+             *  @return The 512 bit hash of the generated public key.
+             **/
+            uint512_t GenerateDeprecated(const SecureString& strSecret) const;
+
+
+            /** RecoveryDeprecated
+             *
+             *  This function is to remain backwards compatible if recovery was created after 5.0.6 and before 5.1.1
+             *
+             *  @param[in] strRecovery The recovery seed phrase to use
+             *  @param[in] nType The key type to use.
+             *
+             *  @return The 256 bit hash of the generated public key
+             **/
+            uint256_t RecoveryDeprecated(const SecureString& strRecovery, const uint8_t nType) const;
 
 
             /** Key

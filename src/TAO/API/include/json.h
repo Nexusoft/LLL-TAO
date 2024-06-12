@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -207,6 +207,16 @@ namespace TAO::API
      *
      **/
     __attribute__((pure)) encoding::json QueryToJSON(const std::string& strWhere);
+
+
+    /** VariableToJSON
+     *
+     *  Converts a query variable into a json string.
+     *
+     *  Varibles needs to be modular functional statements with return type specifications.
+     *  This function is hard coded variables for now, need to make it modular.
+     */
+    __attribute__((pure)) std::string VariableToJSON(const std::string& strValue);
 
 
     /** ClauseToJSON

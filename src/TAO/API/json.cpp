@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -822,8 +822,7 @@ namespace TAO::API
                     jRet["ticker"]  = "NXS";
 
                     /* Handle for add stake. */
-                    if(nStakeChange != 0)
-                        jRet["change"] = FormatStake(nStakeChange);
+                    jRet["change"] = FormatStake(nStakeChange);
 
                     break;
                 }
@@ -2052,7 +2051,7 @@ namespace TAO::API
         };
 
         /* Get our last block state. */
-        TAO::Ledger::BlockState tBlock = TAO::Ledger::ChainState::stateBest.load();
+        TAO::Ledger::BlockState tBlock = TAO::Ledger::ChainState::tStateBest.load();
         if(TAO::Ledger::GetLastState(tBlock, nChannel))
         {
             /* Populate our heights and weights. */
@@ -2253,250 +2252,260 @@ namespace TAO::API
     }
 
 
-    /** VariableToJSON
-     *
-     *  Converts a query variable into a json string.
-     *
-     *  Varibles needs to be modular functional statements with return type specifications.
-     *  This function is hard coded variables for now, need to make it modular.
-     */
+    /* Converts a query variable into a json string.*/
     std::string VariableToJSON(const std::string& strValue)
     {
-        /* Find where parameters start. */
-        const auto nBegin = strValue.find('(');
-        if(nBegin == strValue.npos)
-            throw Exception(-120, "Query Syntax Error: variable format must be variable(`params`);", strValue);
-
-        /* Parse out our variable name. */
-        const std::string strVariable =
-            strValue.substr(0, nBegin);
-
-        /* Find our ending iterator. */
-        const auto nEnd = strValue.find(')');
-        if(nEnd == strValue.npos)
-            throw Exception(-120, "Query Syntax Error: variable format must be variable(`params`);", strValue);
-
-        /* Get our parameter values. */
-        const std::string strParams =
-            strValue.substr(nBegin + 1, nEnd - nBegin - 1);
-
-        /* Date variable requires a string argument. */
-        const auto nOpen = strParams.find('`');
-        if(nOpen == strParams.npos)
-            throw Exception(-120, "Query Syntax Error: variable format requires string ", strVariable, "(`params`); | ", strValue);
-
-        /* Check for closing string. */
-        const auto nClose = strParams.rfind('`');
-        if(nClose == strParams.npos)
-            throw Exception(-120, "Query Syntax Error: variable format requires string ", strVariable, "(`params`); | ", strValue);
-
-        /* Check we have both open and close. */
-        if(nOpen == nClose)
-            throw Exception(-120, "Query Syntax Error: variable string must close ", strVariable, "(`params`); | ", strValue);
-
-        /* Now get our parameter values. */
-        const std::string strParam =
-            strParams.substr(nOpen + 1, nClose - 1);
-
-        /* Handle for date variable types. */
-        if(strVariable == "date")
+        /* Check for variable parameters. */
+        if(strValue.find(');') == strValue.size() - 1)
         {
-            /* Build our time struct from strptime. */
-            struct tm tm;
-            if(!runtime::strptime(strParam.c_str(), tm))
-                throw Exception(-121, "Query Syntax Error: date format must include year ex. date(`2021`);");
+            /* Find where parameters start. */
+            const auto nBegin = strValue.find('(');
+            if(nBegin == strValue.npos)
+                throw Exception(-120, "variable format must be variable(`params`);", strValue);
 
-            /* Build a simple return string. */
-            return debug::safe_printstr(std::mktime(&tm));
-        }
+            /* Parse out our variable name. */
+            const std::string strVariable =
+                strValue.substr(0, nBegin);
 
-        /* Handle for the name variable types. */
-        if(strVariable == "name")
-        {
-            /* Build our address from base58. */
-            const TAO::Register::Address hashAddress =
-                TAO::Register::Address(strParam);
+            /* Find our ending iterator. */
+            const auto nEnd = strValue.find(')');
+            if(nEnd == strValue.npos)
+                throw Exception(-120, "variable format must be variable(`params`);", strValue);
 
-            /* Check for valid tritium address. */
-            if(!hashAddress.IsValid())
-                throw Exception(-121, "Query Syntax Error: name reverse lookup invalid address");
+            /* Get our parameter values. */
+            const std::string strParams =
+                strValue.substr(nBegin + 1, nEnd - nBegin - 1);
 
-            /* Check for a valid reverse lookup entry. */
-            std::string strName;
-            if(!Names::ReverseLookup(hashAddress, strName))
-                throw Exception(-121, "Query Syntax Error: name reverse lookup entry not found");
+            /* Date variable requires a string argument. */
+            const auto nOpen = strParams.find('`');
+            if(nOpen == strParams.npos)
+                throw Exception(-120, "variable format requires string ", strVariable, "(`params`); | ", strValue);
 
-            return strName;
-        }
+            /* Check for closing string. */
+            const auto nClose = strParams.rfind('`');
+            if(nClose == strParams.npos)
+                throw Exception(-120, "variable format requires string ", strVariable, "(`params`); | ", strValue);
 
-        /* Handle for address resolver. */
-        if(strVariable == "resolve")
-        {
-            /* Temporary value to pass. */
-            encoding::json jParams;
+            /* Check we have both open and close. */
+            if(nOpen == nClose)
+                throw Exception(-120, "variable string must close ", strVariable, "(`params`); | ", strValue);
 
-            /* Build our address from name record. */
-            return Names::ResolveAddress(jParams, strParam, true).ToString();
-        }
+            /* Now get our parameter values. */
+            const std::string strParam =
+                strParams.substr(nOpen + 1, nClose - 1);
 
-        /* Handle for username resolver. */
-        if(strVariable == "username")
-        {
-            /* Get our genesis from username. */
-            const uint256_t hashGenesis =
-                TAO::Ledger::Credentials::Genesis(SecureString(strParam.c_str()));
-
-            return hashGenesis.ToString();
-        }
-
-        /* Handle for a hours since variable. */
-        if(strVariable == "since")
-        {
-            /* Search for our different time characters. */
-            uint64_t nFind = 0, nTimespan = 0;
-
-            /* Track our statment and loop out the substrings. */
-            std::string strList = strParam;
-
-            /* Loop until we have processed our times. */
-            while(!config::fShutdown.load())
+            /* Handle for a checksum function. */
+            if(strVariable == "checksum")
             {
-                /* Find our next comma. */
-                const uint64_t nNext = strList.find(',');
+                /* Get a copy of our checksum. */
+                const uint64_t nChecksum =
+                    LLC::SK64(strParam.begin(), strParam.end());
 
-                /* Get this specific item. */
-                const std::string strItem =
-                    strList.substr(0, nNext);
-
-                /* Break our params up. */
-                nFind = strItem.find("second");
-                if(nFind != strItem.npos)
-                {
-                    /* Check for our given value. */
-                    const std::string strValue =
-                        trim(strItem.substr(0, nFind));
-
-                    /* Make sure we are all digits. */
-                    if(!IsAllDigit(strValue))
-                        throw Exception(-121, "Query Syntax Error: since requires number preceding second (", strValue, "^)");
-
-                    /* Calculate our timespan. */
-                    nTimespan += std::stoull(strValue);
-                }
-
-                /* Break our params up. */
-                nFind = strItem.find("minute");
-                if(nFind != strItem.npos)
-                {
-                    /* Check for our given value. */
-                    const std::string strValue =
-                        trim(strItem.substr(0, nFind));
-
-                    /* Make sure we are all digits. */
-                    if(!IsAllDigit(strValue))
-                        throw Exception(-121, "Query Syntax Error: since requires number preceding minute (", strValue, "^)");
-
-                    /* Calculate our timespan. */
-                    nTimespan += (std::stoull(strValue) * 60);
-                }
-
-                /* Break our params up. */
-                nFind = strItem.find("hour");
-                if(nFind != strItem.npos)
-                {
-                    /* Check for our given value. */
-                    const std::string strValue =
-                        trim(strItem.substr(0, nFind));
-
-                    /* Make sure we are all digits. */
-                    if(!IsAllDigit(strValue))
-                        throw Exception(-121, "Query Syntax Error: since requires number preceding minute (", strValue, "^)");
-
-                    /* Calculate our timespan. */
-                    nTimespan += (std::stoull(strValue) * 3600);
-                }
-
-                /* Break our params up. */
-                nFind = strItem.find("day");
-                if(nFind != strItem.npos)
-                {
-                    /* Check for our given value. */
-                    const std::string strValue =
-                        trim(strItem.substr(0, nFind));
-
-                    /* Make sure we are all digits. */
-                    if(!IsAllDigit(strValue))
-                        throw Exception(-121, "Query Syntax Error: since requires number preceding minute (", strValue, "^)");
-
-                    /* Calculate our timespan. */
-                    nTimespan += (std::stoull(strValue) * 86400);
-                }
-
-                /* Break our params up. */
-                nFind = strItem.find("week");
-                if(nFind != strItem.npos)
-                {
-                    /* Check for our given value. */
-                    const std::string strValue =
-                        trim(strItem.substr(0, nFind));
-
-                    /* Make sure we are all digits. */
-                    if(!IsAllDigit(strValue))
-                        throw Exception(-121, "Query Syntax Error: since requires number preceding minute (", strValue, "^)");
-
-                    /* Calculate our timespan. */
-                    nTimespan += (std::stoull(strValue) * 86400 * 7);
-                }
-
-                /* Break our params up. */
-                nFind = strItem.find("month");
-                if(nFind != strItem.npos)
-                {
-                    /* Check for our given value. */
-                    const std::string strValue =
-                        trim(strItem.substr(0, nFind));
-
-                    /* Make sure we are all digits. */
-                    if(!IsAllDigit(strValue))
-                        throw Exception(-121, "Query Syntax Error: since requires number preceding minute (", strValue, "^)");
-
-                    /* Calculate our timespan. */
-                    nTimespan += (std::stoull(strValue) * 86400 * 28);
-                }
-
-                /* Break our params up. */
-                nFind = strItem.find("year");
-                if(nFind != strItem.npos)
-                {
-                    /* Check for our given value. */
-                    const std::string strValue =
-                        trim(strItem.substr(0, nFind));
-
-                    /* Make sure we are all digits. */
-                    if(!IsAllDigit(strValue))
-                        throw Exception(-121, "Query Syntax Error: since requires number preceding minute (", strValue, "^)");
-
-                    /* Calculate our timespan. */
-                    nTimespan += (std::stoull(strValue) * 86400 * 365);
-                }
-
-                /* Exit if we found the end of the list. */
-                if(nNext == strList.npos)
-                    break;
-
-                /* Trim our list for the next round. */
-                strList = strList.substr(nNext + 1, strList.size() - nNext);
+                return debug::safe_printstr(nChecksum);
             }
 
-            /* Check that we found a valid timespan. */
-            if(nTimespan == 0)
-                throw Exception(-121, "Query Syntax Error: since requires valid time division (i.e. minutes, hours, days, weeks)");
+            /* Handle for date variable types. */
+            if(strVariable == "date")
+            {
+                /* Build our time struct from strptime. */
+                struct tm tm;
+                if(!runtime::strptime(strParam.c_str(), tm))
+                    throw Exception(-121, "date format must include year ex. date(`2021`);");
 
-            /* Calculate our timestamp. */
-            const uint64_t nTimestamp =
-                (runtime::unifiedtimestamp() - nTimespan);
+                /* Build a simple return string. */
+                return debug::safe_printstr(std::mktime(&tm));
+            }
 
-            return debug::safe_printstr(nTimestamp);
+            /* Handle for the name variable types. */
+            if(strVariable == "name")
+            {
+                /* Build our address from base58. */
+                const TAO::Register::Address hashAddress =
+                    TAO::Register::Address(strParam);
+
+                /* Check for valid tritium address. */
+                if(!hashAddress.IsValid())
+                    throw Exception(-121, "name reverse lookup invalid address");
+
+                /* Check for a valid reverse lookup entry. */
+                std::string strName;
+                if(!Names::ReverseLookup(hashAddress, strName))
+                    throw Exception(-121, "name reverse lookup entry not found");
+
+                return strName;
+            }
+
+            /* Handle for address resolver. */
+            if(strVariable == "resolve")
+            {
+                /* Temporary value to pass. */
+                encoding::json jParams;
+
+                /* Build our address from name record. */
+                return Names::ResolveAddress(jParams, strParam, true).ToString();
+            }
+
+            /* Handle for username resolver. */
+            if(strVariable == "username")
+            {
+                /* Get our genesis from username. */
+                const uint256_t hashGenesis =
+                    TAO::Ledger::Credentials::Genesis(SecureString(strParam.c_str()));
+
+                return hashGenesis.ToString();
+            }
+
+            /* Handle for a hours since variable. */
+            if(strVariable == "since")
+            {
+                /* Search for our different time characters. */
+                uint64_t nFind = 0, nTimespan = 0;
+
+                /* Track our statment and loop out the substrings. */
+                std::string strList = strParam;
+
+                /* Loop until we have processed our times. */
+                while(!config::fShutdown.load())
+                {
+                    /* Find our next comma. */
+                    const uint64_t nNext = strList.find(',');
+
+                    /* Get this specific item. */
+                    const std::string strItem =
+                        strList.substr(0, nNext);
+
+                    /* Break our params up. */
+                    nFind = strItem.find("second");
+                    if(nFind != strItem.npos)
+                    {
+                        /* Check for our given value. */
+                        const std::string strValue =
+                            trim(strItem.substr(0, nFind));
+
+                        /* Make sure we are all digits. */
+                        if(!IsAllDigit(strValue))
+                            throw Exception(-121, "Query Syntax Error: since requires number preceding second (", strValue, "^)");
+
+                        /* Calculate our timespan. */
+                        nTimespan += std::stoull(strValue);
+                    }
+
+                    /* Break our params up. */
+                    nFind = strItem.find("minute");
+                    if(nFind != strItem.npos)
+                    {
+                        /* Check for our given value. */
+                        const std::string strValue =
+                            trim(strItem.substr(0, nFind));
+
+                        /* Make sure we are all digits. */
+                        if(!IsAllDigit(strValue))
+                            throw Exception(-121, "since requires number preceding minute (", strValue, "^)");
+
+                        /* Calculate our timespan. */
+                        nTimespan += (std::stoull(strValue) * 60);
+                    }
+
+                    /* Break our params up. */
+                    nFind = strItem.find("hour");
+                    if(nFind != strItem.npos)
+                    {
+                        /* Check for our given value. */
+                        const std::string strValue =
+                            trim(strItem.substr(0, nFind));
+
+                        /* Make sure we are all digits. */
+                        if(!IsAllDigit(strValue))
+                            throw Exception(-121, "since requires number preceding hour (", strValue, "^)");
+
+                        /* Calculate our timespan. */
+                        nTimespan += (std::stoull(strValue) * 3600);
+                    }
+
+                    /* Break our params up. */
+                    nFind = strItem.find("day");
+                    if(nFind != strItem.npos)
+                    {
+                        /* Check for our given value. */
+                        const std::string strValue =
+                            trim(strItem.substr(0, nFind));
+
+                        /* Make sure we are all digits. */
+                        if(!IsAllDigit(strValue))
+                            throw Exception(-121, "since requires number preceding day (", strValue, "^)");
+
+                        /* Calculate our timespan. */
+                        nTimespan += (std::stoull(strValue) * 86400);
+                    }
+
+                    /* Break our params up. */
+                    nFind = strItem.find("week");
+                    if(nFind != strItem.npos)
+                    {
+                        /* Check for our given value. */
+                        const std::string strValue =
+                            trim(strItem.substr(0, nFind));
+
+                        /* Make sure we are all digits. */
+                        if(!IsAllDigit(strValue))
+                            throw Exception(-121, "since requires number preceding week (", strValue, "^)");
+
+                        /* Calculate our timespan. */
+                        nTimespan += (std::stoull(strValue) * 86400 * 7);
+                    }
+
+                    /* Break our params up. */
+                    nFind = strItem.find("month");
+                    if(nFind != strItem.npos)
+                    {
+                        /* Check for our given value. */
+                        const std::string strValue =
+                            trim(strItem.substr(0, nFind));
+
+                        /* Make sure we are all digits. */
+                        if(!IsAllDigit(strValue))
+                            throw Exception(-121, "since requires number preceding month (", strValue, "^)");
+
+                        /* Calculate our timespan. */
+                        nTimespan += (std::stoull(strValue) * 86400 * 28);
+                    }
+
+                    /* Break our params up. */
+                    nFind = strItem.find("year");
+                    if(nFind != strItem.npos)
+                    {
+                        /* Check for our given value. */
+                        const std::string strValue =
+                            trim(strItem.substr(0, nFind));
+
+                        /* Make sure we are all digits. */
+                        if(!IsAllDigit(strValue))
+                            throw Exception(-121, "since requires number preceding year (", strValue, "^)");
+
+                        /* Calculate our timespan. */
+                        nTimespan += (std::stoull(strValue) * 86400 * 365);
+                    }
+
+                    /* Exit if we found the end of the list. */
+                    if(nNext == strList.npos)
+                        break;
+
+                    /* Trim our list for the next round. */
+                    strList = strList.substr(nNext + 1, strList.size() - nNext);
+                }
+
+                /* Check that we found a valid timespan. */
+                if(nTimespan == 0)
+                    throw Exception(-121, "since requires valid time division (i.e. minutes, hours, days, weeks)");
+
+                /* Calculate our timestamp. */
+                const uint64_t nTimestamp =
+                    (runtime::unifiedtimestamp() - nTimespan);
+
+                return debug::safe_printstr(nTimestamp);
+            }
+
+            throw Exception(-120, "unknown variable: ", strVariable);
         }
 
         return strValue;
@@ -2634,7 +2643,7 @@ namespace TAO::API
                     }
 
                     /* Otherwise just copy string argument over. */
-                    jRet[strKey] = strValue;
+                    jRet[strKey] = VariableToJSON(strValue);
                 }
             }
             else

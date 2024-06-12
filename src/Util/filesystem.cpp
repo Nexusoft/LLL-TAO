@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -137,10 +137,18 @@ namespace filesystem
     /* Get the size of a current file. */
     int64_t size(const std::string& strPath)
     {
-        struct stat stat_buf;
-        int rc = stat(strPath.c_str(), &stat_buf);
+        /* We are using the stream method to make sure it is portable. */
+        std::fstream stream = std::fstream(strPath, std::ios::in | std::ios::out | std::ios::binary | std::ios::ate);
+        if(!stream.is_open())
+            return -1;
 
-        return rc == 0 ? stat_buf.st_size : -1;
+        /* Get our filesize from stream position. */
+        const uint64_t nFileSize = stream.tellp();
+
+        /* Close the stream mnow. */
+        stream.close();
+
+        return nFileSize;
     }
 
 

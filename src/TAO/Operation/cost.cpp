@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-        (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+        Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-        (c) Copyright The Nexus Developers 2014 - 2021
+        (c) Copyright The Nexus Developers 2014 - 2023
 
         Distributed under the MIT software license, see the accompanying
         file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -38,177 +38,185 @@ namespace TAO
         /* Executes a given operation byte sequence. */
         void Cost(const Contract& contract, uint64_t &nCost)
         {
-            /* Reset the contract streams. */
-            contract.Reset();
-
-            /* Get the contract OP. */
-            uint8_t nOP = 0;
-            contract >> nOP;
-
-            /* Check the current opcode. */
-            switch(nOP)
+            try
             {
-                /* Condition that allows a validation to occur. */
-                case OP::CONDITION:
-                {
-                    /* Condition has no parameters. */
-                    contract >> nOP;
+                /* Reset the contract streams. */
+                contract.Reset();
 
-                    /* Check for valid primitives that can have a condition. */
-                    switch(nOP)
+                /* Get the contract OP. */
+                uint8_t nOP = 0;
+                contract >> nOP;
+
+                /* Check the current opcode. */
+                switch(nOP)
+                {
+                    /* Condition that allows a validation to occur. */
+                    case OP::CONDITION:
                     {
-                        /* Transfer and debit are the only permitted. */
-                        case OP::TRANSFER:
-                        case OP::DEBIT:
+                        /* Condition has no parameters. */
+                        contract >> nOP;
+
+                        /* Check for valid primitives that can have a condition. */
+                        switch(nOP)
                         {
-                            //transfer and debit are permitted
-                            break;
+                            /* Transfer and debit are the only permitted. */
+                            case OP::TRANSFER:
+                            case OP::DEBIT:
+                            {
+                                //transfer and debit are permitted
+                                break;
+                            }
                         }
+
+                        break;
                     }
 
-                    break;
+
+                    /* Validate a previous contract's conditions */
+                    case OP::VALIDATE:
+                    {
+                        /* Extract the transaction from contract. */
+                        uint512_t hashTx = 0;
+                        contract >> hashTx;
+
+                        /* Extract the contract-id. */
+                        uint32_t nContract = 0;
+                        contract >> nContract;
+
+                        /* Verify the operation rules. */
+                        const Contract condition = LLD::Ledger->ReadContract(hashTx, nContract);
+
+                        /* Build the validation script for execution. */
+                        Condition conditions = Condition(condition, contract);
+                        conditions.Execute();
+
+                        /* Assess the fees for the computation limits. */
+                        if(conditions.nCost > CONDITION_LIMIT_FREE)
+                            nCost += (conditions.nCost - CONDITION_LIMIT_FREE);
+
+                        /* Get next OP. */
+                        contract >> nOP;
+
+                        break;
+                    }
                 }
 
 
-                /* Validate a previous contract's conditions */
-                case OP::VALIDATE:
+                /* Check the current opcode. */
+                switch(nOP)
                 {
-                    /* Extract the transaction from contract. */
-                    uint512_t hashTx = 0;
-                    contract >> hashTx;
 
-                    /* Extract the contract-id. */
-                    uint32_t nContract = 0;
-                    contract >> nContract;
+                    case OP::CREATE:
+                    {
+                        /* Get the Address of the Register. */
+                        TAO::Register::Address hashAddress;
+                        contract >> hashAddress;
 
-                    /* Verify the operation rules. */
-                    const Contract condition = LLD::Ledger->ReadContract(hashTx, nContract);
+                        /* Get the Register Type. */
+                        uint8_t nType = 0;
+                        contract >> nType;
 
-                    /* Build the validation script for execution. */
-                    Condition conditions = Condition(condition, contract);
-                    conditions.Execute();
+                        /* Get the register data. */
+                        std::vector<uint8_t> vchData;
+                        contract >> vchData;
 
-                    /* Assess the fees for the computation limits. */
-                    if(conditions.nCost > CONDITION_LIMIT_FREE)
-                        nCost += (conditions.nCost - CONDITION_LIMIT_FREE);
+                        /* Check for register type. For Object registers there may be a specific fee based on the object type. */
+                        if(nType == TAO::Register::REGISTER::OBJECT)
+                        {
+                            /* Create the register object. */
+                            TAO::Register::Object object;
+                            object.nVersion   = 1;
+                            object.nType      = nType;
+                            object.hashOwner  = contract.Caller();
+                            object.SetState(vchData);
 
-                    /* Get next OP. */
-                    contract >> nOP;
+                            /* Parse the object. */
+                            if(!object.Parse())
+                                throw debug::exception(FUNCTION, "malformed object register");
 
-                    break;
+                            /* Add the object cost to the overall cost. */
+                            nCost += object.Cost();
+
+                        }
+                        else
+                        {
+                            /* For all other register types the fee is based on the data size */
+
+                            /* The fee changed with transaction version 2 so need to apply version-dependent fee */
+                            if(contract.Version() == 1)
+                                nCost += std::max(TAO::Register::MIN_DATA_FEE,  vchData.size() * TAO::Register::DATA_FEE_V1);
+                            else
+                                nCost += std::max(TAO::Register::MIN_DATA_FEE,  vchData.size() * TAO::Register::DATA_FEE);
+                        }
+
+                        break;
+                    }
+
+
+                    /* Transfer ownership of a register to another signature chain. */
+                    case OP::CLAIM:
+                    {
+                        /* Extract the transaction from contract. */
+                        uint512_t hashTx = 0;
+                        contract >> hashTx;
+
+                        /* Extract the contract-id. */
+                        uint32_t nContract = 0;
+                        contract >> nContract;
+
+                        /* Extract the address from the contract. */
+                        uint256_t hashAddress = 0;
+                        contract >> hashAddress;
+
+                        /* Verify the operation rules. */
+                        const Contract transfer = LLD::Ledger->ReadContract(hashTx, nContract);
+                        if(!transfer.Empty(Contract::CONDITIONS))
+                        {
+                            /* Check for condition. */
+                            Condition conditions = Condition(transfer, contract);
+                            conditions.Execute();
+
+                            /* Assess the fees for the computation limits. */
+                            if(conditions.nCost > CONDITION_LIMIT_FREE)
+                                nCost += (conditions.nCost - CONDITION_LIMIT_FREE);
+                        }
+
+                        break;
+                    }
+
+
+                    /* Credit tokens to an account you own. */
+                    case OP::CREDIT:
+                    {
+                        /* Extract the transaction from contract. */
+                        uint512_t hashTx = 0;
+                        contract >> hashTx;
+
+                        /* Extract the contract-id. */
+                        uint32_t nContract = 0;
+                        contract >> nContract;
+
+                        /* Verify the operation rules. */
+                        const Contract debit = LLD::Ledger->ReadContract(hashTx, nContract);
+                        if(!debit.Empty(Contract::CONDITIONS))
+                        {
+                            /* Check for condition. */
+                            Condition conditions = Condition(debit, contract);
+                            conditions.Execute();
+
+                            /* Assess the fees for the computation limits. */
+                            if(conditions.nCost > CONDITION_LIMIT_FREE)
+                                nCost += (conditions.nCost - CONDITION_LIMIT_FREE);
+                        }
+
+                        break;
+                    }
                 }
             }
-
-
-            /* Check the current opcode. */
-            switch(nOP)
+            catch(const std::exception& e)
             {
-
-                case OP::CREATE:
-                {
-                    /* Get the Address of the Register. */
-                    TAO::Register::Address hashAddress;
-                    contract >> hashAddress;
-
-                    /* Get the Register Type. */
-                    uint8_t nType = 0;
-                    contract >> nType;
-
-                    /* Get the register data. */
-                    std::vector<uint8_t> vchData;
-                    contract >> vchData;
-
-                    /* Check for register type. For Object registers there may be a specific fee based on the object type. */
-                    if(nType == TAO::Register::REGISTER::OBJECT)
-                    {
-                        /* Create the register object. */
-                        TAO::Register::Object object;
-                        object.nVersion   = 1;
-                        object.nType      = nType;
-                        object.hashOwner  = contract.Caller();
-                        object.SetState(vchData);
-
-                        /* Parse the object. */
-                        if(!object.Parse())
-                            throw debug::exception(FUNCTION, "malformed object register");
-
-                        /* Add the object cost to the overall cost. */
-                        nCost += object.Cost();
-
-                    }
-                    else
-                    {
-                        /* For all other register types the fee is based on the data size */
-
-                        /* The fee changed with transaction version 2 so need to apply version-dependent fee */
-                        if(contract.Version() == 1)
-                            nCost += std::max(TAO::Register::MIN_DATA_FEE,  vchData.size() * TAO::Register::DATA_FEE_V1);
-                        else
-                            nCost += std::max(TAO::Register::MIN_DATA_FEE,  vchData.size() * TAO::Register::DATA_FEE);
-                    }
-
-                    break;
-                }
-
-
-                /* Transfer ownership of a register to another signature chain. */
-                case OP::CLAIM:
-                {
-                    /* Extract the transaction from contract. */
-                    uint512_t hashTx = 0;
-                    contract >> hashTx;
-
-                    /* Extract the contract-id. */
-                    uint32_t nContract = 0;
-                    contract >> nContract;
-
-                    /* Extract the address from the contract. */
-                    uint256_t hashAddress = 0;
-                    contract >> hashAddress;
-
-                    /* Verify the operation rules. */
-                    const Contract transfer = LLD::Ledger->ReadContract(hashTx, nContract);
-                    if(!transfer.Empty(Contract::CONDITIONS))
-                    {
-                        /* Check for condition. */
-                        Condition conditions = Condition(transfer, contract);
-                        conditions.Execute();
-
-                        /* Assess the fees for the computation limits. */
-                        if(conditions.nCost > CONDITION_LIMIT_FREE)
-                            nCost += (conditions.nCost - CONDITION_LIMIT_FREE);
-                    }
-
-                    break;
-                }
-
-
-                /* Credit tokens to an account you own. */
-                case OP::CREDIT:
-                {
-                    /* Extract the transaction from contract. */
-                    uint512_t hashTx = 0;
-                    contract >> hashTx;
-
-                    /* Extract the contract-id. */
-                    uint32_t nContract = 0;
-                    contract >> nContract;
-
-                    /* Verify the operation rules. */
-                    const Contract debit = LLD::Ledger->ReadContract(hashTx, nContract);
-                    if(!debit.Empty(Contract::CONDITIONS))
-                    {
-                        /* Check for condition. */
-                        Condition conditions = Condition(debit, contract);
-                        conditions.Execute();
-
-                        /* Assess the fees for the computation limits. */
-                        if(conditions.nCost > CONDITION_LIMIT_FREE)
-                            nCost += (conditions.nCost - CONDITION_LIMIT_FREE);
-                    }
-
-                    break;
-                }
+                debug::error(FUNCTION, "exception encountered ", e.what());
+                return;
             }
         }
 
@@ -216,49 +224,57 @@ namespace TAO
            modulate the transaction cost depending on the contract type, for example to have no costs for credit or claim contracts */
         void TxCost(const Contract& contract, uint64_t &nCost)
         {
-            /* Reset the contract streams. */
-            contract.Reset();
-
-            /* Get the contract OP. */
-            uint8_t nOP = 0;
-            contract >> nOP;
-
-            /* Check the current opcode. */
-            switch(nOP)
+            try
             {
-                /* Condition that allows a validation to occur. */
-                case OP::CONDITION:
-                {
-                    /* If it is a condition then get the actual op code. */
-                    contract >> nOP;
+                /* Reset the contract streams. */
+                contract.Reset();
 
-                    break;
+                /* Get the contract OP. */
+                uint8_t nOP = 0;
+                contract >> nOP;
+
+                /* Check the current opcode. */
+                switch(nOP)
+                {
+                    /* Condition that allows a validation to occur. */
+                    case OP::CONDITION:
+                    {
+                        /* If it is a condition then get the actual op code. */
+                        contract >> nOP;
+
+                        break;
+                    }
+                }
+
+
+                /* Check the opcode. */
+                switch(nOP)
+                {
+                    case OP::CLAIM:
+                    case OP::FEE:
+                    case OP::COINBASE:
+                    case OP::TRUST:
+                    case OP::GENESIS:
+                    {
+                        /* This case is included for clarity as it is essentially a no-op. Claim contracts attract no
+                           transaction fee as the fee is essentially paid by the transfer. Fee, coinbase, genesis, and trust
+                           contracts should also not incur a tx fee. */
+                        nCost += 0;
+                        break;
+                    }
+
+                    default:
+                    {
+                        /* Apply the default fee */
+                        nCost += TAO::Ledger::TX_FEE;
+                        break;
+                    }
                 }
             }
-
-
-            /* Check the opcode. */
-            switch(nOP)
+            catch(const std::exception& e)
             {
-                case OP::CLAIM:
-                case OP::FEE:
-                case OP::COINBASE:
-                case OP::TRUST:
-                case OP::GENESIS:
-                {
-                    /* This case is included for clarity as it is essentially a no-op. Claim contracts attract no
-                       transaction fee as the fee is essentially paid by the transfer. Fee, coinbase, genesis, and trust
-                       contracts should also not incur a tx fee. */
-                    nCost += 0;
-                    break;
-                }
-
-                default:
-                {
-                    /* Apply the default fee */
-                    nCost += TAO::Ledger::TX_FEE;
-                    break;
-                }
+                debug::error(FUNCTION, "exception encountered ", e.what());
+                return;
             }
         }
     }

@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -30,6 +30,20 @@ namespace TAO::API
      *
      **/
     __attribute__((const)) double FormatBalance(const uint64_t nBalance, const uint8_t nDecimals); //we don't pass by reference for <= 8 bytes
+
+
+    /** FormatNegative
+     *
+     *  Outputs the correct balance that's positive or negative in terms of a double based on decimals input.
+     *
+     *  @param[in] nBalance The balance to encode for output.
+     *  @param[in] nDecimals The number of decimals to format for
+     *
+     *  @return a double representation of the whole formatting.
+     *
+     **/
+    __attribute__((const)) double FormatNegative(const int64_t nBalance, const uint8_t nDecimals);
+
 
 
     /** FormatBalance

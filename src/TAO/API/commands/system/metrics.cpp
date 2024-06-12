@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -322,13 +322,13 @@ namespace TAO
                 /* Add reserves */
                 encoding::json jReserves;
 
-                TAO::Ledger::BlockState lastStakeBlockState = TAO::Ledger::ChainState::stateBest.load();
+                TAO::Ledger::BlockState lastStakeBlockState = TAO::Ledger::ChainState::tStateBest.load();
                 bool fHasStake = TAO::Ledger::GetLastState(lastStakeBlockState, 0);
 
-                TAO::Ledger::BlockState lastPrimeBlockState = TAO::Ledger::ChainState::stateBest.load();
+                TAO::Ledger::BlockState lastPrimeBlockState = TAO::Ledger::ChainState::tStateBest.load();
                 bool fHasPrime = TAO::Ledger::GetLastState(lastPrimeBlockState, 1);
 
-                TAO::Ledger::BlockState lastHashBlockState = TAO::Ledger::ChainState::stateBest.load();
+                TAO::Ledger::BlockState lastHashBlockState = TAO::Ledger::ChainState::tStateBest.load();
                 bool fHasHash = TAO::Ledger::GetLastState(lastHashBlockState, 2);
 
                 /* for the ambassador/dev/fee reserves we need to add together the reserves from the last block from each of the respective channels*/

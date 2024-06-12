@@ -1,9 +1,9 @@
 
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -115,7 +115,7 @@ namespace TAO::API
             const uint8_t nDecimals =
                 rBalances.second.at("decimals");
 
-            /* Grab unconfirmed balances as a pair. */
+            /* Grab unconfirmed outgoing balances. */
             const uint64_t nOutgoing =
                 GetUnconfirmed(hashGenesis, hashToken, true);
 
@@ -123,8 +123,9 @@ namespace TAO::API
             encoding::json jBalances;
 
             /* Populate the rest of the balances. */
-            jBalances["available"]    = FormatBalance(rBalances.second.at("balance") - nOutgoing,    nDecimals);
-            jBalances["unclaimed"]    = FormatBalance(GetPending(hashGenesis, hashToken),            nDecimals);
+            jBalances["available"]    = FormatBalance(rBalances.second.at("balance") - nOutgoing, nDecimals);
+            jBalances["confirmed"]    = FormatBalance(rBalances.second.at("balance"), nDecimals);
+            jBalances["unclaimed"]    = FormatBalance(GetUnclaimed(hashGenesis, hashToken), nDecimals);
             jBalances["unconfirmed"]  = FormatBalance(GetUnconfirmed(hashGenesis, hashToken, false), nDecimals);
             jBalances["decimals"]     = nDecimals;
             jBalances["token"]        = hashToken.ToString();

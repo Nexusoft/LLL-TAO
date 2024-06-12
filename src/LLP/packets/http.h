@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -18,6 +18,8 @@ ________________________________________________________________________________
 
 #include <Util/include/runtime.h>
 #include <Util/include/debug.h>
+#include <Util/include/json.h>
+
 #include <vector>
 #include <map>
 
@@ -277,11 +279,13 @@ namespace LLP
             /* Check for content. */
             if(strContent.size() > 0)
             {
-                strReply += debug::safe_printstr
-                (
-                    "Content-Length: ", strContent.size(), "\r\n",
-                    "Content-Type: application/json\r\n"
-                );
+                /* Set our content length here. */
+                strReply +=
+                    debug::safe_printstr("Content-Length: ", strContent.size(), "\r\n");
+
+                /* Set our content type for JSON if applicable. */
+                if(encoding::json::accept(strContent))
+                    strReply += std::string("Content-Type: application/json\r\n");
             }
 
             /* Add custom header fields. */

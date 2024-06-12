@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2021
+			(c) Copyright The Nexus Developers 2014 - 2023
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -39,6 +39,7 @@ namespace config
     std::atomic<bool> fClient(false);
     std::atomic<bool> fTestNet(false);
     std::atomic<bool> fListen(false);
+    std::atomic<bool> fFileServer(false);
     std::atomic<bool> fMultiuser(false);
     std::atomic<bool> fProcessNotifications(false);
     std::atomic<bool> fInitialized(false);
@@ -53,6 +54,9 @@ namespace config
 
     /* Keeps track of the network owner hash. */
     uint256_t hashNetworkOwner;
+
+    /* Use this root value to detect if we want to enable our fileserver. */
+    std::string strFileServerRoot;
 
     /* Declare our arguments mutex. */
     std::recursive_mutex ARGS_MUTEX;
@@ -116,7 +120,7 @@ namespace config
     /* Return string argument or default value */
     std::string GetArg(const std::string& strArg, const std::string& strDefault)
     {
-        RECURSIVE(ARGS_MUTEX);
+        //RECURSIVE(ARGS_MUTEX);
 
         if(mapArgs.count(strArg))
             return mapArgs[strArg];
@@ -127,7 +131,7 @@ namespace config
     /* Return boolean if given argument is in map. */
     bool HasArg(const std::string& strArg)
     {
-        RECURSIVE(ARGS_MUTEX);
+        //RECURSIVE(ARGS_MUTEX);
 
         return mapMultiArgs.count(strArg) || mapArgs.count(strArg);
     }
@@ -136,7 +140,7 @@ namespace config
     /* Return integer argument or default value. */
     int64_t GetArg(const std::string& strArg, int64_t nDefault)
     {
-        RECURSIVE(ARGS_MUTEX);
+        //RECURSIVE(ARGS_MUTEX);
 
         if(mapArgs.count(strArg))
             return convert::atoi64(mapArgs[strArg]);
@@ -148,7 +152,7 @@ namespace config
     /* Return boolean argument or default value */
     bool GetBoolArg(const std::string& strArg, bool fDefault)
     {
-        RECURSIVE(ARGS_MUTEX);
+        //RECURSIVE(ARGS_MUTEX);
 
         if(mapArgs.count(strArg))
         {
@@ -177,7 +181,7 @@ namespace config
     /* Set an argument if it doesn't already have a value */
     bool SoftSetArg(const std::string& strArg, const std::string& strValue)
     {
-        RECURSIVE(ARGS_MUTEX);
+        //RECURSIVE(ARGS_MUTEX);
 
         if(mapArgs.count(strArg))
             return false;
@@ -203,6 +207,7 @@ namespace config
         fDaemon                 = GetBoolArg("-daemon", false);
         fTestNet                = (GetArg("-testnet", 0) > 0);
         fListen                 = GetBoolArg("-listen", true);
+        fFileServer             = (GetArg("-fileroot", "") != "");
         fClient                 = GetBoolArg("-client", false);
         //fUseProxy               = GetBoolArg("-proxy")
         fMultiuser              = GetBoolArg("-multiuser", false) || GetBoolArg("-multiusername", false);
@@ -216,6 +221,10 @@ namespace config
         fIndexAddress           = GetBoolArg("-indexaddress");
         fIndexRegister          = GetBoolArg("-indexregister");
         nVerbose                = GetArg("-verbose", 0);
+
+        /* Cache our fileserver root if enabled. */
+        if(fFileServer.load())
+            strFileServerRoot = GetArg("-fileroot", "");
 
         /* Private Mode: Sub-Network Testnet. DO NOT USE FOR PRODUCTION. */
         if(GetBoolArg("-private", false))
@@ -253,6 +262,10 @@ namespace config
         {
             RECURSIVE(ARGS_MUTEX);
 
+            /* Check for testnet enabled flag, and bump value. */
+            if(fTestNet.load())
+                mapArgs["-testnet"] = "3";
+
             /* Parse the allowip entries and add them to a map for easier processing when new connections are made*/
             const std::vector<std::string>& vIPPortFilters = config::mapMultiArgs["-llpallowip"];
             for(const auto& entry : vIPPortFilters)
@@ -286,7 +299,7 @@ namespace config
         /* Handle reading our activation data for transactions. */
         if(fHybrid.load() || fTestNet.load()) //this rule is only to activate private, hybrid, or testnets
         {
-            RECURSIVE(ARGS_MUTEX);
+            //RECURSIVE(ARGS_MUTEX);
 
             /* Handle for our market fees. */
             if(config::mapMultiArgs["-activatetx"].size() > 0)

@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-        (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+        Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-        (c) Copyright The Nexus Developers 2014 - 2021
+        (c) Copyright The Nexus Developers 2014 - 2023
 
         Distributed under the MIT software license, see the accompanying
         file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -272,6 +272,70 @@ namespace TAO
             /* Generate the Secret Phrase */
             std::vector<uint8_t> vSecret(strSecret.begin(), strSecret.end());
 
+            // low-level API
+            std::vector<uint8_t> vHash(32);
+            std::vector<uint8_t> vSalt(16);
+
+            /* Create the hash context. */
+            argon2_context context =
+            {
+                /* Hash Return Value. */
+                &vHash[0],
+                32,
+
+                /* Password input data. */
+                &vSecret[0],
+                static_cast<uint32_t>(vSecret.size()),
+
+                /* The salt for usernames */
+                &vSalt[0],
+                static_cast<uint32_t>(vSalt.size()),
+
+                /* Optional secret data */
+                NULL, 0,
+
+                /* Optional associated data */
+                NULL, 0,
+
+                /* Computational Cost. */
+                64,
+
+                /* Memory Cost (64 MB). */
+                (1 << 16),
+
+                /* The number of threads and lanes */
+                1, 1,
+
+                /* Algorithm Version */
+                ARGON2_VERSION_13,
+
+                /* Custom memory allocation / deallocation functions. */
+                NULL, NULL,
+
+                /* By default only internal memory is cleared (pwd is not wiped) */
+                ARGON2_DEFAULT_FLAGS
+            };
+
+            /* Run the argon2 computation. */
+            int32_t nRet = argon2id_ctx(&context);
+            if(nRet != ARGON2_OK)
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
+
+            /* Set the bytes for the key. */
+            uint256_t hashKey;
+            hashKey.SetBytes(vHash);
+            hashKey.SetType(TAO::Ledger::GENESIS::UserType());
+
+            return hashKey;
+        }
+
+
+        /* This function is to remain backwards compatible if recovery was created after 5.0.6 and before 5.1.1. */
+        uint512_t Credentials::GenerateDeprecated(const SecureString& strSecret) const
+        {
+            /* Generate the Secret Phrase */
+            std::vector<uint8_t> vSecret(strSecret.begin(), strSecret.end());
+
             /* Argon2 hash the secret */
             uint512_t hashKey = LLC::Argon2_512(vSecret);
 
@@ -279,6 +343,69 @@ namespace TAO
             hashKey.SetType(TAO::Ledger::GENESIS::UserType());
 
             return hashKey;
+        }
+
+
+        /* This function is to remain backwards compatible if recovery was created after 5.0.6 and before 5.1.1 */
+        uint256_t Credentials::RecoveryDeprecated(const SecureString& strRecovery, const uint8_t nType) const
+        {
+            /* The hashed public key to return*/
+            uint256_t hashRet = 0;
+
+            /* Timer to track how long it takes to generate the recovery hash private key from the seed. */
+            runtime::timer timer;
+            timer.Reset();
+
+            /* Get the private key. */
+            uint512_t hashSecret = GenerateDeprecated(strRecovery);
+
+            /* Get the secret from new key. */
+            std::vector<uint8_t> vBytes = hashSecret.GetBytes();
+            LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
+
+            /* Switch based on signature type. */
+            switch(nType)
+            {
+                /* Support for the FALCON signature scheeme. */
+                case SIGNATURE::FALCON:
+                {
+                    /* Create the FL Key object. */
+                    LLC::FLKey key;
+
+                    /* Set the secret key. */
+                    if(!key.SetSecret(vchSecret))
+                        throw debug::exception(FUNCTION, "failed to set falcon secret key");
+
+                    /* Calculate the hash of the public key. */
+                    hashRet = LLC::SK256(key.GetPubKey());
+
+                    break;
+                }
+
+                /* Support for the BRAINPOOL signature scheme. */
+                case SIGNATURE::BRAINPOOL:
+                {
+                    /* Create EC Key object. */
+                    LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                    /* Set the secret key. */
+                    if(!key.SetSecret(vchSecret, true))
+                        throw debug::exception(FUNCTION, "failed to set brainpool secret key");
+
+                    /* Calculate the hash of the public key. */
+                    hashRet = LLC::SK256(key.GetPubKey());
+
+                    break;
+
+                }
+                default:
+                    throw debug::exception(FUNCTION, "Unknown signature key type");
+
+            }
+
+            debug::log(0, FUNCTION, "Recovery Hash (DEPRECATED) ", hashRet.SubString(), " generated in ", timer.Elapsed(), " seconds");
+
+            return hashRet;
         }
 
 

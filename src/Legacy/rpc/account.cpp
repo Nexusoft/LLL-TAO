@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-        (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+        Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-        (c) Copyright The Nexus Developers 2014 - 2019
+        (c) Copyright The Nexus Developers 2014 - 2023
 
         Distributed under the MIT software license, see the accompanying
         file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -1707,7 +1707,7 @@ namespace Legacy
         TAO::Ledger::BlockState state;
         if(LLD::Ledger->ReadBlock(hash, state))
             /* Calculate confirmations. */
-            nConfirmations = (TAO::Ledger::ChainState::stateBest.load().nHeight - state.nHeight) + 1;
+            nConfirmations = (TAO::Ledger::ChainState::tStateBest.load().nHeight - state.nHeight) + 1;
 
         /* Set block hash. */
         if(!state.IsNull())

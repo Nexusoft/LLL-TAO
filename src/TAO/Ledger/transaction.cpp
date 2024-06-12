@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -325,6 +325,10 @@ namespace TAO
         /* Gets the list of contracts internal to transaction. */
         const std::vector<TAO::Operation::Contract>& Transaction::Contracts() const
         {
+            /* Bind all of our contracts if we are accessing the entire vector. */
+            for(const auto& rContract : vContracts)
+                rContract.Bind(this, true);
+
             return vContracts;
         }
 
@@ -570,6 +574,7 @@ namespace TAO
 
             return true;
         }
+
 
         /* Check the trust score that is claimed is correct. */
         static const uint256_t hashConsistencyCheck = uint256_t("0xa15efdcd1969a9a645eda0296b52678f1ef3d9e91ec9f54a4f82f9ab7ce65a6c");
@@ -903,7 +908,7 @@ namespace TAO
                     /* Make sure the previous transaction is on disk or mempool. */
                     TAO::Ledger::Transaction txPrev;
                     if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev, nFlags))
-                        return debug::error(FUNCTION, "prev transaction not on disk");
+                        return debug::error(FUNCTION, "prev transaction not on disk ", hashPrevTx.SubString());
 
                     /* Double check sequence numbers here. */
                     if(txPrev.nSequence + 1 != nSequence)
@@ -968,7 +973,7 @@ namespace TAO
                                 return debug::error(FUNCTION, "failed to read confirmations for coinbase");
 
                             /* Check that the previous TX has reached sig chain maturity */
-                            if(nConfirms + 1 < MaturityCoinBase((pblock ? *pblock : ChainState::stateBest.load())))
+                            if(nConfirms + 1 < MaturityCoinBase((pblock ? *pblock : ChainState::tStateBest.load())))
                                 return debug::error(FUNCTION, "coinbase is immature ", nConfirms);
 
                             break;
@@ -1005,7 +1010,7 @@ namespace TAO
 
                     /* Check fo register in database. */
                     if(!LLD::Logical->PushRegisterTx(hashAddress, hash))
-                        return debug::error(FUNCTION, "failed to push register tx ", TAO::Register::Address(hashAddress).ToString());
+                        debug::warning(FUNCTION, "failed to push register tx ", TAO::Register::Address(hashAddress).ToString());
 
                     /* Push the address now. */
                     setAddresses.insert(hashAddress);
@@ -1126,7 +1131,7 @@ namespace TAO
 
                     /* Check fo register in database. */
                     if(!LLD::Logical->EraseRegisterTx(hashAddress))
-                        return debug::error(FUNCTION, "failed to erase register tx ", TAO::Register::Address(hashAddress).ToString());
+                        debug::warning(FUNCTION, "failed to erase register tx ", TAO::Register::Address(hashAddress).ToString());
 
                     /* Push the address now. */
                     setAddresses.insert(hashAddress);
@@ -1453,7 +1458,7 @@ namespace TAO
                 "nextHash  = ",  hashNext.SubString(), ", ",
                 "prevHash  = ",  PrevHash().SubString(), ", ",
                 "hashPrevTx = ", hashPrevTx.SubString(), ", ",
-                "hashGenesis = ", hashGenesis.SubString(), ", ",
+                "hashGenesis = ", hashGenesis.ToString(), ", ",
                 "pub = ", HexStr(vchPubKey).substr(0, 20), ", ",
                 "sig = ", HexStr(vchSig).substr(0, 20), ", ",
                 "hash = ", GetHash().SubString()

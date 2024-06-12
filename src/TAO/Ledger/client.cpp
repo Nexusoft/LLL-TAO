@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -78,7 +78,7 @@ namespace TAO
             }
 
             /* If the max depth expired, return the genesis. */
-            state = ChainState::stateGenesis;
+            state = ChainState::tStateGenesis;
 
             return false;
         }
@@ -510,11 +510,11 @@ namespace TAO
                 for(uint32_t n = 0; n < 3; ++n)
                 {
                     /* Check each weight. */
-                    if(nChannelWeight[n] == ChainState::stateBest.load().nChannelWeight[n])
+                    if(nChannelWeight[n] == ChainState::tStateBest.load().nChannelWeight[n])
                         ++nEquals;
 
                     /* Check each weight. */
-                    if(nChannelWeight[n] > ChainState::stateBest.load().nChannelWeight[n])
+                    if(nChannelWeight[n] > ChainState::tStateBest.load().nChannelWeight[n])
                         ++nGreater;
                 }
 
@@ -554,7 +554,7 @@ namespace TAO
             uint1024_t hash = GetHash();
 
             /* Get initial block states. */
-            ClientBlock fork   = ChainState::stateBest.load();
+            ClientBlock fork   = ChainState::tStateBest.load();
             ClientBlock longer = *this;
 
             /* Get the blocks to connect and disconnect. */
@@ -592,7 +592,7 @@ namespace TAO
             {
                 debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "REORGANIZE:", ANSI_COLOR_RESET,
                     " Disconnect ", vDisconnect.size(), " blocks; ", fork.GetHash().SubString(),
-                    "..",  ChainState::stateBest.load().GetHash().SubString());
+                    "..",  ChainState::tStateBest.load().GetHash().SubString());
 
                 /* Keep this in vDisconnect check, or it will print every block, but only print on reorg if have at least 1 */
                 if(vConnect.size() > 0)
@@ -649,7 +649,7 @@ namespace TAO
             }
 
             /* Set the best chain variables. */
-            ChainState::stateBest          = *this;
+            ChainState::tStateBest          = *this;
             ChainState::hashBestChain      = hash;
             ChainState::nBestHeight        = nHeight;
 
@@ -674,7 +674,7 @@ namespace TAO
 
                 /* If we just updated hashNextBlock for genesis block, update the in-memory genesis */
                 if(prev.nHeight == 0)
-                    ChainState::stateGenesis = prev;
+                    ChainState::tStateGenesis = prev;
             }
 
             return true;

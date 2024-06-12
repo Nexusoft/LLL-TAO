@@ -24,8 +24,6 @@ We use Make to build our project to multiple platforms. Please read out build do
 
 Developing on Nexus has been designed to be powerful, yet simple to use. Tritium++ packages features from SQL Queries, filters, sorting, statistical operators, functions, variables, and much more. The API uses a RESTFul HTTP-JSON protocol, so that you can access the power of Smart Contracts on Nexus from very basic web experience to advanced capabilities. The API is always expanding, so if you find any bugs or wish to suggest improvements, please use the Issues tracker and submit your feedback.
 
-The developer documentation can be found here: https://wiki.nexus.io/en/tritium++
-
 ## License
 
 Nexus is released under the terms of the MIT license. See [COPYING](COPYING.MD) for more

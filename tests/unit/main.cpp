@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -87,11 +87,11 @@ TEST_CASE("Arguments Tests", "[args]")
     LLD::Ledger->WriteBlock(state.GetHash(), state);
 
     //set best block
-    TAO::Ledger::ChainState::stateBest.store(state);
+    TAO::Ledger::ChainState::tStateBest.store(state);
     TAO::Ledger::ChainState::nBestHeight.store(200);
 
     //check best
-    REQUIRE_FALSE(TAO::Ledger::ChainState::stateBest.load().IsNull());
+    REQUIRE_FALSE(TAO::Ledger::ChainState::tStateBest.load().IsNull());
 
 
     /** Initialize network resources. (Need before RPC/API for WSAStartup call in Windows) **/

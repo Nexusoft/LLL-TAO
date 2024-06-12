@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2019
+			(c) Copyright The Nexus Developers 2014 - 2023
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -456,6 +456,18 @@ namespace TAO::API
          *
          **/
         static bool Caller(const encoding::json& jParams, uint256_t &hashCaller);
+
+
+        /** ExtractSession
+         *
+         *  Extract the session-id of the given caller using session from params.
+         *
+         *  @param[in] jParams The incoming parameters to parse session from.
+         *
+         *  @return the caller if found
+         *
+         **/
+        static uint256_t ExtractSession(const encoding::json& jParams);
 
 
         /** Unloacked

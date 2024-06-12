@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -101,7 +101,7 @@ namespace TAO::API
     uint16_t GetStandardType(const TAO::Register::Object& rObject);
 
 
-    /** GetPending
+    /** GetUnclaimed
      *
      *  Get the sum of all debit notifications for the the specified token
      *
@@ -112,7 +112,7 @@ namespace TAO::API
      *  @return The sum of all pending debits
      *
      **/
-    uint64_t GetPending(const uint256_t& hashGenesis, const uint256_t& hashToken, const uint256_t& hashAccount = 0);
+    uint64_t GetUnclaimed(const uint256_t& hashGenesis, const uint256_t& hashToken, const uint256_t& hashAccount = 0);
 
 
     /** GetUnconfirmed

@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -67,12 +67,12 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
         REQUIRE(LLD::Legacy->WriteTx(tx.GetHash(), tx));
 
         //conect tx
-        REQUIRE(tx.Connect(inputs, TAO::Ledger::ChainState::stateGenesis, TAO::Ledger::FLAGS::BLOCK));
+        REQUIRE(tx.Connect(inputs, TAO::Ledger::ChainState::tStateGenesis, TAO::Ledger::FLAGS::BLOCK));
 
-        REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::stateGenesis.GetHash()));
+        REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::tStateGenesis.GetHash()));
 
         //add to wallet
-        REQUIRE(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
+        REQUIRE(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::tStateGenesis, true));
 
         //check balance
         REQUIRE(Legacy::Wallet::Instance().GetBalance() == 1000000);
@@ -100,7 +100,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //write index
-            REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::stateGenesis.GetHash()));
+            REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::tStateGenesis.GetHash()));
 
             //set the hash
             hashCoinbaseTx = tx.GetHash();
@@ -198,7 +198,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE_FALSE(tx.Verify());
 
             //add to wallet
-            REQUIRE_THROWS(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
+            REQUIRE_THROWS(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::tStateGenesis, true));
         }
 
 
@@ -248,10 +248,10 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE(LLD::Ledger->WriteTx(hashTx, tx));
 
             //index block
-            REQUIRE(LLD::Ledger->IndexBlock(hashTx, TAO::Ledger::ChainState::stateGenesis.GetHash()));
+            REQUIRE(LLD::Ledger->IndexBlock(hashTx, TAO::Ledger::ChainState::tStateGenesis.GetHash()));
 
             //add to wallet
-            REQUIRE(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
+            REQUIRE(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::tStateGenesis, true));
 
             //check register values
             {
@@ -333,7 +333,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE(Legacy::Wallet::Instance().CreateTransaction(vecSend, wtx, changeKey, nFees, 1));
 
             //get best
-            TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateBest.load();
+            TAO::Ledger::BlockState state = TAO::Ledger::ChainState::tStateBest.load();
             state.hashNextBlock = LLC::GetRand1024();
 
             REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -358,11 +358,11 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
         }
 
         //set best
-        TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateBest.load();
+        TAO::Ledger::BlockState state = TAO::Ledger::ChainState::tStateBest.load();
         ++state.nHeight;
         state.hashNextBlock = LLC::GetRand1024();
 
-        TAO::Ledger::ChainState::stateBest.store(state);
+        TAO::Ledger::ChainState::tStateBest.store(state);
         TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
 
         REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -416,7 +416,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
         ++state.nHeight;
         state.hashNextBlock = LLC::GetRand1024();
 
-        TAO::Ledger::ChainState::stateBest.store(state);
+        TAO::Ledger::ChainState::tStateBest.store(state);
         TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
 
         REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -469,7 +469,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
         ++state.nHeight;
         state.hashNextBlock = LLC::GetRand1024();
 
-        TAO::Ledger::ChainState::stateBest.store(state);
+        TAO::Ledger::ChainState::tStateBest.store(state);
         TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
 
         REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));

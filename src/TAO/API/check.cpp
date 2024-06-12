@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -21,6 +21,8 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/build.h>
 #include <TAO/Register/types/object.h>
+
+#include <Util/encoding/include/utf-8.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -52,8 +54,20 @@ namespace TAO::API
             return false;
 
         /* Check for an empty string. */
-        if(jParams[strKey].is_string() && jParams[strKey] == "")
-            return false;
+        if(jParams[strKey].is_string())
+        {
+            /* Get a reference of our string. */
+            const std::string& strParam =
+                jParams[strKey].get<std::string>();
+
+            /* Check for an empty string. */
+            if(strParam == "")
+                return false;
+
+            /* Check we are using proper utf-8 encoding. */
+            if(!encoding::utf8::is_valid(strParam.begin(), strParam.end()))
+                throw Exception(-130, "Invalid character encoding for [", strKey, "], expecting utf8");
+        }
 
         /* If no type specified, return now. */
         if(strType.empty())

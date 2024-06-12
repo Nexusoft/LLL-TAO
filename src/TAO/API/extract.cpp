@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -74,7 +74,7 @@ namespace TAO::API
                     return Names::ResolveNamespace(jParams);
 
                 /* Check for name or namespace resolution. */
-                if(strType == "global" || strType == "local" || strType == "name")
+                if(Commands::Instance<Names>()->HasStandard(strType))
                 {
                     /* Grab our name from incoming parameters. */
                     const std::string& strLookup =

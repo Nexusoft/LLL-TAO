@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -144,7 +144,7 @@ namespace LLP
         /* Calculate penalty. */
         uint32_t nPenalty = std::max(nTotalBans.load() * (rSCORE.Score() + 1) * (cSCORE.Score() + 1), nTotalBans.load() * 1200u);
 
-        debug::log(0, "XXXXX DDOS Filter cScore = ", cSCORE.Score(),
+        debug::notice("XXXXX DDOS Filter cScore = ", cSCORE.Score(),
             " rScore = ", rSCORE.Score(),
             " Banned for ", nPenalty,
             " Seconds. [VIOLATION: ", strViolation, "]");

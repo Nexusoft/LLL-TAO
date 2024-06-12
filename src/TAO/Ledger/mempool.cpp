@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2021
+			(c) Copyright The Nexus Developers 2014 - 2023
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -48,6 +48,7 @@ namespace TAO
         , mapConflicts       ( )
         , mapOrphans         ( )
         , mapClaimed         ( )
+        , mapRejected        ( )
         , mapInputs          ( )
         , setOrphansByIndex  ( )
         {
@@ -87,138 +88,167 @@ namespace TAO
             /* Get the transaction hash. */
             uint512_t hashTx = tx.GetHash();
 
-            /* Check for transaction on disk. */
-            if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
-                return false; //NOTE: this was true, but changed to false to prevent relay loops in tritium LLP
-
-            /* Print the transaction here. */
-            if(config::nVerbose >= 3)
-                tx.print();
-
-            /* Runtime calculations. */
-            runtime::timer timer;
-            timer.Start();
-
-            /* Check for duplicate coinbase or coinstake. */
-            if(tx.IsCoinBase())
-                return debug::error(FUNCTION, "coinbase ", hashTx.SubString(), " not accepted in pool");
-
-            /* Check for duplicate coinbase or coinstake. */
-            if(tx.IsCoinStake())
-                return debug::error(FUNCTION, "coinstake ", hashTx.SubString(), " not accepted in pool");
-
-            /* Check that the transaction is in a valid state. */
-            if(!tx.Check())
-                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
-
-            /* Check for orphans and conflicts when not first transaction. */
-            if(!tx.IsFirst())
+            try
             {
-                /* Check memory and disk for previous transaction. */
-                if(!LLD::Ledger->HasTx(tx.hashPrevTx, FLAGS::MEMPOOL))
+                /* Check for transaction on disk. */
+                if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
+                    return false; //NOTE: this was true, but changed to false to prevent relay loops in tritium LLP
+
+                /* Check for rejected tx. */
+                if(mapRejected.count(tx.hashPrevTx))
                 {
-                    /* Debug output. */
-                    debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " ",
-                        tx.nSequence, " prev ", tx.hashPrevTx.SubString(),
-                        " ORPHAN in ", std::dec, timer.ElapsedMilliseconds(), " ms");
-
-                    /* Push to orphan queue. */
-                    mapOrphans[tx.hashPrevTx] = tx;
-                    setOrphansByIndex.insert(hashTx);
-
-                    /* Increment consecutive orphans. */
-                    if(pnode)
-                        ++pnode->nConsecutiveOrphans;
-
-                    /* Ask for the missing transaction. */
-                    if(pnode)
-                        pnode->PushMessage(LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::TRANSACTION), tx.hashPrevTx);
-
+                    mapRejected.insert(hashTx);
                     return false;
                 }
 
-                /* Check for conflicts. */
-                if(mapClaimed.count(tx.hashPrevTx) || mapConflicts.count(tx.hashPrevTx))
+                /* Print the transaction here. */
+                if(config::nVerbose >= 3)
+                    tx.print();
+
+                /* Runtime calculations. */
+                runtime::timer timer;
+                timer.Start();
+
+                /* Check for duplicate coinbase or coinstake. */
+                if(tx.IsCoinBase())
+                {
+                    mapRejected.insert(hashTx);
+                    return debug::error(FUNCTION, "coinbase ", hashTx.SubString(), " not accepted in pool");
+                }
+
+                /* Check for duplicate coinbase or coinstake. */
+                if(tx.IsCoinStake())
+                {
+                    mapRejected.insert(hashTx);
+                    return debug::error(FUNCTION, "coinstake ", hashTx.SubString(), " not accepted in pool");
+                }
+
+                /* Check that the transaction is in a valid state. */
+                if(!tx.Check())
+                {
+                    mapRejected.insert(hashTx);
+                    return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+                }
+
+                /* Check for orphans and conflicts when not first transaction. */
+                if(!tx.IsFirst())
+                {
+                    /* Check memory and disk for previous transaction. */
+                    if(!LLD::Ledger->HasTx(tx.hashPrevTx, FLAGS::MEMPOOL))
+                    {
+                        /* Debug output. */
+                        debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " ",
+                            tx.nSequence, " prev ", tx.hashPrevTx.SubString(),
+                            " ORPHAN in ", std::dec, timer.ElapsedMilliseconds(), " ms");
+
+                        /* Push to orphan queue. */
+                        mapOrphans[tx.hashPrevTx] = tx;
+                        setOrphansByIndex.insert(hashTx);
+
+                        /* Increment consecutive orphans. */
+                        if(pnode)
+                            ++pnode->nConsecutiveOrphans;
+
+                        /* Ask for the missing transaction. */
+                        if(pnode)
+                            pnode->PushMessage(LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::TRANSACTION), tx.hashPrevTx);
+
+                        return false;
+                    }
+
+                    /* Check for conflicts. */
+                    if(mapClaimed.count(tx.hashPrevTx) || mapConflicts.count(tx.hashPrevTx))
+                    {
+                        /* Add to conflicts map. */
+                        debug::error(FUNCTION, "CONFLICT: prev tx ", (mapClaimed.count(tx.hashPrevTx) ? "CLAIMED " : "CONFLICTED "), tx.hashPrevTx.SubString());
+                        mapConflicts[hashTx] = tx;
+
+                        return false;
+                    }
+
+                    /* Get the last hash. */
+                    uint512_t hashLast = 0;
+                    if(!LLD::Ledger->ReadLast(tx.hashGenesis, hashLast, FLAGS::MEMPOOL))
+                        return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: Failed to read hash last");
+
+                    /* Check for conflicts. */
+                    if(tx.hashPrevTx != hashLast)
+                    {
+                        /* Add to conflicts map. */
+                        debug::error(FUNCTION, "CONFLICT: hash last mismatch ", tx.hashPrevTx.SubString(), " and ", hashLast.SubString());
+                        mapConflicts[hashTx] = tx;
+
+                        return false;
+                    }
+                }
+                else if(tx.IsFirst() && LLD::Ledger->HasFirst(tx.hashGenesis))
                 {
                     /* Add to conflicts map. */
-                    debug::error(FUNCTION, "CONFLICT: prev tx ", (mapClaimed.count(tx.hashPrevTx) ? "CLAIMED " : "CONFLICTED "), tx.hashPrevTx.SubString());
+                    debug::error(FUNCTION, "CONFLICT: duplicate genesis-id ", tx.hashGenesis.SubString());
                     mapConflicts[hashTx] = tx;
 
                     return false;
                 }
 
-                /* Get the last hash. */
-                uint512_t hashLast = 0;
-                if(!LLD::Ledger->ReadLast(tx.hashGenesis, hashLast, FLAGS::MEMPOOL))
-                    return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: Failed to read hash last");
-
-                /* Check for conflicts. */
-                if(tx.hashPrevTx != hashLast)
+                /* Begin an ACID transction for internal memory commits. */
+                if(!tx.Verify(FLAGS::MEMPOOL))
                 {
-                    /* Add to conflicts map. */
-                    debug::error(FUNCTION, "CONFLICT: hash last mismatch ", tx.hashPrevTx.SubString(), " and ", hashLast.SubString());
-                    mapConflicts[hashTx] = tx;
-
-                    return false;
+                    mapRejected.insert(hashTx);
+                    return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
                 }
+
+                /* Connect transaction in memory. */
+                LLD::TxnBegin(FLAGS::MEMPOOL);
+                if(!tx.Connect(FLAGS::MEMPOOL))
+                {
+                    /* Abort memory commits on failures. */
+                    LLD::TxnAbort(FLAGS::MEMPOOL);
+                    mapRejected.insert(hashTx);
+
+                    return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+                }
+
+                /* Commit new memory into database states. */
+                LLD::TxnCommit(FLAGS::MEMPOOL);
+
+                /* Set the internal memory. */
+                mapLedger[hashTx] = tx;
+
+                /* Update map claimed if not first tx. */
+                if(!tx.IsFirst())
+                    mapClaimed[tx.hashPrevTx] = hashTx;
+
+                /* Debug output. */
+                debug::log(2, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED in ", std::dec, timer.ElapsedMilliseconds(), " ms");
+
+                /* Process orphan queue. */
+                ProcessOrphans(hashTx);
+
+                /* Relay tx if creating ourselves. */
+                if(!pnode && LLP::TRITIUM_SERVER)
+                {
+                    /* Relay the transaction notification. */
+                    LLP::TRITIUM_SERVER->Relay
+                    (
+                        LLP::TritiumNode::ACTION::NOTIFY,
+                        uint8_t(LLP::TritiumNode::TYPES::TRANSACTION),
+                        hashTx
+                    );
+                }
+
+                /* Notify private to produce block if valid. */
+                if(config::fHybrid.load())
+                    PRIVATE_CONDITION.notify_all();
+
+                return true;
             }
-            else if(LLD::Ledger->HasFirst(tx.hashGenesis))
+            catch(const std::exception& e)
             {
-                /* Add to conflicts map. */
-                debug::error(FUNCTION, "CONFLICT: invalid genesis-id ", tx.hashGenesis.SubString());
-                mapConflicts[hashTx] = tx;
-
-                return false;
+                mapRejected.insert(hashTx);
+                return debug::error(FUNCTION, "REJECTED: exception encountered ", e.what());
             }
 
-
-            /* Begin an ACID transction for internal memory commits. */
-            if(!tx.Verify(FLAGS::MEMPOOL))
-                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
-
-            /* Connect transaction in memory. */
-            LLD::TxnBegin(FLAGS::MEMPOOL);
-            if(!tx.Connect(FLAGS::MEMPOOL))
-            {
-                /* Abort memory commits on failures. */
-                LLD::TxnAbort(FLAGS::MEMPOOL);
-
-                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
-            }
-
-            /* Commit new memory into database states. */
-            LLD::TxnCommit(FLAGS::MEMPOOL);
-
-            /* Set the internal memory. */
-            mapLedger[hashTx] = tx;
-
-            /* Update map claimed if not first tx. */
-            if(!tx.IsFirst())
-                mapClaimed[tx.hashPrevTx] = hashTx;
-
-            /* Debug output. */
-            debug::log(2, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED in ", std::dec, timer.ElapsedMilliseconds(), " ms");
-
-            /* Process orphan queue. */
-            ProcessOrphans(hashTx);
-
-            /* Relay tx if creating ourselves. */
-            if(!pnode && LLP::TRITIUM_SERVER)
-            {
-                /* Relay the transaction notification. */
-                LLP::TRITIUM_SERVER->Relay
-                (
-                    LLP::TritiumNode::ACTION::NOTIFY,
-                    uint8_t(LLP::TritiumNode::TYPES::TRANSACTION),
-                    hashTx
-                );
-            }
-
-            /* Notify private to produce block if valid. */
-            if(config::fHybrid.load())
-                PRIVATE_CONDITION.notify_all();
-
-            return true;
+            return false;
         }
 
 
@@ -410,6 +440,10 @@ namespace TAO
             if(mapConflicts.count(hashTx))
                 mapConflicts.erase(hashTx);
 
+            /* Erase from rejected memory. */
+            if(mapRejected.count(hashTx))
+                mapRejected.erase(hashTx);
+
             /* Erase from legacy conflicted memory. */
             if(mapLegacyConflicts.count(hashTx))
                 mapLegacyConflicts.erase(hashTx);
@@ -454,8 +488,6 @@ namespace TAO
         {
             RECURSIVE(MUTEX);
 
-            //TODO: evict conflicted transctions from mempool
-
             /* Create map of transactions by genesis. */
             std::map<uint256_t, std::vector<TAO::Ledger::Transaction> > mapTransactions;
 
@@ -474,119 +506,121 @@ namespace TAO
             }
 
             /* Loop transctions map by genesis. */
-            for(auto& list : mapTransactions)
+            for(auto& rTransaction : mapTransactions)
             {
                 /* Get reference of the vector. */
-                std::vector<TAO::Ledger::Transaction>& vtx = list.second;
+                std::vector<TAO::Ledger::Transaction>& vtx = rTransaction.second;
 
                 /* Sort the list by sequence numbers. */
                 std::sort(vtx.begin(), vtx.end());
 
                 /* Add the hashes into list. */
-                uint512_t hashLast = 0;
-
-                /* Check last hash for valid transactions. */
-                if(!vtx[0].IsFirst())
-                {
-                    /* Read last hash. */
-                    if(!LLD::Ledger->ReadLast(list.first, hashLast))
-                        break;
-
-                    /* Check the last hash. */
-                    if(vtx[0].hashPrevTx != hashLast)
-                    {
-                        /* Debug information. */
-                        debug::error(FUNCTION, "ROOT ORPHAN: last hash mismatch ", vtx[0].hashPrevTx.SubString());
-
-                        debug::log(3, "REMOVE ------------------------------");
-
-                        /* Disconnect all transactions in reverse order. */
-                        for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
-                        {
-                            /* Show the removal. */
-                            tx->print();
-
-                            /* Reset memory states to disk indexes. */
-                            if(!tx->Disconnect(FLAGS::ERASE))
-                            {
-                                debug::error(FUNCTION, "failed to disconnect tx ", tx->GetHash().SubString());
-
-                                break;
-                            }
-
-                            /* Find the transaction in pool. */
-                            if(mapLedger.count(tx->GetHash()))
-                            {
-                                debug::log(0, "DELETED ", tx->GetHash().SubString());
-
-                                /* Erase from the memory map. */
-                                mapClaimed.erase(tx->hashPrevTx);
-                                mapLedger.erase(tx->GetHash());
-                            }
-                        }
-
-                        debug::log(3, "END REMOVE ------------------------------");
-
-
-                        break;
-                    }
-                }
-
-                /* Set last from next transaction. */
-                hashLast = vtx[0].GetHash();
+                uint512_t hashLastDisk = 0;
+                if(!LLD::Ledger->ReadLast(rTransaction.first, hashLastDisk))
+                    break;
 
                 /* Loop through transaction by genesis. */
-                for(uint32_t n = 1; n < vtx.size(); ++n)
+                uint512_t hashLast = hashLastDisk; //we make a copy here so we can know when we reached end of chain.
+                for(uint32_t n = 0; n < vtx.size(); ++n)
                 {
-                    /* Check for end of index. */
-                    if(n == vtx.size())
-                        break;
-
-                    /* Check that transaction is in sequence. */
-                    if(vtx[n].hashPrevTx != hashLast)
+                    /* We don't run this check on our first transaction. */
+                    if(!vtx[n].IsFirst())
                     {
-                        /* Debug information. */
-                        debug::error(FUNCTION, "ORPHAN DETECTED INDEX ", n, ": last hash mismatch ", vtx[n].hashPrevTx.SubString());
+                        /* Start a ACID transaction (to be disposed). */
+                        LLD::TxnBegin(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
 
-                        debug::log(3, "REMOVE ------------------------------");
-
-                        /* Begin the memory transaction. */
-                        LLD::TxnBegin(FLAGS::MEMPOOL);
-
-                        /* Disconnect all transactions in reverse order. */
-                        for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
+                        /* Check the contracts for our root transaction to make sure it's valid. */
+                        bool fContractInvalid = false;
+                        for(const auto& rContract : vtx[n].Contracts())
                         {
-                            tx->print();
-
-                            if(tx->GetHash() == hashLast)
+                            /* Sanitize the contract. */
+                            if(!rContract.Sanitize())
                             {
-                                debug::log(0, "REACHED HASH LAST");
+                                fContractInvalid = true;
                                 break;
                             }
-
-                            /* Reset memory states to disk indexes. */
-                            if(!tx->Disconnect(FLAGS::MEMPOOL))
-                            {
-                                LLD::TxnAbort(FLAGS::MEMPOOL);
-
-                                break;
-                            }
-
-                            Remove(tx->GetHash());
                         }
 
-                        /* Commit the memory transaction. */
-                        LLD::TxnCommit(FLAGS::MEMPOOL);
+                        /* Abort the mempool ACID transaction once the contract is sanitized */
+                        LLD::TxnAbort(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
 
-                        debug::log(3, "END REMOVE ------------------------------");
+                        /* Check that transaction is in sequence. */
+                        if(vtx[n].hashPrevTx != hashLast || fContractInvalid)
+                        {
+                            /* Debug information. */
+                            if(fContractInvalid)
+                                debug::notice(FUNCTION, "ORPHAN REJECTED AT INDEX ", n, ": invalid orphan chain ", vtx[n].hashPrevTx.SubString());
+                            else
+                                debug::notice(FUNCTION, "ORPHAN DETECTED AT INDEX ", n, ": last hash mismatch ", vtx[n].hashPrevTx.SubString());
 
+                            /* Begin the memory transaction. */
+                            LLD::TxnBegin(FLAGS::MEMPOOL, LLD::INSTANCES::MEMORY);
 
-                        break;
+                            /* Disconnect all transactions in reverse order. */
+                            for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
+                            {
+                                /* Find the transaction in pool. */
+                                const uint512_t hashTx = tx->GetHash();
+
+                                /* Check for our stop hash. */
+                                if(hashTx == hashLast)
+                                {
+                                    debug::notice(FUNCTION, "REACHED HASH LAST ", hashLast.SubString());
+                                    break;
+                                }
+
+                                /* Debug output tx. */
+                                tx->print();
+
+                                /* Check for ending of sequence. */
+                                const bool fRoot = (n == 0);
+
+                                /* Reset memory states to disk indexes. */
+                                if(!tx->Disconnect(fRoot ? FLAGS::ERASE : FLAGS::MEMPOOL))
+                                {
+                                    LLD::TxnAbort(FLAGS::MEMPOOL, LLD::INSTANCES::MEMORY);
+                                    break;
+                                }
+
+                                /* Erase from the memory map. */
+                                Remove(hashTx);
+
+                                /* Write the txid of deleted transactions. */
+                                debug::notice(FUNCTION, "DELETED ", hashTx.SubString());
+
+                                /* Special output for our root orphan. */
+                                if(fRoot)
+                                    debug::notice(FUNCTION, "ROOT ORPHAN: disconnected root with FLAGS::ERASE: ", hashTx.SubString());
+                            }
+
+                            /* Commit the memory transaction. */
+                            LLD::TxnCommit(FLAGS::MEMPOOL, LLD::INSTANCES::MEMORY);
+
+                            break;
+                        }
                     }
 
                     /* Set last hash. */
                     hashLast = vtx[n].GetHash();
                 }
+            }
+
+            //TODO: evict conflicted transctions from mempool by checking sequence number to current disk height
+            /* Create map of transactions by genesis. */
+            std::map<uint256_t, std::vector<TAO::Ledger::Transaction> > mapConflicted;
+
+            /* Loop through all our conflicted transactions. */
+            for(const auto& tx : mapConflicts)
+            {
+                /* Cache the genesis. */
+                const uint256_t& hashGenesis = tx.second.hashGenesis;
+
+                /* Check in map for push back. */
+                if(!mapConflicted.count(hashGenesis))
+                    mapConflicted[hashGenesis] = std::vector<TAO::Ledger::Transaction>();
+
+                /* Push to back of map. */
+                mapConflicted[hashGenesis].push_back(tx.second);
             }
         }
 
@@ -595,8 +629,6 @@ namespace TAO
         bool Mempool::List(std::vector<uint512_t> &vHashes, uint32_t nCount, bool fLegacy)
         {
             RECURSIVE(MUTEX);
-
-            //TODO: need to check dependant transactions and sequence them properly otherwise this will fail
 
             /* If legacy flag set, skip over getting tritium transactions. */
             if(!fLegacy)
@@ -610,6 +642,10 @@ namespace TAO
                     /* Check that this transaction isn't conflicted. */
                     //if(mapConflicts.count(tx.first))
                     //    continue;
+
+                    /* Check that this transaction hasn't been rejected. */
+                    if(mapRejected.count(tx.first))
+                        continue;
 
                     /* Cache the genesis. */
                     const uint256_t& hashGenesis = tx.second.hashGenesis;

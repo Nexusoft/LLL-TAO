@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -97,6 +97,10 @@ namespace TAO::API
             dTotal =
                 (dAmount / dPrice);
 
+            /* Check that we have a valid total. */
+            if(dTotal == 0)
+                throw Exception(-7, "Order total value is zero, make sure you are using the correct amounts");
+
             /* Set our values now. */
             nDebit  = dAmount.nValue;
             nCredit = dTotal.nValue;
@@ -128,6 +132,10 @@ namespace TAO::API
             /* Calculate our total value now. */
             dTotal =
                 (dAmount * dPrice);
+
+            /* Check that we have a valid total. */
+            if(dTotal == 0)
+                throw Exception(-7, "Order total value is zero, make sure you are using the correct amounts");
 
             /* Set our values now. */
             nDebit  = dAmount.nValue;

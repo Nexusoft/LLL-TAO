@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-        (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+        Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-        (c) Copyright The Nexus Developers 2014 - 2021
+        (c) Copyright The Nexus Developers 2014 - 2023
 
         Distributed under the MIT software license, see the accompanying
         file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -38,8 +38,8 @@ namespace TAO
                 return TESTNET_MATURITY_BLOCKS;
 
             /* Apply legacy interval for all versions prior to version 7.  If the caller is not able to provide a block to base
-               this calculation off, then we will use the stateBest instead */
-            if((!block.IsNull() ? block.nVersion : TAO::Ledger::ChainState::stateBest.load().nVersion) < 7 )
+               this calculation off, then we will use the tStateBest instead */
+            if((!block.IsNull() ? block.nVersion : TAO::Ledger::ChainState::tStateBest.load().nVersion) < 7 )
                 return NEXUS_MATURITY_LEGACY;
 
             return NEXUS_MATURITY_COINBASE;
@@ -53,8 +53,8 @@ namespace TAO
                 return TESTNET_MATURITY_BLOCKS;
 
             /* Apply legacy interval for all versions prior to version 7.  If the caller is not able to provide a block to base
-               this calculation off, then we will use the stateBest instead */
-            if((!block.IsNull() ? block.nVersion : TAO::Ledger::ChainState::stateBest.load().nVersion) < 7 )
+               this calculation off, then we will use the tStateBest instead */
+            if((!block.IsNull() ? block.nVersion : TAO::Ledger::ChainState::tStateBest.load().nVersion) < 7 )
                 return NEXUS_MATURITY_LEGACY;
 
             return NEXUS_MATURITY_COINSTAKE;

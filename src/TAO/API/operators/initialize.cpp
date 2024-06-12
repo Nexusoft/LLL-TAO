@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -17,11 +17,12 @@ ________________________________________________________________________________
 #include <TAO/API/types/operators/initialize.h>
 #include <TAO/API/types/operators/array.h>
 #include <TAO/API/types/operators/count.h>
+#include <TAO/API/types/operators/floor.h>
+#include <TAO/API/types/operators/lookup.h>
 #include <TAO/API/types/operators/max.h>
 #include <TAO/API/types/operators/mean.h>
 #include <TAO/API/types/operators/min.h>
 #include <TAO/API/types/operators/mode.h>
-#include <TAO/API/types/operators/floor.h>
 #include <TAO/API/types/operators/sum.h>
 
 #include <Util/include/string.h>
@@ -62,6 +63,18 @@ namespace TAO::API
                 std::bind
                 (
                     &Operators::Floor,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            )
+        },
+
+        /* Handle for the LOOKUP operator. */
+        { "lookup", Operator
+            (
+                std::bind
+                (
+                    &Operators::Lookup,
                     std::placeholders::_1,
                     std::placeholders::_2
                 )

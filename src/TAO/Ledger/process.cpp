@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-		(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+		Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-		(c) Copyright The Nexus Developers 2014 - 2021
+		(c) Copyright The Nexus Developers 2014 - 2023
 
 		Distributed under the MIT software license, see the accompanying
 		file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -13,10 +13,12 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <LLP/types/tritium.h>
+#include <LLP/include/global.h>
 
 #include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/chainstate.h>
+
+#include <TAO/Ledger/types/locator.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -78,6 +80,31 @@ namespace TAO
                         /* Clear the set. */
                         setIncomplete.erase(block.hashPrevBlock);
                         setIncomplete.insert(hashBlock); //insert this block as current head of incomplete chain
+
+                        /* Normal case of asking for a getblocks inventory message. */
+                        #ifndef DEBUG_MISSING
+                        std::shared_ptr<LLP::TritiumNode> pnode = LLP::TRITIUM_SERVER->GetConnection();
+                        if(pnode != nullptr)
+                        {
+                            /* Send out another getblocks request. */
+                            try
+                            {
+                                /* Ask for list of blocks if this is current sync node. */
+                                pnode->PushMessage(LLP::TritiumNode::ACTION::LIST,
+                                    config::fClient.load() ? uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT) : uint8_t(LLP::TritiumNode::SPECIFIER::SYNC),
+                                    uint8_t(LLP::TritiumNode::TYPES::BLOCK),
+                                    uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
+                                    TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                                    uint1024_t(0)
+                                );
+                            }
+                            catch(const std::exception& e)
+                            {
+                                /* Recurse on failure. */
+                                debug::error(FUNCTION, e.what());
+                            }
+                        }
+                        #endif
 
                         /* Debug output. */
                         debug::log(0, FUNCTION, "INCOMPLETE height=", block.nHeight, " prev=", block.hashPrevBlock.SubString());

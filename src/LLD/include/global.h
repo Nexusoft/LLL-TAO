@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -36,6 +36,27 @@ namespace LLD
     //for legacy objects
     extern TrustDB*      Trust;
     extern LegacyDB*     Legacy;
+
+    /** Use this to track database instances to use with our ACID transactions. **/
+    struct INSTANCES
+    {
+        enum : uint16_t
+        {
+            LOGICAL  = (1 << 1),
+            CONTRACT = (1 << 2),
+            REGISTER = (1 << 3),
+            LEDGER   = (1 << 4),
+            LOCAL    = (1 << 5),
+            CLIENT   = (1 << 6),
+            TRUST    = (1 << 7),
+            LEGACY   = (1 << 8),
+
+            //combined values
+            CONSENSUS = (CONTRACT | REGISTER | LEDGER | TRUST | LEGACY),
+            MERKLE    = (CONTRACT | REGISTER | CLIENT | LOGICAL),
+            MEMORY    = (CONTRACT | REGISTER | LEDGER),
+        };
+    };
 
 
     /** Initialize
@@ -75,7 +96,7 @@ namespace LLD
      *  Global handler for all LLD instances.
      *
      */
-    void TxnBegin(const uint8_t nFlags = 0);
+    void TxnBegin(const uint8_t nFlags = 0, const uint16_t nInstances = INSTANCES::CONSENSUS);
 
 
     /** Txn Abort
@@ -83,7 +104,7 @@ namespace LLD
      *  Global handler for all LLD instances.
      *
      */
-    void TxnAbort(const uint8_t nFlags = 0);
+    void TxnAbort(const uint8_t nFlags = 0, const uint16_t nInstances = INSTANCES::CONSENSUS);
 
 
     /** Txn Commit
@@ -91,7 +112,7 @@ namespace LLD
      *  Global handler for all LLD instances.
      *
      */
-    void TxnCommit(const uint8_t nFlags = 0);
+    void TxnCommit(const uint8_t nFlags = 0, const uint16_t nInstances = INSTANCES::CONSENSUS);
 }
 
 #endif

@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -263,7 +263,7 @@ namespace LLP
                     LLD::Ledger->ReadLast(TAO::API::Authentication::Caller(), nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
 
                     /* Debug output. */
-                    debug::log(2, FUNCTION, "New Connection from ", GetAddress().ToStringIP());
+                    debug::log(3, FUNCTION, "New Connection from ", GetAddress().ToStringIP());
                 }
                 catch(const TAO::API::Exception& e)
                 {
@@ -301,7 +301,7 @@ namespace LLP
                         strReason = "UNKNOWN";
                         break;
                 }
-                debug::log(2, FUNCTION, "Disconnecting ", GetAddress().ToStringIP(), " (", strReason, ")");
+                debug::log(3, FUNCTION, "Disconnecting ", GetAddress().ToStringIP(), " (", strReason, ")");
                 return;
             }
         }
@@ -323,6 +323,16 @@ namespace LLP
 
         if(!fLocalTestnet && nConnections == 0)
             return debug::error(FUNCTION, "No network connections.");
+
+        /* Special rule for testnet so we don't bloat the chain. */
+        if(config::fTestNet.load() && TAO::Ledger::mempool.Size() == 0)
+        {
+            /* Handle if on verbose=3. */
+            if(config::nVerbose.load() >= 3)
+                return debug::error(FUNCTION, "Cannot mine with no pending transactions for -testnet");
+
+            return false;
+        }
 
         /* No mining when synchronizing. */
         if(TAO::Ledger::ChainState::Synchronizing())
@@ -348,7 +358,6 @@ namespace LLP
         /* Evaluate the packet header to determine what to do. */
         switch(PACKET.HEADER)
         {
-
             /* Set the Mining Channel this Connection will Serve Blocks for. */
             case SET_CHANNEL:
             {
@@ -385,7 +394,7 @@ namespace LLP
             case SET_COINBASE:
             {
                 /* The maximum coinbase reward for a block. */
-                uint64_t nMaxValue = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel.load(), 0);
+                uint64_t nMaxValue = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::tStateBest.load(), nChannel.load(), 0);
 
                 /* Make sure there is a coinbase reward. */
                 if(nMaxValue == 0)
@@ -524,7 +533,7 @@ namespace LLP
             case GET_REWARD:
             {
                 /* Get the mining reward amount for the channel currently set. */
-                uint64_t nReward = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel.load(), 0);
+                uint64_t nReward = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::tStateBest.load(), nChannel.load(), 0);
 
                 /* Check to make sure the reward is greater than zero. */
                 if(nReward == 0)
@@ -661,7 +670,7 @@ namespace LLP
             }
         }
 
-        return false;
+        return debug::error(FUNCTION, "Command not found ", std::hex, uint32_t(PACKET.HEADER));
     }
 
 
@@ -796,7 +805,7 @@ namespace LLP
         /* Set the block iterator back to zero so we can iterate new blocks next round. */
         nBlockIterator = 0;
 
-        debug::log(2, FUNCTION, "Cleared map of blocks");
+        debug::log(3, FUNCTION, "Cleared map of blocks");
     }
 
 
@@ -993,7 +1002,7 @@ namespace LLP
 
             /* Check if the block is stale. */
             if(pBlock->hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
-                return false;
+                return debug::error(FUNCTION, "submitted block is stale");
 
             /* Unlock sigchain to create new block. */
             SecureString strPIN;

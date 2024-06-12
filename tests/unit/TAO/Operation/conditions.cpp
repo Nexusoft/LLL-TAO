@@ -604,7 +604,7 @@ TEST_CASE( "Conditions Tests", "[condition]" )
     block.nChannelHeight = 3;
     block.nChainTrust    = 55;
 
-    TAO::Ledger::ChainState::stateBest.store(block);
+    TAO::Ledger::ChainState::tStateBest.store(block);
 
 
     contract.Clear();

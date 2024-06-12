@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -100,6 +100,10 @@ namespace TAO::API
                     encoding::json jOrder =
                         OrderToJSON(tContract, pairMarket);
 
+                    /* Check for null value. */
+                    if(jOrder.is_null())
+                        continue;
+
                     /* Check that we match our filters. */
                     if(!FilterResults(jParams, jOrder))
                         continue;
@@ -177,6 +181,10 @@ namespace TAO::API
                     /* Get our order's json. */
                     encoding::json jOrder =
                         OrderToJSON(tContract, pairMarket);
+
+                    /* Check for null value. */
+                    if(jOrder.is_null())
+                        continue;
 
                     /* Check that we match our filters. */
                     if(!FilterResults(jParams, jOrder))

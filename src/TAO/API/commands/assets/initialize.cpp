@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -67,6 +67,29 @@ namespace TAO::API
                 return GetStandardType(rObject) == USER_TYPES::ASSET;
             }
             , "raw"
+        );
+
+        /* Populate our raw standard. */
+        mapStandards["account"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& rObject)
+            {
+                /* Check for correct state type. */
+                if(rObject.nType != TAO::Register::REGISTER::OBJECT)
+                    return false;
+
+                /* Make sure this isn't a command-set standard. */
+                if(!rObject.Check("_usertype", TAO::Register::TYPES::UINT16_T, false))
+                    return false;
+
+                /* Check that this has the correct usertype. */
+                if(rObject.get<uint16_t>("_usertype") != USER_TYPES::ASSET)
+                    return false;
+
+                return rObject.Standard() == TAO::Register::OBJECTS::ACCOUNT;
+            }
+            , "account"
         );
 
         /* Populate our readonly standard. */

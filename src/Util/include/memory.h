@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -248,8 +248,6 @@ namespace memory
         template<class TypeName>
         void encrypt(const TypeName& data)
         {
-            return;
-
             static bool fKeySet = false;
             static std::vector<uint8_t> vKey(AES_KEYLEN);
             static std::vector<uint8_t> vIV(AES_BLOCKLEN);
@@ -264,11 +262,11 @@ namespace memory
             }
 
             /* Create the AES context. */
-            struct AES_ctx ctx;
-            AES_init_ctx_iv(&ctx, &vKey[0], &vIV[0]);
+            //struct AES_ctx ctx;
+            //AES_init_ctx_iv(&ctx, &vKey[0], &vIV[0]);
 
             /* Encrypt the buffer data. */
-            AES_CTR_xcrypt_buffer(&ctx, (uint8_t*)&data, sizeof(data));
+            //AES_CTR_xcrypt_buffer(&ctx, (uint8_t*)&data, sizeof(data));
         }
 
 
@@ -280,8 +278,6 @@ namespace memory
         template<class TypeName>
         void encrypt(const std::vector<TypeName>& data)
         {
-            return;
-
             static bool fKeySet = false;
             static std::vector<uint8_t> vKey(AES_KEYLEN);
             static std::vector<uint8_t> vIV(AES_BLOCKLEN);
@@ -296,11 +292,11 @@ namespace memory
             }
 
             /* Create the AES context. */
-            struct AES_ctx ctx;
-            AES_init_ctx_iv(&ctx, &vKey[0], &vIV[0]);
+            //struct AES_ctx ctx;
+            //AES_init_ctx_iv(&ctx, &vKey[0], &vIV[0]);
 
             /* Encrypt the buffer data. */
-            AES_CTR_xcrypt_buffer(&ctx, (uint8_t*)&data[0], data.size() * sizeof(TypeName));
+            //AES_CTR_xcrypt_buffer(&ctx, (uint8_t*)&data[0], data.size() * sizeof(TypeName));
         }
 
 
@@ -311,8 +307,6 @@ namespace memory
          **/
         void encrypt(const std::string& data)
         {
-            return;
-
             static bool fKeySet = false;
             static std::vector<uint8_t> vKey(AES_KEYLEN);
             static std::vector<uint8_t> vIV(AES_BLOCKLEN);
@@ -327,11 +321,11 @@ namespace memory
             }
 
             /* Create the AES context. */
-            struct AES_ctx ctx;
-            AES_init_ctx_iv(&ctx, &vKey[0], &vIV[0]);
+            //struct AES_ctx ctx;
+            //AES_init_ctx_iv(&ctx, &vKey[0], &vIV[0]);
 
             /* Encrypt the buffer data. */
-            AES_CTR_xcrypt_buffer(&ctx, (uint8_t*)&data[0], data.size());
+            //AES_CTR_xcrypt_buffer(&ctx, (uint8_t*)&data[0], data.size());
         }
 
 
@@ -343,8 +337,6 @@ namespace memory
          **/
         void encrypt(const SecureString& data)
         {
-            return;
-
             static bool fKeySet = false;
             static std::vector<uint8_t> vKey(AES_KEYLEN);
             static std::vector<uint8_t> vIV(AES_BLOCKLEN);
@@ -359,11 +351,11 @@ namespace memory
             }
 
             /* Create the AES context. */
-            struct AES_ctx ctx;
-            AES_init_ctx_iv(&ctx, &vKey[0], &vIV[0]);
+            //struct AES_ctx ctx;
+            //AES_init_ctx_iv(&ctx, &vKey[0], &vIV[0]);
 
             /* Encrypt the buffer data. */
-            AES_CTR_xcrypt_buffer(&ctx, (uint8_t*)&data[0], data.size());
+            //AES_CTR_xcrypt_buffer(&ctx, (uint8_t*)&data[0], data.size());
         }
     };
 

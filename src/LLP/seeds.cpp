@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -24,12 +24,7 @@ namespace LLP
         "node2.nexus.io",
         "node3.nexus.io",
         "node4.nexus.io",
-
-        //interactions DNS seeds
-        "lite1.nexenture.xyz",
-        "lite2.nexenture.xyz",
-        "lite3.nexenture.xyz",
-        "lite4.nexenture.xyz",
+        "node5.nexus.io",
 
         //cryptowise university
         "seed1.nexusnode.cryptowiseuniversity.net",
@@ -53,8 +48,5 @@ namespace LLP
     {
         "node1.nexus.io",
         "node2.nexus.io",
-        "testnet1.interactions-nexus.io",
-        "testnet2.interactions-nexus.io",
-        "testnet3.interactions-nexus.io"
     };
 }

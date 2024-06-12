@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -72,6 +72,17 @@ namespace TAO::API
 
         /* Now let's check that the enum values match. */
         return mapStandards.at(strType).Check(tObject);
+    }
+
+
+    /* Check if a given standard exists in this command-set. */
+    bool Base::HasStandard(const std::string& strStandard) const
+    {
+        /* Check for wildcard's first. */
+         if(strStandard == "any" || strStandard == "all")
+            return false;
+
+        return mapStandards.count(strStandard);
     }
 
 

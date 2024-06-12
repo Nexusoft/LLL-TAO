@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -303,10 +303,6 @@ namespace TAO::API
                 const std::string strName =
                     (*it)["name"].get<std::string>();
 
-                /* Make sure the name is not reserved. */
-                if(TAO::Register::Reserved(strName))
-                    throw Exception(-22, "Field [", strName, "] is a reserved field name");
-
                 /* Check for user-type reserved field. */
                 if(strName == "_usertype")
                     throw Exception(-22, "Field [_usertype] is a reserved field name");
@@ -322,6 +318,10 @@ namespace TAO::API
                 /* Grab our type string from parameter */
                 const std::string strType =
                     (*it)["type"].get<std::string>();
+
+                /* Make sure the name is not reserved. */
+                if(TAO::Register::Reserved(strName, strType, fMutable))
+                    throw Exception(-22, "Field [", strName, "] is a reserved or using incorrect data-type");
 
                 /* Handle for 8-bit unsigned int. */
                 if(strType == "uint8")
@@ -341,7 +341,27 @@ namespace TAO::API
 
                 /* Handle for 256-bit unsigned int. */
                 if(strType == "uint256")
-                    tPayload << uint8_t(TAO::Register::TYPES::UINT256_T) << ExtractHash<uint256_t>((*it), "value");
+                {
+                    /* Special parameter check. */
+                    if(it->find("value") == it->end())
+                        throw Exception(-56, "Missing Parameter [value]");
+
+                    /* Check our internal JSON value. */
+                    const std::string& strValue =
+                        (*it)["value"].get<std::string>();
+
+                    /* Check if this is a valid register address. */
+                    uint256_t hashRet =
+                        TAO::Register::Address(strValue);
+
+                    /* Special handle for address. */
+                    if(!TAO::Register::Address(hashRet).IsValid())
+                        hashRet = ExtractHash<uint256_t>((*it), "value");
+
+                    /* Build our payload now. */
+                    tPayload << uint8_t(TAO::Register::TYPES::UINT256_T) << hashRet;
+                }
+
 
                 /* Handle for 512-bit unsigned int. */
                 if(strType == "uint512")
@@ -404,6 +424,32 @@ namespace TAO::API
                     tPayload << uint8_t(TAO::Register::TYPES::BYTES) << vPayload;
                 }
             }
+
+            /* Make sure our payload object is parsed now. */
+            tPayload.Parse();
+
+            /* Check if we fit any stadard objects. */
+            const uint8_t nCheck = tPayload.Standard();
+
+            /* Handle for a custom account standard type. */
+            if(nCheck == TAO::Register::OBJECTS::ACCOUNT)
+                hashRegister.SetType(TAO::Register::Address::ACCOUNT);
+
+            /* Handle for a custom token standard type. */
+            if(nCheck == TAO::Register::OBJECTS::TOKEN)
+                hashRegister.SetType(TAO::Register::Address::TOKEN);
+
+            /* Handle for a custom name standard type. */
+            if(nCheck == TAO::Register::OBJECTS::NAME)
+                hashRegister.SetType(TAO::Register::Address::NAME);
+
+            /* Handle for a custom namespace standard type. */
+            if(nCheck == TAO::Register::OBJECTS::NAMESPACE)
+                hashRegister.SetType(TAO::Register::Address::NAMESPACE);
+
+            /* Handle for a custom crypto standard type. */
+            if(nCheck == TAO::Register::OBJECTS::CRYPTO)
+                hashRegister.SetType(TAO::Register::Address::CRYPTO);
 
             /* Submit the payload object. */
             vContracts[0] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister;

@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2019
+			(c) Copyright The Nexus Developers 2014 - 2023
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/extract.h>
 
 #include <TAO/API/types/authentication.h>
+#include <TAO/API/types/notifications.h>
 
 #include <TAO/Register/types/address.h>
 #include <TAO/Register/types/object.h>
@@ -53,6 +54,10 @@ namespace TAO::API
 
         /* Add the new session to sessions map. */
         mapSessions.insert(std::make_pair(hashSession, std::move(rSession)));
+
+        /* Handle auto-tx feature. */
+        if(config::GetBoolArg("-autotx", false))
+            Notifications::mapDispatch->insert(std::make_pair(hashSession, std::vector<TAO::Operation::Contract>()));
     }
 
 
@@ -303,6 +308,17 @@ namespace TAO::API
 
         /* Set the caller from our session data. */
         return rSession.Genesis();
+    }
+
+
+    /* Get the session-id of the given caller using session from params. */
+    uint256_t Authentication::ExtractSession(const encoding::json& jParams)
+    {
+        /* Get the current session-id. */
+        const uint256_t hashSession =
+            ExtractHash(jParams, "session", default_session());
+
+        return hashSession;
     }
 
 
@@ -622,6 +638,10 @@ namespace TAO::API
 
             RECURSIVE(vLocks[nHash % vLocks.size()]); //this will make sure transactions have finished processing
         }
+
+        /* Now we delete our pending queues. */
+        if(config::GetBoolArg("-autotx", false))
+            Notifications::mapDispatch->erase(hashSession);
 
         /* Terminate the session now. */
         RECURSIVE(MUTEX);

@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -259,6 +259,59 @@ namespace LLD
          *
          **/
         bool HasSession(const uint256_t& hashGenesis);
+
+
+        /** HasRecord
+         *
+         *  Check if a record exists for a table.
+         *
+         *  @param[in] strTable The table that we are checking for key in.
+         *  @param[in] strKey The key we are checking for in the table
+         *
+         *  @return True if record exists in table, false otherwise.
+         *
+         **/
+        bool HasRecord(const std::string& strTable, const std::string& strKey);
+
+
+        /** EraseRecord
+         *
+         *  Erase a record from a table.
+         *
+         *  @param[in] strTable The table that we are erasing in.
+         *  @param[in] strKey The key we are erasing in the table
+         *
+         *  @return True if record was erased, false otherwise.
+         *
+         **/
+        bool EraseRecord(const std::string& strTable, const std::string& strKey);
+
+
+        /** PushRecord
+         *
+         *  Push a new record to a given table.
+         *
+         *  @param[in] strTable The table that we are erasing in.
+         *  @param[in] strKey The key we are erasing in the table
+         *  @param[in] strValue The value that we are pushing as a record.
+         *
+         *  @return True if the session data exists, false otherwise.
+         *
+         **/
+        bool PushRecord(const std::string& strTable, const std::string& strKey, const std::string& strValue);
+
+
+        /** ListRecords
+         *
+         *  List the current records for a given table.
+         *
+         *  @param[in] strTable The table that we are erasing in.
+         *  @param[out] vRecords The return vector that holds records retrieved.
+         *
+         *  @return True if we found data in the given records.
+         *
+         **/
+        bool ListRecords(const std::string& strTable, std::vector<std::pair<std::string, std::string>> &vRecords);
 
     };
 }

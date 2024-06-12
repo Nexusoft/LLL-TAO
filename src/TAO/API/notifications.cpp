@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2019
+			(c) Copyright The Nexus Developers 2014 - 2023
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -30,6 +30,8 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/build.h>
 
+#include <TAO/Ledger/types/mempool.h>
+
 #include <Util/include/args.h>
 
 /* Global TAO namespace. */
@@ -39,9 +41,23 @@ namespace TAO::API
     std::vector<std::thread> Notifications::vThreads;
 
 
+    /* Track all of our outgoing dispatched contracts. */
+    util::atomic::lock_unique_ptr<std::map<uint256_t, std::vector<TAO::Operation::Contract>>> Notifications::mapDispatch;
+
+
     /* Initializes the current notification systems. */
     void Notifications::Initialize()
     {
+        /* Build our dispatch queue. */
+        if(config::GetBoolArg("-autotx", false))
+        {
+            mapDispatch =
+                util::atomic::lock_unique_ptr<std::map<uint256_t, std::vector<TAO::Operation::Contract>>>
+                (
+                    new std::map<uint256_t, std::vector<TAO::Operation::Contract>>()
+                );
+        }
+
         /* Get the total manager threads. */
         const uint64_t nThreads =
             config::GetArg("-notificationsthreads", 1);
@@ -66,7 +82,7 @@ namespace TAO::API
             }
 
             /* We want to sleep while looping to not consume our cpu cycles. */
-            runtime::sleep(3000);
+            runtime::sleep(1000);
 
             /* Get a current list of our active sessions. */
             const auto vSessions =
@@ -85,10 +101,6 @@ namespace TAO::API
                     if(config::fSuspended.load())
                         break;
 
-                    /* Check that we have active connections. */
-                    if(LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->GetConnectionCount() == 0)
-                        break;
-
                     /* Cache some local variables. */
                     const uint256_t& hashSession = rSession.first;
                     const uint256_t& hashGenesis = rSession.second;
@@ -99,10 +111,10 @@ namespace TAO::API
 
                     /* Check if sigchain is mature. */
                     if(!CheckMature(hashGenesis))
+                    {
+                        //XXX: check here if we have orphaned any of our own transactions mining
                         continue;
-
-                    /* Broadcast our unconfirmed transactions first. */
-                    Indexing::BroadcastUnconfirmed(hashGenesis);
+                    }
 
                     /* Build a json object. */
                     const encoding::json jSession =
@@ -110,113 +122,88 @@ namespace TAO::API
                         { "session", hashSession.ToString() },
                     };
 
-                    /* Get a list of our active events. */
-                    std::vector<std::pair<uint512_t, uint32_t>> vEvents;
+                    /* Check if we need to cleanup any unconfirmed transaction chains. */
+                    if(!config::fHybrid.load())
+                    {
+                        /* Sanitize our unconfirmed transactions. */
+                        if(!SanitizeUnconfirmed(hashGenesis, jSession))
+                            continue;
 
-                    /* Get our list of active events we need to respond to. */
-                    LLD::Logical->ListEvents   (hashGenesis, vEvents);
-                    LLD::Logical->ListContracts(hashGenesis, vEvents);
+                        /* Broadcast our unconfirmed transactions first. */
+                        Indexing::BroadcastUnconfirmed(hashGenesis);
+                    }
+
+                    /* Build our list of contracts. */
+                    std::vector<TAO::Operation::Contract> vContracts;
+
+                    /* Check for -autotx enabled. */
+                    std::vector<TAO::Operation::Contract> vDispatch;
+                    if(config::GetBoolArg("-autotx", false))
+                    {
+                        /* Copy our contracts into local dispatch. */
+                        vDispatch =
+                            Notifications::mapDispatch->at(hashSession);
+
+                        /* Check that we have work to do. */
+                        if(!vDispatch.empty())
+                        {
+                            /* Don't proceed with -autotx if we are awaiting a new timespan. */
+                            if(!CheckTimespan(hashGenesis, config::fHybrid.load() ? 1 : 10))
+                                continue;
+
+                            /* Now clear so we don't double our work. We will add failures back later. */
+                            Notifications::mapDispatch->at(hashSession).clear();
+
+                            /* Build our pending transactions now. */
+                            const std::vector<uint512_t> vHashes =
+                                BuildAndAccept(jSession, vDispatch, TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS);
+
+                            debug::log(0, FUNCTION, "[AUTOTX] Built ", vHashes.size(), " transactions for ", vDispatch.size(), " contracts");
+
+                            continue;
+                        }
+                    }
 
                     /* Track our unique events as we progress forward. */
                     std::set<std::pair<uint512_t, uint32_t>> setUnique;
 
-                    /* Build our list of contracts. */
-                    std::vector<TAO::Operation::Contract> vContracts;
-                    for(const auto& rEvent : vEvents)
+                    /* Get a list of our active events. */
+                    std::vector<std::pair<uint512_t, uint32_t>> vNotifications;
+                    LLD::Logical->ListEvents(hashGenesis, vNotifications, 500); //maximum of 500 per iteration
+
+                    /* Loop through our active notifications. */
+                    bool fEventStop = false;
+                    for(const auto& rEvent : vNotifications)
                     {
-                        /* Check for shutdown. */
-                        if(config::fShutdown.load())
-                            break;
-
                         /* Check for unique events. */
-                        if(setUnique.count(rEvent))
+                        if(setUnique.count(std::make_pair(rEvent.first, rEvent.second)))
                             continue;
 
-                        /* Insert our event into unique set. */
-                        setUnique.insert(rEvent);
-
-                        /* Grab a reference of our hash. */
-                        const uint512_t& hashEvent = rEvent.first;
-
-                        /* Check for Tritium transaction. */
-                        if(hashEvent.GetType() == TAO::Ledger::TRITIUM)
+                        /* Build our contracts now. */
+                        if(build_notification(hashGenesis, jSession, rEvent, false, fEventStop, vContracts))
                         {
-                            /* Get the transaction from disk. */
-                            TAO::API::Transaction tx;
-                            if(!LLD::Ledger->ReadTx(hashEvent, tx))
-                                continue;
-
-                            /* Check if contract has been burned. */
-                            if(tx.Burned(hashEvent, rEvent.second))
-                                continue;
-
-                            /* Check if the transaction is mature. */
-                            if(!tx.Mature(hashEvent))
-                                continue;
+                            setUnique.insert(std::make_pair(rEvent.first, rEvent.second));
+                            fEventStop = true;
                         }
+                    }
 
-                        /* Get a referecne of our contract. */
-                        const TAO::Operation::Contract& rContract =
-                            LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
+                    /* Get a list of our active events. */
+                    std::vector<std::pair<uint512_t, uint32_t>> vContractSent;
+                    LLD::Logical->ListContracts(hashGenesis, vContractSent, 100); //maximum of 100 per iteration
 
-                        /* Check if the given contract is spent already. */
-                        if(rContract.Spent(rEvent.second))
+                    /* Loop through our sent contracts. */
+                    bool fContractStop = false;
+                    for(const auto& rEvent : vContractSent)
+                    {
+                        /* Check for unique events. */
+                        if(setUnique.count(std::make_pair(rEvent.first, rEvent.second)))
                             continue;
 
-                        /* Seek our contract to primitive OP. */
-                        rContract.SeekToPrimitive();
-
-                        /* Get a copy of our primitive. */
-                        uint8_t nOP = 0;
-                        rContract >> nOP;
-
-                        /* Switch for valid primitives. */
-                        switch(nOP)
+                        /* Build our contracts now. */
+                        if(build_notification(hashGenesis, jSession, rEvent, true, fContractStop, vContracts))
                         {
-                            /* Handle for if we need to credit. */
-                            case TAO::Operation::OP::LEGACY:
-                            case TAO::Operation::OP::DEBIT:
-                            case TAO::Operation::OP::COINBASE:
-                            {
-                                try
-                                {
-                                    /* Build our credit contract now. */
-                                    if(!BuildCredit(jSession, rEvent.second, rContract, vContracts))
-                                        continue;
-                                }
-                                catch(const Exception& e)
-                                {
-                                    debug::warning(FUNCTION, "failed to build crecit for ", hashEvent.SubString(), ": ", e.what());
-                                    continue;
-                                }
-
-                                break;
-                            }
-
-                            /* Handle for if we need to claim. */
-                            case TAO::Operation::OP::TRANSFER:
-                            {
-                                try
-                                {
-                                    /* Build our credit contract now. */
-                                    if(!BuildClaim(jSession, rEvent.second, rContract, vContracts))
-                                        continue;
-                                }
-                                catch(const Exception& e)
-                                {
-                                    debug::warning(FUNCTION, "failed to build claim for ", hashEvent.SubString(), ": ", e.what());
-                                    continue;
-                                }
-
-                                break;
-                            }
-
-                            /* Unknown ops we want to continue looping. */
-                            default:
-                            {
-                                debug::warning(FUNCTION, "unknown OP: ", std::hex, uint32_t(nOP));
-                                continue;
-                            }
+                            setUnique.insert(std::make_pair(rEvent.first, rEvent.second));
+                            fContractStop = true;
                         }
                     }
 
@@ -344,8 +331,8 @@ namespace TAO::API
                                                 {
                                                     /* Build some input parameters. */
                                                     encoding::json jBuild = jSession;
-                                                    jBuild["proof"]   = addrAccount.ToString();
-                                                    jBuild["address"] = mapAccounts[oSource.get<uint256_t>("token")].ToString();
+                                                    jBuild["proof"]       = addrAccount.ToString();
+                                                    jBuild["address"]     = mapAccounts[oSource.get<uint256_t>("token")].ToString();
 
                                                     /* Build our credit contract now. */
                                                     if(!BuildCredit(jBuild, nContract, rContract, vContracts))
@@ -386,7 +373,7 @@ namespace TAO::API
                     if(vContracts.empty())
                         continue;
 
-                    /* Build a list of contracts for transaction. */
+                    /* Build a list of sanitized contracts now. */
                     std::vector<TAO::Operation::Contract> vSanitized;
 
                     /* Sanitize our contract here to make sure we build a valid transaction. */
@@ -431,7 +418,7 @@ namespace TAO::API
 
 
     /* Checks that the contract passes both Build() and Execute() */
-    bool Notifications::SanitizeContract(TAO::Operation::Contract &rContract, std::map<uint256_t, TAO::Register::State> &mapStates)
+    bool Notifications::SanitizeContract(TAO::Operation::Contract &rContract, std::map<uint256_t, TAO::Register::State> &mapStates, const bool fLogError)
     {
         LOCK(LLP::TritiumNode::CLIENT_MUTEX);
 
@@ -439,16 +426,18 @@ namespace TAO::API
         bool fSanitized = false;
 
         /* Start a ACID transaction (to be disposed). */
-        LLD::TxnBegin(TAO::Ledger::FLAGS::MINER);
+        LLD::TxnBegin(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
 
         /* Temporarily disable error logging so that we don't log errors for contracts that fail to execute. */
-        debug::fLogError = false;
+        if(!fLogError)
+            debug::fLogError = false;
 
         try
         {
             /* Sanitize contract by building and executing it. */
             fSanitized =
-                TAO::Register::Build(rContract, mapStates, TAO::Ledger::FLAGS::MINER) && TAO::Operation::Execute(rContract, TAO::Ledger::FLAGS::MINER);
+                (TAO::Register::Build(rContract, mapStates, TAO::Ledger::FLAGS::SANITIZE) &&
+                 TAO::Operation::Execute(rContract, TAO::Ledger::FLAGS::SANITIZE));
 
             /* Reenable error logging. */
             debug::fLogError = true;
@@ -463,8 +452,312 @@ namespace TAO::API
         }
 
         /* Abort the mempool ACID transaction once the contract is sanitized */
-        LLD::TxnAbort(TAO::Ledger::FLAGS::MINER);
+        LLD::TxnAbort(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
 
         return fSanitized;
+    }
+
+
+    /* Checks that the contract passes both Build() and Execute() */
+    bool Notifications::SanitizeContract(const uint256_t& hashGenesis, TAO::Operation::Contract &rContract)
+    {
+        /* Bind our contract now to a timestamp and caller. */
+        rContract.Bind(runtime::unifiedtimestamp(), hashGenesis);
+
+        /* We are just wrapping around other overload here. */
+        std::map<uint256_t, TAO::Register::State> mapStates;
+        return SanitizeContract(rContract, mapStates);
+    }
+
+
+    /* Checks that the current unconfirmed transactions are in a valid state. */
+    bool Notifications::SanitizeUnconfirmed(const uint256_t& hashGenesis, const encoding::json& jSession)
+    {
+        /* Build list of transaction hashes. */
+        std::vector<uint512_t> vHashes;
+
+        /* Read all transactions from our last index. */
+        uint512_t hash;
+        if(!LLD::Logical->ReadLast(hashGenesis, hash))
+            return true; //we return true here so we don't stop notifications from processing
+
+        /* Track our total failed contracts for debugging purposes. */
+        uint32_t nFailedContracts = 0, nFeeContracts = 0;
+
+        /* Loop until we reach confirmed transaction. */
+        while(!config::fShutdown.load())
+        {
+            /* Read the transaction from the ledger database. */
+            TAO::API::Transaction tx;
+            if(!LLD::Logical->ReadTx(hash, tx))
+            {
+                debug::warning(FUNCTION, "read for ", hashGenesis.SubString(), " failed at tx ", hash.SubString());
+                break;
+            }
+
+            /* Check we have index to break. */
+            if(LLD::Ledger->HasIndex(hash))
+                break;
+
+            /* Push transaction to list. */
+            vHashes.push_back(hash); //this will warm up the LLD cache if available, or remain low footprint if not
+
+            /* Check for first. */
+            if(tx.IsFirst())
+                break;
+
+            /* Set hash to previous hash. */
+            hash = tx.hashPrevTx;
+        }
+
+        /* Track the root transaction that has an invalid contract in mempool. */
+        uint512_t hashRoot;
+
+        /* Reverse iterate our list of entries. */
+        std::vector<TAO::Operation::Contract> vSanitized;
+        for(auto hash = vHashes.rbegin(); hash != vHashes.rend(); ++hash)
+        {
+            /* Read the transaction from the ledger database. */
+            TAO::API::Transaction tx;
+            if(!LLD::Logical->ReadTx(*hash, tx))
+            {
+                debug::warning(FUNCTION, "read for ", hashGenesis.SubString(), " failed at tx ", hash->SubString());
+                break;
+            }
+
+            /* Start a ACID transaction (to be disposed). */
+            LLD::TxnBegin(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
+
+            /* Iterate through our contracts. */
+            for(const auto& rContract : tx.Contracts())
+            {
+                /* Make a copy of contract here since we will need a fresh copy to rebuild if failed. */
+                TAO::Operation::Contract tContract = rContract;
+
+                /* Sanitize the contract. */
+                if(tContract.Sanitize())
+                {
+                    /* We don't need to repeat our OP::FEE contracts. */
+                    if(tContract.Primitive() == TAO::Operation::OP::FEE)
+                    {
+                        ++nFeeContracts;
+                        continue;
+                    }
+
+                    /* Add to sanitized queue. */
+                    vSanitized.emplace_back(std::move(tContract));
+                }
+                else
+                {
+                    /* Set our root as the first occurance since the rest of the chain will then be invalid. */
+                    if(hashRoot == 0)
+                        hashRoot = *hash;
+
+                    /* Increment our failed counter. */
+                    ++nFailedContracts;
+
+                    debug::notice(FUNCTION, "failed to sanitize contract at tx ", hashRoot.SubString());
+                }
+            }
+
+            /* Abort the mempool ACID transaction once the contract is sanitized */
+            LLD::TxnAbort(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
+        }
+
+        /* Check if we need to rebuild our sigchain. */
+        if(hashRoot == 0)
+            return true;
+
+        /* If we reached here, we need to rebuild our sigchain indexes and transactions. */
+        debug::notice(FUNCTION, "sigchain contains ", nFailedContracts, " invalid contracts (", nFeeContracts, " OP::FEE's removed), rebuilding ", vSanitized.size(), " contracts");
+
+        /* Now we want to disconnect our transactions up to their root. */
+        for(const auto& rHash : vHashes)
+        {
+            /* Read the transaction from the ledger database. */
+            TAO::API::Transaction tx;
+            if(!LLD::Logical->ReadTx(rHash, tx))
+            {
+                debug::warning(FUNCTION, "read for ", hashGenesis.SubString(), " failed at tx ", rHash.SubString());
+                break;
+            }
+
+            /* Disconnect transaction's current memory state. */
+            if(!tx.Disconnect(TAO::Ledger::FLAGS::MEMPOOL))
+                debug::warning(FUNCTION, "failed to disconnect tx ", rHash.SubString());
+
+            /* Delete our transaction from logical database. */
+            if(!tx.Delete(rHash))
+                debug::warning(FUNCTION, "failed to delete tx ", rHash.SubString());
+
+            /* Remove from mepool. */
+            if(TAO::Ledger::mempool.Has(rHash))
+                TAO::Ledger::mempool.Remove(rHash);
+
+            /* Check if we are at our root now. */
+            if(rHash == hashRoot)
+                break;
+        }
+
+        /* Now build our official transaction. */
+        const std::vector<uint512_t> vRebuilt =
+            BuildAndAccept(jSession, vSanitized, TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS);
+
+        debug::log(0, FUNCTION, "Rebuilt ", vRebuilt.size(), " transactions for ", vSanitized.size(), " contracts");
+
+        return false;
+    }
+
+
+    /* Build an contract response to given notificaion. */
+    bool Notifications::build_notification(const uint256_t& hashGenesis, const encoding::json& jSession, const std::pair<uint512_t, uint32_t>& rEvent,
+        const bool fMine, const bool fStop, std::vector<TAO::Operation::Contract> &vContracts)
+    {
+        /* Grab a reference of our hash. */
+        const uint512_t& hashEvent = rEvent.first;
+
+        /* Check for Tritium transaction. */
+        if(hashEvent.GetType() == TAO::Ledger::TRITIUM)
+        {
+            /* Get the transaction from disk. */
+            TAO::API::Transaction tx;
+            if(!LLD::Ledger->ReadTx(hashEvent, tx))
+                return true;
+
+            /* Check if contract has been burned. */
+            if(tx.Burned(hashEvent, rEvent.second))
+            {
+                /* Check for our stop. */
+                if(fStop)
+                    return true;
+
+                /* For a burn we increment so we don't process same event again. */
+                if(fMine)
+                {
+                    /* Increment our contract sequence. */
+                    LLD::Logical->IncrementContractSequence(hashGenesis);
+                    return false;
+                }
+
+                /* Increment our notifications sequence. */
+                LLD::Logical->IncrementEventSequence(hashGenesis);
+                return false;
+            }
+
+            /* Check if the transaction is mature. */
+            if(!tx.Mature(hashEvent))
+                return true;
+        }
+
+        /* Get a referecne of our contract. */
+        const TAO::Operation::Contract& rContract =
+            LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
+
+        /* Check if the given contract is spent already. */
+        if(rContract.Spent(rEvent.second))
+        {
+            /* Check for our stop. */
+            if(fStop)
+                return true;
+
+            /* For a burn we increment so we don't process same event again. */
+            if(fMine)
+            {
+                /* Increment our contract sequence. */
+                LLD::Logical->IncrementContractSequence(hashGenesis);
+                return false;
+            }
+
+            /* Increment our notifications sequence. */
+            LLD::Logical->IncrementEventSequence(hashGenesis);
+            return false;
+        }
+
+        /* Seek our contract to primitive OP. */
+        rContract.SeekToPrimitive();
+
+        /* Get a copy of our primitive. */
+        uint8_t nOP = 0;
+        rContract >> nOP;
+
+        /* Switch for valid primitives. */
+        switch(nOP)
+        {
+            /* Handle for if we need to credit. */
+            case TAO::Operation::OP::LEGACY:
+            case TAO::Operation::OP::DEBIT:
+            case TAO::Operation::OP::COINBASE:
+            {
+                try
+                {
+                    /* Build our credit contract now. */
+                    if(!BuildCredit(jSession, rEvent.second, rContract, vContracts))
+                        return true;
+
+                    /* Sanitize our contract now. */
+                    TAO::Operation::Contract tContract = vContracts.back();
+                    if(!SanitizeContract(hashGenesis, tContract))
+                    {
+                        /* Check for our stop. */
+                        if(fStop || fMine)
+                            return true;
+
+                        /* Log some info about this. */
+                        debug::log(2, FUNCTION, "OP::CREDIT: sanitize failed for ", rEvent.first.SubString(), ", adding to work queue");
+
+                        /* Push this to our contracts queue so we can process again later. */
+                        LLD::Logical->PushContract(hashGenesis, rEvent.first, rEvent.second);
+
+                        /* Increment our notifications sequence. */
+                        LLD::Logical->IncrementEventSequence(hashGenesis);
+                        return false;
+                    }
+                }
+                catch(const Exception& e)
+                {
+                    debug::warning(FUNCTION, "OP::CREDIT: failed to build for ", hashEvent.SubString(), ": ", e.what());
+                }
+
+                break;
+            }
+
+            /* Handle for if we need to claim. */
+            case TAO::Operation::OP::TRANSFER:
+            {
+                try
+                {
+                    /* Build our credit contract now. */
+                    if(!BuildClaim(jSession, rEvent.second, rContract, vContracts))
+                        return true;
+
+                    /* Sanitize our contract now. */
+                    TAO::Operation::Contract tContract = vContracts.back();
+                    if(!SanitizeContract(hashGenesis, tContract))
+                    {
+                        /* Check for our stop. */
+                        if(fStop || fMine)
+                            return true;
+
+                        /* Log some info about this. */
+                        debug::log(2, FUNCTION, "OP::CLAIM: sanitize failed for ", rEvent.first.SubString(), ", adding to work queue");
+
+                        /* Push this to our contracts queue so we can process again later. */
+                        LLD::Logical->PushContract(hashGenesis, rEvent.first, rEvent.second);
+
+                        /* Increment our notifications sequence. */
+                        LLD::Logical->IncrementEventSequence(hashGenesis);
+                        return false;
+                    }
+                }
+                catch(const Exception& e)
+                {
+                    debug::warning(FUNCTION, "OP::CLAIM: failed to build for ", hashEvent.SubString(), ": ", e.what());
+                }
+
+                break;
+            }
+        }
+
+        return true;
     }
 }
