@@ -148,8 +148,8 @@ namespace LLD::Templates
         nBytesRead += static_cast<uint32_t>(vKey.size() + vData.size());
 
         /* Check the cache pool for key first. */
-        if(cachePool->Get(vKey, vData))
-            return true;
+        //if(cachePool->Get(vKey, vData))
+        //    return true;
 
         {
             LOCK(BUFFER_MUTEX);
@@ -229,8 +229,8 @@ namespace LLD::Templates
         nBytesRead += static_cast<uint32_t>(key.vKey.size() + vData.size());
 
         /* Check the cache pool for key first. */
-        if(cachePool->Get(key.vKey, vData))
-            return true;
+        //if(cachePool->Get(key.vKey, vData))
+        //    return true;
 
         /* Get compact size from record. */
         const uint64_t nSize = GetSizeOfCompactSize(key.nSectorSize);
@@ -250,7 +250,7 @@ namespace LLD::Templates
                 if(!pstream->is_open())
                 {
                     delete pstream;
-                    return false;
+                    return debug::error(FUNCTION, "Couldn't get fstream ", key.nSectorFile);
                 }
 
                 /* If file not found add to LRU cache. */
