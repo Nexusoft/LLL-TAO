@@ -12,7 +12,7 @@ ________________________________________________________________________________
 
 #include <LLD/cache/binary_lru.h>
 #include <LLD/templates/key.h>
-#include <LLD/hash/xxhash.h>
+#include <LLD/hash/xxh3.h>
 
 #include <Util/include/mutex.h>
 #include <Util/include/debug.h>

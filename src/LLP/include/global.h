@@ -101,7 +101,7 @@ namespace LLP
             return;
 
         /* Add core nexus.io nodes so that we get a quick connection to the network. */
-        if(!config::fTestNet.load())
+        if(!config::fTestNet.load() && !config::fHybrid.load() && config::GetBoolArg(std::string("-manager"), true))
         {
             pServer->AddConnection("node1.nexus.io", pServer->GetPort(false), false, true);
             pServer->AddConnection("node2.nexus.io", pServer->GetPort(false), false, true);

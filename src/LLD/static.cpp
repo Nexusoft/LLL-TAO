@@ -206,7 +206,6 @@ namespace LLD::Templates
 
                     return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
                 }
-
             }
 
             /* Verbose Debug Logging. */
