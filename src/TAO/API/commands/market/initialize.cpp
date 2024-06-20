@@ -60,19 +60,27 @@ namespace TAO::API
                 const uint64_t nPercent =
                     std::stod(vFees[2]) * 1000; //we maintain 3 decimal places precision
 
-                /* Check for valid token-id. */
-                TAO::Register::Object tToken;
-                if(!LLD::Register->ReadObject(hashToken, tToken))
-                    throw Exception(0, "-marketfee token ", hashToken.ToString(), " doesn't exist");
-
                 /* Check the deposit account exists. */
                 TAO::Register::Object tDeposit;
                 if(!LLD::Register->ReadObject(hashDeposit, tDeposit))
                     throw Exception(0, "-marketfee account ", hashDeposit.ToString(), " doesn't exist");
 
-                /* Check that our deposit account is the correct token. */
-                if(tDeposit.get<uint256_t>("token") != hashToken)
-                    throw Exception(0, "-marketfee account ", hashDeposit.ToString(), " incorrect token");
+                /* Check for if we index by a token. */
+                if(hashToken.IsToken())
+                {
+                    /* Check for valid token-id. */
+                    TAO::Register::Object tToken;
+                    if(!LLD::Register->ReadObject(hashToken, tToken))
+                        throw Exception(0, "-marketfee token ", hashToken.ToString(), " doesn't exist");
+
+                    /* Check that our deposit account is the correct token. */
+                    if(tDeposit.get<uint256_t>("token") != hashToken)
+                        throw Exception(0, "-marketfee account ", hashDeposit.ToString(), " incorrect token");
+                }
+
+                /* Throw an error if it is not an account. */
+                else if(!hashToken.IsAccount())
+                    throw Exception(0, "-marketfee parameter parse error: first parameter must be token or account.");
 
                 /* Add our token and values to market fees. */
                 mapFees[hashToken] = std::make_pair(hashDeposit, nPercent);
