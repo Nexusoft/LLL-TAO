@@ -95,6 +95,26 @@ namespace LLP
     }
 
 
+    /** Local helper function to unpack JSON objects to extract and process variables inline. **/
+    void ProcessParams(encoding::json &jParam)
+    {
+        /* Process variables from string arguments. */
+        if(jParam.is_string())
+        {
+            jParam = TAO::API::VariableToJSON(jParam.get<std::string>());
+            return;
+        }
+
+        /* Process variables in array or object. */
+        if(jParam.is_array() || jParam.is_object())
+        {
+            /* Loop through all params and process the variables. */
+            for(auto& jItem : jParam)
+                ProcessParams(jItem);
+        }
+    }
+
+
     /** Main message handler once a packet is recieved. **/
     bool APINode::ProcessPacket()
     {
@@ -167,11 +187,7 @@ namespace LLP
 
                         /* Loop through all params and process the variables. */
                         for(auto& jParam : jParams)
-                        {
-                            /* Process variables from string arguments. */
-                            if(jParam.is_string())
-                                jParam = TAO::API::VariableToJSON(jParam.get<std::string>());
-                        }
+                            ProcessParams(jParam);
                     }
                     else
                         throw TAO::API::Exception(-5, "content-type [", INCOMING.mapHeaders["content-type"], "] not supported");
