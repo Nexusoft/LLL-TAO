@@ -150,6 +150,21 @@ namespace TAO
             TAO::Register::State state;
             contract >>= state;
 
+            /* Check transaction version. */
+            if(contract.Version() > 4)
+            {
+                /* Track the total amount being sent here. */
+                uint64_t nAmount = 0;
+                contract >> nAmount;
+
+                /* Check for a zero balance debit. */
+                if(nAmount == 0)
+                    return debug::error(FUNCTION, "cannot debit a value of zero");
+
+                /* Check that our tokens for debit match. */
+                //TODO:
+            }
+
             /* Check that pre-state is valid. */
             if(!state.IsValid())
                 return debug::error(FUNCTION, "pre-state is in invalid state");
