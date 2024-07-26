@@ -208,6 +208,14 @@ namespace LLP
     }
 
 
+    /* Flag to detect if connection is an oubound connection. */
+    template <class PacketType>
+    bool BaseConnection<PacketType>::Outgoing() const
+    {
+        return fOUTGOING.load();
+    }
+
+
     /*  Handles two types of packets, requests which are of header >= 128,
      *  and data which are of header < 128. */
     template <class PacketType>

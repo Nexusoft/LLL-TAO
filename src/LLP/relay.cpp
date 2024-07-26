@@ -77,7 +77,7 @@ namespace LLP
         if(EVENT == EVENTS::CONNECT)
         {
             /* We want to initiate our handshake on connect. */
-            if(pqSSL && !Incoming())
+            if(pqSSL && Outgoing())
             {
                 /* Only send auth messages if the auth key has been cached */
                 SecureString strPIN;
@@ -163,11 +163,11 @@ namespace LLP
             }
 
 
-            /* This message is generated in response to an outgoing handshake. */
+            /* This message is received by a node making an ougoing going. */
             case REQUEST::HANDSHAKE:
             {
-                /* Check that this is not an outgoing connection. */
-                if(!Incoming())
+                /* Make sure this is a incoming connection. */
+                if(Incoming())
                     return debug::drop(NODE, "REQUEST::HANDSHAKE is invalid for outgoing connections");
 
                 /* Only send auth messages if the auth key has been cached */
@@ -197,8 +197,8 @@ namespace LLP
             /* This message is generated in response to REQUEST::HANDSHAKE and completes the encryption channel. */
             case RESPONSE::HANDSHAKE:
             {
-                /* Check that this is not an outgoing connection. */
-                if(Incoming())
+                /* Check that this is an outgoing connection. */
+                if(Outgoing())
                     return debug::drop(NODE, "RESPONSE::HANDSHAKE is invalid for incoming connections");
 
                 /* Complete our handshake sequence now. */

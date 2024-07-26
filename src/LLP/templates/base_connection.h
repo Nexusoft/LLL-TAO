@@ -122,7 +122,7 @@ namespace LLP
 
         /** Total incoming connections. **/
         static std::atomic<uint64_t> CONNECTIONS;
-        
+
 
         /** Total disconnections. **/
         static std::atomic<uint64_t> DISCONNECTS;
@@ -269,6 +269,14 @@ namespace LLP
          *
          **/
         bool Incoming() const;
+
+
+        /** Outgoing
+         *
+         *  Flag to detect if connection is an outbound connection.
+         *
+         **/
+        bool Outgoing() const;
 
 
         /** PacketComplete
