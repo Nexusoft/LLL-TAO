@@ -101,13 +101,12 @@ namespace TAO::Register
 
         /* Generate a key to check credentials against. */
         const uint256_t hashCheck =
-            pCredentials->SignatureKey("auth", strPIN, hashAuth.GetType());
+            pCredentials->KeyHash("auth", 0, strPIN, hashAuth.GetType());
 
         /* Check for invalid authorization hash. */
         if(hashAuth != hashCheck)
         {
             /* Reset our internal credentials cache. */
-            pCredentials->ClearCache();
             return false;
         }
 

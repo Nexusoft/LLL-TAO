@@ -127,14 +127,15 @@ namespace LLP
 
             /* Setup poll objects. */
             pollfd fds[1];
-            fds[0].events = POLLOUT;
-            fds[0].fd     = fd;
+            fds[0].events  = POLLIN;
+            fds[0].revents = 0;
+            fds[0].fd      = fd;
 
             /* Track our accept status. */
             int32_t nStatus = 0; //set to poll timeout
 
-            /* Loop until success or timeout (30 max cycles for 3 seconds). */
-            for(uint32_t nSeconds = 0; nSeconds < 30 && !config::fShutdown.load() && nStatus <= 0; ++nSeconds)
+            /* Loop until success or timeout (50 max cycles for 5 seconds). */
+            for(uint32_t nSeconds = 0; nSeconds < 50 && !config::fShutdown.load() && nStatus == 0; ++nSeconds)
             {
                 /* Attempt to accept incoming SSL. */
                 const int32_t nAccept = SSL_accept(pSSL);
@@ -225,11 +226,11 @@ namespace LLP
             }
 
             /* Check for any poll errors now. */
-            if((fds[0].revents & POLLERR) || (fds[0].revents & POLLHUP))
-            {
-                debug::log(3, FUNCTION, "SSL Handshake: poll errors for ", addrIn.ToString());
-                nError.store(SOCKET_ERROR);
-            }
+            //if((fds[0].revents & POLLERR) || (fds[0].revents & POLLHUP))
+            //{
+            //    debug::log(3, FUNCTION, "SSL Handshake: poll errors for ", addrIn.ToString());
+            //    nError.store(SOCKET_ERROR);
+            //}
 
             /* Make sure our socket is in a clean state. */
             if(nStatus != 1) //this is our connected flag
@@ -476,8 +477,8 @@ namespace LLP
             /* Track our accept status. */
             int32_t nStatus = 0; //set to poll timeout
 
-            /* Loop until success or timeout (30 max cycles for 3 seconds). */
-            for(uint32_t nSeconds = 0; nSeconds < 30 && !config::fShutdown.load() && nStatus <= 0; ++nSeconds)
+            /* Loop until success or timeout (50 max cycles for 5 seconds). */
+            for(uint32_t nSeconds = 0; nSeconds < 50 && !config::fShutdown.load() && nStatus == 0; ++nSeconds)
             {
                 /* Attempt to accept incoming SSL. */
                 const int32_t nConnect = SSL_connect(pSSL);

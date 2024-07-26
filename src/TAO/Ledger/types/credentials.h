@@ -62,10 +62,6 @@ namespace TAO
             mutable std::pair<uint32_t, SecureString> pairCache;
 
 
-            /** Internal credential key hash of our generated crypto keys. **/
-            mutable std::map<std::string, std::pair<SecureString, uint512_t>> mapCrypto;
-
-
             /** Internal genesis hash. **/
             const uint256_t hashGenesis;
 
@@ -128,9 +124,20 @@ namespace TAO
              *
              *  This function is responsible for generating the genesis ID.
              *
-             *  @return The 256 bit hash of a genesis-id using Argon2 function.
+             *  @return The 512 bit hash of this key in the series.
              **/
             static uint256_t Genesis(const SecureString& strUsername);
+
+
+            /** SetCache
+             *
+             *  Set's the current cached key manually in case it was generated externally from this object.
+             *
+             *  @param[in] hashSecret The secret key to cache internally.
+             *  @param[in] nKeyID The current sequence this key was generated from.
+             *
+             **/
+            void SetCache(const uint512_t& hashSecret, const uint32_t nKeyID);
 
 
             /** Generate
@@ -166,54 +173,77 @@ namespace TAO
              *  This function is responsible for generating the private key in the sigchain of a specific account.
              *  The sigchain is a series of keys seeded from a secret phrase and a PIN number.
              *
-             *  @param[in] strName The type of signing key used.
+             *  @param[in] strType The type of signing key used.
              *  @param[in] nKeyID The key number in the keychian
              *  @param[in] strSecret The secret phrase to use
              *
              *  @return The 512 bit hash of this key in the series.
              **/
-            uint512_t Generate(const std::string& strName, const uint32_t nKeyID, const SecureString& strSecret) const;
+            uint512_t Generate(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret) const;
 
 
-            /** GenerateRecovery
+            /** Generate
              *
              *  This function is responsible for generating a private key from a seed phrase.  By comparison to the other Generate
              *  functions, this version using far stronger argon2 hashing since the only data input into the hashing function is
              *  the seed phrase itself.
              *
-             *  @param[in] strRecovery The secret seed phrase to use
+             *  @param[in] strSecret The secret seed phrase to use
              *
              *  @return The 512 bit hash of the generated public key.
              **/
-            uint512_t GenerateRecovery(const SecureString& strRecovery) const;
+            uint512_t GenerateRecovery(const SecureString& strSecret) const;
 
 
-            /** SignatureKey
+            /** Generate
+             *
+             *  This function is to remain backwards compatible if recovery was created after 5.0.6 and before 5.1.1.
+             *
+             *  @param[in] strSecret The secret seed phrase to use
+             *
+             *  @return The 512 bit hash of the generated public key.
+             **/
+            uint512_t GenerateDeprecated(const SecureString& strSecret) const;
+
+
+            /** RecoveryDeprecated
+             *
+             *  This function is to remain backwards compatible if recovery was created after 5.0.6 and before 5.1.1
+             *
+             *  @param[in] strRecovery The recovery seed phrase to use
+             *  @param[in] nType The key type to use.
+             *
+             *  @return The 256 bit hash of the generated public key
+             **/
+            uint256_t RecoveryDeprecated(const SecureString& strRecovery, const uint8_t nType) const;
+
+
+            /** Key
+             *
+             *  This function generates a public key generated from random seed phrase.
+             *
+             *  @param[in] strType The type of signing key used.
+             *  @param[in] nKeyID The key number in the keychian
+             *  @param[in] strSecret The secret phrase to use
+             *  @param[in] nType The key type to use.
+             *
+             *  @return The vector of bytes representing this public key.
+             **/
+            std::vector<uint8_t> Key(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const;
+
+
+            /** KeyHash
              *
              *  This function generates a hash of a public key generated from random seed phrase.
              *
-             *  @param[in] strName The name of signing key used.
+             *  @param[in] strType The type of signing key used.
+             *  @param[in] nKeyID The key number in the keychian
              *  @param[in] strSecret The secret phrase to use
              *  @param[in] nType The key type to use.
-             *  @param[in] nKeyID The key number in the keychian
              *
              *  @return The 256 bit hash of this key in the series.
              **/
-            uint256_t SignatureKey(const std::string& strName, const SecureString& strSecret, const uint8_t nType, const uint32_t nKeyID = 0) const;
-
-
-            /** CertificateKey
-             *
-             *  This function generates a hash of a public key generated from random seed phrase using key-encapsulation mechanism.
-             *
-             *  @param[in] strName The name of certificate key used.
-             *  @param[in] strSecret The secret phrase to use
-             *  @param[in] nType The key type to use.
-             *  @param[in] nKeyID The key number in the keychian
-             *
-             *  @return The 256 bit hash of this key in the series.
-             **/
-            uint256_t CertificateKey(const std::string& strName, const SecureString& strSecret, const uint8_t nType, const uint32_t nKeyID = 0) const;
+            uint256_t KeyHash(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const;
 
 
             /** RecoveryHash
@@ -256,20 +286,66 @@ namespace TAO
             void Update(const SecureString& strPasswordNew);
 
 
-            /** ClearCache
-             *
-             *  Clears all of the active crypto keys.
-             *
-             **/
-            void ClearCache();
-
-
             /** Encrypt
              *
              *  Special method for encrypting specific data types inside class.
              *
              **/
             void Encrypt();
+
+
+            /** Sign
+            *
+            *  Generates a signature for the data, using the specified crypto key from the crypto object register
+            *
+            *  @param[in] strKey The name of the signing key from the crypto object register
+            *  @param[in] vchData The data to base the signature off
+            *  @param[in] hashSecret The private key to use for the signature
+            *  @param[out] vchPubKey The public key generated from the private key
+            *  @param[out] vchSig The signature bytes
+            *
+            *  @return True if successful
+            *
+            **/
+            bool Sign(const std::string& strKey, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
+                                      std::vector<uint8_t>& vchPubKey, std::vector<uint8_t>& vchSig) const;
+
+
+            /** Sign
+            *
+            *  Generates a signature for the data, using the specified crypto key type
+            *
+            *  @param[in] nKeyType The type of signing key to use
+            *  @param[in] vchData The data to base the signature off
+            *  @param[in] hashSecret The private key to use for the signature
+            *  @param[out] vchPubKey The public key generated from the private key
+            *  @param[out] vchSig The signature bytes
+            *
+            *  @return True if successful
+            *
+            **/
+            bool Sign(const uint8_t& nKeyType, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
+                                      std::vector<uint8_t>& vchPubKey, std::vector<uint8_t>& vchSig) const;
+
+
+            /** Verify
+            *
+            *  Verifies a signature for the data, as well as verifying that the hashed public key matches the
+            *  specified key from the crypto object register
+            *
+            *  @param[in] hashGenesis The genesis hash of the sig chain to read the crypto object register for
+            *  @param[in] strKey The name of the signing key from the crypto object register
+            *  @param[in] vchData The data to base the verification from
+            *  @param[in] vchPubKey The public key of the private key used to sign the data
+            *  @param[in] vchSig The signature bytes
+            *
+            *  @return True if the signature is successfully verified
+            *
+            **/
+            static bool Verify(const uint256_t hashGenesis, const std::string& strKey, const std::vector<uint8_t>& vchData,
+                        const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchSig);
+
+
         };
     }
 }

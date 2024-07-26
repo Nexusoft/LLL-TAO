@@ -125,8 +125,8 @@ namespace TAO::API
                         ssCompare >> hashTo;
 
                         /* Get the token / account object. */
-                        TAO::Register::Object tOrderTo;
-                        if(!LLD::Register->ReadObject(hashTo, tOrderTo, TAO::Ledger::FLAGS::MEMPOOL))
+                        TAO::Register::Object oOrderTo;
+                        if(!LLD::Register->ReadObject(hashTo, oOrderTo, TAO::Ledger::FLAGS::MEMPOOL))
                             throw Exception(-13, "Object [from] not found");
 
                         /* Get the amount requested. */
@@ -134,8 +134,8 @@ namespace TAO::API
                         ssCompare >> nAmount;
 
                         /* Check that we have the correct token types. */
-                        if(tObjFrom.get<uint256_t>("token") != tOrderTo.get<uint256_t>("token"))
-                            throw Exception(-26, "Invalid parameter [from], [type] requires correct token");
+                        if(tObjFrom.get<uint256_t>("token") != oOrderTo.get<uint256_t>("token"))
+                            throw Exception(-26, "Invalid parameter [from], requires correct token");
 
                         /* Build the contract. */
                         TAO::Operation::Contract tValidate;
@@ -150,18 +150,37 @@ namespace TAO::API
                         /* Add contract to our queue. */
                         vContracts.push_back(tValidate);
 
-                        /* Check for a token match for from account. */
-                        uint256_t hashToken = tObjFrom.get<uint256_t>("token");
-                        if(mapFees.count(hashToken))
+                        /* if we passed all of these checks then insert the credit contract into the tx */
+                        TAO::Operation::Contract tCredit;
+                        tCredit << uint8_t(TAO::Operation::OP::CREDIT) << hashOrder << uint32_t(nContract);
+                        tCredit << hashCredit << hashFrom << nOrderAmount;
+
+                        /* Add contract to our queue. */
+                        vContracts.push_back(tCredit);
+
+                        /* Charge a special fee if using a specific account. */
+                        if(mapFees.count(hashCredit))
                         {
+                            /* Get our deposit account for fee. */
+                            const uint256_t hashFeeDeposit = mapFees[hashCredit].first;
+
+                            /* Get the token / account object. */
+                            TAO::Register::Object oFeeDeposit;
+                            if(!LLD::Register->ReadObject(hashFeeDeposit, oFeeDeposit, TAO::Ledger::FLAGS::MEMPOOL))
+                                throw Exception(-13, "Deposit account for account fee not found");
+
+                            /* Check that we have the correct token types. */
+                            if(oFeeDeposit.get<uint256_t>("token") != tObjTo.get<uint256_t>("token"))
+                                throw Exception(-26, "-marketfee=<address-filter>: Address filter only applies to seller bids.");
+
                             /* Calcuate our debit amount now. */
                             const uint64_t nFees =
-                                (nAmount * mapFees[hashToken].second) / 100000;
+                                (nOrderAmount * mapFees[hashCredit].second) / 100000;
 
                             /* Build the contract. */
                             TAO::Operation::Contract tDebit;
-                            tDebit << uint8_t(TAO::Operation::OP::DEBIT) << hashAddress;
-                            tDebit << mapFees[hashToken].first << nFees << uint64_t(0);
+                            tDebit << uint8_t(TAO::Operation::OP::DEBIT) << hashCredit;
+                            tDebit << hashFeeDeposit << nFees << uint64_t(0);
 
                             /* Make this spendable only by recipient. */
                             tDebit <= uint8_t(TAO::Operation::OP::CALLER::GENESIS);
@@ -172,34 +191,52 @@ namespace TAO::API
                             vContracts.push_back(tDebit);
                         }
 
-                        /* if we passed all of these checks then insert the credit contract into the tx */
-                        TAO::Operation::Contract tCredit;
-                        tCredit << uint8_t(TAO::Operation::OP::CREDIT) << hashOrder << uint32_t(nContract);
-                        tCredit << hashCredit << hashFrom << nOrderAmount;
-
-                        /* Add contract to our queue. */
-                        vContracts.push_back(tCredit);
-
-                        /* Check for a token match for from account. */
-                        hashToken = tObjTo.get<uint256_t>("token");
-                        if(mapFees.count(hashToken))
+                        /* Handle standard fees if address override is not enabled. */
+                        else
                         {
-                            /* Calcuate our debit amount now. */
-                            const uint64_t nFees =
-                                (nOrderAmount * mapFees[hashToken].second) / 100000;
+                            /* Check for a token match for from account. */
+                            uint256_t hashToken = tObjFrom.get<uint256_t>("token");
+                            if(mapFees.count(hashToken))
+                            {
+                                /* Calcuate our debit amount now. */
+                                const uint64_t nFees =
+                                    (nAmount * mapFees[hashToken].second) / 100000;
 
-                            /* Build the contract. */
-                            TAO::Operation::Contract tDebit;
-                            tDebit << uint8_t(TAO::Operation::OP::DEBIT) << hashCredit;
-                            tDebit << mapFees[hashToken].first << nFees << uint64_t(0);
+                                /* Build the contract. */
+                                TAO::Operation::Contract tDebit;
+                                tDebit << uint8_t(TAO::Operation::OP::DEBIT) << hashAddress;
+                                tDebit << mapFees[hashToken].first << nFees << uint64_t(0);
 
-                            /* Make this spendable only by recipient. */
-                            tDebit <= uint8_t(TAO::Operation::OP::CALLER::GENESIS);
-                            tDebit <= uint8_t(TAO::Operation::OP::NOTEQUALS);
-                            tDebit <= uint8_t(TAO::Operation::OP::CONTRACT::GENESIS);
+                                /* Make this spendable only by recipient. */
+                                tDebit <= uint8_t(TAO::Operation::OP::CALLER::GENESIS);
+                                tDebit <= uint8_t(TAO::Operation::OP::NOTEQUALS);
+                                tDebit <= uint8_t(TAO::Operation::OP::CONTRACT::GENESIS);
 
-                            /* Add contract to our queue. */
-                            vContracts.push_back(tDebit);
+                                /* Add contract to our queue. */
+                                vContracts.push_back(tDebit);
+                            }
+
+                            /* Check for a token match for to account. */
+                            hashToken = tObjTo.get<uint256_t>("token");
+                            if(mapFees.count(hashToken))
+                            {
+                                /* Calcuate our debit amount now. */
+                                const uint64_t nFees =
+                                    (nOrderAmount * mapFees[hashToken].second) / 100000;
+
+                                /* Build the contract. */
+                                TAO::Operation::Contract tDebit;
+                                tDebit << uint8_t(TAO::Operation::OP::DEBIT) << hashCredit;
+                                tDebit << mapFees[hashToken].first << nFees << uint64_t(0);
+
+                                /* Make this spendable only by recipient. */
+                                tDebit <= uint8_t(TAO::Operation::OP::CALLER::GENESIS);
+                                tDebit <= uint8_t(TAO::Operation::OP::NOTEQUALS);
+                                tDebit <= uint8_t(TAO::Operation::OP::CONTRACT::GENESIS);
+
+                                /* Add contract to our queue. */
+                                vContracts.push_back(tDebit);
+                            }
                         }
                     }
 

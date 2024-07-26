@@ -441,7 +441,7 @@ namespace LLP
                             PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::PROOF), uint8_t(SPECIFIER::TRITIUM), tMerkle);
 
                             /* Debug output. */
-                            return debug::success(3, NODE, "REQUEST::PROOF::TRITIUM TRANSACTION");
+                            return debug::success(2, NODE, "REQUEST::PROOF::TRITIUM TRANSACTION");
                         }
                         else if(DDOS)
                             DDOS->rSCORE += 10;
@@ -479,7 +479,7 @@ namespace LLP
                             PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::PROOF), uint8_t(SPECIFIER::CONTRACT), tMerkle);
 
                             /* Debug output. */
-                            return debug::success(3, NODE, "REQUEST::PROOF::TRITIUM TRANSACTION");
+                            return debug::success(2, NODE, "REQUEST::PROOF::TRITIUM TRANSACTION");
                         }
                         else if(DDOS)
                             DDOS->rSCORE += 10;
@@ -513,7 +513,7 @@ namespace LLP
                             PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::PROOF), uint8_t(SPECIFIER::LEGACY), tMerkle);
 
                             /* Debug output. */
-                            return debug::success(3, NODE, "REQUEST::PROOF::LEGACY TRANSACTION");
+                            return debug::success(2, NODE, "REQUEST::PROOF::LEGACY TRANSACTION");
                         }
                         else if(DDOS)
                             DDOS->rSCORE += 10;
@@ -564,11 +564,11 @@ namespace LLP
                             /* Send off the transaction to remote node. */
                             PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::REGISTER), tMerkle, hashRegister);
 
-                            return debug::success(3, NODE, "REQUEST::DEPENDANT::REGISTER: Using INDEX REGISTER for ", hashRegister.ToString());
+                            return debug::success(2, NODE, "REQUEST::DEPENDANT::REGISTER: Using INDEX REGISTER for ", hashRegister.ToString());
                         }
 
-                        /* Handle the slow iterative way. */
-                        else
+                        /* Handle the slow iterative way if no index register. */
+                        else if(!config::fIndexRegister.load())
                         {
                             /* Check for existing localdb indexes. */
                             std::pair<uint512_t, uint64_t> pairIndex;
@@ -592,7 +592,7 @@ namespace LLP
                                     /* Send off the transaction to remote node. */
                                     PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::REGISTER), tMerkle, hashRegister);
 
-                                    return debug::success(3, NODE, "REQUEST::DEPENDANT::REGISTER: Using INDEX CACHE for ", hashRegister.SubString());
+                                    return debug::success(2, NODE, "REQUEST::DEPENDANT::REGISTER: Using INDEX CACHE for ", hashRegister.SubString());
                                 }
                             }
 
@@ -708,7 +708,7 @@ namespace LLP
                                             LLD::Local->WriteIndex(hashAddress, pairIndex); //Index expires 1 hour after created
 
                                             /* Write update to our system logs. */
-                                            return debug::success(3, NODE, "REQUEST::DEPENDANT::REGISTER: Update INDEX for register ", hashAddress.SubString());
+                                            return debug::success(2, NODE, "REQUEST::DEPENDANT::REGISTER: Update INDEX for register ", hashAddress.SubString());
                                         }
 
                                         default:
@@ -719,7 +719,7 @@ namespace LLP
                         }
 
                         /* Debug output. */
-                        debug::log(3, NODE, "REQUEST::DEPENDANT::REGISTER ", hashRegister.SubString());
+                        debug::warning(NODE, "REQUEST::DEPENDANT::REGISTER: ", hashRegister.ToString(), " not found");
 
                         break;
                     }
@@ -746,7 +746,7 @@ namespace LLP
                             PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::TRITIUM), tMerkle);
 
                             /* Debug output. */
-                            return debug::success(3, NODE, "REQUEST::DEPENDANT::TRITIUM TRANSACTION", hashTx.SubString());
+                            return debug::success(2, NODE, "REQUEST::DEPENDANT::TRITIUM TRANSACTION", hashTx.SubString());
                         }
                         else if(DDOS)
                             DDOS->rSCORE += 10;
@@ -776,7 +776,7 @@ namespace LLP
                             PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::LEGACY), tMerkle);
 
                             /* Debug output. */
-                            return debug::success(3, NODE, "REQUEST::DEPENDANT::LEGACY TRANSACTION", hashTx.SubString());
+                            return debug::success(2, NODE, "REQUEST::DEPENDANT::LEGACY TRANSACTION", hashTx.SubString());
                         }
                         else if(DDOS)
                             DDOS->rSCORE += 10;

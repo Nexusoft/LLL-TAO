@@ -79,7 +79,6 @@ namespace TAO
         }
 
 
-
         /* Reurns a summary of node and ledger information for the currently running node. */
         encoding::json System::GetInfo(const encoding::json& params, const bool fHelp)
         {

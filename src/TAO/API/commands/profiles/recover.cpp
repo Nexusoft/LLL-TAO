@@ -106,6 +106,27 @@ namespace TAO::API
                 throw Exception(-138, "No previous transaction found");
         }
 
+        /* Check if we are using legacy recovery or not. */
+        bool fDeprecatedRecovery = false;
+
+        /* Check our recovery hash is correct. */
+        const uint256_t hashRecoveryCheck = pCredentials->RecoveryHash(strRecovery, nKeyType);
+        if(hashRecoveryCheck != hashRecovery)
+        {
+            /* Give ourselves a little log output to know we are proceeding with legacy recovery. */
+            debug::warning("Invalid recovery, ", hashRecoveryCheck.ToString(), " is not ", hashRecovery.ToString(), ", checking our deprecated recovery hash");
+
+            /* Do a backup check with old recovery. */
+            const uint256_t hashRecoveryDeprecated = pCredentials->RecoveryDeprecated(strRecovery, nKeyType);
+            if(hashRecoveryDeprecated == hashRecovery)
+                fDeprecatedRecovery = true;
+            else
+            {
+                pCredentials.free();
+                throw Exception(-33, "Recovery hash mismatch ", hashRecoveryDeprecated.ToString(), " is not ", hashRecovery.ToString());
+            }
+        }
+
         /* Create the transaction. */
         TAO::Ledger::Transaction tx;
         if(!BuildCredentials(pCredentials, strPIN, nKeyType, tx))
@@ -115,11 +136,26 @@ namespace TAO::API
         }
 
         /* Sign the transaction. */
-        if(!tx.Sign(pCredentials->GenerateRecovery(strRecovery)))
+        tx.nKeyType = nKeyType;
+        if(!fDeprecatedRecovery)
         {
-            pCredentials.free();
-            throw Exception(-31, "Ledger failed to sign transaction");
+            /* Build using current recovery system. */
+            if(!tx.Sign(pCredentials->GenerateRecovery(strRecovery)))
+            {
+                pCredentials.free();
+                throw Exception(-31, "Ledger failed to sign transaction");
+            }
         }
+        else
+        {
+            /* Handle if we switched into deprecated recovery mode. */
+            if(!tx.Sign(pCredentials->GenerateDeprecated(strRecovery)))
+            {
+                pCredentials.free();
+                throw Exception(-31, "Ledger failed to sign transaction");
+            }
+        }
+
 
         /* Execute the operations layer. */
         if(!TAO::Ledger::mempool.Accept(tx))

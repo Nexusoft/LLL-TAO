@@ -215,6 +215,27 @@ namespace TAO::API
 
     private:
 
+
+        /** index_events
+         *
+         *  Index current events for logged in sessions.
+         *
+         *  @param[in] hash The transaction-id we are working on.
+         *
+         **/
+        void index_events(const uint512_t& hash);
+
+
+        /** deindex_events
+         *
+         *  De-index current events for logged in sessions.
+         *
+         *  @param[in] hash The transaction-id we are working on.
+         *
+         **/
+        void deindex_events(const uint512_t& hash);
+
+
         /** index_registers
          *
          *  Index registers for logged in sessions.

@@ -62,12 +62,11 @@ void HandleSIGTERM(int signum)
     debug::notice("Signal received ", strSignal);
 
 #ifndef WIN32
-
     if(signum != SIGPIPE)
         Shutdown();
-
 #else
-    Shutdown();
+    if(signum != SIGINT) //catch this signal so Windoze can't terminate our process
+        Shutdown();
 #endif
 }
 

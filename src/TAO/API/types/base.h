@@ -134,6 +134,18 @@ namespace TAO::API
         bool CheckObject(const std::string& strType, const TAO::Register::Object& tObject) const;
 
 
+        /** HasStandard
+         *
+         *  Check if a given standard exists in this command-set.
+         *
+         *  @param[in] strStandard The standard we are checking for.
+         *
+         *  @return true if the standard exists.
+         *
+         **/
+        bool HasStandard(const std::string& strStandard) const;
+
+
         /** EncodeObject
          *
          *  Encode a standard object into json using custom encoding function.

@@ -22,7 +22,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <LLP/types/tritium.h>
+#include <LLP/include/global.h>
 
 #include <TAO/Ledger/include/ambassador.h>
 #include <TAO/Ledger/include/developer.h>
@@ -76,10 +76,32 @@ namespace TAO::Ledger
         TAO::API::Transaction txPrev;
         if(LLD::Logical->ReadLast(hashGenesis, hashLast))
         {
-            /* Get previous transaction */
+            /* Check that we can read the logical disk index. */
             if(!LLD::Logical->ReadTx(hashLast, txPrev))
-                return debug::error(FUNCTION, "no prev tx ", hashLast.ToString(), " in logical db");
+                debug::warning(FUNCTION, "could not read logical transaction index");
+        }
 
+        /* If we don't have the indexes available we need to build from ledger state. */
+        TAO::Ledger::Transaction txMem;
+        if(mempool.Get(hashGenesis, txMem))
+        {
+            /* Check that the mempool transaction is greater than our logical database. */
+            if(txMem.nSequence > txPrev.nSequence)
+                txPrev = txMem;
+        }
+
+        /* Get the last transaction. */
+        else if(LLD::Ledger->ReadLast(hashGenesis, hashLast))
+        {
+            /* Get previous transaction */
+            TAO::Ledger::Transaction txDisk;
+            if(LLD::Ledger->ReadTx(hashLast, txDisk) && txDisk.nSequence > txPrev.nSequence)
+                txPrev = txDisk;
+        }
+
+        /* Check that we found a dependant and therfore it is not the first transaction. */
+        if(txPrev.hashGenesis != 0)
+        {
             /* Build new transaction object. */
             tx.nSequence    = txPrev.nSequence + 1;
             tx.hashGenesis  = txPrev.hashGenesis;
@@ -98,11 +120,11 @@ namespace TAO::Ledger
         }
 
         /* Set the initial and next key type for genesis transactions */
-        if(tx.IsFirst())
+        else if(tx.IsFirst())
         {
             /* Set the next key type for the genesis transaction */
             tx.nKeyType    = nScheme; //this should use a default value
-            tx.nNextType   = tx.nKeyType;
+            tx.nNextType   = nScheme;
             tx.hashGenesis = hashGenesis;
             tx.nTimestamp  = runtime::unifiedtimestamp();
 
@@ -842,6 +864,25 @@ namespace TAO::Ledger
             /* Check the statues. */
             if(!(nStatus & PROCESS::ACCEPTED))
                 continue;
+
+            /* Relay the block and bestchain. */
+            const uint1024_t hashBlock = block.GetHash();
+            LLP::TRITIUM_SERVER->Relay
+            (
+                LLP::TritiumNode::ACTION::NOTIFY,
+
+                /* Relay BLOCK notification. */
+                uint8_t(LLP::TritiumNode::TYPES::BLOCK),
+                hashBlock,
+
+                /* Relay BESTCHAIN notification. */
+                uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN),
+                hashBlock,
+
+                /* Relay BESTHEIGHT notification. */
+                uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT),
+                block.nHeight
+            );
         }
     }
 

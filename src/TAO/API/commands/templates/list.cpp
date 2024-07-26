@@ -56,34 +56,38 @@ namespace TAO::API
         /* Add the register data to the response */
         for(const auto& hashRegister : setAddresses)
         {
-            /* Grab our object from disk. */
-            TAO::Register::Object tObject;
-            if(!LLD::Register->ReadObject(hashRegister, tObject, TAO::Ledger::FLAGS::LOOKUP))
-                continue;
+            try
+            {
+                /* Grab our object from disk. */
+                TAO::Register::Object tObject;
+                if(!LLD::Register->ReadObject(hashRegister, tObject, TAO::Ledger::FLAGS::LOOKUP))
+                    continue;
 
-            /* Check for active transfers. */
-            if(!fTransferred && tObject.hashOwner.GetType() != TAO::Ledger::GENESIS::SYSTEM
-            && LLD::Logical->HasTransfer(hashGenesis, hashRegister))
-                continue;
+                /* Check for active transfers. */
+                if(!fTransferred && tObject.hashOwner.GetType() != TAO::Ledger::GENESIS::SYSTEM
+                && LLD::Logical->HasTransfer(hashGenesis, hashRegister))
+                    continue;
 
-            /* Check our object standards. */
-            if(!CheckStandard(jParams, tObject))
-                continue;
+                /* Check our object standards. */
+                if(!CheckStandard(jParams, tObject))
+                    continue;
 
-            /* Populate the response */
-            encoding::json jRegister =
-                StandardToJSON(jParams, tObject, hashRegister);
+                /* Populate the response */
+                encoding::json jRegister =
+                    StandardToJSON(jParams, tObject, hashRegister);
 
-            /* Check that we match our filters. */
-            if(!FilterResults(jParams, jRegister))
-                continue;
+                /* Check that we match our filters. */
+                if(!FilterResults(jParams, jRegister))
+                    continue;
 
-            /* Filter out our expected fieldnames if specified. */
-            if(!FilterFieldname(jParams, jRegister))
-                continue;
+                /* Filter out our expected fieldnames if specified. */
+                if(!FilterFieldname(jParams, jRegister))
+                    continue;
 
-            /* Insert into set and automatically sort. */
-            setRegisters.insert(jRegister);
+                /* Insert into set and automatically sort. */
+                setRegisters.insert(jRegister);
+            }
+            catch(const std::exception& e){ debug::warning("Exception: ", e.what()); }
         }
 
         /* Build our return value. */

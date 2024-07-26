@@ -69,6 +69,29 @@ namespace TAO::API
             , "raw"
         );
 
+        /* Populate our raw standard. */
+        mapStandards["account"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& rObject)
+            {
+                /* Check for correct state type. */
+                if(rObject.nType != TAO::Register::REGISTER::OBJECT)
+                    return false;
+
+                /* Make sure this isn't a command-set standard. */
+                if(!rObject.Check("_usertype", TAO::Register::TYPES::UINT16_T, false))
+                    return false;
+
+                /* Check that this has the correct usertype. */
+                if(rObject.get<uint16_t>("_usertype") != USER_TYPES::ASSET)
+                    return false;
+
+                return rObject.Standard() == TAO::Register::OBJECTS::ACCOUNT;
+            }
+            , "account"
+        );
+
         /* Populate our readonly standard. */
         mapStandards["readonly"] = Standard
         (

@@ -2051,7 +2051,7 @@ namespace LLP
                             if(nType == TYPES::SIGCHAIN && config::fClient.load())
                             {
                                 /* Check ledger database. */
-                                if(tInventory.Expired(hashTx, 60)) //60 second exipring cache
+                                if(tInventory.Expired(hashTx, 5)) //5 second exipring cache for merkle-tx
                                 {
                                     /* Debug output. */
                                     debug::log(3, NODE, "ACTION::NOTIFY: MERKLE TRANSACTION ", hashTx.SubString());
@@ -2497,6 +2497,23 @@ namespace LLP
                         /* Process the block. */
                         TAO::Ledger::Process(block, nStatus);
 
+                        /* Check for duplicate and ask for previous block. */
+                        if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
+                        && !(nStatus & TAO::Ledger::PROCESS::IGNORED)
+                        &&  (nStatus & TAO::Ledger::PROCESS::ORPHAN))
+                        {
+                            /* Ask for list of blocks. */
+                            PushMessage(ACTION::LIST,
+                                #ifndef DEBUG_MISSING
+                                (config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::TRANSACTIONS)),
+                                #endif
+                                uint8_t(TYPES::BLOCK),
+                                uint8_t(TYPES::LOCATOR),
+                                TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                                uint1024_t(block.hashPrevBlock)
+                            );
+                        }
+
                         /* Check for missing transactions. */
                         if(nStatus & TAO::Ledger::PROCESS::INCOMPLETE)
                         {
@@ -2535,12 +2552,17 @@ namespace LLP
                                                 /* Write our packet with our total items. */
                                                 pnode->WritePacket(NewMessage(ACTION::GET, ssResponse));
 
+                                                /* Expired our missing block last. */
+                                                pnode->PushMessage(ACTION::GET, uint8_t(TYPES::BLOCK), block.hashMissing);
+
                                                 /* Clear our response data. */
                                                 ssResponse.clear();
 
                                                 /* Reset our counters. */
                                                 nTotalItems = 0;
 
+                                                /* Just to be sure we break. */
+                                                n = 100;
                                                 break;
                                             }
                                             catch(const std::exception& e)
@@ -2552,27 +2574,6 @@ namespace LLP
                                     }
                                 }
                             }
-
-                            /* Expired our missing block last. */
-                            PushMessage(ACTION::GET, uint8_t(TYPES::BLOCK), block.hashMissing);
-                        }
-
-                        /* Check for duplicate and ask for previous block. */
-                        if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
-                        && !(nStatus & TAO::Ledger::PROCESS::IGNORED)
-                        && !(nStatus & TAO::Ledger::PROCESS::INCOMPLETE)
-                        &&  (nStatus & TAO::Ledger::PROCESS::ORPHAN))
-                        {
-                            /* Ask for list of blocks. */
-                            PushMessage(ACTION::LIST,
-                                #ifndef DEBUG_MISSING
-                                (config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::TRANSACTIONS)),
-                                #endif
-                                uint8_t(TYPES::BLOCK),
-                                uint8_t(TYPES::LOCATOR),
-                                TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
-                                uint1024_t(block.hashPrevBlock)
-                            );
                         }
 
                         break;

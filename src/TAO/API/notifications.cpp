@@ -30,6 +30,8 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/build.h>
 
+#include <TAO/Ledger/types/mempool.h>
+
 #include <Util/include/args.h>
 
 /* Global TAO namespace. */
@@ -39,9 +41,23 @@ namespace TAO::API
     std::vector<std::thread> Notifications::vThreads;
 
 
+    /* Track all of our outgoing dispatched contracts. */
+    util::atomic::lock_unique_ptr<std::map<uint256_t, std::vector<TAO::Operation::Contract>>> Notifications::mapDispatch;
+
+
     /* Initializes the current notification systems. */
     void Notifications::Initialize()
     {
+        /* Build our dispatch queue. */
+        if(config::GetBoolArg("-autotx", false))
+        {
+            mapDispatch =
+                util::atomic::lock_unique_ptr<std::map<uint256_t, std::vector<TAO::Operation::Contract>>>
+                (
+                    new std::map<uint256_t, std::vector<TAO::Operation::Contract>>()
+                );
+        }
+
         /* Get the total manager threads. */
         const uint64_t nThreads =
             config::GetArg("-notificationsthreads", 1);
@@ -66,7 +82,7 @@ namespace TAO::API
             }
 
             /* We want to sleep while looping to not consume our cpu cycles. */
-            runtime::sleep(3000);
+            runtime::sleep(1000);
 
             /* Get a current list of our active sessions. */
             const auto vSessions =
@@ -107,14 +123,46 @@ namespace TAO::API
                     };
 
                     /* Check if we need to cleanup any unconfirmed transaction chains. */
-                    if(!SanitizeUnconfirmed(hashGenesis, jSession))
-                        continue;
+                    if(!config::fHybrid.load())
+                    {
+                        /* Sanitize our unconfirmed transactions. */
+                        if(!SanitizeUnconfirmed(hashGenesis, jSession))
+                            continue;
 
-                    /* Broadcast our unconfirmed transactions first. */
-                    Indexing::BroadcastUnconfirmed(hashGenesis);
+                        /* Broadcast our unconfirmed transactions first. */
+                        Indexing::BroadcastUnconfirmed(hashGenesis);
+                    }
 
                     /* Build our list of contracts. */
                     std::vector<TAO::Operation::Contract> vContracts;
+
+                    /* Check for -autotx enabled. */
+                    std::vector<TAO::Operation::Contract> vDispatch;
+                    if(config::GetBoolArg("-autotx", false))
+                    {
+                        /* Copy our contracts into local dispatch. */
+                        vDispatch =
+                            Notifications::mapDispatch->at(hashSession);
+
+                        /* Check that we have work to do. */
+                        if(!vDispatch.empty())
+                        {
+                            /* Don't proceed with -autotx if we are awaiting a new timespan. */
+                            if(!CheckTimespan(hashGenesis, config::fHybrid.load() ? 1 : 10))
+                                continue;
+
+                            /* Now clear so we don't double our work. We will add failures back later. */
+                            Notifications::mapDispatch->at(hashSession).clear();
+
+                            /* Build our pending transactions now. */
+                            const std::vector<uint512_t> vHashes =
+                                BuildAndAccept(jSession, vDispatch, TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS);
+
+                            debug::log(0, FUNCTION, "[AUTOTX] Built ", vHashes.size(), " transactions for ", vDispatch.size(), " contracts");
+
+                            continue;
+                        }
+                    }
 
                     /* Track our unique events as we progress forward. */
                     std::set<std::pair<uint512_t, uint32_t>> setUnique;
@@ -144,7 +192,7 @@ namespace TAO::API
                     LLD::Logical->ListContracts(hashGenesis, vContractSent, 100); //maximum of 100 per iteration
 
                     /* Loop through our sent contracts. */
-                    bool fContractStop = false;
+                    bool fMineStop = false;
                     for(const auto& rEvent : vContractSent)
                     {
                         /* Check for unique events. */
@@ -152,10 +200,10 @@ namespace TAO::API
                             continue;
 
                         /* Build our contracts now. */
-                        if(build_notification(hashGenesis, jSession, rEvent, true, fContractStop, vContracts))
+                        if(build_notification(hashGenesis, jSession, rEvent, true, fMineStop, vContracts))
                         {
+                            fMineStop = true;
                             setUnique.insert(std::make_pair(rEvent.first, rEvent.second));
-                            fContractStop = true;
                         }
                     }
 
@@ -370,7 +418,7 @@ namespace TAO::API
 
 
     /* Checks that the contract passes both Build() and Execute() */
-    bool Notifications::SanitizeContract(TAO::Operation::Contract &rContract, std::map<uint256_t, TAO::Register::State> &mapStates)
+    bool Notifications::SanitizeContract(TAO::Operation::Contract &rContract, std::map<uint256_t, TAO::Register::State> &mapStates, const bool fLogError)
     {
         LOCK(LLP::TritiumNode::CLIENT_MUTEX);
 
@@ -381,7 +429,8 @@ namespace TAO::API
         LLD::TxnBegin(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
 
         /* Temporarily disable error logging so that we don't log errors for contracts that fail to execute. */
-        debug::fLogError = false;
+        if(!fLogError)
+            debug::fLogError = false;
 
         try
         {
@@ -541,6 +590,10 @@ namespace TAO::API
             if(!tx.Delete(rHash))
                 debug::warning(FUNCTION, "failed to delete tx ", rHash.SubString());
 
+            /* Remove from mepool. */
+            if(TAO::Ledger::mempool.Has(rHash))
+                TAO::Ledger::mempool.Remove(rHash);
+
             /* Check if we are at our root now. */
             if(rHash == hashRoot)
                 break;
@@ -618,6 +671,21 @@ namespace TAO::API
             /* Increment our notifications sequence. */
             LLD::Logical->IncrementEventSequence(hashGenesis);
             return false;
+        }
+
+        /* Skip over conditional transactions to ourselves. */
+        if(rContract.Operations()[0] == TAO::Operation::OP::CONDITION)
+        {
+            /* For a burn we increment so we don't process same event again. */
+            if(fMine)
+            {
+                /* Debug output. */
+                debug::log(3, "OP::CONDITION: skipping for my work queue.");
+
+                /* Increment our contract sequence. */
+                LLD::Logical->IncrementContractSequence(hashGenesis);
+                return false;
+            }
         }
 
         /* Seek our contract to primitive OP. */

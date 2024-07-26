@@ -178,6 +178,12 @@ namespace LLD
         return Erase(std::make_pair(std::string("tx"), hashTx));
     }
 
+    /* Checks if a transaction exists. */
+    bool LogicalDB::HasTx(const uint512_t& hashTx)
+    {
+        return Exists(std::make_pair(std::string("tx"), hashTx));
+    }
+
 
     /* Reads a transaction from the Logical DB. */
     bool LogicalDB::ReadTx(const uint512_t& hashTx, TAO::API::Transaction &tx)
@@ -476,6 +482,40 @@ namespace LLD
     }
 
 
+    /* Erase an unclaimed address event to process for given genesis-id. */
+    bool LogicalDB::EraseUnclaimed(const uint256_t& hashGenesis, const uint256_t& hashRegister)
+    {
+        /* Get our current sequence number. */
+        uint32_t nOwnerSequence = 0;
+
+        /* Read our sequences from disk. */
+        Read(std::make_pair(std::string("unclaimed.sequence"), hashGenesis), nOwnerSequence);
+
+        /* Add our indexing entry by owner sequence number. */
+        uint256_t hashCheck;
+        if(!Read(std::make_tuple(std::string("unclaimed.index"), nOwnerSequence, hashGenesis), hashCheck))
+            return false;
+
+        /* Check that the registers match. */
+        if(hashCheck != hashRegister)
+            return debug::error(FUNCTION, "erase must be called in reverse consecutive order");
+
+        /* Erase our unclaimed by sequence. */
+        if(!Erase(std::make_tuple(std::string("unclaimed.index"), nOwnerSequence, hashGenesis)))
+            return false;
+
+        /* Write our new events sequence to disk. */
+        if(!Write(std::make_pair(std::string("unclaimed.sequence"), hashGenesis), --nOwnerSequence))
+            return false;
+
+        /* Erase our order proof. */
+        if(!Erase(std::make_tuple(std::string("unclaimed.proof"), hashGenesis, hashRegister)))
+            return false;
+
+        return true;
+    }
+
+
     /* List the current unclaimed registers for given genesis-id. */
     bool LogicalDB::ListUnclaimed(const uint256_t& hashGenesis, std::set<TAO::Register::Address> &setAddresses)
     {
@@ -587,6 +627,44 @@ namespace LLD
     }
 
 
+    /* Erase a contract for given genesis-id. */
+    bool LogicalDB::EraseEvent(const uint256_t& hashGenesis, const uint512_t& hashTx, const uint32_t nContract)
+    {
+        /* Check for already existing order. */
+        if(!HasEvent(hashTx, nContract))
+            return false;
+
+        /* Get our current sequence number. */
+        uint32_t nSequence = 0;
+
+        /* Read our sequences from disk. */
+        Read(std::make_pair(std::string("events.sequence"), hashGenesis), nSequence);
+
+        /* Add our indexing entry by owner sequence number. */
+        std::pair<uint512_t, uint32_t> pairContract;
+        if(!Read(std::make_tuple(std::string("events.index"), nSequence, hashGenesis), pairContract))
+            return false;
+
+        /* Check that this is correct contract (we need to erase in reverse order like a stack). */
+        if(pairContract != std::make_pair(hashTx, nContract))
+            return debug::error(FUNCTION, "cannot erase contract that is not at top of stack");
+
+        /* Erase the contract from the stack now. */
+        if(!Erase(std::make_tuple(std::string("events.index"), nSequence, hashGenesis)))
+            return false;
+
+        /* Write our order proof. */
+        if(!Erase(std::make_tuple(std::string("events.proof"), hashTx, nContract)))
+            return false;
+
+        /* Write our new events sequence to disk. */
+        if(!Write(std::make_pair(std::string("events.sequence"), hashGenesis), --nSequence))
+            return false;
+
+        return true;
+    }
+
+
     /* List the current active events for given genesis-id. */
     bool LogicalDB::ListEvents(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vEvents, const int32_t nLimit)
     {
@@ -615,8 +693,8 @@ namespace LLD
             if(nTotal >= nLimit && nLimit != -1 && !fForced)
             {
                 /* Check for our verbose setting. */
-                if(config::nVerbose >= 3)
-                    debug::log(3, FUNCTION, "Listing ", VARIABLE(nTotal), " event contracts from ", VARIABLE(nSequence - nTotal));
+                if(config::nVerbose >= 4)
+                    debug::log(4, FUNCTION, "Listing ", VARIABLE(nTotal), " event contracts from ", VARIABLE(nSequence - nTotal));
 
                 return fSuccess;
             }
@@ -637,8 +715,8 @@ namespace LLD
         }
 
         /* Check for our verbose setting. */
-        if(config::nVerbose >= 3)
-            debug::log(3, FUNCTION, "Listing ", VARIABLE(nTotal), " event contracts from ", VARIABLE(nSequence - nTotal));
+        if(config::nVerbose >= 4)
+            debug::log(4, FUNCTION, "Listing ", VARIABLE(nTotal), " event contracts from ", VARIABLE(nSequence - nTotal));
 
         return fSuccess;
     }
@@ -662,6 +740,17 @@ namespace LLD
     }
 
 
+    /* Write the last event that was processed for given sigchain. */
+    bool LogicalDB::DecrementTritiumSequence(const uint256_t& hashGenesis)
+    {
+        /* Read our current sequence. */
+        uint32_t nSequence = 0;
+        ReadTritiumSequence(hashGenesis, nSequence);
+
+        return Write(std::make_pair(std::string("indexing.sequence"), hashGenesis), --nSequence);
+    }
+
+
     /* Read the last event that was processed for given sigchain. */
     bool LogicalDB::ReadLegacySequence(const uint256_t& hashGenesis, uint32_t &nSequence)
     {
@@ -677,6 +766,17 @@ namespace LLD
         ReadLegacySequence(hashGenesis, nSequence);
 
         return Write(std::make_pair(std::string("indexing.sequence.legacy"), hashGenesis), ++nSequence);
+    }
+
+
+    /* Erase the last event that was processed for given sigchain. */
+    bool LogicalDB::DecrementLegacySequence(const uint256_t& hashGenesis)
+    {
+        /* Read our current sequence. */
+        uint32_t nSequence = 0;
+        ReadLegacySequence(hashGenesis, nSequence);
+
+        return Write(std::make_pair(std::string("indexing.sequence.legacy"), hashGenesis), --nSequence);
     }
 
 
@@ -710,6 +810,44 @@ namespace LLD
 
         /* Write our order proof. */
         if(!Write(std::make_tuple(std::string("contracts.proof"), hashTx, nContract)))
+            return false;
+
+        return true;
+    }
+
+
+    /* Erase a contract for given genesis-id. */
+    bool LogicalDB::EraseContract(const uint256_t& hashGenesis, const uint512_t& hashTx, const uint32_t nContract)
+    {
+        /* Check for already existing order. */
+        if(!HasContract(hashTx, nContract))
+            return false;
+
+        /* Get our current sequence number. */
+        uint32_t nSequence = 0;
+
+        /* Read our sequences from disk. */
+        Read(std::make_pair(std::string("contracts.sequence"), hashGenesis), nSequence);
+
+        /* Add our indexing entry by owner sequence number. */
+        std::pair<uint512_t, uint32_t> pairContract;
+        if(!Read(std::make_tuple(std::string("contracts.index"), nSequence, hashGenesis), pairContract))
+            return false;
+
+        /* Check that this is correct contract (we need to erase in reverse order like a stack). */
+        if(pairContract != std::make_pair(hashTx, nContract))
+            return debug::error(FUNCTION, "cannot erase contract that is not at top of stack");
+
+        /* Erase the contract from the stack now. */
+        if(!Erase(std::make_tuple(std::string("contracts.index"), nSequence, hashGenesis)))
+            return false;
+
+        /* Write our order proof. */
+        if(!Erase(std::make_tuple(std::string("contracts.proof"), hashTx, nContract)))
+            return false;
+
+        /* Write our new events sequence to disk. */
+        if(!Write(std::make_pair(std::string("contracts.sequence"), hashGenesis), --nSequence))
             return false;
 
         return true;
@@ -782,8 +920,8 @@ namespace LLD
             if(nTotal >= nLimit && nLimit != -1 && !fForced)
             {
                 /* Check for our verbose setting. */
-                if(config::nVerbose >= 3)
-                    debug::log(3, FUNCTION, "Listing ", VARIABLE(nTotal), " expiring contracts from ", VARIABLE(nSequence - nTotal));
+                if(config::nVerbose >= 4)
+                    debug::log(4, FUNCTION, "Listing ", VARIABLE(nTotal), " expiring contracts from ", VARIABLE(nSequence - nTotal));
 
                 return fSuccess;
             }
@@ -804,8 +942,8 @@ namespace LLD
         }
 
         /* Check for our verbose setting. */
-        if(config::nVerbose >= 3)
-            debug::log(3, FUNCTION, "Listing ", VARIABLE(nTotal), " expiring contracts from ", VARIABLE(nSequence - nTotal));
+        if(config::nVerbose >= 4)
+            debug::log(4, FUNCTION, "Listing ", VARIABLE(nTotal), " expiring contracts from ", VARIABLE(nSequence - nTotal));
 
         return fSuccess;
     }

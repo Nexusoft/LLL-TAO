@@ -55,7 +55,7 @@ namespace TAO::API
 
         /* Check our session's credentials. */
         if(!validate_session(tSession, strPIN))
-            throw Exception(-139, "Invalid credentials");
+            throw Exception(-139, "Invalid credentials for ", tSession.Genesis().ToString());
 
         /* Check for crypto object register. */
         const TAO::Register::Address hashCrypto =

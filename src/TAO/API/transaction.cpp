@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 
 #include <TAO/API/types/transaction.h>
+#include <TAO/API/types/authentication.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -264,8 +265,15 @@ namespace TAO::API
         if(nContract >= vContracts.size())
             return true; //we use this method to skip contracts so if out of range we need to know.
 
+        /* Grab reference of our contract. */
+        const TAO::Operation::Contract& rContract =
+            vContracts[nContract];
+
+        /* Make sure we bind the contract here. */
+        rContract.Bind(this, hash);
+
         /* Get a reference of our internal contract. */
-        return vContracts[nContract].Spent(nContract);
+        return rContract.Spent(nContract);
     }
 
 
@@ -394,8 +402,9 @@ namespace TAO::API
         if(!LLD::Logical->EraseTx(hash))
             return debug::error(FUNCTION, "failed to erase ", VARIABLE(hash.SubString()));
 
-        /* Index our transaction level data now. */
+        /* De-index our transaction level data now. */
         deindex_registers(hash);
+        deindex_events(hash);
 
         return true;
     }
@@ -405,6 +414,224 @@ namespace TAO::API
     bool Transaction::IsLast() const
     {
         return (hashNextTx != 0);
+    }
+
+
+    /* De-index current events for logged in sessions. */
+    void Transaction::deindex_events(const uint512_t& hash)
+    {
+        /* Check all the tx contracts. */
+        for(uint32_t nContract = 0; nContract < Size(); nContract++)
+        {
+            /* Grab reference of our contract. */
+            const TAO::Operation::Contract& rContract = vContracts[nContract];
+
+            /* Make sure we bind the contract here. */
+            rContract.Bind(this, hash);
+
+            /* Skip to our primitive. */
+            rContract.SeekToPrimitive();
+
+            /* Check the contract's primitive. */
+            uint8_t nOP = 0;
+            rContract >> nOP;
+            switch(nOP)
+            {
+                case TAO::Operation::OP::TRANSFER:
+                case TAO::Operation::OP::DEBIT:
+                {
+                    /* Get the register address. */
+                    TAO::Register::Address hashAddress;
+                    rContract >> hashAddress;
+
+                    /* Deserialize recipient from contract. */
+                    TAO::Register::Address hashRecipient;
+                    rContract >> hashRecipient;
+
+                    /* Special check when handling a DEBIT. */
+                    if(nOP == TAO::Operation::OP::DEBIT)
+                    {
+                        /* Skip over partials as this is handled seperate. */
+                        if(hashRecipient.IsObject())
+                            continue;
+
+                        /* Read the owner of register. (check this for MEMPOOL, too) */
+                        TAO::Register::State oRegister;
+                        if(!LLD::Register->ReadState(hashRecipient, oRegister, TAO::Ledger::FLAGS::LOOKUP))
+                            continue;
+
+                        /* Set our hash to based on owner. */
+                        hashRecipient = oRegister.hashOwner;
+
+                        /* Check for active debit from with contract. */
+                        if(LLD::Logical->HasFirst(hashGenesis))
+                        {
+                            /* Write our events to database. */
+                            if(!LLD::Logical->EraseContract(hashGenesis, hash, nContract))
+                                continue;
+                        }
+                    }
+
+                    /* Check if we need to build index for this contract. */
+                    if(LLD::Logical->HasFirst(hashRecipient))
+                    {
+                        /* Push to unclaimed indexes if processing incoming transfer. */
+                        if(nOP == TAO::Operation::OP::TRANSFER && !LLD::Logical->EraseUnclaimed(hashRecipient, hashAddress))
+                            continue;
+
+                        /* Write our events to database. */
+                        if(!LLD::Logical->EraseEvent(hashRecipient, hash, nContract))
+                            continue;
+
+                        /* Increment our sequence. */
+                        if(!LLD::Logical->DecrementTritiumSequence(hashRecipient))
+                            continue;
+
+                        debug::log(2, FUNCTION, "ERASE: ", (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
+                            "for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hash.SubString()), ", ", VARIABLE(nContract));
+                    }
+
+
+
+                    break;
+                }
+
+                case TAO::Operation::OP::COINBASE:
+                {
+                    /* Get the genesis. */
+                    uint256_t hashRecipient;
+                    rContract >> hashRecipient;
+
+                    /* Check if we need to build index for this contract. */
+                    if(LLD::Logical->HasFirst(hashRecipient))
+                    {
+                        /* Write our events to database. */
+                        if(!LLD::Logical->EraseEvent(hashRecipient, hash, nContract))
+                            continue;
+
+                        /* We don't increment our events index for miner coinbase contract. */
+                        if(hashRecipient == hashGenesis)
+                            continue;
+
+                        /* Increment our sequence. */
+                        if(!LLD::Logical->DecrementTritiumSequence(hashRecipient))
+                            continue;
+
+                        debug::log(2, FUNCTION, "ERASE: COINBASE: for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hash.SubString()), ", ", VARIABLE(nContract));
+                    }
+
+                    break;
+                }
+            }
+        }
+    }
+
+
+    /* Index current events for logged in sessions. */
+    void Transaction::index_events(const uint512_t& hash)
+    {
+        /* Check all the tx contracts. */
+        for(uint32_t nContract = 0; nContract < vContracts.size(); nContract++)
+        {
+            /* Grab reference of our contract. */
+            const TAO::Operation::Contract& rContract = vContracts[nContract];
+
+            /* Make sure we bind the contract here. */
+            rContract.Bind(this, hash);
+
+            /* Skip to our primitive. */
+            rContract.SeekToPrimitive();
+
+            /* Check the contract's primitive. */
+            uint8_t nOP = 0;
+            rContract >> nOP;
+            switch(nOP)
+            {
+                case TAO::Operation::OP::TRANSFER:
+                case TAO::Operation::OP::DEBIT:
+                {
+                    /* Get the register address. */
+                    TAO::Register::Address hashAddress;
+                    rContract >> hashAddress;
+
+                    /* Deserialize recipient from contract. */
+                    TAO::Register::Address hashRecipient;
+                    rContract >> hashRecipient;
+
+                    /* Special check when handling a DEBIT. */
+                    if(nOP == TAO::Operation::OP::DEBIT)
+                    {
+                        /* Skip over partials as this is handled seperate. */
+                        if(hashRecipient.IsObject())
+                            continue;
+
+                        /* Read the owner of register. (check this for MEMPOOL, too) */
+                        TAO::Register::State oRegister;
+                        if(!LLD::Register->ReadState(hashRecipient, oRegister, TAO::Ledger::FLAGS::LOOKUP))
+                            continue;
+
+                        /* Set our hash to based on owner. */
+                        hashRecipient = oRegister.hashOwner;
+
+                        /* Check for active debit from with contract. */
+                        if(Authentication::Active(hashGenesis))
+                        {
+                            /* Write our events to database. */
+                            if(!LLD::Logical->PushContract(hashGenesis, hash, nContract))
+                                continue;
+                        }
+                    }
+
+                    /* Check if we need to build index for this contract. */
+                    if(Authentication::Active(hashRecipient))
+                    {
+                        /* Push to unclaimed indexes if processing incoming transfer. */
+                        if(nOP == TAO::Operation::OP::TRANSFER && !LLD::Logical->PushUnclaimed(hashRecipient, hashAddress))
+                            continue;
+
+                        /* Write our events to database. */
+                        if(!LLD::Logical->PushEvent(hashRecipient, hash, nContract))
+                            continue;
+
+                        /* Increment our sequence. */
+                        if(!LLD::Logical->IncrementTritiumSequence(hashRecipient))
+                            continue;
+                    }
+
+                    debug::log(2, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
+                        "for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hash.SubString()), ", ", VARIABLE(nContract));
+
+                    break;
+                }
+
+                case TAO::Operation::OP::COINBASE:
+                {
+                    /* Get the genesis. */
+                    uint256_t hashRecipient;
+                    rContract >> hashRecipient;
+
+                    /* Check if we need to build index for this contract. */
+                    if(Authentication::Active(hashRecipient))
+                    {
+                        /* Write our events to database. */
+                        if(!LLD::Logical->PushEvent(hashRecipient, hash, nContract))
+                            continue;
+
+                        /* We don't increment our events index for miner coinbase contract. */
+                        if(hashRecipient == hashGenesis)
+                            continue;
+
+                        /* Increment our sequence. */
+                        if(!LLD::Logical->IncrementTritiumSequence(hashRecipient))
+                            continue;
+
+                        debug::log(2, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hash.SubString()), ", ", VARIABLE(nContract));
+                    }
+
+                    break;
+                }
+            }
+        }
     }
 
 
@@ -419,6 +646,9 @@ namespace TAO::API
         {
             /* Grab reference of our contract. */
             const TAO::Operation::Contract& rContract = vContracts[nContract];
+
+            /* Make sure we bind the contract here. */
+            rContract.Bind(this, hash);
 
             /* Track our register address. */
             TAO::Register::Address hashRegister;
@@ -538,6 +768,8 @@ namespace TAO::API
             /* Push transaction to the queue so we can track what modified given register. */
             if(!setRegisters.count(hashRegister) && LLD::Logical->PushTransaction(hashRegister, hash))
             {
+                debug::log(3, "Pushing Transaction ", hash.SubString(), " to register ", hashRegister.ToString(), " transaction log");
+
                 /* Track unique addresses to erase only once. */
                 setRegisters.insert(hashRegister);
                 continue;
@@ -557,6 +789,9 @@ namespace TAO::API
         {
             /* Grab reference of our contract. */
             const TAO::Operation::Contract& rContract = vContracts[nContract];
+
+            /* Make sure we bind the contract here. */
+            rContract.Bind(this, hash);
 
             /* Track our register address. */
             uint256_t hashRegister;

@@ -348,11 +348,11 @@ namespace TAO::API
 
         /* Check for invalid type. */
         if(!jParams[strKey].is_string())
-            throw Exception(-35, "Invalid parameter [", strKey, "], expecting [hex-string]");
+            throw Exception(-35, "Invalid parameter [", strKey, "], expecting [string]");
 
         /* Check for hex encoding. */
         const std::string strHash = jParams[strKey].get<std::string>();
-        if(!IsHex(strHash))
+        if(!IsHex(strHash) && strHash != "0")
             throw Exception(-35, "Invalid parameter [", strKey, "], expecting [hex-string]");
 
         return Type(strHash);

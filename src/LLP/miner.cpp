@@ -263,7 +263,7 @@ namespace LLP
                     LLD::Ledger->ReadLast(TAO::API::Authentication::Caller(), nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
 
                     /* Debug output. */
-                    debug::log(2, FUNCTION, "New Connection from ", GetAddress().ToStringIP());
+                    debug::log(3, FUNCTION, "New Connection from ", GetAddress().ToStringIP());
                 }
                 catch(const TAO::API::Exception& e)
                 {
@@ -301,7 +301,7 @@ namespace LLP
                         strReason = "UNKNOWN";
                         break;
                 }
-                debug::log(2, FUNCTION, "Disconnecting ", GetAddress().ToStringIP(), " (", strReason, ")");
+                debug::log(3, FUNCTION, "Disconnecting ", GetAddress().ToStringIP(), " (", strReason, ")");
                 return;
             }
         }
@@ -323,6 +323,16 @@ namespace LLP
 
         if(!fLocalTestnet && nConnections == 0)
             return debug::error(FUNCTION, "No network connections.");
+
+        /* Special rule for testnet so we don't bloat the chain. */
+        if(config::fTestNet.load() && TAO::Ledger::mempool.Size() == 0)
+        {
+            /* Handle if on verbose=3. */
+            if(config::nVerbose.load() >= 3)
+                return debug::error(FUNCTION, "Cannot mine with no pending transactions for -testnet");
+
+            return false;
+        }
 
         /* No mining when synchronizing. */
         if(TAO::Ledger::ChainState::Synchronizing())
@@ -348,7 +358,6 @@ namespace LLP
         /* Evaluate the packet header to determine what to do. */
         switch(PACKET.HEADER)
         {
-
             /* Set the Mining Channel this Connection will Serve Blocks for. */
             case SET_CHANNEL:
             {
@@ -661,7 +670,7 @@ namespace LLP
             }
         }
 
-        return false;
+        return debug::error(FUNCTION, "Command not found ", std::hex, uint32_t(PACKET.HEADER));
     }
 
 
@@ -796,7 +805,7 @@ namespace LLP
         /* Set the block iterator back to zero so we can iterate new blocks next round. */
         nBlockIterator = 0;
 
-        debug::log(2, FUNCTION, "Cleared map of blocks");
+        debug::log(3, FUNCTION, "Cleared map of blocks");
     }
 
 
@@ -993,7 +1002,7 @@ namespace LLP
 
             /* Check if the block is stale. */
             if(pBlock->hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
-                return false;
+                return debug::error(FUNCTION, "submitted block is stale");
 
             /* Unlock sigchain to create new block. */
             SecureString strPIN;
