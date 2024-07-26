@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <string>
 #include <vector>
+#include <cstdint>
 
 namespace encoding
 {
