@@ -41,7 +41,7 @@ namespace LLP
 
 
         /** Internal map to track RTR's that are servicing each user-id. **/
-        static util::atomic::lock_unique_ptr<std::map<uint256_t, std::vector<LLP::BaseAddress>>> mapExternalRoutes;
+        static util::atomic::lock_unique_ptr<std::map<uint256_t, std::set<LLP::BaseAddress>>> mapExternalRoutes;
 
 
     public:

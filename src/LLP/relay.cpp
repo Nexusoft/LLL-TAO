@@ -19,8 +19,8 @@ ________________________________________________________________________________
 namespace LLP
 {
     /* Map to track external RTR's that are servicing each user-id. */
-    util::atomic::lock_unique_ptr<std::map<uint256_t, std::vector<LLP::BaseAddress>>> RelayNode::mapExternalRoutes =
-        new std::map<uint256_t, std::vector<LLP::BaseAddress>>();
+    util::atomic::lock_unique_ptr<std::map<uint256_t, std::set<LLP::BaseAddress>>> RelayNode::mapExternalRoutes =
+        new std::map<uint256_t, std::set<LLP::BaseAddress>>();
 
     /** Constructor **/
     RelayNode::RelayNode()
@@ -141,12 +141,12 @@ namespace LLP
                 ssPacket >> hashGenesis;
 
                 /* Check if we have any available nodes. */
-                std::vector<LLP::BaseAddress> vAvailable;
+                std::set<LLP::BaseAddress> setAvailable;
                 if(mapExternalRoutes->count(hashGenesis))
-                    vAvailable = mapExternalRoutes->at(hashGenesis);
+                    setAvailable = mapExternalRoutes->at(hashGenesis);
 
                 /* Push our response of available nodes. */
-                PushMessage(RESPONSE::AVAILABLE, vAvailable);
+                PushMessage(RESPONSE::AVAILABLE, setAvailable);
 
                 break;
             }
@@ -227,12 +227,10 @@ namespace LLP
 
                 /* Add this to our routing table. */
                 if(!mapExternalRoutes->count(hashGenesis))
-                    mapExternalRoutes->insert(std::make_pair(hashGenesis, std::vector<LLP::BaseAddress>()));
+                    mapExternalRoutes->insert(std::make_pair(hashGenesis, std::set<LLP::BaseAddress>()));
 
                 /* Insert as a record now. */
-                const std::vector<LLP::BaseAddress> vAvailable = mapExternalRoutes->at(hashGenesis);
-                if(std::find(vAvailable.begin(), vAvailable.end(), addrRouter) != vAvailable.end())
-                    mapExternalRoutes->at(hashGenesis).push_back(addrRouter);
+                mapExternalRoutes->at(hashGenesis).insert(addrRouter);
 
                 /* Relay to all of our connected nodes. */
                 //if(RELAY_SERVER)
