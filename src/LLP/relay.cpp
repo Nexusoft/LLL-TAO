@@ -251,7 +251,7 @@ namespace LLP
         if(nMsg == RELAY::AVAILABLE)
         {
             /* Only relay to outgoing nodes. */
-            if(!Incoming())
+            if(Outgoing())
                 return ssData;
         }
 
