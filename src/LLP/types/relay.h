@@ -92,7 +92,7 @@ namespace LLP
                 PONG            = 0x12, //pong messages give us latency and keep connection alive
                 COMMAND         = 0x13, //command response passes command information back to remote host
                 AVAILABLE       = 0x14, //check if a given user-id is available for relays
-                INVALID         = 0x15, //enum to tell if a given handshake was valid or not
+                INVALID         = 0x15, //enum to tell if a given request was valid or not
             };
         };
 

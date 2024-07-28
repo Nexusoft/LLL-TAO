@@ -171,7 +171,7 @@ namespace LLP
             case REQUEST::HANDSHAKE:
             {
                 /* Make sure this is a incoming connection. */
-                if(Incoming())
+                if(Outgoing())
                     return debug::drop(NODE, "REQUEST::HANDSHAKE is invalid for outgoing connections");
 
                 /* Only send auth messages if the auth key has been cached */
@@ -201,6 +201,35 @@ namespace LLP
             /* Request a new session with a connected node in internal routes. */
             case REQUEST::SESSION:
             {
+                /* Make sure this is a incoming connection. */
+                if(Outgoing())
+                    return debug::drop(NODE, "REQUEST::SESSION is invalid for outgoing connections");
+
+                /* Extract the genesis-id that we want to establish session for. */
+                uint256_t hashGenesis;
+                ssPacket >> hashGenesis;
+
+                /* Check our map of internal routes. */
+                if(!mapInternalRoutes->count(hashGenesis))
+                {
+                    /* Respond with error message. */
+                    PushMessage(RESPONSE::INVALID, std::string("no internal routes"));
+                    break;
+                }
+
+                break;
+            }
+
+
+            /* This message is a response to any errors in requests. */
+            case RESPONSE::INVALID:
+            {
+                /* Extract our error message. */
+                std::string strMessage;
+                ssPacket >> strMessage;
+
+                debug::log(0, NODE, "RESPONSE::INVALID: received error message: ", strMessage);
+
                 break;
             }
 
@@ -208,8 +237,8 @@ namespace LLP
             /* This message is generated in response to REQUEST::HANDSHAKE and completes the encryption channel. */
             case RESPONSE::HANDSHAKE:
             {
-                /* Check that this is an outgoing connection. */
-                if(Outgoing())
+                /* Check that this is an incoming connection. */
+                if(Incoming())
                     return debug::drop(NODE, "RESPONSE::HANDSHAKE is invalid for incoming connections");
 
                 /* Complete our handshake sequence now. */
