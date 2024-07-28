@@ -23,8 +23,8 @@ namespace LLP
         new std::map<uint256_t, std::set<LLP::BaseAddress>>();
 
     /* Map to track internal connections that are servicing each user-id. */
-    util::atomic::lock_unique_ptr<std::map<uint256_t, RelayNode*>> RelayNode::mapInternalRoutes =
-        new std::map<uint256_t, RelayNode*>();
+    util::atomic::lock_unique_ptr<std::map<uint256_t, std::shared_ptr<RelayNode>>> RelayNode::mapInternalRoutes =
+        new std::map<uint256_t, std::shared_ptr<RelayNode>>();
 
     /** Constructor **/
     RelayNode::RelayNode()
@@ -216,6 +216,10 @@ namespace LLP
                     PushMessage(RESPONSE::INVALID, std::string("no internal routes"));
                     break;
                 }
+
+                /* Get our relay node from internal routes. */
+                std::shared_ptr<RelayNode> pRelay =
+                    mapInternalRoutes->at(hashGenesis);
 
                 break;
             }

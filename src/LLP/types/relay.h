@@ -45,7 +45,7 @@ namespace LLP
 
 
         /** Internal map to track RTR's that are servicing each user-id. **/
-        static util::atomic::lock_unique_ptr<std::map<uint256_t, RelayNode*>> mapInternalRoutes;
+        static util::atomic::lock_unique_ptr<std::map<uint256_t, std::shared_ptr<RelayNode>>> mapInternalRoutes;
 
 
     public:
