@@ -22,6 +22,10 @@ namespace LLP
     util::atomic::lock_unique_ptr<std::map<uint256_t, std::set<LLP::BaseAddress>>> RelayNode::mapExternalRoutes =
         new std::map<uint256_t, std::set<LLP::BaseAddress>>();
 
+    /* Map to track internal connections that are servicing each user-id. */
+    util::atomic::lock_unique_ptr<std::map<uint256_t, RelayNode*>> RelayNode::mapInternalRoutes =
+        new std::map<uint256_t, RelayNode*>();
+
     /** Constructor **/
     RelayNode::RelayNode()
     : MessageConnection ( )
@@ -194,6 +198,13 @@ namespace LLP
             }
 
 
+            /* Request a new session with a connected node in internal routes. */
+            case REQUEST::SESSION:
+            {
+                break;
+            }
+
+
             /* This message is generated in response to REQUEST::HANDSHAKE and completes the encryption channel. */
             case RESPONSE::HANDSHAKE:
             {
@@ -209,6 +220,13 @@ namespace LLP
                 if(!SignMessage(RELAY::AVAILABLE, GetAddress()))
                     return debug::drop(NODE, "RESPONSE::HANDSHAKE: failed to relay signed address");
 
+                break;
+            }
+
+
+            /* Message to forward a message from one node to another connected to this relay server. */
+            case RELAY::FORWARD:
+            {
                 break;
             }
 

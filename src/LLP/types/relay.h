@@ -44,6 +44,10 @@ namespace LLP
         static util::atomic::lock_unique_ptr<std::map<uint256_t, std::set<LLP::BaseAddress>>> mapExternalRoutes;
 
 
+        /** Internal map to track RTR's that are servicing each user-id. **/
+        static util::atomic::lock_unique_ptr<std::map<uint256_t, RelayNode*>> mapInternalRoutes;
+
+
     public:
 
         /** Requests are core functions to ask for response. **/
