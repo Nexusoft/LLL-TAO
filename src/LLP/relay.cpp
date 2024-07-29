@@ -118,9 +118,21 @@ namespace LLP
             /* Get the genesis to check against. */
             const uint256_t hashGenesis = oCrypto.hashOwner;
 
+            /* Check that we have a valid genesis. */
+            if(hashGenesis == 0)
+                return; //we don't proceed if handshake has not been completed
+
             /* Check if we have an internal route established. */
             if(mapInternalRoutes->count(hashGenesis))
+            {
+                /* Erase from our internal routes map. */
                 mapInternalRoutes->erase(hashGenesis);
+
+                /* Relay to all of our connected nodes. */
+                //if(RELAY_SERVER)
+                //    RELAY_SERVER->Relay(RELAY::REMOVED, hashGenesis, TritiumNode::addrThis.load());
+            }
+
 
             return;
         }
@@ -160,7 +172,7 @@ namespace LLP
                     setAvailable = mapExternalRoutes->at(hashGenesis);
 
                 /* Push our response of available nodes. */
-                PushMessage(RESPONSE::AVAILABLE, setAvailable);
+                PushMessage(RESPONSE::AVAILABLE, hashGenesis, setAvailable);
 
                 break;
             }
@@ -274,6 +286,27 @@ namespace LLP
                 if(!SignMessage(RELAY::AVAILABLE, TritiumNode::addrThis.load()))
                     return debug::drop(NODE, "RESPONSE::HANDSHAKE: failed to relay signed address");
 
+                break;
+            }
+
+
+            /* Response list of available routes for a given genesis-id. */
+            case RESPONSE::AVAILABLE:
+            {
+                /* Deserialize the genesis-id to update external routes. */
+                uint256_t hashGenesis;
+                ssPacket >> hashGenesis;
+
+                /* Deserialize our set of available routes. */
+                std::set<LLP::BaseAddress> setAvailable;
+                ssPacket >> setAvailable;
+
+                /* Add this to our external routes map. */
+                if(!mapExternalRoutes->count(hashGenesis))
+                    mapExternalRoutes->insert(std::make_pair(hashGenesis, setAvailable));
+                else
+                    mapExternalRoutes->at(hashGenesis) = setAvailable;
+                    
                 break;
             }
 
