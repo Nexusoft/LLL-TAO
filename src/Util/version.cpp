@@ -21,13 +21,13 @@ namespace version
     const uint32_t CLIENT_MAJOR = 5;
 
     /* Minor version Y (x.Y.z | Y > 0). */
-    const uint32_t CLIENT_MINOR = 1;
+    const uint32_t CLIENT_MINOR = 2;
 
     /* Patch version Z (x.y.Z | Z > 0). */
-    const uint32_t CLIENT_PATCH = 4;
+    const uint32_t CLIENT_PATCH = 0;
 
     /* Build version determines release candidate. */
-    const uint32_t CLIENT_REVISION = 5;
+    const uint32_t CLIENT_REVISION = 1;
 
     /* This tells us minor build tweaks rather than release candidate. */
     const uint32_t CLIENT_BUILD    = 0;
