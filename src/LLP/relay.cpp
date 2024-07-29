@@ -177,18 +177,6 @@ namespace LLP
                 break;
             }
 
-
-            case REQUEST::COMMAND:
-            {
-                std::string strMessage;
-                ssPacket >> strMessage;
-
-                debug::log(0, NODE, strMessage);
-
-                break;
-            }
-
-
             /* This message is received by a node making an ougoing going. */
             case REQUEST::HANDSHAKE:
             {
@@ -226,33 +214,6 @@ namespace LLP
                     /* Add this node to our internal routes now. */
                     mapInternalRoutes->insert(std::make_pair(hashGenesis, this));
                 }
-
-                break;
-            }
-
-
-            /* Request a new session with a connected node in internal routes. */
-            case REQUEST::SESSION:
-            {
-                /* Make sure this is a incoming connection. */
-                if(Outgoing())
-                    return debug::drop(NODE, "REQUEST::SESSION is invalid for outgoing connections");
-
-                /* Extract the genesis-id that we want to establish session for. */
-                uint256_t hashGenesis;
-                ssPacket >> hashGenesis;
-
-                /* Check our map of internal routes. */
-                if(!mapInternalRoutes->count(hashGenesis))
-                {
-                    /* Respond with error message. */
-                    PushMessage(RESPONSE::INVALID, std::string("no internal routes"));
-                    break;
-                }
-
-                /* Get our relay node from internal routes. */
-                RelayNode* pRelay =
-                    mapInternalRoutes->at(hashGenesis); //TODO: check that we don't have issues deleting connection here
 
                 break;
             }
@@ -318,6 +279,21 @@ namespace LLP
             /* Message to forward a message from one node to another connected to this relay server. */
             case RELAY::FORWARD:
             {
+                /* Extract the genesis-id that is destination. */
+                uint256_t hashDest;
+                ssPacket >> hashDest;
+
+                /* Check our map of internal routes. */
+                if(!mapInternalRoutes->count(hashDest))
+                {
+                    /* Respond with error message. */
+                    PushMessage(RESPONSE::INVALID, std::string("no internal routes"));
+                    break;
+                }
+
+                /* Copy our payload packet over to new connection. */
+                mapInternalRoutes->at(hashDest)->WriteMessage(RELAY::MESSAGE, ssPacket);
+
                 break;
             }
 

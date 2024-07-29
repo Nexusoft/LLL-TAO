@@ -103,7 +103,8 @@ namespace LLP
             {
                 AVAILABLE = 0x20, //this message is responsible for keeping the list of active nodes synced
                 FORWARD   = 0x21, //this message is responsible for forwarding between nodes
-                REMOVED   = 0x22, //this message is responsible for removing an external route
+                MESSAGE   = 0x22, //this indicates a message made it to the destination
+                REMOVED   = 0x23, //this message is responsible for removing an external route
             };
         };
 
