@@ -24,8 +24,8 @@ namespace LLP
         new std::map<uint256_t, std::set<LLP::BaseAddress>>();
 
     /* Map to track internal connections that are servicing each user-id. */
-    util::atomic::lock_unique_ptr<std::map<uint256_t, std::shared_ptr<RelayNode>>> RelayNode::mapInternalRoutes =
-        new std::map<uint256_t, std::shared_ptr<RelayNode>>();
+    util::atomic::lock_unique_ptr<std::map<uint256_t, RelayNode*>> RelayNode::mapInternalRoutes =
+        new std::map<uint256_t, RelayNode*>();
 
     /** Constructor **/
     RelayNode::RelayNode()
@@ -193,6 +193,17 @@ namespace LLP
 
                     /* Push this message now. */
                     PushMessage(RESPONSE::HANDSHAKE, vPayload);
+
+                    /* Get our type for auth message. */
+                    uint8_t nType = 0;
+                    ssPacket >> nType;
+
+                    /* Jump to genesis-id that we just processed. */
+                    uint256_t hashGenesis;
+                    ssPacket >> hashGenesis;
+
+                    /* Add this node to our internal routes now. */
+                    mapInternalRoutes->insert(std::make_pair(hashGenesis, this));
                 }
 
                 break;
@@ -219,8 +230,8 @@ namespace LLP
                 }
 
                 /* Get our relay node from internal routes. */
-                std::shared_ptr<RelayNode> pRelay =
-                    mapInternalRoutes->at(hashGenesis);
+                RelayNode* pRelay =
+                    mapInternalRoutes->at(hashGenesis); //TODO: check that we don't have issues deleting connection here
 
                 break;
             }
