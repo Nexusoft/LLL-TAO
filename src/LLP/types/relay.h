@@ -374,10 +374,10 @@ namespace LLP
 
             /* Build our message packet. */
             DataStream ssPacket(SER_NETWORK, PROTOCOL_VERSION);
-            ((ssPacket << args), ...);
 
             /* Add our message data now. */
             ssPacket << hashGenesis << nTimestamp << vCryptoPub << vCryptoSig;
+            ((ssPacket << args), ...);
 
             /* Write the packet to our pipe now. */
             WritePacket(NewMessage(nMsg, ssPacket));
