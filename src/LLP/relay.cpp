@@ -114,7 +114,16 @@ namespace LLP
 
         /* On Disconnect Event, Reduce the Connection Count for Daemon */
         if(EVENT == EVENTS::DISCONNECT)
+        {
+            /* Get the genesis to check against. */
+            const uint256_t hashGenesis = oCrypto.hashOwner;
+
+            /* Check if we have an internal route established. */
+            if(mapInternalRoutes->count(hashGenesis))
+                mapInternalRoutes->erase(hashGenesis);
+
             return;
+        }
     }
 
 
