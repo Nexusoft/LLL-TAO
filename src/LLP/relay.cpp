@@ -249,7 +249,7 @@ namespace LLP
                     return debug::drop(NODE, "RESPONSE::HANDSHAKE: failed to relay signed address");
 
                 /* Push this message now as a response to the handshake. */
-                WriteMessage(RELAY::AVAILABLE, ssPacket);
+                WriteMessage(RELAY::AVAILABLE, ssMessage);
 
                 break;
             }
@@ -283,6 +283,22 @@ namespace LLP
                 uint256_t hashDest;
                 ssPacket >> hashDest;
 
+                /* Check if we have arrived at destination. */
+                if(TAO::API::Authentication::Unlocked(TAO::Ledger::PinUnlock::NETWORK))
+                {
+                    /* Get an instance of our credentials. */
+                    const uint256_t& hashGenesis =
+                        TAO::API::Authentication::Caller();
+
+                    /* Check that we have reached our destination. */
+                    if(hashDest == hashGenesis)
+                    {
+                        //TODO: we want to push this to a message handler
+
+                        break;
+                    }
+                }
+
                 /* Check our map of internal routes. */
                 if(!mapInternalRoutes->count(hashDest))
                 {
@@ -292,7 +308,7 @@ namespace LLP
                 }
 
                 /* Copy our payload packet over to new connection. */
-                mapInternalRoutes->at(hashDest)->WriteMessage(RELAY::MESSAGE, ssPacket);
+                mapInternalRoutes->at(hashDest)->WriteMessage(RELAY::FORWARD, ssPacket);
 
                 break;
             }
