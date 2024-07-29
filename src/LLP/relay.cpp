@@ -13,6 +13,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <LLP/types/relay.h>
+#include <LLP/types/tritium.h>
 
 #include <LLP/templates/events.h>
 
@@ -250,7 +251,7 @@ namespace LLP
                     return debug::drop(NODE, "RESPONSE::HANDSHAKE: failed to complete handshake: ", debug::GetLastError());
 
                 /* Relay that we are available now with a signed message. */
-                if(!SignMessage(RELAY::AVAILABLE, GetAddress()))
+                if(!SignMessage(RELAY::AVAILABLE, TritiumNode::addrThis.load()))
                     return debug::drop(NODE, "RESPONSE::HANDSHAKE: failed to relay signed address");
 
                 break;
