@@ -194,7 +194,7 @@ namespace LLP
          *  @param[in] nMsg The message type.
          *
          **/
-        void PushMessage(const uint16_t nMsg, const std::vector<uint8_t>& vData)
+        void WriteMessage(const uint16_t nMsg, const std::vector<uint8_t>& vData)
         {
             /* Build our packet to send now. */
             MessagePacket RESPONSE(nMsg);
@@ -230,7 +230,7 @@ namespace LLP
          *  @param[in] nMsg The message type.
          *
          **/
-        void PushMessage(const uint16_t nMsg, const DataStream& ssData)
+        void WriteMessage(const uint16_t nMsg, const DataStream& ssData)
         {
             /* Write the packet to our pipe. */
             WritePacket(NewMessage(nMsg, ssData));
@@ -327,7 +327,7 @@ namespace LLP
          *
          **/
         template<typename... Args>
-        bool SignMessage(const uint16_t nMsg, Args&&... args)
+        bool SignMessage(DataStream &ssPacket, Args&&... args)
         {
             /* Only send auth messages if the auth key has been cached */
             SecureString strPIN;
@@ -373,19 +373,9 @@ namespace LLP
             if(!oCrypto.GenerateSignature("network", pCredentials, strPIN, hashMessage.GetBytes(), vCryptoPub, vCryptoSig))
                 return debug::error(FUNCTION, "failed to generate signature for signed message");
 
-            /* Build our message packet. */
-            DataStream ssPacket(SER_NETWORK, PROTOCOL_VERSION);
-
             /* Add our message data now. */
             ssPacket << hashGenesis << nTimestamp << vCryptoPub << vCryptoSig;
             ((ssPacket << args), ...);
-
-            /* Write the packet to our pipe now. */
-            WritePacket(NewMessage(nMsg, ssPacket));
-
-            /* We want to track verbose to save some copies into log buffers. */
-            if(config::nVerbose >= 4)
-                debug::log(4, NODE, "sent message ", std::hex, nMsg, " of ", std::dec, ssPacket.size(), " bytes");
 
             return true;
         }

@@ -213,7 +213,7 @@ namespace LLP
                         pqSSL->RespondHandshake(pCredentials, strPIN, vPlainText);
 
                     /* Push this message now. */
-                    PushMessage(RESPONSE::HANDSHAKE, vPayload);
+                    WriteMessage(RESPONSE::HANDSHAKE, vPayload);
 
                     /* Get our type for auth message. */
                     uint8_t nType = 0;
@@ -283,8 +283,12 @@ namespace LLP
                     return debug::drop(NODE, "RESPONSE::HANDSHAKE: failed to complete handshake: ", debug::GetLastError());
 
                 /* Relay that we are available now with a signed message. */
-                if(!SignMessage(RELAY::AVAILABLE, TritiumNode::addrThis.load()))
+                DataStream ssMessage(SER_NETWORK, PROTOCOL_VERSION);
+                if(!SignMessage(ssMessage, TritiumNode::addrThis.load()))
                     return debug::drop(NODE, "RESPONSE::HANDSHAKE: failed to relay signed address");
+
+                /* Push this message now as a response to the handshake. */
+                WriteMessage(RELAY::AVAILABLE, ssPacket);
 
                 break;
             }
@@ -306,7 +310,7 @@ namespace LLP
                     mapExternalRoutes->insert(std::make_pair(hashGenesis, setAvailable));
                 else
                     mapExternalRoutes->at(hashGenesis) = setAvailable;
-                    
+
                 break;
             }
 
