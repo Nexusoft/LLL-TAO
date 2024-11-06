@@ -26,13 +26,12 @@ namespace LLP
         "node4.nexus.io",
         "node5.nexus.io",
 
-        //PV DNS seeds
-        "node1.nxs.efficienthash.com",
-        "node2.nxs.efficienthash.com",
-        "node3.nxs.efficienthash.com",
-        "node4.nxs.efficienthash.com",
-        "node5.nxs.efficienthash.com",
-        "node6.nxs.efficienthash.com",
+        //Radiant DNS seeds
+        "nexus1.cryptowise.cloud",
+        "nexus2.cryptowise.cloud",
+        "nexus3.cryptowise.cloud",
+        "nexus4.cryptowise.cloud",
+        "nexus5.cryptowise.cloud",
     };
 
 
