@@ -24,7 +24,7 @@ namespace version
     const uint32_t CLIENT_MINOR = 1;
 
     /* Patch version Z (x.y.Z | Z > 0). */
-    const uint32_t CLIENT_PATCH = 5;
+    const uint32_t CLIENT_PATCH = 4;
 
     /* Build version determines release candidate. */
     const uint32_t CLIENT_REVISION = 0;
