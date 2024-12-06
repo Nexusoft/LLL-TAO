@@ -2778,8 +2778,8 @@ namespace LLP
                         else if(!LLD::Legacy->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
                         {
                             /* Check for obsolete transaction version and ban accordingly. */
-                            if(!TAO::Ledger::TransactionVersionActive(tx.nTime, tx.nVersion))
-                                return debug::drop(NODE, "invalid transaction version, dropping node");
+                            if(tx.nVersion != 2)
+                                return debug::drop(NODE, "invalid transaction version ", tx.nVersion, ", dropping node");
 
                             ++nConsecutiveFails;
                         }
@@ -2824,7 +2824,7 @@ namespace LLP
                         {
                             /* Check for obsolete transaction version and ban accordingly. */
                             if(!TAO::Ledger::TransactionVersionActive(tx.nTimestamp, tx.nVersion))
-                                return debug::drop(NODE, "invalid transaction version, dropping node");
+                                return debug::drop(NODE, "invalid transaction version ", tx.nVersion, ", dropping node");
 
                             ++nConsecutiveFails;
                         }
