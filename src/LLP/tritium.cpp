@@ -50,6 +50,7 @@ ________________________________________________________________________________
 #endif
 
 #include <Legacy/include/evaluate.h>
+#include <Legacy/include/constants.h>
 
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
@@ -2778,7 +2779,7 @@ namespace LLP
                         else if(!LLD::Legacy->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
                         {
                             /* Check for obsolete transaction version and ban accordingly. */
-                            if(tx.nVersion != 2)
+                            if(tx.nVersion != Legacy::TRANSACTION_CURRENT_VERSION)
                                 return debug::drop(NODE, "invalid transaction version ", tx.nVersion, ", dropping node");
 
                             ++nConsecutiveFails;
