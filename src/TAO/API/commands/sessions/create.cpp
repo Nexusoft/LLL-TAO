@@ -27,21 +27,13 @@ namespace TAO::API
     /* Login to a user account. */
     encoding::json Sessions::Create(const encoding::json& jParams, const bool fHelp)
     {
-        /* Check for username parameter. */
-        if(!CheckParameter(jParams, "username", "string"))
-            throw Exception(-127, "Missing username");
-
         /* Parse out username. */
         const SecureString strUsername =
-            SecureString(jParams["username"].get<std::string>().c_str());
-
-        /* Check for password parameter. */
-        if(!CheckParameter(jParams, "password", "string"))
-            throw Exception(-128, "Missing password");
+            SecureString(ExtractString(jParams, "username").c_str());
 
         /* Parse out password. */
         const SecureString strPassword =
-            SecureString(jParams["password"].get<std::string>().c_str());
+            SecureString(ExtractString(jParams, "password").c_str());
 
         /* Pin parameter. */
         const SecureString strPIN =
