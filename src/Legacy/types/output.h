@@ -16,11 +16,12 @@ ________________________________________________________________________________
 #define NEXUS_LEGACY_TYPES_OUTPUT_H
 
 #include <string>
+#include <cstdint>
 
 namespace Legacy
 {
     class WalletTx;
-    
+
 
      /** @class Output
       *
