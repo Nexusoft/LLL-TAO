@@ -139,13 +139,13 @@ ifndef MINIUPNPC_LIB_PATH
 endif
 ifndef MINIUPNPC_INCLUDE_PATH
 	ifeq ($(detected_OS),Windows)
-		MINIUPNPC_LIB_PATH= "C:\deps\include"
+		MINIUPNPC_INCLUDE_PATH= "C:\deps\include"
 	endif
 	ifeq ($(detected_OS),OSX)
-		MINIUPNPC_LIB_PATH= /usr/local/opt/miniupnpc/include
+		MINIUPNPC_INCLUDE_PATH= /usr/local/opt/miniupnpc/include
 	endif
 	ifeq ($(detected_OS),Linux)
-		MINIUPNPC_LIB_PATH= /usr/include
+		MINIUPNPC_INCLUDE_PATH= /usr/include
 	endif
 endif
 

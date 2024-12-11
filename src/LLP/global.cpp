@@ -215,7 +215,7 @@ namespace LLP
             CONFIG.ENABLE_LISTEN   = true;
             CONFIG.ENABLE_UPNP     = false;
             CONFIG.ENABLE_METERS   = config::GetBoolArg(std::string("-apimeters"), false);
-            CONFIG.ENABLE_DDOS     = true;
+            CONFIG.ENABLE_DDOS     = config::GetBoolArg(std::string("-apiddos"), true);
             CONFIG.ENABLE_MANAGER  = false;
             CONFIG.ENABLE_SSL      = config::GetBoolArg(std::string("-apissl"));
             CONFIG.ENABLE_REMOTE   = config::GetBoolArg(std::string("-apiremote"), false);

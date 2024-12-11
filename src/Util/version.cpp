@@ -24,7 +24,7 @@ namespace version
     const uint32_t CLIENT_MINOR = 2;
 
     /* Patch version Z (x.y.Z | Z > 0). */
-    const uint32_t CLIENT_PATCH = 0;
+    const uint32_t CLIENT_PATCH = 5;
 
     /* Build version determines release candidate. */
     const uint32_t CLIENT_REVISION = 1;
@@ -44,7 +44,7 @@ namespace version
 
     /* The version number */
     const std::string CLIENT_VERSION_STRING =
-        debug::safe_printstr(CLIENT_MAJOR, ".", CLIENT_MINOR, ".", CLIENT_PATCH,"-rc", CLIENT_REVISION);
+        debug::safe_printstr(CLIENT_MAJOR, ".", CLIENT_MINOR, ".", CLIENT_PATCH, (CLIENT_REVISION == 0) ? "" : "-rc" + CLIENT_REVISION);
 
 
     /* The interface used Qt, CLI, or Tritium) */
