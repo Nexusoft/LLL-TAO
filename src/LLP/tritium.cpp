@@ -2711,7 +2711,7 @@ namespace LLP
 
 
                 /* Check for failure limit on node. */
-                if(nConsecutiveFails >= 10000)
+                if(nConsecutiveFails >= 1000)
                 {
                     /* Switch to another available node. */
                     if(TAO::Ledger::ChainState::Synchronizing())
@@ -2727,7 +2727,7 @@ namespace LLP
                     }
 
                     /* Drop pesky nodes. */
-                    return debug::ban(this, NODE, "has sent ", nConsecutiveFails, " invalid consecutive blocks");
+                    return debug::ban(this, NODE, "has sent ", nConsecutiveFails, " invalid consecutive objects");
                 }
 
                 break;
