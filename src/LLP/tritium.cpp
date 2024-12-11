@@ -2711,7 +2711,7 @@ namespace LLP
 
 
                 /* Check for failure limit on node. */
-                if(nConsecutiveFails >= 1000)
+                if(nConsecutiveFails >= 5000)
                 {
                     /* Switch to another available node. */
                     if(TAO::Ledger::ChainState::Synchronizing())
@@ -2839,7 +2839,7 @@ namespace LLP
                 }
 
                 /* Check for failure limit on node. */
-                if(nConsecutiveFails >= 10000)
+                if(nConsecutiveFails >= 1000)
                 {
                     /* Only drop the node when syncronizing the chain. */
                     if(TAO::Ledger::ChainState::Synchronizing())
@@ -2851,7 +2851,7 @@ namespace LLP
 
 
                 /* Check for orphan limit on node. */
-                if(nConsecutiveOrphans >= 10000)
+                if(nConsecutiveOrphans >= 5000)
                     return debug::drop(NODE, "TX::node reached ORPHAN limit");
 
                 break;
