@@ -1276,14 +1276,14 @@ namespace Legacy
             uint256_t hashTo;
             if(ExtractRegister(txout.scriptPubKey, hashTo))
             {
+                /* Read the owner of register. (check this for MEMPOOL, too) */
+                TAO::Register::State state;
+                if(!LLD::Register->ReadState(hashTo, state, nFlags))
+                    return debug::error(FUNCTION, "failed to read register to");
+
                 /* Write event for FLAGS::BLOCK only. */
                 if(nFlags == TAO::Ledger::FLAGS::BLOCK)
                 {
-                    /* Read the owner of register. (check this for MEMPOOL, too) */
-                    TAO::Register::State state;
-                    if(!LLD::Register->ReadState(hashTo, state, nFlags))
-                        return debug::error(FUNCTION, "failed to read register to");
-
                     /* Commit an event for receiving sigchain in the legay DB. */
                     if(!LLD::Legacy->WriteEvent(state.hashOwner, GetHash()))
                         return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());

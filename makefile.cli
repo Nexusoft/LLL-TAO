@@ -134,7 +134,18 @@ ifndef MINIUPNPC_LIB_PATH
 		MINIUPNPC_LIB_PATH= /usr/local/opt/miniupnpc/lib
 	endif
 	ifeq ($(detected_OS),Linux)
-		MINIUPNPC_LIB_PATH= /usr/local/opt/miniupnpc/lib
+		MINIUPNPC_LIB_PATH= /usr/lib/miniupnpc
+	endif
+endif
+ifndef MINIUPNPC_INCLUDE_PATH
+	ifeq ($(detected_OS),Windows)
+		MINIUPNPC_INCLUDE_PATH= "C:\deps\include"
+	endif
+	ifeq ($(detected_OS),OSX)
+		MINIUPNPC_INCLUDE_PATH= /usr/local/opt/miniupnpc/include
+	endif
+	ifeq ($(detected_OS),Linux)
+		MINIUPNPC_INCLUDE_PATH= /usr/include
 	endif
 endif
 
@@ -374,16 +385,16 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLC_shake.o \
 		build/LLC_sign.o \
 		build/LLC_vrfy.o \
-        build/LLC_x509_cert.o \
-        build/LLD_address.o \
-        build/LLD_ledger.o \
-        build/LLD_legacy.o \
+    	build/LLC_x509_cert.o \
+    	build/LLD_address.o \
+    	build/LLD_ledger.o \
+    	build/LLD_legacy.o \
 		build/LLD_logical.o \
 		build/LLD_contract.o \
 		build/LLD_client.o \
-        build/LLD_local.o \
-        build/LLD_register.o \
-        build/LLD_trust.o \
+    	build/LLD_local.o \
+    	build/LLD_register.o \
+    	build/LLD_trust.o \
 		build/LLD_binary_key.o \
 		build/LLD_binary_lru.o \
 		build/LLD_binary_lfu.o \
@@ -398,7 +409,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_base_connection.o \
 		build/LLP_miner.o \
 		build/LLP_connection.o \
-        build/LLP_httpnode.o \
+    	build/LLP_httpnode.o \
 		build/LLP_apinode.o \
 		build/LLP_filenode.o \
 		build/LLP_data.o \
@@ -550,7 +561,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Operation_create.o \
 		build/Operation_credit.o \
 		build/Operation_debit.o \
-        build/Operation_execute.o \
+    	build/Operation_execute.o \
 		build/Operation_fee.o \
 		build/Operation_genesis.o \
 		build/Operation_legacy.o \

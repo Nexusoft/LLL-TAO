@@ -50,6 +50,7 @@ ________________________________________________________________________________
 #endif
 
 #include <Legacy/include/evaluate.h>
+#include <Legacy/include/constants.h>
 
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
@@ -2505,6 +2506,23 @@ namespace LLP
                         /* Process the block. */
                         TAO::Ledger::Process(block, nStatus);
 
+                        /* Check for duplicate and ask for previous block. */
+                        if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
+                        && !(nStatus & TAO::Ledger::PROCESS::IGNORED)
+                        &&  (nStatus & TAO::Ledger::PROCESS::ORPHAN))
+                        {
+                            /* Ask for list of blocks. */
+                            PushMessage(ACTION::LIST,
+                                #ifndef DEBUG_MISSING
+                                (config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::TRANSACTIONS)),
+                                #endif
+                                uint8_t(TYPES::BLOCK),
+                                uint8_t(TYPES::LOCATOR),
+                                TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                                uint1024_t(block.hashPrevBlock)
+                            );
+                        }
+
                         /* Check for missing transactions. */
                         if(nStatus & TAO::Ledger::PROCESS::INCOMPLETE)
                         {
@@ -2565,24 +2583,6 @@ namespace LLP
                                     }
                                 }
                             }
-                        }
-
-                        /* Check for duplicate and ask for previous block. */
-                        if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
-                        && !(nStatus & TAO::Ledger::PROCESS::IGNORED)
-                        && !(nStatus & TAO::Ledger::PROCESS::INCOMPLETE)
-                        &&  (nStatus & TAO::Ledger::PROCESS::ORPHAN))
-                        {
-                            /* Ask for list of blocks. */
-                            PushMessage(ACTION::LIST,
-                                #ifndef DEBUG_MISSING
-                                (config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::TRANSACTIONS)),
-                                #endif
-                                uint8_t(TYPES::BLOCK),
-                                uint8_t(TYPES::LOCATOR),
-                                TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
-                                uint1024_t(block.hashPrevBlock)
-                            );
                         }
 
                         break;
@@ -2779,8 +2779,8 @@ namespace LLP
                         else if(!LLD::Legacy->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
                         {
                             /* Check for obsolete transaction version and ban accordingly. */
-                            if(!TAO::Ledger::TransactionVersionActive(tx.nTime, tx.nVersion))
-                                return debug::drop(NODE, "invalid transaction version, dropping node");
+                            if(tx.nVersion != Legacy::TRANSACTION_CURRENT_VERSION)
+                                return debug::drop(NODE, "invalid transaction version ", tx.nVersion, ", dropping node");
 
                             ++nConsecutiveFails;
                         }
@@ -2825,7 +2825,7 @@ namespace LLP
                         {
                             /* Check for obsolete transaction version and ban accordingly. */
                             if(!TAO::Ledger::TransactionVersionActive(tx.nTimestamp, tx.nVersion))
-                                return debug::drop(NODE, "invalid transaction version, dropping node");
+                                return debug::drop(NODE, "invalid transaction version ", tx.nVersion, ", dropping node");
 
                             ++nConsecutiveFails;
                         }

@@ -92,6 +92,10 @@ namespace TAO::API
             /* Check for indexing by height. */
             if(config::GetBoolArg("-indexheight"))
             {
+                /* Do not search if Chain is at 0 blocks */
+                if(TAO::Ledger::ChainState::nBestHeight.load() == 0)
+                    throw Exception(-1, "Chain is at genesis");
+
                 /* Convert the incoming height string to an int */
                 const uint32_t nHeight =
                     TAO::Ledger::ChainState::nBestHeight.load() + (strOrder == "desc" ? -nOffset : nOffset) - nLimit;
@@ -112,7 +116,7 @@ namespace TAO::API
                 tLastBlock = TAO::Ledger::ChainState::tStateBest.load();
 
                 /* Set starting based on second to last checkpoint block. */
-                while(tLastBlock.nHeight + nLimit > TAO::Ledger::ChainState::nBestHeight.load())
+                while(tLastBlock.nHeight + nLimit > TAO::Ledger::ChainState::nBestHeight.load() && tLastBlock.nHeight > 0)
                     tLastBlock = tLastBlock.Prev();
             }
 

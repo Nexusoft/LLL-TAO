@@ -738,7 +738,7 @@ namespace LLP
                     if(GetConnectionCount(FLAGS::INCOMING) >= CONFIG.MAX_INCOMING
                     || GetConnectionCount(FLAGS::ALL) >= CONFIG.MAX_CONNECTIONS)
                     {
-                        debug::error(FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Max connection count exceeded.");
+                        debug::notice(FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Max connection count exceeded.");
                         closesocket(hSocket);
                         runtime::sleep(500);
 
@@ -755,7 +755,7 @@ namespace LLP
                     /* Check that an address is banned. */
                     if(DDOS_MAP->count(addr) && DDOS_MAP->at(addr)->Banned())
                     {
-                        debug::error(FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Banned.");
+                        debug::notice(FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Banned.");
                         sockNew.Close();
 
                         continue;
@@ -764,7 +764,7 @@ namespace LLP
                     /* Check for errors accepting the connection */
                     if(sockNew.Errors())
                     {
-                        debug::error(FUNCTION, "Incoming Connection Request ",  addr.ToString(), " failed.");
+                        debug::notice(FUNCTION, "Incoming Connection Request ",  addr.ToString(), " failed.");
                         sockNew.Close();
 
                         continue;
@@ -773,7 +773,7 @@ namespace LLP
                     /* DDOS Operations: Only executed when DDOS is enabled. */
                     if(!CheckPermissions(addr.ToStringIP(), fSSL ? CONFIG.PORT_SSL : CONFIG.PORT_BASE))
                     {
-                        debug::error(FUNCTION, "Connection Request ",  addr.ToString(), " refused... Denied by allowip whitelist.");
+                        debug::notice(FUNCTION, "Connection Request ",  addr.ToString(), " refused... Denied by allowip whitelist.");
 
                         sockNew.Close();
 
@@ -783,7 +783,7 @@ namespace LLP
                     int32_t nThread = FindThread();
                     if(nThread < 0)
                     {
-                        debug::error(FUNCTION, "Server has no spare connection capacity... dropping");
+                        debug::notice(FUNCTION, "Server has no spare connection capacity... dropping");
                         sockNew.Close();
 
                         continue;
