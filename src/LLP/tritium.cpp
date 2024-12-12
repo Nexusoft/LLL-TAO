@@ -1335,7 +1335,7 @@ namespace LLP
                            3000 seems to be the optimal amount to overcome higher-latency connections during sync */
                         std::vector<TAO::Ledger::BlockState> vStates;
                         while(!fBufferFull.load() && --nLimits >= 0 && hashStart != hashStop
-                            && LLD::Ledger->BatchRead(hashStart, "block", vStates, 2000, true))
+                            && LLD::Ledger->BatchRead(hashStart, "block", vStates, 1000, true))
                         {
                             /* Loop through all available states. */
                             for(auto& state : vStates)
