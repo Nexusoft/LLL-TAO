@@ -1331,32 +1331,25 @@ namespace LLP
                                 /* Get a referende of our state object. */
                                 TAO::Ledger::BlockState& state = vStates[nIndex];
 
+                                /* Update start every iteration. */
+                                hashStart = state.GetHash();
+
                                 /* Skip if not in main chain. */
                                 if(!state.IsInMainChain())
                                     continue;
 
                                 /* Check for matching hashes. */
+                                bool fBreak = false;
                                 if(state.hashPrevBlock != stateLast.GetHash())
                                 {
-                                    debug::notice(FUNCTION, "[SYNC] Correcting Indexes for ", stateLast.GetHash().SubString());
+                                    debug::notice(FUNCTION, "[SYNC] Correcting Indexes for ", stateLast.hashNextBlock.SubString());
 
-                                    /* Scroll through the buffer to find the next block. */
-                                    for( ; nIndex < vStates.size(); ++nIndex)
-                                    {
-                                        /* Iterate our state object. */
-                                        state = vStates[nIndex];
-
-                                        /* Check if this hatch matches chain. */
-                                        if(state.hashPrevBlock == stateLast.GetHash())
-                                            break;
-                                    }
-
-                                    continue;
+                                    hashStart = stateLast.hashNextBlock;
+                                    break;
                                 }
 
                                 /* Update last cache if we don't trigger sequence correction. */
                                 stateLast = state;
-                                hashStart = state.GetHash();
 
                                 /* Handle for special sync block type specifier. */
                                 if(fSyncBlock)
