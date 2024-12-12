@@ -1209,8 +1209,8 @@ namespace LLP
                 if(config::fClient.load())
                     return true; //gracefully ignore these for now since there is no current way for remote nodes to know we are in client mode
 
-                /* Set the limits. 3000 seems to be the optimal amount to overcome higher-latency connections during sync */
-                int32_t nLimits = 3000;
+                /* Set the limits. 1000 seems to be the optimal amount to overcome higher-latency connections during sync */
+                int32_t nLimits = 1000;
 
                 /* Get the next type in stream. */
                 uint8_t nType = 0;
@@ -1334,7 +1334,8 @@ namespace LLP
                         /* Do a sequential read to obtain the list.
                            3000 seems to be the optimal amount to overcome higher-latency connections during sync */
                         std::vector<TAO::Ledger::BlockState> vStates;
-                        while(!fBufferFull.load() && --nLimits >= 0 && hashStart != hashStop && LLD::Ledger->BatchRead(hashStart, "block", vStates, 3000, true))
+                        while(!fBufferFull.load() && --nLimits >= 0 && hashStart != hashStop
+                            && LLD::Ledger->BatchRead(hashStart, "block", vStates, 2000, true))
                         {
                             /* Loop through all available states. */
                             for(auto& state : vStates)
@@ -1347,6 +1348,7 @@ namespace LLP
                                     continue;
 
                                 /* Check for matching hashes. */
+                                bool fBreak = false;
                                 if(state.hashPrevBlock != stateLast.GetHash())
                                 {
                                     if(config::nVerbose >= 3)
@@ -1360,11 +1362,16 @@ namespace LLP
                                     }
 
                                     /* Update hashStart. */
-                                    hashStart = state.GetHash();
+                                    hashStart = stateLast.GetHash();
+                                    fBreak = true; //break after message is sent
                                 }
 
+                                /* Update last cache if we don't trigger sequence correction. */
+                                else
+                                    stateLast = state;
+
                                 /* Cache the block hash. */
-                                stateLast = state;
+
 
                                 /* Handle for special sync block type specifier. */
                                 if(fSyncBlock)
@@ -1438,6 +1445,10 @@ namespace LLP
                                         PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::TRITIUM), block);
                                     }
                                 }
+
+                                /* Break from loop if block order sequence correction was triggered. */
+                                if(fBreak)
+                                    break;
 
                                 /* Check for stop hash. */
                                 if(--nLimits <= 0 || hashStart == hashStop || fBufferFull.load()) //1MB limit
@@ -2851,7 +2862,7 @@ namespace LLP
 
 
                 /* Check for orphan limit on node. */
-                if(nConsecutiveOrphans >= 5000)
+                if(nConsecutiveOrphans >= 1000)
                     return debug::drop(NODE, "TX::node reached ORPHAN limit");
 
                 break;
