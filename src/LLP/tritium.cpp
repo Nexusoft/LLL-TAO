@@ -1210,7 +1210,7 @@ namespace LLP
                     return true; //gracefully ignore these for now since there is no current way for remote nodes to know we are in client mode
 
                 /* Set the block batch limits */
-                int32_t nLimits = 1500;
+                int32_t nLimits = 1000;
 
                 /* Get the next type in stream. */
                 uint8_t nType = 0;
@@ -1317,47 +1317,34 @@ namespace LLP
                         if(hashStart != TAO::Ledger::ChainState::Genesis())
                             stateLast = stateLast.Prev();
 
+                        /* Track our sequential reads index. */
+                        uint1024_t hashLastRead = hashStart;
+
                         /* Do a sequential read to obtain the list at our set limit. */
                         std::vector<TAO::Ledger::BlockState> vStates;
                         while(!fBufferFull.load() && --nLimits >= 0 && hashStart != hashStop
-                            && LLD::Ledger->BatchRead(hashStart, "block", vStates, 1500, true))
+                            && LLD::Ledger->BatchRead(hashLastRead, "block", vStates, 1100, true))
                         {
                             /* Loop through all available states. */
                             for(const auto& state : vStates)
                             {
+                                /* Keep this iterating so we can track our sequential reads. */
+                                hashLastRead = state.GetHash();
+
+                                /* Check if in main chain. */
+                                if(!state.IsInMainChain())
+                                    continue;
+
                                 /* Check for matching hashes. */
-                                if(!state.IsInMainChain() || state.hashPrevBlock != stateLast.GetHash())
-                                {
-                                    debug::notice(FUNCTION, "[SYNC] Correcting Consistency for ", stateLast.hashNextBlock.SubString());
-
-                                    /* Build a short manual list that's consistent. */
-                                    TAO::Ledger::BlockState stateNext = stateLast.Next();
-                                    for(uint32_t nTotal = 0; nTotal < 100; ++nTotal) //we correct for 100 blocks
-                                    {
-                                        /* Check for head of chain. */
-                                        if(!stateNext)
-                                            break;
-
-                                        /* Push the next block to chain. */
-                                        PushBlock(nSpecifier, stateNext);
-
-                                        /* Update start every iteration. */
-                                        stateLast = stateNext;
-                                        hashStart = stateNext.GetHash();
-
-                                        /* Iterate forward one block now. */
-                                        stateNext = stateNext.Next();
-                                    }
-
-                                    break;
-                                }
+                                if(state.hashPrevBlock != stateLast.GetHash())
+                                    continue;
 
                                 /* Push the block to our connection buffer. */
                                 PushBlock(nSpecifier, state);
 
                                 /* Update start every iteration. */
                                 stateLast = state;
-                                hashStart = state.GetHash();
+                                hashStart = hashLastRead;
 
                                 /* Check for stop hash. */
                                 if(--nLimits <= 0 || hashStart == hashStop || fBufferFull.load()) //1MB limit
