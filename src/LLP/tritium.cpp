@@ -1339,28 +1339,28 @@ namespace LLP
                                     continue;
 
                                 /* Check for matching hashes. */
-                                bool fBreak = false;
                                 if(state.hashPrevBlock != stateLast.GetHash())
                                 {
-                                    debug::notice(FUNCTION, "[SYNC] Correcting Indexes for ", stateLast.hashNextBlock.SubString());
+                                    debug::notice(FUNCTION, "[SYNC] Correcting Indexes for ", stateLast.GetHash().SubString());
 
-                                    /* Iterate through this patch using random reads and batch next round. */
-                                    uint1024_t hashNextBlock = stateLast.hashNextBlock;
-                                    for(uint32_t nRemain = nIndex; nRemain < vStates.size(); ++nRemain)
+                                    /* Scroll through the buffer to find the next block. */
+                                    bool fFound = false;
+                                    for( ; nIndex < vStates.size(); ++nIndex)
                                     {
-                                        /* Read the correct block from next index. */
-                                        if(!LLD::Ledger->ReadBlock(hashNextBlock, vStates[nRemain]))
+                                        /* Iterate our state object. */
+                                        state = vStates[nIndex];
+
+                                        /* Check if this hatch matches chain. */
+                                        if(state.hashPrevBlock == stateLast.GetHash())
                                         {
-                                            debug::notice(FUNCTION, "[SYNC] Failed to read block ", hashNextBlock.SubString());
+                                            fFound = true;
                                             break;
                                         }
-
-                                        /* Update hashStart. */
-                                        hashStart = hashNextBlock;
-
-                                        /* Iterate to our next block. */
-                                        hashNextBlock = vStates[nRemain].hashNextBlock;
                                     }
+
+                                    /* Start again if we found the right one. */
+                                    if(fFound)
+                                        continue;
                                 }
 
                                 /* Update last cache if we don't trigger sequence correction. */
