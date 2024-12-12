@@ -1217,15 +1217,12 @@ namespace LLP
                 ssPacket >> nType;
 
                 /* Check for legacy or transactions specifiers. */
-                bool fLegacy = false, fTransactions = false, fSyncBlock = false, fClientBlock = false;
+                uint8_t nSpecifier = 0;
                 if(nType == SPECIFIER::LEGACY || nType == SPECIFIER::TRANSACTIONS
                 || nType == SPECIFIER::SYNC   || nType == SPECIFIER::CLIENT)
                 {
                     /* Set specifiers. */
-                    fLegacy       = (nType == SPECIFIER::LEGACY);
-                    fTransactions = (nType == SPECIFIER::TRANSACTIONS);
-                    fSyncBlock    = (nType == SPECIFIER::SYNC);
-                    fClientBlock  = (nType == SPECIFIER::CLIENT);
+                    nSpecifier = nType;
 
                     /* Go to next type in stream. */
                     ssPacket >> nType;
@@ -1326,103 +1323,41 @@ namespace LLP
                             && LLD::Ledger->BatchRead(hashStart, "block", vStates, 1500, true))
                         {
                             /* Loop through all available states. */
-                            for(uint32_t nIndex = 0; nIndex < vStates.size(); ++nIndex)
+                            for(const auto& state : vStates)
                             {
-                                /* Get a referende of our state object. */
-                                TAO::Ledger::BlockState& state = vStates[nIndex];
-
-                                /* Update start every iteration. */
-                                hashStart = state.GetHash();
-
-                                /* Skip if not in main chain. */
-                                if(!state.IsInMainChain())
-                                    continue;
-
                                 /* Check for matching hashes. */
-                                bool fBreak = false;
-                                if(state.hashPrevBlock != stateLast.GetHash())
+                                if(!state.IsInMainChain() || state.hashPrevBlock != stateLast.GetHash())
                                 {
-                                    debug::notice(FUNCTION, "[SYNC] Correcting Indexes for ", stateLast.hashNextBlock.SubString());
+                                    debug::notice(FUNCTION, "[SYNC] Correcting Consistency for ", stateLast.hashNextBlock.SubString());
 
-                                    hashStart = stateLast.hashNextBlock;
+                                    /* Build a short manual list that's consistent. */
+                                    TAO::Ledger::BlockState stateNext = stateLast.Next();
+                                    for(uint32_t nTotal = 0; nTotal < 100; ++nTotal) //we correct for 100 blocks
+                                    {
+                                        /* Check for head of chain. */
+                                        if(!stateNext)
+                                            break;
+
+                                        /* Push the next block to chain. */
+                                        PushBlock(nSpecifier, stateNext);
+
+                                        /* Update start every iteration. */
+                                        stateLast = stateNext;
+                                        hashStart = stateNext.GetHash();
+
+                                        /* Iterate forward one block now. */
+                                        stateNext = stateNext.Next();
+                                    }
+
                                     break;
                                 }
 
-                                /* Update last cache if we don't trigger sequence correction. */
+                                /* Push the block to our connection buffer. */
+                                PushBlock(nSpecifier, state);
+
+                                /* Update start every iteration. */
                                 stateLast = state;
-
-                                /* Handle for special sync block type specifier. */
-                                if(fSyncBlock)
-                                {
-                                    /* Build the sync block from state. */
-                                    TAO::Ledger::SyncBlock block(state);
-
-                                    /* Push message in response. */
-                                    PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::SYNC), block);
-                                }
-
-                                /* Handle for a client block header. */
-                                else if(fClientBlock)
-                                {
-                                    /* Build the client block from state. */
-                                    TAO::Ledger::ClientBlock block(state);
-
-                                    /* Push message in response. */
-                                    PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::CLIENT), block);
-                                }
-                                else
-                                {
-                                    /* Check for version to send correct type */
-                                    if(state.nVersion < 7)
-                                    {
-                                        /* Build the legacy block from state. */
-                                        Legacy::LegacyBlock block(state);
-
-                                        /* Push message in response. */
-                                        PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::LEGACY), block);
-                                    }
-                                    else
-                                    {
-                                        /* Build the legacy block from state. */
-                                        TAO::Ledger::TritiumBlock block(state);
-
-                                        /* Check for transactions. */
-                                        if(fTransactions)
-                                        {
-                                            /* Loop through transactions. */
-                                            for(const auto& proof : block.vtx)
-                                            {
-                                                /* Basic checks for legacy transactions. */
-                                                if(proof.first == TAO::Ledger::TRANSACTION::LEGACY)
-                                                {
-                                                    /* Check the memory pool. */
-                                                    Legacy::Transaction tx;
-                                                    if(!LLD::Legacy->ReadTx(proof.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                                                        continue;
-
-                                                    /* Push message of transaction. */
-                                                    PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
-                                                }
-
-                                                /* Basic checks for tritium transactions. */
-                                                else if(proof.first == TAO::Ledger::TRANSACTION::TRITIUM)
-                                                {
-                                                    /* Check the memory pool. */
-                                                    TAO::Ledger::Transaction tx;
-                                                    if(!LLD::Ledger->ReadTx(proof.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                                                        continue;
-
-
-                                                    /* Push message of transaction. */
-                                                    PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
-                                                }
-                                            }
-                                        }
-
-                                        /* Push message in response. */
-                                        PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::TRITIUM), block);
-                                    }
-                                }
+                                hashStart = state.GetHash();
 
                                 /* Check for stop hash. */
                                 if(--nLimits <= 0 || hashStart == hashStop || fBufferFull.load()) //1MB limit
@@ -1457,7 +1392,7 @@ namespace LLP
                         std::vector<uint512_t> vHashes;
 
                         /* List tritium transactions if legacy isn't specified. */
-                        if(!fLegacy)
+                        if(!nSpecifier == SPECIFIER::LEGACY)
                         {
                             if(TAO::Ledger::mempool.List(vHashes, std::numeric_limits<uint32_t>::max(), false))
                             {
@@ -1581,11 +1516,11 @@ namespace LLP
                         ssPacket >> nSequence;
 
                         /* Get the last event */
-                        debug::log(1, NODE, "ACTION::LIST: ", fLegacy ? "LEGACY " : "", "NOTIFICATION from ", nSequence, " for ", hashSigchain.SubString());
+                        debug::log(1, NODE, "ACTION::LIST: ", (nSpecifier == SPECIFIER::LEGACY) ? "LEGACY " : "", "NOTIFICATION from ", nSequence, " for ", hashSigchain.SubString());
 
                         /* Check for legacy. */
                         int32_t nLimits = ACTION::LIST_NOTIFICATIONS_MAX_ITEMS + 1;
-                        if(fLegacy)
+                        if(nSpecifier == SPECIFIER::LEGACY)
                         {
                             /* Build our list of events. */
                             std::vector<Legacy::MerkleTx> vtx;
@@ -3697,6 +3632,84 @@ namespace LLP
         /* Get a reference of session. */
         const std::pair<uint32_t, uint32_t>& pair = mapSessions[nSession];
         return TRITIUM_SERVER->GetConnection(pair.first, pair.second);
+    }
+
+
+    /* Push a block to tritium connection based on specifier. */
+    void TritiumNode::PushBlock(const uint8_t nSpecifier, const TAO::Ledger::BlockState& state)
+    {
+        /* Handle for special sync block type specifier. */
+        if(nSpecifier == SPECIFIER::SYNC)
+        {
+            /* Build the sync block from state. */
+            TAO::Ledger::SyncBlock block(state);
+
+            /* Push message in response. */
+            PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::SYNC), block);
+        }
+
+        /* Handle for a client block header. */
+        else if(nSpecifier == SPECIFIER::CLIENT)
+        {
+            /* Build the client block from state. */
+            TAO::Ledger::ClientBlock block(state);
+
+            /* Push message in response. */
+            PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::CLIENT), block);
+        }
+        else
+        {
+            /* Check for version to send correct type */
+            if(state.nVersion < 7)
+            {
+                /* Build the legacy block from state. */
+                Legacy::LegacyBlock block(state);
+
+                /* Push message in response. */
+                PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::LEGACY), block);
+            }
+            else
+            {
+                /* Build the legacy block from state. */
+                TAO::Ledger::TritiumBlock block(state);
+
+                /* Check for transactions. */
+                if(nSpecifier == SPECIFIER::TRANSACTIONS)
+                {
+                    /* Loop through transactions. */
+                    for(const auto& proof : block.vtx)
+                    {
+                        /* Basic checks for legacy transactions. */
+                        if(proof.first == TAO::Ledger::TRANSACTION::LEGACY)
+                        {
+                            /* Check the memory pool. */
+                            Legacy::Transaction tx;
+                            if(!LLD::Legacy->ReadTx(proof.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                continue;
+
+                            /* Push message of transaction. */
+                            PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
+                        }
+
+                        /* Basic checks for tritium transactions. */
+                        else if(proof.first == TAO::Ledger::TRANSACTION::TRITIUM)
+                        {
+                            /* Check the memory pool. */
+                            TAO::Ledger::Transaction tx;
+                            if(!LLD::Ledger->ReadTx(proof.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                continue;
+
+
+                            /* Push message of transaction. */
+                            PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
+                        }
+                    }
+                }
+
+                /* Push message in response. */
+                PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::TRITIUM), block);
+            }
+        }
     }
 
 
