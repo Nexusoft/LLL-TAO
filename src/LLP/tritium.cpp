@@ -1341,7 +1341,6 @@ namespace LLP
                                     debug::notice(FUNCTION, "[SYNC] Correcting Indexes for ", stateLast.GetHash().SubString());
 
                                     /* Scroll through the buffer to find the next block. */
-                                    bool fFound = false;
                                     for( ; nIndex < vStates.size(); ++nIndex)
                                     {
                                         /* Iterate our state object. */
@@ -1349,15 +1348,10 @@ namespace LLP
 
                                         /* Check if this hatch matches chain. */
                                         if(state.hashPrevBlock == stateLast.GetHash())
-                                        {
-                                            fFound = true;
                                             break;
-                                        }
                                     }
 
-                                    /* Start again if we found the right one. */
-                                    if(fFound)
-                                        continue;
+                                    continue;
                                 }
 
                                 /* Update last cache if we don't trigger sequence correction. */
