@@ -1209,7 +1209,7 @@ namespace LLP
                 if(config::fClient.load())
                     return true; //gracefully ignore these for now since there is no current way for remote nodes to know we are in client mode
 
-                /* Set the limits. 1000 seems to be the optimal amount to overcome higher-latency connections during sync */
+                /* Set the block batch limits */
                 int32_t nLimits = 1000;
 
                 /* Get the next type in stream. */
@@ -1331,8 +1331,7 @@ namespace LLP
                         if(!LLD::Ledger->ReadBlock(hashStart, stateLast))
                             return debug::drop(NODE, "failed to read starting block");
 
-                        /* Do a sequential read to obtain the list.
-                           3000 seems to be the optimal amount to overcome higher-latency connections during sync */
+                        /* Do a sequential read to obtain the list at our set limit. */
                         std::vector<TAO::Ledger::BlockState> vStates;
                         while(!fBufferFull.load() && --nLimits >= 0 && hashStart != hashStop
                             && LLD::Ledger->BatchRead(hashStart, "block", vStates, 1000, true))
@@ -1362,16 +1361,12 @@ namespace LLP
                                     }
 
                                     /* Update hashStart. */
-                                    hashStart = stateLast.GetHash();
+                                    hashStart = stateLast.hashNextBlock;
                                     fBreak = true; //break after message is sent
                                 }
 
                                 /* Update last cache if we don't trigger sequence correction. */
-                                else
-                                    stateLast = state;
-
-                                /* Cache the block hash. */
-
+                                stateLast = state;
 
                                 /* Handle for special sync block type specifier. */
                                 if(fSyncBlock)
