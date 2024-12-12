@@ -168,13 +168,13 @@ namespace Legacy
 
         /* Push back all the transactions from the state object. */
         std::vector<Legacy::Transaction> vList;
-        if(LLD::Legacy->BatchRead(state.vtx[nIterator].second, "tx", vList, 1000, true))
+        while(LLD::Legacy->BatchRead(state.vtx[nIterator].second, "tx", vList, 10, true))
         {
             /* Loop through tx and find in block. */
             for(const auto& tx : vList)
             {
                 /* Once we have all the transactions. */
-                if(nIterator == state.vtx.size() - 1)
+                if(nIterator == state.vtx.size())
                     break;
 
                 /* Check if we found tx that matches block. */
@@ -186,6 +186,10 @@ namespace Legacy
                 else
                     continue;
             }
+
+            /* Once we have all the transactions. */
+            if(nIterator == state.vtx.size())
+                break;
         }
 
         /*
