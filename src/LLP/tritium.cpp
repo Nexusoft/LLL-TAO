@@ -1331,9 +1331,6 @@ namespace LLP
                                 /* Get a referende of our state object. */
                                 TAO::Ledger::BlockState& state = vStates[nIndex];
 
-                                /* Update start every iteration. */
-                                hashStart = state.GetHash();
-
                                 /* Skip if not in main chain. */
                                 if(!state.IsInMainChain())
                                     continue;
@@ -1365,6 +1362,7 @@ namespace LLP
 
                                 /* Update last cache if we don't trigger sequence correction. */
                                 stateLast = state;
+                                hashStart = state.GetHash();
 
                                 /* Handle for special sync block type specifier. */
                                 if(fSyncBlock)
