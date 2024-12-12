@@ -1308,6 +1308,10 @@ namespace LLP
                         uint1024_t hashStop;
                         ssPacket >> hashStop;
 
+                        /* Replace stop with best chain if value is 0. */
+                        if(hashStop == 0)
+                            hashStop = TAO::Ledger::ChainState::hashBestChain.load();
+
                         /* Keep track of the last state. */
                         TAO::Ledger::BlockState stateLast;
                         if(!LLD::Ledger->ReadBlock(hashStart, stateLast))
