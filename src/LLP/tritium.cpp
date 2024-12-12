@@ -1210,7 +1210,7 @@ namespace LLP
                     return true; //gracefully ignore these for now since there is no current way for remote nodes to know we are in client mode
 
                 /* Set the block batch limits */
-                int32_t nLimits = 1000;
+                int32_t nLimits = 1500;
 
                 /* Get the next type in stream. */
                 uint8_t nType = 0;
@@ -1277,33 +1277,18 @@ namespace LLP
                                     /* Check the database for the ancestor block. */
                                     if(LLD::Ledger->HasBlock(tHave))
                                     {
-                                        /* Check if locator found genesis. */
-                                        if(tHave != TAO::Ledger::ChainState::Genesis())
-                                        {
-                                            /* Grab the block that's found. */
-                                            TAO::Ledger::BlockState state;
-                                            if(!LLD::Ledger->ReadBlock(tHave, state))
-                                                return debug::drop(NODE, "failed to read locator block");
+                                        /* Grab the block that's found. */
+                                        TAO::Ledger::BlockState state;
+                                        if(!LLD::Ledger->ReadBlock(tHave, state))
+                                            return debug::drop(NODE, "failed to read locator block");
 
-                                            /* Check for being in main chain. */
-                                            if(!state.IsInMainChain())
-                                                continue;
+                                        /* Check for being in main chain. */
+                                        if(!state.IsInMainChain())
+                                            continue;
 
-                                            hashStart = state.hashPrevBlock;
-                                        }
-                                        else //on genesis, don't revert to previous block
-                                            hashStart = tHave;
-
+                                        hashStart = state.GetHash();
                                         break;
                                     }
-
-                                    /* Check if we are at genesis for better debug data. */
-                                    else if(n == locator.vHave.size() - 1)
-                                        return debug::drop
-                                        (
-                                            NODE, "ACTION::LIST: Locator: ", tHave.SubString(),
-                                            " has different Genesis: ", TAO::Ledger::ChainState::Genesis().SubString()
-                                        );
                                 }
 
                                 /* Debug output. */
@@ -1331,10 +1316,14 @@ namespace LLP
                         if(!LLD::Ledger->ReadBlock(hashStart, stateLast))
                             return debug::drop(NODE, "failed to read starting block");
 
+                        /* Reading starting hash based on previous block except genesis. */
+                        if(hashStart != TAO::Ledger::ChainState::Genesis())
+                            stateLast = stateLast.Prev();
+
                         /* Do a sequential read to obtain the list at our set limit. */
                         std::vector<TAO::Ledger::BlockState> vStates;
                         while(!fBufferFull.load() && --nLimits >= 0 && hashStart != hashStop
-                            && LLD::Ledger->BatchRead(hashStart, "block", vStates, 1000, true))
+                            && LLD::Ledger->BatchRead(hashStart, "block", vStates, 1500, true))
                         {
                             /* Loop through all available states. */
                             for(auto& state : vStates)
@@ -1350,12 +1339,12 @@ namespace LLP
                                 bool fBreak = false;
                                 if(state.hashPrevBlock != stateLast.GetHash())
                                 {
-                                    if(config::nVerbose >= 3)
-                                        debug::log(3, FUNCTION, "Reading block ", stateLast.hashNextBlock.SubString());
+                                    debug::notice(2, FUNCTION, "[SYNC] Correcting Indexes for ", stateLast.hashNextBlock.SubString());
 
                                     /* Read the correct block from next index. */
                                     if(!LLD::Ledger->ReadBlock(stateLast.hashNextBlock, state))
                                     {
+                                        debug::notice(2, FUNCTION, "[SYNC] Failed to read block ", stateLast.hashNextBlock.SubString());
                                         nLimits = 0;
                                         break;
                                     }
