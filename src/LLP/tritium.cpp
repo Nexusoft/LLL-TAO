@@ -1326,8 +1326,11 @@ namespace LLP
                             && LLD::Ledger->BatchRead(hashStart, "block", vStates, 1500, true))
                         {
                             /* Loop through all available states. */
-                            for(auto& state : vStates)
+                            for(uint32_t nIndex = 0; nIndex < vStates.size(); ++nIndex)
                             {
+                                /* Get a referende of our state object. */
+                                TAO::Ledger::BlockState& state = vStates[nIndex];
+
                                 /* Update start every iteration. */
                                 hashStart = state.GetHash();
 
@@ -1339,19 +1342,25 @@ namespace LLP
                                 bool fBreak = false;
                                 if(state.hashPrevBlock != stateLast.GetHash())
                                 {
-                                    debug::notice(2, FUNCTION, "[SYNC] Correcting Indexes for ", stateLast.hashNextBlock.SubString());
+                                    debug::notice(FUNCTION, "[SYNC] Correcting Indexes for ", stateLast.hashNextBlock.SubString());
 
-                                    /* Read the correct block from next index. */
-                                    if(!LLD::Ledger->ReadBlock(stateLast.hashNextBlock, state))
+                                    /* Iterate through this patch using random reads and batch next round. */
+                                    uint1024_t hashNextBlock = stateLast.hashNextBlock;
+                                    for(uint32_t nRemain = nIndex; nRemain < vStates.size(); ++nRemain)
                                     {
-                                        debug::notice(2, FUNCTION, "[SYNC] Failed to read block ", stateLast.hashNextBlock.SubString());
-                                        nLimits = 0;
-                                        break;
-                                    }
+                                        /* Read the correct block from next index. */
+                                        if(!LLD::Ledger->ReadBlock(hashNextBlock, vStates[nRemain]))
+                                        {
+                                            debug::notice(FUNCTION, "[SYNC] Failed to read block ", hashNextBlock.SubString());
+                                            break;
+                                        }
 
-                                    /* Update hashStart. */
-                                    hashStart = stateLast.hashNextBlock;
-                                    fBreak = true; //break after message is sent
+                                        /* Update hashStart. */
+                                        hashStart = hashNextBlock;
+
+                                        /* Iterate to our next block. */
+                                        hashNextBlock = vStates[nRemain].hashNextBlock;
+                                    }
                                 }
 
                                 /* Update last cache if we don't trigger sequence correction. */
@@ -1429,10 +1438,6 @@ namespace LLP
                                         PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::TRITIUM), block);
                                     }
                                 }
-
-                                /* Break from loop if block order sequence correction was triggered. */
-                                if(fBreak)
-                                    break;
 
                                 /* Check for stop hash. */
                                 if(--nLimits <= 0 || hashStart == hashStop || fBufferFull.load()) //1MB limit
