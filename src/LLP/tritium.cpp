@@ -1324,6 +1324,13 @@ namespace LLP
                         /* Track our sequential reads index. */
                         uint1024_t hashLastRead = stateLast.GetHash();
 
+                        /* These are our sequential read buffers for sync blocks. */
+                        std::pair<uint32_t, std::vector<Legacy::Transaction>> pairLegacy;
+                        std::pair<uint32_t, std::vector<TAO::Ledger::Transaction>> pairTritium;
+
+                        /* Track the last read tritium and legacy transactions. */
+                        std::pair<uint512_t, uint512_t> pairLastRead;
+
                         /* Do a sequential read to obtain the list at our set limit. */
                         std::vector<TAO::Ledger::BlockState> vStates;
                         while(!fBufferFull.load() && --nLimits >= 0 && hashStart != hashStop
@@ -1343,8 +1350,127 @@ namespace LLP
                                 if(state.hashPrevBlock != stateLast.GetHash())
                                     continue;
 
+                                /* Handle for special sync block type specifier. */
+                                if(nSpecifier == SPECIFIER::SYNC)
+                                {
+                                    /* Build the sync block from state. */
+                                    TAO::Ledger::SyncBlock block(state, false);
+
+                                    /* Loop through transactions in state block. */
+                                    for(const auto& proof : state.vtx)
+                                    {
+                                        /* Switch for type. */
+                                        switch(proof.first)
+                                        {
+                                            /* Check for tritium. */
+                                            case TAO::Ledger::TRANSACTION::TRITIUM:
+                                            {
+                                                /* Check that the proof matches. */
+                                                for( ; pairTritium.first < pairTritium.second.size(); ++pairTritium.first)
+                                                {
+                                                    /* Get a reference of current tx. */
+                                                    const TAO::Ledger::Transaction& tx =
+                                                        pairTritium.second[pairTritium.first];
+
+                                                    /* Check for a match. */
+                                                    if(tx.GetHash() == proof.second)
+                                                    {
+                                                        /* Serialize stream. */
+                                                        DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
+                                                        ssData << tx;
+
+                                                        /* Add transaction to binary data. */
+                                                        block.vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
+
+                                                        break;
+                                                    }
+                                                }
+
+                                                /* Check if we need to batch read legacy transactions, we also init with this */
+                                                if(pairTritium.first == pairTritium.second.size())
+                                                {
+                                                    /* Set our first tx to scan from. */
+                                                    pairLastRead.first = proof.second;
+
+                                                    /* Reset our counter if we read our data. */
+                                                    if(LLD::Legacy->BatchRead(pairLastRead.first, "tx", pairTritium.second, 1000, true))
+                                                    {
+                                                        /* Serialize stream. */
+                                                        DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
+                                                        ssData << pairTritium.second[0];
+
+                                                        /* Add transaction to binary data. */
+                                                        block.vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
+
+                                                        /* Reset our iterator. */
+                                                        pairTritium.first = 1;
+                                                    }
+                                                    else
+                                                        debug::notice("TRITIUM: failed to batch read at ", pairLastRead.first.SubString());
+                                                }
+
+                                                break;
+                                            }
+
+                                            /* Check for legacy. */
+                                            case TAO::Ledger::TRANSACTION::LEGACY:
+                                            {
+                                                /* Check that the proof matches. */
+                                                for( ; pairLegacy.first < pairLegacy.second.size(); ++pairLegacy.first)
+                                                {
+                                                    /* Get a reference of current tx. */
+                                                    const Legacy::Transaction& tx =
+                                                        pairLegacy.second[pairLegacy.first];
+
+                                                    /* Check for a match. */
+                                                    if(tx.GetHash() == proof.second)
+                                                    {
+                                                        /* Serialize stream. */
+                                                        DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
+                                                        ssData << tx;
+
+                                                        /* Add transaction to binary data. */
+                                                        block.vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
+
+                                                        break;
+                                                    }
+                                                }
+
+                                                /* Check if we need to batch read legacy transactions, we also init with this */
+                                                if(pairLegacy.first == pairLegacy.second.size())
+                                                {
+                                                    /* Set our first tx to scan from. */
+                                                    pairLastRead.second = proof.second;
+
+                                                    /* Reset our counter if we read our data. */
+                                                    if(LLD::Ledger->BatchRead(pairLastRead.second, "tx", pairLegacy.second, 1000, true))
+                                                    {
+                                                        /* Serialize stream. */
+                                                        DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
+                                                        ssData << pairLegacy.second[0];
+
+                                                        /* Add transaction to binary data. */
+                                                        block.vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
+
+                                                        /* Reset our iterator. */
+                                                        pairLegacy.first = 1;
+                                                    }
+                                                    else
+                                                        debug::notice("LEGACY: failed to batch read at ", pairLastRead.second.SubString());
+                                                }
+
+                                                break;
+                                            }
+                                        }
+                                    }
+
+                                    /* Push message in response. */
+                                    PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::SYNC), block);
+                                }
+
                                 /* Push the block to our connection buffer. */
-                                PushBlock(nSpecifier, state);
+                                else
+                                    PushBlock(nSpecifier, state);
 
                                 /* Update start every iteration. */
                                 stateLast = state;
@@ -3629,18 +3755,8 @@ namespace LLP
     /* Push a block to tritium connection based on specifier. */
     void TritiumNode::PushBlock(const uint8_t nSpecifier, const TAO::Ledger::BlockState& state)
     {
-        /* Handle for special sync block type specifier. */
-        if(nSpecifier == SPECIFIER::SYNC)
-        {
-            /* Build the sync block from state. */
-            TAO::Ledger::SyncBlock block(state);
-
-            /* Push message in response. */
-            PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::SYNC), block);
-        }
-
         /* Handle for a client block header. */
-        else if(nSpecifier == SPECIFIER::CLIENT)
+        if(nSpecifier == SPECIFIER::CLIENT)
         {
             /* Build the client block from state. */
             TAO::Ledger::ClientBlock block(state);
