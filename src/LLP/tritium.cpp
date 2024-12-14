@@ -1321,15 +1321,30 @@ namespace LLP
                         if(hashStart != TAO::Ledger::ChainState::Genesis())
                             stateLast = stateLast.Prev();
 
-                        /* Track our sequential reads index. */
+                        /* Track our sequential block index to issue the next batch. */
                         uint1024_t hashLastRead = stateLast.GetHash();
 
-                        /* These are our sequential read buffers for sync blocks. */
-                        std::pair<uint32_t, std::vector<Legacy::Transaction>> pairLegacy;
-                        std::pair<uint32_t, std::vector<TAO::Ledger::Transaction>> pairTritium;
+                        /* This value helps us just modify it here rather than pasting through the code. */
+                        const uint32_t nBatchLimit = 1000;
+
+                        /* Keep track of our current buffer index and legacy transaction buffer. */
+                        std::pair<uint32_t, std::vector<Legacy::Transaction>> pairLegacy =
+                                                std::make_pair(0, std::vector<Legacy::Transaction>());
+
+                        /* Keep track of our current tritium buffer index and tritium transaction buffer. */
+                        std::pair<uint32_t, std::vector<TAO::Ledger::Transaction>> pairTritium =
+                                                std::make_pair(0, std::vector<TAO::Ledger::Transaction>());
 
                         /* Track the last read tritium and legacy transactions. */
-                        std::pair<uint512_t, uint512_t> pairLastRead;
+                        std::pair<uint512_t, uint512_t> pairLastRead = std::make_pair(uint512_t(0), uint512_t(0));
+
+                        /* Track our missing transactions that never found a block so we can solve out of order issues. */
+                        std::map<uint512_t, TAO::Ledger::Transaction> mapTritium =
+                                                std::map<uint512_t, TAO::Ledger::Transaction>();
+
+                        /* Track our missing transactions that never found a block so we can solve out of order issues. */
+                        std::map<uint512_t, Legacy::Transaction> mapLegacy =
+                                                std::map<uint512_t, Legacy::Transaction>();
 
                         /* Do a sequential read to obtain the list at our set limit. */
                         std::vector<TAO::Ledger::BlockState> vStates;
@@ -1365,7 +1380,30 @@ namespace LLP
                                             /* Check for tritium. */
                                             case TAO::Ledger::TRANSACTION::TRITIUM:
                                             {
+                                                /* Check if we need to batch read legacy transactions, we also init with this */
+                                                if(pairTritium.first == pairTritium.second.size())
+                                                {
+                                                    /* Set our first tx to scan from. */
+                                                    bool fExclude = true;
+                                                    if(pairLastRead.first == 0)
+                                                    {
+                                                        fExclude = false;  //we don't exlude when we set our starting index
+                                                        pairLastRead.first = proof.second;
+                                                    }
+
+                                                    /* Reset our counter if we read our data. */
+                                                    if(LLD::Ledger->BatchRead(pairLastRead.first,
+                                                        "tx", pairTritium.second, nBatchLimit, fExclude))
+                                                    {
+                                                        pairTritium.first = 0;
+                                                        pairLastRead.first = pairTritium.second.back().GetHash();
+                                                    }
+                                                    else
+                                                        pairLastRead.first = 0;
+                                                }
+
                                                 /* Check that the proof matches. */
+                                                bool fFound = false;
                                                 for( ; pairTritium.first < pairTritium.second.size(); ++pairTritium.first)
                                                 {
                                                     /* Get a reference of current tx. */
@@ -1373,40 +1411,53 @@ namespace LLP
                                                         pairTritium.second[pairTritium.first];
 
                                                     /* Check for a match. */
-                                                    if(tx.GetHash() == proof.second)
+                                                    const uint512_t& hashTx = tx.GetHash();
+                                                    if(hashTx == proof.second || mapTritium.count(proof.second))
                                                     {
                                                         /* Serialize stream. */
                                                         DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
-                                                        ssData << tx;
+
+                                                        /* Check if we are getting from the missing map. */
+                                                        if(mapTritium.count(proof.second))
+                                                        {
+                                                            /* Get the missing transaction. */
+                                                            const TAO::Ledger::Transaction& tMissing =
+                                                                mapTritium[proof.second];
+
+                                                            /* Serialize the missing to data. */
+                                                            ssData << tMissing;
+                                                            pairTritium.first--; //reset index so we retry this entry
+
+                                                            /* Remove the transaction from the map. */
+                                                            mapTritium.erase(proof.second);
+                                                        }
+                                                        else
+                                                            ssData << tx;
 
                                                         /* Add transaction to binary data. */
                                                         block.vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
+                                                        fFound = true;
 
                                                         break;
                                                     }
+                                                    else
+                                                        mapTritium.insert(std::make_pair(hashTx, pairTritium.second[pairTritium.first]));
                                                 }
 
-                                                /* Check if we need to batch read legacy transactions, we also init with this */
-                                                if(pairTritium.first == pairTritium.second.size())
+                                                /* Read the missing transaction if none found. */
+                                                if(!fFound)
                                                 {
-                                                    /* Set our first tx to scan from. */
-                                                    pairLastRead.first = proof.second;
-
-                                                    /* Reset our counter if we read our data. */
-                                                    if(LLD::Legacy->BatchRead(pairLastRead.first, "tx", pairTritium.second, 1000, true))
+                                                    /* Read the missing transaction transaction. */
+                                                    TAO::Ledger::Transaction tMissing;
+                                                    if(LLD::Ledger->ReadTx(proof.second, tMissing))
                                                     {
                                                         /* Serialize stream. */
                                                         DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
-                                                        ssData << pairTritium.second[0];
+                                                        ssData << tMissing;
 
                                                         /* Add transaction to binary data. */
                                                         block.vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
-
-                                                        /* Reset our iterator. */
-                                                        pairTritium.first = 1;
                                                     }
-                                                    else
-                                                        debug::notice("TRITIUM: failed to batch read at ", pairLastRead.first.SubString());
                                                 }
 
                                                 break;
@@ -1415,7 +1466,30 @@ namespace LLP
                                             /* Check for legacy. */
                                             case TAO::Ledger::TRANSACTION::LEGACY:
                                             {
+                                                /* Check if we need to batch read legacy transactions, we also init with this */
+                                                if(pairLegacy.first == pairLegacy.second.size())
+                                                {
+                                                    /* Set our first tx to scan from. */
+                                                    bool fExclude = true;
+                                                    if(pairLastRead.second == 0)
+                                                    {
+                                                        fExclude = false;  //we don't exlude when we set our starting index
+                                                        pairLastRead.second = proof.second;
+                                                    }
+
+                                                    /* Reset our counter if we read our data. */
+                                                    if(LLD::Legacy->BatchRead(pairLastRead.second,
+                                                        "tx", pairLegacy.second, nBatchLimit, fExclude))
+                                                    {
+                                                        pairLegacy.first = 0;
+                                                        pairLastRead.second = pairLegacy.second.back().GetHash();
+                                                    }
+                                                    else
+                                                        pairLastRead.second = 0;
+                                                }
+
                                                 /* Check that the proof matches. */
+                                                bool fFound = false;
                                                 for( ; pairLegacy.first < pairLegacy.second.size(); ++pairLegacy.first)
                                                 {
                                                     /* Get a reference of current tx. */
@@ -1423,40 +1497,53 @@ namespace LLP
                                                         pairLegacy.second[pairLegacy.first];
 
                                                     /* Check for a match. */
-                                                    if(tx.GetHash() == proof.second)
+                                                    const uint512_t& hashTx = tx.GetHash();
+                                                    if(hashTx == proof.second || mapLegacy.count(proof.second))
                                                     {
                                                         /* Serialize stream. */
                                                         DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
-                                                        ssData << tx;
+
+                                                        /* Check if we are getting from the missing map. */
+                                                        if(mapLegacy.count(proof.second))
+                                                        {
+                                                            /* Get the missing transaction. */
+                                                            const Legacy::Transaction& tMissing =
+                                                                mapLegacy[proof.second];
+
+                                                            /* Serialize the data. */
+                                                            ssData << tMissing;
+                                                            pairLegacy.first--; //reset index so we retry this entry
+
+                                                            /* Remove the transaction from the map. */
+                                                            mapLegacy.erase(proof.second);
+                                                        }
+                                                        else
+                                                            ssData << tx;
 
                                                         /* Add transaction to binary data. */
                                                         block.vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
+                                                        fFound = true;
 
                                                         break;
                                                     }
+                                                    else
+                                                        mapLegacy.insert(std::make_pair(hashTx, pairLegacy.second[pairLegacy.first]));
                                                 }
 
-                                                /* Check if we need to batch read legacy transactions, we also init with this */
-                                                if(pairLegacy.first == pairLegacy.second.size())
+                                                /* Read the missing transaction if none found. */
+                                                if(!fFound)
                                                 {
-                                                    /* Set our first tx to scan from. */
-                                                    pairLastRead.second = proof.second;
-
-                                                    /* Reset our counter if we read our data. */
-                                                    if(LLD::Ledger->BatchRead(pairLastRead.second, "tx", pairLegacy.second, 1000, true))
+                                                    /* Read the missing transaction transaction. */
+                                                    Legacy::Transaction tMissing;
+                                                    if(LLD::Legacy->ReadTx(proof.second, tMissing))
                                                     {
                                                         /* Serialize stream. */
                                                         DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
-                                                        ssData << pairLegacy.second[0];
+                                                        ssData << tMissing;
 
                                                         /* Add transaction to binary data. */
                                                         block.vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
-
-                                                        /* Reset our iterator. */
-                                                        pairLegacy.first = 1;
                                                     }
-                                                    else
-                                                        debug::notice("LEGACY: failed to batch read at ", pairLastRead.second.SubString());
                                                 }
 
                                                 break;
@@ -2625,7 +2712,7 @@ namespace LLP
                         break;
                     }
 
-                    /* Handle for a tritium transaction. */
+                    /* Handle for a sync block. */
                     case SPECIFIER::SYNC:
                     {
                         /* Check for client mode since this method should never be called except by a client. */
@@ -2633,8 +2720,8 @@ namespace LLP
                             return debug::drop(NODE, "TYPES::BLOCK::SYNC: disabled in -client mode");
 
                         /* Check if this is an unsolicited sync block. */
-                        //if(nCurrentSession != TAO::Ledger::nSyncSession)
-                        //    return debug::drop(FUNCTION, "unsolicted sync block");
+                        if(nCurrentSession != TAO::Ledger::nSyncSession || !TAO::Ledger::ChainState::Synchronizing())
+                            return debug::drop(FUNCTION, "unsolicted sync block");
 
                         /* Get the block from the stream. */
                         TAO::Ledger::SyncBlock block;
