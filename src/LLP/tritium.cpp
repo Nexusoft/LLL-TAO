@@ -1466,84 +1466,16 @@ namespace LLP
                                             /* Check for legacy. */
                                             case TAO::Ledger::TRANSACTION::LEGACY:
                                             {
-                                                /* Check if we need to batch read legacy transactions, we also init with this */
-                                                if(pairLegacy.first == pairLegacy.second.size())
+                                                /* Read the missing transaction transaction. */
+                                                Legacy::Transaction tMissing;
+                                                if(LLD::Legacy->ReadTx(proof.second, tMissing))
                                                 {
-                                                    /* Set our first tx to scan from. */
-                                                    bool fExclude = true;
-                                                    if(pairLastRead.second == 0)
-                                                    {
-                                                        fExclude = false;  //we don't exlude when we set our starting index
-                                                        pairLastRead.second = proof.second;
-                                                    }
+                                                    /* Serialize stream. */
+                                                    DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
+                                                    ssData << tMissing;
 
-                                                    /* Reset our counter if we read our data. */
-                                                    if(LLD::Legacy->BatchRead(pairLastRead.second,
-                                                        "tx", pairLegacy.second, nBatchLimit, fExclude))
-                                                    {
-                                                        pairLegacy.first = 0;
-                                                        pairLastRead.second = pairLegacy.second.back().GetHash();
-                                                    }
-                                                    else
-                                                        pairLastRead.second = 0;
-                                                }
-
-                                                /* Check that the proof matches. */
-                                                bool fFound = false;
-                                                for( ; pairLegacy.first < pairLegacy.second.size(); ++pairLegacy.first)
-                                                {
-                                                    /* Get a reference of current tx. */
-                                                    const Legacy::Transaction& tx =
-                                                        pairLegacy.second[pairLegacy.first];
-
-                                                    /* Check for a match. */
-                                                    const uint512_t& hashTx = tx.GetHash();
-                                                    if(hashTx == proof.second || mapLegacy.count(proof.second))
-                                                    {
-                                                        /* Serialize stream. */
-                                                        DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
-
-                                                        /* Check if we are getting from the missing map. */
-                                                        if(mapLegacy.count(proof.second))
-                                                        {
-                                                            /* Get the missing transaction. */
-                                                            const Legacy::Transaction& tMissing =
-                                                                mapLegacy[proof.second];
-
-                                                            /* Serialize the data. */
-                                                            ssData << tMissing;
-                                                            pairLegacy.first--; //reset index so we retry this entry
-
-                                                            /* Remove the transaction from the map. */
-                                                            mapLegacy.erase(proof.second);
-                                                        }
-                                                        else
-                                                            ssData << tx;
-
-                                                        /* Add transaction to binary data. */
-                                                        block.vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
-                                                        fFound = true;
-
-                                                        break;
-                                                    }
-                                                    else
-                                                        mapLegacy.insert(std::make_pair(hashTx, pairLegacy.second[pairLegacy.first]));
-                                                }
-
-                                                /* Read the missing transaction if none found. */
-                                                if(!fFound)
-                                                {
-                                                    /* Read the missing transaction transaction. */
-                                                    Legacy::Transaction tMissing;
-                                                    if(LLD::Legacy->ReadTx(proof.second, tMissing))
-                                                    {
-                                                        /* Serialize stream. */
-                                                        DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
-                                                        ssData << tMissing;
-
-                                                        /* Add transaction to binary data. */
-                                                        block.vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
-                                                    }
+                                                    /* Add transaction to binary data. */
+                                                    block.vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
                                                 }
 
                                                 break;
