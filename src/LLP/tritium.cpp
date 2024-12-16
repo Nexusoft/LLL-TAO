@@ -1325,7 +1325,7 @@ namespace LLP
                         uint1024_t hashLastRead = stateLast.GetHash();
 
                         /* This value helps us just modify it here rather than pasting through the code. */
-                        const uint32_t nBatchLimit = 1000;
+                        const uint32_t nBatchLimit = 2000;
 
                         /* Keep track of our current buffer index and legacy transaction buffer. */
                         std::pair<uint32_t, std::vector<Legacy::Transaction>> pairLegacy =
@@ -1466,16 +1466,84 @@ namespace LLP
                                             /* Check for legacy. */
                                             case TAO::Ledger::TRANSACTION::LEGACY:
                                             {
-                                                /* Read the missing transaction transaction. */
-                                                Legacy::Transaction tMissing;
-                                                if(LLD::Legacy->ReadTx(proof.second, tMissing))
+                                                /* Check if we need to batch read legacy transactions, we also init with this */
+                                                if(pairLegacy.first == pairLegacy.second.size())
                                                 {
-                                                    /* Serialize stream. */
-                                                    DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
-                                                    ssData << tMissing;
+                                                    /* Set our first tx to scan from. */
+                                                    bool fExclude = true;
+                                                    if(pairLastRead.second == 0)
+                                                    {
+                                                        fExclude = false;  //we don't exlude when we set our starting index
+                                                        pairLastRead.second = proof.second;
+                                                    }
 
-                                                    /* Add transaction to binary data. */
-                                                    block.vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
+                                                    /* Reset our counter if we read our data. */
+                                                    if(LLD::Legacy->BatchRead(pairLastRead.second,
+                                                        "tx", pairLegacy.second, nBatchLimit, fExclude))
+                                                    {
+                                                        pairLegacy.first = 0;
+                                                        pairLastRead.second = pairLegacy.second.back().GetHash();
+                                                    }
+                                                    else
+                                                        pairLastRead.second = 0;
+                                                }
+
+                                                /* Check that the proof matches. */
+                                                bool fFound = false;
+                                                for( ; pairLegacy.first < pairLegacy.second.size(); ++pairLegacy.first)
+                                                {
+                                                    /* Get a reference of current tx. */
+                                                    const Legacy::Transaction& tx =
+                                                        pairLegacy.second[pairLegacy.first];
+
+                                                    /* Check for a match. */
+                                                    const uint512_t& hashTx = tx.GetHash();
+                                                    if(hashTx == proof.second || mapLegacy.count(proof.second))
+                                                    {
+                                                        /* Serialize stream. */
+                                                        DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
+
+                                                        /* Check if we are getting from the missing map. */
+                                                        if(mapLegacy.count(proof.second))
+                                                        {
+                                                            /* Get the missing transaction. */
+                                                            const Legacy::Transaction& tMissing =
+                                                                mapLegacy[proof.second];
+
+                                                            /* Serialize the data. */
+                                                            ssData << tMissing;
+                                                            pairLegacy.first--; //reset index so we retry this entry
+
+                                                            /* Remove the transaction from the map. */
+                                                            mapLegacy.erase(proof.second);
+                                                        }
+                                                        else
+                                                            ssData << tx;
+
+                                                        /* Add transaction to binary data. */
+                                                        block.vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
+                                                        fFound = true;
+
+                                                        break;
+                                                    }
+                                                    else
+                                                        mapLegacy.insert(std::make_pair(hashTx, pairLegacy.second[pairLegacy.first]));
+                                                }
+
+                                                /* Read the missing transaction if none found. */
+                                                if(!fFound)
+                                                {
+                                                    /* Read the missing transaction transaction. */
+                                                    Legacy::Transaction tMissing;
+                                                    if(LLD::Legacy->ReadTx(proof.second, tMissing))
+                                                    {
+                                                        /* Serialize stream. */
+                                                        DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
+                                                        ssData << tMissing;
+
+                                                        /* Add transaction to binary data. */
+                                                        block.vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
+                                                    }
                                                 }
 
                                                 break;
@@ -2603,7 +2671,7 @@ namespace LLP
                                 if(++nTotalItems >= ACTION::GET_MAX_ITEMS || tx == block.vMissing.back())
                                 {
                                     /* Let's try up to 100 times to get the transaction data each from different nodes. */
-                                    for(uint32_t n = 0; n < 100; ++n)
+                                    for(uint32_t n = 0; n < 10; ++n)
                                     {
                                         /* Normal case of asking for a getblocks inventory message. */
                                         std::shared_ptr<TritiumNode> pnode = TRITIUM_SERVER->GetConnection();
@@ -2652,7 +2720,7 @@ namespace LLP
                             return debug::drop(NODE, "TYPES::BLOCK::SYNC: disabled in -client mode");
 
                         /* Check if this is an unsolicited sync block. */
-                        if(nCurrentSession != TAO::Ledger::nSyncSession || !TAO::Ledger::ChainState::Synchronizing())
+                        if(nCurrentSession != TAO::Ledger::nSyncSession || fSynchronized.load())
                             return debug::drop(FUNCTION, "unsolicted sync block");
 
                         /* Get the block from the stream. */
