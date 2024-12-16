@@ -413,6 +413,18 @@ namespace TAO::Ledger
             /* Sign the producer transaction. */
             rBlockRet.producer.Sign(user->Generate(rBlockRet.producer.nSequence, pin));
 
+            /* Double check our next hash if -safemode enabled. */
+            if(config::GetBoolArg("-safemode", false))
+            {
+                /* Re-calculate our next hash if safemode forcing not to use cache. */
+                const uint256_t hashNext =
+                    TAO::Ledger::Transaction::NextHash(user->Generate(rBlockRet.producer.nSequence + 1, pin, false), rBlockRet.producer.nNextType);
+
+                /* Check that this next hash is what we are expecting. */
+                if(rBlockRet.producer.hashNext != hashNext)
+                    throw debug::exception("-safemode next hash mismatch, broadcast terminated");
+            }
+
             /* Rebuild the merkle tree for updated block. */
             std::vector<uint512_t> vHashes;
             for(const auto& tx : rBlockRet.vtx)

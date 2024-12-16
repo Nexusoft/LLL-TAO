@@ -197,7 +197,7 @@ namespace TAO::API
             if(*pCredentialsOld == *pCredentials && strNewPIN == strPIN)
             {
                 pCredentials.free();
-                throw Exception(-233, "Missing parameter [new_password or new_pin]");
+                throw Exception(-233, "You must use new credentials to update sigchain");
             }
 
             /* Create the transaction. */
