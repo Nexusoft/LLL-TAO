@@ -120,12 +120,40 @@ namespace TAO::API
                             throw Exception(-33, "Recovery hash mismatch ", hashRecoveryDeprecated.ToString(), " is not ", hashRecovery.ToString());
 
                         /* Sign the transaction using our old deprecated recovery. */
-                        else if(!tx.Sign(pCredentials->GenerateDeprecated(strRecovery)))
+                        else if(tx.Sign(pCredentials->GenerateDeprecated(strRecovery)))
+                        {
+                            /* Double check our next hash if -safemode enabled. */
+                            if(config::GetBoolArg("-safemode", false))
+                            {
+                                /* Re-calculate our next hash if safemode forcing not to use cache. */
+                                const uint256_t hashRecovery =
+                                    TAO::Ledger::Transaction::NextHash(pCredentials->GenerateDeprecated(strRecovery), nRecoveryType);
+
+                                /* Check that this next hash is what we are expecting. */
+                                if(tx.hashRecovery != hashRecovery)
+                                    throw Exception(-31, "-safemode recovery hash mismatch, broadcast terminated");
+                            }
+                        }
+                        else
                             throw Exception(-31, "Ledger failed to sign transaction");
                     }
 
                     /* Sign our credentials using current recovery. */
-                    else if(!tx.Sign(pCredentials->Generate(strRecovery)))
+                    else if(tx.Sign(pCredentials->Generate(strRecovery)))
+                    {
+                        /* Double check our next hash if -safemode enabled. */
+                        if(config::GetBoolArg("-safemode", false))
+                        {
+                            /* Re-calculate our next hash if safemode forcing not to use cache. */
+                            const uint256_t hashRecovery =
+                                TAO::Ledger::Transaction::NextHash(pCredentials->Generate(strRecoveryNew), nRecoveryType);
+
+                            /* Check that this next hash is what we are expecting. */
+                            if(tx.hashRecovery != hashRecovery)
+                                throw Exception(-31, "-safemode recovery hash mismatch, broadcast terminated");
+                        }
+                    }
+                    else
                         throw Exception(-31, "Ledger failed to sign transaction");
                 }
                 else
@@ -134,7 +162,21 @@ namespace TAO::API
                     tx.hashRecovery = pCredentials->RecoveryHash(strRecoveryNew, tx.nKeyType);
 
                     /* Sign the transaction. */
-                    if(!tx.Sign(pCredentials->Generate(tx.nSequence, strPIN)))
+                    if(tx.Sign(pCredentials->Generate(tx.nSequence, strPIN)))
+                    {
+                        /* Double check our next hash if -safemode enabled. */
+                        if(config::GetBoolArg("-safemode", false))
+                        {
+                            /* Re-calculate our next hash if safemode forcing not to use cache. */
+                            const uint256_t hashRecovery =
+                                TAO::Ledger::Transaction::NextHash(pCredentials->Generate(strRecoveryNew), tx.nKeyType);
+
+                            /* Check that this next hash is what we are expecting. */
+                            if(tx.hashRecovery != hashRecovery)
+                                throw Exception(-31, "-safemode recovery hash mismatch, broadcast terminated");
+                        }
+                    }
+                    else
                         throw Exception(-31, "Ledger failed to sign transaction");
                 }
 
