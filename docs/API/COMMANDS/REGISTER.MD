@@ -30,11 +30,12 @@ The following nouns are supported for this API command-set:
 [`finance:trust`] - An object register containing a token-id, balance, and trust.  
 [`finance:token`] - An object register containing a token-id, balance, supply, and decimals.  
 [`names:name`] - An object register containing names and global names.  
-[`names:namespace`] - An object register containing namespaces.  
+[`names:namespace`] - An object register containing namespaces.
+[`names:global`] - An object register containing global names.
 [`crypto`] - An object register which holds public key hashes.  
 [`object`] - An object register containing user-defined data structure.  
-[`raw`] -  An object register of type raw.  
-[`readonly`] - An object register of type readonly.  
+[`assets:raw`] -  An object register of type raw.  
+[`assets:readonly`] - An object register of type readonly.  
 [`append`] - An object register of type append.  
 [`any`] - An object selection noun allowing mixed accounts of different tokens.  
 
@@ -79,11 +80,11 @@ Retrieves information for a specified profile crypto object register.
 
 Retrieves information for a specified object register.
 
-#### get/readonly
+#### get/assets:readonly
 
 Retrieves information for a specified readonly register.
 
-#### get/raw
+#### get/assets:raw
 
 Retrieves information for a specified raw register.
 
@@ -134,6 +135,10 @@ Returns a list of all the names.
 
 Returns a list of all the namespaces.
 
+#### list/names:global
+
+Returns a list of all the global names.
+
 #### list/crypto
 
 Returns a list of all the crypto object registers.
@@ -176,23 +181,23 @@ register/history/noun
 
 This command supports all the nouns.
 
-#### history/account
+#### history/finance:account
 
 This will get the history and ownership of the specified NXS or token account.
 
-#### history/trust
+#### history/finance:trust
 
 This will get the history and ownership of the specified trust account. 
 
-#### history/token
+#### history/finance:token
 
 This will get the history and ownership of the specified token addresses.
 
-#### history/name
+#### history/names:name
 
 This will get the history and ownership of the specified name.
 
-#### history/namespace
+#### history/names:namespace
 
 This will get the history and ownership of the specified namespace.
 
@@ -204,11 +209,11 @@ This will get the history of the specified crypto object register.
 
 This will get the history and ownership of the specified object register.
 
-##### history/readonly
+##### history/assets:readonly
 
 This will get the history and ownership of the specified readonly register.
 
-#### history/raw
+#### history/assets:raw
 
 This will get the history and ownership of the specified raw register.
 
