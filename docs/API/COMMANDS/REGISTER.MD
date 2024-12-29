@@ -26,11 +26,11 @@ The following verbs are currently supported by this API command-set:
 
 The following nouns are supported for this API command-set:
 
-[`account`] - An object register containing a token-id and balance.  
-[`trust`] - An object register containing a token-id, balance, and trust.  
-[`token`] - An object register containing a token-id, balance, supply, and decimals.  
-[`name`] - An object register containing names and global names.  
-[`namespace`] - An object register containing namespaces.  
+[`finance:account`] - An object register containing a token-id and balance.  
+[`finance:trust`] - An object register containing a token-id, balance, and trust.  
+[`finance:token`] - An object register containing a token-id, balance, supply, and decimals.  
+[`names:name`] - An object register containing names and global names.  
+[`names:namespace`] - An object register containing namespaces.  
 [`crypto`] - An object register which holds public key hashes.  
 [`object`] - An object register containing user-defined data structure.  
 [`raw`] -  An object register of type raw.  
@@ -51,23 +51,23 @@ register/get/noun
 
 This command supports all the nouns.
 
-#### get/account
+#### get/finance:account
 
 Retrieves information for a specified NXS or token account.
 
-#### get/trust
+#### get/finance:trust
 
 Retrieves information for a specified trust account.
 
-#### get/token
+#### get/finance:token
 
 Retrieves information for a specified token address.
 
-#### get/name
+#### get/names:name
 
 Retrieves information for a specified name.
 
-#### get/namespace
+#### get/names:namespace
 
 Retrieves information for a specified namespace.
 
@@ -114,23 +114,23 @@ register/list/noun
 
 This command supports all the nouns.
 
-#### list/account
+#### list/finance:account
 
 Returns a list of all NXS and token accounts.
 
-#### list/trust
+#### list/finance:trust
 
 Returns a list of all the trust accounts on the blockchain.
 
-#### list/token
+#### list/finance:token
 
 Returns a list of all the token address issued on the blockchain.
 
-#### list/name
+#### list/names:name
 
 Returns a list of all the names.
 
-#### list/namespace
+#### list/names:namespace
 
 Returns a list of all the namespaces.
 
