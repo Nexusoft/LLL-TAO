@@ -21,7 +21,6 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 
 #include <LLD/include/global.h>
-
 #include <LLP/include/global.h>
 
 #include <TAO/Ledger/include/ambassador.h>

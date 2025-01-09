@@ -468,6 +468,7 @@ namespace TAO
             return vchPubKey;
         }
 
+
         /* This function generates a hash of a public key generated from random seed phrase. */
         uint256_t Credentials::KeyHash(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const
         {

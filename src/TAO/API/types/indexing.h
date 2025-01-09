@@ -48,6 +48,10 @@ namespace TAO::API
         static std::thread EVENTS_THREAD;
 
 
+        /** Thread for refreshing events. **/
+        static std::thread REFRESH_THREAD;
+
+
         /** Condition variable to wake up the indexing thread. **/
         static std::condition_variable CONDITION;
 

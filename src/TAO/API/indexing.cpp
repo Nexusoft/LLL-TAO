@@ -48,6 +48,10 @@ namespace TAO::API
     std::thread Indexing::EVENTS_THREAD;
 
 
+    /* Thread for refreshing events. */
+    std::thread Indexing::REFRESH_THREAD;
+
+
     /* Condition variable to wake up the indexing thread. */
     std::condition_variable Indexing::CONDITION;
 
@@ -78,8 +82,9 @@ namespace TAO::API
         /* Read our list of active login sessions. */
 
         /* Initialize our thread objects now. */
-        Indexing::DISPATCH      = util::atomic::lock_unique_ptr<std::queue<uint512_t>>(new std::queue<uint512_t>());
-        Indexing::EVENTS_THREAD = std::thread(&Indexing::Manager);
+        Indexing::DISPATCH       = util::atomic::lock_unique_ptr<std::queue<uint512_t>>(new std::queue<uint512_t>());
+        Indexing::EVENTS_THREAD  = std::thread(&Indexing::Manager);
+        Indexing::REFRESH_THREAD = std::thread(&Indexing::RefreshEvents);
 
 
         /* Initialize our indexing thread now. */
@@ -302,9 +307,6 @@ namespace TAO::API
     /* Handle relays of all events for LLP when processing block. */
     void Indexing::Manager()
     {
-        /* Refresh our events. */
-        RefreshEvents();
-
         /* Main loop controlled by condition variable. */
         std::mutex CONDITION_MUTEX;
         while(!config::fShutdown.load())
