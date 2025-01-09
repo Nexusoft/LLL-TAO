@@ -1176,6 +1176,8 @@ namespace TAO::API
                     /* Check if we need to build index for this contract. */
                     if(Authentication::Active(hashRecipient))
                     {
+                        debug::log(2, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hash.SubString()), ", ", VARIABLE(nContract));
+
                         /* Write our events to database. */
                         if(!LLD::Logical->PushEvent(hashRecipient, hash, nContract))
                             continue;
@@ -1187,8 +1189,6 @@ namespace TAO::API
                         /* Increment our sequence. */
                         if(!LLD::Logical->IncrementTritiumSequence(hashRecipient))
                             continue;
-
-                        debug::log(2, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hash.SubString()), ", ", VARIABLE(nContract));
                     }
 
                     break;
