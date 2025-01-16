@@ -59,7 +59,7 @@ namespace TAO::API
 
         /* First get the list of registers owned by this sig chain so we can work out which ones are NXS accounts */
         std::set<TAO::Register::Address> setAddresses;
-        if(!LLD::Logical->ListRegisters(hashGenesis, setAddresses))
+        if(!LLD::Sessions->ListRegisters(hashGenesis, setAddresses))
             throw Exception(-74, "No registers found");
 
         /* Keep a map to track our aggregated balance, we use a second map for better readability. */

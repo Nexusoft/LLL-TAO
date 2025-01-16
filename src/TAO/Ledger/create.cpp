@@ -73,10 +73,10 @@ namespace TAO::Ledger
 
         /* Get the last transaction. */
         TAO::API::Transaction txPrev;
-        if(LLD::Logical->ReadLast(hashGenesis, hashLast))
+        if(LLD::Sessions->ReadLast(hashGenesis, hashLast))
         {
             /* Check that we can read the logical disk index. */
-            if(!LLD::Logical->ReadTx(hashLast, txPrev))
+            if(!LLD::Sessions->ReadTx(hashLast, txPrev))
                 debug::warning(FUNCTION, "could not read logical transaction index");
         }
 

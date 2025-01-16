@@ -193,7 +193,7 @@ namespace TAO::API
         std::vector<std::pair<uint512_t, uint32_t>> vEvents;
 
         /* Get our list of active contracts we have issued. */
-        LLD::Logical->ListEvents(hashGenesis, vEvents);
+        LLD::Sessions->ListEvents(hashGenesis, vEvents);
 
         /* For sanitizing our contracts. */
         std::map<uint256_t, TAO::Register::State> mapStates;
@@ -528,7 +528,7 @@ namespace TAO::API
 
         /* Get a list of our active events. */
         std::vector<std::pair<uint512_t, uint32_t>> vEvents;
-        LLD::Logical->ListEvents(hashGenesis, vEvents);
+        LLD::Sessions->ListEvents(hashGenesis, vEvents);
 
         /* Build our list of contracts. */
         for(const auto& rEvent : vEvents)
@@ -614,8 +614,8 @@ namespace TAO::API
 
         /* Get a list of our active events. */
         std::vector<std::pair<uint512_t, uint32_t>> vEvents;
-        LLD::Logical->ListEvents(hashGenesis, vEvents);
-        LLD::Logical->ListContracts(hashGenesis, vEvents);
+        LLD::Sessions->ListEvents(hashGenesis, vEvents);
+        LLD::Sessions->ListContracts(hashGenesis, vEvents);
 
         /* Build our list of contracts. */
         for(const auto& rEvent : vEvents)

@@ -169,7 +169,7 @@ namespace TAO::API
 
                     /* Get a list of our active events. */
                     std::vector<std::pair<uint512_t, uint32_t>> vNotifications;
-                    LLD::Logical->ListEvents(hashGenesis, vNotifications, 500); //maximum of 500 per iteration
+                    LLD::Sessions->ListEvents(hashGenesis, vNotifications, 500); //maximum of 500 per iteration
 
                     /* Loop through our active notifications. */
                     bool fEventStop = false;
@@ -189,7 +189,7 @@ namespace TAO::API
 
                     /* Get a list of our active events. */
                     std::vector<std::pair<uint512_t, uint32_t>> vContractSent;
-                    LLD::Logical->ListContracts(hashGenesis, vContractSent, 100); //maximum of 100 per iteration
+                    LLD::Sessions->ListContracts(hashGenesis, vContractSent, 100); //maximum of 100 per iteration
 
                     /* Loop through our sent contracts. */
                     bool fMineStop = false;
@@ -478,7 +478,7 @@ namespace TAO::API
 
         /* Read all transactions from our last index. */
         uint512_t hash;
-        if(!LLD::Logical->ReadLast(hashGenesis, hash))
+        if(!LLD::Sessions->ReadLast(hashGenesis, hash))
             return true; //we return true here so we don't stop notifications from processing
 
         /* Track our total failed contracts for debugging purposes. */
@@ -489,7 +489,7 @@ namespace TAO::API
         {
             /* Read the transaction from the ledger database. */
             TAO::API::Transaction tx;
-            if(!LLD::Logical->ReadTx(hash, tx))
+            if(!LLD::Sessions->ReadTx(hash, tx))
             {
                 debug::warning(FUNCTION, "read for ", hashGenesis.SubString(), " failed at tx ", hash.SubString());
                 break;
@@ -519,7 +519,7 @@ namespace TAO::API
         {
             /* Read the transaction from the ledger database. */
             TAO::API::Transaction tx;
-            if(!LLD::Logical->ReadTx(*hash, tx))
+            if(!LLD::Sessions->ReadTx(*hash, tx))
             {
                 debug::warning(FUNCTION, "read for ", hashGenesis.SubString(), " failed at tx ", hash->SubString());
                 break;
@@ -576,7 +576,7 @@ namespace TAO::API
         {
             /* Read the transaction from the ledger database. */
             TAO::API::Transaction tx;
-            if(!LLD::Logical->ReadTx(rHash, tx))
+            if(!LLD::Sessions->ReadTx(rHash, tx))
             {
                 debug::warning(FUNCTION, "read for ", hashGenesis.SubString(), " failed at tx ", rHash.SubString());
                 break;
@@ -635,12 +635,12 @@ namespace TAO::API
                 if(fMine)
                 {
                     /* Increment our contract sequence. */
-                    LLD::Logical->IncrementContractSequence(hashGenesis);
+                    LLD::Sessions->IncrementContractSequence(hashGenesis);
                     return false;
                 }
 
                 /* Increment our notifications sequence. */
-                LLD::Logical->IncrementEventSequence(hashGenesis);
+                LLD::Sessions->IncrementEventSequence(hashGenesis);
                 return false;
             }
 
@@ -664,12 +664,12 @@ namespace TAO::API
             if(fMine)
             {
                 /* Increment our contract sequence. */
-                LLD::Logical->IncrementContractSequence(hashGenesis);
+                LLD::Sessions->IncrementContractSequence(hashGenesis);
                 return false;
             }
 
             /* Increment our notifications sequence. */
-            LLD::Logical->IncrementEventSequence(hashGenesis);
+            LLD::Sessions->IncrementEventSequence(hashGenesis);
             return false;
         }
 
@@ -683,7 +683,7 @@ namespace TAO::API
                 debug::log(3, "OP::CONDITION: skipping for my work queue.");
 
                 /* Increment our contract sequence. */
-                LLD::Logical->IncrementContractSequence(hashGenesis);
+                LLD::Sessions->IncrementContractSequence(hashGenesis);
                 return false;
             }
         }
@@ -721,10 +721,10 @@ namespace TAO::API
                         debug::log(2, FUNCTION, "OP::CREDIT: sanitize failed for ", rEvent.first.SubString(), ", adding to work queue");
 
                         /* Push this to our contracts queue so we can process again later. */
-                        LLD::Logical->PushContract(hashGenesis, rEvent.first, rEvent.second);
+                        LLD::Sessions->PushContract(hashGenesis, rEvent.first, rEvent.second);
 
                         /* Increment our notifications sequence. */
-                        LLD::Logical->IncrementEventSequence(hashGenesis);
+                        LLD::Sessions->IncrementEventSequence(hashGenesis);
                         return false;
                     }
                 }
@@ -757,10 +757,10 @@ namespace TAO::API
                         debug::log(2, FUNCTION, "OP::CLAIM: sanitize failed for ", rEvent.first.SubString(), ", adding to work queue");
 
                         /* Push this to our contracts queue so we can process again later. */
-                        LLD::Logical->PushContract(hashGenesis, rEvent.first, rEvent.second);
+                        LLD::Sessions->PushContract(hashGenesis, rEvent.first, rEvent.second);
 
                         /* Increment our notifications sequence. */
-                        LLD::Logical->IncrementEventSequence(hashGenesis);
+                        LLD::Sessions->IncrementEventSequence(hashGenesis);
                         return false;
                     }
                 }

@@ -102,11 +102,11 @@ namespace TAO::API
         {
             /* The hash of the last transaction for this sig chain from disk */
             uint512_t hashLast = 0;
-            if(LLD::Logical->ReadLast(hashGenesis, hashLast))
+            if(LLD::Sessions->ReadLast(hashGenesis, hashLast))
             {
                 /* Get the last transaction from disk for this sig chain */
                 TAO::API::Transaction tx;
-                if(!LLD::Logical->ReadTx(hashLast, tx))
+                if(!LLD::Sessions->ReadTx(hashLast, tx))
                     return false;
 
                 /* If the previous transaction is a coinbase or coinstake then check the maturity */
@@ -132,12 +132,12 @@ namespace TAO::API
     {
         /* The hash of the last transaction for this sig chain from disk */
         uint512_t hashLast = 0;
-        if(!LLD::Logical->ReadLast(hashGenesis, hashLast))
+        if(!LLD::Sessions->ReadLast(hashGenesis, hashLast))
             return true;
 
         /* Get the last transaction from disk for this sig chain */
         TAO::API::Transaction tx;
-        if(!LLD::Logical->ReadTx(hashLast, tx))
+        if(!LLD::Sessions->ReadTx(hashLast, tx))
             return true;
 
         return (tx.nTimestamp + nSeconds < runtime::unifiedtimestamp());

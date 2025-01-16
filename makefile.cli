@@ -387,6 +387,7 @@ OBJS+=  build/LLC_base_uint.o \
     	build/LLD_ledger.o \
     	build/LLD_legacy.o \
 		build/LLD_logical.o \
+		build/LLD_session.o \
 		build/LLD_contract.o \
 		build/LLD_client.o \
     	build/LLD_local.o \

@@ -124,7 +124,7 @@ namespace TAO::API
 
         /* Handle first key if needed. */
         uint512_t hashIndex;
-        if(!LLD::Logical->ReadLastIndex(hashIndex))
+        if(!LLD::Sessions->ReadLastIndex(hashIndex))
         {
             /* Set our internal values. */
             hashBlock = TAO::Ledger::hashTritium;
@@ -210,7 +210,7 @@ namespace TAO::API
                 tStateLast = state;
 
                 /* Track our checkpoint by first transaction in non-processed block. */
-                LLD::Logical->WriteLastIndex(state.vtx[0].second);
+                LLD::Sessions->WriteLastIndex(state.vtx[0].second);
 
                 /* Handle our transactions now. */
                 for(const auto& proof : state.vtx)
@@ -339,7 +339,7 @@ namespace TAO::API
             IndexSigchain(hashTx);
 
             /* Write our last index now. */
-            LLD::Logical->WriteLastIndex(hashTx);
+            LLD::Sessions->WriteLastIndex(hashTx);
         }
     }
 
@@ -404,11 +404,11 @@ namespace TAO::API
                     if(Authentication::Active(state.hashOwner))
                     {
                         /* Write our events to database. */
-                        if(!LLD::Logical->PushEvent(state.hashOwner, hashTx, nContract))
+                        if(!LLD::Sessions->PushEvent(state.hashOwner, hashTx, nContract))
                             continue;
 
                         /* Increment our sequence. */
-                        if(!LLD::Logical->IncrementLegacySequence(state.hashOwner))
+                        if(!LLD::Sessions->IncrementLegacySequence(state.hashOwner))
                             continue;
                     }
                 }
@@ -425,7 +425,7 @@ namespace TAO::API
 
         /* Read all transactions from our last index. */
         uint512_t hash;
-        if(!LLD::Logical->ReadLast(hashGenesis, hash))
+        if(!LLD::Sessions->ReadLast(hashGenesis, hash))
             return;
 
         /* Loop until we reach confirmed transaction. */
@@ -433,7 +433,7 @@ namespace TAO::API
         {
             /* Read the transaction from the ledger database. */
             TAO::API::Transaction tx;
-            if(!LLD::Logical->ReadTx(hash, tx))
+            if(!LLD::Sessions->ReadTx(hash, tx))
             {
                 debug::warning(FUNCTION, "read for ", hashGenesis.SubString(), " failed at tx ", hash.SubString());
                 break;
@@ -459,7 +459,7 @@ namespace TAO::API
         {
             /* Read the transaction from the ledger database. */
             TAO::API::Transaction tx;
-            if(!LLD::Logical->ReadTx(*hash, tx))
+            if(!LLD::Sessions->ReadTx(*hash, tx))
             {
                 debug::warning(FUNCTION, "read for ", hashGenesis.SubString(), " failed at tx ", hash->SubString());
                 break;
@@ -497,7 +497,7 @@ namespace TAO::API
 
                 /* Get the last txid in sigchain. */
                 uint512_t hashLast;
-                LLD::Logical->ReadLastConfirmed(hashGenesis, hashLast);
+                LLD::Sessions->ReadLastConfirmed(hashGenesis, hashLast);
 
                 do
                 {
@@ -516,7 +516,7 @@ namespace TAO::API
                         break;
 
                     uint512_t hashCurrent;
-                    LLD::Logical->ReadLastConfirmed(hashGenesis, hashCurrent);
+                    LLD::Sessions->ReadLastConfirmed(hashGenesis, hashCurrent);
 
                     if(hashCurrent == hashLast)
                     {
@@ -524,7 +524,7 @@ namespace TAO::API
                         break;
                     }
                 }
-                while(LLD::Logical->ReadLastConfirmed(hashGenesis, hashLast));
+                while(LLD::Sessions->ReadLastConfirmed(hashGenesis, hashLast));
             }
             else
                 debug::error(FUNCTION, "no connections available...");
@@ -550,7 +550,7 @@ namespace TAO::API
 
                 /* Get our current tritium events sequence now. */
                 uint32_t nTritiumSequence = 0;
-                LLD::Logical->ReadTritiumSequence(hashGenesis, nTritiumSequence);
+                LLD::Sessions->ReadTritiumSequence(hashGenesis, nTritiumSequence);
 
                 /* Loop until we have received all of our events. */
                 do
@@ -571,7 +571,7 @@ namespace TAO::API
 
                     /* Cache our current sequence to see if we got any new events while waiting. */
                     uint32_t nCurrentSequence = 0;
-                    LLD::Logical->ReadTritiumSequence(hashGenesis, nCurrentSequence);
+                    LLD::Sessions->ReadTritiumSequence(hashGenesis, nCurrentSequence);
 
                     /* Check that are starting and current sequences match. */
                     if(nCurrentSequence == nTritiumSequence)
@@ -580,11 +580,11 @@ namespace TAO::API
                         break;
                     }
                 }
-                while(LLD::Logical->ReadTritiumSequence(hashGenesis, nTritiumSequence));
+                while(LLD::Sessions->ReadTritiumSequence(hashGenesis, nTritiumSequence));
 
                 /* Get our current legacy events sequence now. */
                 uint32_t nLegacySequence = 0;
-                LLD::Logical->ReadLegacySequence(hashGenesis, nLegacySequence);
+                LLD::Sessions->ReadLegacySequence(hashGenesis, nLegacySequence);
 
                 /* Loop until we have received all of our events. */
                 do
@@ -606,7 +606,7 @@ namespace TAO::API
 
                     /* Cache our current sequence to see if we got any new events while waiting. */
                     uint32_t nCurrentSequence = 0;
-                    LLD::Logical->ReadLegacySequence(hashGenesis, nCurrentSequence);
+                    LLD::Sessions->ReadLegacySequence(hashGenesis, nCurrentSequence);
 
                     /* Check that are starting and current sequences match. */
                     if(nCurrentSequence == nLegacySequence)
@@ -615,7 +615,7 @@ namespace TAO::API
                         break;
                     }
                 }
-                while(LLD::Logical->ReadLegacySequence(hashGenesis, nLegacySequence));
+                while(LLD::Sessions->ReadLegacySequence(hashGenesis, nLegacySequence));
             }
             else
                 debug::error(FUNCTION, "no connections available...");
@@ -644,11 +644,11 @@ namespace TAO::API
 
                     /* Track our ledger database sequence. */
                     uint32_t nLegacySequence = 0;
-                    LLD::Logical->ReadLegacySequence(hashGenesis, nLegacySequence);
+                    LLD::Sessions->ReadLegacySequence(hashGenesis, nLegacySequence);
 
                     /* Track our logical database sequence. */
                     uint32_t nLogicalSequence = 0;
-                    LLD::Logical->ReadTritiumSequence(hashGenesis, nLogicalSequence);
+                    LLD::Sessions->ReadTritiumSequence(hashGenesis, nLogicalSequence);
 
                     //TODO: check why we are getting an extra transaction on FLAGS::MEMPOOL
                     uint512_t hashLedgerLast = 0;
@@ -658,10 +658,10 @@ namespace TAO::API
                     LLD::Ledger->ReadTx(hashLedgerLast, txLedgerLast, TAO::Ledger::FLAGS::MEMPOOL);
 
                     uint512_t hashLogicalLast = 0;
-                    LLD::Logical->ReadLast(hashGenesis, hashLogicalLast);
+                    LLD::Sessions->ReadLast(hashGenesis, hashLogicalLast);
 
                     TAO::API::Transaction txLogicalLast;
-                    LLD::Logical->ReadTx(hashLogicalLast, txLogicalLast);
+                    LLD::Sessions->ReadTx(hashLogicalLast, txLogicalLast);
 
                     uint32_t nLogicalHeight = txLogicalLast.nSequence;
                     uint32_t nLedgerHeight  = txLedgerLast.nSequence;
@@ -734,11 +734,11 @@ namespace TAO::API
                 {
                     /* Read our last sequence. */
                     uint32_t nTritiumSequence = 0;
-                    LLD::Logical->ReadTritiumSequence(hashGenesis, nTritiumSequence);
+                    LLD::Sessions->ReadTritiumSequence(hashGenesis, nTritiumSequence);
 
                     /* Read our last sequence. */
                     uint32_t nLegacySequence = 0;
-                    LLD::Logical->ReadLegacySequence(hashGenesis, nLegacySequence);
+                    LLD::Sessions->ReadLegacySequence(hashGenesis, nLegacySequence);
 
                     /* Debug output so w4e can track our events indexes. */
                     debug::log(2, FUNCTION, "Building events indexes from ", VARIABLE(nTritiumSequence), " | ", VARIABLE(nLegacySequence), " for genesis=", hashGenesis.SubString());
@@ -812,7 +812,7 @@ namespace TAO::API
                             }
 
                             /* Check for valid logical indexes. */
-                            if(!LLD::Logical->HasTx(hashTx))
+                            if(!LLD::Sessions->HasTx(hashTx))
                                 vBuild.push_back(hashTx);
                             else
                                 break;
@@ -851,7 +851,7 @@ namespace TAO::API
 
                     /* Check that our last indexing entries match. */
                     uint512_t hashLogical = 0;
-                    if(LLD::Logical->ReadLast(hashGenesis, hashLogical))
+                    if(LLD::Sessions->ReadLast(hashGenesis, hashLogical))
                     {
                         /* Build list of transaction hashes. */
                         std::vector<uint512_t> vIndex;
@@ -862,7 +862,7 @@ namespace TAO::API
                         {
                             /* Read the transaction from the ledger database. */
                             TAO::API::Transaction tx;
-                            if(!LLD::Logical->ReadTx(hashTx, tx))
+                            if(!LLD::Sessions->ReadTx(hashTx, tx))
                             {
                                 debug::warning(FUNCTION, "pre-update read failed at ", hashTx.SubString());
                                 break;
@@ -893,7 +893,7 @@ namespace TAO::API
                         {
                             /* Read the transaction from the ledger database. */
                             TAO::API::Transaction tx;
-                            if(!LLD::Logical->ReadTx(*hashTx, tx))
+                            if(!LLD::Sessions->ReadTx(*hashTx, tx))
                             {
                                 debug::warning(FUNCTION, "update read failed at ", hashTx->SubString());
                                 break;
@@ -942,11 +942,11 @@ namespace TAO::API
                 if(Authentication::Active(state.hashOwner))
                 {
                     /* Write our events to database. */
-                    if(!LLD::Logical->PushEvent(state.hashOwner, hashTx, nContract))
+                    if(!LLD::Sessions->PushEvent(state.hashOwner, hashTx, nContract))
                         continue;
 
                     /* Increment our sequence. */
-                    if(!LLD::Logical->IncrementLegacySequence(state.hashOwner))
+                    if(!LLD::Sessions->IncrementLegacySequence(state.hashOwner))
                         continue;
 
                     debug::log(2, FUNCTION, "LEGACY: ",
@@ -1005,18 +1005,18 @@ namespace TAO::API
                     if(Authentication::Active(hashRecipient))
                     {
                         /* Push to unclaimed indexes if processing incoming transfer. */
-                        if(nOP == TAO::Operation::OP::TRANSFER && !LLD::Logical->PushUnclaimed(hashRecipient, hashAddress))
+                        if(nOP == TAO::Operation::OP::TRANSFER && !LLD::Sessions->PushUnclaimed(hashRecipient, hashAddress))
                             continue;
 
                         /* Write our events to database. */
-                        if(!LLD::Logical->PushEvent(hashRecipient, hashTx, nContract))
+                        if(!LLD::Sessions->PushEvent(hashRecipient, hashTx, nContract))
                         {
                             debug::warning(FUNCTION, "failed to push event for ", hashTx.SubString(), " contract ", nContract);
                             continue;
                         }
 
                         /* Increment our sequence. */
-                        if(!LLD::Logical->IncrementTritiumSequence(hashRecipient))
+                        if(!LLD::Sessions->IncrementTritiumSequence(hashRecipient))
                         {
                             debug::warning(FUNCTION, "failed to increment sequence for ", hashTx.SubString(), " contract ", nContract);
                             continue;
@@ -1039,7 +1039,7 @@ namespace TAO::API
                     if(Authentication::Active(hashRecipient))
                     {
                         /* Write our events to database. */
-                        if(!LLD::Logical->PushEvent(hashRecipient, hashTx, nContract))
+                        if(!LLD::Sessions->PushEvent(hashRecipient, hashTx, nContract))
                             continue;
 
                         /* We don't increment our events index for miner coinbase contract. */
@@ -1047,7 +1047,7 @@ namespace TAO::API
                             continue;
 
                         /* Increment our sequence. */
-                        if(!LLD::Logical->IncrementTritiumSequence(hashRecipient))
+                        if(!LLD::Sessions->IncrementTritiumSequence(hashRecipient))
                             continue;
 
                         debug::log(2, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hashTx.SubString()), ", ", VARIABLE(nContract));
@@ -1140,7 +1140,7 @@ namespace TAO::API
                         if(Authentication::Active(tx.hashGenesis))
                         {
                             /* Write our events to database. */
-                            if(!LLD::Logical->PushContract(tx.hashGenesis, hash, nContract))
+                            if(!LLD::Sessions->PushContract(tx.hashGenesis, hash, nContract))
                                 continue;
                         }
                     }
@@ -1149,15 +1149,15 @@ namespace TAO::API
                     if(Authentication::Active(hashRecipient))
                     {
                         /* Push to unclaimed indexes if processing incoming transfer. */
-                        if(nOP == TAO::Operation::OP::TRANSFER && !LLD::Logical->PushUnclaimed(hashRecipient, hashAddress))
+                        if(nOP == TAO::Operation::OP::TRANSFER && !LLD::Sessions->PushUnclaimed(hashRecipient, hashAddress))
                             continue;
 
                         /* Write our events to database. */
-                        if(!LLD::Logical->PushEvent(hashRecipient, hash, nContract))
+                        if(!LLD::Sessions->PushEvent(hashRecipient, hash, nContract))
                             continue;
 
                         /* Increment our sequence. */
-                        if(!LLD::Logical->IncrementTritiumSequence(hashRecipient))
+                        if(!LLD::Sessions->IncrementTritiumSequence(hashRecipient))
                             continue;
                     }
 
@@ -1179,7 +1179,7 @@ namespace TAO::API
                         debug::log(2, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hash.SubString()), ", ", VARIABLE(nContract));
 
                         /* Write our events to database. */
-                        if(!LLD::Logical->PushEvent(hashRecipient, hash, nContract))
+                        if(!LLD::Sessions->PushEvent(hashRecipient, hash, nContract))
                             continue;
 
                         /* We don't increment our events index for miner coinbase contract. */
@@ -1187,7 +1187,7 @@ namespace TAO::API
                             continue;
 
                         /* Increment our sequence. */
-                        if(!LLD::Logical->IncrementTritiumSequence(hashRecipient))
+                        if(!LLD::Sessions->IncrementTritiumSequence(hashRecipient))
                             continue;
                     }
 

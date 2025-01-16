@@ -1264,7 +1264,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to disconnect transaction");
 
                     /* Make sure this sigchain needs to be de-indexed. */
-                    if(LLD::Logical->HasFirst(tx.hashGenesis))
+                    if(LLD::Sessions->HasFirst(tx.hashGenesis))
                     {
                         /* Get a reference of our transaction. */
                         TAO::API::Transaction wtx = TAO::API::Transaction(tx);

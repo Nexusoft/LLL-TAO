@@ -61,7 +61,7 @@ namespace TAO::API
 
         /* Look up the transaction ID & contract ID of the transfer so that we can void it */
         std::vector<uint512_t> vTransactions;
-        if(!LLD::Logical->ListTransactions(hashRegister, vTransactions))
+        if(!LLD::Sessions->ListTransactions(hashRegister, vTransactions))
             throw Exception(-247, "Could not find invoice transfer transaction");
 
         /* The transaction ID to cancel */

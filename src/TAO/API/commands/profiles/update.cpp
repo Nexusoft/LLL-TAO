@@ -36,7 +36,7 @@ namespace TAO::API
 
         /* Check for duplicates in ledger db. */
         uint512_t hashLast;
-        if(!LLD::Logical->ReadFirst(hashGenesis, hashLast) || !LLD::Logical->ReadLast(hashGenesis, hashLast))
+        if(!LLD::Sessions->ReadFirst(hashGenesis, hashLast) || !LLD::Sessions->ReadLast(hashGenesis, hashLast))
             throw Exception(-130, "Account doesn't exist or has never logged in. Try profiles/recover instead");
 
         /* The new key scheme */

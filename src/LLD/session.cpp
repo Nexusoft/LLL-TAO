@@ -260,67 +260,6 @@ namespace LLD
     }
 
 
-    /* Push an register transaction to process for given register address. */
-    bool SessionDB::PushRegisterTx(const uint256_t& hashRegister, const uint512_t& hashTx)
-    {
-        /* Get our current sequence number. */
-        uint32_t nOwnerSequence = 0;
-
-        /* Read our sequences from disk. */
-        Read(std::make_pair(std::string("register.tx.sequence"), hashRegister), nOwnerSequence);
-
-        /* Add our indexing entry by owner sequence number. */
-        if(!Write(std::make_tuple(std::string("register.tx.index"), (nOwnerSequence % 5), hashRegister), hashTx))
-            return false;
-
-        /* Write our new events sequence to disk. */
-        if(!Write(std::make_pair(std::string("register.tx.sequence"), hashRegister), ++nOwnerSequence))
-            return false;
-
-        return true;
-    }
-
-
-    /* Erase an register transaction for given register address. */
-    bool SessionDB::EraseRegisterTx(const uint256_t& hashRegister)
-    {
-        /* Get our current sequence number. */
-        uint32_t nOwnerSequence = 0;
-
-        /* Read our sequences from disk. */
-        if(!Read(std::make_pair(std::string("register.tx.sequence"), hashRegister), nOwnerSequence))
-            return false;
-
-        /* Add our indexing entry by owner sequence number. */
-        if(!Erase(std::make_tuple(std::string("register.tx.index"), (--nOwnerSequence % 5), hashRegister)))
-            return false;
-
-        /* Write our new events sequence to disk. */
-        if(!Write(std::make_pair(std::string("register.tx.sequence"), hashRegister), nOwnerSequence))
-            return false;
-
-        return true;
-    }
-
-
-    /* Get an register transaction for given register address. */
-    bool SessionDB::LastRegisterTx(const uint256_t& hashRegister, uint512_t &hashTx)
-    {
-        /* Get our current sequence number. */
-        uint32_t nOwnerSequence = 0;
-
-        /* Read our sequences from disk. */
-        if(!Read(std::make_pair(std::string("register.tx.sequence"), hashRegister), nOwnerSequence))
-            return false;
-
-        /* Add our indexing entry by owner sequence number. */
-        if(!Read(std::make_tuple(std::string("register.tx.index"), (--nOwnerSequence % 5), hashRegister), hashTx))
-            return false;
-
-        return true;
-    }
-
-
     /* Push an register to process for given genesis-id. */
     bool SessionDB::PushRegister(const uint256_t& hashGenesis, const uint256_t& hashRegister)
     {

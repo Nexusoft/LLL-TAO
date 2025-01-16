@@ -61,14 +61,14 @@ namespace TAO::API
 
         /* Get the list of txid's that modified given register. */
         std::vector<uint512_t> vTransactions;
-        if(LLD::Logical->ListTransactions(hashRegister, vTransactions))
+        if(LLD::Sessions->ListTransactions(hashRegister, vTransactions))
         {
             /* Loop through all entries in list. */
             for(const auto& hashLast : vTransactions)
             {
                 /* Get the transaction from disk. */
                 TAO::API::Transaction tx;
-                if(!LLD::Logical->ReadTx(hashLast, tx))
+                if(!LLD::Sessions->ReadTx(hashLast, tx))
                     throw Exception(-108, "Failed to read transaction");
 
                 /* Loop through our contracts to check if they match our address. */

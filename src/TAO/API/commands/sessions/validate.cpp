@@ -28,7 +28,7 @@ namespace TAO::API
     {
         /* Read our first entry and accept to local mempool if we login. */
         TAO::API::Transaction tx;
-        if(LLD::Logical->ReadFirst(tSession.Genesis(), tx) && !tx.Confirmed())
+        if(LLD::Sessions->ReadFirst(tSession.Genesis(), tx) && !tx.Confirmed())
             TAO::Ledger::mempool.Accept(tx); //we don't care if it fails here because we will get invalid credentials if it did
 
         /* Check for crypto object register. */

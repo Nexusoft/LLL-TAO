@@ -39,7 +39,7 @@ namespace TAO::API
 
         /* Add the genesis */
         jRet["genesis"]      = hashGenesis.ToString();
-        jRet["confirmed"]    = bool(LLD::Logical->ReadFirst(hashGenesis, hashLast));
+        jRet["confirmed"]    = bool(LLD::Sessions->ReadFirst(hashGenesis, hashLast));
         jRet["recovery"]     = false;
         jRet["crypto"]       = false;
         jRet["transactions"] = 0;

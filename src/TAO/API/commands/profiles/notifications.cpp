@@ -57,8 +57,8 @@ namespace TAO::API
         std::vector<std::pair<uint512_t, uint32_t>> vEvents;
 
         /* Grab out list of contracts and events. */
-        LLD::Logical->ListEvents(hashGenesis, vEvents);
-        LLD::Logical->ListContracts(hashGenesis, vEvents);
+        LLD::Sessions->ListEvents(hashGenesis, vEvents);
+        LLD::Sessions->ListContracts(hashGenesis, vEvents);
 
         /* Track our unique events as we progress forward. */
         std::set<std::pair<uint512_t, uint32_t>> setUnique;

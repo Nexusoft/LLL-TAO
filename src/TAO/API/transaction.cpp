@@ -309,7 +309,7 @@ namespace TAO::API
             }
 
             /* Write our transaction update to disk. */
-            if(!LLD::Logical->WriteTx(hashTx, *this))
+            if(!LLD::Sessions->WriteTx(hashTx, *this))
                 debug::error(FUNCTION, "failed to write ", VARIABLE(hashTx.SubString()));
         }
     }
@@ -321,7 +321,7 @@ namespace TAO::API
         if(LLD::Ledger->HasIndex(hash))
         {
             /* Refresh this transaction from disk if it exists. */
-            LLD::Logical->ReadTx(hash, *this); //only after it has been accepted to disk
+            LLD::Sessions->ReadTx(hash, *this); //only after it has been accepted to disk
 
             /* Set status to accepted. */
             nStatus = ACCEPTED;
@@ -332,29 +332,29 @@ namespace TAO::API
         {
             /* Read our previous transaction to build indexes for it. */
             TAO::API::Transaction tx;
-            if(!LLD::Logical->ReadTx(hashPrevTx, tx))
+            if(!LLD::Sessions->ReadTx(hashPrevTx, tx))
                 return debug::error(FUNCTION, "failed to read previous ", VARIABLE(hashPrevTx.SubString()));
 
             /* Set our forward iteration hash. */
             tx.hashNextTx = hash;
 
             /* Write our new transaction to disk. */
-            if(!LLD::Logical->WriteTx(hashPrevTx, tx))
+            if(!LLD::Sessions->WriteTx(hashPrevTx, tx))
                 return debug::error(FUNCTION, "failed to update previous ", VARIABLE(hashPrevTx.SubString()));
         }
         else
         {
             /* Write our first index if applicable. */
-            if(!LLD::Logical->WriteFirst(hashGenesis, hash))
+            if(!LLD::Sessions->WriteFirst(hashGenesis, hash))
                 return debug::error(FUNCTION, "failed to write first index for ", VARIABLE(hashGenesis.SubString()));
         }
 
         /* Push new transaction to database. */
-        if(!LLD::Logical->WriteTx(hash, *this))
+        if(!LLD::Sessions->WriteTx(hash, *this))
             return debug::error(FUNCTION, "failed to write ", VARIABLE(hash.SubString()));
 
         /* Write our last index to the database. */
-        if(hashNextTx == 0 && !LLD::Logical->WriteLast(hashGenesis, hash))
+        if(hashNextTx == 0 && !LLD::Sessions->WriteLast(hashGenesis, hash))
             return debug::error(FUNCTION, "failed to write last index for ", VARIABLE(hashGenesis.SubString()));
 
         /* Index our transaction level data now. */
@@ -373,33 +373,33 @@ namespace TAO::API
         {
             /* Read our previous transaction to build indexes for it. */
             TAO::API::Transaction tx;
-            if(!LLD::Logical->ReadTx(hashPrevTx, tx))
+            if(!LLD::Sessions->ReadTx(hashPrevTx, tx))
                 return debug::error(FUNCTION, "failed to read previous ", VARIABLE(hashPrevTx.SubString()));
 
             /* Set our forward iteration hash. */
             tx.hashNextTx = 0;
 
             /* Erase our new transaction from disk. */
-            if(!LLD::Logical->WriteTx(hashPrevTx, tx))
+            if(!LLD::Sessions->WriteTx(hashPrevTx, tx))
                 return debug::error(FUNCTION, "failed to update previous ", VARIABLE(hashPrevTx.SubString()));
 
             /* Erase our last index from the database. */
-            if(!LLD::Logical->WriteLast(hashGenesis, hashPrevTx))
+            if(!LLD::Sessions->WriteLast(hashGenesis, hashPrevTx))
                 return debug::error(FUNCTION, "failed to write last index for ", VARIABLE(hashGenesis.SubString()));
         }
         else
         {
             /* Erase our first index if applicable. */
-            if(!LLD::Logical->EraseFirst(hashGenesis))
+            if(!LLD::Sessions->EraseFirst(hashGenesis))
                 return debug::error(FUNCTION, "failed to write first index for ", VARIABLE(hashGenesis.SubString()));
 
             /* Erase our last index if applicable. */
-            if(!LLD::Logical->EraseLast(hashGenesis))
+            if(!LLD::Sessions->EraseLast(hashGenesis))
                 return debug::error(FUNCTION, "failed to write first index for ", VARIABLE(hashGenesis.SubString()));
         }
 
         /* Erase our transaction from the database. */
-        if(!LLD::Logical->EraseTx(hash))
+        if(!LLD::Sessions->EraseTx(hash))
             return debug::error(FUNCTION, "failed to erase ", VARIABLE(hash.SubString()));
 
         /* De-index our transaction level data now. */
@@ -464,27 +464,27 @@ namespace TAO::API
                         hashRecipient = oRegister.hashOwner;
 
                         /* Check for active debit from with contract. */
-                        if(LLD::Logical->HasFirst(hashGenesis))
+                        if(LLD::Sessions->HasFirst(hashGenesis))
                         {
                             /* Write our events to database. */
-                            if(!LLD::Logical->EraseContract(hashGenesis, hash, nContract))
+                            if(!LLD::Sessions->EraseContract(hashGenesis, hash, nContract))
                                 continue;
                         }
                     }
 
                     /* Check if we need to build index for this contract. */
-                    if(LLD::Logical->HasFirst(hashRecipient))
+                    if(LLD::Sessions->HasFirst(hashRecipient))
                     {
                         /* Push to unclaimed indexes if processing incoming transfer. */
-                        if(nOP == TAO::Operation::OP::TRANSFER && !LLD::Logical->EraseUnclaimed(hashRecipient, hashAddress))
+                        if(nOP == TAO::Operation::OP::TRANSFER && !LLD::Sessions->EraseUnclaimed(hashRecipient, hashAddress))
                             continue;
 
                         /* Write our events to database. */
-                        if(!LLD::Logical->EraseEvent(hashRecipient, hash, nContract))
+                        if(!LLD::Sessions->EraseEvent(hashRecipient, hash, nContract))
                             continue;
 
                         /* Increment our sequence. */
-                        if(!LLD::Logical->DecrementTritiumSequence(hashRecipient))
+                        if(!LLD::Sessions->DecrementTritiumSequence(hashRecipient))
                             continue;
 
                         debug::log(2, FUNCTION, "ERASE: ", (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
@@ -503,10 +503,10 @@ namespace TAO::API
                     rContract >> hashRecipient;
 
                     /* Check if we need to build index for this contract. */
-                    if(LLD::Logical->HasFirst(hashRecipient))
+                    if(LLD::Sessions->HasFirst(hashRecipient))
                     {
                         /* Write our events to database. */
-                        if(!LLD::Logical->EraseEvent(hashRecipient, hash, nContract))
+                        if(!LLD::Sessions->EraseEvent(hashRecipient, hash, nContract))
                             continue;
 
                         /* We don't increment our events index for miner coinbase contract. */
@@ -514,7 +514,7 @@ namespace TAO::API
                             continue;
 
                         /* Increment our sequence. */
-                        if(!LLD::Logical->DecrementTritiumSequence(hashRecipient))
+                        if(!LLD::Sessions->DecrementTritiumSequence(hashRecipient))
                             continue;
 
                         debug::log(2, FUNCTION, "ERASE: COINBASE: for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hash.SubString()), ", ", VARIABLE(nContract));
@@ -577,7 +577,7 @@ namespace TAO::API
                         if(Authentication::Active(hashGenesis))
                         {
                             /* Write our events to database. */
-                            if(!LLD::Logical->PushContract(hashGenesis, hash, nContract))
+                            if(!LLD::Sessions->PushContract(hashGenesis, hash, nContract))
                                 continue;
                         }
                     }
@@ -586,15 +586,15 @@ namespace TAO::API
                     if(Authentication::Active(hashRecipient))
                     {
                         /* Push to unclaimed indexes if processing incoming transfer. */
-                        if(nOP == TAO::Operation::OP::TRANSFER && !LLD::Logical->PushUnclaimed(hashRecipient, hashAddress))
+                        if(nOP == TAO::Operation::OP::TRANSFER && !LLD::Sessions->PushUnclaimed(hashRecipient, hashAddress))
                             continue;
 
                         /* Write our events to database. */
-                        if(!LLD::Logical->PushEvent(hashRecipient, hash, nContract))
+                        if(!LLD::Sessions->PushEvent(hashRecipient, hash, nContract))
                             continue;
 
                         /* Increment our sequence. */
-                        if(!LLD::Logical->IncrementTritiumSequence(hashRecipient))
+                        if(!LLD::Sessions->IncrementTritiumSequence(hashRecipient))
                             continue;
                     }
 
@@ -614,7 +614,7 @@ namespace TAO::API
                     if(Authentication::Active(hashRecipient))
                     {
                         /* Write our events to database. */
-                        if(!LLD::Logical->PushEvent(hashRecipient, hash, nContract))
+                        if(!LLD::Sessions->PushEvent(hashRecipient, hash, nContract))
                             continue;
 
                         /* We don't increment our events index for miner coinbase contract. */
@@ -622,7 +622,7 @@ namespace TAO::API
                             continue;
 
                         /* Increment our sequence. */
-                        if(!LLD::Logical->IncrementTritiumSequence(hashRecipient))
+                        if(!LLD::Sessions->IncrementTritiumSequence(hashRecipient))
                             continue;
 
                         debug::log(2, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hash.SubString()), ", ", VARIABLE(nContract));
@@ -669,7 +669,7 @@ namespace TAO::API
                 case TAO::Operation::OP::TRANSFER:
                 {
                     /* Write a transfer index if transferring from our sigchain. */
-                    if(!LLD::Logical->WriteTransfer(hashGenesis, hashRegister))
+                    if(!LLD::Sessions->WriteTransfer(hashGenesis, hashRegister))
                         debug::warning(FUNCTION, "failed to write transfer for ", VARIABLE(hashRegister.SubString()));
 
                     break;
@@ -680,22 +680,22 @@ namespace TAO::API
                 case TAO::Operation::OP::CLAIM:
                 {
                     /* Write our register to database. */
-                    if(nOP == TAO::Operation::OP::CREATE && !LLD::Logical->PushRegister(hashGenesis, hashRegister))
+                    if(nOP == TAO::Operation::OP::CREATE && !LLD::Sessions->PushRegister(hashGenesis, hashRegister))
                         debug::warning(FUNCTION, "OP::CREATE: failed to push register ", VARIABLE(hashGenesis.SubString()));
 
                     /* Erase a transfer if claiming again after transferring. */
-                    if(nOP == TAO::Operation::OP::CLAIM && !LLD::Logical->HasRegister(hashGenesis, hashRegister))
+                    if(nOP == TAO::Operation::OP::CLAIM && !LLD::Sessions->HasRegister(hashGenesis, hashRegister))
                     {
                         /* Erase our transfer index if claiming a register. */
-                        if(!LLD::Logical->PushRegister(hashGenesis, hashRegister))
+                        if(!LLD::Sessions->PushRegister(hashGenesis, hashRegister))
                             debug::warning(FUNCTION, "failed to erase transfer for ", VARIABLE(hashRegister.SubString()));
                     }
 
                     /* Erase a transfer if claiming again after transferring. */
-                    if(nOP == TAO::Operation::OP::CLAIM && LLD::Logical->HasTransfer(hashGenesis, hashRegister))
+                    if(nOP == TAO::Operation::OP::CLAIM && LLD::Sessions->HasTransfer(hashGenesis, hashRegister))
                     {
                         /* Erase our transfer index if claiming a register. */
-                        if(!LLD::Logical->EraseTransfer(hashGenesis, hashRegister))
+                        if(!LLD::Sessions->EraseTransfer(hashGenesis, hashRegister))
                             debug::warning(FUNCTION, "failed to erase transfer for ", VARIABLE(hashRegister.SubString()));
                     }
 
@@ -752,7 +752,7 @@ namespace TAO::API
                                         continue;
 
                                     /* Push our tokenized account to our indexes. */
-                                    if(!LLD::Logical->PushTokenized(hashGenesis, std::make_pair(hashRegister, hashTransfer)))
+                                    if(!LLD::Sessions->PushTokenized(hashGenesis, std::make_pair(hashRegister, hashTransfer)))
                                         debug::warning(FUNCTION, "failed to push tokenized ", VARIABLE(hashGenesis.SubString()));
 
                                     break; //we can exit now
@@ -766,7 +766,7 @@ namespace TAO::API
             }
 
             /* Push transaction to the queue so we can track what modified given register. */
-            if(!setRegisters.count(hashRegister) && LLD::Logical->PushTransaction(hashRegister, hash))
+            if(!setRegisters.count(hashRegister) && LLD::Sessions->PushTransaction(hashRegister, hash))
             {
                 debug::log(3, "Pushing Transaction ", hash.SubString(), " to register ", hashRegister.ToString(), " transaction log");
 
@@ -812,7 +812,7 @@ namespace TAO::API
                 case TAO::Operation::OP::TRANSFER:
                 {
                     /* Erase a transfer index if roling back a transfer. */
-                    if(!LLD::Logical->EraseTransfer(hashGenesis, hashRegister))
+                    if(!LLD::Sessions->EraseTransfer(hashGenesis, hashRegister))
                         debug::warning(FUNCTION, "failed to write transfer for ", VARIABLE(hashRegister.SubString()));
 
                     break;
@@ -822,7 +822,7 @@ namespace TAO::API
                 case TAO::Operation::OP::CLAIM:
                 {
                     /* Write a transfer index if rolling back a claim. */
-                    if(!LLD::Logical->WriteTransfer(hashGenesis, hashRegister))
+                    if(!LLD::Sessions->WriteTransfer(hashGenesis, hashRegister))
                         debug::warning(FUNCTION, "failed to erase transfer for ", VARIABLE(hashRegister.SubString()));
 
                     break;
@@ -831,7 +831,7 @@ namespace TAO::API
                 case TAO::Operation::OP::CREATE:
                 {
                     /* Write our register to database. */
-                    if(!LLD::Logical->EraseRegister(hashGenesis, hashRegister))
+                    if(!LLD::Sessions->EraseRegister(hashGenesis, hashRegister))
                         debug::warning(FUNCTION, "failed to erase register ", VARIABLE(hashGenesis.SubString()));
 
                     break;
@@ -839,7 +839,7 @@ namespace TAO::API
             }
 
             /* Erase transaction from the queue so we can track what modified given register. */
-            if(!setRegisters.count(hashRegister) && LLD::Logical->EraseTransaction(hashRegister))
+            if(!setRegisters.count(hashRegister) && LLD::Sessions->EraseTransaction(hashRegister))
                 setRegisters.insert(hashRegister);
         }
     }

@@ -21,12 +21,14 @@ ________________________________________________________________________________
 #include <LLD/types/logical.h>
 #include <LLD/types/client.h>
 #include <LLD/types/legacy.h>
+#include <LLD/types/session.h>
 #include <LLD/types/trust.h>
 #include <LLD/types/contract.h>
 
 namespace LLD
 {
     extern LogicalDB*    Logical;
+    extern SessionDB*    Sessions;
     extern ContractDB*   Contract;
     extern RegisterDB*   Register;
     extern LedgerDB*     Ledger;

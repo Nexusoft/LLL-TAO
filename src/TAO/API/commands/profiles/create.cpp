@@ -128,7 +128,7 @@ namespace TAO::API
         }
 
         /* Check for duplicates in ledger db. */
-        if(LLD::Ledger->HasFirst(hashGenesis) || LLD::Logical->HasFirst(hashGenesis))
+        if(LLD::Ledger->HasFirst(hashGenesis) || LLD::Sessions->HasFirst(hashGenesis))
         {
             pCredentials.free();
             throw Exception(-130, "Account already exists");
