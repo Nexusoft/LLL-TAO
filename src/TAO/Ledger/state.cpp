@@ -78,7 +78,7 @@ namespace TAO
                 /* Iterate backwards. */
                 state = state.Prev();
                 if(!state)
-                    return false;
+                    break;
             }
 
             /* If the max depth expired, return the genesis. */

@@ -111,7 +111,7 @@ namespace TAO
 
 
             /** Copy Constructor. **/
-            SyncBlock(const BlockState& state);
+            SyncBlock(const BlockState& state, bool fTransactions = true);
 
         };
     }

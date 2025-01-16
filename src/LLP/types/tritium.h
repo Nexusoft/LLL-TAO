@@ -539,6 +539,17 @@ namespace LLP
         static std::shared_ptr<TritiumNode> GetNode(const uint64_t nSession);
 
 
+        /** PushBlock
+         *
+         *  Push a block to tritium connection based on specifier.
+         *
+         *  @param[in] nSpecifier The type of block to send off.
+         *  @param[in] rBlock The block state we want to send off.
+         *
+         **/
+        void PushBlock(const uint8_t nSpecifier, const TAO::Ledger::BlockState& rBlock);
+
+
         /** NewMessage
          *
          *  Creates a new message with a commands and data.

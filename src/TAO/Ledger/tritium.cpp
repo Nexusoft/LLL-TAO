@@ -204,13 +204,13 @@ namespace TAO
                         else
                         {
                             /* Get the transaction hash */
-                            uint512_t hash = tx.GetHash();
+                            const uint512_t hash = tx.GetHash();
 
                             /* Accept into memory pool. */
-                            if(!LLD::Ledger->HasTx(tx.GetHash()))
+                            if(!LLD::Ledger->HasTx(hash))
                                 mempool.AddUnchecked(tx);
 
-                            vtx.push_back(std::make_pair(block.vtx[n].first, tx.GetHash()));
+                            vtx.push_back(std::make_pair(block.vtx[n].first, hash));
                         }
 
                         break;

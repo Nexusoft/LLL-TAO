@@ -27,10 +27,7 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /*  Determines whether a string value is a valid base58 encoded register address.
-     *  This only checks to see if the value an be decoded into a valid Register::Address with a valid Type.
-     *  It does not check to see whether the register address exists in the database
-     */
+    /*  Determines whether a string value is a valid base58 encoded register address. */
     bool CheckAddress(const std::string& strValue)
     {
         /* Decode the incoming string into a register address */

@@ -159,12 +159,44 @@ namespace Legacy
     , nTime(state.nTime)
     , vtx()
     {
+        /* Check for version conversions. */
+        if(state.nVersion >= 7)
+            throw debug::exception(FUNCTION, "invalid sync block version for legacy block");
+
+        /* Track our current iterator. */
+        uint32_t nIterator = 0;
+
         /* Push back all the transactions from the state object. */
+        std::vector<Legacy::Transaction> vList;
+        while(LLD::Legacy->BatchRead(state.vtx[nIterator].second, "tx", vList, 10, true))
+        {
+            /* Loop through tx and find in block. */
+            for(const auto& tx : vList)
+            {
+                /* Once we have all the transactions. */
+                if(nIterator == state.vtx.size())
+                    break;
+
+                /* Check if we found tx that matches block. */
+                if(tx.GetHash() == state.vtx[nIterator].second)
+                {
+                    nIterator++;
+                    vtx.push_back(tx);
+                }
+                else
+                    continue;
+            }
+
+            /* Once we have all the transactions. */
+            if(nIterator == state.vtx.size())
+                break;
+        }
+
+        /*
         for(const auto& item : state.vtx)
         {
             if(item.first == TAO::Ledger::TRANSACTION::LEGACY)
             {
-                /* Read transaction from database */
                 Transaction tx;
                 if(!LLD::Legacy->ReadTx(item.second, tx))
                     throw debug::exception(FUNCTION, "failed to read tx ", item.second.SubString());
@@ -172,6 +204,7 @@ namespace Legacy
                 vtx.push_back(tx);
             }
         }
+        */
     }
 
 

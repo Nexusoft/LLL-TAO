@@ -803,8 +803,20 @@ namespace TAO::API
     std::string ExtractString(const encoding::json& jParams, const std::string& strKey)
     {
         /* Check for missing parameters. */
-        if(!CheckParameter(jParams, strKey, "string"))
+        if(!CheckParameter(jParams, strKey, "string, number"))
             throw Exception(-56, "Missing Parameter [", strKey, "]");
+
+        /* Check if we need to convert an unsigned number into a string. */
+        if(jParams[strKey].is_number_unsigned())
+            return debug::safe_printstr(jParams[strKey].get<uint64_t>());
+
+        /* Check if we need to convert a signed number into a string. */
+        if(jParams[strKey].is_number_integer())
+            return debug::safe_printstr(jParams[strKey].get<int64_t>());
+
+        /* Check if we need to convert a float into a string. */
+        if(jParams[strKey].is_number_float())
+            return debug::safe_printstr(jParams[strKey].get<double>());
 
         return jParams[strKey].get<std::string>();
     }

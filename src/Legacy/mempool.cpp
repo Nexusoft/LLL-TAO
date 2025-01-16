@@ -174,7 +174,7 @@ namespace TAO
                         pnode->WritePacket(LLP::TritiumNode::NewMessage(LLP::TritiumNode::ACTION::GET, ssResponse));
 
                         /* Update consecutive orphans. */
-                        ++pnode->nConsecutiveOrphans;
+                        pnode->nConsecutiveFails += 100; //we want to give a high score here for log spam
                     }
 
                     return debug::error(FUNCTION, "tx ", hashTx.SubString(), " missing ", nTotal, " inputs");

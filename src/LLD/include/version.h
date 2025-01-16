@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #define NEXUS_LLD_INCLUDE_VERSION_H
 
 #include <string>
+#include <cstdint>
 
 #define DATABASE_MAJOR       0
 #define DATABASE_MINOR       1

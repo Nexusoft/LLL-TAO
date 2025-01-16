@@ -113,65 +113,69 @@ namespace TAO
 
 
         /* Copy Constructor. */
-        SyncBlock::SyncBlock(const BlockState& state)
+        SyncBlock::SyncBlock(const BlockState& state, bool fTransactions)
         : Block    (state)
         , nTime    (state.nTime)
         , ssSystem (state.ssSystem)
         , vtx      ( )
         {
-            /* Loop through transactions in state block. */
-            for(const auto& proof : state.vtx)
+            /* Handle if we want to add transactions. */
+            if(fTransactions)
             {
-                /* Switch for type. */
-                switch(proof.first)
+                /* Loop through transactions in state block. */
+                for(const auto& proof : state.vtx)
                 {
-                    /* Check for tritium. */
-                    case TRANSACTION::TRITIUM:
+                    /* Switch for type. */
+                    switch(proof.first)
                     {
-                        /* Read the tritium transaction from disk. */
-                        Transaction tx;
-                        if(!LLD::Ledger->ReadTx(proof.second, tx, FLAGS::MEMPOOL)) //check mempool too
-                            throw debug::exception(FUNCTION, "failed to read tx ", proof.second.SubString());
+                        /* Check for tritium. */
+                        case TRANSACTION::TRITIUM:
+                        {
+                            /* Read the tritium transaction from disk. */
+                            Transaction tx;
+                            if(!LLD::Ledger->ReadTx(proof.second, tx, FLAGS::MEMPOOL)) //check mempool too
+                                throw debug::exception(FUNCTION, "failed to read tx ", proof.second.SubString());
 
-                        /* Serialize stream. */
-                        DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
-                        ssData << tx;
+                            /* Serialize stream. */
+                            DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
+                            ssData << tx;
 
-                        /* Add transaction to binary data. */
-                        vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
+                            /* Add transaction to binary data. */
+                            vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
 
-                        break;
-                    }
+                            break;
+                        }
 
-                    /* Check for legacy. */
-                    case TRANSACTION::LEGACY:
-                    {
-                        /* Read the tritium transaction from disk. */
-                        Legacy::Transaction tx;
-                        if(!LLD::Legacy->ReadTx(proof.second, tx, FLAGS::MEMPOOL)) //check mempool too
-                            throw debug::exception(FUNCTION, "failed to read tx ", proof.second.SubString());
+                        /* Check for legacy. */
+                        case TRANSACTION::LEGACY:
+                        {
+                            /* Read the tritium transaction from disk. */
+                            Legacy::Transaction tx;
+                            if(!LLD::Legacy->ReadTx(proof.second, tx, FLAGS::MEMPOOL)) //check mempool too
+                                throw debug::exception(FUNCTION, "failed to read tx ", proof.second.SubString());
 
-                        /* Serialize stream. */
-                        DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
-                        ssData << tx;
+                            /* Serialize stream. */
+                            DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
+                            ssData << tx;
 
-                        /* Add transaction to binary data. */
-                        vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
+                            /* Add transaction to binary data. */
+                            vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
 
-                        break;
-                    }
+                            break;
+                        }
 
-                    /* Check for checkpoint. */
-                    case TRANSACTION::CHECKPOINT:
-                    {
-                        /* Serialize stream. */
-                        DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
-                        ssData << proof.second;
+                        /* Check for checkpoint. */
+                        case TRANSACTION::CHECKPOINT:
+                        {
+                            /* Serialize stream. */
+                            DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
+                            ssData << proof.second;
 
-                        /* Add transaction to binary data. */
-                        vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
+                            /* Add transaction to binary data. */
+                            vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
 
-                        break;
+                            break;
+                        }
                     }
                 }
             }
