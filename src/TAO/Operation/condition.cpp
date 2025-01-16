@@ -1864,6 +1864,10 @@ namespace TAO
                     /* Get the current height of the chain. */
                     case OP::LEDGER::HEIGHT:
                     {
+                        /* Check if we have version disable of this op-code. */
+                        if(caller.Version() > 4)
+                            throw debug::exception("OP::LEDGER::HEIGHT disabled for post version 4");
+
                         /* Special check for timestamp if it is a client and already synced up. */
                         if(config::fClient.load())
                         {
@@ -1902,6 +1906,10 @@ namespace TAO
                     /* Get the current supply of the chain. */
                     case OP::LEDGER::SUPPLY:
                     {
+                        /* Check if we have version disable of this op-code. */
+                        if(caller.Version() > 4)
+                            throw debug::exception("OP::LEDGER::SUPPLY disabled for post version 4");
+
                         /* Special check for timestamp if it is a client and already synced up. */
                         if(config::fClient.load())
                         {
@@ -1940,6 +1948,10 @@ namespace TAO
                     /* Get the best block timestamp. */
                     case OP::LEDGER::TIMESTAMP:
                     {
+                        /* Check if we have version disable of this op-code. */
+                        if(caller.Version() > 4)
+                            throw debug::exception("OP::LEDGER::TIMESTAMP disabled for post version 4");
+
                         /* Special check for timestamp if it is a client and already synced up. */
                         if(config::fClient.load())
                         {
