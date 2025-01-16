@@ -947,6 +947,13 @@ namespace TAO
                     vDelete.insert(vDelete.end(), state->vtx.begin(), state->vtx.end());
                 }
 
+                /* Delete from mempool. */
+                for(auto proof = vDelete.rbegin(); proof != vDelete.rend(); ++proof)
+                {
+                    /* Remove transaction from mempool now. */
+                    mempool.Remove(proof->second);
+                }
+
                 /* Reverse the transction to connect to connect in ascending height. */
                 for(auto proof = vResurrect.rbegin(); proof != vResurrect.rend(); ++proof)
                 {
@@ -1006,10 +1013,6 @@ namespace TAO
                         }
                     }
                 }
-
-                /* Delete from mempool. */
-                for(const auto& proof : vDelete)
-                    mempool.Remove(proof.second);
 
                 /* Debug output about the best chain. */
                 uint64_t nElapsed = (GetBlockTime() - ChainState::tStateBest.load().GetBlockTime());
