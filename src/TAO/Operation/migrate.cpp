@@ -126,7 +126,7 @@ namespace TAO
 
             /* Check transaction version. */
             if(contract.Version() > 1)
-                return debug::error(FUNCTION, "OP::MIGRATE: invalid transaction version");
+                return debug::error(FUNCTION, "OP::MIGRATE: disabled after version 1");
 
             /* Check for conditions. */
             if(!debit.Empty(Contract::CONDITIONS))
