@@ -1369,7 +1369,7 @@ namespace LLP
                                 if(nSpecifier == SPECIFIER::SYNC)
                                 {
                                     TAO::Ledger::SyncBlock block;
-                                    if(state.vtx.size() > 3 && pairTritium.second.empty())
+                                    if(config::GetBoolArg("-sequentialsync"))
                                     {
                                         /* Build the sync block from state. */
                                         block = TAO::Ledger::SyncBlock(state, false);
