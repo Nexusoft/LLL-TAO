@@ -32,6 +32,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/timelocks.h>
 
+#include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/syncblock.h>
@@ -551,8 +552,12 @@ namespace Legacy
 
         /* Check that Transactions are Finalized. */
         for(const auto& tx : vtx)
+        {
+            /* Check our timestamp is final. */
             if(!tx.IsFinal(nHeight, nBlockTime))
                 return debug::error(FUNCTION, "contains a non-final transaction");
+        }
+
 
         /* Process the block state. */
         TAO::Ledger::BlockState state(*this);
@@ -569,6 +574,13 @@ namespace Legacy
             /* Write to disk. */
             if(!LLD::Legacy->WriteTx(hash, tx))
                 return debug::error(FUNCTION, "failed to write tx to disk");
+
+            /* Compute our stats variable. */
+            TAO::Ledger::nProcessedContracts += tx.vin.size();
+
+            /* Track our outputs for coinbase. */
+            if(tx.IsCoinBase())
+                TAO::Ledger::nProcessedContracts += tx.vout.size();
         }
 
         /* Accept the block state. */

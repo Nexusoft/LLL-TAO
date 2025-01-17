@@ -1211,7 +1211,7 @@ namespace LLP
 
                 /* This value helps us just modify it here rather than pasting through the code. */
                 const uint32_t nBatchLimit =
-                    config::GetArg("-batchlimit", 2000);
+                    config::GetArg("-batchlimit", 2500);
 
                 /* Set the block batch limits */
                 int32_t nLimits = nBatchLimit;
@@ -2604,24 +2604,7 @@ namespace LLP
                         ssPacket >> block;
 
                         /* Process the block. */
-                        TAO::Ledger::Process(block, nStatus);
-
-                        /* Check for duplicate and ask for previous block. */
-                        if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
-                        && !(nStatus & TAO::Ledger::PROCESS::IGNORED)
-                        &&  (nStatus & TAO::Ledger::PROCESS::ORPHAN))
-                        {
-                            /* Ask for list of blocks. */
-                            PushMessage(ACTION::LIST,
-                                #ifndef DEBUG_MISSING
-                                (config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::TRANSACTIONS)),
-                                #endif
-                                uint8_t(TYPES::BLOCK),
-                                uint8_t(TYPES::LOCATOR),
-                                TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
-                                uint1024_t(block.hashPrevBlock)
-                            );
-                        }
+                        TAO::Ledger::Process(block, nStatus, this);
 
                         break;
                     }
@@ -2638,24 +2621,7 @@ namespace LLP
                         ssPacket >> block;
 
                         /* Process the block. */
-                        TAO::Ledger::Process(block, nStatus);
-
-                        /* Check for duplicate and ask for previous block. */
-                        if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
-                        && !(nStatus & TAO::Ledger::PROCESS::IGNORED)
-                        &&  (nStatus & TAO::Ledger::PROCESS::ORPHAN))
-                        {
-                            /* Ask for list of blocks. */
-                            PushMessage(ACTION::LIST,
-                                #ifndef DEBUG_MISSING
-                                (config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::TRANSACTIONS)),
-                                #endif
-                                uint8_t(TYPES::BLOCK),
-                                uint8_t(TYPES::LOCATOR),
-                                TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
-                                uint1024_t(block.hashPrevBlock)
-                            );
-                        }
+                        TAO::Ledger::Process(block, nStatus, this);
 
                         /* Check for missing transactions. */
                         if(nStatus & TAO::Ledger::PROCESS::INCOMPLETE)
@@ -2680,39 +2646,33 @@ namespace LLP
                                 /* Check if we need to create new protocol message. */
                                 if(++nTotalItems >= ACTION::GET_MAX_ITEMS || tx == block.vMissing.back())
                                 {
-                                    /* Let's try up to 100 times to get the transaction data each from different nodes. */
-                                    for(uint32_t n = 0; n < 10; ++n)
+                                    /* Normal case of asking for a getblocks inventory message. */
+                                    std::shared_ptr<TritiumNode> pnode = TRITIUM_SERVER->GetConnection();
+                                    if(pnode != nullptr)
                                     {
-                                        /* Normal case of asking for a getblocks inventory message. */
-                                        std::shared_ptr<TritiumNode> pnode = TRITIUM_SERVER->GetConnection();
-                                        if(pnode != nullptr)
+                                        /* Send out another getblocks request. */
+                                        try
                                         {
-                                            /* Send out another getblocks request. */
-                                            try
-                                            {
-                                                debug::log(0, FUNCTION, "broadcasting packet with ", nTotalItems, " items to ", pnode->GetAddress().ToStringIP());
+                                            debug::log(0, FUNCTION, "broadcasting packet with ", nTotalItems, " items to ", pnode->GetAddress().ToStringIP());
 
-                                                /* Write our packet with our total items. */
-                                                pnode->WritePacket(NewMessage(ACTION::GET, ssResponse));
+                                            /* Write our packet with our total items. */
+                                            pnode->WritePacket(NewMessage(ACTION::GET, ssResponse));
 
-                                                /* Expired our missing block last. */
-                                                pnode->PushMessage(ACTION::GET, uint8_t(TYPES::BLOCK), block.hashMissing);
+                                            /* Expired our missing block last. */
+                                            pnode->PushMessage(ACTION::GET, uint8_t(TYPES::BLOCK), block.hashMissing);
 
-                                                /* Clear our response data. */
-                                                ssResponse.clear();
+                                            /* Clear our response data. */
+                                            ssResponse.clear();
 
-                                                /* Reset our counters. */
-                                                nTotalItems = 0;
+                                            /* Reset our counters. */
+                                            nTotalItems = 0;
 
-                                                /* Just to be sure we break. */
-                                                n = 100;
-                                                break;
-                                            }
-                                            catch(const std::exception& e)
-                                            {
-                                                /* Recurse on failure. */
-                                                debug::error(FUNCTION, e.what());
-                                            }
+                                            break;
+                                        }
+                                        catch(const std::exception& e)
+                                        {
+                                            /* Recurse on failure. */
+                                            debug::error(FUNCTION, e.what());
                                         }
                                     }
                                 }
@@ -2989,7 +2949,7 @@ namespace LLP
 
 
                 /* Check for orphan limit on node. */
-                if(nConsecutiveOrphans >= 1000)
+                if(nConsecutiveOrphans >= 10000)
                     return debug::drop(NODE, "TX::node reached ORPHAN limit");
 
                 break;

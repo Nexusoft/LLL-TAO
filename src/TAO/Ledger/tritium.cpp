@@ -34,6 +34,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/syncblock.h>
@@ -653,6 +654,9 @@ namespace TAO
                     /* Write to disk. */
                     if(!LLD::Ledger->WriteTx(hash, tx))
                         return debug::error(FUNCTION, "failed to write tx to disk");
+
+                    /* Compute our stats variable. */
+                    TAO::Ledger::nProcessedContracts += tx.Size();
                 }
 
                 /* Get the legacy transaction. */
@@ -676,6 +680,9 @@ namespace TAO
                     /* Write to disk. */
                     if(!LLD::Legacy->WriteTx(hash, tx))
                         return debug::error(FUNCTION, "failed to write tx to disk");
+
+                    /* Compute our stats variable. */
+                    TAO::Ledger::nProcessedContracts += tx.vout.size();
                 }
 
                 /* Checkpoints DISABLED for now. */
