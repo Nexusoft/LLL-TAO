@@ -1397,7 +1397,7 @@ namespace LLP
 
                                                         /* Reset our counter if we read our data. */
                                                         if(LLD::Ledger->BatchRead(pairLastRead.first,
-                                                            "tx", pairTritium.second, nBatchLimit, fExclude))
+                                                            "tx", pairTritium.second, nBatchLimit + 100, fExclude))
                                                         {
                                                             pairTritium.first = 0;
                                                             pairLastRead.first = pairTritium.second.back().GetHash();
@@ -1483,7 +1483,7 @@ namespace LLP
 
                                                         /* Reset our counter if we read our data. */
                                                         if(LLD::Legacy->BatchRead(pairLastRead.second,
-                                                            "tx", pairLegacy.second, nBatchLimit, fExclude))
+                                                            "tx", pairLegacy.second, nBatchLimit + 100, fExclude))
                                                         {
                                                             pairLegacy.first = 0;
                                                             pairLastRead.second = pairLegacy.second.back().GetHash();
