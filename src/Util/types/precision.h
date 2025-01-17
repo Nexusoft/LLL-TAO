@@ -99,7 +99,7 @@ class precision_t
 
             /* Check that we are within correct digits. */
             if(fThrow && nDigitsCheck > nDigits)
-                throw debug::exception(FUNCTION, "Parameter can only have ", nDigits, " decimal places");
+                throw debug::exception(FUNCTION, "Parameter can only have ", uint32_t(nDigits), " decimal places");
         }
 
         /* Build a copy string to test. */
@@ -314,7 +314,7 @@ public:
 
                 /* Check if we have correct number of digits. */
                 if(nDigitsCheck > nDigits)
-                    throw debug::exception(FUNCTION, "Parameter can only have ", nDigits, " decimal places");
+                    throw debug::exception(FUNCTION, "Parameter can only have ", uint32_t(nDigits), " decimal places");
             }
         }
 
