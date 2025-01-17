@@ -91,7 +91,7 @@ namespace TAO
             try
             {
                 /* Check for transaction on disk. */
-                if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
+                if(mapLedger.count(hashTx))
                     return false; //NOTE: this was true, but changed to false to prevent relay loops in tritium LLP
 
                 /* Check for rejected tx. */

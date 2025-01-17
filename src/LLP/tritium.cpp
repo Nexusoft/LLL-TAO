@@ -2892,31 +2892,33 @@ namespace LLP
                         /* Cache our txid. */
                         const uint512_t hashTx = tx.GetHash();
 
-                        /* Accept into memory pool. */
-                        if(TAO::Ledger::mempool.Accept(tx, this))
+                        /* Only process if transaction is not on disk. */
+                        if(!LLD::Legacy->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
                         {
-                            /* Relay the transaction notification. */
-                            TRITIUM_SERVER->Relay
-                            (
-                                ACTION::NOTIFY,
-                                uint8_t(SPECIFIER::LEGACY),
-                                uint8_t(TYPES::TRANSACTION),
-                                hashTx
-                            );
+                            /* Accept into memory pool. */
+                            if(TAO::Ledger::mempool.Accept(tx, this))
+                            {
+                                /* Relay the transaction notification. */
+                                TRITIUM_SERVER->Relay
+                                (
+                                    ACTION::NOTIFY,
+                                    uint8_t(SPECIFIER::LEGACY),
+                                    uint8_t(TYPES::TRANSACTION),
+                                    hashTx
+                                );
 
-                            /* Reset consecutive failures. */
-                            nConsecutiveFails   = 0;
-                            nConsecutiveOrphans = 0;
-                        }
+                                /* Reset consecutive failures. */
+                                nConsecutiveFails   = 0;
+                                nConsecutiveOrphans = 0;
+                            }
+                            else
+                            {
+                                /* Check for obsolete transaction version and ban accordingly. */
+                                if(tx.nVersion != Legacy::TRANSACTION_CURRENT_VERSION)
+                                    return debug::drop(NODE, "invalid transaction version ", tx.nVersion, ", dropping node");
 
-                        /* Only mark fails that aren't related to being on disk. */
-                        else if(!LLD::Legacy->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
-                        {
-                            /* Check for obsolete transaction version and ban accordingly. */
-                            if(tx.nVersion != Legacy::TRANSACTION_CURRENT_VERSION)
-                                return debug::drop(NODE, "invalid transaction version ", tx.nVersion, ", dropping node");
-
-                            ++nConsecutiveFails;
+                                ++nConsecutiveFails;
+                            }
                         }
 
                         break;
@@ -2932,36 +2934,38 @@ namespace LLP
                         /* Cache our txid. */
                         const uint512_t hashTx = tx.GetHash();
 
-                        /* Accept into memory pool. */
-                        if(TAO::Ledger::mempool.Accept(tx, this))
+                        /* Only process if transaction is not on disk. */
+                        if(!LLD::Ledger->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
                         {
-                            /* Relay the transaction notification. */
-                            TRITIUM_SERVER->Relay
-                            (
-                                /* Standard transaction relay. */
-                                ACTION::NOTIFY,
-                                uint8_t(TYPES::TRANSACTION),
-                                hashTx,
+                            /* Accept into memory pool. */
+                            if(TAO::Ledger::mempool.Accept(tx, this))
+                            {
+                                /* Relay the transaction notification. */
+                                TRITIUM_SERVER->Relay
+                                (
+                                    /* Standard transaction relay. */
+                                    ACTION::NOTIFY,
+                                    uint8_t(TYPES::TRANSACTION),
+                                    hashTx,
 
-                                /* Handle sigchain related notifications. */
-                                uint8_t(TYPES::SIGCHAIN),
-                                tx.hashGenesis,
-                                hashTx
-                            );
+                                    /* Handle sigchain related notifications. */
+                                    uint8_t(TYPES::SIGCHAIN),
+                                    tx.hashGenesis,
+                                    hashTx
+                                );
 
-                            /* Reset consecutive failures. */
-                            nConsecutiveFails   = 0;
-                            nConsecutiveOrphans = 0;
-                        }
+                                /* Reset consecutive failures. */
+                                nConsecutiveFails   = 0;
+                                nConsecutiveOrphans = 0;
+                            }
+                            else
+                            {
+                                /* Check for obsolete transaction version and ban accordingly. */
+                                if(!TAO::Ledger::TransactionVersionActive(tx.nTimestamp, tx.nVersion))
+                                    return debug::drop(NODE, "invalid transaction version ", tx.nVersion, ", dropping node");
 
-                        /* Only mark fails that aren't related to being on disk. */
-                        else if(!LLD::Ledger->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
-                        {
-                            /* Check for obsolete transaction version and ban accordingly. */
-                            if(!TAO::Ledger::TransactionVersionActive(tx.nTimestamp, tx.nVersion))
-                                return debug::drop(NODE, "invalid transaction version ", tx.nVersion, ", dropping node");
-
-                            ++nConsecutiveFails;
+                                ++nConsecutiveFails;
+                            }
                         }
 
                         break;
