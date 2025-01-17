@@ -967,13 +967,10 @@ namespace TAO
                             if(!LLD::Ledger->ReadTx(proof->second, tx))
                                 return debug::error(FUNCTION, "transaction not on disk");
 
-                            /* Check for producer transaction. */
-                            if(tx.IsCoinBase() || tx.IsCoinStake())
-                                continue;
-
                             /* Add back into memory pool. */
                             mempool.Accept(tx);
 
+                            /* Track the transaction data on verbose=3 */
                             if(config::nVerbose >= 3)
                                 tx.print();
                         }
@@ -981,7 +978,7 @@ namespace TAO
                     else if(proof->first == TRANSACTION::LEGACY)
                     {
                         /* Special case for deleting blocks, delete tx as well. */
-                        if(vConnect.empty())
+                        if(vConnect.empty()) //NOTE: this should only be executed on -forkblocks
                         {
                             /* Make sure the transaction is not on disk. */
                             if(!LLD::Legacy->EraseTx(proof->second))
@@ -994,13 +991,10 @@ namespace TAO
                             if(!LLD::Legacy->ReadTx(proof->second, tx))
                                 return debug::error(FUNCTION, "transaction not on disk");
 
-                            /* Check for producer transaction. */
-                            if(tx.IsCoinBase() || tx.IsCoinStake())
-                                continue;
-
                             /* Add back into memory pool. */
                             mempool.Accept(tx);
 
+                            /* Track the transaction data on verbose=3 */
                             if(config::nVerbose >= 3)
                                 tx.print();
                         }
