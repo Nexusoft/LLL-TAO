@@ -981,7 +981,7 @@ namespace TAO
                     }
 
                     /* Check that the previous transaction is indexed. */
-                    if((nFlags == FLAGS::BLOCK || nFlags == FLAGS::MINER || nFlags == FLAGS::SANITIZE) && !LLD::Ledger->HasIndex(hashPrev))
+                    if(!LLD::Ledger->HasIndex(hashPrev))
                         return debug::error(FUNCTION, hashPrev.SubString(), " not indexed");
                 }
 

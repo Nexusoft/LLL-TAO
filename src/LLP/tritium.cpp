@@ -1210,7 +1210,8 @@ namespace LLP
                     return true; //gracefully ignore these for now since there is no current way for remote nodes to know we are in client mode
 
                 /* This value helps us just modify it here rather than pasting through the code. */
-                const uint32_t nBatchLimit = 2000;
+                const uint32_t nBatchLimit =
+                    config::GetArg("-batchlimit", 2000);
 
                 /* Set the block batch limits */
                 int32_t nLimits = nBatchLimit;
@@ -1482,7 +1483,7 @@ namespace LLP
 
                                                         /* Reset our counter if we read our data. */
                                                         if(LLD::Legacy->BatchRead(pairLastRead.second,
-                                                            "tx", pairLegacy.second, 10, fExclude))
+                                                            "tx", pairLegacy.second, nBatchLimit, fExclude))
                                                         {
                                                             pairLegacy.first = 0;
                                                             pairLastRead.second = pairLegacy.second.back().GetHash();
