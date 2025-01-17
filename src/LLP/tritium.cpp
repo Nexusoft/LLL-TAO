@@ -1209,8 +1209,11 @@ namespace LLP
                 if(config::fClient.load())
                     return true; //gracefully ignore these for now since there is no current way for remote nodes to know we are in client mode
 
+                /* This value helps us just modify it here rather than pasting through the code. */
+                const uint32_t nBatchLimit = 2000;
+
                 /* Set the block batch limits */
-                int32_t nLimits = 1000;
+                int32_t nLimits = nBatchLimit;
 
                 /* Get the next type in stream. */
                 uint8_t nType = 0;
@@ -1324,9 +1327,6 @@ namespace LLP
                         /* Track our sequential block index to issue the next batch. */
                         uint1024_t hashLastRead = stateLast.GetHash();
 
-                        /* This value helps us just modify it here rather than pasting through the code. */
-                        const uint32_t nBatchLimit = 2000;
-
                         /* Keep track of our current buffer index and legacy transaction buffer. */
                         std::pair<uint32_t, std::vector<Legacy::Transaction>> pairLegacy =
                                                 std::make_pair(0, std::vector<Legacy::Transaction>());
@@ -1349,7 +1349,7 @@ namespace LLP
                         /* Do a sequential read to obtain the list at our set limit. */
                         std::vector<TAO::Ledger::BlockState> vStates;
                         while(!fBufferFull.load() && --nLimits >= 0 && hashStart != hashStop
-                            && LLD::Ledger->BatchRead(hashLastRead, "block", vStates, 1100, true))
+                            && LLD::Ledger->BatchRead(hashLastRead, "block", vStates, nBatchLimit, true))
                         {
                             /* Loop through all available states. */
                             for(const auto& state : vStates)
@@ -1369,7 +1369,7 @@ namespace LLP
                                 if(nSpecifier == SPECIFIER::SYNC)
                                 {
                                     TAO::Ledger::SyncBlock block;
-                                    if(state.vtx.size() > 2)
+                                    if(state.vtx.size() > 3 && pairTritium.second.empty())
                                     {
                                         /* Build the sync block from state. */
                                         block = TAO::Ledger::SyncBlock(state, false);
@@ -1482,7 +1482,7 @@ namespace LLP
 
                                                         /* Reset our counter if we read our data. */
                                                         if(LLD::Legacy->BatchRead(pairLastRead.second,
-                                                            "tx", pairLegacy.second, nBatchLimit, fExclude))
+                                                            "tx", pairLegacy.second, 10, fExclude))
                                                         {
                                                             pairLegacy.first = 0;
                                                             pairLastRead.second = pairLegacy.second.back().GetHash();
