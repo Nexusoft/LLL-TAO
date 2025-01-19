@@ -1370,7 +1370,7 @@ namespace LLP
                                 if(nSpecifier == SPECIFIER::SYNC)
                                 {
                                     TAO::Ledger::SyncBlock block;
-                                    if(config::GetBoolArg("-sequentialsync", true)) //set this default to true now
+                                    if(config::GetBoolArg("-sequentialsync", false)) //set this default to false now
                                     {
                                         /* Build the sync block from state. */
                                         block = TAO::Ledger::SyncBlock(state, false);
