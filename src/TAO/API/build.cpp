@@ -544,10 +544,10 @@ namespace TAO::API
                     /* Read the transction by indexed proofs. */
                     TAO::Ledger::Transaction tx;
                     if(LLD::Ledger->ReadTx(addrSource, hashTx, nContract, tx))
-                        return debug::error(FUNCTION, "credit is already claimed by txid ", tx.GetHash().ToString());
+                        throw Exception(-44, "credit is already claimed by txid ", tx.GetHash().ToString());
                 }
 
-                return debug::error(FUNCTION, "credit is already claimed ", addrSource.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
+                throw Exception(-44, "credit is already claimed ", addrSource.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
             }
 
             /* Check for a legacy output debit. */
