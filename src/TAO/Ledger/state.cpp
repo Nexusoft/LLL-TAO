@@ -947,10 +947,6 @@ namespace TAO
                     vDelete.insert(vDelete.end(), state->vtx.begin(), state->vtx.end());
                 }
 
-                /* Remove transaction from mempool now. */
-                for(auto proof = vDelete.rbegin(); proof != vDelete.rend(); ++proof)
-                    mempool.Remove(proof->second);
-
                 /* Reverse the transction to connect to connect in ascending height. */
                 for(auto proof = vResurrect.rbegin(); proof != vResurrect.rend(); ++proof)
                 {
@@ -958,7 +954,7 @@ namespace TAO
                     if(proof->first == TRANSACTION::TRITIUM)
                     {
                         /* Special case for deleting blocks, delete tx as well. */
-                        if(vConnect.empty()) //NOTE: this should only be executed on -forkblocks
+                        if(vConnect.empty())
                         {
                             /* Make sure the transaction is not on disk. */
                             if(!LLD::Ledger->EraseTx(proof->second))
@@ -966,37 +962,26 @@ namespace TAO
                         }
                         else
                         {
-                            /* Only process if this transaction is not included in connecting block. */
-                            if(std::find(vDelete.begin(), vDelete.end(), *proof) == vDelete.end())
-                            {
-                                /* Make sure the transaction is on disk. */
-                                TAO::Ledger::Transaction tx;
-                                if(!LLD::Ledger->ReadTx(proof->second, tx))
-                                    return debug::error(FUNCTION, "transaction not on disk");
+                            /* Make sure the transaction is on disk. */
+                            TAO::Ledger::Transaction tx;
+                            if(!LLD::Ledger->ReadTx(proof->second, tx))
+                                return debug::error(FUNCTION, "transaction not on disk");
 
-                                /* Add back into memory pool. */
-                                if(mempool.Accept(tx))
-                                {
-                                    /* Relay the transaction notification. */
-                                    LLP::TRITIUM_SERVER->Relay
-                                    (
-                                        /* Standard transaction relay. */
-                                        LLP::TritiumNode::ACTION::NOTIFY,
-                                        uint8_t(LLP::TritiumNode::TYPES::TRANSACTION),
-                                        proof->second
-                                    );
-                                }
+                            /* Check for producer transaction. */
+                            if(tx.IsCoinBase() || tx.IsCoinStake())
+                                continue;
 
-                                /* Track the transaction data on verbose=3 */
-                                if(config::nVerbose >= 3)
-                                    tx.print();
-                            }
+                            /* Add back into memory pool. */
+                            mempool.Accept(tx);
+
+                            if(config::nVerbose >= 3)
+                                tx.print();
                         }
                     }
                     else if(proof->first == TRANSACTION::LEGACY)
                     {
                         /* Special case for deleting blocks, delete tx as well. */
-                        if(vConnect.empty()) //NOTE: this should only be executed on -forkblocks
+                        if(vConnect.empty())
                         {
                             /* Make sure the transaction is not on disk. */
                             if(!LLD::Legacy->EraseTx(proof->second))
@@ -1004,35 +989,27 @@ namespace TAO
                         }
                         else
                         {
-                            /* Only process if this transaction is not included in connecting block. */
-                            if(std::find(vDelete.begin(), vDelete.end(), *proof) == vDelete.end())
-                            {
-                                /* Make sure the transaction is on disk. */
-                                Legacy::Transaction tx;
-                                if(!LLD::Legacy->ReadTx(proof->second, tx))
-                                    return debug::error(FUNCTION, "transaction not on disk");
+                            /* Make sure the transaction is on disk. */
+                            Legacy::Transaction tx;
+                            if(!LLD::Legacy->ReadTx(proof->second, tx))
+                                return debug::error(FUNCTION, "transaction not on disk");
 
-                                /* Add back into memory pool. */
-                                if(mempool.Accept(tx))
-                                {
-                                    /* Relay the transaction notification. */
-                                    LLP::TRITIUM_SERVER->Relay
-                                    (
-                                        /* Standard transaction relay. */
-                                        LLP::TritiumNode::ACTION::NOTIFY,
-                                        uint8_t(LLP::TritiumNode::SPECIFIER::LEGACY),
-                                        uint8_t(LLP::TritiumNode::TYPES::TRANSACTION),
-                                        proof->second
-                                    );
-                                }
+                            /* Check for producer transaction. */
+                            if(tx.IsCoinBase() || tx.IsCoinStake())
+                                continue;
 
-                                /* Track the transaction data on verbose=3 */
-                                if(config::nVerbose >= 3)
-                                    tx.print();
-                            }
+                            /* Add back into memory pool. */
+                            mempool.Accept(tx);
+
+                            if(config::nVerbose >= 3)
+                                tx.print();
                         }
                     }
                 }
+
+                /* Delete from mempool. */
+                for(const auto& proof : vDelete)
+                    mempool.Remove(proof.second);
 
                 /* Debug output about the best chain. */
                 uint64_t nElapsed = (GetBlockTime() - ChainState::tStateBest.load().GetBlockTime());
