@@ -183,6 +183,13 @@ namespace TAO::API
         static void DownloadNotifications(const uint256_t& hashGenesis);
 
 
+        /** BuildIndexes
+         *
+         *  Build a sigchain's local indexes.
+         *
+         **/
+        static void BuildIndexes(const uint256_t& hashSession);
+
 
         /** Initialize Thread
          *
