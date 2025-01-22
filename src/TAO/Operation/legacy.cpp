@@ -90,6 +90,10 @@ namespace TAO
             if(OP != OP::LEGACY)
                 return debug::error(FUNCTION, "called with incorrect OP");
 
+            /* Check transaction version. */
+            if(contract.Version() > 4)
+                return debug::error(FUNCTION, "OP::LEGACY: disabled after version 4");
+
             /* Extract the address from contract. */
             TAO::Register::Address hashFrom;
             contract >> hashFrom;

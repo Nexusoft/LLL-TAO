@@ -981,7 +981,7 @@ namespace TAO
                     }
 
                     /* Check that the previous transaction is indexed. */
-                    if((nFlags == FLAGS::BLOCK || nFlags == FLAGS::MINER) && !LLD::Ledger->HasIndex(hashPrev))
+                    if(!LLD::Ledger->HasIndex(hashPrev))
                         return debug::error(FUNCTION, hashPrev.SubString(), " not indexed");
                 }
 
@@ -997,7 +997,7 @@ namespace TAO
                     TAO::Operation::TxCost(contract, nCost);
 
                 /* Index our registers here now if not -client mode and setting enabled. */
-                if(!config::fClient.load() && config::fIndexRegister.load())
+                if(!config::fClient.load() && config::fIndexRegister.load() && nFlags == FLAGS::BLOCK)
                 {
                     /* Unpack the address we will be working on. */
                     uint256_t hashAddress;
@@ -1118,7 +1118,7 @@ namespace TAO
                     return false;
 
                 /* Erase our register index here now if not -client mode and setting enabled. */
-                if(!config::fClient.load() && config::fIndexRegister.load())
+                if(!config::fClient.load() && config::fIndexRegister.load() && nFlags == FLAGS::BLOCK)
                 {
                     /* Unpack the address we will be working on. */
                     uint256_t hashAddress;

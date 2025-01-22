@@ -63,7 +63,7 @@ namespace TAO
             RECURSIVE(MUTEX);
 
             /* Check if we already have this tx. */
-            if(LLD::Legacy->HasTx(hashTx, FLAGS::MEMPOOL))
+            if(mapLegacy.count(hashTx))
                 return false;
 
             debug::log(3, "ACCEPT --------------------------------------");

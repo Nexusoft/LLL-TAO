@@ -535,6 +535,21 @@ namespace TAO::API
             uint64_t nAmount = 0;
             rDebit >> nAmount;
 
+            /* Check if the credit is already claimed. */
+            if(LLD::Ledger->HasProof(addrSource, hashTx, nContract, TAO::Ledger::FLAGS::MEMPOOL))
+            {
+                /* Special debug output if we indexed our proofs. */
+                if(config::fIndexProofs.load())
+                {
+                    /* Read the transction by indexed proofs. */
+                    TAO::Ledger::Transaction tx;
+                    if(LLD::Ledger->ReadTx(addrSource, hashTx, nContract, tx))
+                        throw Exception(-44, "credit is already claimed by txid ", tx.GetHash().ToString());
+                }
+
+                throw Exception(-44, "credit is already claimed ", addrSource.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
+            }
+
             /* Check for a legacy output debit. */
             if(addrSource == TAO::Register::WILDCARD_ADDRESS)
             {

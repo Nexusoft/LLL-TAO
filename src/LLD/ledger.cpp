@@ -143,6 +143,10 @@ namespace LLD
             if(!ReadTx(hashTx, tx, nFlags))
                 throw debug::exception(FUNCTION, "failed to read contract");
 
+            /* Check that our dependant was indexed. */
+            if(!HasIndex(hashTx))
+                throw debug::exception(FUNCTION, "dependant is not indexed");
+
             /* Get const reference for read-only access. */
             const TAO::Ledger::Transaction& rtx = tx;
             return rtx[nContract];
@@ -155,6 +159,10 @@ namespace LLD
             Legacy::Transaction tx;
             if(!LLD::Legacy->ReadTx(hashTx, tx, nFlags))
                 throw debug::exception(FUNCTION, "failed to read contract");
+
+            /* Check that our dependant was indexed. */
+            if(!HasIndex(hashTx))
+                throw debug::exception(FUNCTION, "dependant is not indexed");
 
             return TAO::Operation::Contract(tx, nContract);
         }
