@@ -947,20 +947,18 @@ namespace TAO
                     vDelete.insert(vDelete.end(), state->vtx.begin(), state->vtx.end());
                 }
 
+                /* Delete from mempool. */
+                for(auto proof = vDelete.rbegin(); proof != vDelete.rend(); ++proof)
+                    mempool.Remove(proof->second);
+
                 /* Reverse the transction to connect to connect in ascending height. */
                 for(auto proof = vResurrect.rbegin(); proof != vResurrect.rend(); ++proof)
                 {
                     /* Check for tritium transctions. */
                     if(proof->first == TRANSACTION::TRITIUM)
                     {
-                        /* Special case for deleting blocks, delete tx as well. */
-                        if(vConnect.empty())
-                        {
-                            /* Make sure the transaction is not on disk. */
-                            if(!LLD::Ledger->EraseTx(proof->second))
-                                return debug::error(FUNCTION, "transaction not on disk");
-                        }
-                        else
+                        /* Only resurrect if not in the delete list. */
+                        if(std::find(vDelete.begin(), vDelete.end(), *proof) == vDelete.end())
                         {
                             /* Make sure the transaction is on disk. */
                             TAO::Ledger::Transaction tx;
@@ -968,7 +966,7 @@ namespace TAO
                                 return debug::error(FUNCTION, "transaction not on disk");
 
                             /* Check for producer transaction. */
-                            if(tx.IsCoinBase() || tx.IsCoinStake())
+                            if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid())
                                 continue;
 
                             /* Add back into memory pool. */
@@ -980,14 +978,8 @@ namespace TAO
                     }
                     else if(proof->first == TRANSACTION::LEGACY)
                     {
-                        /* Special case for deleting blocks, delete tx as well. */
-                        if(vConnect.empty())
-                        {
-                            /* Make sure the transaction is not on disk. */
-                            if(!LLD::Legacy->EraseTx(proof->second))
-                                return debug::error(FUNCTION, "transaction not on disk");
-                        }
-                        else
+                        /* Only resurrect if not in the delete list. */
+                        if(std::find(vDelete.begin(), vDelete.end(), *proof) == vDelete.end())
                         {
                             /* Make sure the transaction is on disk. */
                             Legacy::Transaction tx;
@@ -1006,10 +998,6 @@ namespace TAO
                         }
                     }
                 }
-
-                /* Delete from mempool. */
-                for(const auto& proof : vDelete)
-                    mempool.Remove(proof.second);
 
                 /* Debug output about the best chain. */
                 uint64_t nElapsed = (GetBlockTime() - ChainState::tStateBest.load().GetBlockTime());
@@ -1264,7 +1252,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to disconnect transaction");
 
                     /* Make sure this sigchain needs to be de-indexed. */
-                    if(LLD::Sessions->HasFirst(tx.hashGenesis))
+                    if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid()) //we only delete indexes for producer transactions
                     {
                         /* Get a reference of our transaction. */
                         TAO::API::Transaction wtx = TAO::API::Transaction(tx);
