@@ -14,11 +14,32 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 #include <LLP/include/global.h>
 
+#include <TAO/API/types/authentication.h>
 #include <TAO/API/types/indexing.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
 {
+    /* Sync's a user's indexing entries. */
+    void Indexing::DownloadIndexes(const uint256_t& hashSession)
+    {
+        /* This is only for -client mode. */
+        if(!config::fClient.load())
+            return;
+
+        /* Get our current genesis-id to start initialization. */
+        const uint256_t hashGenesis =
+            Authentication::Caller(hashSession);
+
+        /* Broadcast our unconfirmed transactions first. */
+        BroadcastUnconfirmed(hashGenesis);
+
+        /* Process our sigchain events now. */
+        DownloadNotifications(hashGenesis);
+        DownloadSigchain(hashGenesis);
+    }
+
+
     /*  Refresh our events and transactions for a given sigchain. */
     void Indexing::DownloadSigchain(const uint256_t& hashGenesis)
     {

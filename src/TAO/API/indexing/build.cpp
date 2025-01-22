@@ -28,19 +28,15 @@ namespace TAO::API
         const uint256_t hashGenesis =
             Authentication::Caller(hashSession);
 
+        /* Track our last event processed so we don't double up our work. */
+        uint512_t hashLast = 0;
+
         /* Read our last sequence. */
         uint32_t nTritiumSequence = 0;
         LLD::Sessions->ReadTritiumSequence(hashGenesis, nTritiumSequence);
 
-        /* Read our last sequence. */
-        uint32_t nLegacySequence = 0;
-        LLD::Sessions->ReadLegacySequence(hashGenesis, nLegacySequence);
-
         /* Debug output so w4e can track our events indexes. */
-        debug::log(2, FUNCTION, "Building events indexes from ", VARIABLE(nTritiumSequence), " | ", VARIABLE(nLegacySequence), " for genesis=", hashGenesis.SubString());
-
-        /* Track our last event processed so we don't double up our work. */
-        uint512_t hashLast;
+        debug::log(2, FUNCTION, "Building tritium event indexes from ", VARIABLE(nTritiumSequence), " for genesis=", hashGenesis.SubString());
 
         /* Loop through our ledger level events. */
         TAO::Ledger::Transaction tTritium;
@@ -64,6 +60,13 @@ namespace TAO::API
             /* Set our new dependant hash. */
             hashLast = hashEvent;
         }
+
+        /* Read our last sequence. */
+        uint32_t nLegacySequence = 0;
+        LLD::Sessions->ReadLegacySequence(hashGenesis, nLegacySequence);
+
+        /* Debug output so w4e can track our events indexes. */
+        debug::log(2, FUNCTION, "Building legacy event indexes from ", VARIABLE(nLegacySequence), " for genesis=", hashGenesis.SubString());
 
         /* Loop through our ledger level events. */
         Legacy::Transaction tLegacy;
@@ -96,20 +99,20 @@ namespace TAO::API
             std::vector<uint512_t> vBuild;
 
             /* Read all transactions from our last index. */
-            uint512_t hashTx = hashLedger;
+            hashLast = hashLedger;
             while(!config::fShutdown.load())
             {
                 /* Read the transaction from the ledger database. */
                 TAO::Ledger::Transaction tx;
-                if(!LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
                 {
-                    debug::warning(FUNCTION, "pre-build read failed at ", hashTx.SubString());
+                    debug::warning(FUNCTION, "pre-build read failed at ", hashLast.SubString());
                     break;
                 }
 
                 /* Check for valid logical indexes. */
-                if(!LLD::Sessions->HasTx(hashTx))
-                    vBuild.push_back(hashTx);
+                if(!LLD::Sessions->HasTx(hashLast))
+                    vBuild.push_back(hashLast);
                 else
                     break;
 
@@ -118,32 +121,25 @@ namespace TAO::API
                     break;
 
                 /* Set hash to previous hash. */
-                hashTx = tx.hashPrevTx;
+                hashLast = tx.hashPrevTx;
             }
 
             /* Only output our data when we have indexes to build. */
             if(!vBuild.empty())
+            {
                 debug::log(1, FUNCTION, "Building ", vBuild.size(), " indexes for genesis=", hashGenesis.SubString());
 
-            /* Reverse iterate our list of entries and index. */
-            for(auto hashTx = vBuild.rbegin(); hashTx != vBuild.rend(); ++hashTx)
-            {
-                /* Read the transaction from the ledger database. */
-                TAO::Ledger::Transaction tx;
-                if(!LLD::Ledger->ReadTx(*hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                /* Reverse iterate our list of entries and index. */
+                for(auto hashTx = vBuild.rbegin(); hashTx != vBuild.rend(); ++hashTx)
                 {
-                    debug::warning(FUNCTION, "build read failed at ", hashTx->SubString());
-                    break;
+                    /* Fire off indexing now. */
+                    IndexSigchain(*hashTx);
+
+                    /* Log that tx was rebroadcast. */
+                    debug::log(1, FUNCTION, "Built Indexes for ", hashTx->SubString(), " to logical db");
                 }
-
-                /* Index the transaction on main sigchain. */
-                index_transaction(*hashTx, tx);
-
-                /* Log that tx was rebroadcast. */
-                debug::log(1, FUNCTION, "Built Indexes for ", hashTx->SubString(), " to logical db");
             }
         }
-
 
         /* Check that our last indexing entries match. */
         uint512_t hashLogical = 0;
@@ -206,24 +202,5 @@ namespace TAO::API
             /* Check if we need to re-broadcast anything. */
             BroadcastUnconfirmed(hashGenesis);
         }
-    }
-
-    /* Sync's a user's indexing entries. */
-    void Indexing::SyncIndexes(const uint256_t& hashSession)
-    {
-        /* This is only for -client mode. */
-        if(!config::fClient.load())
-            return;
-
-        /* Get our current genesis-id to start initialization. */
-        const uint256_t hashGenesis =
-            Authentication::Caller(hashSession);
-
-        /* Broadcast our unconfirmed transactions first. */
-        BroadcastUnconfirmed(hashGenesis);
-
-        /* Process our sigchain events now. */
-        DownloadNotifications(hashGenesis);
-        DownloadSigchain(hashGenesis);
     }
 }

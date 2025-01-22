@@ -198,7 +198,7 @@ namespace TAO::API
 
                 /* Sync the sigchain if an active client before building our indexes. */
                 if(config::fClient.load())
-                    SyncIndexes(hashSession);
+                    DownloadIndexes(hashSession);
 
                 /* Build or local indexes for desktop wallet. */
                 else
