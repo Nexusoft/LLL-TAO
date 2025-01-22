@@ -207,4 +207,23 @@ namespace TAO::API
             BroadcastUnconfirmed(hashGenesis);
         }
     }
+
+    /* Sync's a user's indexing entries. */
+    void Indexing::SyncIndexes(const uint256_t& hashSession)
+    {
+        /* This is only for -client mode. */
+        if(!config::fClient.load())
+            return;
+
+        /* Get our current genesis-id to start initialization. */
+        const uint256_t hashGenesis =
+            Authentication::Caller(hashSession);
+
+        /* Broadcast our unconfirmed transactions first. */
+        BroadcastUnconfirmed(hashGenesis);
+
+        /* Process our sigchain events now. */
+        DownloadNotifications(hashGenesis);
+        DownloadSigchain(hashGenesis);
+    }
 }

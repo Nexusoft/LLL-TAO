@@ -191,6 +191,14 @@ namespace TAO::API
         static void BuildIndexes(const uint256_t& hashSession);
 
 
+        /** SyncIndexes
+         *
+         *  Syncs a sigchain's remote indexes.
+         *
+         **/
+        static void SyncIndexes(const uint256_t& hashSession);
+
+
         /** Initialize Thread
          *
          *  Handle indexing of all events for API.

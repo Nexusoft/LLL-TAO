@@ -99,6 +99,13 @@ namespace TAO::API
         /* Add our genesis to initialize ordering. */
         INITIALIZE->push(hashSession);
         INITIALIZE_CONDITION.notify_all();
+
+        /* Get our current genesis-id to start initialization. */
+        const uint256_t hashGenesis =
+            Authentication::Caller(hashSession);
+
+        /* Write our current time to the database. */
+        LLD::Sessions->WriteSession(hashGenesis, runtime::unifiedtimestamp());
     }
 
 
@@ -189,27 +196,9 @@ namespace TAO::API
                 hashSession = INITIALIZE->front();
                 INITIALIZE->pop();
 
-                /* Get our current genesis-id to start initialization. */
-                const uint256_t hashGenesis =
-                    Authentication::Caller(hashSession);
-
-                /* Write our current time to the database. */
-                LLD::Sessions->WriteSession(hashGenesis, runtime::unifiedtimestamp());
-
                 /* Sync the sigchain if an active client before building our indexes. */
                 if(config::fClient.load())
-                {
-                    /* Broadcast our unconfirmed transactions first. */
-                    BroadcastUnconfirmed(hashGenesis);
-
-                    /* Process our sigchain events now. */
-                    DownloadNotifications(hashGenesis);
-                    DownloadSigchain(hashGenesis);
-
-                    /* Exit out of this thread if we are shutting down. */
-                    if(config::fShutdown.load())
-                        return;
-                }
+                    SyncIndexes(hashSession);
 
                 /* Build or local indexes for desktop wallet. */
                 else
