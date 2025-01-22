@@ -726,7 +726,7 @@ namespace TAO::Operation
                     contract >> nAmount;
 
                     /* Verify the operation rules. */
-                    Contract debit = LLD::Ledger->ReadContract(hashTx, nContract, nFlags);
+                    const Contract debit = LLD::Ledger->ReadContract(hashTx, nContract, nFlags);
                     if(!Credit::Verify(contract, debit, nFlags))
                         return false;
 
