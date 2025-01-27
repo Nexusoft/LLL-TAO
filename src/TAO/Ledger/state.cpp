@@ -1000,7 +1000,7 @@ namespace TAO
                 }
 
                 /* Debug output about the best chain. */
-                uint64_t nElapsed = (GetBlockTime() - ChainState::tStateBest.load().GetBlockTime());
+                uint64_t nElapsed      = (GetBlockTime() - ChainState::tStateBest.load().GetBlockTime());
                 uint64_t nContractTime = swContract.ElapsedMicroseconds();
                 uint64_t nInputsTime   = swScript.ElapsedMicroseconds();
 
@@ -1204,7 +1204,14 @@ namespace TAO
             nFeeReserve += nFees;
 
             /* Log how much was generated / destroyed. */
-            debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, nMint > 0 ? "Generated " : "Destroyed ", std::fixed, (double)nMint / TAO::Ledger::NXS_COIN, " Nexus | Money Supply ", std::fixed, (double)nMoneySupply / TAO::Ledger::NXS_COIN);
+            debug::log
+            (
+                TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
+
+                nMint > 0 ? "Generated " : "Destroyed ",
+                std::fixed, (double)nMint / TAO::Ledger::NXS_COIN, " Nexus | Money Supply ",
+                std::fixed, (double)nMoneySupply / TAO::Ledger::NXS_COIN
+            );
 
             /* Write the updated block state to disk. */
             if(!LLD::Ledger->WriteBlock(hashBlock, *this))
