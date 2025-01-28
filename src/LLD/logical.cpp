@@ -43,6 +43,20 @@ namespace LLD
     }
 
 
+    /* Reads the last txid that was indexed. */
+    bool LogicalDB::ReadLastIndex(uint512_t &hashTx)
+    {
+        return Read(std::string("indexing"), hashTx);
+    }
+
+
+    /* Writes the last txid that was indexed. */
+    bool LogicalDB::WriteLastIndex(const uint512_t& hashTx)
+    {
+        return Write(std::string("indexing"), hashTx);
+    }
+
+
     /* Push an register transaction to process for given register address. */
     bool LogicalDB::PushRegisterTx(const uint256_t& hashRegister, const uint512_t& hashTx)
     {

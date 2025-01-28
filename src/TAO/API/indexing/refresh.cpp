@@ -46,7 +46,7 @@ namespace TAO::API
 
         /* Handle first key if needed. */
         uint512_t hashIndex;
-        if(!LLD::Sessions->ReadLastIndex(hashIndex))
+        if(!LLD::Logical->ReadLastIndex(hashIndex))
         {
             /* Set our internal values. */
             hashBlock = TAO::Ledger::hashTritium;
@@ -132,7 +132,7 @@ namespace TAO::API
                 tStateLast = state;
 
                 /* Track our checkpoint by first transaction in non-processed block. */
-                LLD::Sessions->WriteLastIndex(state.vtx[0].second);
+                LLD::Logical->WriteLastIndex(state.vtx[0].second);
 
                 /* Handle our transactions now. */
                 for(const auto& proof : state.vtx)

@@ -58,20 +58,6 @@ namespace LLD
 
 
     /* Reads the last txid that was indexed. */
-    bool SessionDB::ReadLastIndex(uint512_t &hashTx)
-    {
-        return Read(std::string("indexing"), hashTx);
-    }
-
-
-    /* Writes the last txid that was indexed. */
-    bool SessionDB::WriteLastIndex(const uint512_t& hashTx)
-    {
-        return Write(std::string("indexing"), hashTx);
-    }
-
-
-    /* Reads the last txid that was indexed. */
     bool SessionDB::ReadLast(const uint256_t& hashGenesis, uint512_t &hashTx)
     {
         return Read(std::make_pair(std::string("indexing.last"), hashGenesis), hashTx);

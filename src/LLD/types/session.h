@@ -69,30 +69,6 @@ namespace LLD
         bool ReadSession(const uint256_t& hashGenesis, uint64_t &nActive);
 
 
-        /** ReadLastIndex
-         *
-         *  Reads the last txid that was indexed.
-         *
-         *  @param[out] hashTx The txid of the last indexed transaction.
-         *
-         *  @return true if read successfully
-         *
-         **/
-        bool ReadLastIndex(uint512_t &hashTx);
-
-
-        /** WriteLastIndex
-         *
-         *  Writes the last txid that was indexed.
-         *
-         *  @param[out] hashTx The txid of the last indexed transaction.
-         *
-         *  @return true if read successfully
-         *
-         **/
-        bool WriteLastIndex(const uint512_t& hashTx);
-
-
         /** ReadLast
          *
          *  Reads the last txid that was indexed.

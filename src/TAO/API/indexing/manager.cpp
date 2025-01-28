@@ -92,7 +92,7 @@ namespace TAO::API
             }
 
             /* Write our last index now. */
-            LLD::Sessions->WriteLastIndex(hashTx);
+            LLD::Logical->WriteLastIndex(hashTx);
         }
     }
 }
