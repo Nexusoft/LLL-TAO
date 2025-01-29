@@ -100,21 +100,18 @@ namespace TAO::API
             {
                 /* Read the transaction from the ledger database. */
                 TAO::Ledger::Transaction tx;
-                if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                if(LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
                 {
-                    debug::warning(FUNCTION, "pre-build read failed at ", hashLast.SubString());
-                    break;
+                    /* Check for valid logical indexes. */
+                    if(!LLD::Sessions->HasTx(hashLast))
+                        vBuild.push_back(hashLast);
+                    else
+                        break;
+
+                    /* Break on first after we have checked indexes. */
+                    if(tx.IsFirst())
+                        break;
                 }
-
-                /* Check for valid logical indexes. */
-                if(!LLD::Sessions->HasTx(hashLast))
-                    vBuild.push_back(hashLast);
-                else
-                    break;
-
-                /* Break on first after we have checked indexes. */
-                if(tx.IsFirst())
-                    break;
 
                 /* Set hash to previous hash. */
                 hashLast = tx.hashPrevTx;
@@ -150,23 +147,20 @@ namespace TAO::API
             {
                 /* Read the transaction from the ledger database. */
                 TAO::API::Transaction tx;
-                if(!LLD::Sessions->ReadTx(hashTx, tx))
+                if(LLD::Sessions->ReadTx(hashTx, tx))
                 {
-                    debug::warning(FUNCTION, "pre-update read failed at ", hashTx.SubString());
-                    break;
+                    /* Break on our first confirmed tx. */
+                    if(tx.Confirmed())
+                        break;
+
+                    /* Check that we have an index here. */
+                    if(LLD::Ledger->HasIndex(hashTx) && !tx.Confirmed())
+                        vIndex.push_back(hashTx); //this will warm up the LLD cache if available, or remain low footprint if not
+
+                    /* Break on first after we have checked indexes. */
+                    if(tx.IsFirst())
+                        break;
                 }
-
-                /* Break on our first confirmed tx. */
-                if(tx.Confirmed())
-                    break;
-
-                /* Check that we have an index here. */
-                if(LLD::Ledger->HasIndex(hashTx) && !tx.Confirmed())
-                    vIndex.push_back(hashTx); //this will warm up the LLD cache if available, or remain low footprint if not
-
-                /* Break on first after we have checked indexes. */
-                if(tx.IsFirst())
-                    break;
 
                 /* Set hash to previous hash. */
                 hashTx = tx.hashPrevTx;
@@ -181,18 +175,15 @@ namespace TAO::API
             {
                 /* Read the transaction from the ledger database. */
                 TAO::API::Transaction tx;
-                if(!LLD::Sessions->ReadTx(*hashTx, tx))
+                if(LLD::Sessions->ReadTx(*hashTx, tx))
                 {
-                    debug::warning(FUNCTION, "update read failed at ", hashTx->SubString());
-                    break;
+                    /* Index the transaction to the database. */
+                    if(!tx.Index(*hashTx))
+                        debug::warning(FUNCTION, "failed to update index ", hashTx->SubString());
+
+                    /* Log that tx was rebroadcast. */
+                    debug::log(1, FUNCTION, "Updated Indexes for ", hashTx->SubString(), " to logical db");
                 }
-
-                /* Index the transaction to the database. */
-                if(!tx.Index(*hashTx))
-                    debug::warning(FUNCTION, "failed to update index ", hashTx->SubString());
-
-                /* Log that tx was rebroadcast. */
-                debug::log(1, FUNCTION, "Updated Indexes for ", hashTx->SubString(), " to logical db");
             }
 
             /* Check if we need to re-broadcast anything. */
