@@ -1364,7 +1364,11 @@ namespace LLP
 
                                 /* Check for matching hashes. */
                                 if(state.hashPrevBlock != stateLast.GetHash())
-                                    continue;
+                                {
+                                    /* Update hashLastRead. */
+                                    hashLastRead = stateLast.hashNextBlock;
+                                    break;
+                                }
 
                                 /* Handle for special sync block type specifier. */
                                 if(nSpecifier == SPECIFIER::SYNC)
