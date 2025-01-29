@@ -132,7 +132,7 @@ namespace LLD
 
         /* Check for already existing order. */
         if(HasOrder(hashTx, nContract))
-            return false;
+            return debug::error(FUNCTION, hashTx.SubString(), " already exists");
 
         /* Get our current sequence number. */
         uint32_t nMarketSequence = 0, nOwnerSequence = 0;
