@@ -126,7 +126,7 @@ namespace TAO::API
                 for(auto hashTx = vBuild.rbegin(); hashTx != vBuild.rend(); ++hashTx)
                 {
                     /* Fire off indexing now. */
-                    IndexSigchain(*hashTx);
+                    IndexSession(*hashTx);
 
                     /* Log that tx was rebroadcast. */
                     debug::log(1, FUNCTION, "Built Indexes for ", hashTx->SubString(), " to logical db");
