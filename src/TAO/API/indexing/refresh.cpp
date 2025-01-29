@@ -115,8 +115,6 @@ namespace TAO::API
                 /* Check for matching hashes. */
                 if(state.hashPrevBlock != tStateLast.GetHash())
                 {
-                    debug::log(0, FUNCTION, "Correcting chain ", tStateLast.hashNextBlock.SubString());
-
                     /* Read the correct block from next index. */
                     if(!LLD::Ledger->ReadBlock(tStateLast.hashNextBlock, state))
                     {
