@@ -150,11 +150,11 @@ namespace TAO::API
             const uint256_t hashGenesis =
                 Authentication::Caller(hashSession);
 
-            /* Check that our indexes are built. */
-            BuildIndexes(hashGenesis);
-
             /* Write our current time to the database. */
             LLD::Sessions->WriteAccess(hashGenesis, runtime::unifiedtimestamp());
+
+            /* Check that our indexes are built. */
+            BuildIndexes(hashGenesis);
 
             /* Set our indexing status to ready now. */
             Authentication::SetReady(hashSession);
