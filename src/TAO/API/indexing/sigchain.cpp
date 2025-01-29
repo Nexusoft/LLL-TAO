@@ -162,14 +162,11 @@ namespace TAO::API
                 if(LLD::Sessions->Active(state.hashOwner))
                 {
                     /* Write our events to database. */
-                    if(!LLD::Sessions->PushEvent(state.hashOwner, hashTx, nContract))
-                        continue;
+                    if(LLD::Sessions->PushEvent(state.hashOwner, hashTx, nContract))
+                        LLD::Sessions->IncrementLegacySequence(state.hashOwner);
 
-                    /* Increment our sequence. */
-                    if(!LLD::Sessions->IncrementLegacySequence(state.hashOwner))
-                        continue;
-
-                    debug::log(2, FUNCTION, "LEGACY: ",
+                    /* Debug output to show event has fired. */
+                    debug::log(1, FUNCTION, "LEGACY: ",
                         "for genesis ", state.hashOwner.SubString(), " | ", VARIABLE(hashTx.SubString()), ", ", VARIABLE(nContract));
                 }
             }
@@ -192,6 +189,8 @@ namespace TAO::API
             /* Check the contract's primitive. */
             uint8_t nOP = 0;
             rContract >> nOP;
+
+            /* Switch based on our primitive type that could be a dependant. */
             switch(nOP)
             {
                 /* Handle for typical Debits and Transfers. */
@@ -234,7 +233,7 @@ namespace TAO::API
                             LLD::Sessions->IncrementTritiumSequence(hashRecipient);
 
                         /* Debug output to show event has fired. */
-                        debug::log(2, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
+                        debug::log(1, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
                             "for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hashTx.SubString()), ", ", VARIABLE(nContract));
                     }
 
@@ -263,7 +262,7 @@ namespace TAO::API
                         }
 
                         /* Debug output to show event has fired. */
-                        debug::log(2, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hashTx.SubString()), ", ", VARIABLE(nContract));
+                        debug::log(1, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hashTx.SubString()), ", ", VARIABLE(nContract));
                     }
 
                     break;

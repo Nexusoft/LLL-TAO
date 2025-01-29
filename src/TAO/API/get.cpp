@@ -184,7 +184,7 @@ namespace TAO::API
     {
         /* Check if we are available to generate our balances. */
         if(!Authentication::Available(hashGenesis))
-            return 0;
+            throw Exception(-23, FUNCTION, "Command disabled until sigchain finishes syncronizing.");
 
         /* Th return value */
         uint64_t nUnclaimed = 0;
@@ -385,7 +385,7 @@ namespace TAO::API
     {
         /* Check if we are available to generate our balances. */
         if(!Authentication::Available(hashGenesis))
-            return 0;
+            throw Exception(-23, FUNCTION, "Command disabled until sigchain finishes syncronizing.");
 
         /* The return value */
         uint64_t nUnconfirmed = 0;
@@ -521,7 +521,7 @@ namespace TAO::API
     {
         /* Check if we are available to generate our balances. */
         if(!Authentication::Available(hashGenesis))
-            return 0;
+            throw Exception(-23, FUNCTION, "Command disabled until sigchain finishes syncronizing.");
 
         /* Return amount */
         uint64_t nImmature = 0;
@@ -610,7 +610,7 @@ namespace TAO::API
     {
         /* Check if we are available to generate our balances. */
         if(!Authentication::Available(hashGenesis))
-            return false;
+            throw Exception(-23, FUNCTION, "Command disabled until sigchain finishes syncronizing.");
 
         /* Get a list of our active events. */
         std::vector<std::pair<uint512_t, uint32_t>> vEvents;
