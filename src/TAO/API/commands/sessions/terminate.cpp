@@ -43,8 +43,8 @@ namespace TAO::API
         TAO::Ledger::StakeMinter::GetInstance().Stop();
 
         /* Check if we have set to clear session too. */
-        if(ExtractBoolean(jParams, "clear"))
-            LLD::Local->EraseSession(hashGenesis);
+        if(ExtractBoolean(jParams, "clear") && LLD::Sessions)
+            LLD::Sessions->EraseSession(hashGenesis);
 
         /* Terminate our session now. */
         Authentication::Terminate(jParams);

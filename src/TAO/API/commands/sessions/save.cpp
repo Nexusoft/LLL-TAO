@@ -58,7 +58,8 @@ namespace TAO::API
             throw Exception(-270, "Failed to encrypt data.");
 
         /* Write the session to local DB */
-        LLD::Local->WriteSession(hashGenesis, vchCipherText);
+        if(LLD::Sessions)
+            LLD::Sessions->WriteSession(hashGenesis, vchCipherText);
 
         /* populate reponse */;
         const encoding::json jRet =

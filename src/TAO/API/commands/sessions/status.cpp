@@ -62,7 +62,7 @@ namespace TAO::API
             { "location", strType                             }, //replace this with Authentication::Location(jParams);
             { "indexing", Authentication::Indexing(jParams)   },
             { "unlocked", jUnlocked                           },
-            { "saved",    LLD::Local->HasSession(hashGenesis) },
+            { "saved",    LLD::Sessions->HasSession(hashGenesis) },
         };
 
         return jRet;

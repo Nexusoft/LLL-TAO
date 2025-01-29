@@ -102,50 +102,6 @@ namespace LLD
     }
 
 
-    /* Writes a username - genesis hash pair to the local database. */
-    bool LocalDB::WriteFirst(const SecureString& strUsername, const uint256_t& hashGenesis)
-    {
-        std::vector<uint8_t> vKey(strUsername.begin(), strUsername.end());
-        return Write(std::make_pair(std::string("genesis"), vKey), hashGenesis);
-    }
-
-
-    /* Reads a genesis hash from the local database for a given username */
-    bool LocalDB::ReadFirst(const SecureString& strUsername, uint256_t &hashGenesis)
-    {
-        std::vector<uint8_t> vKey(strUsername.begin(), strUsername.end());
-        return Read(std::make_pair(std::string("genesis"), vKey), hashGenesis);
-    }
-
-
-    /* Writes session data to the local database. */
-    bool LocalDB::WriteSession(const uint256_t& hashGenesis, const std::vector<uint8_t>& vchData)
-    {
-        return Write(std::make_pair(std::string("session"), hashGenesis), vchData);
-    }
-
-
-    /* Reads session data from the local database */
-    bool LocalDB::ReadSession(const uint256_t& hashGenesis, std::vector<uint8_t>& vchData)
-    {
-        return Read(std::make_pair(std::string("session"), hashGenesis), vchData);
-    }
-
-
-    /* Deletes session data from the local database fort he given session ID. */
-    bool LocalDB::EraseSession(const uint256_t& hashGenesis)
-    {
-        return Erase(std::make_pair(std::string("session"), hashGenesis));
-    }
-
-
-    /* Determines whether the local DB contains session data for the given session ID */
-    bool LocalDB::HasSession(const uint256_t& hashGenesis)
-    {
-        return Exists(std::make_pair(std::string("session"), hashGenesis));
-    }
-
-
     /* Check if a record exists for a table. */
     bool LocalDB::HasRecord(const std::string& strTable, const std::string& strKey)
     {

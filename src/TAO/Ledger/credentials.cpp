@@ -106,7 +106,7 @@ namespace TAO
             uint256_t hashGenesis;
 
             /* Check the local DB first */
-            if(LLD::Local && LLD::Local->ReadFirst(strUsername, hashGenesis))
+            if(LLD::Sessions && LLD::Sessions->ReadFirst(strUsername, hashGenesis))
                 return hashGenesis;
 
             /* Generate the Secret Phrase */
@@ -117,8 +117,8 @@ namespace TAO
             hashGenesis.SetType(TAO::Ledger::GENESIS::UserType());
 
             /* Cache this username-genesis pair in the local db*/
-            if(LLD::Local)
-                LLD::Local->WriteFirst(strUsername, hashGenesis);
+            if(LLD::Sessions)
+                LLD::Sessions->WriteFirst(strUsername, hashGenesis);
 
             return hashGenesis;
         }
