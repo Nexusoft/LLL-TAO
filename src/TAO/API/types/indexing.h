@@ -253,19 +253,5 @@ namespace TAO::API
         static void Shutdown();
 
 
-    private:
-
-
-        /** index_events
-         *
-         *  Index transaction level events for logged in sessions.
-         *
-         *  @param[in] hash The txid of the transactioun
-         *  @param[in] tx The transaction to index events for.
-         *
-         **/
-        static void index_transaction(const uint512_t& hash, const TAO::Ledger::Transaction& tx);
-
-
     };
 }
