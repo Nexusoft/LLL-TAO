@@ -69,19 +69,19 @@ namespace TAO::API
                     {
                         /* Read the owner of register. (check this for MEMPOOL, too) */
                         TAO::Register::State state;
-                        if(!LLD::Register->ReadState(hashTo, state, TAO::Ledger::FLAGS::LOOKUP))
-                            continue;
-
-                        /* Check if owner is authenticated. */
-                        if(LLD::Sessions->Active(state.hashOwner))
+                        if(LLD::Register->ReadState(hashTo, state, TAO::Ledger::FLAGS::LOOKUP))
                         {
-                            /* Write our events to database. */
-                            if(!LLD::Sessions->PushEvent(state.hashOwner, hashTx, nContract))
-                                continue;
+                            /* Check if owner is authenticated. */
+                            if(LLD::Sessions->Active(state.hashOwner))
+                            {
+                                /* Write our events to database. */
+                                if(!LLD::Sessions->PushEvent(state.hashOwner, hashTx, nContract))
+                                    continue;
 
-                            /* Increment our sequence. */
-                            if(!LLD::Sessions->IncrementLegacySequence(state.hashOwner))
-                                continue;
+                                /* Increment our sequence. */
+                                if(!LLD::Sessions->IncrementLegacySequence(state.hashOwner))
+                                    continue;
+                            }
                         }
                     }
                 }
