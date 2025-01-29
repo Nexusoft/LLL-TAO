@@ -151,7 +151,7 @@ namespace TAO::API
                 Authentication::Caller(hashSession);
 
             /* Check that our indexes are built. */
-            BuildIndexes(hashSession);
+            BuildIndexes(hashGenesis);
 
             /* Write our current time to the database. */
             LLD::Sessions->WriteAccess(hashGenesis, runtime::unifiedtimestamp());
