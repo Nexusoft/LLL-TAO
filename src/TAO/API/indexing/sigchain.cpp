@@ -41,7 +41,7 @@ namespace TAO::API
             }
 
             /* Check if we need to index the main sigchain. */
-            if(Authentication::Active(tx.hashGenesis))
+            if(LLD::Sessions->Active(tx.hashGenesis)) //we want to catch all calls to this without SESSION_TIMEOUT
             {
                 /* Build an API transaction. */
                 TAO::API::Transaction tIndex =
@@ -77,7 +77,7 @@ namespace TAO::API
                         continue;
 
                     /* Check if owner is authenticated. */
-                    if(Authentication::Active(state.hashOwner))
+                    if(LLD::Sessions->Active(state.hashOwner))
                     {
                         /* Write our events to database. */
                         if(!LLD::Sessions->PushEvent(state.hashOwner, hashTx, nContract))
@@ -174,7 +174,7 @@ namespace TAO::API
                     continue;
 
                 /* Check if owner is authenticated. */
-                if(Authentication::Active(state.hashOwner))
+                if(LLD::Sessions->Active(state.hashOwner))
                 {
                     /* Write our events to database. */
                     if(!LLD::Sessions->PushEvent(state.hashOwner, hashTx, nContract))
@@ -237,7 +237,7 @@ namespace TAO::API
                     }
 
                     /* Check if we need to build index for this contract. */
-                    if(Authentication::Active(hashRecipient))
+                    if(LLD::Sessions->Active(hashRecipient))
                     {
                         /* Push to unclaimed indexes if processing incoming transfer. */
                         if(nOP == TAO::Operation::OP::TRANSFER && !LLD::Sessions->PushUnclaimed(hashRecipient, hashAddress))
@@ -271,7 +271,7 @@ namespace TAO::API
                     rContract >> hashRecipient;
 
                     /* Check if we need to build index for this contract. */
-                    if(Authentication::Active(hashRecipient))
+                    if(LLD::Sessions->Active(hashRecipient))
                     {
                         /* Write our events to database. */
                         if(!LLD::Sessions->PushEvent(hashRecipient, hashTx, nContract))
