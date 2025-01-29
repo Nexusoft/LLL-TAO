@@ -34,7 +34,7 @@ namespace TAO::API
         {
             /* Index our sigchain first. */
             IndexSigchain(hashTx);
-            
+
             /* Make sure the transaction is on disk. */
             TAO::Ledger::Transaction tx;
             if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
