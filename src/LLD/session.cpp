@@ -634,7 +634,7 @@ namespace LLD
     {
         /* Check for already existing order. */
         if(HasEvent(hashTx, nContract))
-            return false;
+            return debug::error(FUNCTION, "event ", hashTx.SubString(), " exists");
 
         /* Get our current sequence number. */
         uint32_t nSequence = 0;
