@@ -194,6 +194,7 @@ namespace TAO::API
             rContract >> nOP;
             switch(nOP)
             {
+                /* Handle for typical Debits and Transfers. */
                 case TAO::Operation::OP::TRANSFER:
                 case TAO::Operation::OP::DEBIT:
                 {
@@ -225,30 +226,21 @@ namespace TAO::API
                     if(LLD::Sessions->Active(hashRecipient))
                     {
                         /* Push to unclaimed indexes if processing incoming transfer. */
-                        if(nOP == TAO::Operation::OP::TRANSFER && !LLD::Sessions->PushUnclaimed(hashRecipient, hashAddress))
-                            continue;
+                        if(nOP == TAO::Operation::OP::TRANSFER)
+                            LLD::Sessions->PushUnclaimed(hashRecipient, hashAddress);
 
                         /* Write our events to database. */
-                        if(!LLD::Sessions->PushEvent(hashRecipient, hashTx, nContract))
-                        {
-                            debug::warning(FUNCTION, "failed to push event for ", hashTx.SubString(), " contract ", nContract);
-                            continue;
-                        }
+                        if(LLD::Sessions->PushEvent(hashRecipient, hashTx, nContract))
+                            LLD::Sessions->IncrementTritiumSequence(hashRecipient);
 
-                        /* Increment our sequence. */
-                        if(!LLD::Sessions->IncrementTritiumSequence(hashRecipient))
-                        {
-                            debug::warning(FUNCTION, "failed to increment sequence for ", hashTx.SubString(), " contract ", nContract);
-                            continue;
-                        }
+                        debug::log(2, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
+                            "for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hashTx.SubString()), ", ", VARIABLE(nContract));
                     }
-
-                    debug::log(2, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
-                        "for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hashTx.SubString()), ", ", VARIABLE(nContract));
 
                     break;
                 }
 
+                /* Handle for a coinbase contract. */
                 case TAO::Operation::OP::COINBASE:
                 {
                     /* Get the genesis. */
@@ -259,16 +251,15 @@ namespace TAO::API
                     if(LLD::Sessions->Active(hashRecipient))
                     {
                         /* Write our events to database. */
-                        if(!LLD::Sessions->PushEvent(hashRecipient, hashTx, nContract))
-                            continue;
+                        if(LLD::Sessions->PushEvent(hashRecipient, hashTx, nContract))
+                        {
+                            /* We don't increment our events index for miner coinbase contract. */
+                            if(hashRecipient == tx.hashGenesis)
+                                continue;
 
-                        /* We don't increment our events index for miner coinbase contract. */
-                        if(hashRecipient == tx.hashGenesis)
-                            continue;
-
-                        /* Increment our sequence. */
-                        if(!LLD::Sessions->IncrementTritiumSequence(hashRecipient))
-                            continue;
+                            /* Increment our events sequence if not our sigchain. */
+                            LLD::Sessions->IncrementTritiumSequence(hashRecipient);
+                        }
 
                         debug::log(2, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hashTx.SubString()), ", ", VARIABLE(nContract));
                     }
