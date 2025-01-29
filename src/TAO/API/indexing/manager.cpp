@@ -87,9 +87,6 @@ namespace TAO::API
                         }
                     }
 
-                    /* Index our sigchain specific indexes now. */
-                    IndexSigchain(hashTx);
-
                     /* Write our last index now. */
                     LLD::Logical->WriteLastIndex(hashTx);
                 }
