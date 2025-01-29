@@ -41,7 +41,7 @@ namespace TAO::API
     class Indexing
     {
         /** We can tweak this value to set our indexing timeout. */
-        static const uint64_t SESSOIN_TIMEOUT = 60 * 60 * 24 * 28 * 13; //we want to track logins within last year
+        static const uint64_t SESSION_TIMEOUT = 60 * 60 * 24 * 28 * 13; //we want to track logins within last year
 
 
         /** Queue to handle dispatch requests. **/

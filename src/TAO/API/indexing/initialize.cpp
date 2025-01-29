@@ -107,7 +107,7 @@ namespace TAO::API
     {
         /* List our current active sessions. */
         std::map<uint256_t, uint64_t> mapSessions;
-        if(LLD::Sessions->ListAccesses(mapSessions, SESSOIN_TIMEOUT))
+        if(LLD::Sessions->ListAccesses(mapSessions, SESSION_TIMEOUT))
         {
             /* Loop through our active sessions and build indexes. */
             for(const auto& rSession : mapSessions)
@@ -151,8 +151,7 @@ namespace TAO::API
                 Authentication::Caller(hashSession);
 
             /* Check that our indexes are built. */
-            if(!LLD::Sessions->Active(hashGenesis, SESSOIN_TIMEOUT))
-                BuildIndexes(hashSession);
+            BuildIndexes(hashSession);
 
             /* Write our current time to the database. */
             LLD::Sessions->WriteAccess(hashGenesis, runtime::unifiedtimestamp());
