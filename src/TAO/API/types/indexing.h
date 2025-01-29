@@ -40,6 +40,10 @@ namespace TAO::API
      **/
     class Indexing
     {
+        /** We can tweak this value to set our indexing timeout. */
+        static const uint64_t SESSOIN_TIMEOUT = 60 * 60 * 24 * 7;
+
+        
         /** Queue to handle dispatch requests. **/
         static util::atomic::lock_unique_ptr<std::queue<uint512_t>> DISPATCH;
 
@@ -187,8 +191,10 @@ namespace TAO::API
          *
          *  Build a sigchain's local indexes.
          *
+         *  @param[in] hashGenesis The genesis-id we are building indexes for.
+         *
          **/
-        static void BuildIndexes(const uint256_t& hashSession);
+        static void BuildIndexes(const uint256_t& hashGenesis);
 
 
         /** DownloadIndexes

@@ -99,115 +99,70 @@ namespace TAO::API
         /* Add our genesis to initialize ordering. */
         INITIALIZE->push(hashSession);
         INITIALIZE_CONDITION.notify_all();
-
-        /* Get our current genesis-id to start initialization. */
-        const uint256_t hashGenesis =
-            Authentication::Caller(hashSession);
-
-        /* Write our current time to the database. */
-        LLD::Sessions->WriteAccess(hashGenesis, runtime::unifiedtimestamp());
     }
 
 
     /* Default destructor. */
     void Indexing::InitializeThread()
     {
-        /* Track our current genesis that we are initializing. */
-        uint256_t hashSession = TAO::API::Authentication::SESSION::INVALID;
+        /* List our current active sessions. */
+        std::map<uint256_t, uint64_t> mapSessions;
+        if(LLD::Sessions->ListAccesses(mapSessions, SESSOIN_TIMEOUT))
+        {
+            /* Loop through our active sessions and build indexes. */
+            for(const auto& rSession : mapSessions)
+            {
+                /* Build our indexes if we are not in -client mode. */
+                if(!config::fClient.load())
+                    BuildIndexes(rSession.first);
+            }
+        }
 
         /* Main loop controlled by condition variable. */
         std::mutex CONDITION_MUTEX;
         while(!config::fShutdown.load())
         {
-            try
+            /* Wait for entries in the queue. */
+            std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
+            INITIALIZE_CONDITION.wait(CONDITION_LOCK,
+            [&]
             {
-                /* Cleanup our previous indexing session by setting our status. */
-                if(hashSession != TAO::API::Authentication::SESSION::INVALID)
-                {
-                    /* Get our current genesis-id to start initialization. */
-                    const uint256_t hashGenesis =
-                        Authentication::Caller(hashSession);
-
-                    /* Track our ledger database sequence. */
-                    uint32_t nLegacySequence = 0;
-                    LLD::Sessions->ReadLegacySequence(hashGenesis, nLegacySequence);
-
-                    /* Track our logical database sequence. */
-                    uint32_t nLogicalSequence = 0;
-                    LLD::Sessions->ReadTritiumSequence(hashGenesis, nLogicalSequence);
-
-                    //TODO: check why we are getting an extra transaction on FLAGS::MEMPOOL
-                    uint512_t hashLedgerLast = 0;
-                    LLD::Ledger->ReadLast(hashGenesis, hashLedgerLast, TAO::Ledger::FLAGS::MEMPOOL);
-
-                    TAO::Ledger::Transaction txLedgerLast;
-                    LLD::Ledger->ReadTx(hashLedgerLast, txLedgerLast, TAO::Ledger::FLAGS::MEMPOOL);
-
-                    uint512_t hashLogicalLast = 0;
-                    LLD::Sessions->ReadLast(hashGenesis, hashLogicalLast);
-
-                    TAO::API::Transaction txLogicalLast;
-                    LLD::Sessions->ReadTx(hashLogicalLast, txLogicalLast);
-
-                    uint32_t nLogicalHeight = txLogicalLast.nSequence;
-                    uint32_t nLedgerHeight  = txLedgerLast.nSequence;
-
-                    /* Set our indexing status to ready now. */
-                    Authentication::SetReady(hashSession);
-
-                    /* Debug output to track our sequences. */
-                    debug::log(0, FUNCTION, "Completed building indexes at ", VARIABLE(nLegacySequence), " | ", VARIABLE(nLogicalSequence), " | ", VARIABLE(nLedgerHeight), " | ", VARIABLE(nLogicalHeight), " for genesis=", hashGenesis.SubString());
-
-                    /* Reset the genesis-id now. */
-                    hashSession = TAO::API::Authentication::SESSION::INVALID;
-
-                    continue;
-                }
-
-                /* Wait for entries in the queue. */
-                std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-                INITIALIZE_CONDITION.wait(CONDITION_LOCK,
-                [&]
-                {
-                    /* Check for shutdown. */
-                    if(config::fShutdown.load())
-                        return true;
-
-                    /* Check for suspended state. */
-                    if(config::fSuspended.load())
-                        return false;
-
-                    /* Check for a session that needs to be wiped. */
-                    if(hashSession != TAO::API::Authentication::SESSION::INVALID)
-                        return true;
-
-                    return Indexing::INITIALIZE->size() != 0;
-                });
-
                 /* Check for shutdown. */
                 if(config::fShutdown.load())
-                    return;
+                    return true;
 
-                /* Check that we have items in the queue. */
-                if(Indexing::INITIALIZE->empty())
-                    continue;
+                return Indexing::INITIALIZE->size() != 0;
+            });
 
-                /* Get the current genesis-id to initialize for. */
-                hashSession = INITIALIZE->front();
-                INITIALIZE->pop();
+            /* Check for shutdown. */
+            if(config::fShutdown.load())
+                return;
 
-                /* Sync the sigchain if an active client before building our indexes. */
-                if(config::fClient.load())
-                    DownloadIndexes(hashSession);
+            /* Check that we have items in the queue. */
+            if(Indexing::INITIALIZE->empty())
+                continue;
 
-                /* Build or local indexes for desktop wallet. */
-                else
-                    BuildIndexes(hashSession);
-            }
-            catch(const Exception& e)
-            {
-                debug::warning(e.what());
-            }
+            /* Get the current genesis-id to initialize for. */
+            const uint256_t hashSession = INITIALIZE->front();
+            INITIALIZE->pop();
+
+            /* Get our current genesis-id. */
+            const uint256_t hashGenesis =
+                Authentication::Caller(hashSession);
+
+            /* Check that our indexes are built. */
+            if(!LLD::Sessions->Active(hashGenesis, SESSOIN_TIMEOUT))
+                BuildIndexes(hashSession);
+
+            /* Write our current time to the database. */
+            LLD::Sessions->WriteAccess(hashGenesis, runtime::unifiedtimestamp());
+
+            /* Set our indexing status to ready now. */
+            Authentication::SetReady(hashSession);
+
+            /* Debug output to track our sequences. */
+            debug::log(0, FUNCTION, "Dynamic Indexing Services Initialized for ", hashGenesis.SubString());
+            //debug::log(0, FUNCTION, "Completed building indexes at ", VARIABLE(nLegacySequence), " | ", VARIABLE(nLogicalSequence), " | ", VARIABLE(nLedgerHeight), " | ", VARIABLE(nLogicalHeight), " for genesis=", hashGenesis.SubString());
         }
     }
 

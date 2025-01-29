@@ -22,12 +22,8 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Build a user's indexing entries. */
-    void Indexing::BuildIndexes(const uint256_t& hashSession)
+    void Indexing::BuildIndexes(const uint256_t& hashGenesis)
     {
-        /* Get our current genesis-id to start initialization. */
-        const uint256_t hashGenesis =
-            Authentication::Caller(hashSession);
-
         /* Track our last event processed so we don't double up our work. */
         uint512_t hashLast = 0;
 

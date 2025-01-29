@@ -74,6 +74,22 @@ namespace LLD
     }
 
 
+    /* Checks if a session is currently active within timeframe. */
+    bool SessionDB::Active(const uint256_t& hashGenesis, const uint64_t nTimeframe)
+    {
+        /* Read the most recent access time. */
+        uint64_t nAccess = 0;
+        if(Read(std::make_pair(std::string("access"), hashGenesis), nAccess))
+        {
+            /* Check our time if it is within range. */
+            if(nTimeframe == 0 || nAccess + nTimeframe < runtime::unifiedtimestamp())
+                return true;
+        }
+
+        return false;
+    }
+
+
     /* Lists all the sessions that have been accessed on this node. */
     bool SessionDB::ListAccesses(std::map<uint256_t, uint64_t> &mapSessions, const uint64_t nTimeframe)
     {

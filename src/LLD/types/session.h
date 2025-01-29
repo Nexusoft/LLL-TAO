@@ -70,6 +70,20 @@ namespace LLD
 
 
 
+        /** Active
+         *
+         *  Checks if a session is currently active within timeframe.
+         *
+         *  @param[out] hashGenesis The genesis-id we are checking for.
+         *  @param[in] nTimeframe The maximum number of seconds since last access.
+         *
+         *  @return true if read successfully
+         *
+         **/
+        bool Active(const uint256_t& hashGenesis, const uint64_t nTimeframe = 0);
+
+
+
         /** ListAccesses
          *
          *  Lists all the sessions that have been accessed on this node.
