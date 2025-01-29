@@ -233,6 +233,7 @@ namespace TAO::API
                         if(LLD::Sessions->PushEvent(hashRecipient, hashTx, nContract))
                             LLD::Sessions->IncrementTritiumSequence(hashRecipient);
 
+                        /* Debug output to show event has fired. */
                         debug::log(2, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
                             "for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hashTx.SubString()), ", ", VARIABLE(nContract));
                     }
@@ -261,6 +262,7 @@ namespace TAO::API
                             LLD::Sessions->IncrementTritiumSequence(hashRecipient);
                         }
 
+                        /* Debug output to show event has fired. */
                         debug::log(2, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hashTx.SubString()), ", ", VARIABLE(nContract));
                     }
 
