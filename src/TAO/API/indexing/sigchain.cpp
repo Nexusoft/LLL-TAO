@@ -26,6 +26,32 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
+    /* Index a transaction related to a specific session. */
+    void Indexing::IndexSession(const uint512_t& hashTx)
+    {
+        /* Check if handling legacy or tritium. */
+        if(hashTx.GetType() == TAO::Ledger::TRITIUM)
+        {
+            /* Index our sigchain first. */
+            IndexSigchain(hashTx);
+            
+            /* Make sure the transaction is on disk. */
+            TAO::Ledger::Transaction tx;
+            if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                IndexDependant(hashTx, tx);
+        }
+
+        /* Check for legacy transaction type. */
+        if(hashTx.GetType() == TAO::Ledger::LEGACY)
+        {
+            /* Make sure the transaction is on disk. */
+            Legacy::Transaction tx;
+            if(LLD::Legacy->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                IndexDependant(hashTx, tx);
+        }
+    }
+
+
     /* Index tritium transaction level events for logged in sessions. */
     void Indexing::IndexSigchain(const uint512_t& hashTx)
     {
@@ -46,44 +72,6 @@ namespace TAO::API
                     /* Index the transaction to the database. */
                     if(!tIndex.Index(hashTx))
                         return;
-                }
-            }
-        }
-
-        /* Check for legacy transaction type. */
-        if(hashTx.GetType() == TAO::Ledger::LEGACY)
-        {
-            /* Make sure the transaction is on disk. */
-            Legacy::Transaction tx;
-            if(LLD::Legacy->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
-            {
-                /* Loop thgrough the available outputs. */
-                for(uint32_t nContract = 0; nContract < tx.vout.size(); nContract++)
-                {
-                    /* Grab a reference of our output. */
-                    const Legacy::TxOut& txout = tx.vout[nContract];
-
-                    /* Extract our register address. */
-                    uint256_t hashTo;
-                    if(Legacy::ExtractRegister(txout.scriptPubKey, hashTo))
-                    {
-                        /* Read the owner of register. (check this for MEMPOOL, too) */
-                        TAO::Register::State state;
-                        if(LLD::Register->ReadState(hashTo, state, TAO::Ledger::FLAGS::LOOKUP))
-                        {
-                            /* Check if owner is authenticated. */
-                            if(LLD::Sessions->Active(state.hashOwner))
-                            {
-                                /* Write our events to database. */
-                                if(!LLD::Sessions->PushEvent(state.hashOwner, hashTx, nContract))
-                                    continue;
-
-                                /* Increment our sequence. */
-                                if(!LLD::Sessions->IncrementLegacySequence(state.hashOwner))
-                                    continue;
-                            }
-                        }
-                    }
                 }
             }
         }

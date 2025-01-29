@@ -24,7 +24,7 @@ namespace TAO::API
     void Indexing::PushTransaction(const uint512_t& hashTx)
     {
         /* Let's push the sessions indexes in the main processing thread. */
-        IndexSigchain(hashTx);
+        IndexSession(hashTx);
 
         /* Next lets push to uur manager thread to handle the global indexes. */
         DISPATCH->push(hashTx);

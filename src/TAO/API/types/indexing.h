@@ -146,6 +146,16 @@ namespace TAO::API
         static void Manager();
 
 
+        /** IndexSession
+         *
+         *  Index a transaction related to a specific session.
+         *
+         *  @param[in] hashTx The txid of the transactioun
+         *
+         **/
+        static void IndexSession(const uint512_t& hashTx);
+
+
         /** IndexSigchain
          *
          *  Index tritium transaction level events for logged in sessions.
