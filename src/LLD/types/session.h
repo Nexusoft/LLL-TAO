@@ -43,7 +43,7 @@ namespace LLD
         virtual ~SessionDB();
 
 
-        /** WriteSession
+        /** WriteAccess
          *
          *  Writes a session's access time to the database.
          *
@@ -56,7 +56,7 @@ namespace LLD
         bool WriteAccess(const uint256_t& hashGenesis, const uint64_t nActive);
 
 
-        /** ReadSession
+        /** ReadAccess
          *
          *  Reads a session's access time to the database.
          *
@@ -67,6 +67,20 @@ namespace LLD
          *
          **/
         bool ReadAccess(const uint256_t& hashGenesis, uint64_t &nActive);
+
+
+
+        /** ListAccesses
+         *
+         *  Lists all the sessions that have been accessed on this node.
+         *
+         *  @param[out] mapSessions The list of active sessions for this node.
+         *  @param[in] nTimeframe The maximum number of seconds since last access.
+         *
+         *  @return true if read successfully
+         *
+         **/
+        bool ListAccesses(std::map<uint256_t, uint64_t> &mapSessions, const uint64_t nTimeframe = 0);
 
 
         /** WriteFirst

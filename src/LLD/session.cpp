@@ -46,6 +46,18 @@ namespace LLD
     /* Writes a session's access time to the database. */
     bool SessionDB::WriteAccess(const uint256_t& hashGenesis, const uint64_t nActive)
     {
+        /* Only push to our access list if this is our first entry. */
+        if(!Exists(std::make_pair(std::string("access"), hashGenesis)))
+        {
+            /* Start our list sequence. */
+            uint32_t nSequence = 0;
+            Read(std::string("sessions.sequence"), nSequence);
+
+            /* Push this item to our list now. */
+            Write(std::make_pair(std::string("sessions.list"), ++nSequence), hashGenesis);
+        }
+
+        /* Otherwise update our timestamp. */
         return Write(std::make_pair(std::string("access"), hashGenesis), nActive);
     }
 
@@ -54,6 +66,35 @@ namespace LLD
     bool SessionDB::ReadAccess(const uint256_t& hashGenesis, uint64_t &nActive)
     {
         return Read(std::make_pair(std::string("access"), hashGenesis), nActive);
+    }
+
+
+    /* Lists all the sessions that have been accessed on this node. */
+    bool SessionDB::ListAccesses(std::map<uint256_t, uint64_t> &mapSessions, const uint64_t nTimeframe)
+    {
+        /* Make sure we clear our list first. */
+        mapSessions.clear(); //just in case
+
+        /* Track our current genesis we have read. */
+        uint256_t hashGenesis = 0;
+
+        /* Iterate until we run out of items. */
+        uint32_t nSequence = 0;
+        while(Read(std::make_pair(std::string("sessions.list"), nSequence++), hashGenesis))
+        {
+            /* Read the most recent access time. */
+            uint64_t nAccess = 0;
+            if(Read(std::make_pair(std::string("access"), hashGenesis), nAccess))
+            {
+                /* Check this against our timeframe. */
+                if(nTimeframe == 0 || nAccess + nTimeframe < runtime::unifiedtimestamp())
+                    mapSessions[hashGenesis] = nAccess;
+            }
+            else
+                return false;
+        }
+
+        return true;
     }
 
 
