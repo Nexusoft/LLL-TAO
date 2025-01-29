@@ -55,34 +55,34 @@ namespace TAO::API
         {
             /* Make sure the transaction is on disk. */
             Legacy::Transaction tx;
-            if(!LLD::Legacy->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                return;
-
-            /* Loop thgrough the available outputs. */
-            for(uint32_t nContract = 0; nContract < tx.vout.size(); nContract++)
+            if(LLD::Legacy->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
             {
-                /* Grab a reference of our output. */
-                const Legacy::TxOut& txout = tx.vout[nContract];
-
-                /* Extract our register address. */
-                uint256_t hashTo;
-                if(Legacy::ExtractRegister(txout.scriptPubKey, hashTo))
+                /* Loop thgrough the available outputs. */
+                for(uint32_t nContract = 0; nContract < tx.vout.size(); nContract++)
                 {
-                    /* Read the owner of register. (check this for MEMPOOL, too) */
-                    TAO::Register::State state;
-                    if(!LLD::Register->ReadState(hashTo, state, TAO::Ledger::FLAGS::LOOKUP))
-                        continue;
+                    /* Grab a reference of our output. */
+                    const Legacy::TxOut& txout = tx.vout[nContract];
 
-                    /* Check if owner is authenticated. */
-                    if(LLD::Sessions->Active(state.hashOwner))
+                    /* Extract our register address. */
+                    uint256_t hashTo;
+                    if(Legacy::ExtractRegister(txout.scriptPubKey, hashTo))
                     {
-                        /* Write our events to database. */
-                        if(!LLD::Sessions->PushEvent(state.hashOwner, hashTx, nContract))
+                        /* Read the owner of register. (check this for MEMPOOL, too) */
+                        TAO::Register::State state;
+                        if(!LLD::Register->ReadState(hashTo, state, TAO::Ledger::FLAGS::LOOKUP))
                             continue;
 
-                        /* Increment our sequence. */
-                        if(!LLD::Sessions->IncrementLegacySequence(state.hashOwner))
-                            continue;
+                        /* Check if owner is authenticated. */
+                        if(LLD::Sessions->Active(state.hashOwner))
+                        {
+                            /* Write our events to database. */
+                            if(!LLD::Sessions->PushEvent(state.hashOwner, hashTx, nContract))
+                                continue;
+
+                            /* Increment our sequence. */
+                            if(!LLD::Sessions->IncrementLegacySequence(state.hashOwner))
+                                continue;
+                        }
                     }
                 }
             }
