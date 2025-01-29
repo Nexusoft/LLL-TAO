@@ -1353,7 +1353,7 @@ namespace LLP
                             && LLD::Ledger->BatchRead(hashLastRead, "block", vStates, nBatchLimit, true))
                         {
                             /* Loop through all available states. */
-                            for(const auto& state : vStates)
+                            for(auto& state : vStates)
                             {
                                 /* Keep this iterating so we can track our sequential reads. */
                                 hashLastRead = state.GetHash();
@@ -1365,9 +1365,12 @@ namespace LLP
                                 /* Check for matching hashes. */
                                 if(state.hashPrevBlock != stateLast.GetHash())
                                 {
+                                    /* Read the correct block from next index. */
+                                    if(!LLD::Ledger->ReadBlock(stateLast.hashNextBlock, state))
+                                        break;
+
                                     /* Update hashLastRead. */
-                                    hashLastRead = stateLast.hashNextBlock;
-                                    break;
+                                    hashLastRead = state.GetHash();
                                 }
 
                                 /* Handle for special sync block type specifier. */
