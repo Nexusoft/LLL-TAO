@@ -54,7 +54,12 @@ namespace LLD
             Read(std::string("sessions.sequence"), nSequence);
 
             /* Push this item to our list now. */
-            Write(std::make_pair(std::string("sessions.list"), ++nSequence), hashGenesis);
+            if(!Write(std::make_pair(std::string("sessions.list"), ++nSequence), hashGenesis))
+                return false;
+
+            /* Update our sequence now. */
+            if(!Write(std::string("sessions.sequence"), nSequence))
+                return false;
         }
 
         /* Otherwise update our timestamp. */
