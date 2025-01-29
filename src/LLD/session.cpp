@@ -701,7 +701,7 @@ namespace LLD
     {
         /* Let's just keep this as a local static. */
         const static bool fForced =
-            config::GetBoolArg("-forcesequence", false);
+            config::GetBoolArg("-forcesequence", true);
 
         /* Track our return success. */
         bool fSuccess = false;
@@ -890,7 +890,7 @@ namespace LLD
     {
         /* Let's just keep this as a local static. */
         const static bool fForced =
-            config::GetBoolArg("-forcesequence", false);
+            config::GetBoolArg("-forcesequence", true);
 
         /* We don't need to increment events when in forced mode. */
         if(fForced)
@@ -909,7 +909,7 @@ namespace LLD
     {
         /* Let's just keep this as a local static. */
         const static bool fForced =
-            config::GetBoolArg("-forcesequence", false);
+            config::GetBoolArg("-forcesequence", true);
 
         /* We don't need to increment events when in forced mode. */
         if(fForced)
@@ -928,7 +928,7 @@ namespace LLD
     {
         /* Let's just keep this as a local static. */
         const static bool fForced =
-            config::GetBoolArg("-forcesequence", false);
+            config::GetBoolArg("-forcesequence", true);
 
         /* Track our return success. */
         bool fSuccess = false;
