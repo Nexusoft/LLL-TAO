@@ -44,14 +44,14 @@ namespace LLD
 
 
     /* Writes a session's access time to the database. */
-    bool SessionDB::WriteSession(const uint256_t& hashGenesis, const uint64_t nActive)
+    bool SessionDB::WriteAccess(const uint256_t& hashGenesis, const uint64_t nActive)
     {
         return Write(std::make_pair(std::string("access"), hashGenesis), nActive);
     }
 
 
     /* Reads a session's access time to the database. */
-    bool SessionDB::ReadSession(const uint256_t& hashGenesis, uint64_t &nActive)
+    bool SessionDB::ReadAccess(const uint256_t& hashGenesis, uint64_t &nActive)
     {
         return Read(std::make_pair(std::string("access"), hashGenesis), nActive);
     }

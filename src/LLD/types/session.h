@@ -53,7 +53,7 @@ namespace LLD
          *  @return true if written successfully
          *
          **/
-        bool WriteSession(const uint256_t& hashGenesis, const uint64_t nActive);
+        bool WriteAccess(const uint256_t& hashGenesis, const uint64_t nActive);
 
 
         /** ReadSession
@@ -66,7 +66,7 @@ namespace LLD
          *  @return true if read successfully
          *
          **/
-        bool ReadSession(const uint256_t& hashGenesis, uint64_t &nActive);
+        bool ReadAccess(const uint256_t& hashGenesis, uint64_t &nActive);
 
 
         /** WriteFirst

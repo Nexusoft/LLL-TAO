@@ -105,7 +105,7 @@ namespace TAO::API
             Authentication::Caller(hashSession);
 
         /* Write our current time to the database. */
-        LLD::Sessions->WriteSession(hashGenesis, runtime::unifiedtimestamp());
+        LLD::Sessions->WriteAccess(hashGenesis, runtime::unifiedtimestamp());
     }
 
 
