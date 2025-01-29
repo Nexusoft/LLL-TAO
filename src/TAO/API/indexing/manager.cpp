@@ -66,33 +66,30 @@ namespace TAO::API
             {
                 /* Make sure the transaction is on disk. */
                 TAO::Ledger::Transaction tx;
-                if(!LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
                 {
-                    debug::warning(FUNCTION, "Indexing Failed: could not find ", hashTx.SubString(), " on disk");
-                    return;
-                }
-
-                /* Iterate the transaction contracts. */
-                for(uint32_t nContract = 0; nContract < tx.Size(); nContract++)
-                {
-                    /* Grab contract reference. */
-                    const TAO::Operation::Contract& rContract = tx[nContract];
-
+                    /* Iterate the transaction contracts. */
+                    for(uint32_t nContract = 0; nContract < tx.Size(); nContract++)
                     {
-                        LOCK(REGISTERED_MUTEX);
+                        /* Grab contract reference. */
+                        const TAO::Operation::Contract& rContract = tx[nContract];
 
-                        /* Loop through registered commands. */
-                        for(const auto& strCommands : REGISTERED)
-                            Commands::Instance(strCommands)->Index(rContract, nContract);
+                        {
+                            LOCK(REGISTERED_MUTEX);
+
+                            /* Loop through registered commands. */
+                            for(const auto& strCommands : REGISTERED)
+                                Commands::Instance(strCommands)->Index(rContract, nContract);
+                        }
                     }
+
+                    /* Index our sigchain specific indexes now. */
+                    IndexSigchain(hashTx);
+
+                    /* Write our last index now. */
+                    LLD::Logical->WriteLastIndex(hashTx);
                 }
-
-                /* Index our sigchain specific indexes now. */
-                IndexSigchain(hashTx);
             }
-
-            /* Write our last index now. */
-            LLD::Logical->WriteLastIndex(hashTx);
         }
     }
 }
