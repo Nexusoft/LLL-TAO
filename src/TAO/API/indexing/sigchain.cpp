@@ -34,22 +34,19 @@ namespace TAO::API
         {
             /* Make sure the transaction is on disk. */
             TAO::Ledger::Transaction tx;
-            if(!LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
+            if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
             {
-                debug::notice(FUNCTION, "Indexing Failed: could not find ", hashTx.SubString(), " on disk");
-                return;
-            }
+                /* Check if we need to index the main sigchain. */
+                if(LLD::Sessions->Active(tx.hashGenesis)) //we want to catch all calls to this without SESSION_TIMEOUT
+                {
+                    /* Build an API transaction. */
+                    TAO::API::Transaction tIndex =
+                        TAO::API::Transaction(tx);
 
-            /* Check if we need to index the main sigchain. */
-            if(LLD::Sessions->Active(tx.hashGenesis)) //we want to catch all calls to this without SESSION_TIMEOUT
-            {
-                /* Build an API transaction. */
-                TAO::API::Transaction tIndex =
-                    TAO::API::Transaction(tx);
-
-                /* Index the transaction to the database. */
-                if(!tIndex.Index(hashTx))
-                    return;
+                    /* Index the transaction to the database. */
+                    if(!tIndex.Index(hashTx))
+                        return;
+                }
             }
         }
 
