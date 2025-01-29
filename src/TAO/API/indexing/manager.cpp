@@ -23,6 +23,10 @@ namespace TAO::API
     /*  Index a new block hash to relay thread.*/
     void Indexing::PushTransaction(const uint512_t& hashTx)
     {
+        /* Let's push the sessions indexes in the main processing thread. */
+        IndexSigchain(hashTx);
+
+        /* Next lets push to uur manager thread to handle the global indexes. */
         DISPATCH->push(hashTx);
         CONDITION.notify_all();
 
