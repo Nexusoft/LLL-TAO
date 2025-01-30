@@ -166,8 +166,8 @@ namespace TAO::API
                 if(LLD::Sessions->Active(state.hashOwner))
                 {
                     /* Debug output to show event has fired. */
-                    debug::log(0, FUNCTION, "LEGACY: ",
-                        "for genesis ", state.hashOwner.SubString(), " | ", VARIABLE(hashTx.SubString()), ", ", VARIABLE(nContract));
+                    debug::log(1, FUNCTION, "LEGACY: ",
+                        "for genesis ", state.hashOwner.SubString(), " | ", hashTx.SubString());
 
                     /* Write our events to database. */
                     if(LLD::Sessions->PushEvent(state.hashOwner, hashTx, nContract))
@@ -229,7 +229,7 @@ namespace TAO::API
                     if(LLD::Sessions->Active(hashRecipient))
                     {
                         /* Debug output to show event has fired. */
-                        debug::log(0, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
+                        debug::log(1, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
                             "for genesis ", hashRecipient.SubString(), " | ", hashTx.SubString());
 
                         /* Push to unclaimed indexes if processing incoming transfer. */
@@ -255,7 +255,7 @@ namespace TAO::API
                     if(LLD::Sessions->Active(hashRecipient))
                     {
                         /* Debug output to show event has fired. */
-                        debug::log(0, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString(), " | ", hashTx.SubString());
+                        debug::log(1, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString(), " | ", hashTx.SubString());
 
                         /* Write our events to database. */
                         if(LLD::Sessions->PushEvent(hashRecipient, hashTx, nContract))
