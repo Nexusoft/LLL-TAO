@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -184,7 +184,7 @@ namespace TAO::API
     {
         /* Check if we are available to generate our balances. */
         if(!Authentication::Available(hashGenesis))
-            return 0;
+            throw Exception(-23, FUNCTION, "Command disabled until sigchain finishes syncronizing.");
 
         /* Th return value */
         uint64_t nUnclaimed = 0;
@@ -193,7 +193,7 @@ namespace TAO::API
         std::vector<std::pair<uint512_t, uint32_t>> vEvents;
 
         /* Get our list of active contracts we have issued. */
-        LLD::Logical->ListEvents(hashGenesis, vEvents);
+        LLD::Sessions->ListEvents(hashGenesis, vEvents);
 
         /* For sanitizing our contracts. */
         std::map<uint256_t, TAO::Register::State> mapStates;
@@ -385,7 +385,7 @@ namespace TAO::API
     {
         /* Check if we are available to generate our balances. */
         if(!Authentication::Available(hashGenesis))
-            return 0;
+            throw Exception(-23, FUNCTION, "Command disabled until sigchain finishes syncronizing.");
 
         /* The return value */
         uint64_t nUnconfirmed = 0;
@@ -521,14 +521,14 @@ namespace TAO::API
     {
         /* Check if we are available to generate our balances. */
         if(!Authentication::Available(hashGenesis))
-            return 0;
+            throw Exception(-23, FUNCTION, "Command disabled until sigchain finishes syncronizing.");
 
         /* Return amount */
         uint64_t nImmature = 0;
 
         /* Get a list of our active events. */
         std::vector<std::pair<uint512_t, uint32_t>> vEvents;
-        LLD::Logical->ListEvents(hashGenesis, vEvents);
+        LLD::Sessions->ListEvents(hashGenesis, vEvents);
 
         /* Build our list of contracts. */
         for(const auto& rEvent : vEvents)
@@ -610,12 +610,12 @@ namespace TAO::API
     {
         /* Check if we are available to generate our balances. */
         if(!Authentication::Available(hashGenesis))
-            return false;
+            throw Exception(-23, FUNCTION, "Command disabled until sigchain finishes syncronizing.");
 
         /* Get a list of our active events. */
         std::vector<std::pair<uint512_t, uint32_t>> vEvents;
-        LLD::Logical->ListEvents(hashGenesis, vEvents);
-        LLD::Logical->ListContracts(hashGenesis, vEvents);
+        LLD::Sessions->ListEvents(hashGenesis, vEvents);
+        LLD::Sessions->ListContracts(hashGenesis, vEvents);
 
         /* Build our list of contracts. */
         for(const auto& rEvent : vEvents)

@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -85,7 +85,7 @@ namespace TAO::API
 
                         /* Write the order to logical database. */
                         if(!LLD::Logical->PushOrder(pairMarket, rContract, nContract))
-                            debug::warning(FUNCTION, "Indexing failed for tx ", rContract.Hash().SubString());
+                            debug::warning(FUNCTION, "Market indexes failed to be pushed ", rContract.Hash().SubString());
 
                         /* Give a verbose=3 debug log for the indexing entry. */
                         if(config::nVerbose >= 3)
