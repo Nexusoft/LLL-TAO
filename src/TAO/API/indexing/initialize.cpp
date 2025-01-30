@@ -124,7 +124,7 @@ namespace TAO::API
         {
             /* Wait for entries in the queue. */
             std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-            INITIALIZE_CONDITION.wait(CONDITION_LOCK,
+            INITIALIZE_CONDITION.wait_for(CONDITION_LOCK, std::chrono::milliseconds(500),
             [&]
             {
                 /* Check for shutdown. */
@@ -149,6 +149,9 @@ namespace TAO::API
             /* Get our current genesis-id. */
             const uint256_t hashGenesis =
                 Authentication::Caller(hashSession);
+
+            /* Give us some debug info so we know this has triggered. */
+            debug::log(0, FUNCTION, "Initializing Dynamic Indexing Services for ", hashGenesis.SubString());
 
             /* Write our current time to the database. */
             LLD::Sessions->WriteAccess(hashGenesis, runtime::unifiedtimestamp());

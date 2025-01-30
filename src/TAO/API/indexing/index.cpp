@@ -39,6 +39,8 @@ namespace TAO::API
             TAO::Ledger::Transaction tx;
             if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
                 IndexDependant(hashTx, tx);
+
+            return; //code style
         }
 
         /* Check for legacy transaction type. */
@@ -48,6 +50,8 @@ namespace TAO::API
             Legacy::Transaction tx;
             if(LLD::Legacy->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
                 IndexDependant(hashTx, tx);
+
+            return; //code style
         }
     }
 
@@ -161,13 +165,13 @@ namespace TAO::API
                 /* Check if owner is authenticated. */
                 if(LLD::Sessions->Active(state.hashOwner))
                 {
+                    /* Debug output to show event has fired. */
+                    debug::log(0, FUNCTION, "LEGACY: ",
+                        "for genesis ", state.hashOwner.SubString(), " | ", VARIABLE(hashTx.SubString()), ", ", VARIABLE(nContract));
+
                     /* Write our events to database. */
                     if(LLD::Sessions->PushEvent(state.hashOwner, hashTx, nContract))
                         LLD::Sessions->IncrementLegacySequence(state.hashOwner);
-
-                    /* Debug output to show event has fired. */
-                    debug::log(1, FUNCTION, "LEGACY: ",
-                        "for genesis ", state.hashOwner.SubString(), " | ", VARIABLE(hashTx.SubString()), ", ", VARIABLE(nContract));
                 }
             }
         }
@@ -224,6 +228,10 @@ namespace TAO::API
                     /* Check if we need to build index for this contract. */
                     if(LLD::Sessions->Active(hashRecipient))
                     {
+                        /* Debug output to show event has fired. */
+                        debug::log(0, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
+                            "for genesis ", hashRecipient.SubString(), " | ", hashTx.SubString());
+
                         /* Push to unclaimed indexes if processing incoming transfer. */
                         if(nOP == TAO::Operation::OP::TRANSFER)
                             LLD::Sessions->PushUnclaimed(hashRecipient, hashAddress);
@@ -231,10 +239,6 @@ namespace TAO::API
                         /* Write our events to database. */
                         if(LLD::Sessions->PushEvent(hashRecipient, hashTx, nContract))
                             LLD::Sessions->IncrementTritiumSequence(hashRecipient);
-
-                        /* Debug output to show event has fired. */
-                        debug::log(1, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
-                            "for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hashTx.SubString()), ", ", VARIABLE(nContract));
                     }
 
                     break;
@@ -250,6 +254,9 @@ namespace TAO::API
                     /* Check if we need to build index for this contract. */
                     if(LLD::Sessions->Active(hashRecipient))
                     {
+                        /* Debug output to show event has fired. */
+                        debug::log(0, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString(), " | ", hashTx.SubString());
+
                         /* Write our events to database. */
                         if(LLD::Sessions->PushEvent(hashRecipient, hashTx, nContract))
                         {
@@ -260,9 +267,6 @@ namespace TAO::API
                             /* Increment our events sequence if not our sigchain. */
                             LLD::Sessions->IncrementTritiumSequence(hashRecipient);
                         }
-
-                        /* Debug output to show event has fired. */
-                        debug::log(1, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hashTx.SubString()), ", ", VARIABLE(nContract));
                     }
 
                     break;

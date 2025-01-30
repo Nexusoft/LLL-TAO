@@ -124,13 +124,7 @@ namespace TAO::API
 
                 /* Reverse iterate our list of entries and index. */
                 for(auto hashTx = vBuild.rbegin(); hashTx != vBuild.rend(); ++hashTx)
-                {
-                    /* Fire off indexing now. */
                     IndexSession(*hashTx);
-
-                    /* Log that tx was rebroadcast. */
-                    debug::log(1, FUNCTION, "Built Indexes for ", hashTx->SubString(), " to logical db");
-                }
             }
         }
 
