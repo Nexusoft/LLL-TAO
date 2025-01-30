@@ -95,7 +95,7 @@ namespace TAO::API
     {
         /* Get the user configurable required maturity */
         const uint32_t nMaturityRequired =
-            config::GetArg("-maturityrequired", config::fTestNet ? 2 : 33);
+            config::GetArg("-maturityrequired", config::fTestNet ? 2 : 7);
 
         /* If set to 0 then there is no point checking the maturity so return early */
         if(nMaturityRequired > 0)
