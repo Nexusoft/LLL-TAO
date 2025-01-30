@@ -330,7 +330,7 @@ namespace TAO::API
 
                 /* Debug output for notifications. */
                 if(nUnlockedActions & TAO::Ledger::PinUnlock::NOTIFICATIONS)
-                    debug::log(2, FUNCTION, "Indexed ", hashTx.SubString(), " completed ", nTotal, "/", vContracts.size(), " (", (nTotal * 100.0) / vContracts.size(), "%) contracts");
+                    debug::log(0, FUNCTION, "Indexed ", hashTx.SubString(), " completed ", nTotal, "/", vContracts.size(), " (", (nTotal * 100.0) / vContracts.size(), "%) contracts");
             }
 
             /* Add our hashes to a return vector. */
