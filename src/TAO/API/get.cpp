@@ -219,82 +219,90 @@ namespace TAO::API
                     continue;
             }
 
-            /* Get a referecne of our contract. */
-            const TAO::Operation::Contract& rContract =
-                LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
-
-            /* Check if the given contract is spent already. */
-            if(rContract.Spent(rEvent.second))
-                continue;
-
-            /* Seek our contract to primitive OP. */
-            rContract.SeekToPrimitive();
-
-            /* Get a copy of our primitive. */
-            uint8_t nOP = 0;
-            rContract >> nOP;
-
-            /* Switch for valid primitives. */
-            switch(nOP)
+            /* Catch exception if we throw on ReadContract. */
+            try
             {
-                /* Handle for if we need to credit. */
-                case TAO::Operation::OP::LEGACY:
-                case TAO::Operation::OP::DEBIT:
-                case TAO::Operation::OP::COINBASE:
+                /* Get a referecne of our contract. */
+                const TAO::Operation::Contract& rContract =
+                    LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
+
+                /* Check if the given contract is spent already. */
+                if(rContract.Spent(rEvent.second))
+                    continue;
+
+                /* Seek our contract to primitive OP. */
+                rContract.SeekToPrimitive();
+
+                /* Get a copy of our primitive. */
+                uint8_t nOP = 0;
+                rContract >> nOP;
+
+                /* Switch for valid primitives. */
+                switch(nOP)
                 {
-                    try
+                    /* Handle for if we need to credit. */
+                    case TAO::Operation::OP::LEGACY:
+                    case TAO::Operation::OP::DEBIT:
+                    case TAO::Operation::OP::COINBASE:
                     {
-                        /* Get our source address. */
-                        uint256_t hashAddress;
-                        rContract >> hashAddress;
-
-                        /* Check our account filters first. */
-                        if(hashAccount != 0 && hashAccount != hashAddress)
-                            continue;
-
-                        /* Build our credit contract now. */
-                        uint64_t nAmount = 0;
-                        if(TAO::Register::Unpack(rContract, nAmount))
+                        try
                         {
-                            /* Regular check for non coinbase. */
-                            if(nOP != TAO::Operation::OP::COINBASE)
-                            {
-                                /* Check our pre-state for token types. */
-                                TAO::Register::Object oAccount =
-                                    rContract.PreState();
+                            /* Get our source address. */
+                            uint256_t hashAddress;
+                            rContract >> hashAddress;
 
-                                /* Check for null value. */
-                                if(oAccount.IsNull())
-                                    continue;
-
-                                /* Parse account now. */
-                                oAccount.Parse();
-
-                                /* Check for valid token types. */
-                                if(oAccount.get<uint256_t>("token") != hashToken)
-                                    continue;
-                            }
-                            else if(hashToken != TOKEN::NXS)
+                            /* Check our account filters first. */
+                            if(hashAccount != 0 && hashAccount != hashAddress)
                                 continue;
 
-                            /* Increment our pending balance now. */
-                            nUnclaimed += nAmount;
+                            /* Build our credit contract now. */
+                            uint64_t nAmount = 0;
+                            if(TAO::Register::Unpack(rContract, nAmount))
+                            {
+                                /* Regular check for non coinbase. */
+                                if(nOP != TAO::Operation::OP::COINBASE)
+                                {
+                                    /* Check our pre-state for token types. */
+                                    TAO::Register::Object oAccount =
+                                        rContract.PreState();
+
+                                    /* Check for null value. */
+                                    if(oAccount.IsNull())
+                                        continue;
+
+                                    /* Parse account now. */
+                                    oAccount.Parse();
+
+                                    /* Check for valid token types. */
+                                    if(oAccount.get<uint256_t>("token") != hashToken)
+                                        continue;
+                                }
+                                else if(hashToken != TOKEN::NXS)
+                                    continue;
+
+                                /* Increment our pending balance now. */
+                                nUnclaimed += nAmount;
+                            }
+
+                        }
+                        catch(const Exception& e)
+                        {
+                            continue;
                         }
 
+                        break;
                     }
-                    catch(const Exception& e)
+
+                    /* Unknown ops we want to continue looping. */
+                    default:
                     {
                         continue;
                     }
-
-                    break;
                 }
-
-                /* Unknown ops we want to continue looping. */
-                default:
-                {
-                    continue;
-                }
+            }
+            catch(const debug::exception& e)
+            {
+                continue;
             }
         }
 
@@ -553,50 +561,58 @@ namespace TAO::API
                     continue;
             }
 
-            /* Get a referecne of our contract. */
-            const TAO::Operation::Contract& rContract =
-                LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
-
-            /* Check if the given contract is spent already. */
-            if(rContract.Spent(rEvent.second))
-                continue;
-
-            /* Seek our contract to primitive OP. */
-            rContract.SeekToPrimitive();
-
-            /* Get a copy of our primitive. */
-            uint8_t nOP = 0;
-            rContract >> nOP;
-
-            /* Switch for valid primitives. */
-            switch(nOP)
+            /* Catch exception if we throw on ReadContract. */
+            try
             {
-                /* Handle for if we need to credit. */
-                case TAO::Operation::OP::COINBASE:
-                {
-                    /* Extract our coinbase recipient. */
-                    uint256_t hashRecipient;
-                    rContract >> hashRecipient;
+                /* Get a referecne of our contract. */
+                const TAO::Operation::Contract& rContract =
+                    LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
 
-                    /* Check for valid recipient. */
-                    if(hashRecipient != hashGenesis)
-                        continue;
-
-                    /* Extract our amount from contract. */
-                    uint64_t nAmount = 0;
-                    rContract >> nAmount;
-
-                    /* Add to our total expected value. */
-                    nImmature += nAmount;
-
-                    break;
-                }
-
-                /* Unknown ops we want to continue looping. */
-                default:
-                {
+                /* Check if the given contract is spent already. */
+                if(rContract.Spent(rEvent.second))
                     continue;
+
+                /* Seek our contract to primitive OP. */
+                rContract.SeekToPrimitive();
+
+                /* Get a copy of our primitive. */
+                uint8_t nOP = 0;
+                rContract >> nOP;
+
+                /* Switch for valid primitives. */
+                switch(nOP)
+                {
+                    /* Handle for if we need to credit. */
+                    case TAO::Operation::OP::COINBASE:
+                    {
+                        /* Extract our coinbase recipient. */
+                        uint256_t hashRecipient;
+                        rContract >> hashRecipient;
+
+                        /* Check for valid recipient. */
+                        if(hashRecipient != hashGenesis)
+                            continue;
+
+                        /* Extract our amount from contract. */
+                        uint64_t nAmount = 0;
+                        rContract >> nAmount;
+
+                        /* Add to our total expected value. */
+                        nImmature += nAmount;
+
+                        break;
+                    }
+
+                    /* Unknown ops we want to continue looping. */
+                    default:
+                    {
+                        continue;
+                    }
                 }
+            }
+            catch(const debug::exception& e)
+            {
+                continue;
             }
         }
 
