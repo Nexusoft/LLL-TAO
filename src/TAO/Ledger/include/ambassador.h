@@ -80,6 +80,20 @@ namespace TAO
         };
 
 
+        /** Ambassador Sigchains **/
+        const std::map<uint256_t, std::pair<uint256_t, uint32_t>> V9_AMBASSADOR =
+        {
+            /* United States. */
+            {
+                uint256_t(""), //TODO: create username DAO
+                {
+                    uint256_t(""), //password authentication
+                    1000 //100%
+                }
+            }
+        };
+
+
         /** Ambassador payout threshold. **/
         const uint16_t AMBASSADOR_PAYOUT_THRESHOLD = 100;
 
@@ -117,6 +131,19 @@ namespace TAO
             }
         };
 
+
+        /** Ambassador Sigchain for Testnet **/
+        const std::map<uint256_t, std::pair<uint256_t, uint32_t>> V9_AMBASSADOR_TESTNET =
+        {
+            {
+                uint256_t(""), //TODO: create username DAO
+                {
+                    uint256_t(""), //password authentication
+                    1000 //100%
+                }
+            }
+        };
+
         /** Ambassador payout threshold. **/
         const uint16_t AMBASSADOR_PAYOUT_THRESHOLD_TESTNET = 5;
 
@@ -135,8 +162,8 @@ namespace TAO
             /* Grab a reference of the ambassador sigchain. */
             const std::map<uint256_t, std::pair<uint256_t, uint32_t>>& mapRet =
             ( config::fTestNet.load() ?
-                (nVersion >= 8 ? V8_AMBASSADOR_TESTNET : V7_AMBASSADOR_TESTNET)
-              : (nVersion >= 8 ? V8_AMBASSADOR : V7_AMBASSADOR)
+                (nVersion >= 8 ? (nVersion >= 9 ? V9_AMBASSADOR_TESTNET : V8_AMBASSADOR_TESTNET) : V7_AMBASSADOR_TESTNET)
+              : (nVersion >= 8 ? (nVersion >= 9 ? V9_AMBASSADOR : V8_AMBASSADOR) : V7_AMBASSADOR)
             );
 
             return mapRet;
