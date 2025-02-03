@@ -443,6 +443,10 @@ namespace TAO
                 /* Basic checks for legacy transactions. */
                 if(vtx[i].first == TRANSACTION::LEGACY)
                 {
+                    /* Check for legacy transaction blocks. */
+                    if(nVersion >= 9)
+                        return debug::error(FUNCTION, "legacy transactions disabled after version 9");
+
                     /* Track our conflicted flags here. */
                     bool fHasConflict = false;
 
@@ -658,6 +662,10 @@ namespace TAO
                 /* Get the legacy transaction. */
                 else if(proof.first == TRANSACTION::LEGACY)
                 {
+                    /* Check for legacy transaction blocks. */
+                    if(nVersion >= 9)
+                        return debug::error(FUNCTION, "legacy transactions disabled after version 9");
+
                     /* Track our conflicted flags here. */
                     bool fHasConflict = false;
 

@@ -1147,6 +1147,10 @@ namespace TAO
                 }
                 else if(proof.first == TRANSACTION::LEGACY)
                 {
+                    /* Check for legacy transaction blocks. */
+                    if(nVersion >= 9)
+                        return debug::error(FUNCTION, "legacy transactions disabled after version 9");
+
                     /* Start the script stopwatch. */
                     swScript.start();
 
