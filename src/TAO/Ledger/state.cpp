@@ -2,7 +2,7 @@
 
         Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-        (c) Copyright The Nexus Developers 2014 - 2023
+        (c) Copyright The Nexus Developers 2014 - 2025
 
         Distributed under the MIT software license, see the accompanying
         file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -949,10 +949,7 @@ namespace TAO
 
                 /* Delete from mempool. */
                 for(auto proof = vDelete.rbegin(); proof != vDelete.rend(); ++proof)
-                {
-                    /* Remove transaction from mempool now. */
                     mempool.Remove(proof->second);
-                }
 
                 /* Reverse the transction to connect to connect in ascending height. */
                 for(auto proof = vResurrect.rbegin(); proof != vResurrect.rend(); ++proof)
@@ -960,14 +957,8 @@ namespace TAO
                     /* Check for tritium transctions. */
                     if(proof->first == TRANSACTION::TRITIUM)
                     {
-                        /* Special case for deleting blocks, delete tx as well. */
-                        if(vConnect.empty())
-                        {
-                            /* Make sure the transaction is not on disk. */
-                            if(!LLD::Ledger->EraseTx(proof->second))
-                                return debug::error(FUNCTION, "transaction not on disk");
-                        }
-                        else
+                        /* Only resurrect if not in the delete list. */
+                        if(std::find(vDelete.begin(), vDelete.end(), *proof) == vDelete.end())
                         {
                             /* Make sure the transaction is on disk. */
                             TAO::Ledger::Transaction tx;
@@ -975,7 +966,7 @@ namespace TAO
                                 return debug::error(FUNCTION, "transaction not on disk");
 
                             /* Check for producer transaction. */
-                            if(tx.IsCoinBase() || tx.IsCoinStake())
+                            if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid())
                                 continue;
 
                             /* Add back into memory pool. */
@@ -987,14 +978,8 @@ namespace TAO
                     }
                     else if(proof->first == TRANSACTION::LEGACY)
                     {
-                        /* Special case for deleting blocks, delete tx as well. */
-                        if(vConnect.empty())
-                        {
-                            /* Make sure the transaction is not on disk. */
-                            if(!LLD::Legacy->EraseTx(proof->second))
-                                return debug::error(FUNCTION, "transaction not on disk");
-                        }
-                        else
+                        /* Only resurrect if not in the delete list. */
+                        if(std::find(vDelete.begin(), vDelete.end(), *proof) == vDelete.end())
                         {
                             /* Make sure the transaction is on disk. */
                             Legacy::Transaction tx;
@@ -1015,7 +1000,7 @@ namespace TAO
                 }
 
                 /* Debug output about the best chain. */
-                uint64_t nElapsed = (GetBlockTime() - ChainState::tStateBest.load().GetBlockTime());
+                uint64_t nElapsed      = (GetBlockTime() - ChainState::tStateBest.load().GetBlockTime());
                 uint64_t nContractTime = swContract.ElapsedMicroseconds();
                 uint64_t nInputsTime   = swScript.ElapsedMicroseconds();
 
@@ -1219,7 +1204,14 @@ namespace TAO
             nFeeReserve += nFees;
 
             /* Log how much was generated / destroyed. */
-            debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, nMint > 0 ? "Generated " : "Destroyed ", std::fixed, (double)nMint / TAO::Ledger::NXS_COIN, " Nexus | Money Supply ", std::fixed, (double)nMoneySupply / TAO::Ledger::NXS_COIN);
+            debug::log
+            (
+                TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
+
+                nMint > 0 ? "Generated " : "Destroyed ",
+                std::fixed, (double)nMint / TAO::Ledger::NXS_COIN, " Nexus | Money Supply ",
+                std::fixed, (double)nMoneySupply / TAO::Ledger::NXS_COIN
+            );
 
             /* Write the updated block state to disk. */
             if(!LLD::Ledger->WriteBlock(hashBlock, *this))
@@ -1267,7 +1259,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to disconnect transaction");
 
                     /* Make sure this sigchain needs to be de-indexed. */
-                    if(LLD::Logical->HasFirst(tx.hashGenesis))
+                    if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid()) //we only delete indexes for producer transactions
                     {
                         /* Get a reference of our transaction. */
                         TAO::API::Transaction wtx = TAO::API::Transaction(tx);

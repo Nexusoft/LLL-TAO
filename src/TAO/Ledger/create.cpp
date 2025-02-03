@@ -2,7 +2,7 @@
 
         Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-        (c) Copyright The Nexus Developers 2014 - 2023
+        (c) Copyright The Nexus Developers 2014 - 2025
 
         Distributed under the MIT software license, see the accompanying
         file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -73,10 +73,10 @@ namespace TAO::Ledger
 
         /* Get the last transaction. */
         TAO::API::Transaction txPrev;
-        if(LLD::Logical->ReadLast(hashGenesis, hashLast))
+        if(LLD::Sessions->ReadLast(hashGenesis, hashLast))
         {
             /* Check that we can read the logical disk index. */
-            if(!LLD::Logical->ReadTx(hashLast, txPrev))
+            if(!LLD::Sessions->ReadTx(hashLast, txPrev))
                 debug::warning(FUNCTION, "could not read logical transaction index");
         }
 

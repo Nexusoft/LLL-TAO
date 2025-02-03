@@ -2,7 +2,7 @@
 
         Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-        (c) Copyright The Nexus Developers 2014 - 2023
+        (c) Copyright The Nexus Developers 2014 - 2025
 
         Distributed under the MIT software license, see the accompanying
         file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/types/state.h>
+#include <TAO/Ledger/types/transaction.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -39,7 +40,19 @@ namespace TAO
         {
             /* Check if this transfer is already claimed. */
             if(LLD::Ledger->HasProof(hashProof, hashTx, nContract, nFlags))
+            {
+                /* Special debug output if we indexed our proofs. */
+                if(config::fIndexProofs.load())
+                {
+                    /* Read the transction by indexed proofs. */
+                    TAO::Ledger::Transaction tx;
+                    if(LLD::Ledger->ReadTx(hashProof, hashTx, nContract, tx))
+                        return debug::error(FUNCTION, "credit is already claimed by txid ", tx.GetHash().ToString());
+                }
+
                 return debug::error(FUNCTION, "credit is already claimed ", hashProof.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
+            }
+
 
             /* Write the claimed proof. */
             if(config::fIndexProofs.load() && !LLD::Ledger->IndexProof(hashProof, hashTx, nContract, credit.Hash(), nFlags))

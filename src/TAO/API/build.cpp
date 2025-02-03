@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -330,7 +330,7 @@ namespace TAO::API
 
                 /* Debug output for notifications. */
                 if(nUnlockedActions & TAO::Ledger::PinUnlock::NOTIFICATIONS)
-                    debug::log(2, FUNCTION, "Indexed ", hashTx.SubString(), " completed ", nTotal, "/", vContracts.size(), " (", (nTotal * 100.0) / vContracts.size(), "%) contracts");
+                    debug::log(0, FUNCTION, "Indexed ", hashTx.SubString(), " completed ", nTotal, "/", vContracts.size(), " (", (nTotal * 100.0) / vContracts.size(), "%) contracts");
             }
 
             /* Add our hashes to a return vector. */
@@ -534,6 +534,21 @@ namespace TAO::API
             /* Get the amount to respond to. */
             uint64_t nAmount = 0;
             rDebit >> nAmount;
+
+            /* Check if the credit is already claimed. */
+            if(LLD::Ledger->HasProof(addrSource, hashTx, nContract, TAO::Ledger::FLAGS::MEMPOOL))
+            {
+                /* Special debug output if we indexed our proofs. */
+                if(config::fIndexProofs.load())
+                {
+                    /* Read the transction by indexed proofs. */
+                    TAO::Ledger::Transaction tx;
+                    if(LLD::Ledger->ReadTx(addrSource, hashTx, nContract, tx))
+                        throw Exception(-44, "credit is already claimed by txid ", tx.GetHash().ToString());
+                }
+
+                throw Exception(-44, "credit is already claimed ", addrSource.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
+            }
 
             /* Check for a legacy output debit. */
             if(addrSource == TAO::Register::WILDCARD_ADDRESS)
