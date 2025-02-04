@@ -126,7 +126,8 @@ namespace TAO
                 return bnProofOfWorkStart[0].GetCompact();
 
             /* Get the Block Time and Target Spacing. */
-            uint64_t nBlockTime   = GetWeightedTimes(first, state.nVersion >= 7 ? 2 : 5);
+            uint64_t nBlockTime   = (state.nVersion < 9 ? GetWeightedTimes(first, state.nVersion >= 7 ? 2 : 5) :
+                std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t)1));
 
             /* Check for minimum difficulty reset for testnet. */
             if(config::fTestNet.load() && nBlockTime > 3600) //if more than one hour since last block, reset difficulty
@@ -232,7 +233,7 @@ namespace TAO
                 return bnProofOfWorkStart[1].getuint32();
 
             /* Standard Time Proportions */
-            uint64_t nBlockTime = ((state.nVersion >= 4) ?
+            uint64_t nBlockTime = ((state.nVersion >= 4 && state.nVersion < 9) ?
                 GetWeightedTimes(first, state.nVersion >= 7 ? 2 : 5) : std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t)1));
 
             /* Check for minimum difficulty reset for testnet. */
@@ -378,7 +379,7 @@ namespace TAO
                 return bnProofOfWorkStart[2].GetCompact();
 
             /* Get the Block Times with Minimum of 1 to Prevent Time Warps. */
-            uint64_t nBlockTime = ((state.nVersion >= 4) ?
+            uint64_t nBlockTime = ((state.nVersion >= 4 && state.nVersion < 9) ?
                 GetWeightedTimes(first, state.nVersion >= 7 ? 2 : 5) : std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1));
 
             /* Check for minimum difficulty reset for testnet. */
