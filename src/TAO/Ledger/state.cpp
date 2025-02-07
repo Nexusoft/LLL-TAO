@@ -1261,18 +1261,22 @@ namespace TAO
                     /* Make sure this sigchain needs to be de-indexed. */
                     if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid()) //we only delete indexes for producer transactions
                     {
-                        /* Get a reference of our transaction. */
-                        TAO::API::Transaction wtx = TAO::API::Transaction(tx);
-
-                        /* Make sure indexes are deleted. */
-                        if(!wtx.Delete(hash))
+                        /* Remove the API sessions indexes if disconnecting a producer transaction. */
+                        if(LLD::Sessions->Active(tx.hashGenesis))
                         {
-                            debug::warning(FUNCTION, "failed to erase our API indexes for ", hash.SubString());
-                            continue;
-                        }
+                            /* Get a reference of our transaction. */
+                            TAO::API::Transaction wtx = TAO::API::Transaction(tx);
 
-                        /* TODO: delete this debug info for < verbose=3 */
-                        debug::log(0, FUNCTION, "deleted API session indexes for ", hash.SubString());
+                            /* Make sure indexes are deleted. */
+                            if(!wtx.Delete(hash))
+                            {
+                                debug::warning(FUNCTION, "failed to erase our API indexes for ", hash.SubString());
+                                continue;
+                            }
+
+                            /* TODO: delete this debug info for < verbose=3 */
+                            debug::log(0, FUNCTION, "deleted API session indexes for ", hash.SubString());
+                        }
                     }
                 }
                 else if(proof->first == TRANSACTION::LEGACY)
