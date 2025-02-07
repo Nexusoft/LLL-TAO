@@ -358,8 +358,8 @@ namespace TAO::API
             return debug::error(FUNCTION, "failed to write last index for ", VARIABLE(hashGenesis.SubString()));
 
         /* Index our transaction level data now. */
-        if(nStatus == ACCEPTED)
-            index_registers(hash);
+        //if(nStatus == ACCEPTED)
+        index_registers(hash);s
 
         return true;
     }

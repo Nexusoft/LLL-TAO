@@ -144,6 +144,11 @@ namespace TAO
             }
         };
 
+
+        /** Current amount of coins surplus in legacy protocol. **/
+        const uint64_t LEGACY_CHAIN_SURPLUS = 15373969 * NXS_COIN; //15,373,969 NXS
+
+
         /** Ambassador payout threshold. **/
         const uint16_t AMBASSADOR_PAYOUT_THRESHOLD_TESTNET = 5;
 
