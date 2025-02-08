@@ -359,7 +359,7 @@ namespace TAO::API
 
         /* Index our transaction level data now. */
         //if(nStatus == ACCEPTED)
-        index_registers(hash);s
+        index_registers(hash);
 
         return true;
     }

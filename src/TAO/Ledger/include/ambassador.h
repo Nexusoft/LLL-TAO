@@ -17,6 +17,8 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <TAO/Ledger/include/constants.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
