@@ -43,6 +43,20 @@ namespace LLD
     }
 
 
+    /* Reads the surplus coins that are not on tritium */
+    bool LogicalDB::ReadLegacySurplus(uint64_t &nSurplus)
+    {
+        return Read(std::string("legacy.surplus"), nSurplus);
+    }
+
+
+    /* Writes the surplus coins that are not on tritium */
+    bool LogicalDB::WriteLegacySurplus(const uint64_t nSurplus)
+    {
+        return Write(std::string("legacy.surplus"), nSurplus);
+    }
+
+
     /* Reads the last txid that was indexed. */
     bool LogicalDB::ReadLastIndex(uint512_t &hashTx)
     {
