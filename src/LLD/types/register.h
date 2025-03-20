@@ -262,6 +262,17 @@ namespace LLD
          **/
         void MemoryCommit();
 
+        /** get_address_type
+         *
+         *  Get a type string of the given address for sequential write keys.
+         *
+         *  @param [in] hashAddress The address to get type string for.
+         *
+         *  @return the type string of address.
+         *
+         **/
+        std::string get_address_type(const uint256_t& hashAddress);
+
     private:
 
 
@@ -278,16 +289,7 @@ namespace LLD
         bool client_lookup(const uint256_t& hashRegister, TAO::Register::State& state, const uint8_t nFlags);
 
 
-        /** get_address_type
-         *
-         *  Get a type string of the given address for sequential write keys.
-         *
-         *  @param [in] hashAddress The address to get type string for.
-         *
-         *  @return the type string of address.
-         *
-         **/
-        std::string get_address_type(const uint256_t& hashAddress);
+
 
     };
 
