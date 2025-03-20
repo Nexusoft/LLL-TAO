@@ -422,7 +422,8 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::CREDIT: failed to rollback to pre-state");
 
                         /* Read the debit. */
-                        const TAO::Operation::Contract debit = LLD::Ledger->ReadContract(hashTx, nContract);
+                        const TAO::Operation::Contract debit =
+                            LLD::Ledger->ReadContract(hashTx, nContract, nFlags, false); //rollback doesn't check indexes
 
                         /* Check for non coinbase. */
                         uint8_t nDebit = 0;

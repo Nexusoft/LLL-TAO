@@ -133,7 +133,8 @@ namespace LLD
 
 
     /* Reads a contract from the ledger DB. */
-    const TAO::Operation::Contract LedgerDB::ReadContract(const uint512_t& hashTx, const uint32_t nContract, const uint8_t nFlags)
+    const TAO::Operation::Contract LedgerDB::ReadContract(const uint512_t& hashTx,
+        const uint32_t nContract, const uint8_t nFlags, const bool fCheckIndex)
     {
         /* Check for Tritium transaction. */
         if(hashTx.GetType() == TAO::Ledger::TRITIUM)
@@ -144,7 +145,7 @@ namespace LLD
                 throw debug::exception(FUNCTION, "failed to read contract");
 
             /* Check that our dependant was indexed. */
-            if(!HasIndex(hashTx))
+            if(fCheckIndex && !HasIndex(hashTx))
                 throw debug::exception(FUNCTION, "dependant is not indexed");
 
             /* Get const reference for read-only access. */
@@ -161,7 +162,7 @@ namespace LLD
                 throw debug::exception(FUNCTION, "failed to read contract");
 
             /* Check that our dependant was indexed. */
-            if(!HasIndex(hashTx))
+            if(fCheckIndex && !HasIndex(hashTx))
                 throw debug::exception(FUNCTION, "dependant is not indexed");
 
             return TAO::Operation::Contract(tx, nContract);
