@@ -176,12 +176,13 @@ namespace LLD
          *  @param[in] hashTx The txid of transaction to read.
          *  @param[in] nContract The contract output to read.
          *  @param[in] nFlags The flags to determine memory pool or disk
+         *  @param[in] fCheckIndex Flag to check if dependant is indexed (is in main chain)
          *
          *  @return The contract object that was read.
          *
          **/
         const TAO::Operation::Contract ReadContract(const uint512_t& hashTx,
-                                              const uint32_t nContract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+                    const uint32_t nContract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK, const bool fCheckIndex = true);
 
 
         /** ReadTx
