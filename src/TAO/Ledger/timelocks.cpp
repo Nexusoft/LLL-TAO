@@ -23,52 +23,54 @@ namespace TAO
     {
 
         /* The network current block version. */
-        const uint32_t NETWORK_BLOCK_CURRENT_VERSION = 8;
+        const uint32_t NETWORK_BLOCK_CURRENT_VERSION = 9;
 
 
         /* The testnet current block version. */
-        const uint32_t TESTNET_BLOCK_CURRENT_VERSION = 8;
+        const uint32_t TESTNET_BLOCK_CURRENT_VERSION = 9;
 
 
         /* The network current transaction version. */
-        const uint32_t NETWORK_TRANSACTION_CURRENT_VERSION = 4;
+        const uint32_t NETWORK_TRANSACTION_CURRENT_VERSION = 5;
 
 
         /* The testnet current transaction version. */
-        const uint32_t TESTNET_TRANSACTION_CURRENT_VERSION = 4;
+        const uint32_t TESTNET_TRANSACTION_CURRENT_VERSION = 5;
 
 
          /* Activated test network at timestamp. */
-        const uint32_t NEXUS_TESTNET_TIMELOCK = 1421250000;        //--- Nexus Testnet Activation:        1/14/2015 08:38:00 GMT - 6
+        const uint32_t NEXUS_TESTNET_TIMELOCK = 1421250000;        //--- Nexus Testnet Activation:     1/14/2015 08:38:00 GMT - 7
 
 
         /* Activated main network at timestamp. */
-        const uint32_t NEXUS_NETWORK_TIMELOCK = 1411510800;        //--- Nexus Network Launch:           09/23/2014 16:20:00 GMT - 6
+        const uint32_t NEXUS_NETWORK_TIMELOCK = 1411510800;        //--- Nexus Network Launch:        09/23/2014 16:20:00 GMT - 7
 
 
         /* Lock for the Nexus block version upgrades. */
         const uint32_t TESTNET_BLOCK_VERSION_TIMELOCK[]   =
         {
-            1412676000,        //--- Block Version 2 Testnet Activation:  10/07/2014 04:00:00 GMT - 6
-            1421293891,        //--- Block Version 3 Testnet Activation:  01/15/2015 07:51:31 GMT - 6
-            1421949600,        //--- Block Version 4 Testnet Activation:  05/10/2015 08:01:00 GMT - 6
+            1412676000,        //--- Block Version 2 Testnet Activation:  10/07/2014 04:00:00 GMT - 7
+            1421293891,        //--- Block Version 3 Testnet Activation:  01/15/2015 07:51:31 GMT - 7
+            1421949600,        //--- Block Version 4 Testnet Activation:  05/10/2015 08:01:00 GMT - 7
             1536562800,        //--- Block Version 5 Testnet Activation:  09/10/2018 00:00:00 GMT - 7
             1537167600,        //--- Block Version 6 Testnet Activation:  09/17/2018 00:00:00 GMT - 7
             1572325200,        //--- Block Version 7 Testnet Activation:  10/28/2019 22:00:00 GMT - 7
-            1582946400         //--- Block Version 8 Testnet Activation:  02/28/2020 20:20:00 GMT - 7
+            1582946400,        //--- Block Version 8 Testnet Activation:  02/28/2020 20:20:00 GMT - 7
+            1743032684         //--- Block Version 9 Testnet Activation:  03/26/2025 16:44:44 GMT - 7
         };
 
 
         /* Lock for the Nexus block version upgrades. */
         const uint32_t NETWORK_BLOCK_VERSION_TIMELOCK[]   =
         {
-            1412964000,        //--- Block Version 2 Activation:          10/10/2014 12:00:00 GMT - 6
-            1421949600,        //--- Block Version 3 Activation:          01/22/2015 12:00:00 GMT - 6
+            1412964000,        //--- Block Version 2 Activation:          10/10/2014 12:00:00 GMT - 7
+            1421949600,        //--- Block Version 3 Activation:          01/22/2015 12:00:00 GMT - 7
             1438369200,        //--- Block Version 4 Activation:          07/31/2015 12:00:00 GMT - 7
             1536977460,        //--- Block Version 5 Activation:          09/14/2018 19:11:00 GMT - 7
             1538791860,        //--- Block Version 6 Activation:          10/05/2018 19:11:00 GMT - 7
-            1573539371,        //--- Block Version 7 Activation:          11/11/2019 23:11:11 GMT - 6
-            1584676140         //--- Block Version 8 Activation:          03/20/2020 03:49:00 GMT (03/19/2020 20:49:00 GMT -7)
+            1573539371,        //--- Block Version 7 Activation:          11/11/2019 23:11:11 GMT - 7
+            1584676140,        //--- Block Version 8 Activation:          03/20/2020 03:49:00 GMT - 7
+            1743810284         //--- Block Version 9 Activation:          04/04/2025 16:44:44 GMT - 7
         };
 
 
@@ -82,26 +84,28 @@ namespace TAO
             1572325200,        //--- Transaction Version 1 Testnet Activation:  10/28/2019 22:00:00 GMT - 7
             1582946400,        //--- Transaction Version 2 Testnet Activation:  02/28/2020 20:20:00 GMT - 7
             1631046780,        //--- Transaction Version 3 Testnet Activation:  09/07/2021 13:33:00 GMT - 7
-            1631563980         //--- Transaction Version 4 Testnet Activation:  09/13/2021 13:13:00 GMT - 7
+            1631563980,        //--- Transaction Version 4 Testnet Activation:  09/13/2021 13:13:00 GMT - 7
+            1743032684         //--- Transaction Version 5 Testnet Activation:  03/26/2025 16:44:44 GMT - 7
         };
 
 
         /* Lock for the Nexus transaction version upgrades. */
         uint32_t NETWORK_TRANSACTION_VERSION_TIMELOCK[]   =
         {
-            1573539371,        //--- Transaction Version 1 Activation:      11/11/2019 23:11:11 GMT - 6
+            1573539371,        //--- Transaction Version 1 Activation:      11/11/2019 23:11:11 GMT - 7
             1584676140,        //--- Transaction Version 2 Activation:      03/19/2020 20:49:00 GMT - 7
             1631301120,        //--- Transaction Version 3 Activation:      09/10/2021 12:12:00 GMT - 7
-            1631819333         //--- Transaction Version 4 Activation:      09/16/2021 12:08:53 GMT - 7
+            1631819333,         //--- Transaction Version 4 Activation:      09/16/2021 12:08:53 GMT - 7
+            1743810284         //--- Transaction Version 5 Activation:      04/04/2025 16:44:44 GMT - 7
         };
 
 
         /* Lock to activate each corresponding proof channel. */
         const uint32_t CHANNEL_TESTNET_TIMELOCK[] =
         {
-            1421949600,        //--- Stake Testnet Activation:            05/10/2015 08:01:00 GMT - 6
-            1411437371,        //--- Prime Testnet Activation:            09/22/2014 18:56:11 GMT - 6
-            1411437371         //--- Hash Testnet Activation:             09/22/2014 18:56:11 GMT - 6
+            1421949600,        //--- Stake Testnet Activation:            05/10/2015 08:01:00 GMT - 7
+            1411437371,        //--- Prime Testnet Activation:            09/22/2014 18:56:11 GMT - 7
+            1411437371         //--- Hash Testnet Activation:             09/22/2014 18:56:11 GMT - 7
         };
 
 
@@ -109,8 +113,8 @@ namespace TAO
         const uint32_t CHANNEL_NETWORK_TIMELOCK[] =
         {
             1438369200,        //--- Stake Channel Activation:            07/31/2015 12:00:00 GMT - 7
-            1411510800,        //--- Prime Channel Activation:            09/23/2014 16:20:00 GMT - 6
-            1413914400         //--- Hash Channel Activation:             10/21/2014 12:00:00 GMT - 6
+            1411510800,        //--- Prime Channel Activation:            09/23/2014 16:20:00 GMT - 7
+            1413914400         //--- Hash Channel Activation:             10/21/2014 12:00:00 GMT - 7
         };
 
 
@@ -196,10 +200,11 @@ namespace TAO
         /* Retrieve the timelock activation for a given block version on mainnet or testnet. */
         uint64_t StartBlockTimelock(const uint32_t nVersion)
         {
-            uint32_t nCurrent = CurrentBlockVersion();
+            /* Get our current block version. */
+            const uint32_t nCurrent = CurrentBlockVersion();
 
             /* Version 0 or invalid versions that have no timelock activation */
-            if((nVersion == 0) || (nVersion > nCurrent))
+            if(nVersion == 0 || nVersion > nCurrent)
                 return 0;
 
             /* Timelock activation for version 1 is the start of network */
@@ -215,10 +220,11 @@ namespace TAO
         /* Retrieve the ending timelock for a given block version on mainnet or testnet. */
         uint64_t EndBlockTimelock(const uint32_t nVersion)
         {
-            uint32_t nCurrent = CurrentBlockVersion();
+            /* Get our current block version. */
+            const uint32_t nCurrent = CurrentBlockVersion();
 
             /* Version 0 or versions that have no ending timelock (including current) */
-            if((nVersion == 0) || (nVersion >= nCurrent))
+            if(nVersion == 0 || nVersion >= nCurrent)
                 return 0;
 
             /* For other versions, ending timelock is the timelock activation time for the next version */
