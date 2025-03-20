@@ -50,7 +50,7 @@ namespace LLD
             }
 
             /* Set our flag to false if we are forcing reindexing. */
-            if(config::GetBoolArg("-forcereindex"))
+            if(config::GetBoolArg("-reindexaddress"))
                 fIndexAddressesComplete = false;
         }
         else
@@ -76,7 +76,7 @@ namespace LLD
             }
 
             /* Reset our falgs if we have reindexed proofs. */
-            if(config::GetBoolArg("-forcereindexproofs"))
+            if(config::GetBoolArg("-reindexproofs"))
                 fIndexProofsComplete = false;
         }
         else
@@ -101,7 +101,7 @@ namespace LLD
             }
 
             /* Reset our falgs if we have reindexed proofs. */
-            if(config::GetBoolArg("-forcereindexregisters"))
+            if(config::GetBoolArg("-reindexregister"))
                 fIndexRegistersComplete = false;
         }
         else
