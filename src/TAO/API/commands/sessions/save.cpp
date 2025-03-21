@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -58,7 +58,8 @@ namespace TAO::API
             throw Exception(-270, "Failed to encrypt data.");
 
         /* Write the session to local DB */
-        LLD::Local->WriteSession(hashGenesis, vchCipherText);
+        if(LLD::Sessions)
+            LLD::Sessions->WriteSession(hashGenesis, vchCipherText);
 
         /* populate reponse */;
         const encoding::json jRet =

@@ -2,7 +2,7 @@
 
         Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-        (c) Copyright The Nexus Developers 2014 - 2023
+        (c) Copyright The Nexus Developers 2014 - 2025
 
         Distributed under the MIT software license, see the accompanying
         file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -422,7 +422,8 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::CREDIT: failed to rollback to pre-state");
 
                         /* Read the debit. */
-                        const TAO::Operation::Contract debit = LLD::Ledger->ReadContract(hashTx, nContract);
+                        const TAO::Operation::Contract debit =
+                            LLD::Ledger->ReadContract(hashTx, nContract, nFlags, false); //rollback doesn't check indexes
 
                         /* Check for non coinbase. */
                         uint8_t nDebit = 0;

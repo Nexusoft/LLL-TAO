@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -36,7 +36,7 @@ namespace TAO::API
     {
         /* Get all registers owned by the sig chain */
         std::set<TAO::Register::Address> setAddresses;
-        if(!LLD::Logical->ListRegisters(hashGenesis, setAddresses))
+        if(!LLD::Sessions->ListRegisters(hashGenesis, setAddresses))
             return false;
 
         /* Filter out only those that are objects */
@@ -56,7 +56,7 @@ namespace TAO::API
     {
         /* Get all registers owned by the sig chain */
         std::set<TAO::Register::Address> setAddresses;
-        if(!LLD::Logical->ListRegisters(hashGenesis, setAddresses))
+        if(!LLD::Sessions->ListRegisters(hashGenesis, setAddresses))
             return false;
 
         /* Filter out only those that are accounts */
@@ -76,7 +76,7 @@ namespace TAO::API
     {
         /* Get the list of registers owned by this sig chain */
         std::vector<std::pair<uint256_t, uint256_t>> vAddresses;
-        LLD::Logical->ListTokenized(hashGenesis, vAddresses);
+        LLD::Sessions->ListTokenized(hashGenesis, vAddresses);
 
         /* Check for empty return. */
         if(vAddresses.size() == 0)

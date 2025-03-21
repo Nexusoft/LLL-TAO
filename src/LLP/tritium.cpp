@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -589,8 +589,10 @@ namespace LLP
                         debug::log(0, NODE, "ACTION::VERSION set current address as ", addr.ToStringIP());
                     }
                     else if(addrCurrent != addr)
-                        debug::warning(NODE, "ACTION::VERSION conflicting address ",
-                            addr.ToStringIP(), " != ", addrCurrent.ToStringIP()); //TODO: vAddrThis: can have multiple addr (IPv4/6, LTE, Wifi, etc.)
+                    {
+                        //addrCurrent = addr;
+                        debug::warning(NODE, "ACTION::VERSION conflicting address ", addr.ToStringIP(), " != ", addrCurrent.ToStringIP()); //TODO: vAddrThis: can have multiple addr (IPv4/6, LTE, Wifi, etc.)
+                    }
 
                     /* Respond with version message if incoming connection. */
                     if(Incoming())
@@ -1353,7 +1355,7 @@ namespace LLP
                             && LLD::Ledger->BatchRead(hashLastRead, "block", vStates, nBatchLimit, true))
                         {
                             /* Loop through all available states. */
-                            for(const auto& state : vStates)
+                            for(auto& state : vStates)
                             {
                                 /* Keep this iterating so we can track our sequential reads. */
                                 hashLastRead = state.GetHash();
@@ -1364,13 +1366,20 @@ namespace LLP
 
                                 /* Check for matching hashes. */
                                 if(state.hashPrevBlock != stateLast.GetHash())
-                                    continue;
+                                {
+                                    /* Read the correct block from next index. */
+                                    if(!LLD::Ledger->ReadBlock(stateLast.hashNextBlock, state))
+                                        break;
+
+                                    /* Update hashLastRead. */
+                                    hashLastRead = state.GetHash();
+                                }
 
                                 /* Handle for special sync block type specifier. */
                                 if(nSpecifier == SPECIFIER::SYNC)
                                 {
                                     TAO::Ledger::SyncBlock block;
-                                    if(config::GetBoolArg("-sequentialsync", true)) //set this default to true now
+                                    if(config::GetBoolArg("-sequentialsync", false)) //set this default to false now
                                     {
                                         /* Build the sync block from state. */
                                         block = TAO::Ledger::SyncBlock(state, false);
@@ -2435,7 +2444,7 @@ namespace LLP
 
                                         /* Special debug output for new address recurring time. */
                                         if(addrInfo.nLastSeen > runtime::unifiedtimestamp() || addrInfo.nLastSeen == 0)
-                                            debug::log(0, NODE, "ACTION::NOTIFY: UPDATE ADDRESS ", addr.ToStringIP());
+                                            debug::log(0, NODE, "ACTION::NOTIFY: UPDATE ", addr.ToStringIP());
                                         else if(nTimeAway > 300) //only display if more than 5 minutes since last seen
                                         {
                                             /* Default time seen in minutes. */
@@ -2450,11 +2459,11 @@ namespace LLP
                                             if(nTimeAway > (60 * 60 * 24))
                                                 strLastSeen = debug::safe_printstr((nTimeAway / (60 * 60 * 24)), " DAYS AGO");
 
-                                            debug::log(0, NODE, "ACTION::NOTIFY: ONLINE ADDRESS ", addr.ToStringIP(), " LAST SEEN ", strLastSeen);
+                                            debug::log(0, NODE, "ACTION::NOTIFY: ONLINE ", addr.ToStringIP(), " LAST SEEN ", strLastSeen);
                                         }
                                     }
                                     else
-                                        debug::log(0, NODE, "ACTION::NOTIFY: NEW ADDRESS ", addr.ToStringIP());
+                                        debug::log(0, NODE, "ACTION::NOTIFY: NEW ", addr.ToStringIP());
 
                                     /* Add address to manager now. */
                                     TRITIUM_SERVER->GetAddressManager()->AddAddress(addr);

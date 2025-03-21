@@ -3,7 +3,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -59,7 +59,7 @@ namespace TAO::API
 
         /* First get the list of registers owned by this sig chain so we can work out which ones are NXS accounts */
         std::set<TAO::Register::Address> setAddresses;
-        if(!LLD::Logical->ListRegisters(hashGenesis, setAddresses))
+        if(!LLD::Sessions->ListRegisters(hashGenesis, setAddresses))
             throw Exception(-74, "No registers found");
 
         /* Keep a map to track our aggregated balance, we use a second map for better readability. */
