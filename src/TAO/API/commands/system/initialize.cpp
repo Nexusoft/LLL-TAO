@@ -31,6 +31,7 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 #include <Util/include/json.h>
+#include <Util/include/initialize.h>
 #include <Util/include/config.h>
 #include <Util/include/version.h>
 #include <Util/include/signals.h>
@@ -145,6 +146,9 @@ namespace TAO
 
             /* The current block height of this node */
             jRet["blocks"]          = TAO::Ledger::ChainState::nBestHeight.load();
+
+            /* Get our current initialization message. */
+            jRet["status"]          = Initialize::Status();
 
             /* Flag indicating whether this node is currently syncrhonizing */
             jRet["synchronized"]    = !TAO::Ledger::ChainState::Synchronizing();

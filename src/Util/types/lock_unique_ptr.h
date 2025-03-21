@@ -13,10 +13,10 @@ ________________________________________________________________________________
 
 #pragma once
 
-#include <mutex>
 #include <inttypes.h>
+#include <stdexcept>
 
-#include <Util/include/debug.h>
+#include <Util/include/mutex.h>
 
 namespace util::atomic
 {
@@ -88,7 +88,7 @@ namespace util::atomic
 			TypeName* operator->() const
 			{
 				if(pData == nullptr)
-					throw std::runtime_error(debug::safe_printstr(FUNCTION, "member access to nullptr"));
+					throw std::runtime_error("member access to nullptr");
 
 				return pData;
 			}
@@ -236,7 +236,7 @@ namespace util::atomic
 
             /* Throw an exception on nullptr. */
             if(pData == nullptr)
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "dereferencing a nullptr"));
+                throw std::runtime_error("dereferencing a nullptr");
 
             return *pData;
         }

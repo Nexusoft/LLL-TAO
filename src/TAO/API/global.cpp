@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLP/include/global.h>
+
 #include <TAO/API/include/global.h>
 
 #include <TAO/API/types/commands/assets.h>
@@ -83,6 +85,40 @@ namespace TAO::API
 
         /* Fire up notifications processors. */
         Notifications::Initialize();
+
+        /* API_SERVER instance */
+        if((config::HasArg("-apiuser") && config::HasArg("-apipassword")) || !config::GetBoolArg("-apiauth", true))
+        {
+            /* Generate our config object and use correct settings. */
+            LLP::Config CONFIG     = LLP::Config(LLP::GetAPIPort());
+            CONFIG.ENABLE_LISTEN   = true;
+            CONFIG.ENABLE_UPNP     = false;
+            CONFIG.ENABLE_METERS   = config::GetBoolArg(std::string("-apimeters"), false);
+            CONFIG.ENABLE_DDOS     = config::GetBoolArg(std::string("-apiddos"), true);
+            CONFIG.ENABLE_MANAGER  = false;
+            CONFIG.ENABLE_SSL      = config::GetBoolArg(std::string("-apissl"));
+            CONFIG.ENABLE_REMOTE   = config::GetBoolArg(std::string("-apiremote"), false);
+            CONFIG.REQUIRE_SSL     = config::GetBoolArg(std::string("-apisslrequired"), false);
+            CONFIG.PORT_SSL        = LLP::GetAPIPort(true); //switch API port based on boolean argument
+            CONFIG.MAX_INCOMING    = 128;
+            CONFIG.MAX_CONNECTIONS = 128;
+            CONFIG.MAX_THREADS     = config::GetArg(std::string("-apithreads"), 8);
+            CONFIG.DDOS_CSCORE     = config::GetArg(std::string("-apicscore"), 5);
+            CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-apirscore"), 5);
+            CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-apitimespan"), 60);
+            CONFIG.MANAGER_SLEEP   = 0; //this is disabled
+            CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-apitimeout"), 30);
+
+            /* Create the server instance. */
+            LLP::API_SERVER = new LLP::Server<LLP::APINode>(CONFIG);
+        }
+        else
+        {
+            /* Output our new warning message if the API was disabled. */
+            debug::notice(ANSI_COLOR_BRIGHT_RED, "API SERVER DISABLED", ANSI_COLOR_RESET);
+            debug::notice(ANSI_COLOR_BRIGHT_YELLOW, "You must set apiuser=<user> and apipassword=<password> configuration.", ANSI_COLOR_RESET);
+            debug::notice(ANSI_COLOR_BRIGHT_YELLOW, "If you intend to run the API server without authenticating, set apiauth=0", ANSI_COLOR_RESET);
+        }
     }
 
 
