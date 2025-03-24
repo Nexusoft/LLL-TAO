@@ -474,6 +474,8 @@ namespace LLD
         TAO::Ledger::BlockState state;
         if(!LLD::Ledger->ReadBlock(hashBegin, state))
         {
+            Write(std::string("register.indexed"));
+            
             debug::warning(FUNCTION, "No tritium blocks available ", hashBegin.SubString());
             return;
         }
