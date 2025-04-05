@@ -217,7 +217,7 @@ namespace LLP
                     break;
                 }
 
-                debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming", " Connection Established");
+                debug::log(0, NODE, fOUTGOING ? "Outgoing" : "Incoming", " Connection Established");
 
                 /* Set the laset ping time. */
                 nLastPing    = runtime::unifiedtimestamp();
@@ -294,18 +294,6 @@ namespace LLP
 
             case EVENTS::GENERIC:
             {
-                /* Make sure node responded on unsubscriion within 30 seconds. */
-                if(nUnsubscribed != 0 && nUnsubscribed + 30 < runtime::timestamp())
-                {
-                    /* Debug output. */
-                    debug::drop(NODE, "failed to receive unsubscription within 30 seconds");
-
-                    /* Disconnect this node. */
-                    Disconnect();
-
-                    return;
-                }
-
                 /* Handle sending the pings to remote node.. */
                 if(nLastPing + 15 < runtime::unifiedtimestamp())
                 {
@@ -468,7 +456,7 @@ namespace LLP
                 }
 
                 /* Debug output for node disconnect. */
-                debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming",
+                debug::log(0, NODE, fOUTGOING ? "Outgoing" : "Incoming",
                     " Disconnected (", strReason, ")");
 
                 /* Update address status. */
@@ -487,7 +475,6 @@ namespace LLP
 
                         SwitchNode();
                     }
-
 
                     LOCK(SESSIONS_MUTEX);
 
@@ -3893,7 +3880,11 @@ namespace LLP
     /* Helper function to switch the nodes on sync. */
     void TritiumNode::SwitchNode()
     {
+        /* Track our current sync sessions. */
         std::pair<uint32_t, uint32_t> pairSession;
+
+        /* Only check our current sync session if it is active. */
+        if(TAO::Ledger::nSyncSession.load() != 0)
         { LOCK(SESSIONS_MUTEX);
 
             /* Check for session. */
@@ -3936,7 +3927,13 @@ namespace LLP
             TAO::Ledger::nSyncSession.store(0);
 
             /* Logging to verify (for debugging). */
-            debug::log(0, FUNCTION, "No Sync Nodes Available");
+            debug::log(0, FUNCTION, "No Sync Nodes Available, reconnecting to DNS seeds in 15 seconds...");
+
+            /* Wait for timeouts and then restart. */
+            runtime::sleep(15000);
+
+            /* Reconnect to our seed nodes. */
+            LLP::MakeConnections(TRITIUM_SERVER);
         }
     }
 
