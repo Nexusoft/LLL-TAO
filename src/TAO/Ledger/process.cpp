@@ -117,7 +117,9 @@ namespace TAO
                         if(!ChainState::Synchronizing())
                             debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.SubString());
                     }
-                    else if(pnode)
+
+                    /* If we have an active node make sure to ask for the orphan. */
+                    if(pnode)
                         pnode->PushMessage(LLP::TritiumNode::ACTION::GET,
                             uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS),
                             uint8_t(LLP::TritiumNode::TYPES::BLOCK), block.hashPrevBlock);
