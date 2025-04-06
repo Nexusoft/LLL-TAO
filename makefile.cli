@@ -282,8 +282,8 @@ endif
 
 #Display Warnings while compiling
 ifdef ENABLE_WARNINGS
-	CXXWARNINGS := -Wall -Wextra -Wno-sign-compare -Wno-invalid-offsetof -Wno-unused-parameter -Wformat -Wformat-security -pedantic
-	CWARNINGS := -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-unknown-pragmas -Wformat -Wformat-security -pedantic
+	CXXWARNINGS := -Wall -Wextra -Wno-sign-compare -Wno-invalid-offsetof -Wno-unused-parameter -Wformat -Wformat-security -pedantic -Werror=format-security
+	CWARNINGS := -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-unknown-pragmas -Wformat -Wformat-security -pedantic -Werror=format-security
 else
 	CXXFLAGS+= -w
 endif
@@ -645,6 +645,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Legacy_trustkey.o \
 		build/Legacy_txin.o \
 		build/Legacy_txout.o \
+		build/Legacy_keystore.o 
 
 
 ifndef NO_WALLET
@@ -662,7 +663,6 @@ ifndef NO_WALLET
 			build/Legacy_db.o \
 			build/Legacy_keypool.o \
 			build/Legacy_keypoolentry.o \
-			build/Legacy_keystore.o \
 			build/Legacy_output.o \
 			build/Legacy_wallet.o \
 			build/Legacy_walletdb.o \

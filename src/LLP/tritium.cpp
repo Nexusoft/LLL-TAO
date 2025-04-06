@@ -371,7 +371,7 @@ namespace LLP
                 if(TAO::Ledger::ChainState::Synchronizing()
                 && nCurrentSession == TAO::Ledger::nSyncSession.load()
                 && nCurrentSession != 0
-                && nLastTimeReceived.load() + 30 < runtime::timestamp())
+                && nLastTimeReceived.load() + 60 < runtime::timestamp())
                 {
                     debug::log(0, NODE, "Sync Node Timeout");
 
@@ -1602,7 +1602,7 @@ namespace LLP
                         std::vector<uint512_t> vHashes;
 
                         /* List tritium transactions if legacy isn't specified. */
-                        if(!nSpecifier == SPECIFIER::LEGACY)
+                        if(nSpecifier != SPECIFIER::LEGACY)
                         {
                             if(TAO::Ledger::mempool.List(vHashes, std::numeric_limits<uint32_t>::max(), false))
                             {
