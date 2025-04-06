@@ -118,11 +118,15 @@ namespace TAO
                             debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.SubString());
                     }
 
-                    /* If we have an active node make sure to ask for the orphan. */
+                    /* Check if we have an active node. */
                     if(pnode)
+                    {
+                        /* Send a request to download the orphaned block. */
                         pnode->PushMessage(LLP::TritiumNode::ACTION::GET,
                             uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS),
                             uint8_t(LLP::TritiumNode::TYPES::BLOCK), block.hashPrevBlock);
+                    }
+
 
                     return;
                 }
