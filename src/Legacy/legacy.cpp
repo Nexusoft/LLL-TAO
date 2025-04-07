@@ -169,7 +169,7 @@ namespace Legacy
 
         /* Push back all the transactions from the state object. */
         std::vector<Legacy::Transaction> vList;
-        while(LLD::Legacy->BatchRead(state.vtx[nIterator].second, "tx", vList, 10, true))
+        while(LLD::Legacy->BatchRead(std::make_pair(std::string("tx"), state.vtx[nIterator].second), "tx", vList, 10, true))
         {
             /* Loop through tx and find in block. */
             for(const auto& tx : vList)

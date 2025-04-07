@@ -269,6 +269,13 @@ namespace LLP
         static Inventory tInventory;
 
 
+        /** Used for a transaction record for a node synchronizing with us. **/
+        std::map<uint512_t, TAO::Ledger::Transaction> mapTritium;
+
+        /** Used for a transaction record for a node synchronizing with us. **/
+        std::map<uint512_t, Legacy::Transaction> mapLegacy;
+
+
     public:
 
         /** Mutex for connected sessions. **/
