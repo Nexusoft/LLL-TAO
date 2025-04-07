@@ -1392,7 +1392,7 @@ namespace LLP
                                                             for(const auto& tBatch : vList)
                                                                 mapTritium.emplace(std::make_pair(tBatch.GetHash(), std::move(tBatch)));
 
-                                                            debug::notice("Read ", vList.size(), " entries (", mapTritium.size(), ")");
+                                                            //debug::notice("Read ", vList.size(), " entries (", mapTritium.size(), ")");
                                                         }
                                                     }
 
@@ -1443,7 +1443,7 @@ namespace LLP
                                                             for(const auto& tBatch : vList)
                                                                 mapLegacy.emplace(std::make_pair(tBatch.GetHash(), std::move(tBatch)));
 
-                                                            debug::notice("Read ", vList.size(), " entries (", mapLegacy.size(), ")");
+                                                            //debug::notice("Read ", vList.size(), " entries (", mapLegacy.size(), ")");
                                                         }
                                                     }
 
