@@ -1271,7 +1271,7 @@ namespace Legacy
 
         /* UTXO to Sig Chain support - If we are connected with a block then check the outputs to see if any of them
            are to a register address.  If they are then write an event for the account holder */
-        for(const auto txout : vout )
+        for(const auto& txout : vout)
         {
             uint256_t hashTo;
             if(ExtractRegister(txout.scriptPubKey, hashTo))
@@ -1312,7 +1312,7 @@ namespace Legacy
             }
 
             /* Remove events for any UTXO to sig chain sends */
-            for(const auto txout : vout )
+            for(const auto& txout : vout)
             {
                 uint256_t hashTo;
                 if(ExtractRegister(txout.scriptPubKey, hashTo))

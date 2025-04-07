@@ -692,8 +692,7 @@ void base_uint<BITS>::SetBytes(const std::vector<uint8_t> DATA)
 template<uint32_t BITS>
 uint32_t base_uint<BITS>::BitCount() const
 {
-    uint32_t i = (WIDTH << 5) - 1;
-
+    int32_t i = (WIDTH << 5) - 1;
     for(; i >= 0; --i)
     {
         if(pn[i >> 5] & (1 << (i & 31)))

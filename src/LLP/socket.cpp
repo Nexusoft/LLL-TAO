@@ -39,7 +39,6 @@ namespace LLP
     , SOCKET_MUTEX       ( )
     , pSSL(nullptr)
     , ADDRESS_MUTEX      ( )
-    , BUFFER_MUTEX       ( )
     , nLastSend          (0)
     , nLastRecv          (0)
     , nError             (0)
@@ -63,7 +62,6 @@ namespace LLP
     , SOCKET_MUTEX       ( )
     , pSSL(nullptr)
     , ADDRESS_MUTEX      ( )
-    , BUFFER_MUTEX       ( )
     , nLastSend          (socket.nLastSend.load())
     , nLastRecv          (socket.nLastRecv.load())
     , nError             (socket.nError.load())
@@ -99,7 +97,6 @@ namespace LLP
     , SOCKET_MUTEX       ( )
     , pSSL(nullptr)
     , ADDRESS_MUTEX      ( )
-    , BUFFER_MUTEX       ( )
     , nLastSend          (0)
     , nLastRecv          (0)
     , nError             (0)
@@ -254,7 +251,6 @@ namespace LLP
     , SOCKET_MUTEX       ( )
     , pSSL(nullptr)
     , ADDRESS_MUTEX      ( )
-    , BUFFER_MUTEX       ( )
     , nLastSend          (0)
     , nLastRecv          (0)
     , nError             (0)
@@ -838,7 +834,7 @@ namespace LLP
         /* Check overflow buffer. */
         if(nBufferSize.load() > 0)
         {
-            LOCK(BUFFER_MUTEX);
+            RECURSIVE(SOCKET_MUTEX);
 
             /* Insert data into the buffer. */
             vBuffer.insert(vBuffer.end(), vData.begin(), vData.end());
@@ -878,7 +874,7 @@ namespace LLP
         /* If not all data was sent non-blocking, recurse until it is complete. */
         else if(nSent != vData.size())
         {
-            LOCK(BUFFER_MUTEX);
+            RECURSIVE(SOCKET_MUTEX);
 
             /* Insert remaining data into the buffer. */
             vBuffer.insert(vBuffer.end(), vData.begin() + nSent, vData.end());
@@ -942,7 +938,7 @@ namespace LLP
         else if(nSent > 0)
         {
             {
-                LOCK(BUFFER_MUTEX);
+                RECURSIVE(SOCKET_MUTEX);
 
                 /* Erase from current buffer. */
                 vBuffer.erase(vBuffer.begin(), vBuffer.begin() + nSent);

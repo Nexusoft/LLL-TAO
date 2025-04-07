@@ -86,7 +86,7 @@ namespace LLD
         const uint32_t nSessionsCacheSize = config::GetArg("-sessionscache", 2);
         Sessions    = new SessionDB(
                         FLAGS::CREATE | FLAGS::FORCE,
-                        256 * 256 * config::GetArg("-sessionsbuckets", 16), nLogicalCacheSize * 1024 * 1024);
+                        256 * 256 * config::GetArg("-sessionsbuckets", 16), nSessionsCacheSize * 1024 * 1024);
 
         if(config::fClient.load())
         {
