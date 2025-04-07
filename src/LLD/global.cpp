@@ -127,10 +127,6 @@ namespace LLD
         debug::log(0, FUNCTION, "Shutting down LLD");
 
         /* Cleanup the contract database. */
-        if(Logical)
-            delete Logical;
-
-        /* Cleanup the contract database. */
         if(Contract)
             delete Contract;
 
@@ -157,6 +153,14 @@ namespace LLD
         /* Cleanup the trust database. */
         if(Trust)
             delete Trust;
+
+        /* Cleanup the logical database. */
+        if(Logical)
+            delete Logical;
+
+        /* Cleanup the sessions database. */
+        if(Sessions)
+            delete Sessions;
     }
 
 
