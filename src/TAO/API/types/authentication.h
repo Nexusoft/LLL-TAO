@@ -182,7 +182,7 @@ namespace TAO::API
              **/
             const memory::encrypted_ptr<TAO::Ledger::Credentials>& Credentials() const
             {
-                return pCredentials;
+                return std::ref(pCredentials);
             }
 
 

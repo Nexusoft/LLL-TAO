@@ -16,6 +16,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/types/transaction.h>
+
 #include <TAO/Operation/include/execute.h>
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
@@ -226,7 +228,7 @@ namespace TAO
                     mapClaimed[tx.hashPrevTx] = hashTx;
 
                 /* Debug output. */
-                debug::log(2, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED in ", std::dec, timer.ElapsedMilliseconds(), " ms");
+                debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED in ", std::dec, timer.ElapsedMilliseconds(), " ms");
 
                 /* Process orphan queue. */
                 ProcessOrphans(hashTx);
@@ -591,6 +593,18 @@ namespace TAO
 
                                 /* Erase from the memory map. */
                                 Remove(hashTx);
+
+                                /* Remove the API sessions indexes if disconnecting a mempool transaction. */
+                                if(LLD::Sessions->Active(tx->hashGenesis))
+                                {
+                                    /* Get a reference of our transaction. */
+                                    TAO::API::Transaction wtx =
+                                        TAO::API::Transaction(*tx);
+
+                                    /* Make sure indexes are deleted. */
+                                    if(wtx.Delete(hashTx))
+                                        debug::log(0, FUNCTION, "DELETED API session indexes for ", hashTx.SubString());
+                                }
 
                                 /* Write the txid of deleted transactions. */
                                 debug::notice(FUNCTION, "DELETED ", hashTx.SubString());

@@ -86,7 +86,7 @@ namespace LLD
         const uint32_t nSessionsCacheSize = config::GetArg("-sessionscache", 2);
         Sessions    = new SessionDB(
                         FLAGS::CREATE | FLAGS::FORCE,
-                        256 * 256 * config::GetArg("-sessionsbuckets", 16), nLogicalCacheSize * 1024 * 1024);
+                        256 * 256 * config::GetArg("-sessionsbuckets", 16), nSessionsCacheSize * 1024 * 1024);
 
         if(config::fClient.load())
         {
@@ -106,10 +106,6 @@ namespace LLD
     void Shutdown()
     {
         debug::log(0, FUNCTION, "Shutting down LLD");
-
-        /* Cleanup the contract database. */
-        if(Logical)
-            delete Logical;
 
         /* Cleanup the contract database. */
         if(Contract)
@@ -138,6 +134,14 @@ namespace LLD
         /* Cleanup the trust database. */
         if(Trust)
             delete Trust;
+
+        /* Cleanup the logical database. */
+        if(Logical)
+            delete Logical;
+
+        /* Cleanup the sessions database. */
+        if(Sessions)
+            delete Sessions;
     }
 
 

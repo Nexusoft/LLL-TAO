@@ -692,8 +692,7 @@ void base_uint<BITS>::SetBytes(const std::vector<uint8_t> DATA)
 template<uint32_t BITS>
 uint32_t base_uint<BITS>::BitCount() const
 {
-    uint32_t i = (WIDTH << 5) - 1;
-
+    int32_t i = (WIDTH << 5) - 1;
     for(; i >= 0; --i)
     {
         if(pn[i >> 5] & (1 << (i & 31)))
@@ -717,6 +716,10 @@ std::string base_uint<BITS>::ToString() const
 template<uint32_t BITS>
 std::string base_uint<BITS>::SubString(const uint32_t nSize) const
 {
+    /* Special handle if we are debugging reorgs. */
+    if(!config::GetBoolArg("-truncatehashes", true))
+        return GetHex();
+
     return (GetHex().substr(0, nSize));
 }
 

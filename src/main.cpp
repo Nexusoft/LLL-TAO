@@ -88,7 +88,7 @@ void Startup()
         if(config::GetBoolArg("-autocreate", false))
         {
             try { TAO::API::Commands::Invoke("profiles", strCreate, jParams); }
-            catch(const TAO::API::Exception e){ debug::notice(FUNCTION, "::autocreate:", e.what()); }
+            catch(const TAO::API::Exception& e){ debug::notice(FUNCTION, "::autocreate:", e.what()); }
         }
 
         /* Handle for -autologin if specified. */
@@ -129,7 +129,7 @@ void Startup()
                 std::string strUnlock = "unlock/local";
                 TAO::API::Commands::Invoke("sessions", strUnlock, jUnlock);
             }
-            catch(const TAO::API::Exception e){ debug::notice(FUNCTION, "::autologin: ", e.what()); }
+            catch(const TAO::API::Exception& e){ debug::notice(FUNCTION, "::autologin: ", e.what()); }
         }
     }
 }

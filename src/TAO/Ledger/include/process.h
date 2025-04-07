@@ -23,6 +23,8 @@ ________________________________________________________________________________
 #include <mutex>
 #include <memory>
 
+namespace LLP { class TritiumNode; }
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -61,15 +63,20 @@ namespace TAO
         /** Current sync node. **/
         extern std::atomic<uint64_t> nSyncSession;
 
+
+        /* Stats variable for syncing. */
+        extern std::atomic<uint64_t> nProcessedContracts;
+
         /** Process Block Function
          *
          *  Processes a block incoming over the network.
          *
          *  @param[in] block The block being processed
+         *  @param[out] nStatus The status flags returned.
          *  @param[out] pnode The node that block came from.
          *
          **/
-        void Process(const TAO::Ledger::Block& block, uint8_t &nStatus);
+        void Process(const TAO::Ledger::Block& block, uint8_t &nStatus, LLP::TritiumNode* pnode = nullptr);
 
     }
 }

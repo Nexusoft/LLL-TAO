@@ -24,6 +24,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/indexing.h>
 #include <TAO/API/types/transaction.h>
+#include <TAO/API/include/json.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -886,6 +887,7 @@ namespace TAO
                 }
 
                 /* Log if there are blocks to disconnect. */
+                uint32_t nTotalDisconnect = 0;
                 if(vDisconnect.size() > 0)
                 {
                     debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "REORGANIZE:", ANSI_COLOR_RESET,
@@ -897,16 +899,24 @@ namespace TAO
                         debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "REORGANIZE:", ANSI_COLOR_RESET,
                             " Connect ", vConnect.size(), " blocks; ", fork.GetHash().SubString(),
                             "..", hash.SubString());
+
+                    /* Track our total transactions to disconnect. */
+                    for(auto& state : vDisconnect)
+                        nTotalDisconnect += (state.vtx.size() - 1); //this will tally all non producer transactions
                 }
 
                 /* Keep track of mempool transactions to delete. */
                 std::vector<std::pair<uint8_t, uint512_t>> vResurrect;
 
+                /* Check if we need to output our -debugreorg data. */
+                const bool fDebugReorg =
+                    (config::GetBoolArg("-debugreorg", false) && nTotalDisconnect > 0);
+
                 /* Disconnect given blocks. */
                 for(auto& state : vDisconnect)
                 {
                     /* Output the block state if flagged. */
-                    if(config::GetBoolArg("-printstate"))
+                    if(config::GetBoolArg("-printstate") || fDebugReorg)
                         debug::log(0, state.ToString(debug::flags::header | debug::flags::tx));
 
                     /* Disconnect the block. */
@@ -920,6 +930,32 @@ namespace TAO
                         //LLD::Ledger->EraseIndex(state.nHeight);
                     }
 
+                    /* Debug output if we are debugging reorgs */
+                    if(fDebugReorg)
+                    {
+                        /* Disconnect the transctions in reverse order to preserve sigchain ordering. */
+                        for(auto proof = state.vtx.rbegin(); proof != state.vtx.rend(); ++proof)
+                        {
+                            /* Get the transaction hash. */
+                            const uint512_t& hash = proof->second;
+
+                            /* Only work on tritium transactions for now. */
+                            if(proof->first == TRANSACTION::TRITIUM)
+                            {
+                                /* Make sure the transaction is on disk. */
+                                TAO::Ledger::Transaction tx;
+                                if(!LLD::Ledger->ReadTx(hash, tx))
+                                    return debug::error(FUNCTION, "transaction not on disk");
+
+                                /* Get a copy of our transaction if debugging reorgs. */
+                                const encoding::json jRet =
+                                    TAO::API::TransactionToJSON(tx, *this, 3);
+
+                                debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "DISCONNECTING:", ANSI_COLOR_RESET, jRet.dump(4));
+                            }
+                        }
+                    }
+
                     /* Resurrect transactions that were disconnected. */
                     vResurrect.insert(vResurrect.end(), state.vtx.rbegin(), state.vtx.rend());
                 }
@@ -931,7 +967,7 @@ namespace TAO
                 for(auto state = vConnect.rbegin(); state != vConnect.rend(); ++state)
                 {
                     /* Output the block state if flagged. */
-                    if(config::GetBoolArg("-printstate"))
+                    if(config::GetBoolArg("-printstate") || fDebugReorg)
                         debug::log(0, state->ToString(debug::flags::header | debug::flags::tx));
 
                     /* Connect the block. */
@@ -942,6 +978,35 @@ namespace TAO
                     #ifndef UNIT_TESTS
                     HardenCheckpoint(Prev());
                     #endif
+
+                    /* Debug output if we are debugging reorgs */
+                    if(fDebugReorg)
+                    {
+                        /* Output the connecting block. */
+                        debug::log(0, state->ToString(debug::flags::header | debug::flags::tx));
+
+                        /* Disconnect the transctions in reverse order to preserve sigchain ordering. */
+                        for(auto proof = state->vtx.begin(); proof != state->vtx.end(); ++proof)
+                        {
+                            /* Get the transaction hash. */
+                            const uint512_t& hash = proof->second;
+
+                            /* Only work on tritium transactions for now. */
+                            if(proof->first == TRANSACTION::TRITIUM)
+                            {
+                                /* Make sure the transaction is on disk. */
+                                TAO::Ledger::Transaction tx;
+                                if(!LLD::Ledger->ReadTx(hash, tx))
+                                    return debug::error(FUNCTION, "transaction not on disk");
+
+                                /* Get a copy of our transaction if debugging reorgs. */
+                                const encoding::json jRet =
+                                    TAO::API::TransactionToJSON(tx, *this, 3);
+
+                                debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "CONNECTING:", ANSI_COLOR_RESET, jRet.dump(4));
+                            }
+                        }
+                    }
 
                     /* Insert into delete queue. */
                     vDelete.insert(vDelete.end(), state->vtx.begin(), state->vtx.end());
@@ -1050,8 +1115,6 @@ namespace TAO
             /* Reset the transaction fees. */
             nFees = 0;
 
-            debug::log(3, "BLOCK BEGIN-------------------------------------");
-
             /* Check through all the transactions. */
             for(const auto& proof : vtx)
             {
@@ -1073,6 +1136,7 @@ namespace TAO
                     if(!LLD::Ledger->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction not on disk");
 
+                    /* Verbose 3 log output. */
                     if(config::nVerbose >= 3)
                         tx.print();
 
@@ -1192,11 +1256,9 @@ namespace TAO
                     TAO::API::Indexing::PushTransaction(hash);
             }
 
+            /* Verbose 3 output for extra block data. */
             if(config::nVerbose >= 3)
                 debug::log(3, "Block Height ", nHeight, " Hash ", hashBlock.SubString());
-
-
-            debug::log(3, "BLOCK END-------------------------------------");
 
             /* Update the previous state's next pointer. */
             BlockState prev = Prev();
@@ -1269,17 +1331,12 @@ namespace TAO
                         if(LLD::Sessions->Active(tx.hashGenesis))
                         {
                             /* Get a reference of our transaction. */
-                            TAO::API::Transaction wtx = TAO::API::Transaction(tx);
+                            TAO::API::Transaction wtx =
+                                TAO::API::Transaction(tx);
 
                             /* Make sure indexes are deleted. */
-                            if(!wtx.Delete(hash))
-                            {
-                                debug::warning(FUNCTION, "failed to erase our API indexes for ", hash.SubString());
-                                continue;
-                            }
-
-                            /* TODO: delete this debug info for < verbose=3 */
-                            debug::log(0, FUNCTION, "deleted API session indexes for ", hash.SubString());
+                            if(wtx.Delete(hash))
+                                debug::log(0, FUNCTION, "deleted API session indexes for ", hash.SubString());
                         }
                     }
                 }
@@ -1295,7 +1352,7 @@ namespace TAO
 
                     /* Disconnect the inputs. */
                     if(!tx.Disconnect(*this))
-                        return debug::error(FUNCTION, "failed to connect inputs");
+                        return debug::error(FUNCTION, "failed to disconnect inputs");
 
                     /* Wallets need to refund inputs when disonnecting coinstake */
                     #ifndef NO_WALLET
