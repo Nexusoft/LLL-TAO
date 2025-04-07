@@ -717,6 +717,10 @@ std::string base_uint<BITS>::ToString() const
 template<uint32_t BITS>
 std::string base_uint<BITS>::SubString(const uint32_t nSize) const
 {
+    /* Special handle if we are debugging reorgs. */
+    if(!config::GetBoolArg("-truncatehashes", true))
+        return GetHex();
+
     return (GetHex().substr(0, nSize));
 }
 
