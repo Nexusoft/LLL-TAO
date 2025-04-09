@@ -91,22 +91,9 @@ namespace LLP
                 return false;
             }
 
-            /* Find an available slot. */
-            uint32_t nSlot = find_slot();
-
             /* Update the indexes. */
             pnode->nDataThread     = ID;
-            pnode->nDataIndex      = nSlot;
             pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
-
-            /* Set our return connection pointer. */
-            pNodeRet = std::shared_ptr<ProtocolType>(pnode);
-
-            /* Find a slot that is empty. */
-            if(nSlot == CONNECTIONS->size())
-                CONNECTIONS->push_back(pNodeRet);
-            else
-                CONNECTIONS->at(nSlot) = pNodeRet;
 
             /* Check for inbound socket. */
             if(pnode->Incoming())
@@ -114,8 +101,18 @@ namespace LLP
             else
                 ++nOutbound;
 
+            /* Find an avilable data thread slot. */
+            const uint32_t nSlot = find_slot();
+
             /* Fire the connected event. */
+            pnode->nDataIndex = nSlot;
             pnode->Event(EVENTS::CONNECT);
+
+            /* Find a slot that is empty. */
+            if(nSlot == CONNECTIONS->size())
+                CONNECTIONS->push_back(std::shared_ptr<ProtocolType>(pnode));
+            else
+                CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
 
             /* Notify data thread to wake up. */
             CONDITION.notify_all();
@@ -615,9 +612,10 @@ namespace LLP
     uint32_t DataThread<ProtocolType>::find_slot()
     {
         /* Loop through each connection. */
-        uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
+        const uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
         for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
         {
+            /* Find an available connection. */
             if(!CONNECTIONS->at(nIndex))
                 return nIndex;
         }
