@@ -783,7 +783,7 @@ namespace TAO
                 /* Get the last stake block. */
                 TAO::Ledger::BlockState stateLast;
                 if(!LLD::Ledger->ReadBlock(hashLastTrust, stateLast))
-                    return debug::error(FUNCTION, "last block not in database");
+                    return debug::error(FUNCTION, "last block not in database", hashLastTrust.ToString());
 
                 /* Calculate Block Age (time from last stake block until previous block) */
                 const uint64_t nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
