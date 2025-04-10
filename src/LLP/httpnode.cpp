@@ -118,7 +118,7 @@ namespace LLP
 
                     /* Dump the header if requested on read. */
                     if(config::GetBoolArg("-httpheader"))
-                        debug::log(0, strLine);
+                        debug::log(0, NODE, strLine);
 
                     /* Find the delimiter to split. */
                     const std::string::size_type pos = strLine.find(':', 0);
