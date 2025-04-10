@@ -777,6 +777,12 @@ namespace TAO
                 if(nHeight > ChainState::nBestHeight.load() + 1 && (nEquals == 1 && nGreater == 1))
                     ++nGreater;
 
+                /* Log the weights. */
+                debug::log(2, FUNCTION, "WEIGHTS [", uint32_t(nGreater), "]",
+                    " Prime ", nChannelWeight[1].Get64(),
+                    " Hash ",  nChannelWeight[2].Get64(),
+                    " Stake ", nChannelWeight[0].Get64());
+
                 /* Check for conflicted blocks. */
                 if(fConflicted)
                 {
@@ -788,12 +794,6 @@ namespace TAO
                 /* Handle single channel having higher weight. */
                 else if((nEquals == 2 && nGreater == 1) || nGreater > 1)
                 {
-                    /* Log the weights. */
-                    debug::log(2, FUNCTION, "WEIGHTS [", uint32_t(nGreater), "]",
-                        " Prime ", nChannelWeight[1].Get64(),
-                        " Hash ",  nChannelWeight[2].Get64(),
-                        " Stake ", nChannelWeight[0].Get64());
-
                     /* Set the best chain. */
                     if(!SetBest())
                         return debug::error(FUNCTION, "failed to set best chain");

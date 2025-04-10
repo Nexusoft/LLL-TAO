@@ -209,7 +209,13 @@ namespace TAO
 
                             /* Accept into memory pool. */
                             if(!LLD::Ledger->HasTx(hash))
-                                mempool.AddUnchecked(tx);
+                            {
+                                /* Add unchecked when syncing. */
+                                if(ChainState::Synchronizing())
+                                    mempool.AddUnchecked(tx);
+                                else
+                                    mempool.Accept(tx);
+                            }
 
                             vtx.push_back(std::make_pair(block.vtx[n].first, hash));
                         }
@@ -232,7 +238,13 @@ namespace TAO
 
                         /* Accept into memory pool. */
                         if(!LLD::Legacy->HasTx(hash))
-                            mempool.AddUnchecked(tx);
+                        {
+                            /* Add unchecked when syncing. */
+                            if(ChainState::Synchronizing())
+                                mempool.AddUnchecked(tx);
+                            else
+                                mempool.Accept(tx);
+                        }
 
                         /* Add transaction to binary data. */
                         vtx.push_back(std::make_pair(block.vtx[n].first, hash));
