@@ -26,6 +26,9 @@ namespace TAO::API
     /* Lists the current logged in sessions for -multiusername mode. */
     encoding::json Network::List(const encoding::json& jParams, const bool fHelp)
     {
+        /* Get our current object type. */
+        const std::string strType = ExtractType(jParams);
+
         /* Number of results to return. */
         uint32_t nLimit = 100, nOffset = 0;
 
@@ -36,35 +39,106 @@ namespace TAO::API
         /* Build our object list and sort on insert. */
         std::set<encoding::json, CompareResults> setAddresses({}, CompareResults(strOrder, strColumn));
 
-        /* Get addresses from manager. */
-        std::vector<LLP::TrustAddress> vAddr;
-        if(LLP::TRITIUM_SERVER->GetAddressManager())
-            LLP::TRITIUM_SERVER->GetAddressManager()->GetAddresses(vAddr, CONNECT_FLAGS_ALL);
-
-        /* Build our return JSON data. */
-        for(const auto& rAddr : vAddr)
+        /* Check our type for nodes. */
+        if(strType == "node")
         {
-            /* Check for invalid addresses. */
-            if(rAddr.nLastSeen == 0)
-                continue;
+            /* Get addresses from manager. */
+            std::vector<LLP::TrustAddress> vAddr;
+            if(LLP::TRITIUM_SERVER->GetAddressManager())
+                LLP::TRITIUM_SERVER->GetAddressManager()->GetAddresses(vAddr, CONNECT_FLAGS_ALL);
 
-            /* Build our JSON object. */
-            encoding::json jAddr =
+            /* Build our return JSON data. */
+            for(const auto& rAddr : vAddr)
             {
-                { "address",  rAddr.ToStringIP() },
-                { "lastseen", rAddr.nLastSeen    },
-                { "latency",  rAddr.nLatency     }
-            };
+                /* Check for invalid addresses. */
+                if(rAddr.nLastSeen == 0)
+                    continue;
 
-            /* Check that we match our filters. */
-            if(!FilterResults(jParams, jAddr))
-                continue;
+                /* Build our JSON object. */
+                encoding::json jAddr =
+                {
+                    { "address",  rAddr.ToStringIP() },
+                    { "lastseen", rAddr.nLastSeen    },
+                    { "latency",  rAddr.nLatency     }
+                };
 
-            /* Filter out our expected fieldnames if specified. */
-            if(!FilterFieldname(jParams, jAddr))
-                continue;
+                /* Check that we match our filters. */
+                if(!FilterResults(jParams, jAddr))
+                    continue;
 
-            setAddresses.insert(jAddr);
+                /* Filter out our expected fieldnames if specified. */
+                if(!FilterFieldname(jParams, jAddr))
+                    continue;
+
+                setAddresses.insert(jAddr);
+            }
+        }
+
+        /* Check our type name for peers. */
+        if(strType == "peer")
+        {
+            /* Get the rConnections from the tritium server */
+            std::vector<std::shared_ptr<LLP::TritiumNode>> vConnections =
+                LLP::TRITIUM_SERVER->GetConnections();
+
+            /* Build our jConnectionect list and sort on insert. */
+            std::set<encoding::json, CompareResults> setConnections({}, CompareResults(strOrder, strColumn));
+
+            /* Iterate the rConnections*/
+            for(const auto& rConnection : vConnections)
+            {
+                /* Skip over inactive rConnections. */
+                if(!rConnection.get())
+                    continue;
+
+                /* Push the active rConnection. */
+                if(rConnection.get()->Connected())
+                {
+                    encoding::json jConnection;
+
+                    /* The IPV4/V6 address */
+                    jConnection["address"]  = rConnection.get()->addr.ToString();
+
+                    /* The version string of the connected peer */
+                    jConnection["type"]     = rConnection.get()->strFullVersion;
+
+                    /* The protocol version being used to communicate */
+                    jConnection["version"]  = rConnection.get()->nProtocolVersion;
+
+                    /* Session ID for the current rConnection */
+                    jConnection["session"]  = rConnection.get()->nCurrentSession;
+
+                    /* Flag indicating whether this was an outgoing rConnection or incoming */
+                    jConnection["outgoing"] = rConnection.get()->fOUTGOING.load();
+
+                    /* The current height of the peer */
+                    jConnection["height"]   = rConnection.get()->nCurrentHeight;
+
+                    /* block hash of the peer's best chain */
+                    jConnection["best"]     = rConnection.get()->hashBestChain.SubString();
+
+                    /* block hash of the peer's best chain */
+                    if(rConnection.get()->hashGenesis != 0)
+                        jConnection["genesis"] = rConnection.get()->hashGenesis.SubString();
+
+                    /* The calculated network latency between this node and the peer */
+                    jConnection["latency"]  = rConnection.get()->nLatency.load();
+
+                    /* Unix timestamp of the last time this node had any communications with the peer */
+                    jConnection["lastseen"] = rConnection.get()->nLastPing.load();
+
+                    /* Check that we match our filters. */
+                    if(!FilterResults(jParams, jConnection))
+                        continue;
+
+                    /* Filter out our expected fieldnames if specified. */
+                    if(!FilterFieldname(jParams, jConnection))
+                        continue;
+
+                    /* Insert into set and automatically sort. */
+                    setAddresses.insert(jConnection);
+                }
+            }
         }
 
         /* Build our return value. */
@@ -72,8 +146,10 @@ namespace TAO::API
 
         /* Handle paging and offsets. */
         uint32_t nTotal = 0;
-        for(const auto& jRegister : setAddresses)
+        for(const auto& jAddress : setAddresses)
         {
+            debug::log(0, jAddress.dump(4));
+
             /* Check the offset. */
             if(++nTotal <= nOffset)
                 continue;
@@ -82,7 +158,7 @@ namespace TAO::API
             if(jRet.size() == nLimit)
                 break;
 
-            jRet.push_back(jRegister);
+            jRet.push_back(jAddress);
         }
 
         return jRet;

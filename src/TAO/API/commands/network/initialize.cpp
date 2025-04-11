@@ -40,7 +40,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
-            , "node"
+            , "node, peer"
         );
     }
 }
