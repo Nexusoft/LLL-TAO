@@ -148,8 +148,6 @@ namespace TAO::API
         uint32_t nTotal = 0;
         for(const auto& jAddress : setAddresses)
         {
-            debug::log(0, jAddress.dump(4));
-
             /* Check the offset. */
             if(++nTotal <= nOffset)
                 continue;
