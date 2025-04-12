@@ -362,15 +362,15 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::DEBIT: failed to rollback to pre-state");
 
                         /* Write the event to the ledger database. */
-                        if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+                        if(nFlags == TAO::Ledger::FLAGS::BLOCK && hashTo != WILDCARD_ADDRESS)
                         {
                             /* Read the owner of register. */
                             TAO::Register::State stateTo;
                             if(!LLD::Register->ReadState(hashTo, stateTo, nFlags))
-                                return debug::error(FUNCTION, "failed to read register to");
+                                return debug::error(FUNCTION, "failed to read register to ", TAO::Register::Address(hashTo).ToString());
 
                             /* Attempt to rollback event. */
-                            if(hashTo != WILDCARD_ADDRESS && !LLD::Ledger->EraseEvent(stateTo.hashOwner))
+                            if(!LLD::Ledger->EraseEvent(stateTo.hashOwner))
                                 return debug::error(FUNCTION, "OP::DEBIT: failed to rollback event");
                         }
 

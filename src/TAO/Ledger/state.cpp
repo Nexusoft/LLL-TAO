@@ -926,8 +926,12 @@ namespace TAO
                     /* Erase block if not connecting anything. */
                     if(vConnect.empty())
                     {
+                        /* Erase the blocks from disk if we are doing -forkblocks. */
                         LLD::Ledger->EraseBlock(state.GetHash());
-                        //LLD::Ledger->EraseIndex(state.nHeight);
+
+                        /* Erase our height indexes if we have enabled. */
+                        if(config::GetBoolArg("-indexheight", false))
+                            LLD::Ledger->EraseIndex(state.nHeight);
                     }
 
                     /* Debug output if we are debugging reorgs */
@@ -957,7 +961,8 @@ namespace TAO
                     }
 
                     /* Resurrect transactions that were disconnected. */
-                    vResurrect.insert(vResurrect.end(), state.vtx.rbegin(), state.vtx.rend());
+                    if(!vConnect.empty())
+                        vResurrect.insert(vResurrect.end(), state.vtx.rbegin(), state.vtx.rend());
                 }
 
                 /* Keep track of mempool transactions to delete. */
@@ -1358,7 +1363,8 @@ namespace TAO
                 }
 
                 /* Write the indexing entries. */
-                LLD::Ledger->EraseIndex(proof->second);
+                if(!LLD::Ledger->EraseIndex(proof->second))
+                    debug::notice(FUNCTION, "failed to erase indexes for ", proof->second.SubString());
             }
 
             /* Erase the index for block by height. */

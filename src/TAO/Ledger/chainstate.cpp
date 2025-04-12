@@ -265,11 +265,20 @@ namespace TAO
 
                 /* Set the best to older block. */
                 LLD::TxnBegin();
-                state.SetBest();
-                LLD::TxnCommit();
 
-                /* Debug Output. */
-                debug::log(0, FUNCTION, "-forkblocks=XXX requested removal of ", nForkblocks, " blocks");
+                /* Abort our transaction if we fail to rollback. */
+                if(!state.SetBest())
+                {
+                    /* Debug Output. */
+                    debug::log(0, FUNCTION, "-forkblocks=XXX failed to remove ", nForkblocks, " blocks");
+                    LLD::TxnAbort();
+                }
+                else
+                {
+                    /* Debug Output. */
+                    debug::log(0, FUNCTION, "-forkblocks=XXX requested removal of ", nForkblocks, " blocks");
+                    LLD::TxnCommit();
+                }
             }
 
             /* Fill out the best chain stats. */
