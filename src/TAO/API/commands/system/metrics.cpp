@@ -322,9 +322,6 @@ namespace TAO
                 /* Add reserves */
                 encoding::json jReserves;
 
-                TAO::Ledger::BlockState lastStakeBlockState = TAO::Ledger::ChainState::tStateBest.load();
-                bool fHasStake = TAO::Ledger::GetLastState(lastStakeBlockState, 0);
-
                 TAO::Ledger::BlockState lastPrimeBlockState = TAO::Ledger::ChainState::tStateBest.load();
                 bool fHasPrime = TAO::Ledger::GetLastState(lastPrimeBlockState, 1);
 
@@ -333,8 +330,8 @@ namespace TAO
 
                 /* for the ambassador/dev/fee reserves we need to add together the reserves from the last block from each of the respective channels*/
                 uint64_t nAmbassador = (fHasPrime ? lastPrimeBlockState.nReleasedReserve[1] : 0) + (fHasHash ? lastHashBlockState.nReleasedReserve[1] : 0);
-                uint64_t nDeveloper = (fHasPrime ? lastPrimeBlockState.nReleasedReserve[2] : 0) + (fHasHash ? lastHashBlockState.nReleasedReserve[2] : 0);
-                uint64_t nFee = (fHasStake ? lastStakeBlockState.nFeeReserve : 0) + (fHasPrime ? lastPrimeBlockState.nFeeReserve : 0) + (fHasHash ? lastHashBlockState.nFeeReserve : 0);
+                uint64_t nDeveloper  = (fHasPrime ? lastPrimeBlockState.nReleasedReserve[2] : 0) + (fHasHash ? lastHashBlockState.nReleasedReserve[2] : 0);
+                uint64_t nFee        = TAO::Ledger::ChainState::tStateBest.load().nFeesBurned;
 
                 jReserves["ambassador"] = double(nAmbassador) / TAO::Ledger::NXS_COIN;
                 jReserves["developer"] = double(nDeveloper) / TAO::Ledger::NXS_COIN;

@@ -2046,7 +2046,6 @@ namespace TAO::API
             { "height",     0 },
             { "weight",     0 },
             { "timespan",   0 },
-            { "fees",       0 },
             { "difficulty", 0 },
         };
 
@@ -2098,9 +2097,6 @@ namespace TAO::API
                     jRet["hashes"] = nRate;
                 }
             }
-
-            /* Include our fee reserves. */
-            jRet["fees"]        = FormatBalance(tBlock.nFeeReserve);
 
             /* Include our difficulty values. */
             jRet["difficulty"]  = TAO::Ledger::GetDifficulty(tBlock.nBits, nChannel);

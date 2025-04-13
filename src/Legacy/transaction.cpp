@@ -1261,13 +1261,21 @@ namespace Legacy
             //add tolerance to stake reward of + 1 (viz.) for stake rewards
             if (vout[0].nValue / 1000 > (nStakeReward + nValueIn) / 1000)
                 return debug::error(FUNCTION, GetHash().SubString(), " stake reward ", vout[0].nValue / 1000, " mismatch ", (nStakeReward + nValueIn) / 1000);
-        }
-        else if(nValueIn < GetValueOut())
-            return debug::error(FUNCTION, GetHash().SubString(), " value in ", nValueIn, " < value out ", GetValueOut());
 
-        /* Calculate the mint if connected with a block. */
-        if(nFlags == TAO::Ledger::FLAGS::BLOCK)
-            state.nMint += (int32_t)(GetValueOut() - nValueIn);
+            /* Calculate the mint if connected with a block. */
+            if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+                state.nMint = uint32_t(GetValueOut() - nValueIn);
+        }
+        else
+        {
+            /* Check that our value ranges are correct. */
+            if(nValueIn < GetValueOut())
+                return debug::error(FUNCTION, GetHash().SubString(), " value in ", nValueIn, " < value out ", GetValueOut());
+
+            /* Calculate the mint if connected with a block. */
+            if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+                state.nFees += uint32_t(nValueIn - GetValueOut());
+        }
 
         /* UTXO to Sig Chain support - If we are connected with a block then check the outputs to see if any of them
            are to a register address.  If they are then write an event for the account holder */

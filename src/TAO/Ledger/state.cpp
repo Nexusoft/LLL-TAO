@@ -102,7 +102,7 @@ namespace TAO
         , nChannelHeight   (0)
         , nChannelWeight   {0, 0, 0}
         , nReleasedReserve {0, 0, 0}
-        , nFeeReserve      (0)
+        , nFeesBurned      (0)
         , hashNextBlock    (0)
         , hashCheckpoint   (0)
         {
@@ -126,7 +126,7 @@ namespace TAO
         , nReleasedReserve {block.nReleasedReserve[0]
                            ,block.nReleasedReserve[1]
                            ,block.nReleasedReserve[2]}
-        , nFeeReserve      (block.nFeeReserve)
+        , nFeesBurned      (block.nFeesBurned)
         , hashNextBlock    (block.hashNextBlock)
         , hashCheckpoint   (block.hashCheckpoint)
         {
@@ -150,7 +150,7 @@ namespace TAO
         , nReleasedReserve {std::move(block.nReleasedReserve[0])
                            ,std::move(block.nReleasedReserve[1])
                            ,std::move(block.nReleasedReserve[2])}
-        , nFeeReserve      (std::move(block.nFeeReserve))
+        , nFeesBurned      (std::move(block.nFeesBurned))
         , hashNextBlock    (std::move(block.hashNextBlock))
         , hashCheckpoint   (std::move(block.hashCheckpoint))
         {
@@ -187,7 +187,7 @@ namespace TAO
             nReleasedReserve[0] = block.nReleasedReserve[0];
             nReleasedReserve[1] = block.nReleasedReserve[1];
             nReleasedReserve[2] = block.nReleasedReserve[2];
-            nFeeReserve         = block.nFeeReserve;
+            nFeesBurned         = block.nFeesBurned;
             hashNextBlock       = block.hashNextBlock;
             hashCheckpoint      = block.hashCheckpoint;
 
@@ -225,7 +225,7 @@ namespace TAO
             nReleasedReserve[0] = std::move(block.nReleasedReserve[0]);
             nReleasedReserve[1] = std::move(block.nReleasedReserve[1]);
             nReleasedReserve[2] = std::move(block.nReleasedReserve[2]);
-            nFeeReserve         = std::move(block.nFeeReserve);
+            nFeesBurned         = std::move(block.nFeesBurned);
             hashNextBlock       = std::move(block.hashNextBlock);
             hashCheckpoint      = std::move(block.hashCheckpoint);
 
@@ -250,7 +250,7 @@ namespace TAO
         , nReleasedReserve {block.nReleasedReserve[0]
                            ,block.nReleasedReserve[1]
                            ,block.nReleasedReserve[2]}
-        , nFeeReserve      (0)
+        , nFeesBurned      (0)
         , hashNextBlock    (block.hashNextBlock)
         , hashCheckpoint   (0)
         {
@@ -274,7 +274,7 @@ namespace TAO
         , nReleasedReserve {std::move(block.nReleasedReserve[0])
                            ,std::move(block.nReleasedReserve[1])
                            ,std::move(block.nReleasedReserve[2])}
-        , nFeeReserve      (0)
+        , nFeesBurned      (0)
         , hashNextBlock    (std::move(block.hashNextBlock))
         , hashCheckpoint   (0)
         {
@@ -364,7 +364,7 @@ namespace TAO
         , nChannelHeight   (0)
         , nChannelWeight   {0, 0, 0}
         , nReleasedReserve {0, 0, 0}
-        , nFeeReserve      (0)
+        , nFeesBurned      (0)
         , hashNextBlock    (0)
         , hashCheckpoint   (0)
         {
@@ -390,7 +390,7 @@ namespace TAO
         , nChannelHeight   (0)
         , nChannelWeight   {0, 0, 0}
         , nReleasedReserve {0, 0, 0}
-        , nFeeReserve      (0)
+        , nFeesBurned      (0)
         , hashNextBlock    (0)
         , hashCheckpoint   (0)
         {
@@ -504,9 +504,6 @@ namespace TAO
 
             /* Compute the Channel Height. */
             nChannelHeight = stateLast.nChannelHeight + 1;
-
-            /* Carry over the fee reserves from last block. */
-            nFeeReserve = stateLast.nFeeReserve;
 
             /* Compute the Released Reserves. */
             if(IsProofOfWork())
@@ -699,6 +696,7 @@ namespace TAO
                 }
 
                 /* Calculate the new reserve amounts. */
+                nMint = 0; //reset our mint value here
                 for(int nType = 0; nType < 3; ++nType)
                 {
                     /* Calculate the Reserves from the Previous Block in Channel's reserve and new Release. */
@@ -721,9 +719,6 @@ namespace TAO
                     nMint += nCoinbaseRewards[nType];
                 }
             }
-
-            /* Log the accumulated fee reserves. */
-            debug::log(2, "Fee Reserves | ", std::fixed, nFeeReserve / double(TAO::Ledger::NXS_COIN));
 
             /* Add the Pending Checkpoint into the Blockchain. */
             if(IsNewTimespan(statePrev))
@@ -1117,10 +1112,8 @@ namespace TAO
             /* Get a copy of our block hash. */
             const uint1024_t hashBlock = GetHash();
 
-            /* Reset the transaction fees. */
-            nFees = 0;
-
             /* Check through all the transactions. */
+            nFees = 0; //reset our fees value here.
             for(const auto& proof : vtx)
             {
                 /* Get the transaction hash. */
@@ -1185,27 +1178,31 @@ namespace TAO
                         if(!LLD::Ledger->WriteStake(tx.hashGenesis, hash))
                             return debug::error(FUNCTION, "failed to write last stake");
 
-                        /* If local database has a stake change request not marked as processed, update it.
-                         *
-                         * This updates a request that was reset because coinstake was disconnected and now is reconnected, such
-                         * as if execute a forkblocks and re-sync.
-                         *
-                         * It also handles marking stake changes in stake pool as processed, because the block is likely
-                         * mined by another node on the network, and stake change must be marked when that block is received.
-                         */
-                        StakeChange tRequest;
-                        if(LLD::Local->ReadStakeChange(tx.hashGenesis, tRequest))
+                        /* We don't need to check for stake changes when syncing. */
+                        if(!ChainState::Synchronizing())
                         {
-                            /* Update stake change request if not processed. */
-                            if(!tRequest.fProcessed)
+                            /* If local database has a stake change request not marked as processed, update it.
+                             *
+                             * This updates a request that was reset because coinstake was disconnected and now is reconnected, such
+                             * as if execute a forkblocks and re-sync.
+                             *
+                             * It also handles marking stake changes in stake pool as processed, because the block is likely
+                             * mined by another node on the network, and stake change must be marked when that block is received.
+                             */
+                            StakeChange tRequest;
+                            if(LLD::Local->ReadStakeChange(tx.hashGenesis, tRequest))
                             {
-                                /* Mark as processed. */
-                                tRequest.fProcessed = true;
-                                tRequest.hashTx     = hash;
+                                /* Update stake change request if not processed. */
+                                if(!tRequest.fProcessed)
+                                {
+                                    /* Mark as processed. */
+                                    tRequest.fProcessed = true;
+                                    tRequest.hashTx     = hash;
 
-                                /* Erase if we can't update it. */
-                                if(!LLD::Local->WriteStakeChange(tx.hashGenesis, tRequest))
-                                    LLD::Local->EraseStakeChange(tx.hashGenesis);
+                                    /* Erase if we can't update it. */
+                                    if(!LLD::Local->WriteStakeChange(tx.hashGenesis, tRequest))
+                                        LLD::Local->EraseStakeChange(tx.hashGenesis);
+                                }
                             }
                         }
                     }
@@ -1265,19 +1262,20 @@ namespace TAO
             BlockState prev = Prev();
 
             /* Update the money supply. */
-            nMoneySupply = (prev.IsNull() ? 0 : prev.nMoneySupply) + nMint;
+            nMoneySupply = (prev.nMoneySupply + nMint) - nFees;
 
             /* Update the fee reserves. */
-            nFeeReserve += nFees;
+            nFeesBurned = (prev.nFeesBurned + nFees);
 
             /* Log how much was generated / destroyed. */
             debug::log
             (
                 TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
 
-                nMint > 0 ? "Generated " : "Destroyed ",
-                std::fixed, (double)nMint / TAO::Ledger::NXS_COIN, " Nexus | Money Supply ",
-                std::fixed, (double)nMoneySupply / TAO::Ledger::NXS_COIN
+                int64_t(nMint - nFees) > 0 ? "Generated " : "Destroyed ",
+                std::fixed, (double)int64_t(nMint - nFees) / TAO::Ledger::NXS_COIN, " Nexus | Money Supply ",
+                std::fixed, (double)(nMoneySupply) / TAO::Ledger::NXS_COIN, " | Burned Fees ",
+                std::fixed, (double)(nFeesBurned) / TAO::Ledger::NXS_COIN
             );
 
             /* Write the updated block state to disk. */

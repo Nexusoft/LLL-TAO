@@ -71,6 +71,7 @@ namespace TAO::API
 
             /* Add this data to our supply json. */
             jSupply["total"]     = double(nSupply) / TAO::Ledger::NXS_COIN;
+            jSupply["burned"]    = double(tStateBest.nFeesBurned) / TAO::Ledger::NXS_COIN;
             jSupply["target"]    = double(nTarget) / TAO::Ledger::NXS_COIN;
             jSupply["inflation"] = double(nInflation * 100) / TAO::Ledger::NXS_COIN; //100 counts as 2 of 6 figures in NXS_COIN
 

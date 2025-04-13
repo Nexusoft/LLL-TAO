@@ -99,7 +99,7 @@ namespace TAO
 
 
             /** The reserves that are released. */
-            uint64_t nFeeReserve;
+            uint64_t nFeesBurned;
 
 
             /** Used to Iterate forward in the chain */
@@ -131,7 +131,7 @@ namespace TAO
                 READWRITE(nChannelWeight[0]);
                 READWRITE(nChannelWeight[1]);
                 READWRITE(nChannelWeight[2]);
-                READWRITE(nFeeReserve);
+                READWRITE(nFeesBurned);
                 READWRITE(nReleasedReserve[0]);
                 READWRITE(nReleasedReserve[1]);
                 READWRITE(nReleasedReserve[2]);
