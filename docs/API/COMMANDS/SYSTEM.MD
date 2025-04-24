@@ -1,19 +1,17 @@
 # System API
 -----------------------------------
+The System API provides methods for managing and monitoring the node system, including peer connections, system metrics, and node information.
 
-The System API provides public access to information about this node. This includes data such as the version of software the node is running, ledger and mempool state, node IP address, and number of connected peers.
-
------------------------------------
 ## `Direct Endpoints`
 
-The following commands are direct endpoints and thus do not support the above verb and noun structure available above.
+The following commands are direct endpoints and thus do not support the verb and noun structure:
 
-[`stop`](#stop)  
-[`get/info`](#get/info)  
-[`get/metrics`](#get/metrics)  
-[`list/peers`](#list/peers)  
-[`list/lisp-eids`](#list/lisp-eids)  
-[`validate/address`](#validate/address)  
+[`get/info`](#get/info) - Get system information  
+[`get/metrics`](#get/metrics) - Get system metrics  
+[`stop`](#stop) - Stop the node  
+[`list/peers`](#list/peers) - List connected peers  
+[`list/lisp-eids`](#list/lisp-eids) - List LISP EIDs  
+[`validate/address`](#validate/address) - Validate an address  
 
 Direct endpoints support filters and operators.  
 

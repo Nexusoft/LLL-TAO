@@ -4,7 +4,7 @@ The Market API is an on-chain, order book based P2P marketplace for trading toke
 
 ## `How market prices Are quoted`
 
-Each market pair represents the current exchange rate for the two tokens. Here’s how to interpret that information, using market=NXS/XYZ or the Nexus-to-XYZ exchange rate as an example:
+Each market pair represents the current exchange rate for the two tokens. Here's how to interpret that information, using market=NXS/XYZ or the Nexus-to-XYZ exchange rate as an example:
 
 **The current price is the last traded price and has nothing to do with the bid or ask price.** 
 
@@ -30,24 +30,28 @@ market/verb/noun
 ```
 
 
-## `Supported Verbs`
-
-The following verbs are currently supported by this API command-set:
-
-[`create`](#create) - Creates a new market place or becomes part of an existing one.  
-[`list`](#list) - List all orders for a specified marketplace.  
-[`execute`](#execute) - To full-fill a specified market order.  
-[`cancel`](#cancel) - To cancel a specified market order.  
-[`user`](#user) -  Retrieves all market orders for a user or profile.  
-
 ## `Supported Nouns`
 
 The following nouns are supported for this API command-set:
 
-[`bid`] - A market order placed to buy a token or asset.  
-[`ask`] - A market order placed to sell a token or asset.  
-[`order`] - A market order which can be a bid or ask.  
-[`executed`] - A market order which has been full-filled.  
+| Noun   | Description |
+| :-----:  | :-------- |
+| `bid`    | A bid order |
+| `ask`    | An ask order |
+| `order`  | Any type of order |
+| `executed` | An executed order |
+
+## `Supported Verbs`
+
+The following verbs are currently supported by this command-set:
+
+| Verb   | Description | Nouns |
+| :-----:  | :-------- | :---- |
+|[`create`](#-create) | Create a new order | `bid`, `ask` |
+|[`list`](#-list) | List all orders | `bid`, `ask`, `order`, `executed` |
+|[`execute`](#-execute) | Execute an order | `bid`, `ask`, `order` |
+|[`cancel`](#-cancel) | Cancel an order | `bid`, `ask`, `order` |
+|[`user`](#-user) | Get user's orders | `order`, `executed` |
 
 -----------------------------------
 
@@ -299,8 +303,8 @@ This command supports the `bid`, `ask` and `order` nouns.
 
 ```
 {
-    "success": true,
-    "txid": "010b0dbb226835c59b62d0761feac027cceb75ceb7d8d52abbd8072158415cf8c210af810f4d41ee6ad86dc6d754a17a0269db9025ba47becdb87a19ee71e99f"
+    "success": true,
+    "txid": "010b0dbb226835c59b62d0761feac027cceb75ceb7d8d52abbd8072158415cf8c210af810f4d41ee6ad86dc6d754a17a0269db9025ba47becdb87a19ee71e99f"
 }
 [Completed in 4976.551936 ms]
 ```

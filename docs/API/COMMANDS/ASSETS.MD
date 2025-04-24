@@ -13,6 +13,7 @@ The following nouns are supported for this API command-set:
 | `readonly`| A non-editable register *without* type safety |
 | `any`     | Any *asset, raw, or readonly* register |
 | `schema`  | An asset template for user-defined standards |
+| `account` | An asset register with account type safety |
 
 ### Example:
 
@@ -91,6 +92,12 @@ When creating or modifying a register, a format is required to encode the operat
 
 Please see the [``FORMATS``](FORMATS.MD) page to learn how to use the above formats in more details.
 
+
+## `Deprecated Endpoints`
+
+The following endpoints are deprecated and will be removed in a future version:
+
+[`list/asset/history`](#list/asset/history) - Deprecated in favor of `assets/history/asset`
 
 -----------------------------------
 
@@ -344,8 +351,8 @@ This updates the data values for the raw item register.
 
 ```
 {
-    "success": true,
-    "txid": "01947f824e9b117d618ed49a7dd84f0e7c4bb0896e40d0a95e04e27917e6ecb6b9a5ccfba7d0d5c308b684b95e98ada4f39bbac84db75e7300a09befd1ac0999"
+    "success": true,
+    "txid": "01947f824e9b117d618ed49a7dd84f0e7c4bb0896e40d0a95e04e27917e6ecb6b9a5ccfba7d0d5c308b684b95e98ada4f39bbac84db75e7300a09befd1ac0999"
 }
 [Completed in 18533.182336 ms]
 ```
@@ -704,29 +711,6 @@ This command supports all nouns.
 `signature` : The signature hash.
 
 `contracts` : The array of contracts bound to this transaction and their details with opcodes.
-{
-`id` : The sequential ID of this contract within the transaction.
-
-`OP` : The contract operation. Can be CREATE | MODIFY | TRANSFER | CLAIM.
-
-`address` : The register address of the asset object.
-
-`txid` : The transaction ID hash of the transaction for the credit / claim.
-
-`contract` : The ID of the contract within the transaction for the credit / claim.
-
-`type`: The type of register. Can be OBJECT, RAW or READONLY.
-
-`standard` : The type of object. Can be NONSTANDARD or JSON.
-
-`recipient` : The transfer recipients profile username hash.
-
-`tokenized` : Boolean flag indicating if the asset is tokenized or not.
-
-`<fieldname>=<value>` : The key-value pair for each piece of data stored in the asset.
-
-`object` : The data stored in the asset.
-}
 
 -----------------------------------
 
@@ -742,6 +726,11 @@ assets/list/partial
 
 `session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
 
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD).
+
+[`Operators`](//docs/API/OPERATORS.MD).
 
 ### Results:
 
@@ -757,12 +746,11 @@ assets/list/partial
         "type": "OBJECT",
         "Assetname": "Block Incorporated",
         "Registration_No": "NY_CA_45648784634546",
-        "Owner": "John Doe ",
+        "Owner": "John Doe",
         "address": "88NcYcKtMTRwtwDgfXFkZ4TbrHvkRGzsQkqVZco77Hqx1WRgCyi",
         "ownership": 12.0
     }
 ]
-[Completed in 0.542454 ms]
 ```
 
 #### Return Values:
@@ -779,12 +767,42 @@ assets/list/partial
 
 `<fieldname>=<value>` : The key-value pair for each piece of data stored in the asset.
 
-`data` : The data stored in a raw or readonly asset object.
-
 `address` : The register address of the asset.
-
-`name` : The name identifying the asset.
 
 `ownership` : This is the percentage of the asset owned by the caller, based on the number of tokens owned.
 
 -----------------------------------
+
+# <a name="verify/partial"></a> `verify/partial`
+
+Verifies if a given register has been tokenized and returns the ownership percentage.
+
+```
+assets/verify/partial
+```
+
+### Parameters:
+
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
+
+`name` : Required to **identify** the name of the asset. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). This is optional if the `address` is provided.
+
+`address` : Required to **identify** the register address of the asset. This is optional if the `name` is provided.
+
+### Results:
+
+#### Return value JSON object:
+
+```
+{
+    "tokenized": true,
+    "ownership": 12.0
+}
+```
+
+#### Return Values:
+
+`tokenized` : Boolean flag indicating if the asset is tokenized.
+
+`ownership` : The percentage of the asset owned by the caller, based on the number of tokens owned.
+{

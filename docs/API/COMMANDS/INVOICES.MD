@@ -1,6 +1,39 @@
 # Invoices API
 -----------------------------------
-The Invoices API provides users and application developers the ability to issue and pay invoices on the Nexus blockchain. The full supported endpoint of the invoices URI is as follows:
+The Invoices API provides methods for managing invoices in the system, including creating, paying, and canceling invoices.
+
+## `Supported Nouns`
+
+The following nouns are supported for this API command-set:
+
+| Noun   | Description |
+| :-----:  | :-------- |
+| `invoice` | A standard invoice |
+| `outstanding` | An unpaid invoice |
+| `paid` | A paid invoice |
+| `cancelled` | A cancelled invoice |
+
+## `Supported Verbs`
+
+The following verbs are currently supported by this command-set:
+
+| Verb   | Description | Nouns |
+| :-----:  | :-------- | :---- |
+|[`create`](#-create) | Create a new invoice | `invoice` |
+|[`get`](#-get) | Get invoice details | `invoice` |
+|[`pay`](#-pay) | Pay an invoice | `invoice` |
+|[`cancel`](#-cancel) | Cancel an invoice | `invoice` |
+|[`list`](#-list) | List all invoices | `invoice`, `outstanding`, `paid`, `cancelled` |
+|[`history`](#-history) | Generate the history of all last states | `invoice` |
+|[`transactions`](#-transactions) | List all transactions that modified specified object | `invoice` |
+
+## `Deprecated Endpoints`
+
+The following endpoints are deprecated and will be removed in a future version:
+
+[`list/history`](#list/history) - Deprecated in favor of `finance/transactions/account`
+
+The full supported endpoint of the invoices URI is as follows:
 
 ```
 invoices/verb/noun/filter/operator
@@ -11,30 +44,6 @@ The minimum required components of the URI are:
 ```
 invoices/verb/noun
 ```
-
-## `Supported Verbs`
-
-The following verbs are currently supported by this API command-set:
-
-[`create`](#create) - Generate a new object of supported type.  
-[`get`](#get) - Get object of supported type.  
-[`list`](#list) - List all objects owned by given user.  
-[`pay`](#pay) - Issue funds from supported type.  
-[`cancel`](#cancel) - To cancel the created invoice.   
-[`history`](#history) - Generate the history of all last states.  
-[`transactions`](#transactions) - List all transactions that modified specified object.  
-
-
-## `Supported Nouns`
-
-The following nouns are supported for this API command-set:
-
-[`invoice`] - An object register containing a token-id and balance.  
-[`outstanding`] - Generate the history of all last states.  
-[`paid`] - Claim a specified object register.  
-[`cancelled`] - Claim a specified object register.  
-
-
 
 # <a name="create"></a> `create`
 

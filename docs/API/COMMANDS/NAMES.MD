@@ -1,5 +1,43 @@
 # Names API
 -----------------------------------
+The Names API provides methods for managing names and namespaces in the system. Names can be global, local, or within a namespace.
+
+## `Supported Nouns`
+
+The following nouns are supported for this API command-set:
+
+| Noun   | Description |
+| :-----:  | :-------- |
+| `name`   | An active name object |
+| `inactive` | A disabled name object |
+| `global` | A name in the global namespace |
+| `local`  | A name in the user's local namespace |
+| `namespace` | A namespace object |
+| `any`    | Any name or namespace object |
+
+## `Supported Verbs`
+
+The following verbs are currently supported by this command-set:
+
+| Verb   | Description | Nouns |
+| :-----:  | :-------- | :---- |
+|[`create`](#-create) | Generate a new name or namespace | `name`, `namespace` |
+|[`get`](#-get) | Get name or namespace details | `any`, `name`, `namespace` |
+|[`list`](#-list) | List all names or namespaces | `any`, `name`, `namespace` |
+|[`transfer`](#-transfer) | Transfer a name | `name` |
+|[`claim`](#-claim) | Claim ownership of a name | `name` |
+|[`rename`](#-rename) | Rename a name | `name`, `local` |
+|[`reverse`](#-reverse) | Lookup a name by address | `lookup` |
+|[`transactions`](#-transactions) | List all transactions that modified specified object | `any`, `name`, `namespace` |
+|[`history`](#-history) | Generate the history of all last states | `any`, `name`, `namespace` |
+|[`update`](#-update) | Update a specified object | `any`, `name`, `namespace` |
+
+## `Deprecated Endpoints`
+
+The following endpoints are deprecated and will be removed in a future version:
+
+[`list/name/history`](#list/name/history) - Deprecated in favor of `names/history/name`
+[`list/namespace/history`](#list/namespace/history) - Deprecated in favor of `names/history/namespace`
 
 Names and Namespaces are special kinds of object registers that are used as locators to other object registers in the blockchain. When an object register is first created (an asset for example) the caller can provide a name for the register. If a name is provided then a Name object register is also created with its register address based on a hash of the name. The Name object also has a address field, which is populated with the register address of the register (asset, token, account etc) that the Name "points" to. In this way, objects can be retrieved by name by first hashing the name to get the Name object's address, retrieving the Name object, and then using the address stored within it to retrieve the object register. A Name then, is best thought of as a named index to object registers.
 
@@ -27,32 +65,6 @@ The minimum required components of the URI are:
 ```
 names/verb/noun
 ```
-
-## `Supported Verbs`
-
-The following verbs are currently supported by this API command-set:
-
-[`create`](#create) - Generate a new object of supported type.  
-[`get`](#get) - Get object of supported type.  
-[`list`](#list) - List all objects owned by given user.
-[`update`](#update) - Update an object register.   
-[`transfer`](#transfer) - Transfer ownership of an object register.  
-[`claim`](#claim) - Claim ownership of an object register.  
-[`history`](#history) - Generate the history of all last states.  
-[`transactions`](#transactions) - List all transactions that modified specified object.  
- 
-
-## `Supported Nouns`
-
-The following nouns are supported for this API command-set:
-
-[`name`] -  An object register containing a name object.  
-[`namespace`] - An object register containing a namespace object.  
-[`global`] - An object register which is recognised globally on the network.  
-[`local`] - An object register which is recognised only within the context of a user profile.  
-[`any`] - An object selection noun allowing mixed names nouns.  
-
------------------------------------
 
 # <a name="create"></a> `create`
 
@@ -98,9 +110,9 @@ This will create a new namespace.
 
 ```
 {
-    "success": true,
-    "address": "8LBEGF1Yo3UR2HPtVVokZMpmAespLfDdPdt99cpKiFJ7VSufsJ5",
-    "txid": "01dc4d11a9b3418832796ad6c9ca90ba18897b0ec24be44667f0fb0172481775925fa5fc568d54d8cac1e18a81beb552cbbb8cf242210a70233a79355e5a056f"
+    "success": true,
+    "address": "8LBEGF1Yo3UR2HPtVVokZMpmAespLfDdPdt99cpKiFJ7VSufsJ5",
+    "txid": "01dc4d11a9b3418832796ad6c9ca90ba18897b0ec24be44667f0fb0172481775925fa5fc568d54d8cac1e18a81beb552cbbb8cf242210a70233a79355e5a056f"
 }
 [Completed in 4981.591417 ms]
 ```
@@ -186,13 +198,13 @@ This will retreive a specified local name object.
 
 ```
 {
-    "owner": "b7fa11647c02a3a65a72970d8e703d8804eb127c7e7c41d565c3514a4d3fdf13",
-    "version": 1,
-    "created": 1654698239,
-    "modified": 1654698239,
-    "type": "OBJECT",
-    "namespace": "valkyrie",
-    "address": "8LBEGF1Yo3UR2HPtVVokZMpmAespLfDdPdt99cpKiFJ7VSufsJ5"
+    "owner": "b7fa11647c02a3a65a72970d8e703d8804eb127c7e7c41d565c3514a4d3fdf13",
+    "version": 1,
+    "created": 1654698239,
+    "modified": 1654698239,
+    "type": "OBJECT",
+    "namespace": "valkyrie",
+    "address": "8LBEGF1Yo3UR2HPtVVokZMpmAespLfDdPdt99cpKiFJ7VSufsJ5"
 }
 [Completed in 0.174417 ms]
 ```
@@ -344,8 +356,8 @@ This command does not support the `name` `namespace`or `any` nouns.
 
 ```
 {
-    "success": true,
-    "txid": "01947f824e9b117d618ed49a7dd84f0e7c4bb0896e40d0a95e04e27917e6ecb6b9a5ccfba7d0d5c308b684b95e98ada4f39bbac84db75e7300a09befd1ac0999"
+    "success": true,
+    "txid": "01947f824e9b117d618ed49a7dd84f0e7c4bb0896e40d0a95e04e27917e6ecb6b9a5ccfba7d0d5c308b684b95e98ada4f39bbac84db75e7300a09befd1ac0999"
 }
 [Completed in 18533.182336 ms]
 ```
@@ -404,9 +416,9 @@ This will transfer ownership of an namespace object to a specified recipient.
 
 ```
 {
-    "success": true,
-    "address": "8LBEGF1Yo3UR2HPtVVokZMpmAespLfDdPdt99cpKiFJ7VSufsJ5",
-    "txid": "017c673317370ea713d29d5743e4affc5fc7f9572ebecb8f4aac3a729a139b8b3e0dc7d30868328fb00f29324d365f381a4cb079bf86ef707954a1510a29053a"
+    "success": true,
+    "address": "8LBEGF1Yo3UR2HPtVVokZMpmAespLfDdPdt99cpKiFJ7VSufsJ5",
+    "txid": "017c673317370ea713d29d5743e4affc5fc7f9572ebecb8f4aac3a729a139b8b3e0dc7d30868328fb00f29324d365f381a4cb079bf86ef707954a1510a29053a"
 }
 [Completed in 4999.664459 ms]
 ```

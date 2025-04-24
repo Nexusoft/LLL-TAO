@@ -11,13 +11,21 @@ The following commands are direct endpoints and thus do not support the above ve
 [`get/blockhash`](#get/blockhash)  
 [`get/block`](#get/block)  
 [`list/blocks`](#list/blocks)  
+[`recent/blocks`](#recent/blocks)  
 [`get/transaction`](#get/transaction)  
 [`list/transactions`](#list/transactions)  
 [`submit/transaction`](#submit/transaction)  
 [`get/info`](#get/info)  
 [`get/metrics`](#get/metrics)  
+[`sync/status`](#sync/status)  
 
 Direct endpoints support `filters` and `operators`.
+
+## `Deprecated Endpoints`
+
+The following endpoints are deprecated and will be removed in a future version:
+
+[`get/mininginfo`](#get/mininginfo) - Deprecated in favor of `get/info`
 
 -----------------------------------
 
@@ -787,7 +795,7 @@ ledger/get/info
 
 `timestamp` :  The Unix timestamp of the most recent block in the blockchain.
 
-`checkpoint` : It is the most recent checkpoint that blocks can’t be reorganized before, so everything before that hash is finalized.
+`checkpoint` : It is the most recent checkpoint that blocks can't be reorganized before, so everything before that hash is finalized.
 
 -----------------------------------
 
@@ -948,3 +956,90 @@ ledger/get/metrics
 }    
 
 -----------------------------------
+
+# <a name="recent/blocks"></a> `recent/blocks`
+
+Retrieves an array of the most recent blocks in the chain.
+
+```
+ledger/recent/blocks
+```
+
+### Parameters:
+
+`verbose` : Optional, determines how much **transaction data** to include in the response. Supported values are:
+- `summary` : type, version, sequence, timestamp, and operation.
+- `detail` : genesis, nexthash, prevhash, pubkey and signature.
+
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD).
+
+[`Operators`](//docs/API/OPERATORS.MD).
+
+### Results:
+
+#### Return value JSON object:
+
+```
+[
+    {
+        "hash": "69336bc69ac2b9d06d7b9f9ede253cbeadba227751125cbb220654499c59a7b5138ea06ff62670fae614e5fed26aec8d3a0f346e03f10ea6c83dcb20ba8d93d17d92fffd6604666034e7002f421e39e64cef43325dfdf2c0334e51e018a31710c8fac17214d96d309b8dddb8f9bf9b3a27d28c71016b93a0e89f588c3604420a",
+        "height": 4555100,
+        "channel": 2,
+        "version": 8,
+        "timestamp": 1658817542,
+        "date": "2022-07-26 06:39:02 UTC",
+        "mint": 1.921131
+    }
+]
+```
+
+#### Return Values:
+
+`hash` : The hash of the block.
+
+`height` : The block height.
+
+`channel` : The block channel (0=Stake, 1=Prime, 2=Hash).
+
+`version` : Serialization version of this block.
+
+`timestamp` : The unified time the block was created.
+
+`date` : The formatted date and time the block was created.
+
+`mint` : The value minted in this block.
+
+-----------------------------------
+
+# <a name="sync/status"></a> `sync/status`
+
+Retrieves the current synchronization status of the node.
+
+```
+ledger/sync/status
+```
+
+### Results:
+
+#### Return value JSON object:
+
+```
+{
+    "synced": true,
+    "height": 4555100,
+    "best": 4555100,
+    "peers": 8
+}
+```
+
+#### Return Values:
+
+`synced` : Boolean flag indicating if the node is fully synchronized.
+
+`height` : The current block height of the node.
+
+`best` : The best block height known to the node.
+
+`peers` : The number of peers connected to the node.

@@ -1,55 +1,52 @@
 # Finance API
 -----------------------------------
 
-The Finance API provides methods for sending and receiving NXS or other tokens between users / accounts, creating accounts, and managing staking. The full supported endpoint of the finance URI is as follows:
-
-```
-finance/verb/noun/filter/operator
-```
-
-The minimum required components of the URI are:
-
-```
-finance/verb/noun
-```
-## `Supported Verbs`
-
-The following verbs are currently supported by this API command-set:
-
-[`burn`](#burn)     - Remove a given token from circulation.   
-[`create`](#create) - Generate a new object of supported type.   
-[`credit`](#credit) - Claim funds issued to account from debit.     
-[`debit`](#debit)   - Issue funds from supported type.  
-[`get`](#get)       - Get object of supported type.     
-[`list`](#list)     - List all objects owned by given user.     
-[`history`](#history) - Generate the history of all last states.          
-[`transactions`](#transactions) - List all transactions that modified specified object.     
-
------------------------------------
+The Finance API provides methods for managing financial operations in the system, including accounts, tokens, and trust accounts.
 
 ## `Supported Nouns`
 
 The following nouns are supported for this API command-set:
 
-[`account`] - An object register containing a token-id and balance.     
-[`trust`]   - An object register containing a token-id, balance, and trust.     
-[`token`]   - An object register containing a token-id, balance, supply, and decimals.      
-[`any`]     - An object selection noun allowing mixed accounts of different tokens.     
-[`all`]     - An object selection noun to collect all accounts for given token type.    
+| Noun   | Description |
+| :-----:  | :-------- |
+| `account` | A standard account |
+| `token` | A token account |
+| `trust` | A trust account |
+| `any` | Any type of account |
+| `all` | All types of accounts |
 
------------------------------------
+## `Supported Verbs`
+
+The following verbs are currently supported by this command-set:
+
+| Verb   | Description | Nouns |
+| :-----:  | :-------- | :---- |
+|[`create`](#-create) | Create a new account | `account`, `token`, `trust` |
+|[`get`](#-get) | Get account details | `any`, `account`, `token`, `trust` |
+|[`list`](#-list) | List all accounts | `any`, `account`, `token`, `trust` |
+|[`history`](#-history) | Generate the history of all last states | `any`, `account`, `token`, `trust` |
+|[`transactions`](#-transactions) | List all transactions that modified specified object | `any`, `account`, `token`, `trust` |
+|[`burn`](#-burn) | Burn tokens | `token` |
+|[`credit`](#-credit) | Credit an account | `any`, `account`, `token`, `trust` |
+|[`debit`](#-debit) | Debit an account | `any`, `account`, `token`, `trust` |
 
 ## `Direct Endpoints`
 
-The following commands are direct endpoints and thus do not support the above `verb` and `noun` structure available above.
+The following commands are direct endpoints and thus do not support the verb and noun structure:
 
-[`get/balances`](#get/balance)      
-[`get/stakeinfo`](#get/stakeinfo)   
-[`set/stake`](#set/stake)  
-[`void/transaction`](#void/transaction)   
-[`migrate/accounts`](#migrate/account)   
+[`get/balances`](#get/balances) - Get account balances  
+[`get/stakeinfo`](#get/stakeinfo) - Get stake information  
+[`migrate/accounts`](#migrate/accounts) - Migrate accounts  
+[`set/stake`](#set/stake) - Set stake amount  
+[`void/transaction`](#void/transaction) - Void a transaction  
 
-Direct endpoints support filters and operators.
+## `Deprecated Endpoints`
+
+The following endpoints are deprecated and will be removed in a future version:
+
+[`list/balances`](#list/balances) - Deprecated in favor of `finance/get/balances`  
+[`list/trustaccounts`](#list/trustaccounts) - Deprecated in favor of `register/list/trust`  
+[`list/account/transactions`](#list/account/transactions) - Deprecated in favor of `finance/transactions/account`  
 
 -----------------------------------
 

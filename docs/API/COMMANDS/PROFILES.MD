@@ -1,41 +1,34 @@
 # Profiles API
 -----------------------------------
-The Profiles API provides methods for creating and managing profiles. A profile is synonymous with a signature chain. The full supported endpoint of the profiles URI is as follows:
-
-```
-profiles/verb/noun/filter/operator
-```
-
-The minimum required components of the URI are:
-
-```
-profiles/verb/noun
-```
-
-## `Supported Verbs`
-
-The following verbs are currently supported by this API command-set:
-
-[`create`](#create) - Generate a new object of supported type.  
-[`update`](#update) - Updates the specified object registers.  
-[`recover`](#recover) - Recovers a profile account.  
-[`status`](#status) - Retreives status information for a profile.  
-[`notifications`](#notifications) - List all notifications that modified specified object.  
-[`transactions`](#transactions) - List all transactions that modified specified object.  
-
------------------------------------
+The Profiles API provides methods for managing user profiles in the system, including creating, updating, and recovering profiles.
 
 ## `Supported Nouns`
 
 The following nouns are supported for this API command-set:
 
-[`master`] - The default profile that controls all sub-profiles.  
-[`auth`] - Crypto object register for login auth.  
-[`credentials`] - Credentials used to secure profiles.  
-[`recovery`] - An object which represents the recovery seed for the profile.  
+| Noun   | Description |
+| :-----:  | :-------- |
+| `master` | A master profile |
+| `auth`   | An authentication profile |
+| `register` | A profile register |
+| `credentials` | Profile credentials |
+| `recovery` | Profile recovery information |
+
+## `Supported Verbs`
+
+The following verbs are currently supported by this command-set:
+
+| Verb   | Description | Nouns |
+| :-----:  | :-------- | :---- |
+|[`create`](#-create) | Create a new profile | `master`, `auth` |
+|[`list`](#-list) | List all profiles | `register` |
+|[`recover`](#-recover) | Recover a profile | `master` |
+|[`status`](#-status) | Get profile status | `master` |
+|[`transactions`](#-transactions) | List all transactions that modified specified object | `master` |
+|[`notifications`](#-notifications) | Get profile notifications | `master` |
+|[`update`](#-update) | Update a profile | `credentials`, `recovery` |
 
 -----------------------------------
-
 
 # <a name="create"></a> `create`
 

@@ -1,7 +1,9 @@
 # Register API
 -----------------------------------
 
-The Register API gives access to the register data and this allows network wide information to be presented. The full supported endpoint of the profiles URI is as follows:
+The Register API provides methods for managing and querying registers in the system. Registers can be of different types: object, raw, readonly, or crypto.
+
+The full supported endpoint of the profiles URI is as follows:
 
 ```
 register/verb/noun/filter/operator
@@ -13,31 +15,28 @@ The minimum required components of the URI are:
 register/verb/noun
 ```
 
-## `Supported Verbs`
-
-The following verbs are currently supported by this API command-set:
-
-[`get`](#get) - Get object of supported type.  
-[`list`](#list) - List all objects owned by given user.  
-[`history`](#history) - Generate the history of all last states.  
-[`transactions`](#transactions) - List all transactions that modified specified object.  
-
 ## `Supported Nouns`
 
 The following nouns are supported for this API command-set:
 
-[`finance:account`] - An object register containing a token-id and balance.  
-[`finance:trust`] - An object register containing a token-id, balance, and trust.  
-[`finance:token`] - An object register containing a token-id, balance, supply, and decimals.  
-[`names:name`] - An object register containing names and global names.  
-[`names:namespace`] - An object register containing namespaces.
-[`names:global`] - An object register containing global names.
-[`crypto`] - An object register which holds public key hashes.  
-[`object`] - An object register containing user-defined data structure.  
-[`assets:raw`] -  An object register of type raw.  
-[`assets:readonly`] - An object register of type readonly.  
-[`append`] - An object register of type append.  
-[`any`] - An object selection noun allowing mixed accounts of different tokens.  
+| Noun   | Description |
+| :-----:  | :-------- |
+| `object`   | An object register |
+| `raw`     | A raw data register |
+| `readonly` | A readonly data register |
+| `crypto`   | A crypto object register |
+| `any`      | Any type of register |
+
+## `Supported Verbs`
+
+The following verbs are currently supported by this command-set:
+
+| Verb   | Description | Nouns |
+| :-----:  | :-------- | :---- |
+|[`get`](#-get) | Get register details | `any`, `object`, `raw`, `readonly`, `crypto` |
+|[`list`](#-list) | List all registers | `any`, `object`, `raw`, `readonly`, `crypto` |
+|[`history`](#-history) | Generate the history of all last states | `any`, `object`, `raw`, `readonly`, `crypto` |
+|[`transactions`](#-transactions) | List all transactions that modified specified object | `any`, `object`, `raw`, `readonly`, `crypto` |
 
 -----------------------------------
 

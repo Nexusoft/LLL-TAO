@@ -23,27 +23,31 @@ The minimum required components of the URI are:
 supply/verb/noun
 ```
 
-## `Supported Verbs`
-
-The following verbs are currently supported by this API command-set:
-
-[`create`](#create) - Generate a new object of supported type.  
-[`get`](#get) - Get object of supported type.  
-[`list`](#list) - List all objects owned by given user.  
-[`update`](#update) - Update a specified object.  
-[`transfer`](#transfer) - Transfer a specified object register.  
-[`claim`](#claim) - Claim ownership of an object register.  
-[`history`](#history) - Generate the history of all last states.  
-[`transactions`](#transactions) - List all transactions that modified specified object.  
-
 ## `Supported Nouns`
 
 The following nouns are supported for this API command-set:
 
-[item] - An object register containing an item object.  
-[raw] - An object register containing raw object.  
-[readonly] - An object register containing read-only object.  
-[any] - An object selection noun allowing mixed items.  
+| Noun   | Description |
+| :-----:  | :-------- |
+| `item`   | A supply item object |
+| `raw`    | A raw supply data register |
+| `readonly` | A readonly supply data register |
+| `any`    | Any type of supply object |
+
+## `Supported Verbs`
+
+The following verbs are currently supported by this command-set:
+
+| Verb   | Description | Nouns |
+| :-----:  | :-------- | :---- |
+|[`create`](#-create) | Generate a new supply item | `item`, `raw`, `readonly` |
+|[`get`](#-get) | Get supply item details | `any`, `item`, `raw`, `readonly` |
+|[`list`](#-list) | List all supply items | `any`, `item`, `raw`, `readonly` |
+|[`transfer`](#-transfer) | Transfer a supply item | `any`, `item`, `raw`, `readonly` |
+|[`claim`](#-claim) | Claim ownership of a supply item | `any`, `item`, `raw`, `readonly` |
+|[`transactions`](#-transactions) | List all transactions that modified specified object | `any`, `item`, `raw`, `readonly` |
+|[`history`](#-history) | Generate the history of all last states | `any`, `item`, `raw`, `readonly` |
+|[`update`](#-update) | Update a specified object | `any`, `item`, `raw`, `readonly` |
 
 -----------------------------------
 
@@ -326,8 +330,8 @@ This updates the data value for the raw item register.
 
 ```
 {
-    "success": true,
-    "txid": "01947f824e9b117d618ed49a7dd84f0e7c4bb0896e40d0a95e04e27917e6ecb6b9a5ccfba7d0d5c308b684b95e98ada4f39bbac84db75e7300a09befd1ac0999"
+    "success": true,
+    "txid": "01947f824e9b117d618ed49a7dd84f0e7c4bb0896e40d0a95e04e27917e6ecb6b9a5ccfba7d0d5c308b684b95e98ada4f39bbac84db75e7300a09befd1ac0999"
 }
 [Completed in 18533.182336 ms]
 ```
@@ -382,7 +386,7 @@ This initiates transfer for a readonly item to a recipient.
 
 ```
 {
-    "txid": "27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1"
+    "txid": "27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1",
     "address": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse"
 }
 ```

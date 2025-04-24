@@ -32,7 +32,9 @@ The following verbs are currently supported by this API command-set:
 
 The following nouns are supported for this API command-set:
 
-[`local`] - The location of the session.
+| Noun   | Description |
+| :-----:  | :-------- |
+| `local`  | A local user session |
 
 -----------------------------------
 
