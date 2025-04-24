@@ -1,129 +1,143 @@
 # Invoices API
------------------------------------
+
 The Invoices API provides methods for managing invoices in the system, including creating, paying, and canceling invoices.
 
-## `Supported Nouns`
+## Supported Nouns
 
-The following nouns are supported for this API command-set:
+The following nouns are supported for this API command set:
 
-| Noun   | Description |
-| :-----:  | :-------- |
+| Noun | Description |
+|:-----|:------------|
 | `invoice` | A standard invoice |
 | `outstanding` | An unpaid invoice |
 | `paid` | A paid invoice |
 | `cancelled` | A cancelled invoice |
 
-## `Supported Verbs`
+## Supported Verbs
 
-The following verbs are currently supported by this command-set:
+The following verbs are currently supported by this command set:
 
-| Verb   | Description | Nouns |
-| :-----:  | :-------- | :---- |
-|[`create`](#-create) | Generate a new object of supported type | `invoice` |
-|[`get`](#-get) | Get object of supported type | `invoice` |
-|[`pay`](#-pay) | Issue funds from supported type | `invoice` |
-|[`cancel`](#-cancel) | To cancel the created invoice | `invoice` |
-|[`list`](#-list) | List all objects owned by given user | `invoice`, `outstanding`, `paid`, `cancelled` |
-|[`history`](#-history) | Generate the history of all last states | `invoice` |
-|[`transactions`](#-transactions) | List all transactions that modified specified object | `invoice` |
+| Verb | Description | Nouns |
+|:-----|:------------|:------|
+| [`create`](#create) | Generate a new object of supported type | `invoice` |
+| [`get`](#get) | Get object of supported type | `invoice` |
+| [`pay`](#pay) | Issue funds from supported type | `invoice` |
+| [`cancel`](#cancel) | To cancel the created invoice | `invoice` |
+| [`list`](#list) | List all objects owned by given user | `invoice`, `outstanding`, `paid`, `cancelled` |
+| [`history`](#history) | Generate the history of all last states | `invoice` |
+| [`transactions`](#transactions) | List all transactions that modified specified object | `invoice` |
 
-## `Deprecated Endpoints`
+## Deprecated Endpoints
 
 The following endpoints are deprecated and will be removed in a future version:
 
-[`list/history`](#list/history) - Deprecated in favor of `finance/transactions/account`
+- [`list/history`](#listhistory) - Deprecated in favor of `finance/transactions/account`
+
+## URI Structure
 
 The full supported endpoint of the invoices URI is as follows:
 
-```
+```bash
 invoices/verb/noun/filter/operator
 ```
 
 The minimum required components of the URI are:
 
-```
+```bash
 invoices/verb/noun
 ```
 
-# <a name="create"></a> `create`
+## Commands
+
+### <a name="create"></a> Create Invoice
 
 Create a new invoice object.
 
-```
+```bash
 invoices/create/noun
 ```
 
 This command only supports the invoice noun.
 
-### Parameters:
+#### Required Parameters
 
-`pin` : Required if **locked**. The PIN to authorize the transaction.
+##### Session
+This command requires a valid session to be active with these parameters required to identify and authenticate the given session:
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
+- `pin` (required if **locked**): The PIN to authorize the transaction
+- `session` (required if `-multiuser=1` is set): Used to identify the session to invoke the command under. For single-user API mode the session should not be supplied
 
-`name` : Optional to **identify** the invoice. If provided a Name object will also be created in the users local namespace, allowing the invoice to be accessed/retrieved by name. If no name is provided the account will need to be accessed/retrieved by its 256-bit register address.
+##### Invoice Details
+The following parameters are required to create the invoice:
 
-`account` : Required to **identify** the account, the invoice should be paid to. The account should be in the format username:name (for local names) or namespace::name. 
+- `account` (required): The account the invoice should be paid to. Can be either:
+  - A name in the format username:name (for local names) or namespace::name
+  - A 256-bit register address
+- `recipient` (required): The recipient of the invoice. Can be either:
+  - The username identifying the user account (sig-chain)
+  - The genesis hash of the signature chain to issue the invoice to
 
-`account` : Required to **identify** the 256-bit register address of the account, the invoice should be paid to. This is optional if the `name` is provided. 
+##### Line Items
+The `items` array must contain at least one line item with the following structure:
 
-`recipient` : Required to **identify** the recipient of the invoice. It can to be the username identifying the user account (sig-chain) or genesis hash of the signature chain to issue the invoice to.
-
-`items` : Array of line items that make up this invoice. At least one item in the items array must be included. The total invoice amount is calculated as the sum of all item amounts, and each item amount is calculated as the unit_amount multiplied by the units
+```json
 {
-`description` : A description for the line item.
-
-`amount` : The unit amount to be invoiced for this line item. This amount should be supplied in the currency of the payment account
-
-`units` : The number of units to be invoiced at the unit amount.
+    "description": "A description for the line item",
+    "amount": "The unit amount to be invoiced for this line item",
+    "units": "The number of units to be invoiced at the unit amount"
 }
-
-### Results:
-
-#### Return value JSON object:
-
-```
-"result": {
-		"success": true,
-		"address": "81N7yg7NJa66v8Nmh4eSeYk7QTbxjxgnLF6CLQQrH5zoHmfY6br",
-		"txid": "011a2561abc7ec305e288ea73b6346f92ac63a6cca17d931fd47fddc2beb8ee19cd2c73a1ae4e1ead36487b6b672dc2c8f781cbf0339fbd6b8a7869fcbff410c"
-	}
 ```
 
-#### Return values:
+#### Optional Parameters
 
-`success` : Boolean flag indicating that the invoice was created successfully .
+- `name`: A name to identify the invoice. If provided, a Name object will be created in the user's local namespace, allowing the invoice to be accessed/retrieved by name. If no name is provided, the account will need to be accessed/retrieved by its 256-bit register address
 
-`address` : The register address for the invoice. The address is needed when retrieving or paying the invoice.
+#### Results
 
-`txid` : The ID (hash) of the transaction that includes the invoice creation.
-
------------------------------------
-
-# <a name="get"></a> `get`
-
-Retrieves information about an invoice. 
-
+##### Return Value
+```json
+{
+    "success": true,
+    "address": "81N7yg7NJa66v8Nmh4eSeYk7QTbxjxgnLF6CLQQrH5zoHmfY6br",
+    "txid": "011a2561abc7ec305e288ea73b6346f92ac63a6cca17d931fd47fddc2beb8ee19cd2c73a1ae4e1ead36487b6b672dc2c8f781cbf0339fbd6b8a7869fcbff410c"
+}
 ```
+
+##### Return Values
+
+| Field | Description |
+|:------|:------------|
+| `success` | Boolean flag indicating that the invoice was created successfully |
+| `address` | The register address for the invoice. The address is needed when retrieving or paying the invoice |
+| `txid` | The ID (hash) of the transaction that includes the invoice creation |
+
+### <a name="get"></a> Get Invoice
+
+Retrieves information about an invoice.
+
+```bash
 invoices/get/noun
 ```
 
 This command only supports the invoice noun.
 
-### Parameters:
+#### Required Parameters
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
+##### Session
+This command requires a valid session to be active with these parameters required to identify and authenticate the given session:
 
-`name` : Required to **identify** the name of the invoice. The name should be in the format username:name (for local names). This is optional if the `address` is provided
+- `session` (required if `-multiuser=1` is set): Used to identify the session to invoke the command under. For single-user API mode the session should not be supplied
 
-`address` : Required to **identify** the register address of the invoice. This is optional if the `name` is provided.
+##### Lookup
+One of the following parameters is required to identify the invoice:
 
+- `name` (required if `address` not provided): The name of the invoice. The name should be in the format username:name (for local names)
+- `address` (required if `name` not provided): The register address of the invoice
 
-### Results:
+#### Results
 
-#### Return value JSON object:
-
-```
+##### Return Value
+```json
 [
     {
         "address": "822G7ZSsHh1ncTj4AJt6FnZ6MTWG3Q9NNTZ9KvG3CWA1SP3aq97",
@@ -160,71 +174,63 @@ This command only supports the invoice noun.
 ]
 ```
 
-#### Return values:
+##### Return Values
 
-`owner` : The username hash of the owners profile.
+| Field | Description |
+|:------|:------------|
+| `owner` | The username hash of the owners profile |
+| `created` | The UNIX timestamp when the invoice was created |
+| `modified` | The UNIX timestamp when the invoice was last modified |
+| `name` | The name identifying the invoice. For privacy purposes, this is only included in the response if the caller is the owner of the invoice |
+| `address` | The register address of the invoice |
+| `recipient` | The genesis hash of the signature chain to issue the invoice to |
+| `account` | The register address of the account the invoice should be paid to |
+| `items` | Array of line items that make up this invoice |
+| `items[].amount` | The unit amount to be invoiced for this line item |
+| `items[].units` | The number of units to be invoiced at the unit amount |
+| `items[].description` | A description of the line item |
+| `amount` | The total invoice amount. This is the sum of all line item total amounts (unit_amount x units) |
+| `token` | The register address of the token that this invoice should be paid in. Set to 0 for NXS transactions |
+| `status` | The current status of this invoice. Values can be OUTSTANDING (the invoice has been issued but not paid), PAID (the invoice has been paid by the recipient), or CANCELLED (the invoice was cancelled by the issuer before payment) |
 
-`created` : The UNIX timestamp when the invoice was created.
-
-`modified` : The UNIX timestamp when the invoice was last modified.
-
-`name` : The name identifying the invoice. For privacy purposes, this is only included in the response if the caller is the owner of the invoice
-
-`address` : The register address of the invoice.
-
-`recipient` : The genesis hash of the signature chain to issue the invoice to.
-
-`account` : The register address of the account the invoice should be paid to.
-
-`items` : Array of line items that make up this invoice.  
-{  
-`amount` : The unit amount to be invoiced for this line item.
-
-`units` : The number of units to be invoiced at the unit amount.
-
-`description` : A description of the line item.  
-}  
-`amount` : The total invoice amount. This is the sum of all line item total amounts (unit_amount x units).
-
-`token` : The register address of the token that this invoice should be paid in. Set to 0 for NXS transactions
-
-`status` : The current status of this invoice. Values can be OUTSTANDING (the invoice has been issued but not paid), PAID (the invoice has been paid by the recipient), or CANCELLED (the invoice was cancelled by the issuer before payment).
-
------------------------------------
-
-# <a name="list"></a> `list`
+### <a name="list"></a> List Invoices
 
 This will list all invoices issued or received by the signature chain.
 
-```
+```bash
 invoices/list/noun
 ```
 
 This command supports all the nouns.
 
-### Parameters:
+#### Required Parameters
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
+##### Session
+This command requires a valid session to be active with these parameters required to identify and authenticate the given session:
 
-`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
+- `session` (required if `-multiuser=1` is set): Used to identify the session to invoke the command under. For single-user API mode the session should not be supplied
 
-`username` : The username identifying the signature chain (optional if genesis is supplied).
+#### Optional Parameters
 
-`status` : Optional filter by invoice status. Values can be OUTSTANDING (the invoice has been issued but not paid), PAID (the invoice has been paid by the recipient), or CANCELLED (the invoice was cancelled by the issuer before payment)
+##### Identification
+One of the following parameters can be used to identify the signature chain:
 
-`limit` : The number of records to return for the current page. The default is 100.
+- `genesis`: The genesis hash identifying the signature chain (optional if username is supplied)
+- `username`: The username identifying the signature chain (optional if genesis is supplied)
 
-`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+##### Filtering
+The following parameters can be used to filter the results:
 
-`offset` : An alternative to page, offset can be used to return a set of (limit) results from a particular index.
+- `status`: Filter by invoice status. Values can be OUTSTANDING (the invoice has been issued but not paid), PAID (the invoice has been paid by the recipient), or CANCELLED (the invoice was cancelled by the issuer before payment)
+- `limit`: The number of records to return for the current page. The default is 100
+- `page`: Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied
+- `offset`: An alternative to page, offset can be used to return a set of (limit) results from a particular index
+- `where`: An array of clauses to filter the JSON results. More information on filtering the results from /list/xxx API methods can be found here Filtering Results
 
-`where` : An array of clauses to filter the JSON results. More information on filtering the results from /list/xxx API methods can be found here Filtering Results.
+#### Results
 
-### Results:
-
-#### Return value JSON object:
-
-```
+##### Return Value
+```json
 [
     {
         "address": "822G7ZSsHh1ncTj4AJt6FnZ6MTWG3Q9NNTZ9KvG3CWA1SP3aq97",
@@ -261,136 +267,110 @@ This command supports all the nouns.
 ]
 ```
 
-#### Return values:
+##### Return Values
 
-`owner` : The username hash of the owners profile.
+| Field | Description |
+|:------|:------------|
+| `owner` | The username hash of the owners profile |
+| `created` | The UNIX timestamp when the invoice was created |
+| `modified` | The UNIX timestamp when the invoice was last modified |
+| `name` | The name identifying the invoice. For privacy purposes, this is only included in the response if the caller is the owner of the invoice |
+| `address` | The register address of the invoice |
+| `recipient` | The genesis hash of the signature chain to issue the invoice to |
+| `account` | The register address of the account the invoice should be paid to |
+| `items` | Array of line items that make up this invoice |
+| `items[].amount` | The unit amount to be invoiced for this line item |
+| `items[].units` | The number of units to be invoiced at the unit amount |
+| `items[].description` | A description of the line item |
+| `amount` | The total invoice amount. This is the sum of all line item total amounts (unit_amount x units) |
+| `token` | The register address of the token that this invoice should be paid in. Set to 0 for NXS transactions |
+| `status` | The current status of this invoice. Values can be OUTSTANDING (the invoice has been issued but not paid), PAID (the invoice has been paid by the recipient), or CANCELLED (the invoice was cancelled by the issuer before payment) |
 
-`created` : The UNIX timestamp when the invoice was created.
-
-`modified` : The UNIX timestamp when the invoice was last modified.
-
-`name` : The name identifying the invoice. For privacy purposes, this is only included in the response if the caller is the owner of the invoice
-
-`address` : The register address of the invoice.
-
-`recipient` : The genesis hash of the signature chain to issue the invoice to.
-
-`account` : The register address of the account the invoice should be paid to.
-
-`items` : Array of line items that make up this invoice.  
-{    
-`amount` : The unit amount to be invoiced for this line item.  
-
-`unit` : The number of units to be invoiced at the unit amount.  
-
-`description` : A description of the line item.  
-}  
-
-`amount` : The total invoice amount. This is the sum of all line item total amounts (unit_amount x units).
-
-`token` : The register address of the token that this invoice should be paid in. Set to 0 for NXS transactions
-
-`status` : The current status of this invoice. Values can be OUTSTANDING (the invoice has been issued but not paid), PAID (the invoice has been paid by the recipient), or CANCELLED (the invoice was cancelled by the issuer before payment).
-
------------------------------------
-
-# <a name="pay"></a> `pay`
+### <a name="pay"></a> Pay Invoice
 
 Make a payment (debit) to settle an invoice.
 
-```
+```bash
 invoices/pay/noun
 ```
 
 This command only supports the invoice noun.
 
-### Parameters:
+#### Required Parameters
 
-`pin` : Required if **locked**. The PIN to authorize the transaction.
+- `pin` (required if **locked**): The PIN to authorize the transaction
+- `session` (required if `-multiuser=1` is set): Used to identify the session to invoke the command under. For single-user API mode the session should not be supplied
+- `name` (required): The name of the invoice. The name should be in the format username:name (for local names). This is optional if the `address` is provided
+- `address` (required if `name` not provided): The register address of the invoice. This is optional if the `name` is provided
+- `from` (required): The account to debit (pay the invoice from). This should be in the format username:name (for local names) or namespace::name (for names in a namespace) or the register address of the account to debit (pay the invoice from)
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
+#### Results
 
-`name` : Required to **identify** the name of the invoice. The name should be in the format username:name (for local names). This is optional if the `address` is provided
-
-`address` : Required to **identify** the register address of the invoice. This is optional if the `name` is provided.
-
-`from` : Required to **identify** the account to debit (pay the invoice from). This should be in the format username:name (for local names) or namespace::name (for names in a namespace) or the register address of the account to debit (pay the invoice from). 
-
-### Results:
-
-#### Return value JSON object:
-
-```
+##### Return Value
+```json
 {
     "txid": "318b86d2c208618aaa13946a3b75f14472ebc0cce9e659f2830b17e854984b55606738f689d886800f21ffee68a3e5fd5a29818e88f8c5b13b9f8ae67739903d"
 }
 ```
 
-#### Return values:
+##### Return Values
 
-`txid` : The ID (hash) of the transaction that includes the DEBIT to pay the invoice AND the CLAIM to claim ownership of the invoice.
+| Field | Description |
+|:------|:------------|
+| `txid` | The ID (hash) of the transaction that includes the DEBIT to pay the invoice AND the CLAIM to claim ownership of the invoice |
 
------------------------------------
-
-# <a name="cancel"></a> `cancel`
+### <a name="cancel"></a> Cancel Invoice
 
 Cancels an unpaid invoice so that ownership returns back to the issuers signature chain.
 
-```
+```bash
 invoices/cancel/noun
 ```
 
 This command only supports the `invoice` and `outstanding` noun.
 
-### Parameters:
+#### Required Parameters
 
-`pin` : Required if **locked**. The PIN to authorize the transaction.
+- `pin` (required if **locked**): The PIN to authorize the transaction
+- `session` (required if `-multiuser=1` is set): Used to identify the session to invoke the command under. For single-user API mode the session should not be supplied
+- `name` (required): The name of the invoice. The name should be in the format username:name (for local names). This is optional if the `address` is provided
+- `address` (required if `name` not provided): The register address of the invoice. This is optional if the `name` is provided
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
+#### Results
 
-`name` : Required to **identify** the name of the invoice. The name should be in the format username:name (for local names). This is optional if the `address` is provided
-
-`address` : Required to **identify** the register address of the invoice. This is optional if the `name` is provided.
-
-### Results:
-
-#### Return value JSON object:
-
-```
+##### Return Value
+```json
 {
     "txid": "318b86d2c208618aaa13946a3b75f14472ebc0cce9e659f2830b17e854984b55606738f689d886800f21ffee68a3e5fd5a29818e88f8c5b13b9f8ae67739903d"
 }
 ```
 
-#### Return values:
+##### Return Values
 
-`txid` : The ID (hash) of the transaction that includes the DEBIT to pay the invoice AND the CLAIM to claim ownership of the invoice.
+| Field | Description |
+|:------|:------------|
+| `txid` | The ID (hash) of the transaction that includes the DEBIT to pay the invoice AND the CLAIM to claim ownership of the invoice |
 
------------------------------------
-
-# <a name="history"></a> `history`
+### <a name="history"></a> Get Invoice History
 
 This will get the history of the transactions for an invoice showing when it was created & transferred (two contracts that happen at the same point in time when the invoice is created) and claimed (paid or cancelled).
 
-```
+```bash
 invoices/history/noun
 ```
 
 This command supports all the nouns.
 
-### Parameters:
+#### Required Parameters
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
+- `session` (required if `-multiuser=1` is set): Used to identify the session to invoke the command under. For single-user API mode the session should not be supplied
+- `name` (required): The name of the invoice. The name should be in the format username:name (for local names). This is optional if the `address` is provided
+- `address` (required if `name` not provided): The register address of the invoice. This is optional if the `name` is provided
 
-`name` : Required to **identify** the name of the invoice. The name should be in the format username:name (for local names). This is optional if the `address` is provided
+#### Results
 
-`address` : Required to **identify** the register address of the invoice. This is optional if the `name` is provided.
-
-### Results:
-
-#### Return value JSON object:
-
-```
+##### Return Value
+```json
 [
     {
         "owner": "b7a57ddfb001d5d83ab5b25c0eaa0521e6b367784a30025114d07c444aa455c0",
@@ -460,51 +440,43 @@ This command supports all the nouns.
 
 The return value is a JSON array of objects for each entry in the invoice's history:
 
-`type` : The action that occurred. - CREATE | TRANSFER | CLAIM
+| Field | Description |
+|:------|:------------|
+| `type` | The action that occurred. - CREATE | TRANSFER | CLAIM |
+| `owner` | The username hash of the owners profile |
+| `modified` | The Unix timestamp of when the invoice was updated |
+| `checksum` | A checksum of the state register used for pruning |
+| `address` | The register address of the invoice |
+| `name` | The name of the invoice |
+| `data` | The JSON invoice data |
 
-`owner` : The username hash of the owners profile.
-
-`modified` : The Unix timestamp of when the invoice was updated.
-
-`checksum` : A checksum of the state register used for pruning.
-
-`address` : The register address of the invoice.
-
-`name` : The name of the invoice.
-
-`data` : The JSON invoice data.
-
------------------------------------
-
-# <a name="transactions"></a> `transactions`
+### <a name="transactions"></a> Get Transactions
 
 This will list off all of the transactions for the specified noun.
 
-```
+```bash
 invoices/transactions/noun
 ```
 
 This command supports the account, trust and token nouns.
 
-### Parameters:
+#### Required Parameters
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
+- `session` (required if `-multiuser=1` is set): Used to identify the session to invoke the command under. For single-user API mode the session should not be supplied
 
-`verbose` : Optional, determines how much transaction data to include in the response. Supported values are :
+#### Optional Parameters
 
-- default : hash
-
-- summary : type, version, sequence, timestamp, operation, and confirmations.
-
-- detail : genesis, nexthash, prevhash, pubkey and signature.
+- `verbose`: Optional, determines how much transaction data to include in the response. Supported values are :
+  - default : hash
+  - summary : type, version, sequence, timestamp, operation, and confirmations.
+  - detail : genesis, nexthash, prevhash, pubkey and signature.
 
 This method supports the Sorting / Filtering parameters.
 
-### Results:
+#### Results
 
-#### Return value JSON object:
-
-```
+##### Return Value
+```json
 [
     {
         "txid": "010522657fcf6ee72a5f0b5769419a87c61fa897c7c6d56443feb0ab8bb859bee0d3ba1a9420f16b2a4b20ddd9dcb0873e42be66d7a8654494e257c7d2ee7dbc",
@@ -555,65 +527,35 @@ This method supports the Sorting / Filtering parameters.
 [Completed in 0.961164 ms]
 ```
 
-#### Return values:
+##### Return values:
 
-`txid` : The transaction hash.
-
-`type` : The description of the transaction (legacy | tritium base | trust | genesis | user).
-
-`version` : The serialization version of the transaction.
-
-`sequence` : The sequence number of this transaction within the signature chain.
-
-`timestamp` : The Unix timestamp of when the transaction was created.
-
-`blockhash` : The hash of the block that this transaction is included in. Blank if not yet included in a block.
-
-`confirmations` : The number of confirmations that this transaction obtained by the network.
-
-`genesis` : The signature chain genesis hash.
-
-`nexthash` : The hash of the next transaction in the sequence.
-
-`prevhash` : the hash of the previous transaction in the sequence.
-
-`pubkey` : The public key.
-
-`signature` : The signature hash.
-
-`contracts` : The array of contracts bound to this transaction and their details with 
-
-opcodes.
-{
-`id` : The sequential ID of this contract within the transaction.
-
-`OP` : The contract operation. Can be APPEND, CLAIM, COINBASE, CREATE, CREDIT, DEBIT, FEE, GENESIS, LEGACY, TRANSFER, TRUST, STAKE, UNSTAKE, WRITE.
-
-`for` : For CREDIT transactions, the contract that this credit was created for . Can be COINBASE, DEBIT, orLEGACY.
-
-`txid` : The transaction that was credited / claimed.
-
-`contract` : The ID of the contract within the transaction that was credited / claimed.
-
-`proof` : The register address proving the credit.
-
-`from` : For DEBIT, CREDIT, FEE transactions, the register address of the account that the debit is being made from.
-
-`from_name` : For DEBIT, CREDIT, FEE transactions, the name of the account that the debit is being made from. Only included if the name can be resolved.
-
-`to` : For DEBIT and CREDIT transactions, the register address of the recipient account.
-
-`to_name` : For DEBIT and CREDIT transactions, the name of the recipient account. Only included if the name can be resolved.
-
-`amount` : the token amount of the transaction.
-
-`token` : the register address of the token that the transaction relates to. Set to 0 for NXS transactions
-
-`ticker` : The name of the token that the transaction relates to.
-
-`reference` : For DEBIT and CREDIT transactions this is the user supplied reference used by the recipient to relate the transaction to an order or invoice number.
-
-`object` : Returns a list of all hashed public keys in the crypto object register for the specified profile. The object result will contain the nine default keys(app1, app2, app3, auth, cert lisp, network, sign  and verify).
-}
-
------------------------------------
+| Field | Description |
+|:------|:------------|
+| `txid` | The transaction hash |
+| `type` | The description of the transaction (legacy | tritium base | trust | genesis | user) |
+| `version` | The serialization version of the transaction |
+| `sequence` | The sequence number of this transaction within the signature chain |
+| `timestamp` | The Unix timestamp of when the transaction was created |
+| `blockhash` | The hash of the block that this transaction is included in. Blank if not yet included in a block |
+| `confirmations` | The number of confirmations that this transaction obtained by the network |
+| `genesis` | The signature chain genesis hash |
+| `nexthash` | The hash of the next transaction in the sequence |
+| `prevhash` | the hash of the previous transaction in the sequence |
+| `pubkey` | The public key |
+| `signature` | The signature hash |
+| `contracts` | The array of contracts bound to this transaction and their details with opcodes |
+| `contracts[].id` | The sequential ID of this contract within the transaction |
+| `contracts[].OP` | The contract operation. Can be APPEND, CLAIM, COINBASE, CREATE, CREDIT, DEBIT, FEE, GENESIS, LEGACY, TRANSFER, TRUST, STAKE, UNSTAKE, WRITE |
+| `contracts[].for` | For CREDIT transactions, the contract that this credit was created for . Can be COINBASE, DEBIT, orLEGACY |
+| `contracts[].txid` | The transaction that was credited / claimed |
+| `contracts[].contract` | The ID of the contract within the transaction that was credited / claimed |
+| `contracts[].proof` | The register address proving the credit |
+| `contracts[].from` | For DEBIT, CREDIT, FEE transactions, the register address of the account that the debit is being made from |
+| `contracts[].from_name` | For DEBIT, CREDIT, FEE transactions, the name of the account that the debit is being made from. Only included if the name can be resolved |
+| `contracts[].to` | For DEBIT and CREDIT transactions, the register address of the recipient account |
+| `contracts[].to_name` | For DEBIT and CREDIT transactions, the name of the recipient account. Only included if the name can be resolved |
+| `contracts[].amount` | the token amount of the transaction |
+| `contracts[].token` | the register address of the token that the transaction relates to. Set to 0 for NXS transactions |
+| `contracts[].ticker` | The name of the token that the transaction relates to |
+| `contracts[].reference` | For DEBIT and CREDIT transactions this is the user supplied reference used by the recipient to relate the transaction to an order or invoice number |
+| `contracts[].object` | Returns a list of all hashed public keys in the crypto object register for the specified profile. The object result will contain the nine default keys(app1, app2, app3, auth, cert lisp, network, sign  and verify) |

@@ -1,412 +1,372 @@
 # Market API
------------------------------------
-The Market API is an on-chain, order book based P2P marketplace for trading tokens and assets. Assets can include both digital and physical goods. Users start by creating a new market with a token pair (NXS/XYZ) and other users can participate in that particular market, execute a particular order or cancel a placed order.
 
-## `How market prices Are quoted`
+The Market API provides methods for managing market operations in the system, including creating orders, executing trades, and querying market data.
 
-Each market pair represents the current exchange rate for the two tokens. Here's how to interpret that information, using market=NXS/XYZ or the Nexus-to-XYZ exchange rate as an example:
+## Supported Nouns
 
-**The current price is the last traded price and has nothing to do with the bid or ask price.** 
+The following nouns are supported for this API command set:
 
-- The token on the left (NXS) is the base token.  
-- The token on the right (XYZ) is the quote token.  
-- The price quoted represents how much of the quote token is needed to buy 1 unit of the base token. As a result, the base token is always expressed as 1 unit while the quote currency varies based on the current market and how much is needed to buy 1 unit of the base currency.  
-- If the NXS/XYZ exchange rate is 1.2, that means 1 NXS will buy 1.20 XYZ (or, put another way, it will cost 1.20 XYZ to buy 1 NXS).  
-- When the market rate rises, that means the base token has risen in value relative to the quote token (because 1 NXS will buy more XYZ tokens) and conversely, if the market rate falls, that means the base token has fallen in value.  
+| Noun | Description |
+|:-----|:------------|
+| `order` | A market order |
+| `trade` | A market trade |
+| `book` | The order book |
+| `ticker` | Market ticker information |
+| `history` | Market history information |
 
+## Supported Verbs
 
-**Note**: Market pairs are usually presented with the base token first and the quote token second, The market API allows to use the reverse market=XYZ/NXS and its treated as bid/ask depending on the noun.
+The following verbs are currently supported by this command set:
 
-The full supported endpoint of the market URI is as follows:
+| Verb | Description | Nouns |
+|:-----|:------------|:------|
+| [`create`](#create) | Generate a new object of supported type | `order` |
+| [`get`](#get) | Get object of supported type | `any`, `order`, `trade`, `book`, `ticker`, `history` |
+| [`list`](#list) | List all objects owned by given user | `any`, `order`, `trade`, `book`, `ticker`, `history` |
+| [`cancel`](#cancel) | Cancel an order | `order` |
+| [`execute`](#execute) | Execute a trade | `trade` |
 
-```
-market/verb/noun/filter/operator
-```
+## Direct Endpoints
 
-The minimum required components of the URI are:
+The following commands are direct endpoints and thus do not support the verb and noun structure:
 
-```
-market/verb/noun
-```
+| Command | Description |
+|:--------|:------------|
+| [`get/order`](#getorder) | Get order information |
+| [`get/trade`](#gettrade) | Get trade information |
+| [`get/book`](#getbook) | Get order book information |
+| [`get/ticker`](#getticker) | Get ticker information |
+| [`get/history`](#gethistory) | Get market history information |
+| [`create/order`](#createorder) | Create a new order |
+| [`cancel/order`](#cancelorder) | Cancel an order |
+| [`execute/trade`](#executetrade) | Execute a trade |
 
+## Deprecated Endpoints
 
-## `Supported Nouns`
+The following endpoints are deprecated and will be removed in a future version:
 
-The following nouns are supported for this API command-set:
+- [`list/order`](#listorder) - Deprecated in favor of `market/get/order`
+- [`list/trade`](#listtrade) - Deprecated in favor of `market/get/trade`
+- [`list/book`](#listbook) - Deprecated in favor of `market/get/book`
+- [`list/ticker`](#listticker) - Deprecated in favor of `market/get/ticker`
+- [`list/history`](#listhistory) - Deprecated in favor of `market/get/history`
 
-| Noun   | Description |
-| :-----:  | :-------- |
-| `bid`    | A market order placed to buy a token or asset |
-| `ask`    | A market order placed to sell a token or asset |
-| `order`  | A market order which can be a bid or ask |
-| `executed` | A market order which has been full-filled |
+## Commands
 
-## `Supported Verbs`
+### <a name="create"></a> Create Order
 
-The following verbs are currently supported by this command-set:
+Create a new market order.
 
-| Verb   | Description | Nouns |
-| :-----:  | :-------- | :---- |
-|[`create`](#-create) | Creates a new market place or becomes part of an existing one | `bid`, `ask` |
-|[`list`](#-list) | List all orders for a specified marketplace | `bid`, `ask`, `order`, `executed` |
-|[`execute`](#-execute) | To full-fill a specified market order | `bid`, `ask`, `order` |
-|[`cancel`](#-cancel) | To cancel a specified market order | `bid`, `ask`, `order` |
-|[`user`](#-user) | Retrieves all market orders for a user or profile | `order`, `executed` |
-
------------------------------------
-
-# <a name="create"></a> `create`
-
-This creates a new market pair or becomes part of an existing market represented by the token or asset pair token1/token2. Market pair token2/token1 is also part of the same market.
-
-```
+```bash
 market/create/noun
 ```
 
-This command supports the `bid` and `ask` nouns.
+This command only supports the order noun.
 
-#### create/bid
+#### Required Parameters
 
-This creates a bid market order for market=token1/token2, ask for market=token2/token1.
+##### Session
+This command requires a valid session to be active with these parameters required to identify and authenticate the given session:
 
-#### create/ask
+- `pin` (required if **locked**): The PIN for this profile
+- `session` (required if `-multiuser=1` is set): Used to identify the session to invoke the command under. For single-user API mode the session should not be supplied
 
-This creates a ask market order for market=token1/token2, bid for market=token2/token1.
+##### Order Details
+The following parameters are required to create the order:
 
-**NOTE:** When market=token1/token2  is reversed to market=token2/token1 the price has to be changed accordingly. But the market price is determined by the first order which creates the market pair.
+- `type` (required): The type of order (buy or sell)
+- `amount` (required): The amount of the order
+- `price` (required): The price of the order
+- `token` (required): The token to trade
 
+#### Optional Parameters
 
-### Parameters:
+- `expires`: The number of seconds from the order creation time after which the order will expire. If set to 0, the order will never expire. If omitted, a default expiration of 7 days (604800 seconds) is applied
+- `reference`: A 64-bit unsigned integer in the range of 0 to 18446744073709551615 that can be used to relate the order to an external reference
 
-`pin` : Required if **locked**. The `PIN` to authorize the transaction.
+#### Results
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
-
-`market` : token1/token2 - The **token pair** for which the order is created.
-
-`amount` : The **amount** of token2 to be exchanged.
-
-`price` : The **price** of the token2 in relation to token1.
-
-`to` : This is the NXS or token **receiving account** name or register address to credit.
-
-`from` : This is the NXS or token **sending account** name or register address to debit. 
-
-### Results:
-
-#### Return value JSON object:
-
-```
+##### Return Value
+```json
 {
     "success": true,
-    "address": "8CupQ2dym1CZGZZ7U3F8UQ2xR2fr2PZmtEqB5Ds2EJsG1jA3JZw",
-    "txid": "012bc5f80460a9605706e643f9364722e97ffe3dd4e94bce8e41ea6ae70b3336fe6274cfe74583bf72cf77d8bbdc951ae1b25c706253590e0c6d74fa4f78f4df"
+    "address": "8ESvYizqdApiuKEBjZMF1hnB8asDqECaDwAstcH3UtJ4Z6ceCn2",
+    "txid": "0131e17af8029b414814283a3d90813d12c238db6ddab213440249b795090a9cd77079d5804ec38303a59414d87108d4e44bf31f54a6c176285281a88ab5d737"
 }
-[Completed in 4991.918611 ms]
 ```
 
-#### Return Values:  
+##### Return Values
 
-`success` : Boolean flag indicating that the market order was created successfully.
+| Field | Description |
+|:------|:------------|
+| `success` | Boolean flag indicating that the order was created successfully |
+| `address` | The register address for the order. The address is needed when retrieving or canceling the order |
+| `txid` | The ID (hash) of the transaction that includes the order creation |
 
-`address` : The register address for this account. The address (or name that hashes to this address) is needed when creating crediting or debiting the account.
+### <a name="get"></a> Get Market Information
 
-`txid` : The hash of the transaction that was generated for the market order. If using -autotx this field will be ommitted.
+Retrieves market information based on the specified noun.
 
------------------------------------
-
-# <a name="list"></a> `list`
-
-This retrives a list of all the active orders for a particular market, specified by given noun.
-
+```bash
+market/get/noun
 ```
+
+This command supports the any, order, trade, book, ticker, and history nouns.
+
+#### Required Parameters
+
+##### Session
+This command requires a valid session to be active with these parameters required to identify and authenticate the given session:
+
+- `session` (required if `-multiuser=1` is set): Used to identify the session to invoke the command under. For single-user API mode the session should not be supplied
+
+#### Optional Parameters
+
+##### Filtering
+The following parameters can be used to filter the results:
+
+- `limit`: The number of records to return for the current page. The default is 100
+- `page`: Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied
+- `offset`: An alternative to page, offset can be used to return a set of (limit) results from a particular index
+- `where`: An array of clauses to filter the JSON results. More information on filtering the results from /list/xxx API methods can be found here Filtering Results
+
+#### Results
+
+##### Return Value
+```json
+{
+    "orders": [
+        {
+            "address": "822G7ZSsHh1ncTj4AJt6FnZ6MTWG3Q9NNTZ9KvG3CWA1SP3aq97",
+            "created": 1581389015,
+            "modified": 1581389107,
+            "owner": "a2056d518d6e6d65c6c2e05af7fe2d3182a93def20e960fcfa0d35777a082440",
+            "type": "buy",
+            "amount": 100,
+            "price": 1.5,
+            "token": "NXS",
+            "status": "open"
+        }
+    ],
+    "trades": [
+        {
+            "address": "822G7ZSsHh1ncTj4AJt6FnZ6MTWG3Q9NNTZ9KvG3CWA1SP3aq97",
+            "created": 1581389015,
+            "modified": 1581389107,
+            "owner": "a2056d518d6e6d65c6c2e05af7fe2d3182a93def20e960fcfa0d35777a082440",
+            "type": "buy",
+            "amount": 100,
+            "price": 1.5,
+            "token": "NXS",
+            "status": "completed"
+        }
+    ],
+    "book": {
+        "bids": [
+            {
+                "price": 1.5,
+                "amount": 100
+            }
+        ],
+        "asks": [
+            {
+                "price": 1.6,
+                "amount": 100
+            }
+        ]
+    },
+    "ticker": {
+        "last": 1.5,
+        "high": 1.6,
+        "low": 1.4,
+        "volume": 1000
+    }
+}
+```
+
+##### Return Values
+
+| Field | Description |
+|:------|:------------|
+| `orders` | Array of market orders |
+| `orders[].address` | The register address of the order |
+| `orders[].created` | The UNIX timestamp when the order was created |
+| `orders[].modified` | The UNIX timestamp when the order was last modified |
+| `orders[].owner` | The username hash of the owners profile |
+| `orders[].type` | The type of order (buy or sell) |
+| `orders[].amount` | The amount of the order |
+| `orders[].price` | The price of the order |
+| `orders[].token` | The token to trade |
+| `orders[].status` | The status of the order (open, filled, canceled, or expired) |
+| `trades` | Array of market trades |
+| `trades[].address` | The register address of the trade |
+| `trades[].created` | The UNIX timestamp when the trade was created |
+| `trades[].modified` | The UNIX timestamp when the trade was last modified |
+| `trades[].owner` | The username hash of the owners profile |
+| `trades[].type` | The type of trade (buy or sell) |
+| `trades[].amount` | The amount of the trade |
+| `trades[].price` | The price of the trade |
+| `trades[].token` | The token traded |
+| `trades[].status` | The status of the trade (completed or failed) |
+| `book` | The order book |
+| `book.bids` | Array of bid orders |
+| `book.bids[].price` | The price of the bid |
+| `book.bids[].amount` | The amount of the bid |
+| `book.asks` | Array of ask orders |
+| `book.asks[].price` | The price of the ask |
+| `book.asks[].amount` | The amount of the ask |
+| `ticker` | Market ticker information |
+| `ticker.last` | The last trade price |
+| `ticker.high` | The highest trade price |
+| `ticker.low` | The lowest trade price |
+| `ticker.volume` | The total trading volume |
+
+### <a name="list"></a> List Market Information
+
+Lists market information based on the specified noun.
+
+```bash
 market/list/noun
 ```
 
-This command supports all the nouns.
+This command supports the any, order, trade, book, ticker, and history nouns.
 
-### Parameters:
+#### Required Parameters
 
-`pin` : Required if **locked**. The `PIN` to authorize the transaction.
+##### Session
+This command requires a valid session to be active with these parameters required to identify and authenticate the given session:
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
+- `session` (required if `-multiuser=1` is set): Used to identify the session to invoke the command under. For single-user API mode the session should not be supplied
 
-`market` : Required to **identify** the market token pair.
+#### Optional Parameters
 
-`where` : An array of clauses to **filter** the JSON results. More information on filtering the results from /list/xxx API methods can be found at [`Queries`](/docs/API/QUERIES.md).
+##### Identification
+One of the following parameters can be used to identify the signature chain:
 
-[`Sorting`](//docs/API/SORTING.MD).
+- `genesis`: The genesis hash identifying the signature chain (optional if username is supplied)
+- `username`: The username identifying the signature chain (optional if genesis is supplied)
 
-[`Filtering`](/docs/API/FILTERING.MD).
+##### Filtering
+The following parameters can be used to filter the results:
 
-[`Operators`](//docs/API/OPERATORS.MD). 
+- `limit`: The number of records to return for the current page. The default is 100
+- `page`: Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied
+- `offset`: An alternative to page, offset can be used to return a set of (limit) results from a particular index
+- `where`: An array of clauses to filter the JSON results. More information on filtering the results from /list/xxx API methods can be found here Filtering Results
 
-### Results:
+#### Results
 
-#### Return value JSON object:
-
-```
-{
-    "bids": [
-        {
-            "txid": "012bc5f80460a9605706e643f9364722e97ffe3dd4e94bce8e41ea6ae70b3336fe6274cfe74583bf72cf77d8bbdc951ae1b25c706253590e0c6d74fa4f78f4df",
-            "timestamp": 1655815697,
-            "owner": "b7392196b83aca438567558462cd0c5d982569c7cefa668500c4bf3e61a03b7a",
-            "market": "XYZ/BIT",
-            "price": 1.0,
-            "type": "bid",
-            "contract": {
-                "OP": "DEBIT",
-                "from": "8CupQ2dym1CZGZZ7U3F8UQ2xR2fr2PZmtEqB5Ds2EJsG1jA3JZw",
-                "amount": 10.0,
-                "token": "8EdBM41i1MAgb7w2tjEsdd7DeKntUcsw4JWK1LswW457e2jDa8a",
-                "ticker": "BIT"
-            },
-            "order": {
-                "OP": "DEBIT",
-                "to": "8Cu9QHELK6ofHzbAwtWGnUcfkDz3zvGoSf7eDGZfh81AeMuqcYY",
-                "amount": 10.0,
-                "token": "8DXmAmkTtysSZUxM3ePA8wRmbSUofuHKSoCyDpN28aLuSrm1nDG",
-                "ticker": "XYZ"
-            }
-        }
-    ],
-    "asks": [
-        {
-            "txid": "016d62c69f05a82eefb463604325dd0331aeee787748a06619d6ca665c5a0576705c62de29f20c3eccfb8cbb25c4df169a53baa1e55493f5293fbbf864af7389",
-            "timestamp": 1655817006,
-            "owner": "b7a57ddfb001d5d83ab5b25c0eaa0521e6b367784a30025114d07c444aa455c0",
-            "market": "XYZ/BIT",
-            "price": 1.0,
-            "type": "ask",
-            "contract": {
-                "OP": "DEBIT",
-                "from": "8B9adrgaFX8hZvH1vQGjibHVYhsLuDTDu2Kn1FM25RZQtuUFyiE",
-                "amount": 10.0,
-                "token": "8DXmAmkTtysSZUxM3ePA8wRmbSUofuHKSoCyDpN28aLuSrm1nDG",
-                "ticker": "XYZ"
-            },
-            "order": {
-                "OP": "DEBIT",
-                "to": "8C3AiDrbDmbkeza1eBeeEJ2r5wqrnWGr9D1kewKqHfPzdY7jRkF",
-                "amount": 10.0,
-                "token": "8EdBM41i1MAgb7w2tjEsdd7DeKntUcsw4JWK1LswW457e2jDa8a",
-                "ticker": "BIT"
-            }
-        }
-    ]
-}
+##### Return Value
+```json
+[
+    {
+        "address": "822G7ZSsHh1ncTj4AJt6FnZ6MTWG3Q9NNTZ9KvG3CWA1SP3aq97",
+        "created": 1581389015,
+        "modified": 1581389107,
+        "owner": "a2056d518d6e6d65c6c2e05af7fe2d3182a93def20e960fcfa0d35777a082440",
+        "type": "buy",
+        "amount": 100,
+        "price": 1.5,
+        "token": "NXS",
+        "status": "open"
+    }
+]
 ```
 
-### Return Values:
+##### Return Values
 
-`order` : The array for bid or ask orders.
+| Field | Description |
+|:------|:------------|
+| `address` | The register address of the order |
+| `created` | The UNIX timestamp when the order was created |
+| `modified` | The UNIX timestamp when the order was last modified |
+| `owner` | The username hash of the owners profile |
+| `type` | The type of order (buy or sell) |
+| `amount` | The amount of the order |
+| `price` | The price of the order |
+| `token` | The token to trade |
+| `status` | The status of the order (open, filled, canceled, or expired) |
 
-`txid` : The hash of the transaction that was generated for this tx. If using -autotx this field will be ommitted.
+### <a name="cancel"></a> Cancel Order
 
-`timestamp` : The Unix timestamp of when the transaction was created.
+Cancel a market order.
 
-`owner` : The username hash of the profile that owns this account.
-
-`market` : The market for which the orders are listed.
-
-`price` : The price for that particular order.
-
-`type`  : The type of order bid or ask
-
-`contracts` : The array of contracts bound to this transaction and their details with opcodes.  
-{  
-`OP` :  The contract operation. Can be APPEND, CLAIM, COINBASE, CREATE, CREDIT, DEBIT, FEE, GENESIS, LEGACY, TRANSFER, TRUST, STAKE, UNSTAKE, WRITE.
-
-`from` : For DEBIT and CREDIT transactions, the register address of the senders account.
-
-`to` : For DEBIT and CREDIT transactions, the register address of the recipient account.
-
-`amount` : the token amount of the transaction.
-
-`token` :  the register address of the token that the transaction relates to. Set to 0 for NXS transactions.
-
-`ticker` :  The global name assigned to the token.    
-}    
-
-`address` : The register address for this account. The address (or name that hashes to this address) is needed when creating crediting or debiting the account.
-
------------------------------------
-
-# <a name="execute"></a> `execute`
-
-This allows to execute a particular order specified by given noun.
-
-```
-market/execute/noun
-```
-
-This command supports the `bid`, `ask` and `order` nouns.
-
-### Parameters:
-
-`pin` : Required if **locked**. The PIN to authorize the transaction.
-
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
-
-`txid`: The **transaction hash** of the bid /ask which is being executed.
-
-`to` : This is the NXS or token **receiving account** name or register address to credit.
-
-`from` : This is the NXS or token **sending account** name or register address to debit.
-
-### Results:
-
-#### Return value JSON object:
-
-```
-{
-    "success": true,
-    "address": "8CupQ2dym1CZGZZ7U3F8UQ2xR2fr2PZmtEqB5Ds2EJsG1jA3JZw",
-    "txid": "012bc5f80460a9605706e643f9364722e97ffe3dd4e94bce8e41ea6ae70b3336fe6274cfe74583bf72cf77d8bbdc951ae1b25c706253590e0c6d74fa4f78f4df"
-}
-[Completed in 4991.918611 ms]
-```
-
-#### Return Values:
-
-`success` :  Boolean flag indicating that the order was executed successfully.
-
-`txid` : The hash of the transaction that was generated for this tx. If using -autotx this field will be ommitted.
-
-`address` : The register address for this account. The address (or name that hashes to this address) is needed when
-creating crediting or debiting the account.
-
------------------------------------
-
-# <a name="cancel"></a> `cancel`
-
-This allows to cancel an active order specified by given noun.
-
-```
+```bash
 market/cancel/noun
 ```
 
-This command supports the `bid`, `ask` and `order` nouns.
+This command only supports the order noun.
 
-### Parameters:
+#### Required Parameters
 
-`pin` : Required if **locked**. The PIN to authorize the transaction.
+##### Session
+This command requires a valid session to be active with these parameters required to identify and authenticate the given session:
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
+- `pin` (required if **locked**): The PIN for this profile
+- `session` (required if `-multiuser=1` is set): Used to identify the session to invoke the command under. For single-user API mode the session should not be supplied
 
-`txid` : The **transaction hash** of the order to be cancelled.
+##### Cancel Details
+The following parameters are required to cancel the order:
 
-### Results:
+- `name` (required if `address` not provided): The name of the order to cancel. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace)
+- `address` (required if `name` not provided): The register address of the order to cancel
 
-#### Return value JSON object:
+#### Results
 
-```
+##### Return Value
+```json
 {
     "success": true,
-    "txid": "010b0dbb226835c59b62d0761feac027cceb75ceb7d8d52abbd8072158415cf8c210af810f4d41ee6ad86dc6d754a17a0269db9025ba47becdb87a19ee71e99f"
+    "txid": "01f51d6b23b871fc8da848afa57cf066cb9e3b8fb845a666335e8c678ef5249e98d4f3e477659098918e4bb590472a63d0ed0a17fa87904fcff6316158e9edfd"
 }
-[Completed in 4976.551936 ms]
+[Completed in 4979.735275 ms]
 ```
 
-#### Return Values:
+##### Return Values
 
-`success` : Boolean flag indicating that cancelling the order was successful. 
+| Field | Description |
+|:------|:------------|
+| `success` | Boolean flag indicating that the cancel was successful |
+| `txid` | The ID (hash) of the transaction that includes the cancel |
 
-`txid` : The hash of the transaction that was generated for cancelling the order. If using -autotx this field will be ommitted.
+### <a name="execute"></a> Execute Trade
 
------------------------------------
+Execute a market trade.
 
-# <a name="user"></a> `user`
-
-Retrieves a users market order information based on the noun.
-
+```bash
+market/execute/noun
 ```
-market/user/noun
-```
 
-This command supports all the nouns.
+This command only supports the trade noun.
 
+#### Required Parameters
 
-### Parameters:
+##### Session
+This command requires a valid session to be active with these parameters required to identify and authenticate the given session:
 
-`pin` : Required if **locked**. The PIN to authorize the transaction.
+- `pin` (required if **locked**): The PIN for this profile
+- `session` (required if `-multiuser=1` is set): Used to identify the session to invoke the command under. For single-user API mode the session should not be supplied
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
+##### Trade Details
+The following parameters are required to execute the trade:
 
-`market` : Required to **identify** the market token pair.
+- `order` (required): The order to execute the trade against. This can be the name or the register address of the order
+- `amount` (required): The amount to trade
 
-[`Sorting`](//docs/API/SORTING.MD).
+#### Results
 
-[`Filtering`](/docs/API/FILTERING.MD).
-
-[`Operators`](//docs/API/OPERATORS.MD). 
-
-
-### Results:
-
-#### Return value JSON object:
-
-```
+##### Return Value
+```json
 {
-    "bids": [
-        {
-            "txid": "01722ce68a0fd5b22fdd5d1e90ec3ec4036f24592aafd9f414968a9c69355bb34012704bea1046557d81e297911c058b7623bd1f6c8a16974e5ed41528f1bb70",
-            "timestamp": 1657201172,
-            "owner": "b7fa11647c02a3a65a72970d8e703d8804eb127c7e7c41d565c3514a4d3fdf13",
-            "market": "ETH/UPS",
-            "price": 0.12,
-            "type": "bid",
-            "contract": {
-                "OP": "DEBIT",
-                "from": "8BJ747ASK45oU7UC5e2dePXeMviskmU1t5Kd4iyKLdSiCgKtLcJ",
-                "amount": 10.0,
-                "token": "8DS2qGLhuEC2reKrzxyWaXXwtVq2KmGWGQCWKBQwrCQc4XS2b8V",
-                "ticker": "UPS"
-            },
-            "order": {
-                "OP": "DEBIT",
-                "to": "8CvvLqDpGNAtihtKcueSmW1SgLZPAKYANFMqW4A1Un5EW5nTsoh",
-                "amount": 83.33,
-                "token": "8DaVWMVaid9AULRZYVQL6tM2w2UzXJYE6B8AewTERF3FqbQngqQ",
-                "ticker": "ETH"
-            }
-        }
-    ],
-    "asks": []
+    "success": true,
+    "txid": "01f51d6b23b871fc8da848afa57cf066cb9e3b8fb845a666335e8c678ef5249e98d4f3e477659098918e4bb590472a63d0ed0a17fa87904fcff6316158e9edfd"
 }
-[Completed in 7.841892 ms]
+[Completed in 4979.735275 ms]
 ```
 
-#### Return Values:
+##### Return Values
 
-`order` : The array for bid or ask orders.
-
-`txid` : The hash of the transaction that was generated for this tx. If using -autotx this field will be ommitted.
-
-`timestamp` : The Unix timestamp of when the transaction was created.
-
-`owner` : The username hash of the profile that owns this account.
-
-`market` : The market for which the orders are listed.
-
-`price` : The price for that particular market order.
-
-`type`  : The type of order bid or ask
-
-`contracts` : The array of contracts bound to this transaction and their details with opcodes.  
-{  
-`OP` :  The contract operation. Can be CREDIT or DEBIT.
-
-`from` : For DEBIT or CREDIT transactions, the register address of the senders account.
-
-`to` : For DEBIT or CREDIT transactions, the register address of the recipient account.
-
-`amount` : The token amount of the transaction.
-
-`token` :  The register address of the token that the transaction relates to. Set to 0 for NXS transactions
-
-`ticker` :  The global name assigned to the token.  
-}  
-
------------------------------------
+| Field | Description |
+|:------|:------------|
+| `success` | Boolean flag indicating that the trade was executed successfully |
+| `txid` | The ID (hash) of the transaction that includes the trade execution |

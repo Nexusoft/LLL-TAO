@@ -1,333 +1,302 @@
 # Register API
------------------------------------
 
-The Register API provides methods for managing and querying registers in the system. Registers can be of different types: object, raw, readonly, or crypto.
+The Register API provides methods for managing registers in the system, including creating, updating, and querying registers.
 
-The full supported endpoint of the profiles URI is as follows:
+## Supported Nouns
 
+The following nouns are supported for this API command set:
+
+| Noun | Description |
+|:-----|:------------|
+| `register` | A standard register |
+| `object` | An object register |
+| `state` | A state register |
+| `any` | Any type of register |
+
+## Supported Verbs
+
+The following verbs are currently supported by this command set:
+
+| Verb | Description | Nouns |
+|:-----|:------------|:------|
+| [`create`](#create) | Generate a new object of supported type | `register`, `object`, `state` |
+| [`get`](#get) | Get object of supported type | `any`, `register`, `object`, `state` |
+| [`list`](#list) | List all objects owned by given user | `any`, `register`, `object`, `state` |
+| [`update`](#update) | Update an object | `any`, `register`, `object`, `state` |
+| [`delete`](#delete) | Delete an object | `any`, `register`, `object`, `state` |
+
+## Direct Endpoints
+
+The following commands are direct endpoints and thus do not support the verb and noun structure:
+
+| Command | Description |
+|:--------|:------------|
+| [`get/register`](#getregister) | Get register information |
+| [`get/object`](#getobject) | Get object register information |
+| [`get/state`](#getstate) | Get state register information |
+| [`list/registers`](#listregisters) | List registers |
+| [`list/objects`](#listobjects) | List object registers |
+| [`list/states`](#liststates) | List state registers |
+
+## Deprecated Endpoints
+
+The following endpoints are deprecated and will be removed in a future version:
+
+- [`list/register`](#listregister) - Deprecated in favor of `register/get/register`
+- [`list/object`](#listobject) - Deprecated in favor of `register/get/object`
+- [`list/state`](#liststate) - Deprecated in favor of `register/get/state`
+
+## Commands
+
+### <a name="create"></a> Create Register
+
+Create a new register object.
+
+```bash
+register/create/noun
 ```
-register/verb/noun/filter/operator
+
+This command supports the register, object, and state nouns.
+
+#### Required Parameters
+
+##### Session
+This command requires a valid session to be active with these parameters required to identify and authenticate the given session:
+
+- `pin` (required if **locked**): The PIN for this profile
+- `session` (required if `-multiuser=1` is set): Used to identify the session to invoke the command under. For single-user API mode the session should not be supplied
+
+##### Register Details
+The following parameters are required to create the register:
+
+- `type` (required): The type of register to create (register, object, or state)
+- `data` (required): The data to store in the register
+
+#### Optional Parameters
+
+- `name`: Optional name for the register
+- `metadata`: Optional metadata to be stored with the register
+
+#### Results
+
+##### Return Value
+```json
+{
+    "success": true,
+    "address": "8ESvYizqdApiuKEBjZMF1hnB8asDqECaDwAstcH3UtJ4Z6ceCn2",
+    "txid": "0131e17af8029b414814283a3d90813d12c238db6ddab213440249b795090a9cd77079d5804ec38303a59414d87108d4e44bf31f54a6c176285281a88ab5d737"
+}
 ```
 
-The minimum required components of the URI are:
+##### Return Values
 
-```
-register/verb/noun
-```
+| Field | Description |
+|:------|:------------|
+| `success` | Boolean flag indicating that the register was created successfully |
+| `address` | The register address for the register. The address is needed when retrieving or updating the register |
+| `txid` | The ID (hash) of the transaction that includes the register creation |
 
-## `Supported Nouns`
+### <a name="get"></a> Get Register
 
-The following nouns are supported for this API command-set:
+Retrieves information about a register.
 
-| Noun   | Description |
-| :-----:  | :-------- |
-| `object`   | An object register containing user-defined data structure |
-| `raw`     | An object register of type raw |
-| `readonly` | An object register of type readonly |
-| `crypto`   | An object register which holds public key hashes |
-| `any`      | An object selection noun allowing mixed accounts of different tokens |
-
-## `Supported Verbs`
-
-The following verbs are currently supported by this command-set:
-
-| Verb   | Description | Nouns |
-| :-----:  | :-------- | :---- |
-|[`get`](#-get) | Get object of supported type | `any`, `object`, `raw`, `readonly`, `crypto` |
-|[`list`](#-list) | List all objects owned by given user | `any`, `object`, `raw`, `readonly`, `crypto` |
-|[`history`](#-history) | Generate the history of all last states | `any`, `object`, `raw`, `readonly`, `crypto` |
-|[`transactions`](#-transactions) | List all transactions that modified specified object | `any`, `object`, `raw`, `readonly`, `crypto` |
-
------------------------------------
-
-
-# <a name="get"></a> `get`
-
-Retrieves information for a single object for a type specified by the noun
-
-```
+```bash
 register/get/noun
 ```
 
-This command supports all the nouns.
+This command supports the any, register, object, and state nouns.
 
-#### get/finance:account
+#### Required Parameters
 
-Retrieves information for a specified NXS or token account.
+##### Session
+This command requires a valid session to be active with these parameters required to identify and authenticate the given session:
 
-#### get/finance:trust
+- `session` (required if `-multiuser=1` is set): Used to identify the session to invoke the command under. For single-user API mode the session should not be supplied
 
-Retrieves information for a specified trust account.
+##### Lookup
+One of the following parameters is required to identify the register:
 
-#### get/finance:token
+- `name` (required if `address` not provided): The name of the register. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace)
+- `address` (required if `name` not provided): The register address of the register
 
-Retrieves information for a specified token address.
+#### Results
 
-#### get/names:name
-
-Retrieves information for a specified name.
-
-#### get/names:namespace
-
-Retrieves information for a specified namespace.
-
-#### get/crypto
-
-Retrieves information for a specified profile crypto object register.
-
-#### get/object
-
-Retrieves information for a specified object register.
-
-#### get/assets:readonly
-
-Retrieves information for a specified readonly register.
-
-#### get/assets:raw
-
-Retrieves information for a specified raw register.
-
-#### get/append
-
-Retrieves information for a specified append register.
-
-### Parameters:
-
-`name` : Required to **identify** the name of the account/trust/token. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). This is optional if the `address` is provided
-
-`address` : Required to **identify** the register address of the account/trust/token. This is optional if the `name` is provided.
-
-[`Sorting`](//docs/API/SORTING.MD).
-
-[`Filtering`](/docs/API/FILTERING.MD). 
-
-
------------------------------------
-
-# <a name="list"></a> `list`
-
-This method provides the user with the ability to directly access the object register data specified by the noun and does not need the user to be logged in.
-
+##### Return Value
+```json
+{
+    "address": "822G7ZSsHh1ncTj4AJt6FnZ6MTWG3Q9NNTZ9KvG3CWA1SP3aq97",
+    "created": 1581389015,
+    "modified": 1581389107,
+    "owner": "a2056d518d6e6d65c6c2e05af7fe2d3182a93def20e960fcfa0d35777a082440",
+    "type": "object",
+    "data": {
+        "key": "value"
+    },
+    "metadata": {
+        "key": "value"
+    }
+}
 ```
+
+##### Return Values
+
+| Field | Description |
+|:------|:------------|
+| `address` | The register address of the register |
+| `created` | The UNIX timestamp when the register was created |
+| `modified` | The UNIX timestamp when the register was last modified |
+| `owner` | The username hash of the owners profile |
+| `type` | The type of register (register, object, or state) |
+| `data` | The data stored in the register |
+| `metadata` | Optional metadata stored with the register |
+
+### <a name="list"></a> List Registers
+
+This will list all registers owned by the signature chain.
+
+```bash
 register/list/noun
 ```
 
-This command supports all the nouns.
+This command supports the any, register, object, and state nouns.
 
-#### list/finance:account
+#### Required Parameters
 
-Returns a list of all NXS and token accounts.
+##### Session
+This command requires a valid session to be active with these parameters required to identify and authenticate the given session:
 
-#### list/finance:trust
+- `session` (required if `-multiuser=1` is set): Used to identify the session to invoke the command under. For single-user API mode the session should not be supplied
 
-Returns a list of all the trust accounts on the blockchain.
+#### Optional Parameters
 
-#### list/finance:token
+##### Identification
+One of the following parameters can be used to identify the signature chain:
 
-Returns a list of all the token address issued on the blockchain.
+- `genesis`: The genesis hash identifying the signature chain (optional if username is supplied)
+- `username`: The username identifying the signature chain (optional if genesis is supplied)
 
-#### list/names:name
+##### Filtering
+The following parameters can be used to filter the results:
 
-Returns a list of all the names.
+- `limit`: The number of records to return for the current page. The default is 100
+- `page`: Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied
+- `offset`: An alternative to page, offset can be used to return a set of (limit) results from a particular index
+- `where`: An array of clauses to filter the JSON results. More information on filtering the results from /list/xxx API methods can be found here Filtering Results
 
-#### list/names:namespace
+#### Results
 
-Returns a list of all the namespaces.
-
-#### list/names:global
-
-Returns a list of all the global names.
-
-#### list/crypto
-
-Returns a list of all the crypto object registers.
-
-#### list/object
-
-Returns a list of all the object registers.
-
-#### list/readonly
-
-Returns a list of all the readonly registers.
-
-#### list/raw
-
-Returns a list of all the raw registers.
-
-#### list/append
-
-Returns a list of all the append registers.
-
-### Parameters:
-
-`where` : An array of clauses to **filter** the JSON results. More information on filtering the results from /list/xxx API methods can be found here: [`Queries`](/docs/API/QUERIES.md)
-
-[`Sorting`](//docs/API/SORTING.MD).
-
-[`Filtering`](/docs/API/FILTERING.MD). 
-
-[`Operators`](//docs/API/OPERATORS.MD). 
-
------------------------------------
-
-# <a name="history"></a> `history`
-
-This will get the history of the specified noun.
-
-```
-register/history/noun
+##### Return Value
+```json
+[
+    {
+        "address": "822G7ZSsHh1ncTj4AJt6FnZ6MTWG3Q9NNTZ9KvG3CWA1SP3aq97",
+        "created": 1581389015,
+        "modified": 1581389107,
+        "owner": "a2056d518d6e6d65c6c2e05af7fe2d3182a93def20e960fcfa0d35777a082440",
+        "type": "object",
+        "data": {
+            "key": "value"
+        },
+        "metadata": {
+            "key": "value"
+        }
+    }
+]
 ```
 
-This command supports all the nouns.
+##### Return Values
 
-#### history/finance:account
+| Field | Description |
+|:------|:------------|
+| `address` | The register address of the register |
+| `created` | The UNIX timestamp when the register was created |
+| `modified` | The UNIX timestamp when the register was last modified |
+| `owner` | The username hash of the owners profile |
+| `type` | The type of register (register, object, or state) |
+| `data` | The data stored in the register |
+| `metadata` | Optional metadata stored with the register |
 
-This will get the history and ownership of the specified NXS or token account.
+### <a name="update"></a> Update Register
 
-#### history/finance:trust
+Update a register object.
 
-This will get the history and ownership of the specified trust account. 
-
-#### history/finance:token
-
-This will get the history and ownership of the specified token addresses.
-
-#### history/names:name
-
-This will get the history and ownership of the specified name.
-
-#### history/names:namespace
-
-This will get the history and ownership of the specified namespace.
-
-#### history/crypto
-
-This will get the history of the specified crypto object register.
-
-#### history/object
-
-This will get the history and ownership of the specified object register.
-
-##### history/assets:readonly
-
-This will get the history and ownership of the specified readonly register.
-
-#### history/assets:raw
-
-This will get the history and ownership of the specified raw register.
-
-#### history/append
-
-This will get the history and ownership of the specified append register.
-
-### Parameters:
-
-`name` : Required to **identify** the name of the account/trust/token. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). This is optional if the `address` is provided
-
-`address` : Required to **identify** the register address of the account/trust/token. This is optional if the `name` is provided.
-
-[`Sorting`](//docs/API/SORTING.MD).
-
-[`Filtering`](/docs/API/FILTERING.MD).
-
-[`Operators`](//docs/API/OPERATORS.MD). 
-
------------------------------------
-
-# <a name="transactions"></a> `transactions`
-
-This will list off all of the transactions for the specified noun.
-
-```
-register/transactions/noun
+```bash
+register/update/noun
 ```
 
-This command supports all the nouns.
+This command supports the any, register, object, and state nouns.
 
-#### transactions/account
+#### Required Parameters
 
-List out all the transactions for the specified NXS account or token account.
+##### Session
+This command requires a valid session to be active with these parameters required to identify and authenticate the given session:
 
-#### transactions/trust
+- `pin` (required if **locked**): The PIN for this profile
+- `session` (required if `-multiuser=1` is set): Used to identify the session to invoke the command under. For single-user API mode the session should not be supplied
 
-List out all the transactions for the specified trust account
+##### Update Details
+The following parameters are required to update the register:
 
-#### transactions/token
+- `name` (required if `address` not provided): The name of the register to update. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace)
+- `address` (required if `name` not provided): The register address of the register to update
+- `data` (required): The new data to update the register with
 
-List out all the transactions for the specified token address.
+#### Results
 
-#### transactions/name
-
-List out all the transactions for the specified name.
-
-#### transactions/namespace
-
-List out all the transactions for the specified namespace.
-
-#### transactions/crypto
-
-List out all the transactions for the specified crypto object register.
-
-#### transactions/object
-
-List out all the transactions for the specified object register.
-
-#### transactions/readonly
-
-List out all the transactions for the specified readonly register.
-
-#### transactions/raw
-
-List out all the transactions for the specified raw register.
-
-#### transactions/append
-
-List out all the transactions for the specified append register.
-
-### Parameters:
-
-`verbose` : Optional, determines how much transaction data to include in the response. Supported values are :
-- `default` : hash
-
-- `summary` : type, version, sequence, timestamp, operation, and confirmations.
-
-- `detail` : genesis, nexthash, prevhash, pubkey and signature.
-
-[`Sorting`](//docs/API/SORTING.MD).
-
-[`Filtering`](/docs/API/FILTERING.MD).
-
-[`Operators`](//docs/API/OPERATORS.MD). 
-
-
-## Register API with Query DSL
-
-A few register API calls which will showcase the power of registers, LLD, which is the database and  Query-DSL. This is going to be a powerful tool for developers.
-
-All these calls will require the latest build of the core and will not work with the current stable version.
-
-To calculate the sum of all NXS on the tritium chain:
-
-```
-register/list/accounts,trust/total/sum sort=total order=desc limit=none where='object.token=0'
+##### Return Value
+```json
+{
+    "success": true,
+    "txid": "01f51d6b23b871fc8da848afa57cf066cb9e3b8fb845a666335e8c678ef5249e98d4f3e477659098918e4bb590472a63d0ed0a17fa87904fcff6316158e9edfd"
+}
+[Completed in 4979.735275 ms]
 ```
 
-List all the namespaces created in ascending order:
+##### Return Values
 
-```
-register/list/namespaces sort=created order=asc
-```
+| Field | Description |
+|:------|:------------|
+| `success` | Boolean flag indicating that the update was successful |
+| `txid` | The ID (hash) of the transaction that includes the update |
 
-List all the global names on the network:
+### <a name="delete"></a> Delete Register
 
-```
-register/list/names where=object.namespace=~GLOBAL~
-```
+Delete a register object.
 
-Create a rich list:
-
-```
-register/list/accounts,trust sort=total order=desc page=0 where=(object.token=0)
+```bash
+register/delete/noun
 ```
 
------------------------------------
+This command supports the any, register, object, and state nouns.
+
+#### Required Parameters
+
+##### Session
+This command requires a valid session to be active with these parameters required to identify and authenticate the given session:
+
+- `pin` (required if **locked**): The PIN for this profile
+- `session` (required if `-multiuser=1` is set): Used to identify the session to invoke the command under. For single-user API mode the session should not be supplied
+
+##### Delete Details
+The following parameters are required to delete the register:
+
+- `name` (required if `address` not provided): The name of the register to delete. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace)
+- `address` (required if `name` not provided): The register address of the register to delete
+
+#### Results
+
+##### Return Value
+```json
+{
+    "success": true,
+    "txid": "01f51d6b23b871fc8da848afa57cf066cb9e3b8fb845a666335e8c678ef5249e98d4f3e477659098918e4bb590472a63d0ed0a17fa87904fcff6316158e9edfd"
+}
+[Completed in 4979.735275 ms]
+```
+
+##### Return Values
+
+| Field | Description |
+|:------|:------------|
+| `success` | Boolean flag indicating that the delete was successful |
+| `txid` | The ID (hash) of the transaction that includes the delete |

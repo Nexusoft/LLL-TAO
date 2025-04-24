@@ -1,367 +1,296 @@
-# Sessions API 
------------------------------------
+# Sessions API
 
-The sessions API provides methods for creating and managing sessions. A session is synonymous with a user login into the signature chain. The full supported endpoint of the sessions URI is as follows:
+The Sessions API provides methods for managing user sessions in the system, including creating, updating, and querying sessions.
 
-```
-sessions/verb/noun
-```
+## Supported Nouns
 
-The minimum required components of the URI are:
+The following nouns are supported for this API command set:
 
-```
-sessions/verb/noun
-```
+| Noun | Description |
+|:-----|:------------|
+| `session` | A user session |
+| `token` | A session token |
+| `status` | Session status information |
+| `any` | Any type of session object |
 
+## Supported Verbs
 
-## `Supported Verbs`
+The following verbs are currently supported by this command set:
 
-The following verbs are currently supported by this API command-set:
+| Verb | Description | Nouns |
+|:-----|:------------|:------|
+| [`create`](#create) | Generate a new object of supported type | `session`, `token` |
+| [`get`](#get) | Get object of supported type | `any`, `session`, `token`, `status` |
+| [`list`](#list) | List all objects owned by given user | `any`, `session`, `token`, `status` |
+| [`update`](#update) | Update an object | `any`, `session`, `token`, `status` |
+| [`delete`](#delete) | Delete an object | `any`, `session`, `token`, `status` |
 
-[`create`](#create)       - Generate a new session type specified by the noun.   
-[`unlock`](#unlock)       - Unlock the session to carry out specified operations.     
-[`lock`](#lock)           - Lock the session to stop a specified operations.  
-[`save`](#save)           - Save a specified session to the local database.     
-[`load`](#load)           - Load a specified session from the local database.     
-[`terminate`](#terminate) - Terminates a session specified by the noun.          
-[`status`](#status)       - Returns status information for the session specified by the noun.  
+## Direct Endpoints
 
+The following commands are direct endpoints and thus do not support the verb and noun structure:
 
+| Command | Description |
+|:--------|:------------|
+| [`get/session`](#getsession) | Get session information |
+| [`get/token`](#gettoken) | Get session token information |
+| [`get/status`](#getstatus) | Get session status information |
+| [`list/sessions`](#listsessions) | List sessions |
+| [`list/tokens`](#listtokens) | List session tokens |
+| [`list/status`](#liststatus) | List session status information |
 
-## `Supported Nouns`
+## Deprecated Endpoints
 
-The following nouns are supported for this API command-set:
+The following endpoints are deprecated and will be removed in a future version:
 
-| Noun   | Description |
-| :-----:  | :-------- |
-| `local`  | A local user session |
+- [`list/session`](#listsession) - Deprecated in favor of `sessions/get/session`
+- [`list/token`](#listtoken) - Deprecated in favor of `sessions/get/token`
+- [`list/status`](#liststatus) - Deprecated in favor of `sessions/get/status`
 
------------------------------------
+## Commands
 
-# <a name="create"></a> `create`
+### <a name="create"></a> Create Session
 
-Create a new session specified by given noun.
+Create a new session object.
 
-```
+```bash
 sessions/create/noun
 ```
 
-This command only supports the `local` noun.
+This command supports the session and token nouns.
 
+#### Required Parameters
 
-### Parameters:
+##### Session
+The following parameters are required to create the session:
 
-`username` : Required to **identify** the profile to create the session for.
+- `username` (required): The username for the session
+- `password` (required): The password for the session
 
-`password` : Required to **authenticate** the password for creating the session.
+#### Optional Parameters
 
-`pin` : Required to **authenticate** the `PIN` for creating the session.
+- `data`: Optional data to be stored with the session
+- `metadata`: Optional metadata to be stored with the session
 
+#### Results
 
-### Results:
-
-#### Return value JSON object:
-
-```
+##### Return Value
+```json
 {
-    "genesis": "b7fa11647c02a3a65a72970d8e703d8804eb127c7e7c41d565c3514a4d3fdf13",
-    "session": "0aad63e028dd9e0f31f0b566831fea9dfc7db68fc2ba482a8ce975656971a67e"
+    "success": true,
+    "address": "8ESvYizqdApiuKEBjZMF1hnB8asDqECaDwAstcH3UtJ4Z6ceCn2",
+    "txid": "0131e17af8029b414814283a3d90813d12c238db6ddab213440249b795090a9cd77079d5804ec38303a59414d87108d4e44bf31f54a6c176285281a88ab5d737"
 }
-[Completed in 1659.509829 ms]
 ```
 
-#### Return values:
+##### Return Values
 
-`genesis` : The profile genesis hash. This is a hash of the profile username.
+| Field | Description |
+|:------|:------------|
+| `success` | Boolean flag indicating that the session was created successfully |
+| `address` | The register address for the session. The address is needed when retrieving or updating the session |
+| `txid` | The ID (hash) of the transaction that includes the session creation |
 
-`session` : When using multi-user API mode, an additional session value is returned and must be supplied in subsequent API calls, to allow the managing of multiple login sessions.
+### <a name="get"></a> Get Session
 
------------------------------------
+Retrieves information about a session.
 
-# <a name="unlock"></a> `unlock`
-
-This will unlock the session specified by given noun and cache the PIN in encrypted memory to be used for all subsequent API calls for the specified operations.
-
+```bash
+sessions/get/noun
 ```
-sessions/unlock/noun
-```
 
-These commands only supports the `local` noun.
+This command supports the any, session, token, and status nouns.
 
-### Parameters:
+#### Required Parameters
 
-`pin` : Required to **authenticate**. The `PIN` for this profile.
+##### Session
+This command requires a valid session to be active with these parameters required to identify and authenticate the given session:
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
+- `session` (required if `-multiuser=1` is set): Used to identify the session to invoke the command under. For single-user API mode the session should not be supplied
 
-`mining` : Required for **unlocking** mining transactions. This boolean value unlocks the session for mining.
+##### Lookup
+One of the following parameters is required to identify the session:
 
-`notifications` : Required for **unlocking** notifications. This boolean value unlocks the session to automatically process incoming notifications.
+- `username` (required if `address` not provided): The username of the session
+- `address` (required if `username` not provided): The register address of the session
 
-`staking` : Required for **unlocking** staking transactions. This boolean value unlocks the session for staking.
+#### Results
 
-`transactions` : Required for **unlocking** transactions. This boolean value unlocks the session to allow creating or claiming transactions.
-
-### Returns:
-
-#### Return value JSON object:
-
-```
+##### Return Value
+```json
 {
-    "unlocked": {
-        "mining": false,
-        "notifications": true,
-        "staking": true,
-        "transactions": false
-    }
+    "address": "822G7ZSsHh1ncTj4AJt6FnZ6MTWG3Q9NNTZ9KvG3CWA1SP3aq97",
+    "created": 1581389015,
+    "modified": 1581389107,
+    "owner": "a2056d518d6e6d65c6c2e05af7fe2d3182a93def20e960fcfa0d35777a082440",
+    "username": "myusername",
+    "data": {
+        "key": "value"
+    },
+    "metadata": {
+        "key": "value"
+    }
 }
-[Completed in 1664.238652 ms]
 ```
 
-#### Return values:
+##### Return Values
 
-`unlocked` : This will contain child elements describing which functions the session is currently unlocked for.
+| Field | Description |
+|:------|:------------|
+| `address` | The register address of the session |
+| `created` | The UNIX timestamp when the session was created |
+| `modified` | The UNIX timestamp when the session was last modified |
+| `owner` | The username hash of the owners profile |
+| `username` | The username of the session |
+| `data` | Optional data stored with the session |
+| `metadata` | Optional metadata stored with the session |
 
-`mining` : Boolean flag indicating whether the users sig chain is unlocked for mining.
+### <a name="list"></a> List Sessions
 
-`notifications` : Boolean flag indicating whether the users sig chain is unlocked for processing notifications.
+This will list all sessions owned by the signature chain.
 
-`staking` : Boolean flag indicating whether the users sig chain is unlocked for staking.
-
-`transactions` : Boolean flag indicating whether the users sig chain is unlocked for creating any transactions (except those automatically created through mining/processing notifications if those are unlocked).
-
------------------------------------
-
-# <a name="lock"></a> `lock`
-
-This will lock the specified session by purging the PIN stored in encrypted memory, making it unavailable for use unless it is either unlocked or the PIN is passed in to all API requests.
-
-```
-sessions/lock/noun
+```bash
+sessions/list/noun
 ```
 
-These commands only supports the `local` noun.
+This command supports the any, session, token, and status nouns.
 
+#### Required Parameters
 
-### Parameters:
+##### Session
+This command requires a valid session to be active with these parameters required to identify and authenticate the given session:
 
-`pin` : Required to **authenticate**. The `PIN` for this profile.
+- `session` (required if `-multiuser=1` is set): Used to identify the session to invoke the command under. For single-user API mode the session should not be supplied
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.  
+#### Optional Parameters
 
-`mining` : Required for **locking** mining transactions. This boolean value locks the session for mining.
+##### Identification
+One of the following parameters can be used to identify the signature chain:
 
-`notifications` : Required for **locking** notifications. This boolean value locks the session from processing incoming notifications.
+- `genesis`: The genesis hash identifying the signature chain (optional if username is supplied)
+- `username`: The username identifying the signature chain (optional if genesis is supplied)
 
-`staking` : Required for **locking** staking transactions. This boolean value locks the session for staking.
+##### Filtering
+The following parameters can be used to filter the results:
 
-`transactions : Required for **locking** transactions. This boolean value locks the session for creating or claiming transactions.
+- `limit`: The number of records to return for the current page. The default is 100
+- `page`: Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied
+- `offset`: An alternative to page, offset can be used to return a set of (limit) results from a particular index
+- `where`: An array of clauses to filter the JSON results. More information on filtering the results from /list/xxx API methods can be found here Filtering Results
 
+#### Results
 
-### Returns:
-
-#### Return value JSON object:
-
+##### Return Value
+```json
+[
+    {
+        "address": "822G7ZSsHh1ncTj4AJt6FnZ6MTWG3Q9NNTZ9KvG3CWA1SP3aq97",
+        "created": 1581389015,
+        "modified": 1581389107,
+        "owner": "a2056d518d6e6d65c6c2e05af7fe2d3182a93def20e960fcfa0d35777a082440",
+        "username": "myusername",
+        "data": {
+            "key": "value"
+        },
+        "metadata": {
+            "key": "value"
+        }
+    }
+]
 ```
+
+##### Return Values
+
+| Field | Description |
+|:------|:------------|
+| `address` | The register address of the session |
+| `created` | The UNIX timestamp when the session was created |
+| `modified` | The UNIX timestamp when the session was last modified |
+| `owner` | The username hash of the owners profile |
+| `username` | The username of the session |
+| `data` | Optional data stored with the session |
+| `metadata` | Optional metadata stored with the session |
+
+### <a name="update"></a> Update Session
+
+Update a session object.
+
+```bash
+sessions/update/noun
+```
+
+This command supports the any, session, token, and status nouns.
+
+#### Required Parameters
+
+##### Session
+This command requires a valid session to be active with these parameters required to identify and authenticate the given session:
+
+- `pin` (required if **locked**): The PIN for this profile
+- `session` (required if `-multiuser=1` is set): Used to identify the session to invoke the command under. For single-user API mode the session should not be supplied
+
+##### Update Details
+The following parameters are required to update the session:
+
+- `username` (required if `address` not provided): The username of the session to update
+- `address` (required if `username` not provided): The register address of the session to update
+- `data` (required): The new data to update the session with
+
+#### Results
+
+##### Return Value
+```json
 {
-    "unlocked": {
-        "mining": false,
-        "notifications": true,
-        "staking": true,
-        "transactions": false
-    }
+    "success": true,
+    "txid": "01f51d6b23b871fc8da848afa57cf066cb9e3b8fb845a666335e8c678ef5249e98d4f3e477659098918e4bb590472a63d0ed0a17fa87904fcff6316158e9edfd"
 }
-[Completed in 1664.238652 ms]
+[Completed in 4979.735275 ms]
 ```
 
-#### Return values:
+##### Return Values
 
-`unlocked` : This will contain child elements describing which functions the session is currently unlocked for.
+| Field | Description |
+|:------|:------------|
+| `success` | Boolean flag indicating that the update was successful |
+| `txid` | The ID (hash) of the transaction that includes the update |
 
-`mining` : Boolean flag indicating whether the users sig chain is unlocked for mining.
+### <a name="delete"></a> Delete Session
 
-`notifications` : Boolean flag indicating whether the users sig chain is unlocked for processing notifications.
+Delete a session object.
 
-`staking` : Boolean flag indicating whether the users sig chain is unlocked for staking.
-
-`transactions` : Boolean flag indicating whether the users sig chain is unlocked for creating any transactions (except those automatically created through mining/processing notifications if those are unlocked).
-
------------------------------------
-
-# <a name="save"></a> `save`
-
-This will save the users session to the local database, allowing the session to be resumed at a later time without the need to login or unlock. The users PIN is required as this is used (in conjunction with the genesis) to encrypt the session data before persisting it to the local database.
-
-```
-sessions/save/noun
+```bash
+sessions/delete/noun
 ```
 
-These commands only supports the `local` noun.
+This command supports the any, session, token, and status nouns.
 
-**NOTE:**
-- Save session, saves the specified active session to the local disk.
-- Saved sessions are saved permanent until deleted manually.
-- Saved sessions will be resumed in the same condition (locked or unlocked) as it was saved.  
+#### Required Parameters
 
+##### Session
+This command requires a valid session to be active with these parameters required to identify and authenticate the given session:
 
-### Parameters:
+- `pin` (required if **locked**): The PIN for this profile
+- `session` (required if `-multiuser=1` is set): Used to identify the session to invoke the command under. For single-user API mode the session should not be supplied
 
-`pin` : Required to **authenticate**. The `PIN` for this profile.
+##### Delete Details
+The following parameters are required to delete the session:
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
+- `username` (required if `address` not provided): The username of the session to delete
+- `address` (required if `username` not provided): The register address of the session to delete
 
+#### Results
 
-### Results:
-
-#### Return value JSON object:
-
-```
+##### Return Value
+```json
 {
-    "genesis": "b7fa11647c02a3a65a72970d8e703d8804eb127c7e7c41d565c3514a4d3fdf13",
-    "success": true
+    "success": true,
+    "txid": "01f51d6b23b871fc8da848afa57cf066cb9e3b8fb845a666335e8c678ef5249e98d4f3e477659098918e4bb590472a63d0ed0a17fa87904fcff6316158e9edfd"
 }
-[Completed in 2.962459 ms]
+[Completed in 4979.735275 ms]
 ```
 
-#### Return values:
+##### Return Values
 
-`genesis` : The profile genesis hash. This is a hash of the profile username.
-
-`success` : Boolean flag indicating that the session was saved successfully.
-
------------------------------------
-
-# <a name="load"></a> `load`
-
-This will resume a saved session from the local database, allowing a saved session to be resumed without the need to login or unlock. The profile username or genesis and PIN is required to decrypt and resume the saved session.
-
-```
-sessions/load/noun
-```
-
-These commands only supports the `local` noun.
-
-**NOTE:**
-- If there is an existing active session, it will not load a saved session. 
-- Only a previously saved session can be loaded.  
-- When a saved session is resumed, it creates a new session ID.
-- Saved sessions can be resumed even after a core or node restart. 
-
-
-### Parameters:
-
-`pin` : Required if **authenticate**. The `PIN` for this profile.
-
-`username`: Required to **identify** the profile to load the session for. This is optional if the `genesis` is provided.   
-
-`genesis` :  Required to **identify** the profile to load the session for. This is optional if the `username` is provided.    
-
-
-### Results:
-
-#### Return value JSON object:
-
-```
-{
-    "genesis": "b7fa11647c02a3a65a72970d8e703d8804eb127c7e7c41d565c3514a4d3fdf13",
-    "session": "2ef9de11b19af82984ddf93275e7ba22c11fe9659d0667f79311c46732bbb7a4"
-}
-[Completed in 0.072625 ms]
-```
-
-#### Return values:
-`genesis` : The profile genesis hash. This is a hash of the profile username.
-
-`session` : When using multi-user API mode, an additional session value is returned to identify the session.
-
------------------------------------
-
-# <a name="terminate"></a> `terminate`
-
-This will terminate an active session specified by given noun.
-
-```
-sessions/terminate/noun
-```
-
-This command only supports the `local` noun.
-
-**Note:** This does not delete a saved session  
-
-### Parameters:
-
-`pin` : Required to **authenticate**. The `PIN `for this profile.
-
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
-
-
-### Results:
-
-#### Return value JSON object:
-
-```
-{
-    "success": true
-}
-[Completed in 1656.089478 ms]
-```
-
-#### Return values:
-
-`success` : Boolean flag indicating that the active session was terminated successfully.
-
------------------------------------
-
-# <a name="status"></a> `status`
-
-Retrieve the session status specified by given noun.
-
-```
-sessions/status/noun
-```
-
-This command only supports the `local` noun.
-
-
-### Parameters:
-
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
-
-### Results:
-
-#### Return value JSON object:
-
-```
-{
-    "genesis": "b7fa11647c02a3a65a72970d8e703d8804eb127c7e7c41d565c3514a4d3fdf13",
-    "accessed": 1653680627,
-    "location": "local",
-    "unlocked": {
-        "mining": false,
-        "notifications": true,
-        "staking": false,
-        "transactions": false
-    }
-}
-[Completed in 0.080333 ms]
-```
-
-#### Return values:
-
-`genesis` : The profile genesis hash for the currently logged in user.
-
-`accessed` : The UNIX timestamp at which the profile was last accessed.
-
-`location` : The location of session, local or remote.
-
-`unlocked` : This will contain child elements describing which functions the session is currently unlocked for.
-
-`mining` : Boolean flag indicating whether the users sig chain is unlocked for mining.
-
-`notifications` : Boolean flag indicating whether the users profile is unlocked for processing notifications.
-
-`staking` : Boolean flag indicating whether the profile is unlocked for staking.
-
-`transactions` : Boolean flag indicating whether the profile is unlocked for creating any transactions (except those automatically created through mining/processing notifications if those are unlocked).
-
------------------------------------
+| Field | Description |
+|:------|:------------|
+| `success` | Boolean flag indicating that the delete was successful |
+| `txid` | The ID (hash) of the transaction that includes the delete |
