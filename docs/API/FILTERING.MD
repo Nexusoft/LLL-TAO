@@ -1,25 +1,32 @@
-# Filtering
------------------------------------
+# Filtering Documentation
 
-All API endpoints support filtering the results for getting specific parts of the dataset. The following sections describe how to filter the JSON of given output.
+This document describes the filtering capabilities of the LLL-TAO API.
 
-The minimum required components of the URI to filter results are:
+## Overview
+
+All API endpoints support filtering results to retrieve specific parts of the dataset. This document explains how to filter JSON output effectively.
+
+## Basic Filtering
+
+### URI Structure
+
+The minimum required components for filtering are:
 
 ```
 commands/verb/noun/<filter>
 ```
 
-The above filter becomes an expression either on the end of the URI, or between an operator:
+Or when using with operators:
 
 ```
 commands/verb/noun/<filter>/operator
 ```
 
-## `Filtering`
+### Simple Filtering
 
-In order to filter an object, one must know the JSON key they are filtering for.
+To filter an object, you need to know the JSON key you want to filter for. For example, given this JSON:
 
-```
+```json
 {
     "id": 69,
     "OP": "CREDIT",
@@ -33,15 +40,15 @@ In order to filter an object, one must know the JSON key they are filtering for.
 }
 ```
 
-The above JSON statement can be filtered by the following:
+You can filter specific fields:
 
 ```
 commands/verb/noun/OP,to,amount,ticker
 ```
 
-This would result in the following filtered object:
+Resulting in:
 
-```
+```json
 {
     "OP": "CREDIT",
     "to": "8BAv1H2YKfpaYC1RJMq9qjmMTiEV8DJiLpiKGqTY54wf2VPjznD",
@@ -50,13 +57,13 @@ This would result in the following filtered object:
 }
 ```
 
-One can include as many filters as desired, as long as keys exist in the returned JSON and they follow a strict no-spaces *.csv (Comma Separated Values) format. This allows you to choose specific data that's needed without needing to require filtering client side.
+## Recursive Filtering
 
-## `Recursive Filtering`
+### Nested JSON Filtering
 
-JSON hierarchy can be maintained and traversed recursively to any depth of the data structure. Let us take the following JSON object, a verbose transaction:
+The API supports filtering nested JSON structures using the `.` operator. For example, given this complex JSON:
 
-```
+```json
 {
     "txid": "019427d69187a02a23305a152c167c0c3fb547426afbdbee47ae674c7ea5a3d8f70e9a29c818f213edf1ce2721ae8bb81652e8cc77aac842df3c371027fa4e60",
     "type": "tritium user",
@@ -66,11 +73,6 @@ JSON hierarchy can be maintained and traversed recursively to any depth of the d
     "blockhash": "c469d4373da8a53f7ea73657e9498c1a4c967cb1f5a95cec7586263b564d7f1bdf21a0b595ab95102450282179e7622e18739ceecadac078e3a92ecf5969466e6731753312efe5f0b83833d3bbcff70d5d89576f88d750216944b4e8f8cffbb8c623fb6e677092c05347f4e22f1bfcd49f74e757dd32c5cfd50cefd2530ee9fb",
     "confirmations": 832340,
     "genesis": "a1bc1623d785130bd7bd725d523bd2bb755518646c3831ea7cd5f86883845901",
-    "nexthash": "b30d3f2c9857513a7de27cdb077568cb80af17a411c465742c1faa30ffa6491e",
-    "prevhash": "0128928b2727142fbdb7b43021e26395f66d34e56806fec3ae47533d887dcbf8307109656e4321747204b25d27d6a1d86331b855939655525bf964e3b191a8bd",
-    "recovery": "0a3bc3cc04ceac76f93ed0aa37ee84af7110eb49339a9319467962dad582607a",
-    "pubkey": "0299cdb659f1b3a00e3cf704f628701e803ee5743246079cf937712cc6e44275653cdae80e9a680904f030fa0691c581fec506409b22be1c39416df9d438d0476d",
-    "signature": "30818402401e38f9b4eb0c8f1e98294890fe6cdb3ceeb0a73171d02767d03d1c62fed806466daca8f4f4e6e8c44f83b62b5ec647804edf1f00113bcb0c478686de0ebd69140240372cc4fc0dfc7d4bbf0f50df4ac934347591911be46bd85154aff5224af68e67738890187a997e8cdc04d5b41af5483e310ddb1d9c05b7c645bd750e4e325196",
     "contracts": [
         {
             "id": 0,
@@ -84,19 +86,18 @@ JSON hierarchy can be maintained and traversed recursively to any depth of the d
             "ticker": "NXS"
         }
     ]
-},
-
+}
 ```
 
-These nested JSON objects and arrays can be filtered recursively using the `.` operator. Please ensure endpoint does not include spaces following a strict *csv format.
+You can filter nested fields:
 
 ```
 commands/verb/noun/type,confirmations,genesis,contracts.OP,contracts.to,contracts.amount,contracts.ticker
 ```
 
-When using recursive filtering, the nested hiearchy is retained.
+Resulting in:
 
-```
+```json
 {
     "type": "tritium user",
     "confirmations": 832340,
@@ -109,8 +110,18 @@ When using recursive filtering, the nested hiearchy is retained.
             "ticker": "NXS"
         }
     ]
-},
-
+}
 ```
 
------------------------------------
+## Best Practices
+
+1. Use comma-separated values for multiple filters
+2. Maintain JSON hierarchy with dot notation
+3. Avoid spaces in filter strings
+4. Filter only needed fields
+5. Use recursive filtering for nested data
+6. Test filter combinations
+7. Document complex filters
+8. Monitor filter performance
+9. Cache common filters
+10. Validate filter syntax

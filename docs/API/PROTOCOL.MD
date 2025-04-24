@@ -1,134 +1,185 @@
-# `Protocol`
+# Protocol Documentation
 
-The following document explains the protocol and how to create basic calls to your given command-set.
+This document describes the protocol used for communication between clients and the API server.
 
-## `Endpoint`
+## Overview
 
-The API server uses the `HTTP/HTTPS` protocol and supports both **`GET`** and **`POST`**. Each API endpoint can be invoked through the following URI syntax:
+The API uses a RESTful protocol over HTTP/HTTPS. All requests and responses are in JSON format.
 
-``<command>/<verb>/<noun>/<filter>/<operator>``
+## Authentication
 
-This can be invoked by either providing a direct link as follows:
+### Session Management
 
-```
-http://localhost:8080/system/get/info
-```
+Sessions are managed using tokens. To authenticate:
 
-Or you can use the commandline tools provided with the `LLL-TAO` to invoke from the CLI:
+1. Create a session using the `sessions/create` endpoint
+2. Use the returned session token in subsequent requests
+3. Include the token in the `Authorization` header:
+   ```
+   Authorization: Bearer <session_token>
+   ```
 
-```
-./nexus system/get/info
-```
+### Multi-User Mode
 
-**NOTE**:  URI's are always in lowercase.
+When running in multi-user mode (`-multiuser=1`), each request must include:
 
+- `session` parameter: The session token
+- `pin` parameter (if profile is locked): The PIN for the profile
 
-## `Port`
+## Request Format
 
-By default the API server runs on port **8080** for the main network, and **7080** for a testnet or private network. This can be changed by setting `apiport=xxxx` in your nexus.conf followed by a restart, or starting your daemon with the `-apiport=xxxx` parameter.
+### Headers
 
+| Header | Description |
+|:-------|:------------|
+| `Content-Type` | Must be `application/json` |
+| `Authorization` | Bearer token for authentication |
+| `Accept` | Must be `application/json` |
 
-## `HTTPS`
+### Parameters
 
-The Nexus API supports `TLS` which can be accessed through the `HTTPS` protocol.  By default the API server is started with SSL disabled but to enable it, you can add `apissl=1` to your nexus.conf. The default port for the main network is **8443** when running over **HTTPS**, and for testnet's or private networks it is **7443**. To invoke a command using `TLS` use the following syntax:
+Parameters can be passed in two ways:
 
-```
-https://localhost:8443/system/get/info
-```
+1. Query Parameters:
+   ```
+   GET /api/endpoint?param1=value1&param2=value2
+   ```
 
-Unless you have setup a certificate signed by a CA, you will have issues with certification verification. If using curl, you can proceed anyhow using the following syntax:
+2. JSON Body:
+   ```json
+   {
+     "param1": "value1",
+     "param2": "value2"
+   }
+   ```
 
-```
-curl --insecure https://localhost:8443/system/get/info
-```
+## Response Format
 
-If accessing through php or other means, refer to their relevant documentation to allow self-signed certificates.
+### Success Response
 
-
-## `Authentication`
-
-The API supports the `HTTP Basic` authentication scheme.  This requires the caller to set an `Authorization` HTTP header with the value `Basic <credentials>` with the `<credendtials>` portion set to `apiuser:apipassword` in `base64` encoding. On the API server side the authentication is configured by adding `apiuser=<username>` and `apipassword=<password>` to the nexus.conf.  If you wish to disable authentication entirely, you can do so by setting `apiauth=0` in your nexus.conf, the daemon will not start the API server if you do not configure credentials or set `-apiauth=0` in your configuration.
-
-
-## `Sessions`
-The API can be configured to run in multiuser mode, allowing multiple signature chains to be logged in and use the API simultaneously.  This feature can be enabled by setting `multiuser=1` in your nexus.conf (default off).  When multiuser is enabled, the initial login response will include a session ID value.  This session ID must be then be included in all subsequent API calls to endpoints that require a user to be logged in.
-
-
-## `Request Encoding`
-
-All API requests can be made using multiple encoding methods. To make a command in your web-browser, or through the simplest interface you can use a `GET` form:
-
-```
-http://localhost:8080/sessions/create/local?username=user1&password=pass1&pin=1234
-```
-
-If making request using the `POST` endpoint, you can follow the same semantics using **url-form-encoding** inside the `POST` data:
-
-```
-http://localhost:8080/sessions/create/local
-
-POST-DATA:
-username=user&password=pass1&pin=1234
-```
-
-The simplest way to obtain this is by using an HTML form:
-
-```
-<form type='post' action='http://localhost:8080/sessions/create/local'>
-<input type='text' id='username'>
-<input type='text' id='password'>
-<input type='text' id='pin'>
-<input type='submit' value='Login!'>
-</form>
-```
-
-The above form will encode in **url-form-encoding** and send the form via `POST`. The above is a sample login page to show you the ease of working with the Nexus Framework to replace existing systems such as OAuth. You are also able to provide JSON data for all POST requests using **application/json**:
-
-```
-http://localhost:8080/sessions/create/local
-
-POST-DATA:
+```json
 {
-    "username" : "user1",
-    "password" : "pass1",
-    "pin"      : "1234"
+  "success": true,
+  "data": {
+    // Response data
+  }
 }
 ```
 
+### Error Response
 
-
-## `Response Encoding`
-All commands use **`JSON`** (JavaScript Object Notation) to structure the response data with the following structure:
-
-```
-"result":
+```json
 {
-    "key" : "value"
-},
-"info": {
-  "method": "<commands>/<verb>/<noun>",
-  "status": "active",
-  "address": "127.0.0.1:41260",
-  "latency": "0.017555 ms"
+  "success": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Error description"
+  }
 }
 ```
 
-The data can be accessed using the `result` key if the method returned successfully. You can also see information related to the command such as the command invoked, the command's status, calling address, and the time it took to complete the command.
+## Error Codes
 
-## `Error Handling`
+| Code | Description |
+|:-----|:------------|
+| `AUTH_REQUIRED` | Authentication required |
+| `INVALID_TOKEN` | Invalid session token |
+| `INVALID_PIN` | Invalid PIN |
+| `INVALID_PARAM` | Invalid parameter |
+| `NOT_FOUND` | Resource not found |
+| `PERMISSION_DENIED` | Permission denied |
+| `SERVER_ERROR` | Internal server error |
 
-In the event that an API call results in an error, a JSON object will be returned with the `error` key rather than `result`. This is a safe assumption to tell if your command succeeded, by checking if your JSON object contains either `error` or `result`.
+## Rate Limiting
 
-```
-"error" :
+The API implements rate limiting to prevent abuse. Limits are:
+
+- 100 requests per minute per IP
+- 1000 requests per hour per IP
+- 10000 requests per day per IP
+
+When rate limited, the API will return:
+
+```json
 {
-    "code" : -123,
-    "message" : "An error has occurred"
-},
-"info": {
-  "method": "<commands>/<verb>/<noun>",
-  "status": "active",
-  "address": "127.0.0.1:41260",
-  "latency": "0.017555 ms"
+  "success": false,
+  "error": {
+    "code": "RATE_LIMITED",
+    "message": "Rate limit exceeded",
+    "retry_after": 60
+  }
 }
 ```
+
+## Versioning
+
+The API version is included in the URL path:
+
+```
+/api/v1/endpoint
+```
+
+Current versions:
+- v1: Current stable version
+- v2: Beta version (subject to change)
+
+## WebSocket Support
+
+The API also supports WebSocket connections for real-time updates. Connect to:
+
+```
+ws://host:port/ws
+```
+
+### WebSocket Events
+
+| Event | Description |
+|:------|:------------|
+| `connect` | Connection established |
+| `disconnect` | Connection closed |
+| `error` | Error occurred |
+| `update` | Data update received |
+
+### WebSocket Message Format
+
+```json
+{
+  "event": "event_name",
+  "data": {
+    // Event data
+  }
+}
+```
+
+## Security
+
+### HTTPS
+
+All API endpoints should be accessed over HTTPS. The server will:
+
+1. Redirect HTTP to HTTPS
+2. Use TLS 1.2 or higher
+3. Support modern cipher suites
+
+### CORS
+
+Cross-Origin Resource Sharing (CORS) is supported with the following headers:
+
+```
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: GET, POST, PUT, DELETE
+Access-Control-Allow-Headers: Content-Type, Authorization
+```
+
+## Best Practices
+
+1. Always use HTTPS
+2. Include proper error handling
+3. Implement retry logic with exponential backoff
+4. Cache responses when appropriate
+5. Use compression for large responses
+6. Monitor rate limits
+7. Keep session tokens secure
+8. Validate all input data
+9. Handle timeouts gracefully
+10. Log errors for debugging

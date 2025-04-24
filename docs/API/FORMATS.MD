@@ -1,3 +1,145 @@
+# Data Format Documentation
+
+This document describes the data formats used in the LLL-TAO API.
+
+## Overview
+
+The API uses JSON for all data exchange. This document outlines the standard formats for common data types.
+
+## Common Data Types
+
+### Timestamps
+
+Timestamps are represented in ISO 8601 format:
+
+```json
+{
+  "timestamp": "2024-03-20T10:30:00Z"
+}
+```
+
+### Currency Amounts
+
+Currency amounts are represented as strings with decimal places:
+
+```json
+{
+  "amount": "1234.56"
+}
+```
+
+### Identifiers
+
+Identifiers are represented as hexadecimal strings:
+
+```json
+{
+  "id": "0x1234567890abcdef"
+}
+```
+
+### Addresses
+
+Addresses are represented as base58 strings:
+
+```json
+{
+  "address": "Nx1234567890abcdef"
+}
+```
+
+## Request Formats
+
+### Create Resource
+
+```json
+{
+  "name": "string",
+  "description": "string",
+  "type": "string",
+  "metadata": {
+    "key": "value"
+  }
+}
+```
+
+### Update Resource
+
+```json
+{
+  "name": "string",
+  "description": "string",
+  "metadata": {
+    "key": "value"
+  }
+}
+```
+
+### Query Parameters
+
+```json
+{
+  "query": "field:operator:value",
+  "sort": "field:direction",
+  "page": 1,
+  "limit": 10
+}
+```
+
+## Response Formats
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "data": {
+    // Response data
+  }
+}
+```
+
+### Error Response
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Error description"
+  }
+}
+```
+
+### List Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      // Array of items
+    ],
+    "total": 100,
+    "page": 1,
+    "limit": 10
+  }
+}
+```
+
+## Best Practices
+
+1. Use consistent date formats
+2. Represent currency as strings
+3. Use appropriate data types
+4. Validate input formats
+5. Document format requirements
+6. Handle format errors gracefully
+7. Use standard formats
+8. Include format examples
+9. Test format handling
+10. Monitor format issues
+
 # `Formats`
 
 When creating or modifying a register for any command-set, a format is required to encode the operations to the given register. The following sections outline the formats and their corresponding syntax. This syntax is accessed when one supplies `format=basic` as a paramter to a command that creates a new register, or updates its current state.

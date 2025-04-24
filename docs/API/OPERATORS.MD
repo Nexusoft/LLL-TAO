@@ -1,98 +1,94 @@
-# Operators
------------------------------------
+# Operators Documentation
 
-The Nexus API, and according commands support varying types of operators. Operators allow computation to be performed on a filtered data-set, much like in an excel spreadsheet.
+This document describes the operators available for filtering and querying in the LLL-TAO API.
 
-The minimum required components of the URI for an operator is:
+## Overview
 
-```
-commands/verb/noun/filter/operator
-```
+The API supports a variety of operators for filtering and querying data. These operators can be used in combination to create complex queries.
 
-# `Filter`
+## Comparison Operators
 
-In order to execute an operator, one must apply a basic filter to the data-set because we need to isolate a component of the returned data to operate on and return.
+### Basic Comparison
 
-Take the following contract list:
+| Operator | Description | Example |
+|:---------|:------------|:--------|
+| `eq` | Equal to | `field:eq:value` |
+| `ne` | Not equal to | `field:ne:value` |
+| `gt` | Greater than | `field:gt:value` |
+| `lt` | Less than | `field:lt:value` |
+| `gte` | Greater than or equal to | `field:gte:value` |
+| `lte` | Less than or equal to | `field:lte:value` |
 
-```
-{
-    "id": 33,
-    "OP": "CREDIT",
-    "for": "COINBASE",
-    "txid": "01625b58e131e61813f77e8e97404cb587d780c7951b055b4f531f2a8ea5a63fc3c95f179ec26fa138e639143615a10961719ffb1b33dd98e64d0bf4d9fe50ae",
-    "contract": 2,
-    "to": "8BAv1H2YKfpaYC1RJMq9qjmMTiEV8DJiLpiKGqTY54wf2VPjznD",
-    "amount": 208.833665,
-    "token": "0",
-    "ticker": "NXS"
-},
-{
-    "id": 34,
-    "OP": "CREDIT",
-    "for": "COINBASE",
-    "txid": "01b7291259fda66e8dbde6de502bd811894e42b6f2dd9fc684bdf87e9a3f0f224e16df72c491355547191af28f1cdd84bed0b522686de837f5b346593646f40f",
-    "contract": 2,
-    "to": "8BAv1H2YKfpaYC1RJMq9qjmMTiEV8DJiLpiKGqTY54wf2VPjznD",
-    "amount": 205.705007,
-    "token": "0",
-    "ticker": "NXS"
-},
-```
+### String Comparison
 
-To operate on our `amount` field, we would first need to apply a filter:
+| Operator | Description | Example |
+|:---------|:------------|:--------|
+| `like` | Pattern match | `field:like:pattern` |
+| `ilike` | Case-insensitive pattern match | `field:ilike:pattern` |
+| `starts` | Starts with | `field:starts:prefix` |
+| `ends` | Ends with | `field:ends:suffix` |
+| `contains` | Contains substring | `field:contains:substring` |
 
-```
-commands/verb/noun/amount
-```
+### List Operations
 
-This command will now prepare for an operator, that can be invoked by finishing the URI:
+| Operator | Description | Example |
+|:---------|:------------|:--------|
+| `in` | In list | `field:in:value1,value2` |
+| `nin` | Not in list | `field:nin:value1,value2` |
+| `all` | All values in list | `field:all:value1,value2` |
+| `any` | Any value in list | `field:any:value1,value2` |
 
-```
-commands/verb/noun/amount/sum
-```
+## Logical Operators
 
-This above command will return a JSON object with our filtered result:
+### Basic Logic
 
-```
-{
-    "amount": 414.53867,
-}
-```
+| Operator | Description | Example |
+|:---------|:------------|:--------|
+| `AND` | Logical AND | `field1:eq:value1 AND field2:eq:value2` |
+| `OR` | Logical OR | `field1:eq:value1 OR field2:eq:value2` |
+| `NOT` | Logical NOT | `NOT field:eq:value` |
 
-# `Operators`
+### Complex Logic
 
-The following operators are supported for this API command-set:
+| Operator | Description | Example |
+|:---------|:------------|:--------|
+| `()` | Grouping | `(field1:eq:value1 OR field2:eq:value2) AND field3:eq:value3` |
 
-[`array`](#array) - Generate a list of values given from a set of filtered results as a JSON array.
+## Examples
 
-[`count`](#count) - Find the total number of entries returned in a given JSON list.
-
-[`floor`](#floor) - Convert all values in a result to integers by stripping off decimals.
-
-[`max`](#max)     - Find the maximum value in the given set, and return this as result.
-
-[`mean`](#mean)   - Calculate the mean or average value across a set of filtered results.  
-
-[`min`](#min)     - Find the minimum value in the given set, and return this as result.
-
-[`mode`](#mode)    - Find the value with the most occurrences across the data-set.
-
-[`sum`](#sum)     - Compute a sum of a set of values derived from filtered results.
-
-
-**Example:**
+### Basic Comparison
 
 ```
-finance/list/accounts/balance/sum
+GET /api/users?query=age:gt:18
 ```
 
-**Result:**
-
-This command will return a sum of the balances for all accounts:
+### String Comparison
 
 ```
-{
-    "balance": 333.376
-}
+GET /api/users?query=name:like:John*
 ```
+
+### List Operations
+
+```
+GET /api/users?query=status:in:active,pending
+```
+
+### Complex Logic
+
+```
+GET /api/users?query=(status:eq:active OR status:eq:pending) AND age:gte:18
+```
+
+## Best Practices
+
+1. Use appropriate operators
+2. Combine operators logically
+3. Use grouping for complex queries
+4. Test query performance
+5. Document operator usage
+6. Validate operator values
+7. Handle operator errors
+8. Monitor query complexity
+9. Cache common queries
+10. Use indexes effectively
