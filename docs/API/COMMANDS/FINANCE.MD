@@ -9,11 +9,11 @@ The following nouns are supported for this API command-set:
 
 | Noun   | Description |
 | :-----:  | :-------- |
-| `account` | A standard account |
-| `token` | A token account |
-| `trust` | A trust account |
-| `any` | Any type of account |
-| `all` | All types of accounts |
+| `account` | An object register containing a token-id and balance |
+| `token` | An object register containing a token-id, balance, supply, and decimals |
+| `trust` | An object register containing a token-id, balance, and trust |
+| `any` | An object selection noun allowing mixed accounts of different tokens |
+| `all` | An object selection noun to collect all accounts for given token type |
 
 ## `Supported Verbs`
 
@@ -21,14 +21,14 @@ The following verbs are currently supported by this command-set:
 
 | Verb   | Description | Nouns |
 | :-----:  | :-------- | :---- |
-|[`create`](#-create) | Create a new account | `account`, `token`, `trust` |
-|[`get`](#-get) | Get account details | `any`, `account`, `token`, `trust` |
-|[`list`](#-list) | List all accounts | `any`, `account`, `token`, `trust` |
+|[`create`](#-create) | Generate a new object of supported type | `account`, `token`, `trust` |
+|[`get`](#-get) | Get object of supported type | `any`, `account`, `token`, `trust` |
+|[`list`](#-list) | List all objects owned by given user | `any`, `account`, `token`, `trust` |
 |[`history`](#-history) | Generate the history of all last states | `any`, `account`, `token`, `trust` |
 |[`transactions`](#-transactions) | List all transactions that modified specified object | `any`, `account`, `token`, `trust` |
-|[`burn`](#-burn) | Burn tokens | `token` |
-|[`credit`](#-credit) | Credit an account | `any`, `account`, `token`, `trust` |
-|[`debit`](#-debit) | Debit an account | `any`, `account`, `token`, `trust` |
+|[`burn`](#-burn) | Remove a given token from circulation | `token` |
+|[`credit`](#-credit) | Claim funds issued to account from debit | `any`, `account`, `token`, `trust` |
+|[`debit`](#-debit) | Issue funds from supported type | `any`, `account`, `token`, `trust` |
 
 ## `Direct Endpoints`
 

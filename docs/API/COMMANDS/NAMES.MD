@@ -8,12 +8,11 @@ The following nouns are supported for this API command-set:
 
 | Noun   | Description |
 | :-----:  | :-------- |
-| `name`   | An active name object |
-| `inactive` | A disabled name object |
-| `global` | A name in the global namespace |
-| `local`  | A name in the user's local namespace |
-| `namespace` | A namespace object |
-| `any`    | Any name or namespace object |
+| `name`   | An object register containing a name object |
+| `namespace` | An object register containing a namespace object |
+| `global` | An object register which is recognised globally on the network |
+| `local`  | An object register which is recognised only within the context of a user profile |
+| `any`    | An object selection noun allowing mixed names nouns |
 
 ## `Supported Verbs`
 
@@ -21,16 +20,14 @@ The following verbs are currently supported by this command-set:
 
 | Verb   | Description | Nouns |
 | :-----:  | :-------- | :---- |
-|[`create`](#-create) | Generate a new name or namespace | `name`, `namespace` |
-|[`get`](#-get) | Get name or namespace details | `any`, `name`, `namespace` |
-|[`list`](#-list) | List all names or namespaces | `any`, `name`, `namespace` |
-|[`transfer`](#-transfer) | Transfer a name | `name` |
-|[`claim`](#-claim) | Claim ownership of a name | `name` |
-|[`rename`](#-rename) | Rename a name | `name`, `local` |
-|[`reverse`](#-reverse) | Lookup a name by address | `lookup` |
-|[`transactions`](#-transactions) | List all transactions that modified specified object | `any`, `name`, `namespace` |
+|[`create`](#-create) | Generate a new object of supported type | `name`, `namespace` |
+|[`get`](#-get) | Get object of supported type | `any`, `name`, `namespace` |
+|[`list`](#-list) | List all objects owned by given user | `any`, `name`, `namespace` |
+|[`transfer`](#-transfer) | Transfer ownership of an object register | `name` |
+|[`claim`](#-claim) | Claim ownership of an object register | `name` |
 |[`history`](#-history) | Generate the history of all last states | `any`, `name`, `namespace` |
-|[`update`](#-update) | Update a specified object | `any`, `name`, `namespace` |
+|[`transactions`](#-transactions) | List all transactions that modified specified object | `any`, `name`, `namespace` |
+|[`update`](#-update) | Update an object register | `any`, `name`, `namespace` |
 
 ## `Deprecated Endpoints`
 

@@ -8,11 +8,10 @@ The following nouns are supported for this API command-set:
 
 | Noun   | Description |
 | :-----:  | :-------- |
-| `master` | A master profile |
-| `auth`   | An authentication profile |
-| `register` | A profile register |
-| `credentials` | Profile credentials |
-| `recovery` | Profile recovery information |
+| `master` | The default profile that controls all sub-profiles |
+| `auth`   | Crypto object register for login auth |
+| `credentials` | Credentials used to secure profiles |
+| `recovery` | An object which represents the recovery seed for the profile |
 
 ## `Supported Verbs`
 
@@ -20,13 +19,12 @@ The following verbs are currently supported by this command-set:
 
 | Verb   | Description | Nouns |
 | :-----:  | :-------- | :---- |
-|[`create`](#-create) | Create a new profile | `master`, `auth` |
-|[`list`](#-list) | List all profiles | `register` |
-|[`recover`](#-recover) | Recover a profile | `master` |
-|[`status`](#-status) | Get profile status | `master` |
+|[`create`](#-create) | Generate a new object of supported type | `master`, `auth` |
+|[`update`](#-update) | Updates the specified object registers | `credentials`, `recovery` |
+|[`recover`](#-recover) | Recovers a profile account | `master` |
+|[`status`](#-status) | Retreives status information for a profile | `master` |
+|[`notifications`](#-notifications) | List all notifications that modified specified object | `master` |
 |[`transactions`](#-transactions) | List all transactions that modified specified object | `master` |
-|[`notifications`](#-notifications) | Get profile notifications | `master` |
-|[`update`](#-update) | Update a profile | `credentials`, `recovery` |
 
 -----------------------------------
 

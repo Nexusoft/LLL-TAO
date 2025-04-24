@@ -21,11 +21,11 @@ The following nouns are supported for this API command-set:
 
 | Noun   | Description |
 | :-----:  | :-------- |
-| `object`   | An object register |
-| `raw`     | A raw data register |
-| `readonly` | A readonly data register |
-| `crypto`   | A crypto object register |
-| `any`      | Any type of register |
+| `object`   | An object register containing user-defined data structure |
+| `raw`     | An object register of type raw |
+| `readonly` | An object register of type readonly |
+| `crypto`   | An object register which holds public key hashes |
+| `any`      | An object selection noun allowing mixed accounts of different tokens |
 
 ## `Supported Verbs`
 
@@ -33,8 +33,8 @@ The following verbs are currently supported by this command-set:
 
 | Verb   | Description | Nouns |
 | :-----:  | :-------- | :---- |
-|[`get`](#-get) | Get register details | `any`, `object`, `raw`, `readonly`, `crypto` |
-|[`list`](#-list) | List all registers | `any`, `object`, `raw`, `readonly`, `crypto` |
+|[`get`](#-get) | Get object of supported type | `any`, `object`, `raw`, `readonly`, `crypto` |
+|[`list`](#-list) | List all objects owned by given user | `any`, `object`, `raw`, `readonly`, `crypto` |
 |[`history`](#-history) | Generate the history of all last states | `any`, `object`, `raw`, `readonly`, `crypto` |
 |[`transactions`](#-transactions) | List all transactions that modified specified object | `any`, `object`, `raw`, `readonly`, `crypto` |
 

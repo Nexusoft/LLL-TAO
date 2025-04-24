@@ -29,10 +29,10 @@ The following nouns are supported for this API command-set:
 
 | Noun   | Description |
 | :-----:  | :-------- |
-| `item`   | A supply item object |
-| `raw`    | A raw supply data register |
-| `readonly` | A readonly supply data register |
-| `any`    | Any type of supply object |
+| `item`   | An object register containing an item object |
+| `raw`    | An object register containing raw object |
+| `readonly` | An object register containing read-only object |
+| `any`    | An object selection noun allowing mixed items |
 
 ## `Supported Verbs`
 
@@ -40,14 +40,14 @@ The following verbs are currently supported by this command-set:
 
 | Verb   | Description | Nouns |
 | :-----:  | :-------- | :---- |
-|[`create`](#-create) | Generate a new supply item | `item`, `raw`, `readonly` |
-|[`get`](#-get) | Get supply item details | `any`, `item`, `raw`, `readonly` |
-|[`list`](#-list) | List all supply items | `any`, `item`, `raw`, `readonly` |
-|[`transfer`](#-transfer) | Transfer a supply item | `any`, `item`, `raw`, `readonly` |
-|[`claim`](#-claim) | Claim ownership of a supply item | `any`, `item`, `raw`, `readonly` |
-|[`transactions`](#-transactions) | List all transactions that modified specified object | `any`, `item`, `raw`, `readonly` |
-|[`history`](#-history) | Generate the history of all last states | `any`, `item`, `raw`, `readonly` |
+|[`create`](#-create) | Generate a new object of supported type | `item`, `raw`, `readonly` |
+|[`get`](#-get) | Get object of supported type | `any`, `item`, `raw`, `readonly` |
+|[`list`](#-list) | List all objects owned by given user | `any`, `item`, `raw`, `readonly` |
 |[`update`](#-update) | Update a specified object | `any`, `item`, `raw`, `readonly` |
+|[`transfer`](#-transfer) | Transfer a specified object register | `any`, `item`, `raw`, `readonly` |
+|[`claim`](#-claim) | Claim ownership of an object register | `any`, `item`, `raw`, `readonly` |
+|[`history`](#-history) | Generate the history of all last states | `any`, `item`, `raw`, `readonly` |
+|[`transactions`](#-transactions) | List all transactions that modified specified object | `any`, `item`, `raw`, `readonly` |
 
 -----------------------------------
 

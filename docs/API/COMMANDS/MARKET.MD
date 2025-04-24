@@ -36,10 +36,10 @@ The following nouns are supported for this API command-set:
 
 | Noun   | Description |
 | :-----:  | :-------- |
-| `bid`    | A bid order |
-| `ask`    | An ask order |
-| `order`  | Any type of order |
-| `executed` | An executed order |
+| `bid`    | A market order placed to buy a token or asset |
+| `ask`    | A market order placed to sell a token or asset |
+| `order`  | A market order which can be a bid or ask |
+| `executed` | A market order which has been full-filled |
 
 ## `Supported Verbs`
 
@@ -47,11 +47,11 @@ The following verbs are currently supported by this command-set:
 
 | Verb   | Description | Nouns |
 | :-----:  | :-------- | :---- |
-|[`create`](#-create) | Create a new order | `bid`, `ask` |
-|[`list`](#-list) | List all orders | `bid`, `ask`, `order`, `executed` |
-|[`execute`](#-execute) | Execute an order | `bid`, `ask`, `order` |
-|[`cancel`](#-cancel) | Cancel an order | `bid`, `ask`, `order` |
-|[`user`](#-user) | Get user's orders | `order`, `executed` |
+|[`create`](#-create) | Creates a new market place or becomes part of an existing one | `bid`, `ask` |
+|[`list`](#-list) | List all orders for a specified marketplace | `bid`, `ask`, `order`, `executed` |
+|[`execute`](#-execute) | To full-fill a specified market order | `bid`, `ask`, `order` |
+|[`cancel`](#-cancel) | To cancel a specified market order | `bid`, `ask`, `order` |
+|[`user`](#-user) | Retrieves all market orders for a user or profile | `order`, `executed` |
 
 -----------------------------------
 

@@ -19,11 +19,11 @@ The following verbs are currently supported by this command-set:
 
 | Verb   | Description | Nouns |
 | :-----:  | :-------- | :---- |
-|[`create`](#-create) | Create a new invoice | `invoice` |
-|[`get`](#-get) | Get invoice details | `invoice` |
-|[`pay`](#-pay) | Pay an invoice | `invoice` |
-|[`cancel`](#-cancel) | Cancel an invoice | `invoice` |
-|[`list`](#-list) | List all invoices | `invoice`, `outstanding`, `paid`, `cancelled` |
+|[`create`](#-create) | Generate a new object of supported type | `invoice` |
+|[`get`](#-get) | Get object of supported type | `invoice` |
+|[`pay`](#-pay) | Issue funds from supported type | `invoice` |
+|[`cancel`](#-cancel) | To cancel the created invoice | `invoice` |
+|[`list`](#-list) | List all objects owned by given user | `invoice`, `outstanding`, `paid`, `cancelled` |
 |[`history`](#-history) | Generate the history of all last states | `invoice` |
 |[`transactions`](#-transactions) | List all transactions that modified specified object | `invoice` |
 
