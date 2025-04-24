@@ -253,7 +253,6 @@ The following parameters are required to update the profile:
     "success": true,
     "txid": "01f51d6b23b871fc8da848afa57cf066cb9e3b8fb845a666335e8c678ef5249e98d4f3e477659098918e4bb590472a63d0ed0a17fa87904fcff6316158e9edfd"
 }
-[Completed in 4979.735275 ms]
 ```
 
 ##### Return Values
@@ -295,7 +294,6 @@ The following parameters are required to delete the profile:
     "success": true,
     "txid": "01f51d6b23b871fc8da848afa57cf066cb9e3b8fb845a666335e8c678ef5249e98d4f3e477659098918e4bb590472a63d0ed0a17fa87904fcff6316158e9edfd"
 }
-[Completed in 4979.735275 ms]
 ```
 
 ##### Return Values

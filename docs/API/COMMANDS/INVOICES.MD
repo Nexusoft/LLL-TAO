@@ -433,7 +433,6 @@ This command supports all the nouns.
         "action": "TRANSFER"
     }
 ]
-[Completed in 1.392150 ms]
 ```
 
 #### Return values:
@@ -524,7 +523,6 @@ This method supports the Sorting / Filtering parameters.
         ]
     }
 ]
-[Completed in 0.961164 ms]
 ```
 
 ##### Return values:

@@ -50,7 +50,6 @@ ledger/get/blockhash
 {
     "hash": "289b76fbe40ca5e0d0df68016677a8c9be6389f3225cc9faf65cb92bbc98a3580b57cb7ba3d7f7ab36ce890d47a4be90254d407270ad4c2e69c99c998ef8547ca45f054b081959d4d59feb871360bce888f82b4cdc1476502bd1b8e95dffe811e55592d3d4768b56e0510e02b5e32171858de097cd811e7c8d09920c24960ae8"
 }
-[Completed in 0.083791 ms]
 ```
 
 ##### Return Values
@@ -133,7 +132,6 @@ See also:
         }
     ]
 }
-[Completed in 0.422600 ms]
 ```
 
 ##### Return Values
@@ -304,7 +302,6 @@ See also:
         }
     ]
 }
-[Completed in 0.290130 ms]
 ```
 
 ##### Return Values
@@ -389,7 +386,6 @@ See also:
         }
     ]
 }
-[Completed in 0.290130 ms]
 ```
 
 ##### Return Values
@@ -510,7 +506,6 @@ See also:
     "timestamp": 1660902585,
     "checkpoint": "20b50d243a585a6c9a3d420ebfa61aee8ac0a68c1d8c71ef415247fc3d677c44b6f0a2b497c72ca4d9f2271cfbe1090042522740e7671781c7548b275f84eebce7d4340b703abfe8544a3fd0ff1cd6132f6acb1b04948da81ae965a1828e307d1ab47b731d9cca7f28be830082b81c2a3d0b1fadd3e9fcc2ec9203d22a61ab12"
 }
-[Completed in 3827.013421 ms]
 ```
 
 ##### Return Values
@@ -621,7 +616,6 @@ See also:
         }
     }
 }
-[Completed in 12378.496480 ms]
 ```
 
 ##### Return Values
