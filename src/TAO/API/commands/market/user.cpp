@@ -72,44 +72,49 @@ namespace TAO::API
                 /* Build our list of orders now. */
                 for(const auto& pairOrder : vOrders)
                 {
-                    /* Get our contract now. */
-                    const TAO::Operation::Contract tContract =
-                        LLD::Ledger->ReadContract(pairOrder.first, pairOrder.second);
+                    /* Catch exception if we throw on ReadContract. */
+                    try
+                    {
+                        /* Get our contract now. */
+                        const TAO::Operation::Contract tContract =
+                            LLD::Ledger->ReadContract(pairOrder.first, pairOrder.second);
 
-                    /* Unpack our register address. */
-                    uint256_t hashRegister;
-                    if(!TAO::Register::Unpack(tContract, hashRegister))
-                        continue;
+                        /* Unpack our register address. */
+                        uint256_t hashRegister;
+                        if(!TAO::Register::Unpack(tContract, hashRegister))
+                            continue;
 
-                    /* Check for a spent proof already. */
-                    if(LLD::Ledger->HasProof(hashRegister, pairOrder.first, pairOrder.second))
-                        continue;
+                        /* Check for a spent proof already. */
+                        if(LLD::Ledger->HasProof(hashRegister, pairOrder.first, pairOrder.second))
+                            continue;
 
-                    /* Get our order's json. */
-                    encoding::json jOrder =
-                        OrderToJSON(tContract, hashBase);
+                        /* Get our order's json. */
+                        encoding::json jOrder =
+                            OrderToJSON(tContract, hashBase);
 
-                    /* Check for valid base token. */
-                    const std::pair<uint256_t, uint256_t> pairMarket = std::make_pair
-                    (
-                        TAO::Register::Address(jOrder["contract"]["token"].get<std::string>()),
-                        TAO::Register::Address(jOrder["order"]["token"].get<std::string>())
-                    );
+                        /* Check for valid base token. */
+                        const std::pair<uint256_t, uint256_t> pairMarket = std::make_pair
+                        (
+                            TAO::Register::Address(jOrder["contract"]["token"].get<std::string>()),
+                            TAO::Register::Address(jOrder["order"]["token"].get<std::string>())
+                        );
 
-                    /* Check that this the market we are looking for. */
-                    if(hashBase != pairMarket.first && hashBase != pairMarket.second)
-                        continue;
+                        /* Check that this the market we are looking for. */
+                        if(hashBase != pairMarket.first && hashBase != pairMarket.second)
+                            continue;
 
-                    /* Check that we match our filters. */
-                    if(!FilterResults(jParams, jOrder))
-                        continue;
+                        /* Check that we match our filters. */
+                        if(!FilterResults(jParams, jOrder))
+                            continue;
 
-                    /* Filter out our expected fieldnames if specified. */
-                    if(!FilterFieldname(jParams, jOrder))
-                        continue;
+                        /* Filter out our expected fieldnames if specified. */
+                        if(!FilterFieldname(jParams, jOrder))
+                            continue;
 
-                    /* Insert into set and automatically sort. */
-                    setOrders.insert(jOrder);
+                        /* Insert into set and automatically sort. */
+                        setOrders.insert(jOrder);
+                    }
+                    catch(const std::exception& e) { }
                 }
 
                 /* Build our return value. */
@@ -150,40 +155,45 @@ namespace TAO::API
                 /* Build our list of orders now. */
                 for(const auto& pairOrder : vOrders)
                 {
-                    /* Get our contract now. */
-                    const TAO::Operation::Contract tContract =
-                        LLD::Ledger->ReadContract(pairOrder.first, pairOrder.second);
+                    /* Catch exception if we throw on ReadContract. */
+                    try
+                    {
+                        /* Get our contract now. */
+                        const TAO::Operation::Contract tContract =
+                            LLD::Ledger->ReadContract(pairOrder.first, pairOrder.second);
 
-                    /* Unpack our register address. */
-                    uint256_t hashRegister;
-                    if(!TAO::Register::Unpack(tContract, hashRegister))
-                        continue;
+                        /* Unpack our register address. */
+                        uint256_t hashRegister;
+                        if(!TAO::Register::Unpack(tContract, hashRegister))
+                            continue;
 
-                    /* Get our order's json. */
-                    encoding::json jOrder =
-                        OrderToJSON(tContract, hashBase);
+                        /* Get our order's json. */
+                        encoding::json jOrder =
+                            OrderToJSON(tContract, hashBase);
 
-                    /* Check for valid base token. */
-                    const std::pair<uint256_t, uint256_t> pairMarket = std::make_pair
-                    (
-                        TAO::Register::Address(jOrder["contract"]["token"].get<std::string>()),
-                        TAO::Register::Address(jOrder["order"]["token"].get<std::string>())
-                    );
+                        /* Check for valid base token. */
+                        const std::pair<uint256_t, uint256_t> pairMarket = std::make_pair
+                        (
+                            TAO::Register::Address(jOrder["contract"]["token"].get<std::string>()),
+                            TAO::Register::Address(jOrder["order"]["token"].get<std::string>())
+                        );
 
-                    /* Check that this the market we are looking for. */
-                    if(hashBase != pairMarket.first && hashBase != pairMarket.second)
-                        continue;
+                        /* Check that this the market we are looking for. */
+                        if(hashBase != pairMarket.first && hashBase != pairMarket.second)
+                            continue;
 
-                    /* Check that we match our filters. */
-                    if(!FilterResults(jParams, jOrder))
-                        continue;
+                        /* Check that we match our filters. */
+                        if(!FilterResults(jParams, jOrder))
+                            continue;
 
-                    /* Filter out our expected fieldnames if specified. */
-                    if(!FilterFieldname(jParams, jOrder))
-                        continue;
+                        /* Filter out our expected fieldnames if specified. */
+                        if(!FilterFieldname(jParams, jOrder))
+                            continue;
 
-                    /* Insert into set and automatically sort. */
-                    setOrders.insert(jOrder);
+                        /* Insert into set and automatically sort. */
+                        setOrders.insert(jOrder);
+                    }
+                    catch(const std::exception& e) { }
                 }
 
                 /* Build our return value. */

@@ -101,7 +101,7 @@ namespace TAO::API
                         continue;
                 }
 
-                /* Make sure we catch exceptions here. */
+                /* Catch exception if we throw on ReadContract. */
                 try
                 {
                     /* Get a referecne of our contract. */

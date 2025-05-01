@@ -649,130 +649,135 @@ namespace TAO::API
                 return true;
         }
 
-        /* Get a referecne of our contract. */
-        const TAO::Operation::Contract& rContract =
-            LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
-
-        /* Check if the given contract is spent already. */
-        if(rContract.Spent(rEvent.second))
+        /* Catch exception if we throw on ReadContract. */
+        try
         {
-            /* Check for our stop. */
-            if(fStop)
-                return true;
+            /* Get a referecne of our contract. */
+            const TAO::Operation::Contract& rContract =
+                LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
 
-            /* For a burn we increment so we don't process same event again. */
-            if(fMine)
+            /* Check if the given contract is spent already. */
+            if(rContract.Spent(rEvent.second))
             {
-                /* Increment our contract sequence. */
-                LLD::Sessions->IncrementContractSequence(hashGenesis);
+                /* Check for our stop. */
+                if(fStop)
+                    return true;
+
+                /* For a burn we increment so we don't process same event again. */
+                if(fMine)
+                {
+                    /* Increment our contract sequence. */
+                    LLD::Sessions->IncrementContractSequence(hashGenesis);
+                    return false;
+                }
+
+                /* Increment our notifications sequence. */
+                LLD::Sessions->IncrementEventSequence(hashGenesis);
                 return false;
             }
 
-            /* Increment our notifications sequence. */
-            LLD::Sessions->IncrementEventSequence(hashGenesis);
-            return false;
-        }
-
-        /* Skip over conditional transactions to ourselves. */
-        if(rContract.Operations()[0] == TAO::Operation::OP::CONDITION)
-        {
-            /* For a burn we increment so we don't process same event again. */
-            if(fMine)
+            /* Skip over conditional transactions to ourselves. */
+            if(rContract.Operations()[0] == TAO::Operation::OP::CONDITION)
             {
-                /* Debug output. */
-                debug::log(3, "OP::CONDITION: skipping for my work queue.");
-
-                /* Increment our contract sequence. */
-                LLD::Sessions->IncrementContractSequence(hashGenesis);
-                return false;
-            }
-        }
-
-        /* Seek our contract to primitive OP. */
-        rContract.SeekToPrimitive();
-
-        /* Get a copy of our primitive. */
-        uint8_t nOP = 0;
-        rContract >> nOP;
-
-        /* Switch for valid primitives. */
-        switch(nOP)
-        {
-            /* Handle for if we need to credit. */
-            case TAO::Operation::OP::LEGACY:
-            case TAO::Operation::OP::DEBIT:
-            case TAO::Operation::OP::COINBASE:
-            {
-                try
+                /* For a burn we increment so we don't process same event again. */
+                if(fMine)
                 {
-                    /* Build our credit contract now. */
-                    if(!BuildCredit(jSession, rEvent.second, rContract, vContracts))
-                        return true;
+                    /* Debug output. */
+                    debug::log(3, "OP::CONDITION: skipping for my work queue.");
 
-                    /* Sanitize our contract now. */
-                    TAO::Operation::Contract tContract = vContracts.back();
-                    if(!SanitizeContract(hashGenesis, tContract))
+                    /* Increment our contract sequence. */
+                    LLD::Sessions->IncrementContractSequence(hashGenesis);
+                    return false;
+                }
+            }
+
+            /* Seek our contract to primitive OP. */
+            rContract.SeekToPrimitive();
+
+            /* Get a copy of our primitive. */
+            uint8_t nOP = 0;
+            rContract >> nOP;
+
+            /* Switch for valid primitives. */
+            switch(nOP)
+            {
+                /* Handle for if we need to credit. */
+                case TAO::Operation::OP::LEGACY:
+                case TAO::Operation::OP::DEBIT:
+                case TAO::Operation::OP::COINBASE:
+                {
+                    try
                     {
-                        /* Check for our stop. */
-                        if(fStop || fMine)
+                        /* Build our credit contract now. */
+                        if(!BuildCredit(jSession, rEvent.second, rContract, vContracts))
                             return true;
 
-                        /* Log some info about this. */
-                        debug::log(2, FUNCTION, "OP::CREDIT: sanitize failed for ", rEvent.first.SubString(), ", adding to work queue");
+                        /* Sanitize our contract now. */
+                        TAO::Operation::Contract tContract = vContracts.back();
+                        if(!SanitizeContract(hashGenesis, tContract))
+                        {
+                            /* Check for our stop. */
+                            if(fStop || fMine)
+                                return true;
 
-                        /* Push this to our contracts queue so we can process again later. */
-                        LLD::Sessions->PushContract(hashGenesis, rEvent.first, rEvent.second);
+                            /* Log some info about this. */
+                            debug::log(2, FUNCTION, "OP::CREDIT: sanitize failed for ", rEvent.first.SubString(), ", adding to work queue");
 
-                        /* Increment our notifications sequence. */
-                        LLD::Sessions->IncrementEventSequence(hashGenesis);
-                        return false;
+                            /* Push this to our contracts queue so we can process again later. */
+                            LLD::Sessions->PushContract(hashGenesis, rEvent.first, rEvent.second);
+
+                            /* Increment our notifications sequence. */
+                            LLD::Sessions->IncrementEventSequence(hashGenesis);
+                            return false;
+                        }
                     }
-                }
-                catch(const Exception& e)
-                {
-                    debug::warning(FUNCTION, "OP::CREDIT: failed to build for ", hashEvent.SubString(), ": ", e.what());
-                }
-
-                break;
-            }
-
-            /* Handle for if we need to claim. */
-            case TAO::Operation::OP::TRANSFER:
-            {
-                try
-                {
-                    /* Build our credit contract now. */
-                    if(!BuildClaim(jSession, rEvent.second, rContract, vContracts))
-                        return true;
-
-                    /* Sanitize our contract now. */
-                    TAO::Operation::Contract tContract = vContracts.back();
-                    if(!SanitizeContract(hashGenesis, tContract))
+                    catch(const Exception& e)
                     {
-                        /* Check for our stop. */
-                        if(fStop || fMine)
+                        debug::warning(FUNCTION, "OP::CREDIT: failed to build for ", hashEvent.SubString(), ": ", e.what());
+                    }
+
+                    break;
+                }
+
+                /* Handle for if we need to claim. */
+                case TAO::Operation::OP::TRANSFER:
+                {
+                    try
+                    {
+                        /* Build our credit contract now. */
+                        if(!BuildClaim(jSession, rEvent.second, rContract, vContracts))
                             return true;
 
-                        /* Log some info about this. */
-                        debug::log(2, FUNCTION, "OP::CLAIM: sanitize failed for ", rEvent.first.SubString(), ", adding to work queue");
+                        /* Sanitize our contract now. */
+                        TAO::Operation::Contract tContract = vContracts.back();
+                        if(!SanitizeContract(hashGenesis, tContract))
+                        {
+                            /* Check for our stop. */
+                            if(fStop || fMine)
+                                return true;
 
-                        /* Push this to our contracts queue so we can process again later. */
-                        LLD::Sessions->PushContract(hashGenesis, rEvent.first, rEvent.second);
+                            /* Log some info about this. */
+                            debug::log(2, FUNCTION, "OP::CLAIM: sanitize failed for ", rEvent.first.SubString(), ", adding to work queue");
 
-                        /* Increment our notifications sequence. */
-                        LLD::Sessions->IncrementEventSequence(hashGenesis);
-                        return false;
+                            /* Push this to our contracts queue so we can process again later. */
+                            LLD::Sessions->PushContract(hashGenesis, rEvent.first, rEvent.second);
+
+                            /* Increment our notifications sequence. */
+                            LLD::Sessions->IncrementEventSequence(hashGenesis);
+                            return false;
+                        }
                     }
-                }
-                catch(const Exception& e)
-                {
-                    debug::warning(FUNCTION, "OP::CLAIM: failed to build for ", hashEvent.SubString(), ": ", e.what());
-                }
+                    catch(const Exception& e)
+                    {
+                        debug::warning(FUNCTION, "OP::CLAIM: failed to build for ", hashEvent.SubString(), ": ", e.what());
+                    }
 
-                break;
+                    break;
+                }
             }
-        }
 
-        return true;
+            return true;
+        }
+        catch(const std::exception& e) { return false; }
     }
 }
