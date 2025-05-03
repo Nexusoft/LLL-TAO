@@ -62,7 +62,7 @@ namespace TAO::API
     }
 
     /* While a user is signed in, return a boolean if the supplied PIN can authenticate the session */
-    encoding::json Sessions::Validate_Pin(const encoding::json& jParams, const bool fHelp)
+    encoding::json Sessions::ValidatePin(const encoding::json& jParams, const bool fHelp)
     {
         /* Blank Return JSON*/
         encoding::json jRet;

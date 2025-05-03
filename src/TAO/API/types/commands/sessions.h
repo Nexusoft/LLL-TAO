@@ -170,7 +170,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Validate_Pin(const encoding::json &jParams, const bool fHelp);
+        encoding::json ValidatePin(const encoding::json &jParams, const bool fHelp);
 
     private:
 
