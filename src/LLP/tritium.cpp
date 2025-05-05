@@ -835,7 +835,7 @@ namespace LLP
                                 nNotifications |= SUBSCRIPTION::BLOCK;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::SUBSCRIBE: BLOCK: ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE::BLOCK: ", std::bitset<16>(nNotifications));
                             }
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
