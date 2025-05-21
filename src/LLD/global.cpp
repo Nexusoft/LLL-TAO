@@ -36,6 +36,27 @@ namespace LLD
     {
         debug::log(0, FUNCTION, "Initializing LLD");
 
+        {
+            /* Create the ContractDB configuration object. */
+            Config::Base BASE =
+                Config::Base("_CONTRACT", FLAGS::CREATE | FLAGS::FORCE);
+
+            /* Create the ContractDB sector configuration object. */
+            Config::Static SECTOR             = Config::Static(BASE);
+            SECTOR.MAX_SECTOR_FILE_STREAMS    = 16;
+            SECTOR.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
+            SECTOR.MAX_SECTOR_CACHE_SIZE      = config::GetArg("-contractcache", 1) * 1024 * 1024;
+
+            /* Create the ContractDB keychain configuration object. */
+            Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
+            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 77773;
+            KEYCHAIN.MAX_HASHMAPS             = 256;
+            KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 64;
+        }
+
+        /* Create the ContractDB database instance. */
+        Contract = new ContractDB(SECTOR, KEYCHAIN);
+
         /* Create the contract database instance. */
         const uint32_t nContractCacheSize = config::GetArg("-contractcache", 1);
         Contract = new ContractDB(

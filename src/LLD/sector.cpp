@@ -28,22 +28,20 @@ namespace LLD
 {
 
     /* The Database Constructor. To determine file location and the Bytes per Record. */
-    template<class KeychainType, class CacheType>
-    SectorDatabase<KeychainType, CacheType>::SectorDatabase(const std::string& strNameIn,
-                                                            const uint8_t nFlagsIn, const uint64_t nBucketsIn,
-                                                            const uint32_t nCacheIn)
+    template<class KeychainType, class CacheType, class ConfigType>
+    SectorDatabase<KeychainType, CacheType>::SectorDatabase(const LLD::Config::Static& sectorIn, const ConfigType& keychainIn)
     : CONDITION_MUTEX()
     , CONDITION()
     , SECTOR_MUTEX()
     , BUFFER_MUTEX()
     , TRANSACTION_MUTEX()
-    , strBaseLocation(config::GetDataDir() + strNameIn + "/datachain/")
-    , strName(strNameIn)
+    , strBaseLocation(sectorIn.DIRECTORY + "/datachain/")
+    , strName(sectorIn.NAME)
     , runtime()
     , pTransaction(nullptr)
-    , pSectorKeys(new KeychainType((config::GetDataDir() + strName + "/keychain/"), nFlagsIn, nBucketsIn))
-    , cachePool(new CacheType(nCacheIn))
-    , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
+    , pSectorKeys(new KeychainType(keychainIn))
+    , cachePool(new CacheType(sectorIn.MAX_SECTOR_CACHE_SIZE))
+    , fileCache(new TemplateLRU<uint32_t, std::fstream*>(sectorIn.MAX_SECTOR_FILE_STREAMS))
     , nCurrentFile(0)
     , nCurrentFileSize(0)
     , CacheWriterThread()
@@ -55,7 +53,7 @@ namespace LLD
     , nRecordsFlushed(0)
     , fDestruct(false)
     , fInitialized(false)
-    , nFlags(nFlagsIn)
+    , nFlags(sectorIn.FLAGS)
     {
         /* Set readonly flag if write or append are not specified. */
         if(!(nFlags & FLAGS::FORCE) && !(nFlags & FLAGS::WRITE) && !(nFlags & FLAGS::APPEND))
@@ -76,7 +74,7 @@ namespace LLD
 
 
     /* Default Destructor */
-    template<class KeychainType, class CacheType>
+    template<class KeychainType, class CacheType, class ConfigType>
     SectorDatabase<KeychainType, CacheType>::~SectorDatabase()
     {
         fDestruct = true;
@@ -103,7 +101,7 @@ namespace LLD
 
 
     /*  Initialize Sector Database. */
-    template<class KeychainType, class CacheType>
+    template<class KeychainType, class CacheType, class ConfigType>
     void SectorDatabase<KeychainType, CacheType>::Initialize()
     {
         /* Create directories if they don't exist yet. */
@@ -147,7 +145,7 @@ namespace LLD
 
 
     /*  Get a record from cache or from disk */
-    template<class KeychainType, class CacheType>
+    template<class KeychainType, class CacheType, class ConfigType>
     bool SectorDatabase<KeychainType, CacheType>::Get(const std::vector<uint8_t>& vKey, std::vector<uint8_t>& vData)
     {
         /* Iterate if meters are enabled. */
@@ -216,7 +214,7 @@ namespace LLD
 
     /*  Get a record from from disk if the sector key
      *  is already read from the keychain. */
-    template<class KeychainType, class CacheType>
+    template<class KeychainType, class CacheType, class ConfigType>
     bool SectorDatabase<KeychainType, CacheType>::Get(const SectorKey& cKey, std::vector<uint8_t>& vData)
     {
         {
@@ -272,7 +270,7 @@ namespace LLD
 
 
     /*  Update a record on disk. */
-    template<class KeychainType, class CacheType>
+    template<class KeychainType, class CacheType, class ConfigType>
     bool SectorDatabase<KeychainType, CacheType>::Update(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData)
     {
         /* Check the keychain for key. */
@@ -340,7 +338,7 @@ namespace LLD
 
 
     /*  Force a write to disk immediately bypassing write buffers. */
-    template<class KeychainType, class CacheType>
+    template<class KeychainType, class CacheType, class ConfigType>
     bool SectorDatabase<KeychainType, CacheType>::Force(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData)
     {
         if(nFlags & FLAGS::APPEND || !Update(vKey, vData))
@@ -431,7 +429,7 @@ namespace LLD
 
 
     /*  Write a record into the cache and disk buffer for flushing to disk. */
-    template<class KeychainType, class CacheType>
+    template<class KeychainType, class CacheType, class ConfigType>
     bool SectorDatabase<KeychainType, CacheType>::Put(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData)
     {
         /* Handle force write mode. */
@@ -461,7 +459,7 @@ namespace LLD
 
 
     /*  Update a record on disk. */
-    template<class KeychainType, class CacheType>
+    template<class KeychainType, class CacheType, class ConfigType>
     bool SectorDatabase<KeychainType, CacheType>::Delete(const std::vector<uint8_t>& vKey)
     {
         /* Check the keychain for key. */
@@ -526,7 +524,7 @@ namespace LLD
 
 
     /*  Flushes periodically data from the cache buffer to disk. */
-    template<class KeychainType, class CacheType>
+    template<class KeychainType, class CacheType, class ConfigType>
     void SectorDatabase<KeychainType, CacheType>::CacheWriter()
     {
         /* Wait for initialization. */
@@ -606,7 +604,7 @@ namespace LLD
 
 
     /*  LLD Meter Thread. Tracks the Reads/Writes per second. */
-    template<class KeychainType, class CacheType>
+    template<class KeychainType, class CacheType, class ConfigType>
     void SectorDatabase<KeychainType, CacheType>::Meter()
     {
         if(!config::GetBoolArg("-lldmeters", false))
@@ -646,7 +644,7 @@ namespace LLD
 
 
     /*  Start a database transaction. */
-    template<class KeychainType, class CacheType>
+    template<class KeychainType, class CacheType, class ConfigType>
     void SectorDatabase<KeychainType, CacheType>::TxnBegin()
     {
         LOCK(TRANSACTION_MUTEX);
@@ -661,7 +659,7 @@ namespace LLD
 
 
     /*  Write the transaction commitment message. */
-    template<class KeychainType, class CacheType>
+    template<class KeychainType, class CacheType, class ConfigType>
     bool SectorDatabase<KeychainType, CacheType>::TxnCheckpoint()
     {
         LOCK(TRANSACTION_MUTEX);
@@ -688,7 +686,7 @@ namespace LLD
 
 
     /*  Release the transaction checkpoint. */
-    template<class KeychainType, class CacheType>
+    template<class KeychainType, class CacheType, class ConfigType>
     void SectorDatabase<KeychainType, CacheType>::TxnRelease()
     {
         LOCK(TRANSACTION_MUTEX);
@@ -707,7 +705,7 @@ namespace LLD
 
 
     /*  Commit data from transaction object. */
-    template<class KeychainType, class CacheType>
+    template<class KeychainType, class CacheType, class ConfigType>
     bool SectorDatabase<KeychainType, CacheType>::TxnCommit()
     {
         LOCK(TRANSACTION_MUTEX);
@@ -766,7 +764,7 @@ namespace LLD
 
 
     /*  Recover a transaction from the journal. */
-    template<class KeychainType, class CacheType>
+    template<class KeychainType, class CacheType, class ConfigType>
     bool SectorDatabase<KeychainType, CacheType>::TxnRecovery()
     {
         /* Create an append only stream. */

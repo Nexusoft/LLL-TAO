@@ -78,7 +78,7 @@ namespace LLD
      *  attempts will trigger an error code.
      *
      **/
-    template<class KeychainType, class CacheType>
+    template<class KeychainType, class CacheType, class ConfigType>
     class SectorDatabase
     {
         /* The mutex for the condition. */
@@ -162,8 +162,7 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        SectorDatabase(const std::string& strNameIn, const uint8_t nFlagsIn,
-                       const uint64_t nBucketsIn = 256 * 256 * 64, const uint32_t nCacheIn = 1024 * 1024);
+        SectorDatabase(const LLD::Config::Static& sectorIn, const ConfigType& keychainIn);
 
 
         /** Default Destructor **/
