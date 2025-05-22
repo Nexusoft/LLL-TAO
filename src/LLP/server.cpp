@@ -753,13 +753,25 @@ namespace LLP
                     Socket sockNew(hSocket, addr, fSSL);
 
                     /* Check that an address is banned. */
-                    if(DDOS_MAP->count(addr) && DDOS_MAP->at(addr)->Banned())
+                    if(DDOS_MAP->count(addr))
                     {
-                        debug::notice(FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Banned.");
-                        sockNew.Close();
+                        /* Iterate the DDOS cScore (Connection score). */
+                        DDOS_MAP->at(addr)->cSCORE += 1;
 
-                        continue;
+                        /* Check if we have exceeded our maximum scores. */
+                        if(DDOS_MAP->at(addr)-> cSCORE.Score() > CONFIG.DDOS_CSCORE)
+                            DDOS_MAP->at(addr)->Ban();
+
+                        /* Check if we have violated DDOS score thresholds. */
+                        if(!addr.IsLocal() && DDOS_MAP->at(addr)->Banned())
+                        {
+                            debug::notice(FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Banned.");
+                            sockNew.Close();
+
+                            continue;
+                        }
                     }
+
 
                     /* Check for errors accepting the connection */
                     if(sockNew.Errors())

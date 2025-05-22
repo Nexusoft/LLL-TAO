@@ -345,8 +345,7 @@ namespace LLP
                     if(fDDOS.load() && CONNECTION->DDOS && !CONNECTION->addr.IsLocal())
                     {
                         /* Ban a node if it has too many Requests per Second. **/
-                        if(CONNECTION->DDOS->rSCORE.Score() > DDOS_rSCORE
-                        || CONNECTION->DDOS->cSCORE.Score() > DDOS_cSCORE)
+                        if(CONNECTION->DDOS->rSCORE.Score() > DDOS_rSCORE)
                             CONNECTION->DDOS->Ban();
 
                         /* Remove a connection if it was banned by DDOS Protection. */
