@@ -434,7 +434,11 @@ namespace LLD
                                     return (vValues.size() > 0);
                             }
                             else
-                                ssData.SetPos(nPos + nSize + GetSizeOfCompactSize(nSize));
+                            {
+                                try { ssData.SetPos(nPos + nSize + GetSizeOfCompactSize(nSize)); }
+                                catch(const std::exceptoin& e){ break; }
+                            }
+
 
                             /* Iterate to next position. */
                             nFilePos += nSize + GetSizeOfCompactSize(nSize);
