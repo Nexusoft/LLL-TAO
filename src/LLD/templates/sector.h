@@ -436,7 +436,7 @@ namespace LLD
                             else
                             {
                                 try { ssData.SetPos(nPos + nSize + GetSizeOfCompactSize(nSize)); }
-                                catch(const std::exceptoin& e){ break; }
+                                catch(const std::exception& e){ break; }
                             }
 
 
