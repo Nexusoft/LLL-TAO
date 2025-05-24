@@ -325,8 +325,6 @@ sudo ufw allow out 9888/tcp
 ```
 
 Second, Open API port. For better security, You may whitelist the inbound/outbound ip.
-
-In this time, Just open the port as globally to using as example.
 ```
 # Open port for inbound
 sudo ufw allow from 8080/tcp
@@ -334,7 +332,7 @@ sudo ufw allow from 8080/tcp
 sudo ufw allow from XXX.XXX.XXX.XXX to any port 8080 proto tcp
 # Open port for outbound
 sudo ufw allow out 8080/tcp
-# Open port for outbound
+# Open port for outbound from specific IP
 sudo ufw allow out to XXX.XXX.XXX.XXX port 8080 proto tcp
 ```
 
@@ -346,7 +344,7 @@ sudo ufw allow from 8443/tcp
 sudo ufw allow from XXX.XXX.XXX.XXX to any port 8443 proto tcp
 # Open port for outbound
 sudo ufw allow out 8443/tcp
-# Open port for outbound
+# Open port for outbound from specific IP
 sudo ufw allow out to XXX.XXX.XXX.XXX port 8443 proto tcp
 ```
 Then, Restart service of <code>UFW</code>.
@@ -358,7 +356,7 @@ It's done for opening port and ready for running services!
 <br />
 
 --------------------------------------------------------------------------------
-### `Part 4. Running Nexus Node and Check the Logs`
+### `Part 5. Running Nexus Node and Check the Logs`
 --------------------------------------------------------------------------------
 On this chapter, We are going to start the nexus node and learn how to find the log files for maintaining nodes.
 
@@ -369,9 +367,9 @@ Or if you registered the Nexus daemon as environment variable, just input <code>
 Once you pressed, It shows the fully logs. 
 ```
 [03:52:52.754] ---------------------------------------------------
-[03:52:52.754] Startup time 2025-05-24 18:52:52 UTC
+[03:52:52.754] Startup time 2025-XX-XX XX:XX:XX UTC
 [03:52:52.754] 5.1.5-rc14-8 Tritium++ CLI [LLD][ARM aarch64]
-[03:52:52.754] Linux Build (created May 24 2025 XX:XX:XX)
+[03:52:52.754] Linux Build (created XXX XX 2025 XX:XX:XX)
 [03:52:52.754] Using configuration file: /home/[user name]/.Nexus/nexus.conf
 [03:52:52.754] Configuration file parameters: -apiauth=1....
 ```
@@ -409,7 +407,7 @@ But this is not login status yet, So let's find how to login on Nexus interface 
 <br />
 
 --------------------------------------------------------------------------------
-### `Part 5. Access Remote Core from Other Devices with Nexus Interface (Wallet)`
+### `Part 6. Access Remote Core from Other Devices with Nexus Interface (Wallet)`
 --------------------------------------------------------------------------------
 As on introduction, LLL-TAO is only provides as CLI(Command Line Interface) for ARM64(aarch64) Architecture.
 
