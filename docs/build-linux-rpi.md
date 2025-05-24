@@ -1,4 +1,4 @@
-### Build Instructions for Linux on Raspberry Pi
+## Build Instructions for Linux on Raspberry Pi
 -------------------------------------------------------------------------------
 This is an instruction for using [LLL-TAO](https://github.com/Nexusoft/LLL-TAO) on Raspberry Pi as using CLI(Command Line Interface) and as using Remote Core for convenience controlling on Staking or Mining.
 
