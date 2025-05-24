@@ -1856,6 +1856,10 @@ namespace LLP
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::GET: BLOCK ", hashBlock.SubString());
 
+                            /* Add DDOS filtering here. */
+                            if(DDOS)
+                                DDOS->rSCORE += 10;
+
                             break;
                         }
 
@@ -1904,6 +1908,10 @@ namespace LLP
 
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::GET: TRANSACTION ", hashTx.SubString());
+
+                            /* Add DDOS filtering here. */
+                            if(DDOS)
+                                DDOS->rSCORE += 10;
 
                             break;
                         }
