@@ -96,6 +96,23 @@ namespace TAO
                 if(mapLedger.count(hashTx))
                     return false; //NOTE: this was true, but changed to false to prevent relay loops in tritium LLP
 
+                /* Keep adding penalties if we have consecutive orphans. */
+                if(mapOrphans.count(tx.hashPrevTx))
+                {
+                    /* Increment consecutive orphans. */
+                    if(pnode)
+                    {
+                        /* Increment our consecutive orphans here. */
+                        ++pnode->nConsecutiveOrphans;
+
+                        /* Add an additional DDOS penalty. */
+                        if(pnode->DDOS)
+                            pnode->DDOS->rSCORE += 1;
+                    }
+
+                    return false;
+                }
+
                 /* Check for rejected tx. */
                 if(mapRejected.count(tx.hashPrevTx))
                 {
