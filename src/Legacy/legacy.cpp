@@ -165,35 +165,34 @@ namespace Legacy
             throw debug::exception(FUNCTION, "invalid sync block version for legacy block");
 
         /* Track our current iterator. */
-        uint32_t nIterator = 0;
+        //uint32_t nIterator = 0;
 
         /* Push back all the transactions from the state object. */
-        std::vector<Legacy::Transaction> vList;
-        while(LLD::Legacy->BatchRead(std::make_pair(std::string("tx"), state.vtx[nIterator].second), "tx", vList, 10, true))
-        {
+        //std::vector<Legacy::Transaction> vList;
+        //while(LLD::Legacy->BatchRead(std::make_pair(std::string("tx"), state.vtx[nIterator].second), "tx", vList, 10, true))
+        //{
             /* Loop through tx and find in block. */
-            for(const auto& tx : vList)
-            {
+        //    for(const auto& tx : vList)
+        //    {
                 /* Once we have all the transactions. */
-                if(nIterator == state.vtx.size())
-                    break;
+        //        if(nIterator == state.vtx.size())
+        //            break;
 
                 /* Check if we found tx that matches block. */
-                if(tx.GetHash() == state.vtx[nIterator].second)
-                {
-                    nIterator++;
-                    vtx.push_back(tx);
-                }
-                else
-                    continue;
-            }
+        //        if(tx.GetHash() == state.vtx[nIterator].second)
+        //        {
+        //            nIterator++;
+        //            vtx.push_back(tx);
+        //        }
+        //        else
+        //            continue;
+        //    }
 
             /* Once we have all the transactions. */
-            if(nIterator == state.vtx.size())
-                break;
-        }
+        //    if(nIterator == state.vtx.size())
+        //        break;
+        //}
 
-        /*
         for(const auto& item : state.vtx)
         {
             if(item.first == TAO::Ledger::TRANSACTION::LEGACY)
@@ -205,7 +204,6 @@ namespace Legacy
                 vtx.push_back(tx);
             }
         }
-        */
     }
 
 
