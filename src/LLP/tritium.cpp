@@ -1858,7 +1858,7 @@ namespace LLP
 
                             /* Add DDOS filtering here. */
                             if(DDOS)
-                                DDOS->rSCORE += 10;
+                                DDOS->rSCORE += 25;
 
                             break;
                         }
@@ -1911,7 +1911,7 @@ namespace LLP
 
                             /* Add DDOS filtering here. */
                             if(DDOS)
-                                DDOS->rSCORE += 10;
+                                DDOS->rSCORE += 15;
 
                             break;
                         }
