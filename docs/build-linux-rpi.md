@@ -333,9 +333,9 @@ sudo service iptables restart
 
 #### `Setting Rules on UFW`
 --------------------------------------------------------------------------------
-<code>UFW</code> is very easy to use firewall setting.
+<code>UFW</code> is very easy-to-use for firewall setting on Ubuntu.
 
-UFW is Front-end interface for <code>iptables</code>.
+UFW is a front-end interface for <code>iptables</code>, With simple grammar and non-strict rules.
 
 First, Open RPC port.
 ```
