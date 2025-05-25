@@ -402,7 +402,7 @@ On first startup, The daemon will download the bootstraps (Blockchain Database) 
 
 It takes about few hours, So please waiting gently.
 
-But you can't do the other work same time because the daemon running foreground.
+But you can't do the other work same time because the daemon running in foreground.
 
 When if you press <code>Ctrl+C</code> for canceling the daemon, The daemon will be stopped.
 
