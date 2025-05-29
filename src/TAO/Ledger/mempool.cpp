@@ -271,7 +271,7 @@ namespace TAO
             catch(const std::exception& e)
             {
                 mapRejected.insert(hashTx);
-                return debug::error(FUNCTION, "REJECTED: exception encountered ", e.what());
+                return false; //debug::error(FUNCTION, "REJECTED: exception encountered ", e.what());
             }
 
             return false;
