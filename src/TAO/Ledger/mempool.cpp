@@ -271,7 +271,7 @@ namespace TAO
             catch(const std::exception& e)
             {
                 mapRejected.insert(hashTx);
-                return false; //debug::error(FUNCTION, "REJECTED: exception encountered ", e.what());
+                return debug::error(FUNCTION, "REJECTED: exception encountered ", e.what());
             }
 
             return false;
@@ -290,14 +290,27 @@ namespace TAO
                 /* Get the transaction from map. */
                 const TAO::Ledger::Transaction& tx = mapOrphans[hashTx];
 
-                /* Set our internal cached hash. */
-                tx.hashCache = hashTx;
-
                 /* Get the previous hash. */
                 const uint512_t hashThis = tx.GetHash();
 
                 /* Debug output. */
                 debug::log(0, FUNCTION, "PROCESSING ORPHAN tx ", hashThis.SubString());
+
+                /* Check if this is already in our mempool. */
+                if(mapLedger.count(hashTx))
+                {
+                    /* Erase the transaction. */
+                    mapOrphans.erase(hashTx);
+                    setOrphansByIndex.erase(hashThis);
+
+                    /* Set the hashTx. */
+                    hashTx = hashThis;
+
+                    continue;
+                }
+
+                /* Set our internal cached hash. */
+                tx.hashCache = hashThis;
 
                 /* Accept the transaction into memory pool. */
                 if(!Accept(tx))

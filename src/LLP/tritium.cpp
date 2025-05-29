@@ -1306,7 +1306,7 @@ namespace LLP
 
                                 /* Add DDOS filtering here. */
                                 if(DDOS)
-                                    DDOS->rSCORE += 250;
+                                    DDOS->rSCORE += locator.vHave.size();
 
                                 break;
                             }
