@@ -3,7 +3,7 @@ This is an instruction for using [LLL-TAO](https://github.com/Nexusoft/LLL-TAO) 
 
 Also, This method can be applied for other NUC with Debian-based linux distributions or other ARM64-based devices with Debian-based linux distributions.
 
-This instruction was written for LLL-TAO <code>5.1.5-rc14-9</code> on <code>merging</code> branch on <code>6/1/2025</code> currently.
+This instruction was written for LLL-TAO <code>5.1.5-rc14-9</code> of <code>merging</code> branch on <code>6/1/2025</code> currently.
 
 <br />
 
