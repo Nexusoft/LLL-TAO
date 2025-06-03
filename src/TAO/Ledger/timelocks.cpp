@@ -95,8 +95,8 @@ namespace TAO
             1573539371,        //--- Transaction Version 1 Activation:      11/11/2019 23:11:11 GMT - 7
             1584676140,        //--- Transaction Version 2 Activation:      03/19/2020 20:49:00 GMT - 7
             1631301120,        //--- Transaction Version 3 Activation:      09/10/2021 12:12:00 GMT - 7
-            1631819333,         //--- Transaction Version 4 Activation:      09/16/2021 12:08:53 GMT - 7
-            1743810284         //--- Transaction Version 5 Activation:      04/04/2025 16:44:44 GMT - 7
+            1631819333,        //--- Transaction Version 4 Activation:      09/16/2021 12:08:53 GMT - 7
+            1750458813         //--- Transaction Version 5 Activation:      06/20/2025 15:33:33 GMT - 7
         };
 
 
