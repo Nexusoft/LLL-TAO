@@ -56,7 +56,7 @@ namespace TAO
             1537167600,        //--- Block Version 6 Testnet Activation:  09/17/2018 00:00:00 GMT - 7
             1572325200,        //--- Block Version 7 Testnet Activation:  10/28/2019 22:00:00 GMT - 7
             1582946400,        //--- Block Version 8 Testnet Activation:  02/28/2020 20:20:00 GMT - 7
-            1743032684         //--- Block Version 9 Testnet Activation:  03/26/2025 16:44:44 GMT - 7
+            1749171355         //--- Block Version 9 Testnet Activation:  06/05/2025 17:55:55 GMT - 7
         };
 
 
@@ -85,7 +85,7 @@ namespace TAO
             1582946400,        //--- Transaction Version 2 Testnet Activation:  02/28/2020 20:20:00 GMT - 7
             1631046780,        //--- Transaction Version 3 Testnet Activation:  09/07/2021 13:33:00 GMT - 7
             1631563980,        //--- Transaction Version 4 Testnet Activation:  09/13/2021 13:13:00 GMT - 7
-            1743032684         //--- Transaction Version 5 Testnet Activation:  03/26/2025 16:44:44 GMT - 7
+            1749162813         //--- Transaction Version 5 Testnet Activation:  06/05/2025 15:33:33 GMT - 7
         };
 
 
