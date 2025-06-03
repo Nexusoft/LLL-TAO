@@ -126,5 +126,18 @@ namespace TAO::API
             )
             , "local"
         );
+
+        /* Handle for Validate Pin function. */
+        mapFunctions["validate"] = Function
+        (
+            std::bind
+            (
+                &Sessions::ValidatePin,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , "pin"
+        );
     }
 }

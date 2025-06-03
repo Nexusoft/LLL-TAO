@@ -835,7 +835,7 @@ namespace LLP
                                 nNotifications |= SUBSCRIPTION::BLOCK;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::SUBSCRIBE: BLOCK: ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE::BLOCK: ", std::bitset<16>(nNotifications));
                             }
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
@@ -1856,6 +1856,10 @@ namespace LLP
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::GET: BLOCK ", hashBlock.SubString());
 
+                            /* Add DDOS filtering here. */
+                            if(DDOS)
+                                DDOS->rSCORE += 50;
+
                             break;
                         }
 
@@ -1904,6 +1908,10 @@ namespace LLP
 
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::GET: TRANSACTION ", hashTx.SubString());
+
+                            /* Add DDOS filtering here. */
+                            if(DDOS)
+                                DDOS->rSCORE += 15;
 
                             break;
                         }

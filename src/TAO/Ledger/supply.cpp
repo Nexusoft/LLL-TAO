@@ -69,16 +69,27 @@ namespace TAO
         /* Calculate the Compounded amount of NXS that should "ideally" have been created to this minute. */
         uint64_t CompoundSubsidy(const uint32_t nMinutes)
         {
-            /* Compound our money supply from our subsidy. */
-            uint64_t nMoneySupply = 0;
-            for(uint32_t nMinute = 1; nMinute <= nMinutes; ++nMinute)
-            {
-                /* Loop through our available types. */
-                for(uint8_t nType = 0; nType < dDecayValue.size(); ++nType)
-                    nMoneySupply += GetSubsidy(nMinute, nType) * 2;
-            }
+            static std::mutex MUTEX;
+            static std::pair<uint32_t, uint64_t> pairSupply = std::make_pair(1, 0);
 
-            return nMoneySupply;
+            { LOCK(MUTEX);
+
+                /* If one has already completed the round, respond with the cache. */
+                if(pairSupply.first == nMinutes)
+                    return pairSupply.second;
+
+                /* Compound our money supply from our subsidy. */
+                for(uint32_t nMinute = pairSupply.first; nMinute <= nMinutes; ++nMinute)
+                {
+                    /* Loop through our available types. */
+                    for(uint8_t nType = 0; nType < dDecayValue.size(); ++nType)
+                        pairSupply.second += GetSubsidy(nMinute, nType) * 2;
+                }
+
+                /* If we complete, set our new minutes value and returns. */
+                pairSupply.first = nMinutes;
+                return pairSupply.second;
+            }
         }
 
 

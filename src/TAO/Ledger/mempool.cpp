@@ -96,6 +96,23 @@ namespace TAO
                 if(mapLedger.count(hashTx))
                     return false; //NOTE: this was true, but changed to false to prevent relay loops in tritium LLP
 
+                /* Keep adding penalties if we have consecutive orphans. */
+                if(mapOrphans.count(tx.hashPrevTx))
+                {
+                    /* Increment consecutive orphans. */
+                    if(pnode)
+                    {
+                        /* Increment our consecutive orphans here. */
+                        ++pnode->nConsecutiveOrphans;
+
+                        /* Add an additional DDOS penalty. */
+                        if(pnode->DDOS)
+                            pnode->DDOS->rSCORE += 1;
+                    }
+
+                    return false;
+                }
+
                 /* Check for rejected tx. */
                 if(mapRejected.count(tx.hashPrevTx))
                 {
@@ -273,14 +290,27 @@ namespace TAO
                 /* Get the transaction from map. */
                 const TAO::Ledger::Transaction& tx = mapOrphans[hashTx];
 
-                /* Set our internal cached hash. */
-                tx.hashCache = hashTx;
-
                 /* Get the previous hash. */
                 const uint512_t hashThis = tx.GetHash();
 
                 /* Debug output. */
                 debug::log(0, FUNCTION, "PROCESSING ORPHAN tx ", hashThis.SubString());
+
+                /* Check if this is already in our mempool. */
+                if(mapLedger.count(hashTx))
+                {
+                    /* Erase the transaction. */
+                    mapOrphans.erase(hashTx);
+                    setOrphansByIndex.erase(hashThis);
+
+                    /* Set the hashTx. */
+                    hashTx = hashThis;
+
+                    continue;
+                }
+
+                /* Set our internal cached hash. */
+                tx.hashCache = hashThis;
 
                 /* Accept the transaction into memory pool. */
                 if(!Accept(tx))

@@ -131,29 +131,16 @@ namespace LLP
                 ProtocolType* pnode = new ProtocolType(SOCKET, DDOS, fDDOS, std::forward<Args>(args)...);
                 pnode->fCONNECTED.store(true);
 
-                /* Find an available slot. */
-                uint32_t nSlot = find_slot();
-
                 /* Update the indexes. */
                 pnode->nDataThread     = ID;
-                pnode->nDataIndex      = nSlot;
-                pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
 
-                /* Find a slot that is empty. */
-                if(nSlot == CONNECTIONS->size())
-                    CONNECTIONS->push_back(std::shared_ptr<ProtocolType>(pnode));
-                else
-                    CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
+                pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
 
                 /* Check for inbound socket. */
                 if(pnode->Incoming())
                 {
                     /* Increment internal incoming counter. */
                     ++nIncoming;
-
-                    /* Iterate the DDOS cScore (Connection score). */
-                    if(fDDOS.load())
-                        DDOS -> cSCORE += 1;
 
                     /* Increment meters value. */
                     if(fMETER)
@@ -162,8 +149,18 @@ namespace LLP
                 else
                     ++nOutbound;
 
+                /* Find an avilable data thread slot. */
+                const uint32_t nSlot = find_slot();
+
                 /* Fire the connected event. */
+                pnode->nDataIndex = nSlot;
                 pnode->Event(EVENTS::CONNECT);
+
+                /* Find a slot that is empty. */
+                if(nSlot == CONNECTIONS->size())
+                    CONNECTIONS->push_back(std::shared_ptr<ProtocolType>(pnode));
+                else
+                    CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
 
                 /* Notify data thread to wake up. */
                 CONDITION.notify_all();
@@ -205,19 +202,9 @@ namespace LLP
                     return false;
                 }
 
-                /* Find an available slot. */
-                uint32_t nSlot = find_slot();
-
                 /* Update the indexes. */
                 pnode->nDataThread     = ID;
-                pnode->nDataIndex      = nSlot;
                 pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
-
-                /* Find a slot that is empty. */
-                if(nSlot == CONNECTIONS->size())
-                    CONNECTIONS->push_back(std::shared_ptr<ProtocolType>(pnode));
-                else
-                    CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
 
                 /* Check for inbound socket. */
                 if(pnode->Incoming())
@@ -225,8 +212,18 @@ namespace LLP
                 else
                     ++nOutbound;
 
+                /* Find an avilable data thread slot. */
+                const uint32_t nSlot = find_slot();
+
                 /* Fire the connected event. */
+                pnode->nDataIndex = nSlot;
                 pnode->Event(EVENTS::CONNECT);
+
+                /* Find a slot that is empty. */
+                if(nSlot == CONNECTIONS->size())
+                    CONNECTIONS->push_back(std::shared_ptr<ProtocolType>(pnode));
+                else
+                    CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
 
                 /* Notify data thread to wake up. */
                 CONDITION.notify_all();

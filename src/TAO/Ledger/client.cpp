@@ -643,7 +643,7 @@ namespace TAO
                 debug::log(nVerboseCheck, FUNCTION,
                     "New Best Block hash=", hash.SubString(),
                     " height=", nHeight,
-                    " supply=", std::fixed, (double)nMoneySupply / TAO::Ledger::NXS_COIN,
+                    " supply=", std::fixed, (double)(nMoneySupply) / TAO::Ledger::NXS_COIN,
                     " [verified in ", nTimer, " ms]",
                     " [", ::GetSerializeSize(*this, SER_LLD, nVersion), " bytes]");
             }

@@ -209,7 +209,13 @@ namespace TAO
 
                             /* Accept into memory pool. */
                             if(!LLD::Ledger->HasTx(hash))
-                                mempool.AddUnchecked(tx);
+                            {
+                                /* Add unchecked when syncing. */
+                                if(ChainState::Synchronizing())
+                                    mempool.AddUnchecked(tx);
+                                else
+                                    mempool.Accept(tx);
+                            }
 
                             vtx.push_back(std::make_pair(block.vtx[n].first, hash));
                         }
@@ -232,7 +238,13 @@ namespace TAO
 
                         /* Accept into memory pool. */
                         if(!LLD::Legacy->HasTx(hash))
-                            mempool.AddUnchecked(tx);
+                        {
+                            /* Add unchecked when syncing. */
+                            if(ChainState::Synchronizing())
+                                mempool.AddUnchecked(tx);
+                            else
+                                mempool.Accept(tx);
+                        }
 
                         /* Add transaction to binary data. */
                         vtx.push_back(std::make_pair(block.vtx[n].first, hash));
@@ -779,7 +791,7 @@ namespace TAO
                 /* Get the last stake block. */
                 TAO::Ledger::BlockState stateLast;
                 if(!LLD::Ledger->ReadBlock(hashLastTrust, stateLast))
-                    return debug::error(FUNCTION, "last block not in database");
+                    return debug::error(FUNCTION, "last block not in database ", hashLastTrust.ToString());
 
                 /* Calculate Block Age (time from last stake block until previous block) */
                 const uint64_t nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();

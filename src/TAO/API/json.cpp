@@ -2046,7 +2046,6 @@ namespace TAO::API
             { "height",     0 },
             { "weight",     0 },
             { "timespan",   0 },
-            { "fees",       0 },
             { "difficulty", 0 },
         };
 
@@ -2098,9 +2097,6 @@ namespace TAO::API
                     jRet["hashes"] = nRate;
                 }
             }
-
-            /* Include our fee reserves. */
-            jRet["fees"]        = FormatBalance(tBlock.nFeeReserve);
 
             /* Include our difficulty values. */
             jRet["difficulty"]  = TAO::Ledger::GetDifficulty(tBlock.nBits, nChannel);
@@ -2256,7 +2252,7 @@ namespace TAO::API
     std::string VariableToJSON(const std::string& strValue)
     {
         /* Check for variable parameters. */
-        if(strValue.find(");") == strValue.size() - 1)
+        if(strValue.find(');') == strValue.size() - 1)
         {
             /* Find where parameters start. */
             const auto nBegin = strValue.find('(');

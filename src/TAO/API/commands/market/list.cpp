@@ -79,41 +79,46 @@ namespace TAO::API
                 /* Build our list of orders now. */
                 for(const auto& pairOrder : vBids)
                 {
-                    /* Get our contract now. */
-                    const TAO::Operation::Contract tContract =
-                        LLD::Ledger->ReadContract(pairOrder.first, pairOrder.second);
+                    /* Catch exception if we throw on ReadContract. */
+                    try
+                    {
+                        /* Get our contract now. */
+                        const TAO::Operation::Contract tContract =
+                            LLD::Ledger->ReadContract(pairOrder.first, pairOrder.second);
 
-                    /* Unpack our register address. */
-                    uint256_t hashRegister;
-                    if(!TAO::Register::Unpack(tContract, hashRegister))
-                        continue;
+                        /* Unpack our register address. */
+                        uint256_t hashRegister;
+                        if(!TAO::Register::Unpack(tContract, hashRegister))
+                            continue;
 
-                    /* Check if the order has been executed. */
-                    if(LLD::Contract->HasContract(pairOrder, TAO::Ledger::FLAGS::MEMPOOL) != fExecuted)
-                        continue;
+                        /* Check if the order has been executed. */
+                        if(LLD::Contract->HasContract(pairOrder, TAO::Ledger::FLAGS::MEMPOOL) != fExecuted)
+                            continue;
 
-                    /* Check for a spent proof already. */
-                    if(LLD::Ledger->HasProof(hashRegister, pairOrder.first, pairOrder.second) && !fExecuted)
-                        continue;
+                        /* Check for a spent proof already. */
+                        if(LLD::Ledger->HasProof(hashRegister, pairOrder.first, pairOrder.second) && !fExecuted)
+                            continue;
 
-                    /* Get our order's json. */
-                    encoding::json jOrder =
-                        OrderToJSON(tContract, pairMarket);
+                        /* Get our order's json. */
+                        encoding::json jOrder =
+                            OrderToJSON(tContract, pairMarket);
 
-                    /* Check for null value. */
-                    if(jOrder.is_null())
-                        continue;
+                        /* Check for null value. */
+                        if(jOrder.is_null())
+                            continue;
 
-                    /* Check that we match our filters. */
-                    if(!FilterResults(jParams, jOrder))
-                        continue;
+                        /* Check that we match our filters. */
+                        if(!FilterResults(jParams, jOrder))
+                            continue;
 
-                    /* Filter out our expected fieldnames if specified. */
-                    if(!FilterFieldname(jParams, jOrder))
-                        continue;
+                        /* Filter out our expected fieldnames if specified. */
+                        if(!FilterFieldname(jParams, jOrder))
+                            continue;
 
-                    /* Insert into set and automatically sort. */
-                    setBids.insert(jOrder);
+                        /* Insert into set and automatically sort. */
+                        setBids.insert(jOrder);
+                    }
+                    catch(const std::exception& e) { }
                 }
 
                 /* Build our return value. */
@@ -161,41 +166,46 @@ namespace TAO::API
                 /* Build our list of orders now. */
                 for(const auto& pairOrder : vAsks)
                 {
-                    /* Get our contract now. */
-                    const TAO::Operation::Contract tContract =
-                        LLD::Ledger->ReadContract(pairOrder.first, pairOrder.second);
+                    /* Catch exception if we throw on ReadContract. */
+                    try
+                    {
+                        /* Get our contract now. */
+                        const TAO::Operation::Contract tContract =
+                            LLD::Ledger->ReadContract(pairOrder.first, pairOrder.second);
 
-                    /* Unpack our register address. */
-                    uint256_t hashRegister;
-                    if(!TAO::Register::Unpack(tContract, hashRegister))
-                        continue;
+                        /* Unpack our register address. */
+                        uint256_t hashRegister;
+                        if(!TAO::Register::Unpack(tContract, hashRegister))
+                            continue;
 
-                    /* Check if the order has been executed. */
-                    if(LLD::Contract->HasContract(pairOrder, TAO::Ledger::FLAGS::MEMPOOL) != fExecuted)
-                        continue;
+                        /* Check if the order has been executed. */
+                        if(LLD::Contract->HasContract(pairOrder, TAO::Ledger::FLAGS::MEMPOOL) != fExecuted)
+                            continue;
 
-                    /* Check for a spent proof already. */
-                    if(LLD::Ledger->HasProof(hashRegister, pairOrder.first, pairOrder.second) && !fExecuted)
-                        continue;
+                        /* Check for a spent proof already. */
+                        if(LLD::Ledger->HasProof(hashRegister, pairOrder.first, pairOrder.second) && !fExecuted)
+                            continue;
 
-                    /* Get our order's json. */
-                    encoding::json jOrder =
-                        OrderToJSON(tContract, pairMarket);
+                        /* Get our order's json. */
+                        encoding::json jOrder =
+                            OrderToJSON(tContract, pairMarket);
 
-                    /* Check for null value. */
-                    if(jOrder.is_null())
-                        continue;
+                        /* Check for null value. */
+                        if(jOrder.is_null())
+                            continue;
 
-                    /* Check that we match our filters. */
-                    if(!FilterResults(jParams, jOrder))
-                        continue;
+                        /* Check that we match our filters. */
+                        if(!FilterResults(jParams, jOrder))
+                            continue;
 
-                    /* Filter out our expected fieldnames if specified. */
-                    if(!FilterFieldname(jParams, jOrder))
-                        continue;
+                        /* Filter out our expected fieldnames if specified. */
+                        if(!FilterFieldname(jParams, jOrder))
+                            continue;
 
-                    /* Insert into set and automatically sort. */
-                    setAsks.insert(jOrder);
+                        /* Insert into set and automatically sort. */
+                        setAsks.insert(jOrder);
+                    }
+                    catch(const std::exception& e) { }
                 }
 
                 /* Build our return value. */

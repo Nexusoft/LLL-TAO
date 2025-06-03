@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/indexing.h>
 
 #include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/include/chainstate.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -24,7 +25,8 @@ namespace TAO::API
     void Indexing::PushTransaction(const uint512_t& hashTx)
     {
         /* Let's push the sessions indexes in the main processing thread. */
-        IndexSession(hashTx);
+        if(!TAO::Ledger::ChainState::Synchronizing())
+            IndexSession(hashTx);
 
         /* Next lets push to uur manager thread to handle the global indexes. */
         DISPATCH->push(hashTx);
@@ -68,6 +70,10 @@ namespace TAO::API
             /* Check if handling legacy or tritium. */
             if(hashTx.GetType() == TAO::Ledger::TRITIUM)
             {
+                /* Index our sessions code when syncing here in seperate thread. */
+                if(TAO::Ledger::ChainState::Synchronizing())
+                    IndexSession(hashTx);
+
                 /* Make sure the transaction is on disk. */
                 TAO::Ledger::Transaction tx;
                 if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))

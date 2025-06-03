@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/include/extract.h>
+
 #include <TAO/API/types/commands/sessions.h>
 
 #include <TAO/API/types/authentication.h>
@@ -57,5 +59,24 @@ namespace TAO::API
             return false;
 
         return true;
+    }
+
+    /* While a user is signed in, return a boolean if the supplied PIN can authenticate the session */
+    encoding::json Sessions::ValidatePin(const encoding::json& jParams, const bool fHelp)
+    {
+        /* Blank Return JSON*/
+        encoding::json jRet;
+
+        /* Pin parameter. Used to validate existence */
+        const SecureString strPIN =
+            ExtractPIN(jParams);
+
+        /* Attempt to authenticate using supplied pin */
+        if(!strPIN.empty())
+        {
+            jRet = Authentication::Authenticate(jParams);
+        }
+
+        return jRet;
     }
 }

@@ -684,7 +684,7 @@ namespace TAO
                                                   " does not match calculated reward ", nReward);
 
                 /* Update mint values. */
-                pblock->nMint += nReward;
+                pblock->nMint = nReward;
             }
 
             else if(IsGenesis())
@@ -710,7 +710,7 @@ namespace TAO
                     return debug::error(FUNCTION, "claimed hashGenesis reward ", nClaimedReward, " does not match calculated reward ", nReward);
 
                 /* Update mint values. */
-                pblock->nMint += nReward;
+                pblock->nMint = nReward;
             }
 
             else

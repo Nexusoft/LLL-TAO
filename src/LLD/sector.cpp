@@ -544,8 +544,8 @@ namespace LLD
             return;
         }
 
-
-        while(true)
+        /* Loop until shutdown. */
+        while(!config::fShutdown.load())
         {
             /* Wait for buffer to empty before shutting down. */
             if((fDestruct.load()) && nBufferBytes.load() == 0)
@@ -615,7 +615,8 @@ namespace LLD
         runtime::timer TIMER;
         TIMER.Start();
 
-        while(!fDestruct.load())
+        /* Loop until shutdown. */
+        while(!config::fShutdown.load())
         {
             runtime::sleep(100);
             if(TIMER.Elapsed() < 30)

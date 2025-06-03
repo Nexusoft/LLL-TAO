@@ -101,43 +101,48 @@ namespace TAO::API
                         continue;
                 }
 
-                /* Get a referecne of our contract. */
-                TAO::Operation::Contract rContract =
-                    LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
+                /* Catch exception if we throw on ReadContract. */
+                try
+                {
+                    /* Get a referecne of our contract. */
+                    TAO::Operation::Contract rContract =
+                        LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
 
-                /* Check if the given contract is spent already. */
-                if(rContract.Spent(rEvent.second))
-                    continue;
+                    /* Check if the given contract is spent already. */
+                    if(rContract.Spent(rEvent.second))
+                        continue;
 
-                /* Get the transaction JSON. */
-                encoding::json jContract =
-                    TAO::API::ContractToJSON(rContract, rEvent.second, nVerbose);
+                    /* Get the transaction JSON. */
+                    encoding::json jContract =
+                        TAO::API::ContractToJSON(rContract, rEvent.second, nVerbose);
 
-                /* Add some items from our transction. */
-                jContract["timestamp"] = rContract.Timestamp();
-                jContract["txid"]      = hashEvent.ToString();
+                    /* Add some items from our transction. */
+                    jContract["timestamp"] = rContract.Timestamp();
+                    jContract["txid"]      = hashEvent.ToString();
 
-                /* Check to see whether the transaction has had all children filtered out */
-                if(jContract.empty())
-                    continue;
+                    /* Check to see whether the transaction has had all children filtered out */
+                    if(jContract.empty())
+                        continue;
 
-                /* Apply our where filters now. */
-                if(!FilterResults(jParams, jContract))
-                    continue;
+                    /* Apply our where filters now. */
+                    if(!FilterResults(jParams, jContract))
+                        continue;
 
-                /* Filter out our expected fieldnames if specified. */
-                if(!FilterFieldname(jParams, jContract))
-                    continue;
+                    /* Filter out our expected fieldnames if specified. */
+                    if(!FilterFieldname(jParams, jContract))
+                        continue;
 
-                /* Check the offset. */
-                if(++nTotal <= nOffset)
-                    continue;
+                    /* Check the offset. */
+                    if(++nTotal <= nOffset)
+                        continue;
 
-                /* Check the limit */
-                if(nTotal - nOffset > nLimit)
-                    break;
+                    /* Check the limit */
+                    if(nTotal - nOffset > nLimit)
+                        break;
 
-                jRet.push_back(jContract);
+                    jRet.push_back(jContract);
+                }
+                catch(const std::exception& e) { }
             }
         }
 
