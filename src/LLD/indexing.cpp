@@ -31,6 +31,13 @@ namespace LLD
 
         debug::log(0, FUNCTION, "Indexing LLD");
 
+        /* Check for -indexheight flags. */
+        bool fIndexHeightComplete = true;
+        if(LLD::Ledger->HasIndex(TAO::Ledger::ChainState::nCheckpointHeight.load()))
+        {
+
+        }
+
         /* Check for address indexing flag. */
         bool fIndexAddressesComplete = true;
         if(Register->Exists(std::string("reindexed")))

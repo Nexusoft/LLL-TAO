@@ -1245,6 +1245,16 @@ namespace LLD
         return Exists(hashBlock);
     }
 
+    /* Check if block exists by height. */
+    bool LedgerDB::HasIndex(const uint32_t& nBlockHeight)
+    {
+        /* Check for client mode. */
+        if(config::fClient.load())
+            return false; //-client mode doesn't write height indexes
+
+        return Exists(std::make_pair(std::string("height"), nBlockHeight));
+    }
+
 
     /* Erase a block from disk. */
     bool LedgerDB::EraseBlock(const uint1024_t& hashBlock)

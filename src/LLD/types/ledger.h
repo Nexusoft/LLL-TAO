@@ -786,6 +786,18 @@ namespace LLD
         bool HasBlock(const uint1024_t& hashBlock);
 
 
+        /** HasBlock
+         *
+         *  Check if block exists by height.
+         *
+         *  @param[in] nBlockHeight The block height to check with.
+         *
+         *  @return True if the block height index exists.
+         *
+         **/
+        bool HasIndex(const uint32_t& nBlockHeight);
+
+
         /** EraseBlock
          *
          *  Erase a block from disk.
