@@ -70,7 +70,7 @@ namespace TAO
             1538791860,        //--- Block Version 6 Activation:          10/05/2018 19:11:00 GMT - 7
             1573539371,        //--- Block Version 7 Activation:          11/11/2019 23:11:11 GMT - 7
             1584676140,        //--- Block Version 8 Activation:          03/20/2020 03:49:00 GMT - 7
-            1743810284         //--- Block Version 9 Activation:          04/04/2025 16:44:44 GMT - 7
+            1750467355         //--- Block Version 9 Activation:          06/20/2025 17:55:55 GMT - 7
         };
 
 
