@@ -134,7 +134,18 @@ ifndef MINIUPNPC_LIB_PATH
 		MINIUPNPC_LIB_PATH= /usr/local/opt/miniupnpc/lib
 	endif
 	ifeq ($(detected_OS),Linux)
-		MINIUPNPC_LIB_PATH= /usr/local/opt/miniupnpc/lib
+		MINIUPNPC_LIB_PATH= /usr/lib/miniupnpc
+	endif
+endif
+ifndef MINIUPNPC_INCLUDE_PATH
+	ifeq ($(detected_OS),Windows)
+		MINIUPNPC_INCLUDE_PATH= "C:\deps\include"
+	endif
+	ifeq ($(detected_OS),OSX)
+		MINIUPNPC_INCLUDE_PATH= /usr/local/opt/miniupnpc/include
+	endif
+	ifeq ($(detected_OS),Linux)
+		MINIUPNPC_INCLUDE_PATH= /usr/include
 	endif
 endif
 
@@ -371,16 +382,17 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLC_shake.o \
 		build/LLC_sign.o \
 		build/LLC_vrfy.o \
-        build/LLC_x509_cert.o \
-        build/LLD_address.o \
-        build/LLD_ledger.o \
-        build/LLD_legacy.o \
+    	build/LLC_x509_cert.o \
+    	build/LLD_address.o \
+    	build/LLD_ledger.o \
+    	build/LLD_legacy.o \
 		build/LLD_logical.o \
+		build/LLD_session.o \
 		build/LLD_contract.o \
 		build/LLD_client.o \
-        build/LLD_local.o \
-        build/LLD_register.o \
-        build/LLD_trust.o \
+    	build/LLD_local.o \
+    	build/LLD_register.o \
+    	build/LLD_trust.o \
 		build/LLD_binary_key.o \
 		build/LLD_binary_lru.o \
 		build/LLD_binary_lfu.o \
@@ -395,7 +407,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_base_connection.o \
 		build/LLP_miner.o \
 		build/LLP_connection.o \
-        build/LLP_httpnode.o \
+    	build/LLP_httpnode.o \
 		build/LLP_apinode.o \
 		build/LLP_filenode.o \
 		build/LLP_data.o \
@@ -509,6 +521,12 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_contracts_exchange.o \
 		build/API_contracts_expiring.o \
 		build/API_contracts_verify.o \
+		build/API_indexing_build.o \
+		build/API_indexing_download.o \
+		build/API_indexing_initialize.o \
+		build/API_indexing_manager.o \
+		build/API_indexing_refresh.o \
+		build/API_indexing_index.o \
 		build/API_operators_initialize.o \
 		build/API_operators_array.o \
 		build/API_operators_count.o \
@@ -532,7 +550,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_format.o \
 		build/API_get.o \
 		build/API_global.o \
-		build/API_indexing.o \
 		build/API_json.o \
 		build/API_list.o \
 		build/API_notifications.o \
@@ -547,7 +564,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Operation_create.o \
 		build/Operation_credit.o \
 		build/Operation_debit.o \
-        build/Operation_execute.o \
+    	build/Operation_execute.o \
 		build/Operation_fee.o \
 		build/Operation_genesis.o \
 		build/Operation_legacy.o \
@@ -628,6 +645,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Legacy_trustkey.o \
 		build/Legacy_txin.o \
 		build/Legacy_txout.o \
+		build/Legacy_keystore.o
 
 
 ifndef NO_WALLET
@@ -645,7 +663,6 @@ ifndef NO_WALLET
 			build/Legacy_db.o \
 			build/Legacy_keypool.o \
 			build/Legacy_keypoolentry.o \
-			build/Legacy_keystore.o \
 			build/Legacy_output.o \
 			build/Legacy_wallet.o \
 			build/Legacy_walletdb.o \
@@ -812,6 +829,9 @@ build/API_commands_tokens_%.o: ./src/TAO/API/commands/tokens/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_contracts_%.o: ./src/TAO/API/contracts/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_indexing_%.o: ./src/TAO/API/indexing/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_operators_%.o: ./src/TAO/API/operators/%.cpp $(HEADERS)
@@ -1456,6 +1476,13 @@ build/API_commands_tokens_%.o: src/TAO/API/commands/tokens/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/API_contracts_%.o: src/TAO/API/contracts/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_indexing_%.o: src/TAO/API/indexing/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

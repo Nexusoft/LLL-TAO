@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -63,7 +63,7 @@ namespace TAO
         bool IsDescendant(const BlockState& state)
         {
             /* Check if we should force our descendant checks. */
-            if(config::GetBoolArg("-forcesync", false))
+            if(config::GetBoolArg("-forcesync", true))
                 return true;
 
             /* If no checkpoint defined, return true. */

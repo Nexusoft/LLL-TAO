@@ -2,7 +2,7 @@
 
 			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2023
+			(c) Copyright The Nexus Developers 2014 - 2025
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -40,12 +40,20 @@ namespace TAO::API
      **/
     class Indexing
     {
+        /** We can tweak this value to set our indexing timeout. */
+        static const uint64_t SESSION_TIMEOUT = 60 * 60 * 24 * 28 * 13; //we want to track logins within last year
+
+
         /** Queue to handle dispatch requests. **/
         static util::atomic::lock_unique_ptr<std::queue<uint512_t>> DISPATCH;
 
 
         /** Thread for running dispatch. **/
         static std::thread EVENTS_THREAD;
+
+
+        /** Thread for refreshing events. **/
+        static std::thread REFRESH_THREAD;
 
 
         /** Condition variable to wake up the indexing thread. **/
@@ -138,6 +146,16 @@ namespace TAO::API
         static void Manager();
 
 
+        /** IndexSession
+         *
+         *  Index a transaction related to a specific session.
+         *
+         *  @param[in] hashTx The txid of the transactioun
+         *
+         **/
+        static void IndexSession(const uint512_t& hashTx);
+
+
         /** IndexSigchain
          *
          *  Index tritium transaction level events for logged in sessions.
@@ -179,6 +197,23 @@ namespace TAO::API
         static void DownloadNotifications(const uint256_t& hashGenesis);
 
 
+        /** BuildIndexes
+         *
+         *  Build a sigchain's local indexes.
+         *
+         *  @param[in] hashGenesis The genesis-id we are building indexes for.
+         *
+         **/
+        static void BuildIndexes(const uint256_t& hashGenesis);
+
+
+        /** DownloadIndexes
+         *
+         *  Download a sigchain's remote indexes.
+         *
+         **/
+        static void DownloadIndexes(const uint256_t& hashSession);
+
 
         /** Initialize Thread
          *
@@ -216,20 +251,6 @@ namespace TAO::API
          *
          **/
         static void Shutdown();
-
-
-    private:
-
-
-        /** index_events
-         *
-         *  Index transaction level events for logged in sessions.
-         *
-         *  @param[in] hash The txid of the transactioun
-         *  @param[in] tx The transaction to index events for.
-         *
-         **/
-        static void index_transaction(const uint512_t& hash, const TAO::Ledger::Transaction& tx);
 
 
     };

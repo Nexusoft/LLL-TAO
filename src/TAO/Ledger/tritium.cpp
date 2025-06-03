@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -34,6 +34,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/syncblock.h>
@@ -204,13 +205,19 @@ namespace TAO
                         else
                         {
                             /* Get the transaction hash */
-                            uint512_t hash = tx.GetHash();
+                            const uint512_t hash = tx.GetHash();
 
                             /* Accept into memory pool. */
-                            if(!LLD::Ledger->HasTx(tx.GetHash()))
-                                mempool.AddUnchecked(tx);
+                            if(!LLD::Ledger->HasTx(hash))
+                            {
+                                /* Add unchecked when syncing. */
+                                if(ChainState::Synchronizing())
+                                    mempool.AddUnchecked(tx);
+                                else
+                                    mempool.Accept(tx);
+                            }
 
-                            vtx.push_back(std::make_pair(block.vtx[n].first, tx.GetHash()));
+                            vtx.push_back(std::make_pair(block.vtx[n].first, hash));
                         }
 
                         break;
@@ -231,7 +238,13 @@ namespace TAO
 
                         /* Accept into memory pool. */
                         if(!LLD::Legacy->HasTx(hash))
-                            mempool.AddUnchecked(tx);
+                        {
+                            /* Add unchecked when syncing. */
+                            if(ChainState::Synchronizing())
+                                mempool.AddUnchecked(tx);
+                            else
+                                mempool.Accept(tx);
+                        }
 
                         /* Add transaction to binary data. */
                         vtx.push_back(std::make_pair(block.vtx[n].first, hash));
@@ -653,6 +666,9 @@ namespace TAO
                     /* Write to disk. */
                     if(!LLD::Ledger->WriteTx(hash, tx))
                         return debug::error(FUNCTION, "failed to write tx to disk");
+
+                    /* Compute our stats variable. */
+                    TAO::Ledger::nProcessedContracts += tx.Size();
                 }
 
                 /* Get the legacy transaction. */
@@ -676,6 +692,9 @@ namespace TAO
                     /* Write to disk. */
                     if(!LLD::Legacy->WriteTx(hash, tx))
                         return debug::error(FUNCTION, "failed to write tx to disk");
+
+                    /* Compute our stats variable. */
+                    TAO::Ledger::nProcessedContracts += tx.vout.size();
                 }
 
                 /* Checkpoints DISABLED for now. */
@@ -764,7 +783,7 @@ namespace TAO
                 /* Get the last stake block. */
                 TAO::Ledger::BlockState stateLast;
                 if(!LLD::Ledger->ReadBlock(hashLastTrust, stateLast))
-                    return debug::error(FUNCTION, "last block not in database");
+                    return debug::error(FUNCTION, "last block not in database ", hashLastTrust.ToString());
 
                 /* Calculate Block Age (time from last stake block until previous block) */
                 const uint64_t nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();

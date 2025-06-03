@@ -2,7 +2,7 @@
 
 			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2023
+			(c) Copyright The Nexus Developers 2014 - 2025
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -15,6 +15,8 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 
 #include <LLD/include/global.h>
+
+#include <TAO/API/types/transaction.h>
 
 #include <TAO/Operation/include/execute.h>
 #include <TAO/Operation/include/enum.h>
@@ -91,8 +93,25 @@ namespace TAO
             try
             {
                 /* Check for transaction on disk. */
-                if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
+                if(mapLedger.count(hashTx))
                     return false; //NOTE: this was true, but changed to false to prevent relay loops in tritium LLP
+
+                /* Keep adding penalties if we have consecutive orphans. */
+                if(mapOrphans.count(tx.hashPrevTx))
+                {
+                    /* Increment consecutive orphans. */
+                    if(pnode)
+                    {
+                        /* Increment our consecutive orphans here. */
+                        ++pnode->nConsecutiveOrphans;
+
+                        /* Add an additional DDOS penalty. */
+                        if(pnode->DDOS)
+                            pnode->DDOS->rSCORE += 1;
+                    }
+
+                    return false;
+                }
 
                 /* Check for rejected tx. */
                 if(mapRejected.count(tx.hashPrevTx))
@@ -121,6 +140,13 @@ namespace TAO
                 {
                     mapRejected.insert(hashTx);
                     return debug::error(FUNCTION, "coinstake ", hashTx.SubString(), " not accepted in pool");
+                }
+
+                /* Check for duplicate coinbase or coinstake. */
+                if(tx.IsHybrid())
+                {
+                    mapRejected.insert(hashTx);
+                    return debug::error(FUNCTION, "hybrid ", hashTx.SubString(), " not accepted in pool");
                 }
 
                 /* Check that the transaction is in a valid state. */
@@ -219,7 +245,7 @@ namespace TAO
                     mapClaimed[tx.hashPrevTx] = hashTx;
 
                 /* Debug output. */
-                debug::log(2, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED in ", std::dec, timer.ElapsedMilliseconds(), " ms");
+                debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED in ", std::dec, timer.ElapsedMilliseconds(), " ms");
 
                 /* Process orphan queue. */
                 ProcessOrphans(hashTx);
@@ -245,7 +271,7 @@ namespace TAO
             catch(const std::exception& e)
             {
                 mapRejected.insert(hashTx);
-                return debug::error(FUNCTION, "REJECTED: exception encountered ", e.what());
+                return false; //debug::error(FUNCTION, "REJECTED: exception encountered ", e.what());
             }
 
             return false;
@@ -264,14 +290,27 @@ namespace TAO
                 /* Get the transaction from map. */
                 const TAO::Ledger::Transaction& tx = mapOrphans[hashTx];
 
-                /* Set our internal cached hash. */
-                tx.hashCache = hashTx;
-
                 /* Get the previous hash. */
                 const uint512_t hashThis = tx.GetHash();
 
                 /* Debug output. */
                 debug::log(0, FUNCTION, "PROCESSING ORPHAN tx ", hashThis.SubString());
+
+                /* Check if this is already in our mempool. */
+                if(mapLedger.count(hashTx))
+                {
+                    /* Erase the transaction. */
+                    mapOrphans.erase(hashTx);
+                    setOrphansByIndex.erase(hashThis);
+
+                    /* Set the hashTx. */
+                    hashTx = hashThis;
+
+                    continue;
+                }
+
+                /* Set our internal cached hash. */
+                tx.hashCache = hashThis;
 
                 /* Accept the transaction into memory pool. */
                 if(!Accept(tx))
@@ -584,6 +623,18 @@ namespace TAO
 
                                 /* Erase from the memory map. */
                                 Remove(hashTx);
+
+                                /* Remove the API sessions indexes if disconnecting a mempool transaction. */
+                                if(LLD::Sessions->Active(tx->hashGenesis))
+                                {
+                                    /* Get a reference of our transaction. */
+                                    TAO::API::Transaction wtx =
+                                        TAO::API::Transaction(*tx);
+
+                                    /* Make sure indexes are deleted. */
+                                    if(wtx.Delete(hashTx))
+                                        debug::log(0, FUNCTION, "DELETED API session indexes for ", hashTx.SubString());
+                                }
 
                                 /* Write the txid of deleted transactions. */
                                 debug::notice(FUNCTION, "DELETED ", hashTx.SubString());

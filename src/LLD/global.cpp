@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -19,6 +19,7 @@ namespace LLD
 {
     /* The LLD global instance pointers. */
     LogicalDB*    Logical;
+    SessionDB*    Sessions;
     ContractDB*   Contract;
     RegisterDB*   Register;
     LedgerDB*     Ledger;
@@ -36,21 +37,21 @@ namespace LLD
         debug::log(0, FUNCTION, "Initializing LLD");
 
         /* Create the contract database instance. */
-        uint32_t nContractCacheSize = config::GetArg("-contractcache", 1);
+        const uint32_t nContractCacheSize = config::GetArg("-contractcache", 1);
         Contract = new ContractDB(
                         FLAGS::CREATE | FLAGS::FORCE,
                         77773,
                         nContractCacheSize * 1024 * 1024);
 
         /* Create the contract database instance. */
-        uint32_t nRegisterCacheSize = config::GetArg("-registercache", 2);
+        const uint32_t nRegisterCacheSize = config::GetArg("-registercache", 2);
         Register = new RegisterDB(
                         FLAGS::CREATE | FLAGS::FORCE,
                         77773,
                         nRegisterCacheSize * 1024 * 1024);
 
         /* Create the ledger database instance. */
-        uint32_t nLedgerCacheSize = config::GetArg("-ledgercache", 2);
+        const uint32_t nLedgerCacheSize = config::GetArg("-ledgercache", 2);
         Ledger    = new LedgerDB(
                         FLAGS::CREATE | FLAGS::FORCE,
                         config::fClient.load() ? 77773 : (256 * 256 * 64),
@@ -58,7 +59,7 @@ namespace LLD
 
 
         /* Create the legacy database instance. */
-        uint32_t nLegacyCacheSize = config::GetArg("-legacycache", 1);
+        const uint32_t nLegacyCacheSize = config::GetArg("-legacycache", 1);
         Legacy = new LegacyDB(
                         FLAGS::CREATE | FLAGS::FORCE,
                         config::fClient.load() ? 77773 : 256 * 256 * 64,
@@ -76,11 +77,16 @@ namespace LLD
 
 
         /* Create the local database instance. */
-        uint32_t nLogicalCacheSize = config::GetArg("-logicalcache", 2);
+        const uint32_t nLogicalCacheSize = config::GetArg("-logicalcache", 2);
         Logical    = new LogicalDB(
                         FLAGS::CREATE | FLAGS::FORCE,
                         256 * 256 * config::GetArg("-logicalbuckets", 16), nLogicalCacheSize * 1024 * 1024);
 
+        /* Create the local database instance. */
+        const uint32_t nSessionsCacheSize = config::GetArg("-sessionscache", 2);
+        Sessions    = new SessionDB(
+                        FLAGS::CREATE | FLAGS::FORCE,
+                        256 * 256 * config::GetArg("-sessionsbuckets", 16), nSessionsCacheSize * 1024 * 1024);
 
         if(config::fClient.load())
         {
@@ -121,10 +127,6 @@ namespace LLD
         debug::log(0, FUNCTION, "Shutting down LLD");
 
         /* Cleanup the contract database. */
-        if(Logical)
-            delete Logical;
-
-        /* Cleanup the contract database. */
         if(Contract)
             delete Contract;
 
@@ -151,6 +153,14 @@ namespace LLD
         /* Cleanup the trust database. */
         if(Trust)
             delete Trust;
+
+        /* Cleanup the logical database. */
+        if(Logical)
+            delete Logical;
+
+        /* Cleanup the sessions database. */
+        if(Sessions)
+            delete Sessions;
     }
 
 

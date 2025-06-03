@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_LEDGER_INCLUDE_SUPPLY_H
-#define NEXUS_TAO_LEDGER_INCLUDE_SUPPLY_H
 
 #include <LLC/types/uint1024.h>
 
@@ -29,10 +27,6 @@ namespace TAO
 
         /* Forward Declarations */
         class BlockState;
-
-
-        /* These values reflect the Three Decay Equations for Miners, Ambassadors, and Developers. */
-        extern const cv::softdouble decay[3][3];
 
 
         /** GetSubsidy
@@ -66,12 +60,11 @@ namespace TAO
          *  Calculate the Compounded amount of NXS that should "ideally" have been created to this minute.
          *
          *  @param[in] nMinutes The minutes to calculate for.
-         *  @param[in] nTypes The subsidy to calculate for.
          *
          *  @return The total reward compounded over minutes.
          *
          **/
-        uint64_t CompoundSubsidy(const uint32_t nMinutes, const uint8_t nTypes = 3);
+        uint64_t CompoundSubsidy(const uint32_t nMinutes);
 
 
         /** GetMoneySupply
@@ -156,5 +149,3 @@ namespace TAO
         uint64_t GetReleasedReserve(const BlockState& state, const uint8_t nChannel, const uint8_t nType);
     }
 }
-
-#endif

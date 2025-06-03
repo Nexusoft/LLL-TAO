@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -99,7 +99,7 @@ namespace TAO
 
 
             /** The reserves that are released. */
-            uint64_t nFeeReserve;
+            uint64_t nFeesBurned;
 
 
             /** Used to Iterate forward in the chain */
@@ -131,7 +131,7 @@ namespace TAO
                 READWRITE(nChannelWeight[0]);
                 READWRITE(nChannelWeight[1]);
                 READWRITE(nChannelWeight[2]);
-                READWRITE(nFeeReserve);
+                READWRITE(nFeesBurned);
                 READWRITE(nReleasedReserve[0]);
                 READWRITE(nReleasedReserve[1]);
                 READWRITE(nReleasedReserve[2]);

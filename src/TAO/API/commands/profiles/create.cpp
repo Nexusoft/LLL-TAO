@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -128,7 +128,7 @@ namespace TAO::API
         }
 
         /* Check for duplicates in ledger db. */
-        if(LLD::Ledger->HasFirst(hashGenesis) || LLD::Logical->HasFirst(hashGenesis))
+        if(LLD::Ledger->HasFirst(hashGenesis) || LLD::Sessions->HasFirst(hashGenesis))
         {
             pCredentials.free();
             throw Exception(-130, "Account already exists");

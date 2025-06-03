@@ -2,7 +2,7 @@
 
 			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2023
+			(c) Copyright The Nexus Developers 2014 - 2025
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -63,7 +63,7 @@ namespace TAO
             RECURSIVE(MUTEX);
 
             /* Check if we already have this tx. */
-            if(LLD::Legacy->HasTx(hashTx, FLAGS::MEMPOOL))
+            if(mapLegacy.count(hashTx))
                 return false;
 
             debug::log(3, "ACCEPT --------------------------------------");
@@ -174,7 +174,7 @@ namespace TAO
                         pnode->WritePacket(LLP::TritiumNode::NewMessage(LLP::TritiumNode::ACTION::GET, ssResponse));
 
                         /* Update consecutive orphans. */
-                        ++pnode->nConsecutiveOrphans;
+                        pnode->nConsecutiveFails += 100; //we want to give a high score here for log spam
                     }
 
                     return debug::error(FUNCTION, "tx ", hashTx.SubString(), " missing ", nTotal, " inputs");

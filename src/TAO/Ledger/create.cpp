@@ -2,7 +2,7 @@
 
         Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-        (c) Copyright The Nexus Developers 2014 - 2023
+        (c) Copyright The Nexus Developers 2014 - 2025
 
         Distributed under the MIT software license, see the accompanying
         file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -21,7 +21,6 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 
 #include <LLD/include/global.h>
-
 #include <LLP/include/global.h>
 
 #include <TAO/Ledger/include/ambassador.h>
@@ -74,10 +73,10 @@ namespace TAO::Ledger
 
         /* Get the last transaction. */
         TAO::API::Transaction txPrev;
-        if(LLD::Logical->ReadLast(hashGenesis, hashLast))
+        if(LLD::Sessions->ReadLast(hashGenesis, hashLast))
         {
             /* Check that we can read the logical disk index. */
-            if(!LLD::Logical->ReadTx(hashLast, txPrev))
+            if(!LLD::Sessions->ReadTx(hashLast, txPrev))
                 debug::warning(FUNCTION, "could not read logical transaction index");
         }
 
@@ -412,6 +411,18 @@ namespace TAO::Ledger
 
             /* Sign the producer transaction. */
             rBlockRet.producer.Sign(user->Generate(rBlockRet.producer.nSequence, pin));
+
+            /* Double check our next hash if -safemode enabled. */
+            if(config::GetBoolArg("-safemode", false))
+            {
+                /* Re-calculate our next hash if safemode forcing not to use cache. */
+                const uint256_t hashNext =
+                    TAO::Ledger::Transaction::NextHash(user->Generate(rBlockRet.producer.nSequence + 1, pin, false), rBlockRet.producer.nNextType);
+
+                /* Check that this next hash is what we are expecting. */
+                if(rBlockRet.producer.hashNext != hashNext)
+                    throw debug::exception("-safemode next hash mismatch, broadcast terminated");
+            }
 
             /* Rebuild the merkle tree for updated block. */
             std::vector<uint512_t> vHashes;

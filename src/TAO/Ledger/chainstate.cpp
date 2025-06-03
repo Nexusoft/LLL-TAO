@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -246,12 +246,12 @@ namespace TAO
             }
 
             /* Rewind the chain a total number of blocks. */
-            int64_t nForkblocks = config::GetArg("-forkblocks", 0);
-            if(nForkblocks > 0)
+            uint64_t nRevertBlocks = config::GetArg("-revertblocks", 0);
+            if(nRevertBlocks > 0)
             {
                 /* Rollback the chain a given number of blocks. */
                 TAO::Ledger::BlockState state = tStateBest.load();
-                for(int i = 0; i < nForkblocks; ++i)
+                for(int i = 0; i < nRevertBlocks; ++i)
                 {
                     /* Check for Genesis. */
                     if(state.hashPrevBlock == 0)
@@ -265,11 +265,20 @@ namespace TAO
 
                 /* Set the best to older block. */
                 LLD::TxnBegin();
-                state.SetBest();
-                LLD::TxnCommit();
 
-                /* Debug Output. */
-                debug::log(0, FUNCTION, "-forkblocks=XXX requested removal of ", nForkblocks, " blocks");
+                /* Abort our transaction if we fail to rollback. */
+                if(!state.SetBest())
+                {
+                    /* Debug Output. */
+                    debug::log(0, FUNCTION, "-revertblocks=XXX failed to remove ", nRevertBlocks, " blocks");
+                    LLD::TxnAbort();
+                }
+                else
+                {
+                    /* Debug Output. */
+                    debug::log(0, FUNCTION, "-revertblocks=XXX requested removal of ", nRevertBlocks, " blocks");
+                    LLD::TxnCommit();
+                }
             }
 
             /* Fill out the best chain stats. */

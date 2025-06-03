@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -684,7 +684,7 @@ namespace TAO
                                                   " does not match calculated reward ", nReward);
 
                 /* Update mint values. */
-                pblock->nMint += nReward;
+                pblock->nMint = nReward;
             }
 
             else if(IsGenesis())
@@ -710,7 +710,7 @@ namespace TAO
                     return debug::error(FUNCTION, "claimed hashGenesis reward ", nClaimedReward, " does not match calculated reward ", nReward);
 
                 /* Update mint values. */
-                pblock->nMint += nReward;
+                pblock->nMint = nReward;
             }
 
             else
@@ -981,7 +981,7 @@ namespace TAO
                     }
 
                     /* Check that the previous transaction is indexed. */
-                    if((nFlags == FLAGS::BLOCK || nFlags == FLAGS::MINER) && !LLD::Ledger->HasIndex(hashPrev))
+                    if(!LLD::Ledger->HasIndex(hashPrev))
                         return debug::error(FUNCTION, hashPrev.SubString(), " not indexed");
                 }
 
@@ -997,7 +997,7 @@ namespace TAO
                     TAO::Operation::TxCost(contract, nCost);
 
                 /* Index our registers here now if not -client mode and setting enabled. */
-                if(!config::fClient.load() && config::fIndexRegister.load())
+                if(!config::fClient.load() && config::fIndexRegister.load() && nFlags == FLAGS::BLOCK)
                 {
                     /* Unpack the address we will be working on. */
                     uint256_t hashAddress;
@@ -1118,7 +1118,7 @@ namespace TAO
                     return false;
 
                 /* Erase our register index here now if not -client mode and setting enabled. */
-                if(!config::fClient.load() && config::fIndexRegister.load())
+                if(!config::fClient.load() && config::fIndexRegister.load() && nFlags == FLAGS::BLOCK)
                 {
                     /* Unpack the address we will be working on. */
                     uint256_t hashAddress;
