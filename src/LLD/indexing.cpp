@@ -35,8 +35,23 @@ namespace LLD
         bool fIndexHeightComplete = true;
         if(LLD::Ledger->HasIndex(TAO::Ledger::ChainState::nCheckpointHeight.load()))
         {
+            /* Check there is no argument supplied. */
+            if(!config::HasArg("-indexheight"))
+            {
+                /* Warn that -indexheight is persistent. */
+                debug::notice(FUNCTION, "-indexheight enabled from valid indexes");
 
+                /* Set indexing argument now. */
+                RECURSIVE(config::ARGS_MUTEX);
+                config::mapArgs["-indexheight"] = "1";
+            }
+
+            /* Set our flag to false if we are forcing reindexing. */
+            if(config::GetBoolArg("-reindexheight"))
+                fIndexHeightComplete = false;
         }
+        else if(config::GetBoolArg("-indexheight", false))
+            fIndexHeightComplete = false;
 
         /* Check for address indexing flag. */
         bool fIndexAddressesComplete = true;
@@ -45,7 +60,7 @@ namespace LLD
             /* Check there is no argument supplied. */
             if(!config::HasArg("-indexaddress"))
             {
-                /* Warn that -indexheight is persistent. */
+                /* Warn that -indexaddress is persistent. */
                 debug::notice(FUNCTION, "-indexaddress enabled from valid indexes");
 
                 /* Set indexing argument now. */
@@ -60,7 +75,7 @@ namespace LLD
             if(config::GetBoolArg("-reindexaddress"))
                 fIndexAddressesComplete = false;
         }
-        else
+        else if(config::GetBoolArg("-indexaddress", false))
             fIndexAddressesComplete = false;
 
 
@@ -71,7 +86,7 @@ namespace LLD
             /* Check there is no argument supplied. */
             if(!config::HasArg("-indexproofs"))
             {
-                /* Warn that -indexheight is persistent. */
+                /* Warn that -indexproofs is persistent. */
                 debug::notice(FUNCTION, "-indexproofs enabled from valid indexes");
 
                 /* Set indexing argument now. */
@@ -86,7 +101,7 @@ namespace LLD
             if(config::GetBoolArg("-reindexproofs"))
                 fIndexProofsComplete = false;
         }
-        else
+        else if(config::GetBoolArg("-indexproofs", false))
             fIndexProofsComplete = false;
 
         /* Check for address indexing flag. */
@@ -96,7 +111,7 @@ namespace LLD
             /* Check there is no argument supplied. */
             if(!config::HasArg("-indexregister"))
             {
-                /* Warn that -indexheight is persistent. */
+                /* Warn that -indexregister is persistent. */
                 debug::notice(FUNCTION, "-indexregister enabled from valid indexes");
 
                 /* Set indexing argument now. */
@@ -111,8 +126,12 @@ namespace LLD
             if(config::GetBoolArg("-reindexregister"))
                 fIndexRegistersComplete = false;
         }
-        else
+        else if(config::GetBoolArg("-indexregister", false))
             fIndexRegistersComplete = false;
+
+        /* We don't need to do any work here if all of our indexes are complete. */
+        if(fIndexHeightComplete && fIndexAddressesComplete && fIndexProofsComplete && fIndexRegistersComplete)
+            return;
 
         /* Our list of transactions to read. */
         std::map<uint512_t, TAO::Ledger::Transaction> mapTransactions;
@@ -121,59 +140,39 @@ namespace LLD
         runtime::timer timer;
         timer.Start();
 
-        /* Check our starting block to read from. */
-        uint1024_t hashBlock;
-
         /* Track the last block processed. */
         TAO::Ledger::BlockState tStateLast;
 
-        /* Handle first key if needed. */
-        uint512_t hashIndex;
-        if(!LLD::Logical->ReadLastIndex(hashIndex))
+        /* Set our internal values. */
+        uint1024_t hashBlock = TAO::Ledger::hashTritium;
+
+        /* Check for testnet mode. */
+        if(config::fTestNet.load())
+            hashBlock = TAO::Ledger::hashGenesisTestnet;
+
+        /* Check for hybrid mode. */
+        if(config::fHybrid.load())
+            LLD::Ledger->ReadHybridGenesis(hashBlock);
+
+        /* Read the first tritium block. */
+        TAO::Ledger::BlockState tCurrent;
+        if(!LLD::Ledger->ReadBlock(hashBlock, tCurrent))
         {
-            /* Set our internal values. */
-            hashBlock = TAO::Ledger::hashTritium;
-
-            /* Check for testnet mode. */
-            if(config::fTestNet.load())
-                hashBlock = TAO::Ledger::hashGenesisTestnet;
-
-            /* Check for hybrid mode. */
-            if(config::fHybrid.load())
-                LLD::Ledger->ReadHybridGenesis(hashBlock);
-
-            /* Read the first tritium block. */
-            TAO::Ledger::BlockState tCurrent;
-            if(!LLD::Ledger->ReadBlock(hashBlock, tCurrent))
-            {
-                debug::warning(FUNCTION, "No tritium blocks available to initialize ", hashBlock.SubString());
-                return;
-            }
-
-            /* Set our last block as prev tritium block. */
-            if(!tCurrent.Prev())
-                tStateLast = tCurrent;
-            else
-            {
-                hashBlock  = tCurrent.hashPrevBlock;
-                tStateLast = tCurrent.Prev();
-            }
-
-            debug::log(0, FUNCTION, "Initializing indexing at tx ", hashBlock.SubString(), " and height ", tCurrent.nHeight);
+            debug::warning(FUNCTION, "No tritium blocks available to initialize ", hashBlock.SubString());
+            return;
         }
+
+        /* Set our last block as prev tritium block. */
+        if(!tCurrent.Prev())
+            tStateLast = tCurrent;
         else
         {
-            /* Set our initial block hash. */
-            TAO::Ledger::BlockState tCurrent;
-            if(LLD::Ledger->ReadBlock(hashIndex, tCurrent))
-            {
-                /* Set our last block hash. */
-                hashBlock = tCurrent.hashPrevBlock;
-
-                /* Set our last block as prev tritium block. */
-                tStateLast = tCurrent.Prev();
-            }
+            hashBlock  = tCurrent.hashPrevBlock;
+            tStateLast = tCurrent.Prev();
         }
+
+        debug::log(0, FUNCTION, "Initializing indexing at tx ", hashBlock.SubString(), " and height ", tCurrent.nHeight);
+
 
         /* Keep track of our total count. */
         uint32_t nScannedCount = 0;
@@ -216,8 +215,13 @@ namespace LLD
                 /* Cache the block hash. */
                 tStateLast = state;
 
-                /* Track our checkpoint by first transaction in non-processed block. */
-                LLD::Logical->WriteLastIndex(state.vtx[0].second);
+                /* Handle for indexing the height. */
+                if(!fIndexHeightComplete)
+                {
+                    /* Write the new heights to disk. */
+                    if(!LLD::Ledger->IndexBlock(state.nHeight, hashBlock))
+                        debug::notice(FUNCTION, "Failed to index height: ", hashBlock.SubString());
+                }
 
                 /* Handle our transactions now. */
                 for(const auto& proof : state.vtx)
@@ -331,7 +335,7 @@ namespace LLD
 
                             /* Check fo register in database. */
                             TAO::Register::State rState;
-                            if(!config::GetBoolArg("-forcereindex"))
+                            if(!config::GetBoolArg("-reindexaddress"))
                             {
                                 if(!Register->Read(std::make_pair(std::string("state"), hashAddress), rState))
                                     continue;
@@ -380,6 +384,18 @@ namespace LLD
                     break;
             }
         }
+
+        /* Write our -indexaddress keys as complete now. */
+        if(!fIndexAddressesComplete)
+            Register->Write(std::string("reindexed"));
+
+        /* Write our -indexproofs keys as complete now. */
+        if(!fIndexAddressesComplete)
+            Ledger->Write(std::string("index.proofs.complete"));
+
+        /* Write our -indexregister keys as complete now. */
+        if(!fIndexRegistersComplete)
+            Logical->Write(std::string("register.indexed"));
 
         debug::log(0, FUNCTION, "Complated scanning ", nScannedCount, " tx in ", timer.Elapsed(), " seconds");
     }
