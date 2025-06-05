@@ -776,7 +776,8 @@ namespace TAO
                     ++nGreater;
 
                 /* Log the weights. */
-                debug::log(2, FUNCTION, "WEIGHTS [", uint32_t(nGreater), "]",
+                debug::log(2, FUNCTION,
+                    "WEIGHTS [", uint32_t(nGreater), "]",
                     " Prime ", nChannelWeight[1].Get64(),
                     " Hash ",  nChannelWeight[2].Get64(),
                     " Stake ", nChannelWeight[0].Get64());
