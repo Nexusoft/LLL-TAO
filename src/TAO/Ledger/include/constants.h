@@ -196,6 +196,14 @@ namespace TAO::Ledger
     const uint64_t TX_FEE = 0.01 * NXS_COIN;
 
 
+    /** The total different between total supply and the tritium supply. **/
+    const uint64_t MAINNET_LEGACY_MINT = 14612656627925; //14.61MM
+
+
+    /** The total different between total supply and the tritium supply. **/
+    const uint64_t TESTNET_LEGACY_MINT = 31415926535897; //3.14MM
+
+
 
     /** MaturityCoinbase
      *
