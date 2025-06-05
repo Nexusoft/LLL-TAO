@@ -43,6 +43,10 @@ namespace TAO
         std::atomic<uint64_t> ChainState::nCheckpointHeight;
 
 
+        /* The best block in the chain. */
+        std::atomic<bool> ChainState::fChainReorg;
+
+
         /* The best hash in the chain. */
         memory::atomic<uint1024_t> ChainState::hashBestChain;
 

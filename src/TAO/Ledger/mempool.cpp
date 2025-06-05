@@ -656,8 +656,7 @@ namespace TAO
                 }
             }
 
-            //TODO: evict conflicted transctions from mempool by checking sequence number to current disk height
-            /* Create map of transactions by genesis. */
+            /* Evict conflicted transctions from mempool by checking they have been orphaned. */
             std::map<uint256_t, std::vector<TAO::Ledger::Transaction> > mapConflicted;
 
             /* Loop through all our conflicted transactions. */
@@ -672,6 +671,29 @@ namespace TAO
 
                 /* Push to back of map. */
                 mapConflicted[hashGenesis].push_back(tx.second);
+            }
+
+            /* Loop transctions map by genesis. */
+            for(auto& rTransaction : mapConflicted)
+            {
+                /* Get reference of the vector. */
+                std::vector<TAO::Ledger::Transaction>& vtx = rTransaction.second;
+
+                /* Sort the list by sequence numbers. */
+                std::sort(vtx.begin(), vtx.end());
+
+                /* Add the hashes into list. */
+                uint512_t hashLastDisk = 0;
+                if(!LLD::Ledger->ReadLast(rTransaction.first, hashLastDisk))
+                    break;
+
+                /* Check if our conflict chain needs to be evicted. */
+                if(vtx[0].hashPrevTx != hashLastDisk)
+                {
+                    /* Loop through our transactions and remove them. */
+                    for(const auto& tx : vtx)
+                        mapConflicts.erase(tx.GetHash());
+                }
             }
         }
 
@@ -783,6 +805,15 @@ namespace TAO
             RECURSIVE(MUTEX);
 
             return static_cast<uint32_t>(mapLedger.size() + mapLegacy.size());
+        }
+
+
+        /* Gets the size of the memory pool. */
+        uint32_t Mempool::Conflicts()
+        {
+            RECURSIVE(MUTEX);
+
+            return static_cast<uint32_t>(mapConflicts.size() + mapLegacyConflicts.size());
         }
     }
 }

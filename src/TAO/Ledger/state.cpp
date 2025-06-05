@@ -43,12 +43,15 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/prime.h>
 #include <TAO/Ledger/include/stake_change.h>
 #include <TAO/Ledger/include/supply.h>
+#include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/include/retarget.h>
 
 #include <TAO/Ledger/types/genesis.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/client.h>
+
+#include <Util/include/softfloat.h>
 
 
 /* Global TAO namespace. */
@@ -791,7 +794,12 @@ namespace TAO
                 {
                     /* Set the best chain. */
                     if(!SetBest())
+                    {
+                        /* If we fail at all here, we want to reset our reorg head. */
+                        ChainState::fChainReorg.store(false);
+
                         return debug::error(FUNCTION, "failed to set best chain");
+                    }
                 }
             }
             else if(nChainTrust > ChainState::nBestChainTrust.load())
@@ -898,6 +906,9 @@ namespace TAO
                     /* Track our total transactions to disconnect. */
                     for(auto& state : vDisconnect)
                         nTotalDisconnect += (state.vtx.size() - 1); //this will tally all non producer transactions
+
+                    /* Track that the chain is undergoing a re-org. */
+                    ChainState::fChainReorg.store(true);
                 }
 
                 /* Keep track of mempool transactions to delete. */
@@ -960,6 +971,48 @@ namespace TAO
                         vResurrect.insert(vResurrect.end(), state.vtx.rbegin(), state.vtx.rend());
                 }
 
+                /* Iterate forward through our transactions to resurrect in ascending order. */
+                for(auto proof = vResurrect.rbegin(); proof != vResurrect.rend(); ++proof)
+                {
+                    /* Check for tritium transctions. */
+                    if(proof->first == TRANSACTION::TRITIUM)
+                    {
+                        /* Make sure the transaction is on disk. */
+                        TAO::Ledger::Transaction tx;
+                        if(!LLD::Ledger->ReadTx(proof->second, tx))
+                            return debug::error(FUNCTION, "transaction not on disk");
+
+                        /* Check for producer transaction. */
+                        if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid())
+                            continue;
+
+                        /* Add back into memory pool. */
+                        mempool.Accept(tx);
+
+                        /* Print transaction on verbose 3. */
+                        if(config::nVerbose >= 3)
+                            tx.print();
+                    }
+                    else if(proof->first == TRANSACTION::LEGACY)
+                    {
+                        /* Make sure the transaction is on disk. */
+                        Legacy::Transaction tx;
+                        if(!LLD::Legacy->ReadTx(proof->second, tx))
+                            return debug::error(FUNCTION, "transaction not on disk");
+
+                        /* Check for producer transaction. */
+                        if(tx.IsCoinBase() || tx.IsCoinStake())
+                            continue;
+
+                        /* Add back into memory pool. */
+                        mempool.Accept(tx);
+
+                        /* Print transaction on verbose 3. */
+                        if(config::nVerbose >= 3)
+                            tx.print();
+                    }
+                }
+
                 /* Keep track of mempool transactions to delete. */
                 std::vector<std::pair<uint8_t, uint512_t>> vDelete;
 
@@ -1008,61 +1061,13 @@ namespace TAO
                         }
                     }
 
-                    /* Insert into delete queue. */
+                    /* Add the transaction to delete queue. */
                     vDelete.insert(vDelete.end(), state->vtx.begin(), state->vtx.end());
                 }
 
-                /* Delete from mempool. */
-                for(auto proof = vDelete.rbegin(); proof != vDelete.rend(); ++proof)
+                /* Iterate forward through our transactions to resurrect in ascending order. */
+                for(auto proof = vDelete.begin(); proof != vDelete.end(); ++proof)
                     mempool.Remove(proof->second);
-
-                /* Reverse the transction to connect to connect in ascending height. */
-                for(auto proof = vResurrect.rbegin(); proof != vResurrect.rend(); ++proof)
-                {
-                    /* Check for tritium transctions. */
-                    if(proof->first == TRANSACTION::TRITIUM)
-                    {
-                        /* Only resurrect if not in the delete list. */
-                        if(std::find(vDelete.begin(), vDelete.end(), *proof) == vDelete.end())
-                        {
-                            /* Make sure the transaction is on disk. */
-                            TAO::Ledger::Transaction tx;
-                            if(!LLD::Ledger->ReadTx(proof->second, tx))
-                                return debug::error(FUNCTION, "transaction not on disk");
-
-                            /* Check for producer transaction. */
-                            if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid())
-                                continue;
-
-                            /* Add back into memory pool. */
-                            mempool.Accept(tx);
-
-                            if(config::nVerbose >= 3)
-                                tx.print();
-                        }
-                    }
-                    else if(proof->first == TRANSACTION::LEGACY)
-                    {
-                        /* Only resurrect if not in the delete list. */
-                        if(std::find(vDelete.begin(), vDelete.end(), *proof) == vDelete.end())
-                        {
-                            /* Make sure the transaction is on disk. */
-                            Legacy::Transaction tx;
-                            if(!LLD::Legacy->ReadTx(proof->second, tx))
-                                return debug::error(FUNCTION, "transaction not on disk");
-
-                            /* Check for producer transaction. */
-                            if(tx.IsCoinBase() || tx.IsCoinStake())
-                                continue;
-
-                            /* Add back into memory pool. */
-                            mempool.Accept(tx);
-
-                            if(config::nVerbose >= 3)
-                                tx.print();
-                        }
-                    }
-                }
 
                 /* Debug output about the best chain. */
                 uint64_t nElapsed      = (GetBlockTime() - ChainState::tStateBest.load().GetBlockTime());
@@ -1086,6 +1091,9 @@ namespace TAO
                 ChainState::hashBestChain      = hash;
                 ChainState::nBestChainTrust    = nChainTrust;
                 ChainState::nBestHeight        = nHeight;
+
+                /* Reset our reorg block now. */
+                ChainState::fChainReorg.store(false);
 
                 /* Write the best chain pointer. */
                 if(!LLD::Ledger->WriteBestChain(hash))
@@ -1119,15 +1127,17 @@ namespace TAO
                 /* Get the transaction hash. */
                 const uint512_t& hash = proof.second;
 
+                /* Check for transaction overwrites using indexing entries */
+                if(!LLD::Ledger->HasIndex(hash))
+                    LLD::Ledger->IndexBlock(proof.second, hashBlock); //write indexing entry for use during processing
+                else //this rule will trigger if we have indexes already
+                    return debug::error(FUNCTION, "transaction overwrites not allowed");
+
                 /* Only work on tritium transactions for now. */
                 if(proof.first == TRANSACTION::TRITIUM)
                 {
                     /* Start the contracts stopwatch. */
                     swContract.start();
-
-                    /* Check for existing indexes. */
-                    if(LLD::Ledger->HasIndex(hash))
-                        return debug::error(FUNCTION, "transaction overwrites not allowed");
 
                     /* Make sure the transaction is on disk. */
                     TAO::Ledger::Transaction tx;
@@ -1220,10 +1230,6 @@ namespace TAO
                     /* Start the script stopwatch. */
                     swScript.start();
 
-                    /* Check for existing indexes. */
-                    if(LLD::Ledger->HasIndex(hash))
-                        return debug::error(FUNCTION, "transaction overwrites not allowed");
-
                     /* Make sure the transaction isn't on disk. */
                     Legacy::Transaction tx;
                     if(!LLD::Legacy->ReadTx(hash, tx))
@@ -1249,9 +1255,6 @@ namespace TAO
                 }
                 else
                     return debug::error(FUNCTION, "using an unknown transaction type");
-
-                /* Write the indexing entries. */
-                LLD::Ledger->IndexBlock(proof.second, hashBlock);
 
                 /* Push to our logical indexing in API. */
                 if(nTime > NEXUS_TRITIUM_TIMELOCK)
@@ -1625,6 +1628,10 @@ namespace TAO
                 TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(vtx.back().second, tx))
                     return debug::error(FUNCTION, "transaction is not on disk");
+
+                /* Use alternative function for version 9 blocks. */
+                if(nVersion >= 9)
+                    return Block::StakeHash(tx.hashGenesis);
 
                 return Block::StakeHash(tx.IsGenesis(), tx.hashGenesis);
             }

@@ -131,6 +131,13 @@ namespace TAO
                     return;
                 }
 
+                /* Check if this is a duplicate block. */
+                if(LLD::Ledger->HasBlock(block.GetHash()))
+                {
+                    nStatus |= PROCESS::DUPLICATE;
+                    return;
+                }
+
                 /* Check if the block is valid. */
                 if(!block.Check())
                 {
@@ -222,6 +229,10 @@ namespace TAO
 
                     /* Get the next hash backwards in the series. */
                     const uint1024_t hashPrev = pOrphan->GetHash();
+
+                    /* Check if this is a duplicate block. */
+                    if(LLD::Ledger->HasBlock(pOrphan->GetHash()))
+                        continue;
 
                     /* Debug output. */
                     debug::log(0, FUNCTION, "processing ORPHAN prev=", hashPrev.SubString(), " size=", mapOrphans.size());

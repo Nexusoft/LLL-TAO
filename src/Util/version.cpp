@@ -16,7 +16,6 @@ ________________________________________________________________________________
 
 namespace version
 {
-
     /* Major version X (X.y.z | X > 0). */
     const uint32_t CLIENT_MAJOR = 6;
 

@@ -130,10 +130,10 @@ namespace TAO
             TAO::Ledger::BlockState statePrev = state;
 
             /* Loop back valid blocks. */
-            while(!statePrev.IsNull())
+            while(!statePrev.IsNull() && !config::fShutdown.load())
             {
                 /* Break when locator size is large enough. */
-                if(vHave.size() > 22)
+                if(vHave.size() > 25)
                     break;
 
                 /* Loop back the total blocks of step iterator. */

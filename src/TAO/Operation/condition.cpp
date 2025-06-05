@@ -1868,15 +1868,15 @@ namespace TAO
                         if(caller.Version() > 4)
                             throw debug::exception("OP::LEDGER::HEIGHT disabled for post version 4");
 
-                        /* Special check for timestamp if it is a client and already synced up. */
-                        if(config::fClient.load())
+                        /* Special case when in -client mode or undergoing a reorganization. */
+                        if(config::fClient.load() || TAO::Ledger::ChainState::fChainReorg.load())
                         {
                             /* Check if we can read a current block for current caller. */
-                            TAO::Ledger::ClientBlock tStateBest;
-                            if(LLD::Client->ReadBlock(caller.Hash(), tStateBest))
+                            TAO::Ledger::BlockState tStateLoad;
+                            if(LLD::Ledger->ReadBlock(caller.Hash(), tStateLoad))
                             {
                                 /* Allocate our memory now. */
-                                allocate(tStateBest.nHeight, vRet);
+                                allocate(tStateLoad.Prev().nHeight, vRet);
 
                                 /* Check for overflows. */
                                 if(nCost + 4 < nCost)
@@ -1910,15 +1910,15 @@ namespace TAO
                         if(caller.Version() > 4)
                             throw debug::exception("OP::LEDGER::SUPPLY disabled for post version 4");
 
-                        /* Special check for timestamp if it is a client and already synced up. */
-                        if(config::fClient.load())
+                        /* Special case when in -client mode or undergoing a reorganization. */
+                        if(config::fClient.load() || TAO::Ledger::ChainState::fChainReorg.load())
                         {
                             /* Check if we can read a current block for current caller. */
-                            TAO::Ledger::ClientBlock tStateBest;
-                            if(LLD::Client->ReadBlock(caller.Hash(), tStateBest))
+                            TAO::Ledger::BlockState tStateLoad;
+                            if(LLD::Ledger->ReadBlock(caller.Hash(), tStateLoad))
                             {
                                 /* Allocate our memory now. */
-                                allocate(uint64_t(tStateBest.nMoneySupply), vRet);
+                                allocate(uint64_t(tStateLoad.Prev().nMoneySupply), vRet);
 
                                 /* Check for overflows. */
                                 if(nCost + 8 < nCost)
@@ -1951,16 +1951,16 @@ namespace TAO
                         /* Check if we have version disable of this op-code. */
                         if(caller.Version() > 4)
                             throw debug::exception("OP::LEDGER::TIMESTAMP disabled for post version 4");
-
-                        /* Special check for timestamp if it is a client and already synced up. */
-                        if(config::fClient.load())
+                            
+                        /* Special case when in -client mode or undergoing a reorganization. */
+                        if(config::fClient.load() || TAO::Ledger::ChainState::fChainReorg.load())
                         {
                             /* Check if we can read a current block for current caller. */
-                            TAO::Ledger::ClientBlock tStateBest;
-                            if(LLD::Client->ReadBlock(caller.Hash(), tStateBest))
+                            TAO::Ledger::BlockState tStateLoad;
+                            if(LLD::Ledger->ReadBlock(caller.Hash(), tStateLoad))
                             {
                                 /* Allocate our memory now. */
-                                allocate(uint64_t(tStateBest.nTime), vRet);
+                                allocate(uint64_t(tStateLoad.Prev().nTime), vRet);
 
                                 /* Check for overflows. */
                                 if(nCost + 8 < nCost)

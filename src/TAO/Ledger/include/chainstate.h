@@ -49,6 +49,10 @@ namespace TAO
             extern std::atomic<uint64_t> nCheckpointHeight;
 
 
+            /** Track if the chain is currently undergoing a re-org. */
+            extern std::atomic<bool> fChainReorg;
+
+
             /** The best hash in the chain. */
             extern memory::atomic<uint1024_t> hashBestChain;
 

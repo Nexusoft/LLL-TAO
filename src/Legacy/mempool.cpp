@@ -300,15 +300,5 @@ namespace TAO
 
             return true;
         }
-
-
-        /* Gets the size of the memory pool. */
-        uint32_t Mempool::SizeLegacy()
-        {
-            RECURSIVE(MUTEX);
-
-            return mapLegacy.size();
-        }
-
     }
 }
