@@ -33,6 +33,32 @@ namespace TAO
         };
 
 
+        /* Helper function to determine temporary subsidy change for 1 year. */
+        bool TemporarySubsidy(const uint32_t nMinutes, const uint8_t nType)
+        {
+            /* Track the minutes past one year. */
+            static const uint32_t YEAR_MINUTES = 525600;
+
+            /* Skip over for type 0 as this only applies to type 1 and type 2. */
+            if(nType == 0)
+                return false;
+
+            /* Calculate our current minute time-lock. */
+            const uint32_t TIMELOCK_MINUTES = //this captures the minutes value at block version 9 time-lock
+                uint32_t((config::fTestNet.load() ? TESTNET_BLOCK_VERSION_TIMELOCK[7] : NETWORK_BLOCK_VERSION_TIMELOCK[7]) / 60);
+
+            /* Check if we have reached this point. */
+            if(nMinutes < TIMELOCK_MINUTES)
+                return false;
+
+            /* Check our time-lock minutes value. */
+            if(nMinutes > TIMELOCK_MINUTES + YEAR_MINUTES)
+                return false;
+
+            return true; //if we reach this, we are between range of TIMELOCK_MINUTES and (TIMELOCK_MINUTES + YEAR_MINUTES)
+        }
+
+
         /* Get the Total Amount to be Released at a given Minute since the NETWORK_TIMELOCK. */
         uint64_t GetSubsidy(const uint32_t nMinutes, const uint8_t nType)
         {
@@ -43,6 +69,20 @@ namespace TAO
             /* Calculate our return value. */
             const cv::softdouble dRet =
                 ((cv::softdouble(dDecayValue[nType][0]) * dExp) + cv::softdouble(dDecayValue[nType][2])) * cv::softdouble(500000);
+
+            /*  Special rule for subsidy types ratified by following poll:
+             *  https://t.me/NexusOfficial/211386/269954.
+             *
+             *  This poll voted on two items, stake rate increase and developer supply increase.
+             *  This protocol modification is the result of consensus reached related to developer income.
+             *
+             *  24% Increase Developer Income 3x for 1 year or 2% increase in total supply.
+             *  17% Increase Developer Income 2x for 1 year or 1% increase in total supply.
+             *  17% Do not increase Developer Income at all.
+             *
+             */
+            if(TemporarySubsidy(nMinutes, nType))
+                return uint64_t(cvFloor(dRet)) * 3; //as decreed by community poll, 3x income for 1 year
 
             return uint64_t(cvFloor(dRet));
         }

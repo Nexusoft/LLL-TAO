@@ -204,7 +204,6 @@ namespace TAO::Ledger
     const uint64_t TESTNET_LEGACY_MINT = 31415926535897; //3.14MM
 
 
-
     /** MaturityCoinbase
      *
      *  Retrieve the number of blocks (confirmations) required for coinbase maturity for a given block.

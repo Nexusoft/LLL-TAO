@@ -210,6 +210,17 @@ namespace TAO
             if(fGenesis)
                 return cv::softdouble(0.005);
 
+            /*  Special rule for subsidy types ratified by following poll:
+             *  https://t.me/NexusOfficial/211386/269954.
+             *
+             *  This poll voted on two items, stake rate increase and developer supply increase.
+             *  This protocol modification is the result of consensus reached related to developer income.
+             *
+             *  38% Increase stake rate to 5% for 5 years of Trust
+             *  26% Do not increase stake rate at all.
+             *
+             */
+
             /* No trust score cap in Tritium staking, but use testnet max for testnet stake rate (so it grows faster) */
             static const uint32_t nRateBase = config::fTestNet ? TRUST_SCORE_MAX_TESTNET : ONE_YEAR;
 
