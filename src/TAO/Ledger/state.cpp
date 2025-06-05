@@ -906,13 +906,13 @@ namespace TAO
                     /* Track our total transactions to disconnect. */
                     for(auto& state : vDisconnect)
                         nTotalDisconnect += (state.vtx.size() - 1); //this will tally all non producer transactions
+
+                    /* Track that the chain is undergoing a re-org. */
+                    ChainState::fChainReorg.store(true);
                 }
 
                 /* Keep track of mempool transactions to delete. */
                 std::vector<std::pair<uint8_t, uint512_t>> vResurrect;
-
-                /* Track that the chain is undergoing a re-org. */
-                ChainState::fChainReorg.store(true);
 
                 /* Check if we need to output our -debugreorg data. */
                 const bool fDebugReorg =
