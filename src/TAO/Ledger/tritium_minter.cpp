@@ -281,7 +281,11 @@ namespace TAO::Ledger
              */
             TAO::Ledger::StakeChange tStakeChange;
             if(LLD::Local->ReadStakeChange(hashGenesis, tStakeChange))
-                nStake += tStakeChange.nAmount;
+            {
+                /* Only add stake change on amounts increasing, otherwise you won't be able to unstake from 0. */
+                if(tStakeChange.nAmount > 0)
+                    nStake += tStakeChange.nAmount;
+            }
         }
 
         /* Calculate the minimum Required Energy Efficiency Threshold.

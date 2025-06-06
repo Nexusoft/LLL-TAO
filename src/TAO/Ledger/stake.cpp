@@ -220,7 +220,7 @@ namespace TAO
              *  26% Do not increase stake rate at all.
              *
              */
-            if(nVersion > 4) //this is for tx version 5 and above
+            if(nVersion >= 9) //this is for block version 9 and above
             {
                 /* Keep track of our local timespan so we only calculate it once. */
                 static const uint32_t nTimespan =
@@ -261,7 +261,7 @@ namespace TAO
              *  26% Do not increase stake rate at all.
              *
              */
-            if(nVersion > 4)
+            if(nVersion >= 9) //this is for block version 9 and above
                 return (nStake * nStakeRate * nStakeTime) / TAO::Ledger::FULL_YEAR; //we want to adjust to use FULL_YEAR here
 
             /* Legacy calculation for sub verion 5 protocols. */

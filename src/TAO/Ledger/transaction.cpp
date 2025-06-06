@@ -684,7 +684,7 @@ namespace TAO
 
                 /* Calculate the coinstake reward */
                 const uint64_t nTime = pblock->GetBlockTime() - stateLast.GetBlockTime();
-                nReward = GetCoinstakeReward(nStake, nTime, nTrust, this->nVersion, false);
+                nReward = GetCoinstakeReward(nStake, nTime, nTrust, pblock->nVersion, false);
 
                 /* Validate the coinstake reward calculation */
                 if(nClaimedReward != nReward)
@@ -714,7 +714,7 @@ namespace TAO
                 nTrustWeight = GenesisWeight(nAge);
 
                 /* Calculate the coinstake reward */
-                nReward = GetCoinstakeReward(nStake, nAge, 0, this->nVersion, true);
+                nReward = GetCoinstakeReward(nStake, nAge, 0, pblock->nVersion, true);
 
                 /* Validate the coinstake reward calculation */
                 if(nClaimedReward != nReward)
@@ -728,12 +728,11 @@ namespace TAO
                 return debug::error(FUNCTION, "invalid stake operation");
 
             /* If stake added in block finder, apply to threshold calculation. */
-            uint64_t nStakeApplied = nStake;
             if(nStakeChange > 0)
                 nStakeApplied += nStakeChange;
 
             /* Check the stake balance. */
-            if(nStakeApplied == 0)
+            if(pblock->nVersion < 9 && nStakeApplied == 0) //we want to allow stake to go to zero
                 return debug::error(FUNCTION, "cannot stake if stake balance is zero");
 
             /* Calculate the energy efficiency thresholds. */

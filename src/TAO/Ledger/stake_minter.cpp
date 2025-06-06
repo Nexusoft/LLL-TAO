@@ -614,7 +614,7 @@ namespace TAO
              * have deferred reward calculation until after the block is found to get the exact correct amount.
              */
             const uint64_t nReward =
-                CalculateCoinstakeReward(block.GetBlockTime(), block.producer.nVersion);
+                CalculateCoinstakeReward(block.GetBlockTime(), block.nVersion);
 
             /* Add coinstake reward */
             block.producer[0] << nReward;
