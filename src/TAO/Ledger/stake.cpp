@@ -396,7 +396,6 @@ namespace TAO
         /*  Gets the trust account for a signature chain */
         bool FindTrustAccount(const uint256_t& hashGenesis, TAO::Register::Object &account, bool &fIndexed)
         {
-
             /* Reset trust account data */
             account = TAO::Register::Object();
 
@@ -405,48 +404,53 @@ namespace TAO
              * Upon staking Genesis, that account is indexed into the register DB and is directly retrievable.
              * Pre-Genesis, we have to retrieve the name register to obtain the trust account address.
              */
-
             if(LLD::Register->HasTrust(hashGenesis))
             {
                 /* Trust account is indexed */
-                fIndexed = true;
-                TAO::Register::Object reg;
-
-                if(!LLD::Register->ReadTrust(hashGenesis, reg))
+                TAO::Register::Object oTrust;
+                if(!LLD::Register->ReadTrust(hashGenesis, oTrust))
                    return debug::error(FUNCTION, "Unable to retrieve trust account");
 
-                if(!reg.Parse())
+                /* Parse the object data from the account */
+                if(!oTrust.Parse())
                     return debug::error(FUNCTION, "Unable to parse trust account register");
 
-                if(reg.Standard() != TAO::Register::OBJECTS::TRUST)
+                /* Check that we have the proper standard from disk. */
+                if(oTrust.Standard() != TAO::Register::OBJECTS::TRUST)
                     return debug::error(FUNCTION, "Invalid trust account register");
 
                 /* Found valid trust account register. */
-                account = reg;
+                account = oTrust;
+
+                /* Set our return value. */
+                fIndexed = true;
 
                 return true;
             }
             else
             {
-                /* Trust account is not indexed */
-                fIndexed = false;
-                TAO::Register::Object reg;
-
                 /* Retrieve the trust address */
-                uint256_t hashAddress = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+                const uint256_t hashAddress =
+                    TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
-                if(!LLD::Register->ReadState(hashAddress, reg))
+                /* Read account from disk. */
+                TAO::Register::Object oTrust;
+                if(!LLD::Register->ReadState(hashAddress, oTrust))
                     return debug::error(FUNCTION, "Unable to retrieve trust account for Genesis");
 
-                /* Verify we have trust account register for the user account */
-                if(!reg.Parse())
+                /* Parse the object data from the account */
+                if(!oTrust.Parse())
                     return debug::error(FUNCTION, "Unable to parse trust account register for Genesis");
 
-                if(reg.Standard() != TAO::Register::OBJECTS::TRUST)
+                /* Check that we have the proper standard from disk. */
+                if(oTrust.Standard() != TAO::Register::OBJECTS::TRUST)
                     return debug::error(FUNCTION, "Invalid trust account register for Genesis");
 
                 /* Found valid trust account register. */
-                account = reg;
+                account = oTrust;
+
+                /* Set our return value. */
+                fIndexed = false;
 
                 return true;
             }
