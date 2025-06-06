@@ -240,6 +240,10 @@ namespace TAO
             /* Check for wildcard from (which is a flag for credit from UTXO). */
             if(hashFrom == TAO::Register::WILDCARD_ADDRESS)
             {
+                /* Disable credit from UTxO on version 5 activation. */
+                if(contract.Version() > 4)
+                    return debug::error(FUNCTION, "cannot credit from a legacy UTxO for version ", contract.Version());
+
                 /* Check the proof as being the caller. */
                 if(hashProof != hashFrom)
                     return debug::error(FUNCTION, "proof must equal from for credit");

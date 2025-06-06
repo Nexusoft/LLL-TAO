@@ -76,6 +76,10 @@ namespace TAO
         /* Verify debit validation rules and caller. */
         bool Legacy::Verify(const Contract& contract)
         {
+            /* Check transaction version. */
+            if(contract.Version() > 4)
+                return debug::error(FUNCTION, "OP::LEGACY: disabled after version 4");
+
             /* Rewind back on byte. */
             contract.Rewind(1, Contract::OPERATIONS);
 
@@ -89,10 +93,6 @@ namespace TAO
             /* Check operation byte. */
             if(OP != OP::LEGACY)
                 return debug::error(FUNCTION, "called with incorrect OP");
-
-            /* Check transaction version. */
-            if(contract.Version() > 4)
-                return debug::error(FUNCTION, "OP::LEGACY: disabled after version 4");
 
             /* Extract the address from contract. */
             TAO::Register::Address hashFrom;
