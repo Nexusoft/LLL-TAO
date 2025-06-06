@@ -728,6 +728,7 @@ namespace TAO
                 return debug::error(FUNCTION, "invalid stake operation");
 
             /* If stake added in block finder, apply to threshold calculation. */
+            uint64_t nStakeApplied = nStake;
             if(nStakeChange > 0)
                 nStakeApplied += nStakeChange;
 
