@@ -1865,7 +1865,7 @@ namespace TAO
                     case OP::LEDGER::HEIGHT:
                     {
                         /* Check if we have version disable of this op-code. */
-                        if(caller.Version() > 4)
+                        if(contract.Version() > 4)
                             throw debug::exception("OP::LEDGER::HEIGHT disabled for post version 4");
 
                         /* Special case when in -client mode or undergoing a reorganization. */
@@ -1907,7 +1907,7 @@ namespace TAO
                     case OP::LEDGER::SUPPLY:
                     {
                         /* Check if we have version disable of this op-code. */
-                        if(caller.Version() > 4)
+                        if(contract.Version() > 4)
                             throw debug::exception("OP::LEDGER::SUPPLY disabled for post version 4");
 
                         /* Special case when in -client mode or undergoing a reorganization. */
@@ -1949,9 +1949,9 @@ namespace TAO
                     case OP::LEDGER::TIMESTAMP:
                     {
                         /* Check if we have version disable of this op-code. */
-                        if(caller.Version() > 4)
+                        if(contract.Version() > 4)
                             throw debug::exception("OP::LEDGER::TIMESTAMP disabled for post version 4");
-                            
+
                         /* Special case when in -client mode or undergoing a reorganization. */
                         if(config::fClient.load() || TAO::Ledger::ChainState::fChainReorg.load())
                         {
