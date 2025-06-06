@@ -684,7 +684,7 @@ namespace TAO
 
                 /* Calculate the coinstake reward */
                 const uint64_t nTime = pblock->GetBlockTime() - stateLast.GetBlockTime();
-                nReward = GetCoinstakeReward(nStake, nTime, nTrust, false);
+                nReward = GetCoinstakeReward(nStake, nTime, nTrust, this->nVersion, false);
 
                 /* Validate the coinstake reward calculation */
                 if(nClaimedReward != nReward)
@@ -714,7 +714,7 @@ namespace TAO
                 nTrustWeight = GenesisWeight(nAge);
 
                 /* Calculate the coinstake reward */
-                nReward = GetCoinstakeReward(nStake, nAge, 0, true);
+                nReward = GetCoinstakeReward(nStake, nAge, 0, this->nVersion, true);
 
                 /* Validate the coinstake reward calculation */
                 if(nClaimedReward != nReward)

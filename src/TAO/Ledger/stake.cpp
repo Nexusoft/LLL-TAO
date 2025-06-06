@@ -204,7 +204,7 @@ namespace TAO
 
 
         /* Calculate the stake rate corresponding to a given trust score. */
-        cv::softdouble StakeRate(const uint64_t nTrust, const bool fGenesis)
+        cv::softdouble StakeRate(const uint64_t nTrust, const uint32_t nVersion, const bool fGenesis)
         {
             /* Stake rate fixed at 0.005 (0.5%) when staking Genesis */
             if(fGenesis)
@@ -220,6 +220,18 @@ namespace TAO
              *  26% Do not increase stake rate at all.
              *
              */
+            if(nVersion > 4) //this is for tx version 5 and above
+            {
+                /* Keep track of our local timespan so we only calculate it once. */
+                static const uint32_t nTimespan =
+                    config::fTestNet ? TRUST_SCORE_MAX_TESTNET : FIVE_YEARS;
+
+                /* Stake rate starts at 0.005 (0.5%) and grows to 0.03 (3%) when trust score reaches or exceeds one year */
+                const cv::softdouble nTrustRatio =
+                    (cv::softdouble(nTrust) / cv::softdouble(nTimespan));
+
+                return std::min(cv::softdouble(0.05), (cv::softdouble(0.045) * cv::log((cv::softdouble(9.0) * nTrustRatio) + cv::softdouble(1.0)) / cv::log(cv::softdouble(10))) + cv::softdouble(0.005));
+            }
 
             /* No trust score cap in Tritium staking, but use testnet max for testnet stake rate (so it grows faster) */
             static const uint32_t nRateBase = config::fTestNet ? TRUST_SCORE_MAX_TESTNET : ONE_YEAR;
@@ -232,25 +244,28 @@ namespace TAO
 
 
         /* Calculate the coinstake reward for a given stake. */
-        uint64_t GetCoinstakeReward(const uint64_t nStake, const uint64_t nStakeTime, const uint64_t nTrust, const bool fGenesis)
+        uint64_t GetCoinstakeReward(const uint64_t nStake,
+                                    const uint64_t nStakeTime, const uint64_t nTrust, const uint32_t nVersion, const bool fGenesis)
         {
+            /* Calculate the stake rate based on version switch. */
+            const cv::softdouble nStakeRate =
+                StakeRate(nTrust, nVersion, fGenesis);
 
-            cv::softdouble nStakeRate = StakeRate(nTrust, fGenesis);
-
-            /* Reward rate for time period is annual rate * (time period / annual time) or nStakeRate * (nStakeTime / ONE_YEAR)
-             * Then, overall nStakeReward = nStake * reward rate
+            /*  Special rule for subsidy types ratified by following poll:
+             *  https://t.me/NexusOfficial/211386/269954.
              *
-             * Thus, the appropriate way to write this (for clarity) would be:
-             *      StakeReward = nStake * nStakeRate * (nStakeTime / ONE_YEAR)
+             *  This poll voted on two items, stake rate increase and developer supply increase.
+             *  This protocol modification is the result of consensus reached related to developer income.
              *
-             * However, with integer arithmetic (nStakeTime / ONE_YEAR) would evaluate to 0 or 1, etc. and the nStakeReward
-             * would be erroneous.
+             *  38% Increase stake rate to 5% for 5 years of Trust
+             *  26% Do not increase stake rate at all.
              *
-             * Therefore, it performs the full multiplication portion first.
              */
-            uint64_t nStakeReward = (nStake * nStakeRate * nStakeTime) / TAO::Ledger::ONE_YEAR;
+            if(nVersion > 4)
+                return (nStake * nStakeRate * nStakeTime) / TAO::Ledger::FULL_YEAR; //we want to adjust to use FULL_YEAR here
 
-            return nStakeReward;
+            /* Legacy calculation for sub verion 5 protocols. */
+            return (nStake * nStakeRate * nStakeTime) / TAO::Ledger::ONE_YEAR;
         }
 
 

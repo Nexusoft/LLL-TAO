@@ -171,11 +171,12 @@ namespace TAO
          *  Calculate the coinstake reward for a solo mined Proof of Stake block.
          *
          *  @param[in] nTime the time for which the reward will be calculated
+         *  @param[in] nVersion the version that will switch parameters for
          *
          *  @return the amount of reward paid by the block
          *
          **/
-        uint64_t CalculateCoinstakeReward(uint64_t nTime) override;
+        uint64_t CalculateCoinstakeReward(const uint64_t nTime, const uint32_t nVersion) override;
 
 
     private:
