@@ -61,6 +61,9 @@ server=1
 # set low logging verbosity
 verbose=0
 
+# set Nexus Private-Key Falcon Encryption ON
+falcon=1
+
 # set RPC and API credentials - PLEASE CHANGE THESE TO SUITABLE VALUES
 rpcuser=<somerandomuser>
 rpcpassword=<somerandompassword>
