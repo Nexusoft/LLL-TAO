@@ -64,6 +64,12 @@ verbose=0
 # set Nexus Private-Key Falcon Encryption ON
 falcon=1
 
+# set Active Nexus Listen to ON
+listen=1
+
+# set Active Nexus Listen Port to Random to prevent Certain Attacks for Staking
+listenport=0
+
 # set RPC and API credentials - PLEASE CHANGE THESE TO SUITABLE VALUES
 rpcuser=<somerandomuser>
 rpcpassword=<somerandompassword>
