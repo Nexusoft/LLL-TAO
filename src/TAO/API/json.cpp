@@ -2252,7 +2252,7 @@ namespace TAO::API
     std::string VariableToJSON(const std::string& strValue)
     {
         /* Check for variable parameters. */
-        if(strValue.find(");") == strValue.size() - 1)
+        if(strValue.find(');') == strValue.size() - 1)
         {
             /* Find where parameters start. */
             const auto nBegin = strValue.find('(');

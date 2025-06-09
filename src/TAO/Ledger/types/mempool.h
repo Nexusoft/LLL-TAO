@@ -324,12 +324,13 @@ namespace TAO
             uint32_t Size();
 
 
-            /** SizeLegacy
+            /** Conflicts
              *
-             *  Gets the size of the legacy memory pool.
+             *  Gets the size of the conflicts memory pool.
              *
              **/
-            uint32_t SizeLegacy();
+            uint32_t Conflicts();
+
         };
 
         extern Mempool mempool;

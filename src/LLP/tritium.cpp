@@ -1306,7 +1306,7 @@ namespace LLP
 
                                 /* Add DDOS filtering here. */
                                 if(DDOS)
-                                    DDOS->rSCORE += 250;
+                                    DDOS->rSCORE += locator.vHave.size();
 
                                 break;
                             }
@@ -2738,9 +2738,8 @@ namespace LLP
                     return debug::drop(NODE, "node reached orphan limit");
                 }
 
-
                 /* Check for failure limit on node. */
-                if(nConsecutiveFails >= 5000)
+                if(nConsecutiveFails >= 1000)
                 {
                     /* Switch to another available node. */
                     if(TAO::Ledger::ChainState::Synchronizing())

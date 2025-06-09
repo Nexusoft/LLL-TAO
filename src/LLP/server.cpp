@@ -1097,7 +1097,7 @@ namespace LLP
             return;
         }
 
-        nResult = UPNP_GetValidIGD(devlist, &urls, &data, lanaddr, sizeof(lanaddr));
+        nResult = UPNP_GetValidIGD(devlist, &urls, &data, lanaddr, sizeof(lanaddr), nullptr, 0);
         if (nResult == 1)
         {
 
