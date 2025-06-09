@@ -33,27 +33,32 @@ ifeq (${STATIC}, 1)
 	endif
 endif
 
-#Configure for 32/64 Bit and ARM
+#Configure for 32BIT(x86)/64BIT(x64) and armvX(32BIT)/aarch64(64BIT)
 ifndef 32BIT
 	override 32BIT= 0
-
 endif
 ifeq (${32BIT}, 1)
 	BUILD_ARCH=x86
 	CXXFLAGS+= -m32
-
-else ifeq (${ARM64}, 1)
-        BUILD_ARCH=aarch64
-        CXXFLAGS+= -march=native -mtune=native
-
-else ifeq ($(shell uname -m),armv7l)
-        BUILD_ARCH=arm
+#Check 'ARM' flag is existed or not
+else ifeq (${ARM}, 1)
+	#Get architecture name from 'uname -m'
+	ARCH := $(shell uname -m)
+	ifeq ($(filter aarch64, $(ARCH)), $(ARCH)) #Check if the architecture is 'aarch64'(ARM64)
+        	BUILD_ARCH=aarch64
+        	CXXFLAGS+= -march=native -mtune=native
+	else ifeq ($(filter armv%, $(ARCH)), $(ARCH)) #Check if the architecture is 'armv*'(ARM32)
+        	BUILD_ARCH=arm
+		CXXFLAGS+= -march=native -mtune=native
+	else
+		#Display wrong flag error message with the name of current architecture.
+		$(error $'\n'Seems that you set the wrong 'ARM' flag, Your architecture is $(shell uname -m)).
+ 	endif
 
 else
 	BUILD_ARCH=x64
 	CXXFLAGS+= -m64
 endif
-
 
 #Define default LIB and INCLUDE path variables
 ifndef OPENSSL_LIB_PATH
