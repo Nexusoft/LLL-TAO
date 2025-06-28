@@ -33,14 +33,14 @@ Example:
 32BIT=1
 ```
 
-#### `ARM64`
+#### `ARM`
 
-Set to build for ARM64 arch type.
+Set to build for ARM32(`armv*l`)/ARM64(`aarch64`) arch type.
 
 Example:
 
 ```
-ARM64=1
+ARM=1
 ```
 
 #### `OPENSSL LIBRARY PATH`
