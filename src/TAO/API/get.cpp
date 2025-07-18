@@ -665,7 +665,7 @@ namespace TAO::API
             /* Switch for valid primitives. */
             switch(nOP)
             {
-                /* Handle for if we need to credit. */
+                /* Handle for if we have a transfer. */
                 case TAO::Operation::OP::TRANSFER:
                 {
                     try

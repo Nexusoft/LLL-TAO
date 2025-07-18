@@ -197,6 +197,19 @@ namespace TAO::API
             , TAO::Ledger::StartTransactionTimelock(2)
         );
 
+        /* Handle for all REJECT operations. */
+        mapFunctions["reject"] = Function
+        (
+            std::bind
+            (
+                &Invoices::Reject,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , TAO::Ledger::StartTransactionTimelock(2)
+        );
+
         /* Handle for all LIST operations. */
         mapFunctions["list"] = Function
         (

@@ -147,7 +147,7 @@ namespace TAO::API
             }
 
 
-            /** Constructor based on geneis. **/
+            /** Constructor based on genesis. **/
             Session(const SecureString& strUsername, const SecureString& strPassword, const uint8_t nTypeIn = LOCAL)
             : pCredentials  (new TAO::Ledger::Credentials(strUsername, strPassword))
             , pUnlock       (new TAO::Ledger::PinUnlock())

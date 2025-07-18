@@ -97,7 +97,7 @@ namespace TAO::API
         uint512_t hashTx;
 
         /* The contract ID to cancel */
-        uint32_t nContract = 0;  //XXX: THIS SECTION COULD STILL DO WITH SOME WORK
+        uint32_t nContract = 0;
 
         /* Look up the transaction ID & contract ID of the transfer so that we can void it */
         if(!find_invoice(hashRecipient, hashRegister, hashTx, nContract))

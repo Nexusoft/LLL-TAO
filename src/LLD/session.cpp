@@ -734,6 +734,18 @@ namespace LLD
             if(!Read(std::make_tuple(std::string("events.index"), nSequence, hashGenesis), pairEvent))
                 break;
 
+            /* Check if this notification is suppressed. */
+            uint64_t nTimestamp = 0;
+            if(LLD::Local->ReadSuppressNotification(pairEvent.first, pairEvent.second, nTimestamp))
+            {
+                /* Check if we continue or not. */
+                if(nTimestamp == 0)
+                {
+                    ++nSequence;
+                    continue;
+                }
+            }
+
             /* Check for already executed contracts to omit. */
             vEvents.push_back(pairEvent);
 
@@ -960,6 +972,18 @@ namespace LLD
             /* Read our current record. */
             if(!Read(std::make_tuple(std::string("contracts.index"), nSequence, hashGenesis), pairContract))
                 break;
+
+            /* Check if this notification is suppressed. */
+            uint64_t nTimestamp = 0;
+            if(LLD::Local->ReadSuppressNotification(pairContract.first, pairContract.second, nTimestamp))
+            {
+                /* Check if we continue or not. */
+                if(nTimestamp == 0)
+                {
+                    ++nSequence;
+                    continue;
+                }
+            }
 
             /* Check for already executed contracts to omit. */
             vContracts.push_back(pairContract);
