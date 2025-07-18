@@ -205,7 +205,7 @@ namespace TAO::Ledger
 
 
     /** The total different between total supply and the tritium supply. **/
-    const uint64_t MAINNET_LEGACY_MINT = 14612656627925; //14.61MM
+    const uint64_t MAINNET_LEGACY_MINT = 14642235699093; //14642235.699093
 
 
     /** The total different between total supply and the tritium supply. **/
