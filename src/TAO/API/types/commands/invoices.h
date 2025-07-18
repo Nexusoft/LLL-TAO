@@ -95,6 +95,19 @@ namespace TAO::API
         encoding::json Cancel(const encoding::json& jParams, const bool fHelp);
 
 
+        /** Reject
+         *
+         *  Rejects an invoice that has been sent.
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json Reject(const encoding::json& jParams, const bool fHelp);
+
+
         /** InvoiceToJSON
          *
          *  Returns the JSON representation of this invoice
@@ -135,7 +148,7 @@ namespace TAO::API
         *  @return boolean, True if the transaction info was found
         *
         **/
-        static bool find_invoice(const uint256_t& hashRecipient, const TAO::Register::Address& hashInvoice,
+        static bool find_invoice(const uint256_t& hashRecipient, const uint256_t& hashInvoice,
                            uint512_t& txid, uint32_t& contract);
 
 

@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/types/commands/invoices.h>
+#include <TAO/API/types/authentication.h>
 
 #include <TAO/API/include/build.h>
 #include <TAO/API/include/check.h>
@@ -26,10 +27,14 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Transfers an item. */
-    encoding::json Invoices::Cancel(const encoding::json& jParams, const bool fHelp)
+    encoding::json Invoices::Reject(const encoding::json& jParams, const bool fHelp)
     {
         /* Get the Register ID. */
         const TAO::Register::Address hashRegister = ExtractAddress(jParams);
+
+        /* Get the current user-id. */
+        const uint256_t hashGenesis =
+            TAO::API::Authentication::Caller();
 
         /* Get the invoice object register . */
         TAO::Register::State strCheck;
@@ -53,11 +58,11 @@ namespace TAO::API
 
         /* Check if invoice has been paid already. */
         if(strStatus == "PAID")
-            throw Exception(-245, "Cannot [cancel] an invoice that has already been paid");
+            throw Exception(-245, "Cannot [reject] an invoice that has already been paid");
 
         /* Check if invoice has been cancelled. */
         if(strStatus == "CANCELLED")
-            throw Exception(-246, "Cannot [cancel] an invoice that has already been cancelled");
+            throw Exception(-246, "Cannot [reject] an invoice that has already been cancelled");
 
         /* The transaction ID to cancel */
         uint512_t hashTx;
@@ -82,14 +87,10 @@ namespace TAO::API
         if(tx[1].Primitive() != TAO::Operation::OP::TRANSFER)
             throw Exception(-247, "Invalid invoice transfer transaction");
 
-        /* Build our vector of contracts to submit. */
-        std::vector<TAO::Operation::Contract> vContracts;
+        /* Write this notification suppression. */
+        const bool fSuccess =
+            LLD::Local->WriteSuppressNotification(hashTx, nContract, 0) && LLD::Sessions->WriteDeindex(hashGenesis, hashRegister);
 
-        /* Process the contract and attempt to void it */
-        if(!BuildVoid(jParams, 1, tx[1], vContracts))
-            throw Exception(-43, "No valid contracts in tx.");
-
-        /* Build response JSON boilerplate. */
-        return BuildResponse(jParams, hashRegister, vContracts);
+        return {{ "success", fSuccess}};
     }
 }
