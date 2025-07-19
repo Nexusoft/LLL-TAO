@@ -1881,6 +1881,19 @@ namespace LLP
                                 Legacy::Transaction tx;
                                 if(LLD::Legacy->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                     PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
+                                else
+                                {
+                                    debug::log(3, NODE, "ACTION::GET: REQUEST FROM RELAY TRANSACTION ", hashTx.SubString());
+                                    
+                                    /* Relay to subscribed nodes a new connection was seen. */
+                                    TRITIUM_SERVER->Relay
+                                    (
+                                        ACTION::GET,
+                                        uint8_t(SPECIFIER::LEGACY),
+                                        uint8_t(TYPES::TRANSACTION),
+                                        hashTx
+                                    );
+                                }
                             }
                             else
                             {
@@ -1903,7 +1916,18 @@ namespace LLP
                                     else
                                         PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
                                 }
+                                else
+                                {
+                                    debug::log(3, NODE, "ACTION::GET: REQUEST FROM RELAY TRANSACTION ", hashTx.SubString());
 
+                                    /* Relay to subscribed nodes a new connection was seen. */
+                                    TRITIUM_SERVER->Relay
+                                    (
+                                        ACTION::GET,
+                                        uint8_t(TYPES::TRANSACTION),
+                                        hashTx
+                                    );
+                                }
                             }
 
                             /* Debug output. */
