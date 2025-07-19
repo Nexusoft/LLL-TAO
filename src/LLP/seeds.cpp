@@ -25,13 +25,6 @@ namespace LLP
         "node3.nexus.io",
         "node4.nexus.io",
         "node5.nexus.io",
-
-        //Radiant DNS seeds
-        "nexus1.cryptowise.cloud",
-        "nexus2.cryptowise.cloud",
-        "nexus3.cryptowise.cloud",
-        "nexus4.cryptowise.cloud",
-        "nexus5.cryptowise.cloud",
     };
 
 
