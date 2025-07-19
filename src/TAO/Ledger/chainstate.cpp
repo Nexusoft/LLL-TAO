@@ -332,8 +332,29 @@ namespace TAO
                 TAO::Ledger::BlockState tLastBlock;
                 if(config::GetBoolArg("-reindexheight") || !LLD::Ledger->ReadBlock(nCheckpointHeight.load(), tLastBlock))
                 {
-                    /* Set our last block as genesis. */
-                    tLastBlock = tStateGenesis;
+                    /* Check for first block index. */
+                    if(LLD::Ledger->ReadBlock(1, tLastBlock)) //check for genesis
+                    {
+                        /* We use this to jump back more than 1 db read at a time. */
+                        uint32_t nInterval = 1;
+
+                        /* Check back to our last index. */
+                        uint32_t nLastHeight = nCheckpointHeight.load();
+                        while(!LLD::Ledger->ReadBlock(nLastHeight, tLastBlock) && !config::fShutdown.load())
+                        {
+                            /* Exit if we reach the genesis. */
+                            if(nLastHeight == 0)
+                            {
+                                tLastBlock = tStateGenesis;
+                                break;
+                            }
+
+                            /* Jump backwards at increasing intervals. */
+                            nLastHeight = std::max(uint32_t(0), nLastHeight - nInterval++);
+                        }
+                    }
+                    else
+                        tLastBlock = tStateGenesis;
 
                     /* Use genesis as our hash start. */
                     uint1024_t hashStart = tLastBlock.GetHash();
