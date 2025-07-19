@@ -30,7 +30,7 @@ namespace version
     const uint32_t CLIENT_REVISION = 17;
 
     /* This tells us minor build tweaks rather than release candidate. */
-    const uint32_t CLIENT_BUILD    = 1;
+    const uint32_t CLIENT_BUILD    = 2;
 
 
     /* The version of the actual wallet client. */
