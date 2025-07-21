@@ -935,6 +935,17 @@ namespace TAO
                         /* Erase the blocks from disk if we are doing -forkblocks. */
                         LLD::Ledger->EraseBlock(state.GetHash());
 
+                        /* Disconnect the transctions in reverse order to preserve sigchain ordering. */
+                        for(auto proof = state.vtx.rbegin(); proof != state.vtx.rend(); ++proof)
+                        {
+                            /* Get the transaction hash. */
+                            const uint512_t& hash = proof->second;
+
+                            /* Only work on tritium transactions for now. */
+                            if(proof->first == TRANSACTION::TRITIUM)
+                                LLD::Ledger->EraseTx(hash);
+                        }
+
                         /* Erase our height indexes if we have enabled. */
                         if(config::GetBoolArg("-indexheight", false))
                             LLD::Ledger->EraseIndex(state.nHeight);

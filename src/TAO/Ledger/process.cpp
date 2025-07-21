@@ -45,10 +45,6 @@ namespace TAO
         std::atomic<uint64_t> nSyncSession(0);
 
 
-        /* The current incomplete chain tails. */
-        std::set<uint1024_t> setIncomplete;
-
-
         /* Stats variable for syncing. */
         std::atomic<uint64_t> nProcessedContracts(0);
 
@@ -70,29 +66,6 @@ namespace TAO
                 {
                     /* Set the status message. */
                     nStatus |= PROCESS::ORPHAN;
-
-                    /* Check for incomplete chains. */
-                    if(setIncomplete.count(block.hashPrevBlock))
-                    {
-                        /* Change this curren't orphan's state. */
-                        nStatus |= PROCESS::INCOMPLETE;
-
-                        /* Insert into orphans map. */
-                        mapOrphans.insert
-                        (
-                            std::make_pair(block.hashPrevBlock,
-                            std::unique_ptr<TAO::Ledger::Block>(block.Clone()))
-                        );
-
-                        /* Clear the set. */
-                        setIncomplete.erase(block.hashPrevBlock);
-                        setIncomplete.insert(hashBlock); //insert this block as current head of incomplete chain
-
-                        /* Debug output. */
-                        debug::log(0, FUNCTION, "INCOMPLETE height=", block.nHeight, " prev=", block.hashPrevBlock.SubString());
-
-                        return;
-                    }
 
                     /* Skip if already in orphan queue. */
                     if(!mapOrphans.count(block.hashPrevBlock))
@@ -123,7 +96,11 @@ namespace TAO
                     {
                         /* Send a request to download the orphaned block. */
                         pnode->PushMessage(LLP::TritiumNode::ACTION::GET,
+
+                            #ifndef DEBUG_MISSING
                             uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS),
+                            #endif
+
                             uint8_t(LLP::TritiumNode::TYPES::BLOCK), block.hashPrevBlock);
                     }
 
@@ -150,9 +127,6 @@ namespace TAO
 
                     /* Incomplete blocks can pass through orphan checks. */
                     nStatus |= PROCESS::INCOMPLETE;
-
-                    /* Insert the block hash into incomplete set. */
-                    setIncomplete.insert(hashBlock);
 
                     /* Set the missing block. */
                     block.hashMissing = hashBlock;
@@ -251,7 +225,9 @@ namespace TAO
                         block.vMissing.insert(block.vMissing.end(), pOrphan->vMissing.begin(), pOrphan->vMissing.end());
 
                         /* Set the hash missing. */
-                        block.hashMissing = pOrphan->GetHash();
+                        block.hashMissing = hash; //so that we return here when we get the transactions
+
+                        return;
                     }
 
                     /* Accept each orphan. */

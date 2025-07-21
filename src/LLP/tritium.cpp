@@ -343,7 +343,9 @@ namespace LLP
                              | SUBSCRIPTION::TRANSACTION
                         );
 
+                        #ifndef DEBUG_MISSING
                         PushMessage(ACTION::LIST, uint8_t(TYPES::MEMPOOL));
+                        #endif
                     }
                     else
                     {
@@ -647,6 +649,7 @@ namespace LLP
                 #ifdef DEBUG_MISSING
                 fSynchronized.store(true);
                 #endif
+
 
                 /* If not synchronized and making an outbound connection, start the sync */
                 if(!fSynchronized.load())
@@ -1881,19 +1884,6 @@ namespace LLP
                                 Legacy::Transaction tx;
                                 if(LLD::Legacy->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                     PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
-                                else
-                                {
-                                    debug::log(3, NODE, "ACTION::GET: REQUEST FROM RELAY TRANSACTION ", hashTx.SubString());
-                                    
-                                    /* Relay to subscribed nodes a new connection was seen. */
-                                    TRITIUM_SERVER->Relay
-                                    (
-                                        ACTION::GET,
-                                        uint8_t(SPECIFIER::LEGACY),
-                                        uint8_t(TYPES::TRANSACTION),
-                                        hashTx
-                                    );
-                                }
                             }
                             else
                             {
@@ -1915,18 +1905,6 @@ namespace LLP
                                     }
                                     else
                                         PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
-                                }
-                                else
-                                {
-                                    debug::log(3, NODE, "ACTION::GET: REQUEST FROM RELAY TRANSACTION ", hashTx.SubString());
-
-                                    /* Relay to subscribed nodes a new connection was seen. */
-                                    TRITIUM_SERVER->Relay
-                                    (
-                                        ACTION::GET,
-                                        uint8_t(TYPES::TRANSACTION),
-                                        hashTx
-                                    );
                                 }
                             }
 
@@ -2175,6 +2153,7 @@ namespace LLP
                             }
 
                             /* Check for legacy. */
+                            #ifndef DEBUG_MISSING
                             if(fLegacy)
                             {
                                 /* Check legacy database. */
@@ -2205,6 +2184,7 @@ namespace LLP
                                     tInventory.Cache(hashTx);
                                 }
                             }
+                            #endif
 
                             break;
                         }
@@ -2606,7 +2586,7 @@ namespace LLP
                                 if(++nTotalItems >= ACTION::GET_MAX_ITEMS || tx == block.vMissing.back())
                                 {
                                     /* Normal case of asking for a getblocks inventory message. */
-                                    std::shared_ptr<TritiumNode> pnode = TRITIUM_SERVER->GetConnection();
+                                    std::shared_ptr<TritiumNode> pnode = TRITIUM_SERVER->RandomConnection();
                                     if(pnode != nullptr)
                                     {
                                         /* Send out another getblocks request. */
@@ -2634,6 +2614,8 @@ namespace LLP
                                             debug::error(FUNCTION, e.what());
                                         }
                                     }
+                                    else
+                                        debug::notice(NODE, "could not find random connection for missing transactions");
                                 }
                             }
                         }
