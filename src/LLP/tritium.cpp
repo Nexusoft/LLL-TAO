@@ -2262,6 +2262,13 @@ namespace LLP
                                     /* Check if is sync node. */
                                     if(nCurrentSession == TAO::Ledger::nSyncSession.load())
                                     {
+                                        /* Check if we are repeating our last index. */
+                                        if(hashLastIndex == hashLast)
+                                        {
+                                            SwitchNode();
+                                            return true;
+                                        }
+                                        
                                         /* Check for complete synchronization. */
                                         if(hashLast == TAO::Ledger::ChainState::hashBestChain.load()
                                         && hashLast == hashBestChain)
