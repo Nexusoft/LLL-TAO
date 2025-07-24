@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -17,8 +17,6 @@ ________________________________________________________________________________
 #include <LLD/cache/binary_lru.h>
 
 #include <LLD/keychain/hashmap.h>
-#include <LLD/keychain/shard_hashmap.h>
-#include <LLD/keychain/hashtree.h>
 
 #include <Util/include/filesystem.h>
 #include <Util/include/hex.h>
@@ -536,7 +534,7 @@ namespace LLD::Templates
         }
 
         /* Loop until shutdown. */
-        while(true)
+        while(!config::fShutdown.load())
         {
             /* Wait for buffer to empty before shutting down. */
             if((fDestruct.load()) && nBufferBytes.load() == 0)
@@ -687,7 +685,8 @@ namespace LLD::Templates
         runtime::timer TIMER;
         TIMER.Start();
 
-        while(!fDestruct.load())
+        /* Loop until shutdown. */
+        while(!config::fShutdown.load())
         {
             runtime::sleep(100);
             if(TIMER.Elapsed() < 30)

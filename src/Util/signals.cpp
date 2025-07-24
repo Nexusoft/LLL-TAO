@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -29,38 +29,6 @@ void Shutdown()
 /** Catch Signal Handler function **/
 void HandleSIGTERM(int signum)
 {
-    std::string strSignal = "";
-    switch(signum)
-    {
-        case SIGABRT:
-            strSignal = "SIGABRT";
-            break;
-
-        case SIGILL:
-            strSignal = "SIGILL";
-            break;
-
-        case SIGINT:
-            strSignal = "SIGINT";
-            break;
-
-        case SIGTERM:
-            strSignal = "SIGTERM";
-            break;
-
-        #ifndef WIN32
-        case SIGPIPE:
-            strSignal = "SIGPIPE";
-            break;
-        #endif
-
-        default:
-            strSignal = "UNKNOWN";
-            break;
-    }
-
-    debug::notice("Signal received ", strSignal);
-
 #ifndef WIN32
     if(signum != SIGPIPE)
         Shutdown();
@@ -95,8 +63,6 @@ void SetupSignals()
         signal(SIGILL, HandleSIGTERM);
         signal(SIGINT, HandleSIGTERM);
         signal(SIGTERM, HandleSIGTERM);
-        /* UNIX signal, not applicable to Windows */
-        //signal(SIGPIPE, HandleSIGTERM);
 
     #ifdef SIGBREAK
         signal(SIGBREAK, HandleSIGTERM);

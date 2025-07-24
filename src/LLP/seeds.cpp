@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -25,21 +25,6 @@ namespace LLP
         "node3.nexus.io",
         "node4.nexus.io",
         "node5.nexus.io",
-
-        //cryptowise university
-        "seed1.nexusnode.cryptowiseuniversity.net",
-        "seed2.nexusnode.cryptowiseuniversity.net",
-        "seed3.nexusnode.cryptowiseuniversity.net",
-        "seed4.nexusnode.cryptowiseuniversity.net",
-        "seed5.nexusnode.cryptowiseuniversity.net",
-
-        //PV DNS seeds
-        "node1.nxs.efficienthash.com",
-        "node2.nxs.efficienthash.com",
-        "node3.nxs.efficienthash.com",
-        "node4.nxs.efficienthash.com",
-        "node5.nxs.efficienthash.com",
-        "node6.nxs.efficienthash.com",
     };
 
 

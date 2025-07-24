@@ -2,7 +2,7 @@
 
 			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2023
+			(c) Copyright The Nexus Developers 2014 - 2025
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -43,8 +43,10 @@ namespace LLP
     , TIMEOUT         (nTimeout)
     , DDOS_rSCORE     (rScore)
     , DDOS_cSCORE     (cScore)
-    , CONNECTIONS     (util::atomic::lock_unique_ptr<std::vector<std::shared_ptr<ProtocolType>> >(new std::vector<std::shared_ptr<ProtocolType>>()))
-    , RELAY           (util::atomic::lock_unique_ptr<std::queue<std::pair<typename ProtocolType::message_t, DataStream>> >(new std::queue<std::pair<typename ProtocolType::message_t, DataStream>>()))
+    , CONNECTIONS     (util::atomic::lock_unique_ptr<std::vector<std::shared_ptr<ProtocolType>> >
+        (new std::vector<std::shared_ptr<ProtocolType>>()))
+    , RELAY           (util::atomic::lock_unique_ptr<std::queue<std::pair<typename ProtocolType::message_t, DataStream>> >
+        (new std::queue<std::pair<typename ProtocolType::message_t, DataStream>>()))
     , CONDITION       ( )
     , DATA_THREAD     (std::bind(&DataThread::Thread, this))
     , FLUSH_CONDITION ( )
@@ -91,22 +93,9 @@ namespace LLP
                 return false;
             }
 
-            /* Find an available slot. */
-            uint32_t nSlot = find_slot();
-
             /* Update the indexes. */
             pnode->nDataThread     = ID;
-            pnode->nDataIndex      = nSlot;
             pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
-
-            /* Set our return connection pointer. */
-            pNodeRet = std::shared_ptr<ProtocolType>(pnode);
-
-            /* Find a slot that is empty. */
-            if(nSlot == CONNECTIONS->size())
-                CONNECTIONS->push_back(pNodeRet);
-            else
-                CONNECTIONS->at(nSlot) = pNodeRet;
 
             /* Check for inbound socket. */
             if(pnode->Incoming())
@@ -114,8 +103,18 @@ namespace LLP
             else
                 ++nOutbound;
 
+            /* Find an avilable data thread slot. */
+            const uint32_t nSlot = find_slot();
+
             /* Fire the connected event. */
+            pnode->nDataIndex = nSlot;
             pnode->Event(EVENTS::CONNECT);
+
+            /* Find a slot that is empty. */
+            if(nSlot == CONNECTIONS->size())
+                CONNECTIONS->push_back(std::shared_ptr<ProtocolType>(pnode));
+            else
+                CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
 
             /* Notify data thread to wake up. */
             CONDITION.notify_all();
@@ -346,8 +345,7 @@ namespace LLP
                     if(fDDOS.load() && CONNECTION->DDOS && !CONNECTION->addr.IsLocal())
                     {
                         /* Ban a node if it has too many Requests per Second. **/
-                        if(CONNECTION->DDOS->rSCORE.Score() > DDOS_rSCORE
-                        || CONNECTION->DDOS->cSCORE.Score() > DDOS_cSCORE)
+                        if(CONNECTION->DDOS->rSCORE.Score() > DDOS_rSCORE)
                             CONNECTION->DDOS->Ban();
 
                         /* Remove a connection if it was banned by DDOS Protection. */
@@ -615,9 +613,10 @@ namespace LLP
     uint32_t DataThread<ProtocolType>::find_slot()
     {
         /* Loop through each connection. */
-        uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
+        const uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
         for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
         {
+            /* Find an available connection. */
             if(!CONNECTIONS->at(nIndex))
                 return nIndex;
         }

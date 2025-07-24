@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -1261,29 +1261,37 @@ namespace Legacy
             //add tolerance to stake reward of + 1 (viz.) for stake rewards
             if (vout[0].nValue / 1000 > (nStakeReward + nValueIn) / 1000)
                 return debug::error(FUNCTION, GetHash().SubString(), " stake reward ", vout[0].nValue / 1000, " mismatch ", (nStakeReward + nValueIn) / 1000);
-        }
-        else if(nValueIn < GetValueOut())
-            return debug::error(FUNCTION, GetHash().SubString(), " value in ", nValueIn, " < value out ", GetValueOut());
 
-        /* Calculate the mint if connected with a block. */
-        if(nFlags == TAO::Ledger::FLAGS::BLOCK)
-            state.nMint += (int32_t)(GetValueOut() - nValueIn);
+            /* Calculate the mint if connected with a block. */
+            if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+                state.nMint = uint32_t(GetValueOut() - nValueIn);
+        }
+        else
+        {
+            /* Check that our value ranges are correct. */
+            if(nValueIn < GetValueOut())
+                return debug::error(FUNCTION, GetHash().SubString(), " value in ", nValueIn, " < value out ", GetValueOut());
+
+            /* Calculate the mint if connected with a block. */
+            if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+                state.nFees += uint32_t(nValueIn - GetValueOut());
+        }
 
         /* UTXO to Sig Chain support - If we are connected with a block then check the outputs to see if any of them
            are to a register address.  If they are then write an event for the account holder */
-        for(const auto txout : vout )
+        for(const auto& txout : vout)
         {
             uint256_t hashTo;
             if(ExtractRegister(txout.scriptPubKey, hashTo))
             {
+                /* Read the owner of register. (check this for MEMPOOL, too) */
+                TAO::Register::State state;
+                if(!LLD::Register->ReadState(hashTo, state, nFlags))
+                    return debug::error(FUNCTION, "failed to read register to");
+
                 /* Write event for FLAGS::BLOCK only. */
                 if(nFlags == TAO::Ledger::FLAGS::BLOCK)
                 {
-                    /* Read the owner of register. (check this for MEMPOOL, too) */
-                    TAO::Register::State state;
-                    if(!LLD::Register->ReadState(hashTo, state, nFlags))
-                        return debug::error(FUNCTION, "failed to read register to");
-
                     /* Commit an event for receiving sigchain in the legay DB. */
                     if(!LLD::Legacy->WriteEvent(state.hashOwner, GetHash()))
                         return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());
@@ -1312,7 +1320,7 @@ namespace Legacy
             }
 
             /* Remove events for any UTXO to sig chain sends */
-            for(const auto txout : vout )
+            for(const auto& txout : vout)
             {
                 uint256_t hashTo;
                 if(ExtractRegister(txout.scriptPubKey, hashTo))

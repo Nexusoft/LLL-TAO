@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -680,9 +680,6 @@ const std::vector<uint8_t> base_uint<BITS>::GetBytes() const
 template<uint32_t BITS>
 void base_uint<BITS>::SetBytes(const std::vector<uint8_t> DATA)
 {
-    if(DATA.size() > WIDTH * 4)
-        throw debug::exception("Memory out-of-bounds ", DATA.size(), " vs ", WIDTH * 4);
-
     for(int index = 0; index < WIDTH; ++index)
     {
         std::vector<uint8_t> BYTES(DATA.begin() + (index * 4), DATA.begin() + (index * 4) + 4);
@@ -695,8 +692,7 @@ void base_uint<BITS>::SetBytes(const std::vector<uint8_t> DATA)
 template<uint32_t BITS>
 uint32_t base_uint<BITS>::BitCount() const
 {
-    uint32_t i = (WIDTH << 5) - 1;
-
+    int32_t i = (WIDTH << 5) - 1;
     for(; i >= 0; --i)
     {
         if(pn[i >> 5] & (1 << (i & 31)))
@@ -720,6 +716,10 @@ std::string base_uint<BITS>::ToString() const
 template<uint32_t BITS>
 std::string base_uint<BITS>::SubString(const uint32_t nSize) const
 {
+    /* Special handle if we are debugging reorgs. */
+    if(!config::GetBoolArg("-truncatehashes", true))
+        return GetHex();
+
     return (GetHex().substr(0, nSize));
 }
 

@@ -2,7 +2,7 @@
 
         Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-        (c) Copyright The Nexus Developers 2014 - 2023
+        (c) Copyright The Nexus Developers 2014 - 2025
 
         Distributed under the MIT software license, see the accompanying
         file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -130,10 +130,10 @@ namespace TAO
             TAO::Ledger::BlockState statePrev = state;
 
             /* Loop back valid blocks. */
-            while(!statePrev.IsNull())
+            while(!statePrev.IsNull() && !config::fShutdown.load())
             {
                 /* Break when locator size is large enough. */
-                if(vHave.size() > 22)
+                if(vHave.size() > 25)
                     break;
 
                 /* Loop back the total blocks of step iterator. */

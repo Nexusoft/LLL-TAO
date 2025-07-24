@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -32,6 +32,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/timelocks.h>
 
+#include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/syncblock.h>
@@ -159,12 +160,43 @@ namespace Legacy
     , nTime(state.nTime)
     , vtx()
     {
+        /* Check for version conversions. */
+        if(state.nVersion >= 7)
+            throw debug::exception(FUNCTION, "invalid sync block version for legacy block");
+
+        /* Track our current iterator. */
+        //uint32_t nIterator = 0;
+
         /* Push back all the transactions from the state object. */
+        //std::vector<Legacy::Transaction> vList;
+        //while(LLD::Legacy->BatchRead(std::make_pair(std::string("tx"), state.vtx[nIterator].second), "tx", vList, 10, true))
+        //{
+            /* Loop through tx and find in block. */
+        //    for(const auto& tx : vList)
+        //    {
+                /* Once we have all the transactions. */
+        //        if(nIterator == state.vtx.size())
+        //            break;
+
+                /* Check if we found tx that matches block. */
+        //        if(tx.GetHash() == state.vtx[nIterator].second)
+        //        {
+        //            nIterator++;
+        //            vtx.push_back(tx);
+        //        }
+        //        else
+        //            continue;
+        //    }
+
+            /* Once we have all the transactions. */
+        //    if(nIterator == state.vtx.size())
+        //        break;
+        //}
+
         for(const auto& item : state.vtx)
         {
             if(item.first == TAO::Ledger::TRANSACTION::LEGACY)
             {
-                /* Read transaction from database */
                 Transaction tx;
                 if(!LLD::Legacy->ReadTx(item.second, tx))
                     throw debug::exception(FUNCTION, "failed to read tx ", item.second.SubString());
@@ -518,8 +550,12 @@ namespace Legacy
 
         /* Check that Transactions are Finalized. */
         for(const auto& tx : vtx)
+        {
+            /* Check our timestamp is final. */
             if(!tx.IsFinal(nHeight, nBlockTime))
                 return debug::error(FUNCTION, "contains a non-final transaction");
+        }
+
 
         /* Process the block state. */
         TAO::Ledger::BlockState state(*this);
@@ -536,6 +572,13 @@ namespace Legacy
             /* Write to disk. */
             if(!LLD::Legacy->WriteTx(hash, tx))
                 return debug::error(FUNCTION, "failed to write tx to disk");
+
+            /* Compute our stats variable. */
+            TAO::Ledger::nProcessedContracts += tx.vin.size();
+
+            /* Track our outputs for coinbase. */
+            if(tx.IsCoinBase())
+                TAO::Ledger::nProcessedContracts += tx.vout.size();
         }
 
         /* Accept the block state. */

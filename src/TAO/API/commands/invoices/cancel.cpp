@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -32,24 +32,24 @@ namespace TAO::API
         const TAO::Register::Address hashRegister = ExtractAddress(jParams);
 
         /* Get the invoice object register . */
-        TAO::Register::State steCheck;
-        if(!LLD::Register->ReadState(hashRegister, steCheck, TAO::Ledger::FLAGS::MEMPOOL))
+        TAO::Register::State strCheck;
+        if(!LLD::Register->ReadState(hashRegister, strCheck, TAO::Ledger::FLAGS::MEMPOOL))
             throw Exception(-241, "Invoice not found");
 
         /* Now lets check our expected types match. */
-        if(!CheckStandard(jParams, steCheck))
+        if(!CheckStandard(jParams, strCheck))
             throw Exception(-49, "Unsupported type for name/address");
 
         /* Serialize the invoice into JSON. */
         const encoding::json jInvoice =
-            InvoiceToJSON(steCheck, hashRegister);
+            InvoiceToJSON(strCheck, hashRegister);
 
         /* The recipient genesis hash */
         const uint256_t hashRecipient =
-            TAO::Register::Address(jInvoice["json"]["recipient"].get<std::string>());
+            uint256_t(jInvoice["json"]["recipient"].get<std::string>());
 
         /* Get the invoice status so that we can validate that we are allowed to cancel it */
-        const std::string strStatus = get_status(steCheck, hashRecipient);
+        const std::string strStatus = get_status(strCheck, hashRecipient);
 
         /* Check if invoice has been paid already. */
         if(strStatus == "PAID")
@@ -59,14 +59,15 @@ namespace TAO::API
         if(strStatus == "CANCELLED")
             throw Exception(-246, "Cannot [cancel] an invoice that has already been cancelled");
 
-        /* Look up the transaction ID & contract ID of the transfer so that we can void it */
-        std::vector<uint512_t> vTransactions;
-        if(!LLD::Logical->ListTransactions(hashRegister, vTransactions))
-            throw Exception(-247, "Could not find invoice transfer transaction");
-
         /* The transaction ID to cancel */
-        const uint512_t hashTx =
-            vTransactions.back();
+        uint512_t hashTx;
+
+        /* The contract ID to cancel */
+        uint32_t nContract = 1;
+
+        /* Look up the transaction ID & contract ID of the transfer so that we can void it */
+        if(!find_invoice(hashRecipient, hashRegister, hashTx, nContract))
+            throw Exception(-247, "Could not find invoice transfer transaction");
 
         /* Read the debit transaction. */
         TAO::Ledger::Transaction tx;

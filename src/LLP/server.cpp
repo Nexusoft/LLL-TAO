@@ -2,7 +2,7 @@
 
 			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2023
+			(c) Copyright The Nexus Developers 2014 - 2025
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -369,7 +369,7 @@ namespace LLP
     }
 
 
-    /*  Select a random and currently open connections. */
+    /*  Select lowest latency and currently open connection. */
     template <class ProtocolType>
     std::shared_ptr<ProtocolType> Server<ProtocolType>::GetConnection()
     {
@@ -412,6 +412,54 @@ namespace LLP
         }
 
         return pRet;
+    }
+
+
+    /*  Select a random and currently open connections. */
+    template <class ProtocolType>
+    std::shared_ptr<ProtocolType> Server<ProtocolType>::RandomConnection()
+    {
+        /* Get the total count of connections in this server. */
+        const uint32_t nTotalConnections =
+            GetConnectionCount();
+
+        /* Check for no connections. */
+        if(nTotalConnections == 0)
+            return nullptr;
+
+        /* Get a random integer for this connection. */
+        uint32_t nConnectionIndex =
+            LLC::GetRandInt(nTotalConnections);
+
+        /* List of connections to return. */
+        for(uint16_t nThread = 0; nThread < CONFIG.MAX_THREADS; ++nThread)
+        {
+            /* Loop through connections in data thread. */
+            const uint16_t nSize =
+                static_cast<uint16_t>(THREADS_DATA[nThread]->CONNECTIONS->size());
+
+            /* Loop through all connections. */
+            for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
+            {
+                try
+                {
+                    /* Get the current atomic_ptr. */
+                    std::shared_ptr<ProtocolType> CONNECTION = THREADS_DATA[nThread]->CONNECTIONS->at(nIndex);
+                    if(!CONNECTION)
+                        continue;
+
+                    /* Push the active connection. */
+                    if(nConnectionIndex-- == 0)
+                        return CONNECTION;
+                }
+                catch(const std::exception& e)
+                {
+                    //debug::error(FUNCTION, e.what());
+                }
+            }
+        }
+
+        return RandomConnection();
     }
 
 
@@ -753,13 +801,25 @@ namespace LLP
                     Socket sockNew(hSocket, addr, fSSL);
 
                     /* Check that an address is banned. */
-                    if(DDOS_MAP->count(addr) && DDOS_MAP->at(addr)->Banned())
+                    if(DDOS_MAP->count(addr))
                     {
-                        debug::notice(FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Banned.");
-                        sockNew.Close();
+                        /* Iterate the DDOS cScore (Connection score). */
+                        DDOS_MAP->at(addr)->cSCORE += 1;
 
-                        continue;
+                        /* Check if we have exceeded our maximum scores. */
+                        if(DDOS_MAP->at(addr)-> cSCORE.Score() > CONFIG.DDOS_CSCORE)
+                            DDOS_MAP->at(addr)->Ban();
+
+                        /* Check if we have violated DDOS score thresholds. */
+                        if(!addr.IsLocal() && DDOS_MAP->at(addr)->Banned())
+                        {
+                            debug::notice(FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Banned.");
+                            sockNew.Close();
+
+                            continue;
+                        }
                     }
+
 
                     /* Check for errors accepting the connection */
                     if(sockNew.Errors())
@@ -1085,7 +1145,7 @@ namespace LLP
             return;
         }
 
-        nResult = UPNP_GetValidIGD(devlist, &urls, &data, lanaddr, sizeof(lanaddr));
+        nResult = UPNP_GetValidIGD(devlist, &urls, &data, lanaddr, sizeof(lanaddr), nullptr, 0);
         if (nResult == 1)
         {
 

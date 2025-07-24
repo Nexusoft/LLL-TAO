@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -97,7 +97,7 @@ namespace TAO::API
         uint512_t hashTx;
 
         /* The contract ID to cancel */
-        uint32_t nContract = 0;  //XXX: THIS SECTION COULD STILL DO WITH SOME WORK
+        uint32_t nContract = 0;
 
         /* Look up the transaction ID & contract ID of the transfer so that we can void it */
         if(!find_invoice(hashRecipient, hashRegister, hashTx, nContract))

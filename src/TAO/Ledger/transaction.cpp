@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -611,6 +611,10 @@ namespace TAO
             uint64_t nStake       = 0;
             int64_t  nStakeChange = 0;
 
+            /* Weights for threshold calculations */
+            cv::softdouble nTrustWeight = cv::softdouble(0.0);
+            cv::softdouble nBlockWeight = cv::softdouble(0.0);
+
             /* Check for trust calculations. */
             if(IsTrust())
             {
@@ -669,6 +673,10 @@ namespace TAO
                     return debug::error(FUNCTION, "claimed trust score ", nClaimedTrust,
                                                   " does not match calculated trust score ", nTrust);
 
+                /* Get expected trust and block weights. */
+                nTrustWeight = TrustWeight(nTrust);
+                nBlockWeight = BlockWeight(nBlockAge);
+
                 /* Enforce the minimum interval between stake blocks. */
                 const uint32_t nInterval = pblock->nHeight - stateLast.nHeight;
                 if(nInterval <= MinStakeInterval(*pblock))
@@ -684,7 +692,7 @@ namespace TAO
                                                   " does not match calculated reward ", nReward);
 
                 /* Update mint values. */
-                pblock->nMint += nReward;
+                pblock->nMint = nReward;
             }
 
             else if(IsGenesis())
@@ -702,6 +710,9 @@ namespace TAO
                 /* Calculate the Coin Age. */
                 const uint64_t nAge = pblock->GetBlockTime() - account.nModified;
 
+                /* Trust Weight For Genesis Transaction based on coin age. */
+                nTrustWeight = GenesisWeight(nAge);
+
                 /* Calculate the coinstake reward */
                 nReward = GetCoinstakeReward(nStake, nAge, 0, true);
 
@@ -710,21 +721,40 @@ namespace TAO
                     return debug::error(FUNCTION, "claimed hashGenesis reward ", nClaimedReward, " does not match calculated reward ", nReward);
 
                 /* Update mint values. */
-                pblock->nMint += nReward;
+                pblock->nMint = nReward;
             }
 
             else
                 return debug::error(FUNCTION, "invalid stake operation");
 
-            /* Set target for logging */
-            LLC::CBigNum bnTarget;
-            bnTarget.SetCompact(pblock->nBits);
+            /* If stake added in block finder, apply to threshold calculation. */
+            uint64_t nStakeApplied = nStake;
+            if(nStakeChange > 0)
+                nStakeApplied += nStakeChange;
+
+            /* Check the stake balance. */
+            if(nStakeApplied == 0)
+                return debug::error(FUNCTION, "cannot stake if stake balance is zero");
+
+            /* Calculate the energy efficiency thresholds. */
+            const uint64_t nBlockTime =
+                pblock->GetBlockTime() - this->nTimestamp;
+
+            /* Calculate our staking threshold. */
+            const cv::softdouble nThreshold =
+                GetCurrentThreshold(nBlockTime, pblock->nNonce);
+
+            /* Calculate the required threshold. */
+            const cv::softdouble nRequired  =
+                GetRequiredThreshold(nTrustWeight, nBlockWeight, nStakeApplied);
+
+            /* Check that the threshold was not violated. */
+            if(nThreshold < nRequired)
+                return debug::error(FUNCTION, "energy threshold too low ", nThreshold, " required ", nRequired);
 
             /* Verbose logging. */
             if(config::nVerbose >= 2)
                 debug::log(2, FUNCTION,
-                    "stake hash=", pblock->StakeHash().SubString(), ", ",
-                    "target=", bnTarget.getuint1024().SubString(), ", ",
                     "type=", (IsTrust() ? "Trust" : "Genesis"), ", ",
                     "trust score=", nTrust, ", ",
                     "prev trust score=", nTrustPrev, ", ",
@@ -981,7 +1011,7 @@ namespace TAO
                     }
 
                     /* Check that the previous transaction is indexed. */
-                    if((nFlags == FLAGS::BLOCK || nFlags == FLAGS::MINER) && !LLD::Ledger->HasIndex(hashPrev))
+                    if(!LLD::Ledger->HasIndex(hashPrev))
                         return debug::error(FUNCTION, hashPrev.SubString(), " not indexed");
                 }
 
@@ -997,7 +1027,7 @@ namespace TAO
                     TAO::Operation::TxCost(contract, nCost);
 
                 /* Index our registers here now if not -client mode and setting enabled. */
-                if(!config::fClient.load() && config::fIndexRegister.load())
+                if(!config::fClient.load() && config::fIndexRegister.load() && nFlags == FLAGS::BLOCK)
                 {
                     /* Unpack the address we will be working on. */
                     uint256_t hashAddress;
@@ -1118,7 +1148,7 @@ namespace TAO
                     return false;
 
                 /* Erase our register index here now if not -client mode and setting enabled. */
-                if(!config::fClient.load() && config::fIndexRegister.load())
+                if(!config::fClient.load() && config::fIndexRegister.load() && nFlags == FLAGS::BLOCK)
                 {
                     /* Unpack the address we will be working on. */
                     uint256_t hashAddress;

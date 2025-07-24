@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -19,6 +19,7 @@ namespace LLD
 {
     /* The LLD global instance pointers. */
     LogicalDB*    Logical;
+    SessionDB*    Sessions;
     ContractDB*   Contract;
     RegisterDB*   Register;
     LedgerDB*     Ledger;
@@ -154,6 +155,28 @@ namespace LLD
             Legacy = new LegacyDB(SECTOR, KEYCHAIN);
         }
 
+        /* _SESSION database instance. */
+        {
+            /* Create the LegacyDB configuration object. */
+            Config::Base BASE =
+                Config::Base("_SESSION", FLAGS::CREATE | FLAGS::FORCE);
+
+            /* Create the LegacyDB sector configuration object. */
+            Config::Static SECTOR             = Config::Static(BASE);
+            SECTOR.MAX_SECTOR_FILE_STREAMS    = 16;
+            SECTOR.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
+            SECTOR.MAX_SECTOR_CACHE_SIZE      = config::GetArg("-sessionscache", 1) * 1024 * 1024; //1 MB of cache by default
+
+            /* Create the LegacyDB keychain configuration object. */
+            Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
+            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = config::fClient.load() ? 77773 : (256 * 256 * 64);
+            KEYCHAIN.MAX_HASHMAPS             = 128;
+            KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 128;
+            KEYCHAIN.MIN_LINEAR_PROBES        = 1;
+
+            /* Create the LegacyDB database instance. */
+            Sessions = new SessionDB(SECTOR, KEYCHAIN);
+        }
 
         /* _TRUST database instance. */
         {
@@ -258,10 +281,6 @@ namespace LLD
         debug::log(0, FUNCTION, "Shutting down LLD");
 
         /* Cleanup the contract database. */
-        if(Logical)
-            delete Logical;
-
-        /* Cleanup the contract database. */
         if(Contract)
             delete Contract;
 
@@ -288,6 +307,14 @@ namespace LLD
         /* Cleanup the trust database. */
         if(Trust)
             delete Trust;
+
+        /* Cleanup the logical database. */
+        if(Logical)
+            delete Logical;
+
+        /* Cleanup the sessions database. */
+        if(Sessions)
+            delete Sessions;
     }
 
 

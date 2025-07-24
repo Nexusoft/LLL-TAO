@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -43,8 +43,8 @@ namespace TAO::API
 
         /* Get the list of registers owned by this sig chain */
         std::set<TAO::Register::Address> setAddresses;
-        LLD::Logical->ListRegisters(hashGenesis, setAddresses, fTransferred);
-        LLD::Logical->ListUnclaimed(hashGenesis, setAddresses);
+        LLD::Sessions->ListRegisters(hashGenesis, setAddresses, fTransferred);
+        LLD::Sessions->ListUnclaimed(hashGenesis, setAddresses);
 
         /* Check for empty return. */
         if(setAddresses.empty())
@@ -65,7 +65,7 @@ namespace TAO::API
 
                 /* Check for active transfers. */
                 if(!fTransferred && tObject.hashOwner.GetType() != TAO::Ledger::GENESIS::SYSTEM
-                && LLD::Logical->HasTransfer(hashGenesis, hashRegister))
+                && LLD::Sessions->HasTransfer(hashGenesis, hashRegister))
                     continue;
 
                 /* Check our object standards. */

@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -183,82 +183,6 @@ namespace LLD
          *
          **/
         bool EraseSuppressNotification(const uint512_t& hashTx, const uint32_t nContract);
-
-
-        /** WriteFirst
-         *
-         *  Writes a username - genesis hash pair to the local database.
-         *
-         *  @param[in] strUsername The username.
-         *  @param[in] hashGenesis The genesis hash corresponding to this username.
-         *
-         *  @return True if the last was successfully written, false otherwise.
-         *
-         **/
-        bool WriteFirst(const SecureString& strUsername, const uint256_t& hashGenesis);
-
-
-        /** ReadFirst
-         *
-         *  Reads a genesis hash from the local database for a given username.
-         *
-         *  @param[in] strUsername The username to read the genesis hash for.
-         *  @param[out] hashGenesis The genesis hash corresponding to this username.
-         *
-         *  @return True if the last was successfully read, false otherwise.
-         *
-         **/
-        bool ReadFirst(const SecureString& strUsername, uint256_t &hashGenesis);
-
-
-        /** WriteSession
-         *
-         *  Writes session data to the local database.
-         *
-         *  @param[in] hashGenesis The genesis hash of the user to save the session for.
-         *  @param[in] vchData The session data to be saved.
-         *
-         *  @return True if the session was successfully written, false otherwise.
-         *
-         **/
-        bool WriteSession(const uint256_t& hashGenesis, const std::vector<uint8_t>& vchData);
-
-
-        /** ReadSession
-         *
-         *  Reads session data from the local database .
-         *
-         *  @param[in] nSession The genesis hash of the user to load the session for
-         *  @param[out] vchData The session data to be loaded.
-         *
-         *  @return True if the session was successfully read, false otherwise.
-         *
-         **/
-        bool ReadSession(const uint256_t& hashGenesis, std::vector<uint8_t>& vchData);
-
-
-        /** EraseSession
-         *
-         *  Deletes session data from the local database fort he given session ID.
-         *
-         *  @param[in] hashGenesis The genesis hash of the user to erase the session for
-         *
-         *  @return True if the data was successfully deleted, false otherwise.
-         *
-         **/
-        bool EraseSession(const uint256_t& hashGenesis);
-
-
-        /** HasSession
-         *
-         *  Determines whether the local DB contains session data for the given session ID
-         *
-         *  @param[in] hashGenesis The genesis hash of the user to check
-         *
-         *  @return True if the session data exists, false otherwise.
-         *
-         **/
-        bool HasSession(const uint256_t& hashGenesis);
 
 
         /** HasRecord

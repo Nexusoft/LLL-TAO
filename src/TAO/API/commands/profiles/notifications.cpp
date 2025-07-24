@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -57,8 +57,8 @@ namespace TAO::API
         std::vector<std::pair<uint512_t, uint32_t>> vEvents;
 
         /* Grab out list of contracts and events. */
-        LLD::Logical->ListEvents(hashGenesis, vEvents);
-        LLD::Logical->ListContracts(hashGenesis, vEvents);
+        LLD::Sessions->ListEvents(hashGenesis, vEvents);
+        LLD::Sessions->ListContracts(hashGenesis, vEvents);
 
         /* Track our unique events as we progress forward. */
         std::set<std::pair<uint512_t, uint32_t>> setUnique;
@@ -101,43 +101,48 @@ namespace TAO::API
                         continue;
                 }
 
-                /* Get a referecne of our contract. */
-                TAO::Operation::Contract rContract =
-                    LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
+                /* Catch exception if we throw on ReadContract. */
+                try
+                {
+                    /* Get a referecne of our contract. */
+                    TAO::Operation::Contract rContract =
+                        LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
 
-                /* Check if the given contract is spent already. */
-                if(rContract.Spent(rEvent.second))
-                    continue;
+                    /* Check if the given contract is spent already. */
+                    if(rContract.Spent(rEvent.second))
+                        continue;
 
-                /* Get the transaction JSON. */
-                encoding::json jContract =
-                    TAO::API::ContractToJSON(rContract, rEvent.second, nVerbose);
+                    /* Get the transaction JSON. */
+                    encoding::json jContract =
+                        TAO::API::ContractToJSON(rContract, rEvent.second, nVerbose);
 
-                /* Add some items from our transction. */
-                jContract["timestamp"] = rContract.Timestamp();
-                jContract["txid"]      = hashEvent.ToString();
+                    /* Add some items from our transction. */
+                    jContract["timestamp"] = rContract.Timestamp();
+                    jContract["txid"]      = hashEvent.ToString();
 
-                /* Check to see whether the transaction has had all children filtered out */
-                if(jContract.empty())
-                    continue;
+                    /* Check to see whether the transaction has had all children filtered out */
+                    if(jContract.empty())
+                        continue;
 
-                /* Apply our where filters now. */
-                if(!FilterResults(jParams, jContract))
-                    continue;
+                    /* Apply our where filters now. */
+                    if(!FilterResults(jParams, jContract))
+                        continue;
 
-                /* Filter out our expected fieldnames if specified. */
-                if(!FilterFieldname(jParams, jContract))
-                    continue;
+                    /* Filter out our expected fieldnames if specified. */
+                    if(!FilterFieldname(jParams, jContract))
+                        continue;
 
-                /* Check the offset. */
-                if(++nTotal <= nOffset)
-                    continue;
+                    /* Check the offset. */
+                    if(++nTotal <= nOffset)
+                        continue;
 
-                /* Check the limit */
-                if(nTotal - nOffset > nLimit)
-                    break;
+                    /* Check the limit */
+                    if(nTotal - nOffset > nLimit)
+                        break;
 
-                jRet.push_back(jContract);
+                    jRet.push_back(jContract);
+                }
+                catch(const std::exception& e) { }
             }
         }
 

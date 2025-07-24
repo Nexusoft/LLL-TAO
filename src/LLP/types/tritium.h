@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -267,6 +267,13 @@ namespace LLP
 
         /** Inventory class to track caches. **/
         static Inventory tInventory;
+
+
+        /** Used for a transaction record for a node synchronizing with us. **/
+        std::map<uint512_t, TAO::Ledger::Transaction> mapTritium;
+
+        /** Used for a transaction record for a node synchronizing with us. **/
+        std::map<uint512_t, Legacy::Transaction> mapLegacy;
 
 
     public:
@@ -537,6 +544,17 @@ namespace LLP
          *
          **/
         static std::shared_ptr<TritiumNode> GetNode(const uint64_t nSession);
+
+
+        /** PushBlock
+         *
+         *  Push a block to tritium connection based on specifier.
+         *
+         *  @param[in] nSpecifier The type of block to send off.
+         *  @param[in] rBlock The block state we want to send off.
+         *
+         **/
+        void PushBlock(const uint8_t nSpecifier, const TAO::Ledger::BlockState& rBlock);
 
 
         /** NewMessage

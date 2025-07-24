@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -638,6 +638,18 @@ namespace TAO
 
                 /* Coinstake producer now complete. Sign the transaction. */
                 block.producer.Sign(pCredentials->Generate(block.producer.nSequence, strPIN));
+
+                /* Double check our next hash if -safemode enabled. */
+                if(config::GetBoolArg("-safemode", false))
+                {
+                    /* Re-calculate our next hash if safemode forcing not to use cache. */
+                    const uint256_t hashNext =
+                        TAO::Ledger::Transaction::NextHash(pCredentials->Generate(block.producer.nSequence + 1, strPIN, false), block.producer.nNextType);
+
+                    /* Check that this next hash is what we are expecting. */
+                    if(block.producer.hashNext != hashNext)
+                        throw debug::exception("-safemode next hash mismatch, broadcast terminated");
+                }
 
                 /* producers are not part of vtx, add to vHashes last */
                 vHashes.push_back(block.producer.GetHash());

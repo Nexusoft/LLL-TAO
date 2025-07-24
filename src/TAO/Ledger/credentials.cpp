@@ -2,7 +2,7 @@
 
         Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-        (c) Copyright The Nexus Developers 2014 - 2023
+        (c) Copyright The Nexus Developers 2014 - 2025
 
         Distributed under the MIT software license, see the accompanying
         file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -106,7 +106,7 @@ namespace TAO
             uint256_t hashGenesis;
 
             /* Check the local DB first */
-            if(LLD::Local && LLD::Local->ReadFirst(strUsername, hashGenesis))
+            if(LLD::Sessions && LLD::Sessions->ReadFirst(strUsername, hashGenesis))
                 return hashGenesis;
 
             /* Generate the Secret Phrase */
@@ -117,8 +117,8 @@ namespace TAO
             hashGenesis.SetType(TAO::Ledger::GENESIS::UserType());
 
             /* Cache this username-genesis pair in the local db*/
-            if(LLD::Local)
-                LLD::Local->WriteFirst(strUsername, hashGenesis);
+            if(LLD::Sessions)
+                LLD::Sessions->WriteFirst(strUsername, hashGenesis);
 
             return hashGenesis;
         }
@@ -467,6 +467,7 @@ namespace TAO
             /* return the public key */
             return vchPubKey;
         }
+
 
         /* This function generates a hash of a public key generated from random seed phrase. */
         uint256_t Credentials::KeyHash(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const

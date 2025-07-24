@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -41,6 +41,10 @@ namespace TAO
 
         /* The current checkpoint height. */
         std::atomic<uint64_t> ChainState::nCheckpointHeight;
+
+
+        /* The best block in the chain. */
+        std::atomic<bool> ChainState::fChainReorg;
 
 
         /* The best hash in the chain. */
@@ -246,12 +250,12 @@ namespace TAO
             }
 
             /* Rewind the chain a total number of blocks. */
-            int64_t nForkblocks = config::GetArg("-forkblocks", 0);
-            if(nForkblocks > 0)
+            uint64_t nRevertBlocks = config::GetArg("-revertblocks", 0);
+            if(nRevertBlocks > 0)
             {
                 /* Rollback the chain a given number of blocks. */
                 TAO::Ledger::BlockState state = tStateBest.load();
-                for(int i = 0; i < nForkblocks; ++i)
+                for(int i = 0; i < nRevertBlocks; ++i)
                 {
                     /* Check for Genesis. */
                     if(state.hashPrevBlock == 0)
@@ -265,11 +269,20 @@ namespace TAO
 
                 /* Set the best to older block. */
                 LLD::TxnBegin();
-                state.SetBest();
-                LLD::TxnCommit();
 
-                /* Debug Output. */
-                debug::log(0, FUNCTION, "-forkblocks=XXX requested removal of ", nForkblocks, " blocks");
+                /* Abort our transaction if we fail to rollback. */
+                if(!state.SetBest())
+                {
+                    /* Debug Output. */
+                    debug::log(0, FUNCTION, "-revertblocks=XXX failed to remove ", nRevertBlocks, " blocks");
+                    LLD::TxnAbort();
+                }
+                else
+                {
+                    /* Debug Output. */
+                    debug::log(0, FUNCTION, "-revertblocks=XXX requested removal of ", nRevertBlocks, " blocks");
+                    LLD::TxnCommit();
+                }
             }
 
             /* Fill out the best chain stats. */
@@ -319,8 +332,29 @@ namespace TAO
                 TAO::Ledger::BlockState tLastBlock;
                 if(config::GetBoolArg("-reindexheight") || !LLD::Ledger->ReadBlock(nCheckpointHeight.load(), tLastBlock))
                 {
-                    /* Set our last block as genesis. */
-                    tLastBlock = tStateGenesis;
+                    /* Check for first block index. */
+                    if(LLD::Ledger->ReadBlock(1, tLastBlock)) //check for genesis
+                    {
+                        /* We use this to jump back more than 1 db read at a time. */
+                        uint32_t nInterval = 1;
+
+                        /* Check back to our last index. */
+                        uint32_t nLastHeight = nCheckpointHeight.load();
+                        while(!LLD::Ledger->ReadBlock(nLastHeight, tLastBlock) && !config::fShutdown.load())
+                        {
+                            /* Exit if we reach the genesis. */
+                            if(nLastHeight == 0)
+                            {
+                                tLastBlock = tStateGenesis;
+                                break;
+                            }
+
+                            /* Jump backwards at increasing intervals. */
+                            nLastHeight = std::max(uint32_t(0), nLastHeight - nInterval++);
+                        }
+                    }
+                    else
+                        tLastBlock = tStateGenesis;
 
                     /* Use genesis as our hash start. */
                     uint1024_t hashStart = tLastBlock.GetHash();

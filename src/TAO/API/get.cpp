@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2023
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -184,7 +184,7 @@ namespace TAO::API
     {
         /* Check if we are available to generate our balances. */
         if(!Authentication::Available(hashGenesis))
-            return 0;
+            throw Exception(-23, FUNCTION, "Command disabled until sigchain finishes syncronizing.");
 
         /* Th return value */
         uint64_t nUnclaimed = 0;
@@ -193,7 +193,7 @@ namespace TAO::API
         std::vector<std::pair<uint512_t, uint32_t>> vEvents;
 
         /* Get our list of active contracts we have issued. */
-        LLD::Logical->ListEvents(hashGenesis, vEvents);
+        LLD::Sessions->ListEvents(hashGenesis, vEvents);
 
         /* For sanitizing our contracts. */
         std::map<uint256_t, TAO::Register::State> mapStates;
@@ -219,82 +219,90 @@ namespace TAO::API
                     continue;
             }
 
-            /* Get a referecne of our contract. */
-            const TAO::Operation::Contract& rContract =
-                LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
-
-            /* Check if the given contract is spent already. */
-            if(rContract.Spent(rEvent.second))
-                continue;
-
-            /* Seek our contract to primitive OP. */
-            rContract.SeekToPrimitive();
-
-            /* Get a copy of our primitive. */
-            uint8_t nOP = 0;
-            rContract >> nOP;
-
-            /* Switch for valid primitives. */
-            switch(nOP)
+            /* Catch exception if we throw on ReadContract. */
+            try
             {
-                /* Handle for if we need to credit. */
-                case TAO::Operation::OP::LEGACY:
-                case TAO::Operation::OP::DEBIT:
-                case TAO::Operation::OP::COINBASE:
+                /* Get a referecne of our contract. */
+                const TAO::Operation::Contract& rContract =
+                    LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
+
+                /* Check if the given contract is spent already. */
+                if(rContract.Spent(rEvent.second))
+                    continue;
+
+                /* Seek our contract to primitive OP. */
+                rContract.SeekToPrimitive();
+
+                /* Get a copy of our primitive. */
+                uint8_t nOP = 0;
+                rContract >> nOP;
+
+                /* Switch for valid primitives. */
+                switch(nOP)
                 {
-                    try
+                    /* Handle for if we need to credit. */
+                    case TAO::Operation::OP::LEGACY:
+                    case TAO::Operation::OP::DEBIT:
+                    case TAO::Operation::OP::COINBASE:
                     {
-                        /* Get our source address. */
-                        uint256_t hashAddress;
-                        rContract >> hashAddress;
-
-                        /* Check our account filters first. */
-                        if(hashAccount != 0 && hashAccount != hashAddress)
-                            continue;
-
-                        /* Build our credit contract now. */
-                        uint64_t nAmount = 0;
-                        if(TAO::Register::Unpack(rContract, nAmount))
+                        try
                         {
-                            /* Regular check for non coinbase. */
-                            if(nOP != TAO::Operation::OP::COINBASE)
-                            {
-                                /* Check our pre-state for token types. */
-                                TAO::Register::Object oAccount =
-                                    rContract.PreState();
+                            /* Get our source address. */
+                            uint256_t hashAddress;
+                            rContract >> hashAddress;
 
-                                /* Check for null value. */
-                                if(oAccount.IsNull())
-                                    continue;
-
-                                /* Parse account now. */
-                                oAccount.Parse();
-
-                                /* Check for valid token types. */
-                                if(oAccount.get<uint256_t>("token") != hashToken)
-                                    continue;
-                            }
-                            else if(hashToken != TOKEN::NXS)
+                            /* Check our account filters first. */
+                            if(hashAccount != 0 && hashAccount != hashAddress)
                                 continue;
 
-                            /* Increment our pending balance now. */
-                            nUnclaimed += nAmount;
+                            /* Build our credit contract now. */
+                            uint64_t nAmount = 0;
+                            if(TAO::Register::Unpack(rContract, nAmount))
+                            {
+                                /* Regular check for non coinbase. */
+                                if(nOP != TAO::Operation::OP::COINBASE)
+                                {
+                                    /* Check our pre-state for token types. */
+                                    TAO::Register::Object oAccount =
+                                        rContract.PreState();
+
+                                    /* Check for null value. */
+                                    if(oAccount.IsNull())
+                                        continue;
+
+                                    /* Parse account now. */
+                                    oAccount.Parse();
+
+                                    /* Check for valid token types. */
+                                    if(oAccount.get<uint256_t>("token") != hashToken)
+                                        continue;
+                                }
+                                else if(hashToken != TOKEN::NXS)
+                                    continue;
+
+                                /* Increment our pending balance now. */
+                                nUnclaimed += nAmount;
+                            }
+
+                        }
+                        catch(const Exception& e)
+                        {
+                            continue;
                         }
 
+                        break;
                     }
-                    catch(const Exception& e)
+
+                    /* Unknown ops we want to continue looping. */
+                    default:
                     {
                         continue;
                     }
-
-                    break;
                 }
-
-                /* Unknown ops we want to continue looping. */
-                default:
-                {
-                    continue;
-                }
+            }
+            catch(const debug::exception& e)
+            {
+                continue;
             }
         }
 
@@ -385,7 +393,7 @@ namespace TAO::API
     {
         /* Check if we are available to generate our balances. */
         if(!Authentication::Available(hashGenesis))
-            return 0;
+            throw Exception(-23, FUNCTION, "Command disabled until sigchain finishes syncronizing.");
 
         /* The return value */
         uint64_t nUnconfirmed = 0;
@@ -521,14 +529,14 @@ namespace TAO::API
     {
         /* Check if we are available to generate our balances. */
         if(!Authentication::Available(hashGenesis))
-            return 0;
+            throw Exception(-23, FUNCTION, "Command disabled until sigchain finishes syncronizing.");
 
         /* Return amount */
         uint64_t nImmature = 0;
 
         /* Get a list of our active events. */
         std::vector<std::pair<uint512_t, uint32_t>> vEvents;
-        LLD::Logical->ListEvents(hashGenesis, vEvents);
+        LLD::Sessions->ListEvents(hashGenesis, vEvents);
 
         /* Build our list of contracts. */
         for(const auto& rEvent : vEvents)
@@ -553,50 +561,58 @@ namespace TAO::API
                     continue;
             }
 
-            /* Get a referecne of our contract. */
-            const TAO::Operation::Contract& rContract =
-                LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
-
-            /* Check if the given contract is spent already. */
-            if(rContract.Spent(rEvent.second))
-                continue;
-
-            /* Seek our contract to primitive OP. */
-            rContract.SeekToPrimitive();
-
-            /* Get a copy of our primitive. */
-            uint8_t nOP = 0;
-            rContract >> nOP;
-
-            /* Switch for valid primitives. */
-            switch(nOP)
+            /* Catch exception if we throw on ReadContract. */
+            try
             {
-                /* Handle for if we need to credit. */
-                case TAO::Operation::OP::COINBASE:
-                {
-                    /* Extract our coinbase recipient. */
-                    uint256_t hashRecipient;
-                    rContract >> hashRecipient;
+                /* Get a referecne of our contract. */
+                const TAO::Operation::Contract& rContract =
+                    LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
 
-                    /* Check for valid recipient. */
-                    if(hashRecipient != hashGenesis)
-                        continue;
-
-                    /* Extract our amount from contract. */
-                    uint64_t nAmount = 0;
-                    rContract >> nAmount;
-
-                    /* Add to our total expected value. */
-                    nImmature += nAmount;
-
-                    break;
-                }
-
-                /* Unknown ops we want to continue looping. */
-                default:
-                {
+                /* Check if the given contract is spent already. */
+                if(rContract.Spent(rEvent.second))
                     continue;
+
+                /* Seek our contract to primitive OP. */
+                rContract.SeekToPrimitive();
+
+                /* Get a copy of our primitive. */
+                uint8_t nOP = 0;
+                rContract >> nOP;
+
+                /* Switch for valid primitives. */
+                switch(nOP)
+                {
+                    /* Handle for if we need to credit. */
+                    case TAO::Operation::OP::COINBASE:
+                    {
+                        /* Extract our coinbase recipient. */
+                        uint256_t hashRecipient;
+                        rContract >> hashRecipient;
+
+                        /* Check for valid recipient. */
+                        if(hashRecipient != hashGenesis)
+                            continue;
+
+                        /* Extract our amount from contract. */
+                        uint64_t nAmount = 0;
+                        rContract >> nAmount;
+
+                        /* Add to our total expected value. */
+                        nImmature += nAmount;
+
+                        break;
+                    }
+
+                    /* Unknown ops we want to continue looping. */
+                    default:
+                    {
+                        continue;
+                    }
                 }
+            }
+            catch(const debug::exception& e)
+            {
+                continue;
             }
         }
 
@@ -610,12 +626,12 @@ namespace TAO::API
     {
         /* Check if we are available to generate our balances. */
         if(!Authentication::Available(hashGenesis))
-            return false;
+            throw Exception(-23, FUNCTION, "Command disabled until sigchain finishes syncronizing.");
 
         /* Get a list of our active events. */
         std::vector<std::pair<uint512_t, uint32_t>> vEvents;
-        LLD::Logical->ListEvents(hashGenesis, vEvents);
-        LLD::Logical->ListContracts(hashGenesis, vEvents);
+        LLD::Sessions->ListEvents(hashGenesis, vEvents);
+        LLD::Sessions->ListContracts(hashGenesis, vEvents);
 
         /* Build our list of contracts. */
         for(const auto& rEvent : vEvents)
@@ -649,7 +665,7 @@ namespace TAO::API
             /* Switch for valid primitives. */
             switch(nOP)
             {
-                /* Handle for if we need to credit. */
+                /* Handle for if we have a transfer. */
                 case TAO::Operation::OP::TRANSFER:
                 {
                     try
