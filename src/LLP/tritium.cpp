@@ -343,7 +343,9 @@ namespace LLP
                              | SUBSCRIPTION::TRANSACTION
                         );
 
+                        #ifndef DEBUG_MISSING
                         PushMessage(ACTION::LIST, uint8_t(TYPES::MEMPOOL));
+                        #endif
                     }
                     else
                     {
@@ -647,6 +649,7 @@ namespace LLP
                 #ifdef DEBUG_MISSING
                 fSynchronized.store(true);
                 #endif
+
 
                 /* If not synchronized and making an outbound connection, start the sync */
                 if(!fSynchronized.load())
@@ -1903,7 +1906,6 @@ namespace LLP
                                     else
                                         PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
                                 }
-
                             }
 
                             /* Debug output. */
@@ -2151,6 +2153,7 @@ namespace LLP
                             }
 
                             /* Check for legacy. */
+                            #ifndef DEBUG_MISSING
                             if(fLegacy)
                             {
                                 /* Check legacy database. */
@@ -2181,6 +2184,7 @@ namespace LLP
                                     tInventory.Cache(hashTx);
                                 }
                             }
+                            #endif
 
                             break;
                         }
@@ -2258,6 +2262,13 @@ namespace LLP
                                     /* Check if is sync node. */
                                     if(nCurrentSession == TAO::Ledger::nSyncSession.load())
                                     {
+                                        /* Check if we are repeating our last index. */
+                                        if(hashLastIndex == hashLast)
+                                        {
+                                            SwitchNode();
+                                            return true;
+                                        }
+                                        
                                         /* Check for complete synchronization. */
                                         if(hashLast == TAO::Ledger::ChainState::hashBestChain.load()
                                         && hashLast == hashBestChain)
@@ -2582,7 +2593,7 @@ namespace LLP
                                 if(++nTotalItems >= ACTION::GET_MAX_ITEMS || tx == block.vMissing.back())
                                 {
                                     /* Normal case of asking for a getblocks inventory message. */
-                                    std::shared_ptr<TritiumNode> pnode = TRITIUM_SERVER->GetConnection();
+                                    std::shared_ptr<TritiumNode> pnode = TRITIUM_SERVER->RandomConnection();
                                     if(pnode != nullptr)
                                     {
                                         /* Send out another getblocks request. */
@@ -2610,6 +2621,8 @@ namespace LLP
                                             debug::error(FUNCTION, e.what());
                                         }
                                     }
+                                    else
+                                        debug::notice(NODE, "could not find random connection for missing transactions");
                                 }
                             }
                         }

@@ -251,10 +251,18 @@ namespace LLP
 
         /** Get Connection
          *
-         *  Select a random and currently open connection
+         *  Select lowest latency and currently open connection
          *
          **/
         std::shared_ptr<ProtocolType> GetConnection();
+
+
+        /** Get Connection
+         *
+         *  Select a random and currently open connection
+         *
+         **/
+        std::shared_ptr<ProtocolType> RandomConnection();
 
 
         /** Get Connection

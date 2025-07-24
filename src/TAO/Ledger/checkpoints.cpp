@@ -63,7 +63,7 @@ namespace TAO
         bool IsDescendant(const BlockState& state)
         {
             /* Check if we should force our descendant checks. */
-            if(config::GetBoolArg("-forcesync", true))
+            if(config::GetBoolArg("-forcesync", false))
                 return true;
 
             /* If no checkpoint defined, return true. */
