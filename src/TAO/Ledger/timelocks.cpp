@@ -70,7 +70,7 @@ namespace TAO
             1538791860,        //--- Block Version 6 Activation:          10/05/2018 19:11:00 GMT - 7
             1573539371,        //--- Block Version 7 Activation:          11/11/2019 23:11:11 GMT - 7
             1584676140,        //--- Block Version 8 Activation:          03/20/2020 03:49:00 GMT - 7
-            1750467355         //--- Block Version 9 Activation:          06/20/2025 17:55:55 GMT - 7
+            1755910555         //--- Block Version 9 Activation:          08/22/2025 17:55:55 GMT - 7
         };
 
 
@@ -96,7 +96,7 @@ namespace TAO
             1584676140,        //--- Transaction Version 2 Activation:      03/19/2020 20:49:00 GMT - 7
             1631301120,        //--- Transaction Version 3 Activation:      09/10/2021 12:12:00 GMT - 7
             1631819333,        //--- Transaction Version 4 Activation:      09/16/2021 12:08:53 GMT - 7
-            1750458813         //--- Transaction Version 5 Activation:      06/20/2025 15:33:33 GMT - 7
+            1755909213         //--- Transaction Version 5 Activation:      08/22/2025 15:33:33 GMT - 7
         };
 
 
