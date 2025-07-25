@@ -2268,7 +2268,7 @@ namespace LLP
                                             SwitchNode();
                                             return true;
                                         }
-                                        
+
                                         /* Check for complete synchronization. */
                                         if(hashLast == TAO::Ledger::ChainState::hashBestChain.load()
                                         && hashLast == hashBestChain)
@@ -2644,6 +2644,9 @@ namespace LLP
                         /* Get the block from the stream. */
                         TAO::Ledger::SyncBlock block;
                         ssPacket >> block;
+
+                        /* Update our serialized bytes. */
+                        TAO::Ledger::nProcessedBytes += block.GetSerializeSize(SER_NETWORK, block.nVersion);
 
                         /* Check version switch. */
                         if(block.nVersion >= 7)

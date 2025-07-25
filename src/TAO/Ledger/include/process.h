@@ -66,6 +66,7 @@ namespace TAO
 
         /* Stats variable for syncing. */
         extern std::atomic<uint64_t> nProcessedContracts;
+        extern std::atomic<uint64_t> nProcessedBytes;
 
         /** Process Block Function
          *

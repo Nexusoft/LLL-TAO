@@ -625,7 +625,8 @@ namespace TAO
                             nCoinbaseRewards[1] += nValue;
 
                             /* Log the genesis. */
-                            debug::log(2, "AMBASSADOR GENESIS ", genesis.ToString());
+                            if(config::nVerbose >= 2)
+                                debug::log(2, "AMBASSADOR GENESIS ", genesis.ToString());
                         }
                     }
 
@@ -667,7 +668,8 @@ namespace TAO
                             nCoinbaseRewards[2] += nValue;
 
                             /* Log the genesis. */
-                            debug::log(2, "DEVELOPER GENESIS ", genesis.ToString());
+                            if(config::nVerbose >= 2)
+                                debug::log(2, "DEVELOPER GENESIS ", genesis.ToString());
                         }
                     }
 
@@ -713,10 +715,14 @@ namespace TAO
                     nReleasedReserve[nType] =  (nReserve - nCoinbaseRewards[nType]);
 
                     /* Verbose output. */
-                    debug::log(2, "Reserve Balance ", nType, " | ",
-                        std::fixed, nReleasedReserve[nType] / (double)TAO::Ledger::NXS_COIN,
-                        " Nexus | Released ",
-                        std::fixed, (nReserve - stateLast.nReleasedReserve[nType]) / (double)TAO::Ledger::NXS_COIN);
+                    if(config::nVerbose >= 2)
+                    {
+                        debug::log(2, "Reserve Balance ", nType, " | ",
+                            std::fixed, nReleasedReserve[nType] / (double)TAO::Ledger::NXS_COIN,
+                            " Nexus | Released ",
+                            std::fixed, (nReserve - stateLast.nReleasedReserve[nType]) / (double)TAO::Ledger::NXS_COIN);
+                    }
+
 
                     /* Update the mint values. */
                     nMint += nCoinbaseRewards[nType];
@@ -776,10 +782,13 @@ namespace TAO
                     ++nGreater;
 
                 /* Log the weights. */
-                debug::log(2, FUNCTION, "WEIGHTS [", uint32_t(nGreater), "]",
-                    " Prime ", nChannelWeight[1].Get64(),
-                    " Hash ",  nChannelWeight[2].Get64(),
-                    " Stake ", nChannelWeight[0].Get64());
+                if(config::nVerbose >= 2)
+                {
+                    debug::log(2, FUNCTION, "WEIGHTS [", uint32_t(nGreater), "]",
+                        " Prime ", nChannelWeight[1].Get64(),
+                        " Hash ",  nChannelWeight[2].Get64(),
+                        " Stake ", nChannelWeight[0].Get64());
+                }
 
                 /* Check for conflicted blocks. */
                 if(fConflicted)
@@ -818,7 +827,8 @@ namespace TAO
             }
 
             /* Debug output. */
-            debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, "ACCEPTED");
+            if(config::nVerbose >= TAO::Ledger::ChainState::Synchronizing() ? 1 : 0)
+                debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, "ACCEPTED");
 
             return true;
         }
@@ -1087,6 +1097,7 @@ namespace TAO
 
                 /* Only output best chain data when not syncing. */
                 if(config::nVerbose >= TAO::Ledger::ChainState::Synchronizing() ? 1 : 0)
+                {
                     debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
                         "New Best Block hash=", hash.SubString(),
                         " height=", nHeight,
@@ -1096,6 +1107,7 @@ namespace TAO
                         " [processed at ", (nTotalContracts * 1000000.0) / (nContractTime + 1), " contract/s",
                         " | ", (nTotalInputs * 1000000.0) / (nInputsTime + 1), " script/s]",
                         " [", std::setw(3), (::GetSerializeSize(*this, SER_LLD, nVersion) / 1024.0), " kb]");
+                }
 
                 /* Set the best chain variables. */
                 ChainState::tStateBest          = *this; //XXX: we are not getting all the data from connect, consider using pointer
@@ -1282,15 +1294,18 @@ namespace TAO
             nFeesBurned = (prev.nFeesBurned + nFees);
 
             /* Log how much was generated / destroyed. */
-            debug::log
-            (
-                TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
+            if(config::nVerbose >= TAO::Ledger::ChainState::Synchronizing() ? 1 : 0)
+            {
+                debug::log
+                (
+                    TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
 
-                int64_t(nMint - nFees) > 0 ? "Generated " : "Destroyed ",
-                std::fixed, (double)int64_t(nMint - nFees) / TAO::Ledger::NXS_COIN, " Nexus | Money Supply ",
-                std::fixed, (double)(nMoneySupply) / TAO::Ledger::NXS_COIN, " | Burned Fees ",
-                std::fixed, (double)(nFeesBurned) / TAO::Ledger::NXS_COIN
-            );
+                    int64_t(nMint - nFees) > 0 ? "Generated " : "Destroyed ",
+                    std::fixed, (double)int64_t(nMint - nFees) / TAO::Ledger::NXS_COIN, " Nexus | Money Supply ",
+                    std::fixed, (double)(nMoneySupply) / TAO::Ledger::NXS_COIN, " | Burned Fees ",
+                    std::fixed, (double)(nFeesBurned) / TAO::Ledger::NXS_COIN
+                );
+            }
 
             /* Write the updated block state to disk. */
             if(!LLD::Ledger->WriteBlock(hashBlock, *this))

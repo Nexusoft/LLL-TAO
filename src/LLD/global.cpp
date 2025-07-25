@@ -94,11 +94,11 @@ namespace LLD
             Config::Static SECTOR             = Config::Static(BASE);
             SECTOR.MAX_SECTOR_FILE_STREAMS    = 16;
             SECTOR.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
-            SECTOR.MAX_SECTOR_CACHE_SIZE      = config::GetArg("-ledgercache", 2) * 1024 * 1024; //2 MB of cache by default
+            SECTOR.MAX_SECTOR_CACHE_SIZE      = config::GetArg("-ledgercache", 32) * 1024 * 1024; //32 MB of cache by default
 
             /* Create the LedgerDB keychain configuration object. */
             Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
-            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = config::fClient.load() ? 77773 : (256 * 256 * 64);
+            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = config::fClient.load() ? 77773 : (256 * 256 * 128);
             KEYCHAIN.MAX_HASHMAPS             = 512;
             KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 128;
             KEYCHAIN.MIN_LINEAR_PROBES        = 1;
@@ -142,7 +142,7 @@ namespace LLD
             Config::Static SECTOR             = Config::Static(BASE);
             SECTOR.MAX_SECTOR_FILE_STREAMS    = 16;
             SECTOR.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
-            SECTOR.MAX_SECTOR_CACHE_SIZE      = config::GetArg("-legacycache", 1) * 1024 * 1024; //1 MB of cache by default
+            SECTOR.MAX_SECTOR_CACHE_SIZE      = config::GetArg("-legacycache", 16) * 1024 * 1024; //1 MB of cache by default
 
             /* Create the LegacyDB keychain configuration object. */
             Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);

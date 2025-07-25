@@ -47,6 +47,7 @@ namespace TAO
 
         /* Stats variable for syncing. */
         std::atomic<uint64_t> nProcessedContracts(0);
+        std::atomic<uint64_t> nProcessedBytes(0);
 
 
         /* Processes a block incoming over the network. */
@@ -185,12 +186,14 @@ namespace TAO
                         TAO::Ledger::ChainState::PercentSynchronized(), " %]",
                         " height=", block.nHeight,
                         " [", (nProcessedContracts.load() * 1000) / nElapsed, " contracts/s]",
+                        "[", ((nProcessedBytes.load() / 1024) * 1000) / nElapsed, " kb/s]",
                         "[", std::setw(2), std::setfill('0'), nHours, ":",
                               std::setw(2), std::setfill('0'), nMinutes, ":",
                               std::setw(2), std::setfill('0'), nSeconds, " remaining]");
 
                     nSynchronizationTimer = runtime::timestamp(true);
                     nProcessedContracts   = 0;
+                    nProcessedBytes       = 0;
                     nProcessedBlocks      = ChainState::nBestHeight.load();
                 }
 
