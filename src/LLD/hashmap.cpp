@@ -437,8 +437,21 @@ namespace LLD
     uint32_t BinaryHashMap::get_bucket(const std::vector<uint8_t>& vKey)
     {
         /* Get an xxHash. */
-        uint64_t nBucket = XXH3_64bits_withSeed(&vKey[0], vKey.size(), 0);
-        return static_cast<uint32_t>(nBucket % CONFIG.HASHMAP_TOTAL_BUCKETS);
+        const XXH128_hash_t hashChecksum =
+            XXH3_128bits((uint8_t*)&vKey[0], vKey.size());
+
+            /* Check for a defined terra integer. */
+            #ifdef __SIZEOF_INT128__
+                __uint128_t nHash;
+                std::copy((uint8_t*)&hashChecksum, (uint8_t*)&hashChecksum + 16, (uint8_t*)&nHash); //use 16 to protect buffer
+            #else
+                uint64_t nHash;
+                std::copy((uint8_t*)&hashChecksum, (uint8_t*)&hashChecksum + 8, (uint8_t*)&nHash); //use 8 to protect buffer
+            #endif
+
+        /* Copy to our hash buffer then calculate the buffer. */
+
+        return static_cast<uint32_t>(nHash % CONFIG.HASHMAP_TOTAL_BUCKETS);
     }
 
 

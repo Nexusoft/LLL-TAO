@@ -680,6 +680,10 @@ const std::vector<uint8_t> base_uint<BITS>::GetBytes() const
 template<uint32_t BITS>
 void base_uint<BITS>::SetBytes(const std::vector<uint8_t> DATA)
 {
+    /* Check our ranges are correct here. */
+    if(DATA.size() / 4 != WIDTH)
+        throw debug::exception(FUNCTION, "data size is not correct width");
+
     for(int index = 0; index < WIDTH; ++index)
     {
         std::vector<uint8_t> BYTES(DATA.begin() + (index * 4), DATA.begin() + (index * 4) + 4);
