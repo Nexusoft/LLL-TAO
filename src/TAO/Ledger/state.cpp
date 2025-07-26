@@ -1185,7 +1185,7 @@ namespace TAO
                     }
 
                     /* Verify the Ledger Pre-States. */
-                    if(!tx.Verify(FLAGS::BLOCK)) //NOTE: double checking this for now in post-processing
+                    if(!ChainState::Synchronizing() && !tx.Verify(FLAGS::BLOCK)) //NOTE: double checking this for now in post-processing
                         return false;
 
                     /* Connect the transaction. */

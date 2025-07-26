@@ -440,17 +440,16 @@ namespace LLD
         const XXH128_hash_t hashChecksum =
             XXH3_128bits((uint8_t*)&vKey[0], vKey.size());
 
-            /* Check for a defined terra integer. */
-            #ifdef __SIZEOF_INT128__
-                __uint128_t nHash;
-                std::copy((uint8_t*)&hashChecksum, (uint8_t*)&hashChecksum + 16, (uint8_t*)&nHash); //use 16 to protect buffer
-            #else
-                uint64_t nHash;
-                std::copy((uint8_t*)&hashChecksum, (uint8_t*)&hashChecksum + 8, (uint8_t*)&nHash); //use 8 to protect buffer
-            #endif
+        /* Check for a defined terra integer. */
+        #ifdef __SIZEOF_INT128__
+            __uint128_t nHash;
+            std::copy((uint8_t*)&hashChecksum, (uint8_t*)&hashChecksum + 16, (uint8_t*)&nHash); //use 16 to protect buffer
+        #else
+            uint64_t nHash;
+            std::copy((uint8_t*)&hashChecksum, (uint8_t*)&hashChecksum + 8, (uint8_t*)&nHash); //use 8 to protect buffer
+        #endif
 
-        /* Copy to our hash buffer then calculate the buffer. */
-
+        /* Calculate our bucket off of the checksum hash. */
         return static_cast<uint32_t>(nHash % CONFIG.HASHMAP_TOTAL_BUCKETS);
     }
 
@@ -1003,7 +1002,7 @@ namespace LLD
 
             /* Check our ranges here and break early if exhausting hashmap buckets. */
             if(nAdjustedBucket >= CONFIG.HASHMAP_TOTAL_BUCKETS) //TODO: remove debug::error when moving to production
-                return debug::error(FUNCTION, "out of buckets ", nProbe + nBucket, "/", CONFIG.HASHMAP_TOTAL_BUCKETS);
+                return false;//return debug::error(FUNCTION, "out of buckets ", nProbe + nBucket, "/", CONFIG.HASHMAP_TOTAL_BUCKETS);
 
             /* Get the binary offset within the current probe. */
             const uint64_t nOffset = (nProbe * INDEX_FILTER_SIZE);
