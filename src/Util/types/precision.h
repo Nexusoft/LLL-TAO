@@ -28,7 +28,7 @@ class precision_t
 {
     /* Try to use a tetra-int from GCC if possible first which is only available for 64-bit processors. */
     #ifdef __SIZEOF_INT128__
-        typedef unsigned int compute_t __uint128_t;
+        typedef __uint128_t compute_t;
 
     /* Otherwise revert to our standard uint128_t that supports 32-bit processors or incompatible compilers. */
     #else
