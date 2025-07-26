@@ -97,6 +97,14 @@ namespace LLD
          *
          **/
         bool EraseTransaction(const std::vector<uint8_t> &vKey);
+
+
+        /** Empty
+         *
+         *  Determine if the ACID transaction is empty of data.
+         *
+         **/
+        bool Empty();
     };
 }
 

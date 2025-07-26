@@ -739,6 +739,10 @@ namespace LLD::Templates
         if(!pTransaction)
             return false;
 
+        /* We only write to journal and disk if we have data pending. */
+        if(pTransaction->Empty())
+            return true;
+
         /* Set commit message into journal. */
         pTransaction->ssJournal << std::string("commit");
 
@@ -785,44 +789,48 @@ namespace LLD::Templates
         if(!pTransaction)
             return false;
 
-        /* Erase data set to be removed. */
-        for(const auto& item : pTransaction->setErasedData)
-            if(!pSectorKeys->Erase(item))
-                return debug::error(FUNCTION, "failed to erase from keychain");
-
-        /* Commit the sector data. */
-        for(const auto& item : pTransaction->mapTransactions)
-            if(!Force(item.first, item.second))
-                return debug::error(FUNCTION, "failed to commit sector data");
-
-        /* Commit keychain entries. */
-        for(const auto& item : pTransaction->setKeychain)
+        /* We only write to journal and disk if we have data pending. */
+        if(!pTransaction->Empty())
         {
-            SectorKey key(STATE::READY, item, 0, 0, 0);
-            if(!pSectorKeys->Put(key))
-                return debug::error(FUNCTION, "failed to commit to keychain");
-        }
+            /* Erase data set to be removed. */
+            for(const auto& item : pTransaction->setErasedData)
+                if(!pSectorKeys->Erase(item))
+                    return debug::error(FUNCTION, "failed to erase from keychain");
 
-        /* Commit the index data. */
-        std::map<std::vector<uint8_t>, SectorKey> mapIndex;
-        for(const auto& item : pTransaction->mapIndex)
-        {
-            /* Get the key. */
-            SectorKey key;
-            if(mapIndex.count(item.second))
-                key = mapIndex[item.second];
-            else
+            /* Commit the sector data. */
+            for(const auto& item : pTransaction->mapTransactions)
+                if(!Force(item.first, item.second))
+                    return debug::error(FUNCTION, "failed to commit sector data");
+
+            /* Commit keychain entries. */
+            for(const auto& item : pTransaction->setKeychain)
             {
-                if(!pSectorKeys->Get(item.second, key))
-                    return debug::error(FUNCTION, "failed to read indexing entry");
-
-                mapIndex[item.second] = key;
+                SectorKey key(STATE::READY, item, 0, 0, 0);
+                if(!pSectorKeys->Put(key))
+                    return debug::error(FUNCTION, "failed to commit to keychain");
             }
 
-            /* Write the new sector key. */
-            key.SetKey(item.first);
-            if(!pSectorKeys->Put(key))
-                return debug::error(FUNCTION, "failed to write indexing entry");
+            /* Commit the index data. */
+            std::map<std::vector<uint8_t>, SectorKey> mapIndex;
+            for(const auto& item : pTransaction->mapIndex)
+            {
+                /* Get the key. */
+                SectorKey key;
+                if(mapIndex.count(item.second))
+                    key = mapIndex[item.second];
+                else
+                {
+                    if(!pSectorKeys->Get(item.second, key))
+                        return debug::error(FUNCTION, "failed to read indexing entry");
+
+                    mapIndex[item.second] = key;
+                }
+
+                /* Write the new sector key. */
+                key.SetKey(item.first);
+                if(!pSectorKeys->Put(key))
+                    return debug::error(FUNCTION, "failed to write indexing entry");
+            }
         }
 
         /* Cleanup the transaction object. */
@@ -850,7 +858,7 @@ namespace LLD::Templates
 
         /* Check journal size for 0. */
         if(nSize == 0)
-            return false;
+            return true;
 
         /* Create buffer to read into. */
         std::vector<uint8_t> vBuffer(nSize, 0);

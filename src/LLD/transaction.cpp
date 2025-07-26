@@ -55,4 +55,10 @@ namespace LLD
         return true;
     }
 
+
+    /* Determine if the ACID transaction is empty of data. */
+    bool SectorTransaction::Empty()
+    {
+        return setErasedData.empty() && mapTransactions.empty() && setKeychain.empty() && mapIndex.empty() && ssJournal.size() == 0;
+    }
 }
