@@ -146,8 +146,8 @@ namespace LLD::Templates
         nBytesRead += static_cast<uint32_t>(vKey.size() + vData.size());
 
         /* Check the cache pool for key first. */
-        //if(cachePool->Get(vKey, vData))
-        //    return true;
+        if(cachePool->Get(vKey, vData))
+            return true;
 
         {
             LOCK(BUFFER_MUTEX);
@@ -165,9 +165,6 @@ namespace LLD::Templates
         SectorKey key;
         if(pSectorKeys->Get(vKey, key))
         {
-            /* Add to cache */
-            cachePool->Put(key, vKey, vData);
-
             {
                 LOCK(CONFIG.FILE(key.nSectorFile));
 
@@ -206,6 +203,9 @@ namespace LLD::Templates
                 }
             }
 
+            /* Add to cache */
+            cachePool->Put(key, vKey, vData);
+
             /* Verbose Debug Logging. */
             if(config::nVerbose >= 5)
                 debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
@@ -226,8 +226,8 @@ namespace LLD::Templates
         nBytesRead += static_cast<uint32_t>(key.vKey.size() + vData.size());
 
         /* Check the cache pool for key first. */
-        //if(cachePool->Get(key.vKey, vData))
-        //    return true;
+        if(cachePool->Get(key.vKey, vData))
+            return true;
 
         /* Get compact size from record. */
         const uint64_t nSize = GetSizeOfCompactSize(key.nSectorSize);
@@ -323,7 +323,6 @@ namespace LLD::Templates
                 return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes written");
 
             pstream->flush();
-
         }
 
         /* Records flushed indicator. */
