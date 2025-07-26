@@ -706,6 +706,9 @@ namespace TAO
             if(!LLD::Ledger->WriteTx(producer.GetHash(), producer))
                 return debug::error(FUNCTION, "failed to write producer to disk");
 
+            /* Make sure to track our producer processed contracts. */
+            TAO::Ledger::nProcessedContracts += producer.Size();
+
             /* Accept the block state. */
             if(!state.Index())
             {

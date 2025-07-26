@@ -74,10 +74,11 @@ namespace LLD
 
             /* Create the RegisterDB keychain configuration object. */
             Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
-            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 77773;
+            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 65536;
             KEYCHAIN.MAX_HASHMAPS             = 256;
             KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 64;
             KEYCHAIN.MIN_LINEAR_PROBES        = 1;
+            KEYCHAIN.MAX_LINEAR_PROBE_CYCLES  = 16;
 
             /* Create the RegisterDB database instance. */
             Register = new RegisterDB(SECTOR, KEYCHAIN);
@@ -94,21 +95,22 @@ namespace LLD
             Config::Static SECTOR             = Config::Static(BASE);
             SECTOR.MAX_SECTOR_FILE_STREAMS    = 16;
             SECTOR.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
-            SECTOR.MAX_SECTOR_CACHE_SIZE      = config::GetArg("-ledgercache", 32) * 1024 * 1024; //32 MB of cache by default
+            SECTOR.MAX_SECTOR_CACHE_SIZE      = config::GetArg("-ledgercache", 128) * 1024 * 1024; //32 MB of cache by default
 
             /* Create the LedgerDB keychain configuration object. */
             Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
-            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = config::fClient.load() ? 77773 : (256 * 256 * 128);
+            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = config::fClient.load() ? 77773 : (256 * 256 * 32);
             KEYCHAIN.MAX_HASHMAPS             = 512;
             KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 128;
-            KEYCHAIN.MIN_LINEAR_PROBES        = 1;
+            KEYCHAIN.MIN_LINEAR_PROBES        = 4;
+            KEYCHAIN.MAX_LINEAR_PROBE_CYCLES  = 16;
 
             /* Create the LedgerDB database instance. */
             Ledger = new LedgerDB(SECTOR, KEYCHAIN);
         }
 
 
-        /* _LEDGER database instance. */
+        /* _LOGICAL database instance. */
         {
             /* Create the LedgerDB configuration object. */
             Config::Base BASE =
@@ -122,10 +124,11 @@ namespace LLD
 
             /* Create the LedgerDB keychain configuration object. */
             Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
-            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = config::fClient.load() ? 77773 : (256 * 256 * 64);
+            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = config::fClient.load() ? 77773 : (256 * 256);
             KEYCHAIN.MAX_HASHMAPS             = 128;
             KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 128;
             KEYCHAIN.MIN_LINEAR_PROBES        = 1;
+            KEYCHAIN.MAX_LINEAR_PROBE_CYCLES  = 16;
 
             /* Create the LedgerDB database instance. */
             Logical = new LogicalDB(SECTOR, KEYCHAIN);
@@ -142,14 +145,15 @@ namespace LLD
             Config::Static SECTOR             = Config::Static(BASE);
             SECTOR.MAX_SECTOR_FILE_STREAMS    = 16;
             SECTOR.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
-            SECTOR.MAX_SECTOR_CACHE_SIZE      = config::GetArg("-legacycache", 16) * 1024 * 1024; //1 MB of cache by default
+            SECTOR.MAX_SECTOR_CACHE_SIZE      = config::GetArg("-legacycache", 32) * 1024 * 1024; //32 MB of cache by default
 
             /* Create the LegacyDB keychain configuration object. */
             Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
-            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = config::fClient.load() ? 77773 : (256 * 256 * 64);
+            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = config::fClient.load() ? 77773 : (256 * 256 * 2);
             KEYCHAIN.MAX_HASHMAPS             = 128;
             KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 128;
-            KEYCHAIN.MIN_LINEAR_PROBES        = 1;
+            KEYCHAIN.MIN_LINEAR_PROBES        = 4;
+            KEYCHAIN.MAX_LINEAR_PROBE_CYCLES  = 16;
 
             /* Create the LegacyDB database instance. */
             Legacy = new LegacyDB(SECTOR, KEYCHAIN);
@@ -169,10 +173,11 @@ namespace LLD
 
             /* Create the LegacyDB keychain configuration object. */
             Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
-            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = config::fClient.load() ? 77773 : (256 * 256 * 64);
-            KEYCHAIN.MAX_HASHMAPS             = 128;
-            KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 128;
+            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = config::fClient.load() ? 77773 : (256 * 256);
+            KEYCHAIN.MAX_HASHMAPS             = 32;
+            KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 32;
             KEYCHAIN.MIN_LINEAR_PROBES        = 1;
+            KEYCHAIN.MAX_LINEAR_PROBE_CYCLES  = 16;
 
             /* Create the LegacyDB database instance. */
             Sessions = new SessionDB(SECTOR, KEYCHAIN);
@@ -186,16 +191,18 @@ namespace LLD
 
             /* Create the TrustDB sector configuration object. */
             Config::Static SECTOR             = Config::Static(BASE);
-            SECTOR.MAX_SECTOR_FILE_STREAMS    = 4;
+            SECTOR.MAX_SECTOR_FILE_STREAMS    = 1;
             SECTOR.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
-            SECTOR.MAX_SECTOR_CACHE_SIZE      = 1024 * 1024; //1 MB of cache by default
+            SECTOR.MAX_SECTOR_CACHE_SIZE      = 1024; //1 kb of cache by default
 
             /* Create the TrustDB keychain configuration object. */
             Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
-            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 77773;
-            KEYCHAIN.MAX_HASHMAPS             = 4; //TODO: make sure this doesn't break anything :D
-            KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 4;
+            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 2048;
+            KEYCHAIN.MAX_HASHMAPS             = 1; //TODO: make sure this doesn't break anything :D
+            KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 1;
             KEYCHAIN.MIN_LINEAR_PROBES        = 1;
+            KEYCHAIN.MAX_LINEAR_PROBE_CYCLES  = 16;
+            KEYCHAIN.QUICK_INIT               = false;
 
             /* Create the TrustDB database instance. */
             Trust = new TrustDB(SECTOR, KEYCHAIN);
@@ -217,9 +224,10 @@ namespace LLD
             /* Create the LocalDB keychain configuration object. */
             Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
             KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 77773;
-            KEYCHAIN.MAX_HASHMAPS             = 4; //TODO: make sure this doesn't break anything :D
-            KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 4;
+            KEYCHAIN.MAX_HASHMAPS             = 8; //TODO: make sure this doesn't break anything :D
+            KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 8;
             KEYCHAIN.MIN_LINEAR_PROBES        = 1;
+            KEYCHAIN.MAX_LINEAR_PROBE_CYCLES  = 11;
 
             /* Create the LocalDB database instance. */
             Local = new LocalDB(SECTOR, KEYCHAIN);
@@ -245,6 +253,7 @@ namespace LLD
             KEYCHAIN.MAX_HASHMAPS             = 256;
             KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 4;
             KEYCHAIN.MIN_LINEAR_PROBES        = 1;
+            KEYCHAIN.MAX_LINEAR_PROBE_CYCLES  = 11;
 
             /* Create new client database if enabled. */
             Client    = new ClientDB(SECTOR, KEYCHAIN);

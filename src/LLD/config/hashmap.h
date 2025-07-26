@@ -103,8 +103,8 @@ namespace LLD::Config
         : Base                     (base)
         , MAX_HASHMAPS             (256)
         , MIN_LINEAR_PROBES        (1)   //default: of 1 linear probes before moving to next hashmap file
-        , MAX_LINEAR_PROBES        (144) //default: of 144 linear probes before moving to next hashmap file
-        , MAX_LINEAR_PROBE_CYCLES  (0)   //default: automatically derived from our min/max probing ranges as a safety
+        //, MAX_LINEAR_PROBES        (144) //default: of 144 linear probes before moving to next hashmap file
+        , MAX_LINEAR_PROBE_CYCLES  (11)   //default: automatically derived from our min/max probing ranges as a safety
         , MAX_FILES_PER_HASHMAP    (4)   //default: 4 files per hashmap
         , MAX_HASHMAP_FILE_STREAMS (MAX_HASHMAPS) //default: maximum hashmap files, otherwise you will degrade performance
         , MAX_FILES_PER_INDEX      (4)   //default: 4 files per index
@@ -290,6 +290,7 @@ namespace LLD::Config
          **/
         void auto_config()
         {
+            #if 0
             /* Calculate our current probing range. */
             uint32_t nBeginProbeExpansion = MIN_LINEAR_PROBES, nEndProbeExpansion = MIN_LINEAR_PROBES;
             while(nEndProbeExpansion < MAX_LINEAR_PROBES)
@@ -307,6 +308,7 @@ namespace LLD::Config
 
             /* Give one last increment to ensure full fibanacci ranges. */
             ++MAX_LINEAR_PROBE_CYCLES;
+            #endif
 
             /* Calculate our primary bloom filter number of bits. */
             PRIMARY_BLOOM_BITS = (PRIMARY_BLOOM_ACCURACY / 100.0) * MAX_HASHMAPS * PRIMARY_BLOOM_HASHES;

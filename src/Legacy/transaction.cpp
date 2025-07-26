@@ -1048,29 +1048,15 @@ namespace Legacy
             {
                 /* No Trust Transaction without a Genesis. */
                 if(!LLD::Trust->ReadTrustKey(cKey, trustKey))
-                {
-                    /* FindGenesis will set hashPrevBlock to genesis block. Don't want to change that here, so use temp hash */
-                    if(!FindGenesis(cKey, state.hashPrevBlock, trustKey))
-                        return debug::error(FUNCTION, "no trust without genesis");
-                }
+                    return debug::error(FUNCTION, "no trust without genesis");
 
                 /* Check that the Trust Key and Current Block match. */
                 if(trustKey.vchPubKey != vTrustKey)
                     return debug::error(FUNCTION, "trust key and block trust key mismatch");
 
-                /* Trust Keys can only exist after the Genesis Transaction. */
-                TAO::Ledger::BlockState tStateGenesis;
-                if(!LLD::Ledger->ReadBlock(trustKey.hashGenesisBlock, tStateGenesis))
-                    return debug::error(FUNCTION, "genesis block not found");
-
-                /* Double Check the Genesis Transaction. */
-                if(!trustKey.CheckGenesis(tStateGenesis))
-                    return debug::error(FUNCTION, "invalid genesis transaction");
-
                 /* Check that the trust score is accurate. */
                 if(state.nVersion >= 5 && !CheckTrust(state, trustKey))
                     return debug::error(FUNCTION, "invalid trust score");
-
             }
 
             /* Write trust key changes to disk. */
@@ -1086,6 +1072,7 @@ namespace Legacy
             /* Write the trust key. */
             LLD::Trust->WriteTrustKey(cKey, trustKey);
         }
+
 
         /* Read all of the inputs. */
         uint64_t nValueIn = 0;

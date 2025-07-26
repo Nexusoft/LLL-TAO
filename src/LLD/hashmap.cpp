@@ -748,7 +748,7 @@ namespace LLD
         /* Compress any keys larger than max size. */
         const std::vector<uint8_t> vKeyCompressed = compress_key(key.vKey);
 
-        /* Loop through the adjacent linear hashmap slots in a linear ordering resptive to the buffer object. */
+        /* Loop through the adjacent linear hashmap slots in a linear ordering respective to the buffer object. */
         for(uint32_t nProbe = 0; nProbe < nProbes; ++nProbe)
         {
             /* Calculate our adjusted bucket. */
@@ -1386,6 +1386,7 @@ namespace LLD
             );
         }
 
+        #if 0
         /* Check our probing ranges and adjust where necessary. */
         if(nEndProbeExpansion > CONFIG.MAX_LINEAR_PROBES)
         {
@@ -1403,6 +1404,7 @@ namespace LLD
 
             debug::warning(FUNCTION, VARIABLE(nEndProbeExpansion), " adjusted");
         } //this will default to a total of 0 buckets if outside of range, and then be cleaned up with the cache check in Put()
+        #endif
 
 
         /* Find our total number of buckets to probe this cycle and check our range. */
