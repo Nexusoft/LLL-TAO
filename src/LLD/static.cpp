@@ -229,6 +229,15 @@ namespace LLD::Templates
         if(cachePool->Get(key.vKey, vData))
             return true;
 
+        if(CONFIG.FLAGS & FLAGS::WRITE)
+        {
+            if(mapDiskBuffer.count(key.vKey))
+            {
+                vData = mapDiskBuffer[key.vKey];
+                return true;
+            }
+        }
+
         /* Get compact size from record. */
         const uint64_t nSize = GetSizeOfCompactSize(key.nSectorSize);
 
@@ -438,7 +447,7 @@ namespace LLD::Templates
         if(nBufferBytes.load() >= CONFIG.MAX_SECTOR_BUFFER_SIZE)
         {
             std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-            CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || nBufferBytes.load() < CONFIG.MAX_SECTOR_BUFFER_SIZE; });
+            CONDITION.wait_for(CONDITION_LOCK, std::chrono::milliseconds(100), [this]{ return fDestruct.load() || config::fShutdown.load() || nBufferBytes.load() < CONFIG.MAX_SECTOR_BUFFER_SIZE; });
         }
 
         /* Add to the write buffer thread. */
