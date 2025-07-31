@@ -108,4 +108,32 @@ namespace TAO::API
 
         return !mapAssets.empty();
     }
+
+    /* List results based on our incoming list parameters and generate an output */
+    void ListResults(const std::set<encoding::json, CompareResults>& setResults, encoding::json &jRet)
+    {
+        /* Compile our array based on the ordering of our set. */
+        for(const auto& jRegister : setResults)
+            jRet.push_back(jRegister);
+    }
+
+
+    /* List pages based on our incoming list parameters and generate an output */
+    void ListPages(const encoding::json& jCache, const uint32_t nLimit, const uint32_t nOffset, encoding::json &jRet)
+    {
+        /* Handle paging and offsets. */
+        uint32_t nTotal = 0;
+        for(const auto& jRegister : jCache)
+        {
+            /* Check the offset. */
+            if(++nTotal <= nOffset)
+                continue;
+
+            /* Check the limit */
+            if(jRet.size() == nLimit)
+                break;
+
+            jRet.push_back(jRegister);
+        }
+    }
 } // End TAO namespace

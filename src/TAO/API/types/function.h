@@ -55,6 +55,20 @@ namespace TAO::API
 
     public:
 
+        /** The type of caching this function does. **/
+        uint8_t nSettings;
+
+
+        /** Enum to handle page caching. */
+        enum SETTINGS: uint8_t
+        {
+            MANUAL = (1 << 1), //a static request with no lists to manage or self managed request
+            PAGING = (1 << 2), //a list where we want to page the results
+            FILTER = (1 << 3), //if we want to apply filters to our results
+            QUERY  = (1 << 4), //if we want to allow queries to our results
+            CACHE  = (1 << 5), //cache this request here for quicker responses
+        };
+
 
         /** Default Constructor. **/
         Function()
@@ -63,6 +77,7 @@ namespace TAO::API
         , nMaxVersion (0)
         , strMessage  ( )
         , setNouns    ( )
+        , nSettings   ( )
         {
         }
 
@@ -76,12 +91,14 @@ namespace TAO::API
          *  @param[in] nActivationIn The activating timestamp if this method activates with hard fork. default value of 0.
          *
          **/
-        Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn, const uint64_t nActivationIn = 0)
+        Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn,
+            const uint8_t nSettingsIn = SETTINGS::FILTER | SETTINGS::CACHE, const uint64_t nActivationIn = 0)
         : tFunction   (tFunctionIn)
         , nActivation (nActivationIn) //default: zero denotes there is no activation switch
         , nMaxVersion (0)
         , strMessage  ( )
         , setNouns    ( )
+        , nSettings   (nSettingsIn)
         {
         }
 
@@ -95,12 +112,14 @@ namespace TAO::API
          *  @param[in] nActivationIn The activating timestamp if this method activates with hard fork. default value of 0.
          *
          **/
-        Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn, const std::string& strNouns)
+        Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn,
+            const std::string& strNouns, const uint8_t nSettingsIn = SETTINGS::FILTER | SETTINGS::CACHE)
         : tFunction   (tFunctionIn)
         , nActivation (0) //default: zero denotes there is no activation switch
         , nMaxVersion (0)
         , strMessage  ( )
         , setNouns    ( )
+        , nSettings   (nSettingsIn)
         {
             /* Grab our nouns to add to the set. */
             ParseString(strNouns, ',', setNouns, true); //true to trim spaces
@@ -118,12 +137,14 @@ namespace TAO::API
          *
          **/
         Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn,
-                 const uint64_t nActivationIn, const uint32_t nMaxVersionIn, const std::string& strMessageIn)
+                 const uint64_t nActivationIn, const uint32_t nMaxVersionIn, const std::string& strMessageIn,
+                 const uint8_t nSettingsIn = SETTINGS::FILTER | SETTINGS::CACHE)
         : tFunction   (tFunctionIn)
         , nActivation (nActivationIn)
         , nMaxVersion (nMaxVersionIn)
         , strMessage  (strMessageIn)
         , setNouns    ( )
+        , nSettings   (nSettingsIn)
         {
         }
 
@@ -140,12 +161,14 @@ namespace TAO::API
          *
          **/
         Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn,
-                 const uint32_t nMaxVersionIn, const std::string& strMessageIn, const uint64_t nActivationIn = 0)
+                 const uint32_t nMaxVersionIn, const std::string& strMessageIn,
+                 const uint8_t nSettingsIn = SETTINGS::FILTER | SETTINGS::CACHE, const uint64_t nActivationIn = 0)
         : tFunction   (tFunctionIn)
         , nActivation (nActivationIn)
         , nMaxVersion (nMaxVersionIn)
         , strMessage  (strMessageIn)
         , setNouns    ( )
+        , nSettings   (nSettingsIn)
         {
         }
 

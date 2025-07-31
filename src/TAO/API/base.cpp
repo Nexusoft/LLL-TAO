@@ -24,6 +24,16 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
+    /** Default Constructor **/
+    Base::Base ( )
+    : fInitialized  (false)
+    , mapFunctions  ( )
+    , mapStandards  ( )
+    , mapOperators  ( )
+    , tResponseCache ( )
+    {
+    }
+
     /* Destructor. */
     Base::~Base()
     {
@@ -108,6 +118,14 @@ namespace TAO::API
         /* Execute the function map if method is found. */
         if(mapFunctions.find(strMethod) != mapFunctions.end())
         {
+            /* Set our requesting method in our request key. */
+            jParams["request"]["command"] = strMethod; //we use request key so we can store new cache for this request
+
+            /* Check if we have a cache available. */
+            encoding::json jCache;
+            if(tResponseCache.Get(strMethod, jParams, jCache))
+                jParams["request"]["cache"] = jCache;
+
             /* Get the result of command. */
             const encoding::json& jResults =
                 mapFunctions[strMethod].Execute(jParams, fHelp);
@@ -262,6 +280,7 @@ namespace TAO::API
 
                         continue;
                     }
+
 
                     /* Set our fieldname string. */
                     jParams["request"]["fieldname"] = vMethods[n];

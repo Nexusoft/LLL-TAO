@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/standard.h>
 #include <TAO/API/types/operator.h>
 #include <TAO/API/types/exception.h>
+#include <TAO/API/types/cache.h>
 
 #include <TAO/Operation/types/contract.h>
 
@@ -26,13 +27,14 @@ namespace TAO::Register { class Object; }
 /* Global TAO namespace. */
 namespace TAO::API
 {
+
     /** Base
      *
      *  Base class for all JSON based API's.
      *
-     *  Instances of JSONAPIBase derivations must be registered with the
-     *  JSONAPINode processing the HTTP requests. This class holds a map of
-     *  JSONAPIMethod instances that in turn perform the processing for each
+     *  Instances of Base derivations must be registered with the
+     *  node processing the HTTP requests. This class holds a map of
+     *  method instances that in turn perform the processing for each
      *  API method request.
      *
      **/
@@ -65,16 +67,14 @@ namespace TAO::API
         std::map<std::string, Operator>  mapOperators;
 
 
+        /** Local cache of our recent requests. */
+        ResponseCache tResponseCache;
+
+
     public:
 
         /** Default Constructor **/
-        Base ( )
-        : fInitialized (false)
-        , mapFunctions ( )
-        , mapStandards ( )
-        , mapOperators ( )
-        {
-        }
+        Base ( );
 
 
         /** Default destructor **/
