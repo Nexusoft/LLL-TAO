@@ -47,12 +47,97 @@ namespace TAO
         /* Standard initialization function. */
         void System::Initialize()
         {
-            mapFunctions["get/info"]         = Function(std::bind(&System::GetInfo,    this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["get/metrics"]      = Function(std::bind(&System::Metrics,    this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["stop"]             = Function(std::bind(&System::Stop,       this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/peers"]       = Function(std::bind(&System::ListPeers,  this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/lisp-eids"]   = Function(std::bind(&System::LispEIDs,   this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["validate/address"] = Function(std::bind(&System::Validate,   this, std::placeholders::_1, std::placeholders::_2));
+            /* Handle for get/info. */
+            mapFunctions["get/info"] = Function
+            (
+                std::bind
+                (
+                    &System::GetInfo,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+                , SETTINGS::FILTER
+            );
+
+
+            /* Handle for get/metrics. */
+            mapFunctions["get/metrics"] = Function
+            (
+                std::bind
+                (
+                    &System::Metrics,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+                , SETTINGS::CACHING | SETTINGS::FILTER | SETTINGS::CHAIN
+            );
+
+
+            /* Handle for get/info. */
+            mapFunctions["stop"] = Function
+            (
+                std::bind
+                (
+                    &System::Stop,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for stop. */
+            mapFunctions["stop"] = Function
+            (
+                std::bind
+                (
+                    &System::Stop,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for list/peers. */
+            mapFunctions["list/peers"] = Function
+            (
+                std::bind
+                (
+                    &System::ListPeers,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for list/lisp-eids. */
+            mapFunctions["list/lisp-eids"] = Function
+            (
+                std::bind
+                (
+                    &System::LispEIDs,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+            /* Handle for validate/address */
+            mapFunctions["validate/address"] = Function
+            (
+                std::bind
+                (
+                    &System::Validate,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
         }
 
 
