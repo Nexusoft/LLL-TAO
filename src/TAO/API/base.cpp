@@ -118,6 +118,9 @@ namespace TAO::API
         /* Execute the function map if method is found. */
         if(mapFunctions.find(strMethod) != mapFunctions.end())
         {
+            /* Track if the container needs to be reversed. */
+            bool fReversed = false;
+
             /* Get a reference of our function. */
             Function& xFunction =
                 mapFunctions[strMethod];
@@ -131,7 +134,7 @@ namespace TAO::API
             if(nSettings & SETTINGS::CACHING)
             {
                 /* Check if we can get it in a cache. */
-                if(!xFunction.oCache.Get(jParams, jResults))
+                if(!xFunction.oCache.Get(jParams, jResults, fReversed))
                 {
                     /* Execute our function so we can have an up to date cache. */
                     jResults =
@@ -180,17 +183,37 @@ namespace TAO::API
 
                 /* Handle paging and offsets. */
                 uint32_t nTotal = 0;
-                for(const auto& jItem : jResults)
+
+                /* Handle if we need to reverse iterate the container. */
+                if(fReversed)
                 {
-                    /* Check the offset. */
-                    if(++nTotal <= nOffset)
-                        continue;
+                    for(auto jItem = jResults.rbegin(); jItem != jResults.rend(); ++jItem)
+                    {
+                        /* Check the offset. */
+                        if(++nTotal <= nOffset)
+                            continue;
 
-                    /* Check the limit */
-                    if(jPage.size() == nLimit)
-                        break;
+                        /* Check the limit */
+                        if(jPage.size() == nLimit)
+                            break;
 
-                    jPage.push_back(jItem);
+                        jPage.push_back(*jItem);
+                    }
+                }
+                else
+                {
+                    for(const auto& jItem : jResults)
+                    {
+                        /* Check the offset. */
+                        if(++nTotal <= nOffset)
+                            continue;
+
+                        /* Check the limit */
+                        if(jPage.size() == nLimit)
+                            break;
+
+                        jPage.push_back(jItem);
+                    }
                 }
 
                 /* Move our new json object to results. */

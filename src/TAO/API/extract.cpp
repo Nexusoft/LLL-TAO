@@ -665,17 +665,8 @@ namespace TAO::API
         /* Extract the previous parameters. */
         ExtractList(jParams, nLimit, nOffset);
 
-        /* Get sort order*/
-        if(CheckParameter(jParams, "order", "string"))
-        {
-            /* Grab a copy of the string to check against valid types. */
-            const std::string strCheck = jParams["order"].get<std::string>();
-            if(strCheck != "asc" && strCheck != "desc")
-                throw Exception(-57, "Invalid Parameter [sort=", strCheck, "]");
-
-            /* Now assign to proper orders. */
-            strOrder = strCheck;
-        }
+        /* Extract the order now individually. */
+        strOrder = ExtractOrder(jParams, true);
     }
 
 
@@ -688,6 +679,28 @@ namespace TAO::API
         /* Check for sort ordering */
         if(CheckParameter(jParams, "sort", "string"))
             strSort = jParams["sort"].get<std::string>();
+    }
+
+
+    /* Extracts the order applicable to a List API call in order to apply a filter/offset/limit to the result */
+    std::string ExtractOrder(const encoding::json& jParams, const bool fThrow)
+    {
+        /* Get sort order*/
+        if(CheckParameter(jParams, "order", "string"))
+        {
+            /* Grab a copy of the string to check against valid types. */
+            const std::string strCheck = jParams["order"].get<std::string>();
+            if(strCheck != "asc" && strCheck != "desc")
+            {
+                /* Handle if we throw and exception. */
+                if(fThrow)
+                    throw Exception(-57, "Invalid Parameter [sort=", strCheck, "]");
+            }
+            else
+                return strCheck;
+        }
+
+        return std::string("desc");
     }
 
 

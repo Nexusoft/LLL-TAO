@@ -116,11 +116,12 @@ namespace TAO::API
          *  @param[in] strCommand The command to push data to
          *  @param[in] jParams The json formatted parameters
          *  @param[out] jRet The cached request data
+         *  @param[out] fReversed Determine if the cache needs to be reverse iterated
          *
          *  @return true if cache was found, false if it was not
          *
          **/
-        bool Get(const encoding::json& jParams, encoding::json &jRet)
+        bool Get(const encoding::json& jParams, encoding::json &jRet, bool &fReversed)
         {
             /* Check if caching is disabled. */
             if(!(nSettings & CACHING))
@@ -156,8 +157,8 @@ namespace TAO::API
                     if(jCached.key() == "page" || jCached.key() == "limit" || jCached.key() == "offset" || jCached.key() == "where")
                         continue;
 
-                    /* Skip over other required fields. */
-                    if(jCached.key() == "request" || jCached.key() == "pin")
+                    /* Skip over other these additional fields. */
+                    if(jCached.key() == "request" || jCached.key() == "order")
                         continue;
 
                     /* Check that the types match. */
@@ -177,7 +178,18 @@ namespace TAO::API
 
                 /* Track if we have found our cache object. */
                 if(fFound)
-                    return mapCache.Get(jCachedParams, jRet);
+                {
+                    /* Get a copy of our cache here. */
+                    if(mapCache.Get(jCachedParams, jRet))
+                    {
+                        /* Check if we need to reverse our cache list. */
+                        fReversed =
+                            (ExtractOrder(jCachedParams, false) != ExtractOrder(jParams, false));
+
+                        return true;
+                    }
+                }
+
             }
 
             return false;
