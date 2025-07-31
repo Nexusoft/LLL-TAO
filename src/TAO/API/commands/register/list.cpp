@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/filter.h>
 #include <TAO/API/include/format.h>
 #include <TAO/API/include/get.h>
+#include <TAO/API/include/list.h>
 #include <TAO/API/types/exception.h>
 
 #include <TAO/Ledger/include/stake.h>
@@ -79,14 +80,6 @@ namespace TAO::API
                             encoding::json jRegister =
                                 StandardToJSON(jParams, rObject.second, rObject.first);
 
-                            /* Check that we match our filters. */
-                            if(!FilterResults(jParams, jRegister))
-                                continue;
-
-                            /* Filter out our expected fieldnames if specified. */
-                            if(!FilterFieldname(jParams, jRegister))
-                                continue;
-
                             /* Insert into set and automatically sort. */
                             setRegisters.insert(jRegister);
                         }
@@ -113,14 +106,6 @@ namespace TAO::API
                             encoding::json jRegister =
                                 StandardToJSON(jParams, rObject);
 
-                            /* Check that we match our filters. */
-                            if(!FilterResults(jParams, jRegister))
-                                continue;
-
-                            /* Filter out our expected fieldnames if specified. */
-                            if(!FilterFieldname(jParams, jRegister))
-                                continue;
-
                             /* Insert into set and automatically sort. */
                             setRegisters.insert(jRegister);
                         }
@@ -134,31 +119,12 @@ namespace TAO::API
         if(setRegisters.empty())
             throw Exception(-74, "No registers found");
 
-        /* Check that our offset is in range. */
-        if(nOffset > setRegisters.size())
-            throw Exception(-75, "Value [offset=", nOffset, "] exceeds dataset size [", setRegisters.size(), "]");
-
         /* Build our return value. */
-        encoding::json jRet = encoding::json::array();
+        encoding::json jRet =
+            encoding::json::array();
 
-        /* Handle paging and offsets. */
-        uint32_t nTotal = 0;
-        for(const auto& jRegister : setRegisters)
-        {
-            /* Check the offset. */
-            if(++nTotal <= nOffset)
-                continue;
-
-            /* Check the limit */
-            if(jRet.size() == nLimit)
-                break;
-
-            jRet.push_back(jRegister);
-        }
-
-        /* Check for over paging. */
-        if(jRet.empty())
-            throw Exception(-75, "Value [offset=", nOffset, "] + [limit=", nLimit, "] exceeds dataset size [", setRegisters.size(), "]");
+        /* Move the registers set over to an array. */
+        ListResults(setRegisters, jRet);
 
         return jRet;
     }

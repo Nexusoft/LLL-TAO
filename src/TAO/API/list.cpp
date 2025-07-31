@@ -116,24 +116,4 @@ namespace TAO::API
         for(const auto& jItem : setResults)
             jRet.push_back(std::move(jItem));
     }
-
-
-    /* List pages based on our incoming list parameters and generate an output */
-    void ListPages(const encoding::json& jCache, const uint32_t nLimit, const uint32_t nOffset, encoding::json &jRet)
-    {
-        /* Handle paging and offsets. */
-        uint32_t nTotal = 0;
-        for(const auto& jRegister : jCache)
-        {
-            /* Check the offset. */
-            if(++nTotal <= nOffset)
-                continue;
-
-            /* Check the limit */
-            if(jRet.size() == nLimit)
-                break;
-
-            jRet.push_back(jRegister);
-        }
-    }
 } // End TAO namespace

@@ -182,60 +182,6 @@ namespace TAO::API
                 }
             }
 
-            /* Check our settings for paging. */
-            if(nSettings & SETTINGS::PAGING)
-            {
-                /* We only page results that are in an array. */
-                if(jResults.is_array())
-                {
-                    /* Build our results object. */
-                    encoding::json jPage =
-                        encoding::json::array();
-
-                    /* Number of results to return. */
-                    uint32_t nLimit = 100, nOffset = 0;
-                    ExtractList(jParams, nLimit, nOffset);
-
-                    /* Handle paging and offsets. */
-                    uint32_t nTotal = 0;
-
-                    /* Handle if we need to reverse iterate the container. */
-                    if(fReversed)
-                    {
-                        for(auto jItem = jResults.rbegin(); jItem != jResults.rend(); ++jItem)
-                        {
-                            /* Check the offset. */
-                            if(++nTotal <= nOffset)
-                                continue;
-
-                            /* Check the limit */
-                            if(jPage.size() == nLimit)
-                                break;
-
-                            jPage.push_back(*jItem);
-                        }
-                    }
-                    else
-                    {
-                        for(const auto& jItem : jResults)
-                        {
-                            /* Check the offset. */
-                            if(++nTotal <= nOffset)
-                                continue;
-
-                            /* Check the limit */
-                            if(jPage.size() == nLimit)
-                                break;
-
-                            jPage.push_back(jItem);
-                        }
-                    }
-
-                    /* Move our new json object to results. */
-                    jResults = std::move(jPage);
-                }
-            }
-
             /* Check for operator. */
             if(CheckRequest(jParams, "operator", "string, array"))
             {
@@ -269,6 +215,64 @@ namespace TAO::API
                     }
 
                     return jResult;
+                }
+            }
+
+            /* Check our settings for paging only if not applying an operator. */
+            else if(nSettings & SETTINGS::PAGING)
+            {
+                /* We only page results that are in an array. */
+                if(jResults.is_array())
+                {
+                    /* Build our results object. */
+                    encoding::json jPage =
+                        encoding::json::array();
+
+                    /* Number of results to return. */
+                    uint32_t nLimit = 100, nOffset = 0;
+                    ExtractList(jParams, nLimit, nOffset);
+
+                    /* Handle paging and offsets. */
+                    uint32_t nTotal = 0;
+
+                    /* Check that our offset is in range. */
+                    if(nOffset > jResults.size())
+                        throw Exception(-75, "Value [offset=", nOffset, "] exceeds dataset size [", jResults.size(), "]");
+
+                    /* Handle if we need to reverse iterate the container. */
+                    if(fReversed)
+                    {
+                        for(auto jItem = jResults.rbegin(); jItem != jResults.rend(); ++jItem)
+                        {
+                            /* Check the offset. */
+                            if(++nTotal <= nOffset)
+                                continue;
+
+                            /* Check the limit */
+                            if(jPage.size() == nLimit)
+                                break;
+
+                            jPage.push_back(*jItem);
+                        }
+                    }
+                    else
+                    {
+                        for(auto jItem = jResults.begin(); jItem != jResults.end(); ++jItem)
+                        {
+                            /* Check the offset. */
+                            if(++nTotal <= nOffset)
+                                continue;
+
+                            /* Check the limit */
+                            if(jPage.size() == nLimit)
+                                break;
+
+                            jPage.push_back(*jItem);
+                        }
+                    }
+
+                    /* Move our new json object to results. */
+                    jResults = std::move(jPage);
                 }
             }
 

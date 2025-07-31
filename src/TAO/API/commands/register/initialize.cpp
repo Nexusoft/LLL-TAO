@@ -105,6 +105,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , SETTINGS::CACHING | SETTINGS::PAGING | SETTINGS::FILTER | SETTINGS::QUERY
         );
 
         /* Handle for generic list operations. */
