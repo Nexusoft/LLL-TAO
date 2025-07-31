@@ -74,6 +74,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , SETTINGS::CACHING | SETTINGS::FILTER | SETTINGS::CHAIN
         );
 
         /* Handle for list/blocks. */
