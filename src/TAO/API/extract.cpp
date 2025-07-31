@@ -565,7 +565,7 @@ namespace TAO::API
 
 
     /* Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result */
-    void ExtractList(const encoding::json& jParams, std::string &strOrder, uint32_t &nLimit, uint32_t &nOffset)
+    void ExtractList(const encoding::json& jParams, uint32_t &nLimit, uint32_t &nOffset)
     {
         /* Check for page parameter. */
         uint32_t nPage = 0;
@@ -654,6 +654,16 @@ namespace TAO::API
         /* If no offset explicitly included calculate it from the limit + page */
         if(nOffset == 0 && nPage > 0)
             nOffset = nLimit * nPage;
+
+
+    }
+
+
+    /* Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result */
+    void ExtractList(const encoding::json& jParams, std::string &strOrder, uint32_t &nLimit, uint32_t &nOffset)
+    {
+        /* Extract the previous parameters. */
+        ExtractList(jParams, nLimit, nOffset);
 
         /* Get sort order*/
         if(CheckParameter(jParams, "order", "string"))

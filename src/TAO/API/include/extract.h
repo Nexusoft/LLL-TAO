@@ -266,6 +266,18 @@ namespace TAO::API
      *  Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result
      *
      *  @param[in] jParams The parameters passed into the request
+     *  @param[out] nLimit The number of results to return
+     *  @param[out] nOffset The offset to apply to the results
+     *
+     **/
+    void ExtractList(const encoding::json& jParams, uint32_t &nLimit, uint32_t &nOffset);
+
+
+    /** ExtractList
+     *
+     *  Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result
+     *
+     *  @param[in] jParams The parameters passed into the request
      *  @param[out] strOrder The sort order to apply
      *  @param[out] nLimit The number of results to return
      *  @param[out] nOffset The offset to apply to the results

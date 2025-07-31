@@ -113,8 +113,8 @@ namespace TAO::API
     void ListResults(const std::set<encoding::json, CompareResults>& setResults, encoding::json &jRet)
     {
         /* Compile our array based on the ordering of our set. */
-        for(const auto& jRegister : setResults)
-            jRet.push_back(jRegister);
+        for(const auto& jItem : setResults)
+            jRet.push_back(std::move(jItem));
     }
 
 

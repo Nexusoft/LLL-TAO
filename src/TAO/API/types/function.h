@@ -34,6 +34,9 @@ namespace TAO::API
      **/
     class Function
     {
+        /** This helps make our default settings cleaner. */
+        static const uint8_t FILTER   = (1 << 3);
+
         /** The function pointer to be called. */
         std::function<encoding::json(const encoding::json&, bool)> tFunction;
 
@@ -57,7 +60,7 @@ namespace TAO::API
     public:
 
         /** The public cache object of commands. */
-        ResponseCache oCache;
+        mutable ResponseCache oCache;
 
 
         /** Default Constructor. **/
@@ -71,6 +74,57 @@ namespace TAO::API
         {
         }
 
+
+        /** Copy Constructor. **/
+        Function(const Function& a)
+        : tFunction   (a.tFunction)
+        , nActivation (a.nActivation)
+        , nMaxVersion (a.nMaxVersion)
+        , strMessage  (a.strMessage)
+        , setNouns    (a.setNouns)
+        , oCache      (a.oCache)
+        {
+        }
+
+
+        /** Move Constructor. **/
+        Function(Function&& a)
+        : tFunction   (std::move(a.tFunction))
+        , nActivation (std::move(a.nActivation))
+        , nMaxVersion (std::move(a.nMaxVersion))
+        , strMessage  (std::move(a.strMessage))
+        , setNouns    (std::move(a.setNouns))
+        , oCache      (std::move(a.oCache))
+        {
+        }
+
+
+        /** Copy Assignment. **/
+        Function& operator=(const Function& a)
+        {
+            tFunction   = a.tFunction;
+            nActivation = a.nActivation;
+            nMaxVersion = a.nMaxVersion;
+            strMessage  = a.strMessage;
+            setNouns    = a.setNouns;
+            oCache      = a.oCache;
+
+            return *this;
+        }
+
+
+        /** Move Assignment. **/
+        Function& operator=(Function& a)
+        {
+            tFunction   = std::move(a.tFunction);
+            nActivation = std::move(a.nActivation);
+            nMaxVersion = std::move(a.nMaxVersion);
+            strMessage  = std::move(a.strMessage);
+            setNouns    = std::move(a.setNouns);
+            oCache      = std::move(a.oCache);
+
+            return *this;
+        }
 
         /** Constructor
          *
@@ -158,7 +212,7 @@ namespace TAO::API
         , nMaxVersion (nMaxVersionIn)
         , strMessage  (strMessageIn)
         , setNouns    ( )
-        , oCache      ( )
+        , oCache      (nSettingsIn)
         {
         }
 

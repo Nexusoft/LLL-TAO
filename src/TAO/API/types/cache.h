@@ -38,6 +38,9 @@ namespace TAO::API
      **/
     class ResponseCache
     {
+        /** This just makes our constructors more readable. **/
+        static const uint8_t CACHING  = (1 << 1);  //allow caching
+        static const uint8_t CHAIN    = (1 << 5);  //reset cache from chain updates
 
         /** The function pointer to be called. */
         LLD::TemplateLRU<encoding::json, encoding::json> mapCache;
@@ -47,17 +50,6 @@ namespace TAO::API
         std::atomic<uint32_t> nCacheCounter;
 
     public:
-
-
-        /** Enum to handle page caching. */
-        enum SETTINGS: uint8_t
-        {
-            MANUAL = (1 << 1), //a static request with no lists to manage or self managed request
-            PAGING = (1 << 2), //a list where we want to page the results
-            FILTER = (1 << 3), //if we want to apply filters to our results
-            QUERY  = (1 << 4), //if we want to allow queries to our results
-            CHAIN  = (1 << 5)  //reset cache from chain updates
-        };
 
 
         /** Track our internal settings inhereted from function. **/
@@ -72,6 +64,44 @@ namespace TAO::API
         {
         }
 
+
+        /** Copy Constructor. **/
+        ResponseCache(const ResponseCache& a)
+        : mapCache      (8)
+        , nCacheCounter (a.nCacheCounter.load())
+        , nSettings     (a.nSettings)
+        {
+        }
+
+
+        /** Move Constructor. **/
+        ResponseCache(ResponseCache&& a)
+        : mapCache      (8)
+        , nCacheCounter (a.nCacheCounter.load())
+        , nSettings     (std::move(a.nSettings))
+        {
+        }
+
+
+        /** Copy Assignment **/
+        ResponseCache& operator=(const ResponseCache& a)
+        {
+            //mapCache      = LLD::TemplateLRU<encoding::json, encoding::json>(8);
+            nCacheCounter = a.nCacheCounter.load();
+            nSettings     = a.nSettings;
+
+            *this;
+        }
+
+        /** Move Assignment **/
+        ResponseCache& operator=(ResponseCache&& a)
+        {
+            //mapCache      = LLD::TemplateLRU<encoding::json, encoding::json>(8);
+            nCacheCounter = a.nCacheCounter.load();
+            nSettings     = std::move(a.nSettings);
+
+            *this;
+        }
 
         /** Default Destructor. **/
         ~ResponseCache()
@@ -92,6 +122,10 @@ namespace TAO::API
          **/
         bool Get(const encoding::json& jParams, encoding::json &jRet)
         {
+            /* Check if caching is disabled. */
+            if(!(nSettings & CACHING))
+                return false;
+
             /* Check if we need to refresh our cache. */
             if(refresh_cache())
                 return false;
@@ -101,8 +135,8 @@ namespace TAO::API
             for(const auto& jCachedParams : vParams)
             {
                 /* Check that we don't have any additional parameters here. */
-                if(jCachedParams.size() != jParams.size())
-                    continue;
+                //if(jCachedParams.size() != jParams.size())
+                //    continue;
 
                 /* Check our types match here. */
                 if(CheckRequest(jCachedParams, "type", "string, array"))
@@ -119,7 +153,7 @@ namespace TAO::API
                 for(const auto& jCached : jCachedParams.items())
                 {
                     /* Skip over paging information. */
-                    if(jCached.key() == "page" || jCached.key() == "limit" || jCached.key() == "offset")
+                    if(jCached.key() == "page" || jCached.key() == "limit" || jCached.key() == "offset" || jCached.key() == "where")
                         continue;
 
                     /* Skip over other required fields. */
@@ -161,6 +195,10 @@ namespace TAO::API
          **/
         void Insert(const encoding::json& jParams, const encoding::json& jCache)
         {
+            /* Check if caching is disabled. */
+            if(!(nSettings & CACHING))
+                return;
+
             /* Make sure our cache is up to date. */
             refresh_cache();
 
@@ -179,7 +217,7 @@ namespace TAO::API
         {
             /* First check that our cache is current. */
             bool fCacheRefresh = false;
-            if(nSettings & SETTINGS::CHAIN)
+            if(nSettings & CHAIN)
             {
                 /* Check our counter against chain states with this setting. */
                 if(nCacheChain.load() != nCacheCounter.load())

@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/exception.h>
 
 #include <TAO/API/include/check.h>
+#include <TAO/API/include/filter.h>
 
 #include <TAO/Register/types/object.h>
 
@@ -117,9 +118,84 @@ namespace TAO::API
         /* Execute the function map if method is found. */
         if(mapFunctions.find(strMethod) != mapFunctions.end())
         {
-            /* Get the result of command. */
-            const encoding::json& jResults =
-                mapFunctions[strMethod].Execute(jParams, fHelp);
+            /* Get a reference of our function. */
+            Function& xFunction =
+                mapFunctions[strMethod];
+
+            /* Check if we need to do anything for our function enum's. */
+            const uint8_t nSettings =
+                xFunction.oCache.nSettings;
+
+            /* Check if we may have some caches available or execute the function. */
+            encoding::json jResults;
+            if(nSettings & SETTINGS::CACHING)
+            {
+                /* Check if we can get it in a cache. */
+                if(!xFunction.oCache.Get(jParams, jResults))
+                {
+                    /* Execute our function so we can have an up to date cache. */
+                    jResults =
+                        xFunction.Execute(jParams, fHelp);
+
+                    /* Now insert it into our cache. */
+                    xFunction.oCache.Insert(jParams, jResults);
+                }
+            }
+            else
+                jResults = xFunction.Execute(jParams, fHelp);
+
+            /* Check our settings for queries and filters. */
+            if(nSettings & SETTINGS::QUERY || nSettings & SETTINGS::FILTER)
+            {
+                /* Compute all of our results. */
+                encoding::json jProcessed = encoding::json::array();
+                for(auto& jItem : jResults)
+                {
+                    /* Check that we match our filters. */
+                    if((nSettings & SETTINGS::QUERY) && !FilterResults(jParams, jItem))
+                        continue;
+
+                    /* Check that we match our filters. */
+                    if((nSettings & SETTINGS::FILTER) && !FilterFieldname(jParams, jItem))
+                        continue;
+
+                    /* Add the item to our new array. */
+                    jProcessed.emplace_back(std::move(jItem));
+                }
+
+                /* Now copy this back. */
+                jResults = std::move(jProcessed);
+            }
+
+            /* Check our settings for paging. */
+            if(nSettings & SETTINGS::PAGING)
+            {
+                /* Build our results object. */
+                encoding::json jPage =
+                    encoding::json::array();
+
+                /* Number of results to return. */
+                uint32_t nLimit = 100, nOffset = 0;
+                ExtractList(jParams, nLimit, nOffset);
+
+                /* Handle paging and offsets. */
+                uint32_t nTotal = 0;
+                for(const auto& jItem : jResults)
+                {
+                    /* Check the offset. */
+                    if(++nTotal <= nOffset)
+                        continue;
+
+                    /* Check the limit */
+                    if(jPage.size() == nLimit)
+                        break;
+
+                    jPage.push_back(jItem);
+                }
+
+                /* Move our new json object to results. */
+                jResults = std::move(jPage);
+            }
 
             /* Check for operator. */
             if(CheckRequest(jParams, "operator", "string, array"))
