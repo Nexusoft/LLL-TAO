@@ -37,7 +37,13 @@ ________________________________________________________________________________
 
 namespace TAO::API
 {
+    /* Global value to tell cache to refresh state. */
+    std::atomic<uint32_t> nCacheChain;
+    std::atomic<uint32_t> nCacheRegister;
+
+    /* Global value to hold the command-set function pointers. */
     std::map<std::string, Base*> Commands::mapTypes;
+
 
     /*  Instantiate global instances of the API. */
     void Initialize()

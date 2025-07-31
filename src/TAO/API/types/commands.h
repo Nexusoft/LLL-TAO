@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/base.h>
 
+#include <map>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {

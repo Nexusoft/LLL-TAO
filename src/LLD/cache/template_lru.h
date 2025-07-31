@@ -200,6 +200,54 @@ namespace LLD
         }
 
 
+        /** Keys
+         *
+         *  Get a list of all the keys in the container.
+         *
+         *  @return All the keys currently in the container.
+         *
+         **/
+        const std::vector<KeyType>& Keys() const
+        {
+            LOCK(MUTEX);
+
+            /* Loop all elements in the container. */
+            std::vector<KeyType> vRet;
+            for(auto & item : cache)
+                vRet.push_back(item.first);
+
+            return vRet;
+        }
+
+        /** Clear
+         *
+         *  Clear all elements out of the container.
+         *
+         **/
+        void Clear()
+        {
+            LOCK(MUTEX);
+
+            /* Loop through the linked list. */
+            for(auto& item : cache)
+            {
+                /* Delete pointers if they are not null. */
+                if(item.second)
+                {
+                    delete item.second;
+                    item.second = nullptr;
+                }
+            }
+
+            /* Clear the cache map. */
+            cache.clear();
+
+            /* Reset our pointers. */
+            pfirst = nullptr;
+            plast  = nullptr;
+        }
+
+
         /** Get
          *
          *  Get the data by index

@@ -17,7 +17,6 @@ ________________________________________________________________________________
 #include <TAO/API/types/standard.h>
 #include <TAO/API/types/operator.h>
 #include <TAO/API/types/exception.h>
-#include <TAO/API/types/cache.h>
 
 #include <TAO/Operation/types/contract.h>
 
@@ -65,10 +64,6 @@ namespace TAO::API
 
         /** Map of standard nouns to check for standard object types. **/
         std::map<std::string, Operator>  mapOperators;
-
-
-        /** Local cache of our recent requests. */
-        ResponseCache tResponseCache;
 
 
     public:

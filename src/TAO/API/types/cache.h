@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #pragma once
 
-#include <TAO/Ledger/include/chainstate.h>
+#include <LLD/cache/template_lru.h>
 
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/extract.h>
@@ -27,6 +27,10 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
+    /** Global value to tell cache systems to refresh state. **/
+    extern std::atomic<uint32_t> nCacheChain;
+    extern std::atomic<uint32_t> nCacheRegister;
+
     /** ResponseCache
      *
      *  Class to track cached API requests so that we can page and cache them if asked for repeatedly and chain state remains unchanged.
@@ -34,19 +38,37 @@ namespace TAO::API
      **/
     class ResponseCache
     {
-        /** The function pointer to be called. */
-        std::map<std::string, std::vector<std::pair<encoding::json, encoding::json>>> mapCache;
 
-        /** Track our current block versus our current block cache. **/
-        uint1024_t hashLastBlock;
+        /** The function pointer to be called. */
+        LLD::TemplateLRU<encoding::json, encoding::json> mapCache;
+
+
+        /** Track if our cache has been refreshed. **/
+        std::atomic<uint32_t> nCacheCounter;
 
     public:
 
 
+        /** Enum to handle page caching. */
+        enum SETTINGS: uint8_t
+        {
+            MANUAL = (1 << 1), //a static request with no lists to manage or self managed request
+            PAGING = (1 << 2), //a list where we want to page the results
+            FILTER = (1 << 3), //if we want to apply filters to our results
+            QUERY  = (1 << 4), //if we want to allow queries to our results
+            CHAIN  = (1 << 5)  //reset cache from chain updates
+        };
+
+
+        /** Track our internal settings inhereted from function. **/
+        uint8_t nSettings;
+
+
         /** Default Constructor. **/
-        ResponseCache()
-        : mapCache      ( )
-        , hashLastBlock (0)
+        ResponseCache   (const uint8_t nSettingsIn = 0, const uint32_t nMaxItems = 8)
+        : mapCache      (nMaxItems)
+        , nCacheCounter (0)
+        , nSettings     (nSettingsIn)
         {
         }
 
@@ -54,7 +76,6 @@ namespace TAO::API
         /** Default Destructor. **/
         ~ResponseCache()
         {
-            mapCache.clear();
         }
 
 
@@ -69,31 +90,16 @@ namespace TAO::API
          *  @return true if cache was found, false if it was not
          *
          **/
-        bool Get(const std::string& strCommand, const encoding::json& jParams, encoding::json &jRet)
+        bool Get(const encoding::json& jParams, encoding::json &jRet)
         {
-            /* First check that our cache is current. */
-            if(hashLastBlock != TAO::Ledger::ChainState::hashBestChain.load())
-            {
-                /* Set our last block in our cache object. */
-                hashLastBlock = TAO::Ledger::ChainState::hashBestChain.load();
-
-                /* Clear our current cache on new block. */
-                mapCache.clear();
-
-                return false;
-            }
-
-            /* Check if we have this in our current cache. */
-            if(!mapCache.count(strCommand))
+            /* Check if we need to refresh our cache. */
+            if(refresh_cache())
                 return false;
 
             /* Check the list of all of our available caches for this command. */
-            const std::vector<std::pair<encoding::json, encoding::json>> vItems = mapCache[strCommand];
-            for(const auto& tItem : vItems)
+            const std::vector<encoding::json> vParams = mapCache.Keys();
+            for(const auto& jCachedParams : vParams)
             {
-                /* Grab a copy of our cache parameters. */
-                const encoding::json jCachedParams = tItem.first;
-
                 /* Check that we don't have any additional parameters here. */
                 if(jCachedParams.size() != jParams.size())
                     continue;
@@ -137,10 +143,7 @@ namespace TAO::API
 
                 /* Track if we have found our cache object. */
                 if(fFound)
-                {
-                    jRet = tItem.second;
-                    return true;
-                }
+                    return mapCache.Get(jCachedParams, jRet);
             }
 
             return false;
@@ -156,14 +159,57 @@ namespace TAO::API
          *  @param[in] jCache The cached request data to push
          *
          **/
-        void Insert(const std::string& strCommand, const encoding::json& jParams, const encoding::json& jCache)
+        void Insert(const encoding::json& jParams, const encoding::json& jCache)
         {
-            /* Check if we push to the vector. */
-            if(!mapCache.count(strCommand))
-                mapCache[strCommand] = std::vector<std::pair<encoding::json, encoding::json>>();
+            /* Make sure our cache is up to date. */
+            refresh_cache();
 
-            /* Push the data to the back of the vector. */
-            mapCache[strCommand].push_back(std::make_pair(jParams, jCache));
+            /* Add to our LRU cache. */
+            mapCache.Put(jParams, jCache);
+        }
+
+    private:
+
+        /** refresh_cache
+         *
+         *  Local helper function to check if the cache needs to be refreshed.
+         *
+         **/
+        bool refresh_cache()
+        {
+            /* First check that our cache is current. */
+            bool fCacheRefresh = false;
+            if(nSettings & SETTINGS::CHAIN)
+            {
+                /* Check our counter against chain states with this setting. */
+                if(nCacheChain.load() != nCacheCounter.load())
+                {
+                    /* Set that our height has been reached. */
+                    nCacheCounter.store(nCacheChain.load());
+                    fCacheRefresh = true;
+                }
+            }
+            else
+            {
+                /* Check our counter against chain states with this setting. */
+                if(nCacheRegister.load() != nCacheCounter.load())
+                {
+                    /* Set that our height has been reached. */
+                    nCacheCounter.store(nCacheRegister.load());
+                    fCacheRefresh = true;
+                }
+            }
+
+            /* Wipe our cache if the state needs to update. */
+            if(fCacheRefresh)
+            {
+                /* Clear our map cache LRU. */
+                mapCache.Clear();
+
+                return true;
+            }
+
+            return false;
         }
     };
 }

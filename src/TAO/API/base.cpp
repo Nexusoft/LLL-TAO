@@ -30,7 +30,6 @@ namespace TAO::API
     , mapFunctions  ( )
     , mapStandards  ( )
     , mapOperators  ( )
-    , tResponseCache ( )
     {
     }
 
@@ -118,14 +117,6 @@ namespace TAO::API
         /* Execute the function map if method is found. */
         if(mapFunctions.find(strMethod) != mapFunctions.end())
         {
-            /* Set our requesting method in our request key. */
-            jParams["request"]["command"] = strMethod; //we use request key so we can store new cache for this request
-
-            /* Check if we have a cache available. */
-            encoding::json jCache;
-            if(tResponseCache.Get(strMethod, jParams, jCache))
-                jParams["request"]["cache"] = jCache;
-
             /* Get the result of command. */
             const encoding::json& jResults =
                 mapFunctions[strMethod].Execute(jParams, fHelp);
