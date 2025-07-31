@@ -86,7 +86,7 @@ namespace TAO::API
         /** Copy Assignment **/
         ResponseCache& operator=(const ResponseCache& a)
         {
-            //mapCache      = LLD::TemplateLRU<encoding::json, encoding::json>(8);
+            mapCache      = a.mapCache;
             nCacheCounter = a.nCacheCounter.load();
             nSettings     = a.nSettings;
 
@@ -96,7 +96,7 @@ namespace TAO::API
         /** Move Assignment **/
         ResponseCache& operator=(ResponseCache&& a)
         {
-            //mapCache      = LLD::TemplateLRU<encoding::json, encoding::json>(8);
+            mapCache      = std::move(a.mapCache);
             nCacheCounter = a.nCacheCounter.load();
             nSettings     = std::move(a.nSettings);
 
