@@ -30,150 +30,138 @@ namespace TAO::API
     /* Returns an object containing mining-related information. */
     encoding::json Ledger::GetInfo(const encoding::json& jParams, const bool fHelp)
     {
-        static std::pair<uint1024_t, encoding::json> jCache = std::make_pair(0, encoding::json());
-
         /* Update cache on best block. */
         encoding::json jRet;
-        if(jCache.first != TAO::Ledger::ChainState::hashBestChain.load())
+
+        /* Populate the main block production channels. */
+        jRet["stake"]  = ChannelToJSON(0);
+        jRet["prime"] = ChannelToJSON(1);
+        jRet[ "hash"]  = ChannelToJSON(2);
+
+        /* Grab our best block. */
+        const TAO::Ledger::BlockState tBestBlock =
+            TAO::Ledger::ChainState::tStateBest.load();
+
+        /* We only need supply data when on a public network or testnet, private and hybrid do not have supply. */
+        if(!config::fHybrid.load())
         {
-            /* Populate the main block production channels. */
-            jRet["stake"]  = ChannelToJSON(0);
-            jRet["prime"] = ChannelToJSON(1);
-            jRet[ "hash"]  = ChannelToJSON(2);
+            /* We need to gate keep our emmission rates cache. */
+            static std::mutex MUTEX;
 
-            /* Grab our best block. */
-            const TAO::Ledger::BlockState tBestBlock =
-                TAO::Ledger::ChainState::tStateBest.load();
+            /* Add supply metrics */
+            encoding::json jSupply;
 
-            /* We only need supply data when on a public network or testnet, private and hybrid do not have supply. */
-            if(!config::fHybrid.load())
+            /* Read the tStateBest using hashBestChain */
+            TAO::Ledger::BlockState tStateBest;
+            if(!LLD::Ledger->ReadBlock(TAO::Ledger::ChainState::hashBestChain.load(), tStateBest))
+                return std::string("Block not found");
+
+            /* Get our chain age. */
+            const uint32_t nMinutes =
+                TAO::Ledger::GetChainAge(tStateBest.GetBlockTime());
+
+            /* Get our total supply and target supply. */
+            const int64_t nSupply   = tStateBest.nMoneySupply;
+            const int64_t nTarget   = TAO::Ledger::CompoundSubsidy(nMinutes);
+
+            /* Calculate the number of years it has been since start of chain. */
+            double nYears   = (nMinutes / 525960.0); //525960 is 1440 * 365.25 for minutes in a year
+            double nYearly = (nSupply - nTarget) / nYears;
+
+            /* Calculate inflation rate by comparing yearly emmission rates to total supply. */
+            const uint64_t nInflation =
+                (nYearly * TAO::Ledger::NXS_COIN) / nSupply; //we use NXS_COIN to get 4 significant figures
+
+            /* Add this data to our supply json. */
+            jSupply["total"]     = double(nSupply) / TAO::Ledger::NXS_COIN;
+            jSupply["burned"]    = double(tStateBest.nFeesBurned) / TAO::Ledger::NXS_COIN;
+            jSupply["target"]    = double(nTarget) / TAO::Ledger::NXS_COIN;
+            jSupply["inflation"] = double(nInflation * 100) / TAO::Ledger::NXS_COIN; //100 counts as 2 of 6 figures in NXS_COIN
+
             {
-                /* We need to gate keep our emmission rates cache. */
-                static std::mutex MUTEX;
+                LOCK(MUTEX);
 
-                /* Add supply metrics */
-                encoding::json jSupply;
+                /* Apply the mining emmission rates from subsidy calculations. */
+                static std::array<uint64_t, 5> aCache = {TAO::Ledger::SubsidyInterval(nMinutes, 1)
+                                                        ,TAO::Ledger::SubsidyInterval(nMinutes, 60)
+                                                        ,TAO::Ledger::SubsidyInterval(nMinutes, 1440)
+                                                        ,TAO::Ledger::SubsidyInterval(nMinutes, 10080)
+                                                        ,TAO::Ledger::SubsidyInterval(nMinutes, 40320)};
 
-                /* Read the tStateBest using hashBestChain */
-                TAO::Ledger::BlockState tStateBest;
-                if(!LLD::Ledger->ReadBlock(TAO::Ledger::ChainState::hashBestChain.load(), tStateBest))
-                    return std::string("Block not found");
+                /* We use this value to trigger recalculating. */
+                static uint32_t nMinutesCache = nMinutes;
 
-                /* Get our chain age. */
-                const uint32_t nMinutes =
-                    TAO::Ledger::GetChainAge(tStateBest.GetBlockTime());
-
-                /* Get our total supply and target supply. */
-                const int64_t nSupply   = tStateBest.nMoneySupply;
-                const int64_t nTarget   = TAO::Ledger::CompoundSubsidy(nMinutes);
-
-                /* Calculate the number of years it has been since start of chain. */
-                double nYears   = (nMinutes / 525960.0); //525960 is 1440 * 365.25 for minutes in a year
-                double nYearly = (nSupply - nTarget) / nYears;
-
-                /* Calculate inflation rate by comparing yearly emmission rates to total supply. */
-                const uint64_t nInflation =
-                    (nYearly * TAO::Ledger::NXS_COIN) / nSupply; //we use NXS_COIN to get 4 significant figures
-
-                /* Add this data to our supply json. */
-                jSupply["total"]     = double(nSupply) / TAO::Ledger::NXS_COIN;
-                jSupply["burned"]    = double(tStateBest.nFeesBurned) / TAO::Ledger::NXS_COIN;
-                jSupply["target"]    = double(nTarget) / TAO::Ledger::NXS_COIN;
-                jSupply["inflation"] = double(nInflation * 100) / TAO::Ledger::NXS_COIN; //100 counts as 2 of 6 figures in NXS_COIN
-
+                /* We do some quick math to calculate subsidy difference. */
+                if(nMinutesCache < nMinutes)
                 {
-                    LOCK(MUTEX);
+                    /* Get the difference. */
+                    const uint32_t nElapsed =
+                        (nMinutes - nMinutesCache);
 
-                    /* Apply the mining emmission rates from subsidy calculations. */
-                    static std::array<uint64_t, 5> aCache = {TAO::Ledger::SubsidyInterval(nMinutes, 1)
-                                                            ,TAO::Ledger::SubsidyInterval(nMinutes, 60)
-                                                            ,TAO::Ledger::SubsidyInterval(nMinutes, 1440)
-                                                            ,TAO::Ledger::SubsidyInterval(nMinutes, 10080)
-                                                            ,TAO::Ledger::SubsidyInterval(nMinutes, 40320)};
+                    /* We then add the new values on. */
+                    aCache[0] = TAO::Ledger::SubsidyInterval(nMinutes, 1); //we can ignore this one
 
-                    /* We use this value to trigger recalculating. */
-                    static uint32_t nMinutesCache = nMinutes;
-
-                    /* We do some quick math to calculate subsidy difference. */
-                    if(nMinutesCache < nMinutes)
+                    /* If we have elapsed interval, re-calculate the cache. */
+                    if(nElapsed > 60)
+                        aCache[1] = TAO::Ledger::SubsidyInterval(nMinutes, 60);
+                    else
                     {
-                        /* Get the difference. */
-                        const uint32_t nElapsed =
-                            (nMinutes - nMinutesCache);
-
-                        /* We then add the new values on. */
-                        aCache[0] = TAO::Ledger::SubsidyInterval(nMinutes, 1); //we can ignore this one
-
-                        /* If we have elapsed interval, re-calculate the cache. */
-                        if(nElapsed > 60)
-                            aCache[1] = TAO::Ledger::SubsidyInterval(nMinutes, 60);
-                        else
-                        {
-                            /* First we reduce by the previous time elapsed, then add the difference. */
-                            aCache[1] -= TAO::Ledger::SubsidyInterval(nMinutesCache, nElapsed);
-                            aCache[1] += TAO::Ledger::SubsidyInterval(nMinutesCache + 60, nElapsed);
-                        }
-
-                        /* If we have elapsed interval, re-calculate the cache. */
-                        if(nElapsed > 1440)
-                            aCache[2] = TAO::Ledger::SubsidyInterval(nMinutes, 1440);
-                        else
-                        {
-                            /* First we reduce by the previous time elapsed, then add the difference. */
-                            aCache[2] -= TAO::Ledger::SubsidyInterval(nMinutesCache, nElapsed);
-                            aCache[2] += TAO::Ledger::SubsidyInterval(nMinutesCache + 1440, nElapsed);
-                        }
-
-                        /* If we have elapsed interval, re-calculate the cache. */
-                        if(nElapsed > 10080)
-                            aCache[3] = TAO::Ledger::SubsidyInterval(nMinutes, 10080);
-                        else
-                        {
-                            /* First we reduce by the previous time elapsed, then add the difference. */
-                            aCache[3] -= TAO::Ledger::SubsidyInterval(nMinutesCache, nElapsed);
-                            aCache[3] += TAO::Ledger::SubsidyInterval(nMinutesCache + 10080, nElapsed);
-                        }
-
-                        /* If we have elapsed interval, re-calculate the cache. */
-                        if(nElapsed > 40320)
-                            aCache[4] = TAO::Ledger::SubsidyInterval(nMinutes, 40320);
-                        else
-                        {
-                            /* First we reduce by the previous time elapsed, then add the difference. */
-                            aCache[4] -= TAO::Ledger::SubsidyInterval(nMinutesCache, nElapsed);
-                            aCache[4] += TAO::Ledger::SubsidyInterval(nMinutesCache + 40320, nElapsed);
-                        }
-
-                        /* Set our minutes cache now. */
-                        nMinutesCache = nMinutes;
+                        /* First we reduce by the previous time elapsed, then add the difference. */
+                        aCache[1] -= TAO::Ledger::SubsidyInterval(nMinutesCache, nElapsed);
+                        aCache[1] += TAO::Ledger::SubsidyInterval(nMinutesCache + 60, nElapsed);
                     }
 
-                    /* Now we populate our values. */
-                    jSupply["minute"] = double(aCache[0]) / TAO::Ledger::NXS_COIN; //1
-                    jSupply["hour"]   = double(aCache[1]) / TAO::Ledger::NXS_COIN; //60
-                    jSupply["day"]    = double(aCache[2]) / TAO::Ledger::NXS_COIN; //1440
-                    jSupply["week"]   = double(aCache[3]) / TAO::Ledger::NXS_COIN;//10080
-                    jSupply["month"]  = double(aCache[4]) / TAO::Ledger::NXS_COIN; //40320
+                    /* If we have elapsed interval, re-calculate the cache. */
+                    if(nElapsed > 1440)
+                        aCache[2] = TAO::Ledger::SubsidyInterval(nMinutes, 1440);
+                    else
+                    {
+                        /* First we reduce by the previous time elapsed, then add the difference. */
+                        aCache[2] -= TAO::Ledger::SubsidyInterval(nMinutesCache, nElapsed);
+                        aCache[2] += TAO::Ledger::SubsidyInterval(nMinutesCache + 1440, nElapsed);
+                    }
+
+                    /* If we have elapsed interval, re-calculate the cache. */
+                    if(nElapsed > 10080)
+                        aCache[3] = TAO::Ledger::SubsidyInterval(nMinutes, 10080);
+                    else
+                    {
+                        /* First we reduce by the previous time elapsed, then add the difference. */
+                        aCache[3] -= TAO::Ledger::SubsidyInterval(nMinutesCache, nElapsed);
+                        aCache[3] += TAO::Ledger::SubsidyInterval(nMinutesCache + 10080, nElapsed);
+                    }
+
+                    /* If we have elapsed interval, re-calculate the cache. */
+                    if(nElapsed > 40320)
+                        aCache[4] = TAO::Ledger::SubsidyInterval(nMinutes, 40320);
+                    else
+                    {
+                        /* First we reduce by the previous time elapsed, then add the difference. */
+                        aCache[4] -= TAO::Ledger::SubsidyInterval(nMinutesCache, nElapsed);
+                        aCache[4] += TAO::Ledger::SubsidyInterval(nMinutesCache + 40320, nElapsed);
+                    }
+
+                    /* Set our minutes cache now. */
+                    nMinutesCache = nMinutes;
                 }
 
-                /* Add our supply data to ledger/get/info. */
-                jRet["supply"]    = jSupply;
+                /* Now we populate our values. */
+                jSupply["minute"] = double(aCache[0]) / TAO::Ledger::NXS_COIN; //1
+                jSupply["hour"]   = double(aCache[1]) / TAO::Ledger::NXS_COIN; //60
+                jSupply["day"]    = double(aCache[2]) / TAO::Ledger::NXS_COIN; //1440
+                jSupply["week"]   = double(aCache[3]) / TAO::Ledger::NXS_COIN;//10080
+                jSupply["month"]  = double(aCache[4]) / TAO::Ledger::NXS_COIN; //40320
             }
 
-
-            /* Add chain-state data. */
-            jRet["height"]     = tBestBlock.nHeight;
-            jRet["timestamp"]  = tBestBlock.GetBlockTime();
-            jRet["checkpoint"] = tBestBlock.hashCheckpoint.GetHex();
-
-            jCache.first  = TAO::Ledger::ChainState::hashBestChain.load();
-            jCache.second = jRet;
+            /* Add our supply data to ledger/get/info. */
+            jRet["supply"]    = jSupply;
         }
-        else
-            jRet = jCache.second;
 
-        /* Filter our fieldname. */
-        FilterFieldname(jParams, jRet);
+
+        /* Add chain-state data. */
+        jRet["height"]     = tBestBlock.nHeight;
+        jRet["timestamp"]  = tBestBlock.GetBlockTime();
+        jRet["checkpoint"] = tBestBlock.hashCheckpoint.GetHex();
 
         return jRet;
     }

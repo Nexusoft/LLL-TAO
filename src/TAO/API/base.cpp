@@ -123,7 +123,7 @@ namespace TAO::API
 
             /* Get a reference of our function. */
             Function& xFunction =
-                mapFunctions[strMethod];
+                std::ref(mapFunctions[strMethod]);
 
             /* Check if we need to do anything for our function enum's. */
             const uint8_t nSettings =
@@ -143,6 +143,8 @@ namespace TAO::API
                     /* Now insert it into our cache. */
                     xFunction.oCache.Insert(jParams, jResults);
                 }
+                else
+                    debug::notice("Using CACHE for ", strMethod, " of size ", jResults.size());
             }
             else
                 jResults = xFunction.Execute(jParams, fHelp);
@@ -150,74 +152,88 @@ namespace TAO::API
             /* Check our settings for queries and filters. */
             if(nSettings & SETTINGS::QUERY || nSettings & SETTINGS::FILTER)
             {
-                /* Compute all of our results. */
-                encoding::json jProcessed = encoding::json::array();
-                for(auto& jItem : jResults)
+                /* Check if we need to filter on an array. */
+                if(jResults.is_array())
                 {
-                    /* Check that we match our filters. */
-                    if((nSettings & SETTINGS::QUERY) && !FilterResults(jParams, jItem))
-                        continue;
+                    /* Compute all of our results. */
+                    encoding::json jProcessed = encoding::json::array();
+                    for(auto& jItem : jResults)
+                    {
+                        /* Check that we match our filters. */
+                        if((nSettings & SETTINGS::QUERY) && !FilterResults(jParams, jItem))
+                            continue;
 
-                    /* Check that we match our filters. */
-                    if((nSettings & SETTINGS::FILTER) && !FilterFieldname(jParams, jItem))
-                        continue;
+                        /* Check that we match our filters. */
+                        if((nSettings & SETTINGS::FILTER) && !FilterFieldname(jParams, jItem))
+                            continue;
 
-                    /* Add the item to our new array. */
-                    jProcessed.emplace_back(std::move(jItem));
+                        /* Add the item to our new array. */
+                        jProcessed.emplace_back(std::move(jItem));
+                    }
+
+                    /* Now copy this back. */
+                    jResults = std::move(jProcessed);
                 }
-
-                /* Now copy this back. */
-                jResults = std::move(jProcessed);
+                else
+                {
+                    /* This will be a filter for a single item cache. */
+                    if(nSettings & SETTINGS::FILTER)
+                        FilterFieldname(jParams, jResults);
+                }
             }
 
             /* Check our settings for paging. */
             if(nSettings & SETTINGS::PAGING)
             {
-                /* Build our results object. */
-                encoding::json jPage =
-                    encoding::json::array();
-
-                /* Number of results to return. */
-                uint32_t nLimit = 100, nOffset = 0;
-                ExtractList(jParams, nLimit, nOffset);
-
-                /* Handle paging and offsets. */
-                uint32_t nTotal = 0;
-
-                /* Handle if we need to reverse iterate the container. */
-                if(fReversed)
+                /* We only page results that are in an array. */
+                if(jResults.is_array())
                 {
-                    for(auto jItem = jResults.rbegin(); jItem != jResults.rend(); ++jItem)
+                    /* Build our results object. */
+                    encoding::json jPage =
+                        encoding::json::array();
+
+                    /* Number of results to return. */
+                    uint32_t nLimit = 100, nOffset = 0;
+                    ExtractList(jParams, nLimit, nOffset);
+
+                    /* Handle paging and offsets. */
+                    uint32_t nTotal = 0;
+
+                    /* Handle if we need to reverse iterate the container. */
+                    if(fReversed)
                     {
-                        /* Check the offset. */
-                        if(++nTotal <= nOffset)
-                            continue;
+                        for(auto jItem = jResults.rbegin(); jItem != jResults.rend(); ++jItem)
+                        {
+                            /* Check the offset. */
+                            if(++nTotal <= nOffset)
+                                continue;
 
-                        /* Check the limit */
-                        if(jPage.size() == nLimit)
-                            break;
+                            /* Check the limit */
+                            if(jPage.size() == nLimit)
+                                break;
 
-                        jPage.push_back(*jItem);
+                            jPage.push_back(*jItem);
+                        }
                     }
-                }
-                else
-                {
-                    for(const auto& jItem : jResults)
+                    else
                     {
-                        /* Check the offset. */
-                        if(++nTotal <= nOffset)
-                            continue;
+                        for(const auto& jItem : jResults)
+                        {
+                            /* Check the offset. */
+                            if(++nTotal <= nOffset)
+                                continue;
 
-                        /* Check the limit */
-                        if(jPage.size() == nLimit)
-                            break;
+                            /* Check the limit */
+                            if(jPage.size() == nLimit)
+                                break;
 
-                        jPage.push_back(jItem);
+                            jPage.push_back(jItem);
+                        }
                     }
-                }
 
-                /* Move our new json object to results. */
-                jResults = std::move(jPage);
+                    /* Move our new json object to results. */
+                    jResults = std::move(jPage);
+                }
             }
 
             /* Check for operator. */

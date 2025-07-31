@@ -234,7 +234,7 @@ namespace LLD
          *  @return All the keys currently in the container.
          *
          **/
-        const std::vector<KeyType>& Keys() const
+        const std::vector<KeyType> Keys() const
         {
             LOCK(MUTEX);
 

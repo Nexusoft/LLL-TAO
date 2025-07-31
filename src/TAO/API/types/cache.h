@@ -56,6 +56,9 @@ namespace TAO::API
         uint8_t nSettings;
 
 
+        ResponseCache() = delete;
+
+
         /** Default Constructor. **/
         ResponseCache   (const uint8_t nSettingsIn = 0, const uint32_t nMaxItems = 8)
         : mapCache      (nMaxItems)
@@ -67,7 +70,7 @@ namespace TAO::API
 
         /** Copy Constructor. **/
         ResponseCache(const ResponseCache& a)
-        : mapCache      (8)
+        : mapCache      (a.mapCache)
         , nCacheCounter (a.nCacheCounter.load())
         , nSettings     (a.nSettings)
         {
@@ -76,7 +79,7 @@ namespace TAO::API
 
         /** Move Constructor. **/
         ResponseCache(ResponseCache&& a)
-        : mapCache      (8)
+        : mapCache      (std::move(a.mapCache))
         , nCacheCounter (a.nCacheCounter.load())
         , nSettings     (std::move(a.nSettings))
         {
@@ -90,7 +93,7 @@ namespace TAO::API
             nCacheCounter = a.nCacheCounter.load();
             nSettings     = a.nSettings;
 
-            *this;
+            return *this;
         }
 
         /** Move Assignment **/
@@ -100,7 +103,7 @@ namespace TAO::API
             nCacheCounter = a.nCacheCounter.load();
             nSettings     = std::move(a.nSettings);
 
-            *this;
+            return *this;
         }
 
         /** Default Destructor. **/

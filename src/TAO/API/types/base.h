@@ -39,6 +39,8 @@ namespace TAO::API
      **/
     class Base
     {
+    protected:
+        
         /* Simple enum for readability. */
         enum URI : uint8_t
         {
@@ -58,7 +60,6 @@ namespace TAO::API
             CHAIN    = (1 << 5), //reset cache from chain updates
         };
 
-    protected:
 
         /** Initializer Flag. */
         bool fInitialized;
