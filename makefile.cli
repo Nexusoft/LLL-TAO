@@ -33,7 +33,7 @@ ifeq (${STATIC}, 1)
 	endif
 endif
 
-#Configure for 32/64 Bit and ARM
+#Configure for x86(32BIT)/x64(64BIT) and ARM32/64
 ifndef 32BIT
 	override 32BIT= 0
 
@@ -46,9 +46,9 @@ else ifeq (${ARM64}, 1)
         BUILD_ARCH=aarch64
         CXXFLAGS+= -march=native -mtune=native
 
-else ifeq ($(shell uname -m),armv7l)
+else ifeq (${ARM32}, 1)
         BUILD_ARCH=arm
-
+	CXXFLAGS+= -march=native -mtune=native
 else
 	BUILD_ARCH=x64
 	CXXFLAGS+= -m64
