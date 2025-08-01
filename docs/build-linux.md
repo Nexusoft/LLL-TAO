@@ -81,7 +81,7 @@ processnotifications=1
 cd ~/.Nexus/
 
 # Download the bootstrap.  This will be 5GB or larger, so might take some time depending on your connection
-wget https://nexus.io/bootstrap/tritium/tritium.tar.gz
+wget http://bootstrap.nexus.io/tritium.tar.gz
 
 # Untar it
 tar -xvf tritium.tar.gz
