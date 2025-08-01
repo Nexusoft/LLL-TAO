@@ -26,6 +26,10 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
+    /** Global value to tell cache systems to refresh state. **/
+    extern std::atomic<uint32_t> nBlockCounter;
+    extern std::atomic<uint32_t> nTransactionCounter;
+
     /** Function
      *
      *  Base class for all JSON based API methods
@@ -132,17 +136,19 @@ namespace TAO::API
          *  An activation timestamp of zero means that command activates with release of update, not at hard fork time.
          *
          *  @param[in] tFunctionIn The function to be executed by this class.
+         *  @param[in] nSettingsIn The function settings that will be automated when function is executed
+         *  @param[in] pExternalCounter A counter object that contains cache related settings.
          *  @param[in] nActivationIn The activating timestamp if this method activates with hard fork. default value of 0.
          *
          **/
-        Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn,
-            const uint8_t nSettingsIn = 0, const uint64_t nActivationIn = 0)
+        Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn, const uint8_t nSettingsIn = 0,
+                 const std::atomic<uint32_t>* pExternalCounterIn = &nTransactionCounter, const uint64_t nActivationIn = 0)
         : tFunction   (tFunctionIn)
         , nActivation (nActivationIn) //default: zero denotes there is no activation switch
         , nMaxVersion (0)
         , strMessage  ( )
         , setNouns    ( )
-        , oCache      (nSettingsIn)
+        , oCache      (pExternalCounterIn, nSettingsIn)
         {
         }
 
@@ -153,17 +159,18 @@ namespace TAO::API
          *  An activation timestamp of zero means that command activates with release of update, not at hard fork time.
          *
          *  @param[in] tFunctionIn The function to be executed by this class.
-         *  @param[in] nActivationIn The activating timestamp if this method activates with hard fork. default value of 0.
+         *  @param[in] nSettingsIn The function settings that will be automated when function is executed
+         *  @param[in] pExternalCounter A counter object that contains cache related settings.
          *
          **/
-        Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn,
-            const std::string& strNouns, const uint8_t nSettingsIn = 0)
+        Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn, const std::string& strNouns,
+                 const uint8_t nSettingsIn = 0, const std::atomic<uint32_t>* pExternalCounterIn = &nTransactionCounter)
         : tFunction   (tFunctionIn)
         , nActivation (0) //default: zero denotes there is no activation switch
         , nMaxVersion (0)
         , strMessage  ( )
         , setNouns    ( )
-        , oCache      (nSettingsIn)
+        , oCache      (pExternalCounterIn, nSettingsIn)
         {
             /* Grab our nouns to add to the set. */
             ParseString(strNouns, ',', setNouns, true); //true to trim spaces
@@ -182,13 +189,13 @@ namespace TAO::API
          **/
         Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn,
                  const uint64_t nActivationIn, const uint32_t nMaxVersionIn, const std::string& strMessageIn,
-                 const uint8_t nSettingsIn = 0)
+                 const uint8_t nSettingsIn = 0, const std::atomic<uint32_t>* pExternalCounterIn = &nTransactionCounter)
         : tFunction   (tFunctionIn)
         , nActivation (nActivationIn)
         , nMaxVersion (nMaxVersionIn)
         , strMessage  (strMessageIn)
         , setNouns    ( )
-        , oCache      (nSettingsIn)
+        , oCache      (pExternalCounterIn, nSettingsIn)
         {
         }
 
@@ -206,13 +213,14 @@ namespace TAO::API
          **/
         Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn,
                  const uint32_t nMaxVersionIn, const std::string& strMessageIn,
-                 const uint8_t nSettingsIn = 0, const uint64_t nActivationIn = 0)
+                 const uint8_t nSettingsIn = 0, const std::atomic<uint32_t>* pExternalCounterIn = &nTransactionCounter,
+                 const uint64_t nActivationIn = 0)
         : tFunction   (tFunctionIn)
         , nActivation (nActivationIn)
         , nMaxVersion (nMaxVersionIn)
         , strMessage  (strMessageIn)
         , setNouns    ( )
-        , oCache      (nSettingsIn)
+        , oCache      (pExternalCounterIn, nSettingsIn)
         {
         }
 

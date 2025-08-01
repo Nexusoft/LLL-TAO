@@ -27,10 +27,6 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /** Global value to tell cache systems to refresh state. **/
-    extern std::atomic<uint32_t> nCacheChain;
-    extern std::atomic<uint32_t> nCacheRegister;
-
     /** ResponseCache
      *
      *  Class to track cached API requests so that we can page and cache them if asked for repeatedly and chain state remains unchanged.
@@ -40,7 +36,7 @@ namespace TAO::API
     {
         /** This just makes our constructors more readable. **/
         static const uint8_t CACHING  = (1 << 1);  //allow caching
-        static const uint8_t CHAIN    = (1 << 5);  //reset cache from chain updates
+
 
         /** The function pointer to be called. */
         LLD::TemplateLRU<encoding::json, encoding::json> mapCache;
@@ -48,6 +44,10 @@ namespace TAO::API
 
         /** Track if our cache has been refreshed. **/
         std::atomic<uint32_t> nCacheCounter;
+
+
+        /** Track a reference of our external counter. */
+        const std::atomic<uint32_t>* pExternalCounter;
 
     public:
 
@@ -60,28 +60,31 @@ namespace TAO::API
 
 
         /** Default Constructor. **/
-        ResponseCache   (const uint8_t nSettingsIn = 0, const uint32_t nMaxItems = 8)
-        : mapCache      (nMaxItems)
-        , nCacheCounter (0)
-        , nSettings     (nSettingsIn)
+        ResponseCache (const std::atomic<uint32_t>* pExternalCounterIn, const uint8_t nSettingsIn = 0, const uint32_t nMaxItems = 8)
+        : mapCache         (nMaxItems)
+        , nCacheCounter    (0)
+        , pExternalCounter (pExternalCounterIn)
+        , nSettings        (nSettingsIn)
         {
         }
 
 
         /** Copy Constructor. **/
         ResponseCache(const ResponseCache& a)
-        : mapCache      (a.mapCache)
-        , nCacheCounter (a.nCacheCounter.load())
-        , nSettings     (a.nSettings)
+        : mapCache         (a.mapCache)
+        , nCacheCounter    (a.nCacheCounter.load())
+        , pExternalCounter (a.pExternalCounter)
+        , nSettings        (a.nSettings)
         {
         }
 
 
         /** Move Constructor. **/
         ResponseCache(ResponseCache&& a)
-        : mapCache      (std::move(a.mapCache))
-        , nCacheCounter (a.nCacheCounter.load())
-        , nSettings     (std::move(a.nSettings))
+        : mapCache         (std::move(a.mapCache))
+        , nCacheCounter    (a.nCacheCounter.load())
+        , pExternalCounter (a.pExternalCounter)
+        , nSettings        (std::move(a.nSettings))
         {
         }
 
@@ -89,9 +92,10 @@ namespace TAO::API
         /** Copy Assignment **/
         ResponseCache& operator=(const ResponseCache& a)
         {
-            mapCache      = a.mapCache;
-            nCacheCounter = a.nCacheCounter.load();
-            nSettings     = a.nSettings;
+            mapCache         = a.mapCache;
+            nCacheCounter    = a.nCacheCounter.load();
+            pExternalCounter = a.pExternalCounter; //we copy the pointer
+            nSettings        = a.nSettings;
 
             return *this;
         }
@@ -99,9 +103,10 @@ namespace TAO::API
         /** Move Assignment **/
         ResponseCache& operator=(ResponseCache&& a)
         {
-            mapCache      = std::move(a.mapCache);
-            nCacheCounter = a.nCacheCounter.load();
-            nSettings     = std::move(a.nSettings);
+            mapCache         = std::move(a.mapCache);
+            nCacheCounter    = a.nCacheCounter.load();
+            pExternalCounter = a.pExternalCounter; //we copy the pointer
+            nSettings        = std::move(a.nSettings);
 
             return *this;
         }
@@ -230,32 +235,16 @@ namespace TAO::API
          **/
         bool refresh_cache()
         {
-            /* First check that our cache is current. */
-            bool fCacheRefresh = false;
-            if(nSettings & CHAIN)
-            {
-                /* Check our counter against chain states with this setting. */
-                if(nCacheChain.load() != nCacheCounter.load())
-                {
-                    /* Set that our height has been reached. */
-                    nCacheCounter.store(nCacheChain.load());
-                    fCacheRefresh = true;
-                }
-            }
-            else
-            {
-                /* Check our counter against chain states with this setting. */
-                if(nCacheRegister.load() != nCacheCounter.load())
-                {
-                    /* Set that our height has been reached. */
-                    nCacheCounter.store(nCacheRegister.load());
-                    fCacheRefresh = true;
-                }
-            }
+            /* Check if caching is disabled. */
+            if(!(nSettings & CACHING))
+                return false; //just an extra paranoid check
 
-            /* Wipe our cache if the state needs to update. */
-            if(fCacheRefresh)
+            /* Check our counter against chain states with this setting. */
+            if(pExternalCounter->load() != nCacheCounter.load())
             {
+                /* Set that our height has been reached. */
+                nCacheCounter.store(pExternalCounter->load());
+
                 /* Clear our map cache LRU. */
                 mapCache.Clear();
 

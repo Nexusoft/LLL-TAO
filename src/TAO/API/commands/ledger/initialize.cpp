@@ -61,7 +61,8 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
-            , SETTINGS::CACHING | SETTINGS::FILTER | SETTINGS::CHAIN
+            , SETTINGS::CACHING | SETTINGS::FILTER
+            , &nBlockCounter
         );
 
         /* Handle for get/metrics. */
@@ -74,7 +75,8 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
-            , SETTINGS::CACHING | SETTINGS::FILTER | SETTINGS::CHAIN
+            , SETTINGS::CACHING | SETTINGS::FILTER
+            , &nBlockCounter
         );
 
         /* Handle for list/blocks. */

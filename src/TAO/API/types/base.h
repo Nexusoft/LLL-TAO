@@ -40,7 +40,7 @@ namespace TAO::API
     class Base
     {
     protected:
-        
+
         /* Simple enum for readability. */
         enum URI : uint8_t
         {
@@ -57,7 +57,6 @@ namespace TAO::API
             PAGING   = (1 << 2), //a list where we want to page the results
             FILTER   = (1 << 3), //if we want to apply filters to our results
             QUERY    = (1 << 4), //if we want to allow queries to our results
-            CHAIN    = (1 << 5), //reset cache from chain updates
         };
 
 

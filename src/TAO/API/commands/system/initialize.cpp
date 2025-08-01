@@ -71,7 +71,8 @@ namespace TAO
                     std::placeholders::_1,
                     std::placeholders::_2
                 )
-                , SETTINGS::CACHING | SETTINGS::FILTER | SETTINGS::CHAIN
+                , SETTINGS::CACHING | SETTINGS::FILTER
+                , &nBlockCounter
             );
 
 

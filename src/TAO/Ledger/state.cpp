@@ -1112,10 +1112,10 @@ namespace TAO
 
                 /* Set our cache to update state. */
                 if(nTotalConnected > 0)
-                    TAO::API::nCacheRegister++;
+                    TAO::API::nTransactionCounter++;
 
                 /* Set our chain cache update now. */
-                TAO::API::nCacheChain.store(nHeight);
+                TAO::API::nBlockCounter.store(nHeight);
 
                 /* Write the best chain pointer. */
                 if(!LLD::Ledger->WriteBestChain(hash))
