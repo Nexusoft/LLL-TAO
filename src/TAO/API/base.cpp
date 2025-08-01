@@ -252,7 +252,7 @@ namespace TAO::API
                             if(jPage.size() == nLimit)
                                 break;
 
-                            jPage.push_back(*jItem);
+                            jPage.emplace_back(*jItem);
                         }
                     }
                     else
@@ -267,12 +267,11 @@ namespace TAO::API
                             if(jPage.size() == nLimit)
                                 break;
 
-                            jPage.push_back(*jItem);
+                            jPage.emplace_back(*jItem);
                         }
                     }
 
-                    /* Move our new json object to results. */
-                    jResults = std::move(jPage);
+                    return jPage;
                 }
             }
 

@@ -114,6 +114,6 @@ namespace TAO::API
     {
         /* Compile our array based on the ordering of our set. */
         for(const auto& jItem : setResults)
-            jRet.push_back(std::move(jItem));
+            jRet.emplace_back(std::move(jItem));
     }
 } // End TAO namespace
