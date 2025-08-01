@@ -28,6 +28,7 @@ namespace TAO::API
 {
     /** Global value to tell cache systems to refresh state. **/
     extern std::atomic<uint32_t> nBlockCounter;
+    extern std::atomic<uint32_t> nRegisterCounter;
     extern std::atomic<uint32_t> nTransactionCounter;
 
     /** Function
@@ -40,6 +41,7 @@ namespace TAO::API
     {
         /** This helps make our default settings cleaner. */
         static const uint8_t FILTER   = (1 << 3);
+
 
         /** The function pointer to be called. */
         std::function<encoding::json(const encoding::json&, bool)> tFunction;
@@ -142,7 +144,7 @@ namespace TAO::API
          *
          **/
         Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn, const uint8_t nSettingsIn = 0,
-                 const std::atomic<uint32_t>* pExternalCounterIn = &nTransactionCounter, const uint64_t nActivationIn = 0)
+                 const std::atomic<uint32_t>* pExternalCounterIn = &nRegisterCounter, const uint64_t nActivationIn = 0)
         : tFunction   (tFunctionIn)
         , nActivation (nActivationIn) //default: zero denotes there is no activation switch
         , nMaxVersion (0)
@@ -164,7 +166,7 @@ namespace TAO::API
          *
          **/
         Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn, const std::string& strNouns,
-                 const uint8_t nSettingsIn = 0, const std::atomic<uint32_t>* pExternalCounterIn = &nTransactionCounter)
+                 const uint8_t nSettingsIn = 0, const std::atomic<uint32_t>* pExternalCounterIn = &nRegisterCounter)
         : tFunction   (tFunctionIn)
         , nActivation (0) //default: zero denotes there is no activation switch
         , nMaxVersion (0)
@@ -189,7 +191,7 @@ namespace TAO::API
          **/
         Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn,
                  const uint64_t nActivationIn, const uint32_t nMaxVersionIn, const std::string& strMessageIn,
-                 const uint8_t nSettingsIn = 0, const std::atomic<uint32_t>* pExternalCounterIn = &nTransactionCounter)
+                 const uint8_t nSettingsIn = 0, const std::atomic<uint32_t>* pExternalCounterIn = &nRegisterCounter)
         : tFunction   (tFunctionIn)
         , nActivation (nActivationIn)
         , nMaxVersion (nMaxVersionIn)
@@ -213,7 +215,7 @@ namespace TAO::API
          **/
         Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn,
                  const uint32_t nMaxVersionIn, const std::string& strMessageIn,
-                 const uint8_t nSettingsIn = 0, const std::atomic<uint32_t>* pExternalCounterIn = &nTransactionCounter,
+                 const uint8_t nSettingsIn = 0, const std::atomic<uint32_t>* pExternalCounterIn = &nRegisterCounter,
                  const uint64_t nActivationIn = 0)
         : tFunction   (tFunctionIn)
         , nActivation (nActivationIn)
