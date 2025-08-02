@@ -70,9 +70,11 @@ namespace TAO
                     this,
                     std::placeholders::_1,
                     std::placeholders::_2
-                )
-                , ENABLE::CACHING | ENABLE::FILTERS
-                , &nBlockCounter
+                ),
+                {
+                    ENABLE::CACHING | ENABLE::FILTERS,
+                    &nBlockCounter
+                }
             );
 
 

@@ -101,7 +101,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
-            , ENABLE::CACHING | ENABLE::PAGING | ENABLE::FILTERS | ENABLE::QUERIES
+            , ENABLE::CACHING | ENABLE::PAGING | ENABLE::SORTING | ENABLE::FILTERS | ENABLE::QUERIES
         );
 
         /* Handle for generic list operations. */

@@ -28,6 +28,99 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     
+    /** Global value to tell cache systems when to refresh state. **/
+    extern std::atomic<uint32_t> nBlockCounter;
+    extern std::atomic<uint32_t> nRegisterCounter;
+    extern std::atomic<uint32_t> nTransactionCounter;
+
+
+    /** Struct to hold our enum values for our function settings. **/
+    struct ENABLE
+    {
+        /** Enum to handle page caching. */
+        enum : uint8_t
+        {
+            CACHING   = (1 << 1), //enable caching of given requests based on parameters
+            PAGING    = (1 << 2), //a list where we want to page the results
+            SORTING   = (1 << 3), //if we want to allow sorting of the datasets
+            FILTERS   = (1 << 4), //if we want to apply filters to our results
+            QUERIES   = (1 << 5), //if we want to allow queries to our results
+            OPERATORS = (1 << 6), //if we want to allow computing on the dataset
+        };
+    };
+
+
+    /** CacheSettings
+     *
+     *  Initialization structure to make bracket initialization and constructors that instantiate this cache cleaner.
+     *
+     **/
+    struct CacheSettings
+    {
+
+        /** Track our internal settings inhereted from function. **/
+        const uint8_t nSettings;
+
+
+        /** The maximum number of items in the cache. **/
+        const uint32_t nMaxItems;
+
+
+        /** If LISTING setting is enabled, we need a default sort field. */
+        const std::string strColumn;
+
+
+        /** Track a reference of our external counter. */
+        const std::atomic<uint32_t>* pExternalCounter;
+
+
+        /** Default Constructor. **/
+        CacheSettings()
+        : nSettings        (0)
+        , nMaxItems        (0)
+        , strColumn        ( )
+        , pExternalCounter (nullptr)
+        {
+        }
+
+        /** Constructor
+         *
+         *  Set for settings, ordered with counter and then column.
+         *
+         *  @param[in] nSettingsIn The settings to apply to the cache object
+         *  @param[in] pExternalCounterIn The external counter object to determine when to refresh the cache. Default: Registers
+         *  @param[in] strColumnIn The column to sort by if sorting is enabled. Default: modified
+         *
+         **/
+        CacheSettings(const uint8_t nSettingsIn, const std::atomic<uint32_t>* pExternalCounterIn = &nRegisterCounter,
+                      const std::string& strColumnIn = "modified")
+        : nSettings        (nSettingsIn)
+        , nMaxItems        (8)
+        , strColumn        (strColumnIn)
+        , pExternalCounter (pExternalCounterIn)
+        {
+        }
+
+        /** Constructor
+         *
+         *  Set for settings, ordered with column and then counter.
+         *
+         *  @param[in] nSettingsIn The settings to apply to the cache object
+         *  @param[in] strColumnIn The column to sort by if sorting is enabled. Default: modified
+         *  @param[in] pExternalCounterIn The external counter object to determine when to refresh the cache. Default: Registers
+         *
+         **/
+        CacheSettings(const uint8_t nSettingsIn, const std::string& strColumnIn,
+                      const std::atomic<uint32_t>* pExternalCounterIn = &nRegisterCounter)
+        : nSettings        (nSettingsIn)
+        , nMaxItems        (8)
+        , strColumn        (strColumnIn)
+        , pExternalCounter (pExternalCounterIn)
+        {
+        }
+    };
+
+
     /** ResponseCache
      *
      *  Class to track cached API requests so that we can page and cache them if asked for repeatedly and chain state remains unchanged.
@@ -57,15 +150,20 @@ namespace TAO::API
         uint8_t nSettings;
 
 
+        /** If LISTING setting is enabled, we need a default sort field. */
+        std::string strColumn;
+
+
         ResponseCache() = delete;
 
 
         /** Default Constructor. **/
-        ResponseCache (const std::atomic<uint32_t>* pExternalCounterIn, const uint8_t nSettingsIn = 0, const uint32_t nMaxItems = 8)
-        : mapCache         (nMaxItems)
+        ResponseCache (const CacheSettings& rSettings)
+        : mapCache         (rSettings.nMaxItems)
         , nCacheCounter    (0)
-        , pExternalCounter (pExternalCounterIn)
-        , nSettings        (nSettingsIn)
+        , pExternalCounter (rSettings.pExternalCounter)
+        , nSettings        (rSettings.nSettings)
+        , strColumn        (rSettings.strColumn)
         {
         }
 
@@ -76,6 +174,7 @@ namespace TAO::API
         , nCacheCounter    (a.nCacheCounter.load())
         , pExternalCounter (a.pExternalCounter)
         , nSettings        (a.nSettings)
+        , strColumn        (a.strColumn)
         {
         }
 
@@ -86,6 +185,7 @@ namespace TAO::API
         , nCacheCounter    (a.nCacheCounter.load())
         , pExternalCounter (a.pExternalCounter)
         , nSettings        (std::move(a.nSettings))
+        , strColumn        (std::move(a.strColumn))
         {
         }
 
@@ -97,6 +197,7 @@ namespace TAO::API
             nCacheCounter    = a.nCacheCounter.load();
             pExternalCounter = a.pExternalCounter; //we copy the pointer
             nSettings        = a.nSettings;
+            strColumn        = a.strColumn;
 
             return *this;
         }
@@ -108,6 +209,7 @@ namespace TAO::API
             nCacheCounter    = a.nCacheCounter.load();
             pExternalCounter = a.pExternalCounter; //we copy the pointer
             nSettings        = std::move(a.nSettings);
+            strColumn        = std::move(a.strColumn);
 
             return *this;
         }
@@ -229,6 +331,11 @@ namespace TAO::API
 
     private:
 
+        /** sort_changed
+         *
+         *  Local helper to tell us if our sorting order has been changed
+         *
+         **/
         bool sort_changed(const encoding::json& jParams, const encoding::json& jCachedParams)
         {
             /* Check our current parameters. */

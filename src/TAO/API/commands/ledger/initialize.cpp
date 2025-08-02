@@ -56,9 +56,11 @@ namespace TAO::API
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2
-            )
-            , ENABLE::CACHING | ENABLE::FILTERS
-            , &nBlockCounter
+            ),
+            {
+                ENABLE::CACHING | ENABLE::FILTERS,
+                &nBlockCounter
+            }
         );
 
         /* Handle for get/metrics. */
@@ -70,9 +72,11 @@ namespace TAO::API
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2
-            )
-            , ENABLE::CACHING | ENABLE::FILTERS
-            , &nBlockCounter
+            ),
+            {
+                ENABLE::CACHING | ENABLE::FILTERS,
+                &nBlockCounter
+            }
         );
 
         /* Handle for list/blocks. */
