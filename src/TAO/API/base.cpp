@@ -380,6 +380,14 @@ namespace TAO::API
                 /* Field URI component. */
                 case URI::FIELD:
                 {
+                    /* Get our calling function object. */
+                    const uint8_t nSettings =
+                        mapFunctions.at(strVerb).oCache.nSettings;
+
+                    /* Check that filters are enabled to use the URI. */
+                    if(!(nSettings & ENABLE::FILTERS))
+                        throw Exception(-36, "Filters [", vMethods[n], "] setting not enabled for this command, URI handle disabled");
+
                     /* Check if we are mapping multiple types. */
                     if(vMethods[n].find(",") != vMethods[n].npos)
                     {
@@ -407,6 +415,14 @@ namespace TAO::API
                 /* Operator URI component. */
                 case URI::OPERATOR:
                 {
+                    /* Get our calling function object. */
+                    const uint8_t nSettings =
+                        mapFunctions.at(strVerb).oCache.nSettings;
+
+                    /* Check that filters are enabled to use the URI. */
+                    if(!(nSettings & ENABLE::OPERATORS))
+                        throw Exception(-36, "Operators [", vMethods[n], "] not enabled for this command, URI handle disabled");
+
                     /* Grab our operator. */
                     const std::string& strOperators = vMethods[n];
 
