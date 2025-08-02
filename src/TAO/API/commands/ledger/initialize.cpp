@@ -88,7 +88,8 @@ namespace TAO::API
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2
-            )
+            ),
+            ENABLE::FILTERS | ENABLE::OPERATORS
         );
 
         /* Handle for list/transactions. */
