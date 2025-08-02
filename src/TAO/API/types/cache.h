@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLD/cache/template_lru.h>
 
 #include <TAO/API/include/check.h>
+#include <TAO/API/include/compare.h>
 #include <TAO/API/include/extract.h>
 #include <TAO/API/types/exception.h>
 
@@ -27,7 +28,7 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    
+
     /** Global value to tell cache systems when to refresh state. **/
     extern std::atomic<uint32_t> nBlockCounter;
     extern std::atomic<uint32_t> nRegisterCounter;
@@ -67,7 +68,7 @@ namespace TAO::API
 
 
         /** If LISTING setting is enabled, we need a default sort field. */
-        const std::string strColumn;
+        const std::string strDefaultColumn;
 
 
         /** Track a reference of our external counter. */
@@ -76,9 +77,9 @@ namespace TAO::API
 
         /** Default Constructor. **/
         CacheSettings()
-        : nSettings        (0)
+        : nSettings        (ENABLE::FILTERS) //by default we want to support filters
         , nMaxItems        (0)
-        , strColumn        ( )
+        , strDefaultColumn ( )
         , pExternalCounter (nullptr)
         {
         }
@@ -96,7 +97,7 @@ namespace TAO::API
                       const std::string& strColumnIn = "modified")
         : nSettings        (nSettingsIn)
         , nMaxItems        (8)
-        , strColumn        (strColumnIn)
+        , strDefaultColumn (strColumnIn)
         , pExternalCounter (pExternalCounterIn)
         {
         }
@@ -114,7 +115,7 @@ namespace TAO::API
                       const std::atomic<uint32_t>* pExternalCounterIn = &nRegisterCounter)
         : nSettings        (nSettingsIn)
         , nMaxItems        (8)
-        , strColumn        (strColumnIn)
+        , strDefaultColumn (strColumnIn)
         , pExternalCounter (pExternalCounterIn)
         {
         }
@@ -151,7 +152,7 @@ namespace TAO::API
 
 
         /** If LISTING setting is enabled, we need a default sort field. */
-        std::string strColumn;
+        std::string strDefaultColumn;
 
 
         ResponseCache() = delete;
@@ -163,7 +164,7 @@ namespace TAO::API
         , nCacheCounter    (0)
         , pExternalCounter (rSettings.pExternalCounter)
         , nSettings        (rSettings.nSettings)
-        , strColumn        (rSettings.strColumn)
+        , strDefaultColumn (rSettings.strDefaultColumn)
         {
         }
 
@@ -174,7 +175,7 @@ namespace TAO::API
         , nCacheCounter    (a.nCacheCounter.load())
         , pExternalCounter (a.pExternalCounter)
         , nSettings        (a.nSettings)
-        , strColumn        (a.strColumn)
+        , strDefaultColumn (a.strDefaultColumn)
         {
         }
 
@@ -185,7 +186,7 @@ namespace TAO::API
         , nCacheCounter    (a.nCacheCounter.load())
         , pExternalCounter (a.pExternalCounter)
         , nSettings        (std::move(a.nSettings))
-        , strColumn        (std::move(a.strColumn))
+        , strDefaultColumn (std::move(a.strDefaultColumn))
         {
         }
 
@@ -197,7 +198,7 @@ namespace TAO::API
             nCacheCounter    = a.nCacheCounter.load();
             pExternalCounter = a.pExternalCounter; //we copy the pointer
             nSettings        = a.nSettings;
-            strColumn        = a.strColumn;
+            strDefaultColumn = a.strDefaultColumn;
 
             return *this;
         }
@@ -209,7 +210,7 @@ namespace TAO::API
             nCacheCounter    = a.nCacheCounter.load();
             pExternalCounter = a.pExternalCounter; //we copy the pointer
             nSettings        = std::move(a.nSettings);
-            strColumn        = std::move(a.strColumn);
+            strDefaultColumn = std::move(a.strDefaultColumn);
 
             return *this;
         }
@@ -232,15 +233,15 @@ namespace TAO::API
          *  @return true if cache was found, false if it was not
          *
          **/
-        bool Get(const encoding::json& jParams, encoding::json &jRet, bool &fReversed)
+        bool Get(const encoding::json& jParams, encoding::json &jRet)
         {
             /* Check if caching is disabled. */
-            if(!(nSettings & CACHING))
+            if(!(nSettings & ENABLE::CACHING))
                 return false;
 
             /* Check if we need to refresh our cache. */
             if(refresh_cache())
-                return false;
+                return false; //cache is out of date, we need to re-insert it
 
             /* Check the list of all of our available caches for this command. */
             const std::vector<encoding::json> vParams = mapCache.Keys();
@@ -293,9 +294,41 @@ namespace TAO::API
                     /* Get a copy of our cache here. */
                     if(mapCache.Get(jCachedParams, jRet))
                     {
-                        /* Check if we need to reverse our cache list. */
-                        fReversed =
-                            (ExtractOrder(jParams, false) != ExtractOrder(jCachedParams, false));
+                        /* Handle here if we need to sort. */
+                        if(nSettings & ENABLE::SORTING)
+                        {
+                            /* Get our previous order and column. */
+                            std::string strPrevOrder = "desc", strPrevColumn = strDefaultColumn;
+                            ExtractSort(jCachedParams, strPrevOrder, strPrevColumn);
+
+                            /* Get our current order and column. */
+                            std::string strOrder = "desc", strColumn = strDefaultColumn;
+                            ExtractSort(jParams, strOrder, strColumn);
+
+                            /* Check if our orders have changed. */
+                            const bool fOrderChanged =
+                                (strOrder != strPrevOrder);
+
+                            /* Check if our columns have changed. */
+                            const bool fColumnChanged =
+                                (strColumn != strPrevColumn);
+
+                            /* Check if we need to adjust our sorts. */
+                            if(fOrderChanged || fColumnChanged)
+                            {
+                                /* We need to clear out old key since next call will use same sort */
+                                mapCache.Remove(jCachedParams);
+
+                                /* Reverse if only the order changed. */
+                                if(!fColumnChanged)
+                                    std::reverse(jRet.begin(), jRet.end());
+                                else //we can sort using our compare functor
+                                    std::sort(jRet.begin(), jRet.end(), CompareResults(strOrder, strColumn));
+
+                                /* Update our cache with new sorts and parameters now. */
+                                mapCache.Put(jParams, jRet);
+                            }
+                        }
 
                         return true;
                     }
@@ -316,47 +349,31 @@ namespace TAO::API
          *  @param[in] jCache The cached request data to push
          *
          **/
-        void Insert(const encoding::json& jParams, const encoding::json& jCache)
+        void Insert(const encoding::json& jParams, encoding::json &jCache)
         {
             /* Check if caching is disabled. */
-            if(!(nSettings & CACHING))
+            if(!(nSettings & ENABLE::CACHING))
                 return;
 
             /* Make sure our cache is up to date. */
             refresh_cache();
+
+            /* Handle here if we need to sort. */
+            if(nSettings & ENABLE::SORTING)
+            {
+                /* Get our current order and column. */
+                std::string strOrder = "desc", strColumn = strDefaultColumn;
+                ExtractSort(jParams, strOrder, strColumn);
+
+                /* Sort using our compare functor. */
+                std::sort(jCache.begin(), jCache.end(), CompareResults(strOrder, strColumn));
+            }
 
             /* Add to our LRU cache. */
             mapCache.Put(jParams, jCache);
         }
 
     private:
-
-        /** sort_changed
-         *
-         *  Local helper to tell us if our sorting order has been changed
-         *
-         **/
-        bool sort_changed(const encoding::json& jParams, const encoding::json& jCachedParams)
-        {
-            /* Check our current parameters. */
-            const bool fCurrentSort =
-                CheckParameter(jParams, "sort", "string");
-
-            /* Check our previous parameters. */
-            const bool fPreviousSort =
-                CheckParameter(jCachedParams, "sort", "string");
-
-            /* Check if one supplied and the other didn't */
-            if(fCurrentSort != fPreviousSort)
-                return true;
-
-            /* Check if both weren't set. */
-            if(!fCurrentSort && !fPreviousSort)
-                return false;
-
-            /* At this point we know sort was supplied to both parameters so we compare if they are the same. */
-            return jParams["sort"].get<std::string>() != jCachedParams["sort"].get<std::string>();
-        }
 
         /** refresh_cache
          *

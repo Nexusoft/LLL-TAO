@@ -682,6 +682,22 @@ namespace TAO::API
     }
 
 
+    /* Extracts the order and sorting field from incoming parameters */
+    void ExtractSort(const encoding::json& jParams, std::string &strOrder, std::string &strSort)
+    {
+        /* Get sort order */
+        if(CheckParameter(jParams, "order", "string"))
+        {
+            /* Grab a copy of the string to check against valid types. */
+            const std::string strCheck = jParams["order"].get<std::string>();
+            if(strCheck == "asc" || strCheck == "desc")
+                strOrder = strCheck;
+        }
+
+        /* Check for sort ordering */
+        if(CheckParameter(jParams, "sort", "string"))
+            strSort = jParams["sort"].get<std::string>();
+    }
 
 
     /* Extracts the order applicable to a List API call in order to apply a filter/offset/limit to the result */

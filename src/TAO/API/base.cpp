@@ -26,6 +26,7 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
+
     /** Default Constructor **/
     Base::Base ( )
     : fInitialized  (false)
@@ -117,9 +118,6 @@ namespace TAO::API
         /* Execute the function map if method is found. */
         if(mapFunctions.find(strMethod) != mapFunctions.end())
         {
-            /* Track if the container needs to be reversed. */
-            bool fReversed = false;
-
             /* Get a reference of our function. */
             const Function& xFunction =
                 mapFunctions.at(strMethod);
@@ -133,7 +131,7 @@ namespace TAO::API
             if(nSettings & ENABLE::CACHING)
             {
                 /* Check if we can get it in a cache. */
-                if(!xFunction.oCache.Get(jParams, jResults, fReversed))
+                if(!xFunction.oCache.Get(jParams, jResults))
                 {
                     /* Execute our function so we can have an up to date cache. */
                     jResults =
@@ -242,36 +240,18 @@ namespace TAO::API
                     if(nOffset > jResults.size())
                         throw Exception(-75, "Value [offset=", nOffset, "] exceeds dataset size [", jResults.size(), "]");
 
-                    /* Handle if we need to reverse iterate the container. */
-                    if(fReversed)
+                    /* Page through our results array now. */
+                    for(const auto& jItem : jResults)
                     {
-                        for(auto jItem = jResults.rbegin(); jItem != jResults.rend(); ++jItem)
-                        {
-                            /* Check the offset. */
-                            if(++nTotal <= nOffset)
-                                continue;
+                        /* Check the offset. */
+                        if(++nTotal <= nOffset)
+                            continue;
 
-                            /* Check the limit */
-                            if(jPage.size() == nLimit)
-                                break;
+                        /* Check the limit */
+                        if(jPage.size() == nLimit)
+                            break;
 
-                            jPage.emplace_back(*jItem);
-                        }
-                    }
-                    else
-                    {
-                        for(auto jItem = jResults.begin(); jItem != jResults.end(); ++jItem)
-                        {
-                            /* Check the offset. */
-                            if(++nTotal <= nOffset)
-                                continue;
-
-                            /* Check the limit */
-                            if(jPage.size() == nLimit)
-                                break;
-
-                            jPage.emplace_back(*jItem);
-                        }
+                        jPage.emplace_back(jItem);
                     }
 
                     return jPage;

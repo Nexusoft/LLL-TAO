@@ -301,6 +301,20 @@ namespace TAO::API
     void ExtractList(const encoding::json& jParams, std::string &strOrder, std::string &strSort, uint32_t &nLimit, uint32_t &nOffset) __attribute__((const));
 
 
+    /** ExtractSort
+     *
+     *  Extracts the order and sorting field from incoming parameters
+     *
+     *  @param[in] jParams The parameters passed into the request
+     *  @param[out] strOrder The sort order to apply
+     *  @param[out] strSort The column to sort by.
+     *
+     *  @return the order string if we succeed without throwing exception
+     *
+     **/
+    void ExtractSort(const encoding::json& jParams, std::string &strOrder, std::string &strSort) __attribute__((const));
+
+
     /** ExtractOrder
      *
      *  Extracts the order applicable to a List API call in order to apply a filter/offset/limit to the result
