@@ -313,7 +313,6 @@ namespace TAO::API
                     {
                         /* Set our returned verb. */
                         strVerb = strFunction;
-
                         continue; //go to next fieldname
                     }
 
@@ -386,7 +385,7 @@ namespace TAO::API
 
                     /* Check that filters are enabled to use the URI. */
                     if(!(nSettings & ENABLE::FILTERS))
-                        throw Exception(-36, "Filters [", vMethods[n], "] setting not enabled for this command, URI handle disabled");
+                        throw Exception(-36, "Filters [", vMethods[n], "] not enabled for this command, URI handle disabled");
 
                     /* Check if we are mapping multiple types. */
                     if(vMethods[n].find(",") != vMethods[n].npos)
@@ -404,7 +403,6 @@ namespace TAO::API
 
                         continue;
                     }
-
 
                     /* Set our fieldname string. */
                     jParams["request"]["fieldname"] = vMethods[n];
