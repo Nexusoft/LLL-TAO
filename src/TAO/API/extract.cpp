@@ -643,7 +643,7 @@ namespace TAO::API
             }
 
             /* Check for number. */
-            else if(jParams["limit"].is_number_integer())
+            else if(jParams["limit"].is_number_unsigned())
                 nLimit = jParams["limit"].get<uint32_t>();
 
             /* Otherwise we have an invalid parameter. */
@@ -654,8 +654,6 @@ namespace TAO::API
         /* If no offset explicitly included calculate it from the limit + page */
         if(nOffset == 0 && nPage > 0)
             nOffset = nLimit * nPage;
-
-
     }
 
 

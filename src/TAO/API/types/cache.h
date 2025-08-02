@@ -129,9 +129,6 @@ namespace TAO::API
      **/
     class ResponseCache
     {
-        /** This just makes our constructors more readable. **/
-        static const uint8_t CACHING  = (1 << 1);  //allow caching
-
 
         /** The function pointer to be called. */
         LLD::TemplateLRU<encoding::json, encoding::json> mapCache;
@@ -247,10 +244,6 @@ namespace TAO::API
             const std::vector<encoding::json> vParams = mapCache.Keys();
             for(const auto& jCachedParams : vParams)
             {
-                /* Check that we don't have any additional parameters here. */
-                //if(jCachedParams.size() != jParams.size())
-                //    continue;
-
                 /* Check our types match here. */
                 if(CheckRequest(jCachedParams, "type", "string, array"))
                 {
@@ -323,7 +316,7 @@ namespace TAO::API
                                 if(!fColumnChanged)
                                     std::reverse(jRet.begin(), jRet.end());
                                 else //we can sort using our compare functor
-                                    std::sort(jRet.begin(), jRet.end(), CompareResults(strOrder, strColumn));
+                                    sort(strOrder, strColumn, jRet);
 
                                 /* Update our cache with new sorts and parameters now. */
                                 mapCache.Put(jParams, jRet);
@@ -365,8 +358,8 @@ namespace TAO::API
                 std::string strOrder = "desc", strColumn = strDefaultColumn;
                 ExtractSort(jParams, strOrder, strColumn);
 
-                /* Sort using our compare functor. */
-                std::sort(jCache.begin(), jCache.end(), CompareResults(strOrder, strColumn));
+                /* Now we sort the data. */
+                sort(strOrder, strColumn, jCache);
             }
 
             /* Add to our LRU cache. */
@@ -374,6 +367,108 @@ namespace TAO::API
         }
 
     private:
+
+        /** sort
+         *
+         *  Local helper function to sort our lists.
+         *
+         *  @param[in] strOrder The order to sort it either ascending or descending
+         *  @param[in] strColumn The column we want to sort our data by.
+         *  @param[out] jRet The data that we are sorting returned by reference.
+         *
+         **/
+        void sort(const std::string& strOrder, const std::string& strColumn, encoding::json &jRet)
+        {
+            /* Detect if we are descending or ascending order. */
+            const bool fDesc =
+                (strOrder == "desc");
+
+            /* Sort using our own lambda function. */
+            std::sort(jRet.begin(), jRet.end(), [&](const encoding::json& a, const encoding::json& b)
+            {
+                /* Check for sort by invalid parameter. */
+                if(a.find(strColumn) == a.end() || b.find(strColumn) == b.end())
+                    return true;
+
+                /* Handle based on unsigned integer type. */
+                if(a[strColumn].is_number_unsigned())
+                {
+                    /* Grab both of our values. */
+                    const uint64_t nA = a[strColumn].get<uint64_t>();
+                    const uint64_t nB = b[strColumn].get<uint64_t>();
+
+                    /* Check if they are equal. */
+                    if(nA == nB)
+                        return false;
+
+                    /* Regular descending sort. */
+                    if(fDesc)
+                        return nA > nB;
+
+                    /* Ascending sorting. */
+                    return nA < nB;
+                }
+
+                /* Handle based on signed integer type. */
+                else if(a[strColumn].is_number_integer())
+                {
+                    /* Grab both of our values. */
+                    const int64_t nA = a[strColumn].get<int64_t>();
+                    const int64_t nB = b[strColumn].get<int64_t>();
+
+                    /* Check if they are equal. */
+                    if(nA == nB)
+                        return false;
+
+                    /* Regular descending sort. */
+                    if(fDesc)
+                        return nA > nB;
+
+                    /* Ascending sorting. */
+                    return nA < nB;
+                }
+
+                /* Handle based on signed integer type. */
+                else if(a[strColumn].is_number_float())
+                {
+                    /* Grab a copy of our doubles here casting to ints at given figures for efficiency. */
+                    const double nA = a[strColumn].get<double>();
+                    const double nB = b[strColumn].get<double>();
+
+                    /* Check if they are equal. */
+                    if(nA == nB)
+                        return false;
+
+                    /* Regular descending sort. */
+                    if(fDesc)
+                        return nA > nB;
+
+                    /* Ascending sorting. */
+                    return nA < nB;
+                }
+
+                /* Handle based on integer type. */
+                else if(a[strColumn].is_string())
+                {
+                    /* Grab both of our values. */
+                    const std::string strA = a[strColumn].get<std::string>();
+                    const std::string strB = b[strColumn].get<std::string>();
+
+                    /* Check if they are equal. */
+                    if(strA == strB)
+                        return false;
+
+                    /* Regular descending sort. */
+                    if(fDesc)
+                        return strA > strB;
+
+                    /* Ascending sorting. */
+                    return strA < strB;
+                }
+
+                return false;
+            });
+        }
 
         /** refresh_cache
          *
@@ -383,7 +478,7 @@ namespace TAO::API
         bool refresh_cache()
         {
             /* Check if caching is disabled. */
-            if(!(nSettings & CACHING))
+            if(!(nSettings & ENABLE::CACHING))
                 return false; //just an extra paranoid check
 
             /* Check our counter against chain states with this setting. */

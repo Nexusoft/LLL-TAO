@@ -220,7 +220,7 @@ namespace TAO::API
             }
 
             /* Check our settings for paging only if not applying an operator. */
-            else if(nSettings & ENABLE::PAGING)
+            if(nSettings & ENABLE::PAGING)
             {
                 /* We only page results that are in an array. */
                 if(jResults.is_array())
@@ -248,7 +248,7 @@ namespace TAO::API
                             continue;
 
                         /* Check the limit */
-                        if(jPage.size() == nLimit)
+                        if(jPage.size() >= nLimit)
                             break;
 
                         jPage.emplace_back(jItem);

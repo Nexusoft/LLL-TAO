@@ -39,23 +39,14 @@ namespace TAO::API
         /* Grab our type to run some checks against. */
         const std::set<std::string> setTypes = ExtractTypes(jParams);
 
-        /* Number of results to return. */
-        uint32_t nLimit = 100, nOffset = 0;
-
-        /* Get the params to apply to the response. */
-        std::string strOrder = "desc", strColumn = "modified";
-        ExtractList(jParams, strOrder, strColumn, nLimit, nOffset);
-
-        /* Build our object list and sort on insert. */
-        std::set<encoding::json, CompareResults> setRegisters({}, CompareResults(strOrder, strColumn));
-
-        /* Loop through our types. */
+        /* Build our return value. */
+        encoding::json jRet = encoding::json::array();
         for(const auto& strType : setTypes)
         {
             try
             {
                 /* Get our standard type. */
-                std::string strStandard =
+                const std::string strStandard =
                     mapStandards[strType].Type();
 
                 /* Special handle if address indexed. */
@@ -80,8 +71,8 @@ namespace TAO::API
                             encoding::json jRegister =
                                 StandardToJSON(jParams, rObject.second, rObject.first);
 
-                            /* Insert into set and automatically sort. */
-                            setRegisters.insert(jRegister);
+                            /* Insert into our return value. */
+                            jRet.push_back(jRegister);
                         }
                     }
                 }
@@ -106,25 +97,14 @@ namespace TAO::API
                             encoding::json jRegister =
                                 StandardToJSON(jParams, rObject);
 
-                            /* Insert into set and automatically sort. */
-                            setRegisters.insert(jRegister);
+                            /* Insert into our return value. */
+                            jRet.push_back(jRegister);
                         }
                     }
                 }
             }
             catch(const std::exception& e){ debug::warning("Exception: ", e.what()); }
         }
-
-        /* Check that we have results. */
-        if(setRegisters.empty())
-            throw Exception(-74, "No registers found");
-
-        /* Build our return value. */
-        encoding::json jRet =
-            encoding::json::array();
-
-        /* Move the registers set over to an array. */
-        ListResults(setRegisters, jRet);
 
         return jRet;
     }

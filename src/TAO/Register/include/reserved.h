@@ -66,7 +66,7 @@ namespace TAO::Register
      *  @return True if value is object register reserved value.
      *
      **/
-    __attribute__((const)) inline bool Reserved(const std::string& strValue)
+    inline bool Reserved(const std::string& strValue)
     {
         return RESERVED.count(strValue);
     }
@@ -81,7 +81,7 @@ namespace TAO::Register
      *  @return True if value is object register reserved value.
      *
      **/
-    __attribute__((const)) inline bool Reserved(const std::string& strValue, const std::string& strType, const bool fMutable = false)
+    inline bool Reserved(const std::string& strValue, const std::string& strType, const bool fMutable = false)
     {
         /* Check that is in the reserved map. */
         if(!RESERVED.count(strValue))
@@ -100,7 +100,7 @@ namespace TAO::Register
      *  @return True if value is system reserved value.
      *
      **/
-    __attribute__((const)) inline bool Reserved(const Address& hashAddress)
+    inline bool Reserved(const Address& hashAddress)
     {
         /* Check for valid address values. */
         if(!hashAddress.IsValid())
@@ -151,7 +151,7 @@ namespace TAO::Register
          *  @return True if value is object register reserved value.
          *
          **/
-        __attribute__((const)) inline bool Reserved(const std::string& strValue)
+        inline bool Reserved(const std::string& strValue)
         {
             return std::find(RESERVED.begin(), RESERVED.end(), strValue) != RESERVED.end();
         }
@@ -188,7 +188,7 @@ namespace TAO::Register
          *  @return True if value is object register reserved value.
          *
          **/
-        __attribute__((const)) inline bool Reserved(const std::string& strValue)
+        inline bool Reserved(const std::string& strValue)
         {
             /* For namespaces the reserved word can't exist anywhere in the name.  */
             return std::any_of(RESERVED.begin(), RESERVED.end(),
