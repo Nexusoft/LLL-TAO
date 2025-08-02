@@ -57,7 +57,7 @@ namespace TAO
                     std::placeholders::_1,
                     std::placeholders::_2
                 )
-                , SETTINGS::FILTER
+                , ENABLE::FILTERS
             );
 
 
@@ -71,7 +71,7 @@ namespace TAO
                     std::placeholders::_1,
                     std::placeholders::_2
                 )
-                , SETTINGS::CACHING | SETTINGS::FILTER
+                , ENABLE::CACHING | ENABLE::FILTERS
                 , &nBlockCounter
             );
 

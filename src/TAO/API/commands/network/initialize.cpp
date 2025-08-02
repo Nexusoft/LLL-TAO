@@ -26,10 +26,6 @@ namespace TAO::API
     /* Standard initialization function. */
     void Network::Initialize()
     {
-        /* Populate our operators. */
-        Operators::Initialize(mapOperators);
-
-
         /* Handle for all LIST operations. */
         mapFunctions["list"] = Function
         (

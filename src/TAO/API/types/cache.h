@@ -27,6 +27,7 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
+    
     /** ResponseCache
      *
      *  Class to track cached API requests so that we can page and cache them if asked for repeatedly and chain state remains unchanged.
@@ -166,7 +167,7 @@ namespace TAO::API
                         continue;
 
                     /* Skip over other these additional fields. */
-                    if(jCached.key() == "request" || jCached.key() == "order")
+                    if(jCached.key() == "request" || jCached.key() == "order" || jCached.key() == "sort")
                         continue;
 
                     /* Check that the types match. */
@@ -192,7 +193,7 @@ namespace TAO::API
                     {
                         /* Check if we need to reverse our cache list. */
                         fReversed =
-                            (ExtractOrder(jCachedParams, false) != ExtractOrder(jParams, false));
+                            (ExtractOrder(jParams, false) != ExtractOrder(jCachedParams, false));
 
                         return true;
                     }
@@ -227,6 +228,28 @@ namespace TAO::API
         }
 
     private:
+
+        bool sort_changed(const encoding::json& jParams, const encoding::json& jCachedParams)
+        {
+            /* Check our current parameters. */
+            const bool fCurrentSort =
+                CheckParameter(jParams, "sort", "string");
+
+            /* Check our previous parameters. */
+            const bool fPreviousSort =
+                CheckParameter(jCachedParams, "sort", "string");
+
+            /* Check if one supplied and the other didn't */
+            if(fCurrentSort != fPreviousSort)
+                return true;
+
+            /* Check if both weren't set. */
+            if(!fCurrentSort && !fPreviousSort)
+                return false;
+
+            /* At this point we know sort was supplied to both parameters so we compare if they are the same. */
+            return jParams["sort"].get<std::string>() != jCachedParams["sort"].get<std::string>();
+        }
 
         /** refresh_cache
          *

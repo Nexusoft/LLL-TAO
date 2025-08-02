@@ -28,10 +28,6 @@ namespace TAO::API
     /* Standard initialization function. */
     void Invoices::Initialize()
     {
-        /* Populate our operators. */
-        Operators::Initialize(mapOperators);
-
-
         /* Populate our invoice standard. */
         mapStandards["invoice"] = Standard
         (

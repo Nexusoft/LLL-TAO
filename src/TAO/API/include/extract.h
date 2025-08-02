@@ -40,7 +40,7 @@ namespace TAO::API
      *  @return The register address if valid.
      *
      **/
-    TAO::Register::Address ExtractAddress(const encoding::json& jParams, const std::string& strSuffix = "", const std::string& strDefault = "");
+    __attribute__((const)) TAO::Register::Address ExtractAddress(const encoding::json& jParams, const std::string& strSuffix = "", const std::string& strDefault = "");
 
 
     /** ExtractToken
@@ -52,7 +52,7 @@ namespace TAO::API
      *  @return The register address if valid.
      *
      **/
-    TAO::Register::Address ExtractToken(const encoding::json& jParams);
+    __attribute__((const)) TAO::Register::Address ExtractToken(const encoding::json& jParams);
 
 
     /** ExtractAddress
@@ -65,7 +65,7 @@ namespace TAO::API
      *  @return The register address if valid.
      *
      **/
-    TAO::Register::Address ExtractAddress(const std::string& strAddress, const encoding::json& jParams);
+    __attribute__((const)) TAO::Register::Address ExtractAddress(const std::string& strAddress, const encoding::json& jParams);
 
 
     /** ExtractLegacy
@@ -79,7 +79,7 @@ namespace TAO::API
      *  @return The legacy address if valid.
      *
      **/
-    bool ExtractLegacy(const encoding::json& jParams, Legacy::NexusAddress &addrLegacy, const std::string& strSuffix = "");
+    __attribute__((const)) bool ExtractLegacy(const encoding::json& jParams, Legacy::NexusAddress &addrLegacy, const std::string& strSuffix = "");
 
 
     /** ExtractLegacy
@@ -92,7 +92,7 @@ namespace TAO::API
      *  @return The register address if valid.
      *
      **/
-    bool ExtractLegacy(const std::string& strAddress, Legacy::NexusAddress &addrLegacy);
+    __attribute__((const)) bool ExtractLegacy(const std::string& strAddress, Legacy::NexusAddress &addrLegacy);
 
 
     /** ExtractMarket
@@ -104,7 +104,7 @@ namespace TAO::API
      *  @return The market trading pari
      *
      **/
-    std::pair<uint256_t, uint256_t> ExtractMarket(const encoding::json& jParams);
+    __attribute__((const)) std::pair<uint256_t, uint256_t> ExtractMarket(const encoding::json& jParams);
 
 
     /** ExtractGenesis
@@ -116,7 +116,7 @@ namespace TAO::API
      *  @return The genesis-id that was extracted.
      *
      **/
-    uint256_t ExtractGenesis(const encoding::json& jParams);
+    __attribute__((const)) uint256_t ExtractGenesis(const encoding::json& jParams);
 
 
     /** ExtractRecipient
@@ -128,7 +128,7 @@ namespace TAO::API
      *  @return The genesis-id that was extracted.
      *
      **/
-    uint256_t ExtractRecipient(const encoding::json& jParams);
+    __attribute__((const)) uint256_t ExtractRecipient(const encoding::json& jParams);
 
 
     /** ExtractHash
@@ -140,7 +140,7 @@ namespace TAO::API
      *  @return the extracted txid.
      *
      **/
-    uint512_t ExtractHash(const encoding::json& jParams);
+    __attribute__((const)) uint512_t ExtractHash(const encoding::json& jParams);
 
 
     /** ExtractAmount
@@ -154,7 +154,7 @@ namespace TAO::API
      *  @return The amount represented as whole integer value.
      *
      **/
-    uint64_t ExtractAmount(const encoding::json& jParams, const uint64_t nFigures, const std::string& strKey = "");
+    __attribute__((const)) uint64_t ExtractAmount(const encoding::json& jParams, const uint64_t nFigures, const std::string& strKey = "");
 
 
     /** ExtractPrecision
@@ -168,7 +168,7 @@ namespace TAO::API
      *  @return The amount represented as whole integer value.
      *
      **/
-    precision_t ExtractPrecision(const encoding::json& jParams, const uint8_t nDigits, const std::string& strKey = "");
+    __attribute__((const)) precision_t ExtractPrecision(const encoding::json& jParams, const uint8_t nDigits, const std::string& strKey = "");
 
 
     /** ExtractFieldname
@@ -180,7 +180,7 @@ namespace TAO::API
      *  @return a string list of types submitted to API
      *
      **/
-    std::string ExtractFieldname(const encoding::json& jParams);
+    __attribute__((const)) std::string ExtractFieldname(const encoding::json& jParams);
 
 
     /** ExtractFormat
@@ -194,7 +194,7 @@ namespace TAO::API
      *  @return string with format specifier.
      *
      **/
-    std::string ExtractFormat(const encoding::json& jParams, const std::string& strDefault, const std::string& strAllowed = "json");
+    __attribute__((const)) std::string ExtractFormat(const encoding::json& jParams, const std::string& strDefault, const std::string& strAllowed = "json");
 
 
     /** ExtractScheme
@@ -207,7 +207,7 @@ namespace TAO::API
      *  @return the scheme translated as binary represented enum.
      *
      **/
-    uint8_t ExtractScheme(const encoding::json& jParams, const std::string& strAllowed = "falcon, brainpool");
+    __attribute__((const)) uint8_t ExtractScheme(const encoding::json& jParams, const std::string& strAllowed = "falcon, brainpool");
 
 
     /** ExtractType
@@ -219,7 +219,7 @@ namespace TAO::API
      *  @return a string list of types submitted to API
      *
      **/
-    std::string ExtractType(const encoding::json& jParams);
+    __attribute__((const)) std::string ExtractType(const encoding::json& jParams);
 
 
     /** ExtractPIN
@@ -232,7 +232,7 @@ namespace TAO::API
      *  @return secure string representation of pin.
      *
      **/
-    SecureString ExtractPIN(const encoding::json& jParams, const std::string& strPrefix = "");
+    __attribute__((const)) SecureString ExtractPIN(const encoding::json& jParams, const std::string& strPrefix = "");
 
 
     /** ExtractTypes
@@ -244,7 +244,7 @@ namespace TAO::API
      *  @return a string set of types submitted to API
      *
      **/
-    std::set<std::string> ExtractTypes(const encoding::json& jParams);
+    __attribute__((const)) std::set<std::string> ExtractTypes(const encoding::json& jParams);
 
 
 
@@ -258,7 +258,7 @@ namespace TAO::API
      *  @return the integer representation of verbose argument.
      *
      **/
-    uint32_t ExtractVerbose(const encoding::json& jParams, const uint32_t nMinimum = 1);
+    __attribute__((const)) uint32_t ExtractVerbose(const encoding::json& jParams, const uint32_t nMinimum = 1);
 
 
     /** ExtractList
@@ -270,7 +270,7 @@ namespace TAO::API
      *  @param[out] nOffset The offset to apply to the results
      *
      **/
-    void ExtractList(const encoding::json& jParams, uint32_t &nLimit, uint32_t &nOffset);
+    __attribute__((const)) void ExtractList(const encoding::json& jParams, uint32_t &nLimit, uint32_t &nOffset);
 
 
     /** ExtractList
@@ -283,7 +283,7 @@ namespace TAO::API
      *  @param[out] nOffset The offset to apply to the results
      *
      **/
-    void ExtractList(const encoding::json& jParams, std::string &strOrder, uint32_t &nLimit, uint32_t &nOffset);
+    __attribute__((const)) void ExtractList(const encoding::json& jParams, std::string &strOrder, uint32_t &nLimit, uint32_t &nOffset);
 
 
     /** ExtractList
@@ -298,7 +298,7 @@ namespace TAO::API
      *  @param[out] nOffset The offset to apply to the results
      *
      **/
-    void ExtractList(const encoding::json& jParams, std::string &strOrder, std::string &strSort, uint32_t &nLimit, uint32_t &nOffset);
+    __attribute__((const)) void ExtractList(const encoding::json& jParams, std::string &strOrder, std::string &strSort, uint32_t &nLimit, uint32_t &nOffset);
 
 
     /** ExtractOrder
@@ -311,7 +311,7 @@ namespace TAO::API
      *  @return the order string if we succeed without throwing exception
      *
      **/
-    std::string ExtractOrder(const encoding::json& jParams, const bool fThrow = false);
+    __attribute__((const)) std::string ExtractOrder(const encoding::json& jParams, const bool fThrow = false);
 
 
     /** ExtractBoolean
@@ -325,7 +325,7 @@ namespace TAO::API
      *  @return true or false based on given value.
      *
      **/
-    bool ExtractBoolean(const encoding::json& jParams, const std::string& strKey, const bool fDefault = false);
+    __attribute__((const)) bool ExtractBoolean(const encoding::json& jParams, const std::string& strKey, const bool fDefault = false);
 
 
     /** ExtractHash
@@ -338,7 +338,7 @@ namespace TAO::API
      *  @return the converted object from string constructors.
      *
      **/
-    uint256_t ExtractHash(const encoding::json& jParams, const std::string& strKey, const uint256_t& hashDefault = ~uint256_t(0));
+    __attribute__((const)) uint256_t ExtractHash(const encoding::json& jParams, const std::string& strKey, const uint256_t& hashDefault = ~uint256_t(0));
 
 
     /** ExtractString
@@ -351,7 +351,7 @@ namespace TAO::API
      *  @return the string extracted from parameters.
      *
      **/
-    std::string ExtractString(const encoding::json& jParams, const std::string& strKey);
+    __attribute__((const)) std::string ExtractString(const encoding::json& jParams, const std::string& strKey);
 
 
     /** ExtractHash
@@ -365,7 +365,7 @@ namespace TAO::API
      *
      **/
     template<typename Type>
-    Type ExtractHash(const encoding::json& jParams, const std::string& strKey)
+    __attribute__((const)) Type ExtractHash(const encoding::json& jParams, const std::string& strKey)
     {
         /* Check for missing parameter. */
         if(jParams.find(strKey) == jParams.end())
@@ -397,7 +397,7 @@ namespace TAO::API
      *
      **/
     template<typename Type>
-    Type ExtractInteger(const encoding::json& jParams, const std::string& strKey,
+    __attribute__((const)) Type ExtractInteger(const encoding::json& jParams, const std::string& strKey,
                         const Type nDefault = std::numeric_limits<Type>::max(),
                         const uint64_t nLimit = std::numeric_limits<Type>::max())
     {
@@ -453,7 +453,7 @@ namespace TAO::API
      *  @return The extracted integer value.
      *
      **/
-    double ExtractDouble(const encoding::json& jParams, const std::string& strKey,
+    __attribute__((const)) double ExtractDouble(const encoding::json& jParams, const std::string& strKey,
                          const double dDefault = std::numeric_limits<double>::max(),
                          const double dLimit = std::numeric_limits<double>::max());
 }

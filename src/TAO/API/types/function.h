@@ -39,9 +39,6 @@ namespace TAO::API
      **/
     class Function
     {
-        /** This helps make our default settings cleaner. */
-        static const uint8_t FILTER   = (1 << 3);
-
 
         /** The function pointer to be called. */
         std::function<encoding::json(const encoding::json&, bool)> tFunction;
@@ -237,7 +234,7 @@ namespace TAO::API
          *  @return The json formatted response.
          *
          **/
-        encoding::json Execute(const encoding::json& jParams, const bool fHelp)
+        encoding::json Execute(const encoding::json& jParams, const bool fHelp) const
         {
             /* Check for activation status. */
             const uint64_t nTimestamp = runtime::unifiedtimestamp();

@@ -50,13 +50,16 @@ namespace TAO::API
             OPERATOR = 3,
         };
 
+
         /** Enum to handle page caching. */
-        enum SETTINGS: uint8_t
+        enum ENABLE : uint8_t
         {
-            CACHING  = (1 << 1), //enable caching of given requests based on parameters
-            PAGING   = (1 << 2), //a list where we want to page the results
-            FILTER   = (1 << 3), //if we want to apply filters to our results
-            QUERY    = (1 << 4), //if we want to allow queries to our results
+            CACHING   = (1 << 1), //enable caching of given requests based on parameters
+            PAGING    = (1 << 2), //a list where we want to page the results
+            SORTING   = (1 << 3), //if we want to allow sorting of the datasets
+            FILTERS   = (1 << 4), //if we want to apply filters to our results
+            QUERIES   = (1 << 5), //if we want to allow queries to our results
+            OPERATORS = (1 << 6), //if we want to allow computing on the dataset
         };
 
 
@@ -70,10 +73,6 @@ namespace TAO::API
 
         /** Map of standard nouns to check for standard object types. **/
         std::map<std::string, Standard>  mapStandards;
-
-
-        /** Map of standard nouns to check for standard object types. **/
-        std::map<std::string, Operator>  mapOperators;
 
 
     public:
@@ -178,7 +177,7 @@ namespace TAO::API
          *  @return JSON encoded response.
          *
          **/
-        encoding::json Execute(std::string &strMethod, encoding::json &jParams, const bool fHelp = false);
+        encoding::json Execute(std::string &strMethod, encoding::json &jParams, const bool fHelp = false) const;
 
 
         /** RewriteURL
@@ -193,7 +192,7 @@ namespace TAO::API
          *  @return the API method URL
          *
          **/
-        virtual std::string RewriteURL(const std::string& strMethod, encoding::json &jParams);
+         std::string RewriteURL(const std::string& strMethod, encoding::json &jParams) const;
 
 
         /** Index

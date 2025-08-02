@@ -14,6 +14,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/base.h>
 #include <TAO/API/types/exception.h>
+#include <TAO/API/types/operators/initialize.h>
 
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/filter.h>
@@ -30,7 +31,6 @@ namespace TAO::API
     : fInitialized  (false)
     , mapFunctions  ( )
     , mapStandards  ( )
-    , mapOperators  ( )
     {
     }
 
@@ -39,7 +39,6 @@ namespace TAO::API
     {
         mapFunctions.clear();
         mapStandards.clear();
-        mapOperators.clear();
     }
 
     /* Get the current status of a given command. */
@@ -109,7 +108,7 @@ namespace TAO::API
 
 
     /* Handles the processing of the requested method. */
-    encoding::json Base::Execute(std::string &strMethod, encoding::json &jParams, const bool fHelp)
+    encoding::json Base::Execute(std::string &strMethod, encoding::json &jParams, const bool fHelp) const
     {
          /* If the incoming method is not in the function map then rewrite the URL to one that does */
         if(mapFunctions.find(strMethod) == mapFunctions.end())
@@ -122,8 +121,8 @@ namespace TAO::API
             bool fReversed = false;
 
             /* Get a reference of our function. */
-            Function& xFunction =
-                std::ref(mapFunctions[strMethod]);
+            const Function& xFunction =
+                mapFunctions.at(strMethod);
 
             /* Check if we need to do anything for our function enum's. */
             const uint8_t nSettings =
@@ -131,7 +130,7 @@ namespace TAO::API
 
             /* Check if we may have some caches available or execute the function. */
             encoding::json jResults;
-            if(nSettings & SETTINGS::CACHING)
+            if(nSettings & ENABLE::CACHING)
             {
                 /* Check if we can get it in a cache. */
                 if(!xFunction.oCache.Get(jParams, jResults, fReversed))
@@ -150,7 +149,7 @@ namespace TAO::API
                 jResults = xFunction.Execute(jParams, fHelp);
 
             /* Check our settings for queries and filters. */
-            if(nSettings & SETTINGS::QUERY || nSettings & SETTINGS::FILTER)
+            if(nSettings & ENABLE::QUERIES || nSettings & ENABLE::FILTERS)
             {
                 /* Check if we need to filter on an array. */
                 if(jResults.is_array())
@@ -160,11 +159,11 @@ namespace TAO::API
                     for(auto& jItem : jResults)
                     {
                         /* Check that we match our filters. */
-                        if((nSettings & SETTINGS::QUERY) && !FilterResults(jParams, jItem))
+                        if((nSettings & ENABLE::QUERIES) && !FilterResults(jParams, jItem))
                             continue;
 
                         /* Check that we match our filters. */
-                        if((nSettings & SETTINGS::FILTER) && !FilterFieldname(jParams, jItem))
+                        if((nSettings & ENABLE::FILTERS) && !FilterFieldname(jParams, jItem))
                             continue;
 
                         /* Add the item to our new array. */
@@ -177,49 +176,53 @@ namespace TAO::API
                 else
                 {
                     /* This will be a filter for a single item cache. */
-                    if(nSettings & SETTINGS::FILTER)
+                    if(nSettings & ENABLE::FILTERS)
                         FilterFieldname(jParams, jResults);
                 }
             }
 
             /* Check for operator. */
-            if(CheckRequest(jParams, "operator", "string, array"))
+            if(nSettings & ENABLE::OPERATORS)
             {
-                /* Check for single string operator. */
-                if(jParams["request"]["operator"].is_string())
+                /* Check if an operator was supplied. */
+                if(CheckRequest(jParams, "operator", "string, array"))
                 {
-                    /* Grab our current operator. */
-                    const std::string& strOperator =
-                        jParams["request"]["operator"].get<std::string>();
-
-                    /* Compute and return from our operator function. */
-                    return mapOperators[strOperator].Execute(jParams, jResults);
-                }
-
-                /* Check if we are mapping multiple types. */
-                if(jParams["request"]["operator"].is_array())
-                {
-                    /* Grab our current operator. */
-                    const encoding::json& jOperators =
-                        jParams["request"]["operator"];
-
-                    /* Loop through our nouns now. */
-                    encoding::json jResult = jResults; //interim results to chain through operators
-                    for(auto& jOperator : jOperators)
+                    /* Check for single string operator. */
+                    if(jParams["request"]["operator"].is_string())
                     {
                         /* Grab our current operator. */
                         const std::string& strOperator =
-                            jOperator.get<std::string>();
+                            jParams["request"]["operator"].get<std::string>();
 
-                        jResult = mapOperators[strOperator].Execute(jParams, jResult);
+                        /* Compute and return from our operator function. */
+                        return Operators::mapOperators.at(strOperator).Execute(jParams, jResults);
                     }
 
-                    return jResult;
+                    /* Check if we are mapping multiple types. */
+                    if(jParams["request"]["operator"].is_array())
+                    {
+                        /* Grab our current operator. */
+                        const encoding::json& jOperators =
+                            jParams["request"]["operator"];
+
+                        /* Loop through our nouns now. */
+                        encoding::json jResult = jResults; //interim results to chain through operators
+                        for(auto& jOperator : jOperators)
+                        {
+                            /* Grab our current operator. */
+                            const std::string& strOperator =
+                                jOperator.get<std::string>();
+
+                            jResult = Operators::mapOperators.at(strOperator).Execute(jParams, jResult);
+                        }
+
+                        return jResult;
+                    }
                 }
             }
 
             /* Check our settings for paging only if not applying an operator. */
-            else if(nSettings & SETTINGS::PAGING)
+            else if(nSettings & ENABLE::PAGING)
             {
                 /* We only page results that are in an array. */
                 if(jResults.is_array())
@@ -284,7 +287,7 @@ namespace TAO::API
 
 
     /* Allows derived API's to handle custom/dynamic URL's where the strMethod does not map directly to a function */
-    std::string Base::RewriteURL(const std::string& strMethod, encoding::json &jParams)
+    std::string Base::RewriteURL(const std::string& strMethod, encoding::json &jParams) const
     {
         /* Grab our components of the URL to rewrite. */
         std::vector<std::string> vMethods;
@@ -318,6 +321,10 @@ namespace TAO::API
                     if(!mapFunctions.count(strVerb))
                         throw Exception(-2, "Method not found: ", strVerb);
 
+                    /* Get a reference of our function now. */
+                    const Function& xFunction =
+                        mapFunctions.at(strVerb);
+
                     /* Check if we are mapping multiple types. */
                     if(vMethods[n].find(",") != vMethods[n].npos)
                     {
@@ -337,11 +344,11 @@ namespace TAO::API
                                 : strCheck);  //we are taking out the last char if it happens to be an 's' as special for 'list' command
 
                             /* Handle our supported override. */
-                            if(!mapFunctions[strVerb].Supported(strNoun) && !mapFunctions[strVerb].Standards())
+                            if(!xFunction.Supported(strNoun) && !xFunction.Standards())
                                 throw Exception(-36, "Type [", strNoun, "] not supported for command");
 
                             /* Check for unexpected types. */
-                            if(!mapStandards.count(strNoun) && mapFunctions[strVerb].Standards())
+                            if(!mapStandards.count(strNoun) && xFunction.Standards())
                                 throw Exception(-36, "Standard [", strNoun, "] not found for command");
 
                             /* Add our type to request object. */
@@ -357,11 +364,11 @@ namespace TAO::API
                         : vMethods[n]);  //we are taking out the last char if it happens to be an 's' as special for 'list' command
 
                     /* Handle our supported override. */
-                    if(!mapFunctions[strVerb].Supported(strNoun) && !mapFunctions[strVerb].Standards())
+                    if(!xFunction.Supported(strNoun) && !xFunction.Standards())
                         throw Exception(-36, "Type [", strNoun, "] not supported for command");
 
                     /* Check for unexpected types. */
-                    if(!mapStandards.count(strNoun) && mapFunctions[strVerb].Standards())
+                    if(!mapStandards.count(strNoun) && xFunction.Standards())
                         throw Exception(-36, "Object [", strNoun, "] not supported for command");
 
                     /* Add our type to request object. */
@@ -412,10 +419,10 @@ namespace TAO::API
 
                         /* Loop through compound operators. */
                         encoding::json jOperators = encoding::json::array();
-                        for(auto& strOperator : vOperators)
+                        for(const auto& strOperator : vOperators)
                         {
                             /* Check if the operator is available. */
-                            if(!mapOperators.count(strOperator))
+                            if(!Operators::mapOperators.count(strOperator))
                                 throw Exception(-118, "[", strOperator, "] operator not supported for this command-set");
 
                             /* Add to a results array. */
@@ -429,7 +436,7 @@ namespace TAO::API
                     }
 
                     /* Check if the operator is available. */
-                    if(!mapOperators.count(strOperators))
+                    if(!Operators::mapOperators.count(strOperators))
                         throw Exception(-118, "[", strOperators, "] operator not supported for this command-set");
 
                     /* Add to input parameters. */
