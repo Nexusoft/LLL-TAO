@@ -108,4 +108,12 @@ namespace TAO::API
 
         return !mapAssets.empty();
     }
+
+    /* List results based on our incoming list parameters and generate an output */
+    void ListResults(const std::set<encoding::json, CompareResults>& setResults, encoding::json &jRet)
+    {
+        /* Compile our array based on the ordering of our set. */
+        for(const auto& jItem : setResults)
+            jRet.emplace_back(std::move(jItem));
+    }
 } // End TAO namespace

@@ -20,10 +20,6 @@ namespace TAO::API
     /* Standard initialization function. */
     void Local::Initialize()
     {
-        /* Populate our operators. */
-        Operators::Initialize(mapOperators);
-
-
         /* Handle for all ERASE operations. */
         mapFunctions["erase"] = Function
         (

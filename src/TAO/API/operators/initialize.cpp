@@ -31,7 +31,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Track what operators are currently supported by initialize. */
-    const std::map<std::string, Operator> Operators::mapSupported =
+    const std::map<std::string, Operator> Operators::mapOperators =
     {
         /* Handle for the ARRAY operator. */
         { "array", Operator
@@ -129,34 +129,4 @@ namespace TAO::API
             )
         },
     };
-
-
-    /* Initialize a set of operators using a set series of string arguments in CSV format. */
-    void Operators::Initialize(std::map<std::string, Operator> &mapOperators, const std::string& strOperators)
-    {
-        /* Extract the operators from the token string. */
-        std::set<std::string> setOperators;
-        ParseString(strOperators, ',', setOperators, true); //trim spaces from parsing
-
-        /* Check for empty set. */
-        if(setOperators.empty())
-        {
-            /* Copy over our data from our supported into operators. */
-            for(const auto& rSupported : mapSupported)
-                mapOperators.insert(std::make_pair(rSupported.first, rSupported.second));
-
-            return;
-        }
-
-        /* Loop through all of our operators. */
-        for(const auto& strOperator : setOperators)
-        {
-            /* Add the operator if it is supported. */
-            if(!mapSupported.count(strOperator))
-                throw Exception(-1, "Initialize Error: [", strOperator, "] not supported");
-
-            /* Copy over our data from our supported into operators. */
-            mapOperators.insert(std::make_pair(strOperator, mapSupported.at(strOperator)));
-        }
-    }
 }

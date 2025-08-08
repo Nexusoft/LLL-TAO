@@ -695,6 +695,6 @@ namespace TAO::API
          *  Checks for the correct session-id for single user mode.
          *
          **/
-        __attribute__((const)) static uint256_t default_session();
+        static uint256_t default_session();
     };
 }

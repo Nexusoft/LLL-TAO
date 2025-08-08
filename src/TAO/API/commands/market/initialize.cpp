@@ -28,10 +28,6 @@ namespace TAO::API
     /* Standard initialization function. */
     void Market::Initialize()
     {
-        /* Populate our operators. */
-        Operators::Initialize(mapOperators);
-
-
         /* Handle for our market fees. */
         if(config::HasArg("-marketfee"))
         {

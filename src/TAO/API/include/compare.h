@@ -41,6 +41,42 @@ namespace TAO::API
         CompareResults() = delete;
 
 
+        /** Copy Constructor. */
+        CompareResults(const CompareResults& a)
+        : fDesc     (a.fDesc)
+        , strColumn (a.strColumn)
+        {
+        }
+
+
+        /** Move Constructor. */
+        CompareResults(CompareResults&& a)
+        : fDesc     (std::move(a.fDesc))
+        , strColumn (std::move(a.strColumn))
+        {
+        }
+
+
+        /** Copy Assignment. **/
+        CompareResults& operator=(const CompareResults& a)
+        {
+            fDesc     = a.fDesc;
+            strColumn = a.strColumn;
+
+            return *this;
+        }
+
+
+        /** Move Assignment. **/
+        CompareResults& operator=(CompareResults&& a)
+        {
+            fDesc     = std::move(a.fDesc);
+            strColumn = std::move(a.strColumn);
+
+            return *this;
+        }
+
+
         /** Default Constructor
          *
          *  Constructs our functor from an ordering and column to order by.

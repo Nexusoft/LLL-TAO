@@ -168,6 +168,9 @@ namespace LLD
                 return true;
         }
 
+        /* Trigger that a register state was written to disk here. */
+        TAO::API::nRegisterCounter++;
+
         /* Check for register address index. */
         if(config::fIndexAddress.load())
         {
@@ -532,7 +535,7 @@ namespace LLD
         if(!LLD::Ledger->ReadBlock(hashBegin, state))
         {
             Write(std::string("reindexed"));
-            
+
             debug::warning(FUNCTION, "No tritium blocks available ", hashBegin.SubString());
             return;
         }

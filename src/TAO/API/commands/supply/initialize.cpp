@@ -27,10 +27,6 @@ namespace TAO::API
     /* Standard initialization function. */
     void Supply::Initialize()
     {
-        /* Populate our operators. */
-        Operators::Initialize(mapOperators);
-
-
         /* Populate our item standard. */
         mapStandards["item"] = Standard
         (

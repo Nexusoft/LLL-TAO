@@ -15,8 +15,11 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands.h>
 
+#include <atomic>
+
 namespace TAO::API
 {
+
     /** Initialize
      *
      *  Instantiate global instances of the API.

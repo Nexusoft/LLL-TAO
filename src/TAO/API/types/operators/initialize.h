@@ -29,18 +29,7 @@ namespace TAO::API
     {
 
         /** Track what operators are currently supported by initialize. **/
-        extern const std::map<std::string, Operator> mapSupported;
-
-
-        /** Initialize
-         *
-         *  Initialize a set of operators using a set series of string arguments in CSV format.
-         *
-         *  @param[out] mapOperators The operators map to pass back to the host API command-set.
-         *  @param[in] strOperators List of operators that will be supported by this command.
-         *
-         **/
-        void Initialize(std::map<std::string, Operator> &mapOperators, const std::string& strOperators = "");
+        extern const std::map<std::string, Operator> mapOperators;
 
     }
 }

@@ -99,7 +99,7 @@ namespace TAO::API
          *  @return The json formatted response.
          *
          **/
-        __attribute__((const)) encoding::json Execute(const encoding::json& jParams, const encoding::json& jList)
+        __attribute__((pure)) encoding::json Execute(const encoding::json& jParams, const encoding::json& jList) const
         {
             /* Check for deprecation status. */
             if(nMaxVersion != 0 && version::CLIENT_VERSION >= nMaxVersion)
