@@ -327,6 +327,9 @@ namespace TAO
 
             tStateBest.load().print();
 
+            /* Set our cache best height. */
+            TAO::API::nBlockCounter.store(tStateBest.load().nHeight);
+
             /* Log the weights. */
             debug::log(0, FUNCTION, "WEIGHTS",
                 " Prime ", tStateBest.load().nChannelWeight[1].Get64(),

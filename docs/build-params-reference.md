@@ -33,9 +33,19 @@ Example:
 32BIT=1
 ```
 
+#### `ARM32`
+
+Set to build for ARM32(`armv*l`) arch type.
+
+Example:
+
+```
+ARM32=1
+```
+
 #### `ARM64`
 
-Set to build for ARM64 arch type.
+Set to build for ARM64(`aarch64`) arch type.
 
 Example:
 

@@ -58,7 +58,7 @@ namespace TAO
              *  @param[in] nType The enum type to deduce if state or not.
              *
              **/
-            __attribute__((const)) static inline uint8_t STATE(const uint8_t nType)
+            static inline uint8_t STATE(const uint8_t nType)
             {
                 return (nType == READONLY || nType == APPEND || nType == RAW);
             }

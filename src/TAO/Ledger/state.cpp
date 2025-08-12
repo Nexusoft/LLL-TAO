@@ -1077,9 +1077,13 @@ namespace TAO
                     vDelete.insert(vDelete.end(), state->vtx.begin(), state->vtx.end());
                 }
 
-                /* Iterate forward through our transactions to resurrect in ascending order. */
+                /* Iterate forward through our transactions to remove in ascending order. */
                 for(auto proof = vDelete.begin(); proof != vDelete.end(); ++proof)
                     mempool.Remove(proof->second);
+
+                /* Calculate the total transactions connected. */
+                const uint32_t nTotalConnected =
+                    (vDelete.size() - vConnect.size());
 
                 /* Debug output about the best chain. */
                 uint64_t nElapsed      = (GetBlockTime() - ChainState::tStateBest.load().GetBlockTime());
@@ -1092,7 +1096,7 @@ namespace TAO
                         "New Best Block hash=", hash.SubString(),
                         " height=", nHeight,
                         " trust=", nChainTrust,
-                        " tx=", vtx.size(),
+                        " tx=", (nTotalConnected + vConnect.size()),
                         " [", (nElapsed == 0 ? 0 : double(nTotalContracts / nElapsed)), " tx/s]"
                         " [processed at ", (nTotalContracts * 1000000.0) / (nContractTime + 1), " contract/s",
                         " | ", (nTotalInputs * 1000000.0) / (nInputsTime + 1), " script/s]",
@@ -1106,6 +1110,13 @@ namespace TAO
 
                 /* Reset our reorg block now. */
                 ChainState::fChainReorg.store(false);
+
+                /* Set our cache to update state. */
+                if(nTotalConnected > 0)
+                    TAO::API::nTransactionCounter++;
+
+                /* Set our chain cache update now. */
+                TAO::API::nBlockCounter.store(nHeight);
 
                 /* Write the best chain pointer. */
                 if(!LLD::Ledger->WriteBestChain(hash))

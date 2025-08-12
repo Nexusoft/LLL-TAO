@@ -30,10 +30,6 @@ namespace TAO::API
     /* Standard initialization function. */
     void Tokens::Initialize()
     {
-        /* Populate our operators. */
-        Operators::Initialize(mapOperators);
-
-
         /* Populate our ACCOUNT standard. */
         mapStandards["account"] = Standard
         (

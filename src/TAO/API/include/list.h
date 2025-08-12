@@ -14,6 +14,7 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <TAO/API/include/compare.h>
 #include <TAO/API/types/accounts.h>
 
 #include <map>
@@ -65,5 +66,29 @@ namespace TAO::API
      *
      **/
     bool ListPartial(const uint256_t& hashGenesis, std::map<uint256_t, std::pair<Accounts, uint256_t>> &mapAssets);
+
+
+    /** ListResults
+     *
+     *  Take a results set and compile it into a results json object for caching.
+     *
+     *  @param[in] setResults The results data list that we are compiling into a specific page
+     *  @param[out] jRet The paged json data as an array.
+     *
+     **/
+    void ListResults(const std::set<encoding::json, CompareResults>& setResults, encoding::json &jRet);
+
+
+    /** ListPages
+     *
+     *  List pages based on our incoming list parameters and generate an output
+     *
+     *  @param[in] jCache The cached results object that we want to list pages from
+     *  @param[in] nLimit The total number of items for this page
+     *  @param[in] nOffset The numerical offset that we use to determine page.
+     *  @param[out] jRet The paged json data as an array.
+     *
+     **/
+    void ListPages(const encoding::json& jCache, const uint32_t nLimit, const uint32_t nOffset, encoding::json &jRet);
 
 }

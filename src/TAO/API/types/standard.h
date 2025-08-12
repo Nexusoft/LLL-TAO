@@ -119,7 +119,7 @@ namespace TAO::API
          *  @return The string to use.
          *
          **/
-        __attribute__((pure)) std::string Type() const
+        std::string Type() const
         {
             return strStandard;
         }
@@ -134,7 +134,7 @@ namespace TAO::API
          *  @return The json formatted response.
          *
          **/
-        __attribute__((pure)) bool Check(const TAO::Register::Object& rObject) const
+        bool Check(const TAO::Register::Object& rObject) const
         {
             /* Check for activation status. */
             const uint64_t nTimestamp = runtime::unifiedtimestamp();
@@ -159,7 +159,7 @@ namespace TAO::API
          *  @return the json encoded object
          *
          **/
-        __attribute__((pure)) encoding::json Encode(const TAO::Register::Object& object, const uint256_t& hashRegister) const
+        encoding::json Encode(const TAO::Register::Object& object, const uint256_t& hashRegister) const
         {
             return xEncoding(object, hashRegister);
         }

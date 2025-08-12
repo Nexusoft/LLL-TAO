@@ -26,18 +26,21 @@ namespace TAO::Register { class Object; }
 /* Global TAO namespace. */
 namespace TAO::API
 {
+
     /** Base
      *
      *  Base class for all JSON based API's.
      *
-     *  Instances of JSONAPIBase derivations must be registered with the
-     *  JSONAPINode processing the HTTP requests. This class holds a map of
-     *  JSONAPIMethod instances that in turn perform the processing for each
+     *  Instances of Base derivations must be registered with the
+     *  node processing the HTTP requests. This class holds a map of
+     *  method instances that in turn perform the processing for each
      *  API method request.
      *
      **/
     class Base
     {
+    protected:
+
         /* Simple enum for readability. */
         enum URI : uint8_t
         {
@@ -47,7 +50,6 @@ namespace TAO::API
             OPERATOR = 3,
         };
 
-    protected:
 
         /** Initializer Flag. */
         bool fInitialized;
@@ -61,20 +63,10 @@ namespace TAO::API
         std::map<std::string, Standard>  mapStandards;
 
 
-        /** Map of standard nouns to check for standard object types. **/
-        std::map<std::string, Operator>  mapOperators;
-
-
     public:
 
         /** Default Constructor **/
-        Base ( )
-        : fInitialized (false)
-        , mapFunctions ( )
-        , mapStandards ( )
-        , mapOperators ( )
-        {
-        }
+        Base ( );
 
 
         /** Default destructor **/
@@ -173,7 +165,7 @@ namespace TAO::API
          *  @return JSON encoded response.
          *
          **/
-        encoding::json Execute(std::string &strMethod, encoding::json &jParams, const bool fHelp = false);
+        encoding::json Execute(std::string &strMethod, encoding::json &jParams, const bool fHelp = false) const;
 
 
         /** RewriteURL
@@ -188,7 +180,7 @@ namespace TAO::API
          *  @return the API method URL
          *
          **/
-        virtual std::string RewriteURL(const std::string& strMethod, encoding::json &jParams);
+         std::string RewriteURL(const std::string& strMethod, encoding::json &jParams) const;
 
 
         /** Index

@@ -33,6 +33,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/tritium.h>
 #include <TAO/Ledger/types/credentials.h>
 
+
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
 

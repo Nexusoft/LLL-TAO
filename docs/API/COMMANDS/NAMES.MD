@@ -86,7 +86,7 @@ This will create a new namespace.
 
 `global` : Optional, boolean field indicates that the Name should be created in the global namespace, i.e. it will be globally unique. If the caller sets this field to true, the namespace parameter is ignored.
 
-`address` : Optional, the 256-bit hexadecimal **register address** of the object that this Name will point to.
+`register` : Optional, the 256-bit hexadecimal **register address** of the object that this Name will point to.
 
 #### create/namespace
 

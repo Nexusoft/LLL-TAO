@@ -29,7 +29,7 @@ namespace version
     const uint32_t CLIENT_REVISION = 1;
 
     /* This tells us minor build tweaks rather than release candidate. */
-    const uint32_t CLIENT_BUILD    = 5;
+    const uint32_t CLIENT_BUILD    = 1;
 
 
     /* The version of the actual wallet client. */
@@ -71,11 +71,13 @@ namespace version
     #endif
 
 
-    /* The Architecture (32-Bit, ARM 64, or 64-Bit) */
+    /* The Architecture (32-Bit, ARM 32/64, or 64-Bit) */
     #if defined x86
         const std::string BUILD_ARCH = "[x86]";
     #elif defined aarch64
         const std::string BUILD_ARCH = "[ARM aarch64]";
+    #elif defined arm
+	const std::string BUILD_ARCH = "[ARM arm32(armv*l)]";
     #else
         const std::string BUILD_ARCH = "[x64]";
     #endif

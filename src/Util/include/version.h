@@ -64,7 +64,7 @@ namespace version
 	 *  @return aggregated version as unsigned integer.
 	 *
 	 **/
-	__attribute__((const)) inline uint32_t get_version(const uint32_t nMajor, const uint32_t nMinor, const uint32_t nPatch = 0)
+	inline uint32_t get_version(const uint32_t nMajor, const uint32_t nMinor, const uint32_t nPatch = 0)
 	{
 		return (10000 * nMajor) + (100 * nMinor) + nPatch;
 	}
@@ -79,7 +79,7 @@ namespace version
 	 *  @return string representation of version.
 	 *
 	 **/
-	__attribute__((const)) std::string version_string(const uint32_t nVersion);
+	std::string version_string(const uint32_t nVersion);
 }
 
 #endif
