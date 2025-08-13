@@ -494,9 +494,19 @@ namespace TAO
 
                     #endif
 
-                    /* Check that the there are not more than the allowable default contracts */
-                    if(vContracts.size() > 5 || nNames > 2 || nTrust > 1 || nAccounts > 1 || nCrypto > 1)
-                        return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
+                    /* We want to be explicit here to keep genesis transactions consistent. */
+                    if(nVersion >= 5)
+                    {
+                        /* Check that the there are not more than the allowable default contracts */
+                        if(vContracts.size() != 5 || nNames != 2 || nTrust != 1 || nAccounts != 1 || nCrypto != 1)
+                            return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
+                    }
+                    else
+                    {
+                        /* Check that the there are not more than the allowable default contracts */
+                        if(vContracts.size() > 5 || nNames > 2 || nTrust > 1 || nAccounts > 1 || nCrypto > 1)
+                            return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
+                    }
                 }
 
                 /* Check our hybrid proofs. */
