@@ -243,10 +243,6 @@ namespace TAO
             uint64_t nBlockTarget =
                 config::fTestNet.load() ? TESTNET_MINING_TARGET_SPACING : MINING_TARGET_SPACING;
 
-            /* For version 9 blocks we want to have double the block target. */
-            if(state.nVersion >= 9)
-                nBlockTarget *= 2;
-
             /* Chain Mod: Is a proportion to reflect outstanding released funds. Version 1 Deflates difficulty slightly
             to allow more blocks through when blockchain has been slow, Version 2 Deflates Target Timespan to lower the minimum difficulty.
             This helps stimulate transaction processing while helping get the Nexus production back on track */
@@ -389,10 +385,6 @@ namespace TAO
             /* Set the block target timespan. */
             uint64_t nBlockTarget =
                 config::fTestNet.load() ? TESTNET_MINING_TARGET_SPACING : MINING_TARGET_SPACING;
-
-            /* For version 9 blocks we want to have double the block target. */
-            if(state.nVersion >= 9)
-                nBlockTarget *= 2;
 
             /* Get the Chain Modular from Reserves. */
             cv::softdouble nChainMod = cv::softdouble(GetFractionalSubsidy(GetChainAge(first.GetBlockTime()), 0,
