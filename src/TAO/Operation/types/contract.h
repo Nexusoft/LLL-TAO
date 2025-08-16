@@ -161,6 +161,15 @@ namespace TAO::Operation
         bool Sanitize() const;
 
 
+
+        /** Valid
+         *
+         *  Check that a given contract is well formed.
+         *
+         **/
+        bool Valid() const;
+
+
         /** Primitive
          *
          *  Get the primitive operation.

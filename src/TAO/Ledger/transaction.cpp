@@ -410,6 +410,10 @@ namespace TAO
                 if(contract.Empty(TAO::Operation::Contract::OPERATIONS))
                     return debug::error(FUNCTION, "contract is empty");
 
+                /* Version 5 rule to check the conditions are not malformed. */
+                if(nVersion >= 5 && !contract.Valid())
+                    return debug::error(FUNCTION, "conditions byte-code contains invalid instruction: ", debug::GetLastError());
+
                 /* Skip over fees as counting against total contracts. */
                 if(contract.Primitive() != TAO::Operation::OP::FEE)
                     ++nContracts;

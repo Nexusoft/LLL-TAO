@@ -202,6 +202,19 @@ namespace TAO::Operation
     };
 
 
+    /** Map to hold opcodes that need to activate. **/
+    const std::map<uint8_t, uint32_t> mapActivate;
+
+
+    /** Map to hold opcodes that need to deactivate. **/
+    const std::map<uint8_t, uint32_t> mapDeactivate =
+    {
+        { OP::LEDGER::HEIGHT,    5 },
+        { OP::LEDGER::SUPPLY,    5 },
+        { OP::LEDGER::TIMESTAMP, 5 }
+    };
+
+
     /** PLACEHOLDER
      *
      *  This structure holds enumeration values for parameter placeholders for generating a conditional contract.
