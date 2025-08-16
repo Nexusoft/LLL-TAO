@@ -240,11 +240,15 @@ namespace TAO::Operation
             ssConditions >> nCode;
 
             /* Check if our opcode has been disabled. */
-            if(mapDeactivate.count(nCode) && mapDeactivate.at(nCode) >= nVersion)
+            if(mapDeactivated.count(nCode) && mapDeactivated.at(nCode) >= nVersion)
                 return debug::error(FUNCTION, "OP", std::hex, nCode, " deactivated for version ", nVersion);
 
+            /* Make sure this is a valid opcode. */
+            if(!mapActivated.count(nCode))
+                return debug::error(FUNCTION, "OP", std::hex, nCode, " illegal instruction, malformed binary stream");
+
             /* Check if our opcode has yet to be enabled. */
-            if(mapActivate.count(nCode) && mapActivate.at(nCode) < nVersion)
+            if(mapActivated.at(nCode) < nVersion)
                 return debug::error(FUNCTION, "OP", std::hex, nCode, " not activated for version ", nVersion);
 
             /* Check for a valid parameter type. */
