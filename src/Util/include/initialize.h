@@ -23,7 +23,7 @@ class Initialize
 
     /** Wrap this in a mutex so it is thread safe. **/
     static std::recursive_mutex MUTEX;
-    
+
 
 public:
 

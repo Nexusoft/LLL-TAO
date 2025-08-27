@@ -44,12 +44,6 @@ ________________________________________________________________________________
 
 #include <Util/include/initialize.h>
 
-/* Our initial message will show we are starting up the daemon. */
-std::string Initialize::strMessage = "Starting Daemon...";
-
-/* Declare our static mutex for our internal Initialize class. */
-std::recursive_mutex Initialize::MUTEX;
-
 
 /** Startup
  *
