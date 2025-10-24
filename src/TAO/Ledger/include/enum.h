@@ -342,12 +342,12 @@ namespace TAO
                     RECOVERY  = 0x0b,
 
                     //signature types
-                    FALCON = 0x0c, //FALCON QR DSA
-                    ED448  = 0x0d, //ED4480-Goldilocks
+                    FALCON    = 0x0c, //FALCON QR DSA
+                    ED448     = 0x0d, //ED448-Goldilocks
 
                     //keys and signatures
-                    PUBKEY = 0x0e,
-                    SIG    = 0x0f
+                    PUBKEY    = 0x0e,
+                    SIGNATURE = 0x0f
                 };
             };
 
