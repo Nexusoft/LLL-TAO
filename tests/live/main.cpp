@@ -31,5 +31,17 @@ ________________________________________________________________________________
 int main(int argc, char** argv)
 {
 
+    {
+        uint256_t hashFalcon;
+
+        using namespace TAO::Ledger;
+
+        TAO::Ledger::Stream ssAuthorization;
+
+        //create an auth script for a single falcon key
+        //(NextHash.Falcon(OP::ALL) == hashFalcon)
+        ssAuthorization << AUTH::OP::GROUP << AUTH::TYPES::NEXTHASH << AUTH::TYPES::FALCON << hashFalcon << AUTH::OP::UNGROUP;
+    }
+
     return 0;
 }

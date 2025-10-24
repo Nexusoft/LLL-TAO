@@ -319,7 +319,7 @@ namespace TAO
 
 
         /** Struct to hold the authorization enumerated values for building an authorization script. **/
-        struct AUTHORIZATION
+        struct AUTH
         {
             /** Core validation types. **/
             struct TYPES
@@ -338,7 +338,7 @@ namespace TAO
                     BYTES     = 0x09,
 
                     //nexthash types
-                    NEXTHASH  = 0x0a,
+                    NEXTHASH  = 0x0a, //requires 4 bytes, 1 for this OP, 1 for sig type, and 2 for scope bits
                     RECOVERY  = 0x0b,
 
                     //signature types
@@ -353,7 +353,7 @@ namespace TAO
 
 
             /** Core comparison operations. **/
-            struct COMPARE
+            struct OP
             {
                 enum : uint8_t
                 {
@@ -404,6 +404,28 @@ namespace TAO
                     SHA3   = 0x31, //SHA3 256-bit by default
                 };
             }
+
+            //PRIMITIVE DATA TYPES (0x40 to ???)
+            struct WRITE
+            {
+                static const uint16_t ENABLED = (1 << 1);
+
+                enum : uint8_t
+                {
+                    ADDRESS = 0x40,
+                    DATA    = 0x41,
+                };
+            };
+
+            struct CREATE
+            {
+                static const uint16_t ENABLED = (1 << 2);
+
+                enum : uint8_t
+                {
+
+                };
+            };
         };
     }
 }
