@@ -214,8 +214,8 @@ namespace TAO
                 /** BRAINPOOL ECDSA curve. **/
                 BRAINPOOL   = 0x02,
 
-                /** SECP256K1 ECDSA curve. **/
-                SECP256K1   = 0x03
+                /** ED448-Goldilocks EdDSA curve. **/
+                ED448       = 0x03
             };
 
             /* Track a mapping to enum. */
