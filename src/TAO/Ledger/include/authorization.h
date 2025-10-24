@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 namespace TAO::Ledger
 {
+
     /** @class Authorization Class:
      *
      *  This class is responsible for handling authentication of a given sigchain. This allows us to create
@@ -31,7 +32,7 @@ namespace TAO::Ledger
     	const TAO::Ledger::Stream ssAuthorization;
 
 
-    	/** Build the stack for nested grouping for unlimited conditional clauses. **/
+    	/** Build the stack for nested grouping for unlimited tAuthorizational clauses. **/
     	std::stack<std::pair<bool, uint8_t>> vEvaluate;
 
     public:
@@ -45,19 +46,19 @@ namespace TAO::Ledger
 
 
         /** Copy constructor. **/
-        Authorization(const Authorization& condition);
+        Authorization(const Authorization& tAuthorization);
 
 
         /** Move constructor. **/
-        Authorization(Authorization&& condition) noexcept;
+        Authorization(Authorization&& tAuthorization) noexcept;
 
 
         /** Copy assignment. **/
-        Authorization& operator=(const Authorization& condition) = delete;
+        Authorization& operator=(const Authorization& tAuthorization) = delete;
 
 
         /** Move assignment. **/
-        Authorization& operator=(Authorization&& condition)      = delete;
+        Authorization& operator=(Authorization&& tAuthorization)      = delete;
 
 
         /** Default Destructor **/
@@ -83,6 +84,6 @@ namespace TAO::Ledger
          *  Get a value from the register virtual machine.
          *
          **/
-         bool GetValue(TAO::Register::Value& vRet);
+         bool get_value(TAO::Register::Value& vRet);
     };
 }
