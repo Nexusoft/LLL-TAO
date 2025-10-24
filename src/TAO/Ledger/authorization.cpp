@@ -20,6 +20,7 @@ namespace TAO::Ledger
     /* Copy constructor. */
     Authorization::Authorization(const Authorization& tAuthorization)
     : ssAuthorization (tAuthorization.ssAuthorization)
+    , ssEvaluation    (tAuthorization.ssEvaluation)
     , vEvaluate       ( ) //we don't copy our memory stacks over
     , nCost           (0)
     {
@@ -29,6 +30,7 @@ namespace TAO::Ledger
     /* Move constructor. */
     Authorization::Authorization(Authorization&& tAuthorization)
     : ssAuthorization (std::move(tAuthorization.ssAuthorization))
+    , ssEvaluation    (std::move(tAuthorization.ssEvaluation))
     , vEvaluate       ( ) //we don't copy our memory stacks over
     , nCost           (0)
     {
@@ -42,15 +44,16 @@ namespace TAO::Ledger
 
 
     /* Default constructor. */
-    Authorization::Authorization(const TAO::Ledger::Stream& ssStreamIn)
-    : ssAuthorization (ssStreamIn)
+    Authorization::Authorization(const TAO::Ledger::Stream& ssAuthorizationIn, const TAO::Ledger::Stream& ssTransactionIn)
+    : ssAuthorization (ssAuthorizationIn)
+    , ssEvaluation    (ssEvaluateIn)
     , vEvaluate       ( )
     , nCost           (0)
     {
     }
 
 
-    /* Evaluate the validation script. */
+    /* Evaluate the authorization script. */
     bool Authorized()
     {
 

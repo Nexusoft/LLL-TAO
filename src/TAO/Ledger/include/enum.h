@@ -230,8 +230,8 @@ namespace TAO
                     return SIGNATURE::FALCON;
 
                 /* Check for brainpool standard. */
-                if(strType == "secp256k1")
-                    return SIGNATURE::SECP256K1;
+                if(strType == "ed448")
+                    return SIGNATURE::ED448;
 
                 return SIGNATURE::RESERVED;
             }
@@ -315,6 +315,95 @@ namespace TAO
                 /* Private hybrid hash. */
                 CHECKPOINT = 0x02, //for private chain checkpointing into mainnet blocks.
             };
+        };
+
+
+        /** Struct to hold the authorization enumerated values for building an authorization script. **/
+        struct AUTHORIZATION
+        {
+            /** Core validation types. **/
+            struct TYPES
+            {
+                enum : uint8_t
+                {
+                    //RESERVED to 0x7f
+                    UINT8     = 0x01,
+                    UINT16    = 0x02,
+                    UINT32    = 0x03,
+                    UINT64    = 0x04,
+                    UINT256   = 0x05,
+                    UINT512   = 0x06,
+                    UINT1024  = 0x07,
+                    STRING    = 0x08,
+                    BYTES     = 0x09,
+
+                    //nexthash types
+                    NEXTHASH  = 0x0a,
+                    RECOVERY  = 0x0b,
+
+                    //signature types
+                    FALCON = 0x0c, //FALCON QR DSA
+                    ED448  = 0x0d, //ED4480-Goldilocks
+
+                    //keys and signatures
+                    PUBKEY = 0x0e,
+                    SIG    = 0x0f
+                };
+            };
+
+
+            /** Core comparison operations. **/
+            struct COMPARE
+            {
+                enum : uint8_t
+                {
+                    //RESERVED from 0x10 to 0x1f
+                    EQUALS        = 0x10,
+                    LESSTHAN      = 0x11,
+                    GREATERTHAN   = 0x12,
+                    NOTEQUALS     = 0x13,
+                    CONTAINS      = 0x14,
+                    LESSEQUALS    = 0x15,
+                    GREATEREQUALS = 0x16,
+
+                    AND         = 0x17,
+                    OR          = 0x18,
+                    GROUP       = 0x19,
+                    UNGROUP     = 0x1a,
+                };
+            };
+
+
+            /** Core computation operations. **/
+            struct COMPUTE
+            {
+                enum : uint8_t
+                {
+                    //RESERVED 0x 20 to to 0x2f
+                    ADD         = 0x20,
+                    SUB         = 0x21,
+                    DIV         = 0x22,
+                    MUL         = 0x23,
+                    MOD         = 0x24,
+                    INC         = 0x25,
+                    DEC         = 0x26,
+                    EXP         = 0x27,
+
+                    SUBDATA     = 0x28,
+                    CAT         = 0x29,
+                };
+            };
+
+
+            /** Authorization Hashes operations. **/
+            struct CRYPTO
+            {
+                enum : uint8_t
+                {
+                    SK256  = 0x30, //Skein-Keccak 256 by default
+                    SHA3   = 0x31, //SHA3 256-bit by default
+                };
+            }
         };
     }
 }

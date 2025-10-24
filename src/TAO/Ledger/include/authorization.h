@@ -29,7 +29,11 @@ namespace TAO::Ledger
     {
 
         /** The main authorization script that will be used to process our authentication in the Ledger VM. **/
-    	const TAO::Ledger::Stream ssAuthorization;
+    	const TAO::Ledger::Stream ssAuthorization; //this is replacement for hashNext
+
+
+        /** The evaluation script on incoming transaction will be giving input to execute upon this authorization script. **/
+        const TAO::Ledger::Stream ssEvaluation; //this is replacement for vPubKey and vSignature
 
 
     	/** Build the stack for nested grouping for unlimited tAuthorizational clauses. **/
@@ -66,7 +70,7 @@ namespace TAO::Ledger
 
 
         /** Default constructor. **/
-        Authorization(const TAO::Ledger::Stream& ssStreamIn);
+        Authorization(const TAO::Ledger::Stream& ssAuthorizationIn, const TAO::Ledger::Stream& ssTransactionIn);
 
 
         /** Evaluate
