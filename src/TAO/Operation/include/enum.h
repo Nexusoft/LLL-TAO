@@ -35,7 +35,7 @@ namespace TAO::Operation
             //register operations
             WRITE       = 0x01,
             CREATE      = 0x02,
-            EXECUTE     = 0x03, //this executes a function for augmented contracts
+            INVOKE      = 0x03, //this executes a function for augmented contracts
             TRANSFER    = 0x04,
             CLAIM       = 0x05,
             APPEND      = 0x06,

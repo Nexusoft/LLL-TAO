@@ -370,15 +370,7 @@ namespace TAO
                     OR          = 0x18,
                     GROUP       = 0x19,
                     UNGROUP     = 0x1a,
-                };
-            };
 
-
-            /** Core computation operations. **/
-            struct COMPUTE
-            {
-                enum : uint8_t
-                {
                     //RESERVED 0x 20 to to 0x2f
                     ADD         = 0x20,
                     SUB         = 0x21,
@@ -405,11 +397,12 @@ namespace TAO
                 };
             }
 
-            //PRIMITIVE DATA TYPES (0x40 to ???)
+            /** Primitive OP::WRITE operation. **/
             struct WRITE
             {
                 static const uint16_t ENABLED = (1 << 1);
 
+                /** Input parameters for OP::WRITE. **/
                 enum : uint8_t
                 {
                     ADDRESS = 0x40,
@@ -417,13 +410,70 @@ namespace TAO
                 };
             };
 
+            /** Primitive OP::CREATE operation. **/
             struct CREATE
             {
                 static const uint16_t ENABLED = (1 << 2);
 
+                /** Input parameters for OP::CREATE. **/
                 enum : uint8_t
                 {
+                    ADDRESS = 0x42,
+                    TYPE    = 0x43,
+                    DATA    = 0x44,
+                };
+            };
 
+            /** Primitive OP::TRANSFER operation. **/
+            struct TRANSFER
+            {
+                static const uint16_t ENABLED = (1 << 3);
+
+                /** Input parameters for OP::TRANSFER. **/
+                enum : uint8_t
+                {
+                    ADDRESS   = 0x43,
+                    RECIPIENT = 0x44,
+                    TYPE      = 0x45,
+                };
+            };
+
+            /** Primitive OP::CLAIM operation. **/
+            struct CLAIM
+            {
+                static const uint16_t ENABLED = (1 << 4);
+
+                /** Input parameters for OP::CLAIM. **/
+                enum : uint8_t
+                {
+                    TRANSACTION  = 0x46, //the transaction that we are claiming from
+                    ADDRESS      = 0x47,
+                };
+            };
+
+            /** Primitive OP::COINBASE operation. **/
+            struct COINBASE
+            {
+                static const uint16_t ENABLED = (1 << 5);
+
+                /** Input parameters for OP::COINBASE. **/
+                enum : uint8_t
+                {
+                    GENESIS      = 0x47,
+                };
+            };
+
+            /** Primitive OP::TRUST operation. **/
+            struct TRUST
+            {
+                static const uint16_t ENABLED = (1 << 6);
+
+                /** Input parameters for OP::COINBASE. **/
+                enum : uint8_t
+                {
+                    TRUST  = 0x48,
+                    CHANGE = 0x49,
+                    REWARD = 0x4a,
                 };
             };
         };
