@@ -82,6 +82,10 @@ namespace TAO::Operation
                 UINT1024_T  = 0x76,
                 STRING      = 0x77,
                 BYTES       = 0x78,
+
+                //AUGMENTED CONTRACTS OPS
+                FLOAT32     = 0x79,
+                FLOAT64     = 0x7a,
             };
         };
 
@@ -113,11 +117,19 @@ namespace TAO::Operation
             CAT         = 0x99,
 
 
-            //RESERVED to 0x2f
+            //RESERVED to 0xaf
             AND         = 0xa0,
             OR          = 0xa1,
             GROUP       = 0xa2,
             UNGROUP     = 0xa3,
+
+            //AUGMENTED CONTRACTS OPCODES
+            IF          = 0xa4,
+            THEN        = 0xa5,
+            ELSE        = 0xa6,
+            ENDIF       = 0xa7,
+            FOR         = 0xa8,
+            ENDFOR      = 0xa9,
         };
 
 
@@ -204,92 +216,95 @@ namespace TAO::Operation
     };
 
 
-    /** Map to hold opcodes that are activated. **/
-    const std::map<uint8_t, uint32_t> mapActivated =
+    struct Conditions
     {
-        //activated datatypes
-        { OP::TYPES::UINT8_T,             1 },
-        { OP::TYPES::UINT16_T,            1 },
-        { OP::TYPES::UINT32_T,            1 },
-        { OP::TYPES::UINT64_T,            1 },
-        { OP::TYPES::UINT256_T,           1 },
-        { OP::TYPES::UINT512_T,           1 },
-        { OP::TYPES::UINT1024_T,          1 },
-        { OP::TYPES::STRING,              1 },
-        { OP::TYPES::BYTES,               1 },
+        /** Map to hold opcodes that are activated. **/
+        static const std::map<uint8_t, uint32_t> mapActrivated =
+        {
+            //activated datatypes
+            { OP::TYPES::UINT8_T,             1 },
+            { OP::TYPES::UINT16_T,            1 },
+            { OP::TYPES::UINT32_T,            1 },
+            { OP::TYPES::UINT64_T,            1 },
+            { OP::TYPES::UINT256_T,           1 },
+            { OP::TYPES::UINT512_T,           1 },
+            { OP::TYPES::UINT1024_T,          1 },
+            { OP::TYPES::STRING,              1 },
+            { OP::TYPES::BYTES,               1 },
 
-        //comparison operators
-        { OP::EQUALS,                     1 },
-        { OP::LESSTHAN,                   1 },
-        { OP::GREATERTHAN,                1 },
-        { OP::NOTEQUALS,                  1 },
-        { OP::CONTAINS,                   1 },
-        { OP::LESSEQUALS,                 1 },
-        { OP::GREATEREQUALS,              1 },
+            //comparison operators
+            { OP::EQUALS,                     1 },
+            { OP::LESSTHAN,                   1 },
+            { OP::GREATERTHAN,                1 },
+            { OP::NOTEQUALS,                  1 },
+            { OP::CONTAINS,                   1 },
+            { OP::LESSEQUALS,                 1 },
+            { OP::GREATEREQUALS,              1 },
 
-        //arithmatic operators
-        { OP::ADD,                        1 },
-        { OP::SUB,                        1 },
-        { OP::DIV,                        1 },
-        { OP::MUL,                        1 },
-        { OP::MOD,                        1 },
-        { OP::INC,                        1 },
-        { OP::DEC,                        1 },
-        { OP::EXP,                        1 },
+            //arithmatic operators
+            { OP::ADD,                        1 },
+            { OP::SUB,                        1 },
+            { OP::DIV,                        1 },
+            { OP::MUL,                        1 },
+            { OP::MOD,                        1 },
+            { OP::INC,                        1 },
+            { OP::DEC,                        1 },
+            { OP::EXP,                        1 },
 
-        //parsing operators
-        { OP::SUBDATA,                    1 },
-        { OP::CAT,                        1 },
+            //parsing operators
+            { OP::SUBDATA,                    1 },
+            { OP::CAT,                        1 },
 
-        //logical grouping operators
-        { OP::AND,                        1 },
-        { OP::OR,                         1 },
-        { OP::GROUP,                      1 },
-        { OP::UNGROUP,                    1 },
+            //logical grouping operators
+            { OP::AND,                        1 },
+            { OP::OR,                         1 },
+            { OP::GROUP,                      1 },
+            { OP::UNGROUP,                    1 },
 
-        //register operators
-        { OP::REGISTER::CREATED,          1 },
-        { OP::REGISTER::MODIFIED,         1 },
-        { OP::REGISTER::OWNER,            1 },
-        { OP::REGISTER::TYPE,             1 },
-        { OP::REGISTER::STATE,            1 },
-        { OP::REGISTER::VALUE,            1 },
+            //register operators
+            { OP::REGISTER::CREATED,          1 },
+            { OP::REGISTER::MODIFIED,         1 },
+            { OP::REGISTER::OWNER,            1 },
+            { OP::REGISTER::TYPE,             1 },
+            { OP::REGISTER::STATE,            1 },
+            { OP::REGISTER::VALUE,            1 },
 
-        //contract that is calling
-        { OP::CALLER::GENESIS,            1 },
-        { OP::CALLER::TIMESTAMP,          1 },
-        { OP::CALLER::OPERATIONS,         1 },
-        { OP::CALLER::CONDITIONS,         1 },
-        { OP::CALLER::PRESTATE::CREATED,  1 },
-        { OP::CALLER::PRESTATE::MODIFIED, 1 },
-        { OP::CALLER::PRESTATE::OWNER,    1 },
-        { OP::CALLER::PRESTATE::TYPE,     1 },
-        { OP::CALLER::PRESTATE::STATE,    1 },
-        { OP::CALLER::PRESTATE::VALUE,    1 },
+            //contract that is calling
+            { OP::CALLER::GENESIS,            1 },
+            { OP::CALLER::TIMESTAMP,          1 },
+            { OP::CALLER::OPERATIONS,         1 },
+            { OP::CALLER::CONDITIONS,         1 },
+            { OP::CALLER::PRESTATE::CREATED,  1 },
+            { OP::CALLER::PRESTATE::MODIFIED, 1 },
+            { OP::CALLER::PRESTATE::OWNER,    1 },
+            { OP::CALLER::PRESTATE::TYPE,     1 },
+            { OP::CALLER::PRESTATE::STATE,    1 },
+            { OP::CALLER::PRESTATE::VALUE,    1 },
 
-        //contract being invoked
-        { OP::CONTRACT::GENESIS,          1 },
-        { OP::CONTRACT::TIMESTAMP,        1 },
-        { OP::CONTRACT::OPERATIONS,       1 },
-        { OP::CONTRACT::CONDITIONS,       1 },
+            //contract being invoked
+            { OP::CONTRACT::GENESIS,          1 },
+            { OP::CONTRACT::TIMESTAMP,        1 },
+            { OP::CONTRACT::OPERATIONS,       1 },
+            { OP::CONTRACT::CONDITIONS,       1 },
 
-        //ledger statistics operators
-        { OP::LEDGER::HEIGHT,             1 },
-        { OP::LEDGER::SUPPLY,             1 },
-        { OP::LEDGER::TIMESTAMP,          1 },
+            //ledger statistics operators
+            { OP::LEDGER::HEIGHT,             1 },
+            { OP::LEDGER::SUPPLY,             1 },
+            { OP::LEDGER::TIMESTAMP,          1 },
 
-        //crypto operators
-        { OP::CRYPTO::SK256,              1 },
-        { OP::CRYPTO::SK512,              1 },
-    };
+            //crypto operators
+            { OP::CRYPTO::SK256,              1 },
+            { OP::CRYPTO::SK512,              1 },
+        };
 
 
-    /** Map to hold opcodes that need to deactivate. **/
-    const std::map<uint8_t, uint32_t> mapDeactivated =
-    {
-        { OP::LEDGER::HEIGHT,    5 },
-        { OP::LEDGER::SUPPLY,    5 },
-        { OP::LEDGER::TIMESTAMP, 5 },
+        /** Map to hold opcodes that need to deactivate. **/
+        static const std::map<uint8_t, uint32_t> mapDeactivated =
+        {
+            { OP::LEDGER::HEIGHT,    5 },
+            { OP::LEDGER::SUPPLY,    5 },
+            { OP::LEDGER::TIMESTAMP, 5 },
+        };
     };
 
 

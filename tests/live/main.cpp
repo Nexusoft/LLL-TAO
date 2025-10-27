@@ -176,8 +176,69 @@ int main(int argc, char** argv)
 
         //let us now create a function of binary data.
         account << std::string("total") << uint8_t(TYPES::UINT64_T) << uint64_t(0);
+        account << std::string("last") << uint8_t(TYPES::UINT64_T) << uint64_t(0);
 
         TAO::Operation::Stream ssMethod;
+
+        //TODO: impelement order of operations PEMDAS
+
+        /*
+            object Account : public standard.account
+            {
+                uint64_t total;
+                uint64_t last;
+
+                Account()
+                : total   (0)
+                , last    (0)
+                {
+                }
+
+                Debit(to, from, amount, reference)
+                {
+                    uint64_t a = (timestamp - this.last) / 3600;
+                    uint64_t t = this.total / a;
+
+                    //make sure we are not sending more than 1000 NXS per hour
+                    if(t < 1000 NXS)
+                    {
+                        this.last  = timestamp;
+                        this.total += amount;
+
+                        return true;
+                    }
+
+                    return false;
+                }
+            };
+        */
+
+        //uint64_t a = (Caller.Timestamp - Caller.PreState.Value("last")) / 3600;
+        ssMethod << OP::GROUP << OP::CALLER::TIMESTAMP << OP::SUB << OP::CALLER::PRESTATE::VALUE << std::string("last") << OP::UNGROUP;
+        ssMethod << OP::DIV << OP::TYPES::UINT64_T << uint64_t(3600);
+        ssMethod << OP::STORE << OP::TYPES::UINT64_T << std::string("a");
+
+        //uint64_t t = Caller.Prestate.Value("total") / a;
+        ssMethod << OP::CALLER::PRESTATE::VALUE << std::string("total") << OP::DIV << OP::LOAD << std::string("a") << OP::STORE << OP::TYPES::UINT64_T << std::string("t");
+
+        //if(t < 1000 NXS) {
+        ssMethod << OP::IF << OP::GROUP << OP::LOAD << std::string("t") << OP::LESSTHAN << OP::TYPES::UINT64_T << uint64_t(1000) << OP::MUL << OP::TOKENS::DIGITS << std::string("NXS");
+
+        //this.last  = timestamp;
+        ssMethod << OP::CALLER::TIMESTAMP << OP::THIS::STORE << std::string("last");
+
+        //this.total += amount;
+        ssMethod << OP::CALLER::PRESTATE::VALUE << std::string("total") << OP::ADD << OP::CALLER::PARAMS::_3;
+        ssMethod << OP::THIS::STORE << std::string("total");
+
+        //return true };
+        ssMethod << OP::RETURN << OP::TYPES::TRUE;
+        ssMethod << OP::ENDIF;
+
+        //return false;
+        ssMethod << OP::RETURN << OP::TYPES::FALSE; //this will block the debit from processing with operator overloads
+
+        //by default if no return always return false for an overloaded method
         account << std::string("::DEBIT") << uint8_t(TYPES::METHOD) << ssMethod.Bytes();
     }
 

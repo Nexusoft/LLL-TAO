@@ -338,7 +338,7 @@ namespace TAO
                     BYTES     = 0x09,
 
                     //nexthash types
-                    NEXTHASH  = 0x0a, //requires 4 bytes, 1 for this OP, 1 for sig type, and 2 for scope bits
+                    NEXTHASH  = 0x0a,
                     RECOVERY  = 0x0b,
 
                     //signature types
