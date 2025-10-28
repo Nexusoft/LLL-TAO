@@ -421,7 +421,7 @@ namespace TAO
                 static const uint16_t ENABLED = (1 << 1);
 
                 /** Input parameters for OP::WRITE. **/
-                enum : uint8_t
+                enum class PARAM : uint8_t
                 {
                     ADDRESS = 0x40,
                     DATA    = 0x41,
@@ -434,7 +434,7 @@ namespace TAO
                 static const uint16_t ENABLED = (1 << 2);
 
                 /** Input parameters for OP::CREATE. **/
-                enum : uint8_t
+                enum class PARAM : uint8_t
                 {
                     ADDRESS = 0x42,
                     TYPE    = 0x43,
@@ -448,7 +448,7 @@ namespace TAO
                 static const uint16_t ENABLED = (1 << 3);
 
                 /** Input parameters for OP::TRANSFER. **/
-                enum : uint8_t
+                enum class PARAM : uint8_t
                 {
                     ADDRESS   = 0x43,
                     RECIPIENT = 0x44,
@@ -462,7 +462,7 @@ namespace TAO
                 static const uint16_t ENABLED = (1 << 4);
 
                 /** Input parameters for OP::CLAIM. **/
-                enum : uint8_t
+                enum class PARAM : uint8_t
                 {
                     TRANSACTION  = 0x46, //the transaction that we are claiming from
                     ADDRESS      = 0x47,
@@ -475,7 +475,7 @@ namespace TAO
                 static const uint16_t ENABLED = (1 << 5);
 
                 /** Input parameters for OP::COINBASE. **/
-                enum : uint8_t
+                enum class PARAM : uint8_t
                 {
                     GENESIS      = 0x47,
                 };
@@ -487,7 +487,7 @@ namespace TAO
                 static const uint16_t ENABLED = (1 << 6);
 
                 /** Input parameters for OP::COINBASE. **/
-                enum : uint8_t
+                enum class PARAM : uint8_t
                 {
                     TRUST  = 0x48,
                     CHANGE = 0x49,
@@ -501,7 +501,7 @@ namespace TAO
                 static const uint16_t ENABLED = (1 << 7);
 
                 /** Input parameters for OP::COINBASE. **/
-                enum : uint8_t
+                enum class PARAM : uint8_t
                 {
                     REWARD = 0x4b,
                 };
@@ -513,7 +513,7 @@ namespace TAO
                 static const uint16_t ENABLED = (1 << 8);
 
                 /** Input parameters for OP::COINBASE. **/
-                enum : uint8_t
+                enum class PARAM : uint8_t
                 {
                     ADDRESS   = 0x4c,
                     TO        = 0x4d,
@@ -528,7 +528,7 @@ namespace TAO
                 static const uint16_t ENABLED = (1 << 9);
 
                 /** Input parameters for OP::COINBASE. **/
-                enum : uint8_t
+                enum class PARAM : uint8_t
                 {
                     TRANSACTION = 0x50,
                     ADDRESS     = 0x51,
@@ -543,7 +543,7 @@ namespace TAO
                 static const uint16_t ENABLED = (1 << 10);
 
                 /** Input parameters for OP::COINBASE. **/
-                enum : uint8_t
+                enum class PARAM : uint8_t
                 {
                     ADDRESS = 0x54,
                     AMOUNT  = 0x55
