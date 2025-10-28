@@ -69,9 +69,9 @@ int main(int argc, char** argv)
         //multisignature authentication with multiple sigchains
         uint256_t hashGenesis2, hashGenesis3;
         ssAuthorization << AUTH::ENABLE_IF << uint16_t(OP::ALL);
-        ssAuthorization << AUTH::VERIFY::NEXTHASH << AUTH::PARAM::GENESIS << hashGenesis2 << AUTH::CALLER::CRYPTO::SIGN;
+        ssAuthorization << AUTH::VERIFY::NEXTHASH << AUTH::VERIFY::GENESIS << hashGenesis2 << AUTH::CALLER::CRYPTO::AUTH;
         ssAuthorization << AUTH::OP::AND;
-        ssAuthorization << AUTH::VERIFY::NEXTHASH << AUTH::PARAM::GENESIS << hashGenesis3 << AUTH::CALLER::CRYPTO::SIGN;
+        ssAuthorization << AUTH::VERIFY::NEXTHASH << AUTH::VERIFY::GENESIS << hashGenesis3 << AUTH::CALLER::CRYPTO::AUTH;
         ssAuthorization << AUTH::OP::THEN;
 
         ssAuthorization << AUTH::RETURN << AUTH::GRANTED << uint16_t(OP::ALL);
@@ -145,7 +145,7 @@ int main(int argc, char** argv)
 
         //recovery authentication
         ssAuthorization << AUTH::ENABLE_IF << uint16_t(OP::ALL);
-        ssAuthorization << AUTH::TYPES::RECOVERY << AUTH::TYPES::FALCON << hashFalcon;
+        ssAuthorization << AUTH::VERIFY::RECOVERY << hashFalcon;
         ssAuthorization << AUTH::OP::THEN;
 
         ssAuthorization << AUTH::RETURN << AUTH::GRANTED << uint16_t(OP::NONE);
@@ -194,7 +194,7 @@ int main(int argc, char** argv)
                 {
                 }
 
-                Debit(to, from, amount, reference)
+                bool CheckBalance(to, from, amount, reference) extend standard.account.debit, standard.account.credit
                 {
                     uint64_t a = (timestamp - this.last) / 3600;
                     uint64_t t = this.total / a;

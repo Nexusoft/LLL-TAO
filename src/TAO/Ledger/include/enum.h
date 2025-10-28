@@ -321,81 +321,99 @@ namespace TAO
         /** Struct to hold the authorization enumerated values for building an authorization script. **/
         struct AUTH
         {
+            /** We track this as our first invalid opcode. **/
+            static const RESERVED  = 0x00;
+
             /** Core validation types. **/
-            struct TYPES
+            enum class TYPES : uint8_t
             {
-                enum : uint8_t
-                {
-                    //RESERVED to 0x7f
-                    UINT8     = 0x01,
-                    UINT16    = 0x02,
-                    UINT32    = 0x03,
-                    UINT64    = 0x04,
-                    UINT256   = 0x05,
-                    UINT512   = 0x06,
-                    UINT1024  = 0x07,
-                    STRING    = 0x08,
-                    BYTES     = 0x09,
+                //RESERVED to 0x7f
 
-                    //nexthash types
-                    NEXTHASH  = 0x0a,
-                    RECOVERY  = 0x0b,
+                UINT8     = 0x01,
+                UINT16    = 0x02,
+                UINT32    = 0x03,
+                UINT64    = 0x04,
+                UINT256   = 0x05,
+                UINT512   = 0x06,
+                UINT1024  = 0x07,
+                STRING    = 0x08,
+                BYTES     = 0x09,
 
-                    //signature types
-                    FALCON    = 0x0c, //FALCON QR DSA
-                    ED448     = 0x0d, //ED448-Goldilocks
+                //signature types
+                FALCON    = 0x0a, //FALCON QR DSA
+                ED448     = 0x0b, //ED448-Goldilocks
 
-                    //keys and signatures
-                    PUBKEY    = 0x0e,
-                    SIGNATURE = 0x0f
-                };
+                //keys and signatures
+                PUBKEY    = 0x0c,
+                SIGNATURE = 0x0d
+
+                //RESERVED 0x0e
+                //RESERVED 0x0f
             };
-
 
             /** Core comparison operations. **/
-            struct OP
+            enum class OP : uint8_t
             {
-                enum : uint8_t
+                //RESERVED from 0x10 to 0x1f
+                EQUALS        = 0x10,
+                LESSTHAN      = 0x11,
+                GREATERTHAN   = 0x12,
+                NOTEQUALS     = 0x13,
+                CONTAINS      = 0x14,
+                LESSEQUALS    = 0x15,
+                GREATEREQUALS = 0x16,
+
+                //logical operators
+                AND           = 0x17,
+                OR            = 0x18,
+                GROUP         = 0x19,
+                UNGROUP       = 0x1a,
+
+                //RESERVED 0x20 to to 0x2f
+                ADD          = 0x20,
+                SUB          = 0x21,
+                DIV          = 0x22,
+                MUL          = 0x23,
+                MOD          = 0x24,
+                INC          = 0x25,
+                DEC          = 0x26,
+                EXP          = 0x27,
+
+                //conditional operators
+                ENABLE_IF    = 0x28,
+                THEN         = 0x29,
+                ENDIF        = 0x30,
+                RETURN       = 0x31,
+                DENIED       = 0x32,
+                GRANTED      = 0x33,
+
+            };
+
+            /** Information about the caller and their transaction information. **/
+            enum class CALLER : uint8_t
+            {
+                GENESIS     = 0x34,
+                TIMESTAMP   = 0x35,
+                PAYLOAD     = 0x36, //this is our input payload that contains our keys or input parameters
+
+                /** Information about the caller crypto object register. **/
+                enum class CRYPTO : uint8_t
                 {
-                    //RESERVED from 0x10 to 0x1f
-                    EQUALS        = 0x10,
-                    LESSTHAN      = 0x11,
-                    GREATERTHAN   = 0x12,
-                    NOTEQUALS     = 0x13,
-                    CONTAINS      = 0x14,
-                    LESSEQUALS    = 0x15,
-                    GREATEREQUALS = 0x16,
-
-                    AND         = 0x17,
-                    OR          = 0x18,
-                    GROUP       = 0x19,
-                    UNGROUP     = 0x1a,
-
-                    //RESERVED 0x 20 to to 0x2f
-                    ADD         = 0x20,
-                    SUB         = 0x21,
-                    DIV         = 0x22,
-                    MUL         = 0x23,
-                    MOD         = 0x24,
-                    INC         = 0x25,
-                    DEC         = 0x26,
-                    EXP         = 0x27,
-
-                    SUBDATA     = 0x28,
-                    CAT         = 0x29,
+                    AUTH    = 0x37, //our AUTH crypto object key
+                    SIGN    = 0x38, //our SIGN crypto object key
                 };
             };
 
-
-            /** Authorization Hashes operations. **/
-            struct CRYPTO
+            /** Verification opcodes for cryptographic proofs. **/
+            enum class VERIFY : uint8_t
             {
-                enum : uint8_t
-                {
-                    SK256  = 0x30, //Skein-Keccak 256 by default
-                    SHA3   = 0x31, //SHA3 256-bit by default
-                };
-            }
+                NEXTHASH    = 0x3a,
+                RECOVERY    = 0x3b,
+                GENESIS     = 0x3c,
+            };
+
+
+
 
             /** Primitive OP::WRITE operation. **/
             struct WRITE
@@ -476,6 +494,66 @@ namespace TAO
                     REWARD = 0x4a,
                 };
             };
+
+            /** Primitive OP::GENESIS operation. **/
+            struct GENESIS
+            {
+                static const uint16_t ENABLED = (1 << 7);
+
+                /** Input parameters for OP::COINBASE. **/
+                enum : uint8_t
+                {
+                    REWARD = 0x4b,
+                };
+            };
+
+            /** Primitive OP::DEBIT operation. **/
+            struct DEBIT
+            {
+                static const uint16_t ENABLED = (1 << 8);
+
+                /** Input parameters for OP::COINBASE. **/
+                enum : uint8_t
+                {
+                    ADDRESS   = 0x4c,
+                    TO        = 0x4d,
+                    AMOUNT    = 0x4e,
+                    REFERENCE = 0x4f
+                };
+            };
+
+            /** Primitive OP::CREDIT operation. **/
+            struct CREDIT
+            {
+                static const uint16_t ENABLED = (1 << 9);
+
+                /** Input parameters for OP::COINBASE. **/
+                enum : uint8_t
+                {
+                    TRANSACTION = 0x50,
+                    ADDRESS     = 0x51,
+                    PROOF       = 0x52,
+                    AMOUNT      = 0x53
+                };
+            };
+
+            /** Primitive OP::FEE operation. **/
+            struct FEE
+            {
+                static const uint16_t ENABLED = (1 << 10);
+
+                /** Input parameters for OP::COINBASE. **/
+                enum : uint8_t
+                {
+                    ADDRESS = 0x54,
+                    AMOUNT  = 0x55
+                };
+            };
+
+            bool Valid(const uint8_t nOP) const
+            {
+                return nOP >=
+            }
         };
     }
 }
