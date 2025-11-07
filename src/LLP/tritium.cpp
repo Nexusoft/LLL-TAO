@@ -2268,7 +2268,7 @@ namespace LLP
                                             SwitchNode();
                                             return true;
                                         }
-                                        
+
                                         /* Check for complete synchronization. */
                                         if(hashLast == TAO::Ledger::ChainState::hashBestChain.load()
                                         && hashLast == hashBestChain)

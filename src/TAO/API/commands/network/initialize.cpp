@@ -37,6 +37,7 @@ namespace TAO::API
                 std::placeholders::_2
             )
             , "node, peer"
+            , ENABLE::FILTERS | ENABLE::QUERIES | ENABLE::OPERATORS
         );
     }
 }
