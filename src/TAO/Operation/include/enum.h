@@ -35,10 +35,11 @@ namespace TAO::Operation
             //register operations
             WRITE       = 0x01,
             CREATE      = 0x02,
-            INVOKE      = 0x03, //this executes a function for augmented contracts
+            AUTHORIZE   = 0x03, //this is for private mode
             TRANSFER    = 0x04,
             CLAIM       = 0x05,
-            APPEND      = 0x06,
+            APPEND      = 0x06, //DEPRECATED
+            INVOKE      = 0x07, //this invokes a function in an object register
 
             //financial operations
             DEBIT       = 0x10,

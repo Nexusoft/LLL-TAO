@@ -52,6 +52,16 @@ int main(int argc, char** argv)
         ssAuthorization << AUTH::ENDIF;
 
 
+        //lottery slip claimant
+        uint256_t hashLottery, hashAddress;
+        ssAuthorization << AUTH::IF;
+        ssAuthorization << AUTH::CALLER::PAYLOAD << AUTH::CRYPTO::SHA3 << OP::EQUALS << hashLottery;
+        ssAuthorization << AUTH::AND;
+        ssAuthorization << AUTH::TRANSFER::PARAMS::ADDRESS << AUTH::OP::EQUALS << hashAddress;
+        ssAuthorization << AUTH::OP::THEN;
+
+        ssAuthorization << AUTH::RETURN << AUTH::GRANTED << uint16_t(OP::TRANSFER);
+        ssAuthorization << AUTH::ENDIF;
 
 
         //multisignature authentication with user generated credentials
@@ -68,7 +78,7 @@ int main(int argc, char** argv)
 
         //multisignature authentication with multiple sigchains
         uint256_t hashGenesis2, hashGenesis3;
-        ssAuthorization << AUTH::ENABLE_IF << uint16_t(OP::ALL);
+        ssAuthorization << AUTH::ENABLE_IF << uint16_t(AUTH::OPS::ALL);
         ssAuthorization << AUTH::VERIFY::NEXTHASH << AUTH::VERIFY::GENESIS << hashGenesis2 << AUTH::CALLER::CRYPTO::AUTH;
         ssAuthorization << AUTH::OP::AND;
         ssAuthorization << AUTH::VERIFY::NEXTHASH << AUTH::VERIFY::GENESIS << hashGenesis3 << AUTH::CALLER::CRYPTO::AUTH;
@@ -81,14 +91,12 @@ int main(int argc, char** argv)
 
 
         //staking and credit only, no unstake coins
-        ssAuthorization << AUTH::ENABLE_IF << uint16_t(TRUST::ENABLED | CREDIT::ENABLED);
+        ssAuthorization << AUTH::ENABLE_IF << uint16_t(AUTH::PRIMITIVES::TRUST::ENABLED | AUTH::PRIMITIVES::CREDIT::ENABLED);
         ssAuthorization << AUTH::VERIFY::NEXTHASH << hashStaking;
         ssAuthorization << AUTH::OP::THEN;
 
         //check that we are not removing stake with these credentials
-        ssAuthorization << AUTH::OP::IF;
-        ssAuthorization << AUTH::TRANSACTION::OP << AUTH::OP::EQUALS << TAO::Operation::OP::TRUST;
-        ssAuthorization << AUTH::OP::AND;
+        ssAuthorization << AUTH::OP::CHECK_IF << uint16_t(AUTH::PRIMITIVES::TRUST::CHECK);
         ssAuthorization << AUTH::TRUST::PARAM::CHANGE << AUTH::OP::LESSTHAN << AUTH::TYPES::INT64 << int64_t(0);
         ssAuthorization << AUTH::OP::THEN;
 
