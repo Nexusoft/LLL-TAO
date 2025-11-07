@@ -36,8 +36,8 @@ namespace TAO::API
         std::string strOrder = "desc", strColumn = "lastseen";
         ExtractList(jParams, strOrder, strColumn, nLimit, nOffset);
 
-        /* Build our object list and sort on insert. */
-        std::set<encoding::json, CompareResults> setAddresses({}, CompareResults(strOrder, strColumn));
+        /* Build our return object */
+        encoding::json jRet = encoding::json::array();
 
         /* Check our type for nodes. */
         if(strType == "node")
@@ -62,15 +62,7 @@ namespace TAO::API
                     { "latency",  rAddr.nLatency     }
                 };
 
-                /* Check that we match our filters. */
-                if(!FilterResults(jParams, jAddr))
-                    continue;
-
-                /* Filter out our expected fieldnames if specified. */
-                if(!FilterFieldname(jParams, jAddr))
-                    continue;
-
-                setAddresses.insert(jAddr);
+                jRet.push_back(jAddr);
             }
         }
 
@@ -127,36 +119,10 @@ namespace TAO::API
                     /* Unix timestamp of the last time this node had any communications with the peer */
                     jConnection["lastseen"] = rConnection.get()->nLastPing.load();
 
-                    /* Check that we match our filters. */
-                    if(!FilterResults(jParams, jConnection))
-                        continue;
-
-                    /* Filter out our expected fieldnames if specified. */
-                    if(!FilterFieldname(jParams, jConnection))
-                        continue;
-
-                    /* Insert into set and automatically sort. */
-                    setAddresses.insert(jConnection);
+                    /* Insert into the end of the vector. */
+                    jRet.push_back(jConnection);
                 }
             }
-        }
-
-        /* Build our return value. */
-        encoding::json jRet = encoding::json::array();
-
-        /* Handle paging and offsets. */
-        uint32_t nTotal = 0;
-        for(const auto& jAddress : setAddresses)
-        {
-            /* Check the offset. */
-            if(++nTotal <= nOffset)
-                continue;
-
-            /* Check the limit */
-            if(jRet.size() == nLimit)
-                break;
-
-            jRet.push_back(jAddress);
         }
 
         return jRet;

@@ -254,6 +254,10 @@ namespace LLP
                             version::CLIENT_VERSION_BUILD_STRING
                         );
                     }
+
+                    /* Check if we have gone out of sync to restart sync process from internet outage. */
+                    if(!TAO::Ledger::ChainState::Synchronizing() && fSynchronized.load() == true)
+                        fSynchronized.store(false);
                 }
 
 
@@ -2268,7 +2272,7 @@ namespace LLP
                                             SwitchNode();
                                             return true;
                                         }
-                                        
+
                                         /* Check for complete synchronization. */
                                         if(hashLast == TAO::Ledger::ChainState::hashBestChain.load()
                                         && hashLast == hashBestChain)
