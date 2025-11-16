@@ -283,6 +283,20 @@ namespace LLP
                     if(!CONNECTION || !CONNECTION->Connected())
                         continue;
                     
+                    /* Detect stateless localhost Miner connections for special handling. */
+                    Miner* pMiner = nullptr;
+                    bool fLocalhostMinerStateless = false;
+                    
+                    if(ProtocolType::Name() == std::string("Miner"))
+                    {
+                        pMiner = dynamic_cast<Miner*>(CONNECTION.get());
+                        if(pMiner && pMiner->fStatelessMinerSession.load() && 
+                           CONNECTION->GetAddress().ToStringIP() == "127.0.0.1")
+                        {
+                            fLocalhostMinerStateless = true;
+                        }
+                    }
+                    
                     /* Log data thread connection assignment at verbose level 3. */
                     if(config::nVerbose.load() >= 3 && CONNECTION->PacketComplete())
                     {
@@ -401,20 +415,27 @@ namespace LLP
                     /* Get the connection for detailed logging. */
                     std::shared_ptr<ProtocolType> CONNECTION = CONNECTIONS->at(nIndex);
                     
-                    /* Check if this is a "Session not found" error for localhost Miner connection. */
+                    /* Check if this is a "Session not found" error for stateless localhost Miner connection. */
                     std::string strError = e.what();
                     bool fSessionError = (strError.find("Session not found") != std::string::npos);
-                    bool fLocalhost = CONNECTION && (CONNECTION->GetAddress().ToStringIP() == "127.0.0.1");
-                    bool fMiner = (ProtocolType::Name() == "Miner");
                     
-                    /* Allow localhost Miner connections to proceed even without session. */
-                    if(fSessionError && fLocalhost && fMiner)
+                    /* Re-detect stateless miner status in exception handler. */
+                    bool fLocalhostMinerStateless = false;
+                    if(ProtocolType::Name() == std::string("Miner") && CONNECTION)
                     {
-                        /* Log once at debug level - this should be rare with stateless session support. */
-                        debug::log(2, FUNCTION, "DataThread[", ID, "]: Using stateless Miner session for localhost connection id=", nIndex,
-                                   " (", CONNECTION->GetAddress().ToStringIP(), ":", CONNECTION->GetAddress().GetPort(),
-                                   "). TAO API session not required.");
-                        /* Do not disconnect - allow localhost miner to continue */
+                        Miner* pMiner = dynamic_cast<Miner*>(CONNECTION.get());
+                        if(pMiner && pMiner->fStatelessMinerSession.load() && 
+                           CONNECTION->GetAddress().ToStringIP() == "127.0.0.1")
+                        {
+                            fLocalhostMinerStateless = true;
+                        }
+                    }
+                    
+                    /* Allow stateless localhost Miner connections to proceed even without session. */
+                    if(fSessionError && fLocalhostMinerStateless)
+                    {
+                        /* Suppress session errors for stateless miners - no log spam. */
+                        /* Continue processing without disconnect. */
                     }
                     else
                     {
