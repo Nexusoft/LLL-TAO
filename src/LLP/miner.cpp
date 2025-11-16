@@ -65,6 +65,7 @@ namespace LLP
     , nChannel(0)
     , pMiningKey(nullptr)
     , nHashLast(0)
+    , fStatelessMinerSession(false)
     {
         #ifndef NO_WALLET
         pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::Instance());
@@ -83,6 +84,7 @@ namespace LLP
     , nChannel(0)
     , pMiningKey(nullptr)
     , nHashLast(0)
+    , fStatelessMinerSession(false)
     {
         #ifndef NO_WALLET
         pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::Instance());
@@ -101,6 +103,7 @@ namespace LLP
     , nChannel(0)
     , pMiningKey(nullptr)
     , nHashLast(0)
+    , fStatelessMinerSession(false)
     {
         #ifndef NO_WALLET
         pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::Instance());
@@ -283,6 +286,8 @@ namespace LLP
                     if(GetAddress().ToStringIP() == "127.0.0.1")
                     {
                         debug::warning(FUNCTION, "MinerLLP: No API session for localhost miner (", e.what(), "). Allowing mining connection from ", GetAddress().ToStringIP(), ":", GetAddress().GetPort());
+                        /* Mark this as a stateless miner session for localhost */
+                        fStatelessMinerSession.store(true);
                         /* Do not disconnect - allow localhost to continue */
                     }
                     else
@@ -793,6 +798,10 @@ namespace LLP
     /* For Tritium, this checks the mempool to make sure that there are no new transactions that would be orphaned */
     bool Miner::check_round()
     {
+        /* Skip session-dependent checks for stateless miner sessions (localhost only). */
+        if(fStatelessMinerSession.load())
+            return true;
+
         /* Get the hash genesis. */
         const uint256_t hashGenesis = TAO::API::Authentication::Caller(); //no parameter goes to default session
 
@@ -858,33 +867,37 @@ namespace LLP
             /* Store our new height now. */
             nLastNotificationsHeight.store(nBestHeight);
 
-            /* Get our current genesis. */
-            const uint256_t hashGenesis = TAO::API::Authentication::Caller(); //no parameter goes to default session
-
-            //TODO: we want to pipe in the notifications processor event notifications
-
-            /*
-
-            // Wake up events processor and wait for a signal to guarantee added transactions won't orphan a mined block.
-            if(TAO::API::Commands::Instance<TAO::API::Users>()->NOTIFICATIONS_PROCESSOR
-                && TAO::API::GetSessionManager().Has(0)
-                && TAO::API::GetSessionManager().Get(0, false).CanProcessNotifications())
+            /* Skip session-dependent operations for stateless miner sessions (localhost only). */
+            if(!fStatelessMinerSession.load())
             {
-                //Find the thread processing notifications for this user
-                TAO::API::NotificationsThread* pThread = TAO::API::Commands::Instance<TAO::API::Users>()->NOTIFICATIONS_PROCESSOR->FindThread(0);
+                /* Get our current genesis. */
+                const uint256_t hashGenesis = TAO::API::Authentication::Caller(); //no parameter goes to default session
 
-                if(pThread)
+                //TODO: we want to pipe in the notifications processor event notifications
+
+                /*
+
+                // Wake up events processor and wait for a signal to guarantee added transactions won't orphan a mined block.
+                if(TAO::API::Commands::Instance<TAO::API::Users>()->NOTIFICATIONS_PROCESSOR
+                    && TAO::API::GetSessionManager().Has(0)
+                    && TAO::API::GetSessionManager().Get(0, false).CanProcessNotifications())
                 {
-                    pThread->NotifyEvent();
-                    WaitEvent();
+                    //Find the thread processing notifications for this user
+                    TAO::API::NotificationsThread* pThread = TAO::API::Commands::Instance<TAO::API::Users>()->NOTIFICATIONS_PROCESSOR->FindThread(0);
+
+                    if(pThread)
+                    {
+                        pThread->NotifyEvent();
+                        WaitEvent();
+                    }
                 }
+
+                */
+
+                /* If we detected a block height change, update the cached last hash of the logged in sig chain.
+                 * This is done AFTER the notifications processor has finished, in case it added new transactions to the mempool  */
+                LLD::Ledger->ReadLast(hashGenesis, nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
             }
-
-            */
-
-            /* If we detected a block height change, update the cached last hash of the logged in sig chain.
-             * This is done AFTER the notifications processor has finished, in case it added new transactions to the mempool  */
-            LLD::Ledger->ReadLast(hashGenesis, nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
         }
 
         return true;
