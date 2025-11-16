@@ -401,15 +401,6 @@ namespace LLP
                     /* Get the connection for detailed logging. */
                     std::shared_ptr<ProtocolType> CONNECTION = CONNECTIONS->at(nIndex);
                     
-                    /* Enhanced logging: show connection details when error occurs. */
-                    if(CONNECTION)
-                    {
-                        debug::log(1, FUNCTION, "DataThread[", ID, "]: Exception for connection id=", nIndex, 
-                                   " type=", ProtocolType::Name(), 
-                                   " from ", CONNECTION->GetAddress().ToStringIP(), ":", CONNECTION->GetAddress().GetPort(),
-                                   " - ", e.what());
-                    }
-                    
                     /* Check if this is a "Session not found" error for localhost Miner connection. */
                     std::string strError = e.what();
                     bool fSessionError = (strError.find("Session not found") != std::string::npos);
@@ -419,13 +410,23 @@ namespace LLP
                     /* Allow localhost Miner connections to proceed even without session. */
                     if(fSessionError && fLocalhost && fMiner)
                     {
-                        debug::warning(FUNCTION, "DataThread[", ID, "]: No session for localhost Miner connection id=", nIndex,
-                                       " (", CONNECTION->GetAddress().ToStringIP(), ":", CONNECTION->GetAddress().GetPort(),
-                                       "). Allowing data connection.");
+                        /* Log once at debug level - this should be rare with stateless session support. */
+                        debug::log(2, FUNCTION, "DataThread[", ID, "]: Using stateless Miner session for localhost connection id=", nIndex,
+                                   " (", CONNECTION->GetAddress().ToStringIP(), ":", CONNECTION->GetAddress().GetPort(),
+                                   "). TAO API session not required.");
                         /* Do not disconnect - allow localhost miner to continue */
                     }
                     else
                     {
+                        /* Enhanced logging: show connection details when error occurs. */
+                        if(CONNECTION)
+                        {
+                            debug::log(1, FUNCTION, "DataThread[", ID, "]: Exception for connection id=", nIndex, 
+                                       " type=", ProtocolType::Name(), 
+                                       " from ", CONNECTION->GetAddress().ToStringIP(), ":", CONNECTION->GetAddress().GetPort(),
+                                       " - ", e.what());
+                        }
+                        
                         /* For all other cases, maintain existing behavior: log error and disconnect. */
                         debug::error(FUNCTION, "Data Connection: ", e.what());
                         remove_connection_with_event(nIndex, DISCONNECT::ERRORS);
