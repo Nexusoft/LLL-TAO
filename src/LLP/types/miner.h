@@ -70,6 +70,7 @@ namespace LLP
             /** VALIDATION RESPONSES **/
             COINBASE_SET   = 202,
             COINBASE_FAIL  = 203,
+            CHANNEL_ACK    = 206,
 
             /** ROUND VALIDATIONS. **/
             NEW_ROUND      = 204,
@@ -114,10 +115,6 @@ namespace LLP
         uint512_t nHashLast;
 
 
-        /* Flag to indicate this is a stateless miner session (localhost only, no TAO API session required). */
-        std::atomic<bool> fStatelessMinerSession;
-
-
         /* The last height that the notifications processor was run at.  This is used to ensure that events are only processed once
            across all threads when the height changes */
         static std::atomic<uint32_t> nLastNotificationsHeight;
@@ -127,6 +124,9 @@ namespace LLP
         static std::atomic<uint32_t> nBlockIterator;
 
     public:
+
+        /* Flag to indicate this is a stateless miner session (localhost only, no TAO API session required). */
+        std::atomic<bool> fStatelessMinerSession;
 
         /** Default Constructor **/
         Miner();

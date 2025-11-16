@@ -285,9 +285,14 @@ namespace LLP
                     /* Allow localhost connections to proceed even without an API session */
                     if(GetAddress().ToStringIP() == "127.0.0.1")
                     {
-                        debug::warning(FUNCTION, "MinerLLP: No API session for localhost miner (", e.what(), "). Allowing mining connection from ", GetAddress().ToStringIP(), ":", GetAddress().GetPort());
                         /* Mark this as a stateless miner session for localhost */
                         fStatelessMinerSession.store(true);
+                        
+                        /* Log once at connection time with clear message */
+                        debug::log(0, FUNCTION, "MinerLLP: Using stateless Miner session for localhost connection from ", 
+                                   GetAddress().ToStringIP(), ":", GetAddress().GetPort(), 
+                                   ". TAO API session not required.");
+                        
                         /* Do not disconnect - allow localhost to continue */
                     }
                     else
@@ -363,6 +368,7 @@ namespace LLP
                 case BLOCK_REJECTED: return "BLOCK_REJECTED";
                 case COINBASE_SET: return "COINBASE_SET";
                 case COINBASE_FAIL: return "COINBASE_FAIL";
+                case CHANNEL_ACK: return "CHANNEL_ACK";
                 case NEW_ROUND: return "NEW_ROUND";
                 case OLD_ROUND: return "OLD_ROUND";
                 case PING: return "PING";
@@ -438,6 +444,10 @@ namespace LLP
                     default:
                     return debug::error(FUNCTION, "Invalid PoW Channel (", nChannel.load(), ") from ", GetAddress().ToStringIP());
                 }
+                
+                /* Send explicit ACK to client after successfully setting channel. */
+                respond(CHANNEL_ACK);
+                debug::log(2, FUNCTION, "Sent CHANNEL_ACK to ", GetAddress().ToStringIP());
 
                 return true;
             }
@@ -778,6 +788,7 @@ namespace LLP
                 case BLOCK_REJECTED: return "BLOCK_REJECTED";
                 case COINBASE_SET: return "COINBASE_SET";
                 case COINBASE_FAIL: return "COINBASE_FAIL";
+                case CHANNEL_ACK: return "CHANNEL_ACK";
                 case NEW_ROUND: return "NEW_ROUND";
                 case OLD_ROUND: return "OLD_ROUND";
                 case PING: return "PING";
