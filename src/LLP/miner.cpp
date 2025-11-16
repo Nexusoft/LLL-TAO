@@ -136,6 +136,15 @@ namespace LLP
             /* Handle for a Packet Header Read. */
             case EVENTS::HEADER:
             {
+                /* Log packet header received */
+                if(Incoming())
+                {
+                    Packet PACKET   = this->INCOMING;
+                    debug::log(3, FUNCTION, "MinerLLP: Header received from ", GetAddress().ToStringIP(), 
+                               " - Header: 0x", std::hex, uint32_t(PACKET.HEADER), std::dec, 
+                               " Length: ", PACKET.LENGTH);
+                }
+
                 if(fDDOS.load() && Incoming())
                 {
                     Packet PACKET   = this->INCOMING;
@@ -256,6 +265,9 @@ namespace LLP
             /* On Connect Event, Assign the Proper Daemon Handle. */
             case EVENTS::CONNECT:
             {
+                /* Log connection details with remote address and port */
+                debug::log(2, FUNCTION, "MinerLLP: New connection accepted from ", GetAddress().ToStringIP(), ":", GetAddress().GetPort());
+
                 try
                 {
                     /* Cache the last transaction ID of the sig chain so that we can detect if
@@ -263,11 +275,11 @@ namespace LLP
                     LLD::Ledger->ReadLast(TAO::API::Authentication::Caller(), nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
 
                     /* Debug output. */
-                    debug::log(3, FUNCTION, "New Connection from ", GetAddress().ToStringIP());
+                    debug::log(3, FUNCTION, "Session found for miner connection from ", GetAddress().ToStringIP());
                 }
                 catch(const TAO::API::Exception& e)
                 {
-                    debug::warning(FUNCTION, "Miner Connection Failed: ", e.what());
+                    debug::warning(FUNCTION, "Miner Connection Failed: ", e.what(), " from ", GetAddress().ToStringIP(), ":", GetAddress().GetPort());
 
                     this->Disconnect();
                 }
@@ -314,6 +326,41 @@ namespace LLP
     {
         /* Get the incoming packet. */
         Packet PACKET = this->INCOMING;
+
+        /* Helper function to get packet name for logging */
+        auto GetPacketName = [](uint8_t header) -> std::string {
+            switch(header) {
+                case BLOCK_DATA: return "BLOCK_DATA";
+                case SUBMIT_BLOCK: return "SUBMIT_BLOCK";
+                case BLOCK_HEIGHT: return "BLOCK_HEIGHT";
+                case SET_CHANNEL: return "SET_CHANNEL";
+                case BLOCK_REWARD: return "BLOCK_REWARD";
+                case SET_COINBASE: return "SET_COINBASE";
+                case GOOD_BLOCK: return "GOOD_BLOCK";
+                case ORPHAN_BLOCK: return "ORPHAN_BLOCK";
+                case CHECK_BLOCK: return "CHECK_BLOCK";
+                case SUBSCRIBE: return "SUBSCRIBE";
+                case GET_BLOCK: return "GET_BLOCK";
+                case GET_HEIGHT: return "GET_HEIGHT";
+                case GET_REWARD: return "GET_REWARD";
+                case CLEAR_MAP: return "CLEAR_MAP";
+                case GET_ROUND: return "GET_ROUND";
+                case BLOCK_ACCEPTED: return "BLOCK_ACCEPTED";
+                case BLOCK_REJECTED: return "BLOCK_REJECTED";
+                case COINBASE_SET: return "COINBASE_SET";
+                case COINBASE_FAIL: return "COINBASE_FAIL";
+                case NEW_ROUND: return "NEW_ROUND";
+                case OLD_ROUND: return "OLD_ROUND";
+                case PING: return "PING";
+                case CLOSE: return "CLOSE";
+                default: return "UNKNOWN";
+            }
+        };
+
+        /* Log incoming packet details */
+        debug::log(2, FUNCTION, "MinerLLP: Received packet from ", GetAddress().ToStringIP(), 
+                   " - ", GetPacketName(PACKET.HEADER), " (0x", std::hex, uint32_t(PACKET.HEADER), std::dec, ")",
+                   " Length: ", PACKET.LENGTH);
 
         /* Make sure the mining server has a connection. (skip check if running local testnet) */
         bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
@@ -366,16 +413,16 @@ namespace LLP
                 switch (nChannel.load())
                 {
                     case 1:
-                    debug::log(2, FUNCTION, "Prime Channel Set.");
+                    debug::log(2, FUNCTION, "Prime Channel Set for ", GetAddress().ToStringIP());
                     break;
 
                     case 2:
-                    debug::log(2, FUNCTION, "Hash Channel Set.");
+                    debug::log(2, FUNCTION, "Hash Channel Set for ", GetAddress().ToStringIP());
                     break;
 
                     /* Don't allow Mining LLP Requests for Proof of Stake, or any other Channel. */
                     default:
-                    return debug::error(FUNCTION, "Invalid PoW Channel (", nChannel.load(), ")");
+                    return debug::error(FUNCTION, "Invalid PoW Channel (", nChannel.load(), ") from ", GetAddress().ToStringIP());
                 }
 
                 return true;
@@ -385,6 +432,7 @@ namespace LLP
             /* Return a Ping if Requested. */
             case PING:
             {
+                debug::log(3, FUNCTION, "PING received from ", GetAddress().ToStringIP());
                 respond(PING);
                 return true;
             }
@@ -501,6 +549,8 @@ namespace LLP
                     check_best_height();
                 }
 
+                debug::log(2, FUNCTION, "GET_HEIGHT request from ", GetAddress().ToStringIP(), " - responding with height ", nBestHeight + 1);
+
                 /* Create the response packet and write. */
                 respond(BLOCK_HEIGHT, convert::uint2bytes(nBestHeight + 1));
 
@@ -532,6 +582,8 @@ namespace LLP
             /* Respond with the block reward in a given round. */
             case GET_REWARD:
             {
+                debug::log(2, FUNCTION, "GET_REWARD request from ", GetAddress().ToStringIP());
+
                 /* Get the mining reward amount for the channel currently set. */
                 uint64_t nReward = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::tStateBest.load(), nChannel.load(), 0);
 
@@ -554,17 +606,17 @@ namespace LLP
             {
                 /* Don't allow mining llp requests for proof of stake channel */
                 if(nChannel.load() == 0)
-                    return debug::error(FUNCTION, "Cannot subscribe to Stake Channel.");
+                    return debug::error(FUNCTION, "Cannot subscribe to Stake Channel from ", GetAddress().ToStringIP());
 
                 /* Get the number of subscribed blocks. */
                 nSubscribed = convert::bytes2uint(PACKET.DATA);
 
                 /* Check for zero blocks. */
                 if(nSubscribed.load() == 0)
-                    return debug::error(FUNCTION, "No blocks subscribed.");
+                    return debug::error(FUNCTION, "No blocks subscribed from ", GetAddress().ToStringIP());
 
                 /* Debug output. */
-                debug::log(2, FUNCTION, "Subscribed to ", nSubscribed.load(), " Blocks");
+                debug::log(2, FUNCTION, "Subscribed to ", nSubscribed.load(), " Blocks from ", GetAddress().ToStringIP());
                 return true;
             }
 
@@ -572,6 +624,8 @@ namespace LLP
             /* Get a new block for the miner. */
             case GET_BLOCK:
             {
+                debug::log(2, FUNCTION, "GET_BLOCK request from ", GetAddress().ToStringIP());
+
                 TAO::Ledger::Block *pBlock = nullptr;
 
                 /* Prepare the data to serialize on request. */
@@ -606,6 +660,8 @@ namespace LLP
             /* Submit a block using the merkle root as the key. */
             case SUBMIT_BLOCK:
             {
+                debug::log(2, FUNCTION, "SUBMIT_BLOCK from ", GetAddress().ToStringIP());
+
                 uint512_t hashMerkle;
                 uint64_t nonce = 0;
 
@@ -615,11 +671,14 @@ namespace LLP
                 /* Get the nonce */
                 nonce = convert::bytes2uint64(std::vector<uint8_t>(PACKET.DATA.end() - 8, PACKET.DATA.end()));
 
+                debug::log(3, FUNCTION, "Block merkle root: ", hashMerkle.SubString(), " nonce: ", nonce, " from ", GetAddress().ToStringIP());
+
                 LOCK(MUTEX);
 
                 /* Make sure the block was created by this mining server. */
                 if(!find_block(hashMerkle))
                 {
+                    debug::log(2, FUNCTION, "Block not found in map from ", GetAddress().ToStringIP());
                     respond(BLOCK_REJECTED);
                     return true;
                 }
@@ -682,6 +741,41 @@ namespace LLP
         RESPONSE.HEADER = nHeader;
         RESPONSE.LENGTH = vData.size();
         RESPONSE.DATA   = vData;
+
+        /* Helper function to get packet name for logging */
+        auto GetPacketName = [](uint8_t header) -> std::string {
+            switch(header) {
+                case BLOCK_DATA: return "BLOCK_DATA";
+                case SUBMIT_BLOCK: return "SUBMIT_BLOCK";
+                case BLOCK_HEIGHT: return "BLOCK_HEIGHT";
+                case SET_CHANNEL: return "SET_CHANNEL";
+                case BLOCK_REWARD: return "BLOCK_REWARD";
+                case SET_COINBASE: return "SET_COINBASE";
+                case GOOD_BLOCK: return "GOOD_BLOCK";
+                case ORPHAN_BLOCK: return "ORPHAN_BLOCK";
+                case CHECK_BLOCK: return "CHECK_BLOCK";
+                case SUBSCRIBE: return "SUBSCRIBE";
+                case GET_BLOCK: return "GET_BLOCK";
+                case GET_HEIGHT: return "GET_HEIGHT";
+                case GET_REWARD: return "GET_REWARD";
+                case CLEAR_MAP: return "CLEAR_MAP";
+                case GET_ROUND: return "GET_ROUND";
+                case BLOCK_ACCEPTED: return "BLOCK_ACCEPTED";
+                case BLOCK_REJECTED: return "BLOCK_REJECTED";
+                case COINBASE_SET: return "COINBASE_SET";
+                case COINBASE_FAIL: return "COINBASE_FAIL";
+                case NEW_ROUND: return "NEW_ROUND";
+                case OLD_ROUND: return "OLD_ROUND";
+                case PING: return "PING";
+                case CLOSE: return "CLOSE";
+                default: return "UNKNOWN";
+            }
+        };
+
+        /* Log outgoing response */
+        debug::log(2, FUNCTION, "MinerLLP: Sending response to ", GetAddress().ToStringIP(), 
+                   " - ", GetPacketName(nHeader), " (0x", std::hex, uint32_t(nHeader), std::dec, ")",
+                   " Length: ", vData.size());
 
         this->WritePacket(RESPONSE);
     }
