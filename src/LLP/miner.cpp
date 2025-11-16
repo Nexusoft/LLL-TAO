@@ -140,9 +140,9 @@ namespace LLP
                 if(Incoming())
                 {
                     Packet PACKET   = this->INCOMING;
-                    debug::log(3, FUNCTION, "MinerLLP: Header received from ", GetAddress().ToStringIP(), 
-                               " - Header: 0x", std::hex, uint32_t(PACKET.HEADER), std::dec, 
-                               " Length: ", PACKET.LENGTH);
+                    debug::log(1, FUNCTION, "MinerLLP: HEADER from ", GetAddress().ToStringIP(), 
+                               " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec, 
+                               " length=", PACKET.LENGTH);
                 }
 
                 if(fDDOS.load() && Incoming())
@@ -266,7 +266,7 @@ namespace LLP
             case EVENTS::CONNECT:
             {
                 /* Log connection details with remote address and port */
-                debug::log(2, FUNCTION, "MinerLLP: New connection accepted from ", GetAddress().ToStringIP(), ":", GetAddress().GetPort());
+                debug::log(0, FUNCTION, "MinerLLP: New connection accepted from ", GetAddress().ToStringIP(), ":", GetAddress().GetPort());
 
                 try
                 {
@@ -279,9 +279,18 @@ namespace LLP
                 }
                 catch(const TAO::API::Exception& e)
                 {
-                    debug::warning(FUNCTION, "Miner Connection Failed: ", e.what(), " from ", GetAddress().ToStringIP(), ":", GetAddress().GetPort());
-
-                    this->Disconnect();
+                    /* Allow localhost connections to proceed even without an API session */
+                    if(GetAddress().ToStringIP() == "127.0.0.1")
+                    {
+                        debug::warning(FUNCTION, "MinerLLP: No API session for localhost miner (", e.what(), "). Allowing mining connection from ", GetAddress().ToStringIP(), ":", GetAddress().GetPort());
+                        /* Do not disconnect - allow localhost to continue */
+                    }
+                    else
+                    {
+                        /* Non-localhost connections require valid API session */
+                        debug::warning(FUNCTION, "Miner Connection Failed: ", e.what(), " from ", GetAddress().ToStringIP(), ":", GetAddress().GetPort());
+                        this->Disconnect();
+                    }
                 }
 
                 return;
@@ -358,9 +367,9 @@ namespace LLP
         };
 
         /* Log incoming packet details */
-        debug::log(2, FUNCTION, "MinerLLP: Received packet from ", GetAddress().ToStringIP(), 
+        debug::log(1, FUNCTION, "MinerLLP: PACKET from ", GetAddress().ToStringIP(), 
                    " - ", GetPacketName(PACKET.HEADER), " (0x", std::hex, uint32_t(PACKET.HEADER), std::dec, ")",
-                   " Length: ", PACKET.LENGTH);
+                   " length=", PACKET.LENGTH);
 
         /* Make sure the mining server has a connection. (skip check if running local testnet) */
         bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
@@ -773,9 +782,9 @@ namespace LLP
         };
 
         /* Log outgoing response */
-        debug::log(2, FUNCTION, "MinerLLP: Sending response to ", GetAddress().ToStringIP(), 
+        debug::log(1, FUNCTION, "MinerLLP: RESPOND to ", GetAddress().ToStringIP(), 
                    " - ", GetPacketName(nHeader), " (0x", std::hex, uint32_t(nHeader), std::dec, ")",
-                   " Length: ", vData.size());
+                   " length=", vData.size());
 
         this->WritePacket(RESPONSE);
     }
