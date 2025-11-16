@@ -282,6 +282,14 @@ namespace LLP
                     /* Skip over Inactive Connections. */
                     if(!CONNECTION || !CONNECTION->Connected())
                         continue;
+                    
+                    /* Log data thread connection assignment at verbose level 3. */
+                    if(config::nVerbose.load() >= 3 && CONNECTION->PacketComplete())
+                    {
+                        debug::log(3, FUNCTION, "DataThread[", ID, "]: Processing connection id=", nIndex, 
+                                   " type=", ProtocolType::Name(), 
+                                   " from ", CONNECTION->GetAddress().ToStringIP(), ":", CONNECTION->GetAddress().GetPort());
+                    }
 
                     /* Disconnect if there was a polling error */
                     if(POLLFDS.at(nIndex).revents & POLLERR)
@@ -390,8 +398,38 @@ namespace LLP
                 }
                 catch(const std::exception& e)
                 {
-                    debug::error(FUNCTION, "Data Connection: ", e.what());
-                    remove_connection_with_event(nIndex, DISCONNECT::ERRORS);
+                    /* Get the connection for detailed logging. */
+                    std::shared_ptr<ProtocolType> CONNECTION = CONNECTIONS->at(nIndex);
+                    
+                    /* Enhanced logging: show connection details when error occurs. */
+                    if(CONNECTION)
+                    {
+                        debug::log(1, FUNCTION, "DataThread[", ID, "]: Exception for connection id=", nIndex, 
+                                   " type=", ProtocolType::Name(), 
+                                   " from ", CONNECTION->GetAddress().ToStringIP(), ":", CONNECTION->GetAddress().GetPort(),
+                                   " - ", e.what());
+                    }
+                    
+                    /* Check if this is a "Session not found" error for localhost Miner connection. */
+                    std::string strError = e.what();
+                    bool fSessionError = (strError.find("Session not found") != std::string::npos);
+                    bool fLocalhost = CONNECTION && (CONNECTION->GetAddress().ToStringIP() == "127.0.0.1");
+                    bool fMiner = (ProtocolType::Name() == "Miner");
+                    
+                    /* Allow localhost Miner connections to proceed even without session. */
+                    if(fSessionError && fLocalhost && fMiner)
+                    {
+                        debug::warning(FUNCTION, "DataThread[", ID, "]: No session for localhost Miner connection id=", nIndex,
+                                       " (", CONNECTION->GetAddress().ToStringIP(), ":", CONNECTION->GetAddress().GetPort(),
+                                       "). Allowing data connection.");
+                        /* Do not disconnect - allow localhost miner to continue */
+                    }
+                    else
+                    {
+                        /* For all other cases, maintain existing behavior: log error and disconnect. */
+                        debug::error(FUNCTION, "Data Connection: ", e.what());
+                        remove_connection_with_event(nIndex, DISCONNECT::ERRORS);
+                    }
                 }
             }
         }
