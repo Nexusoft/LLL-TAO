@@ -176,6 +176,30 @@ namespace LLP
         bool ProcessPacket() final;
 
 
+        /** ProcessPacketStateless
+         *
+         *  Handles packets from stateless localhost miners without TAO API session.
+         *
+         *  @param[in] PACKET The packet to process.
+         *
+         *  @return True if no errors, false otherwise.
+         *
+         **/
+        bool ProcessPacketStateless(const Packet& PACKET);
+
+
+        /** ProcessPacketStateful
+         *
+         *  Handles packets from stateful miners with TAO API session.
+         *
+         *  @param[in] PACKET The packet to process.
+         *
+         *  @return True if no errors, false otherwise.
+         *
+         **/
+        bool ProcessPacketStateful(const Packet& PACKET);
+
+
     private:
 
         /** respond
