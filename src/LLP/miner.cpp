@@ -40,6 +40,9 @@ ________________________________________________________________________________
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/types/reservekey.h>
 
+#include <LLC/include/flkey.h>
+#include <LLC/include/random.h>
+
 #include <Util/include/config.h>
 #include <Util/include/convert.h>
 #include <Util/include/args.h>
@@ -65,6 +68,11 @@ namespace LLP
     , nChannel(0)
     , pMiningKey(nullptr)
     , nHashLast(0)
+    , vMinerPubKey()
+    , strMinerId()
+    , vAuthNonce()
+    , fMinerAuthenticated(false)
+    , hashGenesisForMiner(0)
     , fStatelessMinerSession(false)
     {
         #ifndef NO_WALLET
@@ -84,6 +92,11 @@ namespace LLP
     , nChannel(0)
     , pMiningKey(nullptr)
     , nHashLast(0)
+    , vMinerPubKey()
+    , strMinerId()
+    , vAuthNonce()
+    , fMinerAuthenticated(false)
+    , hashGenesisForMiner(0)
     , fStatelessMinerSession(false)
     {
         #ifndef NO_WALLET
@@ -103,6 +116,11 @@ namespace LLP
     , nChannel(0)
     , pMiningKey(nullptr)
     , nHashLast(0)
+    , vMinerPubKey()
+    , strMinerId()
+    , vAuthNonce()
+    , fMinerAuthenticated(false)
+    , hashGenesisForMiner(0)
     , fStatelessMinerSession(false)
     {
         #ifndef NO_WALLET
@@ -366,6 +384,10 @@ namespace LLP
             case 204: return "NEW_ROUND";
             case 205: return "OLD_ROUND";
             case 206: return "CHANNEL_ACK";
+            case 207: return "MINER_AUTH_INIT";
+            case 208: return "MINER_AUTH_CHALLENGE";
+            case 209: return "MINER_AUTH_RESPONSE";
+            case 210: return "MINER_AUTH_RESULT";
             case 253: return "PING";
             case 254: return "CLOSE";
             default:  return "UNKNOWN";
@@ -451,9 +473,182 @@ namespace LLP
         /* Evaluate the packet header to determine what to do. */
         switch(PACKET.HEADER)
         {
+            /* Authentication: Miner sends Falcon public key + label */
+            case MINER_AUTH_INIT:
+            {
+                debug::log(0, FUNCTION, "MinerLLP: MINER_AUTH_INIT from ", GetAddress().ToStringIP(),
+                           " length=", PACKET.LENGTH);
+
+                /* Validate minimum packet size (2 + 2 = 4 bytes for lengths) */
+                if(PACKET.DATA.size() < 4)
+                    return debug::error(FUNCTION, "MINER_AUTH_INIT: packet too small");
+
+                /* Parse pubkey_len (2 bytes, big-endian) */
+                uint16_t nPubKeyLen = (static_cast<uint16_t>(PACKET.DATA[0]) << 8) | 
+                                      static_cast<uint16_t>(PACKET.DATA[1]);
+
+                /* Validate pubkey_len */
+                if(nPubKeyLen == 0 || nPubKeyLen > 2048)
+                    return debug::error(FUNCTION, "MINER_AUTH_INIT: invalid pubkey_len ", nPubKeyLen);
+
+                if(PACKET.DATA.size() < 4 + nPubKeyLen)
+                    return debug::error(FUNCTION, "MINER_AUTH_INIT: packet too small for pubkey");
+
+                /* Extract public key */
+                vMinerPubKey.assign(PACKET.DATA.begin() + 2, PACKET.DATA.begin() + 2 + nPubKeyLen);
+
+                /* Parse miner_id_len (2 bytes, big-endian) */
+                uint16_t nMinerIdLen = (static_cast<uint16_t>(PACKET.DATA[2 + nPubKeyLen]) << 8) | 
+                                       static_cast<uint16_t>(PACKET.DATA[2 + nPubKeyLen + 1]);
+
+                /* Validate miner_id_len */
+                if(nMinerIdLen > 256)
+                    return debug::error(FUNCTION, "MINER_AUTH_INIT: invalid miner_id_len ", nMinerIdLen);
+
+                if(PACKET.DATA.size() < 4 + nPubKeyLen + nMinerIdLen)
+                    return debug::error(FUNCTION, "MINER_AUTH_INIT: packet too small for miner_id");
+
+                /* Extract miner ID */
+                if(nMinerIdLen > 0)
+                    strMinerId.assign(PACKET.DATA.begin() + 4 + nPubKeyLen, 
+                                     PACKET.DATA.begin() + 4 + nPubKeyLen + nMinerIdLen);
+                else
+                    strMinerId = "<no-id>";
+
+                /* Generate random nonce (32 bytes) */
+                uint256_t nonce = LLC::GetRand256();
+                vAuthNonce = nonce.GetBytes();
+
+                /* Log the authentication init */
+                debug::log(0, FUNCTION, "MinerLLP: MINER_AUTH_INIT from ", GetAddress().ToStringIP(),
+                           " miner_id=", strMinerId, " pubkey_len=", nPubKeyLen);
+                debug::log(0, FUNCTION, "MinerLLP: MINER_AUTH_CHALLENGE nonce_len=", vAuthNonce.size());
+
+                /* Build MINER_AUTH_CHALLENGE response */
+                std::vector<uint8_t> vResponse;
+                uint16_t nNonceLen = static_cast<uint16_t>(vAuthNonce.size());
+                vResponse.push_back(static_cast<uint8_t>(nNonceLen >> 8));
+                vResponse.push_back(static_cast<uint8_t>(nNonceLen & 0xFF));
+                vResponse.insert(vResponse.end(), vAuthNonce.begin(), vAuthNonce.end());
+
+                /* Send challenge */
+                respond(MINER_AUTH_CHALLENGE, vResponse);
+
+                return true;
+            }
+
+
+            /* Authentication: Miner sends Falcon signature over nonce */
+            case MINER_AUTH_RESPONSE:
+            {
+                debug::log(0, FUNCTION, "MinerLLP: MINER_AUTH_RESPONSE from ", GetAddress().ToStringIP(),
+                           " length=", PACKET.LENGTH);
+
+                /* Validate that we have nonce and pubkey */
+                if(vAuthNonce.empty())
+                {
+                    debug::error(FUNCTION, "MINER_AUTH_RESPONSE: no nonce (MINER_AUTH_INIT not received)");
+                    std::vector<uint8_t> vFail(1, 0x00);
+                    respond(MINER_AUTH_RESULT, vFail);
+                    this->Disconnect();
+                    return false;
+                }
+
+                if(vMinerPubKey.empty())
+                {
+                    debug::error(FUNCTION, "MINER_AUTH_RESPONSE: no pubkey (MINER_AUTH_INIT not received)");
+                    std::vector<uint8_t> vFail(1, 0x00);
+                    respond(MINER_AUTH_RESULT, vFail);
+                    this->Disconnect();
+                    return false;
+                }
+
+                /* Validate minimum packet size (2 bytes for sig_len) */
+                if(PACKET.DATA.size() < 2)
+                {
+                    debug::error(FUNCTION, "MINER_AUTH_RESPONSE: packet too small");
+                    std::vector<uint8_t> vFail(1, 0x00);
+                    respond(MINER_AUTH_RESULT, vFail);
+                    this->Disconnect();
+                    return false;
+                }
+
+                /* Parse sig_len (2 bytes, big-endian) */
+                uint16_t nSigLen = (static_cast<uint16_t>(PACKET.DATA[0]) << 8) | 
+                                   static_cast<uint16_t>(PACKET.DATA[1]);
+
+                /* Validate sig_len */
+                if(nSigLen == 0 || nSigLen > 2048)
+                {
+                    debug::error(FUNCTION, "MINER_AUTH_RESPONSE: invalid sig_len ", nSigLen);
+                    std::vector<uint8_t> vFail(1, 0x00);
+                    respond(MINER_AUTH_RESULT, vFail);
+                    this->Disconnect();
+                    return false;
+                }
+
+                if(PACKET.DATA.size() < 2 + nSigLen)
+                {
+                    debug::error(FUNCTION, "MINER_AUTH_RESPONSE: packet too small for signature");
+                    std::vector<uint8_t> vFail(1, 0x00);
+                    respond(MINER_AUTH_RESULT, vFail);
+                    this->Disconnect();
+                    return false;
+                }
+
+                /* Extract signature */
+                std::vector<uint8_t> vSignature(PACKET.DATA.begin() + 2, PACKET.DATA.begin() + 2 + nSigLen);
+
+                debug::log(0, FUNCTION, "MinerLLP: MINER_AUTH_RESPONSE from ", GetAddress().ToStringIP(),
+                           " sig_len=", nSigLen);
+
+                /* Verify Falcon signature */
+                LLC::FLKey flkey;
+                if(!flkey.SetPubKey(vMinerPubKey))
+                {
+                    debug::error(FUNCTION, "MINER_AUTH_RESPONSE: invalid public key from ", GetAddress().ToStringIP());
+                    std::vector<uint8_t> vFail(1, 0x00);
+                    respond(MINER_AUTH_RESULT, vFail);
+                    this->Disconnect();
+                    return false;
+                }
+
+                if(!flkey.Verify(vAuthNonce, vSignature))
+                {
+                    debug::log(0, FUNCTION, "MinerLLP: MINER_AUTH verification FAILED for miner_id=", 
+                               strMinerId, " from ", GetAddress().ToStringIP());
+                    std::vector<uint8_t> vFail(1, 0x00);
+                    respond(MINER_AUTH_RESULT, vFail);
+                    this->Disconnect();
+                    return false;
+                }
+
+                /* Authentication succeeded */
+                fMinerAuthenticated = true;
+                debug::log(0, FUNCTION, "MinerLLP: MINER_AUTH success for miner_id=", strMinerId,
+                           " from ", GetAddress().ToStringIP());
+
+                /* Send success result */
+                std::vector<uint8_t> vSuccess(1, 0x01);
+                respond(MINER_AUTH_RESULT, vSuccess);
+
+                return true;
+            }
+
+
             /* Set the Mining Channel this Connection will Serve Blocks for. */
             case SET_CHANNEL:
             {
+                /* Check authentication for stateless miners */
+                if(!fMinerAuthenticated)
+                {
+                    debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted SET_CHANNEL before authentication from ",
+                               GetAddress().ToStringIP(), " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
+                    std::vector<uint8_t> vFail(1, 0x00);
+                    respond(MINER_AUTH_RESULT, vFail);
+                    return debug::error(FUNCTION, "Authentication required for stateless miner commands");
+                }
+
                 /* Log when SET_CHANNEL case is hit for debugging */
                 debug::log(0, FUNCTION, "MinerLLP: *** SET_CHANNEL CASE HIT (STATELESS) *** header=0x", 
                            std::hex, uint32_t(PACKET.HEADER), std::dec,
@@ -518,6 +713,16 @@ namespace LLP
             /* Clear the Block Map if Requested by Client. */
             case CLEAR_MAP:
             {
+                /* Check authentication for stateless miners */
+                if(!fMinerAuthenticated)
+                {
+                    debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted CLEAR_MAP before authentication from ",
+                               GetAddress().ToStringIP(), " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
+                    std::vector<uint8_t> vFail(1, 0x00);
+                    respond(MINER_AUTH_RESULT, vFail);
+                    return debug::error(FUNCTION, "Authentication required for stateless miner commands");
+                }
+
                 LOCK(MUTEX);
                 clear_map();
                 return true;
@@ -527,6 +732,16 @@ namespace LLP
             /* Respond to the miner with the new height. */
             case GET_HEIGHT:
             {
+                /* Check authentication for stateless miners */
+                if(!fMinerAuthenticated)
+                {
+                    debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted GET_HEIGHT before authentication from ",
+                               GetAddress().ToStringIP(), " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
+                    std::vector<uint8_t> vFail(1, 0x00);
+                    respond(MINER_AUTH_RESULT, vFail);
+                    return debug::error(FUNCTION, "Authentication required for stateless miner commands");
+                }
+
                 {
                     /* Check the best height before responding. */
                     LOCK(MUTEX);
@@ -546,6 +761,16 @@ namespace LLP
             /* Respond to a miner if it is a new round. */
             case GET_ROUND:
             {
+                /* Check authentication for stateless miners */
+                if(!fMinerAuthenticated)
+                {
+                    debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted GET_ROUND before authentication from ",
+                               GetAddress().ToStringIP(), " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
+                    std::vector<uint8_t> vFail(1, 0x00);
+                    respond(MINER_AUTH_RESULT, vFail);
+                    return debug::error(FUNCTION, "Authentication required for stateless miner commands");
+                }
+
                 /* Flag indicating the current round is no longer valid or there is a new block */
                 bool fNewRound = false;
                 {
@@ -566,6 +791,16 @@ namespace LLP
             /* Respond with the block reward in a given round. */
             case GET_REWARD:
             {
+                /* Check authentication for stateless miners */
+                if(!fMinerAuthenticated)
+                {
+                    debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted GET_REWARD before authentication from ",
+                               GetAddress().ToStringIP(), " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
+                    std::vector<uint8_t> vFail(1, 0x00);
+                    respond(MINER_AUTH_RESULT, vFail);
+                    return debug::error(FUNCTION, "Authentication required for stateless miner commands");
+                }
+
                 debug::log(2, FUNCTION, "GET_REWARD request from ", GetAddress().ToStringIP());
 
                 /* Get the mining reward amount for the channel currently set. */
@@ -587,6 +822,16 @@ namespace LLP
             /* Set the number of subscribed blocks. */
             case SUBSCRIBE:
             {
+                /* Check authentication for stateless miners */
+                if(!fMinerAuthenticated)
+                {
+                    debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted SUBSCRIBE before authentication from ",
+                               GetAddress().ToStringIP(), " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
+                    std::vector<uint8_t> vFail(1, 0x00);
+                    respond(MINER_AUTH_RESULT, vFail);
+                    return debug::error(FUNCTION, "Authentication required for stateless miner commands");
+                }
+
                 /* Don't allow mining llp requests for proof of stake channel */
                 if(nChannel.load() == 0)
                     return debug::error(FUNCTION, "Cannot subscribe to Stake Channel");
@@ -607,6 +852,16 @@ namespace LLP
             /* Get a new block for the miner. */
             case GET_BLOCK:
             {
+                /* Check authentication for stateless miners */
+                if(!fMinerAuthenticated)
+                {
+                    debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted GET_BLOCK before authentication from ",
+                               GetAddress().ToStringIP(), " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
+                    std::vector<uint8_t> vFail(1, 0x00);
+                    respond(MINER_AUTH_RESULT, vFail);
+                    return debug::error(FUNCTION, "Authentication required for stateless miner commands");
+                }
+
                 debug::log(2, FUNCTION, "GET_BLOCK request from ", GetAddress().ToStringIP());
 
                 TAO::Ledger::Block *pBlock = nullptr;
@@ -643,6 +898,16 @@ namespace LLP
             /* Submit a block using the merkle root as the key. */
             case SUBMIT_BLOCK:
             {
+                /* Check authentication for stateless miners */
+                if(!fMinerAuthenticated)
+                {
+                    debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted SUBMIT_BLOCK before authentication from ",
+                               GetAddress().ToStringIP(), " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
+                    std::vector<uint8_t> vFail(1, 0x00);
+                    respond(MINER_AUTH_RESULT, vFail);
+                    return debug::error(FUNCTION, "Authentication required for stateless miner commands");
+                }
+
                 debug::log(2, FUNCTION, "SUBMIT_BLOCK from ", GetAddress().ToStringIP());
 
                 uint512_t hashMerkle;
@@ -689,6 +954,16 @@ namespace LLP
             /* Allows a client to check if a block is part of the main chain. */
             case CHECK_BLOCK:
             {
+                /* Check authentication for stateless miners */
+                if(!fMinerAuthenticated)
+                {
+                    debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted CHECK_BLOCK before authentication from ",
+                               GetAddress().ToStringIP(), " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
+                    std::vector<uint8_t> vFail(1, 0x00);
+                    respond(MINER_AUTH_RESULT, vFail);
+                    return debug::error(FUNCTION, "Authentication required for stateless miner commands");
+                }
+
                 uint1024_t hashBlock;
                 TAO::Ledger::BlockState state;
 
@@ -1292,6 +1567,13 @@ namespace LLP
 
         /* Set the block iterator back to zero so we can iterate new blocks next round. */
         nBlockIterator = 0;
+
+        /* Clear authentication state */
+        vMinerPubKey.clear();
+        strMinerId.clear();
+        vAuthNonce.clear();
+        fMinerAuthenticated = false;
+        hashGenesisForMiner = 0;
 
         debug::log(3, FUNCTION, "Cleared map of blocks");
     }
