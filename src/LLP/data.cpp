@@ -302,7 +302,8 @@ namespace LLP
                     {
                         debug::log(3, FUNCTION, "DataThread[", ID, "]: Processing connection id=", nIndex, 
                                    " type=", ProtocolType::Name(), 
-                                   " from ", CONNECTION->GetAddress().ToStringIP(), ":", CONNECTION->GetAddress().GetPort());
+                                   " from ", CONNECTION->GetAddress().ToStringIP(), ":", CONNECTION->GetAddress().GetPort(),
+                                   " stateless=", (fLocalhostMinerStateless ? "true" : "false"));
                     }
 
                     /* Disconnect if there was a polling error */
@@ -434,7 +435,10 @@ namespace LLP
                     /* Allow stateless localhost Miner connections to proceed even without session. */
                     if(fSessionError && fLocalhostMinerStateless)
                     {
-                        /* Suppress session errors for stateless miners - no log spam. */
+                        /* Log suppression of session errors for stateless miners at verbose level 2. */
+                        debug::log(2, FUNCTION, "DataThread[", ID, "]: Session error ignored for stateless localhost Miner from ",
+                                   CONNECTION->GetAddress().ToStringIP(), ":", CONNECTION->GetAddress().GetPort(),
+                                   " - continuing without disconnect");
                         /* Continue processing without disconnect. */
                     }
                     else

@@ -377,9 +377,9 @@ namespace LLP
             }
         };
 
-        /* Log incoming packet details */
-        debug::log(1, FUNCTION, "MinerLLP: PACKET from ", GetAddress().ToStringIP(), 
-                   " - ", GetPacketName(PACKET.HEADER), " (0x", std::hex, uint32_t(PACKET.HEADER), std::dec, ")",
+        /* Log entry with clear indication and packet details */
+        debug::log(1, FUNCTION, "MinerLLP: ProcessPacket ENTRY from ", GetAddress().ToStringIP(),
+                   " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec,
                    " length=", PACKET.LENGTH);
 
         /* Make sure the mining server has a connection. (skip check if running local testnet) */
@@ -428,16 +428,43 @@ namespace LLP
             /* Set the Mining Channel this Connection will Serve Blocks for. */
             case SET_CHANNEL:
             {
-                nChannel = convert::bytes2uint(PACKET.DATA);
+                /* Log when SET_CHANNEL case is hit for debugging */
+                debug::log(0, FUNCTION, "*** SET_CHANNEL CASE HIT *** from ", GetAddress().ToStringIP(),
+                           " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec,
+                           " length=", PACKET.LENGTH, " DATA.size()=", PACKET.DATA.size());
+
+                /* Parse channel in a backward-compatible way */
+                uint32_t nChannelValue = 0;
+                if(PACKET.DATA.size() == 1)
+                {
+                    /* Single-byte payload - interpret as channel value directly */
+                    nChannelValue = static_cast<uint32_t>(PACKET.DATA[0]);
+                    debug::log(2, FUNCTION, "SET_CHANNEL: parsed single-byte channel value = ", nChannelValue);
+                }
+                else if(PACKET.DATA.size() >= 4)
+                {
+                    /* 4-byte or larger payload - decode using existing method */
+                    nChannelValue = convert::bytes2uint(PACKET.DATA);
+                    debug::log(2, FUNCTION, "SET_CHANNEL: parsed multi-byte channel value = ", nChannelValue);
+                }
+                else
+                {
+                    /* Unexpected payload size */
+                    return debug::error(FUNCTION, "SET_CHANNEL: unexpected payload size ", PACKET.DATA.size(), 
+                                      " from ", GetAddress().ToStringIP());
+                }
+
+                /* Store the parsed channel */
+                nChannel = nChannelValue;
 
                 switch (nChannel.load())
                 {
                     case 1:
-                    debug::log(2, FUNCTION, "Prime Channel Set for ", GetAddress().ToStringIP());
+                    debug::log(0, FUNCTION, "Prime Channel Set for ", GetAddress().ToStringIP());
                     break;
 
                     case 2:
-                    debug::log(2, FUNCTION, "Hash Channel Set for ", GetAddress().ToStringIP());
+                    debug::log(0, FUNCTION, "Hash Channel Set for ", GetAddress().ToStringIP());
                     break;
 
                     /* Don't allow Mining LLP Requests for Proof of Stake, or any other Channel. */
@@ -573,7 +600,7 @@ namespace LLP
                     check_best_height();
                 }
 
-                debug::log(2, FUNCTION, "GET_HEIGHT request from ", GetAddress().ToStringIP(), " - responding with height ", nBestHeight + 1);
+                debug::log(0, FUNCTION, "GET_HEIGHT request from ", GetAddress().ToStringIP(), " - responding with height ", nBestHeight + 1);
 
                 /* Create the response packet and write. */
                 respond(BLOCK_HEIGHT, convert::uint2bytes(nBestHeight + 1));
@@ -753,7 +780,11 @@ namespace LLP
             }
         }
 
-        return debug::error(FUNCTION, "Command not found ", std::hex, uint32_t(PACKET.HEADER));
+        /* Fallback for unknown commands - log and return error */
+        debug::log(0, FUNCTION, "MinerLLP: COMMAND NOT FOUND from ", GetAddress().ToStringIP(),
+                   " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec,
+                   " length=", PACKET.LENGTH);
+        return debug::error(FUNCTION, "Command not found 0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
     }
 
 
