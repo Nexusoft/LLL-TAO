@@ -389,11 +389,18 @@ namespace LLP
         uint16_t nConnections = (TRITIUM_SERVER ? TRITIUM_SERVER->GetConnectionCount() : 0);
 
         if(!fLocalTestnet && nConnections == 0)
+        {
+            debug::log(0, FUNCTION, "MinerLLP: EARLY_EXIT reason=NO_NETWORK fLocalTestnet=", fLocalTestnet, 
+                       " nConnections=", nConnections, " from ", GetAddress().ToStringIP());
             return debug::error(FUNCTION, "No network connections.");
+        }
 
         /* Special rule for testnet so we don't bloat the chain. */
         if(config::fTestNet.load() && TAO::Ledger::mempool.Size() == 0)
         {
+            /* Log early exit for testnet empty mempool rule */
+            debug::log(0, FUNCTION, "MinerLLP: EARLY_EXIT reason=TESTNET_EMPTY_MEMPOOL from ", GetAddress().ToStringIP());
+            
             /* Handle if on verbose=3. */
             if(config::nVerbose.load() >= 3)
                 return debug::error(FUNCTION, "Cannot mine with no pending transactions for -testnet");
@@ -403,11 +410,17 @@ namespace LLP
 
         /* No mining when synchronizing. */
         if(TAO::Ledger::ChainState::Synchronizing())
+        {
+            debug::log(0, FUNCTION, "MinerLLP: EARLY_EXIT reason=SYNCHRONIZING from ", GetAddress().ToStringIP());
             return debug::error(FUNCTION, "Cannot mine while ledger is synchronizing.");
+        }
 
         /* No mining when wallet is locked */
         if(is_locked())
+        {
+            debug::log(0, FUNCTION, "MinerLLP: EARLY_EXIT reason=WALLET_LOCKED from ", GetAddress().ToStringIP());
             return debug::error(FUNCTION, "Cannot mine while wallet is locked.");
+        }
 
         /* Obtain timelock and timestamp. */
         uint64_t nTimeLock = TAO::Ledger::CurrentBlockTimelock();
@@ -421,6 +434,10 @@ namespace LLP
             if(nSeconds % 60 == 0)
                 debug::log(0, FUNCTION, "Timelock ", TAO::Ledger::CurrentBlockVersion(), " activation in ", nSeconds / 60, " minutes. ");
         }
+
+        /* Log that we've reached the switch statement (passed all early exit checks) */
+        debug::log(0, FUNCTION, "MinerLLP: >>> REACHED_SWITCH with header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec,
+                   " length=", PACKET.LENGTH, " from ", GetAddress().ToStringIP());
 
         /* Evaluate the packet header to determine what to do. */
         switch(PACKET.HEADER)
@@ -471,6 +488,10 @@ namespace LLP
                     default:
                     return debug::error(FUNCTION, "Invalid PoW Channel (", nChannel.load(), ") from ", GetAddress().ToStringIP());
                 }
+                
+                /* Add distinctive marker for easy grep in logs */
+                debug::log(0, FUNCTION, "MinerLLP: ### CHANNEL_SET_MARKER from ", GetAddress().ToStringIP(),
+                           " channel=", nChannel.load());
                 
                 /* Send explicit ACK to client after successfully setting channel. */
                 respond(CHANNEL_ACK);
