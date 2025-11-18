@@ -134,6 +134,32 @@ namespace TAO::API
         encoding::json Metrics(const encoding::json& params, const bool fHelp);
 
 
+        /** GetMiningInfo
+         *
+         *  Returns mining-related information including enabled status, channel, height, and connections
+         *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json GetMiningInfo(const encoding::json& params, const bool fHelp);
+
+
+        /** SetMining
+         *
+         *  Enable or disable mining via RPC
+         *
+         *  @param[in] params The parameters from the API call (boolean enable flag).
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json SetMining(const encoding::json& params, const bool fHelp);
+
+
 
     private:
 
