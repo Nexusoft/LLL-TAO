@@ -638,7 +638,22 @@ namespace LLP
             }
 
 
-            /* Set the Mining Channel this Connection will Serve Blocks for. */
+            /* Set the Mining Channel this Connection will Serve Blocks for. 
+             *
+             * PROTOCOL DESIGN NOTE:
+             * This implementation supports backward compatibility with both old and new NexusMiner versions:
+             * 
+             * - Legacy format (NexusMiner v1.x): 4-byte little-endian payload using convert::bytes2uint()
+             * - New format (NexusMiner v2.x+): 1-byte payload for efficiency and simplicity
+             * 
+             * The channel value indicates which Proof-of-Work algorithm to mine:
+             * - Channel 1: Prime (prime number discovery)
+             * - Channel 2: Hash (traditional hashing)
+             * - Channel 0: Reserved for Proof of Stake (not valid for mining)
+             * 
+             * This backward compatibility ensures smooth transition as miners upgrade, preventing
+             * protocol breakage during the rollout of the unified mining stack.
+             */
             case SET_CHANNEL:
             {
                 /* Check authentication for stateless miners */
@@ -989,7 +1004,19 @@ namespace LLP
             }
 
 
-            /* Placeholder for SESSION_START - not fully implemented yet. */
+            /* Placeholder for SESSION_START - not fully implemented yet.
+             *
+             * PROTOCOL DESIGN NOTE (STATELESS MODE):
+             * SESSION_START and SESSION_KEEPALIVE are defined in the protocol but not yet fully implemented.
+             * These packet types are reserved for future session management features where:
+             * - SESSION_START would initialize a persistent mining session with session ID
+             * - SESSION_KEEPALIVE would maintain the session and detect disconnections
+             * 
+             * For now, these handlers acknowledge receipt without error to maintain forward compatibility.
+             * This allows future NexusMiner versions to use these packets without breaking existing nodes.
+             * 
+             * Full implementation will come in a later PR when session management requirements are finalized.
+             */
             case SESSION_START:
             {
                 debug::log(0, FUNCTION, "MinerLLP: SESSION_START received from ", GetAddress().ToStringIP(),
@@ -1452,7 +1479,19 @@ namespace LLP
             }
 
 
-            /* Placeholder for SESSION_START - not fully implemented yet. */
+            /* Placeholder for SESSION_START - not fully implemented yet.
+             *
+             * PROTOCOL DESIGN NOTE (STATEFUL MODE):
+             * SESSION_START and SESSION_KEEPALIVE are defined in the protocol but not yet fully implemented.
+             * These packet types are reserved for future session management features where:
+             * - SESSION_START would initialize a persistent mining session with session ID
+             * - SESSION_KEEPALIVE would maintain the session and detect disconnections
+             * 
+             * For now, these handlers acknowledge receipt without error to maintain forward compatibility.
+             * This allows future NexusMiner versions to use these packets without breaking existing nodes.
+             * 
+             * Full implementation will come in a later PR when session management requirements are finalized.
+             */
             case SESSION_START:
             {
                 debug::log(0, FUNCTION, "MinerLLP: SESSION_START received from ", GetAddress().ToStringIP(),

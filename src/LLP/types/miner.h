@@ -29,6 +29,36 @@ namespace LLP
      *
      *  Connection class that handles requests and responses from miners.
      *
+     *  PROTOCOL DESIGN OVERVIEW:
+     *  
+     *  This LLP implements the Miner Protocol for NexusMiner communication with the Nexus Core node.
+     *  
+     *  Key Design Principles:
+     *  1. Backward Compatibility: Supports both legacy (4-byte) and new (1-byte) SET_CHANNEL payloads
+     *     to ensure smooth transition during miner upgrades without protocol breakage.
+     *  
+     *  2. Dual Operation Modes:
+     *     - Stateful: Requires TAO API session, used for remote mining with full authentication
+     *     - Stateless: Localhost-only mode using Falcon signatures for authentication
+     *  
+     *  3. Forward Compatibility: SESSION_START and SESSION_KEEPALIVE packet types are defined
+     *     and acknowledged but not fully implemented. This allows future miners to use these
+     *     packets without breaking existing nodes.
+     *  
+     *  4. Mining Channels:
+     *     - Channel 1: Prime (Fermat prime number discovery)
+     *     - Channel 2: Hash (traditional SHA3 hashing)
+     *     - Channel 0: Reserved for Proof of Stake (not valid for mining)
+     *  
+     *  5. Authentication Flow (Stateless Mode):
+     *     MINER_AUTH_INIT -> MINER_AUTH_CHALLENGE -> MINER_AUTH_RESPONSE -> MINER_AUTH_RESULT
+     *     Uses Falcon post-quantum signatures for security.
+     *  
+     *  This design coordinates with the unified mining stack implementation across:
+     *  - LLL-TAO (this node implementation)
+     *  - NexusMiner (miner client)
+     *  - NexusInterface (GUI management)
+     *
      **/
     class Miner : public Connection
     {
