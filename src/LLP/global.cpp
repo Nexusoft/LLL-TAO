@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 
 #include <LLP/include/global.h>
+#include <LLP/include/mining_config.h>
 #include <LLP/include/network.h>
 
 #include <TAO/API/include/global.h>
@@ -253,27 +254,36 @@ namespace LLP
         /* MINING_SERVER instance */
         if(config::GetBoolArg(std::string("-mining"), false) && !config::fClient.load())
         {
-            /* Generate our config object and use correct settings. */
-            LLP::Config CONFIG     = LLP::Config(GetMiningPort());
-            CONFIG.ENABLE_LISTEN   = true;
-            CONFIG.ENABLE_METERS   = false;
-            CONFIG.ENABLE_DDOS     = config::GetBoolArg(std::string("-miningddos"), false);
-            CONFIG.ENABLE_MANAGER  = false;
-            CONFIG.ENABLE_SSL      = false;
-            CONFIG.ENABLE_REMOTE   = true;
-            CONFIG.REQUIRE_SSL     = false;
-            CONFIG.PORT_SSL        = 0; //TODO: this is disabled until SSL code can be refactored
-            CONFIG.MAX_INCOMING    = 128;
-            CONFIG.MAX_CONNECTIONS = 128;
-            CONFIG.MAX_THREADS     = config::GetArg(std::string("-miningthreads"), 4);
-            CONFIG.DDOS_CSCORE     = config::GetArg(std::string("-miningcscore"), 1);
-            CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-miningrscore"), 50);
-            CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-miningtimespan"), 60);
-            CONFIG.MANAGER_SLEEP   = 0; //this is disabled
-            CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-miningtimeout"), 30);
+            /* Load and validate mining configuration before starting server */
+            if(!LoadMiningConfig())
+            {
+                debug::error(FUNCTION, "Mining configuration validation failed - mining server will not start");
+                debug::error(FUNCTION, "Please ensure miningpubkey is configured in nexus.conf");
+            }
+            else
+            {
+                /* Generate our config object and use correct settings. */
+                LLP::Config CONFIG     = LLP::Config(GetMiningPort());
+                CONFIG.ENABLE_LISTEN   = true;
+                CONFIG.ENABLE_METERS   = false;
+                CONFIG.ENABLE_DDOS     = config::GetBoolArg(std::string("-miningddos"), false);
+                CONFIG.ENABLE_MANAGER  = false;
+                CONFIG.ENABLE_SSL      = false;
+                CONFIG.ENABLE_REMOTE   = true;
+                CONFIG.REQUIRE_SSL     = false;
+                CONFIG.PORT_SSL        = 0; //TODO: this is disabled until SSL code can be refactored
+                CONFIG.MAX_INCOMING    = 128;
+                CONFIG.MAX_CONNECTIONS = 128;
+                CONFIG.MAX_THREADS     = config::GetArg(std::string("-miningthreads"), 4);
+                CONFIG.DDOS_CSCORE     = config::GetArg(std::string("-miningcscore"), 1);
+                CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-miningrscore"), 50);
+                CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-miningtimespan"), 60);
+                CONFIG.MANAGER_SLEEP   = 0; //this is disabled
+                CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-miningtimeout"), 30);
 
-            /* Create the server instance. */
-            MINING_SERVER = new Server<Miner>(CONFIG);
+                /* Create the server instance. */
+                MINING_SERVER = new Server<Miner>(CONFIG);
+            }
         }
 
         return true;

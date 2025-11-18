@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/json.h>
 
 #include <LLP/include/global.h>
+#include <LLP/include/mining_config.h>
 #include <LLP/types/miner.h>
 
 #include <Util/include/config.h>
@@ -72,7 +73,7 @@ namespace TAO::API
 
         if(fEnable)
         {
-            /* When enabling mining, validate configuration */
+            /* When enabling mining, validate configuration using auto-config helper */
             
             /* Check if mining is already enabled */
             if(config::GetBoolArg("-mining", false))
@@ -82,12 +83,11 @@ namespace TAO::API
                 return jsonRet;
             }
 
-            /* Validate that mining pubkey is configured
-             * Note: This is a simplified check. Full auto-config will be added in next step */
-            if(!config::HasArg("-miningpubkey") && !config::HasArg("-miningaddress"))
+            /* Use LoadMiningConfig to validate and auto-configure mining */
+            if(!LLP::LoadMiningConfig())
             {
-                throw Exception(-1, "Mining configuration missing: miningpubkey or miningaddress required. "
-                                    "Add miningpubkey=YOUR_PUBKEY to nexus.conf or use -miningpubkey argument.");
+                throw Exception(-1, "Mining configuration validation failed. "
+                                    "See debug log for details. Ensure miningpubkey is set in nexus.conf");
             }
 
             /* Set the mining flag */
