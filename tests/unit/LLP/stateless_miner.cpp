@@ -21,9 +21,9 @@ ________________________________________________________________________________
 
 using namespace LLP;
 
-/* Packet type definitions for testing */
+/* Packet type definitions for testing - Phase 2 protocol */
 const Packet::message_t SET_CHANNEL = 3;
-const Packet::message_t MINER_AUTH_RESPONSE = 209;
+const Packet::message_t FALCON_RESPONSE = 209;  // Renamed from MINER_AUTH_RESPONSE for Phase 2
 const Packet::message_t SESSION_START = 211;
 
 
