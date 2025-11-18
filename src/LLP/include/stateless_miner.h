@@ -183,7 +183,7 @@ namespace LLP
             const Packet& packet
         );
 
-        /** ProcessFalconAuthResponse
+        /** ProcessFalconResponse
          *
          *  Phase 2: Process Falcon authentication response.
          *  Verifies Falcon signature and updates context with auth status.
@@ -199,7 +199,7 @@ namespace LLP
          *  @return ProcessResult with updated context (authenticated, keyID, genesis)
          *
          **/
-        static ProcessResult ProcessFalconAuthResponse(
+        static ProcessResult ProcessFalconResponse(
             const MiningContext& context,
             const Packet& packet
         );
@@ -231,6 +231,54 @@ namespace LLP
          *
          **/
         static ProcessResult ProcessSetChannel(
+            const MiningContext& context,
+            const Packet& packet
+        );
+
+        /** ProcessGetBlock
+         *
+         *  Phase 2: Process get block request.
+         *  Returns a block template for mining.
+         *
+         *  @param[in] context Current miner state
+         *  @param[in] packet Get block packet
+         *
+         *  @return ProcessResult with BLOCK_DATA response
+         *
+         **/
+        static ProcessResult ProcessGetBlock(
+            const MiningContext& context,
+            const Packet& packet
+        );
+
+        /** ProcessSubmitBlock
+         *
+         *  Phase 2: Process submit block request.
+         *  Validates and processes a mined block.
+         *
+         *  @param[in] context Current miner state
+         *  @param[in] packet Submit block packet
+         *
+         *  @return ProcessResult with BLOCK_ACCEPTED or BLOCK_REJECTED response
+         *
+         **/
+        static ProcessResult ProcessSubmitBlock(
+            const MiningContext& context,
+            const Packet& packet
+        );
+
+        /** ProcessSessionKeepalive
+         *
+         *  Phase 2: Process session keepalive.
+         *  Updates session timestamp to maintain connection.
+         *
+         *  @param[in] context Current miner state
+         *  @param[in] packet Keepalive packet
+         *
+         *  @return ProcessResult with updated timestamp
+         *
+         **/
+        static ProcessResult ProcessSessionKeepalive(
             const MiningContext& context,
             const Packet& packet
         );

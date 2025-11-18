@@ -134,13 +134,29 @@ namespace LLP
     }
 
 
-    /* Packet type definitions - must match miner.h */
+    /* Packet type definitions - must match miner.h and NexusMiner Phase 2 protocol */
     enum : Packet::message_t
     {
+        /* Data packets */
+        BLOCK_DATA           = 0,
+        SUBMIT_BLOCK         = 1,
         SET_CHANNEL          = 3,
-        MINER_AUTH_RESPONSE  = 209,
-        SESSION_START        = 211,
+
+        /* Request packets */
+        GET_BLOCK            = 129,
+
+        /* Response packets */
+        BLOCK_ACCEPTED       = 200,
+        BLOCK_REJECTED       = 201,
         CHANNEL_ACK          = 206,
+
+        /* Authentication packets - Phase 2 */
+        FALCON_RESPONSE      = 209,  // Renamed from MINER_AUTH_RESPONSE for Phase 2
+        FALCON_VERIFY_OK     = 210,  // Renamed from MINER_AUTH_RESULT for Phase 2
+
+        /* Session management packets */
+        SESSION_START        = 211,
+        SESSION_KEEPALIVE    = 212,
     };
 
 
@@ -153,8 +169,8 @@ namespace LLP
         /* Route based on packet type */
         switch(packet.HEADER)
         {
-            case MINER_AUTH_RESPONSE:
-                return ProcessFalconAuthResponse(context, packet);
+            case FALCON_RESPONSE:
+                return ProcessFalconResponse(context, packet);
 
             case SESSION_START:
                 return ProcessSessionStart(context, packet);
@@ -162,7 +178,17 @@ namespace LLP
             case SET_CHANNEL:
                 return ProcessSetChannel(context, packet);
 
+            case GET_BLOCK:
+                return ProcessGetBlock(context, packet);
+
+            case SUBMIT_BLOCK:
+                return ProcessSubmitBlock(context, packet);
+
+            case SESSION_KEEPALIVE:
+                return ProcessSessionKeepalive(context, packet);
+
             default:
+                debug::log(1, FUNCTION, "Unknown miner opcode: ", uint32_t(packet.HEADER));
                 return ProcessResult::Error(context, "Unknown packet type");
         }
     }
@@ -191,7 +217,7 @@ namespace LLP
 
 
     /* Process Falcon authentication response */
-    ProcessResult StatelessMiner::ProcessFalconAuthResponse(
+    ProcessResult StatelessMiner::ProcessFalconResponse(
         const MiningContext& context,
         const Packet& packet
     )
@@ -277,7 +303,7 @@ namespace LLP
             .WithTimestamp(runtime::unifiedtimestamp());
 
         /* Build success response */
-        Packet response(MINER_AUTH_RESPONSE);
+        Packet response(FALCON_VERIFY_OK);
         
         /* Response format: 1 byte status + 4 bytes session ID */
         response.DATA.push_back(1); // Success
@@ -358,6 +384,98 @@ namespace LLP
         debug::log(2, FUNCTION, "Channel set to ", nChannel);
 
         return ProcessResult::Success(newContext, response);
+    }
+
+
+    /* Process get block request */
+    ProcessResult StatelessMiner::ProcessGetBlock(
+        const MiningContext& context,
+        const Packet& packet
+    )
+    {
+        /* Phase 2: Require authentication before GET_BLOCK */
+        if(!context.fAuthenticated)
+            return ProcessResult::Error(context, "Not authenticated");
+
+        /* Validate channel is set */
+        if(context.nChannel == 0)
+            return ProcessResult::Error(context, "Channel not set");
+
+        debug::log(2, FUNCTION, "GET_BLOCK request - channel=", context.nChannel,
+                   " sessionId=", context.nSessionId);
+
+        /* TODO: Implement block creation logic
+         * This will need to integrate with TAO::Ledger::Create::Block
+         * For now, return a placeholder response to allow compilation
+         */
+
+        /* Placeholder: Build empty BLOCK_DATA response */
+        Packet response(BLOCK_DATA);
+        /* Block data would be serialized here */
+
+        debug::log(1, FUNCTION, "Served block template (placeholder) for channel ", context.nChannel);
+
+        /* Update context timestamp */
+        MiningContext newContext = context.WithTimestamp(runtime::unifiedtimestamp());
+
+        return ProcessResult::Success(newContext, response);
+    }
+
+
+    /* Process submit block request */
+    ProcessResult StatelessMiner::ProcessSubmitBlock(
+        const MiningContext& context,
+        const Packet& packet
+    )
+    {
+        /* Phase 2: Require authentication before SUBMIT_BLOCK */
+        if(!context.fAuthenticated)
+            return ProcessResult::Error(context, "Not authenticated");
+
+        /* Validate channel is set */
+        if(context.nChannel == 0)
+            return ProcessResult::Error(context, "Channel not set");
+
+        debug::log(2, FUNCTION, "SUBMIT_BLOCK request - channel=", context.nChannel,
+                   " sessionId=", context.nSessionId, " dataSize=", packet.DATA.size());
+
+        /* TODO: Implement block submission logic
+         * This will need to:
+         * 1. Parse merkle root and nonce from packet.DATA
+         * 2. Validate and sign the block
+         * 3. Process and accept/reject
+         * For now, return a placeholder response
+         */
+
+        /* Placeholder: Always reject for now */
+        Packet response(BLOCK_REJECTED);
+
+        debug::log(1, FUNCTION, "Block submission (placeholder rejection) for channel ", context.nChannel);
+
+        /* Update context timestamp */
+        MiningContext newContext = context.WithTimestamp(runtime::unifiedtimestamp());
+
+        return ProcessResult::Success(newContext, response);
+    }
+
+
+    /* Process session keepalive */
+    ProcessResult StatelessMiner::ProcessSessionKeepalive(
+        const MiningContext& context,
+        const Packet& packet
+    )
+    {
+        /* Phase 2: Require authentication before keepalive */
+        if(!context.fAuthenticated)
+            return ProcessResult::Error(context, "Not authenticated");
+
+        debug::log(3, FUNCTION, "SESSION_KEEPALIVE from sessionId=", context.nSessionId);
+
+        /* Update timestamp to keep session alive */
+        MiningContext newContext = context.WithTimestamp(runtime::unifiedtimestamp());
+
+        /* No response packet needed for keepalive */
+        return ProcessResult::Success(newContext, Packet());
     }
 
 } // namespace LLP
