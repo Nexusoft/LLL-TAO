@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <Util/include/string.h>
 #include <Util/include/mutex.h>
 
+#include <optional>
 #include <sstream>
 
 namespace LLP

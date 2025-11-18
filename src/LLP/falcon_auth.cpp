@@ -54,7 +54,7 @@ namespace FalconAuth
     {
     private:
         /* Stored keys: keyId -> (metadata, private_key) */
-        std::map<uint256_t, std::pair<KeyMetadata, std::vector<uint8_t>>> mapKeys;
+        std::map<uint256_t, std::pair<KeyMetadata, LLC::CPrivKey>> mapKeys;
 
         /* Genesis bindings: keyId -> hashGenesis */
         std::map<uint256_t, uint256_t> mapGenesisBindings;
@@ -71,17 +71,15 @@ namespace FalconAuth
             /* Generate Falcon key pair using LLC */
             LLC::FLKey key;
             
-            /* Use 512-bit profile by default */
-            uint16_t nKeySize = 512;
-            if(profile == Profile::FALCON_1024)
-                nKeySize = 1024;
+            /* MakeNewKey() does not take parameters - always generates 512-bit keys (log=9) */
+            key.MakeNewKey();
             
-            if(!key.MakeNewKey(nKeySize))
+            if(!key.IsValid())
                 throw std::runtime_error("Failed to generate Falcon key");
 
             /* Get public and private key bytes */
             std::vector<uint8_t> vPubkey = key.GetPubKey();
-            std::vector<uint8_t> vPrivkey = key.GetPrivKey();
+            LLC::CPrivKey vPrivkey = key.GetPrivKey();
 
             /* Derive key ID from public key */
             uint256_t keyId = DeriveKeyId(vPubkey);
@@ -93,7 +91,7 @@ namespace FalconAuth
             meta.profile = profile;
             meta.created = runtime::unifiedtimestamp();
             meta.lastUsed = meta.created;
-            meta.label = label.empty() ? "key_" + keyId.SubString(0, 8) : label;
+            meta.label = label.empty() ? "key_" + keyId.SubString() : label;
 
             /* Store key */
             {
@@ -136,7 +134,7 @@ namespace FalconAuth
             if(it == mapKeys.end())
                 return std::vector<uint8_t>();
 
-            const std::vector<uint8_t>& vPrivkey = it->second.second;
+            const LLC::CPrivKey& vPrivkey = it->second.second;
 
             /* Create FLKey from private key */
             LLC::FLKey key;

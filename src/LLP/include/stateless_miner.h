@@ -36,15 +36,15 @@ namespace LLP
      **/
     struct MiningContext
     {
-        const uint32_t nChannel;           // Mining channel (1=Prime, 2=Hash)
-        const uint32_t nHeight;            // Current blockchain height
-        const uint64_t nTimestamp;         // Last activity timestamp
-        const std::string strAddress;      // Miner's network address
-        const uint32_t nProtocolVersion;   // Protocol version
-        const bool fAuthenticated;         // Whether Falcon auth succeeded
-        const uint32_t nSessionId;         // Unique session identifier
-        const uint256_t hashKeyID;         // Phase 2: Falcon key identifier
-        const uint256_t hashGenesis;       // Phase 2: Tritium genesis hash
+        uint32_t nChannel;           // Mining channel (1=Prime, 2=Hash)
+        uint32_t nHeight;            // Current blockchain height
+        uint64_t nTimestamp;         // Last activity timestamp
+        std::string strAddress;      // Miner's network address
+        uint32_t nProtocolVersion;   // Protocol version
+        bool fAuthenticated;         // Whether Falcon auth succeeded
+        uint32_t nSessionId;         // Unique session identifier
+        uint256_t hashKeyID;         // Phase 2: Falcon key identifier
+        uint256_t hashGenesis;       // Phase 2: Tritium genesis hash
 
         /** Default Constructor **/
         MiningContext();
