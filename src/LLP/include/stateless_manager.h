@@ -21,6 +21,7 @@ ________________________________________________________________________________
 #include <string>
 #include <mutex>
 #include <vector>
+#include <optional>
 
 namespace LLP
 {

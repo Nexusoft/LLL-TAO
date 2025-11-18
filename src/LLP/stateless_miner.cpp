@@ -60,58 +60,51 @@ namespace LLP
     /* Immutable update methods */
     MiningContext MiningContext::WithChannel(uint32_t nChannel_) const
     {
-        return MiningContext(
-            nChannel_, nHeight, nTimestamp, strAddress, nProtocolVersion,
-            fAuthenticated, nSessionId, hashKeyID, hashGenesis
-        );
+        MiningContext c = *this;
+        c.nChannel = nChannel_;
+        return c;
     }
 
     MiningContext MiningContext::WithHeight(uint32_t nHeight_) const
     {
-        return MiningContext(
-            nChannel, nHeight_, nTimestamp, strAddress, nProtocolVersion,
-            fAuthenticated, nSessionId, hashKeyID, hashGenesis
-        );
+        MiningContext c = *this;
+        c.nHeight = nHeight_;
+        return c;
     }
 
     MiningContext MiningContext::WithTimestamp(uint64_t nTimestamp_) const
     {
-        return MiningContext(
-            nChannel, nHeight, nTimestamp_, strAddress, nProtocolVersion,
-            fAuthenticated, nSessionId, hashKeyID, hashGenesis
-        );
+        MiningContext c = *this;
+        c.nTimestamp = nTimestamp_;
+        return c;
     }
 
     MiningContext MiningContext::WithAuth(bool fAuthenticated_) const
     {
-        return MiningContext(
-            nChannel, nHeight, nTimestamp, strAddress, nProtocolVersion,
-            fAuthenticated_, nSessionId, hashKeyID, hashGenesis
-        );
+        MiningContext c = *this;
+        c.fAuthenticated = fAuthenticated_;
+        return c;
     }
 
     MiningContext MiningContext::WithSession(uint32_t nSessionId_) const
     {
-        return MiningContext(
-            nChannel, nHeight, nTimestamp, strAddress, nProtocolVersion,
-            fAuthenticated, nSessionId_, hashKeyID, hashGenesis
-        );
+        MiningContext c = *this;
+        c.nSessionId = nSessionId_;
+        return c;
     }
 
     MiningContext MiningContext::WithKeyId(const uint256_t& hashKeyID_) const
     {
-        return MiningContext(
-            nChannel, nHeight, nTimestamp, strAddress, nProtocolVersion,
-            fAuthenticated, nSessionId, hashKeyID_, hashGenesis
-        );
+        MiningContext c = *this;
+        c.hashKeyID = hashKeyID_;
+        return c;
     }
 
     MiningContext MiningContext::WithGenesis(const uint256_t& hashGenesis_) const
     {
-        return MiningContext(
-            nChannel, nHeight, nTimestamp, strAddress, nProtocolVersion,
-            fAuthenticated, nSessionId, hashKeyID, hashGenesis_
-        );
+        MiningContext c = *this;
+        c.hashGenesis = hashGenesis_;
+        return c;
     }
 
 
