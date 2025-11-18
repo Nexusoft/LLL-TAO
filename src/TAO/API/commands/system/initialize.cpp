@@ -141,6 +141,32 @@ namespace TAO
                 )
             );
 
+
+            /* Handle for get/mininginfo */
+            mapFunctions["get/mininginfo"] = Function
+            (
+                std::bind
+                (
+                    &System::GetMiningInfo,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for set/mining */
+            mapFunctions["set/mining"] = Function
+            (
+                std::bind
+                (
+                    &System::SetMining,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
         }
 
 
