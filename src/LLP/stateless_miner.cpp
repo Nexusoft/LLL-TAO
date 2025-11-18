@@ -167,6 +167,8 @@ namespace LLP
     )
     {
         /* Route based on packet type */
+        /* Note: GET_BLOCK and SUBMIT_BLOCK are handled in StatelessMinerConnection */
+        /* due to their need for stateful block management */
         switch(packet.HEADER)
         {
             case FALCON_RESPONSE:
@@ -177,12 +179,6 @@ namespace LLP
 
             case SET_CHANNEL:
                 return ProcessSetChannel(context, packet);
-
-            case GET_BLOCK:
-                return ProcessGetBlock(context, packet);
-
-            case SUBMIT_BLOCK:
-                return ProcessSubmitBlock(context, packet);
 
             case SESSION_KEEPALIVE:
                 return ProcessSessionKeepalive(context, packet);
@@ -382,78 +378,6 @@ namespace LLP
         response.DATA.push_back(static_cast<uint8_t>(nChannel));
 
         debug::log(2, FUNCTION, "Channel set to ", nChannel);
-
-        return ProcessResult::Success(newContext, response);
-    }
-
-
-    /* Process get block request */
-    ProcessResult StatelessMiner::ProcessGetBlock(
-        const MiningContext& context,
-        const Packet& packet
-    )
-    {
-        /* Phase 2: Require authentication before GET_BLOCK */
-        if(!context.fAuthenticated)
-            return ProcessResult::Error(context, "Not authenticated");
-
-        /* Validate channel is set */
-        if(context.nChannel == 0)
-            return ProcessResult::Error(context, "Channel not set");
-
-        debug::log(2, FUNCTION, "GET_BLOCK request - channel=", context.nChannel,
-                   " sessionId=", context.nSessionId);
-
-        /* TODO: Implement block creation logic
-         * This will need to integrate with TAO::Ledger::Create::Block
-         * For now, return a placeholder response to allow compilation
-         */
-
-        /* Placeholder: Build empty BLOCK_DATA response */
-        Packet response(BLOCK_DATA);
-        /* Block data would be serialized here */
-
-        debug::log(1, FUNCTION, "Served block template (placeholder) for channel ", context.nChannel);
-
-        /* Update context timestamp */
-        MiningContext newContext = context.WithTimestamp(runtime::unifiedtimestamp());
-
-        return ProcessResult::Success(newContext, response);
-    }
-
-
-    /* Process submit block request */
-    ProcessResult StatelessMiner::ProcessSubmitBlock(
-        const MiningContext& context,
-        const Packet& packet
-    )
-    {
-        /* Phase 2: Require authentication before SUBMIT_BLOCK */
-        if(!context.fAuthenticated)
-            return ProcessResult::Error(context, "Not authenticated");
-
-        /* Validate channel is set */
-        if(context.nChannel == 0)
-            return ProcessResult::Error(context, "Channel not set");
-
-        debug::log(2, FUNCTION, "SUBMIT_BLOCK request - channel=", context.nChannel,
-                   " sessionId=", context.nSessionId, " dataSize=", packet.DATA.size());
-
-        /* TODO: Implement block submission logic
-         * This will need to:
-         * 1. Parse merkle root and nonce from packet.DATA
-         * 2. Validate and sign the block
-         * 3. Process and accept/reject
-         * For now, return a placeholder response
-         */
-
-        /* Placeholder: Always reject for now */
-        Packet response(BLOCK_REJECTED);
-
-        debug::log(1, FUNCTION, "Block submission (placeholder rejection) for channel ", context.nChannel);
-
-        /* Update context timestamp */
-        MiningContext newContext = context.WithTimestamp(runtime::unifiedtimestamp());
 
         return ProcessResult::Success(newContext, response);
     }

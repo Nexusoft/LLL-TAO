@@ -235,38 +235,6 @@ namespace LLP
             const Packet& packet
         );
 
-        /** ProcessGetBlock
-         *
-         *  Phase 2: Process get block request.
-         *  Returns a block template for mining.
-         *
-         *  @param[in] context Current miner state
-         *  @param[in] packet Get block packet
-         *
-         *  @return ProcessResult with BLOCK_DATA response
-         *
-         **/
-        static ProcessResult ProcessGetBlock(
-            const MiningContext& context,
-            const Packet& packet
-        );
-
-        /** ProcessSubmitBlock
-         *
-         *  Phase 2: Process submit block request.
-         *  Validates and processes a mined block.
-         *
-         *  @param[in] context Current miner state
-         *  @param[in] packet Submit block packet
-         *
-         *  @return ProcessResult with BLOCK_ACCEPTED or BLOCK_REJECTED response
-         *
-         **/
-        static ProcessResult ProcessSubmitBlock(
-            const MiningContext& context,
-            const Packet& packet
-        );
-
         /** ProcessSessionKeepalive
          *
          *  Phase 2: Process session keepalive.

@@ -17,8 +17,10 @@ ________________________________________________________________________________
 
 #include <LLP/templates/connection.h>
 #include <LLP/include/stateless_miner.h>
+#include <TAO/Ledger/types/block.h>
 #include <atomic>
 #include <mutex>
+#include <map>
 
 namespace LLP
 {
@@ -46,6 +48,12 @@ namespace LLP
 
         /** Mutex for thread-safe context updates **/
         std::mutex MUTEX;
+
+        /** The map to hold the list of blocks that are being mined. **/
+        std::map<uint512_t, TAO::Ledger::Block *> mapBlocks;
+
+        /** Used as an ID iterator for generating unique hashes from same block transactions. **/
+        static std::atomic<uint32_t> nBlockIterator;
 
     public:
         /** Default Constructor **/
@@ -98,6 +106,67 @@ namespace LLP
          *
          **/
         void respond(const Packet& packet);
+
+        /** new_block
+         *
+         *  Adds a new block to the map.
+         *
+         *  @return Pointer to newly created block, or nullptr on failure.
+         *
+         **/
+        TAO::Ledger::Block* new_block();
+
+        /** find_block
+         *
+         *  Determines if the block exists.
+         *
+         *  @param[in] hashMerkleRoot The merkle root to search for.
+         *
+         *  @return True if block exists, false otherwise.
+         *
+         **/
+        bool find_block(const uint512_t& hashMerkleRoot);
+
+        /** sign_block
+         *
+         *  Signs the block to seal the proof of work.
+         *
+         *  @param[in] nNonce The nonce secret for the block proof.
+         *  @param[in] hashMerkleRoot The root hash of the merkle tree.
+         *
+         *  @return True if block is valid, false otherwise.
+         *
+         **/
+        bool sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot);
+
+        /** validate_block
+         *
+         *  Validates the block for the derived miner class.
+         *
+         *  @param[in] hashMerkleRoot The root hash of the merkle tree.
+         *
+         *  @return Returns true if block is valid, false otherwise.
+         *
+         **/
+        bool validate_block(const uint512_t& hashMerkleRoot);
+
+        /** is_prime_mod
+         *
+         *  Helper function used for prime channel modification rule in loop.
+         *  Returns true if the condition is satisfied, false otherwise.
+         *
+         *  @param[in] nBitMask The bitMask for the highest order bits of a block hash to check for to satisfy rule.
+         *  @param[in] pBlock The block to check.
+         *
+         **/
+        bool is_prime_mod(uint32_t nBitMask, TAO::Ledger::Block *pBlock);
+
+        /** clear_map
+         *
+         *  Clear the blocks map.
+         *
+         **/
+        void clear_map();
     };
 }
 
