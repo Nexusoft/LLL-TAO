@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 #include <LLP/include/mining_config.h>
 #include <LLP/include/network.h>
+#include <LLP/include/falcon_auth.h>
 
 #include <TAO/API/include/global.h>
 
@@ -59,6 +60,9 @@ namespace LLP
 
         /* Initialize API Pointers. */
         TAO::API::Initialize();
+
+        /* Initialize Falcon Auth for mining authentication. */
+        FalconAuth::Initialize();
 
 
         /* TIME_SERVER instance */
@@ -393,6 +397,9 @@ namespace LLP
     void Shutdown()
     {
         debug::log(0, FUNCTION, "Shutting down LLP");
+
+        /* Shutdown Falcon Auth. */
+        FalconAuth::Shutdown();
 
         /* Shutdown the time server and its subsystems. */
         Shutdown<TimeNode>(TIME_SERVER);
