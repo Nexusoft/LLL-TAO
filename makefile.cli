@@ -428,6 +428,9 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_time.o \
 		build/LLP_tritium.o \
 		build/LLP_trust_address.o \
+		build/LLP_stateless_miner.o \
+		build/LLP_stateless_manager.o \
+		build/LLP_falcon_auth.o \
 		build/API_commands_assets_initialize.o \
 		build/API_commands_assets_json.o \
 		build/API_commands_assets_partial.o \
@@ -509,6 +512,9 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_system_initialize.o \
 		build/API_commands_system_metrics.o \
 		build/API_commands_system_validate.o \
+		build/API_commands_system_mining_control.o \
+		build/API_commands_system_getmininginfo.o \
+		build/API_commands_system_setmining.o \
 		build/API_commands_templates_claim.o \
 		build/API_commands_templates_create.o \
 		build/API_commands_templates_get.o \

@@ -167,6 +167,97 @@ namespace TAO
                 )
             );
 
+
+            /* Handle for list/miners */
+            mapFunctions["list/miners"] = Function
+            (
+                std::bind
+                (
+                    &System::ListMiners,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for get/minerstatus */
+            mapFunctions["get/minerstatus"] = Function
+            (
+                std::bind
+                (
+                    &System::GetMinerStatus,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for disconnect/miner */
+            mapFunctions["disconnect/miner"] = Function
+            (
+                std::bind
+                (
+                    &System::DisconnectMiner,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for generate/falconkey */
+            mapFunctions["generate/falconkey"] = Function
+            (
+                std::bind
+                (
+                    &System::GenerateFalconKey,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for list/falconkeys */
+            mapFunctions["list/falconkeys"] = Function
+            (
+                std::bind
+                (
+                    &System::ListFalconKeys,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for test/falconauth */
+            mapFunctions["test/falconauth"] = Function
+            (
+                std::bind
+                (
+                    &System::TestFalconAuth,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for bind/falconkey */
+            mapFunctions["bind/falconkey"] = Function
+            (
+                std::bind
+                (
+                    &System::BindFalconKey,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
         }
 
 
