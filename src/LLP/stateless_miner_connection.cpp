@@ -86,12 +86,27 @@ namespace LLP
 
                 /* Initialize context with connection info */
                 LOCK(MUTEX);
+                
+                /* Create initial context with connection address for auth */
+                std::string strAddr = GetAddress().ToStringIP();
                 context = MiningContext()
                     .WithTimestamp(runtime::unifiedtimestamp())
                     .WithAuth(false); // Not authenticated yet
-
-                /* Store the address as string for auth message */
-                context = context; // Context is already initialized above
+                
+                /* Store address in context - needed for building auth message */
+                /* Note: MiningContext doesn't have WithAddress method, so we need to */
+                /* construct a new context with the address field set */
+                context = MiningContext(
+                    0,  // nChannel - not set yet
+                    0,  // nHeight
+                    runtime::unifiedtimestamp(),
+                    strAddr,  // strAddress - for Falcon auth message
+                    0,  // nProtocolVersion
+                    false,  // fAuthenticated
+                    0,  // nSessionId
+                    uint256_t(0),  // hashKeyID
+                    uint256_t(0)   // hashGenesis
+                );
 
                 return;
             }
