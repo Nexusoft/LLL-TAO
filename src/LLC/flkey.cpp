@@ -136,6 +136,44 @@ namespace LLC
     }
 
 
+    /* Set the key from full private key. */
+    bool FLKey::SetPrivKey(const CPrivKey& vchPrivKeyIn)
+    {
+        /* Validate input size - Falcon private keys for log(9) have a specific size */
+        if(vchPrivKeyIn.size() != FALCON_PRIVKEY_SIZE(9))
+        {
+            Reset();
+            return false;
+        }
+
+        /* Set the private key. */
+        vchPrivKey = vchPrivKeyIn;
+
+        /* Derive the public key from the private key. */
+        vchPubKey.resize(FALCON_PUBKEY_SIZE(9));
+
+        /* Create temp memory for public key extraction. */
+        std::vector<uint8_t> vchTemp(FALCON_TMPSIZE_KEYGEN(9), 0);
+
+        /* Extract public key from private key.
+         * Note: Falcon private keys contain the public key internally,
+         * so we can extract it using falcon's public key extraction.
+         * For now, we'll use falcon_make_public which derives the public key. */
+        if(falcon_make_public(&vchPubKey[0], vchPubKey.size(),
+                              &vchPrivKey[0], vchPrivKey.size(),
+                              &vchTemp[0], vchTemp.size()))
+        {
+            Reset();
+            return false;
+        }
+
+        /* Show key as successfully set. */
+        fSet = true;
+
+        return true;
+    }
+
+
     /* Set the secret phrase / key used in the private key. */
     bool FLKey::SetSecret(const CSecret& vchSecret)
     {
