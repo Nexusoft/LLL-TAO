@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <Util/include/json.h>
 #include <Util/include/mutex.h>
+#include <Util/include/hex.h>
 
 #include <map>
 #include <mutex>

@@ -19,6 +19,7 @@ ________________________________________________________________________________
 
 #include <Util/include/json.h>
 #include <Util/include/convert.h>
+#include <Util/include/hex.h>
 
 /* Global TAO namespace. */
 namespace TAO::API

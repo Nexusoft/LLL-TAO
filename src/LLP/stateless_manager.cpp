@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <Util/include/json.h>
 #include <Util/include/string.h>
+#include <Util/include/mutex.h>
 
 #include <sstream>
 
