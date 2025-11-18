@@ -82,6 +82,10 @@ namespace LLP
             MINER_AUTH_RESPONSE  = 209,  // miner -> node, sends Falcon signature over nonce
             MINER_AUTH_RESULT    = 210,  // node -> miner, indicates success/fail
 
+            /** SESSION MANAGEMENT PACKETS (placeholder for future use) **/
+            SESSION_START        = 211,  // session start request (not fully implemented yet)
+            SESSION_KEEPALIVE    = 212,  // session keepalive ping (not fully implemented yet)
+
             /** GENERIC **/
             PING           = 253,
             CLOSE          = 254
