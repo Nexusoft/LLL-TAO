@@ -430,6 +430,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_trust_address.o \
 		build/LLP_stateless_miner.o \
 		build/LLP_stateless_manager.o \
+		build/LLP_stateless_miner_connection.o \
 		build/LLP_falcon_auth.o \
 		build/LLP_mining_config.o \
 		build/API_commands_assets_initialize.o \

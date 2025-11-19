@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
 #include <LLP/types/lookup.h>
+#include <LLP/types/stateless_miner_connection.h>
 
 #include <Util/include/hex.h>
 
@@ -697,4 +698,5 @@ namespace LLP
     template class DataThread<FileNode>;
     template class DataThread<RPCNode>;
     template class DataThread<Miner>;
+    template class DataThread<StatelessMinerConnection>;
 }
