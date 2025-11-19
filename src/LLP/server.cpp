@@ -24,6 +24,7 @@ ________________________________________________________________________________
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
 #include <LLP/types/lookup.h>
+#include <LLP/types/stateless_miner_connection.h>
 
 #include <LLP/include/trust_address.h>
 
@@ -1223,4 +1224,5 @@ namespace LLP
     template class Server<FileNode>;
     template class Server<RPCNode>;
     template class Server<Miner>;
+    template class Server<StatelessMinerConnection>;
 }
