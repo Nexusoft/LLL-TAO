@@ -134,13 +134,29 @@ namespace LLP
     }
 
 
-    /* Packet type definitions - must match miner.h */
+    /* Packet type definitions - must match miner.h and NexusMiner Phase 2 protocol */
     enum : Packet::message_t
     {
+        /* Data packets */
+        BLOCK_DATA           = 0,
+        SUBMIT_BLOCK         = 1,
         SET_CHANNEL          = 3,
-        MINER_AUTH_RESPONSE  = 209,
-        SESSION_START        = 211,
+
+        /* Request packets */
+        GET_BLOCK            = 129,
+
+        /* Response packets */
+        BLOCK_ACCEPTED       = 200,
+        BLOCK_REJECTED       = 201,
         CHANNEL_ACK          = 206,
+
+        /* Authentication packets - Phase 2 */
+        FALCON_RESPONSE      = 209,  // Renamed from MINER_AUTH_RESPONSE for Phase 2
+        FALCON_VERIFY_OK     = 210,  // Renamed from MINER_AUTH_RESULT for Phase 2
+
+        /* Session management packets */
+        SESSION_START        = 211,
+        SESSION_KEEPALIVE    = 212,
     };
 
 
@@ -151,10 +167,12 @@ namespace LLP
     )
     {
         /* Route based on packet type */
+        /* Note: GET_BLOCK and SUBMIT_BLOCK are handled in StatelessMinerConnection */
+        /* due to their need for stateful block management */
         switch(packet.HEADER)
         {
-            case MINER_AUTH_RESPONSE:
-                return ProcessFalconAuthResponse(context, packet);
+            case FALCON_RESPONSE:
+                return ProcessFalconResponse(context, packet);
 
             case SESSION_START:
                 return ProcessSessionStart(context, packet);
@@ -162,7 +180,11 @@ namespace LLP
             case SET_CHANNEL:
                 return ProcessSetChannel(context, packet);
 
+            case SESSION_KEEPALIVE:
+                return ProcessSessionKeepalive(context, packet);
+
             default:
+                debug::log(1, FUNCTION, "Unknown miner opcode: ", uint32_t(packet.HEADER));
                 return ProcessResult::Error(context, "Unknown packet type");
         }
     }
@@ -191,7 +213,7 @@ namespace LLP
 
 
     /* Process Falcon authentication response */
-    ProcessResult StatelessMiner::ProcessFalconAuthResponse(
+    ProcessResult StatelessMiner::ProcessFalconResponse(
         const MiningContext& context,
         const Packet& packet
     )
@@ -277,7 +299,7 @@ namespace LLP
             .WithTimestamp(runtime::unifiedtimestamp());
 
         /* Build success response */
-        Packet response(MINER_AUTH_RESPONSE);
+        Packet response(FALCON_VERIFY_OK);
         
         /* Response format: 1 byte status + 4 bytes session ID */
         response.DATA.push_back(1); // Success
@@ -358,6 +380,26 @@ namespace LLP
         debug::log(2, FUNCTION, "Channel set to ", nChannel);
 
         return ProcessResult::Success(newContext, response);
+    }
+
+
+    /* Process session keepalive */
+    ProcessResult StatelessMiner::ProcessSessionKeepalive(
+        const MiningContext& context,
+        const Packet& packet
+    )
+    {
+        /* Phase 2: Require authentication before keepalive */
+        if(!context.fAuthenticated)
+            return ProcessResult::Error(context, "Not authenticated");
+
+        debug::log(3, FUNCTION, "SESSION_KEEPALIVE from sessionId=", context.nSessionId);
+
+        /* Update timestamp to keep session alive */
+        MiningContext newContext = context.WithTimestamp(runtime::unifiedtimestamp());
+
+        /* No response packet needed for keepalive */
+        return ProcessResult::Success(newContext, Packet());
     }
 
 } // namespace LLP

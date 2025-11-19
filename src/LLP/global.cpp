@@ -40,6 +40,7 @@ namespace LLP
     Server<FileNode>*    FILE_SERVER;
     Server<RPCNode>*     RPC_SERVER;
     Server<Miner>*       MINING_SERVER;
+    Server<StatelessMinerConnection>* STATELESS_MINER_SERVER;
 
 
     /* Current session identifier. */
@@ -255,7 +256,8 @@ namespace LLP
         #endif
 
 
-        /* MINING_SERVER instance */
+        /* STATELESS_MINER_SERVER instance - Phase 2 Stateless Miner LLP */
+        /* This server repurposes miningport as the canonical stateless miner LLP port */
         if(config::GetBoolArg(std::string("-mining"), false) && !config::fClient.load())
         {
             /* Load and validate mining configuration before starting server */
@@ -266,7 +268,7 @@ namespace LLP
             }
             else
             {
-                /* Generate our config object and use correct settings. */
+                /* Generate our config object for stateless miner LLP server. */
                 LLP::Config CONFIG     = LLP::Config(GetMiningPort());
                 CONFIG.ENABLE_LISTEN   = true;
                 CONFIG.ENABLE_METERS   = false;
@@ -275,7 +277,7 @@ namespace LLP
                 CONFIG.ENABLE_SSL      = false;
                 CONFIG.ENABLE_REMOTE   = true;
                 CONFIG.REQUIRE_SSL     = false;
-                CONFIG.PORT_SSL        = 0; //TODO: this is disabled until SSL code can be refactored
+                CONFIG.PORT_SSL        = 0;
                 CONFIG.MAX_INCOMING    = 128;
                 CONFIG.MAX_CONNECTIONS = 128;
                 CONFIG.MAX_THREADS     = config::GetArg(std::string("-miningthreads"), 4);
@@ -285,10 +287,17 @@ namespace LLP
                 CONFIG.MANAGER_SLEEP   = 0; //this is disabled
                 CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-miningtimeout"), 30);
 
-                /* Create the server instance. */
-                MINING_SERVER = new Server<Miner>(CONFIG);
+                /* Create the Phase 2 stateless miner server instance. */
+                STATELESS_MINER_SERVER = new Server<StatelessMinerConnection>(CONFIG);
+
+                debug::log(0, FUNCTION, "Phase 2 Stateless Miner LLP server started on port ", GetMiningPort());
             }
         }
+
+        /* MINING_SERVER instance - Legacy hybrid stateful/stateless miner (optional) */
+        /* This can be enabled on a different port if needed for backward compatibility */
+        /* For now, we disable it when stateless miner is enabled to avoid conflicts */
+        /* TODO: Make this configurable via -legacyminingport if needed */
 
         return true;
     }
@@ -326,6 +335,9 @@ namespace LLP
         /* Close sockets for the mining server and its subsystems. */
         CloseSockets<Miner>(MINING_SERVER);
 
+        /* Close sockets for the stateless miner server and its subsystems. */
+        CloseSockets<StatelessMinerConnection>(STATELESS_MINER_SERVER);
+
     }
 
 
@@ -356,6 +368,9 @@ namespace LLP
 
         /* Open sockets for the mining server and its subsystems. */
         OpenListening<Miner>(MINING_SERVER);
+
+        /* Open sockets for the stateless miner server and its subsystems. */
+        OpenListening<StatelessMinerConnection>(STATELESS_MINER_SERVER);
 
         /* Remove our protocol from suspended state once established. */
         config::fSuspendProtocol.store(false);
@@ -390,6 +405,9 @@ namespace LLP
 
         /* Release the mining server and its subsystems. */
         Release<Miner>(MINING_SERVER);
+
+        /* Release the stateless miner server and its subsystems. */
+        Release<StatelessMinerConnection>(STATELESS_MINER_SERVER);
     }
 
 
@@ -406,6 +424,9 @@ namespace LLP
 
         /* Shutdown the mining server and its subsystems. */
         Shutdown<Miner>(MINING_SERVER);
+
+        /* Shutdown the stateless miner server and its subsystems. */
+        Shutdown<StatelessMinerConnection>(STATELESS_MINER_SERVER);
 
         /* Shutdown the core API server and its subsystems. */
         Shutdown<APINode>(API_SERVER);
