@@ -135,6 +135,13 @@ namespace LLP
         LOCK(MUTEX);
         clear_map();
 
+        /* Clear authentication state on connection close */
+        vMinerPubKey.clear();
+        strMinerId.clear();
+        vAuthNonce.clear();
+        fMinerAuthenticated = false;
+        hashGenesisForMiner = 0;
+
         if(pMiningKey)
         {
             #ifndef NO_WALLET
@@ -1677,12 +1684,17 @@ namespace LLP
         /* Set the block iterator back to zero so we can iterate new blocks next round. */
         nBlockIterator = 0;
 
-        /* Clear authentication state */
-        vMinerPubKey.clear();
-        strMinerId.clear();
-        vAuthNonce.clear();
-        fMinerAuthenticated = false;
-        hashGenesisForMiner = 0;
+        /* NOTE: Authentication state is NOT cleared here on purpose.
+         * The miner remains authenticated across round changes. Authentication
+         * is only invalidated when the connection closes (in destructor) or
+         * when a new connection is established (in Event::CONNECT handler).
+         * 
+         * This ensures SOLO miners don't get de-authenticated during normal
+         * mining operations when the block height changes or a new round starts.
+         *
+         * Previously, clearing auth state here caused SOLO mining issues where
+         * authenticated miners would be rejected after any block height change.
+         */
 
         debug::log(3, FUNCTION, "Cleared map of blocks");
     }

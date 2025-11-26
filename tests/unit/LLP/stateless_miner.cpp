@@ -393,3 +393,110 @@ TEST_CASE("FalconAuth Basic Operations", "[falcon_auth]")
     /* Cleanup */
     FalconAuth::Shutdown();
 }
+
+
+TEST_CASE("MiningContext Authentication State Persistence", "[stateless_miner]")
+{
+    /* This test verifies that authentication state is preserved correctly
+     * across mining context operations, which is critical for SOLO mining
+     * where miners must remain authenticated across block height changes.
+     */
+    
+    SECTION("Authentication state persists after channel change")
+    {
+        /* Start with an authenticated context */
+        uint256_t testKeyId;
+        testKeyId.SetHex("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+        
+        MiningContext ctx = MiningContext()
+            .WithAuth(true)
+            .WithSession(12345)
+            .WithKeyId(testKeyId);
+        
+        /* Verify authentication is set */
+        REQUIRE(ctx.fAuthenticated == true);
+        REQUIRE(ctx.nSessionId == 12345);
+        REQUIRE(ctx.hashKeyID == testKeyId);
+        
+        /* Change channel - simulating SET_CHANNEL packet processing */
+        MiningContext newCtx = ctx.WithChannel(1);
+        
+        /* Authentication state must persist */
+        REQUIRE(newCtx.fAuthenticated == true);
+        REQUIRE(newCtx.nSessionId == 12345);
+        REQUIRE(newCtx.hashKeyID == testKeyId);
+        REQUIRE(newCtx.nChannel == 1);
+    }
+    
+    SECTION("Authentication state persists after height change")
+    {
+        /* Start with an authenticated context */
+        MiningContext ctx = MiningContext()
+            .WithAuth(true)
+            .WithSession(99999)
+            .WithHeight(1000);
+        
+        /* Verify authentication is set */
+        REQUIRE(ctx.fAuthenticated == true);
+        REQUIRE(ctx.nSessionId == 99999);
+        
+        /* Change height - simulating new block received */
+        MiningContext newCtx = ctx.WithHeight(1001);
+        
+        /* Authentication state must persist */
+        REQUIRE(newCtx.fAuthenticated == true);
+        REQUIRE(newCtx.nSessionId == 99999);
+        REQUIRE(newCtx.nHeight == 1001);
+    }
+    
+    SECTION("Authentication state persists after timestamp update")
+    {
+        /* Start with an authenticated context */
+        MiningContext ctx = MiningContext()
+            .WithAuth(true)
+            .WithSession(55555)
+            .WithTimestamp(100000);
+        
+        /* Verify authentication is set */
+        REQUIRE(ctx.fAuthenticated == true);
+        
+        /* Update timestamp - simulating keepalive */
+        MiningContext newCtx = ctx.WithTimestamp(200000);
+        
+        /* Authentication state must persist */
+        REQUIRE(newCtx.fAuthenticated == true);
+        REQUIRE(newCtx.nSessionId == 55555);
+        REQUIRE(newCtx.nTimestamp == 200000);
+    }
+    
+    SECTION("Chained updates preserve all authentication state")
+    {
+        /* Start with a fully authenticated context */
+        uint256_t testKeyId;
+        testKeyId.SetHex("abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789");
+        
+        uint256_t testGenesis;
+        testGenesis.SetHex("fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210");
+        
+        MiningContext ctx = MiningContext()
+            .WithAuth(true)
+            .WithSession(77777)
+            .WithKeyId(testKeyId)
+            .WithGenesis(testGenesis);
+        
+        /* Perform multiple chained updates simulating mining round activity */
+        MiningContext finalCtx = ctx
+            .WithChannel(2)
+            .WithHeight(5000)
+            .WithTimestamp(999999);
+        
+        /* All authentication state must persist through chained updates */
+        REQUIRE(finalCtx.fAuthenticated == true);
+        REQUIRE(finalCtx.nSessionId == 77777);
+        REQUIRE(finalCtx.hashKeyID == testKeyId);
+        REQUIRE(finalCtx.hashGenesis == testGenesis);
+        REQUIRE(finalCtx.nChannel == 2);
+        REQUIRE(finalCtx.nHeight == 5000);
+        REQUIRE(finalCtx.nTimestamp == 999999);
+    }
+}
