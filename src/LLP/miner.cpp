@@ -1686,8 +1686,8 @@ namespace LLP
 
         /* NOTE: Authentication state is NOT cleared here on purpose.
          * The miner remains authenticated across round changes. Authentication
-         * is only invalidated when the connection closes (in destructor) or
-         * when a new connection is established (in Event::CONNECT handler).
+         * is only invalidated when the connection closes (see destructor ~Miner())
+         * where auth state is explicitly cleared.
          * 
          * This ensures SOLO miners don't get de-authenticated during normal
          * mining operations when the block height changes or a new round starts.

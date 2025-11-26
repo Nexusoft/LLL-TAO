@@ -398,8 +398,9 @@ TEST_CASE("FalconAuth Basic Operations", "[falcon_auth]")
 TEST_CASE("MiningContext Authentication State Persistence", "[stateless_miner]")
 {
     /* This test verifies that authentication state is preserved correctly
-     * across mining context operations, which is critical for SOLO mining
-     * where miners must remain authenticated across block height changes.
+     * across mining context updates such as channel changes, height changes,
+     * and timestamp updates. This is critical for SOLO mining where miners
+     * must remain authenticated across block height changes and new rounds.
      */
     
     SECTION("Authentication state persists after channel change")
