@@ -14,6 +14,9 @@ ________________________________________________________________________________
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/falcon_auth.h>
 
+#include <LLC/include/random.h>
+#include <LLC/include/flkey.h>
+
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 
@@ -30,6 +33,8 @@ namespace LLP
     , nSessionId(0)
     , hashKeyID(0)
     , hashGenesis(0)
+    , vAuthNonce()
+    , vMinerPubKey()
     {
     }
 
@@ -54,6 +59,8 @@ namespace LLP
     , nSessionId(nSessionId_)
     , hashKeyID(hashKeyID_)
     , hashGenesis(hashGenesis_)
+    , vAuthNonce()
+    , vMinerPubKey()
     {
     }
 
@@ -107,6 +114,20 @@ namespace LLP
         return c;
     }
 
+    MiningContext MiningContext::WithNonce(const std::vector<uint8_t>& vNonce_) const
+    {
+        MiningContext c = *this;
+        c.vAuthNonce = vNonce_;
+        return c;
+    }
+
+    MiningContext MiningContext::WithPubKey(const std::vector<uint8_t>& vPubKey_) const
+    {
+        MiningContext c = *this;
+        c.vMinerPubKey = vPubKey_;
+        return c;
+    }
+
 
     /* ProcessResult private constructor */
     ProcessResult::ProcessResult(
@@ -150,9 +171,11 @@ namespace LLP
         BLOCK_REJECTED       = 201,
         CHANNEL_ACK          = 206,
 
-        /* Authentication packets - Phase 2 */
-        FALCON_RESPONSE      = 209,  // Renamed from MINER_AUTH_RESPONSE for Phase 2
-        FALCON_VERIFY_OK     = 210,  // Renamed from MINER_AUTH_RESULT for Phase 2
+        /* Authentication packets - Phase 2 Unified Hybrid Protocol */
+        MINER_AUTH_INIT      = 207,  // miner -> node, sends Falcon pubkey + label
+        MINER_AUTH_CHALLENGE = 208,  // node -> miner, sends random nonce
+        MINER_AUTH_RESPONSE  = 209,  // miner -> node, sends Falcon signature over nonce
+        MINER_AUTH_RESULT    = 210,  // node -> miner, indicates success/fail
 
         /* Session management packets */
         SESSION_START        = 211,
@@ -171,7 +194,10 @@ namespace LLP
         /* due to their need for stateful block management */
         switch(packet.HEADER)
         {
-            case FALCON_RESPONSE:
+            case MINER_AUTH_INIT:
+                return ProcessMinerAuthInit(context, packet);
+
+            case MINER_AUTH_RESPONSE:
                 return ProcessFalconResponse(context, packet);
 
             case SESSION_START:
@@ -193,6 +219,13 @@ namespace LLP
     /* Build message for Falcon signature verification */
     std::vector<uint8_t> StatelessMiner::BuildAuthMessage(const MiningContext& context)
     {
+        /* For challenge-response authentication, use the stored nonce */
+        if(!context.vAuthNonce.empty())
+        {
+            return context.vAuthNonce;
+        }
+
+        /* Fallback: Build message from address + timestamp (legacy mode) */
         std::vector<uint8_t> vMessage;
 
         /* Add address string */
@@ -206,109 +239,206 @@ namespace LLP
             nTime >>= 8;
         }
 
-        /* TODO: Add challenge nonce for enhanced security */
-
         return vMessage;
     }
 
 
-    /* Process Falcon authentication response */
+    /* Process MINER_AUTH_INIT - first step of authentication handshake */
+    ProcessResult StatelessMiner::ProcessMinerAuthInit(
+        const MiningContext& context,
+        const Packet& packet
+    )
+    {
+        debug::log(0, FUNCTION, "MINER_AUTH_INIT from ", context.strAddress);
+
+        const std::vector<uint8_t>& vData = packet.DATA;
+
+        /* Validate minimum packet size (2 + 2 = 4 bytes for lengths) */
+        if(vData.size() < 4)
+            return ProcessResult::Error(context, "MINER_AUTH_INIT: packet too small");
+
+        size_t nPos = 0;
+
+        /* Parse pubkey_len (2 bytes, big-endian to match miner.cpp) */
+        uint16_t nPubKeyLen = (static_cast<uint16_t>(vData[nPos]) << 8) |
+                              static_cast<uint16_t>(vData[nPos + 1]);
+        nPos += 2;
+
+        /* Validate pubkey_len */
+        if(nPubKeyLen == 0 || nPubKeyLen > 2048)
+            return ProcessResult::Error(context, "MINER_AUTH_INIT: invalid pubkey_len");
+
+        if(nPos + nPubKeyLen + 2 > vData.size())
+            return ProcessResult::Error(context, "MINER_AUTH_INIT: packet too small for pubkey");
+
+        /* Extract public key */
+        std::vector<uint8_t> vPubKey(vData.begin() + nPos, vData.begin() + nPos + nPubKeyLen);
+        nPos += nPubKeyLen;
+
+        /* Parse miner_id_len (2 bytes, big-endian) */
+        uint16_t nMinerIdLen = (static_cast<uint16_t>(vData[nPos]) << 8) |
+                               static_cast<uint16_t>(vData[nPos + 1]);
+        nPos += 2;
+
+        /* Validate miner_id_len */
+        if(nMinerIdLen > 256)
+            return ProcessResult::Error(context, "MINER_AUTH_INIT: invalid miner_id_len");
+
+        if(nPos + nMinerIdLen > vData.size())
+            return ProcessResult::Error(context, "MINER_AUTH_INIT: packet too small for miner_id");
+
+        /* Extract miner ID (for logging) */
+        std::string strMinerId;
+        if(nMinerIdLen > 0)
+            strMinerId.assign(vData.begin() + nPos, vData.begin() + nPos + nMinerIdLen);
+        else
+            strMinerId = "<no-id>";
+
+        /* Generate random nonce (32 bytes) */
+        uint256_t nonce = LLC::GetRand256();
+        std::vector<uint8_t> vAuthNonce = nonce.GetBytes();
+
+        debug::log(0, FUNCTION, "MINER_AUTH_INIT from ", context.strAddress,
+                   " miner_id=", strMinerId, " pubkey_len=", nPubKeyLen);
+
+        /* Update context with pubkey and nonce */
+        MiningContext newContext = context
+            .WithPubKey(vPubKey)
+            .WithNonce(vAuthNonce)
+            .WithTimestamp(runtime::unifiedtimestamp());
+
+        /* Build MINER_AUTH_CHALLENGE response */
+        Packet response(MINER_AUTH_CHALLENGE);
+        uint16_t nNonceLen = static_cast<uint16_t>(vAuthNonce.size());
+        response.DATA.push_back(static_cast<uint8_t>(nNonceLen >> 8));
+        response.DATA.push_back(static_cast<uint8_t>(nNonceLen & 0xFF));
+        response.DATA.insert(response.DATA.end(), vAuthNonce.begin(), vAuthNonce.end());
+
+        debug::log(0, FUNCTION, "Sending MINER_AUTH_CHALLENGE nonce_len=", vAuthNonce.size());
+
+        return ProcessResult::Success(newContext, response);
+    }
+
+
+    /* Process Falcon authentication response (MINER_AUTH_RESPONSE) */
     ProcessResult StatelessMiner::ProcessFalconResponse(
         const MiningContext& context,
         const Packet& packet
     )
     {
-        /* Get Falcon auth instance */
-        FalconAuth::IFalconAuth* pAuth = FalconAuth::Get();
-        if(!pAuth)
-            return ProcessResult::Error(context, "Falcon auth not initialized");
+        debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE from ", context.strAddress);
 
-        /* Parse packet data */
+        /* Validate that we have nonce and pubkey from MINER_AUTH_INIT */
+        if(context.vAuthNonce.empty())
+        {
+            debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: no nonce (MINER_AUTH_INIT not received)");
+            Packet response(MINER_AUTH_RESULT);
+            response.DATA.push_back(0x00); // Failure
+            return ProcessResult::Success(context, response);
+        }
+
+        if(context.vMinerPubKey.empty())
+        {
+            debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: no pubkey (MINER_AUTH_INIT not received)");
+            Packet response(MINER_AUTH_RESULT);
+            response.DATA.push_back(0x00); // Failure
+            return ProcessResult::Success(context, response);
+        }
+
         const std::vector<uint8_t>& vData = packet.DATA;
 
-        /* Minimum size check: pubkey_len(2) + sig_len(2) + data */
-        if(vData.size() < 4)
-            return ProcessResult::Error(context, "Invalid auth packet size");
+        /* Validate minimum packet size (2 bytes for sig_len) */
+        if(vData.size() < 2)
+        {
+            debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: packet too small");
+            Packet response(MINER_AUTH_RESULT);
+            response.DATA.push_back(0x00); // Failure
+            return ProcessResult::Success(context, response);
+        }
 
-        size_t nPos = 0;
+        /* Parse sig_len (2 bytes, big-endian to match miner.cpp) */
+        uint16_t nSigLen = (static_cast<uint16_t>(vData[0]) << 8) |
+                           static_cast<uint16_t>(vData[1]);
 
-        /* Read public key length (2 bytes, little-endian) */
-        uint16_t nPubkeyLen = vData[nPos] | (vData[nPos + 1] << 8);
-        nPos += 2;
+        /* Validate sig_len */
+        if(nSigLen == 0 || nSigLen > 2048)
+        {
+            debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: invalid sig_len ", nSigLen);
+            Packet response(MINER_AUTH_RESULT);
+            response.DATA.push_back(0x00); // Failure
+            return ProcessResult::Success(context, response);
+        }
 
-        if(nPos + nPubkeyLen > vData.size())
-            return ProcessResult::Error(context, "Invalid public key length");
-
-        /* Extract public key */
-        std::vector<uint8_t> vPubkey(vData.begin() + nPos, vData.begin() + nPos + nPubkeyLen);
-        nPos += nPubkeyLen;
-
-        /* Read signature length (2 bytes, little-endian) */
-        if(nPos + 2 > vData.size())
-            return ProcessResult::Error(context, "Invalid packet format");
-
-        uint16_t nSigLen = vData[nPos] | (vData[nPos + 1] << 8);
-        nPos += 2;
-
-        if(nPos + nSigLen > vData.size())
-            return ProcessResult::Error(context, "Invalid signature length");
+        if(vData.size() < 2 + nSigLen)
+        {
+            debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: packet too small for signature");
+            Packet response(MINER_AUTH_RESULT);
+            response.DATA.push_back(0x00); // Failure
+            return ProcessResult::Success(context, response);
+        }
 
         /* Extract signature */
-        std::vector<uint8_t> vSignature(vData.begin() + nPos, vData.begin() + nPos + nSigLen);
-        nPos += nSigLen;
+        std::vector<uint8_t> vSignature(vData.begin() + 2, vData.begin() + 2 + nSigLen);
 
-        /* Optional: Extract Tritium genesis hash (32 bytes) */
-        uint256_t hashGenesis(0);
-        if(nPos + 32 <= vData.size())
+        debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE sig_len=", nSigLen);
+
+        /* Verify Falcon signature using LLC::FLKey directly */
+        LLC::FLKey flkey;
+        if(!flkey.SetPubKey(context.vMinerPubKey))
         {
-            hashGenesis.SetBytes(std::vector<uint8_t>(vData.begin() + nPos, vData.begin() + nPos + 32));
-            nPos += 32;
+            debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: invalid public key");
+            Packet response(MINER_AUTH_RESULT);
+            response.DATA.push_back(0x00); // Failure
+            return ProcessResult::Success(context, response);
         }
 
-        /* Build message for verification */
-        std::vector<uint8_t> vMessage = BuildAuthMessage(context);
-
-        /* Verify signature */
-        FalconAuth::VerifyResult result = pAuth->Verify(vPubkey, vMessage, vSignature);
-        if(!result.fValid)
+        if(!flkey.Verify(context.vAuthNonce, vSignature))
         {
-            debug::log(0, FUNCTION, "Falcon verification failed: ", result.strError);
-            return ProcessResult::Error(context, "Falcon verification failed: " + result.strError);
+            debug::log(0, FUNCTION, "MINER_AUTH verification FAILED from ", context.strAddress);
+            Packet response(MINER_AUTH_RESULT);
+            response.DATA.push_back(0x00); // Failure
+            return ProcessResult::Success(context, response);
         }
 
-        /* Derive key ID */
-        uint256_t hashKeyID = result.keyId;
-
-        /* Check for bound genesis */
-        std::optional<uint256_t> boundGenesis = pAuth->GetBoundGenesis(hashKeyID);
-        if(boundGenesis.has_value())
-        {
-            /* Use bound genesis instead of packet-provided one */
-            hashGenesis = boundGenesis.value();
-        }
+        /* Authentication succeeded */
+        /* Derive key ID from public key */
+        FalconAuth::IFalconAuth* pAuth = FalconAuth::Get();
+        uint256_t hashKeyID(0);
+        if(pAuth)
+            hashKeyID = pAuth->DeriveKeyId(context.vMinerPubKey);
 
         /* Derive session ID from key ID (lower 32 bits) */
         uint32_t nSessionId = static_cast<uint32_t>(hashKeyID.Get64(0) & 0xFFFFFFFF);
 
-        /* Update context with auth success */
+        /* Check for bound genesis */
+        uint256_t hashGenesis(0);
+        if(pAuth)
+        {
+            std::optional<uint256_t> boundGenesis = pAuth->GetBoundGenesis(hashKeyID);
+            if(boundGenesis.has_value())
+                hashGenesis = boundGenesis.value();
+        }
+
+        /* Update context with auth success.
+         * Note: We clear the nonce and pubkey after successful authentication for security:
+         * - The nonce was single-use and should not be reused
+         * - The pubkey hash is preserved in hashKeyID for audit trails
+         * - The full pubkey can be recovered from FalconAuth if needed */
         MiningContext newContext = context
             .WithAuth(true)
             .WithSession(nSessionId)
             .WithKeyId(hashKeyID)
             .WithGenesis(hashGenesis)
-            .WithTimestamp(runtime::unifiedtimestamp());
+            .WithTimestamp(runtime::unifiedtimestamp())
+            .WithNonce(std::vector<uint8_t>())  // Clear single-use nonce
+            .WithPubKey(std::vector<uint8_t>()); // Clear pubkey (hash preserved in keyID)
 
         /* Build success response */
-        Packet response(FALCON_VERIFY_OK);
-        
-        /* Response format: 1 byte status + 4 bytes session ID */
-        response.DATA.push_back(1); // Success
-        response.DATA.push_back(nSessionId & 0xFF);
-        response.DATA.push_back((nSessionId >> 8) & 0xFF);
-        response.DATA.push_back((nSessionId >> 16) & 0xFF);
-        response.DATA.push_back((nSessionId >> 24) & 0xFF);
+        Packet response(MINER_AUTH_RESULT);
+        response.DATA.push_back(0x01); // Success
 
-        debug::log(0, FUNCTION, "Falcon auth succeeded for key ", hashKeyID.SubString());
+        debug::log(0, FUNCTION, "MINER_AUTH success for key ", hashKeyID.SubString(),
+                   " sessionId=", nSessionId, " from ", context.strAddress);
 
         return ProcessResult::Success(newContext, response);
     }

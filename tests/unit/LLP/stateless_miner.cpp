@@ -21,9 +21,12 @@ ________________________________________________________________________________
 
 using namespace LLP;
 
-/* Packet type definitions for testing - Phase 2 protocol */
+/* Packet type definitions for testing - Phase 2 Unified Hybrid Protocol */
 const Packet::message_t SET_CHANNEL = 3;
-const Packet::message_t FALCON_RESPONSE = 209;  // Renamed from MINER_AUTH_RESPONSE for Phase 2
+const Packet::message_t MINER_AUTH_INIT = 207;
+const Packet::message_t MINER_AUTH_CHALLENGE = 208;
+const Packet::message_t MINER_AUTH_RESPONSE = 209;
+const Packet::message_t MINER_AUTH_RESULT = 210;
 const Packet::message_t SESSION_START = 211;
 
 
@@ -42,6 +45,8 @@ TEST_CASE("MiningContext Immutability Tests", "[stateless_miner]")
         REQUIRE(ctx.nSessionId == 0);
         REQUIRE(ctx.hashKeyID == uint256_t(0));
         REQUIRE(ctx.hashGenesis == uint256_t(0));
+        REQUIRE(ctx.vAuthNonce.empty());
+        REQUIRE(ctx.vMinerPubKey.empty());
     }
     
     SECTION("WithChannel creates new context with updated channel")
@@ -91,6 +96,19 @@ TEST_CASE("MiningContext Immutability Tests", "[stateless_miner]")
         
         REQUIRE(ctx.hashKeyID == testKeyId);
         REQUIRE(ctx.hashGenesis == testGenesis);
+    }
+
+    SECTION("WithNonce and WithPubKey update authentication fields")
+    {
+        std::vector<uint8_t> testNonce = {0x01, 0x02, 0x03, 0x04};
+        std::vector<uint8_t> testPubKey = {0xAA, 0xBB, 0xCC, 0xDD};
+        
+        MiningContext ctx = MiningContext()
+            .WithNonce(testNonce)
+            .WithPubKey(testPubKey);
+        
+        REQUIRE(ctx.vAuthNonce == testNonce);
+        REQUIRE(ctx.vMinerPubKey == testPubKey);
     }
 }
 
@@ -185,6 +203,69 @@ TEST_CASE("StatelessMiner SET_CHANNEL Processing", "[stateless_miner]")
         
         REQUIRE(result.fSuccess == false);
         REQUIRE(result.strError.find("Invalid") != std::string::npos);
+    }
+}
+
+
+TEST_CASE("StatelessMiner MINER_AUTH_INIT Processing", "[stateless_miner]")
+{
+    SECTION("MINER_AUTH_INIT with valid pubkey generates challenge")
+    {
+        MiningContext ctx;
+        
+        Packet packet(MINER_AUTH_INIT);
+        
+        /* Build test packet: [2 bytes pubkey_len (big-endian)][pubkey][2 bytes id_len][id] */
+        std::vector<uint8_t> testPubKey(897, 0x42);  // Simulated Falcon-512 pubkey size
+        uint16_t nPubKeyLen = static_cast<uint16_t>(testPubKey.size());
+        
+        packet.DATA.push_back(static_cast<uint8_t>(nPubKeyLen >> 8));
+        packet.DATA.push_back(static_cast<uint8_t>(nPubKeyLen & 0xFF));
+        packet.DATA.insert(packet.DATA.end(), testPubKey.begin(), testPubKey.end());
+        
+        std::string testMinerId = "test_miner";
+        uint16_t nMinerIdLen = static_cast<uint16_t>(testMinerId.size());
+        packet.DATA.push_back(static_cast<uint8_t>(nMinerIdLen >> 8));
+        packet.DATA.push_back(static_cast<uint8_t>(nMinerIdLen & 0xFF));
+        packet.DATA.insert(packet.DATA.end(), testMinerId.begin(), testMinerId.end());
+        
+        ProcessResult result = StatelessMiner::ProcessPacket(ctx, packet);
+        
+        REQUIRE(result.fSuccess == true);
+        REQUIRE(result.context.vMinerPubKey == testPubKey);
+        REQUIRE(result.context.vAuthNonce.size() == 32);  // 256-bit nonce
+        REQUIRE(!result.response.IsNull());
+        REQUIRE(result.response.HEADER == MINER_AUTH_CHALLENGE);
+    }
+    
+    SECTION("MINER_AUTH_INIT with empty packet fails")
+    {
+        MiningContext ctx;
+        
+        Packet packet(MINER_AUTH_INIT);
+        // Empty packet
+        
+        ProcessResult result = StatelessMiner::ProcessPacket(ctx, packet);
+        
+        REQUIRE(result.fSuccess == false);
+        REQUIRE(result.strError.find("packet too small") != std::string::npos);
+    }
+    
+    SECTION("MINER_AUTH_INIT with invalid pubkey length fails")
+    {
+        MiningContext ctx;
+        
+        Packet packet(MINER_AUTH_INIT);
+        /* Invalid pubkey_len = 0 */
+        packet.DATA.push_back(0x00);
+        packet.DATA.push_back(0x00);
+        packet.DATA.push_back(0x00);  // id_len
+        packet.DATA.push_back(0x00);
+        
+        ProcessResult result = StatelessMiner::ProcessPacket(ctx, packet);
+        
+        REQUIRE(result.fSuccess == false);
+        REQUIRE(result.strError.find("invalid pubkey_len") != std::string::npos);
     }
 }
 

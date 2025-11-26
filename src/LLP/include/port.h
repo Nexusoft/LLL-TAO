@@ -106,7 +106,7 @@ ________________________________________________________________________________
 #endif
 
 #ifndef TESTNET_MINING_LLP_PORT
-#define TESTNET_MINING_LLP_PORT 8325
+#define TESTNET_MINING_LLP_PORT 8323
 #endif
 
 #ifndef TESTNET_P2P_PORT

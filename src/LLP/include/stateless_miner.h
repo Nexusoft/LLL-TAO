@@ -45,6 +45,8 @@ namespace LLP
         uint32_t nSessionId;         // Unique session identifier
         uint256_t hashKeyID;         // Phase 2: Falcon key identifier
         uint256_t hashGenesis;       // Phase 2: Tritium genesis hash
+        std::vector<uint8_t> vAuthNonce;  // Challenge nonce for authentication
+        std::vector<uint8_t> vMinerPubKey; // Miner's Falcon public key
 
         /** Default Constructor **/
         MiningContext();
@@ -110,6 +112,20 @@ namespace LLP
          *
          **/
         MiningContext WithGenesis(const uint256_t& hashGenesis_) const;
+
+        /** WithNonce
+         *
+         *  Returns a new context with updated authentication nonce.
+         *
+         **/
+        MiningContext WithNonce(const std::vector<uint8_t>& vNonce_) const;
+
+        /** WithPubKey
+         *
+         *  Returns a new context with updated miner public key.
+         *
+         **/
+        MiningContext WithPubKey(const std::vector<uint8_t>& vPubKey_) const;
     };
 
 
@@ -200,6 +216,28 @@ namespace LLP
          *
          **/
         static ProcessResult ProcessFalconResponse(
+            const MiningContext& context,
+            const Packet& packet
+        );
+
+        /** ProcessMinerAuthInit
+         *
+         *  Process MINER_AUTH_INIT packet - first step of authentication handshake.
+         *  Stores miner's public key and generates challenge nonce.
+         *
+         *  Expected packet format:
+         *  - [2 bytes] pubkey_len (big-endian)
+         *  - [pubkey_len bytes] Falcon public key
+         *  - [2 bytes] miner_id_len (big-endian)
+         *  - [miner_id_len bytes] miner_id string (UTF-8)
+         *
+         *  @param[in] context Current miner state
+         *  @param[in] packet Auth init packet
+         *
+         *  @return ProcessResult with challenge response and updated context
+         *
+         **/
+        static ProcessResult ProcessMinerAuthInit(
             const MiningContext& context,
             const Packet& packet
         );
