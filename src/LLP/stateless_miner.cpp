@@ -419,15 +419,19 @@ namespace LLP
                 hashGenesis = boundGenesis.value();
         }
 
-        /* Update context with auth success */
+        /* Update context with auth success.
+         * Note: We clear the nonce and pubkey after successful authentication for security:
+         * - The nonce was single-use and should not be reused
+         * - The pubkey hash is preserved in hashKeyID for audit trails
+         * - The full pubkey can be recovered from FalconAuth if needed */
         MiningContext newContext = context
             .WithAuth(true)
             .WithSession(nSessionId)
             .WithKeyId(hashKeyID)
             .WithGenesis(hashGenesis)
             .WithTimestamp(runtime::unifiedtimestamp())
-            .WithNonce(std::vector<uint8_t>())  // Clear nonce after successful auth
-            .WithPubKey(std::vector<uint8_t>()); // Clear pubkey after successful auth
+            .WithNonce(std::vector<uint8_t>())  // Clear single-use nonce
+            .WithPubKey(std::vector<uint8_t>()); // Clear pubkey (hash preserved in keyID)
 
         /* Build success response */
         Packet response(MINER_AUTH_RESULT);

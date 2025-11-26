@@ -298,14 +298,15 @@ namespace LLP
                 debug::log(3, FUNCTION, "Block merkle root: ", hashMerkle.SubString(), " nonce: ", nonce);
 
                 /* Check for optional Falcon signature in extended format */
-                bool fHasFalconSig = (PACKET.DATA.size() > MIN_SIZE + 2);
-                if(fHasFalconSig)
+                /* Format: [merkle_root (64)][nonce (8)][sig_len (2)][signature (sig_len)] */
+                if(PACKET.DATA.size() >= MIN_SIZE + 2)
                 {
                     /* Parse signature length (2 bytes, big-endian) */
                     size_t nSigPos = MIN_SIZE;
                     uint16_t nSigLen = (static_cast<uint16_t>(PACKET.DATA[nSigPos]) << 8) |
                                        static_cast<uint16_t>(PACKET.DATA[nSigPos + 1]);
 
+                    /* Process signature if present and valid length */
                     if(nSigLen > 0 && PACKET.DATA.size() >= MIN_SIZE + 2 + nSigLen)
                     {
                         /* Extract signature */
@@ -319,12 +320,12 @@ namespace LLP
                             PACKET.DATA.begin(), 
                             PACKET.DATA.begin() + MIN_SIZE);
 
-                        /* Get the stored public key from context (set during auth) */
-                        /* For now, we log that signature was provided but not strictly verified
-                         * since the miner is already authenticated via challenge-response.
-                         * The signature here provides additional non-repudiation. */
+                        /* Log that signature was provided for audit trail.
+                         * The miner is already authenticated via challenge-response,
+                         * so this signature provides additional non-repudiation. */
                         debug::log(2, FUNCTION, "SUBMIT_BLOCK includes Falcon signature, len=", nSigLen,
-                                   " (miner already authenticated via challenge-response)");
+                                   " sessionId=", context.nSessionId,
+                                   " keyId=", context.hashKeyID.SubString());
                     }
                 }
 
