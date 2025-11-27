@@ -33,6 +33,11 @@ namespace LLP
      *  - hashKeyID: Stable identifier derived from Falcon public key
      *  - hashGenesis: Tritium account identity this miner is mining for
      *
+     *  Session Stability Extensions:
+     *  - nSessionStart: When the session was established
+     *  - nSessionTimeout: Configurable timeout for session expiry
+     *  - nKeepaliveCount: Number of keepalives received (for monitoring)
+     *
      **/
     struct MiningContext
     {
@@ -48,6 +53,9 @@ namespace LLP
         std::string strUserName;     // Phase 2: Username for trust-based addressing
         std::vector<uint8_t> vAuthNonce;  // Challenge nonce for authentication
         std::vector<uint8_t> vMinerPubKey; // Miner's Falcon public key
+        uint64_t nSessionStart;      // Timestamp when session was established
+        uint64_t nSessionTimeout;    // Session timeout in seconds (default 300s)
+        uint32_t nKeepaliveCount;    // Number of keepalives received
 
         /** Default Constructor **/
         MiningContext();
@@ -135,6 +143,27 @@ namespace LLP
          **/
         MiningContext WithPubKey(const std::vector<uint8_t>& vPubKey_) const;
 
+        /** WithSessionStart
+         *
+         *  Returns a new context with updated session start timestamp.
+         *
+         **/
+        MiningContext WithSessionStart(uint64_t nSessionStart_) const;
+
+        /** WithSessionTimeout
+         *
+         *  Returns a new context with updated session timeout.
+         *
+         **/
+        MiningContext WithSessionTimeout(uint64_t nSessionTimeout_) const;
+
+        /** WithKeepaliveCount
+         *
+         *  Returns a new context with updated keepalive count.
+         *
+         **/
+        MiningContext WithKeepaliveCount(uint32_t nKeepaliveCount_) const;
+
         /** GetPayoutAddress
          *
          *  Get the payout address for rewards.
@@ -153,6 +182,28 @@ namespace LLP
          *
          **/
         bool HasValidPayout() const;
+
+        /** IsSessionExpired
+         *
+         *  Check if the session has expired based on timeout.
+         *
+         *  @param[in] nNow Current timestamp (defaults to current time if 0)
+         *
+         *  @return true if session has expired
+         *
+         **/
+        bool IsSessionExpired(uint64_t nNow = 0) const;
+
+        /** GetSessionDuration
+         *
+         *  Get the duration of the current session in seconds.
+         *
+         *  @param[in] nNow Current timestamp (defaults to current time if 0)
+         *
+         *  @return Session duration in seconds
+         *
+         **/
+        uint64_t GetSessionDuration(uint64_t nNow = 0) const;
     };
 
 

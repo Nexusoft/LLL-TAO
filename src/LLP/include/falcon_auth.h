@@ -178,6 +178,80 @@ namespace FalconAuth
          *
          **/
         virtual std::optional<uint256_t> GetBoundGenesis(const uint256_t& keyId) const = 0;
+
+        /** GenerateChallenge
+         *
+         *  Generate a scalable session challenge based on network load.
+         *  Adapts challenge size dynamically for varying network conditions.
+         *
+         *  @param[in] nActiveSessions Current number of active sessions (for load scaling)
+         *
+         *  @return Challenge bytes (variable size based on load)
+         *
+         **/
+        virtual std::vector<uint8_t> GenerateChallenge(size_t nActiveSessions = 0) = 0;
+
+        /** VerifyChallenge
+         *
+         *  Verify a challenge response with associated session data.
+         *
+         *  @param[in] pubkey Public key bytes
+         *  @param[in] challenge The challenge that was signed
+         *  @param[in] signature Signature bytes
+         *  @param[in] nTimestamp Timestamp of the challenge for replay protection
+         *
+         *  @return VerifyResult with validity and derived key ID
+         *
+         **/
+        virtual VerifyResult VerifyChallenge(
+            const std::vector<uint8_t>& pubkey,
+            const std::vector<uint8_t>& challenge,
+            const std::vector<uint8_t>& signature,
+            uint64_t nTimestamp
+        ) = 0;
+
+        /** GetChallengeSize
+         *
+         *  Get the recommended challenge size based on current network load.
+         *  Scales from minimum to maximum based on active sessions.
+         *
+         *  @param[in] nActiveSessions Current number of active sessions
+         *
+         *  @return Recommended challenge size in bytes
+         *
+         **/
+        virtual size_t GetChallengeSize(size_t nActiveSessions = 0) const = 0;
+
+        /** GetSessionStats
+         *
+         *  Get statistics about session key management.
+         *
+         *  @return JSON string with session statistics
+         *
+         **/
+        virtual std::string GetSessionStats() const = 0;
+    };
+
+    /** ChallengeConfig
+     *
+     *  Configuration for scalable session challenges.
+     *
+     **/
+    struct ChallengeConfig
+    {
+        size_t nMinChallengeSize;     // Minimum challenge size (default 32 bytes)
+        size_t nMaxChallengeSize;     // Maximum challenge size (default 64 bytes)
+        size_t nScaleThreshold;       // Session count to start scaling (default 100)
+        uint64_t nChallengeTimeout;   // Challenge validity window in seconds (default 60)
+
+        /** Default Constructor **/
+        ChallengeConfig()
+        : nMinChallengeSize(32)
+        , nMaxChallengeSize(64)
+        , nScaleThreshold(100)
+        , nChallengeTimeout(60)
+        {
+        }
     };
 
     /** Get
@@ -195,6 +269,15 @@ namespace FalconAuth
      *
      **/
     void Initialize();
+
+    /** InitializeWithConfig
+     *
+     *  Initialize the global Falcon auth instance with custom challenge config.
+     *
+     *  @param[in] config Challenge configuration
+     *
+     **/
+    void InitializeWithConfig(const ChallengeConfig& config);
 
     /** Shutdown
      *
