@@ -68,20 +68,9 @@ TEST_CASE("StatelessMinerManager Template Feeding Tests", "[mining_template][int
     
     SECTION("NotifyNewRound updates all miner contexts")
     {
-        /* Create test contexts */
-        MiningContext ctx1 = MiningContext()
-            .WithChannel(1)
-            .WithHeight(1000)
-            .WithAuth(true)
-            .WithSession(11111);
-        ctx1 = MiningContext(1, 1000, runtime::unifiedtimestamp(), "192.168.1.1", 1, true, 11111, uint256_t(0), uint256_t(0));
-        
-        MiningContext ctx2 = MiningContext()
-            .WithChannel(2)
-            .WithHeight(1000)
-            .WithAuth(true)
-            .WithSession(22222);
-        ctx2 = MiningContext(2, 1000, runtime::unifiedtimestamp(), "192.168.1.2", 1, true, 22222, uint256_t(0), uint256_t(0));
+        /* Create test contexts using parameterized constructor */
+        MiningContext ctx1(1, 1000, runtime::unifiedtimestamp(), "192.168.1.1", 1, true, 11111, uint256_t(0), uint256_t(0));
+        MiningContext ctx2(2, 1000, runtime::unifiedtimestamp(), "192.168.1.2", 1, true, 22222, uint256_t(0), uint256_t(0));
         
         /* Register miners */
         manager.UpdateMiner("192.168.1.1", ctx1);
