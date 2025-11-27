@@ -29,6 +29,26 @@ ________________________________________________________________________________
 using namespace LLP;
 
 
+/** Concurrency Test Parameters
+ *
+ *  These values are chosen to provide meaningful stress testing while
+ *  remaining practical for test execution:
+ *
+ *  - nThreads (10): Sufficient parallelism to expose race conditions without
+ *    excessive resource consumption. Matches typical production server cores.
+ *  - nMinersPerThread (100): Creates 1000 total connections, representative
+ *    of high-throughput mining environments.
+ *  - nOperations (500): Enough iterations to statistically expose concurrency
+ *    issues in add/remove operations.
+ *  - nUpdatesPerThread (50): Tests rapid context updates on shared resources.
+ *  - nIncrementsPerThread (1000): Validates atomic counter integrity under load.
+ *
+ *  The product nThreads × nMinersPerThread = 1000 simulates a large pool
+ *  environment as specified in the PR requirements for "thousands of
+ *  simultaneous connections".
+ **/
+
+
 /** Test Suite: Concurrency Testing for Stateless Mining
  *
  *  These tests evaluate Stateless Mining performance under high concurrency:

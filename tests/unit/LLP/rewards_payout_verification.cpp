@@ -29,6 +29,19 @@ ________________________________________________________________________________
 using namespace LLP;
 
 
+/** Test Genesis Hash Values
+ *
+ *  The hex strings used for genesis hashes in these tests are deterministic
+ *  values chosen to:
+ *  1. Be visually distinct (using repeated patterns like 1111..., 2222..., etc.)
+ *  2. Avoid collision with real genesis hashes
+ *  3. Enable easy debugging by identifying which test data is being used
+ *
+ *  For production, genesis hashes are derived cryptographically from the
+ *  user's sigchain creation transaction.
+ **/ 
+
+
 /** Test Suite: GenesisHash Reward Mapping and Payout Verification
  *
  *  These tests cover:

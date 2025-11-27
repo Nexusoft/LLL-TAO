@@ -28,7 +28,16 @@ ________________________________________________________________________________
 
 using namespace LLP;
 
-/* Packet type definitions for testing - Phase 2 Unified Hybrid Protocol */
+/** Packet type definitions for testing - Phase 2 Unified Hybrid Protocol
+ *
+ *  These values match the packet opcodes defined in miner.h:
+ *  - MINER_AUTH_INIT (207): First step of Falcon authentication handshake
+ *  - MINER_AUTH_CHALLENGE (208): Node sends random challenge to miner
+ *  - MINER_AUTH_RESPONSE (209): Miner sends signed challenge response
+ *  - MINER_AUTH_RESULT (210): Node indicates auth success/failure
+ *  - SESSION_START (211): Initialize session parameters
+ *  - SESSION_KEEPALIVE (212): Maintain session liveness
+ **/
 const Packet::message_t MINER_AUTH_INIT_TEST = 207;
 const Packet::message_t MINER_AUTH_CHALLENGE_TEST = 208;
 const Packet::message_t MINER_AUTH_RESPONSE_TEST = 209;
