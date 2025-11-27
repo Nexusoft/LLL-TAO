@@ -154,15 +154,58 @@ namespace LLP
         }
 
 
+        /** HasDataPayload
+         *
+         *  Determines if this packet type requires a data payload.
+         *  Traditional packets use HEADER < 128 for data packets and HEADER >= 128
+         *  for request/command packets. However, the Falcon authentication protocol
+         *  (headers 207-212) requires data payloads for authentication handshake.
+         *
+         *  Packet ranges requiring data:
+         *  - 0-127: Traditional data packets (BLOCK_DATA, SUBMIT_BLOCK, etc.)
+         *  - 207-212: Falcon authentication and session packets
+         *    - MINER_AUTH_INIT (207): pubkey + miner_id
+         *    - MINER_AUTH_CHALLENGE (208): random nonce
+         *    - MINER_AUTH_RESPONSE (209): signature
+         *    - MINER_AUTH_RESULT (210): success/failure code
+         *    - SESSION_START (211): session parameters
+         *    - SESSION_KEEPALIVE (212): keepalive data
+         *
+         *  @return true if this packet type carries data payload
+         *
+         **/
+        bool HasDataPayload() const
+        {
+            /* Traditional data packets */
+            if(HEADER < 128)
+                return true;
+
+            /* Falcon authentication packets (207-212) require data */
+            if(HEADER >= 207 && HEADER <= 212)
+                return true;
+
+            return false;
+        }
+
+
         /** Header
          *
          *  Determines if header is fully read.
+         *  For data packets (HEADER < 128 or Falcon auth 207-212), requires LENGTH > 0.
+         *  For request packets (128-206, 213-254), LENGTH must be 0.
          *
          **/
         bool Header() const
         {
-            return IsNull() ? false : (HEADER < 128 && LENGTH > 0) ||
-                                      (HEADER >= 128 && HEADER < 255 && LENGTH == 0);
+            if(IsNull())
+                return false;
+
+            /* Data packets require LENGTH > 0 (includes Falcon auth packets) */
+            if(HasDataPayload())
+                return LENGTH > 0;
+
+            /* Request/command packets have no data (LENGTH == 0) */
+            return HEADER < 255 && LENGTH == 0;
         }
 
 
@@ -197,6 +240,9 @@ namespace LLP
          *
          *  Serializes class into a byte vector. Used to write packet to sockets.
          *
+         *  Handles both traditional data packets (HEADER < 128) and Falcon
+         *  authentication packets (207-212) which also require data payloads.
+         *
          *  DEBUG: This method logs detailed packet encoding information when
          *  config::nVerbose >= 5 to help diagnose packet encoding issues
          *  affecting the Falcon handshake protocol.
@@ -206,7 +252,9 @@ namespace LLP
         {
             std::vector<uint8_t> BYTES(1, HEADER);
 
-            if(HEADER < 128) /* Handle for Data Packets. */
+            /* Handle packets that carry data payloads (traditional data packets
+             * and Falcon authentication packets) */
+            if(HasDataPayload())
             {
                 BYTES.push_back(static_cast<uint8_t>(LENGTH >> 24));
                 BYTES.push_back(static_cast<uint8_t>(LENGTH >> 16));
@@ -237,9 +285,10 @@ namespace LLP
             /* Log packet header info */
             std::string strLog = strContext.empty() ? "Packet::GetBytes" : strContext;
 
-            if(HEADER < 128) /* Handle for Data Packets. */
+            /* Handle packets that carry data payloads */
+            if(HasDataPayload())
             {
-                /* Log data packet encoding */
+                /* Encode length and data */
                 BYTES.push_back(static_cast<uint8_t>(LENGTH >> 24));
                 BYTES.push_back(static_cast<uint8_t>(LENGTH >> 16));
                 BYTES.push_back(static_cast<uint8_t>(LENGTH >> 8));
