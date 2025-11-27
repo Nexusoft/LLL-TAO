@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLP/include/stateless_manager.h>
 #include <LLP/include/falcon_auth.h>
 
+#include <LLC/include/random.h>
 #include <Util/include/runtime.h>
 
 #include <thread>
