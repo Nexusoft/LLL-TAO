@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/falcon_auth.h>
+#include <LLP/include/disposable_falcon.h>
 #include <LLP/packets/packet.h>
 
 #include <Util/include/runtime.h>
@@ -499,5 +500,263 @@ TEST_CASE("MiningContext Authentication State Persistence", "[stateless_miner]")
         REQUIRE(finalCtx.nChannel == 2);
         REQUIRE(finalCtx.nHeight == 5000);
         REQUIRE(finalCtx.nTimestamp == 999999);
+    }
+}
+
+
+TEST_CASE("Packet Debug Functions", "[stateless_miner]")
+{
+    SECTION("DebugString returns formatted packet info")
+    {
+        Packet packet(SET_CHANNEL);
+        packet.DATA.push_back(0x01);
+        packet.LENGTH = 1;
+        
+        std::string debug = packet.DebugString();
+        
+        REQUIRE(debug.find("header=0x") != std::string::npos);
+        REQUIRE(debug.find("length=1") != std::string::npos);
+        REQUIRE(debug.find("data_size=1") != std::string::npos);
+    }
+    
+    SECTION("DebugString includes data preview")
+    {
+        Packet packet(MINER_AUTH_INIT);
+        packet.DATA = {0xAA, 0xBB, 0xCC, 0xDD};
+        packet.LENGTH = 4;
+        
+        std::string debug = packet.DebugString(10);
+        
+        /* Should contain hex representation of data */
+        REQUIRE(debug.find("data_preview=") != std::string::npos);
+    }
+    
+    SECTION("DebugString truncates long data")
+    {
+        Packet packet(MINER_AUTH_INIT);
+        packet.DATA.resize(100, 0x42);
+        packet.LENGTH = 100;
+        
+        /* Request only 16 bytes in preview */
+        std::string debug = packet.DebugString(16);
+        
+        /* Should contain ellipsis indicating truncation */
+        REQUIRE(debug.find("...") != std::string::npos);
+    }
+    
+    SECTION("GetBytesWithDebug serializes correctly")
+    {
+        Packet packet(SET_CHANNEL);
+        packet.DATA.push_back(0x02);
+        packet.LENGTH = 1;
+        
+        std::vector<uint8_t> bytes = packet.GetBytesWithDebug("test");
+        
+        /* Should have header (1) + length (4) + data (1) = 6 bytes */
+        REQUIRE(bytes.size() == 6);
+        REQUIRE(bytes[0] == SET_CHANNEL);  /* Header */
+        REQUIRE(bytes[5] == 0x02);          /* Data */
+    }
+}
+
+
+TEST_CASE("DisposableFalcon SignedWorkSubmission Tests", "[disposable_falcon]")
+{
+    SECTION("Default constructor creates empty submission")
+    {
+        DisposableFalcon::SignedWorkSubmission sub;
+        
+        REQUIRE(sub.hashMerkleRoot == uint512_t(0));
+        REQUIRE(sub.nNonce == 0);
+        REQUIRE(sub.vSignature.empty());
+        REQUIRE(sub.fSigned == false);
+    }
+    
+    SECTION("GetMessageBytes returns correct format")
+    {
+        uint512_t merkle;
+        merkle.SetHex("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+        
+        DisposableFalcon::SignedWorkSubmission sub(merkle, 0x123456789ABCDEF0ULL);
+        
+        std::vector<uint8_t> msg = sub.GetMessageBytes();
+        
+        /* Should have merkle (64) + nonce (8) + timestamp (8) = 80 bytes */
+        REQUIRE(msg.size() == 80);
+    }
+    
+    SECTION("Serialize and Deserialize roundtrip works")
+    {
+        uint512_t merkle;
+        merkle.SetHex("abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789");
+        
+        DisposableFalcon::SignedWorkSubmission original(merkle, 0xDEADBEEFCAFEBABEULL);
+        original.vSignature = {0x01, 0x02, 0x03, 0x04, 0x05};
+        original.fSigned = true;
+        
+        /* Serialize */
+        std::vector<uint8_t> serialized = original.Serialize();
+        
+        /* Deserialize into new submission */
+        DisposableFalcon::SignedWorkSubmission restored;
+        bool result = restored.Deserialize(serialized);
+        
+        REQUIRE(result == true);
+        REQUIRE(restored.hashMerkleRoot == original.hashMerkleRoot);
+        REQUIRE(restored.nNonce == original.nNonce);
+        REQUIRE(restored.vSignature == original.vSignature);
+        REQUIRE(restored.fSigned == true);
+    }
+    
+    SECTION("Deserialize fails on too-small data")
+    {
+        std::vector<uint8_t> tooSmall = {0x01, 0x02, 0x03};
+        
+        DisposableFalcon::SignedWorkSubmission sub;
+        bool result = sub.Deserialize(tooSmall);
+        
+        REQUIRE(result == false);
+    }
+    
+    SECTION("DebugString returns formatted info")
+    {
+        uint512_t merkle;
+        merkle.SetHex("1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef");
+        
+        DisposableFalcon::SignedWorkSubmission sub(merkle, 12345);
+        
+        std::string debug = sub.DebugString();
+        
+        REQUIRE(debug.find("SignedWorkSubmission") != std::string::npos);
+        REQUIRE(debug.find("nonce=12345") != std::string::npos);
+    }
+}
+
+
+TEST_CASE("DisposableFalcon WrapperResult Tests", "[disposable_falcon]")
+{
+    SECTION("Success creates valid result")
+    {
+        DisposableFalcon::SignedWorkSubmission sub;
+        
+        DisposableFalcon::WrapperResult result = 
+            DisposableFalcon::WrapperResult::Success(sub);
+        
+        REQUIRE(result.fSuccess == true);
+        REQUIRE(result.strError.empty());
+    }
+    
+    SECTION("Failure creates failed result with message")
+    {
+        DisposableFalcon::WrapperResult result = 
+            DisposableFalcon::WrapperResult::Failure("Test error message");
+        
+        REQUIRE(result.fSuccess == false);
+        REQUIRE(result.strError == "Test error message");
+    }
+}
+
+
+TEST_CASE("DisposableFalcon Wrapper Basic Operations", "[disposable_falcon]")
+{
+    SECTION("Create returns valid wrapper instance")
+    {
+        auto pWrapper = DisposableFalcon::Create();
+        
+        REQUIRE(pWrapper != nullptr);
+        REQUIRE(pWrapper->HasActiveSession() == false);
+    }
+    
+    SECTION("GenerateSessionKey creates active session")
+    {
+        auto pWrapper = DisposableFalcon::Create();
+        uint256_t sessionId;
+        sessionId.SetHex("deadbeefcafebabe0123456789abcdef0123456789abcdef0123456789abcdef");
+        
+        bool result = pWrapper->GenerateSessionKey(sessionId);
+        
+        REQUIRE(result == true);
+        REQUIRE(pWrapper->HasActiveSession() == true);
+        REQUIRE(pWrapper->GetSessionKeyId() != uint256_t(0));
+        REQUIRE(!pWrapper->GetSessionPubKey().empty());
+    }
+    
+    SECTION("ClearSession removes active session")
+    {
+        auto pWrapper = DisposableFalcon::Create();
+        uint256_t sessionId;
+        sessionId.SetHex("1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef");
+        
+        pWrapper->GenerateSessionKey(sessionId);
+        REQUIRE(pWrapper->HasActiveSession() == true);
+        
+        pWrapper->ClearSession();
+        
+        REQUIRE(pWrapper->HasActiveSession() == false);
+        REQUIRE(pWrapper->GetSessionKeyId() == uint256_t(0));
+        REQUIRE(pWrapper->GetSessionPubKey().empty());
+    }
+    
+    SECTION("WrapWorkSubmission fails without active session")
+    {
+        auto pWrapper = DisposableFalcon::Create();
+        uint512_t merkle;
+        merkle.SetHex("abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789");
+        
+        DisposableFalcon::WrapperResult result = 
+            pWrapper->WrapWorkSubmission(merkle, 12345);
+        
+        REQUIRE(result.fSuccess == false);
+        REQUIRE(result.strError.find("No active session") != std::string::npos);
+    }
+    
+    SECTION("WrapWorkSubmission succeeds with active session")
+    {
+        auto pWrapper = DisposableFalcon::Create();
+        uint256_t sessionId;
+        sessionId.SetHex("fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210");
+        
+        pWrapper->GenerateSessionKey(sessionId);
+        
+        uint512_t merkle;
+        merkle.SetHex("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+        
+        DisposableFalcon::WrapperResult result = 
+            pWrapper->WrapWorkSubmission(merkle, 0xCAFEBABEDEADBEEFULL);
+        
+        REQUIRE(result.fSuccess == true);
+        REQUIRE(result.submission.fSigned == true);
+        REQUIRE(!result.submission.vSignature.empty());
+        REQUIRE(result.submission.hashMerkleRoot == merkle);
+        REQUIRE(result.submission.nNonce == 0xCAFEBABEDEADBEEFULL);
+    }
+    
+    SECTION("Wrap and Unwrap roundtrip works")
+    {
+        auto pWrapper = DisposableFalcon::Create();
+        uint256_t sessionId;
+        sessionId.SetHex("1111222233334444555566667777888899990000aaaabbbbccccddddeeeeffff");
+        
+        pWrapper->GenerateSessionKey(sessionId);
+        std::vector<uint8_t> vPubKey = pWrapper->GetSessionPubKey();
+        
+        uint512_t merkle;
+        merkle.SetHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa0000");
+        
+        /* Wrap */
+        DisposableFalcon::WrapperResult wrapResult = 
+            pWrapper->WrapWorkSubmission(merkle, 9999);
+        REQUIRE(wrapResult.fSuccess == true);
+        
+        /* Serialize */
+        std::vector<uint8_t> serialized = wrapResult.submission.Serialize();
+        
+        /* Unwrap (using the public key from the session) */
+        DisposableFalcon::WrapperResult unwrapResult = 
+            pWrapper->UnwrapWorkSubmission(serialized, vPubKey);
+        
+        REQUIRE(unwrapResult.fSuccess == true);
+        REQUIRE(unwrapResult.submission.hashMerkleRoot == merkle);
+        REQUIRE(unwrapResult.submission.nNonce == 9999);
     }
 }

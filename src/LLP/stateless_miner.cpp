@@ -13,12 +13,18 @@ ________________________________________________________________________________
 
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/falcon_auth.h>
+#include <LLP/include/disposable_falcon.h>
 
 #include <LLC/include/random.h>
 #include <LLC/include/flkey.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
+#include <Util/include/config.h>
+#include <Util/include/hex.h>
+
+#include <sstream>
+#include <iomanip>
 
 namespace LLP
 {
@@ -189,24 +195,38 @@ namespace LLP
         const Packet& packet
     )
     {
+        /* DEBUG: Log incoming packet details for Falcon handshake debugging */
+        debug::log(3, FUNCTION, "ProcessPacket: ", packet.DebugString());
+
+        /* DEBUG: Log packet bytes when verbose >= 5 */
+        if(config::nVerbose >= 5)
+        {
+            DisposableFalcon::DebugLogPacket("ProcessPacket::incoming", packet.DATA, 5);
+        }
+
         /* Route based on packet type */
         /* Note: GET_BLOCK and SUBMIT_BLOCK are handled in StatelessMinerConnection */
         /* due to their need for stateful block management */
         switch(packet.HEADER)
         {
             case MINER_AUTH_INIT:
+                debug::log(2, FUNCTION, "Routing to ProcessMinerAuthInit");
                 return ProcessMinerAuthInit(context, packet);
 
             case MINER_AUTH_RESPONSE:
+                debug::log(2, FUNCTION, "Routing to ProcessFalconResponse");
                 return ProcessFalconResponse(context, packet);
 
             case SESSION_START:
+                debug::log(2, FUNCTION, "Routing to ProcessSessionStart");
                 return ProcessSessionStart(context, packet);
 
             case SET_CHANNEL:
+                debug::log(2, FUNCTION, "Routing to ProcessSetChannel");
                 return ProcessSetChannel(context, packet);
 
             case SESSION_KEEPALIVE:
+                debug::log(3, FUNCTION, "Routing to ProcessSessionKeepalive");
                 return ProcessSessionKeepalive(context, packet);
 
             default:
@@ -253,41 +273,72 @@ namespace LLP
 
         const std::vector<uint8_t>& vData = packet.DATA;
 
+        /* DEBUG: Log incoming packet details for GetBytes() debugging */
+        debug::log(2, FUNCTION, "MINER_AUTH_INIT packet: ", packet.DebugString());
+        DisposableFalcon::DebugLogPacket("MINER_AUTH_INIT::data", vData, 3);
+
         /* Validate minimum packet size (2 + 2 = 4 bytes for lengths) */
         if(vData.size() < 4)
+        {
+            debug::log(0, FUNCTION, "MINER_AUTH_INIT: packet too small, size=", vData.size(), " expected>=4");
             return ProcessResult::Error(context, "MINER_AUTH_INIT: packet too small");
+        }
 
         size_t nPos = 0;
 
         /* Parse pubkey_len (2 bytes, big-endian to match miner.cpp) */
+        DisposableFalcon::DebugLogDeserialize("pubkey_len", nPos, 2, vData.size());
         uint16_t nPubKeyLen = (static_cast<uint16_t>(vData[nPos]) << 8) |
                               static_cast<uint16_t>(vData[nPos + 1]);
         nPos += 2;
 
+        debug::log(3, FUNCTION, "MINER_AUTH_INIT: parsed pubkey_len=", nPubKeyLen);
+
         /* Validate pubkey_len */
         if(nPubKeyLen == 0 || nPubKeyLen > 2048)
+        {
+            debug::log(0, FUNCTION, "MINER_AUTH_INIT: invalid pubkey_len=", nPubKeyLen);
             return ProcessResult::Error(context, "MINER_AUTH_INIT: invalid pubkey_len");
+        }
 
         if(nPos + nPubKeyLen + 2 > vData.size())
+        {
+            debug::log(0, FUNCTION, "MINER_AUTH_INIT: packet too small for pubkey, need=",
+                       nPos + nPubKeyLen + 2, " have=", vData.size());
             return ProcessResult::Error(context, "MINER_AUTH_INIT: packet too small for pubkey");
+        }
 
         /* Extract public key */
+        DisposableFalcon::DebugLogDeserialize("pubkey", nPos, nPubKeyLen, vData.size());
         std::vector<uint8_t> vPubKey(vData.begin() + nPos, vData.begin() + nPos + nPubKeyLen);
         nPos += nPubKeyLen;
 
+        debug::log(3, FUNCTION, "MINER_AUTH_INIT: extracted pubkey, len=", vPubKey.size());
+
         /* Parse miner_id_len (2 bytes, big-endian) */
+        DisposableFalcon::DebugLogDeserialize("miner_id_len", nPos, 2, vData.size());
         uint16_t nMinerIdLen = (static_cast<uint16_t>(vData[nPos]) << 8) |
                                static_cast<uint16_t>(vData[nPos + 1]);
         nPos += 2;
 
+        debug::log(3, FUNCTION, "MINER_AUTH_INIT: parsed miner_id_len=", nMinerIdLen);
+
         /* Validate miner_id_len */
         if(nMinerIdLen > 256)
+        {
+            debug::log(0, FUNCTION, "MINER_AUTH_INIT: invalid miner_id_len=", nMinerIdLen);
             return ProcessResult::Error(context, "MINER_AUTH_INIT: invalid miner_id_len");
+        }
 
         if(nPos + nMinerIdLen > vData.size())
+        {
+            debug::log(0, FUNCTION, "MINER_AUTH_INIT: packet too small for miner_id, need=",
+                       nPos + nMinerIdLen, " have=", vData.size());
             return ProcessResult::Error(context, "MINER_AUTH_INIT: packet too small for miner_id");
+        }
 
         /* Extract miner ID (for logging) */
+        DisposableFalcon::DebugLogDeserialize("miner_id", nPos, nMinerIdLen, vData.size());
         std::string strMinerId;
         if(nMinerIdLen > 0)
             strMinerId.assign(vData.begin() + nPos, vData.begin() + nPos + nMinerIdLen);
@@ -313,6 +364,10 @@ namespace LLP
         response.DATA.push_back(static_cast<uint8_t>(nNonceLen >> 8));
         response.DATA.push_back(static_cast<uint8_t>(nNonceLen & 0xFF));
         response.DATA.insert(response.DATA.end(), vAuthNonce.begin(), vAuthNonce.end());
+        response.LENGTH = static_cast<uint32_t>(response.DATA.size());
+
+        /* DEBUG: Log response packet */
+        debug::log(2, FUNCTION, "MINER_AUTH_CHALLENGE response: ", response.DebugString());
 
         debug::log(0, FUNCTION, "Sending MINER_AUTH_CHALLENGE nonce_len=", vAuthNonce.size());
 
@@ -328,12 +383,17 @@ namespace LLP
     {
         debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE from ", context.strAddress);
 
+        /* DEBUG: Log incoming packet details */
+        debug::log(2, FUNCTION, "MINER_AUTH_RESPONSE packet: ", packet.DebugString());
+        DisposableFalcon::DebugLogPacket("MINER_AUTH_RESPONSE::data", packet.DATA, 3);
+
         /* Validate that we have nonce and pubkey from MINER_AUTH_INIT */
         if(context.vAuthNonce.empty())
         {
             debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: no nonce (MINER_AUTH_INIT not received)");
             Packet response(MINER_AUTH_RESULT);
             response.DATA.push_back(0x00); // Failure
+            response.LENGTH = 1;
             return ProcessResult::Success(context, response);
         }
 
@@ -342,6 +402,7 @@ namespace LLP
             debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: no pubkey (MINER_AUTH_INIT not received)");
             Packet response(MINER_AUTH_RESULT);
             response.DATA.push_back(0x00); // Failure
+            response.LENGTH = 1;
             return ProcessResult::Success(context, response);
         }
 
@@ -350,15 +411,19 @@ namespace LLP
         /* Validate minimum packet size (2 bytes for sig_len) */
         if(vData.size() < 2)
         {
-            debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: packet too small");
+            debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: packet too small, size=", vData.size());
             Packet response(MINER_AUTH_RESULT);
             response.DATA.push_back(0x00); // Failure
+            response.LENGTH = 1;
             return ProcessResult::Success(context, response);
         }
 
         /* Parse sig_len (2 bytes, big-endian to match miner.cpp) */
+        DisposableFalcon::DebugLogDeserialize("sig_len", 0, 2, vData.size());
         uint16_t nSigLen = (static_cast<uint16_t>(vData[0]) << 8) |
                            static_cast<uint16_t>(vData[1]);
+
+        debug::log(3, FUNCTION, "MINER_AUTH_RESPONSE: parsed sig_len=", nSigLen);
 
         /* Validate sig_len */
         if(nSigLen == 0 || nSigLen > 2048)
@@ -366,39 +431,55 @@ namespace LLP
             debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: invalid sig_len ", nSigLen);
             Packet response(MINER_AUTH_RESULT);
             response.DATA.push_back(0x00); // Failure
+            response.LENGTH = 1;
             return ProcessResult::Success(context, response);
         }
 
         if(vData.size() < 2 + nSigLen)
         {
-            debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: packet too small for signature");
+            debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: packet too small for signature, need=",
+                       2 + nSigLen, " have=", vData.size());
             Packet response(MINER_AUTH_RESULT);
             response.DATA.push_back(0x00); // Failure
+            response.LENGTH = 1;
             return ProcessResult::Success(context, response);
         }
 
         /* Extract signature */
+        DisposableFalcon::DebugLogDeserialize("signature", 2, nSigLen, vData.size());
         std::vector<uint8_t> vSignature(vData.begin() + 2, vData.begin() + 2 + nSigLen);
 
         debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE sig_len=", nSigLen);
+
+        /* DEBUG: Log verification data */
+        DisposableFalcon::DebugLogPacket("MINER_AUTH_RESPONSE::pubkey", context.vMinerPubKey, 4);
+        DisposableFalcon::DebugLogPacket("MINER_AUTH_RESPONSE::nonce", context.vAuthNonce, 4);
+        DisposableFalcon::DebugLogPacket("MINER_AUTH_RESPONSE::signature", vSignature, 4);
 
         /* Verify Falcon signature using LLC::FLKey directly */
         LLC::FLKey flkey;
         if(!flkey.SetPubKey(context.vMinerPubKey))
         {
-            debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: invalid public key");
+            debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: invalid public key, len=",
+                       context.vMinerPubKey.size());
             Packet response(MINER_AUTH_RESULT);
             response.DATA.push_back(0x00); // Failure
+            response.LENGTH = 1;
             return ProcessResult::Success(context, response);
         }
+
+        debug::log(3, FUNCTION, "MINER_AUTH_RESPONSE: verifying signature...");
 
         if(!flkey.Verify(context.vAuthNonce, vSignature))
         {
             debug::log(0, FUNCTION, "MINER_AUTH verification FAILED from ", context.strAddress);
             Packet response(MINER_AUTH_RESULT);
             response.DATA.push_back(0x00); // Failure
+            response.LENGTH = 1;
             return ProcessResult::Success(context, response);
         }
+
+        debug::log(2, FUNCTION, "MINER_AUTH_RESPONSE: signature verified successfully");
 
         /* Authentication succeeded */
         /* Derive key ID from public key */
@@ -436,6 +517,10 @@ namespace LLP
         /* Build success response */
         Packet response(MINER_AUTH_RESULT);
         response.DATA.push_back(0x01); // Success
+        response.LENGTH = 1;
+
+        /* DEBUG: Log response packet */
+        debug::log(2, FUNCTION, "MINER_AUTH_RESULT response: ", response.DebugString());
 
         debug::log(0, FUNCTION, "MINER_AUTH success for key ", hashKeyID.SubString(),
                    " sessionId=", nSessionId, " from ", context.strAddress);

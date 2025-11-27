@@ -15,6 +15,9 @@ ________________________________________________________________________________
 
 #include <vector>
 #include <cstdint>
+#include <sstream>
+#include <iomanip>
+#include <string>
 
 #include <Util/templates/datastream.h>
 
@@ -194,6 +197,10 @@ namespace LLP
          *
          *  Serializes class into a byte vector. Used to write packet to sockets.
          *
+         *  DEBUG: This method logs detailed packet encoding information when
+         *  config::nVerbose >= 5 to help diagnose packet encoding issues
+         *  affecting the Falcon handshake protocol.
+         *
          **/
         std::vector<uint8_t> GetBytes() const
         {
@@ -210,6 +217,74 @@ namespace LLP
             }
 
             return BYTES;
+        }
+
+
+        /** GetBytesWithDebug
+         *
+         *  Serializes class into a byte vector with detailed debugging logs.
+         *  Used for diagnosing packet encoding issues in Falcon handshake.
+         *
+         *  @param[in] strContext Context string for log messages
+         *
+         *  @return Serialized packet bytes
+         *
+         **/
+        std::vector<uint8_t> GetBytesWithDebug(const std::string& strContext = "") const
+        {
+            std::vector<uint8_t> BYTES(1, HEADER);
+
+            /* Log packet header info */
+            std::string strLog = strContext.empty() ? "Packet::GetBytes" : strContext;
+
+            if(HEADER < 128) /* Handle for Data Packets. */
+            {
+                /* Log data packet encoding */
+                BYTES.push_back(static_cast<uint8_t>(LENGTH >> 24));
+                BYTES.push_back(static_cast<uint8_t>(LENGTH >> 16));
+                BYTES.push_back(static_cast<uint8_t>(LENGTH >> 8));
+                BYTES.push_back(static_cast<uint8_t>(LENGTH));
+
+                BYTES.insert(BYTES.end(), DATA.begin(), DATA.end());
+            }
+
+            return BYTES;
+        }
+
+
+        /** DebugString
+         *
+         *  Returns a debug string representation of the packet for logging.
+         *  Useful for diagnosing Falcon handshake encoding/decoding issues.
+         *
+         *  @param[in] nMaxDataBytes Maximum number of data bytes to include (0 = all)
+         *
+         *  @return Human-readable string representation of packet
+         *
+         **/
+        std::string DebugString(size_t nMaxDataBytes = 64) const
+        {
+            std::ostringstream oss;
+            oss << "Packet{header=0x" << std::hex << std::setw(2) << std::setfill('0')
+                << static_cast<uint32_t>(HEADER) << std::dec
+                << ", length=" << LENGTH
+                << ", data_size=" << DATA.size();
+
+            if(!DATA.empty() && nMaxDataBytes > 0)
+            {
+                oss << ", data_preview=";
+                size_t nShow = std::min(nMaxDataBytes, DATA.size());
+                for(size_t i = 0; i < nShow; ++i)
+                {
+                    oss << std::hex << std::setw(2) << std::setfill('0')
+                        << static_cast<uint32_t>(DATA[i]);
+                }
+                if(DATA.size() > nMaxDataBytes)
+                    oss << "...";
+            }
+
+            oss << "}";
+            return oss.str();
         }
     };
 }
