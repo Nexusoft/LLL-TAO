@@ -18,6 +18,11 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    /** Configuration constants for validation thread pool **/
+    static const uint32_t MIN_VALIDATION_THREADS = 2;       /* Minimum worker threads */
+    static const uint32_t DEFAULT_VALIDATION_THREADS = 4;   /* Default if detection fails */
+    static const uint32_t THREAD_RATIO_DIVISOR = 2;         /* Use 1/N of available cores */
+
     /** Global validation pool instance **/
     static std::unique_ptr<ValidationThreadPool> pValidationPool = nullptr;
     static std::mutex POOL_MUTEX;
@@ -39,10 +44,10 @@ namespace LLP
         {
             nThreads = std::thread::hardware_concurrency();
             if(nThreads == 0)
-                nThreads = 4;  /* Default to 4 if detection fails */
+                nThreads = DEFAULT_VALIDATION_THREADS;
 
-            /* Use half of available cores for validation, minimum 2 */
-            nThreads = std::max(2u, nThreads / 2);
+            /* Use fraction of available cores for validation */
+            nThreads = std::max(MIN_VALIDATION_THREADS, nThreads / THREAD_RATIO_DIVISOR);
         }
 
         debug::log(0, FUNCTION, "Starting validation thread pool with ", nThreads, " workers");

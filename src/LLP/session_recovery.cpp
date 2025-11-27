@@ -152,7 +152,8 @@ namespace LLP
             return false;
         }
 
-        SessionRecoveryData& data = optData.value();
+        /* Get a copy of the data - concurrent map returns copies */
+        SessionRecoveryData data = optData.value();
 
         /* Check expiration */
         if(data.IsExpired(nSessionTimeout.load()))

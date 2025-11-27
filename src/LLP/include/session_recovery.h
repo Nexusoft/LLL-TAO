@@ -251,8 +251,12 @@ namespace LLP
     {
         size_t operator()(const uint256_t& key) const
         {
-            /* Use first 8 bytes as hash */
-            return static_cast<size_t>(key.Get64(0));
+            /* Combine multiple 64-bit segments for better distribution */
+            size_t hash = static_cast<size_t>(key.Get64(0));
+            hash ^= static_cast<size_t>(key.Get64(1)) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+            hash ^= static_cast<size_t>(key.Get64(2)) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+            hash ^= static_cast<size_t>(key.Get64(3)) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+            return hash;
         }
     };
 

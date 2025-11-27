@@ -149,14 +149,20 @@ namespace LLP
         if(hashGenesis != 0)
             return hashGenesis;
 
-        /* If username is set, the caller should resolve userName:default to genesis.
-         * This is a placeholder - actual resolution requires TAO API Name lookup.
-         * For now, return 0 to indicate no payout configured. */
+        /* Username-based addressing (trust userName:default system)
+         * The caller is responsible for resolving the username to a genesis hash
+         * using TAO::API::Names. This method returns 0 to indicate that
+         * resolution is needed.
+         *
+         * Usage pattern:
+         * 1. Check if hashGenesis is set directly
+         * 2. If not, check strUserName and resolve via Names API
+         * 3. Use Names::ResolveAddress(strUserName + ":default") to get genesis
+         */
         if(!strUserName.empty())
         {
-            /* TODO: Implement TAO::API::Names::ResolveAddress(strUserName + ":default")
-             * For now, log that username-based addressing requires resolution. */
-            debug::log(2, FUNCTION, "Username-based payout requires name resolution: ", strUserName);
+            debug::log(3, FUNCTION, "Username '", strUserName,
+                       "' set - caller should resolve via Names API");
         }
 
         return uint256_t(0);

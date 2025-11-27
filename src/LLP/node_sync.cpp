@@ -309,21 +309,30 @@ namespace LLP
     /** BroadcastSession **/
     bool NodeSyncManager::BroadcastSession(const SessionMetadata& meta)
     {
-        /* TODO: Implement P2P broadcast when network integration is complete.
-         * This will use the existing Tritium P2P network to broadcast
-         * session metadata to peer nodes for redundancy.
+        /* PLACEHOLDER: P2P broadcast is not yet implemented.
+         * This function currently only stores metadata locally.
+         * Full P2P integration will use the existing Tritium network
+         * to broadcast session metadata to peer nodes for redundancy.
+         *
+         * For now, session data is stored locally and can be queried
+         * by the session recovery manager for local failover support.
          */
-        debug::log(3, FUNCTION, "Session broadcast queued for keyID=", meta.hashKeyID.SubString());
-        return true;
+        debug::log(2, FUNCTION, "Session broadcast (local only) for keyID=", meta.hashKeyID.SubString(),
+                   " - P2P sync not yet implemented");
+        return RegisterSession(meta);
     }
 
 
     /** BroadcastBlock **/
     bool NodeSyncManager::BroadcastBlock(const BlockMetadata& meta)
     {
-        /* TODO: Implement P2P broadcast when network integration is complete. */
-        debug::log(3, FUNCTION, "Block broadcast queued for merkle=", meta.hashMerkleRoot.SubString());
-        return true;
+        /* PLACEHOLDER: P2P broadcast is not yet implemented.
+         * Block metadata is stored locally for coordination.
+         * Full P2P integration will broadcast to peer nodes.
+         */
+        debug::log(2, FUNCTION, "Block broadcast (local only) for merkle=", meta.hashMerkleRoot.SubString(),
+                   " - P2P sync not yet implemented");
+        return RegisterBlock(meta);
     }
 
 
