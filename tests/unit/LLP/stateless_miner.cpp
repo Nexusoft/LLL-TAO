@@ -615,6 +615,148 @@ TEST_CASE("Packet Debug Functions", "[stateless_miner]")
 }
 
 
+TEST_CASE("Packet HasDataPayload and Authentication Packet Serialization", "[packet][falcon_auth]")
+{
+    SECTION("Traditional data packets (HEADER < 128) have data payload")
+    {
+        Packet packet(SET_CHANNEL);  // SET_CHANNEL = 3 < 128
+        REQUIRE(packet.HasDataPayload() == true);
+        
+        Packet blockData(0);  // BLOCK_DATA = 0 < 128
+        REQUIRE(blockData.HasDataPayload() == true);
+        
+        Packet submitBlock(1);  // SUBMIT_BLOCK = 1 < 128
+        REQUIRE(submitBlock.HasDataPayload() == true);
+    }
+    
+    SECTION("Traditional request packets (128-206, 213-254) have no data payload")
+    {
+        Packet getBlock(129);  // GET_BLOCK = 129
+        REQUIRE(getBlock.HasDataPayload() == false);
+        
+        Packet blockAccepted(200);  // BLOCK_ACCEPTED = 200
+        REQUIRE(blockAccepted.HasDataPayload() == false);
+        
+        Packet ping(253);  // PING = 253
+        REQUIRE(ping.HasDataPayload() == false);
+    }
+    
+    SECTION("Falcon authentication packets (207-212) have data payload")
+    {
+        Packet authInit(MINER_AUTH_INIT);  // 207
+        REQUIRE(authInit.HasDataPayload() == true);
+        
+        Packet authChallenge(MINER_AUTH_CHALLENGE);  // 208
+        REQUIRE(authChallenge.HasDataPayload() == true);
+        
+        Packet authResponse(MINER_AUTH_RESPONSE);  // 209
+        REQUIRE(authResponse.HasDataPayload() == true);
+        
+        Packet authResult(MINER_AUTH_RESULT);  // 210
+        REQUIRE(authResult.HasDataPayload() == true);
+        
+        Packet sessionStart(SESSION_START);  // 211
+        REQUIRE(sessionStart.HasDataPayload() == true);
+        
+        Packet sessionKeepalive(212);  // SESSION_KEEPALIVE = 212
+        REQUIRE(sessionKeepalive.HasDataPayload() == true);
+    }
+    
+    SECTION("MINER_AUTH_CHALLENGE GetBytes includes length and data")
+    {
+        /* Create a MINER_AUTH_CHALLENGE packet (207) with nonce data */
+        Packet packet(MINER_AUTH_CHALLENGE);
+        
+        /* Add a 32-byte nonce as data */
+        std::vector<uint8_t> nonce(32, 0x42);
+        packet.DATA = nonce;
+        packet.LENGTH = 32;
+        
+        /* Serialize the packet */
+        std::vector<uint8_t> bytes = packet.GetBytes();
+        
+        /* Should have: header (1) + length (4) + data (32) = 37 bytes */
+        REQUIRE(bytes.size() == 37);
+        REQUIRE(bytes[0] == MINER_AUTH_CHALLENGE);  /* Header = 208 */
+        
+        /* Verify length bytes (big-endian) */
+        uint32_t serializedLength = (bytes[1] << 24) | (bytes[2] << 16) | 
+                                    (bytes[3] << 8) | bytes[4];
+        REQUIRE(serializedLength == 32);
+        
+        /* Verify data starts at offset 5 */
+        for(size_t i = 0; i < 32; ++i)
+        {
+            REQUIRE(bytes[5 + i] == 0x42);
+        }
+    }
+    
+    SECTION("MINER_AUTH_RESPONSE GetBytes includes signature data")
+    {
+        /* Create a MINER_AUTH_RESPONSE packet (209) with signature data */
+        Packet packet(MINER_AUTH_RESPONSE);
+        
+        /* Add a simulated signature (signature length + signature) */
+        uint16_t sigLen = 100;
+        packet.DATA.push_back(static_cast<uint8_t>(sigLen >> 8));
+        packet.DATA.push_back(static_cast<uint8_t>(sigLen & 0xFF));
+        for(uint16_t i = 0; i < sigLen; ++i)
+            packet.DATA.push_back(static_cast<uint8_t>(i));
+        
+        packet.LENGTH = static_cast<uint32_t>(packet.DATA.size());
+        
+        /* Serialize the packet */
+        std::vector<uint8_t> bytes = packet.GetBytes();
+        
+        /* Should have: header (1) + length (4) + data (102) = 107 bytes */
+        REQUIRE(bytes.size() == 107);
+        REQUIRE(bytes[0] == MINER_AUTH_RESPONSE);  /* Header = 209 */
+        
+        /* Verify length field */
+        uint32_t serializedLength = (bytes[1] << 24) | (bytes[2] << 16) | 
+                                    (bytes[3] << 8) | bytes[4];
+        REQUIRE(serializedLength == 102);
+    }
+    
+    SECTION("Traditional request packets serialize without data")
+    {
+        /* Create a GET_BLOCK packet (129) - should not serialize data */
+        Packet packet(129);  // GET_BLOCK
+        packet.DATA.push_back(0xFF);  // Add some data (shouldn't be serialized)
+        packet.LENGTH = 1;
+        
+        /* Serialize the packet */
+        std::vector<uint8_t> bytes = packet.GetBytes();
+        
+        /* Should have only header (1 byte) since GET_BLOCK is a request packet */
+        REQUIRE(bytes.size() == 1);
+        REQUIRE(bytes[0] == 129);
+    }
+    
+    SECTION("Header() function correctly identifies complete auth packets")
+    {
+        /* Auth packet with data - should require LENGTH > 0 */
+        Packet authPacket(MINER_AUTH_CHALLENGE);
+        authPacket.LENGTH = 0;
+        REQUIRE(authPacket.Header() == false);  /* Not complete without length */
+        
+        authPacket.LENGTH = 32;
+        REQUIRE(authPacket.Header() == true);   /* Complete with length */
+    }
+    
+    SECTION("Header() function correctly identifies complete request packets")
+    {
+        /* Request packet - should require LENGTH == 0 */
+        Packet reqPacket(129);  // GET_BLOCK
+        reqPacket.LENGTH = 0;
+        REQUIRE(reqPacket.Header() == true);   /* Complete with no length */
+        
+        reqPacket.LENGTH = 10;
+        REQUIRE(reqPacket.Header() == false);  /* Not complete with unexpected length */
+    }
+}
+
+
 TEST_CASE("DisposableFalcon SignedWorkSubmission Tests", "[disposable_falcon]")
 {
     SECTION("Default constructor creates empty submission")
