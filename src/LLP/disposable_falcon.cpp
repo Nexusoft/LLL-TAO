@@ -31,6 +31,9 @@ namespace LLP
 {
 namespace DisposableFalcon
 {
+    /* Constants for timestamp validation */
+    static const uint64_t TIMESTAMP_FUTURE_TOLERANCE_SEC = 60;   // Allow up to 60 seconds in the future
+    static const uint64_t TIMESTAMP_PAST_TOLERANCE_SEC = 3600;   // Allow up to 1 hour in the past
 
     /*******************************************************************************
      * SignedWorkSubmission Implementation
@@ -70,13 +73,13 @@ namespace DisposableFalcon
         vMessage.insert(vMessage.end(), vMerkle.begin(), vMerkle.end());
 
         /* Add nonce (8 bytes, little-endian) */
-        for(int i = 0; i < 8; ++i)
+        for(size_t i = 0; i < 8; ++i)
         {
             vMessage.push_back(static_cast<uint8_t>((nNonce >> (i * 8)) & 0xFF));
         }
 
         /* Add timestamp (8 bytes, little-endian) for replay protection */
-        for(int i = 0; i < 8; ++i)
+        for(size_t i = 0; i < 8; ++i)
         {
             vMessage.push_back(static_cast<uint8_t>((nTimestamp >> (i * 8)) & 0xFF));
         }
@@ -95,13 +98,13 @@ namespace DisposableFalcon
         vData.insert(vData.end(), vMerkle.begin(), vMerkle.end());
 
         /* Add nonce (8 bytes, little-endian) */
-        for(int i = 0; i < 8; ++i)
+        for(size_t i = 0; i < 8; ++i)
         {
             vData.push_back(static_cast<uint8_t>((nNonce >> (i * 8)) & 0xFF));
         }
 
         /* Add timestamp (8 bytes, little-endian) */
-        for(int i = 0; i < 8; ++i)
+        for(size_t i = 0; i < 8; ++i)
         {
             vData.push_back(static_cast<uint8_t>((nTimestamp >> (i * 8)) & 0xFF));
         }
@@ -139,7 +142,7 @@ namespace DisposableFalcon
         /* Parse nonce (8 bytes, little-endian) */
         DebugLogDeserialize("nonce", nOffset, 8, vData.size());
         nNonce = 0;
-        for(int i = 0; i < 8; ++i)
+        for(size_t i = 0; i < 8; ++i)
         {
             nNonce |= static_cast<uint64_t>(vData[nOffset + i]) << (i * 8);
         }
@@ -148,7 +151,7 @@ namespace DisposableFalcon
         /* Parse timestamp (8 bytes, little-endian) */
         DebugLogDeserialize("timestamp", nOffset, 8, vData.size());
         nTimestamp = 0;
-        for(int i = 0; i < 8; ++i)
+        for(size_t i = 0; i < 8; ++i)
         {
             nTimestamp |= static_cast<uint64_t>(vData[nOffset + i]) << (i * 8);
         }
@@ -183,9 +186,10 @@ namespace DisposableFalcon
         if(hashMerkleRoot == 0)
             return false;
 
-        /* Timestamp must be reasonable (within last hour and not in future) */
+        /* Timestamp must be reasonable (within tolerance windows) */
         uint64_t nNow = runtime::unifiedtimestamp();
-        if(nTimestamp > nNow + 60 || nTimestamp < nNow - 3600)
+        if(nTimestamp > nNow + TIMESTAMP_FUTURE_TOLERANCE_SEC ||
+           nTimestamp < nNow - TIMESTAMP_PAST_TOLERANCE_SEC)
             return false;
 
         return true;

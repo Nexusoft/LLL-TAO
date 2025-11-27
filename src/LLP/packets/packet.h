@@ -262,7 +262,7 @@ namespace LLP
          *  @return Human-readable string representation of packet
          *
          **/
-        std::string DebugString(uint32_t nMaxDataBytes = 64) const
+        std::string DebugString(size_t nMaxDataBytes = 64) const
         {
             std::ostringstream oss;
             oss << "Packet{header=0x" << std::hex << std::setw(2) << std::setfill('0')
@@ -273,8 +273,8 @@ namespace LLP
             if(!DATA.empty() && nMaxDataBytes > 0)
             {
                 oss << ", data_preview=";
-                uint32_t nShow = std::min(nMaxDataBytes, static_cast<uint32_t>(DATA.size()));
-                for(uint32_t i = 0; i < nShow; ++i)
+                size_t nShow = std::min(nMaxDataBytes, DATA.size());
+                for(size_t i = 0; i < nShow; ++i)
                 {
                     oss << std::hex << std::setw(2) << std::setfill('0')
                         << static_cast<uint32_t>(DATA[i]);
