@@ -34,6 +34,12 @@ namespace LLP
      *  - Thread-safe concurrent hash map for parallel miner access
      *  - Support for multiple Falcon sessions with secure isolation
      *  - Session indexing by both address and keyID for efficient lookups
+     *  - Atomic counters for lock-free statistics
+     *
+     *  Concurrency Refinements:
+     *  - Atomic session counter for real-time monitoring
+     *  - Lock-free read operations where possible
+     *  - Fine-grained updates without global locks
      *
      **/
     class StatelessMinerManager
@@ -113,6 +119,18 @@ namespace LLP
          **/
         std::optional<MiningContext> GetMinerContextBySessionID(uint32_t nSessionId) const;
 
+        /** GetMinerContextByGenesis
+         *
+         *  Retrieve context by genesis hash (payout address).
+         *  Useful for GenesisHash reward mapping lookups.
+         *
+         *  @param[in] hashGenesis Tritium genesis hash
+         *
+         *  @return Context if found, nullopt otherwise
+         *
+         **/
+        std::optional<MiningContext> GetMinerContextByGenesis(const uint256_t& hashGenesis) const;
+
         /** ListMiners
          *
          *  List all active miners.
@@ -121,6 +139,18 @@ namespace LLP
          *
          **/
         std::vector<MiningContext> ListMiners() const;
+
+        /** ListMinersByGenesis
+         *
+         *  List all miners mining for a specific genesis hash.
+         *  Supports GenesisHash reward mapping queries.
+         *
+         *  @param[in] hashGenesis Tritium genesis hash
+         *
+         *  @return Vector of matching miner contexts
+         *
+         **/
+        std::vector<MiningContext> ListMinersByGenesis(const uint256_t& hashGenesis) const;
 
         /** GetMinerStatus
          *
@@ -145,6 +175,7 @@ namespace LLP
         /** GetMinerCount
          *
          *  Get the number of active miners.
+         *  Uses atomic counter for lock-free access.
          *
          *  @return Number of miners
          *
@@ -154,11 +185,40 @@ namespace LLP
         /** GetAuthenticatedCount
          *
          *  Get the number of authenticated miners.
+         *  Uses atomic counter for lock-free access.
          *
          *  @return Number of authenticated miners
          *
          **/
         size_t GetAuthenticatedCount() const;
+
+        /** GetActiveSessionCount
+         *
+         *  Get the number of active sessions (started and not expired).
+         *
+         *  @return Number of active sessions
+         *
+         **/
+        size_t GetActiveSessionCount() const;
+
+        /** GetTotalKeepalives
+         *
+         *  Get total number of keepalives processed across all sessions.
+         *  Uses atomic counter for lock-free access.
+         *
+         *  @return Total keepalive count
+         *
+         **/
+        uint64_t GetTotalKeepalives() const;
+
+        /** GetPeakSessionCount
+         *
+         *  Get the peak concurrent session count (high water mark).
+         *
+         *  @return Peak session count
+         *
+         **/
+        size_t GetPeakSessionCount() const;
 
         /** CleanupInactive
          *
@@ -170,6 +230,15 @@ namespace LLP
          *
          **/
         uint32_t CleanupInactive(uint64_t nTimeoutSec = 300);
+
+        /** CleanupExpiredSessions
+         *
+         *  Remove miners with expired sessions based on their session timeout.
+         *
+         *  @return Number of miners removed
+         *
+         **/
+        uint32_t CleanupExpiredSessions();
 
     private:
         /** Private constructor for singleton **/
@@ -183,6 +252,21 @@ namespace LLP
 
         /** Index by session ID for efficient lookups **/
         util::ConcurrentHashMap<uint32_t, std::string> mapSessionToAddress;
+
+        /** Index by genesis hash for GenesisHash reward mapping **/
+        util::ConcurrentHashMap<uint256_t, std::string> mapGenesisToAddress;
+
+        /** Atomic counter for total miners (lock-free stats) **/
+        mutable std::atomic<size_t> nTotalMiners{0};
+
+        /** Atomic counter for authenticated miners **/
+        mutable std::atomic<size_t> nAuthenticatedMiners{0};
+
+        /** Atomic counter for total keepalives processed **/
+        mutable std::atomic<uint64_t> nTotalKeepalives{0};
+
+        /** Atomic peak session count (high water mark) **/
+        mutable std::atomic<size_t> nPeakSessions{0};
     };
 
 } // namespace LLP

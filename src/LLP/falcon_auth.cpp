@@ -21,9 +21,11 @@ ________________________________________________________________________________
 #include <Util/include/json.h>
 #include <Util/include/mutex.h>
 #include <Util/include/hex.h>
+#include <Util/include/debug.h>
 
 #include <map>
 #include <mutex>
+#include <atomic>
 
 namespace LLP
 {
@@ -62,8 +64,37 @@ namespace FalconAuth
         /* Mutex for thread safety */
         mutable std::mutex MUTEX;
 
+        /* Challenge configuration */
+        ChallengeConfig config;
+
+        /* Statistics for session management */
+        std::atomic<uint64_t> nChallengesGenerated{0};
+        std::atomic<uint64_t> nChallengesVerified{0};
+        std::atomic<uint64_t> nChallengesFailed{0};
+
     public:
-        FalconAuthImpl() = default;
+        FalconAuthImpl()
+        : mapKeys()
+        , mapGenesisBindings()
+        , MUTEX()
+        , config()
+        , nChallengesGenerated(0)
+        , nChallengesVerified(0)
+        , nChallengesFailed(0)
+        {
+        }
+
+        FalconAuthImpl(const ChallengeConfig& config_)
+        : mapKeys()
+        , mapGenesisBindings()
+        , MUTEX()
+        , config(config_)
+        , nChallengesGenerated(0)
+        , nChallengesVerified(0)
+        , nChallengesFailed(0)
+        {
+        }
+
         ~FalconAuthImpl() override = default;
 
         KeyMetadata GenerateKey(Profile profile, const std::string& label) override
@@ -204,6 +235,110 @@ namespace FalconAuth
 
             return it->second;
         }
+
+        std::vector<uint8_t> GenerateChallenge(size_t nActiveSessions) override
+        {
+            /* Calculate challenge size based on network load */
+            size_t nChallengeSize = GetChallengeSize(nActiveSessions);
+
+            /* Generate random challenge bytes */
+            std::vector<uint8_t> vChallenge;
+            vChallenge.reserve(nChallengeSize);
+
+            /* Use LLC random generator for cryptographic randomness */
+            /* Generate challenge in 32-byte chunks using GetRand256 */
+            while(vChallenge.size() < nChallengeSize)
+            {
+                uint256_t nRandom = LLC::GetRand256();
+                std::vector<uint8_t> vRandom = nRandom.GetBytes();
+
+                size_t nRemaining = nChallengeSize - vChallenge.size();
+                size_t nCopy = std::min(nRemaining, vRandom.size());
+                vChallenge.insert(vChallenge.end(), vRandom.begin(), vRandom.begin() + nCopy);
+            }
+
+            /* Increment stats */
+            ++nChallengesGenerated;
+
+            debug::log(3, FUNCTION, "Generated challenge of size ", nChallengeSize,
+                       " for ", nActiveSessions, " active sessions");
+
+            return vChallenge;
+        }
+
+        VerifyResult VerifyChallenge(
+            const std::vector<uint8_t>& pubkey,
+            const std::vector<uint8_t>& challenge,
+            const std::vector<uint8_t>& signature,
+            uint64_t nTimestamp
+        ) override
+        {
+            /* Check timestamp for replay protection */
+            uint64_t nNow = runtime::unifiedtimestamp();
+            if(nTimestamp > nNow + 60)  // 60 seconds future tolerance
+            {
+                ++nChallengesFailed;
+                return VerifyResult::Failure("Challenge timestamp is in the future");
+            }
+
+            if(nTimestamp < nNow - config.nChallengeTimeout)
+            {
+                ++nChallengesFailed;
+                return VerifyResult::Failure("Challenge has expired");
+            }
+
+            /* Verify the signature over the challenge */
+            VerifyResult result = Verify(pubkey, challenge, signature);
+
+            if(result.fValid)
+                ++nChallengesVerified;
+            else
+                ++nChallengesFailed;
+
+            return result;
+        }
+
+        size_t GetChallengeSize(size_t nActiveSessions) const override
+        {
+            /* Scale challenge size based on network load */
+            /* Below threshold: use minimum size for efficiency */
+            /* Above threshold: scale linearly up to maximum */
+
+            if(nActiveSessions <= config.nScaleThreshold)
+                return config.nMinChallengeSize;
+
+            /* Calculate scaling factor */
+            /* Double the sessions beyond threshold = double the challenge increase */
+            size_t nExcess = nActiveSessions - config.nScaleThreshold;
+            size_t nRange = config.nMaxChallengeSize - config.nMinChallengeSize;
+
+            /* Scale: every 100 additional sessions adds 1/4 of the range */
+            size_t nIncrease = (nExcess * nRange) / (4 * config.nScaleThreshold);
+            if(nIncrease > nRange)
+                nIncrease = nRange;
+
+            return config.nMinChallengeSize + nIncrease;
+        }
+
+        std::string GetSessionStats() const override
+        {
+            encoding::json stats;
+            stats["challenges_generated"] = nChallengesGenerated.load();
+            stats["challenges_verified"] = nChallengesVerified.load();
+            stats["challenges_failed"] = nChallengesFailed.load();
+            stats["min_challenge_size"] = config.nMinChallengeSize;
+            stats["max_challenge_size"] = config.nMaxChallengeSize;
+            stats["scale_threshold"] = config.nScaleThreshold;
+            stats["challenge_timeout"] = config.nChallengeTimeout;
+
+            {
+                LOCK(MUTEX);
+                stats["keys_stored"] = mapKeys.size();
+                stats["genesis_bindings"] = mapGenesisBindings.size();
+            }
+
+            return stats.dump(4);
+        }
     };
 
 
@@ -224,6 +359,14 @@ namespace FalconAuth
         LOCK(g_MutexInit);
         if(!g_pFalconAuth)
             g_pFalconAuth = std::make_unique<FalconAuthImpl>();
+    }
+
+    /* Initialize with config */
+    void InitializeWithConfig(const ChallengeConfig& config)
+    {
+        LOCK(g_MutexInit);
+        if(!g_pFalconAuth)
+            g_pFalconAuth = std::make_unique<FalconAuthImpl>(config);
     }
 
     /* Shutdown */

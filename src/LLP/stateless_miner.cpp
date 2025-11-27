@@ -28,6 +28,9 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    /* Default session timeout in seconds */
+    static const uint64_t DEFAULT_SESSION_TIMEOUT = 300;
+
     /* Default constructor */
     MiningContext::MiningContext()
     : nChannel(0)
@@ -42,6 +45,9 @@ namespace LLP
     , strUserName("")
     , vAuthNonce()
     , vMinerPubKey()
+    , nSessionStart(0)
+    , nSessionTimeout(DEFAULT_SESSION_TIMEOUT)
+    , nKeepaliveCount(0)
     {
     }
 
@@ -69,6 +75,9 @@ namespace LLP
     , strUserName("")
     , vAuthNonce()
     , vMinerPubKey()
+    , nSessionStart(0)
+    , nSessionTimeout(DEFAULT_SESSION_TIMEOUT)
+    , nKeepaliveCount(0)
     {
     }
 
@@ -143,6 +152,27 @@ namespace LLP
         return c;
     }
 
+    MiningContext MiningContext::WithSessionStart(uint64_t nSessionStart_) const
+    {
+        MiningContext c = *this;
+        c.nSessionStart = nSessionStart_;
+        return c;
+    }
+
+    MiningContext MiningContext::WithSessionTimeout(uint64_t nSessionTimeout_) const
+    {
+        MiningContext c = *this;
+        c.nSessionTimeout = nSessionTimeout_;
+        return c;
+    }
+
+    MiningContext MiningContext::WithKeepaliveCount(uint32_t nKeepaliveCount_) const
+    {
+        MiningContext c = *this;
+        c.nKeepaliveCount = nKeepaliveCount_;
+        return c;
+    }
+
     uint256_t MiningContext::GetPayoutAddress() const
     {
         /* Return explicit genesis if set */
@@ -171,6 +201,34 @@ namespace LLP
     bool MiningContext::HasValidPayout() const
     {
         return hashGenesis != 0 || !strUserName.empty();
+    }
+
+    bool MiningContext::IsSessionExpired(uint64_t nNow) const
+    {
+        /* Get current time if not provided */
+        if(nNow == 0)
+            nNow = runtime::unifiedtimestamp();
+
+        /* Session never started means it's "expired" */
+        if(nSessionStart == 0)
+            return true;
+
+        /* Check if time since last activity exceeds timeout */
+        return (nNow - nTimestamp) > nSessionTimeout;
+    }
+
+    uint64_t MiningContext::GetSessionDuration(uint64_t nNow) const
+    {
+        /* Get current time if not provided */
+        if(nNow == 0)
+            nNow = runtime::unifiedtimestamp();
+
+        /* No session started */
+        if(nSessionStart == 0)
+            return 0;
+
+        /* Return time since session start */
+        return nNow - nSessionStart;
     }
 
 
@@ -578,15 +636,61 @@ namespace LLP
         if(!context.fAuthenticated)
             return ProcessResult::Error(context, "Not authenticated");
 
-        /* Session start is now just a session negotiation step */
-        /* Parse any session parameters from packet.DATA if needed */
+        const std::vector<uint8_t>& vData = packet.DATA;
+        uint64_t nNow = runtime::unifiedtimestamp();
 
-        /* For now, just acknowledge and update timestamp */
-        MiningContext newContext = context.WithTimestamp(runtime::unifiedtimestamp());
+        /* Parse optional session parameters from packet.DATA */
+        /* Format: [timeout (4 bytes, optional)] */
+        uint64_t nRequestedTimeout = DEFAULT_SESSION_TIMEOUT;
+        if(vData.size() >= 4)
+        {
+            /* Parse timeout as 4-byte little-endian */
+            nRequestedTimeout = vData[0] | (vData[1] << 8) |
+                               (vData[2] << 16) | (vData[3] << 24);
 
-        /* Build acknowledgment response */
+            /* Clamp timeout to reasonable range (60s to 3600s) */
+            if(nRequestedTimeout < 60)
+                nRequestedTimeout = 60;
+            else if(nRequestedTimeout > 3600)
+                nRequestedTimeout = 3600;
+        }
+
+        /* Initialize session timing */
+        MiningContext newContext = context
+            .WithTimestamp(nNow)
+            .WithSessionStart(nNow)
+            .WithSessionTimeout(nRequestedTimeout)
+            .WithKeepaliveCount(0);
+
+        debug::log(0, FUNCTION, "SESSION_START established for sessionId=", context.nSessionId,
+                   " timeout=", nRequestedTimeout, "s from ", context.strAddress);
+
+        /* Build acknowledgment response with session parameters */
+        /* Response format: [success (1)][session_id (4)][timeout (4)][genesis (32)] */
         Packet response(SESSION_START);
-        response.DATA.push_back(1); // Success
+        response.DATA.push_back(0x01); // Success
+
+        /* Add session ID (4 bytes, little-endian) */
+        uint32_t nSessionId = newContext.nSessionId;
+        response.DATA.push_back(static_cast<uint8_t>(nSessionId & 0xFF));
+        response.DATA.push_back(static_cast<uint8_t>((nSessionId >> 8) & 0xFF));
+        response.DATA.push_back(static_cast<uint8_t>((nSessionId >> 16) & 0xFF));
+        response.DATA.push_back(static_cast<uint8_t>((nSessionId >> 24) & 0xFF));
+
+        /* Add timeout (4 bytes, little-endian) */
+        response.DATA.push_back(static_cast<uint8_t>(nRequestedTimeout & 0xFF));
+        response.DATA.push_back(static_cast<uint8_t>((nRequestedTimeout >> 8) & 0xFF));
+        response.DATA.push_back(static_cast<uint8_t>((nRequestedTimeout >> 16) & 0xFF));
+        response.DATA.push_back(static_cast<uint8_t>((nRequestedTimeout >> 24) & 0xFF));
+
+        /* Add genesis hash if bound (32 bytes) for GenesisHash reward mapping */
+        if(newContext.hashGenesis != 0)
+        {
+            std::vector<uint8_t> vGenesis = newContext.hashGenesis.GetBytes();
+            response.DATA.insert(response.DATA.end(), vGenesis.begin(), vGenesis.end());
+        }
+
+        response.LENGTH = static_cast<uint32_t>(response.DATA.size());
 
         return ProcessResult::Success(newContext, response);
     }
@@ -647,13 +751,52 @@ namespace LLP
         if(!context.fAuthenticated)
             return ProcessResult::Error(context, "Not authenticated");
 
-        debug::log(3, FUNCTION, "SESSION_KEEPALIVE from sessionId=", context.nSessionId);
+        /* Check if session has been started */
+        if(context.nSessionStart == 0)
+            return ProcessResult::Error(context, "Session not started");
 
-        /* Update timestamp to keep session alive */
-        MiningContext newContext = context.WithTimestamp(runtime::unifiedtimestamp());
+        uint64_t nNow = runtime::unifiedtimestamp();
 
-        /* No response packet needed for keepalive */
-        return ProcessResult::Success(newContext, Packet());
+        /* Check if session has expired (even for keepalive) */
+        if(context.IsSessionExpired(nNow))
+        {
+            debug::log(0, FUNCTION, "SESSION_KEEPALIVE rejected - session expired for sessionId=",
+                       context.nSessionId, " last_activity=", context.nTimestamp);
+            return ProcessResult::Error(context, "Session expired");
+        }
+
+        /* Update timestamp and increment keepalive count */
+        uint32_t nNewKeepaliveCount = context.nKeepaliveCount + 1;
+        MiningContext newContext = context
+            .WithTimestamp(nNow)
+            .WithKeepaliveCount(nNewKeepaliveCount);
+
+        /* Log at different verbosity levels based on keepalive frequency */
+        uint32_t nLogLevel = (nNewKeepaliveCount % 10 == 0) ? 2 : 3;
+        debug::log(nLogLevel, FUNCTION, "SESSION_KEEPALIVE from sessionId=", context.nSessionId,
+                   " keepalive_count=", nNewKeepaliveCount,
+                   " session_duration=", newContext.GetSessionDuration(nNow), "s");
+
+        /* Build keepalive response with session status */
+        /* Response format: [status (1)][remaining_timeout (4)] */
+        Packet response(SESSION_KEEPALIVE);
+        response.DATA.push_back(0x01); // Success/active
+
+        /* Calculate remaining time before timeout */
+        uint64_t nElapsed = nNow - context.nTimestamp;
+        uint64_t nRemaining = (nElapsed < context.nSessionTimeout)
+                            ? (context.nSessionTimeout - nElapsed)
+                            : 0;
+
+        /* Add remaining timeout (4 bytes, little-endian) */
+        response.DATA.push_back(static_cast<uint8_t>(nRemaining & 0xFF));
+        response.DATA.push_back(static_cast<uint8_t>((nRemaining >> 8) & 0xFF));
+        response.DATA.push_back(static_cast<uint8_t>((nRemaining >> 16) & 0xFF));
+        response.DATA.push_back(static_cast<uint8_t>((nRemaining >> 24) & 0xFF));
+
+        response.LENGTH = static_cast<uint32_t>(response.DATA.size());
+
+        return ProcessResult::Success(newContext, response);
     }
 
 } // namespace LLP
