@@ -359,4 +359,114 @@ namespace LLP
         return miners.dump(4);
     }
 
+
+    /* Notify miners of new round */
+    uint32_t StatelessMinerManager::NotifyNewRound(uint32_t nNewHeight)
+    {
+        /* Update tracked height */
+        uint32_t nOldHeight = nCurrentHeight.exchange(nNewHeight);
+
+        /* Only process if height actually changed */
+        if(nOldHeight == nNewHeight)
+            return 0;
+
+        /* Get all tracked miners and update their contexts with new height */
+        uint32_t nNotified = 0;
+        auto pairs = mapMiners.GetAllPairs();
+
+        for(const auto& pair : pairs)
+        {
+            /* Update context with new height */
+            MiningContext newCtx = pair.second.WithHeight(nNewHeight);
+            mapMiners.InsertOrUpdate(pair.first, newCtx);
+            ++nNotified;
+        }
+
+        if(nNotified > 0)
+        {
+            debug::log(2, FUNCTION, "Notified ", nNotified, " miners of new round at height ", nNewHeight);
+        }
+
+        return nNotified;
+    }
+
+
+    /* Get current tracked block height */
+    uint32_t StatelessMinerManager::GetCurrentHeight() const
+    {
+        return nCurrentHeight.load();
+    }
+
+
+    /* Set current tracked block height */
+    void StatelessMinerManager::SetCurrentHeight(uint32_t nHeight)
+    {
+        nCurrentHeight.store(nHeight);
+    }
+
+
+    /* Check if new round has started */
+    bool StatelessMinerManager::IsNewRound(uint32_t nLastHeight) const
+    {
+        return nCurrentHeight.load() != nLastHeight;
+    }
+
+
+    /* Get miners for specific channel */
+    std::vector<MiningContext> StatelessMinerManager::GetMinersForChannel(uint32_t nChannel) const
+    {
+        std::vector<MiningContext> vResult;
+
+        auto vMiners = mapMiners.GetAll();
+        for(const auto& ctx : vMiners)
+        {
+            if(ctx.nChannel == nChannel)
+                vResult.push_back(ctx);
+        }
+
+        return vResult;
+    }
+
+
+    /* Get total templates served (lock-free via atomic) */
+    uint64_t StatelessMinerManager::GetTotalTemplatesServed() const
+    {
+        return nTotalTemplatesServed.load();
+    }
+
+
+    /* Increment templates served counter */
+    void StatelessMinerManager::IncrementTemplatesServed()
+    {
+        ++nTotalTemplatesServed;
+    }
+
+
+    /* Get total blocks submitted (lock-free via atomic) */
+    uint64_t StatelessMinerManager::GetTotalBlocksSubmitted() const
+    {
+        return nTotalBlocksSubmitted.load();
+    }
+
+
+    /* Increment blocks submitted counter */
+    void StatelessMinerManager::IncrementBlocksSubmitted()
+    {
+        ++nTotalBlocksSubmitted;
+    }
+
+
+    /* Get total blocks accepted (lock-free via atomic) */
+    uint64_t StatelessMinerManager::GetTotalBlocksAccepted() const
+    {
+        return nTotalBlocksAccepted.load();
+    }
+
+
+    /* Increment blocks accepted counter */
+    void StatelessMinerManager::IncrementBlocksAccepted()
+    {
+        ++nTotalBlocksAccepted;
+    }
+
 } // namespace LLP

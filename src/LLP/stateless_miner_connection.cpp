@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <LLP/types/stateless_miner_connection.h>
 #include <LLP/include/stateless_miner.h>
+#include <LLP/include/stateless_manager.h>
 #include <LLP/templates/events.h>
 
 #include <TAO/Ledger/include/create.h>
@@ -122,7 +123,7 @@ namespace LLP
                 /* construct a new context with the address field set */
                 context = MiningContext(
                     0,  // nChannel - not set yet
-                    0,  // nHeight
+                    TAO::Ledger::ChainState::nBestHeight.load(),  // nHeight - current chain height
                     runtime::unifiedtimestamp(),
                     strAddr,  // strAddress - for Falcon auth message
                     0,  // nProtocolVersion
@@ -131,6 +132,9 @@ namespace LLP
                     uint256_t(0),  // hashKeyID
                     uint256_t(0)   // hashGenesis
                 );
+
+                /* Register with StatelessMinerManager for tracking */
+                StatelessMinerManager::Get().UpdateMiner(strAddr, context);
 
                 return;
             }
@@ -163,6 +167,12 @@ namespace LLP
 
                 debug::log(0, FUNCTION, "MinerLLP: Disconnected from ", GetAddress().ToStringIP(),
                            " reason: ", strReason);
+
+                /* Remove from StatelessMinerManager tracking */
+                {
+                    LOCK(MUTEX);
+                    StatelessMinerManager::Get().RemoveMiner(context.strAddress);
+                }
 
                 return;
             }
@@ -240,8 +250,13 @@ namespace LLP
                 debug::log(2, FUNCTION, "MinerLLP: Served BLOCK_DATA height=", pBlock->nHeight,
                            " merkleRoot=", pBlock->hashMerkleRoot.SubString());
 
-                /* Update context timestamp */
-                context = context.WithTimestamp(runtime::unifiedtimestamp());
+                /* Update context timestamp and height */
+                context = context.WithTimestamp(runtime::unifiedtimestamp())
+                                 .WithHeight(pBlock->nHeight);
+
+                /* Update the manager with new context and track template served */
+                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
+                StatelessMinerManager::Get().IncrementTemplatesServed();
 
                 return true;
             }
@@ -329,6 +344,9 @@ namespace LLP
                     }
                 }
 
+                /* Track block submission in manager */
+                StatelessMinerManager::Get().IncrementBlocksSubmitted();
+
                 /* Make sure the block was created by this mining server. */
                 if(!find_block(hashMerkle))
                 {
@@ -356,6 +374,9 @@ namespace LLP
                     return true;
                 }
 
+                /* Block accepted - track in manager */
+                StatelessMinerManager::Get().IncrementBlocksAccepted();
+
                 /* Generate an Accepted response. */
                 debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK result=accepted merkle=", hashMerkle.SubString());
                 Packet response(BLOCK_ACCEPTED);
@@ -363,6 +384,9 @@ namespace LLP
 
                 /* Update context timestamp */
                 context = context.WithTimestamp(runtime::unifiedtimestamp());
+
+                /* Update manager with new context */
+                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
 
                 return true;
             }
@@ -374,6 +398,9 @@ namespace LLP
             if(result.fSuccess)
             {
                 context = result.context;
+
+                /* Update manager with new context after successful packet processing */
+                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
             }
 
             /* Send response if present */
