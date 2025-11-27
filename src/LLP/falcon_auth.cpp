@@ -308,12 +308,18 @@ namespace FalconAuth
                 return config.nMinChallengeSize;
 
             /* Calculate scaling factor */
-            /* Double the sessions beyond threshold = double the challenge increase */
+            /* Sessions beyond threshold trigger gradual increase in challenge size */
             size_t nExcess = nActiveSessions - config.nScaleThreshold;
             size_t nRange = config.nMaxChallengeSize - config.nMinChallengeSize;
 
-            /* Scale: every 100 additional sessions adds 1/4 of the range */
-            size_t nIncrease = (nExcess * nRange) / (4 * config.nScaleThreshold);
+            /* Scaling ratio: challenge size increases by 1/4 of the range for every
+             * nScaleThreshold additional sessions. This provides gradual scaling that:
+             * - Reaches 1/4 range increase at 2x threshold (200 sessions if threshold=100)
+             * - Reaches 1/2 range increase at 3x threshold (300 sessions)
+             * - Reaches full range at 5x threshold (500 sessions)
+             * This balances security (larger challenges) vs efficiency (smaller challenges). */
+            const size_t SCALE_DIVISOR = 4;  // Sessions needed to increase by 1/4 of range
+            size_t nIncrease = (nExcess * nRange) / (SCALE_DIVISOR * config.nScaleThreshold);
             if(nIncrease > nRange)
                 nIncrease = nRange;
 

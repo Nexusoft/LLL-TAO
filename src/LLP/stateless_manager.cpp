@@ -36,15 +36,17 @@ namespace LLP
         const MiningContext& context
     )
     {
-        /* Check if this is a new miner or update */
-        bool fNewMiner = !mapMiners.Contains(strAddress);
+        /* Get existing context once to avoid double lookups */
+        auto optExisting = mapMiners.Get(strAddress);
+        bool fNewMiner = !optExisting.has_value();
         bool fWasAuthenticated = false;
+        uint32_t nPrevKeepalives = 0;
 
         if(!fNewMiner)
         {
-            auto optExisting = mapMiners.Get(strAddress);
-            if(optExisting.has_value())
-                fWasAuthenticated = optExisting.value().fAuthenticated;
+            const MiningContext& existing = optExisting.value();
+            fWasAuthenticated = existing.fAuthenticated;
+            nPrevKeepalives = existing.nKeepaliveCount;
         }
 
         /* Update main miner map */
@@ -53,12 +55,12 @@ namespace LLP
         /* Update atomic counters for lock-free stats */
         if(fNewMiner)
         {
-            ++nTotalMiners;
+            /* Increment total miners and get new count atomically */
+            size_t nNewCount = ++nTotalMiners;
 
-            /* Update peak session count if needed */
-            size_t nCurrent = nTotalMiners.load();
+            /* Update peak session count if needed (use post-increment value) */
             size_t nPeak = nPeakSessions.load();
-            while(nCurrent > nPeak && !nPeakSessions.compare_exchange_weak(nPeak, nCurrent))
+            while(nNewCount > nPeak && !nPeakSessions.compare_exchange_weak(nPeak, nNewCount))
             {
                 /* CAS failed, nPeak is updated with current value, retry */
             }
@@ -70,19 +72,10 @@ namespace LLP
             ++nAuthenticatedMiners;
         }
 
-        /* Track keepalives via atomic counter */
-        if(context.nKeepaliveCount > 0)
+        /* Track keepalives via atomic counter using cached previous value */
+        if(context.nKeepaliveCount > nPrevKeepalives)
         {
-            /* Increment total keepalives by the difference */
-            auto optExisting = mapMiners.Get(strAddress);
-            if(optExisting.has_value())
-            {
-                uint32_t nPrevKeepalives = optExisting.value().nKeepaliveCount;
-                if(context.nKeepaliveCount > nPrevKeepalives)
-                {
-                    nTotalKeepalives += (context.nKeepaliveCount - nPrevKeepalives);
-                }
-            }
+            nTotalKeepalives += (context.nKeepaliveCount - nPrevKeepalives);
         }
 
         /* Update keyID index if authenticated */

@@ -28,7 +28,10 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    /* Default session timeout in seconds */
+    /* Default session timeout in seconds for mining sessions.
+     * This is the inactivity timeout - sessions expire if no keepalive
+     * is received within this window. Different from session_recovery.cpp
+     * which uses a longer 1-hour timeout for recovery purposes. */
     static const uint64_t DEFAULT_SESSION_TIMEOUT = 300;
 
     /* Default constructor */
@@ -213,7 +216,10 @@ namespace LLP
         if(nSessionStart == 0)
             return true;
 
-        /* Check if time since last activity exceeds timeout */
+        /* Check if time since last activity exceeds timeout.
+         * This is an activity-based timeout (like keepalive):
+         * - nTimestamp is updated on each keepalive/activity
+         * - Session expires if no activity within nSessionTimeout */
         return (nNow - nTimestamp) > nSessionTimeout;
     }
 
