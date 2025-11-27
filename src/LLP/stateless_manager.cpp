@@ -15,7 +15,8 @@ ________________________________________________________________________________
 
 #include <Util/include/json.h>
 #include <Util/include/string.h>
-#include <Util/include/mutex.h>
+#include <Util/include/runtime.h>
+#include <Util/include/debug.h>
 
 #include <optional>
 #include <sstream>
@@ -35,57 +36,140 @@ namespace LLP
         const MiningContext& context
     )
     {
-        LOCK(MUTEX);
-        mapMiners[strAddress] = context;
+        /* Update main miner map */
+        mapMiners.InsertOrUpdate(strAddress, context);
+
+        /* Update keyID index if authenticated */
+        if(context.fAuthenticated && context.hashKeyID != 0)
+        {
+            mapKeyToAddress.InsertOrUpdate(context.hashKeyID, strAddress);
+        }
+
+        /* Update session index if session ID is set */
+        if(context.nSessionId != 0)
+        {
+            mapSessionToAddress.InsertOrUpdate(context.nSessionId, strAddress);
+        }
     }
 
-    /* Remove a miner */
+    /* Remove a miner by address */
     bool StatelessMinerManager::RemoveMiner(const std::string& strAddress)
     {
-        LOCK(MUTEX);
-        auto it = mapMiners.find(strAddress);
-        if(it == mapMiners.end())
+        auto optContext = mapMiners.GetAndRemove(strAddress);
+        if(!optContext.has_value())
             return false;
 
-        mapMiners.erase(it);
+        const MiningContext& ctx = optContext.value();
+
+        /* Remove from indices */
+        if(ctx.hashKeyID != 0)
+            mapKeyToAddress.Erase(ctx.hashKeyID);
+
+        if(ctx.nSessionId != 0)
+            mapSessionToAddress.Erase(ctx.nSessionId);
+
         return true;
     }
 
-    /* Get miner context */
+    /* Remove a miner by key ID */
+    bool StatelessMinerManager::RemoveMinerByKeyID(const uint256_t& hashKeyID)
+    {
+        auto optAddress = mapKeyToAddress.GetAndRemove(hashKeyID);
+        if(!optAddress.has_value())
+            return false;
+
+        return RemoveMiner(optAddress.value());
+    }
+
+    /* Get miner context by address */
     std::optional<MiningContext> StatelessMinerManager::GetMinerContext(
         const std::string& strAddress
     ) const
     {
-        LOCK(MUTEX);
-        auto it = mapMiners.find(strAddress);
-        if(it == mapMiners.end())
+        return mapMiners.Get(strAddress);
+    }
+
+    /* Get miner context by key ID */
+    std::optional<MiningContext> StatelessMinerManager::GetMinerContextByKeyID(
+        const uint256_t& hashKeyID
+    ) const
+    {
+        auto optAddress = mapKeyToAddress.Get(hashKeyID);
+        if(!optAddress.has_value())
             return std::nullopt;
 
-        return it->second;
+        return mapMiners.Get(optAddress.value());
+    }
+
+    /* Get miner context by session ID */
+    std::optional<MiningContext> StatelessMinerManager::GetMinerContextBySessionID(
+        uint32_t nSessionId
+    ) const
+    {
+        auto optAddress = mapSessionToAddress.Get(nSessionId);
+        if(!optAddress.has_value())
+            return std::nullopt;
+
+        return mapMiners.Get(optAddress.value());
     }
 
     /* List all miners */
     std::vector<MiningContext> StatelessMinerManager::ListMiners() const
     {
-        LOCK(MUTEX);
-        std::vector<MiningContext> vMiners;
-        vMiners.reserve(mapMiners.size());
+        return mapMiners.GetAll();
+    }
 
-        for(const auto& pair : mapMiners)
-            vMiners.push_back(pair.second);
+    /* Get miner count */
+    size_t StatelessMinerManager::GetMinerCount() const
+    {
+        return mapMiners.Size();
+    }
 
-        return vMiners;
+    /* Get authenticated miner count */
+    size_t StatelessMinerManager::GetAuthenticatedCount() const
+    {
+        size_t nCount = 0;
+        auto vMiners = mapMiners.GetAll();
+        for(const auto& ctx : vMiners)
+        {
+            if(ctx.fAuthenticated)
+                ++nCount;
+        }
+        return nCount;
+    }
+
+    /* Cleanup inactive miners */
+    uint32_t StatelessMinerManager::CleanupInactive(uint64_t nTimeoutSec)
+    {
+        uint32_t nRemoved = 0;
+        uint64_t nNow = runtime::unifiedtimestamp();
+
+        auto pairs = mapMiners.GetAllPairs();
+        for(const auto& pair : pairs)
+        {
+            if((nNow - pair.second.nTimestamp) > nTimeoutSec)
+            {
+                if(RemoveMiner(pair.first))
+                    ++nRemoved;
+            }
+        }
+
+        if(nRemoved > 0)
+        {
+            debug::log(2, FUNCTION, "Cleaned up ", nRemoved, " inactive miners");
+        }
+
+        return nRemoved;
     }
 
     /* Get miner status as JSON */
     std::string StatelessMinerManager::GetMinerStatus(const std::string& strAddress) const
     {
-        LOCK(MUTEX);
-        auto it = mapMiners.find(strAddress);
-        if(it == mapMiners.end())
+        auto optContext = mapMiners.Get(strAddress);
+        if(!optContext.has_value())
             return "{\"error\": \"Miner not found\"}";
 
-        const MiningContext& ctx = it->second;
+        const MiningContext& ctx = optContext.value();
 
         /* Build JSON response with Phase 2 identity fields */
         encoding::json result;
@@ -105,14 +189,11 @@ namespace LLP
     /* Get all miners status as JSON */
     std::string StatelessMinerManager::GetAllMinersStatus() const
     {
-        LOCK(MUTEX);
-        
         encoding::json miners = encoding::json::array();
 
-        for(const auto& pair : mapMiners)
+        auto vMiners = mapMiners.GetAll();
+        for(const auto& ctx : vMiners)
         {
-            const MiningContext& ctx = pair.second;
-            
             encoding::json miner;
             miner["address"] = ctx.strAddress;
             miner["channel"] = ctx.nChannel;
@@ -123,7 +204,7 @@ namespace LLP
             miner["last_seen"] = ctx.nTimestamp;
             miner["key_id"] = ctx.hashKeyID.ToString();
             miner["genesis"] = ctx.hashGenesis.ToString();
-            
+
             miners.push_back(miner);
         }
 

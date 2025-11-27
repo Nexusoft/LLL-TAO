@@ -16,12 +16,12 @@ ________________________________________________________________________________
 #define NEXUS_LLP_INCLUDE_STATELESS_MANAGER_H
 
 #include <LLP/include/stateless_miner.h>
+#include <Util/templates/concurrent_hashmap.h>
 
-#include <map>
 #include <string>
-#include <mutex>
 #include <vector>
 #include <optional>
+#include <atomic>
 
 namespace LLP
 {
@@ -29,6 +29,11 @@ namespace LLP
      *
      *  Manages active stateless miner connections.
      *  Keeps track of miner contexts and provides RPC query interface.
+     *
+     *  Scalability Features:
+     *  - Thread-safe concurrent hash map for parallel miner access
+     *  - Support for multiple Falcon sessions with secure isolation
+     *  - Session indexing by both address and keyID for efficient lookups
      *
      **/
     class StatelessMinerManager
@@ -64,6 +69,17 @@ namespace LLP
          **/
         bool RemoveMiner(const std::string& strAddress);
 
+        /** RemoveMinerByKeyID
+         *
+         *  Remove a miner from tracking by Falcon key ID.
+         *
+         *  @param[in] hashKeyID Falcon key identifier
+         *
+         *  @return true if miner was found and removed
+         *
+         **/
+        bool RemoveMinerByKeyID(const uint256_t& hashKeyID);
+
         /** GetMinerContext
          *
          *  Retrieve context for a specific miner.
@@ -74,6 +90,28 @@ namespace LLP
          *
          **/
         std::optional<MiningContext> GetMinerContext(const std::string& strAddress) const;
+
+        /** GetMinerContextByKeyID
+         *
+         *  Retrieve context by Falcon key ID.
+         *
+         *  @param[in] hashKeyID Falcon key identifier
+         *
+         *  @return Context if found, nullopt otherwise
+         *
+         **/
+        std::optional<MiningContext> GetMinerContextByKeyID(const uint256_t& hashKeyID) const;
+
+        /** GetMinerContextBySessionID
+         *
+         *  Retrieve context by session ID.
+         *
+         *  @param[in] nSessionId Session identifier
+         *
+         *  @return Context if found, nullopt otherwise
+         *
+         **/
+        std::optional<MiningContext> GetMinerContextBySessionID(uint32_t nSessionId) const;
 
         /** ListMiners
          *
@@ -104,15 +142,47 @@ namespace LLP
          **/
         std::string GetAllMinersStatus() const;
 
+        /** GetMinerCount
+         *
+         *  Get the number of active miners.
+         *
+         *  @return Number of miners
+         *
+         **/
+        size_t GetMinerCount() const;
+
+        /** GetAuthenticatedCount
+         *
+         *  Get the number of authenticated miners.
+         *
+         *  @return Number of authenticated miners
+         *
+         **/
+        size_t GetAuthenticatedCount() const;
+
+        /** CleanupInactive
+         *
+         *  Remove miners that have been inactive for too long.
+         *
+         *  @param[in] nTimeoutSec Inactivity timeout in seconds
+         *
+         *  @return Number of miners removed
+         *
+         **/
+        uint32_t CleanupInactive(uint64_t nTimeoutSec = 300);
+
     private:
         /** Private constructor for singleton **/
         StatelessMinerManager() = default;
 
-        /** Map of miner address to context **/
-        std::map<std::string, MiningContext> mapMiners;
+        /** Thread-safe concurrent hash map of miner address to context **/
+        util::ConcurrentHashMap<std::string, MiningContext> mapMiners;
 
-        /** Mutex for thread-safe access **/
-        mutable std::mutex MUTEX;
+        /** Index by Falcon key ID for efficient lookups **/
+        util::ConcurrentHashMap<uint256_t, std::string> mapKeyToAddress;
+
+        /** Index by session ID for efficient lookups **/
+        util::ConcurrentHashMap<uint32_t, std::string> mapSessionToAddress;
     };
 
 } // namespace LLP

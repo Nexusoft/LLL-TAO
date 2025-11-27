@@ -434,6 +434,9 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_falcon_auth.o \
 		build/LLP_disposable_falcon.o \
 		build/LLP_mining_config.o \
+		build/LLP_validation_thread_pool.o \
+		build/LLP_session_recovery.o \
+		build/LLP_node_sync.o \
 		build/API_commands_assets_initialize.o \
 		build/API_commands_assets_json.o \
 		build/API_commands_assets_partial.o \

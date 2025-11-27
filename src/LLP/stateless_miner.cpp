@@ -39,6 +39,7 @@ namespace LLP
     , nSessionId(0)
     , hashKeyID(0)
     , hashGenesis(0)
+    , strUserName("")
     , vAuthNonce()
     , vMinerPubKey()
     {
@@ -65,6 +66,7 @@ namespace LLP
     , nSessionId(nSessionId_)
     , hashKeyID(hashKeyID_)
     , hashGenesis(hashGenesis_)
+    , strUserName("")
     , vAuthNonce()
     , vMinerPubKey()
     {
@@ -120,6 +122,13 @@ namespace LLP
         return c;
     }
 
+    MiningContext MiningContext::WithUserName(const std::string& strUserName_) const
+    {
+        MiningContext c = *this;
+        c.strUserName = strUserName_;
+        return c;
+    }
+
     MiningContext MiningContext::WithNonce(const std::vector<uint8_t>& vNonce_) const
     {
         MiningContext c = *this;
@@ -132,6 +141,36 @@ namespace LLP
         MiningContext c = *this;
         c.vMinerPubKey = vPubKey_;
         return c;
+    }
+
+    uint256_t MiningContext::GetPayoutAddress() const
+    {
+        /* Return explicit genesis if set */
+        if(hashGenesis != 0)
+            return hashGenesis;
+
+        /* Username-based addressing (trust userName:default system)
+         * The caller is responsible for resolving the username to a genesis hash
+         * using TAO::API::Names. This method returns 0 to indicate that
+         * resolution is needed.
+         *
+         * Usage pattern:
+         * 1. Check if hashGenesis is set directly
+         * 2. If not, check strUserName and resolve via Names API
+         * 3. Use Names::ResolveAddress(strUserName + ":default") to get genesis
+         */
+        if(!strUserName.empty())
+        {
+            debug::log(3, FUNCTION, "Username '", strUserName,
+                       "' set - caller should resolve via Names API");
+        }
+
+        return uint256_t(0);
+    }
+
+    bool MiningContext::HasValidPayout() const
+    {
+        return hashGenesis != 0 || !strUserName.empty();
     }
 
 

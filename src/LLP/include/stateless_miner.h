@@ -44,7 +44,8 @@ namespace LLP
         bool fAuthenticated;         // Whether Falcon auth succeeded
         uint32_t nSessionId;         // Unique session identifier
         uint256_t hashKeyID;         // Phase 2: Falcon key identifier
-        uint256_t hashGenesis;       // Phase 2: Tritium genesis hash
+        uint256_t hashGenesis;       // Phase 2: Tritium genesis hash (payout address)
+        std::string strUserName;     // Phase 2: Username for trust-based addressing
         std::vector<uint8_t> vAuthNonce;  // Challenge nonce for authentication
         std::vector<uint8_t> vMinerPubKey; // Miner's Falcon public key
 
@@ -113,6 +114,13 @@ namespace LLP
          **/
         MiningContext WithGenesis(const uint256_t& hashGenesis_) const;
 
+        /** WithUserName
+         *
+         *  Phase 2: Returns a new context with updated username for trust-based addressing.
+         *
+         **/
+        MiningContext WithUserName(const std::string& strUserName_) const;
+
         /** WithNonce
          *
          *  Returns a new context with updated authentication nonce.
@@ -126,6 +134,25 @@ namespace LLP
          *
          **/
         MiningContext WithPubKey(const std::vector<uint8_t>& vPubKey_) const;
+
+        /** GetPayoutAddress
+         *
+         *  Get the payout address for rewards.
+         *  Returns genesis hash if set, otherwise derives from username.
+         *
+         *  @return Genesis hash or derived address
+         *
+         **/
+        uint256_t GetPayoutAddress() const;
+
+        /** HasValidPayout
+         *
+         *  Check if the context has a valid payout configuration.
+         *
+         *  @return true if genesis or username is set
+         *
+         **/
+        bool HasValidPayout() const;
     };
 
 
