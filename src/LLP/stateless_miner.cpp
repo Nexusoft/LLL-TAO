@@ -39,6 +39,7 @@ namespace LLP
     , nSessionId(0)
     , hashKeyID(0)
     , hashGenesis(0)
+    , strUserName("")
     , vAuthNonce()
     , vMinerPubKey()
     {
@@ -65,6 +66,7 @@ namespace LLP
     , nSessionId(nSessionId_)
     , hashKeyID(hashKeyID_)
     , hashGenesis(hashGenesis_)
+    , strUserName("")
     , vAuthNonce()
     , vMinerPubKey()
     {
@@ -120,6 +122,13 @@ namespace LLP
         return c;
     }
 
+    MiningContext MiningContext::WithUserName(const std::string& strUserName_) const
+    {
+        MiningContext c = *this;
+        c.strUserName = strUserName_;
+        return c;
+    }
+
     MiningContext MiningContext::WithNonce(const std::vector<uint8_t>& vNonce_) const
     {
         MiningContext c = *this;
@@ -132,6 +141,30 @@ namespace LLP
         MiningContext c = *this;
         c.vMinerPubKey = vPubKey_;
         return c;
+    }
+
+    uint256_t MiningContext::GetPayoutAddress() const
+    {
+        /* Return explicit genesis if set */
+        if(hashGenesis != 0)
+            return hashGenesis;
+
+        /* If username is set, the caller should resolve userName:default to genesis.
+         * This is a placeholder - actual resolution requires TAO API Name lookup.
+         * For now, return 0 to indicate no payout configured. */
+        if(!strUserName.empty())
+        {
+            /* TODO: Implement TAO::API::Names::ResolveAddress(strUserName + ":default")
+             * For now, log that username-based addressing requires resolution. */
+            debug::log(2, FUNCTION, "Username-based payout requires name resolution: ", strUserName);
+        }
+
+        return uint256_t(0);
+    }
+
+    bool MiningContext::HasValidPayout() const
+    {
+        return hashGenesis != 0 || !strUserName.empty();
     }
 
 
