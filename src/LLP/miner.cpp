@@ -13,6 +13,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <LLP/include/global.h>
+#include <LLP/include/stateless_manager.h>
 #include <LLP/types/miner.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
@@ -1623,6 +1624,10 @@ namespace LLP
         /* Set the new best height. */
         nBestHeight = nChainStateHeight;
         debug::log(2, FUNCTION, "Mining best height changed to ", nBestHeight);
+
+        /* Notify StatelessMinerManager of new round for unified miner-node interaction.
+         * This enables seamless template distribution to all connected stateless miners. */
+        StatelessMinerManager::Get().NotifyNewRound(nBestHeight);
 
         /* make sure the notifications processor hasn't been run already at this height */
         if(nLastNotificationsHeight.load() != nBestHeight)

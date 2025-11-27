@@ -240,6 +240,119 @@ namespace LLP
          **/
         uint32_t CleanupExpiredSessions();
 
+        /** NotifyNewRound
+         *
+         *  Notify all tracked miners that a new mining round has started.
+         *  Called when block height changes or chain state is updated.
+         *  Updates internal tracking of chain state for template generation.
+         *
+         *  Mining Template Integration:
+         *  - Tracks when templates become stale due to height changes
+         *  - Provides efficient notification mechanism for connected miners
+         *  - Supports both SOLO and Pool miners using NexusMiner
+         *
+         *  @param[in] nNewHeight The new block height
+         *
+         *  @return Number of miners notified
+         *
+         **/
+        uint32_t NotifyNewRound(uint32_t nNewHeight);
+
+        /** GetCurrentHeight
+         *
+         *  Get the current tracked block height.
+         *
+         *  @return Current block height being mined on
+         *
+         **/
+        uint32_t GetCurrentHeight() const;
+
+        /** SetCurrentHeight
+         *
+         *  Set the current tracked block height.
+         *  Called when chain state updates.
+         *
+         *  @param[in] nHeight New block height
+         *
+         **/
+        void SetCurrentHeight(uint32_t nHeight);
+
+        /** IsNewRound
+         *
+         *  Check if a new round has started since last check.
+         *  Used by miners to detect when templates are stale.
+         *
+         *  @param[in] nLastHeight The height the miner last worked on
+         *
+         *  @return true if a new round has started
+         *
+         **/
+        bool IsNewRound(uint32_t nLastHeight) const;
+
+        /** GetMinersForChannel
+         *
+         *  Get all miners mining on a specific channel.
+         *  Useful for targeted template distribution.
+         *
+         *  @param[in] nChannel Mining channel (1=Prime, 2=Hash)
+         *
+         *  @return Vector of miner contexts for that channel
+         *
+         **/
+        std::vector<MiningContext> GetMinersForChannel(uint32_t nChannel) const;
+
+        /** GetTotalTemplatesServed
+         *
+         *  Get total number of templates served across all sessions.
+         *  Uses atomic counter for lock-free access.
+         *
+         *  @return Total templates served count
+         *
+         **/
+        uint64_t GetTotalTemplatesServed() const;
+
+        /** IncrementTemplatesServed
+         *
+         *  Increment the templates served counter.
+         *  Called each time a template is provided to a miner.
+         *
+         **/
+        void IncrementTemplatesServed();
+
+        /** GetTotalBlocksSubmitted
+         *
+         *  Get total number of blocks submitted across all sessions.
+         *
+         *  @return Total blocks submitted count
+         *
+         **/
+        uint64_t GetTotalBlocksSubmitted() const;
+
+        /** IncrementBlocksSubmitted
+         *
+         *  Increment the blocks submitted counter.
+         *  Called each time a block is submitted by a miner.
+         *
+         **/
+        void IncrementBlocksSubmitted();
+
+        /** GetTotalBlocksAccepted
+         *
+         *  Get total number of blocks accepted across all sessions.
+         *
+         *  @return Total blocks accepted count
+         *
+         **/
+        uint64_t GetTotalBlocksAccepted() const;
+
+        /** IncrementBlocksAccepted
+         *
+         *  Increment the blocks accepted counter.
+         *  Called each time a submitted block is accepted.
+         *
+         **/
+        void IncrementBlocksAccepted();
+
     private:
         /** Private constructor for singleton **/
         StatelessMinerManager() = default;
@@ -267,6 +380,18 @@ namespace LLP
 
         /** Atomic peak session count (high water mark) **/
         mutable std::atomic<size_t> nPeakSessions{0};
+
+        /** Current tracked block height for template generation **/
+        mutable std::atomic<uint32_t> nCurrentHeight{0};
+
+        /** Atomic counter for total templates served **/
+        mutable std::atomic<uint64_t> nTotalTemplatesServed{0};
+
+        /** Atomic counter for total blocks submitted **/
+        mutable std::atomic<uint64_t> nTotalBlocksSubmitted{0};
+
+        /** Atomic counter for total blocks accepted **/
+        mutable std::atomic<uint64_t> nTotalBlocksAccepted{0};
     };
 
 } // namespace LLP
