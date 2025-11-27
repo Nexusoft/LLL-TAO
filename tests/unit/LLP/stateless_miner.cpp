@@ -46,6 +46,7 @@ TEST_CASE("MiningContext Immutability Tests", "[stateless_miner]")
         REQUIRE(ctx.nSessionId == 0);
         REQUIRE(ctx.hashKeyID == uint256_t(0));
         REQUIRE(ctx.hashGenesis == uint256_t(0));
+        REQUIRE(ctx.strUserName == "");
         REQUIRE(ctx.vAuthNonce.empty());
         REQUIRE(ctx.vMinerPubKey.empty());
     }
@@ -110,6 +111,60 @@ TEST_CASE("MiningContext Immutability Tests", "[stateless_miner]")
         
         REQUIRE(ctx.vAuthNonce == testNonce);
         REQUIRE(ctx.vMinerPubKey == testPubKey);
+    }
+
+    SECTION("WithUserName updates username field")
+    {
+        MiningContext ctx = MiningContext()
+            .WithUserName("testminer");
+        
+        REQUIRE(ctx.strUserName == "testminer");
+    }
+
+    SECTION("GetPayoutAddress returns genesis when set")
+    {
+        uint256_t testGenesis;
+        testGenesis.SetHex("a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122");
+        
+        MiningContext ctx = MiningContext()
+            .WithGenesis(testGenesis);
+        
+        REQUIRE(ctx.GetPayoutAddress() == testGenesis);
+    }
+
+    SECTION("GetPayoutAddress returns zero when only username set")
+    {
+        MiningContext ctx = MiningContext()
+            .WithUserName("testminer");
+        
+        /* Username requires name resolution - returns 0 */
+        REQUIRE(ctx.GetPayoutAddress() == uint256_t(0));
+    }
+
+    SECTION("HasValidPayout returns true when genesis set")
+    {
+        uint256_t testGenesis;
+        testGenesis.SetHex("a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122");
+        
+        MiningContext ctx = MiningContext()
+            .WithGenesis(testGenesis);
+        
+        REQUIRE(ctx.HasValidPayout() == true);
+    }
+
+    SECTION("HasValidPayout returns true when username set")
+    {
+        MiningContext ctx = MiningContext()
+            .WithUserName("testminer");
+        
+        REQUIRE(ctx.HasValidPayout() == true);
+    }
+
+    SECTION("HasValidPayout returns false when neither set")
+    {
+        MiningContext ctx;
+        
+        REQUIRE(ctx.HasValidPayout() == false);
     }
 }
 
