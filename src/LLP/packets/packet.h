@@ -176,12 +176,16 @@ namespace LLP
          **/
         bool HasDataPayload() const
         {
+            /* Boundary constants for Falcon authentication packets */
+            static const uint8_t FALCON_AUTH_FIRST = 207;  // MINER_AUTH_INIT
+            static const uint8_t FALCON_AUTH_LAST = 212;   // SESSION_KEEPALIVE
+
             /* Traditional data packets */
             if(HEADER < 128)
                 return true;
 
-            /* Falcon authentication packets (207-212) require data */
-            if(HEADER >= 207 && HEADER <= 212)
+            /* Falcon authentication packets require data */
+            if(HEADER >= FALCON_AUTH_FIRST && HEADER <= FALCON_AUTH_LAST)
                 return true;
 
             return false;
