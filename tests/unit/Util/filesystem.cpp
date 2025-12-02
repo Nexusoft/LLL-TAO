@@ -17,7 +17,6 @@ ________________________________________________________________________________
 #include <fstream>
 #include <string>
 #include <filesystem>
-    #include <iostream>
 
 /* Helper function to create a test file with content */
 void CreateTestFile(const std::string& filePath, const std::string& content)
