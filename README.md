@@ -20,6 +20,59 @@ We use Make to build our project to multiple platforms. Please read out build do
 
 [iPhone OS / Android OS](docs/build-mobile.md)
 
+## Mining
+
+Nexus supports both private solo mining and decentralized public mining pools using the enhanced Falcon Handshake protocol.
+
+### Falcon Handshake & Stateless Mining
+
+The LLL-TAO node implements a secure, post-quantum Falcon handshake for miner authentication with the following features:
+
+#### Security Features
+- **Post-Quantum Signatures**: Utilizes Falcon-512/1024 signature schemes for quantum-resistant authentication
+- **ChaCha20 Encryption**: Optional ChaCha20 encryption for Falcon public key exchange (mandatory for public nodes, optional for localhost)
+- **Session Key Generation**: Dynamic session keys tied to Tritium GenesisHash ownership
+- **Replay Protection**: Timestamp-based validation prevents replay attacks
+
+#### Node Cache & DDOS Protection
+- **Cache Limit**: Hardcoded 500 entry maximum for DDOS protection
+- **Keep-Alive Ping**: Miners must ping every 24 hours (or more frequently)
+- **Purge Routine**: Inactive miners removed after 7 days (remote) or 30 days (localhost)
+- **Localhost Exception**: Extended cache persistence for local solo miners
+
+#### Mining Modes
+
+**Private Solo Mining (Localhost)**
+- Simplified validation with extended cache timeout
+- ChaCha20 encryption optional (plaintext allowed)
+- Direct reward payout to configured Tritium account
+
+**Public Pool Mining (Internet)**
+- Mandatory TLS 1.3 with ChaCha20-Poly1305-SHA256 cipher suite
+- Required Falcon public key encryption during handshake
+- Rewards tied to Tritium GenesisHash for stateful validation
+- Session-based authentication with automatic purging
+
+#### Configuration
+
+Mining can be configured through the node's API or configuration file:
+
+```bash
+# Enable mining pool mode
+-miningpool=1
+
+# Set Falcon handshake timeout (default: 60 seconds)
+-falconhandshake.timeout=60
+
+# Require encryption for all miners (default: false for localhost, true for remote)
+-falconhandshake.requireencryption=1
+
+# Set cache purge interval (default: 7 days)
+-nodecache.purgetimeout=604800
+```
+
+For detailed mining setup instructions, see [Mining Documentation](docs/mining.md).
+
 ## Developing
 
 Developing on Nexus has been designed to be powerful, yet simple to use. Tritium++ packages features from SQL Queries, filters, sorting, statistical operators, functions, variables, and much more. The API uses a RESTFul HTTP-JSON protocol, so that you can access the power of Smart Contracts on Nexus from very basic web experience to advanced capabilities. The API is always expanding, so if you find any bugs or wish to suggest improvements, please use the Issues tracker and submit your feedback.
