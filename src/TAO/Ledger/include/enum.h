@@ -319,10 +319,10 @@ namespace TAO
 
 
         /** Struct to hold the authorization enumerated values for building an authorization script. **/
-        struct AUTH
+        namespace AUTH
         {
             /** We track this as our first invalid opcode. **/
-            static const RESERVED  = 0x00;
+            static const uint8_t RESERVED  = 0x00;
 
             /** Core validation types. **/
             enum class TYPES : uint8_t
@@ -390,11 +390,14 @@ namespace TAO
             };
 
             /** Information about the caller and their transaction information. **/
-            enum class CALLER : uint8_t
+            struct CALLER
             {
-                GENESIS     = 0x34,
-                TIMESTAMP   = 0x35,
-                PAYLOAD     = 0x36, //this is our input payload that contains our keys or input parameters
+                enum : uint8_t
+                {
+                    GENESIS     = 0x34,
+                    TIMESTAMP   = 0x35,
+                    PAYLOAD     = 0x36, //this is our input payload that contains our keys or input parameters
+                };
 
                 /** Information about the caller crypto object register. **/
                 enum class CRYPTO : uint8_t
@@ -412,7 +415,7 @@ namespace TAO
                 GENESIS     = 0x3c,
             };
 
-            struct OPS
+            namespace OPS
             {
                 /** Primitive OP::WRITE operation. **/
                 struct WRITE
@@ -578,14 +581,6 @@ namespace TAO
                                           | FEE::ENABLED
                                           | INVOKE::ENABLED;
             };
-
-
-
-            bool Valid(const uint8_t nOP) const
-            {
-                return true;
-                //return nOP >=
-            }
         };
     }
 }

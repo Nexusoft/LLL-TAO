@@ -77,7 +77,7 @@ int main(int argc, char** argv)
 
 
         //multisignature authentication with multiple sigchains
-        uint256_t hashGenesis2, hashGenesis3;
+        uint256_t hashGenesis2, hashGenesis3; 
         ssAuthorization << AUTH::ENABLE_IF << uint16_t(AUTH::OPS::ALL);
         ssAuthorization << AUTH::VERIFY::NEXTHASH << AUTH::VERIFY::GENESIS << hashGenesis2 << AUTH::CALLER::CRYPTO::AUTH;
         ssAuthorization << AUTH::OP::AND;

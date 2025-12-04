@@ -169,7 +169,7 @@ namespace TAO
          *  The NAMESPACE namespace to hold constants for Namespace Object registers
          *
          **/
-        struct NAMESPACE //XXX: because of previous code formats, we want this to be in a struct.
+        namespace NAMESPACE //XXX: because of previous code formats, we want this to be in a struct.
         {
             /* Constant used to indicate a global namespace */
             static const std::string GLOBAL = "~GLOBAL~";
