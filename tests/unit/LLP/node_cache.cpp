@@ -98,7 +98,7 @@ TEST_CASE("Cache Size Limit Enforcement Tests", "[node_cache]")
     /* Get fresh manager instance for testing */
     StatelessMinerManager& manager = StatelessMinerManager::Get();
 
-    SECTION("Cache limit enforcement removes newest miners first (DDOS protection)")
+    SECTION("Cache limit enforcement removes least recently active miners first")
     {
         /* Clear any existing miners */
         while(manager.GetMinerCount() > 0)
@@ -108,11 +108,12 @@ TEST_CASE("Cache Size Limit Enforcement Tests", "[node_cache]")
                 manager.RemoveMiner(miners[0].strAddress);
         }
 
-        /* Add miners up to cache limit */
+        /* Add miners with varying activity timestamps */
         for(size_t i = 0; i < 10; ++i)
         {
             std::string strAddress = "192.168.1." + std::to_string(i);
             MiningContext ctx;
+            /* i=0 is least recently active (600s ago), i=9 is most recently active (60s ago) */
             ctx = ctx.WithTimestamp(runtime::unifiedtimestamp() - (10 - i) * 60);
             ctx.strAddress = strAddress;
             manager.UpdateMiner(strAddress, ctx);
@@ -126,15 +127,15 @@ TEST_CASE("Cache Size Limit Enforcement Tests", "[node_cache]")
         REQUIRE(nRemoved == 5);
         REQUIRE(manager.GetMinerCount() == 5);
 
-        /* Verify newest miners were removed (DDOS protection) */
-        for(size_t i = 5; i < 10; ++i)
+        /* Verify least recently active miners were removed (inactive purge) */
+        for(size_t i = 0; i < 5; ++i)
         {
             std::string strAddress = "192.168.1." + std::to_string(i);
             REQUIRE_FALSE(manager.GetMinerContext(strAddress).has_value());
         }
 
-        /* Verify oldest miners remain (established miners protected) */
-        for(size_t i = 0; i < 5; ++i)
+        /* Verify most recently active miners remain (active miners protected) */
+        for(size_t i = 5; i < 10; ++i)
         {
             std::string strAddress = "192.168.1." + std::to_string(i);
             REQUIRE(manager.GetMinerContext(strAddress).has_value());
