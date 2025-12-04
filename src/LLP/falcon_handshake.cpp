@@ -442,15 +442,21 @@ namespace FalconHandshake
         if(data.vFalconPubKey.empty())
             return false;
 
-        /* Genesis hash should be set (0 is allowed for initial handshake) */
-        // Note: hashGenesis can be 0 for initial connection before binding
+        /* Genesis hash must be set for authenticated mining */
+        /* Zero genesis is only valid during initial key exchange, not for active mining */
+        if(data.hashGenesis == 0)
+        {
+            debug::warning(FUNCTION, "Handshake with zero GenesisHash - only valid for initial setup");
+            /* Allow for now but log warning - caller should verify before allowing mining */
+        }
 
-        /* Timestamp should be reasonable (within 1 hour) */
+        /* Timestamp must be reasonable (within 1 hour for replay protection) */
         uint64_t nNow = runtime::unifiedtimestamp();
         if(data.nTimestamp > nNow + 3600 || data.nTimestamp < nNow - 3600)
         {
-            debug::warning(FUNCTION, "Handshake timestamp out of range: ", data.nTimestamp, 
-                          " vs current ", nNow);
+            debug::error(FUNCTION, "Handshake timestamp out of range: ", data.nTimestamp, 
+                          " vs current ", nNow, " - rejecting for replay protection");
+            return false;  // Reject handshakes with invalid timestamps
         }
 
         return true;

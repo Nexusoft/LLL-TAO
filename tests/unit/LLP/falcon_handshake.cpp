@@ -284,9 +284,13 @@ TEST_CASE("Handshake Packet Build/Parse Tests", "[falcon_handshake]")
         vKey2.resize(32);
         HandshakeResult result = ParseHandshakePacket(vPacket, config, vKey2);
         
-        /* Should succeed in parsing but decrypted data will be wrong */
-        /* ChaCha20 doesn't have authentication, so we can't detect wrong key */
-        /* This is expected behavior - caller must verify signature after */
+        /* ChaCha20 (stream cipher) doesn't have built-in authentication */
+        /* Decryption with wrong key produces garbage but no error */
+        /* This is acceptable because:
+         * 1. TLS 1.3 transport layer provides AEAD (ChaCha20-Poly1305)
+         * 2. Falcon signature verification is the primary authentication
+         * 3. GenesisHash binding provides additional validation
+         * Wrong key will result in invalid signature verification later */
     }
 
     SECTION("Parse fails with malformed packet")
@@ -353,6 +357,37 @@ TEST_CASE("Handshake Validation Tests", "[falcon_handshake]")
         data.vFalconPubKey.resize(897, 0x42);
         data.hashGenesis = uint256_t(0);
         data.nTimestamp = runtime::unifiedtimestamp();
+        
+        /* Zero genesis is allowed but logged - caller should verify before mining */
+        REQUIRE(ValidateHandshakeData(data));
+    }
+
+    SECTION("Old timestamp fails validation (replay protection)")
+    {
+        HandshakeData data;
+        data.vFalconPubKey.resize(897, 0x42);
+        data.hashGenesis.SetHex("a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122");
+        data.nTimestamp = runtime::unifiedtimestamp() - 7200;  // 2 hours old
+        
+        REQUIRE_FALSE(ValidateHandshakeData(data));
+    }
+
+    SECTION("Future timestamp fails validation (replay protection)")
+    {
+        HandshakeData data;
+        data.vFalconPubKey.resize(897, 0x42);
+        data.hashGenesis.SetHex("a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122");
+        data.nTimestamp = runtime::unifiedtimestamp() + 7200;  // 2 hours in future
+        
+        REQUIRE_FALSE(ValidateHandshakeData(data));
+    }
+
+    SECTION("Recent timestamp passes validation")
+    {
+        HandshakeData data;
+        data.vFalconPubKey.resize(897, 0x42);
+        data.hashGenesis.SetHex("a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122");
+        data.nTimestamp = runtime::unifiedtimestamp() - 1800;  // 30 minutes old - valid
         
         REQUIRE(ValidateHandshakeData(data));
     }

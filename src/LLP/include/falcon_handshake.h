@@ -98,6 +98,15 @@ namespace FalconHandshake
      *  Encrypt a Falcon public key using ChaCha20.
      *  Used during handshake to protect key exchange over network.
      *
+     *  SECURITY NOTE: ChaCha20 provides confidentiality but not authentication.
+     *  The encrypted public key should be validated after decryption via:
+     *  1. Falcon signature verification (primary authentication)
+     *  2. TLS 1.3 transport security (prevents MITM attacks)
+     *  3. GenesisHash binding (ties key to blockchain identity)
+     *
+     *  For maximum security in public pools, use TLS 1.3 with ChaCha20-Poly1305-SHA256
+     *  cipher suite which provides both encryption and authentication at transport layer.
+     *
      *  @param[in] vPubKey Falcon public key bytes
      *  @param[in] vKey ChaCha20 key (32 bytes)
      *  @param[in] vNonce ChaCha20 nonce (12 bytes)
