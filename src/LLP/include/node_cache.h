@@ -16,6 +16,8 @@ ________________________________________________________________________________
 #define NEXUS_LLP_INCLUDE_NODE_CACHE_H
 
 #include <cstdint>
+#include <cstddef>
+#include <string>
 
 namespace LLP
 {

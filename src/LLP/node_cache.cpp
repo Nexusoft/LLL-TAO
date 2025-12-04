@@ -34,8 +34,8 @@ namespace NodeCache
         if(nColonPos != std::string::npos)
             strIP = strAddress.substr(0, nColonPos);
 
-        /* Trim whitespace */
-        strIP = ToLower(ParseString(strIP, ' '));
+        /* Convert to lowercase for comparison */
+        strIP = ToLower(strIP);
 
         /* Check against known localhost patterns */
         if(strIP == LOCALHOST_IPV4)
