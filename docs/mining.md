@@ -183,12 +183,12 @@ When the cache reaches capacity:
 1. **Priority Order (highest to lowest):**
    - Authenticated miners over unauthenticated
    - Localhost miners over remote
-   - Newer miners over older
+   - Older miners over newer (DDOS protection - established miners prioritized)
 
 2. **Removal Strategy:**
-   - First pass: Remove unauthenticated remote miners
-   - Second pass: Remove authenticated remote miners
-   - Final pass: Remove localhost miners (if necessary)
+   - First pass: Remove newest unauthenticated remote miners (DDOS mitigation)
+   - Second pass: Remove newest authenticated remote miners (if needed)
+   - Final pass: Remove localhost miners (if absolutely necessary)
 
 3. **Automatic Cleanup:**
    - Runs periodically (configurable interval)

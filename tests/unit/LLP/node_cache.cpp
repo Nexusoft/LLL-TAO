@@ -98,7 +98,7 @@ TEST_CASE("Cache Size Limit Enforcement Tests", "[node_cache]")
     /* Get fresh manager instance for testing */
     StatelessMinerManager& manager = StatelessMinerManager::Get();
 
-    SECTION("Cache limit enforcement removes oldest miners first")
+    SECTION("Cache limit enforcement removes newest miners first (DDOS protection)")
     {
         /* Clear any existing miners */
         while(manager.GetMinerCount() > 0)
@@ -126,15 +126,15 @@ TEST_CASE("Cache Size Limit Enforcement Tests", "[node_cache]")
         REQUIRE(nRemoved == 5);
         REQUIRE(manager.GetMinerCount() == 5);
 
-        /* Verify oldest miners were removed */
-        for(size_t i = 0; i < 5; ++i)
+        /* Verify newest miners were removed (DDOS protection) */
+        for(size_t i = 5; i < 10; ++i)
         {
             std::string strAddress = "192.168.1." + std::to_string(i);
             REQUIRE_FALSE(manager.GetMinerContext(strAddress).has_value());
         }
 
-        /* Verify newest miners remain */
-        for(size_t i = 5; i < 10; ++i)
+        /* Verify oldest miners remain (established miners protected) */
+        for(size_t i = 0; i < 5; ++i)
         {
             std::string strAddress = "192.168.1." + std::to_string(i);
             REQUIRE(manager.GetMinerContext(strAddress).has_value());

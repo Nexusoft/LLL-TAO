@@ -525,19 +525,19 @@ namespace LLP
         uint32_t nRemoved = 0;
 
         debug::log(1, FUNCTION, "Cache limit exceeded (", nCurrentSize, "/", nMaxSize, 
-                  "), removing ", nToRemove, " oldest entries");
+                  "), removing ", nToRemove, " newest entries");
 
-        /* Get all miners sorted by timestamp (oldest first) */
+        /* Get all miners sorted by timestamp (newest first for DDOS protection) */
         auto pairs = mapMiners.GetAllPairs();
         std::vector<std::pair<std::string, MiningContext>> vMiners(pairs.begin(), pairs.end());
 
-        /* Sort by timestamp ascending (oldest first) */
+        /* Sort by timestamp descending (newest first) to protect older established miners */
         std::sort(vMiners.begin(), vMiners.end(), 
             [](const auto& a, const auto& b) {
-                return a.second.nTimestamp < b.second.nTimestamp;
+                return a.second.nTimestamp > b.second.nTimestamp;
             });
 
-        /* Remove oldest miners, but prefer unauthenticated and localhost last */
+        /* Remove newest miners first (DDOS protection), but prefer unauthenticated and localhost last */
         for(const auto& pair : vMiners)
         {
             if(nRemoved >= nToRemove)
