@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/include/stateless_manager.h>
+#include <LLP/include/node_cache.h>
 
 #include <Util/include/json.h>
 #include <Util/include/string.h>
@@ -20,6 +21,7 @@ ________________________________________________________________________________
 
 #include <optional>
 #include <sstream>
+#include <algorithm>
 
 namespace LLP
 {
@@ -47,6 +49,12 @@ namespace LLP
             const MiningContext& existing = optExisting.value();
             fWasAuthenticated = existing.fAuthenticated;
             nPrevKeepalives = existing.nKeepaliveCount;
+        }
+
+        /* Enforce cache limit before adding new miner (DDOS protection) */
+        if(fNewMiner)
+        {
+            EnforceCacheLimit(NodeCache::DEFAULT_MAX_CACHE_SIZE);
         }
 
         /* Update main miner map */
@@ -468,5 +476,150 @@ namespace LLP
     {
         ++nTotalBlocksAccepted;
     }
+
+
+    /* Purge inactive miners based on cache timeout */
+    uint32_t StatelessMinerManager::PurgeInactiveMiners()
+    {
+        uint32_t nRemoved = 0;
+        uint64_t nNow = runtime::unifiedtimestamp();
+
+        auto pairs = mapMiners.GetAllPairs();
+        for(const auto& pair : pairs)
+        {
+            const MiningContext& ctx = pair.second;
+            
+            /* Get appropriate timeout based on address (localhost vs remote) */
+            uint64_t nPurgeTimeout = NodeCache::GetPurgeTimeout(ctx.strAddress);
+            
+            /* Check if miner has been inactive for longer than purge timeout */
+            if((nNow - ctx.nTimestamp) > nPurgeTimeout)
+            {
+                debug::log(2, FUNCTION, "Purging inactive miner ", ctx.strAddress, 
+                          " (inactive for ", (nNow - ctx.nTimestamp), " seconds)");
+                
+                if(RemoveMiner(pair.first))
+                    ++nRemoved;
+            }
+        }
+
+        if(nRemoved > 0)
+        {
+            debug::log(1, FUNCTION, "Purged ", nRemoved, " inactive miners from cache");
+        }
+
+        return nRemoved;
+    }
+
+
+    /* Enforce cache size limit for DDOS protection */
+    uint32_t StatelessMinerManager::EnforceCacheLimit(size_t nMaxSize)
+    {
+        size_t nCurrentSize = GetMinerCount();
+        
+        /* No action needed if under limit */
+        if(nCurrentSize <= nMaxSize)
+            return 0;
+
+        uint32_t nToRemove = static_cast<uint32_t>(nCurrentSize - nMaxSize);
+        uint32_t nRemoved = 0;
+
+        debug::log(1, FUNCTION, "Cache limit exceeded (", nCurrentSize, "/", nMaxSize, 
+                  "), removing ", nToRemove, " least recently active entries");
+
+        /* Get all miners sorted by last activity timestamp */
+        auto pairs = mapMiners.GetAllPairs();
+        std::vector<std::pair<std::string, MiningContext>> vMiners(pairs.begin(), pairs.end());
+
+        /* Sort by timestamp ascending (least recently active first) */
+        /* This purges inactive older miners to allow newer active miners */
+        std::sort(vMiners.begin(), vMiners.end(), 
+            [](const auto& a, const auto& b) {
+                return a.second.nTimestamp < b.second.nTimestamp;
+            });
+
+        /* Remove least recently active miners first, but prefer unauthenticated and localhost last */
+        for(const auto& pair : vMiners)
+        {
+            if(nRemoved >= nToRemove)
+                break;
+
+            const MiningContext& ctx = pair.second;
+            
+            /* Skip localhost miners in first pass */
+            if(NodeCache::IsLocalhost(ctx.strAddress))
+                continue;
+
+            /* Remove unauthenticated miners first */
+            if(!ctx.fAuthenticated)
+            {
+                if(RemoveMiner(pair.first))
+                    ++nRemoved;
+            }
+        }
+
+        /* Second pass: remove authenticated remote miners if needed */
+        if(nRemoved < nToRemove)
+        {
+            for(const auto& pair : vMiners)
+            {
+                if(nRemoved >= nToRemove)
+                    break;
+
+                const MiningContext& ctx = pair.second;
+                
+                /* Skip localhost miners */
+                if(NodeCache::IsLocalhost(ctx.strAddress))
+                    continue;
+
+                /* Remove authenticated miners */
+                if(ctx.fAuthenticated)
+                {
+                    if(RemoveMiner(pair.first))
+                        ++nRemoved;
+                }
+            }
+        }
+
+        /* Final pass: remove localhost miners if absolutely necessary */
+        if(nRemoved < nToRemove)
+        {
+            for(const auto& pair : vMiners)
+            {
+                if(nRemoved >= nToRemove)
+                    break;
+
+                if(RemoveMiner(pair.first))
+                    ++nRemoved;
+            }
+        }
+
+        if(nRemoved > 0)
+        {
+            debug::log(1, FUNCTION, "Enforced cache limit: removed ", nRemoved, 
+                      " miners (cache now at ", GetMinerCount(), "/", nMaxSize, ")");
+        }
+
+        return nRemoved;
+    }
+
+
+    /* Check if miner needs to send keepalive */
+    bool StatelessMinerManager::CheckKeepaliveRequired(
+        const std::string& strAddress,
+        uint64_t nInterval
+    ) const
+    {
+        auto optContext = mapMiners.Get(strAddress);
+        if(!optContext.has_value())
+            return false;
+
+        const MiningContext& ctx = optContext.value();
+        uint64_t nNow = runtime::unifiedtimestamp();
+
+        /* Check if time since last activity exceeds interval */
+        return (nNow - ctx.nTimestamp) > nInterval;
+    }
+
 
 } // namespace LLP

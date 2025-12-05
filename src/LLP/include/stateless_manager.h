@@ -240,6 +240,41 @@ namespace LLP
          **/
         uint32_t CleanupExpiredSessions();
 
+        /** PurgeInactiveMiners
+         *
+         *  Purge miners that haven't sent keepalive within configured timeout.
+         *  Uses different timeouts for localhost vs remote miners.
+         *  This is the primary cache maintenance routine for DDOS protection.
+         *
+         *  @return Number of miners purged
+         *
+         **/
+        uint32_t PurgeInactiveMiners();
+
+        /** EnforceCacheLimit
+         *
+         *  Enforce the maximum cache size limit for DDOS protection.
+         *  Removes oldest miners when cache exceeds limit.
+         *
+         *  @param[in] nMaxSize Maximum cache size (default: 500)
+         *
+         *  @return Number of miners removed
+         *
+         **/
+        uint32_t EnforceCacheLimit(size_t nMaxSize = 500);
+
+        /** CheckKeepaliveRequired
+         *
+         *  Check if a miner needs to send a keepalive.
+         *
+         *  @param[in] strAddress Miner address
+         *  @param[in] nInterval Required keepalive interval in seconds
+         *
+         *  @return true if keepalive is required
+         *
+         **/
+        bool CheckKeepaliveRequired(const std::string& strAddress, uint64_t nInterval = 86400) const;
+
         /** NotifyNewRound
          *
          *  Notify all tracked miners that a new mining round has started.
