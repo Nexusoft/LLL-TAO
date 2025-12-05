@@ -219,6 +219,102 @@ Missing keepalives results in:
 - Eventual removal via purge routine
 - Session termination
 
+## Session Recovery
+
+The node provides automatic session recovery for miners experiencing temporary network interruptions.
+
+### Network Interruption Handling
+
+**Common Scenarios:**
+- WiFi disconnections (home networks)
+- ISP temporary outages
+- Mobile network handoffs
+- Power saving mode on devices
+- Router reboots
+- Cable modem resets
+
+**Recovery Features:**
+
+1. **Automatic Session Persistence**
+   - All authenticated sessions are automatically saved
+   - Recovery window: 1 hour (configurable)
+   - No manual intervention required
+
+2. **Falcon Key-Based Recovery**
+   - Miner reconnects with Falcon key ID
+   - No re-authentication needed
+   - Session state fully restored
+
+3. **Address-Based Recovery**
+   - Alternative recovery by IP address
+   - Useful for same-origin reconnects
+   - Fallback if key ID not immediately available
+
+### Recovery Process
+
+**Miner Side:**
+```bash
+# Normal operation
+nexusminer --host=pool.example.com --port=9336
+
+# Connection lost (WiFi drops)
+# ... network interruption ...
+
+# Automatic reconnection attempt
+# Miner presents Falcon key ID from previous session
+# Session restored without full handshake
+```
+
+**Node Side Validation:**
+1. Check if session exists for presented key ID
+2. Verify session not expired (< 1 hour since last activity)
+3. Verify reconnection count under limit (< 10 attempts)
+4. Restore session: channel, genesis hash, authentication status
+5. Resume mining operations
+
+**Configuration:**
+
+```bash
+# In nexus.conf
+sessionrecovery.timeout=3600        # 1 hour default
+sessionrecovery.maxreconnects=10    # 10 attempts default
+sessionrecovery.enabled=1           # Enable recovery
+```
+
+**Monitoring:**
+
+```bash
+# Query active recoverable sessions
+nexus-cli getsessioncount
+
+# Manually cleanup expired sessions
+nexus-cli cleanupsessions
+
+# Check session status
+nexus-cli getsessioninfo <keyid>
+```
+
+### Benefits for Residential Miners
+
+**Without Session Recovery:**
+- Full re-authentication required after every disconnect
+- Mining progress lost
+- Increased server load
+- Poor user experience for home miners
+
+**With Session Recovery:**
+- Seamless reconnection within 1-hour window
+- Mining continues without interruption
+- Reduced authentication overhead
+- GenesisHash payout binding maintained
+- Suitable for non-datacenter environments
+
+**Limits:**
+- Maximum 10 reconnection attempts per session
+- 1-hour recovery window (prevents indefinite session persistence)
+- Only authenticated sessions are recoverable
+- Session purged after timeout or excessive reconnects
+
 ## Reward System Integration
 
 Rewards are tied directly to Tritium GenesisHash for stateful validation.
