@@ -112,7 +112,7 @@ namespace DisposableFalcon
         /* Add signature length (2 bytes, big-endian) */
         uint16_t nSigLen = static_cast<uint16_t>(vSignature.size());
         vData.push_back(static_cast<uint8_t>(nSigLen & 0xFF));  // Low byte first
-        vData.push_back(static_cast<uint8_t>(nSigLen & >> 8));  // High byte second
+        vData.push_back(static_cast<uint8_t>(nSigLen >> 8));  // High byte second
 
         /* Add signature */
         vData.insert(vData.end(), vSignature.begin(), vSignature.end());
