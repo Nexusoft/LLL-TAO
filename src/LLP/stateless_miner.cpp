@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/falcon_auth.h>
 #include <LLP/include/disposable_falcon.h>
+#include <LLP/include/falcon_constants.h>
 
 #include <LLC/include/random.h>
 #include <LLC/include/flkey.h>
@@ -521,15 +522,15 @@ namespace LLP
             return ProcessResult::Success(context, response);
         }
 
-        /* Parse sig_len (2 bytes, big-endian to match miner.cpp) */
+        /* Parse sig_len (2 bytes, little-endian to match NexusMiner protocol) */
         DisposableFalcon::DebugLogDeserialize("sig_len", 0, 2, vData.size());
-        uint16_t nSigLen = (static_cast<uint16_t>(vData[0]) << 8) |
-                           static_cast<uint16_t>(vData[1]);
+        uint16_t nSigLen = static_cast<uint16_t>(vData[0]) |
+                           (static_cast<uint16_t>(vData[1]) << 8);
 
         debug::log(3, FUNCTION, "MINER_AUTH_RESPONSE: parsed sig_len=", nSigLen);
 
         /* Validate sig_len */
-        if(nSigLen == 0 || nSigLen > 2048)
+        if(nSigLen == 0 || nSigLen > FalconConstants::FALCON512_SIG_MAX_VALIDATION)
         {
             debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: invalid sig_len ", nSigLen);
             Packet response(MINER_AUTH_RESULT);
