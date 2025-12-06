@@ -388,6 +388,38 @@ namespace LLP
          **/
         void IncrementBlocksAccepted();
 
+        /** GetRewardAddress
+         *
+         *  Get the reward address (genesis hash) for a specific miner.
+         *  Returns the hashGenesis if set, otherwise returns 0.
+         *
+         *  @param[in] strAddress Miner address
+         *
+         *  @return Genesis hash for rewards, or 0 if not set
+         *
+         **/
+        uint256_t GetRewardAddress(const std::string& strAddress) const;
+
+        /** GetDynamicRewardCount
+         *
+         *  Get the number of miners using dynamic reward routing.
+         *  (Authenticated miners with non-zero genesis)
+         *
+         *  @return Number of miners with dynamic rewards
+         *
+         **/
+        size_t GetDynamicRewardCount() const;
+
+        /** GetStaticRewardCount
+         *
+         *  Get the number of miners using static reward routing.
+         *  (Unauthenticated or authenticated with zero genesis)
+         *
+         *  @return Number of miners with static rewards
+         *
+         **/
+        size_t GetStaticRewardCount() const;
+
     private:
         /** Private constructor for singleton **/
         StatelessMinerManager() = default;
