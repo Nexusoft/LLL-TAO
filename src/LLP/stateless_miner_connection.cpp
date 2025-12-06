@@ -313,30 +313,19 @@ namespace LLP
                     return true;
                 }
 
-                /* Determine signature mode based on packet size */
-                bool fDualSignature = false;
-                bool fSingleSignature = false;
-                
+                /* Log signature mode for diagnostics */
                 if(PACKET.DATA.size() > FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX)
                 {
-                    /* Packet larger than single-sig max - could be dual-signature */
-                    if(PACKET.DATA.size() <= FalconConstants::SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX)
-                    {
-                        fDualSignature = true;
-                        debug::log(2, FUNCTION, "SUBMIT_BLOCK: Dual-signature mode detected (size=", 
-                                   PACKET.DATA.size(), ")");
-                    }
+                    debug::log(2, FUNCTION, "SUBMIT_BLOCK: Dual-signature mode detected (size=", 
+                               PACKET.DATA.size(), ")");
                 }
                 else if(PACKET.DATA.size() >= FalconConstants::SUBMIT_BLOCK_WRAPPER_MIN)
                 {
-                    /* Packet within single-sig range */
-                    fSingleSignature = true;
                     debug::log(3, FUNCTION, "SUBMIT_BLOCK: Single-signature mode (size=", 
                                PACKET.DATA.size(), ")");
                 }
                 else
                 {
-                    /* Legacy format without signature */
                     debug::log(3, FUNCTION, "SUBMIT_BLOCK: Legacy format (size=", 
                                PACKET.DATA.size(), ")");
                 }
