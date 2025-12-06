@@ -14,6 +14,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/global.h>
 #include <LLP/include/stateless_manager.h>
+#include <LLP/include/falcon_constants.h>
 #include <LLP/types/miner.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
@@ -583,12 +584,12 @@ namespace LLP
                     return false;
                 }
 
-                /* Parse sig_len (2 bytes, big-endian) */
-                uint16_t nSigLen = (static_cast<uint16_t>(PACKET.DATA[0]) << 8) | 
-                                   static_cast<uint16_t>(PACKET.DATA[1]);
+                /* Parse sig_len (2 bytes, little-endian) */
+                uint16_t nSigLen = static_cast<uint16_t>(PACKET.DATA[0]) |
+                                   (static_cast<uint16_t>(PACKET.DATA[1]) << 8);
 
                 /* Validate sig_len */
-                if(nSigLen == 0 || nSigLen > 2048)
+                if(nSigLen == 0 || nSigLen > FalconConstants::FALCON512_SIG_MAX_VALIDATION)
                 {
                     debug::error(FUNCTION, "MINER_AUTH_RESPONSE: invalid sig_len ", nSigLen);
                     std::vector<uint8_t> vFail(1, 0x00);

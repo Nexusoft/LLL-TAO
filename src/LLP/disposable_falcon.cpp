@@ -109,7 +109,7 @@ namespace DisposableFalcon
             vData.push_back(static_cast<uint8_t>((nTimestamp >> (i * 8)) & 0xFF));
         }
 
-        /* Add signature length (2 bytes, big-endian) */
+        /* Add signature length (2 bytes, little-endian) */
         uint16_t nSigLen = static_cast<uint16_t>(vSignature.size());
         vData.push_back(static_cast<uint8_t>(nSigLen & 0xFF));  // Low byte first
         vData.push_back(static_cast<uint8_t>(nSigLen >> 8));  // High byte second
@@ -125,7 +125,7 @@ namespace DisposableFalcon
     bool SignedWorkSubmission::Deserialize(const std::vector<uint8_t>& vData)
     {
         /* Minimum size: merkle(64) + nonce(8) + timestamp(8) + sig_len(2) = 82 bytes */
-        const size_t MIN_SIZE = 82;
+        const size_t MIN_SIZE = FalconConstants::SUBMIT_BLOCK_WRAPPER_MIN;
         if(vData.size() < MIN_SIZE)
         {
             DebugLogDeserialize("SignedWorkSubmission", 0, MIN_SIZE, vData.size(), 2);

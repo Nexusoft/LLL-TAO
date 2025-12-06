@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLP/types/stateless_miner_connection.h>
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/stateless_manager.h>
+#include <LLP/include/falcon_constants.h>
 #include <LLP/templates/events.h>
 
 #include <TAO/Ledger/include/create.h>
@@ -287,8 +288,8 @@ namespace LLP
                            " channel=", context.nChannel, " sessionId=", context.nSessionId);
 
                 /* Minimum packet size: merkle root (64 bytes) + nonce (8 bytes) */
-                const size_t MERKLE_SIZE = 64;
-                const size_t NONCE_SIZE = 8;
+                const size_t MERKLE_SIZE = FalconConstants::MERKLE_ROOT_SIZE;
+                const size_t NONCE_SIZE = FalconConstants::NONCE_SIZE;
                 const size_t MIN_SIZE = MERKLE_SIZE + NONCE_SIZE;
 
                 if(PACKET.DATA.size() < MIN_SIZE)
@@ -316,10 +317,10 @@ namespace LLP
                 /* Format: [merkle_root (64)][nonce (8)][sig_len (2)][signature (sig_len)] */
                 if(PACKET.DATA.size() >= MIN_SIZE + 2)
                 {
-                    /* Parse signature length (2 bytes, big-endian) */
+                    /* Parse signature length (2 bytes, little-endian) */
                     size_t nSigPos = MIN_SIZE;
-                    uint16_t nSigLen = (static_cast<uint16_t>(PACKET.DATA[nSigPos]) << 8) |
-                                       static_cast<uint16_t>(PACKET.DATA[nSigPos + 1]);
+                    uint16_t nSigLen = static_cast<uint16_t>(PACKET.DATA[nSigPos]) |
+                                       (static_cast<uint16_t>(PACKET.DATA[nSigPos + 1]) << 8);
 
                     /* Process signature if present and valid length */
                     if(nSigLen > 0 && PACKET.DATA.size() >= MIN_SIZE + 2 + nSigLen)

@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 #include <LLC/include/flkey.h>
+#include <LLP/include/falcon_constants.h>
 
 #include <string>
 #include <vector>
@@ -40,8 +41,8 @@ namespace DisposableFalcon
      *  3. It is unwrapped and verified by the Node before block processing
      *  4. No signature data is stored on the blockchain (zero overhead)
      *
-     *  PROTOCOL FORMAT:
-     *  [merkle_root (64 bytes)][nonce (8 bytes)][sig_len (2 bytes)][signature]
+     *  PROTOCOL FORMAT (Little-Endian for all multi-byte integers):
+     *  [merkle_root (64 bytes)][nonce (8 bytes LE)][timestamp (8 bytes LE)][sig_len (2 bytes LE)][signature]
      *
      **/
     struct SignedWorkSubmission
