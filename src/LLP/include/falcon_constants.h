@@ -160,6 +160,22 @@ namespace FalconConstants
     static const size_t BLOCK_WITH_PHYSICAL_SIG_MIN_OVERHEAD = PHYSICAL_BLOCK_SIG_OVERHEAD;  // 754 bytes
 
     /***************************************************************************
+     * Dual Signature Scenario (Both Disposable Wrapper + Physical Signature)
+     **************************************************************************/
+    
+    /** Submit block with BOTH signatures - LOCALHOST (no encryption)
+     *  Disposable wrapper(834) + Physical signature overhead(754) = 1,588 bytes
+     *  This is the maximum size when both Disposable Falcon wrapper AND 
+     *  Physical Block Signature are used together on localhost. */
+    static const size_t SUBMIT_BLOCK_DUAL_SIG_MAX = SUBMIT_BLOCK_WRAPPER_MAX + PHYSICAL_BLOCK_SIG_OVERHEAD;  // 1,588 bytes
+    
+    /** Submit block with BOTH signatures - PUBLIC MINER (with ChaCha20 encryption)
+     *  Dual sig(1,588) + ChaCha20 overhead(28) = 1,616 bytes
+     *  This is the maximum size when both signatures are used on public miners
+     *  with encryption enabled. */
+    static const size_t SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX = SUBMIT_BLOCK_DUAL_SIG_MAX + CHACHA20_OVERHEAD;  // 1,616 bytes
+
+    /***************************************************************************
      * Authentication Response Sizes
      **************************************************************************/
     
