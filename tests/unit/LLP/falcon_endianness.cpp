@@ -115,6 +115,37 @@ TEST_CASE("Falcon Constants Validation", "[falcon][constants]")
         REQUIRE(AUTH_RESPONSE_WITH_GENESIS_MAX == 1721);
         REQUIRE(AUTH_RESPONSE_WITH_GENESIS_MAX == AUTH_RESPONSE_ENCRYPTED_MAX + GENESIS_HASH_SIZE);
     }
+
+    SECTION("Physical block signature sizes are correct")
+    {
+        REQUIRE(PHYSICAL_BLOCK_SIG_MIN == 600);
+        REQUIRE(PHYSICAL_BLOCK_SIG_MIN == FALCON512_SIG_MIN);
+        
+        REQUIRE(PHYSICAL_BLOCK_SIG_MAX == 752);
+        REQUIRE(PHYSICAL_BLOCK_SIG_MAX == FALCON512_SIG_ABSOLUTE_MAX);
+        
+        // Message max = 2MB + 8 bytes (nonce)
+        REQUIRE(PHYSICAL_BLOCK_SIG_MESSAGE_MAX == (1024 * 1024 * 2) + 8);
+        REQUIRE(PHYSICAL_BLOCK_SIG_MESSAGE_MAX == (1024 * 1024 * 2) + NONCE_SIZE);
+        
+        // Overhead = sig_len(2) + signature(752) = 754 bytes
+        REQUIRE(PHYSICAL_BLOCK_SIG_OVERHEAD == 754);
+        REQUIRE(PHYSICAL_BLOCK_SIG_OVERHEAD == LENGTH_FIELD_SIZE + FALCON512_SIG_ABSOLUTE_MAX);
+        
+        REQUIRE(BLOCK_WITH_PHYSICAL_SIG_MIN_OVERHEAD == 754);
+        REQUIRE(BLOCK_WITH_PHYSICAL_SIG_MIN_OVERHEAD == PHYSICAL_BLOCK_SIG_OVERHEAD);
+    }
+
+    SECTION("Dual signature scenario sizes are correct")
+    {
+        // Dual sig (localhost) = disposable wrapper(834) + physical sig overhead(754) = 1,588 bytes
+        REQUIRE(SUBMIT_BLOCK_DUAL_SIG_MAX == 1588);
+        REQUIRE(SUBMIT_BLOCK_DUAL_SIG_MAX == SUBMIT_BLOCK_WRAPPER_MAX + PHYSICAL_BLOCK_SIG_OVERHEAD);
+        
+        // Dual sig (encrypted) = dual sig(1,588) + ChaCha20 overhead(28) = 1,616 bytes
+        REQUIRE(SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX == 1616);
+        REQUIRE(SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX == SUBMIT_BLOCK_DUAL_SIG_MAX + CHACHA20_OVERHEAD);
+    }
 }
 
 

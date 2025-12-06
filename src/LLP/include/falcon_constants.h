@@ -23,6 +23,21 @@ namespace LLP
 namespace FalconConstants
 {
     /***************************************************************************
+     * DUAL SIGNATURE ARCHITECTURE
+     * 
+     * The Nexus mining protocol uses two types of Falcon signatures:
+     * 
+     * 1. Disposable Falcon Wrapper - Signs fixed 80-byte message 
+     *    (merkle + nonce + timestamp) for session authentication.
+     *    NOT stored on blockchain. Always enabled for authenticated sessions.
+     * 
+     * 2. Physical Block Signature - Signs full block data + nonce for 
+     *    permanent proof of authorship. STORED on blockchain.
+     *    Enabled via NexusMiner config: "enable_block_signing": true
+     *    This is the emergency backup system.
+     **************************************************************************/
+
+    /***************************************************************************
      * Falcon-512 Key Sizes (Fixed per Falcon Specification)
      **************************************************************************/
     
@@ -106,6 +121,59 @@ namespace FalconConstants
     /** Submit Block wrapper - PUBLIC MINER (with ChaCha20 encryption)
      *  nonce(12) + encrypted_payload(834) + auth_tag(16) = 862 bytes */
     static const size_t SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX = 862;
+
+    /***************************************************************************
+     * Physical Block Signature (Stored on Blockchain - Emergency Backup System)
+     **************************************************************************/
+    
+    /** Physical block signature - signs full block data + nonce
+     *  This signature IS stored on the blockchain for permanent proof of authorship.
+     *  Enabled via NexusMiner config: "enable_block_signing": true
+     *  
+     *  Unlike the Disposable Falcon wrapper (which signs a fixed 80-byte message),
+     *  the Physical Block Signature signs the FULL block data which can be up to
+     *  MAX_BLOCK_SIZE (2MB).
+     *  
+     *  Message format: [block_data (variable, up to MAX_BLOCK_SIZE)] + [nonce (8 bytes LE)]
+     *  Signature: Falcon-512 (~600-752 bytes)
+     *  
+     *  This is the emergency backup system for proving block authorship when
+     *  the Disposable Falcon session authentication is insufficient.
+     */
+    
+    /** Minimum physical block signature size */
+    static const size_t PHYSICAL_BLOCK_SIG_MIN = FALCON512_SIG_MIN;  // 600 bytes
+    
+    /** Maximum physical block signature size */
+    static const size_t PHYSICAL_BLOCK_SIG_MAX = FALCON512_SIG_ABSOLUTE_MAX;  // 752 bytes
+    
+    /** Maximum message size for physical block signature
+     *  block_data (up to 2MB) + nonce (8 bytes) 
+     *  Note: References TAO::Ledger::MAX_BLOCK_SIZE from constants.h */
+    static const size_t PHYSICAL_BLOCK_SIG_MESSAGE_MAX = (1024 * 1024 * 2) + NONCE_SIZE;  // 2MB + 8 bytes
+    
+    /** Physical block signature overhead added to block transmission
+     *  sig_len(2) + signature(752) = 754 bytes max */
+    static const size_t PHYSICAL_BLOCK_SIG_OVERHEAD = LENGTH_FIELD_SIZE + FALCON512_SIG_ABSOLUTE_MAX;  // 754 bytes
+    
+    /** Minimum block submission size with physical signature overhead */
+    static const size_t BLOCK_WITH_PHYSICAL_SIG_MIN_OVERHEAD = PHYSICAL_BLOCK_SIG_OVERHEAD;  // 754 bytes
+
+    /***************************************************************************
+     * Dual Signature Scenario (Both Disposable Wrapper + Physical Signature)
+     **************************************************************************/
+    
+    /** Submit block with BOTH signatures - LOCALHOST (no encryption)
+     *  Disposable wrapper(834) + Physical signature overhead(754) = 1,588 bytes
+     *  This is the maximum size when both Disposable Falcon wrapper AND 
+     *  Physical Block Signature are used together on localhost. */
+    static const size_t SUBMIT_BLOCK_DUAL_SIG_MAX = SUBMIT_BLOCK_WRAPPER_MAX + PHYSICAL_BLOCK_SIG_OVERHEAD;  // 1,588 bytes
+    
+    /** Submit block with BOTH signatures - PUBLIC MINER (with ChaCha20 encryption)
+     *  Dual sig(1,588) + ChaCha20 overhead(28) = 1,616 bytes
+     *  This is the maximum size when both signatures are used on public miners
+     *  with encryption enabled. */
+    static const size_t SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX = SUBMIT_BLOCK_DUAL_SIG_MAX + CHACHA20_OVERHEAD;  // 1,616 bytes
 
     /***************************************************************************
      * Authentication Response Sizes
