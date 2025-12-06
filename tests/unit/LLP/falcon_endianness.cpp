@@ -24,8 +24,8 @@ ________________________________________________________________________________
 #include <vector>
 #include <cstdint>
 
-using namespace LLP;
-using namespace LLP::DisposableFalcon;
+/* Import specific types to avoid namespace pollution */
+using LLP::DisposableFalcon::SignedWorkSubmission;
 using namespace LLP::FalconConstants;
 
 
@@ -257,8 +257,9 @@ TEST_CASE("SignedWorkSubmission Serialization Endianness", "[falcon][endianness]
 {
     SECTION("Serialize and deserialize with signature")
     {
-        /* Create a test submission */
+        /* Create a test submission with a recognizable merkle root pattern */
         uint512_t hashMerkle;
+        /* Repeating hex pattern 0x1234567890abcdef for easy verification */
         hashMerkle.SetHex("1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef");
         
         uint64_t nNonce = 0x0123456789ABCDEF;

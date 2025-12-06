@@ -61,7 +61,7 @@ namespace FalconConstants
     static const size_t CHACHA20_AUTH_TAG_SIZE = 16;
     
     /** Total ChaCha20-Poly1305 overhead (nonce + auth tag) */
-    static const size_t CHACHA20_OVERHEAD = 28;  // 12 + 16
+    static const size_t CHACHA20_OVERHEAD = CHACHA20_NONCE_SIZE + CHACHA20_AUTH_TAG_SIZE;
 
     /***************************************************************************
      * Protocol Field Sizes
