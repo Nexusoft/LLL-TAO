@@ -508,9 +508,9 @@ namespace LLP
 
         /* Log reward routing mode */
         if(hashDynamicGenesis != 0)
-            debug::log(0, FUNCTION, "Creating block with DYNAMIC reward routing to ", hashDynamicGenesis.SubString());
+            debug::log(1, FUNCTION, "Creating block with DYNAMIC reward routing to ", hashDynamicGenesis.SubString());
         else
-            debug::log(2, FUNCTION, "Creating block with STATIC reward routing (legacy mode)");
+            debug::log(3, FUNCTION, "Creating block with STATIC reward routing (legacy mode)");
 
         /* Create a new block and loop for prime channel if minimum bit target length isn't met */
         while(TAO::Ledger::CreateBlock(pCredentials, strPIN, nChannel, *pBlock, ++nBlockIterator, nullptr, hashDynamicGenesis))

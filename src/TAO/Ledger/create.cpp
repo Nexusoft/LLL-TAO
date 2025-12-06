@@ -494,18 +494,18 @@ namespace TAO::Ledger
                 if(LLD::Ledger->HasFirst(hashDynamicGenesis))
                 {
                     hashRewardRecipient = hashDynamicGenesis;
-                    debug::log(0, FUNCTION, "Reward routing: DYNAMIC to ", hashRewardRecipient.SubString());
+                    debug::log(1, FUNCTION, "Reward routing: DYNAMIC to ", hashRewardRecipient.SubString());
                 }
                 else
                 {
-                    debug::log(0, FUNCTION, "Dynamic genesis ", hashDynamicGenesis.SubString(), 
+                    debug::log(1, FUNCTION, "Dynamic genesis ", hashDynamicGenesis.SubString(), 
                               " not found on-chain, falling back to user genesis");
-                    debug::log(0, FUNCTION, "Reward routing: STATIC (fallback) to ", hashRewardRecipient.SubString());
+                    debug::log(1, FUNCTION, "Reward routing: STATIC (fallback) to ", hashRewardRecipient.SubString());
                 }
             }
             else
             {
-                debug::log(2, FUNCTION, "Reward routing: STATIC to ", hashRewardRecipient.SubString());
+                debug::log(3, FUNCTION, "Reward routing: STATIC to ", hashRewardRecipient.SubString());
             }
 
             /* Output type 0 is mining/minting reward */

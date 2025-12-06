@@ -18,14 +18,27 @@ ________________________________________________________________________________
 
 using namespace LLP;
 
+/* Test constants */
+namespace {
+    /* Sample test genesis hash for reward routing tests */
+    const char* TEST_GENESIS_HEX = "a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122";
+    
+    /* Helper to create test genesis hash */
+    uint256_t GetTestGenesis()
+    {
+        uint256_t hash;
+        hash.SetHex(TEST_GENESIS_HEX);
+        return hash;
+    }
+}
+
 
 TEST_CASE("Dynamic Reward Routing Tests", "[reward_routing]")
 {
     SECTION("MiningContext stores genesis hash for reward routing")
     {
         /* Create a test genesis hash */
-        uint256_t testGenesis;
-        testGenesis.SetHex("a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122");
+        uint256_t testGenesis = GetTestGenesis();
         
         /* Create context with genesis */
         MiningContext ctx = MiningContext()
@@ -39,8 +52,7 @@ TEST_CASE("Dynamic Reward Routing Tests", "[reward_routing]")
     SECTION("GetPayoutAddress returns genesis when set")
     {
         /* Create a test genesis hash */
-        uint256_t testGenesis;
-        testGenesis.SetHex("a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122");
+        uint256_t testGenesis = GetTestGenesis();
         
         /* Create context with genesis */
         MiningContext ctx = MiningContext().WithGenesis(testGenesis);
@@ -61,8 +73,7 @@ TEST_CASE("Dynamic Reward Routing Tests", "[reward_routing]")
     SECTION("HasValidPayout returns true when genesis is set")
     {
         /* Create a test genesis hash */
-        uint256_t testGenesis;
-        testGenesis.SetHex("a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122");
+        uint256_t testGenesis = GetTestGenesis();
         
         /* Create context with genesis */
         MiningContext ctx = MiningContext().WithGenesis(testGenesis);
@@ -84,8 +95,7 @@ TEST_CASE("Dynamic Reward Routing Tests", "[reward_routing]")
         StatelessMinerManager& manager = StatelessMinerManager::Get();
         
         /* Create test context with genesis */
-        uint256_t testGenesis;
-        testGenesis.SetHex("a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122");
+        uint256_t testGenesis = GetTestGenesis();
         
         MiningContext ctx = MiningContext()
             .WithGenesis(testGenesis)
@@ -112,8 +122,7 @@ TEST_CASE("Reward Routing Mode Tests", "[reward_routing]")
 {
     SECTION("Authenticated miner with genesis uses dynamic mode")
     {
-        uint256_t testGenesis;
-        testGenesis.SetHex("a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122");
+        uint256_t testGenesis = GetTestGenesis();
         
         MiningContext ctx = MiningContext()
             .WithGenesis(testGenesis)
