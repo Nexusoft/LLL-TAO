@@ -63,6 +63,7 @@ namespace TAO
          *  @param[in] nChannel The channel to create block for.
          *  @param[in] nExtraNonce An extra nonce to use for double iterating.
          *  @param[in] pCoinbaseRecipients The coinbase recipients, if any.
+         *  @param[in] hashDynamicGenesis Optional genesis hash for dynamic reward routing (0 = use user genesis)
          *
          **/
         bool CreateProducer(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& pin,
@@ -71,7 +72,8 @@ namespace TAO
                                const uint32_t nBlockVersion,
                                const uint32_t nChannel,
                                const uint64_t nExtraNonce,
-                               Legacy::Coinbase *pCoinbaseRecipients = nullptr);
+                               Legacy::Coinbase *pCoinbaseRecipients = nullptr,
+                               const uint256_t& hashDynamicGenesis = uint256_t(0));
 
 
         /** AddTransactions
@@ -112,11 +114,12 @@ namespace TAO
          *  @param[out] block The block object being created.
          *  @param[in] nExtraNonce An extra nonce to use for double iterating.
          *  @param[in] pCoinbaseRecipients The coinbase recipients, if any.
+         *  @param[in] hashDynamicGenesis Optional genesis hash for dynamic reward routing (0 = use user genesis)
          *
          **/
         bool CreateBlock(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& pin,
                          const uint32_t nChannel, TAO::Ledger::TritiumBlock& block, const uint64_t nExtraNonce = 0,
-                         Legacy::Coinbase *pCoinbaseRecipients = nullptr);
+                         Legacy::Coinbase *pCoinbaseRecipients = nullptr, const uint256_t& hashDynamicGenesis = uint256_t(0));
 
 
         /** CreateStakeBlock
