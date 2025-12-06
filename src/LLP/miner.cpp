@@ -934,16 +934,53 @@ namespace LLP
                     return debug::error(FUNCTION, "Authentication required for stateless miner commands");
                 }
 
-                debug::log(2, FUNCTION, "SUBMIT_BLOCK from ", GetAddress().ToStringIP());
+                debug::log(2, FUNCTION, "SUBMIT_BLOCK from ", GetAddress().ToStringIP(),
+                           " size=", PACKET.DATA.size());
+
+                /* Validate packet size using FalconConstants */
+                const size_t MIN_SIZE = FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE;
+                const size_t MAX_SIZE = FalconConstants::SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX;
+
+                if(PACKET.DATA.size() < MIN_SIZE)
+                {
+                    debug::log(0, FUNCTION, "SUBMIT_BLOCK packet too small: ", 
+                               PACKET.DATA.size(), " < ", MIN_SIZE);
+                    respond(BLOCK_REJECTED);
+                    return true;
+                }
+
+                if(PACKET.DATA.size() > MAX_SIZE)
+                {
+                    debug::log(0, FUNCTION, "SUBMIT_BLOCK packet too large: ",
+                               PACKET.DATA.size(), " > ", MAX_SIZE);
+                    respond(BLOCK_REJECTED);
+                    return true;
+                }
+
+                /* Log signature mode for diagnostics */
+                if(PACKET.DATA.size() > FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX)
+                {
+                    debug::log(2, FUNCTION, "SUBMIT_BLOCK: Dual-signature mode detected");
+                }
+                else if(PACKET.DATA.size() >= FalconConstants::SUBMIT_BLOCK_WRAPPER_MIN)
+                {
+                    debug::log(3, FUNCTION, "SUBMIT_BLOCK: Single-signature mode");
+                }
+                else
+                {
+                    debug::log(3, FUNCTION, "SUBMIT_BLOCK: Legacy format");
+                }
 
                 uint512_t hashMerkle;
                 uint64_t nonce = 0;
 
-                /* Get the merkle root. */
-                hashMerkle.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.end() - 8));
+                /* Get the merkle root (first 64 bytes). */
+                hashMerkle.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE));
 
-                /* Get the nonce */
-                nonce = convert::bytes2uint64(std::vector<uint8_t>(PACKET.DATA.end() - 8, PACKET.DATA.end()));
+                /* Get the nonce (next 8 bytes) */
+                nonce = convert::bytes2uint64(std::vector<uint8_t>(
+                    PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE,
+                    PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE));
 
                 debug::log(3, FUNCTION, "Block merkle root: ", hashMerkle.SubString(), " nonce: ", nonce);
 
@@ -1424,11 +1461,13 @@ namespace LLP
                 uint512_t hashMerkle;
                 uint64_t nonce = 0;
 
-                /* Get the merkle root. */
-                hashMerkle.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.end() - 8));
+                /* Get the merkle root (first 64 bytes). */
+                hashMerkle.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE));
 
-                /* Get the nonce */
-                nonce = convert::bytes2uint64(std::vector<uint8_t>(PACKET.DATA.end() - 8, PACKET.DATA.end()));
+                /* Get the nonce (next 8 bytes) */
+                nonce = convert::bytes2uint64(std::vector<uint8_t>(
+                    PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE,
+                    PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE));
 
                 debug::log(3, FUNCTION, "Block merkle root: ", hashMerkle.SubString(), " nonce: ", nonce, " from ", GetAddress().ToStringIP());
 
