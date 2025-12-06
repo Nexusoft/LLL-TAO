@@ -974,11 +974,13 @@ namespace LLP
                 uint512_t hashMerkle;
                 uint64_t nonce = 0;
 
-                /* Get the merkle root. */
-                hashMerkle.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.end() - 8));
+                /* Get the merkle root (first 64 bytes). */
+                hashMerkle.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE));
 
-                /* Get the nonce */
-                nonce = convert::bytes2uint64(std::vector<uint8_t>(PACKET.DATA.end() - 8, PACKET.DATA.end()));
+                /* Get the nonce (next 8 bytes) */
+                nonce = convert::bytes2uint64(std::vector<uint8_t>(
+                    PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE,
+                    PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE));
 
                 debug::log(3, FUNCTION, "Block merkle root: ", hashMerkle.SubString(), " nonce: ", nonce);
 
@@ -1459,11 +1461,13 @@ namespace LLP
                 uint512_t hashMerkle;
                 uint64_t nonce = 0;
 
-                /* Get the merkle root. */
-                hashMerkle.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.end() - 8));
+                /* Get the merkle root (first 64 bytes). */
+                hashMerkle.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE));
 
-                /* Get the nonce */
-                nonce = convert::bytes2uint64(std::vector<uint8_t>(PACKET.DATA.end() - 8, PACKET.DATA.end()));
+                /* Get the nonce (next 8 bytes) */
+                nonce = convert::bytes2uint64(std::vector<uint8_t>(
+                    PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE,
+                    PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE));
 
                 debug::log(3, FUNCTION, "Block merkle root: ", hashMerkle.SubString(), " nonce: ", nonce, " from ", GetAddress().ToStringIP());
 
