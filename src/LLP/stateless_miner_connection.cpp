@@ -285,31 +285,72 @@ namespace LLP
                 }
 
                 debug::log(2, FUNCTION, "SUBMIT_BLOCK from ", GetAddress().ToStringIP(),
-                           " channel=", context.nChannel, " sessionId=", context.nSessionId);
+                           " channel=", context.nChannel, " sessionId=", context.nSessionId,
+                           " size=", PACKET.DATA.size());
 
-                /* Minimum packet size: merkle root (64 bytes) + nonce (8 bytes) */
-                const size_t MERKLE_SIZE = FalconConstants::MERKLE_ROOT_SIZE;
-                const size_t NONCE_SIZE = FalconConstants::NONCE_SIZE;
-                const size_t MIN_SIZE = MERKLE_SIZE + NONCE_SIZE;
+                /* Validate packet size using FalconConstants */
+                /* Minimum: merkle(64) + nonce(8) = 72 bytes (legacy format) */
+                const size_t MIN_SIZE = FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE;
+                
+                /* Maximum: dual-signature with ChaCha20 encryption = 1,616 bytes */
+                const size_t MAX_SIZE = FalconConstants::SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX;
 
                 if(PACKET.DATA.size() < MIN_SIZE)
                 {
-                    debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK packet too small");
+                    debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK packet too small: ", 
+                               PACKET.DATA.size(), " < ", MIN_SIZE);
                     Packet response(BLOCK_REJECTED);
                     respond(response);
                     return true;
+                }
+
+                if(PACKET.DATA.size() > MAX_SIZE)
+                {
+                    debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK packet too large: ",
+                               PACKET.DATA.size(), " > ", MAX_SIZE);
+                    Packet response(BLOCK_REJECTED);
+                    respond(response);
+                    return true;
+                }
+
+                /* Determine signature mode based on packet size */
+                bool fDualSignature = false;
+                bool fSingleSignature = false;
+                
+                if(PACKET.DATA.size() > FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX)
+                {
+                    /* Packet larger than single-sig max - could be dual-signature */
+                    if(PACKET.DATA.size() <= FalconConstants::SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX)
+                    {
+                        fDualSignature = true;
+                        debug::log(2, FUNCTION, "SUBMIT_BLOCK: Dual-signature mode detected (size=", 
+                                   PACKET.DATA.size(), ")");
+                    }
+                }
+                else if(PACKET.DATA.size() >= FalconConstants::SUBMIT_BLOCK_WRAPPER_MIN)
+                {
+                    /* Packet within single-sig range */
+                    fSingleSignature = true;
+                    debug::log(3, FUNCTION, "SUBMIT_BLOCK: Single-signature mode (size=", 
+                               PACKET.DATA.size(), ")");
+                }
+                else
+                {
+                    /* Legacy format without signature */
+                    debug::log(3, FUNCTION, "SUBMIT_BLOCK: Legacy format (size=", 
+                               PACKET.DATA.size(), ")");
                 }
 
                 uint512_t hashMerkle;
                 uint64_t nonce = 0;
 
                 /* Get the merkle root (first 64 bytes). */
-                hashMerkle.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.begin() + MERKLE_SIZE));
+                hashMerkle.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE));
 
                 /* Get the nonce (next 8 bytes) */
                 nonce = convert::bytes2uint64(std::vector<uint8_t>(
-                    PACKET.DATA.begin() + MERKLE_SIZE,
-                    PACKET.DATA.begin() + MERKLE_SIZE + NONCE_SIZE));
+                    PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE,
+                    PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE));
 
                 debug::log(3, FUNCTION, "Block merkle root: ", hashMerkle.SubString(), " nonce: ", nonce);
 

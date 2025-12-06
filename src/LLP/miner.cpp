@@ -934,8 +934,40 @@ namespace LLP
                     return debug::error(FUNCTION, "Authentication required for stateless miner commands");
                 }
 
-                debug::log(2, FUNCTION, "SUBMIT_BLOCK from ", GetAddress().ToStringIP());
+                debug::log(2, FUNCTION, "SUBMIT_BLOCK from ", GetAddress().ToStringIP(),
+                           " size=", PACKET.DATA.size());
 
+                /* Validate packet size using FalconConstants */
+                const size_t MIN_SIZE = FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE;
+                const size_t MAX_SIZE = FalconConstants::SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX;
+
+                if(PACKET.DATA.size() < MIN_SIZE)
+                {
+                    debug::log(0, FUNCTION, "SUBMIT_BLOCK packet too small: ", 
+                               PACKET.DATA.size(), " < ", MIN_SIZE);
+                    respond(BLOCK_REJECTED);
+                    return true;
+                }
+
+                if(PACKET.DATA.size() > MAX_SIZE)
+                {
+                    debug::log(0, FUNCTION, "SUBMIT_BLOCK packet too large: ",
+                               PACKET.DATA.size(), " > ", MAX_SIZE);
+                    respond(BLOCK_REJECTED);
+                    return true;
+                }
+
+                /* Log signature mode for diagnostics */
+                if(PACKET.DATA.size() > FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX)
+                {
+                    debug::log(2, FUNCTION, "SUBMIT_BLOCK: Dual-signature mode detected");
+                }
+                else if(PACKET.DATA.size() >= FalconConstants::SUBMIT_BLOCK_WRAPPER_MIN)
+                {
+                    debug::log(3, FUNCTION, "SUBMIT_BLOCK: Single-signature mode");
+                }
+
+                /* Continue with existing merkle/nonce extraction... */
                 uint512_t hashMerkle;
                 uint64_t nonce = 0;
 
