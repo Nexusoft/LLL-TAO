@@ -157,10 +157,9 @@ namespace DisposableFalcon
         }
         nOffset += 8;
 
-        /* Parse signature length (2 bytes, big-endian) */
-        DebugLogDeserialize("sig_len", nOffset, 2, vData.size());
-        uint16_t nSigLen = (static_cast<uint16_t>(vData[nOffset]) << 8) |
-                           static_cast<uint16_t>(vData[nOffset + 1]);
+        // AFTER (Little-Endian - matches Serialize and NexusMiner)
+            uint16_t nSigLen = static_cast<uint16_t>(vData[nOffset]) |
+            (static_cast<uint16_t>(vData[nOffset + 1]) << 8);
         nOffset += 2;
 
         /* Validate remaining data for signature */
