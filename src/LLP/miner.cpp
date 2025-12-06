@@ -966,6 +966,10 @@ namespace LLP
                 {
                     debug::log(3, FUNCTION, "SUBMIT_BLOCK: Single-signature mode");
                 }
+                else
+                {
+                    debug::log(3, FUNCTION, "SUBMIT_BLOCK: Legacy format");
+                }
 
                 uint512_t hashMerkle;
                 uint64_t nonce = 0;
