@@ -967,7 +967,6 @@ namespace LLP
                     debug::log(3, FUNCTION, "SUBMIT_BLOCK: Single-signature mode");
                 }
 
-                /* Continue with existing merkle/nonce extraction... */
                 uint512_t hashMerkle;
                 uint64_t nonce = 0;
 
