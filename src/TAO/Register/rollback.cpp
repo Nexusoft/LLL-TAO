@@ -293,27 +293,24 @@ namespace TAO
                                             uint64_t nBalance = account.get<uint64_t>("balance");
                                             
                                             /* Sanity check for balance underflow. */
-                                            if(nBalance >= nAmount)
-                                            {
-                                                account.Write("balance", nBalance - nAmount);
-                                                account.nModified = runtime::unifiedtimestamp();
-                                                account.SetChecksum();
+                                            if(nBalance < nAmount)
+                                                return debug::error(FUNCTION, "OP::COINBASE: balance underflow during rollback");
 
-                                                /* Write the rolled back account state. */
-                                                if(!LLD::Register->WriteState(hashDefault, account, nFlags))
-                                                    debug::error(FUNCTION, "OP::COINBASE: failed to rollback auto-credited balance");
-                                            }
-                                            else
-                                            {
-                                                debug::error(FUNCTION, "OP::COINBASE: balance underflow during rollback");
-                                            }
+                                            /* Subtract the amount. */
+                                            account.Write("balance", nBalance - nAmount);
+                                            account.nModified = runtime::unifiedtimestamp();
+                                            account.SetChecksum();
+
+                                            /* Write the rolled back account state. */
+                                            if(!LLD::Register->WriteState(hashDefault, account, nFlags))
+                                                return debug::error(FUNCTION, "OP::COINBASE: failed to rollback auto-credited balance");
                                         }
                                     }
                                 }
 
                                 /* Erase the proof regardless of balance rollback success. */
                                 if(!LLD::Ledger->EraseProof(hashGenesis, contract.Hash(), 0, nFlags))
-                                    debug::error(FUNCTION, "OP::COINBASE: failed to erase auto-credit proof");
+                                    return debug::error(FUNCTION, "OP::COINBASE: failed to erase auto-credit proof");
                             }
 
                             /* Erase the event (legacy event-only mode). */
