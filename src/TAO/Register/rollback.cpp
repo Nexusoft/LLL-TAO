@@ -268,47 +268,53 @@ namespace TAO
                         uint64_t nAmount = 0;
                         contract >> nAmount;
 
-                        /* Seek to end. */
+                        /* Seek to end (skip nExtraNonce which is 8 bytes). */
                         contract.Seek(8);
 
                         /* Check if auto-credit was applied by looking for proof. */
                         if(nFlags == TAO::Ledger::FLAGS::BLOCK && contract.Caller() != hashGenesis)
                         {
+                            /* Track if balance was successfully rolled back. */
+                            bool fBalanceRolledBack = false;
+
                             /* Check if a proof exists (indicates auto-credit occurred). */
                             if(LLD::Ledger->HasProof(hashGenesis, contract.Hash(), 0, nFlags))
                             {
                                 /* Proof exists - auto-credit was applied, need to rollback balance. */
                                 /* First, resolve the default account. */
                                 TAO::Register::Address hashDefault;
-                                if(LLP::GenesisConstants::ResolveDefaultAccount(hashGenesis, hashDefault))
-                                {
-                                    /* Read the current account state. */
-                                    TAO::Register::Object account;
-                                    if(LLD::Register->ReadState(hashDefault, account, nFlags))
-                                    {
-                                        /* Parse the account. */
-                                        if(account.Parse())
-                                        {
-                                            /* Rollback the balance by subtracting the amount. */
-                                            uint64_t nBalance = account.get<uint64_t>("balance");
-                                            
-                                            /* Sanity check for balance underflow. */
-                                            if(nBalance < nAmount)
-                                                return debug::error(FUNCTION, "OP::COINBASE: balance underflow during rollback");
+                                if(!LLP::GenesisConstants::ResolveDefaultAccount(hashGenesis, hashDefault))
+                                    return debug::error(FUNCTION, "OP::COINBASE: failed to resolve default account for rollback");
 
-                                            /* Subtract the amount. */
-                                            account.Write("balance", nBalance - nAmount);
-                                            account.nModified = runtime::unifiedtimestamp();
-                                            account.SetChecksum();
+                                /* Read the current account state. */
+                                TAO::Register::Object account;
+                                if(!LLD::Register->ReadState(hashDefault, account, nFlags))
+                                    return debug::error(FUNCTION, "OP::COINBASE: failed to read account state for rollback");
 
-                                            /* Write the rolled back account state. */
-                                            if(!LLD::Register->WriteState(hashDefault, account, nFlags))
-                                                return debug::error(FUNCTION, "OP::COINBASE: failed to rollback auto-credited balance");
-                                        }
-                                    }
-                                }
+                                /* Parse the account. */
+                                if(!account.Parse())
+                                    return debug::error(FUNCTION, "OP::COINBASE: failed to parse account for rollback");
 
-                                /* Erase the proof regardless of balance rollback success. */
+                                /* Rollback the balance by subtracting the amount. */
+                                uint64_t nBalance = account.get<uint64_t>("balance");
+                                
+                                /* Sanity check for balance underflow. */
+                                if(nBalance < nAmount)
+                                    return debug::error(FUNCTION, "OP::COINBASE: balance underflow during rollback");
+
+                                /* Subtract the amount. */
+                                account.Write("balance", nBalance - nAmount);
+                                account.nModified = runtime::unifiedtimestamp();
+                                account.SetChecksum();
+
+                                /* Write the rolled back account state. */
+                                if(!LLD::Register->WriteState(hashDefault, account, nFlags))
+                                    return debug::error(FUNCTION, "OP::COINBASE: failed to rollback auto-credited balance");
+
+                                /* Mark balance as successfully rolled back. */
+                                fBalanceRolledBack = true;
+
+                                /* Erase the proof only if balance was successfully rolled back. */
                                 if(!LLD::Ledger->EraseProof(hashGenesis, contract.Hash(), 0, nFlags))
                                     return debug::error(FUNCTION, "OP::COINBASE: failed to erase auto-credit proof");
                             }
