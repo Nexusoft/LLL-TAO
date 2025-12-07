@@ -68,7 +68,9 @@ TEST_CASE("Falcon Constants Validation", "[falcon][constants]")
     {
         REQUIRE(FALCON512_SIG_MIN == 600);
         REQUIRE(FALCON512_SIG_AUTH_MAX == 700);
-        REQUIRE(FALCON512_SIG_ABSOLUTE_MAX == 752);
+        REQUIRE(FALCON512_SIG_VARTIME_MAX == 752);
+        REQUIRE(FALCON512_SIG_CT_SIZE == 809);
+        REQUIRE(FALCON512_SIG_ABSOLUTE_MAX == 809);
         REQUIRE(FALCON512_SIG_MAX_VALIDATION == 2048);
     }
 
@@ -97,22 +99,22 @@ TEST_CASE("Falcon Constants Validation", "[falcon][constants]")
         REQUIRE(SUBMIT_BLOCK_WRAPPER_MIN == 82);
         REQUIRE(SUBMIT_BLOCK_WRAPPER_MIN == MERKLE_ROOT_SIZE + NONCE_SIZE + TIMESTAMP_SIZE + LENGTH_FIELD_SIZE);
         
-        REQUIRE(SUBMIT_BLOCK_WRAPPER_MAX == 834);
+        REQUIRE(SUBMIT_BLOCK_WRAPPER_MAX == 891);
         REQUIRE(SUBMIT_BLOCK_WRAPPER_MAX == SUBMIT_BLOCK_WRAPPER_MIN + FALCON512_SIG_ABSOLUTE_MAX);
         
-        REQUIRE(SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX == 862);
+        REQUIRE(SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX == 919);
         REQUIRE(SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX == SUBMIT_BLOCK_WRAPPER_MAX + CHACHA20_OVERHEAD);
     }
 
     SECTION("Auth response sizes are correct")
     {
-        REQUIRE(AUTH_RESPONSE_MAX == 1661);
+        REQUIRE(AUTH_RESPONSE_MAX == 1718);
         REQUIRE(AUTH_RESPONSE_MAX == LENGTH_FIELD_SIZE + FALCON512_PUBKEY_SIZE + TIMESTAMP_SIZE + LENGTH_FIELD_SIZE + FALCON512_SIG_ABSOLUTE_MAX);
         
-        REQUIRE(AUTH_RESPONSE_ENCRYPTED_MAX == 1689);
+        REQUIRE(AUTH_RESPONSE_ENCRYPTED_MAX == 1746);
         REQUIRE(AUTH_RESPONSE_ENCRYPTED_MAX == AUTH_RESPONSE_MAX + CHACHA20_OVERHEAD);
         
-        REQUIRE(AUTH_RESPONSE_WITH_GENESIS_MAX == 1721);
+        REQUIRE(AUTH_RESPONSE_WITH_GENESIS_MAX == 1778);
         REQUIRE(AUTH_RESPONSE_WITH_GENESIS_MAX == AUTH_RESPONSE_ENCRYPTED_MAX + GENESIS_HASH_SIZE);
     }
 
@@ -121,29 +123,29 @@ TEST_CASE("Falcon Constants Validation", "[falcon][constants]")
         REQUIRE(PHYSICAL_BLOCK_SIG_MIN == 600);
         REQUIRE(PHYSICAL_BLOCK_SIG_MIN == FALCON512_SIG_MIN);
         
-        REQUIRE(PHYSICAL_BLOCK_SIG_MAX == 752);
+        REQUIRE(PHYSICAL_BLOCK_SIG_MAX == 809);
         REQUIRE(PHYSICAL_BLOCK_SIG_MAX == FALCON512_SIG_ABSOLUTE_MAX);
         
         // Message max = 2MB + 8 bytes (nonce)
         REQUIRE(PHYSICAL_BLOCK_SIG_MESSAGE_MAX == (1024 * 1024 * 2) + 8);
         REQUIRE(PHYSICAL_BLOCK_SIG_MESSAGE_MAX == (1024 * 1024 * 2) + NONCE_SIZE);
         
-        // Overhead = sig_len(2) + signature(752) = 754 bytes
-        REQUIRE(PHYSICAL_BLOCK_SIG_OVERHEAD == 754);
+        // Overhead = sig_len(2) + signature(809) = 811 bytes
+        REQUIRE(PHYSICAL_BLOCK_SIG_OVERHEAD == 811);
         REQUIRE(PHYSICAL_BLOCK_SIG_OVERHEAD == LENGTH_FIELD_SIZE + FALCON512_SIG_ABSOLUTE_MAX);
         
-        REQUIRE(BLOCK_WITH_PHYSICAL_SIG_MIN_OVERHEAD == 754);
+        REQUIRE(BLOCK_WITH_PHYSICAL_SIG_MIN_OVERHEAD == 811);
         REQUIRE(BLOCK_WITH_PHYSICAL_SIG_MIN_OVERHEAD == PHYSICAL_BLOCK_SIG_OVERHEAD);
     }
 
     SECTION("Dual signature scenario sizes are correct")
     {
-        // Dual sig (localhost) = disposable wrapper(834) + physical sig overhead(754) = 1,588 bytes
-        REQUIRE(SUBMIT_BLOCK_DUAL_SIG_MAX == 1588);
+        // Dual sig (localhost) = disposable wrapper(891) + physical sig overhead(811) = 1,702 bytes
+        REQUIRE(SUBMIT_BLOCK_DUAL_SIG_MAX == 1702);
         REQUIRE(SUBMIT_BLOCK_DUAL_SIG_MAX == SUBMIT_BLOCK_WRAPPER_MAX + PHYSICAL_BLOCK_SIG_OVERHEAD);
         
-        // Dual sig (encrypted) = dual sig(1,588) + ChaCha20 overhead(28) = 1,616 bytes
-        REQUIRE(SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX == 1616);
+        // Dual sig (encrypted) = dual sig(1,702) + ChaCha20 overhead(28) = 1,730 bytes
+        REQUIRE(SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX == 1730);
         REQUIRE(SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX == SUBMIT_BLOCK_DUAL_SIG_MAX + CHACHA20_OVERHEAD);
     }
 }
@@ -203,14 +205,14 @@ TEST_CASE("Little-Endian Length Serialization", "[falcon][endianness]")
         REQUIRE(parsed == value);
     }
 
-    SECTION("Parse and serialize maximum signature length (752)")
+    SECTION("Parse and serialize maximum signature length (809)")
     {
         uint16_t value = FALCON512_SIG_ABSOLUTE_MAX;
         std::vector<uint8_t> vSerialized = SerializeLittleEndianLength(value);
         
         REQUIRE(vSerialized.size() == 2);
-        REQUIRE(vSerialized[0] == 0xF0);  // 752 & 0xFF = 240 = 0xF0
-        REQUIRE(vSerialized[1] == 0x02);  // 752 >> 8 = 2
+        REQUIRE(vSerialized[0] == 0x29);  // 809 & 0xFF = 41 = 0x29
+        REQUIRE(vSerialized[1] == 0x03);  // 809 >> 8 = 3
         
         uint16_t parsed = ParseLittleEndianLength(vSerialized, 0);
         REQUIRE(parsed == value);
@@ -270,15 +272,15 @@ TEST_CASE("Big-Endian vs Little-Endian Consistency Check", "[falcon][endianness]
         REQUIRE(le_value != be_value);
     }
 
-    SECTION("Max signature length 752")
+    SECTION("Max signature length 809")
     {
-        std::vector<uint8_t> vData = {0xF0, 0x02};  // Little-endian for 752
+        std::vector<uint8_t> vData = {0x29, 0x03};  // Little-endian for 809
         
         uint16_t le_value = ParseLittleEndianLength(vData, 0);
         uint16_t be_value = ParseBigEndianLength(vData, 0);
         
-        REQUIRE(le_value == 752);   // Correct little-endian interpretation
-        REQUIRE(be_value == 61442); // Wrong big-endian interpretation (0xF002)
+        REQUIRE(le_value == 809);   // Correct little-endian interpretation
+        REQUIRE(be_value == 10499); // Wrong big-endian interpretation (0x2903)
         REQUIRE(le_value != be_value);
     }
 }
@@ -336,7 +338,7 @@ TEST_CASE("SignedWorkSubmission Serialization Endianness", "[falcon][endianness]
 
     SECTION("Deserialize with maximum signature length")
     {
-        /* Create serialized data with max signature length (752) */
+        /* Create serialized data with max signature length (809) */
         std::vector<uint8_t> vData;
         
         /* Merkle root (64 bytes) */
@@ -353,16 +355,16 @@ TEST_CASE("SignedWorkSubmission Serialization Endianness", "[falcon][endianness]
         for(size_t i = 0; i < 8; ++i)
             vData.push_back(static_cast<uint8_t>((nTimestamp >> (i * 8)) & 0xFF));
         
-        /* Signature length (2 bytes, little-endian) - 752 = 0x02F0 */
-        vData.push_back(0xF0);  // Low byte
-        vData.push_back(0x02);  // High byte
+        /* Signature length (2 bytes, little-endian) - 809 = 0x0329 */
+        vData.push_back(0x29);  // Low byte
+        vData.push_back(0x03);  // High byte
         
-        /* Signature (752 bytes) */
+        /* Signature (809 bytes) */
         for(size_t i = 0; i < FALCON512_SIG_ABSOLUTE_MAX; ++i)
             vData.push_back(static_cast<uint8_t>(i & 0xFF));
         
         /* Verify total size */
-        REQUIRE(vData.size() == 64 + 8 + 8 + 2 + 752);
+        REQUIRE(vData.size() == 64 + 8 + 8 + 2 + 809);
         
         /* Deserialize */
         SignedWorkSubmission submission;

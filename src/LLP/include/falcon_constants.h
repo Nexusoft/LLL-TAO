@@ -57,10 +57,17 @@ namespace FalconConstants
     /** Typical maximum for authentication signatures (address + timestamp) */
     static const size_t FALCON512_SIG_AUTH_MAX = 700;
     
+    /** Typical maximum for VARIABLE-TIME signatures (not used by LLL-TAO) */
+    static const size_t FALCON512_SIG_VARTIME_MAX = 752;
+    
+    /** Constant-Time Falcon-512 signature size (exact)
+     *  Per Falcon spec: FALCON_SIG_CT_SIZE(logn=9) = 809 bytes
+     *  LLL-TAO's FLKey::Sign() uses ct=1, producing exactly 809 bytes */
+    static const size_t FALCON512_SIG_CT_SIZE = 809;
+    
     /** Absolute maximum Falcon-512 signature size
-     *  Per Falcon spec: FALCON_SIG_VARTIME_MAXSIZE(logn=9) = 752 bytes
-     *  This covers ALL possible Falcon-512 signatures regardless of message */
-    static const size_t FALCON512_SIG_ABSOLUTE_MAX = 752;
+     *  This is the CT size since LLL-TAO uses constant-time signing */
+    static const size_t FALCON512_SIG_ABSOLUTE_MAX = 809;
     
     /** Maximum signature size for validation (with safety margin) */
     static const size_t FALCON512_SIG_MAX_VALIDATION = 2048;
@@ -107,7 +114,7 @@ namespace FalconConstants
     static const size_t SUBMIT_BLOCK_MESSAGE_SIZE = 80;  // 64 + 8 + 8
 
     /***************************************************************************
-     * Submit Block Wrapper Sizes (Serialized Transmission)
+     * Submit Block Wrapper Sizes (Serialized Transmission) - CT=809
      **************************************************************************/
     
     /** Minimum Submit Block wrapper size (without signature)
@@ -115,15 +122,15 @@ namespace FalconConstants
     static const size_t SUBMIT_BLOCK_WRAPPER_MIN = 82;
     
     /** Submit Block wrapper - LOCALHOST (no encryption)
-     *  merkle(64) + nonce(8) + timestamp(8) + sig_len(2) + sig(752) = 834 bytes */
-    static const size_t SUBMIT_BLOCK_WRAPPER_MAX = 834;
+     *  merkle(64) + nonce(8) + timestamp(8) + sig_len(2) + sig(809) = 891 bytes */
+    static const size_t SUBMIT_BLOCK_WRAPPER_MAX = 891;
     
     /** Submit Block wrapper - PUBLIC MINER (with ChaCha20 encryption)
-     *  nonce(12) + encrypted_payload(834) + auth_tag(16) = 862 bytes */
-    static const size_t SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX = 862;
+     *  nonce(12) + encrypted_payload(891) + auth_tag(16) = 919 bytes */
+    static const size_t SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX = 919;
 
     /***************************************************************************
-     * Physical Block Signature (Stored on Blockchain - Emergency Backup System)
+     * Physical Block Signature (Stored on Blockchain - Emergency Backup System) - CT=809
      **************************************************************************/
     
     /** Physical block signature - signs full block data + nonce
@@ -135,7 +142,7 @@ namespace FalconConstants
      *  MAX_BLOCK_SIZE (2MB).
      *  
      *  Message format: [block_data (variable, up to MAX_BLOCK_SIZE)] + [nonce (8 bytes LE)]
-     *  Signature: Falcon-512 (~600-752 bytes)
+     *  Signature: Falcon-512 (~600-809 bytes)
      *  
      *  This is the emergency backup system for proving block authorship when
      *  the Disposable Falcon session authentication is insufficient.
@@ -145,7 +152,7 @@ namespace FalconConstants
     static const size_t PHYSICAL_BLOCK_SIG_MIN = FALCON512_SIG_MIN;  // 600 bytes
     
     /** Maximum physical block signature size */
-    static const size_t PHYSICAL_BLOCK_SIG_MAX = FALCON512_SIG_ABSOLUTE_MAX;  // 752 bytes
+    static const size_t PHYSICAL_BLOCK_SIG_MAX = 809;
     
     /** Maximum message size for physical block signature
      *  block_data (up to 2MB) + nonce (8 bytes) 
@@ -153,43 +160,43 @@ namespace FalconConstants
     static const size_t PHYSICAL_BLOCK_SIG_MESSAGE_MAX = (1024 * 1024 * 2) + NONCE_SIZE;  // 2MB + 8 bytes
     
     /** Physical block signature overhead added to block transmission
-     *  sig_len(2) + signature(752) = 754 bytes max */
-    static const size_t PHYSICAL_BLOCK_SIG_OVERHEAD = LENGTH_FIELD_SIZE + FALCON512_SIG_ABSOLUTE_MAX;  // 754 bytes
+     *  sig_len(2) + signature(809) = 811 bytes max */
+    static const size_t PHYSICAL_BLOCK_SIG_OVERHEAD = 811;
     
     /** Minimum block submission size with physical signature overhead */
-    static const size_t BLOCK_WITH_PHYSICAL_SIG_MIN_OVERHEAD = PHYSICAL_BLOCK_SIG_OVERHEAD;  // 754 bytes
+    static const size_t BLOCK_WITH_PHYSICAL_SIG_MIN_OVERHEAD = 811;
 
     /***************************************************************************
-     * Dual Signature Scenario (Both Disposable Wrapper + Physical Signature)
+     * Dual Signature Scenario (Both Disposable Wrapper + Physical Signature) - CT=809
      **************************************************************************/
     
     /** Submit block with BOTH signatures - LOCALHOST (no encryption)
-     *  Disposable wrapper(834) + Physical signature overhead(754) = 1,588 bytes
+     *  Disposable wrapper(891) + Physical signature overhead(811) = 1,702 bytes
      *  This is the maximum size when both Disposable Falcon wrapper AND 
      *  Physical Block Signature are used together on localhost. */
-    static const size_t SUBMIT_BLOCK_DUAL_SIG_MAX = SUBMIT_BLOCK_WRAPPER_MAX + PHYSICAL_BLOCK_SIG_OVERHEAD;  // 1,588 bytes
+    static const size_t SUBMIT_BLOCK_DUAL_SIG_MAX = 1702;
     
     /** Submit block with BOTH signatures - PUBLIC MINER (with ChaCha20 encryption)
-     *  Dual sig(1,588) + ChaCha20 overhead(28) = 1,616 bytes
+     *  Dual sig(1,702) + ChaCha20 overhead(28) = 1,730 bytes
      *  This is the maximum size when both signatures are used on public miners
      *  with encryption enabled. */
-    static const size_t SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX = SUBMIT_BLOCK_DUAL_SIG_MAX + CHACHA20_OVERHEAD;  // 1,616 bytes
+    static const size_t SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX = 1730;
 
     /***************************************************************************
-     * Authentication Response Sizes
+     * Authentication Response Sizes - CT=809
      **************************************************************************/
     
     /** Auth response - LOCALHOST (no encryption on pubkey)
-     *  pubkey_len(2) + pubkey(897) + timestamp(8) + sig_len(2) + sig(752) = 1661 bytes */
-    static const size_t AUTH_RESPONSE_MAX = 1661;
+     *  pubkey_len(2) + pubkey(897) + timestamp(8) + sig_len(2) + sig(809) = 1718 bytes */
+    static const size_t AUTH_RESPONSE_MAX = 1718;
     
     /** Auth response - PUBLIC MINER (ChaCha20 wrapped pubkey)
-     *  pubkey_len(2) + wrapped_pubkey(897+28) + timestamp(8) + sig_len(2) + sig(752) = 1689 bytes */
-    static const size_t AUTH_RESPONSE_ENCRYPTED_MAX = 1689;
+     *  pubkey_len(2) + wrapped_pubkey(897+28) + timestamp(8) + sig_len(2) + sig(809) = 1746 bytes */
+    static const size_t AUTH_RESPONSE_ENCRYPTED_MAX = 1746;
     
     /** Auth response with optional GenesisHash binding
      *  Add 32 bytes for Tritium genesis hash */
-    static const size_t AUTH_RESPONSE_WITH_GENESIS_MAX = 1721;
+    static const size_t AUTH_RESPONSE_WITH_GENESIS_MAX = 1778;
 
 } // namespace FalconConstants
 } // namespace LLP
