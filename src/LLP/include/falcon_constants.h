@@ -206,8 +206,8 @@ namespace FalconConstants
      *  pubkey_len(2) + pubkey(897) + miner_id_len(2) = 901 bytes */
     static const size_t MINER_AUTH_INIT_MIN = 901;
 
-    /** MINER_AUTH_INIT with genesis (no miner_id)
-     *  pubkey_len(2) + pubkey(897) + miner_id_len(2) + genesis(32) = 933 bytes */
+    /** MINER_AUTH_INIT with genesis but empty miner_id string
+     *  pubkey_len(2) + pubkey(897) + miner_id_len(2, value=0) + genesis(32) = 933 bytes */
     static const size_t MINER_AUTH_INIT_WITH_GENESIS = 933;
 
     /** MINER_AUTH_INIT maximum size (with miner_id and genesis)

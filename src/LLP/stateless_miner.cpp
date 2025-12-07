@@ -452,12 +452,12 @@ namespace LLP
 
         /* NEW: Parse hashGenesis (32 bytes, optional but expected) */
         uint256_t hashGenesis(0);
-        if(nPos + 32 <= vData.size())
+        if(nPos + FalconConstants::GENESIS_HASH_SIZE <= vData.size())
         {
             /* Extract genesis hash bytes */
-            std::vector<uint8_t> vGenesis(vData.begin() + nPos, vData.begin() + nPos + 32);
+            std::vector<uint8_t> vGenesis(vData.begin() + nPos, vData.begin() + nPos + FalconConstants::GENESIS_HASH_SIZE);
             hashGenesis.SetBytes(vGenesis);
-            nPos += 32;
+            nPos += FalconConstants::GENESIS_HASH_SIZE;
             
             debug::log(0, FUNCTION, "MINER_AUTH_INIT: hashGenesis=", hashGenesis.SubString());
             
