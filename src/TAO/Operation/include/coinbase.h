@@ -42,7 +42,7 @@ namespace TAO
              *
              *  Commit the final state to disk.
              *
-             *  @param[in] hashAddress The register address to commit.
+             *  @param[in] hashGenesis The genesis hash (reward recipient).
              *  @param[in] nAmount The coinbase reward amount.
              *  @param[in] hashTx The transaction that is calling coinbase
              *  @param[in] nFlags Flags to the LLD instance.
@@ -50,7 +50,7 @@ namespace TAO
              *  @return true if successful.
              *
              **/
-            bool Commit(const uint256_t& hashAddress, const uint64_t nAmount, const uint512_t& hashTx, const uint8_t nFlags);
+            bool Commit(const uint256_t& hashGenesis, const uint64_t nAmount, const uint512_t& hashTx, const uint8_t nFlags);
 
 
             /** Verify
