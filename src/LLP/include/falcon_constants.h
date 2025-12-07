@@ -198,6 +198,22 @@ namespace FalconConstants
      *  Add 32 bytes for Tritium genesis hash */
     static const size_t AUTH_RESPONSE_WITH_GENESIS_MAX = AUTH_RESPONSE_ENCRYPTED_MAX + GENESIS_HASH_SIZE;  // 1778 bytes
 
+    /***************************************************************************
+     * MINER_AUTH_INIT Sizes (Enhanced with hashGenesis)
+     **************************************************************************/
+
+    /** MINER_AUTH_INIT minimum size (no miner_id, no genesis)
+     *  pubkey_len(2) + pubkey(897) + miner_id_len(2) = 901 bytes */
+    static const size_t MINER_AUTH_INIT_MIN = 901;
+
+    /** MINER_AUTH_INIT with genesis but empty miner_id string
+     *  pubkey_len(2) + pubkey(897) + miner_id_len(2, value=0) + genesis(32) = 933 bytes */
+    static const size_t MINER_AUTH_INIT_WITH_GENESIS = 933;
+
+    /** MINER_AUTH_INIT maximum size (with miner_id and genesis)
+     *  pubkey_len(2) + pubkey(897) + miner_id_len(2) + miner_id(256) + genesis(32) = 1189 bytes */
+    static const size_t MINER_AUTH_INIT_MAX = 1189;
+
 } // namespace FalconConstants
 } // namespace LLP
 
