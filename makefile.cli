@@ -299,6 +299,7 @@ ifdef UNIT_TESTS
 		   build/Tests_LLC_aes.o \
 		   build/Tests_LLP_base_address.o \
 		   build/Tests_LLP_falcon_endianness.o \
+		   build/Tests_LLP_genesis_validation.o \
 		   build/Tests_TAO_API_assets.o \
 		   build/Tests_TAO_API_finance.o \
 		   build/Tests_TAO_API_names.o \
@@ -431,6 +432,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_trust_address.o \
 		build/LLP_stateless_miner.o \
 		build/LLP_stateless_manager.o \
+		build/LLP_genesis_constants.o \
 		build/LLP_stateless_miner_connection.o \
 		build/LLP_falcon_auth.o \
 		build/LLP_disposable_falcon.o \
