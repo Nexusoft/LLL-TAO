@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLP/include/genesis_constants.h>
+
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
 
@@ -20,6 +22,8 @@ ________________________________________________________________________________
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/rollback.h>
 #include <TAO/Register/types/object.h>
+
+#include <Util/include/runtime.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -260,12 +264,62 @@ namespace TAO
                         uint256_t hashGenesis;
                         contract >> hashGenesis;
 
-                        /* Seek to end. */
-                        contract.Seek(16);
+                        /* Get the coinbase amount. */
+                        uint64_t nAmount = 0;
+                        contract >> nAmount;
 
-                        /* Commit to disk. */
-                        if(nFlags == TAO::Ledger::FLAGS::BLOCK && contract.Caller() != hashGenesis && !LLD::Ledger->EraseEvent(hashGenesis))
-                            return false;
+                        /* Seek to end. */
+                        contract.Seek(8);
+
+                        /* Check if auto-credit was applied by looking for proof. */
+                        if(nFlags == TAO::Ledger::FLAGS::BLOCK && contract.Caller() != hashGenesis)
+                        {
+                            /* Check if a proof exists (indicates auto-credit occurred). */
+                            if(LLD::Ledger->HasProof(hashGenesis, contract.Hash(), 0, nFlags))
+                            {
+                                /* Proof exists - auto-credit was applied, need to rollback balance. */
+                                /* First, resolve the default account. */
+                                TAO::Register::Address hashDefault;
+                                if(LLP::GenesisConstants::ResolveDefaultAccount(hashGenesis, hashDefault))
+                                {
+                                    /* Read the current account state. */
+                                    TAO::Register::Object account;
+                                    if(LLD::Register->ReadState(hashDefault, account, nFlags))
+                                    {
+                                        /* Parse the account. */
+                                        if(account.Parse())
+                                        {
+                                            /* Rollback the balance by subtracting the amount. */
+                                            uint64_t nBalance = account.get<uint64_t>("balance");
+                                            
+                                            /* Sanity check for balance underflow. */
+                                            if(nBalance >= nAmount)
+                                            {
+                                                account.Write("balance", nBalance - nAmount);
+                                                account.nModified = runtime::unifiedtimestamp();
+                                                account.SetChecksum();
+
+                                                /* Write the rolled back account state. */
+                                                if(!LLD::Register->WriteState(hashDefault, account, nFlags))
+                                                    debug::error(FUNCTION, "OP::COINBASE: failed to rollback auto-credited balance");
+                                            }
+                                            else
+                                            {
+                                                debug::error(FUNCTION, "OP::COINBASE: balance underflow during rollback");
+                                            }
+                                        }
+                                    }
+                                }
+
+                                /* Erase the proof regardless of balance rollback success. */
+                                if(!LLD::Ledger->EraseProof(hashGenesis, contract.Hash(), 0, nFlags))
+                                    debug::error(FUNCTION, "OP::COINBASE: failed to erase auto-credit proof");
+                            }
+
+                            /* Erase the event (legacy event-only mode). */
+                            if(!LLD::Ledger->EraseEvent(hashGenesis))
+                                return false;
+                        }
 
                         break;
                     }
