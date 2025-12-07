@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/include/stateless_manager.h>
+#include <LLP/include/genesis_constants.h>
 #include <LLP/include/node_cache.h>
 
 #include <Util/include/json.h>
@@ -664,6 +665,118 @@ namespace LLP
         }
 
         return nCount;
+    }
+
+
+    /* Validate a miner's genesis hash and resolve default account */
+    uint8_t StatelessMinerManager::ValidateMinerGenesis(
+        const std::string& strAddress,
+        TAO::Register::Address& hashDefault) const
+    {
+        /* Get miner context */
+        auto optContext = mapMiners.Get(strAddress);
+        if(!optContext.has_value())
+        {
+            debug::log(0, FUNCTION, "Miner not found: ", strAddress);
+            return LLP::GenesisConstants::NOT_ON_CHAIN;
+        }
+
+        const MiningContext& context = optContext.value();
+
+        /* Check if genesis is set */
+        if(context.hashGenesis == 0)
+        {
+            debug::log(2, FUNCTION, "Miner has zero genesis: ", strAddress);
+            return LLP::GenesisConstants::ZERO_GENESIS;
+        }
+
+        /* Validate genesis */
+        LLP::GenesisConstants::ValidationResult result = 
+            LLP::GenesisConstants::ValidateGenesis(context.hashGenesis);
+        
+        if(result != LLP::GenesisConstants::VALID)
+        {
+            debug::log(0, FUNCTION, "Genesis validation failed for ", strAddress, ": ",
+                      LLP::GenesisConstants::GetValidationResultString(result));
+            return result;
+        }
+
+        /* Resolve default account */
+        if(!LLP::GenesisConstants::ResolveDefaultAccount(context.hashGenesis, hashDefault))
+        {
+            debug::log(0, FUNCTION, "Failed to resolve default account for ", strAddress);
+            return LLP::GenesisConstants::NO_DEFAULT_ACCOUNT;
+        }
+
+        return LLP::GenesisConstants::VALID;
+    }
+
+
+    /* Validate genesis and cache the genesis->default account mapping */
+    bool StatelessMinerManager::ValidateAndCacheGenesis(
+        const uint256_t& hashGenesis,
+        TAO::Register::Address& hashDefault)
+    {
+        /* Check if already cached */
+        auto optCached = mapGenesisToDefault.Get(hashGenesis);
+        if(optCached.has_value())
+        {
+            hashDefault = optCached.value();
+            debug::log(2, FUNCTION, "Using cached default account ", hashDefault.SubString(),
+                      " for genesis ", hashGenesis.SubString());
+            return true;
+        }
+
+        /* Validate genesis */
+        LLP::GenesisConstants::ValidationResult result = 
+            LLP::GenesisConstants::ValidateGenesis(hashGenesis);
+        
+        if(result != LLP::GenesisConstants::VALID)
+        {
+            debug::log(0, FUNCTION, "Genesis validation failed: ",
+                      LLP::GenesisConstants::GetValidationResultString(result));
+            return false;
+        }
+
+        /* Resolve default account */
+        if(!LLP::GenesisConstants::ResolveDefaultAccount(hashGenesis, hashDefault))
+        {
+            debug::log(0, FUNCTION, "Failed to resolve default account for genesis ",
+                      hashGenesis.SubString());
+            return false;
+        }
+
+        /* Validate the default account */
+        TAO::Register::Object account;
+        if(!LLP::GenesisConstants::ValidateDefaultAccount(hashDefault, hashGenesis, account))
+        {
+            debug::log(0, FUNCTION, "Default account validation failed for ",
+                      hashDefault.SubString());
+            return false;
+        }
+
+        /* Cache the mapping */
+        mapGenesisToDefault.InsertOrUpdate(hashGenesis, hashDefault);
+
+        debug::log(0, FUNCTION, "Cached default account ", hashDefault.SubString(),
+                  " for genesis ", hashGenesis.SubString());
+
+        return true;
+    }
+
+
+    /* Get cached default account for a genesis hash */
+    TAO::Register::Address StatelessMinerManager::GetCachedDefaultAccount(
+        const uint256_t& hashGenesis) const
+    {
+        /* Look up cached default account */
+        auto optDefault = mapGenesisToDefault.Get(hashGenesis);
+        
+        if(optDefault.has_value())
+            return optDefault.value();
+        
+        /* Return zero address if not cached */
+        return TAO::Register::Address(0);
     }
 
 
