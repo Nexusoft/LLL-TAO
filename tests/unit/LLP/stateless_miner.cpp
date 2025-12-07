@@ -323,6 +323,74 @@ TEST_CASE("StatelessMiner MINER_AUTH_INIT Processing", "[stateless_miner]")
         REQUIRE(result.fSuccess == false);
         REQUIRE(result.strError.find("invalid pubkey_len") != std::string::npos);
     }
+    
+    SECTION("MINER_AUTH_INIT with hashGenesis parses genesis correctly")
+    {
+        MiningContext ctx;
+        
+        Packet packet(MINER_AUTH_INIT);
+        
+        /* Build test packet: [2 bytes pubkey_len][pubkey][2 bytes id_len][id][32 bytes genesis] */
+        std::vector<uint8_t> testPubKey(897, 0x42);  // Simulated Falcon-512 pubkey size
+        uint16_t nPubKeyLen = static_cast<uint16_t>(testPubKey.size());
+        
+        packet.DATA.push_back(static_cast<uint8_t>(nPubKeyLen >> 8));
+        packet.DATA.push_back(static_cast<uint8_t>(nPubKeyLen & 0xFF));
+        packet.DATA.insert(packet.DATA.end(), testPubKey.begin(), testPubKey.end());
+        
+        std::string testMinerId = "test_miner";
+        uint16_t nMinerIdLen = static_cast<uint16_t>(testMinerId.size());
+        packet.DATA.push_back(static_cast<uint8_t>(nMinerIdLen >> 8));
+        packet.DATA.push_back(static_cast<uint8_t>(nMinerIdLen & 0xFF));
+        packet.DATA.insert(packet.DATA.end(), testMinerId.begin(), testMinerId.end());
+        
+        /* Add test genesis hash (32 bytes) */
+        uint256_t testGenesis;
+        testGenesis.SetHex("a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122");
+        std::vector<uint8_t> vGenesis = testGenesis.GetBytes();
+        packet.DATA.insert(packet.DATA.end(), vGenesis.begin(), vGenesis.end());
+        
+        ProcessResult result = StatelessMiner::ProcessPacket(ctx, packet);
+        
+        REQUIRE(result.fSuccess == true);
+        REQUIRE(result.context.vMinerPubKey == testPubKey);
+        REQUIRE(result.context.vAuthNonce.size() == 32);  // 256-bit nonce
+        REQUIRE(result.context.hashGenesis == testGenesis);  // Genesis should be stored
+        REQUIRE(!result.response.IsNull());
+        REQUIRE(result.response.HEADER == MINER_AUTH_CHALLENGE);
+    }
+    
+    SECTION("MINER_AUTH_INIT without hashGenesis still works (legacy support)")
+    {
+        MiningContext ctx;
+        
+        Packet packet(MINER_AUTH_INIT);
+        
+        /* Build test packet without hashGenesis */
+        std::vector<uint8_t> testPubKey(897, 0x42);
+        uint16_t nPubKeyLen = static_cast<uint16_t>(testPubKey.size());
+        
+        packet.DATA.push_back(static_cast<uint8_t>(nPubKeyLen >> 8));
+        packet.DATA.push_back(static_cast<uint8_t>(nPubKeyLen & 0xFF));
+        packet.DATA.insert(packet.DATA.end(), testPubKey.begin(), testPubKey.end());
+        
+        std::string testMinerId = "test_miner";
+        uint16_t nMinerIdLen = static_cast<uint16_t>(testMinerId.size());
+        packet.DATA.push_back(static_cast<uint8_t>(nMinerIdLen >> 8));
+        packet.DATA.push_back(static_cast<uint8_t>(nMinerIdLen & 0xFF));
+        packet.DATA.insert(packet.DATA.end(), testMinerId.begin(), testMinerId.end());
+        
+        /* No genesis hash appended - testing legacy support */
+        
+        ProcessResult result = StatelessMiner::ProcessPacket(ctx, packet);
+        
+        REQUIRE(result.fSuccess == true);
+        REQUIRE(result.context.vMinerPubKey == testPubKey);
+        REQUIRE(result.context.vAuthNonce.size() == 32);
+        REQUIRE(result.context.hashGenesis == uint256_t(0));  // Genesis should be zero for legacy
+        REQUIRE(!result.response.IsNull());
+        REQUIRE(result.response.HEADER == MINER_AUTH_CHALLENGE);
+    }
 }
 
 
