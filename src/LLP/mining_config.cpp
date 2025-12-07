@@ -22,138 +22,32 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    /* ValidateMiningPubkey
-     *
-     * Validates that a mining public key is configured.
-     */
-    bool ValidateMiningPubkey(std::string& strError)
-    {
-        /* Check for miningpubkey argument */
-        if(config::HasArg("-miningpubkey"))
-        {
-            std::string strPubkey = config::GetArg("-miningpubkey", "");
-            if(strPubkey.empty())
-            {
-                strError = "miningpubkey argument is empty";
-                return false;
-            }
-            
-            /* Basic validation - should be non-empty hex string */
-            if(strPubkey.length() < 10)
-            {
-                strError = "miningpubkey appears to be too short";
-                return false;
-            }
-            
-            return true;
-        }
-        
-        /* Check for miningaddress argument as alternative */
-        if(config::HasArg("-miningaddress"))
-        {
-            std::string strAddress = config::GetArg("-miningaddress", "");
-            if(strAddress.empty())
-            {
-                strError = "miningaddress argument is empty";
-                return false;
-            }
-            
-            /* Basic validation - should be non-empty */
-            if(strAddress.length() < 10)
-            {
-                strError = "miningaddress appears to be too short";
-                return false;
-            }
-            
-            return true;
-        }
-        
-        /* Neither miningpubkey nor miningaddress found */
-        strError = "Missing mining configuration: add -miningpubkey=YOUR_PUBKEY or -miningaddress=YOUR_ADDRESS to nexus.conf";
-        return false;
-    }
-
-
-    /* GetMiningPubkey
-     *
-     * Retrieves the configured mining public key.
-     */
-    bool GetMiningPubkey(std::string& strPubkey)
-    {
-        /* Check for miningpubkey first */
-        if(config::HasArg("-miningpubkey"))
-        {
-            strPubkey = config::GetArg("-miningpubkey", "");
-            return !strPubkey.empty();
-        }
-        
-        /* Fall back to miningaddress */
-        if(config::HasArg("-miningaddress"))
-        {
-            strPubkey = config::GetArg("-miningaddress", "");
-            return !strPubkey.empty();
-        }
-        
-        return false;
-    }
-
-
     /* LoadMiningConfig
      *
-     * Auto-configuration helper for mining that reads and validates required configuration.
+     * Simplified mining configuration loader for Stateless Miner architecture.
+     * Only checks if mining is enabled - all authentication is now miner-driven.
      */
     bool LoadMiningConfig()
     {
-        /* Log where we're loading config from */
-        debug::log(0, FUNCTION, "Loading mining configuration from command-line args and nexus.conf");
+        debug::log(0, FUNCTION, "Loading mining configuration...");
         
-        /* Validate mining pubkey is present */
-        std::string strError;
-        if(!ValidateMiningPubkey(strError))
+        bool fMiningEnabled = config::GetBoolArg("-mining", false);
+        
+        if(!fMiningEnabled)
         {
-            debug::error(FUNCTION, "Mining configuration validation failed: ", strError);
-            debug::error(FUNCTION, "Add miningpubkey=YOUR_PUBKEY to nexus.conf or use -miningpubkey command-line argument");
-            return false;
+            debug::log(0, FUNCTION, "Mining server disabled");
+            return true;
         }
         
-        /* Get and log the mining pubkey (first 20 chars for security) */
-        std::string strPubkey;
-        if(GetMiningPubkey(strPubkey))
-        {
-            std::string strDisplay = strPubkey.substr(0, std::min((size_t)20, strPubkey.length())) + "...";
-            debug::log(0, FUNCTION, "Mining pubkey configured: ", strDisplay);
-        }
+        debug::log(0, FUNCTION, "Mining server enabled");
+        debug::log(0, FUNCTION, "Authentication: MINER-DRIVEN (Falcon keys from NexusMiner)");
+        debug::log(0, FUNCTION, "Reward Routing: AUTO-CREDIT to Username:default");
         
-        /* Check llpallowip configuration */
         if(!config::HasArg("-llpallowip"))
         {
-            /* Default to localhost if not configured */
-            debug::log(0, FUNCTION, "No -llpallowip configured, defaulting to 127.0.0.1 (localhost only)");
             config::mapMultiArgs["-llpallowip"].push_back("127.0.0.1");
         }
-        else
-        {
-            /* Log configured IPs */
-            const auto& vIPs = config::mapMultiArgs["-llpallowip"];
-            debug::log(0, FUNCTION, "Mining LLP allowed IPs configured: ", vIPs.size(), " entries");
-            for(const auto& strIP : vIPs)
-            {
-                debug::log(1, FUNCTION, "  Allowed IP: ", strIP);
-            }
-        }
         
-        /* Check if mining is enabled */
-        bool fMiningEnabled = config::GetBoolArg("-mining", false);
-        if(fMiningEnabled)
-        {
-            debug::log(0, FUNCTION, "Mining is enabled via -mining flag");
-        }
-        else
-        {
-            debug::log(0, FUNCTION, "Mining is not enabled (use -mining=1 to enable at startup)");
-        }
-        
-        debug::log(0, FUNCTION, "Mining configuration loaded successfully");
         return true;
     }
 }

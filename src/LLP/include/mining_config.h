@@ -19,45 +19,21 @@ namespace LLP
 {
     /** LoadMiningConfig
      *
-     *  Auto-configuration helper for mining that reads and validates required configuration.
+     *  Simplified mining configuration loader for Stateless Miner architecture.
+     *  
+     *  Only checks if mining is enabled via the -mining flag.
+     *  All authentication is now miner-driven using Falcon keys provided by NexusMiner.
      *  
      *  Reads configuration from:
      *  - Command-line arguments (via config::mapArgs)
      *  - nexus.conf file
      *  
      *  Validates:
-     *  - miningpubkey or miningaddress is present
+     *  - mining enable flag (-mining=1)
      *  - llpallowip is configured (defaults to 127.0.0.1 if not set)
-     *  - mining enable flag if relevant
      *  
-     *  @return true if configuration is valid and complete, false otherwise
+     *  @return true always (no validation required in stateless mode)
      *
      **/
     bool LoadMiningConfig();
-
-
-    /** ValidateMiningPubkey
-     *
-     *  Validates that a mining public key is configured.
-     *  
-     *  Checks for -miningpubkey or -miningaddress arguments.
-     *  
-     *  @param[out] strError Error message if validation fails
-     *  
-     *  @return true if valid pubkey found, false otherwise
-     *
-     **/
-    bool ValidateMiningPubkey(std::string& strError);
-
-
-    /** GetMiningPubkey
-     *
-     *  Retrieves the configured mining public key.
-     *  
-     *  @param[out] strPubkey The public key string
-     *  
-     *  @return true if pubkey found, false otherwise
-     *
-     **/
-    bool GetMiningPubkey(std::string& strPubkey);
 }

@@ -68,18 +68,13 @@ namespace LLP
     , nBestHeight(0)
     , nSubscribed(0)
     , nChannel(0)
-    , pMiningKey(nullptr)
     , nHashLast(0)
     , vMinerPubKey()
     , strMinerId()
     , vAuthNonce()
     , fMinerAuthenticated(false)
-    , hashGenesisForMiner(0)
     , fStatelessMinerSession(false)
     {
-        #ifndef NO_WALLET
-        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::Instance());
-        #endif
     }
 
 
@@ -92,18 +87,13 @@ namespace LLP
     , nBestHeight(0)
     , nSubscribed(0)
     , nChannel(0)
-    , pMiningKey(nullptr)
     , nHashLast(0)
     , vMinerPubKey()
     , strMinerId()
     , vAuthNonce()
     , fMinerAuthenticated(false)
-    , hashGenesisForMiner(0)
     , fStatelessMinerSession(false)
     {
-        #ifndef NO_WALLET
-        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::Instance());
-        #endif
     }
 
 
@@ -116,18 +106,13 @@ namespace LLP
     , nBestHeight(0)
     , nSubscribed(0)
     , nChannel(0)
-    , pMiningKey(nullptr)
     , nHashLast(0)
     , vMinerPubKey()
     , strMinerId()
     , vAuthNonce()
     , fMinerAuthenticated(false)
-    , hashGenesisForMiner(0)
     , fStatelessMinerSession(false)
     {
-        #ifndef NO_WALLET
-        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::Instance());
-        #endif
     }
 
 
@@ -142,15 +127,6 @@ namespace LLP
         strMinerId.clear();
         vAuthNonce.clear();
         fMinerAuthenticated = false;
-        hashGenesisForMiner = 0;
-
-        if(pMiningKey)
-        {
-            #ifndef NO_WALLET
-            pMiningKey->ReturnKey();
-            delete pMiningKey;
-            #endif
-        }
 
         /* Send a notification to wake up sleeping thread to finish shutdown process. */
         this->NotifyEvent();
@@ -1909,9 +1885,6 @@ namespace LLP
                 /* Check the Proof of Work for submitted block. */
                 if(!Legacy::CheckWork(*pBlock, Legacy::Wallet::Instance()))
                     return false;
-
-                /* Block is valid - Tell the wallet to keep this key. */
-                pMiningKey->KeepKey();
 
                 #endif
 
