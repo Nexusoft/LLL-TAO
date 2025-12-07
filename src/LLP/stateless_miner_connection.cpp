@@ -501,8 +501,19 @@ namespace LLP
         /* Get channel from context */
         uint32_t nChannel = context.nChannel;
 
+        /* Get dynamic genesis from context if authenticated, otherwise use 0 for default behavior */
+        const uint256_t hashDynamicGenesis = (context.fAuthenticated && context.hashGenesis != 0) 
+                                               ? context.hashGenesis 
+                                               : uint256_t(0);
+
+        /* Log reward routing mode */
+        if(hashDynamicGenesis != 0)
+            debug::log(1, FUNCTION, "Creating block with DYNAMIC reward routing to ", hashDynamicGenesis.SubString());
+        else
+            debug::log(3, FUNCTION, "Creating block with STATIC reward routing (legacy mode)");
+
         /* Create a new block and loop for prime channel if minimum bit target length isn't met */
-        while(TAO::Ledger::CreateBlock(pCredentials, strPIN, nChannel, *pBlock, ++nBlockIterator))
+        while(TAO::Ledger::CreateBlock(pCredentials, strPIN, nChannel, *pBlock, ++nBlockIterator, nullptr, hashDynamicGenesis))
         {
             /* Break out of loop when block is ready for prime mod. */
             if(is_prime_mod(nBitMask, pBlock))

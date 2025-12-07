@@ -622,4 +622,49 @@ namespace LLP
     }
 
 
+    /* Get reward address for a miner */
+    uint256_t StatelessMinerManager::GetRewardAddress(const std::string& strAddress) const
+    {
+        auto optContext = mapMiners.Get(strAddress);
+        if(!optContext.has_value())
+            return uint256_t(0);
+
+        return optContext.value().hashGenesis;
+    }
+
+
+    /* Get count of miners using dynamic reward routing */
+    size_t StatelessMinerManager::GetDynamicRewardCount() const
+    {
+        size_t nCount = 0;
+        auto vMiners = mapMiners.GetAll();
+
+        for(const auto& ctx : vMiners)
+        {
+            /* Dynamic routing: authenticated with non-zero genesis */
+            if(ctx.fAuthenticated && ctx.hashGenesis != 0)
+                ++nCount;
+        }
+
+        return nCount;
+    }
+
+
+    /* Get count of miners using static reward routing */
+    size_t StatelessMinerManager::GetStaticRewardCount() const
+    {
+        size_t nCount = 0;
+        auto vMiners = mapMiners.GetAll();
+
+        for(const auto& ctx : vMiners)
+        {
+            /* Static routing: unauthenticated OR zero genesis */
+            if(!ctx.fAuthenticated || ctx.hashGenesis == 0)
+                ++nCount;
+        }
+
+        return nCount;
+    }
+
+
 } // namespace LLP

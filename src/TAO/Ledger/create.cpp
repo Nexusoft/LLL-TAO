@@ -349,10 +349,11 @@ namespace TAO::Ledger
 
     /* Create a new block object from the chain. */
     bool CreateBlock(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& pin,
-        const uint32_t nChannel, TAO::Ledger::TritiumBlock &rBlockRet, const uint64_t nExtraNonce, Legacy::Coinbase *pCoinbaseRecipients)
+        const uint32_t nChannel, TAO::Ledger::TritiumBlock &rBlockRet, const uint64_t nExtraNonce, Legacy::Coinbase *pCoinbaseRecipients,
+        const uint256_t& hashDynamicGenesis)
     {
-        /* Get the session */
-        const uint256_t hashGenesis = user->Genesis();
+        /* Get the session - use dynamic genesis if provided, otherwise use user genesis */
+        const uint256_t hashGenesis = (hashDynamicGenesis != 0) ? hashDynamicGenesis : user->Genesis();
 
         /* Only allow prime, hash, and private channels. */
         if(nChannel < 1 || nChannel > 3)
@@ -399,7 +400,7 @@ namespace TAO::Ledger
                 debug::log(0, FUNCTION, "Producer is stale, rebuilding...");
 
                 /* Create a new producer transaction for given block. */
-                if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients))
+                if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients, hashGenesis))
                     return debug::error(FUNCTION, "Failed to create producer transactions.");
 
                 /* Store new block cache. */
@@ -445,7 +446,7 @@ namespace TAO::Ledger
             AddTransactions(rBlockRet);
 
             /* Create the new producer transaction for given block. */
-            if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients))
+            if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients, hashGenesis))
                 return debug::error(FUNCTION, "Failed to create producer transactions.");
 
             /* Update the producer timestamp */
@@ -474,7 +475,8 @@ namespace TAO::Ledger
                            const uint32_t nBlockVersion,
                            const uint32_t nChannel,
                            const uint64_t nExtraNonce,
-                           Legacy::Coinbase *pCoinbaseRecipients)
+                           Legacy::Coinbase *pCoinbaseRecipients,
+                           const uint256_t& hashDynamicGenesis)
     {
         /* Setup the producer transaction. */
         if(!CreateTransaction(user, pin, rProducer))
@@ -483,14 +485,37 @@ namespace TAO::Ledger
         /* Create the Coinbase Transaction if the Channel specifies. */
         if(nChannel == 1 || nChannel == 2)
         {
+            /* Determine the reward recipient - use dynamic genesis if provided and valid, otherwise use user genesis */
+            uint256_t hashRewardRecipient = user->Genesis();
+            
+            /* Validate and use dynamic genesis if provided */
+            if(hashDynamicGenesis != 0)
+            {
+                if(LLD::Ledger->HasFirst(hashDynamicGenesis))
+                {
+                    hashRewardRecipient = hashDynamicGenesis;
+                    debug::log(1, FUNCTION, "Reward routing: DYNAMIC to ", hashRewardRecipient.SubString());
+                }
+                else
+                {
+                    debug::log(1, FUNCTION, "Dynamic genesis ", hashDynamicGenesis.SubString(), 
+                              " not found on-chain, falling back to user genesis");
+                    debug::log(1, FUNCTION, "Reward routing: STATIC (fallback) to ", hashRewardRecipient.SubString());
+                }
+            }
+            else
+            {
+                debug::log(3, FUNCTION, "Reward routing: STATIC to ", hashRewardRecipient.SubString());
+            }
+
             /* Output type 0 is mining/minting reward */
             uint64_t nBlockReward = GetCoinbaseReward(tStateBest, nChannel, 0);
 
             /* Create coinbase transaction. */
             rProducer[0] << uint8_t(TAO::Operation::OP::COINBASE);
 
-            /* Add the spendable genesis. */
-            rProducer[0] << user->Genesis();
+            /* Add the spendable genesis - using dynamic routing if available */
+            rProducer[0] << hashRewardRecipient;
 
             /* The total to be credited. */
             uint64_t nCredit = nBlockReward;
