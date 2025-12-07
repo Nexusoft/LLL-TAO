@@ -448,6 +448,48 @@ namespace LLP
             strMinerId.assign(vData.begin() + nPos, vData.begin() + nPos + nMinerIdLen);
         else
             strMinerId = "<no-id>";
+        nPos += nMinerIdLen;  // Don't forget to advance position!
+
+        /* NEW: Parse hashGenesis (32 bytes, optional but expected) */
+        uint256_t hashGenesis(0);
+        if(nPos + 32 <= vData.size())
+        {
+            /* Extract genesis hash bytes */
+            std::vector<uint8_t> vGenesis(vData.begin() + nPos, vData.begin() + nPos + 32);
+            hashGenesis.SetBytes(vGenesis);
+            nPos += 32;
+            
+            debug::log(0, FUNCTION, "MINER_AUTH_INIT: hashGenesis=", hashGenesis.SubString());
+            
+            /* Validate genesis binding if FalconAuth is available */
+            FalconAuth::IFalconAuth* pAuth = FalconAuth::Get();
+            if(pAuth && hashGenesis != 0)
+            {
+                uint256_t hashKeyID = pAuth->DeriveKeyId(vPubKey);
+                std::optional<uint256_t> boundGenesis = pAuth->GetBoundGenesis(hashKeyID);
+                
+                /* If this key has a bound genesis, verify it matches */
+                if(boundGenesis.has_value() && boundGenesis.value() != 0)
+                {
+                    if(boundGenesis.value() != hashGenesis)
+                    {
+                        debug::log(0, FUNCTION, "MINER_AUTH_INIT: genesis mismatch! claimed=", 
+                                   hashGenesis.SubString(), " bound=", boundGenesis.value().SubString());
+                        return ProcessResult::Error(context, "Genesis mismatch with bound Falcon key");
+                    }
+                    debug::log(2, FUNCTION, "MINER_AUTH_INIT: genesis binding verified");
+                }
+                else
+                {
+                    /* No existing binding - this is a new key, could auto-bind or require explicit binding */
+                    debug::log(0, FUNCTION, "MINER_AUTH_INIT: new key, genesis=", hashGenesis.SubString());
+                }
+            }
+        }
+        else
+        {
+            debug::log(1, FUNCTION, "MINER_AUTH_INIT: no hashGenesis provided (legacy client?)");
+        }
 
         /* Generate random nonce (32 bytes) */
         uint256_t nonce = LLC::GetRand256();
@@ -456,10 +498,11 @@ namespace LLP
         debug::log(0, FUNCTION, "MINER_AUTH_INIT from ", context.strAddress,
                    " miner_id=", strMinerId, " pubkey_len=", nPubKeyLen);
 
-        /* Update context with pubkey and nonce */
+        /* Update context with pubkey, nonce, and genesis */
         MiningContext newContext = context
             .WithPubKey(vPubKey)
             .WithNonce(vAuthNonce)
+            .WithGenesis(hashGenesis)  // ← Store genesis from INIT
             .WithTimestamp(runtime::unifiedtimestamp());
 
         /* Build MINER_AUTH_CHALLENGE response */
@@ -595,14 +638,18 @@ namespace LLP
         /* Derive session ID from key ID (lower 32 bits) */
         uint32_t nSessionId = static_cast<uint32_t>(hashKeyID.Get64(0) & 0xFFFFFFFF);
 
-        /* Check for bound genesis */
-        uint256_t hashGenesis(0);
-        if(pAuth)
+        /* Use genesis from MINER_AUTH_INIT if provided, otherwise check binding */
+        uint256_t hashGenesis = context.hashGenesis;  // Already set from INIT
+        if(hashGenesis == 0 && pAuth)
         {
+            /* Fallback: check for bound genesis */
             std::optional<uint256_t> boundGenesis = pAuth->GetBoundGenesis(hashKeyID);
             if(boundGenesis.has_value())
                 hashGenesis = boundGenesis.value();
         }
+
+        debug::log(0, FUNCTION, "MINER_AUTH success: keyID=", hashKeyID.SubString(),
+                   " genesis=", hashGenesis.SubString(), " sessionId=", nSessionId);
 
         /* Update context with auth success.
          * Note: We clear the nonce and pubkey after successful authentication for security:

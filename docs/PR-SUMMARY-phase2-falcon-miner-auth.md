@@ -69,13 +69,19 @@ This aligns with NexusMiner's expected protocol:
    - Connection established with `strAddress` and `nTimestamp`
    - Initial context created: `fAuthenticated = false`
 
-2. **MINER_AUTH_INIT (207)** - Miner → Node
+2. **MINER_AUTH_INIT (207)** - Miner → Node (Enhanced Format)
    - Miner sends:
      - `[2 bytes]` pubkey_len (big-endian)
-     - `[pubkey_len bytes]` Falcon public key
+     - `[pubkey_len bytes]` Falcon public key (897 bytes)
      - `[2 bytes]` miner_id_len (big-endian)
-     - `[miner_id_len bytes]` miner_id string (UTF-8)
-   - Node stores pubkey and generates random 32-byte nonce
+     - `[miner_id_len bytes]` miner_id string (UTF-8, optional label)
+     - `[32 bytes]` hashGenesis (uint256_t) ← NEW: Tritium genesis for reward routing
+   - Node stores pubkey, validates genesis binding, and generates random 32-byte nonce
+   - The hashGenesis field:
+     - Specifies which Tritium account should receive mining rewards
+     - Node validates this matches any existing Falcon→Genesis binding
+     - If no binding exists, the node may auto-bind or require explicit binding
+     - Legacy clients without hashGenesis are still supported (field is optional)
 
 3. **MINER_AUTH_CHALLENGE (208)** - Node → Miner
    - Node sends:
