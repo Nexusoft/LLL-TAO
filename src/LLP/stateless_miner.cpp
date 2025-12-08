@@ -438,17 +438,17 @@ namespace LLP
         std::vector<uint8_t> vPubKey;
         if(fChaCha20Wrapped)
         {
-            /* Check if ChaCha20 is enabled and we have a session key */
+            /* ChaCha20 decryption not yet implemented in LLC
+             * For now, log the detection and reject wrapped keys */
             if(config::GetBoolArg("-miningchacha20", false))
             {
-                debug::log(0, FUNCTION, "ChaCha20 enabled but decryption not yet implemented");
-                debug::log(0, FUNCTION, "Treating as raw pubkey for now");
-                vPubKey = vPubKeyData;
+                debug::log(0, FUNCTION, "✗ ChaCha20 decryption not yet implemented");
+                return ProcessResult::Error(context, "ChaCha20 decryption not supported");
             }
             else
             {
-                debug::log(0, FUNCTION, "ChaCha20 not enabled, treating as raw pubkey");
-                vPubKey = vPubKeyData;
+                debug::log(0, FUNCTION, "✗ ChaCha20 wrapped key detected but -miningchacha20 not enabled");
+                return ProcessResult::Error(context, "ChaCha20 wrapped keys require -miningchacha20");
             }
         }
         else
@@ -456,10 +456,10 @@ namespace LLP
             vPubKey = vPubKeyData;
         }
 
-        /* Validate final pubkey size */
-        if(vPubKey.size() != 897 && vPubKey.size() != 925)
+        /* Validate final pubkey size (must be exactly 897 bytes for Falcon-512) */
+        if(vPubKey.size() != 897)
         {
-            debug::log(0, FUNCTION, "Invalid pubkey size: ", vPubKey.size());
+            debug::log(0, FUNCTION, "Invalid pubkey size: ", vPubKey.size(), " (expected 897)");
             return ProcessResult::Error(context, "Invalid public key size");
         }
 
@@ -720,49 +720,22 @@ namespace LLP
             debug::log(0, FUNCTION, "═══════════════════════════════════════════════════════════");
             debug::log(0, FUNCTION, "Genesis hash: ", hashGenesisFinal.ToString());
             
-            /* Step 1: Validate the genesis hash */
-            GenesisConstants::ValidationResult validationResult = 
-                GenesisConstants::ValidateGenesis(hashGenesisFinal);
-            
-            debug::log(0, FUNCTION, "Validation: ", 
-                       GenesisConstants::GetValidationResultString(validationResult));
-            
-            if(validationResult == GenesisConstants::VALID)
+            /* Validate genesis and resolve/cache default account mapping */
+            StatelessMinerManager& manager = StatelessMinerManager::Get();
+            if(manager.ValidateAndCacheGenesis(hashGenesisFinal, hashDefaultAccount))
             {
-                /* Step 2: Resolve username:default account */
-                if(GenesisConstants::ResolveDefaultAccount(hashGenesisFinal, hashDefaultAccount))
-                {
-                    debug::log(0, FUNCTION, "✓ Resolved default account: ", hashDefaultAccount.ToString());
-                    
-                    /* Step 3: Validate the default account exists and is owned by genesis */
-                    TAO::Register::Object accountObject;
-                    if(GenesisConstants::ValidateDefaultAccount(hashDefaultAccount, hashGenesisFinal, accountObject))
-                    {
-                        debug::log(0, FUNCTION, "✓ Default account validated successfully");
-                        
-                        /* Step 4: Cache the mapping for fast reward routing */
-                        StatelessMinerManager& manager = StatelessMinerManager::Get();
-                        manager.ValidateAndCacheGenesis(hashGenesisFinal, hashDefaultAccount);
-                        
-                        debug::log(0, FUNCTION, "✓ Genesis→Default mapping cached");
-                        fRewardRoutingValid = true;
-                    }
-                    else
-                    {
-                        debug::log(0, FUNCTION, "✗ Default account validation failed");
-                    }
-                }
-                else
-                {
-                    debug::log(0, FUNCTION, "✗ Could not resolve 'default' name register");
-                    debug::log(0, FUNCTION, "  User should create: finance/create/account name=default");
-                }
+                debug::log(0, FUNCTION, "✓ Genesis validation successful");
+                debug::log(0, FUNCTION, "✓ Resolved default account: ", hashDefaultAccount.ToString());
+                debug::log(0, FUNCTION, "✓ Genesis→Default mapping cached");
+                fRewardRoutingValid = true;
             }
             else
             {
-                debug::log(0, FUNCTION, "✗ Genesis validation failed: ", 
-                           GenesisConstants::GetValidationResultString(validationResult));
+                debug::log(0, FUNCTION, "✗ Genesis validation or resolution failed");
+                debug::log(0, FUNCTION, "  User should ensure genesis is valid and has 'default' account");
+                debug::log(0, FUNCTION, "  To create: finance/create/account name=default");
             }
+            
             debug::log(0, FUNCTION, "═══════════════════════════════════════════════════════════");
         }
 
