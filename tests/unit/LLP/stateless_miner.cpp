@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLP/packets/packet.h>
 
 #include <Util/include/runtime.h>
+#include <Util/include/hex.h>
 
 using namespace LLP;
 
