@@ -579,7 +579,11 @@ namespace LLP
                    " miner=", strMinerId, " pubkey=", vPubKey.size(), 
                    fWrapped ? " (unwrapped)" : "");
 
-        /* Validate genesis binding if FalconAuth is available */
+        /* Validate genesis binding if FalconAuth is available
+         * NOTE: Genesis validation is for reward routing only, NOT for authentication.
+         * A genesis mismatch should be logged as a warning but should NOT prevent
+         * the authentication handshake from proceeding. The actual authentication
+         * decision is made during MINER_AUTH_RESPONSE based on Falcon signature verification. */
         FalconAuth::IFalconAuth* pAuth = FalconAuth::Get();
         if(pAuth && hashGenesis != 0)
         {
@@ -591,11 +595,15 @@ namespace LLP
             {
                 if(boundGenesis.value() != hashGenesis)
                 {
-                    debug::log(0, FUNCTION, "MINER_AUTH_INIT: genesis mismatch! claimed=", 
+                    debug::log(0, FUNCTION, "WARNING: Genesis mismatch! claimed=", 
                                hashGenesis.SubString(), " bound=", boundGenesis.value().SubString());
-                    return ProcessResult::Error(context, "Genesis mismatch with bound Falcon key");
+                    debug::log(0, FUNCTION, "  This will affect reward routing but NOT authentication");
+                    /* Don't fail auth here - genesis mismatch only affects reward routing */
                 }
-                debug::log(2, FUNCTION, "MINER_AUTH_INIT: genesis binding verified");
+                else
+                {
+                    debug::log(2, FUNCTION, "MINER_AUTH_INIT: genesis binding verified");
+                }
             }
             else
             {
