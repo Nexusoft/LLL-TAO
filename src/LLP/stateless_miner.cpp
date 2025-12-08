@@ -419,6 +419,9 @@ namespace LLP
         uint256_t hashGenesis(0);
         std::vector<uint8_t> vGenesis(vData.begin(), vData.begin() + 32);
         
+        /* DEBUG: Log raw genesis bytes received for troubleshooting */
+        debug::log(0, FUNCTION, "Genesis raw bytes (", vGenesis.size(), "): ", HexStr(vGenesis));
+        
         /* Try standard little-endian format first (as returned by GetBytes) */
         hashGenesis.SetBytes(vGenesis);
         
@@ -445,7 +448,11 @@ namespace LLP
         
         nPos += 32;
 
-        debug::log(0, FUNCTION, "hashGenesis=", hashGenesis.SubString());
+        /* DEBUG: Log parsed genesis details */
+        debug::log(0, FUNCTION, "Genesis parsed: ", hashGenesis.SubString());
+        debug::log(0, FUNCTION, "Genesis full hex: ", hashGenesis.GetHex());
+        debug::log(0, FUNCTION, "Genesis type byte: 0x", std::hex, std::setfill('0'), std::setw(2), 
+                   static_cast<uint32_t>(hashGenesis.GetType()), std::dec);
 
         /* Derive ChaCha20 session key from genesis */
         std::vector<uint8_t> vSessionKey;
