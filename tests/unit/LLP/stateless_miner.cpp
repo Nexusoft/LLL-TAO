@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLP/packets/packet.h>
 
 #include <Util/include/runtime.h>
+#include <Util/include/hex.h>
 
 using namespace LLP;
 
@@ -330,25 +331,39 @@ TEST_CASE("StatelessMiner MINER_AUTH_INIT Processing", "[stateless_miner]")
         
         Packet packet(MINER_AUTH_INIT);
         
-        /* Build test packet: [2 bytes pubkey_len][pubkey][2 bytes id_len][id][32 bytes genesis] */
+        /* Build test packet in CORRECT format: [32 bytes genesis][2 bytes pubkey_len][pubkey][2 bytes id_len][id] */
+        
+        /* Add test genesis hash FIRST (32 bytes) */
+        uint256_t testGenesis;
+        testGenesis.SetHex("a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122");
+        /* Use HexStr to get raw bytes in the same order as hex string */
+        std::string hexStr = testGenesis.GetHex();
+        for(size_t i = 0; i < 64; i += 2)
+        {
+            std::string byteStr = hexStr.substr(i, 2);
+            uint8_t byte = static_cast<uint8_t>(std::stoul(byteStr, nullptr, 16));
+            packet.DATA.push_back(byte);
+        }
+        
+        /* Add pubkey_len (2 bytes, big-endian) */
         std::vector<uint8_t> testPubKey(897, 0x42);  // Simulated Falcon-512 pubkey size
         uint16_t nPubKeyLen = static_cast<uint16_t>(testPubKey.size());
-        
         packet.DATA.push_back(static_cast<uint8_t>(nPubKeyLen >> 8));
         packet.DATA.push_back(static_cast<uint8_t>(nPubKeyLen & 0xFF));
+        
+        /* Add pubkey */
         packet.DATA.insert(packet.DATA.end(), testPubKey.begin(), testPubKey.end());
         
+        /* Add miner_id_len (2 bytes, big-endian) */
         std::string testMinerId = "test_miner";
         uint16_t nMinerIdLen = static_cast<uint16_t>(testMinerId.size());
         packet.DATA.push_back(static_cast<uint8_t>(nMinerIdLen >> 8));
         packet.DATA.push_back(static_cast<uint8_t>(nMinerIdLen & 0xFF));
+        
+        /* Add miner_id */
         packet.DATA.insert(packet.DATA.end(), testMinerId.begin(), testMinerId.end());
         
-        /* Add test genesis hash (32 bytes) */
-        uint256_t testGenesis;
-        testGenesis.SetHex("a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122");
-        std::vector<uint8_t> vGenesis = testGenesis.GetBytes();
-        packet.DATA.insert(packet.DATA.end(), vGenesis.begin(), vGenesis.end());
+        packet.LENGTH = static_cast<uint32_t>(packet.DATA.size());
         
         ProcessResult result = StatelessMiner::ProcessPacket(ctx, packet);
         
@@ -359,37 +374,109 @@ TEST_CASE("StatelessMiner MINER_AUTH_INIT Processing", "[stateless_miner]")
         REQUIRE(!result.response.IsNull());
         REQUIRE(result.response.HEADER == MINER_AUTH_CHALLENGE);
     }
+}
+
+
+TEST_CASE("Genesis Byte Order Preservation", "[stateless_miner][genesis]")
+{
+    SECTION("SetHex preserves genesis byte order correctly")
+    {
+        /* This test verifies the fix for the genesis byte order issue.
+         * 
+         * The problem was that SetBytes() performs a 32-bit word endianness swap:
+         * Input:  [a1 74 01 1c] [93 ca 1c 80] ...
+         * Output: [1c 01 74 a1] [80 1c ca 93] ...
+         * 
+         * The fix uses SetHex() which preserves byte order as-is.
+         */
+        
+        /* Raw bytes from miner (genesis starting with 0xa1 = valid mainnet user) */
+        const char* hexStr = "a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122";
+        
+        /* Convert hex string to raw bytes (simulating miner packet) */
+        std::vector<uint8_t> vGenesis;
+        for(size_t i = 0; i < 64; i += 2)
+        {
+            std::string byteStr = std::string(hexStr).substr(i, 2);
+            uint8_t byte = static_cast<uint8_t>(std::stoul(byteStr, nullptr, 16));
+            vGenesis.push_back(byte);
+        }
+        
+        /* Use the fixed approach: HexStr + SetHex */
+        uint256_t hashGenesis;
+        std::string strGenesisHex = HexStr(vGenesis);
+        hashGenesis.SetHex(strGenesisHex);
+        
+        /* Verify the hex string matches the original */
+        REQUIRE(strGenesisHex == hexStr);
+        REQUIRE(hashGenesis.GetHex() == hexStr);
+        
+        /* Verify the type byte is correct (0xa1 for mainnet user) */
+        uint8_t typeByteFromHash = hashGenesis.GetType();
+        uint8_t typeByteFromRaw = vGenesis[0];
+        
+        REQUIRE(typeByteFromRaw == 0xa1);  // Raw bytes have 0xa1 first
+        REQUIRE(typeByteFromHash == 0xa1);  // After SetHex, type byte should still be 0xa1
+        
+        /* Compare with the broken approach (for documentation) */
+        uint256_t hashGenesisBroken;
+        hashGenesisBroken.SetBytes(vGenesis);
+        
+        /* The broken approach would give 0x1c as type byte (wrong!) */
+        uint8_t typeByteBroken = hashGenesisBroken.GetType();
+        REQUIRE(typeByteBroken != 0xa1);  // Broken approach has wrong type byte
+    }
     
-    SECTION("MINER_AUTH_INIT without hashGenesis still works (legacy support)")
+    SECTION("MINER_AUTH_INIT packet with correct genesis format")
     {
         MiningContext ctx;
+        ctx.strAddress = "127.0.0.1:9325";
         
         Packet packet(MINER_AUTH_INIT);
         
-        /* Build test packet without hashGenesis */
-        std::vector<uint8_t> testPubKey(897, 0x42);
-        uint16_t nPubKeyLen = static_cast<uint16_t>(testPubKey.size());
+        /* Build packet in correct format: [genesis(32)][pubkey_len(2)][pubkey][miner_id_len(2)][miner_id] */
         
+        /* STEP 1: Add genesis hash (32 bytes) - comes FIRST */
+        const char* genesisHex = "a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122";
+        for(size_t i = 0; i < 64; i += 2)
+        {
+            std::string byteStr = std::string(genesisHex).substr(i, 2);
+            uint8_t byte = static_cast<uint8_t>(std::stoul(byteStr, nullptr, 16));
+            packet.DATA.push_back(byte);
+        }
+        
+        /* STEP 2: Add pubkey_len (2 bytes, big-endian) */
+        std::vector<uint8_t> testPubKey(897, 0x42);  // Simulated Falcon-512 pubkey
+        uint16_t nPubKeyLen = static_cast<uint16_t>(testPubKey.size());
         packet.DATA.push_back(static_cast<uint8_t>(nPubKeyLen >> 8));
         packet.DATA.push_back(static_cast<uint8_t>(nPubKeyLen & 0xFF));
+        
+        /* STEP 3: Add pubkey */
         packet.DATA.insert(packet.DATA.end(), testPubKey.begin(), testPubKey.end());
         
+        /* STEP 4: Add miner_id_len (2 bytes, big-endian) */
         std::string testMinerId = "test_miner";
         uint16_t nMinerIdLen = static_cast<uint16_t>(testMinerId.size());
         packet.DATA.push_back(static_cast<uint8_t>(nMinerIdLen >> 8));
         packet.DATA.push_back(static_cast<uint8_t>(nMinerIdLen & 0xFF));
+        
+        /* STEP 5: Add miner_id */
         packet.DATA.insert(packet.DATA.end(), testMinerId.begin(), testMinerId.end());
         
-        /* No genesis hash appended - testing legacy support */
+        packet.LENGTH = static_cast<uint32_t>(packet.DATA.size());
         
+        /* Process the packet */
         ProcessResult result = StatelessMiner::ProcessPacket(ctx, packet);
         
+        /* Verify success */
         REQUIRE(result.fSuccess == true);
-        REQUIRE(result.context.vMinerPubKey == testPubKey);
-        REQUIRE(result.context.vAuthNonce.size() == 32);
-        REQUIRE(result.context.hashGenesis == uint256_t(0));  // Genesis should be zero for legacy
-        REQUIRE(!result.response.IsNull());
         REQUIRE(result.response.HEADER == MINER_AUTH_CHALLENGE);
+        
+        /* Verify genesis was parsed correctly with type byte 0xa1 */
+        uint256_t expectedGenesis;
+        expectedGenesis.SetHex(genesisHex);
+        REQUIRE(result.context.hashGenesis == expectedGenesis);
+        REQUIRE(result.context.hashGenesis.GetType() == 0xa1);
     }
 }
 
