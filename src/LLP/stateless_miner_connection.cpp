@@ -201,6 +201,11 @@ namespace LLP
             const uint8_t BLOCK_DATA = 0;
             const uint8_t BLOCK_ACCEPTED = 200;
             const uint8_t BLOCK_REJECTED = 201;
+            
+            /* Authentication packet types */
+            const uint8_t MINER_AUTH_INIT = 207;
+            const uint8_t MINER_AUTH_RESPONSE = 209;
+            const uint8_t MINER_AUTH_RESULT = 210;
 
             LOCK(MUTEX);
 
@@ -446,12 +451,11 @@ namespace LLP
                 
                 /* Send generic error response based on packet type */
                 /* This allows miner to handle errors gracefully instead of timing out */
-                const uint8_t MINER_AUTH_RESULT = 210;
                 
                 Packet errorResponse;
                 
                 /* Send appropriate error response based on what was requested */
-                if(PACKET.HEADER == 207 || PACKET.HEADER == 209)  /* AUTH_INIT or AUTH_RESPONSE */
+                if(PACKET.HEADER == MINER_AUTH_INIT || PACKET.HEADER == MINER_AUTH_RESPONSE)
                 {
                     errorResponse.HEADER = MINER_AUTH_RESULT;
                     errorResponse.DATA.push_back(0x00);  /* Failure status */
@@ -474,7 +478,6 @@ namespace LLP
             
             /* Send generic error response before disconnecting */
             /* This prevents node from locking up on unexpected errors */
-            const uint8_t MINER_AUTH_RESULT = 210;
             try
             {
                 Packet errorResponse;
