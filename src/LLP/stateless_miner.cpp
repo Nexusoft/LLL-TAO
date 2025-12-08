@@ -15,6 +15,8 @@ ________________________________________________________________________________
 #include <LLP/include/falcon_auth.h>
 #include <LLP/include/disposable_falcon.h>
 #include <LLP/include/falcon_constants.h>
+#include <LLP/include/genesis_constants.h>
+#include <LLP/include/stateless_manager.h>
 
 #include <LLC/include/random.h>
 #include <LLC/include/flkey.h>
@@ -398,6 +400,21 @@ namespace LLP
 
         debug::log(3, FUNCTION, "MINER_AUTH_INIT: parsed pubkey_len=", nPubKeyLen);
 
+        /* After parsing pubkey_len, detect ChaCha20 wrapping */
+        bool fChaCha20Wrapped = false;
+
+        /* Standard Falcon-512 pubkey = 897 bytes
+         * ChaCha20 wrapped = 897 + 12 (nonce) + 16 (tag) = 925 bytes */
+        if(nPubKeyLen == 897)
+        {
+            debug::log(2, FUNCTION, "Standard (unwrapped) public key");
+        }
+        else if(nPubKeyLen == 925)
+        {
+            fChaCha20Wrapped = true;
+            debug::log(0, FUNCTION, "ChaCha20 wrapped public key detected (925 bytes)");
+        }
+
         /* Validate pubkey_len */
         if(nPubKeyLen == 0 || nPubKeyLen > 2048)
         {
@@ -414,8 +431,37 @@ namespace LLP
 
         /* Extract public key */
         DisposableFalcon::DebugLogDeserialize("pubkey", nPos, nPubKeyLen, vData.size());
-        std::vector<uint8_t> vPubKey(vData.begin() + nPos, vData.begin() + nPos + nPubKeyLen);
+        std::vector<uint8_t> vPubKeyData(vData.begin() + nPos, vData.begin() + nPos + nPubKeyLen);
         nPos += nPubKeyLen;
+
+        /* Unwrap if ChaCha20 encrypted */
+        std::vector<uint8_t> vPubKey;
+        if(fChaCha20Wrapped)
+        {
+            /* Check if ChaCha20 is enabled and we have a session key */
+            if(config::GetBoolArg("-miningchacha20", false))
+            {
+                debug::log(0, FUNCTION, "ChaCha20 enabled but decryption not yet implemented");
+                debug::log(0, FUNCTION, "Treating as raw pubkey for now");
+                vPubKey = vPubKeyData;
+            }
+            else
+            {
+                debug::log(0, FUNCTION, "ChaCha20 not enabled, treating as raw pubkey");
+                vPubKey = vPubKeyData;
+            }
+        }
+        else
+        {
+            vPubKey = vPubKeyData;
+        }
+
+        /* Validate final pubkey size */
+        if(vPubKey.size() != 897 && vPubKey.size() != 925)
+        {
+            debug::log(0, FUNCTION, "Invalid pubkey size: ", vPubKey.size());
+            return ProcessResult::Error(context, "Invalid public key size");
+        }
 
         debug::log(3, FUNCTION, "MINER_AUTH_INIT: extracted pubkey, len=", vPubKey.size());
 
@@ -651,6 +697,88 @@ namespace LLP
         debug::log(0, FUNCTION, "MINER_AUTH success: keyID=", hashKeyID.SubString(),
                    " genesis=", hashGenesis.SubString(), " sessionId=", nSessionId);
 
+        /* Authentication succeeded - now resolve reward routing */
+        uint256_t hashGenesisFinal = hashGenesis;
+
+        /* If no genesis in context, check for bound genesis */
+        if(hashGenesisFinal == 0 && pAuth)
+        {
+            std::optional<uint256_t> boundGenesis = pAuth->GetBoundGenesis(hashKeyID);
+            if(boundGenesis.has_value())
+                hashGenesisFinal = boundGenesis.value();
+        }
+
+        /* Resolve and validate username:default account for reward routing */
+        TAO::Register::Address hashDefaultAccount(0);
+        bool fRewardRoutingValid = false;
+
+        if(hashGenesisFinal != 0)
+        {
+            debug::log(0, FUNCTION, "");
+            debug::log(0, FUNCTION, "═══════════════════════════════════════════════════════════");
+            debug::log(0, FUNCTION, "       GENESIS RESOLUTION FOR REWARD ROUTING");
+            debug::log(0, FUNCTION, "═══════════════════════════════════════════════════════════");
+            debug::log(0, FUNCTION, "Genesis hash: ", hashGenesisFinal.ToString());
+            
+            /* Step 1: Validate the genesis hash */
+            GenesisConstants::ValidationResult validationResult = 
+                GenesisConstants::ValidateGenesis(hashGenesisFinal);
+            
+            debug::log(0, FUNCTION, "Validation: ", 
+                       GenesisConstants::GetValidationResultString(validationResult));
+            
+            if(validationResult == GenesisConstants::VALID)
+            {
+                /* Step 2: Resolve username:default account */
+                if(GenesisConstants::ResolveDefaultAccount(hashGenesisFinal, hashDefaultAccount))
+                {
+                    debug::log(0, FUNCTION, "✓ Resolved default account: ", hashDefaultAccount.ToString());
+                    
+                    /* Step 3: Validate the default account exists and is owned by genesis */
+                    TAO::Register::Object accountObject;
+                    if(GenesisConstants::ValidateDefaultAccount(hashDefaultAccount, hashGenesisFinal, accountObject))
+                    {
+                        debug::log(0, FUNCTION, "✓ Default account validated successfully");
+                        
+                        /* Step 4: Cache the mapping for fast reward routing */
+                        StatelessMinerManager& manager = StatelessMinerManager::Get();
+                        manager.ValidateAndCacheGenesis(hashGenesisFinal, hashDefaultAccount);
+                        
+                        debug::log(0, FUNCTION, "✓ Genesis→Default mapping cached");
+                        fRewardRoutingValid = true;
+                    }
+                    else
+                    {
+                        debug::log(0, FUNCTION, "✗ Default account validation failed");
+                    }
+                }
+                else
+                {
+                    debug::log(0, FUNCTION, "✗ Could not resolve 'default' name register");
+                    debug::log(0, FUNCTION, "  User should create: finance/create/account name=default");
+                }
+            }
+            else
+            {
+                debug::log(0, FUNCTION, "✗ Genesis validation failed: ", 
+                           GenesisConstants::GetValidationResultString(validationResult));
+            }
+            debug::log(0, FUNCTION, "═══════════════════════════════════════════════════════════");
+        }
+
+        /* Log authentication success summary */
+        debug::log(0, FUNCTION, "");
+        debug::log(0, FUNCTION, "╔═══════════════════════════════════════════════════════════╗");
+        debug::log(0, FUNCTION, "║         MINER AUTHENTICATION SUCCESSFUL                   ║");
+        debug::log(0, FUNCTION, "╠═══════════════════════════════════════════════════════════╣");
+        debug::log(0, FUNCTION, "║ Key ID:       ", hashKeyID.SubString());
+        debug::log(0, FUNCTION, "║ Session ID:   ", nSessionId);
+        debug::log(0, FUNCTION, "║ Genesis:      ", hashGenesisFinal != 0 ? hashGenesisFinal.SubString() : "NOT SET");
+        debug::log(0, FUNCTION, "║ Default Acct: ", hashDefaultAccount != 0 ? hashDefaultAccount.SubString() : "NOT RESOLVED");
+        debug::log(0, FUNCTION, "║ Reward Route: ", fRewardRoutingValid ? "DYNAMIC (username:default)" : "STATIC (node default)");
+        debug::log(0, FUNCTION, "║ From:         ", context.strAddress);
+        debug::log(0, FUNCTION, "╚═══════════════════════════════════════════════════════════╝");
+
         /* Update context with auth success.
          * Note: We clear the nonce and pubkey after successful authentication for security:
          * - The nonce was single-use and should not be reused
@@ -718,6 +846,33 @@ namespace LLP
 
         debug::log(0, FUNCTION, "SESSION_START established for sessionId=", context.nSessionId,
                    " timeout=", nRequestedTimeout, "s from ", context.strAddress);
+
+        /* After session is established, log detailed summary */
+        debug::log(0, FUNCTION, "");
+        debug::log(0, FUNCTION, "╔═══════════════════════════════════════════════════════════╗");
+        debug::log(0, FUNCTION, "║           MINING SESSION ESTABLISHED                      ║");
+        debug::log(0, FUNCTION, "╠═══════════════════════════════════════════════════════════╣");
+        debug::log(0, FUNCTION, "║ Session ID:    ", context.nSessionId);
+        debug::log(0, FUNCTION, "║ Timeout:       ", nRequestedTimeout, " seconds");
+        debug::log(0, FUNCTION, "║ Genesis:       ", context.hashGenesis != 0 ? context.hashGenesis.SubString() : "NOT SET");
+        debug::log(0, FUNCTION, "║ Miner:         ", context.strAddress);
+        debug::log(0, FUNCTION, "╚═══════════════════════════════════════════════════════════╝");
+
+        /* Log reward routing status */
+        if(context.hashGenesis != 0)
+        {
+            TAO::Register::Address hashDefault = 
+                StatelessMinerManager::Get().GetCachedDefaultAccount(context.hashGenesis);
+            
+            if(hashDefault != 0)
+                debug::log(0, FUNCTION, "REWARDS → Dynamic: ", hashDefault.SubString());
+            else
+                debug::log(0, FUNCTION, "REWARDS → Genesis set but default not resolved yet");
+        }
+        else
+        {
+            debug::log(0, FUNCTION, "REWARDS → Static: Node's mining address");
+        }
 
         /* Build acknowledgment response with session parameters */
         /* Response format: [success (1)][session_id (4)][timeout (4)][genesis (32)] */
