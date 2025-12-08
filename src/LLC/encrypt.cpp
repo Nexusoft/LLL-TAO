@@ -246,7 +246,10 @@ namespace LLC
             return debug::error(FUNCTION, "ChaCha20-Poly1305 decryption failed");
         }
 
-        /* Set expected authentication tag */
+        /* Set expected authentication tag.
+         * NOTE: const_cast is required here because OpenSSL's EVP_CIPHER_CTX_ctrl API
+         * expects a void* parameter for EVP_CTRL_AEAD_SET_TAG, even though the tag
+         * is only read (not modified). This is safe as the tag data is not altered. */
         if(EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, 16, 
                               const_cast<uint8_t*>(vTag.data())) != 1)
         {
