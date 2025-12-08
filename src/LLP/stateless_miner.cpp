@@ -451,8 +451,12 @@ namespace LLP
         /* DEBUG: Log parsed genesis details */
         debug::log(0, FUNCTION, "Genesis parsed: ", hashGenesis.SubString());
         debug::log(0, FUNCTION, "Genesis full hex: ", hashGenesis.GetHex());
-        debug::log(0, FUNCTION, "Genesis type byte: 0x", std::hex, std::setfill('0'), std::setw(2), 
-                   static_cast<uint32_t>(hashGenesis.GetType()), std::dec);
+        {
+            std::ostringstream oss;
+            oss << "Genesis type byte: 0x" << std::hex << std::setfill('0') << std::setw(2) 
+                << static_cast<uint32_t>(hashGenesis.GetType());
+            debug::log(0, FUNCTION, oss.str());
+        }
 
         /* Derive ChaCha20 session key from genesis */
         std::vector<uint8_t> vSessionKey;
@@ -783,7 +787,10 @@ namespace LLP
             debug::log(0, FUNCTION, "═══════════════════════════════════════════════════════════");
             debug::log(0, FUNCTION, "Genesis hash: ", hashGenesisFinal.ToString());
             
-            /* Validate genesis and resolve/cache default account mapping */
+            /* Validate genesis and resolve/cache default account mapping
+             * CRITICAL: This validation is now FATAL - if it fails, authentication is denied.
+             * Previous behavior logged failure but allowed auth to proceed - this was incorrect
+             * as it would allow mining without valid reward routing. */
             StatelessMinerManager& manager = StatelessMinerManager::Get();
             if(!manager.ValidateAndCacheGenesis(hashGenesisFinal, hashDefaultAccount))
             {
