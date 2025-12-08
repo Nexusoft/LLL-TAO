@@ -438,6 +438,13 @@ namespace LLP
                 /* Update manager with new context after successful packet processing */
                 StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
                 
+                /* Log session registration for auth packets */
+                if(PACKET.HEADER == MINER_AUTH_RESPONSE && context.fAuthenticated)
+                {
+                    debug::log(0, FUNCTION, "Session registered: address=", context.strAddress,
+                               " sessionId=", context.nSessionId, " keyID=", context.hashKeyID.SubString());
+                }
+                
                 /* Send response if present */
                 if(!result.response.IsNull())
                 {

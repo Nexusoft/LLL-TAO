@@ -419,6 +419,9 @@ namespace LLP
         uint256_t hashGenesis(0);
         std::vector<uint8_t> vGenesis(vData.begin(), vData.begin() + 32);
         
+        /* DEBUG: Log raw genesis bytes received for troubleshooting */
+        debug::log(0, FUNCTION, "Genesis raw bytes (", vGenesis.size(), "): ", HexStr(vGenesis));
+        
         /* Try standard little-endian format first (as returned by GetBytes) */
         hashGenesis.SetBytes(vGenesis);
         
@@ -445,7 +448,15 @@ namespace LLP
         
         nPos += 32;
 
-        debug::log(0, FUNCTION, "hashGenesis=", hashGenesis.SubString());
+        /* DEBUG: Log parsed genesis details */
+        debug::log(0, FUNCTION, "Genesis parsed: ", hashGenesis.SubString());
+        debug::log(0, FUNCTION, "Genesis full hex: ", hashGenesis.GetHex());
+        {
+            std::ostringstream oss;
+            oss << "Genesis type byte: 0x" << std::hex << std::setfill('0') << std::setw(2) 
+                << static_cast<uint32_t>(hashGenesis.GetType());
+            debug::log(0, FUNCTION, oss.str());
+        }
 
         /* Derive ChaCha20 session key from genesis */
         std::vector<uint8_t> vSessionKey;
@@ -572,7 +583,10 @@ namespace LLP
                    " miner=", strMinerId, " pubkey=", vPubKey.size(), 
                    fWrapped ? " (unwrapped)" : "");
 
-        /* Validate genesis binding if FalconAuth is available */
+        /* Validate genesis binding if FalconAuth is available
+         * Genesis validation is CRITICAL for reward routing.
+         * If genesis is invalid or doesn't resolve to a valid account, 
+         * authentication MUST fail to prevent mining with incorrect reward routing. */
         FalconAuth::IFalconAuth* pAuth = FalconAuth::Get();
         if(pAuth && hashGenesis != 0)
         {
@@ -761,9 +775,9 @@ namespace LLP
                 hashGenesisFinal = boundGenesis.value();
         }
 
-        /* Resolve and validate username:default account for reward routing */
+        /* Resolve and validate username:default account for reward routing
+         * This is CRITICAL - mining cannot proceed without valid reward routing */
         TAO::Register::Address hashDefaultAccount(0);
-        bool fRewardRoutingValid = false;
 
         if(hashGenesisFinal != 0)
         {
@@ -773,23 +787,39 @@ namespace LLP
             debug::log(0, FUNCTION, "═══════════════════════════════════════════════════════════");
             debug::log(0, FUNCTION, "Genesis hash: ", hashGenesisFinal.ToString());
             
-            /* Validate genesis and resolve/cache default account mapping */
+            /* Validate genesis and resolve/cache default account mapping
+             * CRITICAL: This validation is now FATAL - if it fails, authentication is denied.
+             * Previous behavior logged failure but allowed auth to proceed - this was incorrect
+             * as it would allow mining without valid reward routing. */
             StatelessMinerManager& manager = StatelessMinerManager::Get();
-            if(manager.ValidateAndCacheGenesis(hashGenesisFinal, hashDefaultAccount))
+            if(!manager.ValidateAndCacheGenesis(hashGenesisFinal, hashDefaultAccount))
             {
-                debug::log(0, FUNCTION, "✓ Genesis validation successful");
-                debug::log(0, FUNCTION, "✓ Resolved default account: ", hashDefaultAccount.ToString());
-                debug::log(0, FUNCTION, "✓ Genesis→Default mapping cached");
-                fRewardRoutingValid = true;
-            }
-            else
-            {
-                debug::log(0, FUNCTION, "✗ Genesis validation or resolution failed");
-                debug::log(0, FUNCTION, "  User should ensure genesis is valid and has 'default' account");
+                debug::log(0, FUNCTION, "✗ Genesis validation or default account resolution FAILED");
+                debug::log(0, FUNCTION, "  Genesis: ", hashGenesisFinal.ToString());
+                debug::log(0, FUNCTION, "  User must ensure genesis is valid and has 'default' account");
                 debug::log(0, FUNCTION, "  To create: finance/create/account name=default");
+                debug::log(0, FUNCTION, "═══════════════════════════════════════════════════════════");
+                
+                /* FATAL ERROR: Cannot mine without valid reward routing */
+                Packet response(MINER_AUTH_RESULT);
+                response.DATA.push_back(0x00); // Failure
+                response.LENGTH = 1;
+                return ProcessResult::Success(context, response);
             }
             
+            debug::log(0, FUNCTION, "✓ Genesis validation successful");
+            debug::log(0, FUNCTION, "✓ Resolved default account: ", hashDefaultAccount.ToString());
+            debug::log(0, FUNCTION, "✓ Genesis→Default mapping cached");
             debug::log(0, FUNCTION, "═══════════════════════════════════════════════════════════");
+        }
+        else
+        {
+            /* No genesis provided - cannot proceed with stateless mining */
+            debug::log(0, FUNCTION, "ERROR: No genesis hash provided - cannot route rewards");
+            Packet response(MINER_AUTH_RESULT);
+            response.DATA.push_back(0x00); // Failure
+            response.LENGTH = 1;
+            return ProcessResult::Success(context, response);
         }
 
         /* Log authentication success summary */
@@ -799,9 +829,9 @@ namespace LLP
         debug::log(0, FUNCTION, "╠═══════════════════════════════════════════════════════════╣");
         debug::log(0, FUNCTION, "║ Key ID:       ", hashKeyID.SubString());
         debug::log(0, FUNCTION, "║ Session ID:   ", nSessionId);
-        debug::log(0, FUNCTION, "║ Genesis:      ", hashGenesisFinal != 0 ? hashGenesisFinal.SubString() : "NOT SET");
-        debug::log(0, FUNCTION, "║ Default Acct: ", hashDefaultAccount != 0 ? hashDefaultAccount.SubString() : "NOT RESOLVED");
-        debug::log(0, FUNCTION, "║ Reward Route: ", fRewardRoutingValid ? "DYNAMIC (username:default)" : "STATIC (node default)");
+        debug::log(0, FUNCTION, "║ Genesis:      ", hashGenesisFinal.SubString());
+        debug::log(0, FUNCTION, "║ Default Acct: ", hashDefaultAccount.SubString());
+        debug::log(0, FUNCTION, "║ Reward Route: DYNAMIC (username:default)");
         debug::log(0, FUNCTION, "║ From:         ", context.strAddress);
         debug::log(0, FUNCTION, "╚═══════════════════════════════════════════════════════════╝");
 
