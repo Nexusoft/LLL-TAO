@@ -419,12 +419,30 @@ namespace LLP
         uint256_t hashGenesis(0);
         std::vector<uint8_t> vGenesis(vData.begin(), vData.begin() + 32);
         
-        /* Reverse bytes for SetBytes() which expects internal storage order.
-         * The miner sends genesis in display/hex string order (type byte first),
-         * but SetBytes() expects internal storage order (type byte last).
-         * GetType() reads from the last byte, so we reverse to put type byte there. */
-        std::reverse(vGenesis.begin(), vGenesis.end());
+        /* Try standard little-endian format first (as returned by GetBytes) */
         hashGenesis.SetBytes(vGenesis);
+        
+        /* Check if genesis has valid type byte
+         * Some miner implementations send genesis in big-endian (hex string order)
+         * where type byte is first, while GetBytes() returns little-endian where
+         * type byte is last. We handle both formats for compatibility. */
+        if(!GenesisConstants::IsValidGenesisType(hashGenesis))
+        {
+            /* Try reversed (big-endian hex string order) */
+            debug::log(2, FUNCTION, "Genesis type byte invalid in little-endian format, trying big-endian");
+            std::reverse(vGenesis.begin(), vGenesis.end());
+            hashGenesis.SetBytes(vGenesis);
+            
+            if(GenesisConstants::IsValidGenesisType(hashGenesis))
+            {
+                debug::log(0, FUNCTION, "Genesis byte order corrected from big-endian to little-endian");
+            }
+            else
+            {
+                debug::log(0, FUNCTION, "WARNING: Genesis type byte invalid in both byte orders");
+            }
+        }
+        
         nPos += 32;
 
         debug::log(0, FUNCTION, "hashGenesis=", hashGenesis.SubString());
