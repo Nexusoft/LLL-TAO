@@ -481,7 +481,7 @@ namespace LLP
             try
             {
                 Packet errorResponse;
-                errorResponse.HEADER = MINER_AUTH_RESULT;
+                errorResponse. HEADER = 210;  // MINER_AUTH_RESULT
                 errorResponse.DATA.push_back(0x00);  /* Failure status */
                 errorResponse.LENGTH = 1;
                 respond(errorResponse);
