@@ -397,7 +397,7 @@ TEST_CASE("Genesis Byte Order Preservation", "[stateless_miner][genesis]")
         std::vector<uint8_t> vGenesis;
         for(size_t i = 0; i < 64; i += 2)
         {
-            std::string byteStr = std::string(hexStr + i, 2);
+            std::string byteStr = std::string(hexStr).substr(i, 2);
             uint8_t byte = static_cast<uint8_t>(std::stoul(byteStr, nullptr, 16));
             vGenesis.push_back(byte);
         }
@@ -440,7 +440,7 @@ TEST_CASE("Genesis Byte Order Preservation", "[stateless_miner][genesis]")
         const char* genesisHex = "a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122";
         for(size_t i = 0; i < 64; i += 2)
         {
-            std::string byteStr = std::string(genesisHex + i, 2);
+            std::string byteStr = std::string(genesisHex).substr(i, 2);
             uint8_t byte = static_cast<uint8_t>(std::stoul(byteStr, nullptr, 16));
             packet.DATA.push_back(byte);
         }
