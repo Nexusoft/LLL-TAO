@@ -419,44 +419,22 @@ namespace LLP
         uint256_t hashGenesis(0);
         std::vector<uint8_t> vGenesis(vData.begin(), vData.begin() + 32);
         
-        /* DEBUG: Log raw genesis bytes received for troubleshooting */
-        debug::log(0, FUNCTION, "Genesis raw bytes (", vGenesis.size(), "): ", HexStr(vGenesis));
+        /* Convert raw bytes to hex string, then use SetHex which preserves order */
+        std::string strGenesisHex = HexStr(vGenesis);
+        hashGenesis.SetHex(strGenesisHex);
         
-        /* Try standard little-endian format first (as returned by GetBytes) */
-        hashGenesis.SetBytes(vGenesis);
-        
-        /* Check if genesis has valid type byte
-         * Some miner implementations send genesis in big-endian (hex string order)
-         * where type byte is first, while GetBytes() returns little-endian where
-         * type byte is last. We handle both formats for compatibility. */
-        if(!GenesisConstants::IsValidGenesisType(hashGenesis))
-        {
-            /* Try reversed (big-endian hex string order) */
-            debug::log(2, FUNCTION, "Genesis type byte invalid in little-endian format, trying big-endian");
-            std::reverse(vGenesis.begin(), vGenesis.end());
-            hashGenesis.SetBytes(vGenesis);
-            
-            if(GenesisConstants::IsValidGenesisType(hashGenesis))
-            {
-                debug::log(0, FUNCTION, "Genesis byte order corrected from big-endian to little-endian");
-            }
-            else
-            {
-                debug::log(0, FUNCTION, "WARNING: Genesis type byte invalid in both byte orders");
-            }
-        }
-        
-        nPos += 32;
-
-        /* DEBUG: Log parsed genesis details */
-        debug::log(0, FUNCTION, "Genesis parsed: ", hashGenesis.SubString());
-        debug::log(0, FUNCTION, "Genesis full hex: ", hashGenesis.GetHex());
+        /* Debug logging to verify */
+        debug::log(0, FUNCTION, "Genesis raw bytes: ", HexStr(vGenesis));
+        debug::log(0, FUNCTION, "Genesis hex string: ", strGenesisHex);
+        debug::log(0, FUNCTION, "Genesis after SetHex: ", hashGenesis.GetHex());
         {
             std::ostringstream oss;
             oss << "Genesis type byte: 0x" << std::hex << std::setfill('0') << std::setw(2) 
                 << static_cast<uint32_t>(hashGenesis.GetType());
             debug::log(0, FUNCTION, oss.str());
         }
+        
+        nPos += 32;
 
         /* Derive ChaCha20 session key from genesis */
         std::vector<uint8_t> vSessionKey;
