@@ -20,6 +20,8 @@ ________________________________________________________________________________
 
 #include <LLC/include/random.h>
 #include <LLC/include/flkey.h>
+#include <LLC/include/encrypt.h>
+#include <LLC/hash/SK.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
@@ -369,6 +371,24 @@ namespace LLP
     }
 
 
+    /* Derive ChaCha20 session key from genesis hash */
+    std::vector<uint8_t> StatelessMiner::DeriveChaCha20SessionKey(const uint256_t& hashGenesis)
+    {
+        /* Domain separation for security */
+        static const std::string DOMAIN = "nexus-mining-chacha20-v1";
+        
+        std::vector<uint8_t> preimage;
+        preimage.insert(preimage.end(), DOMAIN.begin(), DOMAIN.end());
+        
+        std::vector<uint8_t> genesis_bytes = hashGenesis.GetBytes();
+        preimage.insert(preimage.end(), genesis_bytes.begin(), genesis_bytes.end());
+        
+        /* SHA-256 → 32-byte key */
+        uint256_t hashKey = LLC::SK256(preimage);
+        return hashKey.GetBytes();
+    }
+
+
     /* Process MINER_AUTH_INIT - first step of authentication handshake */
     ProcessResult StatelessMiner::ProcessMinerAuthInit(
         const MiningContext& context,
@@ -383,16 +403,38 @@ namespace LLP
         debug::log(2, FUNCTION, "MINER_AUTH_INIT packet: ", packet.DebugString());
         DisposableFalcon::DebugLogPacket("MINER_AUTH_INIT::data", vData, 3);
 
-        /* Validate minimum packet size (2 + 2 = 4 bytes for lengths) */
-        if(vData.size() < 4)
+        /* Validate minimum packet size: genesis(32) + pubkey_len(2) + miner_id_len(2) = 36 */
+        if(vData.size() < 36)
         {
-            debug::log(0, FUNCTION, "MINER_AUTH_INIT: packet too small, size=", vData.size(), " expected>=4");
+            debug::log(0, FUNCTION, "MINER_AUTH_INIT: packet too small, size=", vData.size(), " expected>=36");
             return ProcessResult::Error(context, "MINER_AUTH_INIT: packet too small");
         }
 
         size_t nPos = 0;
 
-        /* Parse pubkey_len (2 bytes, big-endian to match miner.cpp) */
+        /* ═══════════════════════════════════════════════════════════
+         * STEP 1: Parse hashGenesis FIRST (32 bytes)
+         * ═══════════════════════════════════════════════════════════ */
+        uint256_t hashGenesis(0);
+        std::vector<uint8_t> vGenesis(vData.begin(), vData.begin() + 32);
+        hashGenesis.SetBytes(vGenesis);
+        nPos += 32;
+
+        debug::log(0, FUNCTION, "hashGenesis=", hashGenesis.SubString());
+
+        /* Derive ChaCha20 session key from genesis */
+        std::vector<uint8_t> vSessionKey;
+        bool fCanDecrypt = false;
+        if(hashGenesis != 0)
+        {
+            vSessionKey = DeriveChaCha20SessionKey(hashGenesis);
+            fCanDecrypt = true;
+            debug::log(2, FUNCTION, "ChaCha20 key derived from genesis");
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+         * STEP 2: Parse pubkey_len (2 bytes, big-endian)
+         * ═══════════════════════════════════════════════════════════ */
         DisposableFalcon::DebugLogDeserialize("pubkey_len", nPos, 2, vData.size());
         uint16_t nPubKeyLen = (static_cast<uint16_t>(vData[nPos]) << 8) |
                               static_cast<uint16_t>(vData[nPos + 1]);
@@ -400,20 +442,8 @@ namespace LLP
 
         debug::log(3, FUNCTION, "MINER_AUTH_INIT: parsed pubkey_len=", nPubKeyLen);
 
-        /* After parsing pubkey_len, detect ChaCha20 wrapping */
-        bool fChaCha20Wrapped = false;
-
-        /* Standard Falcon-512 pubkey = 897 bytes
-         * ChaCha20 wrapped = 897 + 12 (nonce) + 16 (tag) = 925 bytes */
-        if(nPubKeyLen == 897)
-        {
-            debug::log(2, FUNCTION, "Standard (unwrapped) public key");
-        }
-        else if(nPubKeyLen == 925)
-        {
-            fChaCha20Wrapped = true;
-            debug::log(0, FUNCTION, "ChaCha20 wrapped public key detected (925 bytes)");
-        }
+        /* Detect wrapped vs unwrapped */
+        bool fWrapped = (nPubKeyLen == 925);  // 897 + 12 + 16
 
         /* Validate pubkey_len */
         if(nPubKeyLen == 0 || nPubKeyLen > 2048)
@@ -429,34 +459,48 @@ namespace LLP
             return ProcessResult::Error(context, "MINER_AUTH_INIT: packet too small for pubkey");
         }
 
-        /* Extract public key */
+        /* Extract public key data */
         DisposableFalcon::DebugLogDeserialize("pubkey", nPos, nPubKeyLen, vData.size());
         std::vector<uint8_t> vPubKeyData(vData.begin() + nPos, vData.begin() + nPos + nPubKeyLen);
         nPos += nPubKeyLen;
 
-        /* Unwrap if ChaCha20 encrypted */
+        /* ═══════════════════════════════════════════════════════════
+         * STEP 3: Unwrap if ChaCha20 encrypted
+         * ═══════════════════════════════════════════════════════════ */
         std::vector<uint8_t> vPubKey;
-        if(fChaCha20Wrapped)
+        if(fWrapped)
         {
-            /* ChaCha20 decryption not yet implemented in LLC
-             * For now, log the detection and reject wrapped keys */
-            if(config::GetBoolArg("-miningchacha20", false))
+            if(!fCanDecrypt)
             {
-                debug::log(0, FUNCTION, "✗ ChaCha20 decryption not yet implemented");
-                return ProcessResult::Error(context, "ChaCha20 decryption not supported");
+                debug::log(0, FUNCTION, "Wrapped key but zero genesis");
+                return ProcessResult::Error(context, "Wrapped key requires genesis");
             }
-            else
+
+            /* ChaCha20-Poly1305 format: nonce(12) + ciphertext(897) + tag(16) */
+            if(vPubKeyData.size() != 925)
             {
-                debug::log(0, FUNCTION, "✗ ChaCha20 wrapped key detected but -miningchacha20 not enabled");
-                return ProcessResult::Error(context, "ChaCha20 wrapped keys require -miningchacha20");
+                debug::log(0, FUNCTION, "Invalid wrapped key size: ", vPubKeyData.size());
+                return ProcessResult::Error(context, "Invalid wrapped key size");
             }
+
+            std::vector<uint8_t> vNonce(vPubKeyData.begin(), vPubKeyData.begin() + 12);
+            std::vector<uint8_t> vCiphertext(vPubKeyData.begin() + 12, vPubKeyData.end() - 16);
+            std::vector<uint8_t> vTag(vPubKeyData.end() - 16, vPubKeyData.end());
+            std::vector<uint8_t> vAAD{'F','A','L','C','O','N','_','P','U','B','K','E','Y'};
+
+            if(!LLC::DecryptChaCha20Poly1305(vCiphertext, vTag, vSessionKey, vNonce, vPubKey, vAAD))
+            {
+                debug::log(0, FUNCTION, "ChaCha20 decryption FAILED - genesis mismatch?");
+                return ProcessResult::Error(context, "ChaCha20 decryption failed");
+            }
+            debug::log(0, FUNCTION, "✓ ChaCha20 unwrap SUCCESS");
         }
         else
         {
             vPubKey = vPubKeyData;
         }
 
-        /* Validate final pubkey size (must be exactly 897 bytes for Falcon-512) */
+        /* Validate pubkey size */
         if(vPubKey.size() != 897)
         {
             debug::log(0, FUNCTION, "Invalid pubkey size: ", vPubKey.size(), " (expected 897)");
@@ -465,7 +509,9 @@ namespace LLP
 
         debug::log(3, FUNCTION, "MINER_AUTH_INIT: extracted pubkey, len=", vPubKey.size());
 
-        /* Parse miner_id_len (2 bytes, big-endian) */
+        /* ═══════════════════════════════════════════════════════════
+         * STEP 4: Parse miner_id
+         * ═══════════════════════════════════════════════════════════ */
         DisposableFalcon::DebugLogDeserialize("miner_id_len", nPos, 2, vData.size());
         uint16_t nMinerIdLen = (static_cast<uint16_t>(vData[nPos]) << 8) |
                                static_cast<uint16_t>(vData[nPos + 1]);
@@ -489,69 +535,51 @@ namespace LLP
 
         /* Extract miner ID (for logging) */
         DisposableFalcon::DebugLogDeserialize("miner_id", nPos, nMinerIdLen, vData.size());
-        std::string strMinerId;
+        std::string strMinerId = "<no-id>";
         if(nMinerIdLen > 0)
             strMinerId.assign(vData.begin() + nPos, vData.begin() + nPos + nMinerIdLen);
-        else
-            strMinerId = "<no-id>";
-        nPos += nMinerIdLen;  // Don't forget to advance position!
 
-        /* NEW: Parse hashGenesis (32 bytes, optional but expected) */
-        uint256_t hashGenesis(0);
-        if(nPos + FalconConstants::GENESIS_HASH_SIZE <= vData.size())
+        /* Generate challenge nonce */
+        std::vector<uint8_t> vAuthNonce = LLC::GetRand256().GetBytes();
+
+        /* Log summary */
+        debug::log(0, FUNCTION, "MINER_AUTH_INIT: genesis=", hashGenesis.SubString(),
+                   " miner=", strMinerId, " pubkey=", vPubKey.size(), 
+                   fWrapped ? " (unwrapped)" : "");
+
+        /* Validate genesis binding if FalconAuth is available */
+        FalconAuth::IFalconAuth* pAuth = FalconAuth::Get();
+        if(pAuth && hashGenesis != 0)
         {
-            /* Extract genesis hash bytes */
-            std::vector<uint8_t> vGenesis(vData.begin() + nPos, vData.begin() + nPos + FalconConstants::GENESIS_HASH_SIZE);
-            hashGenesis.SetBytes(vGenesis);
-            nPos += FalconConstants::GENESIS_HASH_SIZE;
+            uint256_t hashKeyID = pAuth->DeriveKeyId(vPubKey);
+            std::optional<uint256_t> boundGenesis = pAuth->GetBoundGenesis(hashKeyID);
             
-            debug::log(0, FUNCTION, "MINER_AUTH_INIT: hashGenesis=", hashGenesis.SubString());
-            
-            /* Validate genesis binding if FalconAuth is available */
-            FalconAuth::IFalconAuth* pAuth = FalconAuth::Get();
-            if(pAuth && hashGenesis != 0)
+            /* If this key has a bound genesis, verify it matches */
+            if(boundGenesis.has_value() && boundGenesis.value() != 0)
             {
-                uint256_t hashKeyID = pAuth->DeriveKeyId(vPubKey);
-                std::optional<uint256_t> boundGenesis = pAuth->GetBoundGenesis(hashKeyID);
-                
-                /* If this key has a bound genesis, verify it matches */
-                if(boundGenesis.has_value() && boundGenesis.value() != 0)
+                if(boundGenesis.value() != hashGenesis)
                 {
-                    if(boundGenesis.value() != hashGenesis)
-                    {
-                        debug::log(0, FUNCTION, "MINER_AUTH_INIT: genesis mismatch! claimed=", 
-                                   hashGenesis.SubString(), " bound=", boundGenesis.value().SubString());
-                        return ProcessResult::Error(context, "Genesis mismatch with bound Falcon key");
-                    }
-                    debug::log(2, FUNCTION, "MINER_AUTH_INIT: genesis binding verified");
+                    debug::log(0, FUNCTION, "MINER_AUTH_INIT: genesis mismatch! claimed=", 
+                               hashGenesis.SubString(), " bound=", boundGenesis.value().SubString());
+                    return ProcessResult::Error(context, "Genesis mismatch with bound Falcon key");
                 }
-                else
-                {
-                    /* No existing binding - this is a new key, could auto-bind or require explicit binding */
-                    debug::log(0, FUNCTION, "MINER_AUTH_INIT: new key, genesis=", hashGenesis.SubString());
-                }
+                debug::log(2, FUNCTION, "MINER_AUTH_INIT: genesis binding verified");
+            }
+            else
+            {
+                /* No existing binding - this is a new key */
+                debug::log(0, FUNCTION, "MINER_AUTH_INIT: new key, genesis=", hashGenesis.SubString());
             }
         }
-        else
-        {
-            debug::log(1, FUNCTION, "MINER_AUTH_INIT: no hashGenesis provided (legacy client?)");
-        }
 
-        /* Generate random nonce (32 bytes) */
-        uint256_t nonce = LLC::GetRand256();
-        std::vector<uint8_t> vAuthNonce = nonce.GetBytes();
-
-        debug::log(0, FUNCTION, "MINER_AUTH_INIT from ", context.strAddress,
-                   " miner_id=", strMinerId, " pubkey_len=", nPubKeyLen);
-
-        /* Update context with pubkey, nonce, and genesis */
+        /* Update context */
         MiningContext newContext = context
             .WithPubKey(vPubKey)
             .WithNonce(vAuthNonce)
-            .WithGenesis(hashGenesis)  // ← Store genesis from INIT
+            .WithGenesis(hashGenesis)
             .WithTimestamp(runtime::unifiedtimestamp());
 
-        /* Build MINER_AUTH_CHALLENGE response */
+        /* Build challenge */
         Packet response(MINER_AUTH_CHALLENGE);
         uint16_t nNonceLen = static_cast<uint16_t>(vAuthNonce.size());
         response.DATA.push_back(static_cast<uint8_t>(nNonceLen >> 8));
