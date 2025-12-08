@@ -30,6 +30,7 @@ ________________________________________________________________________________
 
 #include <sstream>
 #include <iomanip>
+#include <algorithm>
 
 namespace LLP
 {
@@ -417,6 +418,12 @@ namespace LLP
          * ═══════════════════════════════════════════════════════════ */
         uint256_t hashGenesis(0);
         std::vector<uint8_t> vGenesis(vData.begin(), vData.begin() + 32);
+        
+        /* Reverse bytes for SetBytes() which expects internal storage order.
+         * The miner sends genesis in display/hex string order (type byte first),
+         * but SetBytes() expects internal storage order (type byte last).
+         * GetType() reads from the last byte, so we reverse to put type byte there. */
+        std::reverse(vGenesis.begin(), vGenesis.end());
         hashGenesis.SetBytes(vGenesis);
         nPos += 32;
 

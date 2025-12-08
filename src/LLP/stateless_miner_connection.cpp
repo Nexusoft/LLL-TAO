@@ -432,19 +432,37 @@ namespace LLP
 
                 /* Update manager with new context after successful packet processing */
                 StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
+                
+                /* Send response if present */
+                if(!result.response.IsNull())
+                {
+                    respond(result.response);
+                }
             }
-
-            /* Send response if present */
-            if(result.fSuccess && !result.response.IsNull())
+            else
             {
-                respond(result.response);
-            }
-
-            /* Log errors */
-            if(!result.fSuccess)
-            {
+                /* Log error and send failure response to miner for graceful handling */
                 debug::log(0, FUNCTION, "MinerLLP: Processing error: ", result.strError);
-                return false;
+                
+                /* Send generic error response based on packet type */
+                /* This allows miner to handle errors gracefully instead of timing out */
+                const uint8_t MINER_AUTH_RESULT = 210;
+                
+                Packet errorResponse;
+                
+                /* Send appropriate error response based on what was requested */
+                if(PACKET.HEADER == 207 || PACKET.HEADER == 209)  /* AUTH_INIT or AUTH_RESPONSE */
+                {
+                    errorResponse.HEADER = MINER_AUTH_RESULT;
+                    errorResponse.DATA.push_back(0x00);  /* Failure status */
+                    errorResponse.LENGTH = 1;
+                    respond(errorResponse);
+                    debug::log(2, FUNCTION, "Sent MINER_AUTH_RESULT error response");
+                }
+                
+                /* For other packet types, connection will be closed gracefully */
+                /* Don't force disconnect immediately - let miner handle the error */
+                return true;  /* Return true to avoid force disconnect */
             }
 
             return true;
@@ -453,7 +471,25 @@ namespace LLP
         {
             debug::log(0, FUNCTION, "MinerLLP: EXCEPTION in ProcessPacket from ",
                        GetAddress().ToStringIP(), " - what(): ", e.what());
-            return debug::error(FUNCTION, "Exception in ProcessPacket");
+            
+            /* Send generic error response before disconnecting */
+            /* This prevents node from locking up on unexpected errors */
+            const uint8_t MINER_AUTH_RESULT = 210;
+            try
+            {
+                Packet errorResponse;
+                errorResponse.HEADER = MINER_AUTH_RESULT;
+                errorResponse.DATA.push_back(0x00);  /* Failure status */
+                errorResponse.LENGTH = 1;
+                respond(errorResponse);
+            }
+            catch(...)
+            {
+                /* Ignore errors when sending error response */
+            }
+            
+            /* Return true to allow graceful disconnect instead of force disconnect */
+            return true;
         }
     }
 
