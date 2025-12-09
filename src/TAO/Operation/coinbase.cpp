@@ -44,13 +44,19 @@ namespace TAO
                         return debug::error(FUNCTION, "OP::COINBASE: failed to write event for coinbase");
 
                     /* AUTO-CREDIT LOGIC - Direct reward routing
-                     * With the new Direct Reward Address system, hashGenesis is the reward address
-                     * provided by the miner via MINER_SET_REWARD (encrypted with ChaCha20).
+                     * 
+                     * IMPORTANT: In the new Direct Reward Address system, hashGenesis contains
+                     * the reward account address (not the authentication genesis).
+                     * 
+                     * Flow: Miner sets reward address via MINER_SET_REWARD (encrypted) → 
+                     *       Block creation uses it as hashDynamicGenesis → 
+                     *       hashDynamicGenesis becomes hashGenesis in the block →
+                     *       Coinbase::Commit receives it as hashGenesis parameter
+                     * 
                      * The reward address is already validated as a valid NXS account. */
                     if(LLP::GenesisConstants::IsAutoCreditEnabled())
                     {
-                        /* Use hashGenesis directly as the reward account address.
-                         * In the new system, miners provide account addresses, not genesis hashes. */
+                        /* hashGenesis is the reward account address (via dynamic routing) */
                         TAO::Register::Address hashRewardAccount = hashGenesis;
 
                         /* Read the account state */

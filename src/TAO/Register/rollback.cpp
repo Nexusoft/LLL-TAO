@@ -278,7 +278,12 @@ namespace TAO
                             if(LLD::Ledger->HasProof(hashGenesis, contract.Hash(), 0, nFlags))
                             {
                                 /* Proof exists - auto-credit was applied, need to rollback balance.
-                                 * With the new Direct Reward Address system, hashGenesis is the reward address. */
+                                 * 
+                                 * IMPORTANT: In the new Direct Reward Address system, hashGenesis contains
+                                 * the reward account address (not the authentication genesis).
+                                 * 
+                                 * This is because block creation uses the reward address from MINER_SET_REWARD
+                                 * as hashDynamicGenesis, which becomes hashGenesis in the coinbase transaction. */
                                 TAO::Register::Address hashRewardAccount = hashGenesis;
 
                                 /* Read the current account state. */
