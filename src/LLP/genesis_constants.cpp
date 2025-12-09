@@ -86,7 +86,9 @@ namespace LLP
         }
 
 
-        /* Resolve the default account address for a genesis hash. */
+        /* Resolve the trust account address for a genesis hash.
+         * Trust account is deterministically addressed and always exists for every sigchain.
+         * This is used for mining reward routing. */
         bool ResolveDefaultAccount(const uint256_t& hashGenesis, TAO::Register::Address& hashDefault)
         {
             /* First validate the genesis. */
@@ -97,70 +99,45 @@ namespace LLP
                 return false;
             }
 
-            /* Resolve the "default" account via the Names register.
-             * In Nexus, local accounts like "username:default" are accessed through NAME registers.
-             * The NAME register contains an "address" field pointing to the actual account. */
-            TAO::Register::Object nameRegister;
-            if(!TAO::Register::GetNameRegister(hashGenesis, std::string("default"), nameRegister))
-            {
-                debug::log(0, FUNCTION, "Failed to find 'default' name register for genesis ", hashGenesis.SubString());
-                return false;
-            }
+            /* Use the TRUST account - it's deterministically addressed and always exists.
+             * Address::TRUST is a supported type for deterministic address construction.
+             * Every sigchain has a trust account created automatically. */
+            hashDefault = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
-            /* Extract the address field from the name register.
-             * Note: Object::get() internally calls Parse() if needed, and throws std::runtime_error on failure. */
-            try
-            {
-                hashDefault = nameRegister.get<uint256_t>("address");
-            }
-            catch(const std::exception& e)
-            {
-                debug::log(0, FUNCTION, "Failed to extract 'address' field from 'default' name register: ", e.what());
-                return false;
-            }
-
-            debug::log(2, FUNCTION, "Resolved 'default' name to account address: ", hashDefault.ToString());
+            debug::log(2, FUNCTION, "Derived trust account address: ", hashDefault.ToString());
 
             /* Verify the account exists on chain */
             TAO::Register::Object account;
             if(!LLD::Register->ReadObject(hashDefault, account, TAO::Ledger::FLAGS::LOOKUP))
             {
-                debug::log(0, FUNCTION, "Default account not found on chain for genesis ", hashGenesis.SubString());
-                debug::log(0, FUNCTION, "  Resolved address: ", hashDefault.ToString());
+                debug::log(0, FUNCTION, "Trust account not found on chain for genesis ", hashGenesis.SubString());
+                debug::log(0, FUNCTION, "  Derived address: ", hashDefault.ToString());
                 return false;
             }
 
-            /* Parse and validate the account */
+            /* Parse the account object */
             if(!account.Parse())
             {
-                debug::log(0, FUNCTION, "Failed to parse default account object");
+                debug::log(0, FUNCTION, "Failed to parse trust account object");
                 return false;
             }
 
-            /* Verify it's an ACCOUNT type */
-            if(account.Base() != TAO::Register::OBJECTS::ACCOUNT)
+            /* Verify it's a TRUST type */
+            if(account.Standard() != TAO::Register::OBJECTS::TRUST)
             {
-                debug::log(0, FUNCTION, "Register is not an account type: ", uint32_t(account.Base()));
+                debug::log(0, FUNCTION, "Register is not a trust account type");
                 return false;
             }
 
             /* Verify ownership matches genesis */
             if(account.hashOwner != hashGenesis)
             {
-                debug::log(0, FUNCTION, "Account ownership mismatch: expected ", hashGenesis.SubString(),
+                debug::log(0, FUNCTION, "Trust account ownership mismatch: expected ", hashGenesis.SubString(),
                           " but owner is ", account.hashOwner.SubString());
                 return false;
             }
 
-            /* Verify it's an NXS account (token = 0) */
-            uint256_t hashToken = account.get<uint256_t>("token");
-            if(hashToken != 0)
-            {
-                debug::log(0, FUNCTION, "Default account is not NXS type, token: ", hashToken.SubString());
-                return false;
-            }
-
-            debug::log(0, FUNCTION, "✓ Resolved default account: ", hashDefault.ToString(),
+            debug::log(0, FUNCTION, "✓ Resolved trust account: ", hashDefault.ToString(),
                       " for genesis ", hashGenesis.SubString());
 
             return true;
@@ -194,24 +171,36 @@ namespace LLP
                 return false;
             }
 
-            /* Verify account type - must be an ACCOUNT object. */
-            if(account.Base() != TAO::Register::OBJECTS::ACCOUNT)
+            /* Verify account type - must be an ACCOUNT or TRUST object.
+             * TRUST accounts are preferred for mining rewards as they're deterministically addressed. */
+            uint8_t nBase = account.Base();
+            uint8_t nStandard = account.Standard();
+            
+            if(nStandard == TAO::Register::OBJECTS::TRUST)
             {
-                debug::log(0, FUNCTION, "Invalid account type: expected ACCOUNT but got ", 
-                          uint32_t(account.Base()));
+                /* Trust account - no token field to check, always holds NXS */
+                debug::log(2, FUNCTION, "Validated TRUST account for auto-credit");
+                return true;
+            }
+            else if(nBase == TAO::Register::OBJECTS::ACCOUNT)
+            {
+                /* Regular account - verify it's NXS (token = 0) */
+                uint256_t hashToken = account.get<uint256_t>("token");
+                if(hashToken != 0)
+                {
+                    debug::log(0, FUNCTION, "Invalid token type: expected NXS (0) but got ", 
+                              hashToken.SubString());
+                    return false;
+                }
+                debug::log(2, FUNCTION, "Validated ACCOUNT for auto-credit");
+                return true;
+            }
+            else
+            {
+                debug::log(0, FUNCTION, "Invalid account type: expected ACCOUNT or TRUST but got ", 
+                          uint32_t(nBase), " (standard: ", uint32_t(nStandard), ")");
                 return false;
             }
-
-            /* Verify token type - must be NXS (token = 0). */
-            uint256_t hashToken = account.get<uint256_t>("token");
-            if(hashToken != 0)
-            {
-                debug::log(0, FUNCTION, "Invalid token type: expected NXS (0) but got ", 
-                          hashToken.SubString());
-                return false;
-            }
-
-            return true;
         }
 
 

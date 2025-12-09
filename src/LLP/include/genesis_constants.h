@@ -31,13 +31,13 @@ namespace GenesisConstants
      * GENESIS VALIDATION SYSTEM
      * 
      * The Genesis validation module validates Tritium genesis hashes to
-     * enable auto-credit mining rewards directly to Username:default accounts
+     * enable auto-credit mining rewards directly to trust accounts
      * without requiring wallet login or manual claim transactions.
      * 
      * This system validates:
      * - Genesis hash format and type byte
      * - On-chain existence
-     * - Default account resolution via Names register
+     * - Trust account resolution via deterministic addressing
      * - Account ownership and type verification
      **************************************************************************/
 
@@ -136,23 +136,24 @@ namespace GenesisConstants
 
     /** ResolveDefaultAccount
      *
-     *  Resolve the default account address for a genesis hash.
-     *  Queries the Names register for "default" owned by hashGenesis.
+     *  Resolve the trust account address for a genesis hash.
+     *  Uses deterministic addressing to derive the trust account.
+     *  Trust accounts are created automatically for every sigchain.
      *
      *  @param[in] hashGenesis The genesis hash to resolve
-     *  @param[out] hashDefault The resolved default account address
+     *  @param[out] hashDefault The resolved trust account address
      *
-     *  @return true if default account found
+     *  @return true if trust account found
      *
      **/
     bool ResolveDefaultAccount(const uint256_t& hashGenesis, TAO::Register::Address& hashDefault);
 
     /** ValidateDefaultAccount
      *
-     *  Validate that a default account is valid for auto-credit.
-     *  Checks ownership, type, and token type.
+     *  Validate that an account is valid for auto-credit.
+     *  Checks ownership, type (ACCOUNT or TRUST), and token type (for ACCOUNT).
      *
-     *  @param[in] hashDefault The default account address
+     *  @param[in] hashDefault The account address to validate
      *  @param[in] hashGenesis The expected owner genesis
      *  @param[out] account The account object (if valid)
      *
