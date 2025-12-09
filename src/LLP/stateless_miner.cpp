@@ -771,17 +771,17 @@ namespace LLP
             debug::log(0, FUNCTION, "═══════════════════════════════════════════════════════════");
             debug::log(0, FUNCTION, "Genesis hash: ", hashGenesisFinal.ToString());
             
-            /* Validate genesis and resolve/cache default account mapping
+            /* Validate genesis and resolve/cache trust account mapping
              * CRITICAL: This validation is now FATAL - if it fails, authentication is denied.
              * Previous behavior logged failure but allowed auth to proceed - this was incorrect
              * as it would allow mining without valid reward routing. */
             StatelessMinerManager& manager = StatelessMinerManager::Get();
             if(!manager.ValidateAndCacheGenesis(hashGenesisFinal, hashDefaultAccount))
             {
-                debug::log(0, FUNCTION, "✗ Genesis validation or default account resolution FAILED");
+                debug::log(0, FUNCTION, "✗ Genesis validation or trust account resolution FAILED");
                 debug::log(0, FUNCTION, "  Genesis: ", hashGenesisFinal.ToString());
-                debug::log(0, FUNCTION, "  User must ensure genesis is valid and has 'default' account");
-                debug::log(0, FUNCTION, "  To create: finance/create/account name=default");
+                debug::log(0, FUNCTION, "  Trust account must exist for mining reward routing");
+                debug::log(0, FUNCTION, "  The trust account is created automatically with every sigchain");
                 debug::log(0, FUNCTION, "═══════════════════════════════════════════════════════════");
                 
                 /* FATAL ERROR: Cannot mine without valid reward routing */
@@ -792,8 +792,8 @@ namespace LLP
             }
             
             debug::log(0, FUNCTION, "✓ Genesis validation successful");
-            debug::log(0, FUNCTION, "✓ Resolved default account: ", hashDefaultAccount.ToString());
-            debug::log(0, FUNCTION, "✓ Genesis→Default mapping cached");
+            debug::log(0, FUNCTION, "✓ Resolved trust account: ", hashDefaultAccount.ToString());
+            debug::log(0, FUNCTION, "✓ Genesis→Trust mapping cached");
             debug::log(0, FUNCTION, "═══════════════════════════════════════════════════════════");
         }
         else
@@ -814,8 +814,8 @@ namespace LLP
         debug::log(0, FUNCTION, "║ Key ID:       ", hashKeyID.SubString());
         debug::log(0, FUNCTION, "║ Session ID:   ", nSessionId);
         debug::log(0, FUNCTION, "║ Genesis:      ", hashGenesisFinal.SubString());
-        debug::log(0, FUNCTION, "║ Default Acct: ", hashDefaultAccount.SubString());
-        debug::log(0, FUNCTION, "║ Reward Route: DYNAMIC (username:default)");
+        debug::log(0, FUNCTION, "║ Trust Acct:   ", hashDefaultAccount.SubString());
+        debug::log(0, FUNCTION, "║ Reward Route: DYNAMIC (genesis:trust)");
         debug::log(0, FUNCTION, "║ From:         ", context.strAddress);
         debug::log(0, FUNCTION, "╚═══════════════════════════════════════════════════════════╝");
 
@@ -905,9 +905,9 @@ namespace LLP
                 StatelessMinerManager::Get().GetCachedDefaultAccount(context.hashGenesis);
             
             if(hashDefault != 0)
-                debug::log(0, FUNCTION, "REWARDS → Dynamic: ", hashDefault.SubString());
+                debug::log(0, FUNCTION, "REWARDS → Trust Account: ", hashDefault.SubString());
             else
-                debug::log(0, FUNCTION, "REWARDS → Genesis set but default not resolved yet");
+                debug::log(0, FUNCTION, "REWARDS → Genesis set but trust account not resolved yet");
         }
         else
         {

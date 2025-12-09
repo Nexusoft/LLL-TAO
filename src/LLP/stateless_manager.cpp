@@ -722,7 +722,7 @@ namespace LLP
         if(optCached.has_value())
         {
             hashDefault = optCached.value();
-            debug::log(2, FUNCTION, "Using cached default account ", hashDefault.SubString(),
+            debug::log(2, FUNCTION, "Using cached trust account ", hashDefault.SubString(),
                       " for genesis ", hashGenesis.SubString());
             return true;
         }
@@ -738,19 +738,19 @@ namespace LLP
             return false;
         }
 
-        /* Resolve default account */
+        /* Resolve trust account */
         if(!LLP::GenesisConstants::ResolveDefaultAccount(hashGenesis, hashDefault))
         {
-            debug::log(0, FUNCTION, "Failed to resolve default account for genesis ",
+            debug::log(0, FUNCTION, "Failed to resolve trust account for genesis ",
                       hashGenesis.SubString());
             return false;
         }
 
-        /* Validate the default account */
+        /* Validate the trust account */
         TAO::Register::Object account;
         if(!LLP::GenesisConstants::ValidateDefaultAccount(hashDefault, hashGenesis, account))
         {
-            debug::log(0, FUNCTION, "Default account validation failed for ",
+            debug::log(0, FUNCTION, "Trust account validation failed for ",
                       hashDefault.SubString());
             return false;
         }
@@ -758,7 +758,7 @@ namespace LLP
         /* Cache the mapping */
         mapGenesisToDefault.InsertOrUpdate(hashGenesis, hashDefault);
 
-        debug::log(0, FUNCTION, "Cached default account ", hashDefault.SubString(),
+        debug::log(0, FUNCTION, "Cached trust account ", hashDefault.SubString(),
                   " for genesis ", hashGenesis.SubString());
 
         return true;
