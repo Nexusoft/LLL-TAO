@@ -54,6 +54,8 @@ ________________________________________________________________________________
 #include <Util/include/convert.h>
 #include <Util/include/args.h>
 
+#include <cstring>
+
 
 namespace LLP
 {
@@ -640,23 +642,24 @@ namespace LLP
                 debug::log(0, FUNCTION, "MinerLLP: MINER_AUTH success for miner_id=", strMinerId,
                            " from ", GetAddress().ToStringIP());
 
-                /* Derive ChaCha20 session key from genesis hash */
+                /* Derive ChaCha20 session key from genesis hash + session-specific entropy */
                 if(hashGenesis != 0)
                 {
                     /* Use domain separation for key derivation */
                     static const std::string DOMAIN = "nexus-mining-chacha20-v1";
                     
-                    /* Combine domain + genesis for key derivation */
+                    /* Combine domain + genesis + nonce for key derivation with session-specific entropy */
                     std::vector<uint8_t> vInput;
                     vInput.insert(vInput.end(), DOMAIN.begin(), DOMAIN.end());
                     vInput.insert(vInput.end(), hashGenesis.begin(), hashGenesis.end());
+                    vInput.insert(vInput.end(), vAuthNonce.begin(), vAuthNonce.end()); // Add nonce for session uniqueness
                     
                     /* Hash to derive 32-byte key */
                     uint256_t hashKey = LLC::SK256(vInput);
                     vChaChaKey = hashKey.GetBytes();
                     fEncryptionReady = true;
                     
-                    debug::log(0, FUNCTION, "✓ ChaCha20 encryption key derived from genesis");
+                    debug::log(0, FUNCTION, "✓ ChaCha20 encryption key derived from genesis + nonce");
                     debug::log(2, FUNCTION, "  Genesis: ", hashGenesis.ToString().substr(0, 16), "...");
                 }
                 else
@@ -2010,10 +2013,15 @@ namespace LLP
     /* Encrypts a payload using ChaCha20-Poly1305 AEAD cipher */
     std::vector<uint8_t> Miner::EncryptPayload(const std::vector<uint8_t>& vPlaintext)
     {
-        /* Generate random 12-byte nonce */
+        /* Generate cryptographically secure random 12-byte nonce */
         std::vector<uint8_t> vNonce(12);
-        for(size_t i = 0; i < 12; ++i)
-            vNonce[i] = LLC::GetRand();
+        
+        /* Use secure random generator - get 96 bits (12 bytes) from two uint64_t values */
+        uint64_t nRand1 = LLC::GetRand();
+        uint64_t nRand2 = LLC::GetRand();
+        
+        std::memcpy(&vNonce[0], &nRand1, 8);
+        std::memcpy(&vNonce[8], &nRand2, 4);
 
         /* Encrypt using ChaCha20-Poly1305 */
         std::vector<uint8_t> vCiphertext;
