@@ -53,6 +53,7 @@ ________________________________________________________________________________
 #include <Util/include/config.h>
 #include <Util/include/convert.h>
 #include <Util/include/args.h>
+#include <Util/include/hex.h>
 
 #include <cstring>
 
@@ -497,7 +498,35 @@ namespace LLP
                 /* Extract genesis hash (32 bytes) */
                 std::copy(PACKET.DATA.begin(), PACKET.DATA.begin() + 32, hashGenesis.begin());
 
-                debug::log(0, FUNCTION, "MinerLLP: MINER_AUTH_INIT genesis=", hashGenesis.ToString().substr(0, 16), "...");
+                debug::log(0, FUNCTION, "ProcessMinerAuthInit : Genesis raw bytes: ", 
+                           HexStr(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.begin() + 32)));
+                debug::log(0, FUNCTION, "ProcessMinerAuthInit : Genesis hex string: ", hashGenesis.ToString());
+                debug::log(0, FUNCTION, "ProcessMinerAuthInit : Genesis after SetHex: ", hashGenesis.ToString());
+                debug::log(0, FUNCTION, "ProcessMinerAuthInit : Genesis type byte: 0x", 
+                           std::hex, static_cast<uint32_t>(hashGenesis.GetType()), std::dec);
+
+                /* ═══════════════════════════════════════════════════════════════════════════
+                 * DERIVE PRE-AUTH ChaCha20 KEY (genesis only - for decrypting wrapped pubkey)
+                 * This key is derived BEFORE we have the nonce, using only domain + genesis.
+                 * The miner uses this same derivation to wrap its public key.
+                 * ═══════════════════════════════════════════════════════════════════════════ */
+                static const std::string DOMAIN = "nexus-mining-chacha20-v1";
+                
+                std::vector<uint8_t> vPreAuthInput;
+                vPreAuthInput.insert(vPreAuthInput.end(), DOMAIN.begin(), DOMAIN.end());
+                vPreAuthInput.insert(vPreAuthInput.end(), hashGenesis.begin(), hashGenesis.end());
+                // NOTE: NO NONCE - this is pre-auth key derivation for initial pubkey decryption
+                
+                uint256_t hashPreAuthKey = LLC::SK256(vPreAuthInput);
+                std::vector<uint8_t> vPreAuthChaChaKey = hashPreAuthKey.GetBytes();
+
+                debug::log(0, FUNCTION, "ProcessMinerAuthInit : ═══════════════════════════════════════════════════");
+                debug::log(0, FUNCTION, "ProcessMinerAuthInit : PRE-AUTH KEY DERIVATION (genesis only):");
+                debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Domain: ", DOMAIN);
+                debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Genesis: ", hashGenesis.ToString().substr(0, 32), "...");
+                debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Key (first 8 bytes): ", 
+                           HexStr(std::vector<uint8_t>(vPreAuthChaChaKey.begin(), vPreAuthChaChaKey.begin() + 8)));
+                debug::log(0, FUNCTION, "ProcessMinerAuthInit : ═══════════════════════════════════════════════════");
 
                 /* Parse pubkey_len (2 bytes, big-endian) */
                 uint16_t nPubKeyLen = (static_cast<uint16_t>(PACKET.DATA[32]) << 8) | 
@@ -507,38 +536,122 @@ namespace LLP
                 if(nPubKeyLen == 0 || nPubKeyLen > 2048)
                     return debug::error(FUNCTION, "MINER_AUTH_INIT: invalid pubkey_len ", nPubKeyLen);
 
-                if(PACKET.DATA.size() < 36 + nPubKeyLen)
+                if(PACKET.DATA.size() < 34 + nPubKeyLen)
                     return debug::error(FUNCTION, "MINER_AUTH_INIT: packet too small for pubkey");
 
-                /* Extract public key */
-                vMinerPubKey.assign(PACKET.DATA.begin() + 34, PACKET.DATA.begin() + 34 + nPubKeyLen);
+                /* Extract (possibly encrypted) public key */
+                std::vector<uint8_t> vReceivedPubKey(PACKET.DATA.begin() + 34, 
+                                                      PACKET.DATA.begin() + 34 + nPubKeyLen);
+
+                debug::log(0, FUNCTION, "ProcessMinerAuthInit : Received pubkey size: ", nPubKeyLen, " bytes");
+
+                /* ═══════════════════════════════════════════════════════════════════════════
+                 * CHECK IF PUBKEY IS CHACHA20 WRAPPED
+                 * Wrapped pubkey format: nonce(12) + ciphertext(897) + tag(16) = 925 bytes
+                 * Raw Falcon-512 pubkey: 897 bytes
+                 * ═══════════════════════════════════════════════════════════════════════════ */
+                const size_t FALCON512_RAW_PUBKEY_SIZE = 897;
+                const size_t CHACHA20_OVERHEAD = 12 + 16;  // nonce + tag
+                
+                if(nPubKeyLen > FALCON512_RAW_PUBKEY_SIZE)
+                {
+                    debug::log(0, FUNCTION, "ProcessMinerAuthInit : Pubkey appears to be ChaCha20 wrapped (", 
+                               nPubKeyLen, " > ", FALCON512_RAW_PUBKEY_SIZE, ")");
+                    
+                    /* Validate wrapped size */
+                    if(nPubKeyLen < FALCON512_RAW_PUBKEY_SIZE + CHACHA20_OVERHEAD)
+                    {
+                        return debug::error(FUNCTION, "MINER_AUTH_INIT: wrapped pubkey too small, expected at least ",
+                                           FALCON512_RAW_PUBKEY_SIZE + CHACHA20_OVERHEAD, " got ", nPubKeyLen);
+                    }
+                    
+                    /* Decrypt using pre-auth key */
+                    std::vector<uint8_t> vDecryptedPubKey;
+                    
+                    /* Extract nonce (first 12 bytes) */
+                    std::vector<uint8_t> vNonce(vReceivedPubKey.begin(), vReceivedPubKey.begin() + 12);
+                    
+                    /* Extract tag (last 16 bytes) */
+                    std::vector<uint8_t> vTag(vReceivedPubKey.end() - 16, vReceivedPubKey.end());
+                    
+                    /* Extract ciphertext (middle portion) */
+                    std::vector<uint8_t> vCiphertext(vReceivedPubKey.begin() + 12, vReceivedPubKey.end() - 16);
+                    
+                    debug::log(0, FUNCTION, "ProcessMinerAuthInit : Decrypting wrapped pubkey:");
+                    debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Nonce (12 bytes): ", HexStr(vNonce));
+                    debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Ciphertext size: ", vCiphertext.size());
+                    debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Tag (16 bytes): ", HexStr(vTag));
+                    
+                    /* Decrypt */
+                    if(!LLC::DecryptChaCha20Poly1305(vCiphertext, vTag, vPreAuthChaChaKey, vNonce, vDecryptedPubKey))
+                    {
+                        debug::error(FUNCTION, "ProcessMinerAuthInit : ChaCha20 decryption FAILED - genesis mismatch?");
+                        debug::error(FUNCTION, "ProcessMinerAuthInit : Check that miner's genesis matches node's expected genesis");
+                        std::vector<uint8_t> vFail(1, 0x00);
+                        respond(MINER_AUTH_RESULT, vFail);
+                        this->Disconnect();
+                        return false;
+                    }
+                    
+                    debug::log(0, FUNCTION, "ProcessMinerAuthInit : ✓ ChaCha20 decryption SUCCESS");
+                    debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Decrypted pubkey size: ", vDecryptedPubKey.size());
+                    
+                    vMinerPubKey = vDecryptedPubKey;
+                }
+                else
+                {
+                    /* Plaintext pubkey - use as-is */
+                    debug::log(0, FUNCTION, "ProcessMinerAuthInit : Pubkey is plaintext (no ChaCha20 wrapping)");
+                    vMinerPubKey = vReceivedPubKey;
+                }
 
                 /* Parse miner_id_len (2 bytes, big-endian) */
-                uint16_t nMinerIdLen = (static_cast<uint16_t>(PACKET.DATA[34 + nPubKeyLen]) << 8) | 
-                                       static_cast<uint16_t>(PACKET.DATA[34 + nPubKeyLen + 1]);
+                size_t nMinerIdOffset = 34 + nPubKeyLen;
+                uint16_t nMinerIdLen = (static_cast<uint16_t>(PACKET.DATA[nMinerIdOffset]) << 8) | 
+                                       static_cast<uint16_t>(PACKET.DATA[nMinerIdOffset + 1]);
 
                 /* Validate miner_id_len */
                 if(nMinerIdLen > 256)
                     return debug::error(FUNCTION, "MINER_AUTH_INIT: invalid miner_id_len ", nMinerIdLen);
 
-                if(PACKET.DATA.size() < 36 + nPubKeyLen + nMinerIdLen)
+                if(PACKET.DATA.size() < nMinerIdOffset + 2 + nMinerIdLen)
                     return debug::error(FUNCTION, "MINER_AUTH_INIT: packet too small for miner_id");
 
                 /* Extract miner ID */
                 if(nMinerIdLen > 0)
-                    strMinerId.assign(PACKET.DATA.begin() + 36 + nPubKeyLen, 
-                                     PACKET.DATA.begin() + 36 + nPubKeyLen + nMinerIdLen);
+                    strMinerId.assign(PACKET.DATA.begin() + nMinerIdOffset + 2, 
+                                     PACKET.DATA.begin() + nMinerIdOffset + 2 + nMinerIdLen);
                 else
                     strMinerId = "<no-id>";
 
-                /* Generate random nonce (32 bytes) */
+                /* Generate random nonce (32 bytes) for challenge */
                 uint256_t nonce = LLC::GetRand256();
                 vAuthNonce = nonce.GetBytes();
 
+                /* ═══════════════════════════════════════════════════════════════════════════
+                 * DERIVE POST-AUTH ChaCha20 KEY (genesis + nonce - for later encrypted packets)
+                 * This key includes the nonce for session-specific encryption of reward addresses.
+                 * ═══════════════════════════════════════════════════════════════════════════ */
+                std::vector<uint8_t> vPostAuthInput;
+                vPostAuthInput.insert(vPostAuthInput.end(), DOMAIN.begin(), DOMAIN.end());
+                vPostAuthInput.insert(vPostAuthInput.end(), hashGenesis.begin(), hashGenesis.end());
+                vPostAuthInput.insert(vPostAuthInput.end(), vAuthNonce.begin(), vAuthNonce.end());
+                
+                uint256_t hashPostAuthKey = LLC::SK256(vPostAuthInput);
+                vChaChaKey = hashPostAuthKey.GetBytes();
+                fEncryptionReady = true;
+
+                debug::log(0, FUNCTION, "ProcessMinerAuthInit : ═══════════════════════════════════════════════════");
+                debug::log(0, FUNCTION, "ProcessMinerAuthInit : POST-AUTH KEY DERIVATION (genesis + nonce):");
+                debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Nonce (first 8 bytes): ", 
+                           HexStr(std::vector<uint8_t>(vAuthNonce.begin(), vAuthNonce.begin() + 8)));
+                debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Key (first 8 bytes): ", 
+                           HexStr(std::vector<uint8_t>(vChaChaKey.begin(), vChaChaKey.begin() + 8)));
+                debug::log(0, FUNCTION, "ProcessMinerAuthInit : ═══════════════════════════════════════════════════");
+
                 /* Log the authentication init */
-                debug::log(0, FUNCTION, "MinerLLP: MINER_AUTH_INIT from ", GetAddress().ToStringIP(),
-                           " miner_id=", strMinerId, " pubkey_len=", nPubKeyLen);
-                debug::log(0, FUNCTION, "MinerLLP: MINER_AUTH_CHALLENGE nonce_len=", vAuthNonce.size());
+                debug::log(0, FUNCTION, "MinerLLP: MINER_AUTH_INIT: genesis=", hashGenesis.ToString().substr(0, 16), 
+                           "... miner=", strMinerId, " pubkey=", vMinerPubKey.size());
 
                 /* Build MINER_AUTH_CHALLENGE response */
                 std::vector<uint8_t> vResponse;
@@ -644,30 +757,8 @@ namespace LLP
                 debug::log(0, FUNCTION, "MinerLLP: MINER_AUTH success for miner_id=", strMinerId,
                            " from ", GetAddress().ToStringIP());
 
-                /* Derive ChaCha20 session key from genesis hash + session-specific entropy */
-                if(hashGenesis != 0)
-                {
-                    /* Use domain separation for key derivation */
-                    static const std::string DOMAIN = "nexus-mining-chacha20-v1";
-                    
-                    /* Combine domain + genesis + nonce for key derivation with session-specific entropy */
-                    std::vector<uint8_t> vInput;
-                    vInput.insert(vInput.end(), DOMAIN.begin(), DOMAIN.end());
-                    vInput.insert(vInput.end(), hashGenesis.begin(), hashGenesis.end());
-                    vInput.insert(vInput.end(), vAuthNonce.begin(), vAuthNonce.end()); // Add nonce for session uniqueness
-                    
-                    /* Hash to derive 32-byte key */
-                    uint256_t hashKey = LLC::SK256(vInput);
-                    vChaChaKey = hashKey.GetBytes();
-                    fEncryptionReady = true;
-                    
-                    debug::log(0, FUNCTION, "✓ ChaCha20 encryption key derived from genesis + nonce");
-                    debug::log(2, FUNCTION, "  Genesis: ", hashGenesis.ToString().substr(0, 16), "...");
-                }
-                else
-                {
-                    debug::log(0, FUNCTION, "⚠ No genesis hash provided - encryption not available");
-                }
+                /* ChaCha20 key was already derived in MINER_AUTH_INIT */
+                debug::log(0, FUNCTION, "✓ ChaCha20 encryption ready (derived in MINER_AUTH_INIT)");
 
                 /* Send success result */
                 std::vector<uint8_t> vSuccess(1, 0x01);
