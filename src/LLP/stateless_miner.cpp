@@ -434,6 +434,12 @@ namespace LLP
             debug::log(0, FUNCTION, oss.str());
         }
         
+        /* Log genesis in canonical hex format for ChaCha20 shared secret derivation */
+        debug::log(0, FUNCTION, "═══════════════════════════════════════════════════════════");
+        debug::log(0, FUNCTION, "GENESIS HEX (for ChaCha20 shared secret):");
+        debug::log(0, FUNCTION, "  ", hashGenesis.GetHex());
+        debug::log(0, FUNCTION, "═══════════════════════════════════════════════════════════");
+        
         nPos += 32;
 
         /* Derive ChaCha20 session key from genesis */

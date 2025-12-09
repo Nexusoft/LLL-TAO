@@ -97,25 +97,53 @@ namespace LLP
                 return false;
             }
 
-            /* Query the Names register for "default" owned by this genesis. */
-            TAO::Register::Object objectName;
-            if(!TAO::Register::GetNameRegister(hashGenesis, std::string("default"), objectName))
+            /* For Tritium accounts, derive the default account address directly from genesis.
+             * The "default" account is automatically created with every sigchain.
+             * Address format: Address(name, genesis, Address::ACCOUNT) */
+            hashDefault = TAO::Register::Address(std::string("default"), hashGenesis, TAO::Register::Address::ACCOUNT);
+
+            debug::log(2, FUNCTION, "Derived default account address: ", hashDefault.ToString());
+
+            /* Verify the account exists on chain */
+            TAO::Register::Object account;
+            if(!LLD::Register->ReadObject(hashDefault, account, TAO::Ledger::FLAGS::LOOKUP))
             {
-                debug::log(2, FUNCTION, "No 'default' name register found for genesis ", hashGenesis.SubString());
+                debug::log(0, FUNCTION, "Default account not found on chain for genesis ", hashGenesis.SubString());
+                debug::log(0, FUNCTION, "  Derived address: ", hashDefault.ToString());
                 return false;
             }
 
-            /* Parse the name object to get the address field. */
-            if(!objectName.Parse())
+            /* Parse and validate the account */
+            if(!account.Parse())
             {
-                debug::log(0, FUNCTION, "Failed to parse 'default' name register");
+                debug::log(0, FUNCTION, "Failed to parse default account object");
                 return false;
             }
 
-            /* Extract the address from the name register. */
-            hashDefault = objectName.get<uint256_t>("address");
+            /* Verify it's an ACCOUNT type */
+            if(account.Base() != TAO::Register::OBJECTS::ACCOUNT)
+            {
+                debug::log(0, FUNCTION, "Register is not an account type: ", uint32_t(account.Base()));
+                return false;
+            }
 
-            debug::log(2, FUNCTION, "Resolved default account ", hashDefault.SubString(), 
+            /* Verify ownership matches genesis */
+            if(account.hashOwner != hashGenesis)
+            {
+                debug::log(0, FUNCTION, "Account ownership mismatch: expected ", hashGenesis.SubString(),
+                          " but owner is ", account.hashOwner.SubString());
+                return false;
+            }
+
+            /* Verify it's an NXS account (token = 0) */
+            uint256_t hashToken = account.get<uint256_t>("token");
+            if(hashToken != 0)
+            {
+                debug::log(0, FUNCTION, "Default account is not NXS type, token: ", hashToken.SubString());
+                return false;
+            }
+
+            debug::log(0, FUNCTION, "✓ Resolved default account: ", hashDefault.ToString(),
                       " for genesis ", hashGenesis.SubString());
 
             return true;
