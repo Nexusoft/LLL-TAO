@@ -120,6 +120,10 @@ namespace LLP
                 if(!LLD::Register->ReadObject(hashRegister, account, TAO::Ledger::FLAGS::LOOKUP))
                     continue;
 
+                /* Parse the account object before accessing fields */
+                if(!account.Parse())
+                    continue;
+
                 /* Check if this is an ACCOUNT type */
                 if(account.Standard() != TAO::Register::OBJECTS::ACCOUNT)
                     continue;
