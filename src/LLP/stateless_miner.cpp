@@ -18,6 +18,8 @@ ________________________________________________________________________________
 #include <LLP/include/genesis_constants.h>
 #include <LLP/include/stateless_manager.h>
 
+#include <LLD/include/global.h>
+
 #include <LLC/include/random.h>
 #include <LLC/include/flkey.h>
 #include <LLC/include/encrypt.h>
@@ -759,51 +761,32 @@ namespace LLP
                 hashGenesisFinal = boundGenesis.value();
         }
 
-        /* Resolve and validate username:default account for reward routing
-         * This is CRITICAL - mining cannot proceed without valid reward routing */
-        TAO::Register::Address hashDefaultAccount(0);
-
+        /* Validate genesis exists on blockchain for ChaCha20 key derivation security */
         if(hashGenesisFinal != 0)
         {
             debug::log(0, FUNCTION, "");
-            debug::log(0, FUNCTION, "═══════════════════════════════════════════════════════════");
-            debug::log(0, FUNCTION, "       GENESIS RESOLUTION FOR REWARD ROUTING");
-            debug::log(0, FUNCTION, "═══════════════════════════════════════════════════════════");
+            debug::log(0, FUNCTION, "════════════════════════════════════════════════════════");
+            debug::log(0, FUNCTION, "       GENESIS VALIDATED FOR CHACHA20 KEY DERIVATION");
+            debug::log(0, FUNCTION, "════════════════════════════════════════════════════════");
             debug::log(0, FUNCTION, "Genesis hash: ", hashGenesisFinal.ToString());
             
-            /* Validate genesis and resolve/cache trust account mapping
-             * CRITICAL: This validation is now FATAL - if it fails, authentication is denied.
-             * Previous behavior logged failure but allowed auth to proceed - this was incorrect
-             * as it would allow mining without valid reward routing. */
-            StatelessMinerManager& manager = StatelessMinerManager::Get();
-            if(!manager.ValidateAndCacheGenesis(hashGenesisFinal, hashDefaultAccount))
+            /* Only validate genesis exists on chain - reward address comes via MINER_SET_REWARD */
+            if(!LLD::Ledger->HasFirst(hashGenesisFinal))
             {
-                debug::log(0, FUNCTION, "✗ Genesis validation or trust account resolution FAILED");
-                debug::log(0, FUNCTION, "  Genesis: ", hashGenesisFinal.ToString());
-                debug::log(0, FUNCTION, "  Trust account must exist for mining reward routing");
-                debug::log(0, FUNCTION, "  The trust account is created automatically with every sigchain");
-                debug::log(0, FUNCTION, "═══════════════════════════════════════════════════════════");
+                debug::log(0, FUNCTION, "✗ Genesis not found on blockchain");
+                debug::log(0, FUNCTION, "════════════════════════════════════════════════════════");
                 
-                /* FATAL ERROR: Cannot mine without valid reward routing */
                 Packet response(MINER_AUTH_RESULT);
                 response.DATA.push_back(0x00); // Failure
                 response.LENGTH = 1;
                 return ProcessResult::Success(context, response);
             }
             
-            debug::log(0, FUNCTION, "✓ Genesis validation successful");
-            debug::log(0, FUNCTION, "✓ Resolved trust account: ", hashDefaultAccount.ToString());
-            debug::log(0, FUNCTION, "✓ Genesis→Trust mapping cached");
-            debug::log(0, FUNCTION, "═══════════════════════════════════════════════════════════");
-        }
-        else
-        {
-            /* No genesis provided - cannot proceed with stateless mining */
-            debug::log(0, FUNCTION, "ERROR: No genesis hash provided - cannot route rewards");
-            Packet response(MINER_AUTH_RESULT);
-            response.DATA.push_back(0x00); // Failure
-            response.LENGTH = 1;
-            return ProcessResult::Success(context, response);
+            debug::log(0, FUNCTION, "✓ Genesis validated on blockchain");
+            debug::log(0, FUNCTION, "✓ ChaCha20 session key can be derived");
+            debug::log(0, FUNCTION, "");
+            debug::log(0, FUNCTION, "NOTE: Reward address will be set via MINER_SET_REWARD packet");
+            debug::log(0, FUNCTION, "════════════════════════════════════════════════════════");
         }
 
         /* Log authentication success summary */
@@ -813,9 +796,9 @@ namespace LLP
         debug::log(0, FUNCTION, "╠═══════════════════════════════════════════════════════════╣");
         debug::log(0, FUNCTION, "║ Key ID:       ", hashKeyID.SubString());
         debug::log(0, FUNCTION, "║ Session ID:   ", nSessionId);
-        debug::log(0, FUNCTION, "║ Genesis:      ", hashGenesisFinal.SubString());
-        debug::log(0, FUNCTION, "║ Trust Acct:   ", hashDefaultAccount.SubString());
-        debug::log(0, FUNCTION, "║ Reward Route: DYNAMIC (genesis:trust)");
+        debug::log(0, FUNCTION, "║ Genesis:      ", hashGenesisFinal.SubString(), " (ChaCha20)");
+        debug::log(0, FUNCTION, "║ ChaCha20:     Ready for encryption");
+        debug::log(0, FUNCTION, "║ Reward Addr:  (awaiting MINER_SET_REWARD)");
         debug::log(0, FUNCTION, "║ From:         ", context.strAddress);
         debug::log(0, FUNCTION, "╚═══════════════════════════════════════════════════════════╝");
 
