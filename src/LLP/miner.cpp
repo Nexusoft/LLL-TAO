@@ -44,10 +44,17 @@ ________________________________________________________________________________
 
 #include <LLC/include/flkey.h>
 #include <LLC/include/random.h>
+#include <LLC/include/encrypt.h>
+#include <LLC/hash/SK.h>
+
+#include <TAO/Register/include/enum.h>
+#include <TAO/Register/types/object.h>
 
 #include <Util/include/config.h>
 #include <Util/include/convert.h>
 #include <Util/include/args.h>
+
+#include <cstring>
 
 
 namespace LLP
@@ -73,6 +80,11 @@ namespace LLP
     , strMinerId()
     , vAuthNonce()
     , fMinerAuthenticated(false)
+    , hashGenesis(0)
+    , vChaChaKey()
+    , fEncryptionReady(false)
+    , hashRewardAddress(0)
+    , fRewardBound(false)
     , fStatelessMinerSession(false)
     {
     }
@@ -92,6 +104,11 @@ namespace LLP
     , strMinerId()
     , vAuthNonce()
     , fMinerAuthenticated(false)
+    , hashGenesis(0)
+    , vChaChaKey()
+    , fEncryptionReady(false)
+    , hashRewardAddress(0)
+    , fRewardBound(false)
     , fStatelessMinerSession(false)
     {
     }
@@ -111,6 +128,11 @@ namespace LLP
     , strMinerId()
     , vAuthNonce()
     , fMinerAuthenticated(false)
+    , hashGenesis(0)
+    , vChaChaKey()
+    , fEncryptionReady(false)
+    , hashRewardAddress(0)
+    , fRewardBound(false)
     , fStatelessMinerSession(false)
     {
     }
@@ -375,6 +397,8 @@ namespace LLP
             case 210: return "MINER_AUTH_RESULT";
             case 211: return "SESSION_START";
             case 212: return "SESSION_KEEPALIVE";
+            case 213: return "MINER_SET_REWARD";
+            case 214: return "MINER_REWARD_RESULT";
             case 253: return "PING";
             case 254: return "CLOSE";
             default:  return "UNKNOWN";
@@ -460,45 +484,50 @@ namespace LLP
         /* Evaluate the packet header to determine what to do. */
         switch(PACKET.HEADER)
         {
-            /* Authentication: Miner sends Falcon public key + label */
+            /* Authentication: Miner sends Genesis + Falcon public key + label */
             case MINER_AUTH_INIT:
             {
                 debug::log(0, FUNCTION, "MinerLLP: MINER_AUTH_INIT from ", GetAddress().ToStringIP(),
                            " length=", PACKET.LENGTH);
 
-                /* Validate minimum packet size (2 + 2 = 4 bytes for lengths) */
-                if(PACKET.DATA.size() < 4)
+                /* Validate minimum packet size (32 for genesis + 2 + 2 = 36 bytes minimum) */
+                if(PACKET.DATA.size() < 36)
                     return debug::error(FUNCTION, "MINER_AUTH_INIT: packet too small");
 
+                /* Extract genesis hash (32 bytes) */
+                std::copy(PACKET.DATA.begin(), PACKET.DATA.begin() + 32, hashGenesis.begin());
+
+                debug::log(0, FUNCTION, "MinerLLP: MINER_AUTH_INIT genesis=", hashGenesis.ToString().substr(0, 16), "...");
+
                 /* Parse pubkey_len (2 bytes, big-endian) */
-                uint16_t nPubKeyLen = (static_cast<uint16_t>(PACKET.DATA[0]) << 8) | 
-                                      static_cast<uint16_t>(PACKET.DATA[1]);
+                uint16_t nPubKeyLen = (static_cast<uint16_t>(PACKET.DATA[32]) << 8) | 
+                                      static_cast<uint16_t>(PACKET.DATA[33]);
 
                 /* Validate pubkey_len */
                 if(nPubKeyLen == 0 || nPubKeyLen > 2048)
                     return debug::error(FUNCTION, "MINER_AUTH_INIT: invalid pubkey_len ", nPubKeyLen);
 
-                if(PACKET.DATA.size() < 4 + nPubKeyLen)
+                if(PACKET.DATA.size() < 36 + nPubKeyLen)
                     return debug::error(FUNCTION, "MINER_AUTH_INIT: packet too small for pubkey");
 
                 /* Extract public key */
-                vMinerPubKey.assign(PACKET.DATA.begin() + 2, PACKET.DATA.begin() + 2 + nPubKeyLen);
+                vMinerPubKey.assign(PACKET.DATA.begin() + 34, PACKET.DATA.begin() + 34 + nPubKeyLen);
 
                 /* Parse miner_id_len (2 bytes, big-endian) */
-                uint16_t nMinerIdLen = (static_cast<uint16_t>(PACKET.DATA[2 + nPubKeyLen]) << 8) | 
-                                       static_cast<uint16_t>(PACKET.DATA[2 + nPubKeyLen + 1]);
+                uint16_t nMinerIdLen = (static_cast<uint16_t>(PACKET.DATA[34 + nPubKeyLen]) << 8) | 
+                                       static_cast<uint16_t>(PACKET.DATA[34 + nPubKeyLen + 1]);
 
                 /* Validate miner_id_len */
                 if(nMinerIdLen > 256)
                     return debug::error(FUNCTION, "MINER_AUTH_INIT: invalid miner_id_len ", nMinerIdLen);
 
-                if(PACKET.DATA.size() < 4 + nPubKeyLen + nMinerIdLen)
+                if(PACKET.DATA.size() < 36 + nPubKeyLen + nMinerIdLen)
                     return debug::error(FUNCTION, "MINER_AUTH_INIT: packet too small for miner_id");
 
                 /* Extract miner ID */
                 if(nMinerIdLen > 0)
-                    strMinerId.assign(PACKET.DATA.begin() + 4 + nPubKeyLen, 
-                                     PACKET.DATA.begin() + 4 + nPubKeyLen + nMinerIdLen);
+                    strMinerId.assign(PACKET.DATA.begin() + 36 + nPubKeyLen, 
+                                     PACKET.DATA.begin() + 36 + nPubKeyLen + nMinerIdLen);
                 else
                     strMinerId = "<no-id>";
 
@@ -614,6 +643,31 @@ namespace LLP
                 fMinerAuthenticated = true;
                 debug::log(0, FUNCTION, "MinerLLP: MINER_AUTH success for miner_id=", strMinerId,
                            " from ", GetAddress().ToStringIP());
+
+                /* Derive ChaCha20 session key from genesis hash + session-specific entropy */
+                if(hashGenesis != 0)
+                {
+                    /* Use domain separation for key derivation */
+                    static const std::string DOMAIN = "nexus-mining-chacha20-v1";
+                    
+                    /* Combine domain + genesis + nonce for key derivation with session-specific entropy */
+                    std::vector<uint8_t> vInput;
+                    vInput.insert(vInput.end(), DOMAIN.begin(), DOMAIN.end());
+                    vInput.insert(vInput.end(), hashGenesis.begin(), hashGenesis.end());
+                    vInput.insert(vInput.end(), vAuthNonce.begin(), vAuthNonce.end()); // Add nonce for session uniqueness
+                    
+                    /* Hash to derive 32-byte key */
+                    uint256_t hashKey = LLC::SK256(vInput);
+                    vChaChaKey = hashKey.GetBytes();
+                    fEncryptionReady = true;
+                    
+                    debug::log(0, FUNCTION, "✓ ChaCha20 encryption key derived from genesis + nonce");
+                    debug::log(2, FUNCTION, "  Genesis: ", hashGenesis.ToString().substr(0, 16), "...");
+                }
+                else
+                {
+                    debug::log(0, FUNCTION, "⚠ No genesis hash provided - encryption not available");
+                }
 
                 /* Send success result */
                 std::vector<uint8_t> vSuccess(1, 0x01);
@@ -864,6 +918,13 @@ namespace LLP
                     return debug::error(FUNCTION, "Authentication required for stateless miner commands");
                 }
 
+                /* Check if reward address is bound for stateless miners */
+                if(!fRewardBound)
+                {
+                    debug::error(FUNCTION, "GET_BLOCK: reward address not set - send MINER_SET_REWARD first");
+                    return debug::error(FUNCTION, "Reward address required for mining");
+                }
+
                 debug::log(2, FUNCTION, "GET_BLOCK request from ", GetAddress().ToStringIP());
 
                 TAO::Ledger::Block *pBlock = nullptr;
@@ -1068,6 +1129,35 @@ namespace LLP
                 debug::log(0, FUNCTION, "MinerLLP: SESSION_KEEPALIVE recognized but full session management not implemented yet");
                 
                 /* For now, return true to acknowledge without error */
+                return true;
+            }
+
+
+            /* MINER_SET_REWARD: Miner sends reward address (encrypted) */
+            case MINER_SET_REWARD:
+            {
+                debug::log(0, FUNCTION, "MinerLLP: MINER_SET_REWARD received from ", GetAddress().ToStringIP(),
+                           " length=", PACKET.LENGTH);
+
+                /* Check authentication first */
+                if(!fMinerAuthenticated)
+                {
+                    debug::error(FUNCTION, "MINER_SET_REWARD: not authenticated");
+                    SendRewardResult(false, "Authentication required");
+                    return false;
+                }
+
+                /* Check encryption is ready */
+                if(!fEncryptionReady)
+                {
+                    debug::error(FUNCTION, "MINER_SET_REWARD: encryption not ready");
+                    SendRewardResult(false, "Encryption not established");
+                    return false;
+                }
+
+                /* Process the reward address */
+                ProcessSetReward(PACKET.DATA);
+
                 return true;
             }
         }
@@ -1754,8 +1844,16 @@ namespace LLP
         /* Allocate memory for the new block. */
         TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();
 
+        /* Determine reward address for stateless miners */
+        uint256_t hashDynamicReward = 0;
+        if(fStatelessMinerSession.load() && fRewardBound)
+        {
+            hashDynamicReward = hashRewardAddress;
+            debug::log(0, FUNCTION, "Using reward address: ", hashDynamicReward.ToString().substr(0, 16), "...");
+        }
+
         /* Create a new block and loop for prime channel if minimum bit target length isn't met */
-        while(TAO::Ledger::CreateBlock(pCredentials, strPIN, nChannel.load(), *pBlock, ++nBlockIterator, &tCoinbaseTx))
+        while(TAO::Ledger::CreateBlock(pCredentials, strPIN, nChannel.load(), *pBlock, ++nBlockIterator, &tCoinbaseTx, hashDynamicReward))
         {
             /* Break out of loop when block is ready for prime mod. */
             if(is_prime_mod(nBitMask, pBlock))
@@ -1957,6 +2055,193 @@ namespace LLP
 
         /* Otherwise keep looping. */
         return false;
+    }
+
+
+    /* Encrypts a payload using ChaCha20-Poly1305 AEAD cipher */
+    std::vector<uint8_t> Miner::EncryptPayload(const std::vector<uint8_t>& vPlaintext)
+    {
+        /* Generate cryptographically secure random 12-byte nonce */
+        std::vector<uint8_t> vNonce(12);
+        
+        /* Use secure random generator - get 96 bits (12 bytes) from two uint64_t values */
+        uint64_t nRand1 = LLC::GetRand();
+        uint64_t nRand2 = LLC::GetRand();
+        
+        std::memcpy(&vNonce[0], &nRand1, 8);
+        std::memcpy(&vNonce[8], &nRand2, 4);
+
+        /* Encrypt using ChaCha20-Poly1305 */
+        std::vector<uint8_t> vCiphertext;
+        std::vector<uint8_t> vTag;
+
+        if(!LLC::EncryptChaCha20Poly1305(vPlaintext, vChaChaKey, vNonce, vCiphertext, vTag))
+        {
+            debug::error(FUNCTION, "Failed to encrypt payload");
+            return std::vector<uint8_t>();
+        }
+
+        /* Build response: nonce(12) + ciphertext + tag(16) */
+        std::vector<uint8_t> vEncrypted;
+        vEncrypted.insert(vEncrypted.end(), vNonce.begin(), vNonce.end());
+        vEncrypted.insert(vEncrypted.end(), vCiphertext.begin(), vCiphertext.end());
+        vEncrypted.insert(vEncrypted.end(), vTag.begin(), vTag.end());
+
+        return vEncrypted;
+    }
+
+
+    /* Decrypts a payload using ChaCha20-Poly1305 AEAD cipher */
+    bool Miner::DecryptPayload(const std::vector<uint8_t>& vEncrypted, std::vector<uint8_t>& vPlaintext)
+    {
+        /* Validate minimum size: nonce(12) + tag(16) = 28 bytes */
+        if(vEncrypted.size() < 28)
+        {
+            debug::error(FUNCTION, "Encrypted payload too small: ", vEncrypted.size());
+            return false;
+        }
+
+        /* Extract nonce (12 bytes) */
+        std::vector<uint8_t> vNonce(vEncrypted.begin(), vEncrypted.begin() + 12);
+
+        /* Extract tag (last 16 bytes) */
+        std::vector<uint8_t> vTag(vEncrypted.end() - 16, vEncrypted.end());
+
+        /* Extract ciphertext (middle portion) */
+        std::vector<uint8_t> vCiphertext(vEncrypted.begin() + 12, vEncrypted.end() - 16);
+
+        /* Decrypt */
+        if(!LLC::DecryptChaCha20Poly1305(vCiphertext, vTag, vChaChaKey, vNonce, vPlaintext))
+        {
+            debug::error(FUNCTION, "Failed to decrypt payload");
+            return false;
+        }
+
+        return true;
+    }
+
+
+    /* Validates that a reward address exists on chain and is a valid NXS account */
+    bool Miner::ValidateRewardAddress(const uint256_t& hashReward)
+    {
+        /* Check for zero address */
+        if(hashReward == 0)
+        {
+            debug::error(FUNCTION, "Reward address cannot be zero");
+            return false;
+        }
+
+        /* Check address exists on chain */
+        TAO::Register::Object account;
+        if(!LLD::Register->ReadObject(hashReward, account, TAO::Ledger::FLAGS::LOOKUP))
+        {
+            debug::error(FUNCTION, "Reward address not found on chain: ", hashReward.SubString());
+            return false;
+        }
+
+        /* Parse the account object */
+        if(!account.Parse())
+        {
+            debug::error(FUNCTION, "Failed to parse reward account object");
+            return false;
+        }
+
+        /* Verify it's an ACCOUNT type (not TRUST, not TOKEN, etc.) */
+        if(account.Standard() != TAO::Register::OBJECTS::ACCOUNT)
+        {
+            debug::error(FUNCTION, "Reward address is not an account type, got: ",
+                        static_cast<uint32_t>(account.Standard()));
+            return false;
+        }
+
+        /* Verify it's an NXS account (token = 0) */
+        uint256_t hashToken = account.get<uint256_t>("token");
+        if(hashToken != 0)
+        {
+            debug::error(FUNCTION, "Reward address is not an NXS account, token: ",
+                        hashToken.SubString());
+            return false;
+        }
+
+        debug::log(0, FUNCTION, "✓ Reward address validated: ", hashReward.ToString());
+        debug::log(2, FUNCTION, "  Owner: ", account.hashOwner.SubString());
+
+        return true;
+    }
+
+
+    /* Sends encrypted MINER_REWARD_RESULT packet to miner */
+    void Miner::SendRewardResult(bool fSuccess, const std::string& strMessage)
+    {
+        /* Build the result packet */
+        std::vector<uint8_t> vPayload;
+
+        /* Status byte */
+        vPayload.push_back(fSuccess ? 0x01 : 0x00);
+
+        /* Message (only on failure) */
+        if(!fSuccess && !strMessage.empty())
+        {
+            vPayload.push_back(static_cast<uint8_t>(strMessage.size()));
+            vPayload.insert(vPayload.end(), strMessage.begin(), strMessage.end());
+        }
+        else
+        {
+            vPayload.push_back(0x00);  // No message
+        }
+
+        /* Encrypt and send */
+        std::vector<uint8_t> vEncrypted = EncryptPayload(vPayload);
+
+        respond(MINER_REWARD_RESULT, vEncrypted);
+
+        if(fSuccess)
+            debug::log(0, FUNCTION, "Sent MINER_REWARD_RESULT: SUCCESS");
+        else
+            debug::log(0, FUNCTION, "Sent MINER_REWARD_RESULT: FAILURE - ", strMessage);
+    }
+
+
+    /* Processes MINER_SET_REWARD packet from miner */
+    void Miner::ProcessSetReward(const std::vector<uint8_t>& vPayload)
+    {
+        /* Decrypt the payload using established ChaCha20 key */
+        std::vector<uint8_t> vDecrypted;
+        if(!DecryptPayload(vPayload, vDecrypted))
+        {
+            debug::error(FUNCTION, "Failed to decrypt reward address payload");
+            SendRewardResult(false, "Decryption failed");
+            return;
+        }
+
+        /* Extract the reward address (32 bytes) */
+        if(vDecrypted.size() < 32)
+        {
+            debug::error(FUNCTION, "Invalid reward address payload size: ", vDecrypted.size());
+            SendRewardResult(false, "Invalid payload size");
+            return;
+        }
+
+        uint256_t hashReward;
+        std::copy(vDecrypted.begin(), vDecrypted.begin() + 32, hashReward.begin());
+
+        debug::log(0, FUNCTION, "Received reward address (encrypted): ", hashReward.ToString());
+
+        /* Validate the reward address */
+        if(!ValidateRewardAddress(hashReward))
+        {
+            SendRewardResult(false, "Invalid reward address");
+            return;
+        }
+
+        /* Cache the reward address for mining */
+        hashRewardAddress = hashReward;
+        fRewardBound = true;
+
+        debug::log(0, FUNCTION, "✓ Reward address bound: ", hashReward.ToString());
+
+        /* Send success result (encrypted) */
+        SendRewardResult(true, "");
     }
 
 }
