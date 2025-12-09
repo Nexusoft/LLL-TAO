@@ -788,6 +788,17 @@ namespace LLP
             debug::log(0, FUNCTION, "NOTE: Reward address will be set via MINER_SET_REWARD packet");
             debug::log(0, FUNCTION, "════════════════════════════════════════════════════════");
         }
+        else
+        {
+            /* Genesis is required for ChaCha20 key derivation and secure communication */
+            debug::log(0, FUNCTION, "✗ No genesis hash provided - ChaCha20 encryption not possible");
+            debug::log(0, FUNCTION, "  Genesis hash is required for secure session key derivation");
+            
+            Packet response(MINER_AUTH_RESULT);
+            response.DATA.push_back(0x00); // Failure
+            response.LENGTH = 1;
+            return ProcessResult::Success(context, response);
+        }
 
         /* Log authentication success summary */
         debug::log(0, FUNCTION, "");
