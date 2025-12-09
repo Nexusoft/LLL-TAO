@@ -37,7 +37,7 @@ NexusMiner                              Nexus Node
 
 ## New Message Types
 
-### MINER_SET_REWARD (0xd3 / 211)
+### MINER_SET_REWARD (0xd5 / 213)
 
 **Direction**: Miner → Node  
 **Encrypted**: Yes  
@@ -46,7 +46,7 @@ NexusMiner                              Nexus Node
 [32 bytes] hashRewardAddress  // NXS account register address
 ```
 
-### MINER_REWARD_RESULT (0xd4 / 212)
+### MINER_REWARD_RESULT (0xd6 / 214)
 
 **Direction**: Node → Miner  
 **Encrypted**: Yes  
@@ -189,8 +189,8 @@ MINING
 ## Files Modified
 
 1. **src/LLP/types/miner.h**
-   - Added MINER_SET_REWARD (211) constant
-   - Added MINER_REWARD_RESULT (212) constant
+   - Added MINER_SET_REWARD (213) constant
+   - Added MINER_REWARD_RESULT (214) constant
    - Added encryption and reward fields to Miner class
    - Added helper method declarations
 

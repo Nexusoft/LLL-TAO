@@ -112,9 +112,13 @@ namespace LLP
             MINER_AUTH_RESPONSE  = 209,  // 0xd1 - miner -> node, sends Falcon signature over nonce
             MINER_AUTH_RESULT    = 210,  // 0xd2 - node -> miner, indicates success/fail
 
+            /** SESSION MANAGEMENT PACKETS (placeholder for future use) **/
+            SESSION_START        = 211,  // session start request (not fully implemented yet)
+            SESSION_KEEPALIVE    = 212,  // session keepalive ping (not fully implemented yet)
+
             /** REWARD ADDRESS BINDING (encrypted after Falcon auth) **/
-            MINER_SET_REWARD     = 211,  // 0xd3 - miner -> node, sends reward address (encrypted)
-            MINER_REWARD_RESULT  = 212,  // 0xd4 - node -> miner, sends validation result (encrypted)
+            MINER_SET_REWARD     = 213,  // 0xd5 - miner -> node, sends reward address (encrypted)
+            MINER_REWARD_RESULT  = 214,  // 0xd6 - node -> miner, sends validation result (encrypted)
 
             /** GENERIC **/
             PING           = 253,

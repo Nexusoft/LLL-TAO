@@ -395,8 +395,10 @@ namespace LLP
             case 208: return "MINER_AUTH_CHALLENGE";
             case 209: return "MINER_AUTH_RESPONSE";
             case 210: return "MINER_AUTH_RESULT";
-            case 211: return "MINER_SET_REWARD";
-            case 212: return "MINER_REWARD_RESULT";
+            case 211: return "SESSION_START";
+            case 212: return "SESSION_KEEPALIVE";
+            case 213: return "MINER_SET_REWARD";
+            case 214: return "MINER_REWARD_RESULT";
             case 253: return "PING";
             case 254: return "CLOSE";
             default:  return "UNKNOWN";
@@ -1081,6 +1083,52 @@ namespace LLP
 
                 /* Block state is in the main chain, send a good response */
                 respond(GOOD_BLOCK, PACKET.DATA);
+                return true;
+            }
+
+
+            /* Placeholder for SESSION_START - not fully implemented yet.
+             *
+             * PROTOCOL DESIGN NOTE (STATELESS MODE):
+             * SESSION_START and SESSION_KEEPALIVE are defined in the protocol but not yet fully implemented.
+             * These packet types are reserved for future session management features where:
+             * - SESSION_START would initialize a persistent mining session with session ID
+             * - SESSION_KEEPALIVE would maintain the session and detect disconnections
+             * 
+             * For now, these handlers acknowledge receipt without error to maintain forward compatibility.
+             * This allows future NexusMiner versions to use these packets without breaking existing nodes.
+             * 
+             * Full implementation will come in a later PR when session management requirements are finalized.
+             */
+            case SESSION_START:
+            {
+                debug::log(0, FUNCTION, "MinerLLP: SESSION_START received from ", GetAddress().ToStringIP(),
+                           " length=", PACKET.LENGTH, " - placeholder handler (not fully implemented)");
+                
+                /* Validate packet has some data */
+                if(PACKET.DATA.size() == 0)
+                {
+                    return debug::error(FUNCTION, "SESSION_START: empty packet from ", GetAddress().ToStringIP());
+                }
+                
+                /* Log that we received the packet but haven't implemented full logic yet */
+                debug::log(0, FUNCTION, "MinerLLP: SESSION_START recognized but full session management not implemented yet");
+                
+                /* For now, return true to acknowledge without error */
+                return true;
+            }
+
+
+            /* Placeholder for SESSION_KEEPALIVE - not fully implemented yet. */
+            case SESSION_KEEPALIVE:
+            {
+                debug::log(0, FUNCTION, "MinerLLP: SESSION_KEEPALIVE received from ", GetAddress().ToStringIP(),
+                           " length=", PACKET.LENGTH, " - placeholder handler (not fully implemented)");
+                
+                /* Log that we received the packet but haven't implemented full logic yet */
+                debug::log(0, FUNCTION, "MinerLLP: SESSION_KEEPALIVE recognized but full session management not implemented yet");
+                
+                /* For now, return true to acknowledge without error */
                 return true;
             }
 

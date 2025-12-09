@@ -134,17 +134,17 @@ TEST_CASE("Message Type Constants", "[miner][reward][constants]")
 {
     SECTION("MINER_SET_REWARD value")
     {
-        /* MINER_SET_REWARD should be 0xd3 (211) */
-        const uint8_t MINER_SET_REWARD = 0xd3;
+        /* MINER_SET_REWARD should be 0xd5 (213) */
+        const uint8_t MINER_SET_REWARD = 0xd5;
         
-        REQUIRE(MINER_SET_REWARD == 211);
+        REQUIRE(MINER_SET_REWARD == 213);
     }
     
     SECTION("MINER_REWARD_RESULT value")
     {
-        /* MINER_REWARD_RESULT should be 0xd4 (212) */
-        const uint8_t MINER_REWARD_RESULT = 0xd4;
+        /* MINER_REWARD_RESULT should be 0xd6 (214) */
+        const uint8_t MINER_REWARD_RESULT = 0xd6;
         
-        REQUIRE(MINER_REWARD_RESULT == 212);
+        REQUIRE(MINER_REWARD_RESULT == 214);
     }
 }
