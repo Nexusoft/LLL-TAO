@@ -412,6 +412,13 @@ namespace LLP
          *
          **/
         void ProcessSetReward(const std::vector<uint8_t>& vPayload);
+
+
+        /** is_prime_mod
+         *
+         *  Helper function used for prime channel modification rule in loop.
+         *  Returns true if the condition is satisfied, false otherwise.
+         *
          *  @param[in] nBitMask The bitMask for the highest order bits of a block hash to check for to satisfy rule.
          *  @param[in] pBlock The block to check.
          *

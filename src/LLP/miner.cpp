@@ -913,6 +913,13 @@ namespace LLP
                     return debug::error(FUNCTION, "Authentication required for stateless miner commands");
                 }
 
+                /* Check if reward address is bound for stateless miners */
+                if(!fRewardBound)
+                {
+                    debug::error(FUNCTION, "GET_BLOCK: reward address not set - send MINER_SET_REWARD first");
+                    return debug::error(FUNCTION, "Reward address required for mining");
+                }
+
                 debug::log(2, FUNCTION, "GET_BLOCK request from ", GetAddress().ToStringIP());
 
                 TAO::Ledger::Block *pBlock = nullptr;
@@ -1786,8 +1793,16 @@ namespace LLP
         /* Allocate memory for the new block. */
         TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();
 
+        /* Determine reward address for stateless miners */
+        uint256_t hashDynamicReward = 0;
+        if(fStatelessMinerSession.load() && fRewardBound)
+        {
+            hashDynamicReward = hashRewardAddress;
+            debug::log(0, FUNCTION, "Using reward address: ", hashDynamicReward.ToString().substr(0, 16), "...");
+        }
+
         /* Create a new block and loop for prime channel if minimum bit target length isn't met */
-        while(TAO::Ledger::CreateBlock(pCredentials, strPIN, nChannel.load(), *pBlock, ++nBlockIterator, &tCoinbaseTx))
+        while(TAO::Ledger::CreateBlock(pCredentials, strPIN, nChannel.load(), *pBlock, ++nBlockIterator, &tCoinbaseTx, hashDynamicReward))
         {
             /* Break out of loop when block is ready for prime mod. */
             if(is_prime_mod(nBitMask, pBlock))
