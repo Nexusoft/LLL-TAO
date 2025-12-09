@@ -15,6 +15,8 @@ ________________________________________________________________________________
 #include <LLP/include/genesis_constants.h>
 #include <LLP/include/node_cache.h>
 
+#include <TAO/Register/types/address.h>
+
 #include <Util/include/json.h>
 #include <Util/include/string.h>
 #include <Util/include/runtime.h>
@@ -703,7 +705,7 @@ namespace LLP
 
         /* Note: Account resolution has been removed. With the new Direct Reward Address system,
          * miners provide reward addresses directly via MINER_SET_REWARD. */
-        hashDefault = 0;
+        hashDefault = uint256_t(0);
 
         return LLP::GenesisConstants::VALID;
     }
@@ -738,7 +740,7 @@ namespace LLP
         /* Note: Account resolution has been removed. With the new Direct Reward Address system,
          * miners provide reward addresses directly via MINER_SET_REWARD (encrypted with ChaCha20).
          * This function is kept for backwards compatibility but no longer resolves accounts. */
-        hashDefault = 0;
+        hashDefault = uint256_t(0);
 
         debug::log(0, FUNCTION, "Genesis validated: ", hashGenesis.SubString(),
                   " (reward address will be set via MINER_SET_REWARD)");
