@@ -86,9 +86,9 @@ namespace LLP
         }
 
 
-        /* Resolve the trust account address for a genesis hash.
-         * Trust account is deterministically addressed and always exists for every sigchain.
-         * This is used for mining reward routing. */
+        /* Resolve the default account address for a genesis hash.
+         * Uses SessionDB::ListRegisters to enumerate accounts owned by the genesis.
+         * The default account is always created with every sigchain. */
         bool ResolveDefaultAccount(const uint256_t& hashGenesis, TAO::Register::Address& hashDefault)
         {
             /* First validate the genesis. */
@@ -99,48 +99,59 @@ namespace LLP
                 return false;
             }
 
-            /* Use the TRUST account - it's deterministically addressed and always exists.
-             * Address::TRUST is a supported type for deterministic address construction.
-             * Every sigchain has a trust account created automatically. */
-            hashDefault = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
-
-            debug::log(2, FUNCTION, "Derived trust account address: ", hashDefault.ToString());
-
-            /* Verify the account exists on chain */
-            TAO::Register::Object account;
-            if(!LLD::Register->ReadObject(hashDefault, account, TAO::Ledger::FLAGS::LOOKUP))
+            /* List all registers owned by this genesis.
+             * This works without login - it's a database lookup. */
+            std::set<TAO::Register::Address> setRegisters;
+            if(!LLD::Sessions || !LLD::Sessions->ListRegisters(hashGenesis, setRegisters))
             {
-                debug::log(0, FUNCTION, "Trust account not found on chain for genesis ", hashGenesis.SubString());
-                debug::log(0, FUNCTION, "  Derived address: ", hashDefault.ToString());
+                debug::log(0, FUNCTION, "Failed to list registers for genesis ", hashGenesis.SubString());
+                debug::log(0, FUNCTION, "  SessionDB may not be initialized or genesis has no registers");
                 return false;
             }
 
-            /* Parse the account object */
-            if(!account.Parse())
+            debug::log(2, FUNCTION, "Found ", setRegisters.size(), " registers for genesis ", hashGenesis.SubString());
+
+            /* Iterate through registers to find the default NXS account.
+             * The default account is always created with every sigchain. */
+            for(const auto& hashRegister : setRegisters)
             {
-                debug::log(0, FUNCTION, "Failed to parse trust account object");
-                return false;
+                /* Read the register object */
+                TAO::Register::Object account;
+                if(!LLD::Register->ReadObject(hashRegister, account, TAO::Ledger::FLAGS::LOOKUP))
+                    continue;
+
+                /* Parse the account object before accessing fields */
+                if(!account.Parse())
+                    continue;
+
+                /* Check if this is an ACCOUNT type */
+                if(account.Standard() != TAO::Register::OBJECTS::ACCOUNT)
+                    continue;
+
+                /* Check if this is an NXS account (token = 0) */
+                uint256_t hashToken = account.get<uint256_t>("token");
+                if(hashToken != 0)
+                    continue;
+
+                /* Verify ownership matches genesis */
+                if(account.hashOwner != hashGenesis)
+                {
+                    debug::log(2, FUNCTION, "Skipping account with mismatched owner");
+                    continue;
+                }
+
+                /* Found the default NXS account! */
+                hashDefault = hashRegister;
+
+                debug::log(0, FUNCTION, "✓ Resolved default NXS account: ", hashDefault.ToString(),
+                          " for genesis ", hashGenesis.SubString());
+
+                return true;
             }
 
-            /* Verify it's a TRUST type */
-            if(account.Standard() != TAO::Register::OBJECTS::TRUST)
-            {
-                debug::log(0, FUNCTION, "Register is not a trust account type");
-                return false;
-            }
-
-            /* Verify ownership matches genesis */
-            if(account.hashOwner != hashGenesis)
-            {
-                debug::log(0, FUNCTION, "Trust account ownership mismatch: expected ", hashGenesis.SubString(),
-                          " but owner is ", account.hashOwner.SubString());
-                return false;
-            }
-
-            debug::log(0, FUNCTION, "✓ Resolved trust account: ", hashDefault.ToString(),
-                      " for genesis ", hashGenesis.SubString());
-
-            return true;
+            debug::log(0, FUNCTION, "No NXS account found for genesis ", hashGenesis.SubString());
+            debug::log(0, FUNCTION, "  The default account should be created automatically with every sigchain");
+            return false;
         }
 
 
