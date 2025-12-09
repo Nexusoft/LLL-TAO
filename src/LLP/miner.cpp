@@ -551,19 +551,11 @@ namespace LLP
                  * Raw Falcon-512 pubkey: 897 bytes
                  * ═══════════════════════════════════════════════════════════════════════════ */
                 const size_t FALCON512_RAW_PUBKEY_SIZE = 897;
-                const size_t CHACHA20_OVERHEAD = 12 + 16;  // nonce + tag
+                const size_t FALCON512_WRAPPED_PUBKEY_SIZE = 925;  // nonce(12) + ciphertext(897) + tag(16)
                 
-                if(nPubKeyLen > FALCON512_RAW_PUBKEY_SIZE)
+                if(nPubKeyLen == FALCON512_WRAPPED_PUBKEY_SIZE)
                 {
-                    debug::log(0, FUNCTION, "ProcessMinerAuthInit : Pubkey appears to be ChaCha20 wrapped (", 
-                               nPubKeyLen, " > ", FALCON512_RAW_PUBKEY_SIZE, ")");
-                    
-                    /* Validate wrapped size */
-                    if(nPubKeyLen < FALCON512_RAW_PUBKEY_SIZE + CHACHA20_OVERHEAD)
-                    {
-                        return debug::error(FUNCTION, "MINER_AUTH_INIT: wrapped pubkey too small, expected at least ",
-                                           FALCON512_RAW_PUBKEY_SIZE + CHACHA20_OVERHEAD, " got ", nPubKeyLen);
-                    }
+                    debug::log(0, FUNCTION, "ProcessMinerAuthInit : Pubkey is ChaCha20 wrapped (925 bytes)");
                     
                     /* Decrypt using pre-auth key */
                     std::vector<uint8_t> vDecryptedPubKey;
@@ -571,19 +563,22 @@ namespace LLP
                     /* Extract nonce (first 12 bytes) */
                     std::vector<uint8_t> vNonce(vReceivedPubKey.begin(), vReceivedPubKey.begin() + 12);
                     
+                    /* Extract ciphertext (middle 897 bytes) */
+                    std::vector<uint8_t> vCiphertext(vReceivedPubKey.begin() + 12, vReceivedPubKey.begin() + 12 + 897);
+                    
                     /* Extract tag (last 16 bytes) */
                     std::vector<uint8_t> vTag(vReceivedPubKey.end() - 16, vReceivedPubKey.end());
                     
-                    /* Extract ciphertext (middle portion) */
-                    std::vector<uint8_t> vCiphertext(vReceivedPubKey.begin() + 12, vReceivedPubKey.end() - 16);
+                    /* AAD for Falcon pubkey encryption */
+                    std::vector<uint8_t> vAAD{'F','A','L','C','O','N','_','P','U','B','K','E','Y'};
                     
                     debug::log(0, FUNCTION, "ProcessMinerAuthInit : Decrypting wrapped pubkey:");
                     debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Nonce (12 bytes): ", HexStr(vNonce));
                     debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Ciphertext size: ", vCiphertext.size());
                     debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Tag (16 bytes): ", HexStr(vTag));
                     
-                    /* Decrypt */
-                    if(!LLC::DecryptChaCha20Poly1305(vCiphertext, vTag, vPreAuthChaChaKey, vNonce, vDecryptedPubKey))
+                    /* Decrypt with AAD */
+                    if(!LLC::DecryptChaCha20Poly1305(vCiphertext, vTag, vPreAuthChaChaKey, vNonce, vDecryptedPubKey, vAAD))
                     {
                         debug::error(FUNCTION, "ProcessMinerAuthInit : ChaCha20 decryption FAILED - genesis mismatch?");
                         debug::error(FUNCTION, "ProcessMinerAuthInit : Check that miner's genesis matches node's expected genesis");
@@ -596,13 +591,30 @@ namespace LLP
                     debug::log(0, FUNCTION, "ProcessMinerAuthInit : ✓ ChaCha20 decryption SUCCESS");
                     debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Decrypted pubkey size: ", vDecryptedPubKey.size());
                     
+                    /* Validate decrypted pubkey size */
+                    if(vDecryptedPubKey.size() != FALCON512_RAW_PUBKEY_SIZE)
+                    {
+                        debug::error(FUNCTION, "ProcessMinerAuthInit : Invalid decrypted pubkey size: ", 
+                                    vDecryptedPubKey.size(), " (expected ", FALCON512_RAW_PUBKEY_SIZE, ")");
+                        std::vector<uint8_t> vFail(1, 0x00);
+                        respond(MINER_AUTH_RESULT, vFail);
+                        this->Disconnect();
+                        return false;
+                    }
+                    
                     vMinerPubKey = vDecryptedPubKey;
+                }
+                else if(nPubKeyLen == FALCON512_RAW_PUBKEY_SIZE)
+                {
+                    /* Plaintext pubkey - use as-is */
+                    debug::log(0, FUNCTION, "ProcessMinerAuthInit : Pubkey is plaintext (897 bytes, no ChaCha20 wrapping)");
+                    vMinerPubKey = vReceivedPubKey;
                 }
                 else
                 {
-                    /* Plaintext pubkey - use as-is */
-                    debug::log(0, FUNCTION, "ProcessMinerAuthInit : Pubkey is plaintext (no ChaCha20 wrapping)");
-                    vMinerPubKey = vReceivedPubKey;
+                    /* Invalid pubkey size */
+                    return debug::error(FUNCTION, "MINER_AUTH_INIT: invalid pubkey size ", nPubKeyLen, 
+                                       " (expected ", FALCON512_RAW_PUBKEY_SIZE, " or ", FALCON512_WRAPPED_PUBKEY_SIZE, ")");
                 }
 
                 /* Parse miner_id_len (2 bytes, big-endian) */
