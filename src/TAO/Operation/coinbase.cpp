@@ -43,41 +43,40 @@ namespace TAO
                     if(!LLD::Ledger->WriteEvent(hashGenesis, hashTx))
                         return debug::error(FUNCTION, "OP::COINBASE: failed to write event for coinbase");
 
-                    /* AUTO-CREDIT LOGIC - Direct reward routing to Username:default */
+                    /* AUTO-CREDIT LOGIC - Direct reward routing
+                     * With the new Direct Reward Address system, hashGenesis is the reward address
+                     * provided by the miner via MINER_SET_REWARD (encrypted with ChaCha20).
+                     * The reward address is already validated as a valid NXS account. */
                     if(LLP::GenesisConstants::IsAutoCreditEnabled())
                     {
-                        /* Get cached default account from StatelessMinerManager */
-                        TAO::Register::Address hashDefault = 
-                            LLP::StatelessMinerManager::Get().GetCachedDefaultAccount(hashGenesis);
+                        /* Use hashGenesis directly as the reward account address.
+                         * In the new system, miners provide account addresses, not genesis hashes. */
+                        TAO::Register::Address hashRewardAccount = hashGenesis;
 
-                        /* If not cached, try to resolve and validate */
-                        if(hashDefault == 0)
-                        {
-                            if(!LLP::GenesisConstants::ResolveDefaultAccount(hashGenesis, hashDefault))
-                            {
-                                debug::log(1, FUNCTION, "No default account for genesis ", hashGenesis.SubString(),
-                                          ", using event-only mode");
-                                return true;  // Fallback to event-only (legacy behavior)
-                            }
-                        }
-
-                        /* Validate default account */
+                        /* Read the account state */
                         TAO::Register::Object account;
-                        if(!LLP::GenesisConstants::ValidateDefaultAccount(hashDefault, hashGenesis, account))
+                        if(!LLD::Register->ReadState(hashRewardAccount, account, nFlags))
                         {
-                            debug::log(1, FUNCTION, "Default account validation failed for ", hashDefault.SubString(),
+                            debug::log(1, FUNCTION, "Failed to read reward account ", hashRewardAccount.SubString(),
                                       ", using event-only mode");
                             return true;  // Fallback to event-only
                         }
 
-                        /* Direct credit to default account */
+                        /* Parse the account object */
+                        if(!account.Parse())
+                        {
+                            debug::log(1, FUNCTION, "Failed to parse reward account object, using event-only mode");
+                            return true;  // Fallback to event-only
+                        }
+
+                        /* Direct credit to reward account */
                         uint64_t nBalance = account.get<uint64_t>("balance");
                         account.Write("balance", nBalance + nAmount);
                         account.nModified = runtime::unifiedtimestamp();
                         account.SetChecksum();
 
                         /* Write updated account state to register database */
-                        if(!LLD::Register->WriteState(hashDefault, account, nFlags))
+                        if(!LLD::Register->WriteState(hashRewardAccount, account, nFlags))
                         {
                             debug::log(0, FUNCTION, "Failed to write account state, using event-only mode");
                             return true;  // Fallback to event-only
@@ -90,8 +89,8 @@ namespace TAO
                             return true;  // Account already credited, continue
                         }
 
-                        debug::log(0, FUNCTION, "AUTO-CREDIT ", nAmount, " NXS to ", hashDefault.SubString(),
-                                  " for genesis ", hashGenesis.SubString());
+                        debug::log(0, FUNCTION, "AUTO-CREDIT ", nAmount, " NXS to ", hashRewardAccount.SubString(),
+                                  " (owner: ", account.hashOwner.SubString(), ")");
                     }
                 }
             }

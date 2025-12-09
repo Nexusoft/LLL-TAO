@@ -668,7 +668,7 @@ namespace LLP
     }
 
 
-    /* Validate a miner's genesis hash and resolve default account */
+    /* Validate a miner's genesis hash (account resolution removed - obsolete) */
     uint8_t StatelessMinerManager::ValidateMinerGenesis(
         const std::string& strAddress,
         TAO::Register::Address& hashDefault) const
@@ -701,18 +701,15 @@ namespace LLP
             return result;
         }
 
-        /* Resolve default account */
-        if(!LLP::GenesisConstants::ResolveDefaultAccount(context.hashGenesis, hashDefault))
-        {
-            debug::log(0, FUNCTION, "Failed to resolve default account for ", strAddress);
-            return LLP::GenesisConstants::NO_DEFAULT_ACCOUNT;
-        }
+        /* Note: Account resolution has been removed. With the new Direct Reward Address system,
+         * miners provide reward addresses directly via MINER_SET_REWARD. */
+        hashDefault = 0;
 
         return LLP::GenesisConstants::VALID;
     }
 
 
-    /* Validate genesis and cache the genesis->default account mapping */
+    /* Validate genesis (caching removed - obsolete with Direct Reward Address system) */
     bool StatelessMinerManager::ValidateAndCacheGenesis(
         const uint256_t& hashGenesis,
         TAO::Register::Address& hashDefault)
@@ -722,7 +719,7 @@ namespace LLP
         if(optCached.has_value())
         {
             hashDefault = optCached.value();
-            debug::log(2, FUNCTION, "Using cached trust account ", hashDefault.SubString(),
+            debug::log(2, FUNCTION, "Using cached account ", hashDefault.SubString(),
                       " for genesis ", hashGenesis.SubString());
             return true;
         }
@@ -738,28 +735,13 @@ namespace LLP
             return false;
         }
 
-        /* Resolve trust account */
-        if(!LLP::GenesisConstants::ResolveDefaultAccount(hashGenesis, hashDefault))
-        {
-            debug::log(0, FUNCTION, "Failed to resolve trust account for genesis ",
-                      hashGenesis.SubString());
-            return false;
-        }
+        /* Note: Account resolution has been removed. With the new Direct Reward Address system,
+         * miners provide reward addresses directly via MINER_SET_REWARD (encrypted with ChaCha20).
+         * This function is kept for backwards compatibility but no longer resolves accounts. */
+        hashDefault = 0;
 
-        /* Validate the trust account */
-        TAO::Register::Object account;
-        if(!LLP::GenesisConstants::ValidateDefaultAccount(hashDefault, hashGenesis, account))
-        {
-            debug::log(0, FUNCTION, "Trust account validation failed for ",
-                      hashDefault.SubString());
-            return false;
-        }
-
-        /* Cache the mapping */
-        mapGenesisToDefault.InsertOrUpdate(hashGenesis, hashDefault);
-
-        debug::log(0, FUNCTION, "Cached trust account ", hashDefault.SubString(),
-                  " for genesis ", hashGenesis.SubString());
+        debug::log(0, FUNCTION, "Genesis validated: ", hashGenesis.SubString(),
+                  " (reward address will be set via MINER_SET_REWARD)");
 
         return true;
     }

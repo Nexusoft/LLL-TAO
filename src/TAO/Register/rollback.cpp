@@ -277,49 +277,45 @@ namespace TAO
                             /* Check if a proof exists (indicates auto-credit occurred). */
                             if(LLD::Ledger->HasProof(hashGenesis, contract.Hash(), 0, nFlags))
                             {
-                                /* Proof exists - auto-credit was applied, need to rollback balance. */
-                                /* First, resolve the default account. */
-                                TAO::Register::Address hashDefault;
-                                if(LLP::GenesisConstants::ResolveDefaultAccount(hashGenesis, hashDefault))
-                                {
-                                    /* Read the current account state. */
-                                    TAO::Register::Object account;
-                                    if(LLD::Register->ReadState(hashDefault, account, nFlags))
-                                    {
-                                        /* Parse the account. */
-                                        if(account.Parse())
-                                        {
-                                            /* Rollback the balance by subtracting the amount. */
-                                            uint64_t nBalance = account.get<uint64_t>("balance");
-                                            
-                                            /* Check for balance underflow. */
-                                            if(nBalance >= nAmount)
-                                            {
-                                                /* Subtract the amount. */
-                                                account.Write("balance", nBalance - nAmount);
-                                                account.nModified = runtime::unifiedtimestamp();
-                                                account.SetChecksum();
+                                /* Proof exists - auto-credit was applied, need to rollback balance.
+                                 * With the new Direct Reward Address system, hashGenesis is the reward address. */
+                                TAO::Register::Address hashRewardAccount = hashGenesis;
 
-                                                /* Write the rolled back account state. */
-                                                if(!LLD::Register->WriteState(hashDefault, account, nFlags))
-                                                    debug::log(0, FUNCTION, "OP::COINBASE: failed to rollback auto-credited balance");
-                                            }
-                                            else
-                                            {
-                                                debug::log(0, FUNCTION, "OP::COINBASE: balance underflow during rollback, skipping balance adjustment");
-                                            }
-                                        }
-                                    }
-                                    else
+                                /* Read the current account state. */
+                                TAO::Register::Object account;
+                                if(LLD::Register->ReadState(hashRewardAccount, account, nFlags))
+                                {
+                                    /* Parse the account. */
+                                    if(account.Parse())
                                     {
-                                        /* Account was deleted - skip balance adjustment but continue with proof erasure. */
-                                        debug::log(1, FUNCTION, "OP::COINBASE: default account no longer exists, skipping balance rollback");
+                                        /* Rollback the balance by subtracting the amount. */
+                                        uint64_t nBalance = account.get<uint64_t>("balance");
+                                        
+                                        /* Check for balance underflow. */
+                                        if(nBalance >= nAmount)
+                                        {
+                                            /* Subtract the amount. */
+                                            account.Write("balance", nBalance - nAmount);
+                                            account.nModified = runtime::unifiedtimestamp();
+                                            account.SetChecksum();
+
+                                            /* Write the rolled back account state. */
+                                            if(!LLD::Register->WriteState(hashRewardAccount, account, nFlags))
+                                                debug::log(0, FUNCTION, "OP::COINBASE: failed to rollback auto-credited balance");
+                                            else
+                                                debug::log(0, FUNCTION, "OP::COINBASE: rolled back ", nAmount, 
+                                                          " NXS from ", hashRewardAccount.SubString());
+                                        }
+                                        else
+                                        {
+                                            debug::log(0, FUNCTION, "OP::COINBASE: balance underflow during rollback, skipping balance adjustment");
+                                        }
                                     }
                                 }
                                 else
                                 {
-                                    /* Default account resolution failed - may have been deleted. Skip balance adjustment. */
-                                    debug::log(1, FUNCTION, "OP::COINBASE: failed to resolve default account for rollback, skipping balance adjustment");
+                                    /* Account was deleted - skip balance adjustment but continue with proof erasure. */
+                                    debug::log(1, FUNCTION, "OP::COINBASE: reward account no longer exists, skipping balance rollback");
                                 }
 
                                 /* Always erase the proof to maintain consistency, even if balance rollback was skipped. */
