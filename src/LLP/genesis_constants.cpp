@@ -97,19 +97,36 @@ namespace LLP
                 return false;
             }
 
-            /* For Tritium accounts, derive the default account address directly from genesis.
-             * The "default" account is automatically created with every sigchain.
-             * Address format: Address(name, genesis, Address::ACCOUNT) */
-            hashDefault = TAO::Register::Address(std::string("default"), hashGenesis, TAO::Register::Address::ACCOUNT);
+            /* Resolve the "default" account via the Names register.
+             * In Nexus, local accounts like "username:default" are accessed through NAME registers.
+             * The NAME register contains an "address" field pointing to the actual account. */
+            TAO::Register::Object nameRegister;
+            if(!TAO::Register::GetNameRegister(hashGenesis, std::string("default"), nameRegister))
+            {
+                debug::log(0, FUNCTION, "Failed to find 'default' name register for genesis ", hashGenesis.SubString());
+                return false;
+            }
 
-            debug::log(2, FUNCTION, "Derived default account address: ", hashDefault.ToString());
+            /* Extract the address field from the name register.
+             * Note: Object::get() internally calls Parse() if needed, and throws std::runtime_error on failure. */
+            try
+            {
+                hashDefault = nameRegister.get<uint256_t>("address");
+            }
+            catch(const std::exception& e)
+            {
+                debug::log(0, FUNCTION, "Failed to extract 'address' field from 'default' name register: ", e.what());
+                return false;
+            }
+
+            debug::log(2, FUNCTION, "Resolved 'default' name to account address: ", hashDefault.ToString());
 
             /* Verify the account exists on chain */
             TAO::Register::Object account;
             if(!LLD::Register->ReadObject(hashDefault, account, TAO::Ledger::FLAGS::LOOKUP))
             {
                 debug::log(0, FUNCTION, "Default account not found on chain for genesis ", hashGenesis.SubString());
-                debug::log(0, FUNCTION, "  Derived address: ", hashDefault.ToString());
+                debug::log(0, FUNCTION, "  Resolved address: ", hashDefault.ToString());
                 return false;
             }
 
