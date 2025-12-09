@@ -107,15 +107,17 @@ namespace LLP
                 return false;
             }
 
-            /* Parse the name register to extract the account address */
-            if(!nameRegister.Parse())
+            /* Extract the address field from the name register.
+             * Note: Object::get() internally calls Parse() if needed, and throws std::runtime_error on failure. */
+            try
             {
-                debug::log(0, FUNCTION, "Failed to parse 'default' name register");
+                hashDefault = nameRegister.get<uint256_t>("address");
+            }
+            catch(const std::exception& e)
+            {
+                debug::log(0, FUNCTION, "Failed to extract 'address' field from 'default' name register: ", e.what());
                 return false;
             }
-
-            /* Extract the address field from the name register */
-            hashDefault = nameRegister.get<uint256_t>("address");
 
             debug::log(2, FUNCTION, "Resolved 'default' name to account address: ", hashDefault.ToString());
 
