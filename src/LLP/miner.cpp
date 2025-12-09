@@ -2239,6 +2239,10 @@ namespace LLP
         fRewardBound = true;
 
         debug::log(0, FUNCTION, "✓ Reward address bound: ", hashReward.ToString());
+        debug::log(0, FUNCTION, "Session cache updated:");
+        debug::log(0, FUNCTION, "  Genesis (auth): ", hashGenesis.SubString());
+        debug::log(0, FUNCTION, "  Reward address: ", hashReward.ToString());
+        debug::log(0, FUNCTION, "  Encryption: ChaCha20 ready");
 
         /* Send success result (encrypted) */
         SendRewardResult(true, "");

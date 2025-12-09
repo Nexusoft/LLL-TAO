@@ -107,18 +107,20 @@ namespace LLP
             OLD_ROUND      = 205,
 
             /** AUTHENTICATION PACKETS **/
-            MINER_AUTH_INIT      = 207,  // 0xcf - miner -> node, sends Falcon pubkey + label
-            MINER_AUTH_CHALLENGE = 208,  // 0xd0 - node -> miner, sends random nonce
-            MINER_AUTH_RESPONSE  = 209,  // 0xd1 - miner -> node, sends Falcon signature over nonce
-            MINER_AUTH_RESULT    = 210,  // 0xd2 - node -> miner, indicates success/fail
+            MINER_AUTH_INIT      = 207,  // 0xcf - miner -> node: Genesis + Falcon pubkey + miner ID
+            MINER_AUTH_CHALLENGE = 208,  // 0xd0 - node -> miner: Random nonce challenge
+            MINER_AUTH_RESPONSE  = 209,  // 0xd1 - miner -> node: Falcon signature over nonce
+            MINER_AUTH_RESULT    = 210,  // 0xd2 - node -> miner: Auth success/failure + session ID
 
-            /** SESSION MANAGEMENT PACKETS (placeholder for future use) **/
+            /** SESSION MANAGEMENT (handled via Node Cache) **/
+            // Note: Keep-alive is handled automatically via the node's connection cache
+            // SESSION_START (211) and SESSION_KEEPALIVE (212) reserved but not actively used
             SESSION_START        = 211,  // session start request (not fully implemented yet)
             SESSION_KEEPALIVE    = 212,  // session keepalive ping (not fully implemented yet)
 
-            /** REWARD ADDRESS BINDING (encrypted after Falcon auth) **/
-            MINER_SET_REWARD     = 213,  // 0xd5 - miner -> node, sends reward address (encrypted)
-            MINER_REWARD_RESULT  = 214,  // 0xd6 - node -> miner, sends validation result (encrypted)
+            /** REWARD ADDRESS BINDING (encrypted with ChaCha20 after Falcon auth) **/
+            MINER_SET_REWARD     = 213,  // 0xd5 - miner -> node: Encrypted reward address (32 bytes)
+            MINER_REWARD_RESULT  = 214,  // 0xd6 - node -> miner: Encrypted validation result
 
             /** GENERIC **/
             PING           = 253,
