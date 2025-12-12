@@ -502,32 +502,63 @@ namespace LLP
                 debug::log(0, FUNCTION, "ProcessMinerAuthInit : Genesis raw bytes: ", 
                            HexStr(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.begin() + 32)));
                 debug::log(0, FUNCTION, "ProcessMinerAuthInit : Genesis hex string: ", hashGenesis.ToString());
-                debug::log(0, FUNCTION, "ProcessMinerAuthInit : Genesis after SetHex: ", hashGenesis.ToString());
-                debug::log(0, FUNCTION, "ProcessMinerAuthInit : Genesis type byte: 0x", 
-                           std::hex, static_cast<uint32_t>(hashGenesis.GetType()), std::dec);
 
                 /* ═══════════════════════════════════════════════════════════════════════════
-                 * DERIVE PRE-AUTH ChaCha20 KEY (genesis only - for decrypting wrapped pubkey)
-                 * This key is derived BEFORE we have the nonce, using only domain + genesis.
-                 * The miner uses this same derivation to wrap its public key.
+                 * SECURITY: Validate genesis exists on blockchain BEFORE deriving encryption key
+                 * This prevents using invalid/attacker-chosen genesis values for key derivation
+                 * ═══════════════════════════════════════════════════════════════════════════ */
+                if(hashGenesis == 0)
+                {
+                    debug::error(FUNCTION, "MINER_AUTH_INIT: No genesis provided");
+                    debug::error(FUNCTION, "  Genesis hash is REQUIRED for ChaCha20 session key derivation");
+                    debug::error(FUNCTION, "  This is a security requirement for genesis-based TLS replacement");
+                    std::vector<uint8_t> vFail(1, 0x00);
+                    respond(MINER_AUTH_RESULT, vFail);
+                    this->Disconnect();
+                    return false;
+                }
+
+                if(!LLD::Ledger->HasFirst(hashGenesis))
+                {
+                    debug::error(FUNCTION, "MINER_AUTH_INIT: Genesis not found on blockchain");
+                    debug::error(FUNCTION, "  Genesis: ", hashGenesis.ToString());
+                    debug::error(FUNCTION, "  Security: Rejecting authentication with invalid genesis");
+                    std::vector<uint8_t> vFail(1, 0x00);
+                    respond(MINER_AUTH_RESULT, vFail);
+                    this->Disconnect();
+                    return false;
+                }
+
+                debug::log(0, FUNCTION, "✓ Genesis validated on blockchain: ", hashGenesis.SubString());
+
+                /* ═══════════════════════════════════════════════════════════════════════════
+                 * DERIVE ChaCha20 SESSION KEY (genesis-based TLS replacement)
+                 * This key is used for:
+                 *   1. Unwrapping the Falcon pubkey in MINER_AUTH_INIT (proves genesis knowledge)
+                 *   2. Encrypting MINER_SET_REWARD packets (reward address privacy)
+                 *   3. ALL subsequent encrypted communication (TLS replacement)
                  * ═══════════════════════════════════════════════════════════════════════════ */
                 static const std::string DOMAIN = "nexus-mining-chacha20-v1";
-                
-                std::vector<uint8_t> vPreAuthInput;
-                vPreAuthInput.insert(vPreAuthInput.end(), DOMAIN.begin(), DOMAIN.end());
-                vPreAuthInput.insert(vPreAuthInput.end(), hashGenesis.begin(), hashGenesis.end());
-                // NOTE: NO NONCE - this is pre-auth key derivation for initial pubkey decryption
-                
-                uint256_t hashPreAuthKey = LLC::SK256(vPreAuthInput);
-                std::vector<uint8_t> vPreAuthChaChaKey = hashPreAuthKey.GetBytes();
 
-                debug::log(0, FUNCTION, "ProcessMinerAuthInit : ═══════════════════════════════════════════════════");
-                debug::log(0, FUNCTION, "ProcessMinerAuthInit : PRE-AUTH KEY DERIVATION (genesis only):");
-                debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Domain: ", DOMAIN);
-                debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Genesis: ", hashGenesis.ToString().substr(0, 32), "...");
-                debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Key (first 8 bytes): ", 
-                           HexStr(std::vector<uint8_t>(vPreAuthChaChaKey.begin(), vPreAuthChaChaKey.begin() + 8)));
-                debug::log(0, FUNCTION, "ProcessMinerAuthInit : ═══════════════════════════════════════════════════");
+                std::vector<uint8_t> vKeyInput;
+                vKeyInput.insert(vKeyInput.end(), DOMAIN.begin(), DOMAIN.end());
+                std::vector<uint8_t> genesis_bytes = hashGenesis.GetBytes();
+                vKeyInput.insert(vKeyInput.end(), genesis_bytes.begin(), genesis_bytes.end());
+
+                uint256_t hashSessionKey = LLC::SK256(vKeyInput);
+                vChaChaKey = hashSessionKey.GetBytes();
+                fEncryptionReady = true;
+
+                debug::log(0, FUNCTION, "═══════════════════════════════════════════════════════════");
+                debug::log(0, FUNCTION, "ChaCha20 SESSION KEY READY (Genesis-Based TLS)");
+                debug::log(0, FUNCTION, "═══════════════════════════════════════════════════════════");
+                debug::log(0, FUNCTION, "  Genesis: ", hashGenesis.SubString());
+                debug::log(0, FUNCTION, "  Domain:  ", DOMAIN);
+                debug::log(0, FUNCTION, "  Key (first 8 bytes): ", 
+                           HexStr(std::vector<uint8_t>(vChaChaKey.begin(), vChaChaKey.begin() + 8)));
+                debug::log(0, FUNCTION, "  Purpose: TLS replacement for pool mining");
+                debug::log(0, FUNCTION, "  Active:  YES - for all subsequent encrypted packets");
+                debug::log(0, FUNCTION, "═══════════════════════════════════════════════════════════");
 
                 /* Parse pubkey_len (2 bytes, big-endian) */
                 uint16_t nPubKeyLen = (static_cast<uint16_t>(PACKET.DATA[32]) << 8) | 
@@ -558,7 +589,7 @@ namespace LLP
                 {
                     debug::log(0, FUNCTION, "ProcessMinerAuthInit : Pubkey is ChaCha20 wrapped (925 bytes)");
                     
-                    /* Decrypt using pre-auth key */
+                    /* Decrypt using session key */
                     std::vector<uint8_t> vDecryptedPubKey;
                     
                     /* Extract nonce (first 12 bytes) */
@@ -578,18 +609,19 @@ namespace LLP
                     debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Ciphertext size: ", vCiphertext.size());
                     debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Tag (16 bytes): ", HexStr(vTag));
                     
-                    /* Decrypt with AAD */
-                    if(!LLC::DecryptChaCha20Poly1305(vCiphertext, vTag, vPreAuthChaChaKey, vNonce, vDecryptedPubKey, vAAD))
+                    /* Decrypt with AAD using the genesis-derived session key */
+                    if(!LLC::DecryptChaCha20Poly1305(vCiphertext, vTag, vChaChaKey, vNonce, vDecryptedPubKey, vAAD))
                     {
-                        debug::error(FUNCTION, "ProcessMinerAuthInit : ChaCha20 decryption FAILED - genesis mismatch?");
-                        debug::error(FUNCTION, "ProcessMinerAuthInit : Check that miner's genesis matches node's expected genesis");
+                        debug::error(FUNCTION, "ProcessMinerAuthInit : ChaCha20 decryption FAILED");
+                        debug::error(FUNCTION, "  This proves miner does NOT possess the correct genesis");
+                        debug::error(FUNCTION, "  Security: Key mismatch indicates potential attack");
                         std::vector<uint8_t> vFail(1, 0x00);
                         respond(MINER_AUTH_RESULT, vFail);
                         this->Disconnect();
                         return false;
                     }
                     
-                    debug::log(0, FUNCTION, "ProcessMinerAuthInit : ✓ ChaCha20 decryption SUCCESS");
+                    debug::log(0, FUNCTION, "ProcessMinerAuthInit : ✓ ChaCha20 unwrap SUCCESS - genesis knowledge proven");
                     debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Decrypted pubkey size: ", vDecryptedPubKey.size());
                     
                     /* Validate decrypted pubkey size */
@@ -640,27 +672,6 @@ namespace LLP
                 /* Generate random nonce (32 bytes) for challenge */
                 uint256_t nonce = LLC::GetRand256();
                 vAuthNonce = nonce.GetBytes();
-
-                /* ═══════════════════════════════════════════════════════════════════════════
-                 * DERIVE ChaCha20 SESSION KEY (genesis only - shared secret)
-                 * This key is derived from the genesis hash as a shared secret between miner and node.
-                 * Both miner and node can derive the same key from the genesis hash alone.
-                 * ═══════════════════════════════════════════════════════════════════════════ */
-                std::vector<uint8_t> vKeyInput;
-                vKeyInput.insert(vKeyInput.end(), DOMAIN.begin(), DOMAIN.end());
-                vKeyInput.insert(vKeyInput.end(), hashGenesis.begin(), hashGenesis.end());
-                
-                uint256_t hashSessionKey = LLC::SK256(vKeyInput);
-                vChaChaKey = hashSessionKey.GetBytes();
-                fEncryptionReady = true;
-
-                debug::log(0, FUNCTION, "ProcessMinerAuthInit : ═══════════════════════════════════════════════════");
-                debug::log(0, FUNCTION, "ProcessMinerAuthInit : ChaCha20 SESSION KEY DERIVATION (genesis only):");
-                debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Domain: ", DOMAIN);
-                debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Genesis: ", hashGenesis.ToString().substr(0, 32), "...");
-                debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Key (first 8 bytes): ", 
-                           HexStr(std::vector<uint8_t>(vChaChaKey.begin(), vChaChaKey.begin() + 8)));
-                debug::log(0, FUNCTION, "ProcessMinerAuthInit : ═══════════════════════════════════════════════════");
 
                 /* Log the authentication init */
                 debug::log(0, FUNCTION, "MinerLLP: MINER_AUTH_INIT: genesis=", hashGenesis.ToString().substr(0, 16), 
