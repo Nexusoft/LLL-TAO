@@ -782,7 +782,7 @@ namespace LLP
                 uint256_t hashKeyID = pAuth->DeriveKeyId(vMinerPubKey);
                 
                 /* Derive session ID from key ID (lower 32 bits) */
-                nSessionId = static_cast<uint32_t>(hashKeyID.Get64(0) & 0xFFFFFFFF);
+                nSessionId = static_cast<uint32_t>(hashKeyID.Get64(0));
                 
                 debug::log(0, FUNCTION, "MinerLLP: MINER_AUTH success for miner_id=", strMinerId,
                            " keyID=", hashKeyID.SubString(), " sessionId=", nSessionId,

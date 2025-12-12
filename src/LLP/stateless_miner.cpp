@@ -735,7 +735,7 @@ namespace LLP
             hashKeyID = pAuth->DeriveKeyId(context.vMinerPubKey);
 
         /* Derive session ID from key ID (lower 32 bits) */
-        uint32_t nSessionId = static_cast<uint32_t>(hashKeyID.Get64(0) & 0xFFFFFFFF);
+        uint32_t nSessionId = static_cast<uint32_t>(hashKeyID.Get64(0));
 
         /* Use genesis from MINER_AUTH_INIT if provided, otherwise check binding */
         uint256_t hashGenesis = context.hashGenesis;  // Already set from INIT
