@@ -830,7 +830,14 @@ namespace LLP
         /* Build success response */
         Packet response(MINER_AUTH_RESULT);
         response.DATA.push_back(0x01); // Success
-        response.LENGTH = 1;
+        
+        // Append session ID (4 bytes, little-endian)
+        response.DATA.push_back(nSessionId & 0xFF);
+        response.DATA.push_back((nSessionId >> 8) & 0xFF);
+        response.DATA.push_back((nSessionId >> 16) & 0xFF);
+        response.DATA.push_back((nSessionId >> 24) & 0xFF);
+        
+        response.LENGTH = 5;  // 1 byte status + 4 bytes session ID
 
         /* DEBUG: Log response packet */
         debug::log(2, FUNCTION, "MINER_AUTH_RESULT response: ", response.DebugString());
