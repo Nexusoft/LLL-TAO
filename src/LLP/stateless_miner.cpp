@@ -735,7 +735,7 @@ namespace LLP
             hashKeyID = pAuth->DeriveKeyId(context.vMinerPubKey);
 
         /* Derive session ID from key ID (lower 32 bits) */
-        uint32_t nSessionId = static_cast<uint32_t>(hashKeyID.Get64(0) & 0xFFFFFFFF);
+        uint32_t nSessionId = static_cast<uint32_t>(hashKeyID.Get64(0));
 
         /* Use genesis from MINER_AUTH_INIT if provided, otherwise check binding */
         uint256_t hashGenesis = context.hashGenesis;  // Already set from INIT
@@ -830,7 +830,14 @@ namespace LLP
         /* Build success response */
         Packet response(MINER_AUTH_RESULT);
         response.DATA.push_back(0x01); // Success
-        response.LENGTH = 1;
+        
+        // Append session ID (4 bytes, little-endian)
+        response.DATA.push_back(nSessionId & 0xFF);
+        response.DATA.push_back((nSessionId >> 8) & 0xFF);
+        response.DATA.push_back((nSessionId >> 16) & 0xFF);
+        response.DATA.push_back((nSessionId >> 24) & 0xFF);
+        
+        response.LENGTH = 5;  // 1 byte status + 4 bytes session ID
 
         /* DEBUG: Log response packet */
         debug::log(2, FUNCTION, "MINER_AUTH_RESULT response: ", response.DebugString());
