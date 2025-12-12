@@ -83,7 +83,6 @@ namespace LLP
     , vAuthNonce()
     , fMinerAuthenticated(false)
     , hashGenesis(0)
-    , nSessionId(0)
     , vChaChaKey()
     , fEncryptionReady(false)
     , hashRewardAddress(0)
@@ -108,7 +107,6 @@ namespace LLP
     , vAuthNonce()
     , fMinerAuthenticated(false)
     , hashGenesis(0)
-    , nSessionId(0)
     , vChaChaKey()
     , fEncryptionReady(false)
     , hashRewardAddress(0)
@@ -133,7 +131,6 @@ namespace LLP
     , vAuthNonce()
     , fMinerAuthenticated(false)
     , hashGenesis(0)
-    , nSessionId(0)
     , vChaChaKey()
     , fEncryptionReady(false)
     , hashRewardAddress(0)
@@ -773,9 +770,16 @@ namespace LLP
                 
                 /* Derive key ID from public key for session ID generation */
                 FalconAuth::IFalconAuth* pAuth = FalconAuth::Get();
-                uint256_t hashKeyID(0);
-                if(pAuth)
-                    hashKeyID = pAuth->DeriveKeyId(vMinerPubKey);
+                if(!pAuth)
+                {
+                    debug::error(FUNCTION, "MINER_AUTH_RESPONSE: FalconAuth not available");
+                    std::vector<uint8_t> vFail(1, 0x00);
+                    respond(MINER_AUTH_RESULT, vFail);
+                    this->Disconnect();
+                    return false;
+                }
+                
+                uint256_t hashKeyID = pAuth->DeriveKeyId(vMinerPubKey);
                 
                 /* Derive session ID from key ID (lower 32 bits) */
                 nSessionId = static_cast<uint32_t>(hashKeyID.Get64(0) & 0xFFFFFFFF);
