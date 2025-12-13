@@ -604,17 +604,49 @@ namespace LLP
                     /* AAD for Falcon pubkey encryption */
                     std::vector<uint8_t> vAAD{'F','A','L','C','O','N','_','P','U','B','K','E','Y'};
                     
-                    debug::log(0, FUNCTION, "ProcessMinerAuthInit : Decrypting wrapped pubkey:");
-                    debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Nonce (12 bytes): ", HexStr(vNonce));
-                    debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Ciphertext size: ", vCiphertext.size());
-                    debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Tag (16 bytes): ", HexStr(vTag));
+                    /* ═══════════════════════════════════════════════════════════════════════════
+                     * CHACHA20 DECRYPTION DIAGNOSTIC (Node Side)
+                     * This diagnostic block helps debug key derivation mismatches between
+                     * NexusMiner and LLL-TAO node. Compare these values with miner-side logs.
+                     * ═══════════════════════════════════════════════════════════════════════════ */
+                    debug::log(0, FUNCTION, "");
+                    debug::log(0, FUNCTION, "╔═══════════════════════════════════════════════════════════╗");
+                    debug::log(0, FUNCTION, "║  ChaCha20 DECRYPTION DIAGNOSTIC (Node Side)              ║");
+                    debug::log(0, FUNCTION, "╠═══════════════════════════════════════════════════════════╣");
+                    debug::log(0, FUNCTION, "║ Genesis (uint256_t): ", hashGenesis.ToString());
+                    debug::log(0, FUNCTION, "║ Genesis (GetHex):    ", hashGenesis.GetHex());
+                    debug::log(0, FUNCTION, "║ Genesis (bytes hex): ", HexStr(hashGenesis.GetBytes()));
+                    debug::log(0, FUNCTION, "║ ");
+                    debug::log(0, FUNCTION, "║ Domain: nexus-mining-chacha20-v1");
+                    debug::log(0, FUNCTION, "║ Key derivation: SHA256(domain || genesis_bytes)");
+                    debug::log(0, FUNCTION, "║ ");
+                    debug::log(0, FUNCTION, "║ Derived Key (32 bytes): ", HexStr(vChaChaKey));
+                    debug::log(0, FUNCTION, "║ ");
+                    debug::log(0, FUNCTION, "║ Wrapped Pubkey Components:");
+                    debug::log(0, FUNCTION, "║   Nonce (12 bytes):    ", HexStr(vNonce));
+                    debug::log(0, FUNCTION, "║   Ciphertext (bytes):  ", vCiphertext.size());
+                    debug::log(0, FUNCTION, "║   Tag (16 bytes):      ", HexStr(vTag));
+                    debug::log(0, FUNCTION, "║   AAD:                 ", HexStr(vAAD));
+                    debug::log(0, FUNCTION, "╚═══════════════════════════════════════════════════════════╝");
                     
                     /* Decrypt with AAD using the genesis-derived session key */
                     if(!LLC::DecryptChaCha20Poly1305(vCiphertext, vTag, vChaChaKey, vNonce, vDecryptedPubKey, vAAD))
                     {
-                        debug::error(FUNCTION, "ProcessMinerAuthInit : ChaCha20 decryption FAILED");
-                        debug::error(FUNCTION, "  This proves miner does NOT possess the correct genesis");
-                        debug::error(FUNCTION, "  Security: Key mismatch indicates potential attack");
+                        debug::error(FUNCTION, "");
+                        debug::error(FUNCTION, "╔═══════════════════════════════════════════════════════════╗");
+                        debug::error(FUNCTION, "║  ChaCha20 DECRYPTION FAILED                               ║");
+                        debug::error(FUNCTION, "╠═══════════════════════════════════════════════════════════╣");
+                        debug::error(FUNCTION, "║ Possible causes:");
+                        debug::error(FUNCTION, "║  1. Genesis bytes mismatch (check GetBytes() order)");
+                        debug::error(FUNCTION, "║  2. AAD mismatch (check exact string: FALCON_PUBKEY)");
+                        debug::error(FUNCTION, "║  3. Nonce extraction error (check packet parsing)");
+                        debug::error(FUNCTION, "║  4. Tag mismatch (authentication failure)");
+                        debug::error(FUNCTION, "║ ");
+                        debug::error(FUNCTION, "║ This proves miner does NOT possess the correct genesis");
+                        debug::error(FUNCTION, "║ Compare node logs with NexusMiner logs byte-by-byte");
+                        debug::error(FUNCTION, "╚═══════════════════════════════════════════════════════════╝");
+                        debug::error(FUNCTION, "");
+                        
                         std::vector<uint8_t> vFail(1, 0x00);
                         respond(MINER_AUTH_RESULT, vFail);
                         this->Disconnect();
@@ -2262,6 +2294,23 @@ namespace LLP
 
 
     /* Validates that a reward address exists on chain and is a valid NXS account */
+    /* Validates reward address format (simplified for stateless mining).
+     *
+     * ARCHITECTURE NOTE: This function performs basic format validation only.
+     * Complex validation (account existence, type, token ID) has been removed because:
+     *
+     *   1. Stateless miners run outside the Nexus Interface without API sessions
+     *   2. LLD::Register->ReadObject() requires authenticated session context
+     *   3. Account type/token verification requires SIGCHAIN access
+     *
+     * The simplified approach:
+     *   - Genesis validation: Blockchain-only (LLD::Ledger->HasFirst()) - done in auth
+     *   - Reward address: Basic format check only
+     *   - Invalid addresses: Caught during block acceptance by consensus (miner's loss)
+     *
+     * This is the same approach as old block creation - trust the miner to provide
+     * a valid address, and let consensus reject invalid ones.
+     */
     bool Miner::ValidateRewardAddress(const uint256_t& hashReward)
     {
         /* Check for zero address */
@@ -2270,42 +2319,15 @@ namespace LLP
             debug::error(FUNCTION, "Reward address cannot be zero");
             return false;
         }
-
-        /* Check address exists on chain */
-        TAO::Register::Object account;
-        if(!LLD::Register->ReadObject(hashReward, account, TAO::Ledger::FLAGS::LOOKUP))
-        {
-            debug::error(FUNCTION, "Reward address not found on chain: ", hashReward.SubString());
-            return false;
-        }
-
-        /* Parse the account object */
-        if(!account.Parse())
-        {
-            debug::error(FUNCTION, "Failed to parse reward account object");
-            return false;
-        }
-
-        /* Verify it's an ACCOUNT type (not TRUST, not TOKEN, etc.) */
-        if(account.Standard() != TAO::Register::OBJECTS::ACCOUNT)
-        {
-            debug::error(FUNCTION, "Reward address is not an account type, got: ",
-                        static_cast<uint32_t>(account.Standard()));
-            return false;
-        }
-
-        /* Verify it's an NXS account (token = 0) */
-        uint256_t hashToken = account.get<uint256_t>("token");
-        if(hashToken != 0)
-        {
-            debug::error(FUNCTION, "Reward address is not an NXS account, token: ",
-                        hashToken.SubString());
-            return false;
-        }
-
-        debug::log(0, FUNCTION, "✓ Reward address validated: ", hashReward.ToString());
-        debug::log(2, FUNCTION, "  Owner: ", account.hashOwner.SubString());
-
+        
+        /* Basic format validation - trust miner to provide correct address.
+         * Invalid addresses will be caught during block acceptance by consensus.
+         * This is the miner's problem, not the node's. Same as old block creation. */
+        
+        debug::log(0, FUNCTION, "✓ Reward address format validated: ", hashReward.ToString());
+        debug::log(0, FUNCTION, "  Note: Address existence deferred to consensus validation");
+        debug::log(0, FUNCTION, "  Invalid address → block rejected → miner's loss");
+        
         return true;
     }
 
