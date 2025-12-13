@@ -374,7 +374,16 @@ namespace LLP
     }
 
 
-    /* Derive ChaCha20 session key from genesis hash */
+    /* Derive ChaCha20 session key from genesis hash.
+     * 
+     * Key derivation formula: SHA256(domain || genesis_bytes)
+     * Where:
+     *   domain = "nexus-mining-chacha20-v1" (ASCII bytes)
+     *   genesis_bytes = hashGenesis.GetBytes() (32 bytes, network byte order)
+     *
+     * This function includes diagnostic logging at verbosity level 2 for debugging
+     * key mismatch issues between NexusMiner and LLL-TAO node.
+     */
     std::vector<uint8_t> StatelessMiner::DeriveChaCha20SessionKey(const uint256_t& hashGenesis)
     {
         /* Domain separation for security */
@@ -388,7 +397,17 @@ namespace LLP
         
         /* SHA-256 → 32-byte key */
         uint256_t hashKey = LLC::SK256(preimage);
-        return hashKey.GetBytes();
+        std::vector<uint8_t> vKey = hashKey.GetBytes();
+        
+        /* DIAGNOSTIC LOGGING - helps debug key mismatch between miner and node */
+        debug::log(2, FUNCTION, "ChaCha20 Key Derivation Details:");
+        debug::log(2, FUNCTION, "  Genesis (input):  ", hashGenesis.ToString());
+        debug::log(2, FUNCTION, "  Genesis (bytes):  ", HexStr(genesis_bytes));
+        debug::log(2, FUNCTION, "  Domain:           ", DOMAIN);
+        debug::log(2, FUNCTION, "  Preimage (hex):   ", HexStr(preimage));
+        debug::log(2, FUNCTION, "  Derived key:      ", HexStr(vKey));
+        
+        return vKey;
     }
 
 
