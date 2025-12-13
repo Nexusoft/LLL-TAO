@@ -180,10 +180,10 @@ ChaCha20 Key Derivation Details:
 ### Test: No SIGCHAIN Dependencies
 
 ```bash
-# Verify removed patterns
-grep -r "GetDefaultAccount" src/LLP/
-grep -r "ReadTrust" src/LLP/
-grep -r "ResolveGenesisToAccount" src/LLP/
+# Verify removed patterns (run from repository root)
+grep -r GetDefaultAccount src/LLP/
+grep -r ReadTrust src/LLP/
+grep -r ResolveGenesisToAccount src/LLP/
 
 # Expected: No matches (all removed)
 ```
@@ -194,6 +194,6 @@ grep -r "ResolveGenesisToAccount" src/LLP/
 
 2. **ChaCha20 proves genesis knowledge**: If miner can decrypt wrapped pubkey, they possess correct genesis (or guessed the 256-bit key).
 
-3. **Invalid addresses are miner's problem**: Consensus rejects blocks with invalid reward addresses. This is by design - same as old block creation.
+3. **Invalid addresses rejected by consensus**: Consensus rejects blocks with invalid reward addresses. This follows the same design pattern as legacy block creation.
 
 4. **No API session requirements**: Everything works without Nexus Interface running.

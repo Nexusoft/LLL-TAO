@@ -626,7 +626,8 @@ namespace LLP
                     debug::log(0, FUNCTION, "║   Nonce (12 bytes):    ", HexStr(vNonce));
                     debug::log(0, FUNCTION, "║   Ciphertext (bytes):  ", vCiphertext.size());
                     debug::log(0, FUNCTION, "║   Tag (16 bytes):      ", HexStr(vTag));
-                    debug::log(0, FUNCTION, "║   AAD:                 ", HexStr(vAAD));
+                    debug::log(0, FUNCTION, "║   AAD (hex):           ", HexStr(vAAD));
+                    debug::log(0, FUNCTION, "║   AAD (ASCII):         FALCON_PUBKEY");
                     debug::log(0, FUNCTION, "╚═══════════════════════════════════════════════════════════╝");
                     
                     /* Decrypt with AAD using the genesis-derived session key */
@@ -2293,7 +2294,6 @@ namespace LLP
     }
 
 
-    /* Validates that a reward address exists on chain and is a valid NXS account */
     /* Validates reward address format (simplified for stateless mining).
      *
      * ARCHITECTURE NOTE: This function performs basic format validation only.
@@ -2306,10 +2306,10 @@ namespace LLP
      * The simplified approach:
      *   - Genesis validation: Blockchain-only (LLD::Ledger->HasFirst()) - done in auth
      *   - Reward address: Basic format check only
-     *   - Invalid addresses: Caught during block acceptance by consensus (miner's loss)
+     *   - Invalid addresses: Rejected by consensus during block acceptance
      *
-     * This is the same approach as old block creation - trust the miner to provide
-     * a valid address, and let consensus reject invalid ones.
+     * This follows the same design as legacy block creation - address validity is
+     * ultimately enforced by consensus rules rather than pre-validation.
      */
     bool Miner::ValidateRewardAddress(const uint256_t& hashReward)
     {
@@ -2320,13 +2320,12 @@ namespace LLP
             return false;
         }
         
-        /* Basic format validation - trust miner to provide correct address.
-         * Invalid addresses will be caught during block acceptance by consensus.
-         * This is the miner's problem, not the node's. Same as old block creation. */
+        /* Basic format validation only. Invalid addresses will be rejected
+         * by consensus during block acceptance. This architecture decision
+         * follows the legacy block creation pattern. */
         
         debug::log(0, FUNCTION, "✓ Reward address format validated: ", hashReward.ToString());
         debug::log(0, FUNCTION, "  Note: Address existence deferred to consensus validation");
-        debug::log(0, FUNCTION, "  Invalid address → block rejected → miner's loss");
         
         return true;
     }
