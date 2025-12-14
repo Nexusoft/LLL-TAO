@@ -959,19 +959,17 @@ namespace LLP
         debug::log(0, FUNCTION, "╚═══════════════════════════════════════════════════════════╝");
 
         /* Log reward routing status */
-        if(context.hashGenesis != 0)
+        if(context.fRewardBound && context.hashRewardAddress != 0)
         {
-            TAO::Register::Address hashDefault = 
-                StatelessMinerManager::Get().GetCachedDefaultAccount(context.hashGenesis);
-            
-            if(hashDefault != 0)
-                debug::log(0, FUNCTION, "REWARDS → Trust Account: ", hashDefault.SubString());
-            else
-                debug::log(0, FUNCTION, "REWARDS → Genesis set but trust account not resolved yet");
+            debug::log(0, FUNCTION, "REWARDS → Bound Address: ", context.hashRewardAddress.ToString().substr(0, 16), "...");
+        }
+        else if(context.hashGenesis != 0)
+        {
+            debug::log(0, FUNCTION, "REWARDS → Genesis authenticated (waiting for MINER_SET_REWARD)");
         }
         else
         {
-            debug::log(0, FUNCTION, "REWARDS → Static: Node's mining address");
+            debug::log(0, FUNCTION, "REWARDS → Not configured (send MINER_SET_REWARD after auth)");
         }
 
         /* Build acknowledgment response with session parameters */

@@ -118,34 +118,6 @@ TEST_CASE("Genesis Validation Tests", "[genesis_validation]")
 }
 
 
-TEST_CASE("StatelessMinerManager Genesis Cache Tests", "[genesis_cache]")
-{
-    SECTION("GetCachedDefaultAccount returns zero for uncached genesis")
-    {
-        StatelessMinerManager& manager = StatelessMinerManager::Get();
-        
-        /* Create a random genesis that's not cached */
-        uint256_t hashGenesis;
-        hashGenesis.SetHex("a1111111111111111111111111111111111111111111111111111111111111ff");
-        
-        TAO::Register::Address hashDefault = manager.GetCachedDefaultAccount(hashGenesis);
-        
-        REQUIRE(hashDefault == TAO::Register::Address(0));
-    }
-
-    SECTION("ValidateAndCacheGenesis caches valid mappings")
-    {
-        /* Note: This test would require a valid genesis with a default account
-         * in the test database. For a real test, we would need to set up the
-         * database with proper test data. This is a placeholder showing the
-         * intended behavior. */
-        
-        /* This test is informational - actual validation would require DB setup */
-        REQUIRE(true);  // Placeholder
-    }
-}
-
-
 TEST_CASE("Genesis Constants Values", "[genesis_constants]")
 {
     SECTION("Genesis hash size constant is correct")
