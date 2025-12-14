@@ -1128,8 +1128,11 @@ namespace LLP
         /* Extract ciphertext (middle portion) */
         std::vector<uint8_t> vCiphertext(vEncrypted.begin() + 12, vEncrypted.end() - 16);
 
+        /* Additional Authenticated Data for reward address binding */
+        std::vector<uint8_t> vAAD{'R','E','W','A','R','D','_','A','D','D','R','E','S','S'};
+
         /* Decrypt */
-        if(!LLC::DecryptChaCha20Poly1305(vCiphertext, vTag, vKey, vNonce, vPlaintext))
+        if(!LLC::DecryptChaCha20Poly1305(vCiphertext, vTag, vKey, vNonce, vPlaintext, vAAD))
         {
             debug::error(FUNCTION, "Failed to decrypt payload");
             return false;
@@ -1159,7 +1162,10 @@ namespace LLP
         std::vector<uint8_t> vCiphertext;
         std::vector<uint8_t> vTag;
 
-        if(!LLC::EncryptChaCha20Poly1305(vPlaintext, vKey, vNonce, vCiphertext, vTag))
+        /* Additional Authenticated Data for reward result binding */
+        std::vector<uint8_t> vAAD{'R','E','W','A','R','D','_','R','E','S','U','L','T'};
+
+        if(!LLC::EncryptChaCha20Poly1305(vPlaintext, vKey, vNonce, vCiphertext, vTag, vAAD))
         {
             debug::error(FUNCTION, "Failed to encrypt payload");
             return std::vector<uint8_t>();
@@ -1203,12 +1209,6 @@ namespace LLP
         if(!context.fAuthenticated)
         {
             debug::error(FUNCTION, "MINER_SET_REWARD: not authenticated");
-            
-            /* Build error response */
-            Packet errorResponse(MINER_REWARD_RESULT);
-            errorResponse.DATA.push_back(0x00);  // Failure
-            errorResponse.LENGTH = 1;
-            
             return ProcessResult::Error(context, "Authentication required");
         }
 
@@ -1216,11 +1216,6 @@ namespace LLP
         if(context.hashGenesis == 0)
         {
             debug::error(FUNCTION, "MINER_SET_REWARD: genesis not set");
-            
-            Packet errorResponse(MINER_REWARD_RESULT);
-            errorResponse.DATA.push_back(0x00);
-            errorResponse.LENGTH = 1;
-            
             return ProcessResult::Error(context, "Genesis not established");
         }
 
@@ -1282,10 +1277,21 @@ namespace LLP
             return ProcessResult::Success(context, errorResponse);
         }
 
-        /* Update context with reward address (stored in hashGenesis for payout) 
-         * NOTE: In the stateless system, we're overwriting hashGenesis with the reward address.
-         * The original authentication genesis is already validated and the session is established.
-         * From this point forward, hashGenesis represents the reward payout address. */
+        /* Update context with reward address (stored in hashGenesis for payout)
+         * 
+         * IMPORTANT DESIGN NOTE: This overwrites the authentication genesis with the reward address.
+         * This is intentional because:
+         *   1. The ChaCha20 key has already been derived from the authentication genesis
+         *   2. The session is already established and cached by StatelessMinerManager
+         *   3. The hashGenesis field serves dual purpose:
+         *      - During auth: Contains authentication genesis for key derivation
+         *      - After MINER_SET_REWARD: Contains reward payout address
+         *   4. The ChaCha20 key is derived once and used for the entire session
+         *   5. No further key derivation happens after this point
+         * 
+         * Alternative considered: Add separate hashRewardAddress field to MiningContext
+         * Decision: Reuse hashGenesis to minimize state changes to existing architecture
+         */
         MiningContext newContext = context.WithGenesis(hashReward);
 
         debug::log(0, FUNCTION, "✓ Reward address bound: ", hashReward.ToString());
