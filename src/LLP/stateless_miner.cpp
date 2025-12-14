@@ -45,6 +45,11 @@ namespace LLP
      * which uses a longer 1-hour timeout for recovery purposes. */
     static const uint64_t DEFAULT_SESSION_TIMEOUT = 300;
 
+    /* AAD (Additional Authenticated Data) strings for ChaCha20-Poly1305 AEAD
+     * These provide domain separation between different packet types */
+    static const std::vector<uint8_t> AAD_REWARD_ADDRESS{'R','E','W','A','R','D','_','A','D','D','R','E','S','S'};
+    static const std::vector<uint8_t> AAD_REWARD_RESULT{'R','E','W','A','R','D','_','R','E','S','U','L','T'};
+
     /* Default constructor */
     MiningContext::MiningContext()
     : nChannel(0)
@@ -1128,11 +1133,8 @@ namespace LLP
         /* Extract ciphertext (middle portion) */
         std::vector<uint8_t> vCiphertext(vEncrypted.begin() + 12, vEncrypted.end() - 16);
 
-        /* Additional Authenticated Data for reward address binding */
-        std::vector<uint8_t> vAAD{'R','E','W','A','R','D','_','A','D','D','R','E','S','S'};
-
-        /* Decrypt */
-        if(!LLC::DecryptChaCha20Poly1305(vCiphertext, vTag, vKey, vNonce, vPlaintext, vAAD))
+        /* Decrypt using AAD for domain separation */
+        if(!LLC::DecryptChaCha20Poly1305(vCiphertext, vTag, vKey, vNonce, vPlaintext, AAD_REWARD_ADDRESS))
         {
             debug::error(FUNCTION, "Failed to decrypt payload");
             return false;
@@ -1162,10 +1164,8 @@ namespace LLP
         std::vector<uint8_t> vCiphertext;
         std::vector<uint8_t> vTag;
 
-        /* Additional Authenticated Data for reward result binding */
-        std::vector<uint8_t> vAAD{'R','E','W','A','R','D','_','R','E','S','U','L','T'};
-
-        if(!LLC::EncryptChaCha20Poly1305(vPlaintext, vKey, vNonce, vCiphertext, vTag, vAAD))
+        /* Encrypt using AAD for domain separation */
+        if(!LLC::EncryptChaCha20Poly1305(vPlaintext, vKey, vNonce, vCiphertext, vTag, AAD_REWARD_RESULT))
         {
             debug::error(FUNCTION, "Failed to encrypt payload");
             return std::vector<uint8_t>();
@@ -1256,8 +1256,10 @@ namespace LLP
             return ProcessResult::Success(context, errorResponse);
         }
 
+        /* Extract the reward address (32 bytes) using SetBytes for safety */
         uint256_t hashReward;
-        std::copy(vDecrypted.begin(), vDecrypted.begin() + 32, hashReward.begin());
+        std::vector<uint8_t> vRewardBytes(vDecrypted.begin(), vDecrypted.begin() + 32);
+        hashReward.SetBytes(vRewardBytes);
 
         debug::log(0, FUNCTION, "Received reward address: ", hashReward.ToString());
 
