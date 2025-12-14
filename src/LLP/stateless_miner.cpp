@@ -1241,7 +1241,8 @@ namespace LLP
             errorResponse.DATA = vEncryptedError;
             errorResponse.LENGTH = static_cast<uint32_t>(vEncryptedError.size());
             
-            return ProcessResult::Error(context, "Decryption failed");
+            /* Return success with error response - we want to send the encrypted error to miner */
+            return ProcessResult::Success(context, errorResponse);
         }
 
         /* Extract the reward address (32 bytes) */
@@ -1256,7 +1257,8 @@ namespace LLP
             errorResponse.DATA = vEncryptedError;
             errorResponse.LENGTH = static_cast<uint32_t>(vEncryptedError.size());
             
-            return ProcessResult::Error(context, "Invalid payload size");
+            /* Return success with error response */
+            return ProcessResult::Success(context, errorResponse);
         }
 
         uint256_t hashReward;
@@ -1276,7 +1278,8 @@ namespace LLP
             errorResponse.DATA = vEncryptedError;
             errorResponse.LENGTH = static_cast<uint32_t>(vEncryptedError.size());
             
-            return ProcessResult::Error(context, "Invalid reward address");
+            /* Return success with error response */
+            return ProcessResult::Success(context, errorResponse);
         }
 
         /* Update context with reward address (stored in hashGenesis for payout) 
