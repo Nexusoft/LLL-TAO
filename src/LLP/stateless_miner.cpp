@@ -35,6 +35,7 @@ ________________________________________________________________________________
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
+#include <cstring>
 
 namespace LLP
 {
@@ -43,6 +44,11 @@ namespace LLP
      * is received within this window. Different from session_recovery.cpp
      * which uses a longer 1-hour timeout for recovery purposes. */
     static const uint64_t DEFAULT_SESSION_TIMEOUT = 300;
+
+    /* AAD (Additional Authenticated Data) strings for ChaCha20-Poly1305 AEAD
+     * These provide domain separation between different packet types */
+    static const std::vector<uint8_t> AAD_REWARD_ADDRESS{'R','E','W','A','R','D','_','A','D','D','R','E','S','S'};
+    static const std::vector<uint8_t> AAD_REWARD_RESULT{'R','E','W','A','R','D','_','R','E','S','U','L','T'};
 
     /* Default constructor */
     MiningContext::MiningContext()
@@ -61,6 +67,8 @@ namespace LLP
     , nSessionStart(0)
     , nSessionTimeout(DEFAULT_SESSION_TIMEOUT)
     , nKeepaliveCount(0)
+    , hashRewardAddress(0)
+    , fRewardBound(false)
     {
     }
 
@@ -91,6 +99,8 @@ namespace LLP
     , nSessionStart(0)
     , nSessionTimeout(DEFAULT_SESSION_TIMEOUT)
     , nKeepaliveCount(0)
+    , hashRewardAddress(0)
+    , fRewardBound(false)
     {
     }
 
@@ -186,9 +196,21 @@ namespace LLP
         return c;
     }
 
+    MiningContext MiningContext::WithRewardAddress(const uint256_t& hashReward_) const
+    {
+        MiningContext c = *this;
+        c.hashRewardAddress = hashReward_;
+        c.fRewardBound = true;
+        return c;
+    }
+
     uint256_t MiningContext::GetPayoutAddress() const
     {
-        /* Return explicit genesis if set */
+        /* Return reward address if explicitly bound via MINER_SET_REWARD */
+        if(fRewardBound && hashRewardAddress != 0)
+            return hashRewardAddress;
+        
+        /* Fallback to genesis if set */
         if(hashGenesis != 0)
             return hashGenesis;
 
@@ -299,6 +321,10 @@ namespace LLP
         /* Session management packets */
         SESSION_START        = 211,
         SESSION_KEEPALIVE    = 212,
+
+        /* Reward address binding (encrypted with ChaCha20 after Falcon auth) */
+        MINER_SET_REWARD     = 213,  // 0xd5 - miner -> node: Encrypted reward address (32 bytes)
+        MINER_REWARD_RESULT  = 214,  // 0xd6 - node -> miner: Encrypted validation result
     };
 
 
@@ -341,6 +367,10 @@ namespace LLP
             case SESSION_KEEPALIVE:
                 debug::log(3, FUNCTION, "Routing to ProcessSessionKeepalive");
                 return ProcessSessionKeepalive(context, packet);
+
+            case MINER_SET_REWARD:
+                debug::log(2, FUNCTION, "Routing to ProcessSetReward");
+                return ProcessSetReward(context, packet);
 
             default:
                 debug::log(1, FUNCTION, "Unknown miner opcode: ", uint32_t(packet.HEADER));
@@ -1091,6 +1121,196 @@ namespace LLP
         response.DATA.push_back(static_cast<uint8_t>((nRemaining >> 24) & 0xFF));
 
         response.LENGTH = static_cast<uint32_t>(response.DATA.size());
+
+        return ProcessResult::Success(newContext, response);
+    }
+
+
+    /* Decrypts reward address payload using ChaCha20-Poly1305 */
+    bool StatelessMiner::DecryptRewardPayload(
+        const std::vector<uint8_t>& vEncrypted,
+        const std::vector<uint8_t>& vKey,
+        std::vector<uint8_t>& vPlaintext
+    )
+    {
+        /* Validate minimum size: nonce(12) + tag(16) = 28 bytes */
+        if(vEncrypted.size() < 28)
+        {
+            debug::error(FUNCTION, "Encrypted payload too small: ", vEncrypted.size());
+            return false;
+        }
+
+        /* Extract nonce (12 bytes) */
+        std::vector<uint8_t> vNonce(vEncrypted.begin(), vEncrypted.begin() + 12);
+
+        /* Extract tag (last 16 bytes) */
+        std::vector<uint8_t> vTag(vEncrypted.end() - 16, vEncrypted.end());
+
+        /* Extract ciphertext (middle portion) */
+        std::vector<uint8_t> vCiphertext(vEncrypted.begin() + 12, vEncrypted.end() - 16);
+
+        /* Decrypt using AAD for domain separation */
+        if(!LLC::DecryptChaCha20Poly1305(vCiphertext, vTag, vKey, vNonce, vPlaintext, AAD_REWARD_ADDRESS))
+        {
+            debug::error(FUNCTION, "Failed to decrypt payload");
+            return false;
+        }
+
+        return true;
+    }
+
+
+    /* Encrypts reward result response using ChaCha20-Poly1305 */
+    std::vector<uint8_t> StatelessMiner::EncryptRewardResult(
+        const std::vector<uint8_t>& vPlaintext,
+        const std::vector<uint8_t>& vKey
+    )
+    {
+        /* Generate cryptographically secure random 12-byte nonce */
+        std::vector<uint8_t> vNonce(12);
+        
+        /* Use secure random generator - get 96 bits (12 bytes) from two uint64_t values */
+        uint64_t nRand1 = LLC::GetRand();
+        uint64_t nRand2 = LLC::GetRand();
+        
+        std::memcpy(&vNonce[0], &nRand1, 8);
+        std::memcpy(&vNonce[8], &nRand2, 4);
+
+        /* Encrypt using ChaCha20-Poly1305 */
+        std::vector<uint8_t> vCiphertext;
+        std::vector<uint8_t> vTag;
+
+        /* Encrypt using AAD for domain separation */
+        if(!LLC::EncryptChaCha20Poly1305(vPlaintext, vKey, vNonce, vCiphertext, vTag, AAD_REWARD_RESULT))
+        {
+            debug::error(FUNCTION, "Failed to encrypt payload");
+            return std::vector<uint8_t>();
+        }
+
+        /* Build response: nonce(12) + ciphertext + tag(16) */
+        std::vector<uint8_t> vEncrypted;
+        vEncrypted.insert(vEncrypted.end(), vNonce.begin(), vNonce.end());
+        vEncrypted.insert(vEncrypted.end(), vCiphertext.begin(), vCiphertext.end());
+        vEncrypted.insert(vEncrypted.end(), vTag.begin(), vTag.end());
+
+        return vEncrypted;
+    }
+
+
+    /* Validates reward address format */
+    bool StatelessMiner::ValidateRewardAddress(const uint256_t& hashReward)
+    {
+        /* Check for zero address */
+        if(hashReward == 0)
+        {
+            debug::error(FUNCTION, "Zero reward address not allowed");
+            return false;
+        }
+
+        /* Basic validation passed - more complex validation happens during block acceptance */
+        return true;
+    }
+
+
+    /* Process MINER_SET_REWARD packet to bind reward address */
+    ProcessResult StatelessMiner::ProcessSetReward(
+        const MiningContext& context,
+        const Packet& packet
+    )
+    {
+        debug::log(0, FUNCTION, "MINER_SET_REWARD from ", context.strAddress,
+                   " length=", packet.LENGTH);
+
+        /* Check authentication first */
+        if(!context.fAuthenticated)
+        {
+            debug::error(FUNCTION, "MINER_SET_REWARD: not authenticated");
+            return ProcessResult::Error(context, "Authentication required");
+        }
+
+        /* Check that genesis is set (needed for ChaCha20 key derivation) */
+        if(context.hashGenesis == 0)
+        {
+            debug::error(FUNCTION, "MINER_SET_REWARD: genesis not set");
+            return ProcessResult::Error(context, "Genesis not established");
+        }
+
+        /* Derive ChaCha20 session key from genesis */
+        std::vector<uint8_t> vChaChaKey = DeriveChaCha20SessionKey(context.hashGenesis);
+
+        /* Decrypt the payload */
+        std::vector<uint8_t> vDecrypted;
+        if(!DecryptRewardPayload(packet.DATA, vChaChaKey, vDecrypted))
+        {
+            debug::error(FUNCTION, "Failed to decrypt reward address payload");
+            
+            /* Build encrypted error response */
+            std::vector<uint8_t> vErrorMsg = {0x00};  // Failure status
+            std::vector<uint8_t> vEncryptedError = EncryptRewardResult(vErrorMsg, vChaChaKey);
+            
+            Packet errorResponse(MINER_REWARD_RESULT);
+            errorResponse.DATA = vEncryptedError;
+            errorResponse.LENGTH = static_cast<uint32_t>(vEncryptedError.size());
+            
+            /* Return success with error response - we want to send the encrypted error to miner */
+            return ProcessResult::Success(context, errorResponse);
+        }
+
+        /* Extract the reward address (32 bytes) */
+        if(vDecrypted.size() < 32)
+        {
+            debug::error(FUNCTION, "Invalid reward address payload size: ", vDecrypted.size());
+            
+            std::vector<uint8_t> vErrorMsg = {0x00};
+            std::vector<uint8_t> vEncryptedError = EncryptRewardResult(vErrorMsg, vChaChaKey);
+            
+            Packet errorResponse(MINER_REWARD_RESULT);
+            errorResponse.DATA = vEncryptedError;
+            errorResponse.LENGTH = static_cast<uint32_t>(vEncryptedError.size());
+            
+            /* Return success with error response */
+            return ProcessResult::Success(context, errorResponse);
+        }
+
+        /* Extract the reward address (32 bytes) using SetBytes for safety */
+        uint256_t hashReward;
+        std::vector<uint8_t> vRewardBytes(vDecrypted.begin(), vDecrypted.begin() + 32);
+        hashReward.SetBytes(vRewardBytes);
+
+        debug::log(0, FUNCTION, "Received reward address: ", hashReward.ToString());
+
+        /* Validate the reward address */
+        if(!ValidateRewardAddress(hashReward))
+        {
+            debug::error(FUNCTION, "Invalid reward address");
+            
+            std::vector<uint8_t> vErrorMsg = {0x00};
+            std::vector<uint8_t> vEncryptedError = EncryptRewardResult(vErrorMsg, vChaChaKey);
+            
+            Packet errorResponse(MINER_REWARD_RESULT);
+            errorResponse.DATA = vEncryptedError;
+            errorResponse.LENGTH = static_cast<uint32_t>(vEncryptedError.size());
+            
+            /* Return success with error response */
+            return ProcessResult::Success(context, errorResponse);
+        }
+
+        /* Bind reward address to context using dedicated field */
+        MiningContext newContext = context.WithRewardAddress(hashReward);
+
+        debug::log(0, FUNCTION, "✓ Reward address bound: ", hashReward.ToString());
+        debug::log(0, FUNCTION, "Session updated:");
+        debug::log(0, FUNCTION, "  Auth genesis: ", newContext.hashGenesis.SubString());
+        debug::log(0, FUNCTION, "  Reward address: ", newContext.hashRewardAddress.ToString());
+        debug::log(0, FUNCTION, "  ChaCha20: ready");
+
+        /* Build success response (encrypted) */
+        std::vector<uint8_t> vSuccessMsg = {0x01};  // Success status
+        std::vector<uint8_t> vEncryptedSuccess = EncryptRewardResult(vSuccessMsg, vChaChaKey);
+        
+        Packet response(MINER_REWARD_RESULT);
+        response.DATA = vEncryptedSuccess;
+        response.LENGTH = static_cast<uint32_t>(vEncryptedSuccess.size());
 
         return ProcessResult::Success(newContext, response);
     }

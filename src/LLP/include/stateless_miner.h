@@ -49,13 +49,17 @@ namespace LLP
         bool fAuthenticated;         // Whether Falcon auth succeeded
         uint32_t nSessionId;         // Unique session identifier
         uint256_t hashKeyID;         // Phase 2: Falcon key identifier
-        uint256_t hashGenesis;       // Phase 2: Tritium genesis hash (payout address)
+        uint256_t hashGenesis;       // Phase 2: Tritium genesis hash (authentication)
         std::string strUserName;     // Phase 2: Username for trust-based addressing
         std::vector<uint8_t> vAuthNonce;  // Challenge nonce for authentication
         std::vector<uint8_t> vMinerPubKey; // Miner's Falcon public key
         uint64_t nSessionStart;      // Timestamp when session was established
         uint64_t nSessionTimeout;    // Session timeout in seconds (default 300s)
         uint32_t nKeepaliveCount;    // Number of keepalives received
+        
+        /* Reward address binding (set via MINER_SET_REWARD) */
+        uint256_t hashRewardAddress; // Reward payout address (separate from auth genesis)
+        bool fRewardBound;           // Whether reward address has been set
 
         /** Default Constructor **/
         MiningContext();
@@ -164,12 +168,22 @@ namespace LLP
          **/
         MiningContext WithKeepaliveCount(uint32_t nKeepaliveCount_) const;
 
+        /** WithRewardAddress
+         *
+         *  Returns a new context with updated reward address and bound flag.
+         *
+         *  @param[in] hashReward_ The reward address to set
+         *
+         **/
+        MiningContext WithRewardAddress(const uint256_t& hashReward_) const;
+
         /** GetPayoutAddress
          *
          *  Get the payout address for rewards.
-         *  Returns genesis hash if set, otherwise derives from username.
+         *  Returns reward address if bound via MINER_SET_REWARD, otherwise genesis hash.
+         *  Falls back to 0 if username-based addressing needs resolution.
          *
-         *  @return Genesis hash or derived address
+         *  @return Reward address, genesis hash, or 0 for username resolution
          *
          **/
         uint256_t GetPayoutAddress() const;
@@ -367,6 +381,22 @@ namespace LLP
             const Packet& packet
         );
 
+        /** ProcessSetReward
+         *
+         *  Process MINER_SET_REWARD packet to bind reward address.
+         *  Validates and stores the encrypted reward address for this mining session.
+         *
+         *  @param[in] context Current miner state
+         *  @param[in] packet Set reward packet with encrypted address
+         *
+         *  @return ProcessResult with updated context or error
+         *
+         **/
+        static ProcessResult ProcessSetReward(
+            const MiningContext& context,
+            const Packet& packet
+        );
+
     private:
         /** DeriveChaCha20SessionKey
          *
@@ -392,6 +422,49 @@ namespace LLP
          *
          **/
         static std::vector<uint8_t> BuildAuthMessage(const MiningContext& context);
+
+        /** DecryptRewardPayload
+         *
+         *  Decrypts reward address payload using ChaCha20-Poly1305.
+         *
+         *  @param[in] vEncrypted The encrypted payload (nonce + ciphertext + tag)
+         *  @param[in] vKey The ChaCha20 session key
+         *  @param[out] vPlaintext The decrypted data
+         *
+         *  @return True if decryption succeeded
+         *
+         **/
+        static bool DecryptRewardPayload(
+            const std::vector<uint8_t>& vEncrypted,
+            const std::vector<uint8_t>& vKey,
+            std::vector<uint8_t>& vPlaintext
+        );
+
+        /** EncryptRewardResult
+         *
+         *  Encrypts reward result response using ChaCha20-Poly1305.
+         *
+         *  @param[in] vPlaintext The data to encrypt
+         *  @param[in] vKey The ChaCha20 session key
+         *
+         *  @return Encrypted payload (nonce + ciphertext + tag)
+         *
+         **/
+        static std::vector<uint8_t> EncryptRewardResult(
+            const std::vector<uint8_t>& vPlaintext,
+            const std::vector<uint8_t>& vKey
+        );
+
+        /** ValidateRewardAddress
+         *
+         *  Validates that a reward address is non-zero and properly formatted.
+         *
+         *  @param[in] hashReward The reward address to validate
+         *
+         *  @return True if valid format
+         *
+         **/
+        static bool ValidateRewardAddress(const uint256_t& hashReward);
     };
 
 } // namespace LLP
