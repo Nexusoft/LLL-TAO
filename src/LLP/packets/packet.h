@@ -159,7 +159,8 @@ namespace LLP
          *  Determines if this packet type requires a data payload.
          *  Traditional packets use HEADER < 128 for data packets and HEADER >= 128
          *  for request/command packets. However, the Falcon authentication protocol
-         *  (headers 207-212) requires data payloads for authentication handshake.
+         *  (headers 207-212) and reward address binding packets (213-214) require
+         *  data payloads for authentication handshake and encrypted communication.
          *
          *  Packet ranges requiring data:
          *  - 0-127: Traditional data packets (BLOCK_DATA, SUBMIT_BLOCK, etc.)
@@ -170,6 +171,9 @@ namespace LLP
          *    - MINER_AUTH_RESULT (210): success/failure code
          *    - SESSION_START (211): session parameters
          *    - SESSION_KEEPALIVE (212): keepalive data
+         *  - 213-214: Reward address binding packets (encrypted with ChaCha20)
+         *    - MINER_SET_REWARD (213): encrypted reward address
+         *    - MINER_REWARD_RESULT (214): encrypted validation result
          *
          *  @return true if this packet type carries data payload
          *
@@ -179,6 +183,10 @@ namespace LLP
             /* Boundary constants for Falcon authentication packets */
             static const uint8_t FALCON_AUTH_FIRST = 207;  // MINER_AUTH_INIT
             static const uint8_t FALCON_AUTH_LAST = 212;   // SESSION_KEEPALIVE
+            
+            /* Boundary constants for reward address binding packets */
+            static const uint8_t REWARD_BINDING_FIRST = 213;  // MINER_SET_REWARD
+            static const uint8_t REWARD_BINDING_LAST = 214;   // MINER_REWARD_RESULT
 
             /* Traditional data packets */
             if(HEADER < 128)
@@ -186,6 +194,10 @@ namespace LLP
 
             /* Falcon authentication packets require data */
             if(HEADER >= FALCON_AUTH_FIRST && HEADER <= FALCON_AUTH_LAST)
+                return true;
+            
+            /* Reward address binding packets require data (encrypted) */
+            if(HEADER >= REWARD_BINDING_FIRST && HEADER <= REWARD_BINDING_LAST)
                 return true;
 
             return false;
@@ -195,8 +207,8 @@ namespace LLP
         /** Header
          *
          *  Determines if header is fully read.
-         *  For data packets (HEADER < 128 or Falcon auth 207-212), requires LENGTH > 0.
-         *  For request packets (128-206, 213-254), LENGTH must be 0.
+         *  For data packets (HEADER < 128, Falcon auth 207-212, or reward binding 213-214), requires LENGTH > 0.
+         *  For request packets (128-206, 215-254), LENGTH must be 0.
          *
          **/
         bool Header() const
@@ -244,8 +256,9 @@ namespace LLP
          *
          *  Serializes class into a byte vector. Used to write packet to sockets.
          *
-         *  Handles both traditional data packets (HEADER < 128) and Falcon
-         *  authentication packets (207-212) which also require data payloads.
+         *  Handles both traditional data packets (HEADER < 128), Falcon
+         *  authentication packets (207-212), and reward binding packets (213-214)
+         *  which all require data payloads.
          *
          *  DEBUG: This method logs detailed packet encoding information when
          *  config::nVerbose >= 5 to help diagnose packet encoding issues
@@ -256,8 +269,8 @@ namespace LLP
         {
             std::vector<uint8_t> BYTES(1, HEADER);
 
-            /* Handle packets that carry data payloads (traditional data packets
-             * and Falcon authentication packets) */
+            /* Handle packets that carry data payloads (traditional data packets,
+             * Falcon authentication packets, and reward binding packets) */
             if(HasDataPayload())
             {
                 BYTES.push_back(static_cast<uint8_t>(LENGTH >> 24));
