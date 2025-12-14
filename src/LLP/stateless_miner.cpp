@@ -67,6 +67,8 @@ namespace LLP
     , nSessionStart(0)
     , nSessionTimeout(DEFAULT_SESSION_TIMEOUT)
     , nKeepaliveCount(0)
+    , hashRewardAddress(0)
+    , fRewardBound(false)
     {
     }
 
@@ -97,6 +99,8 @@ namespace LLP
     , nSessionStart(0)
     , nSessionTimeout(DEFAULT_SESSION_TIMEOUT)
     , nKeepaliveCount(0)
+    , hashRewardAddress(0)
+    , fRewardBound(false)
     {
     }
 
@@ -192,9 +196,21 @@ namespace LLP
         return c;
     }
 
+    MiningContext MiningContext::WithRewardAddress(const uint256_t& hashReward_) const
+    {
+        MiningContext c = *this;
+        c.hashRewardAddress = hashReward_;
+        c.fRewardBound = true;
+        return c;
+    }
+
     uint256_t MiningContext::GetPayoutAddress() const
     {
-        /* Return explicit genesis if set */
+        /* Return reward address if explicitly bound via MINER_SET_REWARD */
+        if(fRewardBound && hashRewardAddress != 0)
+            return hashRewardAddress;
+        
+        /* Fallback to genesis if set */
         if(hashGenesis != 0)
             return hashGenesis;
 
@@ -1279,25 +1295,12 @@ namespace LLP
             return ProcessResult::Success(context, errorResponse);
         }
 
-        /* Update context with reward address (stored in hashGenesis for payout)
-         * 
-         * IMPORTANT DESIGN NOTE: This overwrites the authentication genesis with the reward address.
-         * This is intentional because:
-         *   1. The ChaCha20 key has already been derived from the authentication genesis
-         *   2. The session is already established and cached by StatelessMinerManager
-         *   3. The hashGenesis field serves dual purpose:
-         *      - During auth: Contains authentication genesis for key derivation
-         *      - After MINER_SET_REWARD: Contains reward payout address
-         *   4. The ChaCha20 key is derived once and used for the entire session
-         *   5. No further key derivation happens after this point
-         * 
-         * Alternative considered: Add separate hashRewardAddress field to MiningContext
-         * Decision: Reuse hashGenesis to minimize state changes to existing architecture
-         */
-        MiningContext newContext = context.WithGenesis(hashReward);
+        /* Bind reward address to context using dedicated field */
+        MiningContext newContext = context.WithRewardAddress(hashReward);
 
         debug::log(0, FUNCTION, "✓ Reward address bound: ", hashReward.ToString());
         debug::log(0, FUNCTION, "Session updated:");
+        debug::log(0, FUNCTION, "  Auth genesis: ", context.hashGenesis.SubString());
         debug::log(0, FUNCTION, "  Reward address: ", hashReward.ToString());
         debug::log(0, FUNCTION, "  ChaCha20: ready");
 

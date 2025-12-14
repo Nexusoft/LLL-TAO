@@ -547,14 +547,17 @@ namespace LLP
         /* Get channel from context */
         uint32_t nChannel = context.nChannel;
 
-        /* Get dynamic genesis from context if authenticated, otherwise use 0 for default behavior */
-        const uint256_t hashDynamicGenesis = (context.fAuthenticated && context.hashGenesis != 0) 
-                                               ? context.hashGenesis 
-                                               : uint256_t(0);
+        /* Get payout address from context (reward address if bound, otherwise genesis) */
+        const uint256_t hashDynamicGenesis = context.GetPayoutAddress();
 
         /* Log reward routing mode */
         if(hashDynamicGenesis != 0)
-            debug::log(1, FUNCTION, "Creating block with DYNAMIC reward routing to ", hashDynamicGenesis.SubString());
+        {
+            if(context.fRewardBound)
+                debug::log(1, FUNCTION, "Creating block with REWARD ADDRESS routing to ", hashDynamicGenesis.SubString());
+            else
+                debug::log(1, FUNCTION, "Creating block with DYNAMIC reward routing to ", hashDynamicGenesis.SubString());
+        }
         else
             debug::log(3, FUNCTION, "Creating block with STATIC reward routing (legacy mode)");
 

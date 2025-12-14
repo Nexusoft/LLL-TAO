@@ -49,13 +49,17 @@ namespace LLP
         bool fAuthenticated;         // Whether Falcon auth succeeded
         uint32_t nSessionId;         // Unique session identifier
         uint256_t hashKeyID;         // Phase 2: Falcon key identifier
-        uint256_t hashGenesis;       // Phase 2: Tritium genesis hash (payout address)
+        uint256_t hashGenesis;       // Phase 2: Tritium genesis hash (authentication)
         std::string strUserName;     // Phase 2: Username for trust-based addressing
         std::vector<uint8_t> vAuthNonce;  // Challenge nonce for authentication
         std::vector<uint8_t> vMinerPubKey; // Miner's Falcon public key
         uint64_t nSessionStart;      // Timestamp when session was established
         uint64_t nSessionTimeout;    // Session timeout in seconds (default 300s)
         uint32_t nKeepaliveCount;    // Number of keepalives received
+        
+        /* Reward address binding (set via MINER_SET_REWARD) */
+        uint256_t hashRewardAddress; // Reward payout address (separate from auth genesis)
+        bool fRewardBound;           // Whether reward address has been set
 
         /** Default Constructor **/
         MiningContext();
@@ -163,6 +167,15 @@ namespace LLP
          *
          **/
         MiningContext WithKeepaliveCount(uint32_t nKeepaliveCount_) const;
+
+        /** WithRewardAddress
+         *
+         *  Returns a new context with updated reward address and bound flag.
+         *
+         *  @param[in] hashReward_ The reward address to set
+         *
+         **/
+        MiningContext WithRewardAddress(const uint256_t& hashReward_) const;
 
         /** GetPayoutAddress
          *
