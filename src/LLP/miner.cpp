@@ -604,29 +604,35 @@ namespace LLP
                     /* AAD for Falcon pubkey encryption */
                     std::vector<uint8_t> vAAD{'F','A','L','C','O','N','_','P','U','B','K','E','Y'};
                     
-                    /* ═══════════════════════════════════════════════════════════════════════════
+                    /* ═════════════════════════════════════════════════════════════════════
                      * CHACHA20 DECRYPTION DIAGNOSTIC (Node Side)
                      * This diagnostic block helps debug key derivation mismatches between
                      * NexusMiner and LLL-TAO node. Compare these values with miner-side logs.
-                     * ═══════════════════════════════════════════════════════════════════════════ */
+                     * ═════════════════════════════════════════════════════════════════════ */
                     debug::log(0, FUNCTION, "");
                     debug::log(0, FUNCTION, "╔═══════════════════════════════════════════════════════════╗");
-                    debug::log(0, FUNCTION, "║  ChaCha20 DECRYPTION DIAGNOSTIC (Node Side)              ║");
+                    debug::log(0, FUNCTION, "║  ChaCha20 DECRYPTION DIAGNOSTIC (Node Side)               ║");
                     debug::log(0, FUNCTION, "╠═══════════════════════════════════════════════════════════╣");
                     debug::log(0, FUNCTION, "║ Genesis (uint256_t): ", hashGenesis.ToString());
                     debug::log(0, FUNCTION, "║ Genesis (GetHex):    ", hashGenesis.GetHex());
                     debug::log(0, FUNCTION, "║ Genesis (bytes hex): ", HexStr(hashGenesis.GetBytes()));
                     debug::log(0, FUNCTION, "║ ");
-                    debug::log(0, FUNCTION, "║ Domain: nexus-mining-chacha20-v1");
-                    debug::log(0, FUNCTION, "║ Key derivation: SHA256(domain || genesis_bytes)");
+                    debug::log(0, FUNCTION, "║ Key Derivation Formula:");
+                    debug::log(0, FUNCTION, "║   key = SHA256(domain || genesis_bytes)");
+                    debug::log(0, FUNCTION, "║   domain = \"nexus-mining-chacha20-v1\" (ASCII)");
+                    debug::log(0, FUNCTION, "║   genesis_bytes = hashGenesis.GetBytes() (32 bytes)");
                     debug::log(0, FUNCTION, "║ ");
                     debug::log(0, FUNCTION, "║ Derived Key (32 bytes): ", HexStr(vChaChaKey));
+                    debug::log(0, FUNCTION, "║ ");
+                    debug::log(0, FUNCTION, "║ To debug mismatch:");
+                    debug::log(0, FUNCTION, "║   1. Check miner's tritium_genesis matches Genesis (GetHex)");
+                    debug::log(0, FUNCTION, "║   2. Compare miner's 'Derived Key' with node's above");
+                    debug::log(0, FUNCTION, "║   3. If different, check byte order of genesis in miner.conf");
                     debug::log(0, FUNCTION, "║ ");
                     debug::log(0, FUNCTION, "║ Wrapped Pubkey Components:");
                     debug::log(0, FUNCTION, "║   Nonce (12 bytes):    ", HexStr(vNonce));
                     debug::log(0, FUNCTION, "║   Ciphertext (bytes):  ", vCiphertext.size());
                     debug::log(0, FUNCTION, "║   Tag (16 bytes):      ", HexStr(vTag));
-                    debug::log(0, FUNCTION, "║   AAD (hex):           ", HexStr(vAAD));
                     debug::log(0, FUNCTION, "║   AAD (ASCII):         FALCON_PUBKEY");
                     debug::log(0, FUNCTION, "╚═══════════════════════════════════════════════════════════╝");
                     
@@ -637,14 +643,20 @@ namespace LLP
                         debug::error(FUNCTION, "╔═══════════════════════════════════════════════════════════╗");
                         debug::error(FUNCTION, "║  ChaCha20 DECRYPTION FAILED                               ║");
                         debug::error(FUNCTION, "╠═══════════════════════════════════════════════════════════╣");
-                        debug::error(FUNCTION, "║ Possible causes:");
-                        debug::error(FUNCTION, "║  1. Genesis bytes mismatch (check GetBytes() order)");
-                        debug::error(FUNCTION, "║  2. AAD mismatch (check exact string: FALCON_PUBKEY)");
-                        debug::error(FUNCTION, "║  3. Nonce extraction error (check packet parsing)");
-                        debug::error(FUNCTION, "║  4. Tag mismatch (authentication failure)");
+                        debug::error(FUNCTION, "║ The authentication tag did not match, indicating:");
+                        debug::error(FUNCTION, "║   - Miner derived a different ChaCha20 session key");
+                        debug::error(FUNCTION, "║   - OR the ciphertext/nonce was corrupted in transit");
                         debug::error(FUNCTION, "║ ");
-                        debug::error(FUNCTION, "║ This proves miner does NOT possess the correct genesis");
-                        debug::error(FUNCTION, "║ Compare node logs with NexusMiner logs byte-by-byte");
+                        debug::error(FUNCTION, "║ Most likely cause: Genesis byte order mismatch");
+                        debug::error(FUNCTION, "║ ");
+                        debug::error(FUNCTION, "║ SOLUTION:");
+                        debug::error(FUNCTION, "║   1. In miner.conf, set tritium_genesis to exactly:");
+                        debug::error(FUNCTION, "║      ", hashGenesis.GetHex());
+                        debug::error(FUNCTION, "║   2. Restart the miner and try again");
+                        debug::error(FUNCTION, "║   3. Compare 'Derived Key' logs from both sides");
+                        debug::error(FUNCTION, "║ ");
+                        debug::error(FUNCTION, "║ Alternative: Disable ChaCha20 for localhost mining:");
+                        debug::error(FUNCTION, "║   Set enable_chacha20_wrapping = false in miner.conf");
                         debug::error(FUNCTION, "╚═══════════════════════════════════════════════════════════╝");
                         debug::error(FUNCTION, "");
                         
