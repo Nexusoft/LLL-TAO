@@ -180,9 +180,10 @@ namespace LLP
         /** GetPayoutAddress
          *
          *  Get the payout address for rewards.
-         *  Returns genesis hash if set, otherwise derives from username.
+         *  Returns reward address if bound via MINER_SET_REWARD, otherwise genesis hash.
+         *  Falls back to 0 if username-based addressing needs resolution.
          *
-         *  @return Genesis hash or derived address
+         *  @return Reward address, genesis hash, or 0 for username resolution
          *
          **/
         uint256_t GetPayoutAddress() const;

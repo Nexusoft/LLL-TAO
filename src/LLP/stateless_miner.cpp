@@ -1300,8 +1300,8 @@ namespace LLP
 
         debug::log(0, FUNCTION, "✓ Reward address bound: ", hashReward.ToString());
         debug::log(0, FUNCTION, "Session updated:");
-        debug::log(0, FUNCTION, "  Auth genesis: ", context.hashGenesis.SubString());
-        debug::log(0, FUNCTION, "  Reward address: ", hashReward.ToString());
+        debug::log(0, FUNCTION, "  Auth genesis: ", newContext.hashGenesis.SubString());
+        debug::log(0, FUNCTION, "  Reward address: ", newContext.hashRewardAddress.ToString());
         debug::log(0, FUNCTION, "  ChaCha20: ready");
 
         /* Build success response (encrypted) */
