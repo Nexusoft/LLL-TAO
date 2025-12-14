@@ -68,11 +68,7 @@ namespace TAO::API
         LLP::StatelessMinerManager& manager = LLP::StatelessMinerManager::Get();
         jsonRet["active_miners"] = static_cast<int32_t>(manager.GetMinerCount());
         jsonRet["authenticated_miners"] = static_cast<int32_t>(manager.GetAuthenticatedCount());
-        jsonRet["dynamic_reward_miners"] = static_cast<int32_t>(manager.GetDynamicRewardCount());
-        jsonRet["static_reward_miners"] = static_cast<int32_t>(manager.GetStaticRewardCount());
-        
-        /* Dynamic reward routing is always enabled for authenticated miners */
-        jsonRet["dynamic_rewards_enabled"] = true;
+        jsonRet["miners_with_reward_bound"] = static_cast<int32_t>(manager.GetRewardBoundCount());
 
         /* If mining server exists and is running, get additional info */
         if(LLP::MINING_SERVER && fMiningEnabled)

@@ -206,31 +206,14 @@ namespace LLP
 
     uint256_t MiningContext::GetPayoutAddress() const
     {
-        /* Return reward address if explicitly bound via MINER_SET_REWARD */
-        if(fRewardBound && hashRewardAddress != 0)
-            return hashRewardAddress;
-        
-        /* Fallback to genesis if set */
-        if(hashGenesis != 0)
-            return hashGenesis;
-
-        /* Username-based addressing (trust userName:default system)
-         * The caller is responsible for resolving the username to a genesis hash
-         * using TAO::API::Names. This method returns 0 to indicate that
-         * resolution is needed.
-         *
-         * Usage pattern:
-         * 1. Check if hashGenesis is set directly
-         * 2. If not, check strUserName and resolve via Names API
-         * 3. Use Names::ResolveAddress(strUserName + ":default") to get genesis
-         */
-        if(!strUserName.empty())
+        /* For stateless mining, reward address MUST be explicitly bound via MINER_SET_REWARD */
+        if(!fRewardBound || hashRewardAddress == 0)
         {
-            debug::log(3, FUNCTION, "Username '", strUserName,
-                       "' set - caller should resolve via Names API");
+            debug::error(FUNCTION, "GetPayoutAddress called but reward address not bound!");
+            return uint256_t(0);  // Return 0 to indicate error
         }
-
-        return uint256_t(0);
+        
+        return hashRewardAddress;
     }
 
     bool MiningContext::HasValidPayout() const

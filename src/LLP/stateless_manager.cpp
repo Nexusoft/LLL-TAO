@@ -636,33 +636,16 @@ namespace LLP
     }
 
 
-    /* Get count of miners using dynamic reward routing */
-    size_t StatelessMinerManager::GetDynamicRewardCount() const
+    /* Get count of miners with reward address bound */
+    size_t StatelessMinerManager::GetRewardBoundCount() const
     {
         size_t nCount = 0;
         auto vMiners = mapMiners.GetAll();
 
         for(const auto& ctx : vMiners)
         {
-            /* Dynamic routing: authenticated with non-zero genesis */
-            if(ctx.fAuthenticated && ctx.hashGenesis != 0)
-                ++nCount;
-        }
-
-        return nCount;
-    }
-
-
-    /* Get count of miners using static reward routing */
-    size_t StatelessMinerManager::GetStaticRewardCount() const
-    {
-        size_t nCount = 0;
-        auto vMiners = mapMiners.GetAll();
-
-        for(const auto& ctx : vMiners)
-        {
-            /* Static routing: unauthenticated OR zero genesis */
-            if(!ctx.fAuthenticated || ctx.hashGenesis == 0)
+            /* Count miners with reward address explicitly bound */
+            if(ctx.fRewardBound && ctx.hashRewardAddress != 0)
                 ++nCount;
         }
 
@@ -710,58 +693,6 @@ namespace LLP
         return LLP::GenesisConstants::VALID;
     }
 
-
-    /* Validate genesis (caching removed - obsolete with Direct Reward Address system) */
-    bool StatelessMinerManager::ValidateAndCacheGenesis(
-        const uint256_t& hashGenesis,
-        TAO::Register::Address& hashDefault)
-    {
-        /* Check if already cached */
-        auto optCached = mapGenesisToDefault.Get(hashGenesis);
-        if(optCached.has_value())
-        {
-            hashDefault = optCached.value();
-            debug::log(2, FUNCTION, "Using cached account ", hashDefault.SubString(),
-                      " for genesis ", hashGenesis.SubString());
-            return true;
-        }
-
-        /* Validate genesis */
-        LLP::GenesisConstants::ValidationResult result = 
-            LLP::GenesisConstants::ValidateGenesis(hashGenesis);
-        
-        if(result != LLP::GenesisConstants::VALID)
-        {
-            debug::log(0, FUNCTION, "Genesis validation failed: ",
-                      LLP::GenesisConstants::GetValidationResultString(result));
-            return false;
-        }
-
-        /* Note: Account resolution has been removed. With the new Direct Reward Address system,
-         * miners provide reward addresses directly via MINER_SET_REWARD (encrypted with ChaCha20).
-         * This function is kept for backwards compatibility but no longer resolves accounts. */
-        hashDefault = uint256_t(0);
-
-        debug::log(0, FUNCTION, "Genesis validated: ", hashGenesis.SubString(),
-                  " (reward address will be set via MINER_SET_REWARD)");
-
-        return true;
-    }
-
-
-    /* Get cached default account for a genesis hash */
-    TAO::Register::Address StatelessMinerManager::GetCachedDefaultAccount(
-        const uint256_t& hashGenesis) const
-    {
-        /* Look up cached default account */
-        auto optDefault = mapGenesisToDefault.Get(hashGenesis);
-        
-        if(optDefault.has_value())
-            return optDefault.value();
-        
-        /* Return zero address if not cached */
-        return TAO::Register::Address(0);
-    }
 
 
 } // namespace LLP

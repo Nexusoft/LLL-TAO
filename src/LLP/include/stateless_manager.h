@@ -400,25 +400,15 @@ namespace LLP
          **/
         uint256_t GetRewardAddress(const std::string& strAddress) const;
 
-        /** GetDynamicRewardCount
+        /** GetRewardBoundCount
          *
-         *  Get the number of miners using dynamic reward routing.
-         *  (Authenticated miners with non-zero genesis)
+         *  Get the number of miners with reward address explicitly bound.
+         *  (Miners who have sent MINER_SET_REWARD)
          *
-         *  @return Number of miners with dynamic rewards
-         *
-         **/
-        size_t GetDynamicRewardCount() const;
-
-        /** GetStaticRewardCount
-         *
-         *  Get the number of miners using static reward routing.
-         *  (Unauthenticated or authenticated with zero genesis)
-         *
-         *  @return Number of miners with static rewards
+         *  @return Number of miners with reward address bound
          *
          **/
-        size_t GetStaticRewardCount() const;
+        size_t GetRewardBoundCount() const;
 
         /** ValidateMinerGenesis
          *
@@ -434,31 +424,7 @@ namespace LLP
         uint8_t ValidateMinerGenesis(const std::string& strAddress,
                                      TAO::Register::Address& hashDefault) const;
 
-        /** ValidateAndCacheGenesis
-         *
-         *  Validate genesis and cache the genesis->default account mapping.
-         *  Called when a miner authenticates with a valid genesis.
-         *
-         *  @param[in] hashGenesis Genesis hash to validate and cache
-         *  @param[out] hashDefault Resolved default account address
-         *
-         *  @return true if genesis is valid and cached
-         *
-         **/
-        bool ValidateAndCacheGenesis(const uint256_t& hashGenesis,
-                                     TAO::Register::Address& hashDefault);
 
-        /** GetCachedDefaultAccount
-         *
-         *  Get cached default account for a genesis hash.
-         *  Returns 0 if genesis is not cached.
-         *
-         *  @param[in] hashGenesis Genesis hash to lookup
-         *
-         *  @return Default account address, or 0 if not cached
-         *
-         **/
-        TAO::Register::Address GetCachedDefaultAccount(const uint256_t& hashGenesis) const;
 
     private:
         /** Private constructor for singleton **/
@@ -475,9 +441,6 @@ namespace LLP
 
         /** Index by genesis hash for GenesisHash reward mapping **/
         util::ConcurrentHashMap<uint256_t, std::string> mapGenesisToAddress;
-
-        /** Cache of genesis hash to default account address for auto-credit **/
-        util::ConcurrentHashMap<uint256_t, TAO::Register::Address> mapGenesisToDefault;
 
         /** Atomic counter for total miners (lock-free stats) **/
         mutable std::atomic<size_t> nTotalMiners{0};
