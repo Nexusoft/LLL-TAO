@@ -157,6 +157,31 @@ ChaCha20 Key Derivation Details:
   Derived key:      3f7a2b1c...
 ```
 
+## ChaCha20 Key Derivation Troubleshooting
+
+### Key Derivation Formula
+Both miner and node must derive the same ChaCha20 session key:
+```
+key = SHA256("nexus-mining-chacha20-v1" || genesis_bytes)
+```
+
+Where `genesis_bytes` is the 32-byte representation of the Tritium GenesisHash.
+
+### Common Issues
+
+1. **Genesis Byte Order Mismatch**
+   - The miner's `tritium_genesis` must match the node's `hashGenesis.GetHex()` output
+   - Check node logs for "Genesis (GetHex):" and copy that exact value
+
+2. **Comparing Keys**
+   - Node logs: "Derived Key (32 bytes): <hex>"
+   - Miner logs: "Derived Key (hex): <hex>"
+   - These MUST match for authentication to succeed
+
+3. **Localhost Workaround**
+   - For localhost mining (127.0.0.1), ChaCha20 is optional
+   - Set `enable_chacha20_wrapping = false` in miner.conf
+
 ## Testing
 
 ### Test: Simplified Reward Address Validation
