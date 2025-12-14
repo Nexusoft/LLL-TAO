@@ -403,16 +403,16 @@ namespace LLP
         preimage.insert(preimage.end(), DOMAIN.begin(), DOMAIN.end());
         
         /* FIX 1: Use GetHex() to get consistent big-endian representation
-         * This avoids the GetBytes() little-endian issue entirely */
+         * This avoids the GetBytes() little-endian issue entirely.
+         * ParseHex() converts hex string to bytes with proper error handling. */
         std::string genesis_hex = hashGenesis.GetHex();
+        std::vector<uint8_t> genesis_bytes = ParseHex(genesis_hex);
         
-        /* Convert hex string to bytes (always big-endian) */
-        std::vector<uint8_t> genesis_bytes;
-        for(size_t i = 0; i < genesis_hex.length(); i += 2)
+        /* Validate the parsed bytes - should always be 32 bytes for uint256_t */
+        if(genesis_bytes.size() != 32)
         {
-            std::string byte_string = genesis_hex.substr(i, 2);
-            uint8_t byte = static_cast<uint8_t>(std::strtoul(byte_string.c_str(), nullptr, 16));
-            genesis_bytes.push_back(byte);
+            debug::error(FUNCTION, "CRITICAL: Invalid genesis hex conversion, got ", genesis_bytes.size(), " bytes");
+            return std::vector<uint8_t>(32, 0);  // Return zeros on error
         }
         
         preimage.insert(preimage.end(), genesis_bytes.begin(), genesis_bytes.end());
