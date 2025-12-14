@@ -41,7 +41,7 @@ namespace LLP
         
         debug::log(0, FUNCTION, "Mining server enabled");
         debug::log(0, FUNCTION, "Authentication: MINER-DRIVEN (Falcon keys from NexusMiner)");
-        debug::log(0, FUNCTION, "Reward Routing: AUTO-CREDIT to Username:default");
+        debug::log(0, FUNCTION, "Reward Routing: STATELESS (via MINER_SET_REWARD)");
         
         if(!config::HasArg("-llpallowip"))
         {

@@ -30,6 +30,8 @@ ________________________________________________________________________________
 #include <Util/include/config.h>
 #include <Util/include/hex.h>
 
+#include <openssl/sha.h>  // For SHA256() function - must match NexusMiner's implementation
+
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
@@ -374,38 +376,63 @@ namespace LLP
     }
 
 
-    /* Derive ChaCha20 session key from genesis hash.
+    /* DeriveChaCha20SessionKey - Deterministic key derivation from genesis hash
+     * 
+     * Uses OpenSSL SHA256 directly to match NexusMiner implementation.
      * 
      * Key derivation formula: SHA256(domain || genesis_bytes)
      * Where:
      *   domain = "nexus-mining-chacha20-v1" (ASCII bytes)
-     *   genesis_bytes = hashGenesis.GetBytes() (32 bytes, network byte order)
+     *   genesis_bytes = big-endian bytes from GetHex() conversion
      *
-     * This function includes diagnostic logging at verbosity level 2 for debugging
-     * key mismatch issues between NexusMiner and LLL-TAO node.
+     * IMPORTANT: This function must produce identical output to NexusMiner's
+     * DeriveChaCha20SessionKey() for authentication to succeed.
+     *
+     * FIX 1: Use GetHex() to get consistent big-endian representation
+     *        This avoids the GetBytes() little-endian issue entirely
+     *
+     * FIX 2: Use OpenSSL SHA256 directly (same as NexusMiner)
+     *        This ensures identical output on both sides
      */
     std::vector<uint8_t> StatelessMiner::DeriveChaCha20SessionKey(const uint256_t& hashGenesis)
     {
-        /* Domain separation for security */
         static const std::string DOMAIN = "nexus-mining-chacha20-v1";
         
+        /* Build preimage: domain || genesis_bytes */
         std::vector<uint8_t> preimage;
         preimage.insert(preimage.end(), DOMAIN.begin(), DOMAIN.end());
         
-        std::vector<uint8_t> genesis_bytes = hashGenesis.GetBytes();
+        /* FIX 1: Use GetHex() to get consistent big-endian representation
+         * This avoids the GetBytes() little-endian issue entirely.
+         * ParseHex() converts hex string to bytes with proper error handling. */
+        std::string genesis_hex = hashGenesis.GetHex();
+        std::vector<uint8_t> genesis_bytes = ParseHex(genesis_hex);
+        
+        /* Validate the parsed bytes - should always be 32 bytes for uint256_t */
+        if(genesis_bytes.size() != 32)
+        {
+            debug::error(FUNCTION, "CRITICAL: Invalid genesis hex conversion, got ", genesis_bytes.size(), " bytes");
+            return std::vector<uint8_t>(32, 0);  // Return zeros on error
+        }
+        
         preimage.insert(preimage.end(), genesis_bytes.begin(), genesis_bytes.end());
         
-        /* SHA-256 → 32-byte key */
-        uint256_t hashKey = LLC::SK256(preimage);
-        std::vector<uint8_t> vKey = hashKey.GetBytes();
+        /* FIX 2: Use OpenSSL SHA256 directly (same as NexusMiner)
+         * This ensures identical output on both sides */
+        std::vector<uint8_t> vKey(32);  // SHA256 always outputs 32 bytes
+        unsigned char* result = SHA256(preimage.data(), preimage.size(), vKey.data());
         
-        /* DIAGNOSTIC LOGGING - helps debug key mismatch between miner and node */
-        debug::log(2, FUNCTION, "ChaCha20 Key Derivation Details:");
-        debug::log(2, FUNCTION, "  Genesis (input):  ", hashGenesis.ToString());
-        debug::log(2, FUNCTION, "  Genesis (bytes):  ", HexStr(genesis_bytes));
-        debug::log(2, FUNCTION, "  Domain:           ", DOMAIN);
-        debug::log(2, FUNCTION, "  Preimage (hex):   ", HexStr(preimage));
-        debug::log(2, FUNCTION, "  Derived key:      ", HexStr(vKey));
+        if(!result)
+        {
+            debug::error(FUNCTION, "CRITICAL: OpenSSL SHA256 internal error");
+            return std::vector<uint8_t>(32, 0);  // Return zeros on error
+        }
+        
+        /* Diagnostic logging (can be reduced to debug level after verification) */
+        debug::log(2, FUNCTION, "ChaCha20 key derivation:");
+        debug::log(2, FUNCTION, "  Domain:   ", DOMAIN);
+        debug::log(2, FUNCTION, "  Genesis:  ", genesis_hex);
+        debug::log(2, FUNCTION, "  Key (hex): ", HexStr(vKey));
         
         return vKey;
     }
