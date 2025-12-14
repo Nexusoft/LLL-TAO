@@ -367,6 +367,22 @@ namespace LLP
             const Packet& packet
         );
 
+        /** ProcessSetReward
+         *
+         *  Process MINER_SET_REWARD packet to bind reward address.
+         *  Validates and stores the encrypted reward address for this mining session.
+         *
+         *  @param[in] context Current miner state
+         *  @param[in] packet Set reward packet with encrypted address
+         *
+         *  @return ProcessResult with updated context or error
+         *
+         **/
+        static ProcessResult ProcessSetReward(
+            const MiningContext& context,
+            const Packet& packet
+        );
+
     private:
         /** DeriveChaCha20SessionKey
          *
@@ -392,6 +408,49 @@ namespace LLP
          *
          **/
         static std::vector<uint8_t> BuildAuthMessage(const MiningContext& context);
+
+        /** DecryptRewardPayload
+         *
+         *  Decrypts reward address payload using ChaCha20-Poly1305.
+         *
+         *  @param[in] vEncrypted The encrypted payload (nonce + ciphertext + tag)
+         *  @param[in] vKey The ChaCha20 session key
+         *  @param[out] vPlaintext The decrypted data
+         *
+         *  @return True if decryption succeeded
+         *
+         **/
+        static bool DecryptRewardPayload(
+            const std::vector<uint8_t>& vEncrypted,
+            const std::vector<uint8_t>& vKey,
+            std::vector<uint8_t>& vPlaintext
+        );
+
+        /** EncryptRewardResult
+         *
+         *  Encrypts reward result response using ChaCha20-Poly1305.
+         *
+         *  @param[in] vPlaintext The data to encrypt
+         *  @param[in] vKey The ChaCha20 session key
+         *
+         *  @return Encrypted payload (nonce + ciphertext + tag)
+         *
+         **/
+        static std::vector<uint8_t> EncryptRewardResult(
+            const std::vector<uint8_t>& vPlaintext,
+            const std::vector<uint8_t>& vKey
+        );
+
+        /** ValidateRewardAddress
+         *
+         *  Validates that a reward address is non-zero and properly formatted.
+         *
+         *  @param[in] hashReward The reward address to validate
+         *
+         *  @return True if valid format
+         *
+         **/
+        static bool ValidateRewardAddress(const uint256_t& hashReward);
     };
 
 } // namespace LLP
