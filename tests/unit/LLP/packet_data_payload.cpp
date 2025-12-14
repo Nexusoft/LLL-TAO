@@ -14,19 +14,20 @@ ________________________________________________________________________________
 #include <unit/catch2/catch.hpp>
 
 #include <LLP/packets/packet.h>
+#include <LLP/types/miner.h>  /* For MINER_SET_REWARD and MINER_REWARD_RESULT constants */
 
-/* Test Packet::HasDataPayload() for reward address binding packets
+/** Test Packet::HasDataPayload() for reward address binding packets
  * 
  * This test verifies that MINER_SET_REWARD (213) and MINER_REWARD_RESULT (214)
  * are correctly identified as packets requiring data payloads.
- */
+ **/
 
 TEST_CASE("Packet::HasDataPayload() for reward binding packets", "[packet][reward]")
 {
     SECTION("MINER_SET_REWARD (213) requires data payload")
     {
         LLP::Packet packet;
-        packet.HEADER = 213;  // MINER_SET_REWARD
+        packet.HEADER = 213;  // LLP::Miner::MINER_SET_REWARD
         packet.LENGTH = 65;   // Typical encrypted payload size
         
         REQUIRE(packet.HasDataPayload() == true);
@@ -35,7 +36,7 @@ TEST_CASE("Packet::HasDataPayload() for reward binding packets", "[packet][rewar
     SECTION("MINER_REWARD_RESULT (214) requires data payload")
     {
         LLP::Packet packet;
-        packet.HEADER = 214;  // MINER_REWARD_RESULT
+        packet.HEADER = 214;  // LLP::Miner::MINER_REWARD_RESULT
         packet.LENGTH = 50;   // Typical encrypted response size
         
         REQUIRE(packet.HasDataPayload() == true);
@@ -78,7 +79,7 @@ TEST_CASE("Packet::Header() validation for reward binding packets", "[packet][re
     SECTION("MINER_SET_REWARD with LENGTH > 0 is valid header")
     {
         LLP::Packet packet;
-        packet.HEADER = 213;  // MINER_SET_REWARD
+        packet.HEADER = 213;  // LLP::Miner::MINER_SET_REWARD
         packet.LENGTH = 65;
         
         REQUIRE(packet.Header() == true);
@@ -87,7 +88,7 @@ TEST_CASE("Packet::Header() validation for reward binding packets", "[packet][re
     SECTION("MINER_REWARD_RESULT with LENGTH > 0 is valid header")
     {
         LLP::Packet packet;
-        packet.HEADER = 214;  // MINER_REWARD_RESULT
+        packet.HEADER = 214;  // LLP::Miner::MINER_REWARD_RESULT
         packet.LENGTH = 50;
         
         REQUIRE(packet.Header() == true);
@@ -96,7 +97,7 @@ TEST_CASE("Packet::Header() validation for reward binding packets", "[packet][re
     SECTION("MINER_SET_REWARD with LENGTH = 0 is INVALID header")
     {
         LLP::Packet packet;
-        packet.HEADER = 213;  // MINER_SET_REWARD
+        packet.HEADER = 213;  // LLP::Miner::MINER_SET_REWARD
         packet.LENGTH = 0;    // Invalid - should have data
         
         REQUIRE(packet.Header() == false);
