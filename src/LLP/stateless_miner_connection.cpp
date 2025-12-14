@@ -294,8 +294,22 @@ namespace LLP
                 /* Check authentication */
                 if(!context.fAuthenticated)
                 {
-                    debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK before authentication");
-                    return debug::error(FUNCTION, "Not authenticated");
+                    debug::error(FUNCTION, "SUBMIT_BLOCK rejected - authentication required");
+                    Packet response(BLOCK_REJECTED);
+                    respond(response);
+                    return true;
+                }
+                
+                /* Check reward address is bound */
+                if(!context.fRewardBound || context.hashRewardAddress == 0)
+                {
+                    debug::error(FUNCTION, "SUBMIT_BLOCK rejected - send MINER_SET_REWARD first");
+                    debug::error(FUNCTION, "  Required flow: Auth → MINER_SET_REWARD → SET_CHANNEL → GET_BLOCK → SUBMIT_BLOCK");
+                    
+                    /* Send error response */
+                    Packet response(BLOCK_REJECTED);
+                    respond(response);
+                    return true;
                 }
 
                 /* Check channel is set */
@@ -307,7 +321,8 @@ namespace LLP
 
                 debug::log(2, FUNCTION, "SUBMIT_BLOCK from ", GetAddress().ToStringIP(),
                            " channel=", context.nChannel, " sessionId=", context.nSessionId,
-                           " size=", PACKET.DATA.size());
+                           " size=", PACKET.DATA.size(),
+                           " rewardAddress=", context.hashRewardAddress.ToString().substr(0, 16), "...");
 
                 /* Validate packet size using FalconConstants */
                 /* Minimum: merkle(64) + nonce(8) = 72 bytes (legacy format) */
