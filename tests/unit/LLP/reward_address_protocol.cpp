@@ -14,10 +14,10 @@ ________________________________________________________________________________
 #include <unit/catch2/catch.hpp>
 
 #include <LLC/types/uint1024.h>
-#include <vector>
 #include <cstdint>
 #include <cstring>
 #include <string>
+#include <vector>
 
 /* Test MINER_SET_REWARD and MINER_REWARD_RESULT packet formats
  * 
