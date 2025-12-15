@@ -1238,9 +1238,9 @@ namespace LLP
         }
 
         /* Extract the reward address (32 bytes) */
-        if(vDecrypted.size() < 32)
+        if(vDecrypted.size() != 32)
         {
-            debug::error(FUNCTION, "Invalid reward address payload size: ", vDecrypted.size());
+            debug::error(FUNCTION, "Invalid reward address payload size: ", vDecrypted.size(), " (expected 32)");
             
             std::vector<uint8_t> vErrorMsg = {0x00};
             std::vector<uint8_t> vEncryptedError = EncryptRewardResult(vErrorMsg, vChaChaKey);
@@ -1253,10 +1253,12 @@ namespace LLP
             return ProcessResult::Success(context, errorResponse);
         }
 
-        /* Extract the reward address (32 bytes) using SetBytes for safety */
+        /* Parse the 32-byte reward address from decrypted payload.
+         * NOTE: vDecrypted contains raw 32-byte hash in natural order.
+         * Do NOT use SetBytes() as it reverses byte order for uint256_t internal format.
+         * Use memcpy to preserve exact byte order sent by NexusMiner. */
         uint256_t hashReward;
-        std::vector<uint8_t> vRewardBytes(vDecrypted.begin(), vDecrypted.begin() + 32);
-        hashReward.SetBytes(vRewardBytes);
+        std::memcpy(hashReward.begin(), vDecrypted.data(), 32);
 
         debug::log(0, FUNCTION, "Received reward address: ", hashReward.ToString());
 
