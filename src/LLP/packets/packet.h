@@ -159,11 +159,13 @@ namespace LLP
          *  Determines if this packet type requires a data payload.
          *  Traditional packets use HEADER < 128 for data packets and HEADER >= 128
          *  for request/command packets. However, the Falcon authentication protocol
-         *  (headers 207-212) and reward address binding packets (213-214) require
-         *  data payloads for authentication handshake and encrypted communication.
+         *  (headers 207-212), reward address binding packets (213-214), and the
+         *  channel acknowledgment packet (206) require data payloads.
          *
          *  Packet ranges requiring data:
          *  - 0-127: Traditional data packets (BLOCK_DATA, SUBMIT_BLOCK, etc.)
+         *  - 206: Channel acknowledgment
+         *    - CHANNEL_ACK (206): channel number (1 byte)
          *  - 207-212: Falcon authentication and session packets
          *    - MINER_AUTH_INIT (207): pubkey + miner_id
          *    - MINER_AUTH_CHALLENGE (208): random nonce
@@ -187,9 +189,16 @@ namespace LLP
             /* Boundary constants for reward address binding packets */
             static const uint8_t REWARD_BINDING_FIRST = 213;  // MINER_SET_REWARD
             static const uint8_t REWARD_BINDING_LAST = 214;   // MINER_REWARD_RESULT
+            
+            /* Channel acknowledgment packet */
+            static const uint8_t CHANNEL_ACK = 206;
 
             /* Traditional data packets */
             if(HEADER < 128)
+                return true;
+
+            /* Channel acknowledgment requires data (channel number) */
+            if(HEADER == CHANNEL_ACK)
                 return true;
 
             /* Falcon authentication packets require data */
