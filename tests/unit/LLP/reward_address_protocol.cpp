@@ -16,6 +16,8 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 #include <vector>
 #include <cstdint>
+#include <cstring>
+#include <string>
 
 /* Test MINER_SET_REWARD and MINER_REWARD_RESULT packet formats
  * 
@@ -41,6 +43,49 @@ TEST_CASE("MINER_SET_REWARD Packet Structure Tests", "[miner][reward][protocol]"
         std::copy(vPayload.begin(), vPayload.begin() + 32, hashReconstructed.begin());
         
         REQUIRE(hashReconstructed == hashReward);
+    }
+    
+    SECTION("Byte order preservation with memcpy - matching NexusMiner protocol")
+    {
+        /* Test the exact scenario from the bug report:
+         * NexusMiner sends 32-byte hash in natural order,
+         * Node must preserve exact byte order (not reverse it) */
+        
+        /* Simulate the hash that NexusMiner sent (from problem statement) */
+        const char* hex_sent = "30727fb2d271c6ecdb64f65ba1eec88a9ce9355ff9104995c6849f59d68ebff2";
+        
+        /* Create raw byte vector as NexusMiner would send it */
+        std::vector<uint8_t> vDecrypted;
+        for(size_t i = 0; i < 64; i += 2)
+        {
+            std::string byteString = std::string(hex_sent + i, 2);
+            uint8_t byte = static_cast<uint8_t>(std::strtoul(byteString.c_str(), nullptr, 16));
+            vDecrypted.push_back(byte);
+        }
+        
+        REQUIRE(vDecrypted.size() == 32);
+        
+        /* Use memcpy to preserve byte order (as fixed in ProcessSetReward) */
+        uint256_t hashReward;
+        std::memcpy((void*)hashReward.begin(), vDecrypted.data(), 32);
+        
+        /* Convert back to hex string */
+        std::string hex_stored = hashReward.ToString();
+        
+        /* Verify the stored hash matches what was sent (no byte reversal) */
+        REQUIRE(hex_stored == hex_sent);
+        
+        /* Also verify the WRONG way (SetBytes) would have reversed it */
+        uint256_t hashWrongWay;
+        hashWrongWay.SetBytes(vDecrypted);
+        std::string hex_wrong = hashWrongWay.ToString();
+        
+        /* This should be different (reversed) */
+        REQUIRE(hex_wrong != hex_sent);
+        
+        /* Verify it's the reversed version (from problem statement) */
+        const char* hex_reversed = "d68ebff2c68d9f5ff910498a9ce9355fa1eec88adb64f65bd271c6ec30727fb2";
+        REQUIRE(hex_wrong == hex_reversed);
     }
     
     SECTION("Invalid payload - too small")
