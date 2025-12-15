@@ -67,7 +67,7 @@ TEST_CASE("MINER_SET_REWARD Packet Structure Tests", "[miner][reward][protocol]"
         
         /* Use memcpy to preserve byte order (as fixed in ProcessSetReward) */
         uint256_t hashReward;
-        std::memcpy((void*)hashReward.begin(), vDecrypted.data(), 32);
+        std::memcpy(hashReward.begin(), vDecrypted.data(), 32);
         
         /* Convert back to hex string */
         std::string hex_stored = hashReward.ToString();
@@ -83,8 +83,8 @@ TEST_CASE("MINER_SET_REWARD Packet Structure Tests", "[miner][reward][protocol]"
         /* This should be different (reversed) */
         REQUIRE(hex_wrong != hex_sent);
         
-        /* Verify it's the reversed version (from problem statement) */
-        const char* hex_reversed = "d68ebff2c68d9f5ff910498a9ce9355fa1eec88adb64f65bd271c6ec30727fb2";
+        /* Verify it's the reversed version (corrected from problem statement typo) */
+        const char* hex_reversed = "d68ebff2c6849f59f91049959ce9355fa1eec88adb64f65bd271c6ec30727fb2";
         REQUIRE(hex_wrong == hex_reversed);
     }
     

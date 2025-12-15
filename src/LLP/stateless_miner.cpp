@@ -1258,7 +1258,7 @@ namespace LLP
          * Do NOT use SetBytes() as it reverses byte order for uint256_t internal format.
          * Use memcpy to preserve exact byte order sent by NexusMiner. */
         uint256_t hashReward;
-        std::memcpy((void*)hashReward.begin(), vDecrypted.data(), 32);
+        std::memcpy(hashReward.begin(), vDecrypted.data(), 32);
 
         debug::log(0, FUNCTION, "Received reward address: ", hashReward.ToString());
 
