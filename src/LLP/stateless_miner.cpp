@@ -1281,11 +1281,15 @@ namespace LLP
         /* Bind reward address to context using dedicated field */
         MiningContext newContext = context.WithRewardAddress(hashReward);
 
+        /* Update the context in StatelessMinerManager to persist the change */
+        StatelessMinerManager::Get().UpdateMiner(context.strAddress, newContext);
+
+        /* Log successful binding */
         debug::log(0, FUNCTION, "✓ Reward address bound: ", hashReward.ToString());
-        debug::log(0, FUNCTION, "Session updated:");
-        debug::log(0, FUNCTION, "  Auth genesis: ", newContext.hashGenesis.SubString());
-        debug::log(0, FUNCTION, "  Reward address: ", newContext.hashRewardAddress.ToString());
-        debug::log(0, FUNCTION, "  ChaCha20: ready");
+        debug::log(1, FUNCTION, "Session updated:");
+        debug::log(1, FUNCTION, "  Auth genesis: ", context.hashGenesis.SubString());
+        debug::log(1, FUNCTION, "  Reward address: ", hashReward.ToString());
+        debug::log(2, FUNCTION, "  ChaCha20: ready");
 
         /* Build success response (encrypted) */
         std::vector<uint8_t> vSuccessMsg = {0x01};  // Success status
