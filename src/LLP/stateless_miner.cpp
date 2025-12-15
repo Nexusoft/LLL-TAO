@@ -1038,9 +1038,10 @@ namespace LLP
             .WithChannel(nChannel)
             .WithTimestamp(runtime::unifiedtimestamp());
 
-        /* Build acknowledgment response */
+        /* Build acknowledgment response with channel number */
         Packet response(CHANNEL_ACK);
         response.DATA.push_back(static_cast<uint8_t>(nChannel));
+        response.LENGTH = 1;
 
         debug::log(2, FUNCTION, "Channel set to ", nChannel);
 

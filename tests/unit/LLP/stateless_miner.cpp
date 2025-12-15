@@ -261,6 +261,43 @@ TEST_CASE("StatelessMiner SET_CHANNEL Processing", "[stateless_miner]")
         REQUIRE(result.fSuccess == false);
         REQUIRE(result.strError.find("Invalid") != std::string::npos);
     }
+    
+    SECTION("CHANNEL_ACK response has correct payload")
+    {
+        MiningContext ctx;
+        
+        Packet packet(SET_CHANNEL);
+        packet.DATA.push_back(0x02);  // Set channel 2
+        
+        ProcessResult result = StatelessMiner::ProcessPacket(ctx, packet);
+        
+        REQUIRE(result.fSuccess == true);
+        REQUIRE(!result.response.IsNull());
+        
+        /* Verify response header is CHANNEL_ACK (206) */
+        REQUIRE(result.response.HEADER == 206);
+        
+        /* Verify response contains channel number in payload */
+        REQUIRE(result.response.LENGTH == 1);
+        REQUIRE(result.response.DATA.size() == 1);
+        REQUIRE(result.response.DATA[0] == 0x02);
+        
+        /* Verify CHANNEL_ACK is recognized as having data payload */
+        REQUIRE(result.response.HasDataPayload() == true);
+        
+        /* Verify serialization includes LENGTH and DATA */
+        std::vector<uint8_t> bytes = result.response.GetBytes();
+        /* Expected format: HEADER(1) + LENGTH(4) + DATA(1) = 6 bytes */
+        REQUIRE(bytes.size() == 6);
+        REQUIRE(bytes[0] == 206);  // CHANNEL_ACK header
+        /* LENGTH = 1 in big-endian: 0x00 0x00 0x00 0x01 */
+        REQUIRE(bytes[1] == 0x00);
+        REQUIRE(bytes[2] == 0x00);
+        REQUIRE(bytes[3] == 0x00);
+        REQUIRE(bytes[4] == 0x01);
+        /* DATA = channel number */
+        REQUIRE(bytes[5] == 0x02);
+    }
 }
 
 

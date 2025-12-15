@@ -42,6 +42,15 @@ TEST_CASE("Packet::HasDataPayload() for reward binding packets", "[packet][rewar
         REQUIRE(packet.HasDataPayload() == true);
     }
     
+    SECTION("CHANNEL_ACK (206) requires data payload")
+    {
+        LLP::Packet packet;
+        packet.HEADER = 206;  // LLP::Miner::CHANNEL_ACK
+        packet.LENGTH = 1;    // Channel number (1 byte)
+        
+        REQUIRE(packet.HasDataPayload() == true);
+    }
+    
     SECTION("Traditional data packets (< 128) require data payload")
     {
         LLP::Packet packet;
