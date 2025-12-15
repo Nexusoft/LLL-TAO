@@ -215,8 +215,23 @@ namespace LLP
                 /* Check authentication */
                 if(!context.fAuthenticated)
                 {
-                    debug::log(0, FUNCTION, "MinerLLP: GET_BLOCK before authentication");
-                    return debug::error(FUNCTION, "Not authenticated");
+                    debug::error(FUNCTION, "GET_BLOCK rejected - authentication required");
+                    Packet response(MINER_AUTH_RESULT);
+                    response.DATA.push_back(0x00);  // Failure
+                    respond(response);
+                    return true;
+                }
+                
+                /* Check reward address is bound */
+                if(!context.fRewardBound || context.hashRewardAddress == 0)
+                {
+                    debug::error(FUNCTION, "GET_BLOCK rejected - send MINER_SET_REWARD first");
+                    debug::error(FUNCTION, "  Required flow: Auth → MINER_SET_REWARD → SET_CHANNEL → GET_BLOCK");
+                    
+                    /* Send error response */
+                    Packet response(BLOCK_REJECTED);
+                    respond(response);
+                    return true;
                 }
 
                 /* Check channel is set */
@@ -227,7 +242,8 @@ namespace LLP
                 }
 
                 debug::log(2, FUNCTION, "GET_BLOCK request from ", GetAddress().ToStringIP(),
-                           " channel=", context.nChannel, " sessionId=", context.nSessionId);
+                           " channel=", context.nChannel, " sessionId=", context.nSessionId,
+                           " rewardAddress=", context.hashRewardAddress.ToString().substr(0, 16), "...");
 
                 TAO::Ledger::Block *pBlock = nullptr;
                 std::vector<uint8_t> vData;
@@ -278,8 +294,22 @@ namespace LLP
                 /* Check authentication */
                 if(!context.fAuthenticated)
                 {
-                    debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK before authentication");
-                    return debug::error(FUNCTION, "Not authenticated");
+                    debug::error(FUNCTION, "SUBMIT_BLOCK rejected - authentication required");
+                    Packet response(BLOCK_REJECTED);
+                    respond(response);
+                    return true;
+                }
+                
+                /* Check reward address is bound */
+                if(!context.fRewardBound || context.hashRewardAddress == 0)
+                {
+                    debug::error(FUNCTION, "SUBMIT_BLOCK rejected - send MINER_SET_REWARD first");
+                    debug::error(FUNCTION, "  Required flow: Auth → MINER_SET_REWARD → SET_CHANNEL → GET_BLOCK → SUBMIT_BLOCK");
+                    
+                    /* Send error response */
+                    Packet response(BLOCK_REJECTED);
+                    respond(response);
+                    return true;
                 }
 
                 /* Check channel is set */
@@ -291,7 +321,8 @@ namespace LLP
 
                 debug::log(2, FUNCTION, "SUBMIT_BLOCK from ", GetAddress().ToStringIP(),
                            " channel=", context.nChannel, " sessionId=", context.nSessionId,
-                           " size=", PACKET.DATA.size());
+                           " size=", PACKET.DATA.size(),
+                           " rewardAddress=", context.hashRewardAddress.ToString().substr(0, 16), "...");
 
                 /* Validate packet size using FalconConstants */
                 /* Minimum: merkle(64) + nonce(8) = 72 bytes (legacy format) */
@@ -547,22 +578,24 @@ namespace LLP
         /* Get channel from context */
         uint32_t nChannel = context.nChannel;
 
-        /* Get payout address from context (reward address if bound, otherwise genesis) */
-        const uint256_t hashDynamicGenesis = context.GetPayoutAddress();
+        /* Get payout address - MUST be bound via MINER_SET_REWARD */
+        const uint256_t hashRewardAddress = context.GetPayoutAddress();
 
-        /* Log reward routing mode */
-        if(hashDynamicGenesis != 0)
+        /* Verify reward address is set */
+        if(hashRewardAddress == 0)
         {
-            if(context.fRewardBound)
-                debug::log(1, FUNCTION, "Creating block with REWARD ADDRESS routing to ", hashDynamicGenesis.SubString());
-            else
-                debug::log(1, FUNCTION, "Creating block with DYNAMIC reward routing to ", hashDynamicGenesis.SubString());
+            debug::error(FUNCTION, "Cannot create block - reward address not bound");
+            debug::error(FUNCTION, "  Required: Send MINER_SET_REWARD before GET_BLOCK");
+            return nullptr;
         }
-        else
-            debug::log(3, FUNCTION, "Creating block with STATIC reward routing (legacy mode)");
+
+        /* Log reward routing (always explicit address now) */
+        debug::log(1, FUNCTION, "Creating block with REWARD ADDRESS: ", hashRewardAddress.ToString().substr(0, 16), "...");
+        debug::log(2, FUNCTION, "  Auth genesis: ", context.hashGenesis.SubString());
+        debug::log(2, FUNCTION, "  Reward address: ", hashRewardAddress.ToString());
 
         /* Create a new block and loop for prime channel if minimum bit target length isn't met */
-        while(TAO::Ledger::CreateBlock(pCredentials, strPIN, nChannel, *pBlock, ++nBlockIterator, nullptr, hashDynamicGenesis))
+        while(TAO::Ledger::CreateBlock(pCredentials, strPIN, nChannel, *pBlock, ++nBlockIterator, nullptr, hashRewardAddress))
         {
             /* Break out of loop when block is ready for prime mod. */
             if(is_prime_mod(nBitMask, pBlock))

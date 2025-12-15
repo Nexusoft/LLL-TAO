@@ -33,9 +33,9 @@ namespace {
 }
 
 
-TEST_CASE("Dynamic Reward Routing Tests", "[reward_routing]")
+TEST_CASE("Reward Address Binding Tests", "[reward_routing]")
 {
-    SECTION("MiningContext stores genesis hash for reward routing")
+    SECTION("MiningContext stores genesis hash for authentication")
     {
         /* Create a test genesis hash */
         uint256_t testGenesis = GetTestGenesis();
@@ -49,44 +49,46 @@ TEST_CASE("Dynamic Reward Routing Tests", "[reward_routing]")
         REQUIRE(ctx.fAuthenticated == true);
     }
     
-    SECTION("GetPayoutAddress returns genesis when set")
+    SECTION("GetPayoutAddress returns reward address when bound")
     {
-        /* Create a test genesis hash */
-        uint256_t testGenesis = GetTestGenesis();
+        /* Create a test reward address */
+        uint256_t testReward = GetTestGenesis();
         
-        /* Create context with genesis */
-        MiningContext ctx = MiningContext().WithGenesis(testGenesis);
+        /* Create context with bound reward address */
+        MiningContext ctx = MiningContext().WithRewardAddress(testReward);
         
-        /* GetPayoutAddress should return the genesis hash */
-        REQUIRE(ctx.GetPayoutAddress() == testGenesis);
+        /* GetPayoutAddress should return the bound reward address */
+        REQUIRE(ctx.GetPayoutAddress() == testReward);
+        REQUIRE(ctx.fRewardBound == true);
     }
     
-    SECTION("GetPayoutAddress returns zero for unauthenticated context")
+    SECTION("GetPayoutAddress returns zero when reward address not bound")
     {
-        /* Create context without genesis */
+        /* Create context without reward binding */
         MiningContext ctx;
         
         /* GetPayoutAddress should return zero */
         REQUIRE(ctx.GetPayoutAddress() == uint256_t(0));
+        REQUIRE(ctx.fRewardBound == false);
     }
     
-    SECTION("HasValidPayout returns true when genesis is set")
+    SECTION("Genesis is separate from reward address")
     {
-        /* Create a test genesis hash */
+        /* Create test hashes */
         uint256_t testGenesis = GetTestGenesis();
+        uint256_t testReward;
+        testReward.SetHex("b174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd133");
         
-        /* Create context with genesis */
-        MiningContext ctx = MiningContext().WithGenesis(testGenesis);
+        /* Create context with both genesis and reward address */
+        MiningContext ctx = MiningContext()
+            .WithGenesis(testGenesis)
+            .WithRewardAddress(testReward)
+            .WithAuth(true);
         
-        REQUIRE(ctx.HasValidPayout() == true);
-    }
-    
-    SECTION("HasValidPayout returns false when genesis is zero")
-    {
-        /* Create context without genesis */
-        MiningContext ctx;
-        
-        REQUIRE(ctx.HasValidPayout() == false);
+        /* Genesis is used for authentication, reward address for payout */
+        REQUIRE(ctx.hashGenesis == testGenesis);
+        REQUIRE(ctx.hashRewardAddress == testReward);
+        REQUIRE(ctx.GetPayoutAddress() == testReward);
     }
     
     SECTION("StatelessMinerManager tracks genesis correctly")
@@ -118,9 +120,9 @@ TEST_CASE("Dynamic Reward Routing Tests", "[reward_routing]")
 }
 
 
-TEST_CASE("Reward Routing Mode Tests", "[reward_routing]")
+TEST_CASE("Stateless Mining Enforcement Tests", "[reward_routing]")
 {
-    SECTION("Authenticated miner with genesis uses dynamic mode")
+    SECTION("Authenticated miner must bind reward address")
     {
         uint256_t testGenesis = GetTestGenesis();
         
@@ -128,31 +130,55 @@ TEST_CASE("Reward Routing Mode Tests", "[reward_routing]")
             .WithGenesis(testGenesis)
             .WithAuth(true);
         
-        /* Dynamic mode when both authenticated and genesis set */
+        /* Authenticated but reward address not bound yet */
         REQUIRE(ctx.fAuthenticated == true);
         REQUIRE(ctx.hashGenesis != uint256_t(0));
-        REQUIRE(ctx.HasValidPayout() == true);
+        REQUIRE(ctx.fRewardBound == false);
+        REQUIRE(ctx.GetPayoutAddress() == uint256_t(0));
     }
     
-    SECTION("Unauthenticated miner falls back to static mode")
+    SECTION("Reward address binding is required for mining")
     {
-        MiningContext ctx = MiningContext()
-            .WithAuth(false);
+        uint256_t testGenesis = GetTestGenesis();
+        uint256_t testReward = GetTestGenesis();
         
-        /* Static mode when not authenticated */
-        REQUIRE(ctx.fAuthenticated == false);
-        REQUIRE(ctx.hashGenesis == uint256_t(0));
-    }
-    
-    SECTION("Authenticated miner with zero genesis falls back to static mode")
-    {
         MiningContext ctx = MiningContext()
+            .WithGenesis(testGenesis)
             .WithAuth(true)
-            .WithGenesis(uint256_t(0));
+            .WithRewardAddress(testReward);
         
-        /* Static mode when genesis is zero even if authenticated */
+        /* Only after binding reward address can mining proceed */
         REQUIRE(ctx.fAuthenticated == true);
-        REQUIRE(ctx.hashGenesis == uint256_t(0));
-        REQUIRE(ctx.HasValidPayout() == false);
+        REQUIRE(ctx.fRewardBound == true);
+        REQUIRE(ctx.GetPayoutAddress() == testReward);
+    }
+    
+    SECTION("GetRewardBoundCount tracks bound miners")
+    {
+        StatelessMinerManager& manager = StatelessMinerManager::Get();
+        
+        /* Create two test contexts */
+        uint256_t testReward;
+        testReward.SetHex("a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122");
+        
+        MiningContext ctx1 = MiningContext()
+            .WithAuth(true)
+            .WithRewardAddress(testReward);
+        ctx1.strAddress = "192.168.1.100:54321";
+        
+        MiningContext ctx2 = MiningContext()
+            .WithAuth(true);  // Authenticated but no reward address
+        ctx2.strAddress = "192.168.1.101:54321";
+        
+        /* Add both miners */
+        manager.UpdateMiner(ctx1.strAddress, ctx1);
+        manager.UpdateMiner(ctx2.strAddress, ctx2);
+        
+        /* Only one has reward bound */
+        REQUIRE(manager.GetRewardBoundCount() >= 1);
+        
+        /* Cleanup */
+        manager.RemoveMiner(ctx1.strAddress);
+        manager.RemoveMiner(ctx2.strAddress);
     }
 }
