@@ -486,11 +486,12 @@ namespace LLP
                         fEncryptionReady = true;
                     }
 
-                    /* Update the context with the ChaCha20 key if it was just derived
-                     * CRITICAL: The context returned from StatelessMiner doesn't include
-                     * the ChaCha20 key because it's derived here in Miner::ProcessPacket().
-                     * We must create an updated context with the ChaCha20 key before sending
-                     * to StatelessMinerManager so the manager has the complete encryption state. */
+                    /* Update the context with the ChaCha20 key before sending to manager.
+                     * CRITICAL: The context returned from StatelessMiner may not include
+                     * the ChaCha20 key in all cases:
+                     * 1. If it was just derived above, result.context won't have it
+                     * 2. If encryption was already ready, result.context should have it from line 452
+                     * We always add/update it here to ensure StatelessMinerManager has complete state. */
                     MiningContext updatedContext = result.context;
                     if(fEncryptionReady && !vChaChaKey.empty())
                     {
