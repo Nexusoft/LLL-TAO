@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 #include <LLC/include/flkey.h>
 #include <LLC/include/encrypt.h>
+#include <LLC/include/chacha20_helpers.h>
 #include <LLC/hash/SK.h>
 
 #include <Util/include/debug.h>
@@ -1115,30 +1116,8 @@ namespace LLP
         std::vector<uint8_t>& vPlaintext
     )
     {
-        /* Validate minimum size: nonce(12) + tag(16) = 28 bytes */
-        if(vEncrypted.size() < 28)
-        {
-            debug::error(FUNCTION, "Encrypted payload too small: ", vEncrypted.size());
-            return false;
-        }
-
-        /* Extract nonce (12 bytes) */
-        std::vector<uint8_t> vNonce(vEncrypted.begin(), vEncrypted.begin() + 12);
-
-        /* Extract tag (last 16 bytes) */
-        std::vector<uint8_t> vTag(vEncrypted.end() - 16, vEncrypted.end());
-
-        /* Extract ciphertext (middle portion) */
-        std::vector<uint8_t> vCiphertext(vEncrypted.begin() + 12, vEncrypted.end() - 16);
-
-        /* Decrypt using AAD for domain separation */
-        if(!LLC::DecryptChaCha20Poly1305(vCiphertext, vTag, vKey, vNonce, vPlaintext, AAD_REWARD_ADDRESS))
-        {
-            debug::error(FUNCTION, "Failed to decrypt payload");
-            return false;
-        }
-
-        return true;
+        /* Use LLC helper with domain-specific AAD for AEAD authentication */
+        return LLC::DecryptPayloadChaCha20(vEncrypted, vKey, vPlaintext, AAD_REWARD_ADDRESS);
     }
 
 
@@ -1148,34 +1127,8 @@ namespace LLP
         const std::vector<uint8_t>& vKey
     )
     {
-        /* Generate cryptographically secure random 12-byte nonce */
-        std::vector<uint8_t> vNonce(12);
-        
-        /* Use secure random generator - get 96 bits (12 bytes) from two uint64_t values */
-        uint64_t nRand1 = LLC::GetRand();
-        uint64_t nRand2 = LLC::GetRand();
-        
-        std::memcpy(&vNonce[0], &nRand1, 8);
-        std::memcpy(&vNonce[8], &nRand2, 4);
-
-        /* Encrypt using ChaCha20-Poly1305 */
-        std::vector<uint8_t> vCiphertext;
-        std::vector<uint8_t> vTag;
-
-        /* Encrypt using AAD for domain separation */
-        if(!LLC::EncryptChaCha20Poly1305(vPlaintext, vKey, vNonce, vCiphertext, vTag, AAD_REWARD_RESULT))
-        {
-            debug::error(FUNCTION, "Failed to encrypt payload");
-            return std::vector<uint8_t>();
-        }
-
-        /* Build response: nonce(12) + ciphertext + tag(16) */
-        std::vector<uint8_t> vEncrypted;
-        vEncrypted.insert(vEncrypted.end(), vNonce.begin(), vNonce.end());
-        vEncrypted.insert(vEncrypted.end(), vCiphertext.begin(), vCiphertext.end());
-        vEncrypted.insert(vEncrypted.end(), vTag.begin(), vTag.end());
-
-        return vEncrypted;
+        /* Use LLC helper with domain-specific AAD for AEAD authentication */
+        return LLC::EncryptPayloadChaCha20(vPlaintext, vKey, AAD_REWARD_RESULT);
     }
 
 
