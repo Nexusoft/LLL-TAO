@@ -347,65 +347,6 @@ namespace LLP
          **/
         bool is_prime_mod(uint32_t nBitMask, TAO::Ledger::Block *pBlock);
 
-
-        /** EncryptPayload
-         *
-         *  Encrypts a payload using ChaCha20-Poly1305 AEAD cipher.
-         *
-         *  @param[in] vPlaintext The data to encrypt
-         *
-         *  @return Encrypted payload (nonce + ciphertext + tag)
-         *
-         **/
-        std::vector<uint8_t> EncryptPayload(const std::vector<uint8_t>& vPlaintext);
-
-
-        /** DecryptPayload
-         *
-         *  Decrypts a payload using ChaCha20-Poly1305 AEAD cipher.
-         *
-         *  @param[in] vEncrypted The encrypted data (nonce + ciphertext + tag)
-         *  @param[out] vPlaintext The decrypted data
-         *
-         *  @return True if decryption succeeded
-         *
-         **/
-        bool DecryptPayload(const std::vector<uint8_t>& vEncrypted, std::vector<uint8_t>& vPlaintext);
-
-
-        /** ValidateRewardAddress
-         *
-         *  Validates that a reward address exists on chain and is a valid NXS account.
-         *
-         *  @param[in] hashReward The reward address to validate
-         *
-         *  @return True if valid NXS account address
-         *
-         **/
-        bool ValidateRewardAddress(const uint256_t& hashReward);
-
-
-        /** SendRewardResult
-         *
-         *  Sends encrypted MINER_REWARD_RESULT packet to miner.
-         *
-         *  @param[in] fSuccess Whether reward address was successfully bound
-         *  @param[in] strMessage Error message (only sent on failure)
-         *
-         **/
-        void SendRewardResult(bool fSuccess, const std::string& strMessage);
-
-
-        /** ProcessSetReward
-         *
-         *  Processes MINER_SET_REWARD packet from miner.
-         *  Validates and binds the reward address for this mining session.
-         *
-         *  @param[in] vPayload The encrypted payload containing reward address
-         *
-         **/
-        void ProcessSetReward(const std::vector<uint8_t>& vPayload);
-
     };
 }
 

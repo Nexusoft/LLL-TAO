@@ -274,9 +274,9 @@ namespace LLP
                 CONFIG.ENABLE_METERS   = false;
                 CONFIG.ENABLE_DDOS     = config::GetBoolArg(std::string("-miningddos"), false);
                 CONFIG.ENABLE_MANAGER  = false;
-                CONFIG.ENABLE_SSL      = false;
+                CONFIG.ENABLE_SSL      = config::GetBoolArg(std::string("-miningssl"), false);
                 CONFIG.ENABLE_REMOTE   = true;
-                CONFIG.REQUIRE_SSL     = false;
+                CONFIG.REQUIRE_SSL     = config::GetBoolArg(std::string("-miningsslrequired"), false);
                 CONFIG.PORT_SSL        = 0;
                 CONFIG.MAX_INCOMING    = 128;
                 CONFIG.MAX_CONNECTIONS = 128;
