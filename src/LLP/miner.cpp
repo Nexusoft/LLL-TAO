@@ -428,7 +428,7 @@ namespace LLP
                     1,                             // Protocol version
                     fMinerAuthenticated,           // Authentication state
                     nSessionId,                    // Session ID
-                    uint256_t(0),                  // hashKeyID (derived in StatelessMiner)
+                    uint256_t(0),                  // hashKeyID (set to 0, will be derived in StatelessMiner from pubkey)
                     hashGenesis                    // Genesis hash
                 );
 
@@ -471,7 +471,10 @@ namespace LLP
                         fRewardBound = true;
                     }
 
-                    /* Derive ChaCha20 key if genesis is set and encryption not ready */
+                    /* Derive ChaCha20 key from genesis if not already established.
+                     * NOTE: This duplicates the key derivation logic for connection-level state.
+                     * StatelessMiner also derives this key on-demand for packet processing.
+                     * TODO: Consider extracting to shared helper method (e.g., DeriveChaCha20SessionKey) */
                     if(hashGenesis != 0 && !fEncryptionReady)
                     {
                         static const std::string DOMAIN = "nexus-mining-chacha20-v1";
@@ -509,7 +512,7 @@ namespace LLP
                 }
             }
 
-            /* All other packets are handled by ProcessPacketStateless (block-related operations) */
+            /* All other packets (block operations, PING, etc.) handled by ProcessPacketStateless */
             return ProcessPacketStateless(PACKET);
         }
         catch(const std::exception& e)
@@ -565,9 +568,9 @@ namespace LLP
         /* Evaluate the packet header to determine what to do. */
         switch(PACKET.HEADER)
         {
-            /* NOTE: Authentication packets (MINER_AUTH_INIT, MINER_AUTH_RESPONSE, SET_CHANNEL,
-             * SESSION_START, SESSION_KEEPALIVE, MINER_SET_REWARD) are now routed to StatelessMiner
-             * in ProcessPacket() above. They will never reach this switch statement. */
+            /* NOTE: Authentication and session management packets are routed to StatelessMiner
+             * in ProcessPacket() above via the MINER_AUTH_*, SESSION_*, SET_CHANNEL, and 
+             * MINER_SET_REWARD checks. They will never reach this switch statement. */
 
             /* Return a Ping if Requested. */
             case PING:
