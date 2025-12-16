@@ -50,6 +50,8 @@ TEST_CASE("MiningContext Immutability Tests", "[stateless_miner]")
         REQUIRE(ctx.strUserName == "");
         REQUIRE(ctx.vAuthNonce.empty());
         REQUIRE(ctx.vMinerPubKey.empty());
+        REQUIRE(ctx.vChaChaKey.empty());
+        REQUIRE(ctx.fEncryptionReady == false);
     }
     
     SECTION("WithChannel creates new context with updated channel")
@@ -112,6 +114,28 @@ TEST_CASE("MiningContext Immutability Tests", "[stateless_miner]")
         
         REQUIRE(ctx.vAuthNonce == testNonce);
         REQUIRE(ctx.vMinerPubKey == testPubKey);
+    }
+
+    SECTION("WithChaChaKey updates encryption state")
+    {
+        std::vector<uint8_t> testKey(32, 0x42);  // 32-byte ChaCha20 key
+        
+        MiningContext ctx = MiningContext()
+            .WithChaChaKey(testKey);
+        
+        REQUIRE(ctx.vChaChaKey == testKey);
+        REQUIRE(ctx.fEncryptionReady == true);
+    }
+
+    SECTION("WithChaChaKey with empty key sets fEncryptionReady to false")
+    {
+        std::vector<uint8_t> emptyKey;
+        
+        MiningContext ctx = MiningContext()
+            .WithChaChaKey(emptyKey);
+        
+        REQUIRE(ctx.vChaChaKey.empty());
+        REQUIRE(ctx.fEncryptionReady == false);
     }
 
     SECTION("WithUserName updates username field")
