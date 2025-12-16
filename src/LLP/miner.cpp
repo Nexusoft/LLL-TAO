@@ -87,7 +87,6 @@ namespace LLP
     , fEncryptionReady(false)
     , hashRewardAddress(0)
     , fRewardBound(false)
-    , fStatelessMinerSession(false)
     {
     }
 
@@ -111,7 +110,6 @@ namespace LLP
     , fEncryptionReady(false)
     , hashRewardAddress(0)
     , fRewardBound(false)
-    , fStatelessMinerSession(false)
     {
     }
 
@@ -135,7 +133,6 @@ namespace LLP
     , fEncryptionReady(false)
     , hashRewardAddress(0)
     , fRewardBound(false)
-    , fStatelessMinerSession(false)
     {
     }
 
@@ -309,25 +306,14 @@ namespace LLP
                 }
                 catch(const TAO::API::Exception& e)
                 {
-                    /* Allow localhost connections to proceed even without an API session */
-                    if(GetAddress().ToStringIP() == "127.0.0.1")
-                    {
-                        /* Mark this as a stateless miner session for localhost */
-                        fStatelessMinerSession.store(true);
-                        
-                        /* Log once at connection time with clear message */
-                        debug::log(0, FUNCTION, "MinerLLP: Using stateless Miner session for localhost connection from ", 
-                                   GetAddress().ToStringIP(), ":", GetAddress().GetPort(), 
-                                   ". TAO API session not required.");
-                        
-                        /* Do not disconnect - allow localhost to continue */
-                    }
-                    else
-                    {
-                        /* Non-localhost connections require valid API session */
-                        debug::warning(FUNCTION, "Miner Connection Failed: ", e.what(), " from ", GetAddress().ToStringIP(), ":", GetAddress().GetPort());
-                        this->Disconnect();
-                    }
+                    /* All connections now use stateless protocol (no TAO API session required) */
+                    /* This is the new standard for all mining connections */
+                    
+                    /* Log connection established message */
+                    debug::log(0, FUNCTION, "MinerLLP: Stateless miner connection from ", 
+                               GetAddress().ToStringIP(), ":", GetAddress().GetPort());
+                    debug::log(0, FUNCTION, "  Mode: Stateless (Falcon-based authentication)");
+                    debug::log(0, FUNCTION, "  Remote mining: ENABLED");
                 }
 
                 return;
@@ -421,18 +407,9 @@ namespace LLP
                        " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec,
                        " length=", PACKET.LENGTH);
 
-            /* Top of function marker for diagnostics */
-            debug::log(1, FUNCTION, "MinerLLP: !!! TOP OF FUNCTION after ENTRY for ", GetAddress().ToStringIP());
-
-            /* Route to appropriate handler based on stateless flag and localhost IP */
-            if(GetAddress().ToStringIP() == "127.0.0.1" && fStatelessMinerSession.load())
-            {
-                return ProcessPacketStateless(PACKET);
-            }
-            else
-            {
-                return ProcessPacketStateful(PACKET);
-            }
+            /* All mining connections now use stateless protocol */
+            /* Legacy API-based stateful mining has been removed */
+            return ProcessPacketStateless(PACKET);
         }
         catch(const std::exception& e)
         {
@@ -1354,484 +1331,6 @@ namespace LLP
     }
 
 
-    /* Handles packets from stateful miners with TAO API session. */
-    bool Miner::ProcessPacketStateful(const Packet& PACKET)
-    {
-        /* Make sure the mining server has a connection. (skip check if running local testnet) */
-        bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
-
-        /* Total number of peer connections */
-        uint16_t nConnections = (TRITIUM_SERVER ? TRITIUM_SERVER->GetConnectionCount() : 0);
-
-        if(!fLocalTestnet && nConnections == 0)
-        {
-            debug::log(0, FUNCTION, "MinerLLP: EARLY_EXIT reason=NO_NETWORK fLocalTestnet=", fLocalTestnet, 
-                       " nConnections=", nConnections, " from ", GetAddress().ToStringIP());
-            return debug::error(FUNCTION, "No network connections.");
-        }
-
-        /* Special rule for testnet so we don't bloat the chain. */
-        if(config::fTestNet.load() && TAO::Ledger::mempool.Size() == 0)
-        {
-            /* Log early exit for testnet empty mempool rule */
-            debug::log(0, FUNCTION, "MinerLLP: EARLY_EXIT reason=TESTNET_EMPTY_MEMPOOL from ", GetAddress().ToStringIP());
-            
-            /* Handle if on verbose=3. */
-            if(config::nVerbose.load() >= 3)
-                return debug::error(FUNCTION, "Cannot mine with no pending transactions for -testnet");
-
-            return false;
-        }
-
-        /* No mining when synchronizing. */
-        if(TAO::Ledger::ChainState::Synchronizing())
-        {
-            debug::log(0, FUNCTION, "MinerLLP: EARLY_EXIT reason=SYNCHRONIZING from ", GetAddress().ToStringIP());
-            return debug::error(FUNCTION, "Cannot mine while ledger is synchronizing.");
-        }
-
-        /* No mining when wallet is locked */
-        if(is_locked())
-        {
-            debug::log(0, FUNCTION, "MinerLLP: EARLY_EXIT reason=WALLET_LOCKED from ", GetAddress().ToStringIP());
-            return debug::error(FUNCTION, "Cannot mine while wallet is locked.");
-        }
-
-        /* Obtain timelock and timestamp. */
-        uint64_t nTimeLock = TAO::Ledger::CurrentBlockTimelock();
-        uint64_t nTimeStamp = runtime::unifiedtimestamp();
-
-        /* Print a message explaining how many minutes until timelock activation. */
-        if(nTimeStamp < nTimeLock)
-        {
-            uint64_t nSeconds =  nTimeLock - nTimeStamp;
-
-            if(nSeconds % 60 == 0)
-                debug::log(0, FUNCTION, "Timelock ", TAO::Ledger::CurrentBlockVersion(), " activation in ", nSeconds / 60, " minutes. ");
-        }
-
-        /* Log that we've reached the switch statement (passed all early exit checks) */
-        debug::log(0, FUNCTION, "MinerLLP: >>> REACHED_SWITCH with header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec,
-                   " length=", PACKET.LENGTH, " from ", GetAddress().ToStringIP());
-
-        /* Evaluate the packet header to determine what to do. */
-        switch(PACKET.HEADER)
-        {
-            /* Set the Mining Channel this Connection will Serve Blocks for. */
-            case SET_CHANNEL:
-            {
-                /* Log when SET_CHANNEL case is hit for debugging */
-                debug::log(0, FUNCTION, "*** SET_CHANNEL CASE HIT *** from ", GetAddress().ToStringIP(),
-                           " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec,
-                           " length=", PACKET.LENGTH, " DATA.size()=", PACKET.DATA.size());
-
-                /* Parse channel in a backward-compatible way */
-                uint32_t nChannelValue = 0;
-                if(PACKET.DATA.size() == 1)
-                {
-                    /* Single-byte payload - interpret as channel value directly */
-                    nChannelValue = static_cast<uint32_t>(PACKET.DATA[0]);
-                    debug::log(2, FUNCTION, "SET_CHANNEL: parsed single-byte channel value = ", nChannelValue);
-                }
-                else if(PACKET.DATA.size() >= 4)
-                {
-                    /* 4-byte or larger payload - decode using existing method */
-                    nChannelValue = convert::bytes2uint(PACKET.DATA);
-                    debug::log(2, FUNCTION, "SET_CHANNEL: parsed multi-byte channel value = ", nChannelValue);
-                }
-                else
-                {
-                    /* Unexpected payload size */
-                    return debug::error(FUNCTION, "SET_CHANNEL: unexpected payload size ", PACKET.DATA.size(), 
-                                      " from ", GetAddress().ToStringIP());
-                }
-
-                /* Store the parsed channel */
-                nChannel = nChannelValue;
-
-                switch (nChannel.load())
-                {
-                    case 1:
-                    debug::log(0, FUNCTION, "Prime Channel Set for ", GetAddress().ToStringIP());
-                    break;
-
-                    case 2:
-                    debug::log(0, FUNCTION, "Hash Channel Set for ", GetAddress().ToStringIP());
-                    break;
-
-                    /* Don't allow Mining LLP Requests for Proof of Stake, or any other Channel. */
-                    default:
-                    return debug::error(FUNCTION, "Invalid PoW Channel (", nChannel.load(), ") from ", GetAddress().ToStringIP());
-                }
-                
-                /* Add distinctive marker for easy grep in logs */
-                debug::log(0, FUNCTION, "MinerLLP: ### CHANNEL_SET_MARKER from ", GetAddress().ToStringIP(),
-                           " channel=", nChannel.load());
-                
-                /* Send explicit ACK to client after successfully setting channel. */
-                respond(CHANNEL_ACK);
-                debug::log(2, FUNCTION, "Sent CHANNEL_ACK to ", GetAddress().ToStringIP());
-
-                return true;
-            }
-
-
-            /* Return a Ping if Requested. */
-            case PING:
-            {
-                debug::log(3, FUNCTION, "PING received from ", GetAddress().ToStringIP());
-                respond(PING);
-                return true;
-            }
-
-
-            /* Setup a coinbase reward for potentially many outputs. */
-            case SET_COINBASE:
-            {
-                /* The maximum coinbase reward for a block. */
-                uint64_t nMaxValue = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::tStateBest.load(), nChannel.load(), 0);
-
-                /* Make sure there is a coinbase reward. */
-                if(nMaxValue == 0)
-                {
-                    respond(COINBASE_FAIL);
-                    return debug::error(FUNCTION, "Invalid coinbase reward.");
-                }
-
-                /* Byte 0 is the number of records. */
-                uint8_t nSize = PACKET.DATA[0];
-
-                /* Bytes 1 - 8 is the Wallet Operator Fee for that Round. */
-                uint64_t nWalletFee  = convert::bytes2uint64(PACKET.DATA, 1);
-
-                /* Iterator offset for map deserialization. */
-                uint32_t nIterator = 9;
-
-                /* The map of outputs for this coinbase transaction. */
-                std::map<std::string, uint64_t> vOutputs;
-
-                /* Loop through every Record. */
-                for(uint8_t nIndex = 0; nIndex < nSize; ++nIndex)
-                {
-                    /* Get the string length. */
-                    uint32_t nLength = PACKET.DATA[nIterator];
-
-                    /* Get the string address for coinbase output. */
-                    std::vector<uint8_t> vAddress = std::vector<uint8_t>(
-                                             PACKET.DATA.begin() + nIterator + 1,
-                                             PACKET.DATA.begin() + nIterator + 1 + nLength);
-
-                    /* Get the value for the coinbase output. */
-                    uint64_t nValue = convert::bytes2uint64(
-                        std::vector<uint8_t>(PACKET.DATA.begin() + nIterator + 1 + nLength,
-                                             PACKET.DATA.begin() + nIterator + 1 + nLength + 8));
-
-                    /* Check value for coinbase output. */
-                    if(nValue == 0 || nValue > nMaxValue)
-                    {
-                        respond(COINBASE_FAIL);
-                        return debug::error(FUNCTION, "Invalid coinbase recipient reward.");
-                    }
-
-                    /* Get the string address. */
-                    std::string strAddress = convert::bytes2string(vAddress);
-
-                    /* Validate the address. Disconnect immediately if an invalid address is provided. */
-                    uint256_t hashGenesis(strAddress);
-                    if(!LLD::Ledger->HasFirst(hashGenesis))
-                    {
-                        respond(COINBASE_FAIL);
-                        return debug::error(FUNCTION, "Invalid Tritium Address in Coinbase Tx: ", strAddress);
-                    }
-
-                    /* Add the transaction as an output. */
-                    vOutputs[strAddress] = nValue;
-
-                    /* Increment the iterator. */
-                    nIterator += (nLength + 9);
-                }
-
-                /* Lock the coinbase transaction object. */
-                LOCK(MUTEX);
-
-                /* Update the coinbase transaction. */
-                tCoinbaseTx = Legacy::Coinbase(vOutputs, nMaxValue, nWalletFee);
-
-                /* Check the consistency of the coibase transaction. */
-                if(!tCoinbaseTx.IsValid())
-                {
-                    tCoinbaseTx.Print();
-                    tCoinbaseTx.SetNull();
-                    respond(COINBASE_FAIL);
-                    return debug::error(FUNCTION, "Invalid Coinbase Tx");
-                }
-
-                /* Send a coinbase set message. */
-                respond(COINBASE_SET);
-
-                /* Verbose output. */
-                debug::log(2, FUNCTION, " Set Coinbase Reward of ", nMaxValue);
-                if(config::GetArg("-verbose", 0 ) >= 3)
-                    tCoinbaseTx.Print();
-
-                return true;
-            }
-
-
-            /* Clear the Block Map if Requested by Client. */
-            case CLEAR_MAP:
-            {
-                LOCK(MUTEX);
-                clear_map();
-                return true;
-            }
-
-
-            /* Respond to the miner with the new height. */
-            case GET_HEIGHT:
-            {
-                {
-                    /* Check the best height before responding. */
-                    LOCK(MUTEX);
-                    check_best_height();
-                }
-
-                debug::log(0, FUNCTION, "GET_HEIGHT request from ", GetAddress().ToStringIP(), " - responding with height ", nBestHeight + 1);
-
-                /* Create the response packet and write. */
-                respond(BLOCK_HEIGHT, convert::uint2bytes(nBestHeight + 1));
-
-                return true;
-            }
-
-
-            /* Respond to a miner if it is a new round. */
-            case GET_ROUND:
-            {
-
-                /* Flag indicating the current round is no longer valid or there is a new block */
-                bool fNewRound = false;
-                {
-                    LOCK(MUTEX);
-                    fNewRound = !check_round() || check_best_height();
-                }
-
-                /* If height was outdated, respond with old round, otherwise respond with a new round */
-                if(fNewRound)
-                    respond(NEW_ROUND);
-                else
-                    respond(OLD_ROUND);
-
-                return true;
-            }
-
-
-            /* Respond with the block reward in a given round. */
-            case GET_REWARD:
-            {
-                debug::log(2, FUNCTION, "GET_REWARD request from ", GetAddress().ToStringIP());
-
-                /* Get the mining reward amount for the channel currently set. */
-                uint64_t nReward = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::tStateBest.load(), nChannel.load(), 0);
-
-                /* Check to make sure the reward is greater than zero. */
-                if(nReward == 0)
-                    return debug::error(FUNCTION, "No coinbase reward.");
-
-
-                /* Respond with BLOCK_REWARD message. */
-                respond(BLOCK_REWARD, convert::uint2bytes64(nReward));
-
-                /* Debug output. */
-                debug::log(2, FUNCTION, "Sent Coinbase Reward of ", nReward);
-                return true;
-            }
-
-
-            /* Set the number of subscribed blocks. */
-            case SUBSCRIBE:
-            {
-                /* Don't allow mining llp requests for proof of stake channel */
-                if(nChannel.load() == 0)
-                    return debug::error(FUNCTION, "Cannot subscribe to Stake Channel from ", GetAddress().ToStringIP());
-
-                /* Get the number of subscribed blocks. */
-                nSubscribed = convert::bytes2uint(PACKET.DATA);
-
-                /* Check for zero blocks. */
-                if(nSubscribed.load() == 0)
-                    return debug::error(FUNCTION, "No blocks subscribed from ", GetAddress().ToStringIP());
-
-                /* Debug output. */
-                debug::log(2, FUNCTION, "Subscribed to ", nSubscribed.load(), " Blocks from ", GetAddress().ToStringIP());
-                return true;
-            }
-
-
-            /* Get a new block for the miner. */
-            case GET_BLOCK:
-            {
-                debug::log(2, FUNCTION, "GET_BLOCK request from ", GetAddress().ToStringIP());
-
-                TAO::Ledger::Block *pBlock = nullptr;
-
-                /* Prepare the data to serialize on request. */
-                std::vector<uint8_t> vData;
-                {
-                    LOCK(MUTEX);
-
-                    /* Create a new block */
-                    pBlock = new_block();
-
-                    /* Handle if the block failed to be created. */
-                    if(!pBlock)
-                    {
-                        debug::log(2, FUNCTION, "Failed to create block.");
-                        return true;
-                    }
-
-                    /* Store the new block in the memory map of recent blocks being worked on. */
-                    mapBlocks[pBlock->hashMerkleRoot] = pBlock;
-
-                    /* Serialize the block vData */
-                    vData = pBlock->Serialize();
-                }
-
-                /* Create and write the response packet. */
-                respond(BLOCK_DATA, vData);
-
-                return true;
-            }
-
-
-            /* Submit a block using the merkle root as the key. */
-            case SUBMIT_BLOCK:
-            {
-                debug::log(2, FUNCTION, "SUBMIT_BLOCK from ", GetAddress().ToStringIP());
-
-                uint512_t hashMerkle;
-                uint64_t nonce = 0;
-
-                /* Get the merkle root (first 64 bytes). */
-                hashMerkle.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE));
-
-                /* Get the nonce (next 8 bytes) */
-                nonce = convert::bytes2uint64(std::vector<uint8_t>(
-                    PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE,
-                    PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE));
-
-                debug::log(3, FUNCTION, "Block merkle root: ", hashMerkle.SubString(), " nonce: ", nonce, " from ", GetAddress().ToStringIP());
-
-                LOCK(MUTEX);
-
-                /* Make sure the block was created by this mining server. */
-                if(!find_block(hashMerkle))
-                {
-                    debug::log(2, FUNCTION, "Block not found in map from ", GetAddress().ToStringIP());
-                    respond(BLOCK_REJECTED);
-                    return true;
-                }
-
-                /* Make sure there is no inconsistencies in signing block. */
-                if(!sign_block(nonce, hashMerkle))
-                {
-                    respond(BLOCK_REJECTED);
-                    return true;
-                }
-
-                /* Make sure there is no inconsistencies in validating block. */
-                if(!validate_block(hashMerkle))
-                {
-                    respond(BLOCK_REJECTED);
-                    return true;
-                }
-
-                /* Generate an Accepted response. */
-                respond(BLOCK_ACCEPTED);
-                return true;
-            }
-
-
-            /* Allows a client to check if a block is part of the main chain. */
-            case CHECK_BLOCK:
-            {
-                uint1024_t hashBlock;
-                TAO::Ledger::BlockState state;
-
-                /* Extract the block hash. */
-                hashBlock.SetBytes(PACKET.DATA);
-
-                /* Read the block state from disk. */
-                if(LLD::Ledger->ReadBlock(hashBlock, state))
-                {
-                    /* If the block state is not in main chain, send a orphan response. */
-                    if(!state.IsInMainChain())
-                    {
-                        respond(ORPHAN_BLOCK, PACKET.DATA);
-                        return true;
-                    }
-                }
-
-                /* Block state is in the main chain, send a good response */
-                respond(GOOD_BLOCK, PACKET.DATA);
-                return true;
-            }
-
-
-            /* Placeholder for SESSION_START - not fully implemented yet.
-             *
-             * PROTOCOL DESIGN NOTE (STATEFUL MODE):
-             * SESSION_START and SESSION_KEEPALIVE are defined in the protocol but not yet fully implemented.
-             * These packet types are reserved for future session management features where:
-             * - SESSION_START would initialize a persistent mining session with session ID
-             * - SESSION_KEEPALIVE would maintain the session and detect disconnections
-             * 
-             * For now, these handlers acknowledge receipt without error to maintain forward compatibility.
-             * This allows future NexusMiner versions to use these packets without breaking existing nodes.
-             * 
-             * Full implementation will come in a later PR when session management requirements are finalized.
-             */
-            case SESSION_START:
-            {
-                debug::log(0, FUNCTION, "MinerLLP: SESSION_START received from ", GetAddress().ToStringIP(),
-                           " length=", PACKET.LENGTH, " - placeholder handler (not fully implemented)");
-                
-                /* Validate packet has some data */
-                if(PACKET.DATA.size() == 0)
-                {
-                    return debug::error(FUNCTION, "SESSION_START: empty packet from ", GetAddress().ToStringIP());
-                }
-                
-                /* Log that we received the packet but haven't implemented full logic yet */
-                debug::log(0, FUNCTION, "MinerLLP: SESSION_START recognized but full session management not implemented yet");
-                
-                /* For now, return true to acknowledge without error */
-                return true;
-            }
-
-
-            /* Placeholder for SESSION_KEEPALIVE - not fully implemented yet. */
-            case SESSION_KEEPALIVE:
-            {
-                debug::log(0, FUNCTION, "MinerLLP: SESSION_KEEPALIVE received from ", GetAddress().ToStringIP(),
-                           " length=", PACKET.LENGTH, " - placeholder handler (not fully implemented)");
-                
-                /* Log that we received the packet but haven't implemented full logic yet */
-                debug::log(0, FUNCTION, "MinerLLP: SESSION_KEEPALIVE recognized but full session management not implemented yet");
-                
-                /* For now, return true to acknowledge without error */
-                return true;
-            }
-        }
-
-        /* Fallback for unknown commands - log and return error */
-        debug::log(0, FUNCTION, "MinerLLP: COMMAND NOT FOUND from ", GetAddress().ToStringIP(),
-                   " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec,
-                   " length=", PACKET.LENGTH);
-        return debug::error(FUNCTION, "Command not found 0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
-    }
-
-
     /* Sends a packet response. */
     void Miner::respond(uint8_t nHeader, const std::vector<uint8_t>& vData)
     {
@@ -1853,35 +1352,7 @@ namespace LLP
     /* For Tritium, this checks the mempool to make sure that there are no new transactions that would be orphaned */
     bool Miner::check_round()
     {
-        /* Skip session-dependent checks for stateless miner sessions (localhost only). */
-        if(fStatelessMinerSession.load())
-            return true;
-
-        /* Get the hash genesis. */
-        const uint256_t hashGenesis = TAO::API::Authentication::Caller(); //no parameter goes to default session
-
-        /* Read hashLast from hashGenesis' sigchain and also check mempool. */
-        uint512_t hashLast;
-
-        /* Check to see whether there are any new transactions in the mempool for the sig chain */
-        if(TAO::Ledger::mempool.Has(hashGenesis))
-        {
-            /* Get the last hash of the last transaction created by the sig chain */
-            LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL);
-
-            /* Update nHashLast if it changed. */
-            if(nHashLast != hashLast)
-            {
-                nHashLast = hashLast;
-
-                clear_map();
-
-                debug::log(2, FUNCTION, "Block producer will orphan new sig chain transactions, resetting blocks");
-
-                return false;
-            }
-        }
-
+        /* All mining connections now use stateless protocol - skip session-dependent checks */
         return true;
     }
 
@@ -1926,37 +1397,7 @@ namespace LLP
             /* Store our new height now. */
             nLastNotificationsHeight.store(nBestHeight);
 
-            /* Skip session-dependent operations for stateless miner sessions (localhost only). */
-            if(!fStatelessMinerSession.load())
-            {
-                /* Get our current genesis. */
-                const uint256_t hashGenesis = TAO::API::Authentication::Caller(); //no parameter goes to default session
-
-                //TODO: we want to pipe in the notifications processor event notifications
-
-                /*
-
-                // Wake up events processor and wait for a signal to guarantee added transactions won't orphan a mined block.
-                if(TAO::API::Commands::Instance<TAO::API::Users>()->NOTIFICATIONS_PROCESSOR
-                    && TAO::API::GetSessionManager().Has(0)
-                    && TAO::API::GetSessionManager().Get(0, false).CanProcessNotifications())
-                {
-                    //Find the thread processing notifications for this user
-                    TAO::API::NotificationsThread* pThread = TAO::API::Commands::Instance<TAO::API::Users>()->NOTIFICATIONS_PROCESSOR->FindThread(0);
-
-                    if(pThread)
-                    {
-                        pThread->NotifyEvent();
-                        WaitEvent();
-                    }
-                }
-
-                */
-
-                /* If we detected a block height change, update the cached last hash of the logged in sig chain.
-                 * This is done AFTER the notifications processor has finished, in case it added new transactions to the mempool  */
-                LLD::Ledger->ReadLast(hashGenesis, nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
-            }
+            /* All mining connections use stateless protocol - no session-dependent operations needed */
         }
 
         return true;
@@ -2031,7 +1472,7 @@ namespace LLP
 
         /* Determine reward address for stateless miners */
         uint256_t hashDynamicReward = 0;
-        if(fStatelessMinerSession.load() && fRewardBound)
+        if(fRewardBound)
         {
             hashDynamicReward = hashRewardAddress;
             debug::log(0, FUNCTION, "Using reward address: ", hashDynamicReward.ToString().substr(0, 16), "...");

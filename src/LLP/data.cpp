@@ -284,17 +284,17 @@ namespace LLP
                     if(!CONNECTION || !CONNECTION->Connected())
                         continue;
                     
-                    /* Detect stateless localhost Miner connections for special handling. */
+                    /* Detect stateless Miner connections for special handling. */
                     Miner* pMiner = nullptr;
-                    bool fLocalhostMinerStateless = false;
+                    bool fStatelessMiner = false;
                     
+                    /* All Miner connections now use stateless protocol (no session required) */
                     if(ProtocolType::Name() == std::string("Miner"))
                     {
                         pMiner = dynamic_cast<Miner*>(CONNECTION.get());
-                        if(pMiner && pMiner->fStatelessMinerSession.load() && 
-                           CONNECTION->GetAddress().ToStringIP() == "127.0.0.1")
+                        if(pMiner)
                         {
-                            fLocalhostMinerStateless = true;
+                            fStatelessMiner = true;
                         }
                     }
                     
@@ -304,7 +304,7 @@ namespace LLP
                         debug::log(3, FUNCTION, "DataThread[", ID, "]: Processing connection id=", nIndex, 
                                    " type=", ProtocolType::Name(), 
                                    " from ", CONNECTION->GetAddress().ToStringIP(), ":", CONNECTION->GetAddress().GetPort(),
-                                   " stateless=", (fLocalhostMinerStateless ? "true" : "false"));
+                                   " stateless=", (fStatelessMiner ? "true" : "false"));
                     }
 
                     /* Disconnect if there was a polling error */
@@ -417,27 +417,26 @@ namespace LLP
                     /* Get the connection for detailed logging. */
                     std::shared_ptr<ProtocolType> CONNECTION = CONNECTIONS->at(nIndex);
                     
-                    /* Check if this is a "Session not found" error for stateless localhost Miner connection. */
+                    /* Check if this is a "Session not found" error for stateless Miner connection. */
                     std::string strError = e.what();
                     bool fSessionError = (strError.find("Session not found") != std::string::npos);
                     
-                    /* Re-detect stateless miner status in exception handler. */
-                    bool fLocalhostMinerStateless = false;
+                    /* All Miner connections now use stateless protocol (no session required) */
+                    bool fStatelessMiner = false;
                     if(ProtocolType::Name() == std::string("Miner") && CONNECTION)
                     {
                         Miner* pMiner = dynamic_cast<Miner*>(CONNECTION.get());
-                        if(pMiner && pMiner->fStatelessMinerSession.load() && 
-                           CONNECTION->GetAddress().ToStringIP() == "127.0.0.1")
+                        if(pMiner)
                         {
-                            fLocalhostMinerStateless = true;
+                            fStatelessMiner = true;
                         }
                     }
                     
-                    /* Allow stateless localhost Miner connections to proceed even without session. */
-                    if(fSessionError && fLocalhostMinerStateless)
+                    /* Allow stateless Miner connections to proceed even without session. */
+                    if(fSessionError && fStatelessMiner)
                     {
                         /* Log suppression of session errors for stateless miners at verbose level 2. */
-                        debug::log(2, FUNCTION, "DataThread[", ID, "]: Session error ignored for stateless localhost Miner from ",
+                        debug::log(2, FUNCTION, "DataThread[", ID, "]: Session error ignored for stateless Miner from ",
                                    CONNECTION->GetAddress().ToStringIP(), ":", CONNECTION->GetAddress().GetPort(),
                                    " - continuing without disconnect");
                         /* Continue processing without disconnect. */
