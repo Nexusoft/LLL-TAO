@@ -235,7 +235,7 @@ namespace LLP
 
         /** ProcessPacketStateless
          *
-         *  Handles packets from stateless miners without TAO API session.
+         *  Handles packets from stateless miners.
          *
          *  @param[in] PACKET The packet to process.
          *
