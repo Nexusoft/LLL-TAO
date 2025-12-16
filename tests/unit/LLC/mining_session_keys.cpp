@@ -19,6 +19,8 @@ ________________________________________________________________________________
 
 #include <Util/include/hex.h>
 
+#include <openssl/sha.h>
+
 using namespace LLC;
 using namespace LLC::MiningSessionKeys;
 
