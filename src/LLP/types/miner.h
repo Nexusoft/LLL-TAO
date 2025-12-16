@@ -37,9 +37,10 @@ namespace LLP
      *  1. Backward Compatibility: Supports both legacy (4-byte) and new (1-byte) SET_CHANNEL payloads
      *     to ensure smooth transition during miner upgrades without protocol breakage.
      *  
-     *  2. Dual Operation Modes:
-     *     - Stateful: Requires TAO API session, used for remote mining with full authentication
-     *     - Stateless: Localhost-only mode using Falcon signatures for authentication
+     *  2. Stateless Operation:
+     *     - Uses Falcon signatures for authentication (no TAO API session required)
+     *     - Supports both localhost and remote mining connections
+     *     - Immutable MiningContext for state management in dedicated StatelessMinerConnection
      *  
      *  3. Forward Compatibility: SESSION_START and SESSION_KEEPALIVE packet types are defined
      *     and acknowledged but not fully implemented. This allows future miners to use these
@@ -237,7 +238,7 @@ namespace LLP
 
         /** ProcessPacketStateless
          *
-         *  Handles packets from stateless localhost miners without TAO API session.
+         *  Handles packets from stateless miners without TAO API session.
          *
          *  @param[in] PACKET The packet to process.
          *
@@ -245,18 +246,6 @@ namespace LLP
          *
          **/
         bool ProcessPacketStateless(const Packet& PACKET);
-
-
-        /** ProcessPacketStateful
-         *
-         *  Handles packets from stateful miners with TAO API session.
-         *
-         *  @param[in] PACKET The packet to process.
-         *
-         *  @return True if no errors, false otherwise.
-         *
-         **/
-        bool ProcessPacketStateful(const Packet& PACKET);
 
 
     private:
