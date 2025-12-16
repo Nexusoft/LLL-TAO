@@ -570,7 +570,7 @@ namespace LLP
 
         /* Get an instance of our credentials. */
         const auto& pCredentials =
-            TAO::API::Authentication::Credentials();
+            TAO::API::Authentication::Credentials(uint256_t(TAO::API::Authentication::SESSION::DEFAULT));
 
         /* Allocate memory for the new block. */
         TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();
