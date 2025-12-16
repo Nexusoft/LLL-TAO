@@ -46,6 +46,7 @@ ________________________________________________________________________________
 #include <LLC/include/flkey.h>
 #include <LLC/include/random.h>
 #include <LLC/include/encrypt.h>
+#include <LLC/include/chacha20_helpers.h>
 #include <LLC/hash/SK.h>
 
 #include <TAO/Register/include/enum.h>
@@ -566,18 +567,6 @@ namespace LLP
                 {
                     debug::log(0, FUNCTION, "ProcessMinerAuthInit : Pubkey is ChaCha20 wrapped (925 bytes)");
                     
-                    /* Decrypt using session key */
-                    std::vector<uint8_t> vDecryptedPubKey;
-                    
-                    /* Extract nonce (first 12 bytes) */
-                    std::vector<uint8_t> vNonce(vReceivedPubKey.begin(), vReceivedPubKey.begin() + 12);
-                    
-                    /* Extract ciphertext (middle 897 bytes) */
-                    std::vector<uint8_t> vCiphertext(vReceivedPubKey.begin() + 12, vReceivedPubKey.begin() + 12 + 897);
-                    
-                    /* Extract tag (last 16 bytes) */
-                    std::vector<uint8_t> vTag(vReceivedPubKey.end() - 16, vReceivedPubKey.end());
-                    
                     /* AAD for Falcon pubkey encryption */
                     std::vector<uint8_t> vAAD{'F','A','L','C','O','N','_','P','U','B','K','E','Y'};
                     
@@ -607,14 +596,13 @@ namespace LLP
                     debug::log(0, FUNCTION, "║   3. If different, check byte order of genesis in miner.conf");
                     debug::log(0, FUNCTION, "║ ");
                     debug::log(0, FUNCTION, "║ Wrapped Pubkey Components:");
-                    debug::log(0, FUNCTION, "║   Nonce (12 bytes):    ", HexStr(vNonce));
-                    debug::log(0, FUNCTION, "║   Ciphertext (bytes):  ", vCiphertext.size());
-                    debug::log(0, FUNCTION, "║   Tag (16 bytes):      ", HexStr(vTag));
+                    debug::log(0, FUNCTION, "║   Total size (bytes):  ", vReceivedPubKey.size());
                     debug::log(0, FUNCTION, "║   AAD (ASCII):         FALCON_PUBKEY");
                     debug::log(0, FUNCTION, "╚═══════════════════════════════════════════════════════════╝");
                     
-                    /* Decrypt with AAD using the genesis-derived session key */
-                    if(!LLC::DecryptChaCha20Poly1305(vCiphertext, vTag, vChaChaKey, vNonce, vDecryptedPubKey, vAAD))
+                    /* Decrypt using ChaCha20 helper with AAD */
+                    std::vector<uint8_t> vDecryptedPubKey;
+                    if(!LLC::DecryptPayloadChaCha20(vReceivedPubKey, vChaChaKey, vDecryptedPubKey, vAAD))
                     {
                         debug::error(FUNCTION, "");
                         debug::error(FUNCTION, "╔═══════════════════════════════════════════════════════════╗");
