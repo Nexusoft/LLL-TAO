@@ -48,6 +48,7 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 #include <LLC/include/encrypt.h>
 #include <LLC/include/chacha20_helpers.h>
+#include <LLC/include/mining_session_keys.h>
 #include <LLC/hash/SK.h>
 
 #include <TAO/Register/include/enum.h>
@@ -471,19 +472,10 @@ namespace LLP
                         fRewardBound = true;
                     }
 
-                    /* Derive ChaCha20 key from genesis if not already established.
-                     * NOTE: This duplicates the key derivation logic for connection-level state.
-                     * StatelessMiner also derives this key on-demand for packet processing.
-                     * TODO: Consider extracting to shared helper method (e.g., DeriveChaCha20SessionKey) */
+                    /* Derive ChaCha20 key from genesis using unified helper */
                     if(hashGenesis != 0 && !fEncryptionReady)
                     {
-                        static const std::string DOMAIN = "nexus-mining-chacha20-v1";
-                        std::vector<uint8_t> vKeyInput;
-                        vKeyInput.insert(vKeyInput.end(), DOMAIN.begin(), DOMAIN.end());
-                        std::vector<uint8_t> genesis_bytes = hashGenesis.GetBytes();
-                        vKeyInput.insert(vKeyInput.end(), genesis_bytes.begin(), genesis_bytes.end());
-                        uint256_t hashSessionKey = LLC::SK256(vKeyInput);
-                        vChaChaKey = hashSessionKey.GetBytes();
+                        vChaChaKey = LLC::MiningSessionKeys::DeriveChaCha20Key(hashGenesis);
                         fEncryptionReady = true;
                     }
 
