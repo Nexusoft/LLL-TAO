@@ -47,6 +47,10 @@ namespace LLC
     )
     {
         /* Validate inputs */
+        /* Note: Empty plaintext is rejected to prevent misuse. While ChaCha20-Poly1305
+         * technically supports zero-length plaintexts, they provide no confidentiality
+         * benefit and could indicate a programming error in mining protocol flows.
+         * For presence indicators or zero-knowledge proofs, use dedicated protocols. */
         if(vPlaintext.empty())
         {
             debug::error(FUNCTION, "Cannot encrypt empty plaintext");

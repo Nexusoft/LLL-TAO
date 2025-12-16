@@ -207,6 +207,7 @@ TEST_CASE("ChaCha20 Helper Functions Tests", "[LLC]")
         std::vector<uint8_t> vRewardPayload = hashRewardAddress.GetBytes();
 
         /* 3. Encrypt with AAD for domain separation */
+        /* Note: This AAD constant must match AAD_REWARD_ADDRESS in stateless_miner.cpp */
         std::vector<uint8_t> vAAD = {'R','E','W','A','R','D','_','A','D','D','R','E','S','S'};
         std::vector<uint8_t> vEncrypted = LLC::EncryptPayloadChaCha20(vRewardPayload, vSessionKey, vAAD);
         REQUIRE(!vEncrypted.empty());
