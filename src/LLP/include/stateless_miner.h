@@ -398,18 +398,6 @@ namespace LLP
         );
 
     private:
-        /** DeriveChaCha20SessionKey
-         *
-         *  Derive a ChaCha20 session key from genesis hash.
-         *  Uses domain separation for security.
-         *
-         *  @param[in] hashGenesis Genesis hash to derive key from
-         *
-         *  @return 256-bit (32 byte) ChaCha20 session key
-         *
-         **/
-        static std::vector<uint8_t> DeriveChaCha20SessionKey(const uint256_t& hashGenesis);
-
         /** BuildAuthMessage
          *
          *  Constructs the message that should be signed for Falcon auth.

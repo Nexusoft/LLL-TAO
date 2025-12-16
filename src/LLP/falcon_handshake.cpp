@@ -16,6 +16,7 @@ ________________________________________________________________________________
 
 #include <LLC/hash/SK.h>
 #include <LLC/include/random.h>
+#include <LLC/include/mining_session_keys.h>
 
 #include <Util/include/runtime.h>
 #include <Util/include/debug.h>
@@ -217,25 +218,8 @@ namespace FalconHandshake
         uint64_t nTimestamp
     )
     {
-        /* Build session key derivation input */
-        std::vector<uint8_t> vInput;
-
-        /* Add genesis hash */
-        std::vector<uint8_t> vGenesis = hashGenesis.GetBytes();
-        vInput.insert(vInput.end(), vGenesis.begin(), vGenesis.end());
-
-        /* Add miner public key */
-        vInput.insert(vInput.end(), vMinerPubKey.begin(), vMinerPubKey.end());
-
-        /* Add timestamp (rounded to hour for session stability) */
-        uint64_t nRoundedTime = (nTimestamp / 3600) * 3600;
-        for(size_t i = 0; i < 8; ++i)
-        {
-            vInput.push_back(static_cast<uint8_t>((nRoundedTime >> (i * 8)) & 0xFF));
-        }
-
-        /* Hash to derive session key */
-        return LLC::SK256(vInput);
+        /* Use unified helper for Falcon session ID derivation */
+        return LLC::MiningSessionKeys::DeriveFalconSessionId(hashGenesis, vMinerPubKey, nTimestamp);
     }
 
 

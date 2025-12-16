@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLC/hash/SK.h>
 #include <LLC/include/flkey.h>
 #include <LLC/include/random.h>
+#include <LLC/include/mining_session_keys.h>
 
 #include <Util/include/runtime.h>
 #include <Util/include/json.h>
@@ -206,8 +207,8 @@ namespace FalconAuth
 
         uint256_t DeriveKeyId(const std::vector<uint8_t>& pubkey) const override
         {
-            /* Use SK256 hash of public key as stable identifier */
-            return LLC::SK256(pubkey);
+            /* Use unified helper for key ID derivation */
+            return LLC::MiningSessionKeys::DeriveKeyId(pubkey);
         }
 
         bool BindGenesis(
