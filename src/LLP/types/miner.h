@@ -185,9 +185,6 @@ namespace LLP
 
     public:
 
-        /* Flag to indicate this is a stateless miner session (localhost only, no TAO API session required). */
-        std::atomic<bool> fStatelessMinerSession;
-
         /** Default Constructor **/
         Miner();
 

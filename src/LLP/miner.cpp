@@ -87,7 +87,6 @@ namespace LLP
     , fEncryptionReady(false)
     , hashRewardAddress(0)
     , fRewardBound(false)
-    , fStatelessMinerSession(false)
     {
     }
 
@@ -111,7 +110,6 @@ namespace LLP
     , fEncryptionReady(false)
     , hashRewardAddress(0)
     , fRewardBound(false)
-    , fStatelessMinerSession(false)
     {
     }
 
@@ -135,7 +133,6 @@ namespace LLP
     , fEncryptionReady(false)
     , hashRewardAddress(0)
     , fRewardBound(false)
-    , fStatelessMinerSession(false)
     {
     }
 
@@ -311,7 +308,6 @@ namespace LLP
                 {
                     /* All connections now use stateless protocol (no TAO API session required) */
                     /* This is the new standard for all mining connections */
-                    fStatelessMinerSession.store(true);
                     
                     /* Log connection established message */
                     debug::log(0, FUNCTION, "MinerLLP: Stateless miner connection from ", 
@@ -1356,35 +1352,7 @@ namespace LLP
     /* For Tritium, this checks the mempool to make sure that there are no new transactions that would be orphaned */
     bool Miner::check_round()
     {
-        /* Skip session-dependent checks for stateless miner sessions (localhost only). */
-        if(fStatelessMinerSession.load())
-            return true;
-
-        /* Get the hash genesis. */
-        const uint256_t hashGenesis = TAO::API::Authentication::Caller(); //no parameter goes to default session
-
-        /* Read hashLast from hashGenesis' sigchain and also check mempool. */
-        uint512_t hashLast;
-
-        /* Check to see whether there are any new transactions in the mempool for the sig chain */
-        if(TAO::Ledger::mempool.Has(hashGenesis))
-        {
-            /* Get the last hash of the last transaction created by the sig chain */
-            LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL);
-
-            /* Update nHashLast if it changed. */
-            if(nHashLast != hashLast)
-            {
-                nHashLast = hashLast;
-
-                clear_map();
-
-                debug::log(2, FUNCTION, "Block producer will orphan new sig chain transactions, resetting blocks");
-
-                return false;
-            }
-        }
-
+        /* All mining connections now use stateless protocol - skip session-dependent checks */
         return true;
     }
 
@@ -1429,37 +1397,7 @@ namespace LLP
             /* Store our new height now. */
             nLastNotificationsHeight.store(nBestHeight);
 
-            /* Skip session-dependent operations for stateless miner sessions (localhost only). */
-            if(!fStatelessMinerSession.load())
-            {
-                /* Get our current genesis. */
-                const uint256_t hashGenesis = TAO::API::Authentication::Caller(); //no parameter goes to default session
-
-                //TODO: we want to pipe in the notifications processor event notifications
-
-                /*
-
-                // Wake up events processor and wait for a signal to guarantee added transactions won't orphan a mined block.
-                if(TAO::API::Commands::Instance<TAO::API::Users>()->NOTIFICATIONS_PROCESSOR
-                    && TAO::API::GetSessionManager().Has(0)
-                    && TAO::API::GetSessionManager().Get(0, false).CanProcessNotifications())
-                {
-                    //Find the thread processing notifications for this user
-                    TAO::API::NotificationsThread* pThread = TAO::API::Commands::Instance<TAO::API::Users>()->NOTIFICATIONS_PROCESSOR->FindThread(0);
-
-                    if(pThread)
-                    {
-                        pThread->NotifyEvent();
-                        WaitEvent();
-                    }
-                }
-
-                */
-
-                /* If we detected a block height change, update the cached last hash of the logged in sig chain.
-                 * This is done AFTER the notifications processor has finished, in case it added new transactions to the mempool  */
-                LLD::Ledger->ReadLast(hashGenesis, nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
-            }
+            /* All mining connections use stateless protocol - no session-dependent operations needed */
         }
 
         return true;
@@ -1534,7 +1472,7 @@ namespace LLP
 
         /* Determine reward address for stateless miners */
         uint256_t hashDynamicReward = 0;
-        if(fStatelessMinerSession.load() && fRewardBound)
+        if(fRewardBound)
         {
             hashDynamicReward = hashRewardAddress;
             debug::log(0, FUNCTION, "Using reward address: ", hashDynamicReward.ToString().substr(0, 16), "...");

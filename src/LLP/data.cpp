@@ -288,11 +288,11 @@ namespace LLP
                     Miner* pMiner = nullptr;
                     bool fLocalhostMinerStateless = false;
                     
+                    /* All Miner connections now use stateless protocol */
                     if(ProtocolType::Name() == std::string("Miner"))
                     {
                         pMiner = dynamic_cast<Miner*>(CONNECTION.get());
-                        if(pMiner && pMiner->fStatelessMinerSession.load() && 
-                           CONNECTION->GetAddress().ToStringIP() == "127.0.0.1")
+                        if(pMiner && CONNECTION->GetAddress().ToStringIP() == "127.0.0.1")
                         {
                             fLocalhostMinerStateless = true;
                         }
@@ -422,12 +422,12 @@ namespace LLP
                     bool fSessionError = (strError.find("Session not found") != std::string::npos);
                     
                     /* Re-detect stateless miner status in exception handler. */
+                    /* All Miner connections now use stateless protocol */
                     bool fLocalhostMinerStateless = false;
                     if(ProtocolType::Name() == std::string("Miner") && CONNECTION)
                     {
                         Miner* pMiner = dynamic_cast<Miner*>(CONNECTION.get());
-                        if(pMiner && pMiner->fStatelessMinerSession.load() && 
-                           CONNECTION->GetAddress().ToStringIP() == "127.0.0.1")
+                        if(pMiner && CONNECTION->GetAddress().ToStringIP() == "127.0.0.1")
                         {
                             fLocalhostMinerStateless = true;
                         }
