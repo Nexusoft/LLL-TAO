@@ -14,6 +14,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/global.h>
 #include <LLP/include/stateless_manager.h>
+#include <LLP/include/stateless_miner.h>
 #include <LLP/include/falcon_constants.h>
 #include <LLP/include/falcon_auth.h>
 #include <LLP/types/miner.h>
@@ -400,23 +401,123 @@ namespace LLP
     {
         try
         {
-            /* Get the incoming packet. */
+            /* Get the incoming packet */
             Packet PACKET = this->INCOMING;
 
-            /* Log entry with clear indication and packet details */
-            debug::log(1, FUNCTION, "MinerLLP: ProcessPacket ENTRY from ", GetAddress().ToStringIP(),
+            /* Log incoming packet */
+            debug::log(1, FUNCTION, "MinerLLP: ProcessPacket from ", GetAddress().ToStringIP(),
                        " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec,
                        " length=", PACKET.LENGTH);
 
-            /* All mining connections now use stateless protocol */
-            /* Legacy API-based stateful mining has been removed */
+            /* Check for authentication/session management packets that route to StatelessMiner */
+            if(PACKET.HEADER == MINER_AUTH_INIT || 
+               PACKET.HEADER == MINER_AUTH_RESPONSE || 
+               PACKET.HEADER == SESSION_START ||
+               PACKET.HEADER == SESSION_KEEPALIVE ||
+               PACKET.HEADER == SET_CHANNEL ||
+               PACKET.HEADER == MINER_SET_REWARD)
+            {
+                /* Build MiningContext from current connection state */
+                std::string strAddress = GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort());
+                
+                MiningContext context(
+                    nChannel,                      // Current channel
+                    nBestHeight,                   // Current height
+                    runtime::unifiedtimestamp(),   // Current timestamp
+                    strAddress,                    // Connection address
+                    1,                             // Protocol version
+                    fMinerAuthenticated,           // Authentication state
+                    nSessionId,                    // Session ID
+                    uint256_t(0),                  // hashKeyID (derived in StatelessMiner)
+                    hashGenesis                    // Genesis hash
+                );
+
+                /* Add authentication nonce if present */
+                if(!vAuthNonce.empty())
+                    context = context.WithNonce(vAuthNonce);
+
+                /* Add miner public key if present */
+                if(!vMinerPubKey.empty())
+                    context = context.WithPubKey(vMinerPubKey);
+
+                /* Add reward address if bound */
+                if(fRewardBound)
+                    context = context.WithRewardAddress(hashRewardAddress);
+
+                /* Route ALL authentication/session packet processing to StatelessMiner */
+                ProcessResult result = StatelessMiner::ProcessPacket(context, PACKET);
+
+                /* Handle result */
+                if(result.fSuccess)
+                {
+                    /* Update connection state from result context */
+                    nChannel = result.context.nChannel;
+                    nBestHeight = result.context.nHeight;
+                    fMinerAuthenticated = result.context.fAuthenticated;
+                    nSessionId = result.context.nSessionId;
+                    hashGenesis = result.context.hashGenesis;
+                    
+                    /* Update authentication state */
+                    if(!result.context.vAuthNonce.empty())
+                        vAuthNonce = result.context.vAuthNonce;
+                    
+                    if(!result.context.vMinerPubKey.empty())
+                        vMinerPubKey = result.context.vMinerPubKey;
+
+                    /* Update reward address if bound */
+                    if(result.context.fRewardBound)
+                    {
+                        hashRewardAddress = result.context.hashRewardAddress;
+                        fRewardBound = true;
+                    }
+
+                    /* Derive ChaCha20 key if genesis is set and encryption not ready */
+                    if(hashGenesis != 0 && !fEncryptionReady)
+                    {
+                        static const std::string DOMAIN = "nexus-mining-chacha20-v1";
+                        std::vector<uint8_t> vKeyInput;
+                        vKeyInput.insert(vKeyInput.end(), DOMAIN.begin(), DOMAIN.end());
+                        std::vector<uint8_t> genesis_bytes = hashGenesis.GetBytes();
+                        vKeyInput.insert(vKeyInput.end(), genesis_bytes.begin(), genesis_bytes.end());
+                        uint256_t hashSessionKey = LLC::SK256(vKeyInput);
+                        vChaChaKey = hashSessionKey.GetBytes();
+                        fEncryptionReady = true;
+                    }
+
+                    /* Send response if present */
+                    if(!result.response.IsNull())
+                    {
+                        WritePacket(result.response);
+                    }
+
+                    return true;
+                }
+                else
+                {
+                    /* Processing error - log and disconnect */
+                    debug::error(FUNCTION, "MinerLLP: Processing error from ", GetAddress().ToStringIP(),
+                                ": ", result.strError);
+                    
+                    /* Try to send error response if available */
+                    if(!result.response.IsNull())
+                    {
+                        WritePacket(result.response);
+                    }
+                    
+                    this->Disconnect();
+                    return false;
+                }
+            }
+
+            /* All other packets are handled by ProcessPacketStateless (block-related operations) */
             return ProcessPacketStateless(PACKET);
         }
         catch(const std::exception& e)
         {
-            debug::log(0, FUNCTION, "MinerLLP: EXCEPTION in ProcessPacket from ", GetAddress().ToStringIP(), 
-                       " - what(): ", e.what());
-            return debug::error(FUNCTION, "Exception in ProcessPacket");
+            debug::error(FUNCTION, "MinerLLP: Exception in ProcessPacket from ", GetAddress().ToStringIP(),
+                        ": ", e.what());
+            this->Disconnect();
+            return false;
         }
     }
 
@@ -464,448 +565,9 @@ namespace LLP
         /* Evaluate the packet header to determine what to do. */
         switch(PACKET.HEADER)
         {
-            /* Authentication: Miner sends Genesis + Falcon public key + label */
-            case MINER_AUTH_INIT:
-            {
-                debug::log(0, FUNCTION, "MinerLLP: MINER_AUTH_INIT from ", GetAddress().ToStringIP(),
-                           " length=", PACKET.LENGTH);
-
-                /* Validate minimum packet size (32 for genesis + 2 + 2 = 36 bytes minimum) */
-                if(PACKET.DATA.size() < 36)
-                    return debug::error(FUNCTION, "MINER_AUTH_INIT: packet too small");
-
-                /* Extract genesis hash (32 bytes) */
-                std::copy(PACKET.DATA.begin(), PACKET.DATA.begin() + 32, hashGenesis.begin());
-
-                debug::log(0, FUNCTION, "ProcessMinerAuthInit : Genesis raw bytes: ", 
-                           HexStr(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.begin() + 32)));
-                debug::log(0, FUNCTION, "ProcessMinerAuthInit : Genesis hex string: ", hashGenesis.ToString());
-
-                /* ═══════════════════════════════════════════════════════════════════════════
-                 * SECURITY: Validate genesis exists on blockchain BEFORE deriving encryption key
-                 * This prevents using invalid/attacker-chosen genesis values for key derivation
-                 * ═══════════════════════════════════════════════════════════════════════════ */
-                if(hashGenesis == 0)
-                {
-                    debug::error(FUNCTION, "MINER_AUTH_INIT: No genesis provided");
-                    debug::error(FUNCTION, "  Genesis hash is REQUIRED for ChaCha20 session key derivation");
-                    debug::error(FUNCTION, "  This is a security requirement for genesis-based TLS replacement");
-                    std::vector<uint8_t> vFail(1, 0x00);
-                    respond(MINER_AUTH_RESULT, vFail);
-                    this->Disconnect();
-                    return false;
-                }
-
-                if(!LLD::Ledger->HasFirst(hashGenesis))
-                {
-                    debug::error(FUNCTION, "MINER_AUTH_INIT: Genesis not found on blockchain");
-                    debug::error(FUNCTION, "  Genesis: ", hashGenesis.ToString());
-                    debug::error(FUNCTION, "  Security: Rejecting authentication with invalid genesis");
-                    std::vector<uint8_t> vFail(1, 0x00);
-                    respond(MINER_AUTH_RESULT, vFail);
-                    this->Disconnect();
-                    return false;
-                }
-
-                debug::log(0, FUNCTION, "✓ Genesis validated on blockchain: ", hashGenesis.SubString());
-
-                /* ═══════════════════════════════════════════════════════════════════════════
-                 * DERIVE ChaCha20 SESSION KEY (genesis-based TLS replacement)
-                 * This key is used for:
-                 *   1. Unwrapping the Falcon pubkey in MINER_AUTH_INIT (proves genesis knowledge)
-                 *   2. Encrypting MINER_SET_REWARD packets (reward address privacy)
-                 *   3. ALL subsequent encrypted communication (TLS replacement)
-                 * ═══════════════════════════════════════════════════════════════════════════ */
-                static const std::string DOMAIN = "nexus-mining-chacha20-v1";
-
-                std::vector<uint8_t> vKeyInput;
-                vKeyInput.insert(vKeyInput.end(), DOMAIN.begin(), DOMAIN.end());
-                std::vector<uint8_t> genesis_bytes = hashGenesis.GetBytes();
-                vKeyInput.insert(vKeyInput.end(), genesis_bytes.begin(), genesis_bytes.end());
-
-                uint256_t hashSessionKey = LLC::SK256(vKeyInput);
-                vChaChaKey = hashSessionKey.GetBytes();
-                fEncryptionReady = true;
-
-                debug::log(0, FUNCTION, "═══════════════════════════════════════════════════════════");
-                debug::log(0, FUNCTION, "ChaCha20 SESSION KEY READY (Genesis-Based TLS)");
-                debug::log(0, FUNCTION, "═══════════════════════════════════════════════════════════");
-                debug::log(0, FUNCTION, "  Genesis: ", hashGenesis.SubString());
-                debug::log(0, FUNCTION, "  Domain:  ", DOMAIN);
-                debug::log(0, FUNCTION, "  Key (first 8 bytes): ", 
-                           HexStr(std::vector<uint8_t>(vChaChaKey.begin(), vChaChaKey.begin() + 8)));
-                debug::log(0, FUNCTION, "  Purpose: TLS replacement for pool mining");
-                debug::log(0, FUNCTION, "  Active:  YES - for all subsequent encrypted packets");
-                debug::log(0, FUNCTION, "═══════════════════════════════════════════════════════════");
-
-                /* Parse pubkey_len (2 bytes, big-endian) */
-                uint16_t nPubKeyLen = (static_cast<uint16_t>(PACKET.DATA[32]) << 8) | 
-                                      static_cast<uint16_t>(PACKET.DATA[33]);
-
-                /* Validate pubkey_len */
-                if(nPubKeyLen == 0 || nPubKeyLen > 2048)
-                    return debug::error(FUNCTION, "MINER_AUTH_INIT: invalid pubkey_len ", nPubKeyLen);
-
-                if(PACKET.DATA.size() < 34 + nPubKeyLen)
-                    return debug::error(FUNCTION, "MINER_AUTH_INIT: packet too small for pubkey");
-
-                /* Extract (possibly encrypted) public key */
-                std::vector<uint8_t> vReceivedPubKey(PACKET.DATA.begin() + 34, 
-                                                      PACKET.DATA.begin() + 34 + nPubKeyLen);
-
-                debug::log(0, FUNCTION, "ProcessMinerAuthInit : Received pubkey size: ", nPubKeyLen, " bytes");
-
-                /* ═══════════════════════════════════════════════════════════════════════════
-                 * CHECK IF PUBKEY IS CHACHA20 WRAPPED
-                 * Wrapped pubkey format: nonce(12) + ciphertext(897) + tag(16) = 925 bytes
-                 * Raw Falcon-512 pubkey: 897 bytes
-                 * ═══════════════════════════════════════════════════════════════════════════ */
-                const size_t FALCON512_RAW_PUBKEY_SIZE = 897;
-                const size_t FALCON512_WRAPPED_PUBKEY_SIZE = 925;  // nonce(12) + ciphertext(897) + tag(16)
-                
-                if(nPubKeyLen == FALCON512_WRAPPED_PUBKEY_SIZE)
-                {
-                    debug::log(0, FUNCTION, "ProcessMinerAuthInit : Pubkey is ChaCha20 wrapped (925 bytes)");
-                    
-                    /* AAD for Falcon pubkey encryption */
-                    std::vector<uint8_t> vAAD{'F','A','L','C','O','N','_','P','U','B','K','E','Y'};
-                    
-                    /* ═════════════════════════════════════════════════════════════════════
-                     * CHACHA20 DECRYPTION DIAGNOSTIC (Node Side)
-                     * This diagnostic block helps debug key derivation mismatches between
-                     * NexusMiner and LLL-TAO node. Compare these values with miner-side logs.
-                     * ═════════════════════════════════════════════════════════════════════ */
-                    debug::log(0, FUNCTION, "");
-                    debug::log(0, FUNCTION, "╔═══════════════════════════════════════════════════════════╗");
-                    debug::log(0, FUNCTION, "║  ChaCha20 DECRYPTION DIAGNOSTIC (Node Side)               ║");
-                    debug::log(0, FUNCTION, "╠═══════════════════════════════════════════════════════════╣");
-                    debug::log(0, FUNCTION, "║ Genesis (uint256_t): ", hashGenesis.ToString());
-                    debug::log(0, FUNCTION, "║ Genesis (GetHex):    ", hashGenesis.GetHex());
-                    debug::log(0, FUNCTION, "║ Genesis (bytes hex): ", HexStr(hashGenesis.GetBytes()));
-                    debug::log(0, FUNCTION, "║ ");
-                    debug::log(0, FUNCTION, "║ Key Derivation Formula:");
-                    debug::log(0, FUNCTION, "║   key = SHA256(domain || genesis_bytes)");
-                    debug::log(0, FUNCTION, "║   domain = \"nexus-mining-chacha20-v1\" (ASCII)");
-                    debug::log(0, FUNCTION, "║   genesis_bytes = hashGenesis.GetBytes() (32 bytes)");
-                    debug::log(0, FUNCTION, "║ ");
-                    debug::log(0, FUNCTION, "║ Derived Key (32 bytes): ", HexStr(vChaChaKey));
-                    debug::log(0, FUNCTION, "║ ");
-                    debug::log(0, FUNCTION, "║ To debug mismatch:");
-                    debug::log(0, FUNCTION, "║   1. Check miner's tritium_genesis matches Genesis (GetHex)");
-                    debug::log(0, FUNCTION, "║   2. Compare miner's 'Derived Key' with node's above");
-                    debug::log(0, FUNCTION, "║   3. If different, check byte order of genesis in miner.conf");
-                    debug::log(0, FUNCTION, "║ ");
-                    debug::log(0, FUNCTION, "║ Wrapped Pubkey Components:");
-                    debug::log(0, FUNCTION, "║   Total size (bytes):  ", vReceivedPubKey.size());
-                    debug::log(0, FUNCTION, "║   AAD (ASCII):         FALCON_PUBKEY");
-                    debug::log(0, FUNCTION, "╚═══════════════════════════════════════════════════════════╝");
-                    
-                    /* Decrypt using ChaCha20 helper with AAD */
-                    std::vector<uint8_t> vDecryptedPubKey;
-                    if(!LLC::DecryptPayloadChaCha20(vReceivedPubKey, vChaChaKey, vDecryptedPubKey, vAAD))
-                    {
-                        debug::error(FUNCTION, "");
-                        debug::error(FUNCTION, "╔═══════════════════════════════════════════════════════════╗");
-                        debug::error(FUNCTION, "║  ChaCha20 DECRYPTION FAILED                               ║");
-                        debug::error(FUNCTION, "╠═══════════════════════════════════════════════════════════╣");
-                        debug::error(FUNCTION, "║ The authentication tag did not match, indicating:");
-                        debug::error(FUNCTION, "║   - Miner derived a different ChaCha20 session key");
-                        debug::error(FUNCTION, "║   - OR the ciphertext/nonce was corrupted in transit");
-                        debug::error(FUNCTION, "║ ");
-                        debug::error(FUNCTION, "║ Most likely cause: Genesis byte order mismatch");
-                        debug::error(FUNCTION, "║ ");
-                        debug::error(FUNCTION, "║ SOLUTION:");
-                        debug::error(FUNCTION, "║   1. In miner.conf, set tritium_genesis to exactly:");
-                        debug::error(FUNCTION, "║      ", hashGenesis.GetHex());
-                        debug::error(FUNCTION, "║   2. Restart the miner and try again");
-                        debug::error(FUNCTION, "║   3. Compare 'Derived Key' logs from both sides");
-                        debug::error(FUNCTION, "║ ");
-                        debug::error(FUNCTION, "║ Alternative: Disable ChaCha20 for localhost mining:");
-                        debug::error(FUNCTION, "║   Set enable_chacha20_wrapping = false in miner.conf");
-                        debug::error(FUNCTION, "╚═══════════════════════════════════════════════════════════╝");
-                        debug::error(FUNCTION, "");
-                        
-                        std::vector<uint8_t> vFail(1, 0x00);
-                        respond(MINER_AUTH_RESULT, vFail);
-                        this->Disconnect();
-                        return false;
-                    }
-                    
-                    debug::log(0, FUNCTION, "ProcessMinerAuthInit : ✓ ChaCha20 unwrap SUCCESS - genesis knowledge proven");
-                    debug::log(0, FUNCTION, "ProcessMinerAuthInit :   Decrypted pubkey size: ", vDecryptedPubKey.size());
-                    
-                    /* Validate decrypted pubkey size */
-                    if(vDecryptedPubKey.size() != FALCON512_RAW_PUBKEY_SIZE)
-                    {
-                        debug::error(FUNCTION, "ProcessMinerAuthInit : Invalid decrypted pubkey size: ", 
-                                    vDecryptedPubKey.size(), " (expected ", FALCON512_RAW_PUBKEY_SIZE, ")");
-                        std::vector<uint8_t> vFail(1, 0x00);
-                        respond(MINER_AUTH_RESULT, vFail);
-                        this->Disconnect();
-                        return false;
-                    }
-                    
-                    vMinerPubKey = vDecryptedPubKey;
-                }
-                else if(nPubKeyLen == FALCON512_RAW_PUBKEY_SIZE)
-                {
-                    /* Plaintext pubkey - use as-is */
-                    debug::log(0, FUNCTION, "ProcessMinerAuthInit : Pubkey is plaintext (897 bytes, no ChaCha20 wrapping)");
-                    vMinerPubKey = vReceivedPubKey;
-                }
-                else
-                {
-                    /* Invalid pubkey size */
-                    return debug::error(FUNCTION, "MINER_AUTH_INIT: invalid pubkey size ", nPubKeyLen, 
-                                       " (expected ", FALCON512_RAW_PUBKEY_SIZE, " or ", FALCON512_WRAPPED_PUBKEY_SIZE, ")");
-                }
-
-                /* Parse miner_id_len (2 bytes, big-endian) */
-                size_t nMinerIdOffset = 34 + nPubKeyLen;
-                uint16_t nMinerIdLen = (static_cast<uint16_t>(PACKET.DATA[nMinerIdOffset]) << 8) | 
-                                       static_cast<uint16_t>(PACKET.DATA[nMinerIdOffset + 1]);
-
-                /* Validate miner_id_len */
-                if(nMinerIdLen > 256)
-                    return debug::error(FUNCTION, "MINER_AUTH_INIT: invalid miner_id_len ", nMinerIdLen);
-
-                if(PACKET.DATA.size() < nMinerIdOffset + 2 + nMinerIdLen)
-                    return debug::error(FUNCTION, "MINER_AUTH_INIT: packet too small for miner_id");
-
-                /* Extract miner ID */
-                if(nMinerIdLen > 0)
-                    strMinerId.assign(PACKET.DATA.begin() + nMinerIdOffset + 2, 
-                                     PACKET.DATA.begin() + nMinerIdOffset + 2 + nMinerIdLen);
-                else
-                    strMinerId = "<no-id>";
-
-                /* Generate random nonce (32 bytes) for challenge */
-                uint256_t nonce = LLC::GetRand256();
-                vAuthNonce = nonce.GetBytes();
-
-                /* Log the authentication init */
-                debug::log(0, FUNCTION, "MinerLLP: MINER_AUTH_INIT: genesis=", hashGenesis.ToString().substr(0, 16), 
-                           "... miner=", strMinerId, " pubkey=", vMinerPubKey.size());
-
-                /* Build MINER_AUTH_CHALLENGE response */
-                std::vector<uint8_t> vResponse;
-                uint16_t nNonceLen = static_cast<uint16_t>(vAuthNonce.size());
-                vResponse.push_back(static_cast<uint8_t>(nNonceLen >> 8));
-                vResponse.push_back(static_cast<uint8_t>(nNonceLen & 0xFF));
-                vResponse.insert(vResponse.end(), vAuthNonce.begin(), vAuthNonce.end());
-
-                /* Send challenge */
-                respond(MINER_AUTH_CHALLENGE, vResponse);
-
-                return true;
-            }
-
-
-            /* Authentication: Miner sends Falcon signature over nonce */
-            case MINER_AUTH_RESPONSE:
-            {
-                debug::log(0, FUNCTION, "MinerLLP: MINER_AUTH_RESPONSE from ", GetAddress().ToStringIP(),
-                           " length=", PACKET.LENGTH);
-
-                /* Validate that we have nonce and pubkey */
-                if(vAuthNonce.empty())
-                {
-                    debug::error(FUNCTION, "MINER_AUTH_RESPONSE: no nonce (MINER_AUTH_INIT not received)");
-                    std::vector<uint8_t> vFail(1, 0x00);
-                    respond(MINER_AUTH_RESULT, vFail);
-                    this->Disconnect();
-                    return false;
-                }
-
-                if(vMinerPubKey.empty())
-                {
-                    debug::error(FUNCTION, "MINER_AUTH_RESPONSE: no pubkey (MINER_AUTH_INIT not received)");
-                    std::vector<uint8_t> vFail(1, 0x00);
-                    respond(MINER_AUTH_RESULT, vFail);
-                    this->Disconnect();
-                    return false;
-                }
-
-                /* Validate minimum packet size (2 bytes for sig_len) */
-                if(PACKET.DATA.size() < 2)
-                {
-                    debug::error(FUNCTION, "MINER_AUTH_RESPONSE: packet too small");
-                    std::vector<uint8_t> vFail(1, 0x00);
-                    respond(MINER_AUTH_RESULT, vFail);
-                    this->Disconnect();
-                    return false;
-                }
-
-                /* Parse sig_len (2 bytes, little-endian) */
-                uint16_t nSigLen = static_cast<uint16_t>(PACKET.DATA[0]) |
-                                   (static_cast<uint16_t>(PACKET.DATA[1]) << 8);
-
-                /* Validate sig_len */
-                if(nSigLen == 0 || nSigLen > FalconConstants::FALCON512_SIG_MAX_VALIDATION)
-                {
-                    debug::error(FUNCTION, "MINER_AUTH_RESPONSE: invalid sig_len ", nSigLen);
-                    std::vector<uint8_t> vFail(1, 0x00);
-                    respond(MINER_AUTH_RESULT, vFail);
-                    this->Disconnect();
-                    return false;
-                }
-
-                if(PACKET.DATA.size() < 2 + nSigLen)
-                {
-                    debug::error(FUNCTION, "MINER_AUTH_RESPONSE: packet too small for signature");
-                    std::vector<uint8_t> vFail(1, 0x00);
-                    respond(MINER_AUTH_RESULT, vFail);
-                    this->Disconnect();
-                    return false;
-                }
-
-                /* Extract signature */
-                std::vector<uint8_t> vSignature(PACKET.DATA.begin() + 2, PACKET.DATA.begin() + 2 + nSigLen);
-
-                debug::log(0, FUNCTION, "MinerLLP: MINER_AUTH_RESPONSE from ", GetAddress().ToStringIP(),
-                           " sig_len=", nSigLen);
-
-                /* Verify Falcon signature */
-                LLC::FLKey flkey;
-                if(!flkey.SetPubKey(vMinerPubKey))
-                {
-                    debug::error(FUNCTION, "MINER_AUTH_RESPONSE: invalid public key from ", GetAddress().ToStringIP());
-                    std::vector<uint8_t> vFail(1, 0x00);
-                    respond(MINER_AUTH_RESULT, vFail);
-                    this->Disconnect();
-                    return false;
-                }
-
-                if(!flkey.Verify(vAuthNonce, vSignature))
-                {
-                    debug::log(0, FUNCTION, "MinerLLP: MINER_AUTH verification FAILED for miner_id=", 
-                               strMinerId, " from ", GetAddress().ToStringIP());
-                    std::vector<uint8_t> vFail(1, 0x00);
-                    respond(MINER_AUTH_RESULT, vFail);
-                    this->Disconnect();
-                    return false;
-                }
-
-                /* Authentication succeeded */
-                fMinerAuthenticated = true;
-                
-                /* Derive key ID from public key for session ID generation */
-                FalconAuth::IFalconAuth* pAuth = FalconAuth::Get();
-                if(!pAuth)
-                {
-                    debug::error(FUNCTION, "MINER_AUTH_RESPONSE: FalconAuth not available");
-                    std::vector<uint8_t> vFail(1, 0x00);
-                    respond(MINER_AUTH_RESULT, vFail);
-                    this->Disconnect();
-                    return false;
-                }
-                
-                uint256_t hashKeyID = pAuth->DeriveKeyId(vMinerPubKey);
-                
-                /* Derive session ID from key ID (lower 32 bits) */
-                nSessionId = static_cast<uint32_t>(hashKeyID.Get64(0));
-                
-                debug::log(0, FUNCTION, "MinerLLP: MINER_AUTH success for miner_id=", strMinerId,
-                           " keyID=", hashKeyID.SubString(), " sessionId=", nSessionId,
-                           " from ", GetAddress().ToStringIP());
-
-                /* ChaCha20 key was already derived in MINER_AUTH_INIT */
-                debug::log(0, FUNCTION, "✓ ChaCha20 encryption ready (derived in MINER_AUTH_INIT)");
-
-                /* Build success response with session ID */
-                std::vector<uint8_t> vSuccess;
-                vSuccess.push_back(0x01); // Success status
-                
-                // Append session ID (4 bytes, little-endian)
-                vSuccess.push_back(nSessionId & 0xFF);
-                vSuccess.push_back((nSessionId >> 8) & 0xFF);
-                vSuccess.push_back((nSessionId >> 16) & 0xFF);
-                vSuccess.push_back((nSessionId >> 24) & 0xFF);
-                respond(MINER_AUTH_RESULT, vSuccess);
-
-                return true;
-            }
-
-
-            /* Set the Mining Channel this Connection will Serve Blocks for. 
-             *
-             * PROTOCOL DESIGN NOTE:
-             * This implementation supports backward compatibility with both old and new NexusMiner versions:
-             * 
-             * - Legacy format (NexusMiner v1.x): 4-byte little-endian payload using convert::bytes2uint()
-             * - New format (NexusMiner v2.x+): 1-byte payload for efficiency and simplicity
-             * 
-             * The channel value indicates which Proof-of-Work algorithm to mine:
-             * - Channel 1: Prime (prime number discovery)
-             * - Channel 2: Hash (traditional hashing)
-             * - Channel 0: Reserved for Proof of Stake (not valid for mining)
-             * 
-             * This backward compatibility ensures smooth transition as miners upgrade, preventing
-             * protocol breakage during the rollout of the unified mining stack.
-             */
-            case SET_CHANNEL:
-            {
-                /* Check authentication for stateless miners */
-                if(!fMinerAuthenticated)
-                {
-                    debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted SET_CHANNEL before authentication from ",
-                               GetAddress().ToStringIP(), " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
-                    std::vector<uint8_t> vFail(1, 0x00);
-                    respond(MINER_AUTH_RESULT, vFail);
-                    return debug::error(FUNCTION, "Authentication required for stateless miner commands");
-                }
-
-                /* Log when SET_CHANNEL case is hit for debugging */
-                debug::log(0, FUNCTION, "MinerLLP: *** SET_CHANNEL CASE HIT (STATELESS) *** header=0x", 
-                           std::hex, uint32_t(PACKET.HEADER), std::dec,
-                           " length=", PACKET.LENGTH, " dataBytes=", PACKET.DATA.size());
-
-                /* Parse channel in a backward-compatible way */
-                uint32_t nChannelValue = 0;
-                if(PACKET.DATA.size() == 1)
-                {
-                    /* Single-byte payload - interpret as channel value directly */
-                    nChannelValue = static_cast<uint32_t>(PACKET.DATA[0]);
-                    debug::log(2, FUNCTION, "SET_CHANNEL: parsed single-byte channel value = ", nChannelValue);
-                }
-                else if(PACKET.DATA.size() >= 4)
-                {
-                    /* 4-byte or larger payload - decode using existing method */
-                    nChannelValue = convert::bytes2uint(PACKET.DATA);
-                    debug::log(2, FUNCTION, "SET_CHANNEL: parsed multi-byte channel value = ", nChannelValue);
-                }
-                else
-                {
-                    /* Unexpected payload size */
-                    return debug::error(FUNCTION, "SET_CHANNEL: unexpected payload size ", PACKET.DATA.size());
-                }
-
-                /* Store the parsed channel */
-                nChannel = nChannelValue;
-
-                switch (nChannel.load())
-                {
-                    case 1:
-                        debug::log(0, FUNCTION, "Prime Channel Set for ", GetAddress().ToStringIP());
-                        break;
-
-                    case 2:
-                        debug::log(0, FUNCTION, "Hash Channel Set for ", GetAddress().ToStringIP());
-                        break;
-
-                    /* Don't allow Mining LLP Requests for Proof of Stake, or any other Channel. */
-                    default:
-                        return debug::error(FUNCTION, "Invalid PoW Channel (", nChannel.load(), ")");
-                }
-
-                /* Add distinctive marker for easy grep in logs */
-                debug::log(0, FUNCTION, "MinerLLP: ### CHANNEL_SET_MARKER (STATELESS) from ", GetAddress().ToStringIP(),
-                           " channel=", nChannel.load());
-
-                /* Do not send ACK in stateless mode yet - will be sent after subsequent commands */
-                return true;
-            }
-
+            /* NOTE: Authentication packets (MINER_AUTH_INIT, MINER_AUTH_RESPONSE, SET_CHANNEL,
+             * SESSION_START, SESSION_KEEPALIVE, MINER_SET_REWARD) are now routed to StatelessMiner
+             * in ProcessPacket() above. They will never reach this switch statement. */
 
             /* Return a Ping if Requested. */
             case PING:
@@ -1236,57 +898,12 @@ namespace LLP
                 return true;
             }
 
-
-            /* Placeholder for SESSION_START - not fully implemented yet.
-             *
-             * PROTOCOL DESIGN NOTE (STATELESS MODE):
-             * SESSION_START and SESSION_KEEPALIVE are defined in the protocol but not yet fully implemented.
-             * These packet types are reserved for future session management features where:
-             * - SESSION_START would initialize a persistent mining session with session ID
-             * - SESSION_KEEPALIVE would maintain the session and detect disconnections
-             * 
-             * For now, these handlers acknowledge receipt without error to maintain forward compatibility.
-             * This allows future NexusMiner versions to use these packets without breaking existing nodes.
-             * 
-             * Full implementation will come in a later PR when session management requirements are finalized.
-             */
-            case SESSION_START:
-            {
-                debug::log(0, FUNCTION, "MinerLLP: SESSION_START received from ", GetAddress().ToStringIP(),
-                           " length=", PACKET.LENGTH, " - placeholder handler (not fully implemented)");
-                
-                /* Validate packet has some data */
-                if(PACKET.DATA.size() == 0)
-                {
-                    return debug::error(FUNCTION, "SESSION_START: empty packet from ", GetAddress().ToStringIP());
-                }
-                
-                /* Log that we received the packet but haven't implemented full logic yet */
-                debug::log(0, FUNCTION, "MinerLLP: SESSION_START recognized but full session management not implemented yet");
-                
-                /* For now, return true to acknowledge without error */
-                return true;
-            }
-
-
-            /* Placeholder for SESSION_KEEPALIVE - not fully implemented yet. */
-            case SESSION_KEEPALIVE:
-            {
-                debug::log(0, FUNCTION, "MinerLLP: SESSION_KEEPALIVE received from ", GetAddress().ToStringIP(),
-                           " length=", PACKET.LENGTH, " - placeholder handler (not fully implemented)");
-                
-                /* Log that we received the packet but haven't implemented full logic yet */
-                debug::log(0, FUNCTION, "MinerLLP: SESSION_KEEPALIVE recognized but full session management not implemented yet");
-                
-                /* For now, return true to acknowledge without error */
-                return true;
-            }
+            /* Fallback for unknown commands - log and return error */
+            default:
+                debug::log(0, FUNCTION, "MinerLLP: COMMAND NOT FOUND (stateless) header=0x", std::hex, 
+                           uint32_t(PACKET.HEADER), std::dec, " length=", PACKET.LENGTH);
+                return debug::error(FUNCTION, "Command not found 0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
         }
-
-        /* Fallback for unknown commands - log and return error */
-        debug::log(0, FUNCTION, "MinerLLP: COMMAND NOT FOUND (stateless) header=0x", std::hex, 
-                   uint32_t(PACKET.HEADER), std::dec, " length=", PACKET.LENGTH);
-        return debug::error(FUNCTION, "Command not found 0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
     }
 
 
