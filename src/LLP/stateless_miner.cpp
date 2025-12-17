@@ -71,6 +71,8 @@ namespace LLP
     , nKeepaliveCount(0)
     , hashRewardAddress(0)
     , fRewardBound(false)
+    , vChaChaKey()
+    , fEncryptionReady(false)
     {
     }
 
@@ -103,6 +105,8 @@ namespace LLP
     , nKeepaliveCount(0)
     , hashRewardAddress(0)
     , fRewardBound(false)
+    , vChaChaKey()
+    , fEncryptionReady(false)
     {
     }
 
@@ -203,6 +207,14 @@ namespace LLP
         MiningContext c = *this;
         c.hashRewardAddress = hashReward_;
         c.fRewardBound = true;
+        return c;
+    }
+
+    MiningContext MiningContext::WithChaChaKey(const std::vector<uint8_t>& vKey_) const
+    {
+        MiningContext c = *this;
+        c.vChaChaKey = vKey_;
+        c.fEncryptionReady = !vKey_.empty();
         return c;
     }
 

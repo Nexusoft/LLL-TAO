@@ -445,6 +445,13 @@ namespace LLP
                 if(fRewardBound)
                     context = context.WithRewardAddress(hashRewardAddress);
 
+                /* Add ChaCha20 key if encryption is ready
+                 * CRITICAL: This ensures the context sent to StatelessMiner includes
+                 * the encryption key derived from genesis. Without this, the context
+                 * in StatelessMinerManager will be missing encryption state. */
+                if(fEncryptionReady && !vChaChaKey.empty())
+                    context = context.WithChaChaKey(vChaChaKey);
+
                 /* Route ALL authentication/session packet processing to StatelessMiner */
                 ProcessResult result = StatelessMiner::ProcessPacket(context, PACKET);
 
@@ -478,6 +485,21 @@ namespace LLP
                         vChaChaKey = LLC::MiningSessionKeys::DeriveChaCha20Key(hashGenesis);
                         fEncryptionReady = true;
                     }
+
+                    /* Update the context with the ChaCha20 key before sending to manager.
+                     * CRITICAL: The context returned from StatelessMiner may not include
+                     * the ChaCha20 key in all cases:
+                     * 1. If it was just derived above, result.context won't have it
+                     * 2. If encryption was already ready, result.context should have it from line 452
+                     * We always add/update it here to ensure StatelessMinerManager has complete state. */
+                    MiningContext updatedContext = result.context;
+                    if(fEncryptionReady && !vChaChaKey.empty())
+                    {
+                        updatedContext = updatedContext.WithChaChaKey(vChaChaKey);
+                    }
+
+                    /* Update StatelessMinerManager with COMPLETE context including encryption state */
+                    StatelessMinerManager::Get().UpdateMiner(updatedContext.strAddress, updatedContext);
 
                     /* Send response if present */
                     if(!result.response.IsNull())

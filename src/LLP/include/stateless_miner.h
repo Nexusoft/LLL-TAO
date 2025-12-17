@@ -61,6 +61,10 @@ namespace LLP
         uint256_t hashRewardAddress; // Reward payout address (separate from auth genesis)
         bool fRewardBound;           // Whether reward address has been set
 
+        /* ChaCha20 encryption state for secure communication */
+        std::vector<uint8_t> vChaChaKey; // ChaCha20 session key derived from genesis
+        bool fEncryptionReady;           // Whether ChaCha20 encryption is established
+
         /** Default Constructor **/
         MiningContext();
 
@@ -176,6 +180,17 @@ namespace LLP
          *
          **/
         MiningContext WithRewardAddress(const uint256_t& hashReward_) const;
+
+        /** WithChaChaKey
+         *
+         *  Returns a new context with updated ChaCha20 encryption key.
+         *  CRITICAL: This ensures encryption state is synchronized between
+         *  Miner connection and StatelessMinerManager.
+         *
+         *  @param[in] vKey_ The ChaCha20 session key
+         *
+         **/
+        MiningContext WithChaChaKey(const std::vector<uint8_t>& vKey_) const;
 
         /** GetPayoutAddress
          *
