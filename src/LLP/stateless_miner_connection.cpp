@@ -486,16 +486,10 @@ namespace LLP
                            " sessionId=", context.nSessionId,
                            " - responding with height ", nCurrentHeight + 1);
 
-                /* Create the response packet with height (next block to mine) */
+                /* Create the response packet with height (next block to mine, 4-byte little-endian) */
                 Packet response(BLOCK_HEIGHT);
-                
-                /* Convert height to 4-byte little-endian */
-                uint32_t nHeight = nCurrentHeight + 1;
-                response.DATA.push_back(static_cast<uint8_t>(nHeight & 0xFF));
-                response.DATA.push_back(static_cast<uint8_t>((nHeight >> 8) & 0xFF));
-                response.DATA.push_back(static_cast<uint8_t>((nHeight >> 16) & 0xFF));
-                response.DATA.push_back(static_cast<uint8_t>((nHeight >> 24) & 0xFF));
-                response.LENGTH = 4;
+                response.DATA = convert::uint2bytes(nCurrentHeight + 1);
+                response.LENGTH = static_cast<uint32_t>(response.DATA.size());
                 
                 respond(response);
 
@@ -525,8 +519,13 @@ namespace LLP
                 /* Check channel is set */
                 if(context.nChannel == 0)
                 {
-                    debug::log(0, FUNCTION, "MinerLLP: GET_REWARD before channel set");
-                    return debug::error(FUNCTION, "Channel not set");
+                    debug::error(FUNCTION, "GET_REWARD rejected - channel not set");
+                    debug::error(FUNCTION, "  Required flow: Auth → MINER_SET_REWARD → SET_CHANNEL → GET_REWARD");
+                    
+                    /* Send error response */
+                    Packet response(BLOCK_REJECTED);
+                    respond(response);
+                    return true;
                 }
 
                 debug::log(2, FUNCTION, "GET_REWARD request from ", GetAddress().ToStringIP(),
@@ -541,24 +540,22 @@ namespace LLP
                 /* Check to make sure the reward is greater than zero */
                 if(nReward == 0)
                 {
-                    debug::error(FUNCTION, "No coinbase reward");
+                    debug::error(FUNCTION, "No coinbase reward available for this channel");
+                    
+                    /* Send error response */
+                    Packet response(BLOCK_REJECTED);
+                    respond(response);
                     return true;
                 }
 
-                /* Create the response packet with reward */
+                debug::log(2, FUNCTION, "Sending Coinbase Reward of ", nReward);
+
+                /* Create the response packet with reward (8-byte little-endian) */
                 Packet response(BLOCK_REWARD);
-                
-                /* Convert reward to 8-byte little-endian */
-                for(int i = 0; i < 8; ++i)
-                {
-                    response.DATA.push_back(static_cast<uint8_t>(nReward & 0xFF));
-                    nReward >>= 8;
-                }
-                response.LENGTH = 8;
+                response.DATA = convert::uint2bytes64(nReward);
+                response.LENGTH = static_cast<uint32_t>(response.DATA.size());
                 
                 respond(response);
-
-                debug::log(2, FUNCTION, "Sent Coinbase Reward of ", nReward);
 
                 /* Update context timestamp */
                 context = context.WithTimestamp(runtime::unifiedtimestamp());
