@@ -540,9 +540,17 @@ namespace LLP
                 else
                 {
                     /* Check if this is an unknown packet type that needs legacy handling.
-                     * StatelessMiner handles auth/session/config packets functionally.
-                     * For packets it doesn't recognize (like GET_BLOCK, SUBMIT_BLOCK),
-                     * fallback to ProcessPacketStateless for backward compatibility during migration. */
+                     * StatelessMiner currently handles only: auth (207-210), session (211-212), 
+                     * config (3), and rewards (213-214) packets functionally.
+                     * 
+                     * Packets not yet implemented in StatelessMiner (mining operations like 
+                     * GET_BLOCK(129), SUBMIT_BLOCK(1), BLOCK_DATA(0), BLOCK_ACCEPTED(200),  
+                     * BLOCK_REJECTED(201), GET_HEIGHT(130), CHANNEL_ACK(206)) fallback to  
+                     * ProcessPacketStateless for backward compatibility during migration.
+                     * 
+                     * NOTE: String-based error detection is temporary. Future versions should
+                     * use error codes or exception types for more robust error handling.
+                     */
                     if(result.strError.find("Unknown packet type") != std::string::npos)
                     {
                         debug::log(2, FUNCTION, "MinerLLP: StatelessMiner doesn't handle opcode 0x", 
