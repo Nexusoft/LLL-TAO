@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/types/tritium.h>
 
 #include <TAO/API/include/global.h>
@@ -197,10 +198,17 @@ namespace LLP
             /* Handle block-related packets that require stateful block management */
             /* These are handled directly here instead of through StatelessMiner */
             const uint8_t GET_BLOCK = 129;
+            const uint8_t GET_HEIGHT = 130;
+            const uint8_t GET_REWARD = 131;
+            const uint8_t GET_ROUND = 133;
             const uint8_t SUBMIT_BLOCK = 1;
             const uint8_t BLOCK_DATA = 0;
+            const uint8_t BLOCK_HEIGHT = 2;
+            const uint8_t BLOCK_REWARD = 4;
             const uint8_t BLOCK_ACCEPTED = 200;
             const uint8_t BLOCK_REJECTED = 201;
+            const uint8_t NEW_ROUND = 204;
+            const uint8_t OLD_ROUND = 205;
             
             /* Authentication packet types */
             const uint8_t MINER_AUTH_INIT = 207;
@@ -454,6 +462,157 @@ namespace LLP
 
                 /* Update manager with new context */
                 StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
+
+                return true;
+            }
+
+            /* Handle GET_HEIGHT - requires authentication */
+            if(PACKET.HEADER == GET_HEIGHT)
+            {
+                /* Check authentication */
+                if(!context.fAuthenticated)
+                {
+                    debug::error(FUNCTION, "GET_HEIGHT rejected - authentication required");
+                    Packet response(MINER_AUTH_RESULT);
+                    response.DATA.push_back(0x00);  // Failure
+                    respond(response);
+                    return true;
+                }
+
+                /* Get current blockchain height */
+                uint32_t nCurrentHeight = TAO::Ledger::ChainState::nBestHeight.load();
+
+                debug::log(2, FUNCTION, "GET_HEIGHT request from ", GetAddress().ToStringIP(),
+                           " sessionId=", context.nSessionId,
+                           " - responding with height ", nCurrentHeight + 1);
+
+                /* Create the response packet with height (next block to mine) */
+                Packet response(BLOCK_HEIGHT);
+                
+                /* Convert height to 4-byte little-endian */
+                uint32_t nHeight = nCurrentHeight + 1;
+                response.DATA.push_back(static_cast<uint8_t>(nHeight & 0xFF));
+                response.DATA.push_back(static_cast<uint8_t>((nHeight >> 8) & 0xFF));
+                response.DATA.push_back(static_cast<uint8_t>((nHeight >> 16) & 0xFF));
+                response.DATA.push_back(static_cast<uint8_t>((nHeight >> 24) & 0xFF));
+                response.LENGTH = 4;
+                
+                respond(response);
+
+                /* Update context timestamp */
+                context = context.WithTimestamp(runtime::unifiedtimestamp())
+                                 .WithHeight(nCurrentHeight);
+
+                /* Update manager with new context */
+                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
+
+                return true;
+            }
+
+            /* Handle GET_REWARD - requires authentication and channel */
+            if(PACKET.HEADER == GET_REWARD)
+            {
+                /* Check authentication */
+                if(!context.fAuthenticated)
+                {
+                    debug::error(FUNCTION, "GET_REWARD rejected - authentication required");
+                    Packet response(MINER_AUTH_RESULT);
+                    response.DATA.push_back(0x00);  // Failure
+                    respond(response);
+                    return true;
+                }
+
+                /* Check channel is set */
+                if(context.nChannel == 0)
+                {
+                    debug::log(0, FUNCTION, "MinerLLP: GET_REWARD before channel set");
+                    return debug::error(FUNCTION, "Channel not set");
+                }
+
+                debug::log(2, FUNCTION, "GET_REWARD request from ", GetAddress().ToStringIP(),
+                           " channel=", context.nChannel, " sessionId=", context.nSessionId);
+
+                /* Get the mining reward amount for the channel currently set */
+                uint64_t nReward = TAO::Ledger::GetCoinbaseReward(
+                    TAO::Ledger::ChainState::tStateBest.load(), 
+                    context.nChannel, 
+                    0);
+
+                /* Check to make sure the reward is greater than zero */
+                if(nReward == 0)
+                {
+                    debug::error(FUNCTION, "No coinbase reward");
+                    return true;
+                }
+
+                /* Create the response packet with reward */
+                Packet response(BLOCK_REWARD);
+                
+                /* Convert reward to 8-byte little-endian */
+                for(int i = 0; i < 8; ++i)
+                {
+                    response.DATA.push_back(static_cast<uint8_t>(nReward & 0xFF));
+                    nReward >>= 8;
+                }
+                response.LENGTH = 8;
+                
+                respond(response);
+
+                debug::log(2, FUNCTION, "Sent Coinbase Reward of ", nReward);
+
+                /* Update context timestamp */
+                context = context.WithTimestamp(runtime::unifiedtimestamp());
+
+                /* Update manager with new context */
+                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
+
+                return true;
+            }
+
+            /* Handle GET_ROUND - requires authentication */
+            if(PACKET.HEADER == GET_ROUND)
+            {
+                /* Check authentication */
+                if(!context.fAuthenticated)
+                {
+                    debug::error(FUNCTION, "GET_ROUND rejected - authentication required");
+                    Packet response(MINER_AUTH_RESULT);
+                    response.DATA.push_back(0x00);  // Failure
+                    respond(response);
+                    return true;
+                }
+
+                debug::log(2, FUNCTION, "GET_ROUND request from ", GetAddress().ToStringIP(),
+                           " sessionId=", context.nSessionId);
+
+                /* Check if blockchain height has changed (indicating new round) */
+                uint32_t nCurrentHeight = TAO::Ledger::ChainState::nBestHeight.load();
+                bool fNewRound = (nCurrentHeight != context.nHeight);
+
+                /* Respond with appropriate round status */
+                Packet response;
+                if(fNewRound)
+                {
+                    response.HEADER = NEW_ROUND;
+                    debug::log(2, FUNCTION, "Responding NEW_ROUND (height changed from ",
+                               context.nHeight, " to ", nCurrentHeight, ")");
+                }
+                else
+                {
+                    response.HEADER = OLD_ROUND;
+                    debug::log(3, FUNCTION, "Responding OLD_ROUND (height still ", nCurrentHeight, ")");
+                }
+                
+                response.LENGTH = 0;
+                respond(response);
+
+                /* Update context with current height if changed */
+                if(fNewRound)
+                {
+                    context = context.WithHeight(nCurrentHeight)
+                                     .WithTimestamp(runtime::unifiedtimestamp());
+                    StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
+                }
 
                 return true;
             }
