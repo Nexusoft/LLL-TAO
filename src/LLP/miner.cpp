@@ -539,17 +539,29 @@ namespace LLP
                 }
                 else
                 {
-                    /* Check if this is an unknown packet type that needs legacy handling.
-                     * StatelessMiner currently handles only: auth (207-210), session (211-212), 
-                     * config (3), and rewards (213-214) packets functionally.
+                    /* Handle "Unknown packet type" errors from StatelessMiner.
                      * 
-                     * Packets not yet implemented in StatelessMiner (mining operations like 
-                     * GET_BLOCK(129), SUBMIT_BLOCK(1), BLOCK_DATA(0), BLOCK_ACCEPTED(200),  
-                     * BLOCK_REJECTED(201), GET_HEIGHT(130), CHANNEL_ACK(206)) fallback to  
-                     * ProcessPacketStateless for backward compatibility during migration.
+                     * ARCHITECTURAL PATTERN:
+                     * All stateless packets (16 opcodes) are routed to StatelessMiner first.
+                     * StatelessMiner currently implements only a subset (auth/session/config/rewards).
+                     * For unimplemented packets, StatelessMiner returns "Unknown packet type".
+                     * This fallback enables gradual migration - packets move from legacy to stateless
+                     * incrementally without breaking the protocol.
                      * 
-                     * NOTE: String-based error detection is temporary. Future versions should
-                     * use error codes or exception types for more robust error handling.
+                     * Currently handled by StatelessMiner:
+                     *   - Auth: MINER_AUTH_INIT(207), MINER_AUTH_RESPONSE(209)
+                     *   - Session: SESSION_START(211), SESSION_KEEPALIVE(212)  
+                     *   - Config: SET_CHANNEL(3)
+                     *   - Rewards: MINER_SET_REWARD(213)
+                     * 
+                     * Currently falling back to legacy ProcessPacketStateless:
+                     *   - Mining: GET_BLOCK(129), SUBMIT_BLOCK(1), BLOCK_DATA(0)
+                     *   - Status: BLOCK_ACCEPTED(200), BLOCK_REJECTED(201)
+                     *   - Info: GET_HEIGHT(130), CHANNEL_ACK(206)
+                     *   - Responses: MINER_AUTH_CHALLENGE(208), MINER_AUTH_RESULT(210), MINER_REWARD_RESULT(214)
+                     * 
+                     * TODO: Replace string-based error detection with error codes or exception types
+                     * for more robust error handling (current implementation is temporary).
                      */
                     if(result.strError.find("Unknown packet type") != std::string::npos)
                     {
