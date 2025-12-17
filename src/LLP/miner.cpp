@@ -1078,6 +1078,23 @@ namespace LLP
     /*  Adds a new block to the map. */
     TAO::Ledger::Block *Miner::new_block()
     {
+        /* For stateless mining, verify reward address is bound via MINER_SET_REWARD.
+         * 
+         * ARCHITECTURAL CLARITY:
+         * - hashGenesis: WHO you are (authentication identity via Falcon signature)
+         * - hashRewardAddress: WHERE rewards go (explicit payout address via MINER_SET_REWARD)
+         * 
+         * These are separate concerns! Genesis proves ownership of the account,
+         * but reward address specifies which register receives the mining rewards.
+         * The reward address CAN be different from genesis.
+         */
+        if(fRewardBound && hashRewardAddress == 0)
+        {
+            debug::error(FUNCTION, "Cannot create block - reward address is zero");
+            debug::error(FUNCTION, "  Required flow: MINER_AUTH → MINER_SET_REWARD → SET_CHANNEL → GET_BLOCK");
+            return nullptr;
+        }
+
         /* If the primemod flag is set, take the hash proof down to 1017-bit to maximize prime ratio as much as possible. */
         const uint32_t nBitMask =
             config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
@@ -1093,15 +1110,33 @@ namespace LLP
         /* Allocate memory for the new block. */
         TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();
 
-        /* Determine reward address for stateless miners */
+        /* Determine reward address for stateless miners.
+         * 
+         * CRITICAL: Use hashRewardAddress (NOT hashGenesis!) for coinbase payout.
+         * This is the register address sent by miner via MINER_SET_REWARD packet.
+         * 
+         * Separation of concerns:
+         *   - hashGenesis: WHO you are (authentication via Falcon signature)
+         *   - hashRewardAddress: WHERE rewards go (explicit payout address)
+         */
         uint256_t hashDynamicReward = 0;
         if(fRewardBound)
         {
             hashDynamicReward = hashRewardAddress;
-            debug::log(0, FUNCTION, "Using reward address: ", hashDynamicReward.ToString().substr(0, 16), "...");
+            debug::log(1, FUNCTION, "Creating block with REWARD ADDRESS: ", hashDynamicReward.ToString().substr(0, 16), "...");
+            debug::log(2, FUNCTION, "  Auth genesis: ", hashGenesis.SubString());
+            debug::log(2, FUNCTION, "  Reward address: ", hashDynamicReward.ToString());
+        }
+        else
+        {
+            debug::log(1, FUNCTION, "Creating block without explicit reward address (legacy/SOLO mode)");
         }
 
-        /* Create a new block and loop for prime channel if minimum bit target length isn't met */
+        /* Create a new block and loop for prime channel if minimum bit target length isn't met.
+         * 
+         * NOTE: hashDynamicReward (last parameter) is used for the coinbase payout address.
+         * This ensures rewards go to hashRewardAddress (if bound), NOT to hashGenesis.
+         */
         while(TAO::Ledger::CreateBlock(pCredentials, strPIN, nChannel.load(), *pBlock, ++nBlockIterator, &tCoinbaseTx, hashDynamicReward))
         {
             /* Break out of loop when block is ready for prime mod. */
