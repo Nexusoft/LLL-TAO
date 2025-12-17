@@ -426,12 +426,8 @@ namespace LLP
                      * 1. MINING_SERVER (port 9325) - uses Miner class (thin wrapper to StatelessMiner)
                      * 2. STATELESS_MINER_SERVER (port 8323) - uses StatelessMinerConnection class
                      * Both should be allowed to continue even if legacy code tries to access sessions. */
-                    bool fMiningConnection = false;
                     std::string strProtocol = ProtocolType::Name();
-                    if(strProtocol == std::string("Miner") || strProtocol == std::string("StatelessMiner"))
-                    {
-                        fMiningConnection = true;
-                    }
+                    bool fMiningConnection = (strProtocol == "Miner" || strProtocol == "StatelessMiner");
                     
                     /* Allow mining connections to proceed even without TAO API session.
                      * The stateless mining protocol uses MiningContext state tracked by
