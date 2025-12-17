@@ -552,8 +552,7 @@ namespace LLP
              */
             if(strError.find("Session not found") != std::string::npos)
             {
-                debug::log(2, FUNCTION, "MinerLLP: Session error suppressed for stateless mining from ",
-                           GetAddress().ToStringIP(), " - stateless protocol uses MiningContext, not TAO API sessions");
+                debug::log(2, FUNCTION, "MinerLLP: Session error suppressed for stateless mining from ", GetAddress().ToStringIP(), " - stateless protocol uses MiningContext, not TAO API sessions");
                 
                 /* Return true to continue processing - the packet has been handled,
                  * we just encountered legacy code trying to access non-existent sessions.
