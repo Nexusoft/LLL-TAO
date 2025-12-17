@@ -417,42 +417,45 @@ namespace LLP
                     /* Get the connection for detailed logging. */
                     std::shared_ptr<ProtocolType> CONNECTION = CONNECTIONS->at(nIndex);
                     
-                    /* Check if this is a "Session not found" error for stateless Miner connection. */
+                    /* Check if this is a "Session not found" error */
                     std::string strError = e.what();
                     bool fSessionError = (strError.find("Session not found") != std::string::npos);
                     
-                    /* All Miner connections now use stateless protocol (no session required) */
-                    bool fStatelessMiner = false;
-                    if(ProtocolType::Name() == std::string("Miner") && CONNECTION)
-                    {
-                        Miner* pMiner = dynamic_cast<Miner*>(CONNECTION.get());
-                        if(pMiner)
-                        {
-                            fStatelessMiner = true;
-                        }
-                    }
+                    /* Check if this is a mining connection (stateless protocol doesn't use TAO API sessions).
+                     * CRITICAL: Stateless mining can happen on two server types:
+                     * 1. MINING_SERVER (port 9325) - uses Miner class (thin wrapper to StatelessMiner)
+                     * 2. STATELESS_MINER_SERVER (port 8323) - uses StatelessMinerConnection class
+                     * Both should be allowed to continue even if legacy code tries to access sessions. */
+                    std::string strProtocol = ProtocolType::Name();
+                    bool fMiningConnection = (strProtocol == "Miner" || strProtocol == "StatelessMiner");
                     
-                    /* Allow stateless Miner connections to proceed even without session. */
-                    if(fSessionError && fStatelessMiner)
+                    /* Allow mining connections to proceed even without TAO API session.
+                     * The stateless mining protocol uses MiningContext state tracked by
+                     * StatelessMinerManager, not TAO API sessions. */
+                    if(fSessionError && fMiningConnection)
                     {
-                        /* Log suppression of session errors for stateless miners at verbose level 2. */
-                        debug::log(2, FUNCTION, "DataThread[", ID, "]: Session error ignored for stateless Miner from ",
+                        /* Log suppression of session errors for stateless miners. */
+                        debug::log(2, FUNCTION, "DataThread[", ID, "]: Session error ignored for stateless mining (",
+                                   strProtocol, ") from ",
                                    CONNECTION->GetAddress().ToStringIP(), ":", CONNECTION->GetAddress().GetPort(),
-                                   " - continuing without disconnect");
-                        /* Continue processing without disconnect. */
+                                   " - stateless protocol doesn't use TAO API sessions");
+                        
+                        /* CRITICAL: Continue to next connection without disconnect.
+                         * This allows GET_BLOCK and other mining operations to proceed
+                         * even though legacy code may throw "Session not found" exceptions. */
+                        continue;
                     }
                     else
                     {
-                        /* Enhanced logging: show connection details when error occurs. */
+                        /* For all other cases, maintain existing behavior: log error and disconnect. */
                         if(CONNECTION)
                         {
                             debug::log(1, FUNCTION, "DataThread[", ID, "]: Exception for connection id=", nIndex, 
-                                       " type=", ProtocolType::Name(), 
+                                       " type=", strProtocol, 
                                        " from ", CONNECTION->GetAddress().ToStringIP(), ":", CONNECTION->GetAddress().GetPort(),
                                        " - ", e.what());
                         }
                         
-                        /* For all other cases, maintain existing behavior: log error and disconnect. */
                         debug::error(FUNCTION, "Data Connection: ", e.what());
                         remove_connection_with_event(nIndex, DISCONNECT::ERRORS);
                     }
