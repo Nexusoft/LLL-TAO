@@ -539,6 +539,18 @@ namespace LLP
                 }
                 else
                 {
+                    /* Check if this is an unknown packet type that needs legacy handling.
+                     * StatelessMiner handles auth/session/config packets functionally.
+                     * For packets it doesn't recognize (like GET_BLOCK, SUBMIT_BLOCK),
+                     * fallback to ProcessPacketStateless for backward compatibility during migration. */
+                    if(result.strError.find("Unknown packet type") != std::string::npos)
+                    {
+                        debug::log(2, FUNCTION, "MinerLLP: StatelessMiner doesn't handle opcode 0x", 
+                                   std::hex, uint32_t(PACKET.HEADER), std::dec,
+                                   " - falling back to ProcessPacketStateless for backward compatibility");
+                        return ProcessPacketStateless(PACKET);
+                    }
+                    
                     /* Processing error - log and disconnect */
                     debug::error(FUNCTION, "MinerLLP: Processing error from ", GetAddress().ToStringIP(),
                                 ": ", result.strError);
