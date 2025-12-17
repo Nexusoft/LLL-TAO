@@ -440,8 +440,16 @@ TEST_CASE("Error Handling: Resource Exhaustion", "[error-handling][resources]")
     SECTION("Very large packet data")
     {
         /* Create packet with large but valid data */
-        std::vector<uint8_t> largeData(1024 * 1024);  // 1MB
-        LLC::GetRand(largeData);
+        std::vector<uint8_t> largeData;
+        /* Build from multiple random values */
+        size_t targetSize = 1024 * 1024;  // 1MB
+        while(largeData.size() < targetSize)
+        {
+            std::vector<uint8_t> vChunk = LLC::GetRand256().GetBytes();
+            size_t remaining = targetSize - largeData.size();
+            size_t toAdd = (remaining < vChunk.size()) ? remaining : vChunk.size();
+            largeData.insert(largeData.end(), vChunk.begin(), vChunk.begin() + toAdd);
+        }
         
         Packet large = PacketBuilder(PacketTypes::MINER_SET_REWARD)
             .WithData(largeData)

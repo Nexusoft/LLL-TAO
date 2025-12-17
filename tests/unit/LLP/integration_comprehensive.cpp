@@ -544,15 +544,29 @@ TEST_CASE("Integration: Complete Protocol Flow with Packets", "[integration][pro
         REQUIRE(authInit.HEADER == PacketTypes::MINER_AUTH_INIT);
         
         /* === PHASE 2: AUTH_RESPONSE === */
-        std::vector<uint8_t> signature(Constants::FALCON_SIGNATURE_SIZE);
-        LLC::GetRand(signature);
+        std::vector<uint8_t> signature;
+        /* Build signature from random data */
+        while(signature.size() < Constants::FALCON_SIGNATURE_SIZE)
+        {
+            std::vector<uint8_t> vChunk = LLC::GetRand256().GetBytes();
+            size_t remaining = Constants::FALCON_SIGNATURE_SIZE - signature.size();
+            size_t toAdd = (remaining < vChunk.size()) ? remaining : vChunk.size();
+            signature.insert(signature.end(), vChunk.begin(), vChunk.begin() + toAdd);
+        }
         
         Packet authResponse = CreateAuthResponsePacket(signature);
         REQUIRE(authResponse.HEADER == PacketTypes::MINER_AUTH_RESPONSE);
         
         /* === PHASE 3: SET_REWARD === */
-        std::vector<uint8_t> encryptedReward(64);
-        LLC::GetRand(encryptedReward);
+        std::vector<uint8_t> encryptedReward;
+        /* Build encrypted data from random values */
+        while(encryptedReward.size() < 64)
+        {
+            std::vector<uint8_t> vChunk = LLC::GetRand256().GetBytes();
+            size_t remaining = 64 - encryptedReward.size();
+            size_t toAdd = (remaining < vChunk.size()) ? remaining : vChunk.size();
+            encryptedReward.insert(encryptedReward.end(), vChunk.begin(), vChunk.begin() + toAdd);
+        }
         
         Packet setReward = CreateSetRewardPacket(encryptedReward);
         REQUIRE(setReward.HEADER == PacketTypes::MINER_SET_REWARD);

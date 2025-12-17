@@ -97,8 +97,15 @@ namespace TestFixtures
         
         PacketBuilder& WithRandomData(size_t len)
         {
-            std::vector<uint8_t> data(len);
-            LLC::GetRand(data);
+            /* Build from multiple random 256-bit values */
+            std::vector<uint8_t> data;
+            while(data.size() < len)
+            {
+                std::vector<uint8_t> vChunk = LLC::GetRand256().GetBytes();
+                size_t remaining = len - data.size();
+                size_t toAdd = (remaining < vChunk.size()) ? remaining : vChunk.size();
+                data.insert(data.end(), vChunk.begin(), vChunk.begin() + toAdd);
+            }
             return WithData(data);
         }
         

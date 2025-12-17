@@ -95,13 +95,7 @@ namespace TestFixtures
      **/
     inline uint256_t CreateRandomHash()
     {
-        std::vector<uint8_t> vRandom(32);
-        LLC::GetRand(vRandom);
-        
-        uint256_t hash;
-        std::string hexStr = HexStr(vRandom.begin(), vRandom.end());
-        hash.SetHex(hexStr);
-        return hash;
+        return LLC::GetRand256();
     }
     
     /** CreateTestNonce
@@ -114,8 +108,18 @@ namespace TestFixtures
      **/
     inline std::vector<uint8_t> CreateTestNonce(size_t size = Constants::AUTH_NONCE_SIZE)
     {
-        std::vector<uint8_t> vNonce(size);
-        LLC::GetRand(vNonce);
+        if(size == 32)
+            return LLC::GetRand256().GetBytes();
+        
+        /* For non-standard sizes, build from multiple random values */
+        std::vector<uint8_t> vNonce;
+        while(vNonce.size() < size)
+        {
+            std::vector<uint8_t> vChunk = LLC::GetRand256().GetBytes();
+            size_t remaining = size - vNonce.size();
+            size_t toAdd = (remaining < vChunk.size()) ? remaining : vChunk.size();
+            vNonce.insert(vNonce.end(), vChunk.begin(), vChunk.begin() + toAdd);
+        }
         return vNonce;
     }
     
@@ -130,8 +134,15 @@ namespace TestFixtures
      **/
     inline std::vector<uint8_t> CreateTestFalconPubKey(size_t size = Constants::FALCON_PUBKEY_SIZE)
     {
-        std::vector<uint8_t> vPubKey(size);
-        LLC::GetRand(vPubKey);
+        /* Build from multiple random values */
+        std::vector<uint8_t> vPubKey;
+        while(vPubKey.size() < size)
+        {
+            std::vector<uint8_t> vChunk = LLC::GetRand256().GetBytes();
+            size_t remaining = size - vPubKey.size();
+            size_t toAdd = (remaining < vChunk.size()) ? remaining : vChunk.size();
+            vPubKey.insert(vPubKey.end(), vChunk.begin(), vChunk.begin() + toAdd);
+        }
         return vPubKey;
     }
     
@@ -145,8 +156,18 @@ namespace TestFixtures
      **/
     inline std::vector<uint8_t> CreateTestChaChaKey(size_t size = Constants::CHACHA_KEY_SIZE)
     {
-        std::vector<uint8_t> vKey(size);
-        LLC::GetRand(vKey);
+        if(size == 32)
+            return LLC::GetRand256().GetBytes();
+        
+        /* For non-standard sizes, build from multiple random values */
+        std::vector<uint8_t> vKey;
+        while(vKey.size() < size)
+        {
+            std::vector<uint8_t> vChunk = LLC::GetRand256().GetBytes();
+            size_t remaining = size - vKey.size();
+            size_t toAdd = (remaining < vChunk.size()) ? remaining : vChunk.size();
+            vKey.insert(vKey.end(), vChunk.begin(), vChunk.begin() + toAdd);
+        }
         return vKey;
     }
     

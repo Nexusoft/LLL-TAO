@@ -148,8 +148,15 @@ TEST_CASE("Packet: Authentication Packets", "[packet][authentication]")
     
     SECTION("MINER_AUTH_RESPONSE packet contains signature")
     {
-        std::vector<uint8_t> testSignature(Constants::FALCON_SIGNATURE_SIZE);
-        LLC::GetRand(testSignature);
+        std::vector<uint8_t> testSignature;
+        /* Build signature from random data */
+        while(testSignature.size() < Constants::FALCON_SIGNATURE_SIZE)
+        {
+            std::vector<uint8_t> vChunk = LLC::GetRand256().GetBytes();
+            size_t remaining = Constants::FALCON_SIGNATURE_SIZE - testSignature.size();
+            size_t toAdd = (remaining < vChunk.size()) ? remaining : vChunk.size();
+            testSignature.insert(testSignature.end(), vChunk.begin(), vChunk.begin() + toAdd);
+        }
         
         Packet packet = CreateAuthResponsePacket(testSignature);
         
@@ -182,8 +189,15 @@ TEST_CASE("Packet: Reward Binding Packets", "[packet][reward]")
     SECTION("MINER_SET_REWARD packet contains encrypted data")
     {
         /* Simulate encrypted reward address */
-        std::vector<uint8_t> encryptedData(64);  // Encrypted uint256_t + auth tag
-        LLC::GetRand(encryptedData);
+        std::vector<uint8_t> encryptedData;
+        /* Build encrypted data from random values */
+        while(encryptedData.size() < 64)
+        {
+            std::vector<uint8_t> vChunk = LLC::GetRand256().GetBytes();
+            size_t remaining = 64 - encryptedData.size();
+            size_t toAdd = (remaining < vChunk.size()) ? remaining : vChunk.size();
+            encryptedData.insert(encryptedData.end(), vChunk.begin(), vChunk.begin() + toAdd);
+        }
         
         Packet packet = CreateSetRewardPacket(encryptedData);
         
@@ -197,8 +211,7 @@ TEST_CASE("Packet: Reward Binding Packets", "[packet][reward]")
     
     SECTION("MINER_SET_REWARD with minimum encrypted data")
     {
-        std::vector<uint8_t> minData(32);  // Minimum: just the address
-        LLC::GetRand(minData);
+        std::vector<uint8_t> minData = LLC::GetRand256().GetBytes();
         
         Packet packet = CreateSetRewardPacket(minData);
         
@@ -439,8 +452,15 @@ TEST_CASE("Packet: Valid Packet Sequences", "[packet][sequence]")
         /* 2. Node would send AUTH_CHALLENGE (not tested here) */
         
         /* 3. Miner sends AUTH_RESPONSE */
-        std::vector<uint8_t> signature(Constants::FALCON_SIGNATURE_SIZE);
-        LLC::GetRand(signature);
+        std::vector<uint8_t> signature;
+        /* Build signature from random data */
+        while(signature.size() < Constants::FALCON_SIGNATURE_SIZE)
+        {
+            std::vector<uint8_t> vChunk = LLC::GetRand256().GetBytes();
+            size_t remaining = Constants::FALCON_SIGNATURE_SIZE - signature.size();
+            size_t toAdd = (remaining < vChunk.size()) ? remaining : vChunk.size();
+            signature.insert(signature.end(), vChunk.begin(), vChunk.begin() + toAdd);
+        }
         Packet authResponse = CreateAuthResponsePacket(signature);
         REQUIRE(authResponse.HEADER == PacketTypes::MINER_AUTH_RESPONSE);
         
