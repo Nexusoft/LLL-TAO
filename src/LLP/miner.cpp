@@ -531,6 +531,37 @@ namespace LLP
         }
         catch(const std::exception& e)
         {
+            /* Get the error message */
+            std::string strError = e.what();
+            
+            /* Suppress "Session not found" errors for stateless mining.
+             * These exceptions are thrown by legacy TAO API code that expects
+             * user sessions (login/create/unlock), but stateless mining uses
+             * MiningContext tracked by StatelessMinerManager instead.
+             * 
+             * Common sources:
+             * - new_block() trying to access TAO::API::Authentication::Credentials()
+             * - new_block() calling TAO::API::Authentication::Unlock() 
+             * - Legacy mining code expecting session-based authentication
+             * - TAO API methods called during block template creation
+             * 
+             * This is safe to suppress because:
+             * 1. Stateless mining has its own auth (Falcon challenge-response)
+             * 2. State is tracked in StatelessMinerManager via MiningContext
+             * 3. No TAO API sessions are needed for mining operations
+             */
+            if(strError.find("Session not found") != std::string::npos)
+            {
+                debug::log(2, FUNCTION, "MinerLLP: Session error suppressed for stateless mining from ",
+                           GetAddress().ToStringIP(), " - stateless protocol uses MiningContext, not TAO API sessions");
+                
+                /* Return true to continue processing - the packet has been handled,
+                 * we just encountered legacy code trying to access non-existent sessions.
+                 * For stateless mining, this is expected and not an error. */
+                return true;
+            }
+            
+            /* For all other exceptions, maintain existing behavior: log and disconnect */
             debug::error(FUNCTION, "MinerLLP: Exception in ProcessPacket from ", GetAddress().ToStringIP(),
                         ": ", e.what());
             this->Disconnect();
