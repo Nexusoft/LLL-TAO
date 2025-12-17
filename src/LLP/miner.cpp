@@ -410,13 +410,41 @@ namespace LLP
                        " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec,
                        " length=", PACKET.LENGTH);
 
-            /* Check for authentication/session management packets that route to StatelessMiner */
-            if(PACKET.HEADER == MINER_AUTH_INIT || 
-               PACKET.HEADER == MINER_AUTH_RESPONSE || 
-               PACKET.HEADER == SESSION_START ||
-               PACKET.HEADER == SESSION_KEEPALIVE ||
-               PACKET.HEADER == SET_CHANNEL ||
-               PACKET.HEADER == MINER_SET_REWARD)
+            /* Route ALL stateless mining packets to StatelessMiner.
+             * 
+             * ARCHITECTURAL NOTE:
+             * This Miner class is a THIN WRAPPER for backward compatibility.
+             * All stateless mining packets are routed to StatelessMiner processor.
+             * 
+             * Stateless mining uses:
+             *   - MiningContext for state (not TAO API sessions)
+             *   - hashRewardAddress for payouts (not hashGenesis)  
+             *   - Falcon signatures for auth (not username/password)
+             * 
+             * Packet categories routed to StatelessMiner:
+             *   - Authentication: 207, 208, 209, 210 (Falcon challenge-response)
+             *   - Session: 211, 212 (optional session management)
+             *   - Configuration: 3, 206 (channel selection + ack)
+             *   - Rewards: 213, 214 (reward address binding)
+             *   - Mining: 0, 1, 129, 200, 201 (block operations)
+             *   - Info: 130 (height polling)
+             */
+            if(PACKET.HEADER == BLOCK_DATA ||             // 0   - node → miner: Block template
+               PACKET.HEADER == SUBMIT_BLOCK ||           // 1   - miner → node: Submit solution
+               PACKET.HEADER == SET_CHANNEL ||            // 3   - miner → node: Set channel
+               PACKET.HEADER == GET_BLOCK ||              // 129 - miner → node: Request template
+               PACKET.HEADER == GET_HEIGHT ||             // 130 - miner → node: Request height
+               PACKET.HEADER == BLOCK_ACCEPTED ||         // 200 - node → miner: Block accepted
+               PACKET.HEADER == BLOCK_REJECTED ||         // 201 - node → miner: Block rejected
+               PACKET.HEADER == CHANNEL_ACK ||            // 206 - node → miner: Channel ack (has data!)
+               PACKET.HEADER == MINER_AUTH_INIT ||        // 207 - miner → node: Start auth
+               PACKET.HEADER == MINER_AUTH_CHALLENGE ||   // 208 - node → miner: Challenge
+               PACKET.HEADER == MINER_AUTH_RESPONSE ||    // 209 - miner → node: Signature
+               PACKET.HEADER == MINER_AUTH_RESULT ||      // 210 - node → miner: Auth result
+               PACKET.HEADER == SESSION_START ||          // 211 - Session init
+               PACKET.HEADER == SESSION_KEEPALIVE ||      // 212 - Session keepalive
+               PACKET.HEADER == MINER_SET_REWARD ||       // 213 - miner → node: Set reward address
+               PACKET.HEADER == MINER_REWARD_RESULT)      // 214 - node → miner: Reward result
             {
                 /* Build MiningContext from current connection state */
                 std::string strAddress = GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort());
@@ -511,6 +539,38 @@ namespace LLP
                 }
                 else
                 {
+                    /* Handle "Unknown packet type" errors from StatelessMiner.
+                     * 
+                     * ARCHITECTURAL PATTERN:
+                     * All stateless packets (16 opcodes) are routed to StatelessMiner first.
+                     * StatelessMiner currently implements only a subset (auth/session/config/rewards).
+                     * For unimplemented packets, StatelessMiner returns "Unknown packet type".
+                     * This fallback enables gradual migration - packets move from legacy to stateless
+                     * incrementally without breaking the protocol.
+                     * 
+                     * Currently handled by StatelessMiner:
+                     *   - Auth: MINER_AUTH_INIT(207), MINER_AUTH_RESPONSE(209)
+                     *   - Session: SESSION_START(211), SESSION_KEEPALIVE(212)  
+                     *   - Config: SET_CHANNEL(3)
+                     *   - Rewards: MINER_SET_REWARD(213)
+                     * 
+                     * Currently falling back to legacy ProcessPacketStateless:
+                     *   - Mining: GET_BLOCK(129), SUBMIT_BLOCK(1), BLOCK_DATA(0)
+                     *   - Status: BLOCK_ACCEPTED(200), BLOCK_REJECTED(201)
+                     *   - Info: GET_HEIGHT(130), CHANNEL_ACK(206)
+                     *   - Responses: MINER_AUTH_CHALLENGE(208), MINER_AUTH_RESULT(210), MINER_REWARD_RESULT(214)
+                     * 
+                     * TODO: Replace string-based error detection with error codes or exception types
+                     * for more robust error handling (current implementation is temporary).
+                     */
+                    if(result.strError.find("Unknown packet type") != std::string::npos)
+                    {
+                        debug::log(2, FUNCTION, "MinerLLP: StatelessMiner doesn't handle opcode 0x", 
+                                   std::hex, uint32_t(PACKET.HEADER), std::dec,
+                                   " - falling back to ProcessPacketStateless for backward compatibility");
+                        return ProcessPacketStateless(PACKET);
+                    }
+                    
                     /* Processing error - log and disconnect */
                     debug::error(FUNCTION, "MinerLLP: Processing error from ", GetAddress().ToStringIP(),
                                 ": ", result.strError);
