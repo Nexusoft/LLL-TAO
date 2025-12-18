@@ -722,14 +722,17 @@ namespace LLP
 
         /* Verify DEFAULT session exists (required for signing blocks).
          * Node must be started with -unlock=mining to provide signing credentials. */
+        try
         {
-            RECURSIVE(TAO::API::Authentication::MUTEX);
-            if(!TAO::API::Authentication::mapSessions.count(uint256_t(TAO::API::Authentication::SESSION::DEFAULT)))
-            {
-                debug::error(FUNCTION, "Cannot create block - DEFAULT session not initialized");
-                debug::error(FUNCTION, "  Start node with: -unlock=mining");
-                return nullptr;
-            }
+            /* Attempt to get credentials - will throw if session doesn't exist */
+            TAO::API::Authentication::Credentials(uint256_t(TAO::API::Authentication::SESSION::DEFAULT));
+        }
+        catch(const std::exception& e)
+        {
+            debug::error(FUNCTION, "Cannot create block - DEFAULT session not initialized");
+            debug::error(FUNCTION, "  Start node with: -unlock=mining");
+            debug::error(FUNCTION, "  Error: ", e.what());
+            return nullptr;
         }
 
         /* Unlock sigchain to create new block. */
