@@ -35,6 +35,13 @@ namespace LLP
     /** Pool cache TTL (24 hours) */
     const uint64_t POOL_CACHE_TTL = 86400;
 
+    /** Gossip protocol forward probability (30%) */
+    const uint8_t GOSSIP_FORWARD_PROBABILITY_PERCENT = 30;
+
+    /** Falcon signature size bounds for validation */
+    const size_t FALCON_MIN_SIGNATURE_SIZE = 100;
+    const size_t FALCON_MAX_SIGNATURE_SIZE = 1500;
+
 
     /** MiningPoolAnnouncement
      *

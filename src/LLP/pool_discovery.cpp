@@ -101,7 +101,7 @@ namespace LLP
          */
         
         /* Falcon-512 signatures are variable length but typically around 690 bytes */
-        if(vSignature.size() < 100 || vSignature.size() > 1500)
+        if(vSignature.size() < FALCON_MIN_SIGNATURE_SIZE || vSignature.size() > FALCON_MAX_SIGNATURE_SIZE)
         {
             debug::error(FUNCTION, "Pool announcement signature has invalid size: ", vSignature.size());
             return false;
@@ -325,8 +325,6 @@ namespace LLP
         }
 
         if(!announcement.Sign(vPrivateKey))
-
-        if(!announcement.Sign(vPrivateKey))
         {
             debug::error(FUNCTION, "Failed to sign pool announcement");
             return false;
@@ -463,8 +461,8 @@ namespace LLP
         /* Gossip to other peers with probability to limit propagation */
         if(TRITIUM_SERVER)
         {
-            /* 30% chance to forward to prevent network flooding */
-            if(LLC::GetRand(100) < 30)
+            /* Probabilistic forward to prevent network flooding */
+            if(LLC::GetRand(100) < GOSSIP_FORWARD_PROBABILITY_PERCENT)
             {
                 try
                 {
