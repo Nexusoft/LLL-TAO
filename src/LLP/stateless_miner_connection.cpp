@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLP/templates/events.h>
 
 #include <TAO/Ledger/include/create.h>
+#include <TAO/Ledger/include/stateless_block_utility.h>
 #include <TAO/Ledger/include/prime.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/process.h>
@@ -720,32 +721,6 @@ namespace LLP
         const uint32_t nBitMask =
             config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
 
-        /* Verify DEFAULT session exists (required for signing blocks).
-         * Node must be started with -unlock=mining to provide signing credentials. */
-        const memory::encrypted_ptr<TAO::Ledger::Credentials>* pCredentialsCheck = nullptr;
-        try
-        {
-            /* Attempt to get credentials - will throw if session doesn't exist */
-            pCredentialsCheck = &TAO::API::Authentication::Credentials(uint256_t(TAO::API::Authentication::SESSION::DEFAULT));
-        }
-        catch(const std::exception& e)
-        {
-            debug::error(FUNCTION, "Cannot create block - DEFAULT session not initialized");
-            debug::error(FUNCTION, "  Start node with: -unlock=mining");
-            debug::error(FUNCTION, "  Error: ", e.what());
-            return nullptr;
-        }
-
-        /* Unlock sigchain to create new block. */
-        SecureString strPIN;
-        RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
-
-        /* Use the credentials we already validated */
-        const auto& pCredentials = *pCredentialsCheck;
-
-        /* Allocate memory for the new block. */
-        TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();
-
         /* Get channel from context */
         uint32_t nChannel = context.nChannel;
 
@@ -761,16 +736,50 @@ namespace LLP
         }
 
         /* Log dual-identity model clearly */
-        debug::log(1, FUNCTION, "Block signing: ", pCredentials->Genesis().SubString(), " (node operator)");
-        debug::log(1, FUNCTION, "Reward routing: ", hashRewardAddress.SubString(), " (miner)");
-        debug::log(1, FUNCTION, "Channel: ", nChannel == 1 ? "Prime" : nChannel == 2 ? "Hash" : "Private");
+        debug::log(1, FUNCTION, "Creating block for stateless mining:");
+        debug::log(1, FUNCTION, "  Reward routing: ", hashRewardAddress.SubString(), " (miner)");
+        debug::log(1, FUNCTION, "  Channel: ", nChannel == 1 ? "Prime" : nChannel == 2 ? "Hash" : "Private");
 
-        /* Create a new block and loop for prime channel if minimum bit target length isn't met */
-        while(TAO::Ledger::CreateBlock(pCredentials, strPIN, nChannel, *pBlock, ++nBlockIterator, nullptr, hashRewardAddress))
+        /* Create block using dual-mode utility (auto-detects mode) */
+        TAO::Ledger::TritiumBlock *pBlock = nullptr;
+
+        /* Loop for prime channel until minimum bit target length is met.
+         * Loop terminates when:
+         * 1. Block creation fails (pBlock == nullptr) - returns error
+         * 2. Prime mod condition satisfied (is_prime_mod returns true) - returns block
+         * Each iteration tries a new extra nonce value (++nBlockIterator)
+         */
+        while(true)
         {
+            /* Use dual-mode block utility for intelligent block creation.
+             * This automatically detects whether to use:
+             * - Mode 2 (INTERFACE_SESSION): Node has credentials, signs on behalf of miner
+             * - Mode 1 (DAEMON_STATELESS): Pure daemon, expects miner-signed producer (future)
+             * 
+             * Currently only Mode 2 is implemented. Mode 1 will return error.
+             */
+            pBlock = TAO::Ledger::CreateBlockForStatelessMining(
+                nChannel,
+                ++nBlockIterator,
+                hashRewardAddress,
+                nullptr  // No pre-signed producer (Mode 1 not yet supported)
+            );
+
+            /* Check if block creation failed */
+            if(pBlock == nullptr)
+            {
+                debug::error(FUNCTION, "Failed to create block");
+                debug::error(FUNCTION, "  See previous errors for details");
+                return nullptr;  // TERMINATION CONDITION 1: Creation failed
+            }
+
             /* Break out of loop when block is ready for prime mod. */
             if(is_prime_mod(nBitMask, pBlock))
-                break;
+                break;  // TERMINATION CONDITION 2: Prime mod satisfied
+
+            /* Delete unsuccessful block and try again with new extra nonce */
+            delete pBlock;
+            pBlock = nullptr;
         }
 
         /* Output debug info and return the newly created block. */

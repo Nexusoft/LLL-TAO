@@ -623,6 +623,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Ledger_stake_change.o \
 		build/Ledger_stake_minter.o \
 		build/Ledger_state.o \
+		build/Ledger_stateless_block_utility.o \
 		build/Ledger_supply.o \
 		build/Ledger_syncblock.o \
 		build/Ledger_timelocks.o \
