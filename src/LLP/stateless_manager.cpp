@@ -694,5 +694,27 @@ namespace LLP
     }
 
 
+    /* Get a list of all active miners with simplified information */
+    std::vector<MinerInfo> StatelessMinerManager::GetMinerList() const
+    {
+        std::vector<MinerInfo> vResult;
+        auto vMiners = mapMiners.GetAll();
+
+        for(const auto& ctx : vMiners)
+        {
+            MinerInfo info;
+            info.hashGenesis = ctx.hashGenesis;
+            info.hashRewardAddress = ctx.hashRewardAddress;
+            info.fAuthenticated = ctx.fAuthenticated;
+            info.fRewardBound = ctx.fRewardBound;
+            info.nSessionId = ctx.nSessionId;
+            info.strAddress = ctx.strAddress;
+
+            vResult.push_back(info);
+        }
+
+        return vResult;
+    }
+
 
 } // namespace LLP
