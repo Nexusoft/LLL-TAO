@@ -77,6 +77,10 @@ namespace LLP
         /* TODO: Implement signature verification
          * This would verify the signature using the genesis public key
          * from the blockchain. For now, return true to allow testing.
+         * 
+         * SECURITY NOTE: This is intentionally stubbed for initial testing.
+         * Production deployment requires full signature verification implementation.
+         * See GitHub issue #XXX for tracking.
          */
         return true;
     }
@@ -87,6 +91,10 @@ namespace LLP
         /* TODO: Implement signature generation
          * This would sign the announcement hash with the private key.
          * For now, return true to allow testing.
+         * 
+         * SECURITY NOTE: This is intentionally stubbed for initial testing.
+         * Production deployment requires full cryptographic signing implementation.
+         * See GitHub issue #XXX for tracking.
          */
         vSignature.clear();
         vSignature.resize(64, 0); // Placeholder signature
@@ -456,7 +464,14 @@ namespace LLP
     bool PoolDiscovery::TestPoolReachability(const std::string& strEndpoint)
     {
         /* TODO: Implement actual reachability test
-         * For now, return true to avoid network calls during development
+         * This would attempt a TCP connection to the pool endpoint
+         * and verify the mining service is responding.
+         * For now, return true to avoid network calls during development.
+         * 
+         * FUNCTIONALITY NOTE: This is intentionally stubbed to avoid network I/O
+         * during initial testing and development. Production deployment should
+         * implement proper TCP connection testing with timeout handling.
+         * See GitHub issue #XXX for tracking.
          */
         return true;
     }
@@ -502,6 +517,11 @@ namespace LLP
          * This would query the blockchain for the genesis trust score
          * and verify it meets the minimum requirement.
          * For now, return true to allow testing.
+         * 
+         * ANTI-SPAM NOTE: This is intentionally stubbed for initial testing.
+         * Production deployment requires integration with the trust system to
+         * prevent Sybil attacks. Minimum 30 days trust should be enforced.
+         * See GitHub issue #XXX for tracking.
          */
         return true;
     }
