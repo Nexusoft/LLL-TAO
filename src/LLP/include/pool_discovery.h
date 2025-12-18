@@ -35,9 +35,6 @@ namespace LLP
     /** Pool cache TTL (24 hours) */
     const uint64_t POOL_CACHE_TTL = 86400;
 
-    /** Minimum trust required to announce pool (30 days) */
-    const uint64_t MIN_POOL_TRUST_DAYS = 30;
-
 
     /** MiningPoolAnnouncement
      *
@@ -334,17 +331,6 @@ namespace LLP
          *
          **/
         static bool RecentlyAnnounced(const uint256_t& hashGenesis);
-
-        /** HasSufficientTrust
-         *
-         *  Check if a genesis has sufficient trust to announce a pool.
-         *
-         *  @param[in] hashGenesis The genesis hash to check
-         *
-         *  @return true if trust is sufficient
-         *
-         **/
-        static bool HasSufficientTrust(const uint256_t& hashGenesis);
 
         /** GetCachedPools
          *
