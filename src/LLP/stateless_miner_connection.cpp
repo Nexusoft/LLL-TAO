@@ -743,7 +743,12 @@ namespace LLP
         /* Create block using dual-mode utility (auto-detects mode) */
         TAO::Ledger::TritiumBlock *pBlock = nullptr;
 
-        /* Loop for prime channel if minimum bit target length isn't met */
+        /* Loop for prime channel until minimum bit target length is met.
+         * Loop terminates when:
+         * 1. Block creation fails (pBlock == nullptr) - returns error
+         * 2. Prime mod condition satisfied (is_prime_mod returns true) - returns block
+         * Each iteration tries a new extra nonce value (++nBlockIterator)
+         */
         while(true)
         {
             /* Use dual-mode block utility for intelligent block creation.
@@ -765,12 +770,12 @@ namespace LLP
             {
                 debug::error(FUNCTION, "Failed to create block");
                 debug::error(FUNCTION, "  See previous errors for details");
-                return nullptr;
+                return nullptr;  // TERMINATION CONDITION 1: Creation failed
             }
 
             /* Break out of loop when block is ready for prime mod. */
             if(is_prime_mod(nBitMask, pBlock))
-                break;
+                break;  // TERMINATION CONDITION 2: Prime mod satisfied
 
             /* Delete unsuccessful block and try again with new extra nonce */
             delete pBlock;

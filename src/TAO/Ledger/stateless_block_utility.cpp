@@ -27,6 +27,12 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::Ledger
 {
+    /* Helper to get default session ID */
+    static const uint256_t GetDefaultSessionId()
+    {
+        return uint256_t(TAO::API::Authentication::SESSION::DEFAULT);
+    }
+
 
     /* Detects which mining mode is available based on node state. */
     MiningMode DetectMiningMode()
@@ -34,8 +40,8 @@ namespace TAO::Ledger
         /* Check for Mode 2 first (Interface Session - easiest/fastest) */
         try
         {
-            /* Try to get the default session credentials - cast enum to uint256_t */
-            const uint256_t hashSession = uint256_t(TAO::API::Authentication::SESSION::DEFAULT);
+            /* Try to get the default session credentials */
+            const uint256_t hashSession = GetDefaultSessionId();
             const auto& pCredentials = 
                 TAO::API::Authentication::Credentials(hashSession);
 
@@ -82,8 +88,8 @@ namespace TAO::Ledger
     {
         try
         {
-            /* Get node credentials - cast enum to uint256_t */
-            const uint256_t hashSession = uint256_t(TAO::API::Authentication::SESSION::DEFAULT);
+            /* Get node credentials */
+            const uint256_t hashSession = GetDefaultSessionId();
             const auto& pCredentials = 
                 TAO::API::Authentication::Credentials(hashSession);
 
@@ -95,13 +101,14 @@ namespace TAO::Ledger
             if(hashRewardAddress == 0)
             {
                 debug::error(FUNCTION, "Invalid reward address (zero)");
+                debug::error(FUNCTION, "  Miner must send MINER_SET_REWARD packet first");
                 return nullptr;
             }
 
             /* Log the dual-identity model */
             debug::log(2, FUNCTION, "Mode 2: Creating block with node credentials");
-            debug::log(2, FUNCTION, "  Block signing: ", pCredentials->Genesis().SubString(), " (node operator)");
-            debug::log(2, FUNCTION, "  Reward routing: ", hashRewardAddress.SubString(), " (miner)");
+            debug::log(2, FUNCTION, "  Block signer: ", pCredentials->Genesis().SubString(), " (node operator)");
+            debug::log(2, FUNCTION, "  Reward recipient: ", hashRewardAddress.SubString(), " (miner)");
             debug::log(2, FUNCTION, "  Channel: ", nChannel == 1 ? "Prime" : nChannel == 2 ? "Hash" : "Private");
 
             /* Create the block using standard CreateBlock flow */
@@ -173,18 +180,22 @@ namespace TAO::Ledger
          */
 
         debug::error(FUNCTION, "Mode 1 (DAEMON_STATELESS) not yet implemented");
-        debug::error(FUNCTION, "  Current implementation requires node credentials");
-        debug::error(FUNCTION, "  Please start daemon with -unlock=mining for Mode 2");
         debug::error(FUNCTION, "");
-        debug::error(FUNCTION, "Mode 1 implementation requires:");
-        debug::error(FUNCTION, "  1. Producer validation against Falcon-authenticated genesis");
-        debug::error(FUNCTION, "  2. Block assembly without calling CreateProducer()");
-        debug::error(FUNCTION, "  3. Ambassador/developer rewards calculation");
-        debug::error(FUNCTION, "  4. Mempool transaction inclusion");
-        debug::error(FUNCTION, "  5. Merkle root calculation");
+        debug::error(FUNCTION, "  CURRENT SOLUTION:");
+        debug::error(FUNCTION, "    Start daemon with: ./nexus -daemon -unlock=mining");
+        debug::error(FUNCTION, "    This enables Mode 2 (node credentials available)");
         debug::error(FUNCTION, "");
-        debug::error(FUNCTION, "This is a significant refactoring that should be done carefully");
-        debug::error(FUNCTION, "to avoid breaking consensus rules.");
+        debug::error(FUNCTION, "  FUTURE SOLUTION:");
+        debug::error(FUNCTION, "    Mode 1 will allow pure stateless daemons");
+        debug::error(FUNCTION, "    Miners will create and sign producers locally");
+        debug::error(FUNCTION, "    Estimated implementation: 6-10 weeks");
+        debug::error(FUNCTION, "");
+        debug::error(FUNCTION, "  WHY NOT IMPLEMENTED YET:");
+        debug::error(FUNCTION, "    Mode 1 requires refactoring consensus-critical code");
+        debug::error(FUNCTION, "    Ambassador/developer reward logic embedded in CreateProducer()");
+        debug::error(FUNCTION, "    Safer to deliver Mode 2 now, Mode 1 when ecosystem needs it");
+        debug::error(FUNCTION, "");
+        debug::error(FUNCTION, "See docs/DUAL_MODE_ARCHITECTURE.md for details");
 
         return nullptr;
     }
