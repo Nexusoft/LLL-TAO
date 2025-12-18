@@ -49,7 +49,7 @@ namespace TAO::API
         if(jParams.find("fee") == jParams.end())
             throw Exception(-1, "Missing fee parameter");
 
-        uint8_t nFee = static_cast<uint8_t>(ExtractInteger(jParams, "fee"));
+        uint8_t nFee = static_cast<uint8_t>(ExtractInteger<uint32_t>(jParams, "fee"));
 
         /* Validate fee */
         if(nFee > LLP::MAX_POOL_FEE_PERCENT)
@@ -68,7 +68,7 @@ namespace TAO::API
         /* Extract optional parameters */
         uint16_t nMaxMiners = 500;
         if(jParams.find("maxminers") != jParams.end())
-            nMaxMiners = static_cast<uint16_t>(ExtractInteger(jParams, "maxminers"));
+            nMaxMiners = static_cast<uint16_t>(ExtractInteger<uint32_t>(jParams, "maxminers"));
 
         std::string strPoolName = "Nexus Mining Pool";
         if(jParams.find("name") != jParams.end())

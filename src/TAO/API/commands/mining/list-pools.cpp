@@ -57,11 +57,11 @@ namespace TAO::API
         /* Extract parameters with defaults */
         uint8_t nMaxFee = 5;
         if(jParams.find("maxfee") != jParams.end())
-            nMaxFee = static_cast<uint8_t>(ExtractInteger(jParams, "maxfee"));
+            nMaxFee = static_cast<uint8_t>(ExtractInteger<uint32_t>(jParams, "maxfee"));
 
         uint32_t nMinReputation = 0;
         if(jParams.find("minreputation") != jParams.end())
-            nMinReputation = static_cast<uint32_t>(ExtractInteger(jParams, "minreputation"));
+            nMinReputation = ExtractInteger<uint32_t>(jParams, "minreputation");
 
         bool fOnlineOnly = true;
         if(jParams.find("onlineonly") != jParams.end())
