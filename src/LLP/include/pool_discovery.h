@@ -38,10 +38,6 @@ namespace LLP
     /** Gossip protocol forward probability (30%) */
     const uint8_t GOSSIP_FORWARD_PROBABILITY_PERCENT = 30;
 
-    /** Falcon signature size bounds for validation */
-    const size_t FALCON_MIN_SIGNATURE_SIZE = 100;
-    const size_t FALCON_MAX_SIGNATURE_SIZE = 1500;
-
 
     /** MiningPoolAnnouncement
      *

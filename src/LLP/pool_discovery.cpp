@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <LLP/include/pool_discovery.h>
 #include <LLP/include/global.h>
+#include <LLP/include/falcon_constants.h>
+#include <LLP/include/falcon_auth.h>
 
 #include <LLD/include/global.h>
 
@@ -88,22 +90,13 @@ namespace LLP
             return false;
         }
 
-        /* For verification, we need the public key from the genesis.
-         * Since we don't have a direct blockchain lookup for Falcon public keys yet,
-         * we'll implement a simplified verification that checks signature validity.
-         * In a full implementation, this would:
-         * 1. Look up the genesis on the blockchain
-         * 2. Retrieve the associated Falcon public key
-         * 3. Verify the signature against that public key
-         * 
-         * For now, we perform basic signature validation to ensure it's properly formed.
-         * The signature must be non-empty and of reasonable size for Falcon-512.
-         */
-        
-        /* Falcon-512 signatures are variable length but typically around 690 bytes */
-        if(vSignature.size() < FALCON_MIN_SIGNATURE_SIZE || vSignature.size() > FALCON_MAX_SIGNATURE_SIZE)
+        /* Validate signature size using existing Falcon constants */
+        if(vSignature.size() < FalconConstants::FALCON512_SIG_MIN || 
+           vSignature.size() > FalconConstants::FALCON512_SIG_MAX_VALIDATION)
         {
-            debug::error(FUNCTION, "Pool announcement signature has invalid size: ", vSignature.size());
+            debug::error(FUNCTION, "Pool announcement signature has invalid size: ", vSignature.size(),
+                        " (expected ", FalconConstants::FALCON512_SIG_MIN, "-", 
+                        FalconConstants::FALCON512_SIG_MAX_VALIDATION, ")");
             return false;
         }
 
@@ -111,16 +104,21 @@ namespace LLP
         uint512_t hash = GetHash();
         std::vector<uint8_t> vchData(hash.begin(), hash.end());
 
-        /* TODO: Full implementation requires:
-         * 1. Query blockchain for genesis public key
-         * 2. Use LLC::FLKey to verify signature
+        /* TODO: Implement blockchain-based public key lookup
+         * For production deployment, this needs to:
+         * 1. Query the blockchain/ledger for the genesis transaction
+         * 2. Extract the Falcon public key from the genesis
+         * 3. Verify the signature against that public key
          * 
-         * For production: Need to implement public key storage/retrieval
-         * in the blockchain for pool operator genesis accounts.
+         * Current implementation performs basic size validation.
+         * The signature verification will be completed when the blockchain
+         * public key storage/retrieval system is implemented.
          * 
-         * Current implementation: Basic validation only
+         * Integration point: Use FalconAuth::Get()->Verify(pubkey, vchData, vSignature)
+         * after retrieving pubkey from blockchain.
          */
 
+        debug::log(2, FUNCTION, "Pool announcement signature validated (size check passed)");
         return true;
     }
 
@@ -288,27 +286,73 @@ namespace LLP
         announcement.strPoolName = strPoolName;
         announcement.nTimestamp = runtime::timestamp();
 
-        /* Sign announcement with Falcon signature
-         * NOTE: This requires the pool operator to have Falcon credentials.
-         * The signing process needs access to the Falcon private key.
+        /* Sign announcement with Falcon signature using FalconAuth system
+         * This integrates with the existing Falcon authentication infrastructure.
          * 
-         * In production, this would:
-         * 1. Get credentials from TAO::API::Authentication
-         * 2. Extract or derive Falcon private key from credentials
-         * 3. Sign the announcement hash
+         * Integration approach:
+         * 1. Check if FalconAuth system is available
+         * 2. Use existing Falcon keys from the system if available
+         * 3. Otherwise, generate a temporary key for demonstration
          * 
-         * Since Falcon key integration with Tritium credentials is ongoing,
-         * we create a temporary key for signing. Production deployment will
-         * need proper credential-based key derivation.
+         * TODO: Complete integration requires binding pool operator's
+         * genesis to a Falcon key in the FalconAuth system.
          */
         std::vector<uint8_t> vPrivateKey;
         
         try
         {
-            /* Create a temporary Falcon key for signing
-             * TODO: In production, get Falcon key from authenticated session
-             * This demonstrates the signing mechanism
+            /* Try to use FalconAuth credential system */
+            auto* pFalconAuth = FalconAuth::Get();
+            
+            if(pFalconAuth)
+            {
+                /* List available Falcon keys */
+                auto vKeys = pFalconAuth->ListKeys();
+                
+                if(!vKeys.empty())
+                {
+                    /* Use the first available key
+                     * TODO: In production, select key based on genesis binding
+                     */
+                    uint256_t keyId = vKeys[0].keyId;
+                    
+                    /* Get the hash to sign */
+                    uint512_t hash = announcement.GetHash();
+                    std::vector<uint8_t> vchData(hash.begin(), hash.end());
+                    
+                    /* Sign using FalconAuth */
+                    std::vector<uint8_t> vSig = pFalconAuth->Sign(keyId, vchData);
+                    
+                    if(!vSig.empty())
+                    {
+                        announcement.vSignature = vSig;
+                        debug::log(1, FUNCTION, "Signed pool announcement using FalconAuth, size: ", vSig.size());
+                    }
+                    else
+                    {
+                        debug::warning(FUNCTION, "FalconAuth signing failed, falling back to temporary key");
+                        throw std::runtime_error("FalconAuth signing failed");
+                    }
+                }
+                else
+                {
+                    debug::warning(FUNCTION, "No Falcon keys available in FalconAuth system");
+                    throw std::runtime_error("No Falcon keys available");
+                }
+            }
+            else
+            {
+                debug::warning(FUNCTION, "FalconAuth system not initialized");
+                throw std::runtime_error("FalconAuth not available");
+            }
+        }
+        catch(const std::exception& e)
+        {
+            /* Fallback: Create a temporary Falcon key for signing
+             * This demonstrates the signing mechanism when FalconAuth is unavailable
              */
+            debug::log(1, FUNCTION, "Using temporary Falcon key: ", e.what());
+            
             LLC::FLKey tempKey;
             tempKey.MakeNewKey();
             
@@ -317,17 +361,12 @@ namespace LLP
             
             /* Convert to regular vector for the Sign interface */
             vPrivateKey.assign(secureKey.begin(), secureKey.end());
-        }
-        catch(const std::exception& e)
-        {
-            debug::error(FUNCTION, "Failed to generate signing key: ", e.what());
-            return false;
-        }
-
-        if(!announcement.Sign(vPrivateKey))
-        {
-            debug::error(FUNCTION, "Failed to sign pool announcement");
-            return false;
+            
+            if(!announcement.Sign(vPrivateKey))
+            {
+                debug::error(FUNCTION, "Failed to sign pool announcement with temporary key");
+                return false;
+            }
         }
 
         /* Validate before broadcasting */
@@ -679,21 +718,30 @@ namespace LLP
             return false;
         }
 
-        /* Create a socket to test connection */
+        /* Test connection with SSL/TLS support (ChaCha20 encryption)
+         * The Nexus network uses SSL/TLS connections with ChaCha20-Poly1305 AEAD
+         * encryption for secure peer communication.
+         */
         try
         {
             /* Create address object */
             LLP::BaseAddress addr(strHost, nPort);
             
-            /* Create socket and attempt connection */
-            LLP::Socket socket;
+            /* Create socket with SSL/TLS support
+             * The second parameter enables SSL/TLS for the connection
+             * This integrates with the existing ChaCha20 TLS infrastructure
+             */
+            LLP::Socket socket(addr, true);  // Enable SSL/TLS
             
-            /* Attempt connection with 3 second timeout */
+            /* Attempt connection with 3 second timeout
+             * The socket will establish a secure SSL/TLS connection
+             */
             bool fConnected = socket.Attempt(addr, 3000);
             
             if(fConnected)
             {
-                debug::log(2, FUNCTION, "Successfully connected to pool: ", strEndpoint);
+                debug::log(2, FUNCTION, "Successfully connected to pool via TLS: ", strEndpoint);
+                socket.Close();
             }
             else
             {
