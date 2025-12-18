@@ -720,13 +720,28 @@ namespace LLP
         const uint32_t nBitMask =
             config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
 
+        /* Verify DEFAULT session exists (required for signing blocks).
+         * Node must be started with -unlock=mining to provide signing credentials. */
+        const memory::encrypted_ptr<TAO::Ledger::Credentials>* pCredentialsCheck = nullptr;
+        try
+        {
+            /* Attempt to get credentials - will throw if session doesn't exist */
+            pCredentialsCheck = &TAO::API::Authentication::Credentials(uint256_t(TAO::API::Authentication::SESSION::DEFAULT));
+        }
+        catch(const std::exception& e)
+        {
+            debug::error(FUNCTION, "Cannot create block - DEFAULT session not initialized");
+            debug::error(FUNCTION, "  Start node with: -unlock=mining");
+            debug::error(FUNCTION, "  Error: ", e.what());
+            return nullptr;
+        }
+
         /* Unlock sigchain to create new block. */
         SecureString strPIN;
         RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
 
-        /* Get an instance of our credentials. */
-        const auto& pCredentials =
-            TAO::API::Authentication::Credentials(uint256_t(TAO::API::Authentication::SESSION::DEFAULT));
+        /* Use the credentials we already validated */
+        const auto& pCredentials = *pCredentialsCheck;
 
         /* Allocate memory for the new block. */
         TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();
@@ -745,10 +760,10 @@ namespace LLP
             return nullptr;
         }
 
-        /* Log reward routing (always explicit address now) */
-        debug::log(1, FUNCTION, "Creating block with REWARD ADDRESS: ", hashRewardAddress.ToString().substr(0, 16), "...");
-        debug::log(2, FUNCTION, "  Auth genesis: ", context.hashGenesis.SubString());
-        debug::log(2, FUNCTION, "  Reward address: ", hashRewardAddress.ToString());
+        /* Log dual-identity model clearly */
+        debug::log(1, FUNCTION, "Block signing: ", pCredentials->Genesis().SubString(), " (node operator)");
+        debug::log(1, FUNCTION, "Reward routing: ", hashRewardAddress.SubString(), " (miner)");
+        debug::log(1, FUNCTION, "Channel: ", nChannel == 1 ? "Prime" : nChannel == 2 ? "Hash" : "Private");
 
         /* Create a new block and loop for prime channel if minimum bit target length isn't met */
         while(TAO::Ledger::CreateBlock(pCredentials, strPIN, nChannel, *pBlock, ++nBlockIterator, nullptr, hashRewardAddress))

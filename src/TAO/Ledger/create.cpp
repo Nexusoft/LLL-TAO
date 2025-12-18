@@ -485,27 +485,23 @@ namespace TAO::Ledger
         /* Create the Coinbase Transaction if the Channel specifies. */
         if(nChannel == 1 || nChannel == 2)
         {
-            /* Determine the reward recipient - use dynamic genesis if provided and valid, otherwise use user genesis */
+            /* Determine reward recipient for coinbase transaction.
+             * hashDynamicGenesis can be: Tritium genesis hash OR register address.
+             * Register addresses include: account register address or trust register address.
+             * Trust the address - network consensus validates during block acceptance. */
             uint256_t hashRewardRecipient = user->Genesis();
             
-            /* Validate and use dynamic genesis if provided */
             if(hashDynamicGenesis != 0)
             {
-                if(LLD::Ledger->HasFirst(hashDynamicGenesis))
-                {
-                    hashRewardRecipient = hashDynamicGenesis;
-                    debug::log(1, FUNCTION, "Reward routing: DYNAMIC to ", hashRewardRecipient.SubString());
-                }
-                else
-                {
-                    debug::log(1, FUNCTION, "Dynamic genesis ", hashDynamicGenesis.SubString(), 
-                              " not found on-chain, falling back to user genesis");
-                    debug::log(1, FUNCTION, "Reward routing: STATIC (fallback) to ", hashRewardRecipient.SubString());
-                }
+                /* Route rewards to dynamic address (miner).
+                 * No pre-validation needed - invalid addresses rejected by network consensus. */
+                hashRewardRecipient = hashDynamicGenesis;
+                debug::log(1, FUNCTION, "Reward routing: DYNAMIC to ", hashRewardRecipient.SubString(), " (miner)");
             }
             else
             {
-                debug::log(3, FUNCTION, "Reward routing: STATIC to ", hashRewardRecipient.SubString());
+                /* No dynamic routing - solo mining by node operator */
+                debug::log(3, FUNCTION, "Reward routing: STATIC to ", hashRewardRecipient.SubString(), " (node operator)");
             }
 
             /* Output type 0 is mining/minting reward */
