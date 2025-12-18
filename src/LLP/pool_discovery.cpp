@@ -314,7 +314,8 @@ namespace LLP
                     /* Use the first available key
                      * TODO: In production, select key based on genesis binding
                      */
-                    uint256_t keyId = vKeys[0].keyId;
+                    const FalconAuth::KeyMetadata& keyMeta = vKeys.front();
+                    uint256_t keyId = keyMeta.keyId;
                     
                     /* Get the hash to sign */
                     uint512_t hash = announcement.GetHash();
@@ -721,26 +722,32 @@ namespace LLP
         /* Test connection with SSL/TLS support (ChaCha20 encryption)
          * The Nexus network uses SSL/TLS connections with ChaCha20-Poly1305 AEAD
          * encryption for secure peer communication.
+         * 
+         * SSL/TLS can be disabled via config for testing scenarios:
+         * -pooldiscovery.ssl=0
          */
         try
         {
             /* Create address object */
             LLP::BaseAddress addr(strHost, nPort);
             
-            /* Create socket with SSL/TLS support
-             * The second parameter enables SSL/TLS for the connection
+            /* Check if SSL/TLS should be used (default: true)
              * This integrates with the existing ChaCha20 TLS infrastructure
              */
-            LLP::Socket socket(addr, true);  // Enable SSL/TLS
+            bool fUseSSL = config::GetBoolArg("-pooldiscovery.ssl", true);
+            
+            /* Create socket with optional SSL/TLS support */
+            LLP::Socket socket(addr, fUseSSL);
             
             /* Attempt connection with 3 second timeout
-             * The socket will establish a secure SSL/TLS connection
+             * The socket will establish a secure SSL/TLS connection if enabled
              */
             bool fConnected = socket.Attempt(addr, 3000);
             
             if(fConnected)
             {
-                debug::log(2, FUNCTION, "Successfully connected to pool via TLS: ", strEndpoint);
+                debug::log(2, FUNCTION, "Successfully connected to pool", 
+                          (fUseSSL ? " via TLS: " : ": "), strEndpoint);
                 socket.Close();
             }
             else
