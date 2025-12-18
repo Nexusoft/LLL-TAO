@@ -27,6 +27,7 @@ ________________________________________________________________________________
 #include <LLC/hash/SK.h>
 #include <LLC/include/flkey.h>
 #include <LLC/include/random.h>
+#include <LLC/types/typedef.h>
 
 #include <LLP/include/network.h>
 #include <LLP/templates/socket.h>
@@ -136,8 +137,11 @@ namespace LLP
         /* Create Falcon key object */
         LLC::FLKey key;
         
+        /* Convert to secure vector (CPrivKey type) */
+        LLC::CPrivKey vSecureKey(vPrivateKey.begin(), vPrivateKey.end());
+        
         /* Set the private key */
-        if(!key.SetPrivKey(vPrivateKey))
+        if(!key.SetPrivKey(vSecureKey))
         {
             debug::error(FUNCTION, "Failed to set Falcon private key");
             return false;
@@ -301,28 +305,23 @@ namespace LLP
         
         try
         {
-            /* Try to get credentials from session
-             * This demonstrates the integration point but may not have Falcon keys yet
-             */
-            const uint256_t hashSession = TAO::API::Authentication::default_session();
-            
-            /* TODO: Implement Falcon key derivation from credentials
-             * For now, create a temporary key for demonstration
-             * In production, would use:
-             * const auto& pCredentials = TAO::API::Authentication::Credentials(hashSession);
-             * and derive Falcon key from credentials
+            /* Create a temporary Falcon key for signing
+             * TODO: In production, get Falcon key from authenticated session
+             * This demonstrates the signing mechanism
              */
             LLC::FLKey tempKey;
             tempKey.MakeNewKey();
-            vPrivateKey = tempKey.GetPrivKey();
+            
+            /* Get the private key from secure storage */
+            LLC::CPrivKey secureKey = tempKey.GetPrivKey();
+            
+            /* Convert to regular vector for the Sign interface */
+            vPrivateKey.assign(secureKey.begin(), secureKey.end());
         }
         catch(const std::exception& e)
         {
-            debug::warning(FUNCTION, "Could not get credentials for signing: ", e.what());
-            /* Create temporary key as fallback */
-            LLC::FLKey tempKey;
-            tempKey.MakeNewKey();
-            vPrivateKey = tempKey.GetPrivKey();
+            debug::error(FUNCTION, "Failed to generate signing key: ", e.what());
+            return false;
         }
 
         if(!announcement.Sign(vPrivateKey))
