@@ -438,6 +438,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_falcon_auth.o \
 		build/LLP_disposable_falcon.o \
 		build/LLP_mining_config.o \
+		build/LLP_pool_discovery.o \
 		build/LLP_validation_thread_pool.o \
 		build/LLP_session_recovery.o \
 		build/LLP_node_sync.o \
@@ -527,6 +528,12 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_system_mining_control.o \
 		build/API_commands_system_getmininginfo.o \
 		build/API_commands_system_setmining.o \
+		build/API_commands_mining_initialize.o \
+		build/API_commands_mining_list-pools.o \
+		build/API_commands_mining_get-poolstats.o \
+		build/API_commands_mining_start-pool.o \
+		build/API_commands_mining_stop-pool.o \
+		build/API_commands_mining_get-connectedminers.o \
 		build/API_commands_templates_claim.o \
 		build/API_commands_templates_create.o \
 		build/API_commands_templates_get.o \
@@ -840,6 +847,9 @@ build/API_commands_supply_%.o: ./src/TAO/API/commands/supply/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_commands_system_%.o: ./src/TAO/API/commands/system/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_commands_mining_%.o: ./src/TAO/API/commands/mining/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_commands_templates_%.o: ./src/TAO/API/commands/templates/%.cpp $(HEADERS)
@@ -1475,6 +1485,13 @@ build/API_commands_supply_%.o: src/TAO/API/commands/supply/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/API_commands_system_%.o: src/TAO/API/commands/system/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_commands_mining_%.o: src/TAO/API/commands/mining/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

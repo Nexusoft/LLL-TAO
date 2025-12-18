@@ -25,6 +25,34 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    /** MinerInfo
+     *
+     *  Simplified miner information for pool statistics.
+     *  Contains essential metrics for pool dashboard display.
+     *
+     **/
+    struct MinerInfo
+    {
+        uint256_t hashGenesis;           // Miner's genesis hash (authentication)
+        uint256_t hashRewardAddress;     // Reward payout address
+        bool fAuthenticated;             // Whether Falcon auth succeeded
+        bool fRewardBound;               // Whether reward address has been set
+        uint32_t nSessionId;             // Session identifier
+        std::string strAddress;          // Miner's network address
+
+        /** Default Constructor **/
+        MinerInfo()
+        : hashGenesis(0)
+        , hashRewardAddress(0)
+        , fAuthenticated(false)
+        , fRewardBound(false)
+        , nSessionId(0)
+        , strAddress("")
+        {
+        }
+    };
+
+
     /** StatelessMinerManager
      *
      *  Manages active stateless miner connections.
@@ -409,6 +437,16 @@ namespace LLP
          *
          **/
         size_t GetRewardBoundCount() const;
+
+        /** GetMinerList
+         *
+         *  Get a list of all active miners with simplified information.
+         *  Used for pool statistics and dashboard display.
+         *
+         *  @return Vector of MinerInfo structures
+         *
+         **/
+        std::vector<MinerInfo> GetMinerList() const;
 
         /** ValidateMinerGenesis
          *
