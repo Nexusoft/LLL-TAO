@@ -722,10 +722,11 @@ namespace LLP
 
         /* Verify DEFAULT session exists (required for signing blocks).
          * Node must be started with -unlock=mining to provide signing credentials. */
+        const memory::encrypted_ptr<TAO::Ledger::Credentials>* pCredentialsCheck = nullptr;
         try
         {
             /* Attempt to get credentials - will throw if session doesn't exist */
-            TAO::API::Authentication::Credentials(uint256_t(TAO::API::Authentication::SESSION::DEFAULT));
+            pCredentialsCheck = &TAO::API::Authentication::Credentials(uint256_t(TAO::API::Authentication::SESSION::DEFAULT));
         }
         catch(const std::exception& e)
         {
@@ -739,9 +740,8 @@ namespace LLP
         SecureString strPIN;
         RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
 
-        /* Get an instance of our credentials. */
-        const auto& pCredentials =
-            TAO::API::Authentication::Credentials(uint256_t(TAO::API::Authentication::SESSION::DEFAULT));
+        /* Use the credentials we already validated */
+        const auto& pCredentials = *pCredentialsCheck;
 
         /* Allocate memory for the new block. */
         TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();

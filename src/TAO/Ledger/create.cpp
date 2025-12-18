@@ -486,7 +486,8 @@ namespace TAO::Ledger
         if(nChannel == 1 || nChannel == 2)
         {
             /* Determine reward recipient for coinbase transaction.
-             * hashDynamicGenesis can be: Tritium genesis hash OR register address (account/trust).
+             * hashDynamicGenesis can be: Tritium genesis hash OR register address.
+             * Register addresses include: account register address or trust register address.
              * Trust the address - network consensus validates during block acceptance. */
             uint256_t hashRewardRecipient = user->Genesis();
             
