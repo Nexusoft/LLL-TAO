@@ -259,4 +259,27 @@ TEST_CASE("Config file parsing tests", "[config]")
         // Clean up
         std::remove(tempConfigPath.c_str());
     }
+    
+    SECTION("Parse value starting with hash character")
+    {
+        // Write test config - hash at start of unquoted value should be preserved
+        std::ofstream out(tempConfigPath);
+        out << "hashtag=#trending\n";
+        out.close();
+        
+        // Set up for reading
+        config::mapArgs["-conf"] = tempConfigPath;
+        config::mapArgs["-datadir"] = "/tmp/";
+        
+        std::map<std::string, std::string> mapSettings;
+        std::map<std::string, std::vector<std::string>> mapMultiSettings;
+        
+        config::ReadConfigFile(mapSettings, mapMultiSettings);
+        
+        REQUIRE(mapSettings.count("-hashtag") > 0);
+        REQUIRE(mapSettings["-hashtag"] == "#trending");
+        
+        // Clean up
+        std::remove(tempConfigPath.c_str());
+    }
 }
