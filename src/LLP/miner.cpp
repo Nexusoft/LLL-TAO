@@ -1170,7 +1170,7 @@ namespace LLP
         }
         
         /* Prime channel optimization */
-        const uint32_t nBitMask = config::GetBoolArg("-primemod", false) ? 0xFE000000 : 0x80000000;
+        const uint32_t nBitMask = config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
         TAO::Ledger::TritiumBlock* pBlock = nullptr;
         
         /* Create block using existing utility */
