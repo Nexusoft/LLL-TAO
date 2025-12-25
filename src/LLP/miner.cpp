@@ -28,6 +28,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/create.h>
+#include <TAO/Ledger/include/stateless_block_utility.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/prime.h>
@@ -1138,90 +1139,57 @@ namespace LLP
     /*  Adds a new block to the map. */
     TAO::Ledger::Block *Miner::new_block()
     {
-        /* Determine reward address for block creation.
-         * 
-         * ARCHITECTURAL CLARITY:
-         * - hashGenesis: WHO you are (authentication identity via Falcon signature)
-         * - hashRewardAddress: WHERE rewards go (explicit payout address via MINER_SET_REWARD)
-         * 
-         * These are separate concerns! Genesis proves ownership of the account,
-         * but reward address specifies which register receives the mining rewards.
-         * The reward address CAN be different from genesis.
-         * 
-         * FALLBACK BEHAVIOR (legacy from v5.1+ dual-identity mining):
-         * If reward address is not explicitly set, fall back to genesis hash.
-         * This allows mining without MINER_SET_REWARD packet, supporting miners
-         * who want rewards sent to their authentication genesis by default.
+        /* Determine reward address - priority order:
+         * 1. hashRewardAddress (explicit via MINER_SET_REWARD)
+         * 2. hashGenesis (fallback from Falcon auth - PR #92)
+         * 3. Wallet genesis (legacy TAO API mode)
          */
-
-        /* If the primemod flag is set, take the hash proof down to 1017-bit to maximize prime ratio as much as possible. */
-        const uint32_t nBitMask =
-            config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
-
-        /* Unlock sigchain to create new block. */
-        SecureString strPIN;
-        RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
-
-        /* Get an instance of our credentials. */
-        const auto& pCredentials =
-            TAO::API::Authentication::Credentials();
-
-        /* Allocate memory for the new block. */
-        TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();
-
-        /* Determine reward address for block creation.
-         * 
-         * REWARD PRIORITY LOGIC:
-         * 1. If reward address explicitly bound via MINER_SET_REWARD → use hashRewardAddress
-         * 2. If genesis hash available (Falcon auth) → use hashGenesis as fallback
-         * 3. Otherwise → use 0, which tells CreateBlock to use node operator's genesis
-         * 
-         * This implements the dual-identity model:
-         *   - hashGenesis: WHO you are (authentication via Falcon signature)
-         *   - hashRewardAddress: WHERE rewards go (explicit payout override)
-         * 
-         * The fallback to genesis (step 2) is the original upstream behavior that
-         * allows stateless mining without MINER_SET_REWARD packet.
-         */
-        uint256_t hashDynamicReward = 0;
-        if(fRewardBound && hashRewardAddress != 0)
-        {
-            /* Priority 1: Explicit reward address */
-            hashDynamicReward = hashRewardAddress;
-            debug::log(1, FUNCTION, "Creating block with explicit REWARD ADDRESS: ", hashDynamicReward.ToString().substr(0, 16), "...");
-            debug::log(2, FUNCTION, "  Auth genesis: ", hashGenesis.SubString());
-            debug::log(2, FUNCTION, "  Reward address: ", hashDynamicReward.ToString());
+        uint256_t hashReward = 0;
+        
+        if(fRewardBound && hashRewardAddress != 0) {
+            hashReward = hashRewardAddress;
+            debug::log(2, FUNCTION, "Reward: explicit address");
         }
-        else if(hashGenesis != 0)
-        {
-            /* Priority 2: Fall back to genesis hash (original upstream behavior) */
-            hashDynamicReward = hashGenesis;
-            debug::log(1, FUNCTION, "Creating block with genesis FALLBACK: ", hashDynamicReward.ToString().substr(0, 16), "...");
-            debug::log(2, FUNCTION, "  Genesis (auth + reward): ", hashDynamicReward.SubString());
+        else if(hashGenesis != 0) {
+            hashReward = hashGenesis;
+            debug::log(2, FUNCTION, "Reward: genesis fallback");
         }
-        else
-        {
-            /* Priority 3: No stateless identity, use node operator's genesis */
-            debug::log(1, FUNCTION, "Creating block without stateless identity (legacy/wallet mode)");
+        else {
+            // Wallet mode fallback (legacy)
+            try {
+                SecureString strPIN;
+                RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
+                const auto& pCredentials = TAO::API::Authentication::Credentials();
+                hashReward = pCredentials->Genesis();
+                debug::log(2, FUNCTION, "Reward: wallet genesis");
+            }
+            catch(const std::exception& e) {
+                debug::error(FUNCTION, "No reward address available: ", e.what());
+                return nullptr;
+            }
         }
-
-        /* Create a new block and loop for prime channel if minimum bit target length isn't met.
-         * 
-         * NOTE: hashDynamicReward (last parameter) controls coinbase payout:
-         *   - If non-zero: Route rewards to this address (stateless miner)
-         *   - If zero: Route rewards to node operator's genesis (wallet mining)
-         * 
-         * CreateProducer() handles the fallback internally (see create.cpp:492-505)
-         */
-        while(TAO::Ledger::CreateBlock(pCredentials, strPIN, nChannel.load(), *pBlock, ++nBlockIterator, &tCoinbaseTx, hashDynamicReward))
-        {
-            /* Break out of loop when block is ready for prime mod. */
-            if(is_prime_mod(nBitMask, pBlock))
-                break;
+        
+        /* Prime channel optimization */
+        const uint32_t nBitMask = config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
+        TAO::Ledger::TritiumBlock* pBlock = nullptr;
+        
+        /* Create block using existing utility */
+        while(true) {
+            pBlock = TAO::Ledger::CreateBlockForStatelessMining(
+                nChannel.load(),
+                ++nBlockIterator,
+                hashReward,
+                nullptr
+            );
+            
+            if(!pBlock) return nullptr;
+            if(is_prime_mod(nBitMask, pBlock)) break;
+            
+            delete pBlock;
+            pBlock = nullptr;
         }
-
-        /* Output debug info and return the newly created block. */
-        debug::log(2, FUNCTION, "Created new Tritium Block ", pBlock->ProofHash().SubString(), " nVersion=", pBlock->nVersion);
+        
+        debug::log(2, FUNCTION, "Created block ", pBlock->ProofHash().SubString());
         return pBlock;
     }
 
