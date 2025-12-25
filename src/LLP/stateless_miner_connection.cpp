@@ -388,12 +388,16 @@ namespace LLP
                         /* Extract nonce - try Tritium offset first (200), then Legacy (204) */
                         if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET + FalconConstants::NONCE_SIZE)
                         {
-                            /* Try to determine if this is Tritium or Legacy based on size */
+                            /* Try to determine if this is Tritium or Legacy based on size.
+                             * Tritium base size is 216 bytes, Legacy is 220 bytes.
+                             * We add a 100-byte margin to account for variable-length signatures.
+                             * If packet is >= 220 but < 316 (216 + 100), it's likely Legacy. */
                             size_t nonceOffset = FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET;
+                            const size_t SIZE_DETECTION_MARGIN = 100;
                             
                             /* If the base size suggests Legacy block (220 bytes), use Legacy offset */
                             if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_LEGACY_SIZE && 
-                               PACKET.DATA.size() < FalconConstants::FULL_BLOCK_TRITIUM_SIZE + 100)
+                               PACKET.DATA.size() < FalconConstants::FULL_BLOCK_TRITIUM_SIZE + SIZE_DETECTION_MARGIN)
                             {
                                 /* Likely Legacy format, try offset 204 */
                                 if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_LEGACY_NONCE_OFFSET + FalconConstants::NONCE_SIZE)

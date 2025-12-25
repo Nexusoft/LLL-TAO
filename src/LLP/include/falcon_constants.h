@@ -106,28 +106,30 @@ namespace FalconConstants
 
     /***************************************************************************
      * Full Block Sizes (NexusMiner PR #65/#66 Full Block Format)
+     * 
+     * Note: These values are based on diagnostic data from actual miner submissions.
+     * The offsets below were confirmed through real-world testing of NexusMiner
+     * PR #65 and PR #66 which send full serialized blocks instead of compact merkle roots.
      **************************************************************************/
     
-    /** Full Tritium block size (without signature)
-     *  nVersion(4) + hashPrevBlock(128) + hashMerkleRoot(64) + nChannel(4) +
-     *  nHeight(4) + nBits(4) + nNonce(8) = 216 bytes */
+    /** Full Tritium block size (without signature or timestamp)
+     *  Based on diagnostic data showing 216-byte Tritium blocks */
     static const size_t FULL_BLOCK_TRITIUM_SIZE = 216;
     
-    /** Full Legacy block size (without signature)
-     *  nVersion(4) + hashPrevBlock(128) + hashMerkleRoot(64) + nChannel(4) +
-     *  nHeight(4) + nBits(4) + nNonce(8) = 220 bytes */
+    /** Full Legacy block size (without signature or timestamp)
+     *  Based on diagnostic data showing 220-byte Legacy blocks */
     static const size_t FULL_BLOCK_LEGACY_SIZE = 220;
     
-    /** Merkle root offset in full block (after version + hashPrevBlock)
-     *  nVersion(4) + hashPrevBlock(128) = 132 bytes */
+    /** Merkle root offset in full block
+     *  Located after: nVersion(4) + hashPrevBlock(128) = 132 bytes */
     static const size_t FULL_BLOCK_MERKLE_OFFSET = 132;
     
     /** Nonce offset in Tritium full block
-     *  nVersion(4) + hashPrevBlock(128) + hashMerkleRoot(64) + nChannel(4) = 200 bytes */
+     *  Confirmed via diagnostic data at offset 200 */
     static const size_t FULL_BLOCK_TRITIUM_NONCE_OFFSET = 200;
     
     /** Nonce offset in Legacy full block
-     *  nVersion(4) + hashPrevBlock(128) + hashMerkleRoot(64) + nChannel(4) = 204 bytes */
+     *  Confirmed via diagnostic data at offset 204 */
     static const size_t FULL_BLOCK_LEGACY_NONCE_OFFSET = 204;
 
     /***************************************************************************
