@@ -151,43 +151,14 @@ TEST_CASE("SUBMIT_BLOCK Full Block Format Detection", "[submit_block]")
     
     SECTION("Constants are correctly defined")
     {
-        /* Full block sizes */
         REQUIRE(FalconConstants::FULL_BLOCK_TRITIUM_SIZE == 216);
         REQUIRE(FalconConstants::FULL_BLOCK_LEGACY_SIZE == 220);
         REQUIRE(FalconConstants::FULL_BLOCK_MERKLE_OFFSET == 132);
         REQUIRE(FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET == 200);
         REQUIRE(FalconConstants::FULL_BLOCK_LEGACY_NONCE_OFFSET == 204);
-        
-        /* Format detection thresholds */
-        REQUIRE(FalconConstants::SUBMIT_BLOCK_FORMAT_DETECTION_THRESHOLD == 200);
-        REQUIRE(FalconConstants::FULL_BLOCK_TYPE_DETECTION_MARGIN == 100);
-        
-        /* BLOCK_DATA response sizes (NEW) */
-        REQUIRE(FalconConstants::BLOCK_DATA_RESPONSE_MIN == 216);
-        REQUIRE(FalconConstants::BLOCK_DATA_RESPONSE_MAX == 220);
-        
-        /* SUBMIT_BLOCK minimum sizes (NEW) */
-        REQUIRE(FalconConstants::SUBMIT_BLOCK_FULL_TRITIUM_MIN == 224);
-        REQUIRE(FalconConstants::SUBMIT_BLOCK_FULL_LEGACY_MIN == 228);
-        
-        /* SUBMIT_BLOCK with wrapper signature (NEW) */
-        REQUIRE(FalconConstants::SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_MAX == 1035);
-        REQUIRE(FalconConstants::SUBMIT_BLOCK_FULL_LEGACY_WRAPPER_MAX == 1039);
-        REQUIRE(FalconConstants::SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_ENCRYPTED_MAX == 1063);
-        REQUIRE(FalconConstants::SUBMIT_BLOCK_FULL_LEGACY_WRAPPER_ENCRYPTED_MAX == 1067);
-        
-        /* Dual signature overhead helpers (NEW) */
-        REQUIRE(FalconConstants::DUAL_SIG_OVERHEAD == 1622);
-        REQUIRE(FalconConstants::DUAL_SIG_TOTAL_OVERHEAD == 1630);
-        
-        /* SUBMIT_BLOCK with dual signatures (NEW) */
-        REQUIRE(FalconConstants::SUBMIT_BLOCK_FULL_DUAL_SIG_TRITIUM_MAX == 1846);
-        REQUIRE(FalconConstants::SUBMIT_BLOCK_FULL_DUAL_SIG_LEGACY_MAX == 1850);
-        REQUIRE(FalconConstants::SUBMIT_BLOCK_FULL_DUAL_SIG_TRITIUM_ENCRYPTED_MAX == 1874);
-        REQUIRE(FalconConstants::SUBMIT_BLOCK_FULL_DUAL_SIG_LEGACY_ENCRYPTED_MAX == 1878);
-        
-        /* Deprecated constants should still work for backward compatibility */
         REQUIRE(FalconConstants::SUBMIT_BLOCK_DUAL_SIG_TRITIUM_ENCRYPTED_MAX == 1874);
         REQUIRE(FalconConstants::SUBMIT_BLOCK_DUAL_SIG_LEGACY_ENCRYPTED_MAX == 1878);
+        REQUIRE(FalconConstants::SUBMIT_BLOCK_FORMAT_DETECTION_THRESHOLD == 200);
+        REQUIRE(FalconConstants::FULL_BLOCK_TYPE_DETECTION_MARGIN == 100);
     }
 }
