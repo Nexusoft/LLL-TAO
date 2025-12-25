@@ -16,6 +16,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/supply.h>
+#include <TAO/Ledger/include/retarget.h>
+#include <TAO/Ledger/include/timelocks.h>
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/types/authentication.h>
@@ -70,7 +72,14 @@ namespace TAO::Ledger
                 const BlockState tStateBest = ChainState::tStateBest.load();
                 
                 TritiumBlock* pBlock = new TritiumBlock();
-                pBlock->nVersion = CurrentBlockVersion(tStateBest.nHeight + 1);
+                
+                /* Get current block version */
+                uint32_t nCurrent = CurrentBlockVersion();
+                if(BlockVersionActive(runtime::unifiedtimestamp(), nCurrent))
+                    pBlock->nVersion = nCurrent;
+                else
+                    pBlock->nVersion = nCurrent - 1;
+                
                 pBlock->hashPrevBlock = tStateBest.GetHash();
                 pBlock->nChannel = nChannel;
                 pBlock->nHeight = tStateBest.nHeight + 1;
