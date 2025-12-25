@@ -1164,7 +1164,7 @@ namespace LLP
                 debug::log(2, FUNCTION, "Reward: wallet genesis");
             }
             catch(const std::exception& e) {
-                debug::error(FUNCTION, "No reward address available");
+                debug::error(FUNCTION, "No reward address available: ", e.what());
                 return nullptr;
             }
         }
