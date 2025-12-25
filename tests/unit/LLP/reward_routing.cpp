@@ -24,11 +24,22 @@ namespace {
     /* Sample test genesis hash for reward routing tests */
     const char* TEST_GENESIS_HEX = "a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122";
     
+    /* Sample test reward address (different from genesis) */
+    const char* TEST_REWARD_HEX = "b174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd133";
+    
     /* Helper to create test genesis hash */
     uint256_t GetTestGenesis()
     {
         uint256_t hash;
         hash.SetHex(TEST_GENESIS_HEX);
+        return hash;
+    }
+    
+    /* Helper to create test reward address */
+    uint256_t GetTestReward()
+    {
+        uint256_t hash;
+        hash.SetHex(TEST_REWARD_HEX);
         return hash;
     }
 }
@@ -94,8 +105,7 @@ TEST_CASE("Reward Address Binding Tests", "[reward_routing]")
     {
         /* Create test hashes */
         uint256_t testGenesis = GetTestGenesis();
-        uint256_t testReward;
-        testReward.SetHex("b174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd133");
+        uint256_t testReward = GetTestReward();
         
         /* Create context with both genesis and reward address */
         MiningContext ctx = MiningContext()
@@ -158,8 +168,7 @@ TEST_CASE("Stateless Mining Enforcement Tests", "[reward_routing]")
     SECTION("Explicit reward address takes precedence over genesis")
     {
         uint256_t testGenesis = GetTestGenesis();
-        uint256_t testReward;
-        testReward.SetHex("b174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd133");
+        uint256_t testReward = GetTestReward();
         
         MiningContext ctx = MiningContext()
             .WithGenesis(testGenesis)

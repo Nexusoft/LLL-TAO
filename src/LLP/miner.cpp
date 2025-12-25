@@ -1148,9 +1148,10 @@ namespace LLP
          * but reward address specifies which register receives the mining rewards.
          * The reward address CAN be different from genesis.
          * 
-         * FALLBACK BEHAVIOR (original upstream):
+         * FALLBACK BEHAVIOR (legacy from v5.1+ dual-identity mining):
          * If reward address is not explicitly set, fall back to genesis hash.
-         * This allows mining without MINER_SET_REWARD packet.
+         * This allows mining without MINER_SET_REWARD packet, supporting miners
+         * who want rewards sent to their authentication genesis by default.
          */
 
         /* If the primemod flag is set, take the hash proof down to 1017-bit to maximize prime ratio as much as possible. */

@@ -226,11 +226,15 @@ namespace LLP
             return hashRewardAddress;
         }
         
-        /* Priority 2: Fall back to genesis hash (original upstream behavior)
+        /* Priority 2: Fall back to genesis hash (legacy behavior from v5.1+)
          * This allows mining without explicit reward address binding.
          * The genesis hash serves dual purpose:
          *   - WHO you are (authentication identity via Falcon signature)
          *   - WHERE rewards go (fallback payout destination)
+         * 
+         * This fallback has been part of Nexus since the introduction of
+         * dual-identity mining, allowing miners to authenticate and receive
+         * rewards to the same genesis without requiring separate MINER_SET_REWARD.
          */
         if(hashGenesis != 0)
         {
