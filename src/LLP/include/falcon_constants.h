@@ -105,6 +105,47 @@ namespace FalconConstants
     static const size_t GENESIS_HASH_SIZE = 32;
 
     /***************************************************************************
+     * Full Block Sizes (NexusMiner PR #65/#66 Full Block Format)
+     * 
+     * Note: These values are based on diagnostic data from actual miner submissions.
+     * The offsets below were confirmed through real-world testing of NexusMiner
+     * PR #65 and PR #66 which send full serialized blocks instead of compact merkle roots.
+     **************************************************************************/
+    
+    /** Full Tritium block size (without signature or timestamp)
+     *  Based on diagnostic data showing 216-byte Tritium blocks */
+    static const size_t FULL_BLOCK_TRITIUM_SIZE = 216;
+    
+    /** Full Legacy block size (without signature or timestamp)
+     *  Based on diagnostic data showing 220-byte Legacy blocks */
+    static const size_t FULL_BLOCK_LEGACY_SIZE = 220;
+    
+    /** Merkle root offset in full block
+     *  Located after: nVersion(4) + hashPrevBlock(128) = 132 bytes */
+    static const size_t FULL_BLOCK_MERKLE_OFFSET = 132;
+    
+    /** Nonce offset in Tritium full block
+     *  Confirmed via diagnostic data at offset 200 */
+    static const size_t FULL_BLOCK_TRITIUM_NONCE_OFFSET = 200;
+    
+    /** Nonce offset in Legacy full block
+     *  Confirmed via diagnostic data at offset 204 */
+    static const size_t FULL_BLOCK_LEGACY_NONCE_OFFSET = 204;
+    
+    /** Format detection threshold for SUBMIT_BLOCK packets
+     *  Packets >= 200 bytes are treated as full block format,
+     *  packets < 200 bytes are treated as legacy 64-byte merkle format.
+     *  This threshold safely distinguishes between:
+     *  - Legacy format max: ~919 bytes (64-byte merkle + nonce + signatures + encryption)
+     *  - Full block min: 216 bytes (Tritium block without signature) */
+    static const size_t SUBMIT_BLOCK_FORMAT_DETECTION_THRESHOLD = 200;
+    
+    /** Size margin for distinguishing Tritium vs Legacy full blocks
+     *  Used to account for variable-length signatures when determining block type.
+     *  Tritium blocks start at 216 bytes, Legacy at 220 bytes. */
+    static const size_t FULL_BLOCK_TYPE_DETECTION_MARGIN = 100;
+
+    /***************************************************************************
      * Submit Block Message (What Gets Signed - Fixed Size)
      **************************************************************************/
     
@@ -181,6 +222,40 @@ namespace FalconConstants
      *  This is the maximum size when both signatures are used on public miners
      *  with encryption enabled. */
     static const size_t SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX = SUBMIT_BLOCK_DUAL_SIG_MAX + CHACHA20_OVERHEAD;  // 1,730 bytes
+
+    /***************************************************************************
+     * Full Block Format with Dual Signature (NexusMiner PR #65/#66)
+     **************************************************************************/
+    
+    /** Submit Tritium block with full block format and BOTH signatures - LOCALHOST
+     *  Components:
+     *  - Full Tritium block: 216 bytes
+     *  - Timestamp: 8 bytes
+     *  - Wrapper sig overhead: (sig_len(2) + sig(809)) = 811 bytes
+     *    Note: SUBMIT_BLOCK_WRAPPER_MAX includes merkle(64) + nonce(8) which are
+     *    already in the full block, so we subtract them to avoid double-counting
+     *  - Physical sig overhead: (sig_len(2) + sig(809)) = 811 bytes
+     *  Calculation: 216 + 8 + 891 - 64 - 8 + 811 = 1,846 bytes */
+    static const size_t SUBMIT_BLOCK_DUAL_SIG_TRITIUM_MAX = FULL_BLOCK_TRITIUM_SIZE + TIMESTAMP_SIZE + SUBMIT_BLOCK_WRAPPER_MAX - MERKLE_ROOT_SIZE - NONCE_SIZE + PHYSICAL_BLOCK_SIG_OVERHEAD;  // 1,846 bytes
+    
+    /** Submit Tritium block with full block format and BOTH signatures - PUBLIC MINER (encrypted)
+     *  Adds ChaCha20 encryption overhead (nonce(12) + auth_tag(16)) = 28 bytes
+     *  Total: 1,846 + 28 = 1,874 bytes */
+    static const size_t SUBMIT_BLOCK_DUAL_SIG_TRITIUM_ENCRYPTED_MAX = SUBMIT_BLOCK_DUAL_SIG_TRITIUM_MAX + CHACHA20_OVERHEAD;  // 1,874 bytes
+    
+    /** Submit Legacy block with full block format and BOTH signatures - LOCALHOST
+     *  Components:
+     *  - Full Legacy block: 220 bytes (4 bytes larger than Tritium)
+     *  - Timestamp: 8 bytes
+     *  - Wrapper sig overhead: 891 bytes (minus merkle/nonce to avoid double-counting)
+     *  - Physical sig overhead: 811 bytes
+     *  Calculation: 220 + 8 + 891 - 64 - 8 + 811 = 1,850 bytes */
+    static const size_t SUBMIT_BLOCK_DUAL_SIG_LEGACY_MAX = FULL_BLOCK_LEGACY_SIZE + TIMESTAMP_SIZE + SUBMIT_BLOCK_WRAPPER_MAX - MERKLE_ROOT_SIZE - NONCE_SIZE + PHYSICAL_BLOCK_SIG_OVERHEAD;  // 1,850 bytes
+    
+    /** Submit Legacy block with full block format and BOTH signatures - PUBLIC MINER (encrypted)
+     *  Adds ChaCha20 encryption overhead: 28 bytes
+     *  Total: 1,850 + 28 = 1,878 bytes */
+    static const size_t SUBMIT_BLOCK_DUAL_SIG_LEGACY_ENCRYPTED_MAX = SUBMIT_BLOCK_DUAL_SIG_LEGACY_MAX + CHACHA20_OVERHEAD;  // 1,878 bytes
 
     /***************************************************************************
      * Authentication Response Sizes - CT=809
