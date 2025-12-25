@@ -220,14 +220,27 @@ namespace LLP
 
     uint256_t MiningContext::GetPayoutAddress() const
     {
-        /* For stateless mining, reward address MUST be explicitly bound via MINER_SET_REWARD */
-        if(!fRewardBound || hashRewardAddress == 0)
+        /* Priority 1: Use explicit reward address if bound via MINER_SET_REWARD */
+        if(fRewardBound && hashRewardAddress != 0)
         {
-            debug::error(FUNCTION, "GetPayoutAddress called but reward address not bound!");
-            return uint256_t(0);  // Return 0 to indicate error
+            return hashRewardAddress;
         }
         
-        return hashRewardAddress;
+        /* Priority 2: Fall back to genesis hash (original upstream behavior)
+         * This allows mining without explicit reward address binding.
+         * The genesis hash serves dual purpose:
+         *   - WHO you are (authentication identity via Falcon signature)
+         *   - WHERE rewards go (fallback payout destination)
+         */
+        if(hashGenesis != 0)
+        {
+            return hashGenesis;
+        }
+        
+        /* Priority 3: No valid payout address available */
+        debug::error(FUNCTION, "GetPayoutAddress: No valid payout address!");
+        debug::error(FUNCTION, "  Neither reward address nor genesis hash is set");
+        return uint256_t(0);
     }
 
     bool MiningContext::HasValidPayout() const

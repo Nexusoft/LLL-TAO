@@ -231,18 +231,6 @@ namespace LLP
                     return true;
                 }
                 
-                /* Check reward address is bound */
-                if(!context.fRewardBound || context.hashRewardAddress == 0)
-                {
-                    debug::error(FUNCTION, "GET_BLOCK rejected - send MINER_SET_REWARD first");
-                    debug::error(FUNCTION, "  Required flow: Auth → MINER_SET_REWARD → SET_CHANNEL → GET_BLOCK");
-                    
-                    /* Send error response */
-                    Packet response(BLOCK_REJECTED);
-                    respond(response);
-                    return true;
-                }
-
                 /* Check channel is set */
                 if(context.nChannel == 0)
                 {
@@ -309,18 +297,6 @@ namespace LLP
                     return true;
                 }
                 
-                /* Check reward address is bound */
-                if(!context.fRewardBound || context.hashRewardAddress == 0)
-                {
-                    debug::error(FUNCTION, "SUBMIT_BLOCK rejected - send MINER_SET_REWARD first");
-                    debug::error(FUNCTION, "  Required flow: Auth → MINER_SET_REWARD → SET_CHANNEL → GET_BLOCK → SUBMIT_BLOCK");
-                    
-                    /* Send error response */
-                    Packet response(BLOCK_REJECTED);
-                    respond(response);
-                    return true;
-                }
-
                 /* Check channel is set */
                 if(context.nChannel == 0)
                 {
@@ -793,20 +769,29 @@ namespace LLP
         /* Get channel from context */
         uint32_t nChannel = context.nChannel;
 
-        /* Get payout address - MUST be bound via MINER_SET_REWARD */
+        /* Get payout address - falls back to genesis if reward address not explicitly set */
         const uint256_t hashRewardAddress = context.GetPayoutAddress();
 
-        /* Verify reward address is set */
+        /* Verify we have a valid payout destination */
         if(hashRewardAddress == 0)
         {
-            debug::error(FUNCTION, "Cannot create block - reward address not bound");
-            debug::error(FUNCTION, "  Required: Send MINER_SET_REWARD before GET_BLOCK");
+            debug::error(FUNCTION, "Cannot create block - no valid payout address");
+            debug::error(FUNCTION, "  Must have either:");
+            debug::error(FUNCTION, "    1. Explicit reward address (via MINER_SET_REWARD), OR");
+            debug::error(FUNCTION, "    2. Genesis hash (from Falcon authentication)");
             return nullptr;
         }
 
-        /* Log dual-identity model clearly */
+        /* Log reward routing with source indication */
         debug::log(1, FUNCTION, "Creating block for stateless mining:");
-        debug::log(1, FUNCTION, "  Reward routing: ", hashRewardAddress.SubString(), " (miner)");
+        if(context.fRewardBound && context.hashRewardAddress != 0)
+        {
+            debug::log(1, FUNCTION, "  Reward routing: ", hashRewardAddress.SubString(), " (explicit via MINER_SET_REWARD)");
+        }
+        else
+        {
+            debug::log(1, FUNCTION, "  Reward routing: ", hashRewardAddress.SubString(), " (fallback to genesis)");
+        }
         debug::log(1, FUNCTION, "  Channel: ", nChannel == 1 ? "Prime" : nChannel == 2 ? "Hash" : "Private");
 
         /* Create block using dual-mode utility (auto-detects mode) */

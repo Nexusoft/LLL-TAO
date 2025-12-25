@@ -1138,7 +1138,7 @@ namespace LLP
     /*  Adds a new block to the map. */
     TAO::Ledger::Block *Miner::new_block()
     {
-        /* For stateless mining, verify reward address is bound via MINER_SET_REWARD.
+        /* Determine reward address for block creation.
          * 
          * ARCHITECTURAL CLARITY:
          * - hashGenesis: WHO you are (authentication identity via Falcon signature)
@@ -1147,13 +1147,11 @@ namespace LLP
          * These are separate concerns! Genesis proves ownership of the account,
          * but reward address specifies which register receives the mining rewards.
          * The reward address CAN be different from genesis.
+         * 
+         * FALLBACK BEHAVIOR (original upstream):
+         * If reward address is not explicitly set, fall back to genesis hash.
+         * This allows mining without MINER_SET_REWARD packet.
          */
-        if(fRewardBound && hashRewardAddress == 0)
-        {
-            debug::error(FUNCTION, "Cannot create block - reward address is zero");
-            debug::error(FUNCTION, "  Required flow: MINER_AUTH → MINER_SET_REWARD → SET_CHANNEL → GET_BLOCK");
-            return nullptr;
-        }
 
         /* If the primemod flag is set, take the hash proof down to 1017-bit to maximize prime ratio as much as possible. */
         const uint32_t nBitMask =
@@ -1170,32 +1168,49 @@ namespace LLP
         /* Allocate memory for the new block. */
         TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();
 
-        /* Determine reward address for stateless miners.
+        /* Determine reward address for block creation.
          * 
-         * CRITICAL: Use hashRewardAddress (NOT hashGenesis!) for coinbase payout.
-         * This is the register address sent by miner via MINER_SET_REWARD packet.
+         * REWARD PRIORITY LOGIC:
+         * 1. If reward address explicitly bound via MINER_SET_REWARD → use hashRewardAddress
+         * 2. If genesis hash available (Falcon auth) → use hashGenesis as fallback
+         * 3. Otherwise → use 0, which tells CreateBlock to use node operator's genesis
          * 
-         * Separation of concerns:
+         * This implements the dual-identity model:
          *   - hashGenesis: WHO you are (authentication via Falcon signature)
-         *   - hashRewardAddress: WHERE rewards go (explicit payout address)
+         *   - hashRewardAddress: WHERE rewards go (explicit payout override)
+         * 
+         * The fallback to genesis (step 2) is the original upstream behavior that
+         * allows stateless mining without MINER_SET_REWARD packet.
          */
         uint256_t hashDynamicReward = 0;
-        if(fRewardBound)
+        if(fRewardBound && hashRewardAddress != 0)
         {
+            /* Priority 1: Explicit reward address */
             hashDynamicReward = hashRewardAddress;
-            debug::log(1, FUNCTION, "Creating block with REWARD ADDRESS: ", hashDynamicReward.ToString().substr(0, 16), "...");
+            debug::log(1, FUNCTION, "Creating block with explicit REWARD ADDRESS: ", hashDynamicReward.ToString().substr(0, 16), "...");
             debug::log(2, FUNCTION, "  Auth genesis: ", hashGenesis.SubString());
             debug::log(2, FUNCTION, "  Reward address: ", hashDynamicReward.ToString());
         }
+        else if(hashGenesis != 0)
+        {
+            /* Priority 2: Fall back to genesis hash (original upstream behavior) */
+            hashDynamicReward = hashGenesis;
+            debug::log(1, FUNCTION, "Creating block with genesis FALLBACK: ", hashDynamicReward.ToString().substr(0, 16), "...");
+            debug::log(2, FUNCTION, "  Genesis (auth + reward): ", hashDynamicReward.SubString());
+        }
         else
         {
-            debug::log(1, FUNCTION, "Creating block without explicit reward address (legacy/SOLO mode)");
+            /* Priority 3: No stateless identity, use node operator's genesis */
+            debug::log(1, FUNCTION, "Creating block without stateless identity (legacy/wallet mode)");
         }
 
         /* Create a new block and loop for prime channel if minimum bit target length isn't met.
          * 
-         * NOTE: hashDynamicReward (last parameter) is used for the coinbase payout address.
-         * This ensures rewards go to hashRewardAddress (if bound), NOT to hashGenesis.
+         * NOTE: hashDynamicReward (last parameter) controls coinbase payout:
+         *   - If non-zero: Route rewards to this address (stateless miner)
+         *   - If zero: Route rewards to node operator's genesis (wallet mining)
+         * 
+         * CreateProducer() handles the fallback internally (see create.cpp:492-505)
          */
         while(TAO::Ledger::CreateBlock(pCredentials, strPIN, nChannel.load(), *pBlock, ++nBlockIterator, &tCoinbaseTx, hashDynamicReward))
         {
