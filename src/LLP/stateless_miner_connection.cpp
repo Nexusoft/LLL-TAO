@@ -337,8 +337,8 @@ namespace LLP
                 /* Minimum: merkle(64) + nonce(8) = 72 bytes (legacy format) */
                 const size_t MIN_SIZE = FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE;
                 
-                /* Maximum: dual-signature with ChaCha20 encryption = 1,616 bytes */
-                const size_t MAX_SIZE = FalconConstants::SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX;
+                /* Maximum: full block dual-signature with ChaCha20 encryption = 1,878 bytes (Legacy) */
+                const size_t MAX_SIZE = FalconConstants::SUBMIT_BLOCK_DUAL_SIG_LEGACY_ENCRYPTED_MAX;
 
                 if(PACKET.DATA.size() < MIN_SIZE)
                 {
@@ -358,35 +358,91 @@ namespace LLP
                     return true;
                 }
 
-                /* Log signature mode for diagnostics */
-                if(PACKET.DATA.size() > FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX)
+                uint512_t hashMerkle;
+                uint64_t nonce = 0;
+                bool fFullBlockFormat = false;
+
+                /* Detect format based on packet size:
+                 * - Legacy 64-byte merkle format: 72-919 bytes
+                 * - Full block format (Tritium): 216+ bytes
+                 * - Full block format (Legacy): 220+ bytes
+                 * 
+                 * Detection strategy:
+                 * If packet size >= 200 bytes, assume full block format.
+                 * This threshold is chosen because:
+                 * - Legacy format max is ~919 bytes (with encryption)
+                 * - Full block min is 216 bytes (Tritium without signature)
+                 * - 200 bytes is a safe threshold that distinguishes the two
+                 */
+                if(PACKET.DATA.size() >= 200)
                 {
-                    debug::log(2, FUNCTION, "SUBMIT_BLOCK: Dual-signature mode detected (size=", 
-                               PACKET.DATA.size(), ")");
-                }
-                else if(PACKET.DATA.size() >= FalconConstants::SUBMIT_BLOCK_WRAPPER_MIN)
-                {
-                    debug::log(3, FUNCTION, "SUBMIT_BLOCK: Single-signature mode (size=", 
-                               PACKET.DATA.size(), ")");
+                    fFullBlockFormat = true;
+                    
+                    /* Extract merkle root from offset 132 (after version + hashPrevBlock) */
+                    if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_MERKLE_OFFSET + FalconConstants::MERKLE_ROOT_SIZE)
+                    {
+                        hashMerkle.SetBytes(std::vector<uint8_t>(
+                            PACKET.DATA.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET,
+                            PACKET.DATA.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET + FalconConstants::MERKLE_ROOT_SIZE));
+                        
+                        /* Extract nonce - try Tritium offset first (200), then Legacy (204) */
+                        if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET + FalconConstants::NONCE_SIZE)
+                        {
+                            /* Try to determine if this is Tritium or Legacy based on size */
+                            size_t nonceOffset = FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET;
+                            
+                            /* If the base size suggests Legacy block (220 bytes), use Legacy offset */
+                            if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_LEGACY_SIZE && 
+                               PACKET.DATA.size() < FalconConstants::FULL_BLOCK_TRITIUM_SIZE + 100)
+                            {
+                                /* Likely Legacy format, try offset 204 */
+                                if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_LEGACY_NONCE_OFFSET + FalconConstants::NONCE_SIZE)
+                                {
+                                    nonceOffset = FalconConstants::FULL_BLOCK_LEGACY_NONCE_OFFSET;
+                                }
+                            }
+                            
+                            nonce = convert::bytes2uint64(std::vector<uint8_t>(
+                                PACKET.DATA.begin() + nonceOffset,
+                                PACKET.DATA.begin() + nonceOffset + FalconConstants::NONCE_SIZE));
+                            
+                            debug::log(2, FUNCTION, "SUBMIT_BLOCK: Full block format detected, ",
+                                       "merkle at offset 132, nonce at offset ", nonceOffset);
+                        }
+                        else
+                        {
+                            debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK full block format but packet too small for nonce");
+                            Packet response(BLOCK_REJECTED);
+                            respond(response);
+                            return true;
+                        }
+                    }
+                    else
+                    {
+                        debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK full block format but packet too small for merkle");
+                        Packet response(BLOCK_REJECTED);
+                        respond(response);
+                        return true;
+                    }
                 }
                 else
                 {
-                    debug::log(3, FUNCTION, "SUBMIT_BLOCK: Legacy format (size=", 
-                               PACKET.DATA.size(), ")");
+                    /* Legacy 64-byte merkle format */
+                    fFullBlockFormat = false;
+                    
+                    /* Get the merkle root (first 64 bytes). */
+                    hashMerkle.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE));
+
+                    /* Get the nonce (next 8 bytes) */
+                    nonce = convert::bytes2uint64(std::vector<uint8_t>(
+                        PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE,
+                        PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE));
+                    
+                    debug::log(3, FUNCTION, "SUBMIT_BLOCK: Legacy 64-byte merkle format");
                 }
 
-                uint512_t hashMerkle;
-                uint64_t nonce = 0;
-
-                /* Get the merkle root (first 64 bytes). */
-                hashMerkle.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE));
-
-                /* Get the nonce (next 8 bytes) */
-                nonce = convert::bytes2uint64(std::vector<uint8_t>(
-                    PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE,
-                    PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE));
-
-                debug::log(3, FUNCTION, "Block merkle root: ", hashMerkle.SubString(), " nonce: ", nonce);
+                debug::log(3, FUNCTION, "Block merkle root: ", hashMerkle.SubString(), " nonce: ", nonce,
+                           " format: ", fFullBlockFormat ? "full_block" : "merkle_only");
 
                 /* Check for optional Falcon signature in extended format */
                 /* Format: [merkle_root (64)][nonce (8)][sig_len (2)][signature (sig_len)] */

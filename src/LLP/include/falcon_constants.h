@@ -105,6 +105,32 @@ namespace FalconConstants
     static const size_t GENESIS_HASH_SIZE = 32;
 
     /***************************************************************************
+     * Full Block Sizes (NexusMiner PR #65/#66 Full Block Format)
+     **************************************************************************/
+    
+    /** Full Tritium block size (without signature)
+     *  nVersion(4) + hashPrevBlock(128) + hashMerkleRoot(64) + nChannel(4) +
+     *  nHeight(4) + nBits(4) + nNonce(8) = 216 bytes */
+    static const size_t FULL_BLOCK_TRITIUM_SIZE = 216;
+    
+    /** Full Legacy block size (without signature)
+     *  nVersion(4) + hashPrevBlock(128) + hashMerkleRoot(64) + nChannel(4) +
+     *  nHeight(4) + nBits(4) + nNonce(8) = 220 bytes */
+    static const size_t FULL_BLOCK_LEGACY_SIZE = 220;
+    
+    /** Merkle root offset in full block (after version + hashPrevBlock)
+     *  nVersion(4) + hashPrevBlock(128) = 132 bytes */
+    static const size_t FULL_BLOCK_MERKLE_OFFSET = 132;
+    
+    /** Nonce offset in Tritium full block
+     *  nVersion(4) + hashPrevBlock(128) + hashMerkleRoot(64) + nChannel(4) = 200 bytes */
+    static const size_t FULL_BLOCK_TRITIUM_NONCE_OFFSET = 200;
+    
+    /** Nonce offset in Legacy full block
+     *  nVersion(4) + hashPrevBlock(128) + hashMerkleRoot(64) + nChannel(4) = 204 bytes */
+    static const size_t FULL_BLOCK_LEGACY_NONCE_OFFSET = 204;
+
+    /***************************************************************************
      * Submit Block Message (What Gets Signed - Fixed Size)
      **************************************************************************/
     
@@ -181,6 +207,28 @@ namespace FalconConstants
      *  This is the maximum size when both signatures are used on public miners
      *  with encryption enabled. */
     static const size_t SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX = SUBMIT_BLOCK_DUAL_SIG_MAX + CHACHA20_OVERHEAD;  // 1,730 bytes
+
+    /***************************************************************************
+     * Full Block Format with Dual Signature (NexusMiner PR #65/#66)
+     **************************************************************************/
+    
+    /** Submit Tritium block with full block format and BOTH signatures - LOCALHOST
+     *  full_block(216) + timestamp(8) + sig_len(2) + wrapper_sig(809) + 
+     *  physical_sig_len(2) + physical_sig(809) = 1,846 bytes */
+    static const size_t SUBMIT_BLOCK_DUAL_SIG_TRITIUM_MAX = FULL_BLOCK_TRITIUM_SIZE + TIMESTAMP_SIZE + SUBMIT_BLOCK_WRAPPER_MAX - MERKLE_ROOT_SIZE - NONCE_SIZE + PHYSICAL_BLOCK_SIG_OVERHEAD;  // ~1,846 bytes
+    
+    /** Submit Tritium block with full block format and BOTH signatures - PUBLIC MINER (encrypted)
+     *  Dual sig(1,846) + ChaCha20 overhead(28) = 1,874 bytes */
+    static const size_t SUBMIT_BLOCK_DUAL_SIG_TRITIUM_ENCRYPTED_MAX = SUBMIT_BLOCK_DUAL_SIG_TRITIUM_MAX + CHACHA20_OVERHEAD;  // 1,874 bytes
+    
+    /** Submit Legacy block with full block format and BOTH signatures - LOCALHOST
+     *  full_block(220) + timestamp(8) + sig_len(2) + wrapper_sig(809) + 
+     *  physical_sig_len(2) + physical_sig(809) = 1,850 bytes */
+    static const size_t SUBMIT_BLOCK_DUAL_SIG_LEGACY_MAX = FULL_BLOCK_LEGACY_SIZE + TIMESTAMP_SIZE + SUBMIT_BLOCK_WRAPPER_MAX - MERKLE_ROOT_SIZE - NONCE_SIZE + PHYSICAL_BLOCK_SIG_OVERHEAD;  // ~1,850 bytes
+    
+    /** Submit Legacy block with full block format and BOTH signatures - PUBLIC MINER (encrypted)
+     *  Dual sig(1,850) + ChaCha20 overhead(28) = 1,878 bytes */
+    static const size_t SUBMIT_BLOCK_DUAL_SIG_LEGACY_ENCRYPTED_MAX = SUBMIT_BLOCK_DUAL_SIG_LEGACY_MAX + CHACHA20_OVERHEAD;  // 1,878 bytes
 
     /***************************************************************************
      * Authentication Response Sizes - CT=809
