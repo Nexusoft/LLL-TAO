@@ -14,66 +14,102 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/stateless_block_utility.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/supply.h>
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/types/authentication.h>
 
 #include <Util/include/debug.h>
+#include <Util/include/runtime.h>
 
 /* Global TAO namespace. */
 namespace TAO::Ledger
 {
-    /* Simplified block creation for stateless mining - single path implementation */
+    /* Dual-mode block creation for stateless mining */
     TritiumBlock* CreateBlockForStatelessMining(
         const uint32_t nChannel,
         const uint64_t nExtraNonce,
-        const uint256_t& hashRewardAddress)
+        const uint256_t& hashRewardAddress,
+        const bool fFalconAuthenticated)
     {
-        try
+        /* Mode 1: Try wallet mode first (upstream compatibility) */
+        if(!fFalconAuthenticated && TAO::API::Authentication::Unlocked(TAO::Ledger::PinUnlock::MINING))
         {
-            /* Check mining is unlocked */
-            if(!TAO::API::Authentication::Unlocked(TAO::Ledger::PinUnlock::MINING))
-            {
-                debug::error(FUNCTION, "Mining not unlocked - use -unlock=mining");
-                return nullptr;
-            }
-
-            /* Get node credentials */
-            const uint256_t hashSession = uint256_t(TAO::API::Authentication::SESSION::DEFAULT);
-            const auto& pCredentials = TAO::API::Authentication::Credentials(hashSession);
-
-            /* Unlock PIN for mining */
-            SecureString strPIN;
-            RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING, hashSession));
-
-            /* Create producer transaction and build block */
-            TritiumBlock* pBlock = new TritiumBlock();
+            debug::log(1, FUNCTION, "Using WALLET mode (Session::DEFAULT)");
             
-            bool success = CreateBlock(
-                pCredentials,
-                strPIN,
-                nChannel,
-                *pBlock,
-                nExtraNonce,
-                nullptr,           // No coinbase recipients
-                hashRewardAddress  // Route rewards to miner
-            );
-
-            if(!success)
-            {
-                delete pBlock;
-                debug::error(FUNCTION, "CreateBlock failed");
+            try {
+                const uint256_t hashSession = uint256_t(TAO::API::Authentication::SESSION::DEFAULT);
+                const auto& pCredentials = TAO::API::Authentication::Credentials(hashSession);
+                
+                SecureString strPIN;
+                RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING, hashSession));
+                
+                TritiumBlock* pBlock = new TritiumBlock();
+                bool success = CreateBlock(pCredentials, strPIN, nChannel, *pBlock, 
+                                          nExtraNonce, nullptr, hashRewardAddress);
+                
+                if(!success) {
+                    delete pBlock;
+                    return nullptr;
+                }
+                
+                return pBlock;
+            }
+            catch(const std::exception& e) {
+                debug::error(FUNCTION, "Wallet mode failed: ", e.what());
+            }
+        }
+        
+        /* Mode 2: Stateless mode (Falcon authenticated) */
+        if(fFalconAuthenticated)
+        {
+            debug::log(1, FUNCTION, "Using STATELESS mode (Falcon authenticated)");
+            
+            try {
+                const BlockState tStateBest = ChainState::tStateBest.load();
+                
+                TritiumBlock* pBlock = new TritiumBlock();
+                pBlock->nVersion = CurrentBlockVersion(tStateBest.nHeight + 1);
+                pBlock->hashPrevBlock = tStateBest.GetHash();
+                pBlock->nChannel = nChannel;
+                pBlock->nHeight = tStateBest.nHeight + 1;
+                pBlock->nBits = GetNextTargetRequired(tStateBest, nChannel, false);
+                pBlock->nNonce = nExtraNonce;
+                pBlock->nTime = runtime::unifiedtimestamp();
+                
+                Transaction txProducer;
+                if(!CreateProducerStateless(txProducer, tStateBest, pBlock->nVersion,
+                                           nChannel, nExtraNonce, hashRewardAddress))
+                {
+                    delete pBlock;
+                    return nullptr;
+                }
+                
+                pBlock->producer = txProducer;
+                
+                /* Build merkle tree from transactions (empty for now) and producer */
+                std::vector<uint512_t> vHashes;
+                for(const auto& tx : pBlock->vtx)
+                    vHashes.push_back(tx.second);
+                
+                /* Producer transaction is last hash in list. */
+                vHashes.push_back(pBlock->producer.GetHash(true));
+                
+                /* Build the block's merkle root. */
+                pBlock->hashMerkleRoot = pBlock->BuildMerkleTree(vHashes);
+                
+                debug::log(2, FUNCTION, "Stateless block created successfully");
+                return pBlock;
+            }
+            catch(const std::exception& e) {
+                debug::error(FUNCTION, "Stateless mode failed: ", e.what());
                 return nullptr;
             }
-
-            debug::log(2, FUNCTION, "Block created successfully");
-            return pBlock;
         }
-        catch(const std::exception& e)
-        {
-            debug::error(FUNCTION, "Exception in CreateBlockForStatelessMining: ", e.what());
-            return nullptr;
-        }
+        
+        debug::error(FUNCTION, "No mining mode available");
+        return nullptr;
     }
 
 }

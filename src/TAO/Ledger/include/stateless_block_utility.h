@@ -27,17 +27,21 @@ namespace TAO
 
         /** CreateBlockForStatelessMining
          *
-         *  Simplified block creation for stateless mining.
+         *  Dual-mode block creation for stateless mining.
          *
-         *  Simple flow:
-         *  1. Check mining is unlocked
-         *  2. Get node credentials
-         *  3. Create producer transaction
-         *  4. Build block
+         *  Mode 1: Wallet mode (Session::DEFAULT with autologin)
+         *  - Uses existing CreateBlock() with node credentials
+         *  - Node operator signs block, rewards routed per hashRewardAddress
+         *
+         *  Mode 2: Stateless mode (Falcon authenticated)
+         *  - Creates block WITHOUT wallet credentials
+         *  - Uses CreateProducerStateless() for consensus logic
+         *  - Miner provides Falcon signature
          *
          *  @param[in] nChannel The mining channel (1 = Prime, 2 = Hash)
          *  @param[in] nExtraNonce Extra nonce for block iteration
          *  @param[in] hashRewardAddress Miner's reward recipient address
+         *  @param[in] fFalconAuthenticated True for stateless mode, false for wallet mode
          *
          *  @return Pointer to created block, or nullptr on failure
          *
@@ -45,7 +49,8 @@ namespace TAO
         TritiumBlock* CreateBlockForStatelessMining(
             const uint32_t nChannel,
             const uint64_t nExtraNonce,
-            const uint256_t& hashRewardAddress);
+            const uint256_t& hashRewardAddress,
+            const bool fFalconAuthenticated = false);
 
     }
 }
