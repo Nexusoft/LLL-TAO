@@ -780,13 +780,12 @@ namespace LLP
         const uint32_t nBitMask = config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
         TAO::Ledger::TritiumBlock* pBlock = nullptr;
         
-        /* Use SAME utility function */
+        /* Use simplified utility function */
         while(true) {
             pBlock = TAO::Ledger::CreateBlockForStatelessMining(
                 context.nChannel,
                 ++nBlockIterator,
-                hashReward,
-                nullptr
+                hashReward
             );
             
             if(!pBlock) return nullptr;
