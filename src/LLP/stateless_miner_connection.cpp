@@ -762,82 +762,40 @@ namespace LLP
     /** Create a new block */
     TAO::Ledger::Block* StatelessMinerConnection::new_block()
     {
-        /* If the primemod flag is set, take the hash proof down to 1017-bit to maximize prime ratio as much as possible. */
-        const uint32_t nBitMask =
-            config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
-
-        /* Get channel from context */
-        uint32_t nChannel = context.nChannel;
-
-        /* Get payout address - falls back to genesis if reward address not explicitly set */
-        const uint256_t hashRewardAddress = context.GetPayoutAddress();
-
-        /* Verify we have a valid payout destination */
-        if(hashRewardAddress == 0)
-        {
-            debug::error(FUNCTION, "Cannot create block - no valid payout address");
-            debug::error(FUNCTION, "  Must have either:");
-            debug::error(FUNCTION, "    1. Explicit reward address (via MINER_SET_REWARD), OR");
-            debug::error(FUNCTION, "    2. Genesis hash (from Falcon authentication)");
+        /* Determine reward - same priority as miner.cpp */
+        uint256_t hashReward = 0;
+        
+        if(context.hashRewardAddress != 0) {
+            hashReward = context.hashRewardAddress;
+        }
+        else if(context.hashGenesis != 0) {
+            hashReward = context.hashGenesis;
+        }
+        else {
+            debug::error(FUNCTION, "No reward address");
             return nullptr;
         }
-
-        /* Log reward routing with source indication */
-        debug::log(1, FUNCTION, "Creating block for stateless mining:");
-        if(context.fRewardBound && context.hashRewardAddress != 0)
-        {
-            debug::log(1, FUNCTION, "  Reward routing: ", hashRewardAddress.SubString(), " (explicit via MINER_SET_REWARD)");
-        }
-        else
-        {
-            debug::log(1, FUNCTION, "  Reward routing: ", hashRewardAddress.SubString(), " (fallback to genesis)");
-        }
-        debug::log(1, FUNCTION, "  Channel: ", nChannel == 1 ? "Prime" : nChannel == 2 ? "Hash" : "Private");
-
-        /* Create block using dual-mode utility (auto-detects mode) */
-        TAO::Ledger::TritiumBlock *pBlock = nullptr;
-
-        /* Loop for prime channel until minimum bit target length is met.
-         * Loop terminates when:
-         * 1. Block creation fails (pBlock == nullptr) - returns error
-         * 2. Prime mod condition satisfied (is_prime_mod returns true) - returns block
-         * Each iteration tries a new extra nonce value (++nBlockIterator)
-         */
-        while(true)
-        {
-            /* Use dual-mode block utility for intelligent block creation.
-             * This automatically detects whether to use:
-             * - Mode 2 (INTERFACE_SESSION): Node has credentials, signs on behalf of miner
-             * - Mode 1 (DAEMON_STATELESS): Pure daemon, expects miner-signed producer (future)
-             * 
-             * Currently only Mode 2 is implemented. Mode 1 will return error.
-             */
+        
+        /* Prime channel optimization */
+        const uint32_t nBitMask = config::GetBoolArg("-primemod", false) ? 0xFE000000 : 0x80000000;
+        TAO::Ledger::TritiumBlock* pBlock = nullptr;
+        
+        /* Use SAME utility function */
+        while(true) {
             pBlock = TAO::Ledger::CreateBlockForStatelessMining(
-                nChannel,
+                context.nChannel,
                 ++nBlockIterator,
-                hashRewardAddress,
-                nullptr  // No pre-signed producer (Mode 1 not yet supported)
+                hashReward,
+                nullptr
             );
-
-            /* Check if block creation failed */
-            if(pBlock == nullptr)
-            {
-                debug::error(FUNCTION, "Failed to create block");
-                debug::error(FUNCTION, "  See previous errors for details");
-                return nullptr;  // TERMINATION CONDITION 1: Creation failed
-            }
-
-            /* Break out of loop when block is ready for prime mod. */
-            if(is_prime_mod(nBitMask, pBlock))
-                break;  // TERMINATION CONDITION 2: Prime mod satisfied
-
-            /* Delete unsuccessful block and try again with new extra nonce */
+            
+            if(!pBlock) return nullptr;
+            if(is_prime_mod(nBitMask, pBlock)) break;
+            
             delete pBlock;
             pBlock = nullptr;
         }
-
-        /* Output debug info and return the newly created block. */
-        debug::log(2, FUNCTION, "Created new Tritium Block ", pBlock->ProofHash().SubString(), " nVersion=", pBlock->nVersion);
+        
         return pBlock;
     }
 
