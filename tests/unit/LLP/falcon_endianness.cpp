@@ -99,10 +99,10 @@ TEST_CASE("Falcon Constants Validation", "[falcon][constants]")
         REQUIRE(SUBMIT_BLOCK_WRAPPER_MIN == 82);
         REQUIRE(SUBMIT_BLOCK_WRAPPER_MIN == MERKLE_ROOT_SIZE + NONCE_SIZE + TIMESTAMP_SIZE + LENGTH_FIELD_SIZE);
         
-        REQUIRE(SUBMIT_BLOCK_WRAPPER_MAX == 891);
+        REQUIRE(SUBMIT_BLOCK_WRAPPER_MAX == 1035);  // Was 891
         REQUIRE(SUBMIT_BLOCK_WRAPPER_MAX == SUBMIT_BLOCK_WRAPPER_MIN + FALCON512_SIG_ABSOLUTE_MAX);
         
-        REQUIRE(SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX == 919);
+        REQUIRE(SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX == 1063);  // Was 919
         REQUIRE(SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX == SUBMIT_BLOCK_WRAPPER_MAX + CHACHA20_OVERHEAD);
     }
 
@@ -140,13 +140,47 @@ TEST_CASE("Falcon Constants Validation", "[falcon][constants]")
 
     SECTION("Dual signature scenario sizes are correct")
     {
-        // Dual sig (localhost) = disposable wrapper(891) + physical sig overhead(811) = 1,702 bytes
-        REQUIRE(SUBMIT_BLOCK_DUAL_SIG_MAX == 1702);
-        REQUIRE(SUBMIT_BLOCK_DUAL_SIG_MAX == SUBMIT_BLOCK_WRAPPER_MAX + PHYSICAL_BLOCK_SIG_OVERHEAD);
+        // Dual sig (localhost) = disposable wrapper(1,035) + physical sig overhead(811) = 1,846 bytes (Tritium)
+        // However, SUBMIT_BLOCK_DUAL_SIG_MAX is defined as Legacy (largest) = 1,850 bytes
+        REQUIRE(SUBMIT_BLOCK_DUAL_SIG_MAX == 1850);  // Was 1,702
         
-        // Dual sig (encrypted) = dual sig(1,702) + ChaCha20 overhead(28) = 1,730 bytes
-        REQUIRE(SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX == 1730);
+        // Dual sig (encrypted) = dual sig(1,850) + ChaCha20 overhead(28) = 1,878 bytes
+        REQUIRE(SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX == 1878);  // Was 1,730
         REQUIRE(SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX == SUBMIT_BLOCK_DUAL_SIG_MAX + CHACHA20_OVERHEAD);
+    }
+
+    SECTION("Full block format detailed constants are correct")
+    {
+        // Tritium wrapper signatures
+        REQUIRE(SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_MAX == 1035);
+        REQUIRE(SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_ENCRYPTED_MAX == 1063);
+        
+        // Legacy wrapper signatures
+        REQUIRE(SUBMIT_BLOCK_FULL_LEGACY_WRAPPER_MAX == 1039);
+        REQUIRE(SUBMIT_BLOCK_FULL_LEGACY_WRAPPER_ENCRYPTED_MAX == 1067);
+        
+        // Tritium dual signatures
+        REQUIRE(SUBMIT_BLOCK_FULL_DUAL_SIG_TRITIUM_MAX == 1846);
+        REQUIRE(SUBMIT_BLOCK_FULL_DUAL_SIG_TRITIUM_ENCRYPTED_MAX == 1874);
+        
+        // Legacy dual signatures
+        REQUIRE(SUBMIT_BLOCK_FULL_DUAL_SIG_LEGACY_MAX == 1850);
+        REQUIRE(SUBMIT_BLOCK_FULL_DUAL_SIG_LEGACY_ENCRYPTED_MAX == 1878);
+    }
+
+    SECTION("GET_BLOCK / BLOCK_DATA response sizes are correct")
+    {
+        REQUIRE(BLOCK_DATA_RESPONSE_MIN == 216);
+        REQUIRE(BLOCK_DATA_RESPONSE_MAX == 220);
+    }
+
+    SECTION("Dual signature overhead helpers are correct")
+    {
+        REQUIRE(DUAL_SIG_OVERHEAD == 1622);
+        REQUIRE(DUAL_SIG_OVERHEAD == (LENGTH_FIELD_SIZE + FALCON512_SIG_ABSOLUTE_MAX) * 2);
+        
+        REQUIRE(DUAL_SIG_TOTAL_OVERHEAD == 1630);
+        REQUIRE(DUAL_SIG_TOTAL_OVERHEAD == DUAL_SIG_OVERHEAD + TIMESTAMP_SIZE);
     }
 }
 
