@@ -97,18 +97,26 @@ namespace TAO::Ledger
             SecureString strPIN;
             RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING, hashSession));
 
-            /* Validate reward address */
+            /* Validate reward address is provided
+             * Note: Zero is now allowed - CreateBlock/CreateProducer will handle fallback
+             * to node operator's genesis when hashRewardAddress is 0 */
             if(hashRewardAddress == 0)
             {
-                debug::error(FUNCTION, "Invalid reward address (zero)");
-                debug::error(FUNCTION, "  Miner must send MINER_SET_REWARD packet first");
-                return nullptr;
+                debug::log(2, FUNCTION, "Warning: Zero reward address - will use node operator's genesis");
+                debug::log(2, FUNCTION, "  This is legacy behavior when no explicit reward routing");
             }
 
             /* Log the dual-identity model */
             debug::log(2, FUNCTION, "Mode 2: Creating block with node credentials");
             debug::log(2, FUNCTION, "  Block signer: ", pCredentials->Genesis().SubString(), " (node operator)");
-            debug::log(2, FUNCTION, "  Reward recipient: ", hashRewardAddress.SubString(), " (miner)");
+            if(hashRewardAddress != 0)
+            {
+                debug::log(2, FUNCTION, "  Reward recipient: ", hashRewardAddress.SubString(), " (stateless miner)");
+            }
+            else
+            {
+                debug::log(2, FUNCTION, "  Reward recipient: ", pCredentials->Genesis().SubString(), " (node operator fallback)");
+            }
             debug::log(2, FUNCTION, "  Channel: ", nChannel == 1 ? "Prime" : nChannel == 2 ? "Hash" : "Private");
 
             /* Create the block using standard CreateBlock flow */
