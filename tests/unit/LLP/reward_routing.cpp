@@ -63,14 +63,31 @@ TEST_CASE("Reward Address Binding Tests", "[reward_routing]")
         REQUIRE(ctx.fRewardBound == true);
     }
     
-    SECTION("GetPayoutAddress returns zero when reward address not bound")
+    SECTION("GetPayoutAddress returns zero when neither reward nor genesis set")
     {
-        /* Create context without reward binding */
+        /* Create context without reward binding or genesis */
         MiningContext ctx;
         
-        /* GetPayoutAddress should return zero */
+        /* GetPayoutAddress should return zero (no valid payout) */
         REQUIRE(ctx.GetPayoutAddress() == uint256_t(0));
         REQUIRE(ctx.fRewardBound == false);
+        REQUIRE(ctx.hashGenesis == uint256_t(0));
+    }
+    
+    SECTION("GetPayoutAddress falls back to genesis when reward not bound")
+    {
+        /* Create test genesis hash */
+        uint256_t testGenesis = GetTestGenesis();
+        
+        /* Create context with genesis but NO reward binding */
+        MiningContext ctx = MiningContext()
+            .WithGenesis(testGenesis)
+            .WithAuth(true);
+        
+        /* GetPayoutAddress should fall back to genesis */
+        REQUIRE(ctx.GetPayoutAddress() == testGenesis);
+        REQUIRE(ctx.fRewardBound == false);
+        REQUIRE(ctx.hashGenesis == testGenesis);
     }
     
     SECTION("Genesis is separate from reward address")
@@ -123,7 +140,7 @@ TEST_CASE("Reward Address Binding Tests", "[reward_routing]")
 
 TEST_CASE("Stateless Mining Enforcement Tests", "[reward_routing]")
 {
-    SECTION("Authenticated miner must bind reward address")
+    SECTION("Authenticated miner can mine with genesis fallback")
     {
         uint256_t testGenesis = GetTestGenesis();
         
@@ -131,27 +148,29 @@ TEST_CASE("Stateless Mining Enforcement Tests", "[reward_routing]")
             .WithGenesis(testGenesis)
             .WithAuth(true);
         
-        /* Authenticated but reward address not bound yet */
+        /* Authenticated with genesis - can mine with genesis fallback */
         REQUIRE(ctx.fAuthenticated == true);
         REQUIRE(ctx.hashGenesis != uint256_t(0));
         REQUIRE(ctx.fRewardBound == false);
-        REQUIRE(ctx.GetPayoutAddress() == uint256_t(0));
+        REQUIRE(ctx.GetPayoutAddress() == testGenesis);  // Falls back to genesis
     }
     
-    SECTION("Reward address binding is required for mining")
+    SECTION("Explicit reward address takes precedence over genesis")
     {
         uint256_t testGenesis = GetTestGenesis();
-        uint256_t testReward = GetTestGenesis();
+        uint256_t testReward;
+        testReward.SetHex("b174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd133");
         
         MiningContext ctx = MiningContext()
             .WithGenesis(testGenesis)
             .WithAuth(true)
             .WithRewardAddress(testReward);
         
-        /* Only after binding reward address can mining proceed */
+        /* Explicit reward address overrides genesis fallback */
         REQUIRE(ctx.fAuthenticated == true);
         REQUIRE(ctx.fRewardBound == true);
-        REQUIRE(ctx.GetPayoutAddress() == testReward);
+        REQUIRE(ctx.GetPayoutAddress() == testReward);  // Uses explicit reward
+        REQUIRE(ctx.GetPayoutAddress() != testGenesis);  // NOT genesis
     }
     
     SECTION("GetRewardBoundCount tracks bound miners")
