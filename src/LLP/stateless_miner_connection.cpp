@@ -368,13 +368,13 @@ namespace LLP
                  * - Full block format (Legacy): 220+ bytes
                  * 
                  * Detection strategy:
-                 * If packet size >= 200 bytes, assume full block format.
+                 * If packet size >= SUBMIT_BLOCK_FORMAT_DETECTION_THRESHOLD (200 bytes), assume full block format.
                  * This threshold is chosen because:
                  * - Legacy format max is ~919 bytes (with encryption)
                  * - Full block min is 216 bytes (Tritium without signature)
                  * - 200 bytes is a safe threshold that distinguishes the two
                  */
-                if(PACKET.DATA.size() >= 200)
+                if(PACKET.DATA.size() >= FalconConstants::SUBMIT_BLOCK_FORMAT_DETECTION_THRESHOLD)
                 {
                     fFullBlockFormat = true;
                     
@@ -385,21 +385,20 @@ namespace LLP
                             PACKET.DATA.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET,
                             PACKET.DATA.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET + FalconConstants::MERKLE_ROOT_SIZE));
                         
-                        /* Extract nonce - try Tritium offset first (200), then Legacy (204) */
+                        /* Extract nonce - determine offset based on block type (Tritium vs Legacy) */
                         if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET + FalconConstants::NONCE_SIZE)
                         {
-                            /* Try to determine if this is Tritium or Legacy based on size.
-                             * Tritium base size is 216 bytes, Legacy is 220 bytes.
-                             * We add a 100-byte margin to account for variable-length signatures.
-                             * If packet is >= 220 but < 316 (216 + 100), it's likely Legacy. */
+                            /* Default to Tritium offset (200) */
                             size_t nonceOffset = FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET;
-                            const size_t SIZE_DETECTION_MARGIN = 100;
                             
-                            /* If the base size suggests Legacy block (220 bytes), use Legacy offset */
+                            /* Determine if this is Legacy based on size.
+                             * Legacy blocks are 220 bytes base, Tritium are 216 bytes base.
+                             * If packet size is in the range [220, 220+margin), it's likely Legacy.
+                             * Otherwise, assume Tritium (which is more common). */
                             if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_LEGACY_SIZE && 
-                               PACKET.DATA.size() < FalconConstants::FULL_BLOCK_TRITIUM_SIZE + SIZE_DETECTION_MARGIN)
+                               PACKET.DATA.size() < FalconConstants::FULL_BLOCK_LEGACY_SIZE + FalconConstants::FULL_BLOCK_TYPE_DETECTION_MARGIN)
                             {
-                                /* Likely Legacy format, try offset 204 */
+                                /* Likely Legacy format, use offset 204 */
                                 if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_LEGACY_NONCE_OFFSET + FalconConstants::NONCE_SIZE)
                                 {
                                     nonceOffset = FalconConstants::FULL_BLOCK_LEGACY_NONCE_OFFSET;

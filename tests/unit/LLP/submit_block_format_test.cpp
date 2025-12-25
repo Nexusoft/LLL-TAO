@@ -39,7 +39,7 @@ TEST_CASE("SUBMIT_BLOCK Full Block Format Detection", "[submit_block]")
         REQUIRE(data.size() == 72);
         
         /* This should be detected as legacy format */
-        bool fFullBlockFormat = (data.size() >= 200);
+        bool fFullBlockFormat = (data.size() >= FalconConstants::SUBMIT_BLOCK_FORMAT_DETECTION_THRESHOLD);
         REQUIRE(fFullBlockFormat == false);
     }
     
@@ -82,7 +82,7 @@ TEST_CASE("SUBMIT_BLOCK Full Block Format Detection", "[submit_block]")
         REQUIRE(data.size() == 216);
         
         /* This should be detected as full block format */
-        bool fFullBlockFormat = (data.size() >= 200);
+        bool fFullBlockFormat = (data.size() >= FalconConstants::SUBMIT_BLOCK_FORMAT_DETECTION_THRESHOLD);
         REQUIRE(fFullBlockFormat == true);
         
         /* Verify merkle root extraction at offset 132 */
@@ -138,7 +138,7 @@ TEST_CASE("SUBMIT_BLOCK Full Block Format Detection", "[submit_block]")
         REQUIRE(data.size() == 220);
         
         /* This should be detected as full block format */
-        bool fFullBlockFormat = (data.size() >= 200);
+        bool fFullBlockFormat = (data.size() >= FalconConstants::SUBMIT_BLOCK_FORMAT_DETECTION_THRESHOLD);
         REQUIRE(fFullBlockFormat == true);
         
         /* Verify nonce extraction at offset 204 */
@@ -158,5 +158,7 @@ TEST_CASE("SUBMIT_BLOCK Full Block Format Detection", "[submit_block]")
         REQUIRE(FalconConstants::FULL_BLOCK_LEGACY_NONCE_OFFSET == 204);
         REQUIRE(FalconConstants::SUBMIT_BLOCK_DUAL_SIG_TRITIUM_ENCRYPTED_MAX == 1874);
         REQUIRE(FalconConstants::SUBMIT_BLOCK_DUAL_SIG_LEGACY_ENCRYPTED_MAX == 1878);
+        REQUIRE(FalconConstants::SUBMIT_BLOCK_FORMAT_DETECTION_THRESHOLD == 200);
+        REQUIRE(FalconConstants::FULL_BLOCK_TYPE_DETECTION_MARGIN == 100);
     }
 }
