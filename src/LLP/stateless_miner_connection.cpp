@@ -765,7 +765,7 @@ namespace LLP
         /* Determine reward - same priority as miner.cpp */
         uint256_t hashReward = 0;
         
-        if(context.hashRewardAddress != 0) {
+        if(context.fRewardBound && context.hashRewardAddress != 0) {
             hashReward = context.hashRewardAddress;
         }
         else if(context.hashGenesis != 0) {
