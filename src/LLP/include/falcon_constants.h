@@ -232,9 +232,11 @@ namespace FalconConstants
      *  - Full Tritium block: 216 bytes
      *  - Timestamp: 8 bytes
      *  - Wrapper sig overhead: (sig_len(2) + sig(809)) = 811 bytes
+     *    Note: SUBMIT_BLOCK_WRAPPER_MAX includes merkle(64) + nonce(8) which are
+     *    already in the full block, so we subtract them to avoid double-counting
      *  - Physical sig overhead: (sig_len(2) + sig(809)) = 811 bytes
-     *  Total: 216 + 8 + 811 + 811 = 1,846 bytes */
-    static const size_t SUBMIT_BLOCK_DUAL_SIG_TRITIUM_MAX = FULL_BLOCK_TRITIUM_SIZE + TIMESTAMP_SIZE + SUBMIT_BLOCK_WRAPPER_MAX - MERKLE_ROOT_SIZE - NONCE_SIZE + PHYSICAL_BLOCK_SIG_OVERHEAD;  // ~1,846 bytes
+     *  Calculation: 216 + 8 + 891 - 64 - 8 + 811 = 1,846 bytes */
+    static const size_t SUBMIT_BLOCK_DUAL_SIG_TRITIUM_MAX = FULL_BLOCK_TRITIUM_SIZE + TIMESTAMP_SIZE + SUBMIT_BLOCK_WRAPPER_MAX - MERKLE_ROOT_SIZE - NONCE_SIZE + PHYSICAL_BLOCK_SIG_OVERHEAD;  // 1,846 bytes
     
     /** Submit Tritium block with full block format and BOTH signatures - PUBLIC MINER (encrypted)
      *  Adds ChaCha20 encryption overhead (nonce(12) + auth_tag(16)) = 28 bytes
@@ -245,10 +247,10 @@ namespace FalconConstants
      *  Components:
      *  - Full Legacy block: 220 bytes (4 bytes larger than Tritium)
      *  - Timestamp: 8 bytes
-     *  - Wrapper sig overhead: 811 bytes
+     *  - Wrapper sig overhead: 891 bytes (minus merkle/nonce to avoid double-counting)
      *  - Physical sig overhead: 811 bytes
-     *  Total: 220 + 8 + 811 + 811 = 1,850 bytes */
-    static const size_t SUBMIT_BLOCK_DUAL_SIG_LEGACY_MAX = FULL_BLOCK_LEGACY_SIZE + TIMESTAMP_SIZE + SUBMIT_BLOCK_WRAPPER_MAX - MERKLE_ROOT_SIZE - NONCE_SIZE + PHYSICAL_BLOCK_SIG_OVERHEAD;  // ~1,850 bytes
+     *  Calculation: 220 + 8 + 891 - 64 - 8 + 811 = 1,850 bytes */
+    static const size_t SUBMIT_BLOCK_DUAL_SIG_LEGACY_MAX = FULL_BLOCK_LEGACY_SIZE + TIMESTAMP_SIZE + SUBMIT_BLOCK_WRAPPER_MAX - MERKLE_ROOT_SIZE - NONCE_SIZE + PHYSICAL_BLOCK_SIG_OVERHEAD;  // 1,850 bytes
     
     /** Submit Legacy block with full block format and BOTH signatures - PUBLIC MINER (encrypted)
      *  Adds ChaCha20 encryption overhead: 28 bytes

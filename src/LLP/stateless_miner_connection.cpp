@@ -394,7 +394,17 @@ namespace LLP
                             /* Determine if this is Legacy based on size.
                              * Legacy blocks are 220 bytes base, Tritium are 216 bytes base.
                              * If packet size is in the range [220, 220+margin), it's likely Legacy.
-                             * Otherwise, assume Tritium (which is more common). */
+                             * Otherwise, assume Tritium (which is more common).
+                             * 
+                             * Note: This heuristic works because:
+                             * 1. Tritium packets start at 216 bytes, Legacy at 220 bytes
+                             * 2. With signatures, both grow beyond 220, but Legacy grows from 220
+                             * 3. The 100-byte margin gives us a detection window [220, 320)
+                             * 4. Tritium packets in this range would have started from 216, not 220
+                             * 
+                             * Edge case: If miner behavior changes to use different signature sizes,
+                             * this heuristic may need adjustment. The offsets are only 4 bytes apart,
+                             * so worst case is reading the nonce from wrong offset (will fail validation). */
                             if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_LEGACY_SIZE && 
                                PACKET.DATA.size() < FalconConstants::FULL_BLOCK_LEGACY_SIZE + FalconConstants::FULL_BLOCK_TYPE_DETECTION_MARGIN)
                             {
