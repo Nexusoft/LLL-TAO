@@ -221,63 +221,110 @@ namespace LLP
             /* Handle GET_BLOCK - requires authentication and channel */
             if(PACKET.HEADER == GET_BLOCK)
             {
+                debug::log(0, "📥 === GET_BLOCK REQUEST ===");
+                debug::log(0, "   From: ", GetAddress().ToStringIP());
+                debug::log(0, "   Authenticated: ", (context.fAuthenticated ? "YES" : "NO"));
+                debug::log(0, "   Channel: ", context.nChannel);
+                debug::log(0, "   Session ID: ", context.nSessionId);
+                
                 /* Check authentication */
                 if(!context.fAuthenticated)
                 {
-                    debug::error(FUNCTION, "GET_BLOCK rejected - authentication required");
+                    debug::error("   ❌ Authentication required");
                     Packet response(MINER_AUTH_RESULT);
                     response.DATA.push_back(0x00);  // Failure
                     respond(response);
+                    debug::log(0, "📥 === GET_BLOCK: REJECTED (AUTH) ===");
                     return true;
                 }
                 
                 /* Check channel is set */
                 if(context.nChannel == 0)
                 {
-                    debug::log(0, FUNCTION, "MinerLLP: GET_BLOCK before channel set");
-                    return debug::error(FUNCTION, "Channel not set");
+                    debug::error("   ❌ Channel not set");
+                    debug::log(0, "📥 === GET_BLOCK: REJECTED (NO CHANNEL) ===");
+                    return true;
                 }
-
-                debug::log(2, FUNCTION, "GET_BLOCK request from ", GetAddress().ToStringIP(),
-                           " channel=", context.nChannel, " sessionId=", context.nSessionId,
-                           " rewardAddress=", context.hashRewardAddress.ToString().substr(0, 16), "...");
-
-                TAO::Ledger::Block *pBlock = nullptr;
-                std::vector<uint8_t> vData;
-
+                
+                debug::log(0, "   ✅ Validation passed");
+                debug::log(0, "   Calling new_block()...");
+                
                 /* Create a new block */
-                pBlock = new_block();
-
+                TAO::Ledger::Block* pBlock = new_block();
+                
                 /* Handle if the block failed to be created. */
                 if(!pBlock)
                 {
-                    debug::log(2, FUNCTION, "Failed to create block.");
+                    debug::error("   ❌ new_block() returned nullptr");
+                    Packet response(BLOCK_DATA);
+                    response.LENGTH = 0;
+                    respond(response);
+                    debug::log(0, "📥 === GET_BLOCK: FAILED (NO BLOCK) ===");
                     return true;
                 }
-
+                
+                debug::log(0, "   ✅ Block created successfully");
+                debug::log(0, "      Height: ", pBlock->nHeight);
+                debug::log(0, "      Channel: ", pBlock->nChannel);
+                debug::log(0, "      Merkle root: ", pBlock->hashMerkleRoot.SubString());
+                
                 /* Store the new block in the memory map of recent blocks being worked on. */
                 mapBlocks[pBlock->hashMerkleRoot] = pBlock;
-
-                /* Serialize the block vData */
-                vData = pBlock->Serialize();
-
-                /* Create and write the response packet. */
-                Packet response(BLOCK_DATA);
-                response.DATA = vData;
-                respond(response);
-
-                debug::log(2, FUNCTION, "MinerLLP: Served BLOCK_DATA height=", pBlock->nHeight,
-                           " merkleRoot=", pBlock->hashMerkleRoot.SubString());
-
-                /* Update context timestamp and height */
-                context = context.WithTimestamp(runtime::unifiedtimestamp())
-                                 .WithHeight(pBlock->nHeight);
-
-                /* Update the manager with new context and track template served */
-                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
-                StatelessMinerManager::Get().IncrementTemplatesServed();
-
-                return true;
+                
+                try {
+                    debug::log(0, "   Serializing block...");
+                    
+                    /* Use block's Serialize() method - returns 216-byte mining template */
+                    std::vector<uint8_t> vData = pBlock->Serialize();
+                    
+                    if(vData.empty())
+                    {
+                        debug::error("   ❌ Serialization returned empty vector!");
+                        Packet response(BLOCK_DATA);
+                        response.LENGTH = 0;
+                        respond(response);
+                        debug::log(0, "📥 === GET_BLOCK: FAILED (EMPTY SERIALIZATION) ===");
+                        return true;
+                    }
+                    
+                    debug::log(0, "   ✅ Serialized! Size: ", vData.size(), " bytes");
+                    
+                    /* Create response packet */
+                    Packet response(BLOCK_DATA);
+                    response.DATA = vData;
+                    response.LENGTH = static_cast<uint32_t>(vData.size());  // ⭐ CRITICAL FIX!
+                    
+                    debug::log(0, "   📤 Sending BLOCK_DATA...");
+                    debug::log(0, "      Packet header: ", (uint32_t)response.HEADER);
+                    debug::log(0, "      Packet LENGTH field: ", response.LENGTH);
+                    debug::log(0, "      Packet DATA size: ", response.DATA.size());
+                    
+                    /* Send the response */
+                    respond(response);
+                    
+                    debug::log(0, "   ✅ Packet sent!");
+                    debug::log(0, "📥 === GET_BLOCK: SUCCESS ===");
+                    
+                    /* Update context timestamp and height */
+                    context = context.WithTimestamp(runtime::unifiedtimestamp())
+                                     .WithHeight(pBlock->nHeight);
+                    
+                    /* Update manager with new context after template served */
+                    StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
+                    StatelessMinerManager::Get().IncrementTemplatesServed();
+                    
+                    return true;
+                }
+                catch(const std::exception& e) {
+                    debug::error("   ❌ Serialization exception: ", e.what());
+                    debug::log(0, "📥 === GET_BLOCK: EXCEPTION ===");
+                    
+                    Packet response(BLOCK_DATA);
+                    response.LENGTH = 0;
+                    respond(response);
+                    
+                    return true;
+                }
             }
 
             /* Handle SUBMIT_BLOCK - requires authentication and channel */
