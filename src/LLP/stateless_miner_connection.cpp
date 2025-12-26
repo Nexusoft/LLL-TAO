@@ -233,6 +233,7 @@ namespace LLP
                     debug::error("   ❌ Authentication required");
                     Packet response(MINER_AUTH_RESULT);
                     response.DATA.push_back(0x00);  // Failure
+                    response.LENGTH = 1;
                     respond(response);
                     debug::log(0, "📥 === GET_BLOCK: REJECTED (AUTH) ===");
                     return true;
