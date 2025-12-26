@@ -637,6 +637,101 @@ namespace TAO::Ledger
     }
 
 
+    /* Create a producer transaction object WITHOUT credentials (stateless mode). */
+    bool CreateProducerStateless(
+        TAO::Ledger::Transaction& rProducer,
+        const TAO::Ledger::BlockState& tStateBest,
+        const uint32_t nBlockVersion,
+        const uint32_t nChannel,
+        const uint64_t nExtraNonce,
+        const uint256_t& hashRewardAddress)
+    {
+        /* Setup transaction WITHOUT credentials */
+        rProducer.nVersion = CurrentTransactionVersion();
+        rProducer.nSequence = 0;
+        rProducer.nTimestamp = runtime::unifiedtimestamp();
+        
+        /* Create the Coinbase Transaction if the Channel specifies. */
+        if(nChannel == 1 || nChannel == 2)
+        {
+            /* Get block reward */
+            uint64_t nBlockReward = GetCoinbaseReward(tStateBest, nChannel, 0);
+            
+            /* Create coinbase operation */
+            rProducer[0] << uint8_t(TAO::Operation::OP::COINBASE);
+            rProducer[0] << hashRewardAddress;  // Miner's Falcon-authenticated address
+            
+            uint64_t nCredit = nBlockReward;
+            
+            /* Check to make sure credit is non-zero. */
+            if(nCredit == 0)
+                return debug::error(FUNCTION, "Empty block producer reward.");
+            
+            rProducer[0] << nCredit;
+            rProducer[0] << nExtraNonce;
+            
+            /* Get the last state block for channel. */
+            TAO::Ledger::BlockState statePrev = tStateBest;
+            if(GetLastState(statePrev, nChannel))
+            {
+                /* Check for ambassador payout interval */
+                if(statePrev.nChannelHeight %
+                    (config::fTestNet.load() ? AMBASSADOR_PAYOUT_THRESHOLD_TESTNET : AMBASSADOR_PAYOUT_THRESHOLD) == 0)
+                {
+                    /* Get the total in reserves. */
+                    int64_t nBalance = statePrev.nReleasedReserve[1] - (33 * NXS_COIN); //leave 33 coins in the reserve
+                    if(nBalance > 0)
+                    {
+                        /* Loop through the embassy sigchains. */
+                        for(auto it = Ambassador(nBlockVersion).begin(); it != Ambassador(nBlockVersion).end(); ++it)
+                        {
+                            /* Make sure to push to end. */
+                            const uint32_t nContract = rProducer.Size();
+                            
+                            /* Create coinbase transaction. */
+                            rProducer[nContract] << uint8_t(TAO::Operation::OP::COINBASE);
+                            rProducer[nContract] << it->first;
+                            
+                            /* The total to be credited. */
+                            const uint64_t nCredit = (nBalance * it->second.second) / 1000;
+                            rProducer[nContract] << nCredit;
+                            rProducer[nContract] << uint64_t(0);
+                        }
+                    }
+                }
+                
+                /* Check for developer payout interval */
+                if(statePrev.nChannelHeight %
+                    (config::fTestNet.load() ? DEVELOPER_PAYOUT_THRESHOLD_TESTNET : DEVELOPER_PAYOUT_THRESHOLD) == 0)
+                {
+                    /* Get the total in reserves. */
+                    int64_t nBalance = statePrev.nReleasedReserve[2] - (3 * NXS_COIN); //leave 3 coins in the reserve
+                    if(nBalance > 0)
+                    {
+                        /* Loop through the developer sigchains. */
+                        for(auto it = Developer(nBlockVersion).begin(); it != Developer(nBlockVersion).end(); ++it)
+                        {
+                            /* Make sure to push to end. */
+                            const uint32_t nContract = rProducer.Size();
+                            
+                            /* Create coinbase transaction. */
+                            rProducer[nContract] << uint8_t(TAO::Operation::OP::COINBASE);
+                            rProducer[nContract] << it->first;
+                            
+                            /* The total to be credited. */
+                            const uint64_t nCredit = (nBalance * it->second.second) / 1000;
+                            rProducer[nContract] << nCredit;
+                            rProducer[nContract] << uint64_t(0);
+                        }
+                    }
+                }
+            }
+        }
+        
+        return true;
+    }
+
+
     /* Create a new Proof of Stake (channel 0) block object from the chain. */
     bool CreateStakeBlock(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& pin,
                           TAO::Ledger::TritiumBlock& block, const bool fGenesis)

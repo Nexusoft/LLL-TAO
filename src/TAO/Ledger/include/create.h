@@ -78,6 +78,31 @@ namespace TAO
                                const uint256_t& hashDynamicGenesis = uint256_t(0));
 
 
+        /** CreateProducerStateless
+         *
+         *  Create a producer transaction object WITHOUT credentials (stateless mode).
+         *
+         *  This function creates producer transactions for Falcon-authenticated miners
+         *  who don't have wallet credentials on the node. It includes the same consensus
+         *  logic as CreateProducer() but skips credential/signing requirements.
+         *
+         *  @param[out] rProducer The producer transaction object being created
+         *  @param[in] tStateBest The current best block state
+         *  @param[in] nBlockVersion The block version the producer is being created for
+         *  @param[in] nChannel The channel to create block for.
+         *  @param[in] nExtraNonce An extra nonce to use for double iterating.
+         *  @param[in] hashRewardAddress Miner's Falcon-authenticated reward address
+         *
+         **/
+        bool CreateProducerStateless(
+            TAO::Ledger::Transaction& rProducer,
+            const TAO::Ledger::BlockState& tStateBest,
+            const uint32_t nBlockVersion,
+            const uint32_t nChannel,
+            const uint64_t nExtraNonce,
+            const uint256_t& hashRewardAddress);
+
+
         /** AddTransactions
          *
          *  Gets a list of transactions from memory pool for current block.
