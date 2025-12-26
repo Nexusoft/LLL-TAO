@@ -770,11 +770,11 @@ namespace LLP
         
         if(context.fRewardBound && context.hashRewardAddress != 0) {
             hashReward = context.hashRewardAddress;
-            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "      Using bound reward address: ", hashReward.ToString().substr(0, 20), "...", ANSI_COLOR_RESET);
+            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "      Using bound reward address: ", hashReward.SubString(), ANSI_COLOR_RESET);
         }
         else if(context.hashGenesis != 0) {
             hashReward = context.hashGenesis;
-            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "      Using genesis hash: ", hashReward.ToString().substr(0, 20), "...", ANSI_COLOR_RESET);
+            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "      Using genesis hash: ", hashReward.SubString(), ANSI_COLOR_RESET);
         }
         else {
             debug::error(FUNCTION, "No reward address available");

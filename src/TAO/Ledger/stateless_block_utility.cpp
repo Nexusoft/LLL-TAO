@@ -27,6 +27,8 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 
+#include <sstream>
+
 /* Global TAO namespace. */
 namespace TAO::Ledger
 {
@@ -115,7 +117,11 @@ namespace TAO::Ledger
                 debug::log(0, "         Version: ", pBlock->nVersion);
                 debug::log(0, "         Height: ", pBlock->nHeight);
                 debug::log(0, "         Channel: ", pBlock->nChannel);
-                debug::log(0, "         Target: 0x", std::hex, pBlock->nBits, std::dec);
+                
+                /* Format target bits as hex string to avoid stream manipulator issues */
+                std::stringstream ssTarget;
+                ssTarget << "0x" << std::hex << pBlock->nBits;
+                debug::log(0, "         Target: ", ssTarget.str());
                 
                 debug::log(0, "   [4/8] Creating producer transaction...");
                 Transaction txProducer;
@@ -131,7 +137,8 @@ namespace TAO::Ledger
                 
                 pBlock->producer = txProducer;
                 
-                /* Add mempool transactions */
+                /* Add mempool transactions to the block */
+                /* This includes any pending transactions from the mempool that fit within block size limits */
                 debug::log(0, "   [5/8] Adding mempool transactions...");
                 size_t nBefore = pBlock->vtx.size();
                 AddTransactions(*pBlock);
