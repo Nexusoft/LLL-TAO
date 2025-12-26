@@ -138,7 +138,6 @@ void Startup()
                 debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "    Session unlocked successfully", ANSI_COLOR_RESET);
                 
                 /* Verify Session::DEFAULT is available */
-                const uint256_t hashSession = uint256_t(TAO::API::Authentication::SESSION::DEFAULT);
                 if(TAO::API::Authentication::Unlocked(TAO::Ledger::PinUnlock::MINING))
                     debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "    Session::DEFAULT verified (mining ready)", ANSI_COLOR_RESET);
                 else
