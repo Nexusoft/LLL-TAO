@@ -139,9 +139,13 @@ void Startup()
                 
                 /* Verify Session::DEFAULT is available */
                 if(TAO::API::Authentication::Unlocked(TAO::Ledger::PinUnlock::MINING))
+                {
                     debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "    Session::DEFAULT verified (mining ready)", ANSI_COLOR_RESET);
+                }
                 else
+                {
                     debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "    Warning: Session::DEFAULT not unlocked for mining", ANSI_COLOR_RESET);
+                }
                     
                 debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "=== AUTOLOGIN: Complete ===", ANSI_COLOR_RESET);
             }
