@@ -23,6 +23,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/cmd.h>
+#include <TAO/API/types/authentication.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/dispatch.h>
@@ -89,11 +90,15 @@ void Startup()
             try
             {
                 /* Create our local session first. */
+                debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "=== AUTOLOGIN: Starting session creation ===", ANSI_COLOR_RESET);
                 std::string strLogin = "create/local";
                 TAO::API::Commands::Invoke("sessions", strLogin, jParams);
+                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "    Session created successfully", ANSI_COLOR_RESET);
 
                 /* Wait for dynamic indexing services. */
+                debug::log(0, "    Waiting for sigchain indexing...");
                 std::string strStatus = "status/local";
+                uint32_t nWaitCount = 0;
                 while(!config::fShutdown.load())
                 {
                     /* Check our current status against indexing services. */
@@ -102,7 +107,16 @@ void Startup()
 
                     /* Break once we have indexed sigchain. */
                     if(!jStatus["indexing"].get<bool>()) //basic spin-lock
+                    {
+                        debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "    Indexing complete (waited ", nWaitCount, " seconds)", ANSI_COLOR_RESET);
                         break;
+                    }
+
+                    /* Log progress every 5 seconds */
+                    if(nWaitCount % 5 == 0)
+                        debug::log(0, "    Still indexing... (", nWaitCount, " seconds)");
+
+                    ++nWaitCount;
 
                     /* Make sure we don't spin at 100% of a CPU core. */
                     runtime::sleep(1);
@@ -118,8 +132,22 @@ void Startup()
                 };
 
                 /* Unlock our local session now. */
+                debug::log(0, "    Unlocking session for mining/staking/notifications...");
                 std::string strUnlock = "unlock/local";
                 TAO::API::Commands::Invoke("sessions", strUnlock, jUnlock);
+                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "    Session unlocked successfully", ANSI_COLOR_RESET);
+                
+                /* Verify Session::DEFAULT is available */
+                if(TAO::API::Authentication::Unlocked(TAO::Ledger::PinUnlock::MINING))
+                {
+                    debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "    Session::DEFAULT verified (mining ready)", ANSI_COLOR_RESET);
+                }
+                else
+                {
+                    debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "    Warning: Session::DEFAULT not unlocked for mining", ANSI_COLOR_RESET);
+                }
+                    
+                debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "=== AUTOLOGIN: Complete ===", ANSI_COLOR_RESET);
             }
             catch(const TAO::API::Exception& e){ debug::notice(FUNCTION, "::autologin: ", e.what()); }
         }

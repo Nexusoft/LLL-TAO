@@ -762,26 +762,40 @@ namespace LLP
     /** Create a new block */
     TAO::Ledger::Block* StatelessMinerConnection::new_block()
     {
+        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "=== NEW_BLOCK: Request from ", GetAddress().ToStringIP(), " ===", ANSI_COLOR_RESET);
+        
         /* Determine reward - same priority as miner.cpp */
+        debug::log(0, "   Determining reward address...");
         uint256_t hashReward = 0;
         
         if(context.fRewardBound && context.hashRewardAddress != 0) {
             hashReward = context.hashRewardAddress;
+            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "      Using bound reward address: ", hashReward.SubString(), ANSI_COLOR_RESET);
         }
         else if(context.hashGenesis != 0) {
             hashReward = context.hashGenesis;
+            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "      Using genesis hash: ", hashReward.SubString(), ANSI_COLOR_RESET);
         }
         else {
-            debug::error(FUNCTION, "No reward address");
+            debug::error(FUNCTION, "No reward address available");
+            debug::log(0, ANSI_COLOR_BRIGHT_RED, "   FAILED: No reward address", ANSI_COLOR_RESET);
             return nullptr;
         }
+        
+        debug::log(0, "   Block parameters:");
+        debug::log(0, "      Channel: ", context.nChannel);
+        debug::log(0, "      Session ID: ", context.nSessionId);
+        debug::log(0, "      Falcon authenticated: ", context.fAuthenticated ? "Yes" : "No");
         
         /* Prime channel optimization */
         const uint32_t nBitMask = config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
         TAO::Ledger::TritiumBlock* pBlock = nullptr;
         
         /* Use simplified utility function */
+        debug::log(0, "   Calling CreateBlockForStatelessMining...");
+        uint32_t nAttempts = 0;
         while(true) {
+            ++nAttempts;
             pBlock = TAO::Ledger::CreateBlockForStatelessMining(
                 context.nChannel,
                 ++nBlockIterator,
@@ -789,13 +803,21 @@ namespace LLP
                 context.fAuthenticated  // Pass Falcon auth status
             );
             
-            if(!pBlock) return nullptr;
-            if(is_prime_mod(nBitMask, pBlock)) break;
+            if(!pBlock) {
+                debug::log(0, ANSI_COLOR_BRIGHT_RED, "   FAILED: CreateBlockForStatelessMining returned nullptr", ANSI_COLOR_RESET);
+                return nullptr;
+            }
+            
+            if(is_prime_mod(nBitMask, pBlock)) {
+                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   SUCCESS: Block created (attempts: ", nAttempts, ")", ANSI_COLOR_RESET);
+                break;
+            }
             
             delete pBlock;
             pBlock = nullptr;
         }
         
+        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "=== NEW_BLOCK: Complete ===", ANSI_COLOR_RESET);
         return pBlock;
     }
 
