@@ -847,8 +847,7 @@ namespace LLP
             pBlock = TAO::Ledger::CreateBlockForStatelessMining(
                 context.nChannel,
                 ++nBlockIterator,
-                hashReward,
-                context.fAuthenticated  // Pass Falcon auth status
+                hashReward
             );
             
             if(!pBlock) {
