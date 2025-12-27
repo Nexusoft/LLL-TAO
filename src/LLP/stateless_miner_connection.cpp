@@ -454,75 +454,109 @@ namespace LLP
                 /* Minimum for Falcon format: 64 + 8 + 8 + 2 = 82 bytes */
                 const size_t FALCON_MIN_SIZE = FalconConstants::SUBMIT_BLOCK_WRAPPER_MIN;
 
-                if(PACKET.DATA.size() >= FALCON_MIN_SIZE && m_pFalconWrapper)
+                if(PACKET.DATA.size() >= FALCON_MIN_SIZE)
                 {
-                    debug::log(0, "   🔐 Attempting Falcon signature verification...");
-                    
-                    /* Get session public key */
-                    std::vector<uint8_t> vSessionPubKey;
+                    /* Check if Falcon wrapper is available */
+                    if(!m_pFalconWrapper)
                     {
-                        std::lock_guard<std::mutex> lock(SESSION_MUTEX);
-                        auto it = mapSessionKeys.find(context.nSessionId);
-                        if(it != mapSessionKeys.end())
-                        {
-                            vSessionPubKey = it->second;
-                        }
-                    }
-                    
-                    if(vSessionPubKey.empty())
-                    {
-                        debug::log(0, ANSI_COLOR_YELLOW, "   ⚠ No Falcon pubkey stored for session - treating as legacy format", ANSI_COLOR_RESET);
+                        debug::error(FUNCTION, "❌ CRITICAL: Falcon wrapper not initialized");
+                        debug::error(FUNCTION, "   Cannot verify Falcon signatures - check constructor logs");
+                        debug::error(FUNCTION, "   Packet size suggests Falcon format but wrapper unavailable");
+                        debug::error(FUNCTION, "   Falling back to legacy format processing (INSECURE!)");
+                        debug::error(FUNCTION, "   This should not happen in production - investigate immediately");
+                        
+                        /* Fall through to legacy format processing */
                     }
                     else
                     {
-                        /* Attempt to unwrap signed submission */
-                        auto result = m_pFalconWrapper->UnwrapWorkSubmission(PACKET.DATA, vSessionPubKey);
+                        debug::log(0, "   🔐 Attempting Falcon signature verification...");
                         
-                        if(result.fSuccess)
+                        /* Get session public key */
+                        std::vector<uint8_t> vSessionPubKey;
                         {
-                            /* Signature verified! Extract validated data */
-                            hashMerkle = result.submission.hashMerkleRoot;
-                            nonce = result.submission.nNonce;
-                            fFalconVerified = true;
-                            
-                            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✅ Falcon signature VERIFIED", ANSI_COLOR_RESET);
-                            debug::log(0, "      Key ID: ", result.hashKeyID.SubString());
-                            debug::log(0, "      Timestamp: ", result.submission.nTimestamp);
-                            debug::log(0, "      Merkle: ", result.submission.hashMerkleRoot.SubString());
-                            debug::log(0, "      Nonce: 0x", std::hex, result.submission.nNonce, std::dec);
-                            
-                            /* Check timestamp freshness (replay protection) */
-                            uint64_t nCurrentTime = std::chrono::duration_cast<std::chrono::seconds>(
-                                std::chrono::system_clock::now().time_since_epoch()).count();
-                            
-                            int64_t nTimeDiff = std::abs(static_cast<int64_t>(nCurrentTime) - 
-                                                        static_cast<int64_t>(result.submission.nTimestamp));
-                            
-                            /* Allow 30 second clock skew */
-                            if(nTimeDiff > 30)
+                            std::lock_guard<std::mutex> lock(SESSION_MUTEX);
+                            auto it = mapSessionKeys.find(context.nSessionId);
+                            if(it != mapSessionKeys.end())
                             {
-                                debug::error(FUNCTION, "❌ Falcon signature timestamp too old (", nTimeDiff, "s skew)");
-                                debug::error(FUNCTION, "   This prevents replay attacks");
-                                
-                                Packet response(BLOCK_REJECTED);
-                                response.DATA.push_back(0x08);  // Reason: stale timestamp
-                                respond(response);
-                                
-                                debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Stale Falcon signature) ===", ANSI_COLOR_RESET);
-                                return true;
+                                vSessionPubKey = it->second;
                             }
+                        }
+                        
+                        if(vSessionPubKey.empty())
+                        {
+                            debug::log(0, ANSI_COLOR_YELLOW, "   ⚠ No Falcon pubkey stored for session - treating as legacy format", ANSI_COLOR_RESET);
                         }
                         else
                         {
-                            /* Signature verification failed */
-                            debug::error(FUNCTION, "❌ Falcon signature verification FAILED: ", result.strError);
-                            
-                            Packet response(BLOCK_REJECTED);
-                            response.DATA.push_back(0x07);  // Reason: invalid signature
-                            respond(response);
-                            
-                            debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Invalid Falcon signature) ===", ANSI_COLOR_RESET);
-                            return true;
+                            /* Attempt to unwrap signed submission */
+                            auto result = m_pFalconWrapper->UnwrapWorkSubmission(PACKET.DATA, vSessionPubKey);
+                        
+                            if(result.fSuccess)
+                            {
+                                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✅ Falcon signature VERIFIED", ANSI_COLOR_RESET);
+                                debug::log(0, "      Key ID: ", result.hashKeyID.SubString());
+                                debug::log(0, "      Timestamp: ", result.submission.nTimestamp);
+                                debug::log(0, "      Merkle: ", result.submission.hashMerkleRoot.SubString());
+                                debug::log(0, "      Nonce: 0x", std::hex, result.submission.nNonce, std::dec);
+                                
+                                /* SECURITY: Verify signature key matches authenticated session key */
+                                /* This prevents key substitution attacks where an attacker might try */
+                                /* to submit work signed with a different key than the authenticated one */
+                                if(result.hashKeyID != context.hashKeyID)
+                                {
+                                    debug::error(FUNCTION, "❌ Falcon key ID mismatch - SECURITY VIOLATION");
+                                    debug::error(FUNCTION, "   Signature key ID: ", result.hashKeyID.SubString());
+                                    debug::error(FUNCTION, "   Session key ID:   ", context.hashKeyID.SubString());
+                                    debug::error(FUNCTION, "   This prevents key substitution attacks");
+                                    
+                                    Packet response(BLOCK_REJECTED);
+                                    response.DATA.push_back(0x09);  // Reason: key ID mismatch
+                                    respond(response);
+                                    
+                                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Key ID mismatch) ===", ANSI_COLOR_RESET);
+                                    return true;
+                                }
+                                
+                                debug::log(2, FUNCTION, "   ✓ Key ID validated (matches session key)");
+                                
+                                /* Signature verified and key ID validated! Extract data */
+                                hashMerkle = result.submission.hashMerkleRoot;
+                                nonce = result.submission.nNonce;
+                                fFalconVerified = true;
+                                
+                                /* Check timestamp freshness (replay protection) */
+                                uint64_t nCurrentTime = std::chrono::duration_cast<std::chrono::seconds>(
+                                    std::chrono::system_clock::now().time_since_epoch()).count();
+                                
+                                int64_t nTimeDiff = std::abs(static_cast<int64_t>(nCurrentTime) - 
+                                                            static_cast<int64_t>(result.submission.nTimestamp));
+                                
+                                /* Allow 30 second clock skew */
+                                if(nTimeDiff > 30)
+                                {
+                                    debug::error(FUNCTION, "❌ Falcon signature timestamp too old (", nTimeDiff, "s skew)");
+                                    debug::error(FUNCTION, "   This prevents replay attacks");
+                                    
+                                    Packet response(BLOCK_REJECTED);
+                                    response.DATA.push_back(0x08);  // Reason: stale timestamp
+                                    respond(response);
+                                    
+                                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Stale Falcon signature) ===", ANSI_COLOR_RESET);
+                                    return true;
+                                }
+                            }
+                            else
+                            {
+                                /* Signature verification failed */
+                                debug::error(FUNCTION, "❌ Falcon signature verification FAILED: ", result.strError);
+                                
+                                Packet response(BLOCK_REJECTED);
+                                response.DATA.push_back(0x07);  // Reason: invalid signature
+                                respond(response);
+                                
+                                debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Invalid Falcon signature) ===", ANSI_COLOR_RESET);
+                                return true;
+                            }
                         }
                     }
                 }
@@ -856,6 +890,29 @@ namespace LLP
             /* Update context if successful */
             if(result.fSuccess)
             {
+                /* CRITICAL: Extract miner's Falcon pubkey BEFORE updating context
+                 * The pubkey is needed for signature verification but will be cleared
+                 * from the new context for security reasons (single-use, preserved in keyID).
+                 * We must store it in mapSessionKeys while still available. */
+                if(PACKET.HEADER == MINER_AUTH_RESPONSE && result.context.fAuthenticated)
+                {
+                    /* Extract pubkey from result context BEFORE it's cleared */
+                    if(!result.context.vMinerPubKey.empty())
+                    {
+                        std::lock_guard<std::mutex> lock(SESSION_MUTEX);
+                        mapSessionKeys[result.context.nSessionId] = result.context.vMinerPubKey;
+                        
+                        debug::log(1, FUNCTION, "✓ Extracted and stored miner's Falcon pubkey for session 0x",
+                                  std::hex, result.context.nSessionId, std::dec,
+                                  " (", result.context.vMinerPubKey.size(), " bytes)");
+                    }
+                    else
+                    {
+                        debug::warning(FUNCTION, "⚠ MINER_AUTH_RESPONSE succeeded but vMinerPubKey is empty");
+                        debug::warning(FUNCTION, "   This should not happen - authentication may have issues");
+                    }
+                }
+                
                 context = result.context;
 
                 /* Update manager with new context after successful packet processing */
@@ -866,35 +923,6 @@ namespace LLP
                 {
                     debug::log(0, FUNCTION, "Session registered: address=", context.strAddress,
                                " sessionId=", context.nSessionId, " keyID=", context.hashKeyID.SubString());
-                    
-                    /* Store miner's Falcon public key for signature verification */
-                    /* Note: context.vMinerPubKey is cleared after auth for security, */
-                    /* so we retrieve it from FalconAuth using the keyID */
-                    FalconAuth::IFalconAuth* pAuth = FalconAuth::Get();
-                    if(pAuth)
-                    {
-                        auto keyMeta = pAuth->GetKey(context.hashKeyID);
-                        if(keyMeta.has_value() && !keyMeta->pubkey.empty())
-                        {
-                            std::lock_guard<std::mutex> lock(SESSION_MUTEX);
-                            mapSessionKeys[context.nSessionId] = keyMeta->pubkey;
-                            
-                            /* Generate wrapper session key */
-                            if(m_pFalconWrapper)
-                            {
-                                m_pFalconWrapper->GenerateSessionKey(uint256_t(context.nSessionId));
-                            }
-                            
-                            debug::log(1, FUNCTION, "✓ Stored Falcon pubkey for session 0x",
-                                      std::hex, context.nSessionId, std::dec,
-                                      " (", keyMeta->pubkey.size(), " bytes)");
-                        }
-                        else
-                        {
-                            debug::log(0, FUNCTION, "⚠ Could not retrieve Falcon pubkey for keyID ",
-                                      context.hashKeyID.SubString());
-                        }
-                    }
                 }
                 
                 /* Send response if present */
