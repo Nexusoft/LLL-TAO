@@ -507,6 +507,9 @@ namespace LLP
                                 /* SECURITY: Verify signature key matches authenticated session key */
                                 /* This prevents key substitution attacks where an attacker might try */
                                 /* to submit work signed with a different key than the authenticated one */
+                                /* NOTE: Current comparison is not constant-time, which could theoretically */
+                                /* leak information via timing attacks. Consider using constant-time comparison */
+                                /* if this becomes a concern (low priority since keyID is public). */
                                 if(result.hashKeyID != context.hashKeyID)
                                 {
                                     debug::error(FUNCTION, "❌ Falcon key ID mismatch - SECURITY VIOLATION");
@@ -905,6 +908,17 @@ namespace LLP
                     if(!result.context.vMinerPubKey.empty())
                     {
                         std::lock_guard<std::mutex> lock(SESSION_MUTEX);
+                        
+                        /* Check for session ID collision (should be extremely rare) */
+                        auto it = mapSessionKeys.find(result.context.nSessionId);
+                        if(it != mapSessionKeys.end())
+                        {
+                            debug::warning(FUNCTION, "⚠ Session ID collision detected: 0x",
+                                          std::hex, result.context.nSessionId, std::dec);
+                            debug::warning(FUNCTION, "   Overwriting existing session key");
+                            debug::warning(FUNCTION, "   This indicates either a key collision or logic error");
+                        }
+                        
                         mapSessionKeys[result.context.nSessionId] = result.context.vMinerPubKey;
                         
                         debug::log(1, FUNCTION, "✓ Extracted and stored miner's Falcon pubkey for session 0x",
