@@ -856,7 +856,8 @@ namespace LLP
         debug::log(2, FUNCTION, "Cleaning up stale templates (current height: ", nCurrentHeight, ")");
         for (auto it = mapBlocks.begin(); it != mapBlocks.end(); )
         {
-            if (it->second->nHeight < nCurrentHeight)
+            /* Check for null pointer before accessing */
+            if (it->second && it->second->nHeight < nCurrentHeight)
             {
                 debug::log(2, FUNCTION, "   Removing stale template at height ", it->second->nHeight,
                           " (merkle: ", it->first.SubString(), ")");
@@ -939,13 +940,17 @@ namespace LLP
     {
         debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "📝 === SIGN_BLOCK: Updating template with miner's nonce ===", ANSI_COLOR_RESET);
         
-        TAO::Ledger::Block *pBaseBlock = mapBlocks[hashMerkleRoot];
+        /* Safe map access to avoid creating null entry */
+        auto it = mapBlocks.find(hashMerkleRoot);
+        if(it == mapBlocks.end() || !it->second)
+        {
+            return debug::error(FUNCTION, "Block not found in map for merkle root: ", hashMerkleRoot.SubString());
+        }
+        
+        TAO::Ledger::Block *pBaseBlock = it->second;
 
         /* Update block with the nonce and time. */
-        if(pBaseBlock)
-            pBaseBlock->nNonce = nNonce;
-        else
-            return debug::error(FUNCTION, "Block not found in map for merkle root: ", hashMerkleRoot.SubString());
+        pBaseBlock->nNonce = nNonce;
 
         /* If the block dynamically casts to a tritium block, validate the tritium block. */
         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(pBaseBlock);
