@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/stateless_manager.h>
 #include <LLP/include/falcon_constants.h>
+#include <LLP/include/falcon_auth.h>
 #include <LLP/templates/events.h>
 
 #include <TAO/Ledger/include/create.h>
@@ -41,6 +42,8 @@ ________________________________________________________________________________
 #include <Util/include/convert.h>
 #include <Util/include/config.h>
 
+#include <chrono>
+
 namespace LLP
 {
     /* The block iterator to act as extra nonce. */
@@ -50,7 +53,21 @@ namespace LLP
     : Connection()
     , context()
     , MUTEX()
+    , mapBlocks()
+    , mapSessionKeys()
+    , SESSION_MUTEX()
     {
+        /* Create disposable Falcon wrapper instance */
+        m_pFalconWrapper = LLP::DisposableFalcon::Create();
+        
+        if (!m_pFalconWrapper)
+        {
+            debug::error(FUNCTION, "Failed to create DisposableFalconWrapper");
+        }
+        else
+        {
+            debug::log(2, FUNCTION, "✓ Disposable Falcon wrapper initialized");
+        }
     }
 
 
@@ -59,7 +76,21 @@ namespace LLP
     : Connection(SOCKET_IN, DDOS_IN, fDDOSIn)
     , context()
     , MUTEX()
+    , mapBlocks()
+    , mapSessionKeys()
+    , SESSION_MUTEX()
     {
+        /* Create disposable Falcon wrapper instance */
+        m_pFalconWrapper = LLP::DisposableFalcon::Create();
+        
+        if (!m_pFalconWrapper)
+        {
+            debug::error(FUNCTION, "Failed to create DisposableFalconWrapper");
+        }
+        else
+        {
+            debug::log(2, FUNCTION, "✓ Disposable Falcon wrapper initialized");
+        }
     }
 
 
@@ -68,13 +99,35 @@ namespace LLP
     : Connection(DDOS_IN, fDDOSIn)
     , context()
     , MUTEX()
+    , mapBlocks()
+    , mapSessionKeys()
+    , SESSION_MUTEX()
     {
+        /* Create disposable Falcon wrapper instance */
+        m_pFalconWrapper = LLP::DisposableFalcon::Create();
+        
+        if (!m_pFalconWrapper)
+        {
+            debug::error(FUNCTION, "Failed to create DisposableFalconWrapper");
+        }
+        else
+        {
+            debug::log(2, FUNCTION, "✓ Disposable Falcon wrapper initialized");
+        }
     }
 
 
     /** Default Destructor **/
     StatelessMinerConnection::~StatelessMinerConnection()
     {
+        /* Clear session keys */
+        {
+            std::lock_guard<std::mutex> lock(SESSION_MUTEX);
+            mapSessionKeys.clear();
+        }
+        
+        /* Wrapper will auto-cleanup via unique_ptr */
+        
         /* Clean up block map */
         LOCK(MUTEX);
         clear_map();
@@ -395,70 +448,161 @@ namespace LLP
                 uint512_t hashMerkle;
                 uint64_t nonce = 0;
                 bool fFullBlockFormat = false;
+                bool fFalconVerified = false;
 
-                /* Detect format based on packet size:
-                 * - Legacy 64-byte merkle format: 72-919 bytes
-                 * - Full block format (Tritium): 216+ bytes
-                 * - Full block format (Legacy): 220+ bytes
-                 * 
-                 * Detection strategy:
-                 * If packet size >= SUBMIT_BLOCK_FORMAT_DETECTION_THRESHOLD (200 bytes), assume full block format.
-                 * This threshold is chosen because:
-                 * - Legacy format max is ~919 bytes (with encryption)
-                 * - Full block min is 216 bytes (Tritium without signature)
-                 * - 200 bytes is a safe threshold that distinguishes the two
-                 */
-                if(PACKET.DATA.size() >= FalconConstants::SUBMIT_BLOCK_FORMAT_DETECTION_THRESHOLD)
+                /* Check for Falcon-signed format: [merkle][nonce][timestamp][sig_len][signature] */
+                /* Minimum for Falcon format: 64 + 8 + 8 + 2 = 82 bytes */
+                const size_t FALCON_MIN_SIZE = FalconConstants::SUBMIT_BLOCK_WRAPPER_MIN;
+
+                if(PACKET.DATA.size() >= FALCON_MIN_SIZE && m_pFalconWrapper)
                 {
-                    fFullBlockFormat = true;
+                    debug::log(0, "   🔐 Attempting Falcon signature verification...");
                     
-                    /* Extract merkle root from offset 132 (after version + hashPrevBlock) */
-                    if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_MERKLE_OFFSET + FalconConstants::MERKLE_ROOT_SIZE)
+                    /* Get session public key */
+                    std::vector<uint8_t> vSessionPubKey;
                     {
-                        hashMerkle.SetBytes(std::vector<uint8_t>(
-                            PACKET.DATA.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET,
-                            PACKET.DATA.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET + FalconConstants::MERKLE_ROOT_SIZE));
-                        
-                        /* Extract nonce - determine offset based on block type (Tritium vs Legacy) */
-                        if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET + FalconConstants::NONCE_SIZE)
+                        std::lock_guard<std::mutex> lock(SESSION_MUTEX);
+                        auto it = mapSessionKeys.find(context.nSessionId);
+                        if(it != mapSessionKeys.end())
                         {
-                            /* Default to Tritium offset (200) */
-                            size_t nonceOffset = FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET;
+                            vSessionPubKey = it->second;
+                        }
+                    }
+                    
+                    if(vSessionPubKey.empty())
+                    {
+                        debug::log(0, ANSI_COLOR_YELLOW, "   ⚠ No Falcon pubkey stored for session - treating as legacy format", ANSI_COLOR_RESET);
+                    }
+                    else
+                    {
+                        /* Attempt to unwrap signed submission */
+                        auto result = m_pFalconWrapper->UnwrapWorkSubmission(PACKET.DATA, vSessionPubKey);
+                        
+                        if(result.fSuccess)
+                        {
+                            /* Signature verified! Extract validated data */
+                            hashMerkle = result.submission.hashMerkleRoot;
+                            nonce = result.submission.nNonce;
+                            fFalconVerified = true;
                             
-                            /* Determine if this is Legacy based on size.
-                             * Legacy blocks are 220 bytes base, Tritium are 216 bytes base.
-                             * If packet size is in the range [220, 220+margin), it's likely Legacy.
-                             * Otherwise, assume Tritium (which is more common).
-                             * 
-                             * Note: This heuristic works because:
-                             * 1. Tritium packets start at 216 bytes, Legacy at 220 bytes
-                             * 2. With signatures, both grow beyond 220, but Legacy grows from 220
-                             * 3. The 100-byte margin gives us a detection window [220, 320)
-                             * 4. Tritium packets in this range would have started from 216, not 220
-                             * 
-                             * Edge case: If miner behavior changes to use different signature sizes,
-                             * this heuristic may need adjustment. The offsets are only 4 bytes apart,
-                             * so worst case is reading the nonce from wrong offset (will fail validation). */
-                            if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_LEGACY_SIZE && 
-                               PACKET.DATA.size() < FalconConstants::FULL_BLOCK_LEGACY_SIZE + FalconConstants::FULL_BLOCK_TYPE_DETECTION_MARGIN)
+                            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✅ Falcon signature VERIFIED", ANSI_COLOR_RESET);
+                            debug::log(0, "      Key ID: ", result.hashKeyID.SubString());
+                            debug::log(0, "      Timestamp: ", result.submission.nTimestamp);
+                            debug::log(0, "      Merkle: ", result.submission.hashMerkleRoot.SubString());
+                            debug::log(0, "      Nonce: 0x", std::hex, result.submission.nNonce, std::dec);
+                            
+                            /* Check timestamp freshness (replay protection) */
+                            uint64_t nCurrentTime = std::chrono::duration_cast<std::chrono::seconds>(
+                                std::chrono::system_clock::now().time_since_epoch()).count();
+                            
+                            int64_t nTimeDiff = std::abs(static_cast<int64_t>(nCurrentTime) - 
+                                                        static_cast<int64_t>(result.submission.nTimestamp));
+                            
+                            /* Allow 30 second clock skew */
+                            if(nTimeDiff > 30)
                             {
-                                /* Likely Legacy format, use offset 204 */
-                                if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_LEGACY_NONCE_OFFSET + FalconConstants::NONCE_SIZE)
-                                {
-                                    nonceOffset = FalconConstants::FULL_BLOCK_LEGACY_NONCE_OFFSET;
-                                }
+                                debug::error(FUNCTION, "❌ Falcon signature timestamp too old (", nTimeDiff, "s skew)");
+                                debug::error(FUNCTION, "   This prevents replay attacks");
+                                
+                                Packet response(BLOCK_REJECTED);
+                                response.DATA.push_back(0x08);  // Reason: stale timestamp
+                                respond(response);
+                                
+                                debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Stale Falcon signature) ===", ANSI_COLOR_RESET);
+                                return true;
                             }
-                            
-                            nonce = convert::bytes2uint64(std::vector<uint8_t>(
-                                PACKET.DATA.begin() + nonceOffset,
-                                PACKET.DATA.begin() + nonceOffset + FalconConstants::NONCE_SIZE));
-                            
-                            debug::log(2, FUNCTION, "SUBMIT_BLOCK: Full block format detected, ",
-                                       "merkle at offset 132, nonce at offset ", nonceOffset);
                         }
                         else
                         {
-                            debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK full block format but packet too small for nonce");
+                            /* Signature verification failed */
+                            debug::error(FUNCTION, "❌ Falcon signature verification FAILED: ", result.strError);
+                            
+                            Packet response(BLOCK_REJECTED);
+                            response.DATA.push_back(0x07);  // Reason: invalid signature
+                            respond(response);
+                            
+                            debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Invalid Falcon signature) ===", ANSI_COLOR_RESET);
+                            return true;
+                        }
+                    }
+                }
+
+                /* If Falcon verification didn't happen, extract using legacy format */
+                if(!fFalconVerified)
+                {
+                    debug::log(0, "   📝 Processing as legacy format (no Falcon signature)");
+                    
+                    /* Detect format based on packet size:
+                     * - Legacy 64-byte merkle format: 72-919 bytes
+                     * - Full block format (Tritium): 216+ bytes
+                     * - Full block format (Legacy): 220+ bytes
+                     * 
+                     * Detection strategy:
+                     * If packet size >= SUBMIT_BLOCK_FORMAT_DETECTION_THRESHOLD (200 bytes), assume full block format.
+                     * This threshold is chosen because:
+                     * - Legacy format max is ~919 bytes (with encryption)
+                     * - Full block min is 216 bytes (Tritium without signature)
+                     * - 200 bytes is a safe threshold that distinguishes the two
+                     */
+                    if(PACKET.DATA.size() >= FalconConstants::SUBMIT_BLOCK_FORMAT_DETECTION_THRESHOLD)
+                    {
+                        fFullBlockFormat = true;
+                        
+                        /* Extract merkle root from offset 132 (after version + hashPrevBlock) */
+                        if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_MERKLE_OFFSET + FalconConstants::MERKLE_ROOT_SIZE)
+                        {
+                            hashMerkle.SetBytes(std::vector<uint8_t>(
+                                PACKET.DATA.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET,
+                                PACKET.DATA.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET + FalconConstants::MERKLE_ROOT_SIZE));
+                            
+                            /* Extract nonce - determine offset based on block type (Tritium vs Legacy) */
+                            if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET + FalconConstants::NONCE_SIZE)
+                            {
+                                /* Default to Tritium offset (200) */
+                                size_t nonceOffset = FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET;
+                                
+                                /* Determine if this is Legacy based on size.
+                                 * Legacy blocks are 220 bytes base, Tritium are 216 bytes base.
+                                 * If packet size is in the range [220, 220+margin), it's likely Legacy.
+                                 * Otherwise, assume Tritium (which is more common).
+                                 * 
+                                 * Note: This heuristic works because:
+                                 * 1. Tritium packets start at 216 bytes, Legacy at 220 bytes
+                                 * 2. With signatures, both grow beyond 220, but Legacy grows from 220
+                                 * 3. The 100-byte margin gives us a detection window [220, 320)
+                                 * 4. Tritium packets in this range would have started from 216, not 220
+                                 * 
+                                 * Edge case: If miner behavior changes to use different signature sizes,
+                                 * this heuristic may need adjustment. The offsets are only 4 bytes apart,
+                                 * so worst case is reading the nonce from wrong offset (will fail validation). */
+                                if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_LEGACY_SIZE && 
+                                   PACKET.DATA.size() < FalconConstants::FULL_BLOCK_LEGACY_SIZE + FalconConstants::FULL_BLOCK_TYPE_DETECTION_MARGIN)
+                                {
+                                    /* Likely Legacy format, use offset 204 */
+                                    if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_LEGACY_NONCE_OFFSET + FalconConstants::NONCE_SIZE)
+                                    {
+                                        nonceOffset = FalconConstants::FULL_BLOCK_LEGACY_NONCE_OFFSET;
+                                    }
+                                }
+                                
+                                nonce = convert::bytes2uint64(std::vector<uint8_t>(
+                                    PACKET.DATA.begin() + nonceOffset,
+                                    PACKET.DATA.begin() + nonceOffset + FalconConstants::NONCE_SIZE));
+                                
+                                debug::log(2, FUNCTION, "SUBMIT_BLOCK: Full block format detected, ",
+                                           "merkle at offset 132, nonce at offset ", nonceOffset);
+                            }
+                            else
+                            {
+                                debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK full block format but packet too small for nonce");
+                                Packet response(BLOCK_REJECTED);
+                                respond(response);
+                                return true;
+                            }
+                        }
+                        else
+                        {
+                            debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK full block format but packet too small for merkle");
                             Packet response(BLOCK_REJECTED);
                             respond(response);
                             return true;
@@ -466,68 +610,29 @@ namespace LLP
                     }
                     else
                     {
-                        debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK full block format but packet too small for merkle");
-                        Packet response(BLOCK_REJECTED);
-                        respond(response);
-                        return true;
+                        /* Legacy 64-byte merkle format */
+                        fFullBlockFormat = false;
+                        
+                        /* Get the merkle root (first 64 bytes). */
+                        hashMerkle.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE));
+
+                        /* Get the nonce (next 8 bytes) */
+                        nonce = convert::bytes2uint64(std::vector<uint8_t>(
+                            PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE,
+                            PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE));
+                        
+                        debug::log(3, FUNCTION, "SUBMIT_BLOCK: Legacy 64-byte merkle format");
                     }
-                }
-                else
-                {
-                    /* Legacy 64-byte merkle format */
-                    fFullBlockFormat = false;
-                    
-                    /* Get the merkle root (first 64 bytes). */
-                    hashMerkle.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE));
 
-                    /* Get the nonce (next 8 bytes) */
-                    nonce = convert::bytes2uint64(std::vector<uint8_t>(
-                        PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE,
-                        PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE));
-                    
-                    debug::log(3, FUNCTION, "SUBMIT_BLOCK: Legacy 64-byte merkle format");
+                    debug::log(3, FUNCTION, "Block merkle root: ", hashMerkle.SubString(), " nonce: ", nonce,
+                               " format: ", fFullBlockFormat ? "full_block" : "merkle_only");
+
+                    debug::log(0, "   Extracted merkle root: ", hashMerkle.SubString());
+                    debug::log(0, "   Extracted nonce: 0x", std::hex, nonce, std::dec);
+                    debug::log(0, "   Format: ", fFullBlockFormat ? "full_block" : "merkle_only");
                 }
 
-                debug::log(3, FUNCTION, "Block merkle root: ", hashMerkle.SubString(), " nonce: ", nonce,
-                           " format: ", fFullBlockFormat ? "full_block" : "merkle_only");
-
-                debug::log(0, "   Extracted merkle root: ", hashMerkle.SubString());
-                debug::log(0, "   Extracted nonce: 0x", std::hex, nonce, std::dec);
-                debug::log(0, "   Format: ", fFullBlockFormat ? "full_block" : "merkle_only");
-
-                /* Check for optional Falcon signature in extended format */
-                /* Format: [merkle_root (64)][nonce (8)][sig_len (2)][signature (sig_len)] */
-                if(PACKET.DATA.size() >= MIN_SIZE + 2)
-                {
-                    /* Parse signature length (2 bytes, little-endian) */
-                    size_t nSigPos = MIN_SIZE;
-                    uint16_t nSigLen = static_cast<uint16_t>(PACKET.DATA[nSigPos]) |
-                                       (static_cast<uint16_t>(PACKET.DATA[nSigPos + 1]) << 8);
-
-                    /* Process signature if present and valid length */
-                    if(nSigLen > 0 && PACKET.DATA.size() >= MIN_SIZE + 2 + nSigLen)
-                    {
-                        /* Extract signature */
-                        std::vector<uint8_t> vSignature(
-                            PACKET.DATA.begin() + MIN_SIZE + 2,
-                            PACKET.DATA.begin() + MIN_SIZE + 2 + nSigLen);
-
-                        /* Build message to verify: merkle_root || nonce */
-                        std::vector<uint8_t> vMessage;
-                        vMessage.insert(vMessage.end(), 
-                            PACKET.DATA.begin(), 
-                            PACKET.DATA.begin() + MIN_SIZE);
-
-                        /* Log that signature was provided for audit trail.
-                         * The miner is already authenticated via challenge-response,
-                         * so this signature provides additional non-repudiation. */
-                        debug::log(2, FUNCTION, "SUBMIT_BLOCK includes Falcon signature, len=", nSigLen,
-                                   " sessionId=", context.nSessionId,
-                                   " keyId=", context.hashKeyID.SubString());
-                    }
-                }
-
-                /* Track block submission in manager */
+                /* Continue with existing template lookup and validation... */
                 StatelessMinerManager::Get().IncrementBlocksSubmitted();
 
                 /* Make sure the block was created by this mining server. */
@@ -761,6 +866,35 @@ namespace LLP
                 {
                     debug::log(0, FUNCTION, "Session registered: address=", context.strAddress,
                                " sessionId=", context.nSessionId, " keyID=", context.hashKeyID.SubString());
+                    
+                    /* Store miner's Falcon public key for signature verification */
+                    /* Note: context.vMinerPubKey is cleared after auth for security, */
+                    /* so we retrieve it from FalconAuth using the keyID */
+                    FalconAuth::IFalconAuth* pAuth = FalconAuth::Get();
+                    if(pAuth)
+                    {
+                        auto keyMeta = pAuth->GetKey(context.hashKeyID);
+                        if(keyMeta.has_value() && !keyMeta->pubkey.empty())
+                        {
+                            std::lock_guard<std::mutex> lock(SESSION_MUTEX);
+                            mapSessionKeys[context.nSessionId] = keyMeta->pubkey;
+                            
+                            /* Generate wrapper session key */
+                            if(m_pFalconWrapper)
+                            {
+                                m_pFalconWrapper->GenerateSessionKey(uint256_t(context.nSessionId));
+                            }
+                            
+                            debug::log(1, FUNCTION, "✓ Stored Falcon pubkey for session 0x",
+                                      std::hex, context.nSessionId, std::dec,
+                                      " (", keyMeta->pubkey.size(), " bytes)");
+                        }
+                        else
+                        {
+                            debug::log(0, FUNCTION, "⚠ Could not retrieve Falcon pubkey for keyID ",
+                                      context.hashKeyID.SubString());
+                        }
+                    }
                 }
                 
                 /* Send response if present */
