@@ -269,8 +269,7 @@ namespace LLP
                 debug::log(0, "      Channel: ", pBlock->nChannel);
                 debug::log(0, "      Merkle root: ", pBlock->hashMerkleRoot.SubString());
                 
-                /* Store the new block in the memory map of recent blocks being worked on. */
-                mapBlocks[pBlock->hashMerkleRoot] = pBlock;
+                /* Note: Block is already stored in mapBlocks by new_block() */
                 
                 try {
                     debug::log(0, "   Serializing block...");
@@ -336,22 +335,33 @@ namespace LLP
              */
             if(PACKET.HEADER == SUBMIT_BLOCK)
             {
+                debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "📥 === SUBMIT_BLOCK received ===", ANSI_COLOR_RESET);
+                debug::log(0, "   From: ", GetAddress().ToStringIP());
+                debug::log(0, "   Session ID: 0x", std::hex, context.nSessionId, std::dec);
+                debug::log(0, "   Packet size: ", PACKET.DATA.size(), " bytes");
+                
                 /* Check authentication */
                 if(!context.fAuthenticated)
                 {
-                    debug::error(FUNCTION, "SUBMIT_BLOCK rejected - authentication required");
+                    debug::error(FUNCTION, "❌ Authentication required");
                     Packet response(BLOCK_REJECTED);
                     respond(response);
+                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (AUTH) ===", ANSI_COLOR_RESET);
                     return true;
                 }
                 
                 /* Check channel is set */
                 if(context.nChannel == 0)
                 {
-                    debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK before channel set");
-                    return debug::error(FUNCTION, "Channel not set");
+                    debug::error(FUNCTION, "❌ Channel not set");
+                    Packet response(BLOCK_REJECTED);
+                    respond(response);
+                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (NO CHANNEL) ===", ANSI_COLOR_RESET);
+                    return true;
                 }
 
+                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Authentication valid", ANSI_COLOR_RESET);
+                debug::log(0, "   Channel: ", context.nChannel);
                 debug::log(2, FUNCTION, "SUBMIT_BLOCK from ", GetAddress().ToStringIP(),
                            " channel=", context.nChannel, " sessionId=", context.nSessionId,
                            " size=", PACKET.DATA.size(),
@@ -481,6 +491,10 @@ namespace LLP
                 debug::log(3, FUNCTION, "Block merkle root: ", hashMerkle.SubString(), " nonce: ", nonce,
                            " format: ", fFullBlockFormat ? "full_block" : "merkle_only");
 
+                debug::log(0, "   Extracted merkle root: ", hashMerkle.SubString());
+                debug::log(0, "   Extracted nonce: 0x", std::hex, nonce, std::dec);
+                debug::log(0, "   Format: ", fFullBlockFormat ? "full_block" : "merkle_only");
+
                 /* Check for optional Falcon signature in extended format */
                 /* Format: [merkle_root (64)][nonce (8)][sig_len (2)][signature (sig_len)] */
                 if(PACKET.DATA.size() >= MIN_SIZE + 2)
@@ -519,27 +533,37 @@ namespace LLP
                 /* Make sure the block was created by this mining server. */
                 if(!find_block(hashMerkle))
                 {
-                    debug::log(2, FUNCTION, "Block not found in map");
+                    debug::error(FUNCTION, "❌ Template not found for merkle root: ", hashMerkle.SubString());
+                    debug::error(FUNCTION, "   This can happen if:");
+                    debug::error(FUNCTION, "   - Template expired (height changed)");
+                    debug::error(FUNCTION, "   - Miner computed wrong merkle root");
+                    debug::error(FUNCTION, "   - Miner mining stale template");
+                    
                     Packet response(BLOCK_REJECTED);
                     respond(response);
+                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Unknown template) ===", ANSI_COLOR_RESET);
                     return true;
                 }
+                
+                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Found original template (wallet-signed)", ANSI_COLOR_RESET);
 
                 /* Make sure there is no inconsistencies in signing block. */
                 if(!sign_block(nonce, hashMerkle))
                 {
-                    debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK sign_block failed");
+                    debug::error(FUNCTION, "❌ sign_block failed (nonce update failed)");
                     Packet response(BLOCK_REJECTED);
                     respond(response);
+                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (sign_block failed) ===", ANSI_COLOR_RESET);
                     return true;
                 }
 
                 /* Make sure there is no inconsistencies in validating block. */
                 if(!validate_block(hashMerkle))
                 {
-                    debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK validate_block failed");
+                    debug::error(FUNCTION, "❌ validate_block failed (network rejected or stale)");
                     Packet response(BLOCK_REJECTED);
                     respond(response);
+                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (validate_block failed) ===", ANSI_COLOR_RESET);
                     return true;
                 }
 
@@ -547,7 +571,20 @@ namespace LLP
                 StatelessMinerManager::Get().IncrementBlocksAccepted();
 
                 /* Generate an Accepted response. */
+                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✅ Block accepted by network!", ANSI_COLOR_RESET);
                 debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK result=accepted merkle=", hashMerkle.SubString());
+                debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "📥 === SUBMIT_BLOCK: SUCCESS ===", ANSI_COLOR_RESET);
+                
+                /* Get block for detailed logging (safe access since we know it exists) */
+                auto it = mapBlocks.find(hashMerkle);
+                if(it != mapBlocks.end() && it->second)
+                {
+                    TAO::Ledger::Block *pBlock = it->second;
+                    debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   🎉 Block ", pBlock->nHeight, " accepted by Nexus network", ANSI_COLOR_RESET);
+                    debug::log(0, "   Miner: ", GetAddress().ToStringIP());
+                    debug::log(0, "   Channel: ", pBlock->nChannel, " (", (pBlock->nChannel == 1 ? "Prime" : "Hash"), ")");
+                }
+                
                 Packet response(BLOCK_ACCEPTED);
                 respond(response);
 
@@ -812,6 +849,28 @@ namespace LLP
     {
         debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "=== NEW_BLOCK: Request from ", GetAddress().ToStringIP(), " ===", ANSI_COLOR_RESET);
         
+        /* Get current height for cleanup */
+        uint32_t nCurrentHeight = TAO::Ledger::ChainState::nBestHeight.load();
+        
+        /* Cleanup old templates when height advances */
+        debug::log(2, FUNCTION, "Cleaning up stale templates (current height: ", nCurrentHeight, ")");
+        for (auto it = mapBlocks.begin(); it != mapBlocks.end(); )
+        {
+            /* Check for null pointer before accessing */
+            if (it->second && it->second->nHeight < nCurrentHeight)
+            {
+                debug::log(2, FUNCTION, "   Removing stale template at height ", it->second->nHeight,
+                          " (merkle: ", it->first.SubString(), ")");
+                delete it->second;
+                it = mapBlocks.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+        debug::log(2, FUNCTION, "   Templates remaining in map: ", mapBlocks.size());
+        
         /* Determine reward - same priority as miner.cpp */
         debug::log(0, "   Determining reward address...");
         uint256_t hashReward = 0;
@@ -864,6 +923,13 @@ namespace LLP
             pBlock = nullptr;
         }
         
+        /* Store new template in map (wallet signature is already set by CreateBlockForStatelessMining) */
+        mapBlocks[pBlock->hashMerkleRoot] = pBlock;
+        debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Template stored in map", ANSI_COLOR_RESET);
+        debug::log(0, "      Merkle root: ", pBlock->hashMerkleRoot.SubString());
+        debug::log(0, "      Height: ", pBlock->nHeight);
+        debug::log(0, "      Templates in map: ", mapBlocks.size());
+        
         debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "=== NEW_BLOCK: Complete ===", ANSI_COLOR_RESET);
         return pBlock;
     }
@@ -872,75 +938,55 @@ namespace LLP
     /** Sign a block */
     bool StatelessMinerConnection::sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot)
     {
-        TAO::Ledger::Block *pBaseBlock = mapBlocks[hashMerkleRoot];
+        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "📝 === SIGN_BLOCK: Updating template with miner's nonce ===", ANSI_COLOR_RESET);
+        
+        /* Safe map access to avoid creating null entry */
+        auto it = mapBlocks.find(hashMerkleRoot);
+        if(it == mapBlocks.end() || !it->second)
+        {
+            return debug::error(FUNCTION, "Block not found in map for merkle root: ", hashMerkleRoot.SubString());
+        }
+        
+        TAO::Ledger::Block *pBaseBlock = it->second;
 
         /* Update block with the nonce and time. */
-        if(pBaseBlock)
-            pBaseBlock->nNonce = nNonce;
+        pBaseBlock->nNonce = nNonce;
 
         /* If the block dynamically casts to a tritium block, validate the tritium block. */
         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(pBaseBlock);
         if(pBlock)
         {
+            debug::log(0, "   Merkle root: ", hashMerkleRoot.SubString());
+            debug::log(0, "   Miner's nonce: 0x", std::hex, nNonce, std::dec);
+            debug::log(0, "   Block height: ", pBlock->nHeight);
+            debug::log(0, "   Block channel: ", pBlock->nChannel);
+            
             /* Update the block's timestamp. */
             pBlock->UpdateTime();
+            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Timestamp updated", ANSI_COLOR_RESET);
 
-            /* Calculate prime offsets before signing. */
+            /* Calculate prime offsets before validation. */
             TAO::Ledger::GetOffsets(pBlock->GetPrime(), pBlock->vOffsets);
+            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Prime offsets calculated", ANSI_COLOR_RESET);
 
-            /* Unlock sigchain to create new block. */
-            SecureString strPIN;
-            RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
-
-            /* Get an instance of our credentials. */
-            const auto& pCredentials =
-                TAO::API::Authentication::Credentials(uint256_t(TAO::API::Authentication::SESSION::DEFAULT));
-
-            /* Generate a new sigchain key for signing. */
-            std::vector<uint8_t> vBytes = pCredentials->Generate(pBlock->producer.nSequence, strPIN).GetBytes();
-            LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
-
-            /* Switch based on signature type. */
-            switch(pBlock->producer.nKeyType)
-            {
-                /* Support for the FALCON signature scheeme. */
-                case TAO::Ledger::SIGNATURE::FALCON:
-                {
-                    /* Create the FL Key object. */
-                    LLC::FLKey key;
-
-                    /* Set the secret parameter. */
-                    if(!key.SetSecret(vchSecret))
-                        return debug::error(FUNCTION, "FLKey::SetSecret failed for ", hashMerkleRoot.SubString());
-
-                    /* Generate the signature. */
-                    if(!pBlock->GenerateSignature(key))
-                        return debug::error(FUNCTION, "GenerateSignature failed for Tritium Block ", hashMerkleRoot.SubString());
-
-                    break;
-                }
-
-                /* Support for the BRAINPOOL signature scheme. */
-                case TAO::Ledger::SIGNATURE::BRAINPOOL:
-                {
-                    /* Create EC Key object. */
-                    LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-
-                    /* Set the secret parameter. */
-                    if(!key.SetSecret(vchSecret, true))
-                        return debug::error(FUNCTION, "ECKey::SetSecret failed for ", hashMerkleRoot.SubString());
-
-                    /* Generate the signature. */
-                    if(!pBlock->GenerateSignature(key))
-                        return debug::error(FUNCTION, "GenerateSignature failed for Tritium Block ", hashMerkleRoot.SubString());
-
-                    break;
-                }
-
-                default:
-                    return debug::error(FUNCTION, "Unknown signature type");
-            }
-
+            /* CRITICAL: DO NOT re-sign the block! 
+             * The block was already wallet-signed during creation (new_block).
+             * Re-signing here would overwrite the wallet signature and cause 
+             * "sign block failed" errors because the miner's nonce is already set.
+             * 
+             * Per PR #104: Blocks MUST be wallet-signed during creation and 
+             * that signature MUST be preserved when the miner submits a solution.
+             * 
+             * What we do here:
+             *   1. Update nonce (already done above)
+             *   2. Update timestamp (done above)
+             *   3. Calculate prime offsets (done above)
+             *   4. PRESERVE the original wallet signature (do nothing)
+             */
+            
+            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Wallet signature preserved (no re-signing)", ANSI_COLOR_RESET);
+            debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "📝 === SIGN_BLOCK: Complete ===", ANSI_COLOR_RESET);
+            
             return true;
         }
 
