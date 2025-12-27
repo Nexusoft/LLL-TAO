@@ -575,10 +575,11 @@ namespace LLP
                 debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK result=accepted merkle=", hashMerkle.SubString());
                 debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "📥 === SUBMIT_BLOCK: SUCCESS ===", ANSI_COLOR_RESET);
                 
-                /* Get block for detailed logging */
-                TAO::Ledger::Block *pBlock = mapBlocks[hashMerkle];
-                if(pBlock)
+                /* Get block for detailed logging (safe access since we know it exists) */
+                auto it = mapBlocks.find(hashMerkle);
+                if(it != mapBlocks.end() && it->second)
                 {
+                    TAO::Ledger::Block *pBlock = it->second;
                     debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   🎉 Block ", pBlock->nHeight, " accepted by Nexus network", ANSI_COLOR_RESET);
                     debug::log(0, "   Miner: ", GetAddress().ToStringIP());
                     debug::log(0, "   Channel: ", pBlock->nChannel, " (", (pBlock->nChannel == 1 ? "Prime" : "Hash"), ")");
