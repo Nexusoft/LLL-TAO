@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/stateless_manager.h>
 #include <LLP/include/falcon_constants.h>
+#include <LLP/include/falcon_auth.h>
 #include <LLP/templates/events.h>
 
 #include <TAO/Ledger/include/create.h>
@@ -867,20 +868,32 @@ namespace LLP
                                " sessionId=", context.nSessionId, " keyID=", context.hashKeyID.SubString());
                     
                     /* Store miner's Falcon public key for signature verification */
-                    if(!context.vMinerPubKey.empty())
+                    /* Note: context.vMinerPubKey is cleared after auth for security, */
+                    /* so we retrieve it from FalconAuth using the keyID */
+                    FalconAuth::IFalconAuth* pAuth = FalconAuth::Get();
+                    if(pAuth)
                     {
-                        std::lock_guard<std::mutex> lock(SESSION_MUTEX);
-                        mapSessionKeys[context.nSessionId] = context.vMinerPubKey;
-                        
-                        /* Generate wrapper session key */
-                        if(m_pFalconWrapper)
+                        auto keyMeta = pAuth->GetKey(context.hashKeyID);
+                        if(keyMeta.has_value() && !keyMeta->pubkey.empty())
                         {
-                            m_pFalconWrapper->GenerateSessionKey(uint256_t(context.nSessionId));
+                            std::lock_guard<std::mutex> lock(SESSION_MUTEX);
+                            mapSessionKeys[context.nSessionId] = keyMeta->pubkey;
+                            
+                            /* Generate wrapper session key */
+                            if(m_pFalconWrapper)
+                            {
+                                m_pFalconWrapper->GenerateSessionKey(uint256_t(context.nSessionId));
+                            }
+                            
+                            debug::log(1, FUNCTION, "✓ Stored Falcon pubkey for session 0x",
+                                      std::hex, context.nSessionId, std::dec,
+                                      " (", keyMeta->pubkey.size(), " bytes)");
                         }
-                        
-                        debug::log(1, FUNCTION, "✓ Stored Falcon pubkey for session 0x",
-                                  std::hex, context.nSessionId, std::dec,
-                                  " (", context.vMinerPubKey.size(), " bytes)");
+                        else
+                        {
+                            debug::log(0, FUNCTION, "⚠ Could not retrieve Falcon pubkey for keyID ",
+                                      context.hashKeyID.SubString());
+                        }
                     }
                 }
                 
