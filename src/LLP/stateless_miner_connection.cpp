@@ -462,10 +462,15 @@ namespace LLP
                         debug::error(FUNCTION, "❌ CRITICAL: Falcon wrapper not initialized");
                         debug::error(FUNCTION, "   Cannot verify Falcon signatures - check constructor logs");
                         debug::error(FUNCTION, "   Packet size suggests Falcon format but wrapper unavailable");
-                        debug::error(FUNCTION, "   Falling back to legacy format processing (INSECURE!)");
                         debug::error(FUNCTION, "   This should not happen in production - investigate immediately");
+                        debug::error(FUNCTION, "");
+                        debug::error(FUNCTION, "   ⚠️  SECURITY WARNING: Falling back to legacy format (INSECURE)");
+                        debug::error(FUNCTION, "   ⚠️  In production, this node should reject Falcon packets");
+                        debug::error(FUNCTION, "   ⚠️  Consider blocking submissions until wrapper is fixed");
                         
                         /* Fall through to legacy format processing */
+                        /* NOTE: This fallback is for compatibility/debugging only. */
+                        /* Production nodes should reject packets if wrapper fails. */
                     }
                     else
                     {
@@ -908,8 +913,10 @@ namespace LLP
                     }
                     else
                     {
-                        debug::warning(FUNCTION, "⚠ MINER_AUTH_RESPONSE succeeded but vMinerPubKey is empty");
-                        debug::warning(FUNCTION, "   This should not happen - authentication may have issues");
+                        debug::error(FUNCTION, "⚠ LOGIC ERROR: MINER_AUTH_RESPONSE succeeded but vMinerPubKey is empty");
+                        debug::error(FUNCTION, "   Authentication should guarantee pubkey is present");
+                        debug::error(FUNCTION, "   This indicates a bug in ProcessFalconResponse");
+                        debug::error(FUNCTION, "   Signature verification will FAIL for this session (no pubkey stored)");
                     }
                 }
                 
