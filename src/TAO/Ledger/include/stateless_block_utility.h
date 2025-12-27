@@ -27,30 +27,31 @@ namespace TAO
 
         /** CreateBlockForStatelessMining
          *
-         *  Dual-mode block creation for stateless mining.
+         *  Create wallet-signed block for stateless mining.
          *
-         *  Mode 1: Wallet mode (Session::DEFAULT with autologin)
-         *  - Uses existing CreateBlock() with node credentials
-         *  - Node operator signs block, rewards routed per hashRewardAddress
+         *  IMPORTANT: "Stateless" refers to MINER state (no blockchain required),
+         *  NOT block signing. All blocks MUST be wallet-signed per Nexus consensus.
          *
-         *  Mode 2: Stateless mode (Falcon authenticated)
-         *  - Creates block WITHOUT wallet credentials
-         *  - Uses CreateProducerStateless() for consensus logic
-         *  - Miner provides Falcon signature
+         *  Architecture:
+         *  - Falcon authentication: Miner session security
+         *  - Wallet signing: Block consensus requirement (Autologin required)
+         *
+         *  Node requirements:
+         *  - Must have wallet unlocked via -autologin=username:password
+         *  - Miners authenticate with Falcon keys (separate from wallet)
+         *  - Rewards routed to hashRewardAddress (can be miner's address)
          *
          *  @param[in] nChannel The mining channel (1 = Prime, 2 = Hash)
          *  @param[in] nExtraNonce Extra nonce for block iteration
          *  @param[in] hashRewardAddress Miner's reward recipient address
-         *  @param[in] fFalconAuthenticated True for stateless mode, false for wallet mode
          *
-         *  @return Pointer to created block, or nullptr on failure
+         *  @return Pointer to wallet-signed block, or nullptr on failure
          *
          **/
         TritiumBlock* CreateBlockForStatelessMining(
             const uint32_t nChannel,
             const uint64_t nExtraNonce,
-            const uint256_t& hashRewardAddress,
-            const bool fFalconAuthenticated = false);
+            const uint256_t& hashRewardAddress);
 
     }
 }

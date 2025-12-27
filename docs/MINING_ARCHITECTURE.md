@@ -222,3 +222,62 @@ grep -r ResolveGenesisToAccount src/LLP/
 3. **Invalid addresses rejected by consensus**: Consensus rejects blocks with invalid reward addresses. This follows the same design pattern as legacy block creation.
 
 4. **No API session requirements**: Everything works without Nexus Interface running.
+
+## Block Signing Architecture
+
+### Critical Distinction: Authentication vs. Signing
+
+**Falcon Authentication (Miner Sessions)**
+- Miners authenticate using disposable Falcon keys
+- Provides secure, lightweight session management
+- No wallet credentials exposed to miners
+- Allows 500+ miners per node
+
+**Wallet Signing (Block Consensus)**
+- **ALL blocks MUST be wallet-signed per Nexus consensus**
+- Node operator's wallet signs blocks via Autologin
+- Rewards can be routed to miner addresses
+- Network validates wallet signatures
+
+### Important Clarification
+
+"Stateless" refers to **MINER state** (no blockchain required), NOT block signing:
+- **Miner side**: Stateless (no blockchain required)
+- **Block signing**: Wallet-signed (consensus requirement)
+
+### Node Configuration Requirements
+
+**For Pool Operators:**
+```bash
+# nexus.conf - REQUIRED for block signing
+-autologin=username:password    # Wallet auto-login for block signing
+# OR
+-unlock=mining                  # Alternative to autologin
+
+# Optional: Whitelist miner Falcon keys
+-minerallowkey=<falcon_pubkey_hash>
+```
+
+**Architecture Flow:**
+1. Miner authenticates with Falcon keys (session security)
+2. Miner requests block template
+3. **Node creates block signed with its wallet** (consensus requirement)
+4. Block rewards routed to miner's specified address
+5. Miner performs PoW and submits signed block
+6. Network validates wallet signature before accepting block
+
+### Error Messages
+
+If wallet is not unlocked, you'll see:
+```
+Mining not unlocked - use -unlock=mining or -autologin=username:password
+CRITICAL: Nexus consensus requires wallet-signed blocks
+Falcon authentication is for miner sessions, NOT block signing
+```
+
+If a block lacks wallet signature, network rejects it:
+```
+ProcessPacket : MinerLLP: SUBMIT_BLOCK sign block failed
+Block Rejected by Nexus Network.
+```
+

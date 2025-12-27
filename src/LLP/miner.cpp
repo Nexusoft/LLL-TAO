@@ -1178,8 +1178,7 @@ namespace LLP
             pBlock = TAO::Ledger::CreateBlockForStatelessMining(
                 nChannel.load(),
                 ++nBlockIterator,
-                hashReward,
-                false  // Traditional wallet mining
+                hashReward
             );
             
             if(!pBlock) return nullptr;
