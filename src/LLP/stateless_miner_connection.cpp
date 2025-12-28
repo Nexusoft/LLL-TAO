@@ -529,7 +529,7 @@ namespace LLP
                                 signedData.insert(signedData.end(), merkleBytes.begin(), merkleBytes.end());
                                 
                                 /* Add nonce (8 bytes, little-endian) */
-                                for(int i = 0; i < 8; ++i)
+                                for(size_t i = 0; i < FalconConstants::NONCE_SIZE; ++i)
                                 {
                                     signedData.push_back((nonceFromBlock >> (i * 8)) & 0xFF);
                                 }
