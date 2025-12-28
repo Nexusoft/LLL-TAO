@@ -842,18 +842,19 @@ namespace LLP
         debug::log(0, FUNCTION, "╚═══════════════════════════════════════════════════════════╝");
 
         /* Update context with auth success.
-         * Note: We clear the nonce and pubkey after successful authentication for security:
+         * Note: We clear the nonce after successful authentication for security:
          * - The nonce was single-use and should not be reused
          * - The pubkey hash is preserved in hashKeyID for audit trails
-         * - The full pubkey can be recovered from FalconAuth if needed */
+         * - The pubkey MUST remain in context for extraction by StatelessMinerConnection
+         *   to enable Falcon signature verification of work submissions (PR #107) */
         MiningContext newContext = context
             .WithAuth(true)
             .WithSession(nSessionId)
             .WithKeyId(hashKeyID)
             .WithGenesis(hashGenesis)
             .WithTimestamp(runtime::unifiedtimestamp())
-            .WithNonce(std::vector<uint8_t>())  // Clear single-use nonce
-            .WithPubKey(std::vector<uint8_t>()); // Clear pubkey (hash preserved in keyID)
+            .WithNonce(std::vector<uint8_t>());  // Clear single-use nonce
+            // Keep vMinerPubKey in context - it will be extracted and stored in mapSessionKeys
 
         /* Build success response */
         Packet response(MINER_AUTH_RESULT);
