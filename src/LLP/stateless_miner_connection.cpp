@@ -498,21 +498,23 @@ namespace LLP
                             /* UnwrapWorkSubmission expects: [merkle(64)][nonce(8)][timestamp(8)][sig_len(2)][signature] */
                             
                             /* Extract merkle root and nonce from the full block */
-                            if(PACKET.DATA.size() >= 216 + 8 + 2)  // At least full_block + timestamp + sig_len
+                            if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_TRITIUM_SIZE + 
+                                                     FalconConstants::TIMESTAMP_SIZE + 
+                                                     FalconConstants::LENGTH_FIELD_SIZE)
                             {
                                 debug::log(2, FUNCTION, "   Extracting merkle and nonce from full block format");
                                 
                                 /* Extract merkle root (64 bytes at offset 132) */
                                 uint512_t hashMerkleFromBlock;
                                 hashMerkleFromBlock.SetBytes(std::vector<uint8_t>(
-                                    PACKET.DATA.begin() + 132,
-                                    PACKET.DATA.begin() + 132 + 64
+                                    PACKET.DATA.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET,
+                                    PACKET.DATA.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET + FalconConstants::MERKLE_ROOT_SIZE
                                 ));
                                 
                                 /* Extract nonce (8 bytes at offset 200 for Tritium) */
                                 uint64_t nonceFromBlock = convert::bytes2uint64(std::vector<uint8_t>(
-                                    PACKET.DATA.begin() + 200,
-                                    PACKET.DATA.begin() + 200 + 8
+                                    PACKET.DATA.begin() + FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET,
+                                    PACKET.DATA.begin() + FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET + FalconConstants::NONCE_SIZE
                                 ));
                                 
                                 debug::log(2, FUNCTION, "   Extracted merkle: ", hashMerkleFromBlock.SubString());
@@ -534,7 +536,7 @@ namespace LLP
                                 
                                 /* Add timestamp + sig_len + signature (everything after the full block) */
                                 signedData.insert(signedData.end(),
-                                                PACKET.DATA.begin() + 216,
+                                                PACKET.DATA.begin() + FalconConstants::FULL_BLOCK_TRITIUM_SIZE,
                                                 PACKET.DATA.end());
                                 
                                 debug::log(2, FUNCTION, "   Reconstructed signed data: ", signedData.size(), " bytes");

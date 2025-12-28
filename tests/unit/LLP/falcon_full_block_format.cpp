@@ -38,46 +38,46 @@ TEST_CASE("Falcon Full Block Format Reconstruction", "[falcon_full_block]")
         for(size_t i = 0; i < 128; ++i)
             fullBlockPacket.push_back(0xBB);
         
-        /* hashMerkleRoot at offset 132 (64 bytes) */
-        REQUIRE(fullBlockPacket.size() == 132);
+        /* hashMerkleRoot at offset FalconConstants::FULL_BLOCK_MERKLE_OFFSET (64 bytes) */
+        REQUIRE(fullBlockPacket.size() == FalconConstants::FULL_BLOCK_MERKLE_OFFSET);
         uint512_t expectedMerkle;
-        for(size_t i = 0; i < 64; ++i)
+        for(size_t i = 0; i < FalconConstants::MERKLE_ROOT_SIZE; ++i)
         {
             fullBlockPacket.push_back(0xCC + (i % 16));
         }
         expectedMerkle.SetBytes(std::vector<uint8_t>(
-            fullBlockPacket.begin() + 132,
-            fullBlockPacket.begin() + 132 + 64));
+            fullBlockPacket.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET,
+            fullBlockPacket.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET + FalconConstants::MERKLE_ROOT_SIZE));
         
-        /* Additional fields to reach nonce at offset 200 */
+        /* Additional fields to reach nonce at offset FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET */
         size_t currentOffset = fullBlockPacket.size();  // Should be 196
         REQUIRE(currentOffset == 196);
         
-        /* Fill to offset 200 (4 bytes) */
-        for(size_t i = currentOffset; i < 200; ++i)
+        /* Fill to offset FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET (4 bytes) */
+        for(size_t i = currentOffset; i < FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET; ++i)
             fullBlockPacket.push_back(0xDD);
         
-        /* nNonce at offset 200 (8 bytes) */
-        REQUIRE(fullBlockPacket.size() == 200);
+        /* nNonce at offset FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET (8 bytes) */
+        REQUIRE(fullBlockPacket.size() == FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET);
         uint64_t expectedNonce = 0xFEDCBA9876543210;
         std::vector<uint8_t> nonceBytes = convert::uint2bytes64(expectedNonce);
         fullBlockPacket.insert(fullBlockPacket.end(), nonceBytes.begin(), nonceBytes.end());
         
-        /* Fill remaining to 216 bytes */
-        while(fullBlockPacket.size() < 216)
+        /* Fill remaining to FalconConstants::FULL_BLOCK_TRITIUM_SIZE bytes */
+        while(fullBlockPacket.size() < FalconConstants::FULL_BLOCK_TRITIUM_SIZE)
             fullBlockPacket.push_back(0xEE);
         
-        REQUIRE(fullBlockPacket.size() == 216);
+        REQUIRE(fullBlockPacket.size() == FalconConstants::FULL_BLOCK_TRITIUM_SIZE);
         
         /* Add timestamp (8 bytes) */
         uint64_t timestamp = 1735392000;
         std::vector<uint8_t> timestampBytes = convert::uint2bytes64(timestamp);
         fullBlockPacket.insert(fullBlockPacket.end(), timestampBytes.begin(), timestampBytes.end());
         
-        REQUIRE(fullBlockPacket.size() == 224);
+        REQUIRE(fullBlockPacket.size() == FalconConstants::FULL_BLOCK_TRITIUM_SIZE + FalconConstants::TIMESTAMP_SIZE);
         
         /* Add dummy signature length and signature */
-        uint16_t sigLen = 809;
+        uint16_t sigLen = FalconConstants::FALCON512_SIG_CT_SIZE;
         fullBlockPacket.push_back(sigLen & 0xFF);
         fullBlockPacket.push_back((sigLen >> 8) & 0xFF);
         
@@ -85,20 +85,20 @@ TEST_CASE("Falcon Full Block Format Reconstruction", "[falcon_full_block]")
         for(size_t i = 0; i < sigLen; ++i)
             fullBlockPacket.push_back(0xAA);
         
-        REQUIRE(fullBlockPacket.size() == 1035);  // 216 + 8 + 2 + 809
+        REQUIRE(fullBlockPacket.size() == FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX);
         
         /* Now reconstruct the format that UnwrapWorkSubmission expects */
-        /* Extract merkle root (64 bytes at offset 132) */
+        /* Extract merkle root (64 bytes at offset FalconConstants::FULL_BLOCK_MERKLE_OFFSET) */
         uint512_t extractedMerkle;
         extractedMerkle.SetBytes(std::vector<uint8_t>(
-            fullBlockPacket.begin() + 132,
-            fullBlockPacket.begin() + 132 + 64
+            fullBlockPacket.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET,
+            fullBlockPacket.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET + FalconConstants::MERKLE_ROOT_SIZE
         ));
         
-        /* Extract nonce (8 bytes at offset 200) */
+        /* Extract nonce (8 bytes at offset FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET) */
         uint64_t extractedNonce = convert::bytes2uint64(std::vector<uint8_t>(
-            fullBlockPacket.begin() + 200,
-            fullBlockPacket.begin() + 200 + 8
+            fullBlockPacket.begin() + FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET,
+            fullBlockPacket.begin() + FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET + FalconConstants::NONCE_SIZE
         ));
         
         /* Verify extraction */
@@ -113,18 +113,23 @@ TEST_CASE("Falcon Full Block Format Reconstruction", "[falcon_full_block]")
         signedData.insert(signedData.end(), merkleBytes.begin(), merkleBytes.end());
         
         /* Add nonce (8 bytes, little-endian) */
-        for(int i = 0; i < 8; ++i)
+        for(int i = 0; i < FalconConstants::NONCE_SIZE; ++i)
         {
             signedData.push_back((extractedNonce >> (i * 8)) & 0xFF);
         }
         
         /* Add timestamp + sig_len + signature (everything after the full block) */
         signedData.insert(signedData.end(),
-                        fullBlockPacket.begin() + 216,
+                        fullBlockPacket.begin() + FalconConstants::FULL_BLOCK_TRITIUM_SIZE,
                         fullBlockPacket.end());
         
         /* Verify reconstructed format */
-        REQUIRE(signedData.size() == 891);  // 64 + 8 + 8 + 2 + 809
+        const size_t expectedReconstructedSize = FalconConstants::MERKLE_ROOT_SIZE + 
+                                                  FalconConstants::NONCE_SIZE + 
+                                                  FalconConstants::TIMESTAMP_SIZE + 
+                                                  FalconConstants::LENGTH_FIELD_SIZE + 
+                                                  FalconConstants::FALCON512_SIG_CT_SIZE;
+        REQUIRE(signedData.size() == expectedReconstructedSize);
         
         /* Verify the format can be deserialized */
         SignedWorkSubmission submission;
@@ -141,18 +146,17 @@ TEST_CASE("Falcon Full Block Format Reconstruction", "[falcon_full_block]")
     SECTION("Verify format constants")
     {
         /* Full block format packet size */
-        size_t fullBlockSize = 216;
-        size_t timestampSize = 8;
-        size_t sigLenSize = 2;
-        size_t sigSize = 809;
+        size_t fullBlockSize = FalconConstants::FULL_BLOCK_TRITIUM_SIZE;
+        size_t timestampSize = FalconConstants::TIMESTAMP_SIZE;
+        size_t sigLenSize = FalconConstants::LENGTH_FIELD_SIZE;
+        size_t sigSize = FalconConstants::FALCON512_SIG_CT_SIZE;
         size_t totalPacketSize = fullBlockSize + timestampSize + sigLenSize + sigSize;
         
-        REQUIRE(totalPacketSize == 1035);
         REQUIRE(totalPacketSize == FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX);
         
         /* Reconstructed signed data format size */
-        size_t merkleSize = 64;
-        size_t nonceSize = 8;
+        size_t merkleSize = FalconConstants::MERKLE_ROOT_SIZE;
+        size_t nonceSize = FalconConstants::NONCE_SIZE;
         size_t reconstructedSize = merkleSize + nonceSize + timestampSize + sigLenSize + sigSize;
         
         REQUIRE(reconstructedSize == 891);  // This is the format UnwrapWorkSubmission expects
