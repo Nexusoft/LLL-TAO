@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLC/include/flkey.h>
 
 using namespace LLP;
+using LLP::DisposableFalcon::SignedWorkSubmission;
 
 TEST_CASE("Falcon Full Block Format Reconstruction", "[falcon_full_block]")
 {
@@ -112,8 +113,10 @@ TEST_CASE("Falcon Full Block Format Reconstruction", "[falcon_full_block]")
         std::vector<uint8_t> merkleBytes = extractedMerkle.GetBytes();
         signedData.insert(signedData.end(), merkleBytes.begin(), merkleBytes.end());
         
-        /* Add nonce (8 bytes, little-endian) */
-        for(int i = 0; i < FalconConstants::NONCE_SIZE; ++i)
+        /* Add nonce (8 bytes, little-endian)
+         * NOTE: Manual byte extraction is required because Falcon protocol uses little-endian,
+         * while convert::uint2bytes64() uses big-endian. This matches SignedWorkSubmission::Deserialize() */
+        for(size_t i = 0; i < FalconConstants::NONCE_SIZE; ++i)
         {
             signedData.push_back((extractedNonce >> (i * 8)) & 0xFF);
         }

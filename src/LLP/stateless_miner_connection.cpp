@@ -528,7 +528,9 @@ namespace LLP
                                 std::vector<uint8_t> merkleBytes = hashMerkleFromBlock.GetBytes();
                                 signedData.insert(signedData.end(), merkleBytes.begin(), merkleBytes.end());
                                 
-                                /* Add nonce (8 bytes, little-endian) */
+                                /* Add nonce (8 bytes, little-endian)
+                                 * NOTE: Manual byte extraction is required because Falcon protocol uses little-endian,
+                                 * while convert::uint2bytes64() uses big-endian. This matches SignedWorkSubmission::Deserialize() */
                                 for(size_t i = 0; i < FalconConstants::NONCE_SIZE; ++i)
                                 {
                                     signedData.push_back((nonceFromBlock >> (i * 8)) & 0xFF);
