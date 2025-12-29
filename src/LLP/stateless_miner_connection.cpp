@@ -45,6 +45,8 @@ ________________________________________________________________________________
 #include <Util/include/config.h>
 
 #include <chrono>
+#include <limits>
+#include <algorithm>
 
 namespace LLP
 {
@@ -133,6 +135,140 @@ namespace LLP
         /* Clean up block map */
         LOCK(MUTEX);
         clear_map();
+    }
+
+
+    /** Helper function to format byte arrays as hex strings efficiently.
+     *  This is used for diagnostic logging of encrypted/decrypted packet data.
+     *  @param data The byte vector to format
+     *  @param maxBytes Maximum number of bytes to format (default: all)
+     *  @return Hex string representation with spaces between bytes
+     */
+    static std::string FormatHexDump(const std::vector<uint8_t>& data, size_t maxBytes = std::numeric_limits<size_t>::max())
+    {
+        /* Lookup table for hex characters (more efficient than snprintf) */
+        static const char hex_chars[] = "0123456789abcdef";
+        
+        size_t count = std::min(data.size(), maxBytes);
+        if(count == 0)
+            return "";
+        
+        std::string result;
+        result.reserve(count * 3);  // Pre-allocate: 2 hex chars + 1 space per byte
+        
+        for(size_t i = 0; i < count; ++i)
+        {
+            uint8_t byte = data[i];
+            result += hex_chars[(byte >> 4) & 0x0F];  // High nibble
+            result += hex_chars[byte & 0x0F];         // Low nibble
+            result += ' ';
+        }
+        
+        /* Remove trailing space if present (defensive check) */
+        if(!result.empty() && result.back() == ' ')
+            result.pop_back();
+        
+        return result;
+    }
+
+
+    /** Helper function to split hex dump into multiple lines for readability.
+     *  @param hexDump The hex dump string to split (format: "ab cd ef ...")
+     *  @param bytesPerLine Number of bytes to show per line (default: 32, max: 256)
+     *  @return Vector of lines
+     */
+    static std::vector<std::string> SplitHexDump(const std::string& hexDump, size_t bytesPerLine = 32)
+    {
+        std::vector<std::string> lines;
+        if(hexDump.empty())
+            return lines;
+        
+        /* Clamp bytesPerLine to reasonable limits to prevent overflow */
+        /* Max 256 bytes per line = 768 chars, well within size_t range */
+        if(bytesPerLine == 0)
+            bytesPerLine = 1;
+        if(bytesPerLine > 256)
+            bytesPerLine = 256;
+        
+        /* Each byte is "XX " (3 chars), except last which is "XX" (2 chars) */
+        size_t pos = 0;
+        while(pos < hexDump.length())
+        {
+            /* Calculate how many characters to take for this line */
+            size_t remaining = hexDump.length() - pos;
+            size_t charsThisLine;
+            
+            /* Safe calculation: bytesPerLine is clamped to [1, 256] so multiplication is safe */
+            size_t maxCharsPerLine = bytesPerLine * 3;
+            
+            if(remaining <= maxCharsPerLine)
+            {
+                /* Last line or smaller - take everything */
+                charsThisLine = remaining;
+            }
+            else
+            {
+                /* Full line - calculate exact char count */
+                /* We want to split at a byte boundary (space character) */
+                charsThisLine = maxCharsPerLine - 1;  // Leave room for missing trailing space
+                
+                /* If the next character is not a space, adjust to nearest space */
+                if(pos + charsThisLine < hexDump.length() && hexDump[pos + charsThisLine] != ' ')
+                {
+                    /* Find the nearest space before this position */
+                    size_t spacePos = hexDump.rfind(' ', pos + charsThisLine);
+                    if(spacePos != std::string::npos && spacePos >= pos)
+                        charsThisLine = spacePos - pos;
+                }
+            }
+            
+            lines.push_back(hexDump.substr(pos, charsThisLine));
+            pos += charsThisLine;
+            
+            /* Skip any spaces at the boundary */
+            while(pos < hexDump.length() && hexDump[pos] == ' ')
+                pos++;
+        }
+        
+        return lines;
+    }
+
+
+    /** Helper function to convert bytes to uint64_t in little-endian format.
+     *  This is needed because Falcon protocol uses little-endian encoding.
+     *  @param data The byte vector
+     *  @param offset Starting offset in the vector
+     *  @param count Number of bytes to read (max 8)
+     *  @return uint64_t value in native endianness
+     */
+    static uint64_t bytes_to_uint64_le(const std::vector<uint8_t>& data, size_t offset, size_t count = 8)
+    {
+        uint64_t result = 0;
+        size_t bytes = std::min(count, size_t(8));
+        
+        for(size_t i = 0; i < bytes && (offset + i) < data.size(); ++i)
+        {
+            result |= (uint64_t(data[offset + i]) << (i * 8));
+        }
+        
+        return result;
+    }
+
+
+    /** Helper function to append uint64_t to byte vector in little-endian format.
+     *  This is needed because Falcon protocol uses little-endian encoding.
+     *  @param vec The byte vector to append to
+     *  @param value The uint64_t value to append
+     *  @param count Number of bytes to write (max 8, default 8)
+     */
+    static void append_uint64_le(std::vector<uint8_t>& vec, uint64_t value, size_t count = 8)
+    {
+        size_t bytes = std::min(count, size_t(8));
+        
+        for(size_t i = 0; i < bytes; ++i)
+        {
+            vec.push_back((value >> (i * 8)) & 0xFF);
+        }
     }
 
 
@@ -391,9 +527,6 @@ namespace LLP
             if(PACKET.HEADER == SUBMIT_BLOCK)
             {
                 debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "📥 === SUBMIT_BLOCK received ===", ANSI_COLOR_RESET);
-                debug::log(0, "   From: ", GetAddress().ToStringIP());
-                debug::log(0, "   Session ID: 0x", std::hex, context.nSessionId, std::dec);
-                debug::log(0, "   Packet size: ", PACKET.DATA.size(), " bytes");
                 
                 /* Check authentication */
                 if(!context.fAuthenticated)
@@ -415,8 +548,50 @@ namespace LLP
                     return true;
                 }
 
-                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Authentication valid", ANSI_COLOR_RESET);
+                /* MANDATORY: ChaCha20 encryption required for all modern miners */
+                if(!context.fEncryptionReady || context.vChaChaKey.empty())
+                {
+                    debug::error(FUNCTION, "❌ REJECTED: ChaCha20 encryption REQUIRED");
+                    debug::error(FUNCTION, "   Modern miners MUST use ChaCha20 + Falcon authentication");
+                    debug::error(FUNCTION, "   fEncryptionReady: ", context.fEncryptionReady ? "true" : "false");
+                    debug::error(FUNCTION, "   vChaChaKey size: ", context.vChaChaKey.size(), " (expected: 32)");
+                    debug::error(FUNCTION, "   Legacy plaintext mining is no longer supported");
+                    
+                    Packet response(BLOCK_REJECTED);
+                    response.DATA.push_back(0x0C);  // Reason: Encryption required
+                    respond(response);
+                    
+                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (ChaCha20 encryption required) ===", ANSI_COLOR_RESET);
+                    return true;
+                }
+
+                /* Training Wheels Diagnostic Mode */
+                debug::log(0, "════════════════════════════════════════════════════════");
+                debug::log(0, "🚀 SUBMIT_BLOCK DIAGNOSTIC (Training Wheels Mode)");
+                debug::log(0, "════════════════════════════════════════════════════════");
+                
+                /* Connection state */
+                debug::log(0, "📡 CONNECTION:");
+                debug::log(0, "   From: ", GetAddress().ToStringIP());
+                debug::log(0, "   Session ID: 0x", std::hex, context.nSessionId, std::dec);
+                debug::log(0, "   Authenticated: ", context.fAuthenticated ? "YES" : "NO");
+                debug::log(0, "   Encryption ready: ", context.fEncryptionReady ? "YES" : "NO");
+                debug::log(0, "   ChaCha key size: ", context.vChaChaKey.size(), " bytes");
                 debug::log(0, "   Channel: ", context.nChannel);
+                
+                /* Packet info */
+                debug::log(0, "📦 ENCRYPTED PACKET:");
+                debug::log(0, "   Size: ", PACKET.DATA.size(), " bytes (expected: ~1035 for Tritium)");
+                debug::log(0, "   First 64 bytes (hex):");
+                {
+                    std::string hexDump = FormatHexDump(PACKET.DATA, 64);
+                    std::vector<std::string> lines = SplitHexDump(hexDump, 32);
+                    for(const auto& line : lines)
+                        debug::log(0, "      ", line);
+                }
+                
+                debug::log(0, "════════════════════════════════════════════════════════");
+                
                 debug::log(2, FUNCTION, "SUBMIT_BLOCK from ", GetAddress().ToStringIP(),
                            " channel=", context.nChannel, " sessionId=", context.nSessionId,
                            " size=", PACKET.DATA.size(),
@@ -476,8 +651,6 @@ namespace LLP
                     }
                     else
                     {
-                        debug::log(0, "   🔐 Attempting Falcon signature verification...");
-                        
                         /* Get session public key */
                         std::vector<uint8_t> vSessionPubKey;
                         {
@@ -489,9 +662,26 @@ namespace LLP
                             }
                         }
                         
+                        debug::log(0, "🔐 FALCON SESSION KEY:");
+                        debug::log(0, "   Found: ", !vSessionPubKey.empty() ? "YES" : "NO");
+                        debug::log(0, "   Size: ", vSessionPubKey.size(), " bytes (expected: 897)");
+                        if(!vSessionPubKey.empty() && vSessionPubKey.size() >= 16)
+                        {
+                            debug::log(0, "   First 16 bytes (hex): ");
+                            debug::log(0, "      ", FormatHexDump(vSessionPubKey, 16));
+                        }
+                        
                         if(vSessionPubKey.empty())
                         {
-                            debug::log(0, ANSI_COLOR_YELLOW, "   ⚠ No Falcon pubkey stored for session - treating as legacy format", ANSI_COLOR_RESET);
+                            debug::error(FUNCTION, "❌ No Falcon pubkey stored for session");
+                            debug::error(FUNCTION, "   Session may have expired or never authenticated properly");
+                            
+                            Packet response(BLOCK_REJECTED);
+                            response.DATA.push_back(0x0D);  // Reason: No session key
+                            respond(response);
+                            
+                            debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (No Falcon session key) ===", ANSI_COLOR_RESET);
+                            return true;
                         }
                         else
                         {
@@ -506,48 +696,57 @@ namespace LLP
                             {
                                 debug::log(2, FUNCTION, "   Extracting merkle and nonce from full block format");
                                 
-                                /* STEP 1: Decrypt ChaCha20 wrapper if active */
+                                /* STEP 1: Decrypt ChaCha20 wrapper (MANDATORY) */
                                 std::vector<uint8_t> decryptedData;
                                 
-                                /* Check both flags for defense in depth: fEncryptionReady should only be true
-                                 * if vChaChaKey is populated, but we verify both to catch any state inconsistencies */
-                                if(context.fEncryptionReady && !context.vChaChaKey.empty())
+                                /* ChaCha20 encryption is MANDATORY at this point because:
+                                 * 1. We already checked fEncryptionReady && vChaChaKey earlier
+                                 * 2. Legacy plaintext miners are no longer supported
+                                 * 3. This ensures all work submissions are protected in transit */
+                                
+                                debug::log(0, "🔓 CHACHA20 DECRYPTION:");
+                                debug::log(0, "   Encrypted payload size: ", PACKET.DATA.size(), " bytes");
+                                
+                                /* Decrypt using ChaCha20-Poly1305 helper
+                                 * Note: No AAD (Additional Authenticated Data) is used here because
+                                 * the entire SUBMIT_BLOCK packet is encrypted as-is without domain separation.
+                                 * Unlike MINER_SET_REWARD which uses AAD for context binding, SUBMIT_BLOCK
+                                 * encrypts the complete payload for transport-layer confidentiality. */
+                                bool fDecrypted = LLC::DecryptPayloadChaCha20(
+                                    PACKET.DATA,
+                                    context.vChaChaKey,
+                                    decryptedData
+                                );
+                                
+                                if(!fDecrypted)
                                 {
-                                    debug::log(2, FUNCTION, "   🔓 Decrypting ChaCha20-Poly1305 wrapper...");
-                                    debug::log(2, FUNCTION, "      Encrypted payload size: ", PACKET.DATA.size(), " bytes");
+                                    debug::error(FUNCTION, "❌ ChaCha20 decryption FAILED");
+                                    debug::error(FUNCTION, "   Possible causes:");
+                                    debug::error(FUNCTION, "   - Corrupted ciphertext during transmission");
+                                    debug::error(FUNCTION, "   - Wrong decryption key (session key mismatch)");
+                                    debug::error(FUNCTION, "   - Authentication tag verification failed");
                                     
-                                    /* Decrypt using ChaCha20-Poly1305 helper
-                                     * Note: No AAD (Additional Authenticated Data) is used here because
-                                     * the entire SUBMIT_BLOCK packet is encrypted as-is without domain separation.
-                                     * Unlike MINER_SET_REWARD which uses AAD for context binding, SUBMIT_BLOCK
-                                     * encrypts the complete payload for transport-layer confidentiality. */
-                                    bool fDecrypted = LLC::DecryptPayloadChaCha20(
-                                        PACKET.DATA,
-                                        context.vChaChaKey,
-                                        decryptedData
-                                    );
+                                    Packet response(BLOCK_REJECTED);
+                                    response.DATA.push_back(0x0B);  // Reason: ChaCha20 decryption failure
+                                    respond(response);
                                     
-                                    if(!fDecrypted)
-                                    {
-                                        debug::error(FUNCTION, "❌ ChaCha20 decryption FAILED");
-                                        
-                                        Packet response(BLOCK_REJECTED);
-                                        response.DATA.push_back(0x0B);  // Reason: ChaCha20 decryption failure
-                                        respond(response);
-                                        
-                                        debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (ChaCha20 decryption failed) ===", ANSI_COLOR_RESET);
-                                        return true;
-                                    }
-                                    
-                                    debug::log(2, FUNCTION, "   ✅ ChaCha20 decrypted: ", decryptedData.size(), " bytes");
+                                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (ChaCha20 decryption failed) ===", ANSI_COLOR_RESET);
+                                    return true;
                                 }
-                                else
+                                
+                                debug::log(0, "   Status: ✅ SUCCESS");
+                                debug::log(0, "   Decrypted size: ", decryptedData.size(), " bytes");
+                                debug::log(0, "   First 64 bytes (hex):");
                                 {
-                                    debug::log(2, FUNCTION, "   ChaCha20 not active - using plaintext");
-                                    decryptedData = PACKET.DATA;
+                                    std::string hexDump = FormatHexDump(decryptedData, 64);
+                                    std::vector<std::string> lines = SplitHexDump(hexDump, 32);
+                                    for(const auto& line : lines)
+                                        debug::log(0, "      ", line);
                                 }
                                 
                                 /* STEP 2: Extract from DECRYPTED data */
+                                debug::log(0, "📊 DATA EXTRACTION:");
+                                
                                 /* Extract merkle root (64 bytes at offset 132) */
                                 uint512_t hashMerkleFromBlock;
                                 hashMerkleFromBlock.SetBytes(std::vector<uint8_t>(
@@ -555,14 +754,36 @@ namespace LLP
                                     decryptedData.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET + FalconConstants::MERKLE_ROOT_SIZE
                                 ));
                                 
-                                /* Extract nonce (8 bytes at offset 200 for Tritium) */
-                                uint64_t nonceFromBlock = convert::bytes2uint64(std::vector<uint8_t>(
+                                debug::log(0, "   Merkle root:");
+                                debug::log(0, "      Offset: ", FalconConstants::FULL_BLOCK_MERKLE_OFFSET);
+                                debug::log(0, "      Value: ", hashMerkleFromBlock.SubString());
+                                
+                                /* Extract nonce with BOTH endianness for debugging */
+                                debug::log(0, "   Nonce extraction:");
+                                debug::log(0, "      Offset: ", FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET);
+                                
+                                /* Show raw bytes */
+                                std::vector<uint8_t> nonceBytes(
+                                    decryptedData.begin() + FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET,
+                                    decryptedData.begin() + FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET + FalconConstants::NONCE_SIZE
+                                );
+                                debug::log(0, "      Raw bytes [200-207]: ", FormatHexDump(nonceBytes));
+                                
+                                /* Extract as BIG-endian (what convert::bytes2uint64 does) */
+                                uint64_t nonce_be = convert::bytes2uint64(std::vector<uint8_t>(
                                     decryptedData.begin() + FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET,
                                     decryptedData.begin() + FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET + FalconConstants::NONCE_SIZE
                                 ));
                                 
-                                debug::log(2, FUNCTION, "   Extracted merkle: ", hashMerkleFromBlock.SubString());
-                                debug::log(2, FUNCTION, "   Extracted nonce: 0x", std::hex, nonceFromBlock, std::dec);
+                                /* Extract as LITTLE-endian (Falcon protocol standard) */
+                                uint64_t nonce_le = bytes_to_uint64_le(decryptedData, FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET);
+                                
+                                debug::log(0, "      BIG-endian interpretation:    0x", std::hex, nonce_be, std::dec);
+                                debug::log(0, "      LITTLE-endian interpretation: 0x", std::hex, nonce_le, std::dec);
+                                debug::log(0, "      Using: LITTLE-ENDIAN (Falcon protocol standard)");
+                                
+                                /* Use little-endian value (correct for Falcon protocol) */
+                                uint64_t nonceFromBlock = nonce_le;
                                 
                                 /* Reconstruct the signed data that UnwrapWorkSubmission expects */
                                 /* Format: [merkle(64)][nonce(8)][timestamp(8)][sig_len(2)][signature] */
@@ -573,30 +794,31 @@ namespace LLP
                                 signedData.insert(signedData.end(), merkleBytes.begin(), merkleBytes.end());
                                 
                                 /* Add nonce (8 bytes, little-endian)
-                                 * NOTE: Manual byte extraction is required because Falcon protocol uses little-endian,
-                                 * while convert::uint2bytes64() uses big-endian. This matches SignedWorkSubmission::Deserialize() */
-                                for(size_t i = 0; i < FalconConstants::NONCE_SIZE; ++i)
-                                {
-                                    signedData.push_back((nonceFromBlock >> (i * 8)) & 0xFF);
-                                }
+                                 * NOTE: Manual byte extraction via helper function is required because 
+                                 * Falcon protocol uses little-endian, while convert::uint2bytes64() uses 
+                                 * big-endian. This matches SignedWorkSubmission::Deserialize() */
+                                append_uint64_le(signedData, nonceFromBlock);
                                 
                                 /* Add timestamp + sig_len + signature (everything after the full block) */
                                 signedData.insert(signedData.end(),
                                                 decryptedData.begin() + FalconConstants::FULL_BLOCK_TRITIUM_SIZE,
                                                 decryptedData.end());
                                 
-                                debug::log(2, FUNCTION, "   Reconstructed signed data: ", signedData.size(), " bytes");
+                                debug::log(0, "   Reconstructed signed data: ", signedData.size(), " bytes");
+                                debug::log(0, "");
+                                debug::log(0, "🔐 FALCON SIGNATURE VERIFICATION:");
                                 
                                 /* Now unwrap with the correct format */
                                 auto result = m_pFalconWrapper->UnwrapWorkSubmission(signedData, vSessionPubKey);
                                 
                                 if(result.fSuccess)
                                 {
-                                    debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✅ Falcon signature VERIFIED", ANSI_COLOR_RESET);
-                                    debug::log(0, "      Key ID: ", result.hashKeyID.SubString());
-                                    debug::log(0, "      Timestamp: ", result.submission.nTimestamp);
-                                    debug::log(0, "      Merkle: ", result.submission.hashMerkleRoot.SubString());
-                                    debug::log(0, "      Nonce: 0x", std::hex, result.submission.nNonce, std::dec);
+                                    debug::log(0, "   Status: ✅ VERIFIED");
+                                    debug::log(0, "   Key ID: ", result.hashKeyID.SubString());
+                                    debug::log(0, "   Timestamp: ", result.submission.nTimestamp);
+                                    debug::log(0, "   Merkle: ", result.submission.hashMerkleRoot.SubString());
+                                    debug::log(0, "   Nonce: 0x", std::hex, result.submission.nNonce, std::dec);
+                                    debug::log(0, "════════════════════════════════════════════════════════");
                                     
                                     /* Verify merkle and nonce match what we extracted */
                                     if(result.submission.hashMerkleRoot != hashMerkleFromBlock)
@@ -653,14 +875,33 @@ namespace LLP
                                     fFalconVerified = true;
                                     
                                     /* Check timestamp freshness (replay protection) */
+                                    /* NOTE: FALCON_TIMESTAMP_TOLERANCE_SECONDS is defined locally here
+                                     * rather than in FalconConstants because it's a security policy parameter
+                                     * for timestamp validation, not a protocol-level constant. It may be
+                                     * made configurable in the future via command-line args or config file. */
+                                    const uint64_t FALCON_TIMESTAMP_TOLERANCE_SECONDS = 30;
+                                    
                                     uint64_t nCurrentTime = std::chrono::duration_cast<std::chrono::seconds>(
                                         std::chrono::system_clock::now().time_since_epoch()).count();
                                     
-                                    int64_t nTimeDiff = std::abs(static_cast<int64_t>(nCurrentTime) - 
-                                                                static_cast<int64_t>(result.submission.nTimestamp));
+                                    /* SECURITY: Safe timestamp comparison to prevent integer overflow attacks
+                                     * We avoid casting to int64_t which could overflow with malicious timestamps.
+                                     * Instead, we directly compare uint64_t values to determine the time difference. */
+                                    uint64_t nTimeDiff = 0;
                                     
-                                    /* Allow 30 second clock skew */
-                                    if(nTimeDiff > 30)
+                                    if(result.submission.nTimestamp > nCurrentTime)
+                                    {
+                                        /* Timestamp is in the future */
+                                        nTimeDiff = result.submission.nTimestamp - nCurrentTime;
+                                    }
+                                    else
+                                    {
+                                        /* Timestamp is in the past */
+                                        nTimeDiff = nCurrentTime - result.submission.nTimestamp;
+                                    }
+                                    
+                                    /* Allow clock skew up to tolerance limit */
+                                    if(nTimeDiff > FALCON_TIMESTAMP_TOLERANCE_SECONDS)
                                     {
                                         debug::error(FUNCTION, "❌ Falcon signature timestamp too old (", nTimeDiff, "s skew)");
                                         debug::error(FUNCTION, "   This prevents replay attacks");
@@ -688,115 +929,55 @@ namespace LLP
                             }
                             else
                             {
-                                debug::error(FUNCTION, "Packet too small for Falcon-signed full block format");
+                                /* Packet too small for Falcon-signed full block format */
+                                debug::error(FUNCTION, "❌ Packet too small for Falcon-signed full block format");
+                                debug::error(FUNCTION, "   Expected at least: ", 
+                                           FalconConstants::FULL_BLOCK_TRITIUM_SIZE + 
+                                           FalconConstants::TIMESTAMP_SIZE + 
+                                           FalconConstants::LENGTH_FIELD_SIZE, " bytes");
+                                debug::error(FUNCTION, "   Got: ", PACKET.DATA.size(), " bytes");
+                                
+                                Packet response(BLOCK_REJECTED);
+                                response.DATA.push_back(0x0E);  // Reason: Invalid packet size
+                                respond(response);
+                                
+                                debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Invalid packet size) ===", ANSI_COLOR_RESET);
+                                return true;
                             }
                         }
                     }
                 }
+                else
+                {
+                    /* Packet too small for Falcon format - reject it */
+                    debug::error(FUNCTION, "❌ Packet too small for Falcon-signed format");
+                    debug::error(FUNCTION, "   Expected at least: ", FalconConstants::SUBMIT_BLOCK_WRAPPER_MIN, " bytes");
+                    debug::error(FUNCTION, "   Got: ", PACKET.DATA.size(), " bytes");
+                    debug::error(FUNCTION, "   Legacy plaintext mining is no longer supported");
+                    
+                    Packet response(BLOCK_REJECTED);
+                    response.DATA.push_back(0x0F);  // Reason: Packet too small
+                    respond(response);
+                    
+                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Packet too small) ===", ANSI_COLOR_RESET);
+                    return true;
+                }
 
-                /* If Falcon verification didn't happen, extract using legacy format */
+                /* At this point, fFalconVerified MUST be true because we enforced */
+                /* ChaCha20 encryption and Falcon signatures above. If it's not true, */
+                /* something went wrong in the logic above. */
                 if(!fFalconVerified)
                 {
-                    debug::log(0, "   📝 Processing as legacy format (no Falcon signature)");
+                    debug::error(FUNCTION, "❌ LOGIC ERROR: Reached unreachable code!");
+                    debug::error(FUNCTION, "   fFalconVerified should always be true at this point");
+                    debug::error(FUNCTION, "   This indicates a bug in the SUBMIT_BLOCK handler");
                     
-                    /* Detect format based on packet size:
-                     * - Legacy 64-byte merkle format: 72-919 bytes
-                     * - Full block format (Tritium): 216+ bytes
-                     * - Full block format (Legacy): 220+ bytes
-                     * 
-                     * Detection strategy:
-                     * If packet size >= SUBMIT_BLOCK_FORMAT_DETECTION_THRESHOLD (200 bytes), assume full block format.
-                     * This threshold is chosen because:
-                     * - Legacy format max is ~919 bytes (with encryption)
-                     * - Full block min is 216 bytes (Tritium without signature)
-                     * - 200 bytes is a safe threshold that distinguishes the two
-                     */
-                    if(PACKET.DATA.size() >= FalconConstants::SUBMIT_BLOCK_FORMAT_DETECTION_THRESHOLD)
-                    {
-                        fFullBlockFormat = true;
-                        
-                        /* Extract merkle root from offset 132 (after version + hashPrevBlock) */
-                        if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_MERKLE_OFFSET + FalconConstants::MERKLE_ROOT_SIZE)
-                        {
-                            hashMerkle.SetBytes(std::vector<uint8_t>(
-                                PACKET.DATA.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET,
-                                PACKET.DATA.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET + FalconConstants::MERKLE_ROOT_SIZE));
-                            
-                            /* Extract nonce - determine offset based on block type (Tritium vs Legacy) */
-                            if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET + FalconConstants::NONCE_SIZE)
-                            {
-                                /* Default to Tritium offset (200) */
-                                size_t nonceOffset = FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET;
-                                
-                                /* Determine if this is Legacy based on size.
-                                 * Legacy blocks are 220 bytes base, Tritium are 216 bytes base.
-                                 * If packet size is in the range [220, 220+margin), it's likely Legacy.
-                                 * Otherwise, assume Tritium (which is more common).
-                                 * 
-                                 * Note: This heuristic works because:
-                                 * 1. Tritium packets start at 216 bytes, Legacy at 220 bytes
-                                 * 2. With signatures, both grow beyond 220, but Legacy grows from 220
-                                 * 3. The 100-byte margin gives us a detection window [220, 320)
-                                 * 4. Tritium packets in this range would have started from 216, not 220
-                                 * 
-                                 * Edge case: If miner behavior changes to use different signature sizes,
-                                 * this heuristic may need adjustment. The offsets are only 4 bytes apart,
-                                 * so worst case is reading the nonce from wrong offset (will fail validation). */
-                                if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_LEGACY_SIZE && 
-                                   PACKET.DATA.size() < FalconConstants::FULL_BLOCK_LEGACY_SIZE + FalconConstants::FULL_BLOCK_TYPE_DETECTION_MARGIN)
-                                {
-                                    /* Likely Legacy format, use offset 204 */
-                                    if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_LEGACY_NONCE_OFFSET + FalconConstants::NONCE_SIZE)
-                                    {
-                                        nonceOffset = FalconConstants::FULL_BLOCK_LEGACY_NONCE_OFFSET;
-                                    }
-                                }
-                                
-                                nonce = convert::bytes2uint64(std::vector<uint8_t>(
-                                    PACKET.DATA.begin() + nonceOffset,
-                                    PACKET.DATA.begin() + nonceOffset + FalconConstants::NONCE_SIZE));
-                                
-                                debug::log(2, FUNCTION, "SUBMIT_BLOCK: Full block format detected, ",
-                                           "merkle at offset 132, nonce at offset ", nonceOffset);
-                            }
-                            else
-                            {
-                                debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK full block format but packet too small for nonce");
-                                Packet response(BLOCK_REJECTED);
-                                respond(response);
-                                return true;
-                            }
-                        }
-                        else
-                        {
-                            debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK full block format but packet too small for merkle");
-                            Packet response(BLOCK_REJECTED);
-                            respond(response);
-                            return true;
-                        }
-                    }
-                    else
-                    {
-                        /* Legacy 64-byte merkle format */
-                        fFullBlockFormat = false;
-                        
-                        /* Get the merkle root (first 64 bytes). */
-                        hashMerkle.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE));
-
-                        /* Get the nonce (next 8 bytes) */
-                        nonce = convert::bytes2uint64(std::vector<uint8_t>(
-                            PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE,
-                            PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE));
-                        
-                        debug::log(3, FUNCTION, "SUBMIT_BLOCK: Legacy 64-byte merkle format");
-                    }
-
-                    debug::log(3, FUNCTION, "Block merkle root: ", hashMerkle.SubString(), " nonce: ", nonce,
-                               " format: ", fFullBlockFormat ? "full_block" : "merkle_only");
-
-                    debug::log(0, "   Extracted merkle root: ", hashMerkle.SubString());
-                    debug::log(0, "   Extracted nonce: 0x", std::hex, nonce, std::dec);
-                    debug::log(0, "   Format: ", fFullBlockFormat ? "full_block" : "merkle_only");
+                    Packet response(BLOCK_REJECTED);
+                    response.DATA.push_back(0xFF);  // Reason: Internal error
+                    respond(response);
+                    
+                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Internal error) ===", ANSI_COLOR_RESET);
+                    return true;
                 }
 
                 /* Continue with existing template lookup and validation... */
