@@ -509,6 +509,8 @@ namespace LLP
                                 /* STEP 1: Decrypt ChaCha20 wrapper if active */
                                 std::vector<uint8_t> decryptedData;
                                 
+                                /* Check both flags for defense in depth: fEncryptionReady should only be true
+                                 * if vChaChaKey is populated, but we verify both to catch any state inconsistencies */
                                 if(context.fEncryptionReady && !context.vChaChaKey.empty())
                                 {
                                     debug::log(2, FUNCTION, "   🔓 Decrypting ChaCha20-Poly1305 wrapper...");
@@ -526,7 +528,7 @@ namespace LLP
                                         debug::error(FUNCTION, "❌ ChaCha20 decryption FAILED");
                                         
                                         Packet response(BLOCK_REJECTED);
-                                        response.DATA.push_back(0x0B);
+                                        response.DATA.push_back(0x0B);  // Reason: ChaCha20 decryption failure
                                         respond(response);
                                         
                                         debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (ChaCha20 decryption failed) ===", ANSI_COLOR_RESET);
