@@ -148,6 +148,9 @@ namespace LLP
         static const char hex_chars[] = "0123456789abcdef";
         
         size_t count = std::min(data.size(), maxBytes);
+        if(count == 0)
+            return "";
+        
         std::string result;
         result.reserve(count * 3);  // Pre-allocate: 2 hex chars + 1 space per byte
         
@@ -159,11 +162,65 @@ namespace LLP
             result += ' ';
         }
         
-        /* Remove trailing space */
-        if(!result.empty())
+        /* Remove trailing space (we know result is not empty and last char is space) */
+        if(!result.empty() && result.back() == ' ')
             result.pop_back();
         
         return result;
+    }
+
+
+    /** Helper function to split hex dump into multiple lines for readability.
+     *  @param hexDump The hex dump string to split (format: "ab cd ef ...")
+     *  @param bytesPerLine Number of bytes to show per line (default: 32)
+     *  @return Vector of lines
+     */
+    static std::vector<std::string> SplitHexDump(const std::string& hexDump, size_t bytesPerLine = 32)
+    {
+        std::vector<std::string> lines;
+        if(hexDump.empty())
+            return lines;
+        
+        /* Each byte is "XX " (3 chars), except last which is "XX" (2 chars) */
+        /* We need to be careful with the calculation */
+        size_t pos = 0;
+        while(pos < hexDump.length())
+        {
+            /* Calculate how many characters to take for this line */
+            /* bytesPerLine bytes = (bytesPerLine-1)*3 + 2 chars total, except for partial lines */
+            size_t remaining = hexDump.length() - pos;
+            size_t charsThisLine;
+            
+            if(remaining <= bytesPerLine * 3)
+            {
+                /* Last line or smaller - take everything */
+                charsThisLine = remaining;
+            }
+            else
+            {
+                /* Full line - calculate exact char count */
+                /* We want to split at a byte boundary (space character) */
+                charsThisLine = bytesPerLine * 3 - 1;  // (bytesPerLine-1)*3 + 2
+                
+                /* If the next character is not a space, adjust */
+                if(pos + charsThisLine < hexDump.length() && hexDump[pos + charsThisLine] != ' ')
+                {
+                    /* Find the nearest space before this position */
+                    size_t spacePos = hexDump.rfind(' ', pos + charsThisLine);
+                    if(spacePos != std::string::npos && spacePos >= pos)
+                        charsThisLine = spacePos - pos;
+                }
+            }
+            
+            lines.push_back(hexDump.substr(pos, charsThisLine));
+            pos += charsThisLine;
+            
+            /* Skip any spaces at the boundary */
+            while(pos < hexDump.length() && hexDump[pos] == ' ')
+                pos++;
+        }
+        
+        return lines;
     }
 
 
@@ -480,16 +537,9 @@ namespace LLP
                 debug::log(0, "   First 64 bytes (hex):");
                 {
                     std::string hexDump = FormatHexDump(PACKET.DATA, 64);
-                    /* Split into 32-byte lines for readability */
-                    size_t pos = 0;
-                    while(pos < hexDump.length())
-                    {
-                        size_t end = std::min(pos + 96, hexDump.length());  // 32 bytes = 96 chars (32*3)
-                        debug::log(0, "      ", hexDump.substr(pos, end - pos));
-                        pos = end;
-                        if(pos < hexDump.length() && hexDump[pos] == ' ')
-                            pos++;  // Skip space at line break
-                    }
+                    std::vector<std::string> lines = SplitHexDump(hexDump, 32);
+                    for(const auto& line : lines)
+                        debug::log(0, "      ", line);
                 }
                 
                 debug::log(0, "════════════════════════════════════════════════════════");
@@ -641,16 +691,9 @@ namespace LLP
                                 debug::log(0, "   First 64 bytes (hex):");
                                 {
                                     std::string hexDump = FormatHexDump(decryptedData, 64);
-                                    /* Split into 32-byte lines for readability */
-                                    size_t pos = 0;
-                                    while(pos < hexDump.length())
-                                    {
-                                        size_t end = std::min(pos + 96, hexDump.length());  // 32 bytes = 96 chars (32*3)
-                                        debug::log(0, "      ", hexDump.substr(pos, end - pos));
-                                        pos = end;
-                                        if(pos < hexDump.length() && hexDump[pos] == ' ')
-                                            pos++;  // Skip space at line break
-                                    }
+                                    std::vector<std::string> lines = SplitHexDump(hexDump, 32);
+                                    for(const auto& line : lines)
+                                        debug::log(0, "      ", line);
                                 }
                                 
                                 /* STEP 2: Extract from DECRYPTED data */
