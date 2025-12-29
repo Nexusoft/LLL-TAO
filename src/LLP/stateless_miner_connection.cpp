@@ -516,7 +516,11 @@ namespace LLP
                                     debug::log(2, FUNCTION, "   🔓 Decrypting ChaCha20-Poly1305 wrapper...");
                                     debug::log(2, FUNCTION, "      Encrypted payload size: ", PACKET.DATA.size(), " bytes");
                                     
-                                    /* Decrypt using ChaCha20-Poly1305 helper */
+                                    /* Decrypt using ChaCha20-Poly1305 helper
+                                     * Note: No AAD (Additional Authenticated Data) is used here because
+                                     * the entire SUBMIT_BLOCK packet is encrypted as-is without domain separation.
+                                     * Unlike MINER_SET_REWARD which uses AAD for context binding, SUBMIT_BLOCK
+                                     * encrypts the complete payload for transport-layer confidentiality. */
                                     bool fDecrypted = LLC::DecryptPayloadChaCha20(
                                         PACKET.DATA,
                                         context.vChaChaKey,
