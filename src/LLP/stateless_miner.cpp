@@ -880,8 +880,6 @@ namespace LLP
         debug::log(0, FUNCTION, "🔐 ENCRYPTION CONTEXT SETUP:");
         debug::log(0, FUNCTION, "   ChaCha20:     Ready for encryption");
         debug::log(0, FUNCTION, "   Key size:     ", newContext.vChaChaKey.size(), " bytes");
-        debug::log(0, FUNCTION, "   Key (first 16 bytes): ", HexStr(newContext.vChaChaKey.begin(), 
-                                                                     newContext.vChaChaKey.begin() + 16, true));
         debug::log(2, FUNCTION, "   ChaCha20 session key derived from genesis");
         debug::log(2, FUNCTION, "   Encryption is now ACTIVE for session ", nSessionId);
         debug::log(0, FUNCTION, "");
