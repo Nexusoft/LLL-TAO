@@ -136,6 +136,37 @@ namespace LLP
     }
 
 
+    /** Helper function to format byte arrays as hex strings efficiently.
+     *  This is used for diagnostic logging of encrypted/decrypted packet data.
+     *  @param data The byte vector to format
+     *  @param maxBytes Maximum number of bytes to format (default: all)
+     *  @return Hex string representation with spaces between bytes
+     */
+    static std::string FormatHexDump(const std::vector<uint8_t>& data, size_t maxBytes = SIZE_MAX)
+    {
+        /* Lookup table for hex characters (more efficient than snprintf) */
+        static const char hex_chars[] = "0123456789abcdef";
+        
+        size_t count = std::min(data.size(), maxBytes);
+        std::string result;
+        result.reserve(count * 3);  // Pre-allocate: 2 hex chars + 1 space per byte
+        
+        for(size_t i = 0; i < count; ++i)
+        {
+            uint8_t byte = data[i];
+            result += hex_chars[(byte >> 4) & 0x0F];  // High nibble
+            result += hex_chars[byte & 0x0F];         // Low nibble
+            result += ' ';
+        }
+        
+        /* Remove trailing space */
+        if(!result.empty())
+            result.pop_back();
+        
+        return result;
+    }
+
+
     /** Handle custom message events. */
     void StatelessMinerConnection::Event(uint8_t EVENT, uint32_t LENGTH)
     {
@@ -448,19 +479,17 @@ namespace LLP
                 debug::log(0, "   Size: ", PACKET.DATA.size(), " bytes (expected: ~1035 for Tritium)");
                 debug::log(0, "   First 64 bytes (hex):");
                 {
-                    std::string hexDump;
-                    for(size_t i = 0; i < std::min(PACKET.DATA.size(), size_t(64)); ++i)
+                    std::string hexDump = FormatHexDump(PACKET.DATA, 64);
+                    /* Split into 32-byte lines for readability */
+                    size_t pos = 0;
+                    while(pos < hexDump.length())
                     {
-                        char buf[4];
-                        snprintf(buf, sizeof(buf), "%02x ", PACKET.DATA[i]);
-                        hexDump += buf;
-                        if((i + 1) % 32 == 0)
-                        {
-                            debug::log(0, "      ", hexDump);
-                            hexDump.clear();
-                        }
+                        size_t end = std::min(pos + 96, hexDump.length());  // 32 bytes = 96 chars (32*3)
+                        debug::log(0, "      ", hexDump.substr(pos, end - pos));
+                        pos = end;
+                        if(pos < hexDump.length() && hexDump[pos] == ' ')
+                            pos++;  // Skip space at line break
                     }
-                    if(!hexDump.empty()) debug::log(0, "      ", hexDump);
                 }
                 
                 debug::log(0, "════════════════════════════════════════════════════════");
@@ -541,14 +570,7 @@ namespace LLP
                         if(!vSessionPubKey.empty() && vSessionPubKey.size() >= 16)
                         {
                             debug::log(0, "   First 16 bytes (hex): ");
-                            std::string hexDump;
-                            for(size_t i = 0; i < 16; ++i)
-                            {
-                                char buf[4];
-                                snprintf(buf, sizeof(buf), "%02x ", vSessionPubKey[i]);
-                                hexDump += buf;
-                            }
-                            debug::log(0, "      ", hexDump);
+                            debug::log(0, "      ", FormatHexDump(vSessionPubKey, 16));
                         }
                         
                         if(vSessionPubKey.empty())
@@ -618,19 +640,17 @@ namespace LLP
                                 debug::log(0, "   Decrypted size: ", decryptedData.size(), " bytes");
                                 debug::log(0, "   First 64 bytes (hex):");
                                 {
-                                    std::string hexDump;
-                                    for(size_t i = 0; i < std::min(decryptedData.size(), size_t(64)); ++i)
+                                    std::string hexDump = FormatHexDump(decryptedData, 64);
+                                    /* Split into 32-byte lines for readability */
+                                    size_t pos = 0;
+                                    while(pos < hexDump.length())
                                     {
-                                        char buf[4];
-                                        snprintf(buf, sizeof(buf), "%02x ", decryptedData[i]);
-                                        hexDump += buf;
-                                        if((i + 1) % 32 == 0)
-                                        {
-                                            debug::log(0, "      ", hexDump);
-                                            hexDump.clear();
-                                        }
+                                        size_t end = std::min(pos + 96, hexDump.length());  // 32 bytes = 96 chars (32*3)
+                                        debug::log(0, "      ", hexDump.substr(pos, end - pos));
+                                        pos = end;
+                                        if(pos < hexDump.length() && hexDump[pos] == ' ')
+                                            pos++;  // Skip space at line break
                                     }
-                                    if(!hexDump.empty()) debug::log(0, "      ", hexDump);
                                 }
                                 
                                 /* STEP 2: Extract from DECRYPTED data */
@@ -652,15 +672,11 @@ namespace LLP
                                 debug::log(0, "      Offset: ", FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET);
                                 
                                 /* Show raw bytes */
-                                debug::log(0, "      Raw bytes [200-207]: ", std::hex);
-                                std::string nonceHex;
-                                for(size_t i = 0; i < FalconConstants::NONCE_SIZE; ++i)
-                                {
-                                    char buf[4];
-                                    snprintf(buf, sizeof(buf), "%02x ", decryptedData[FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET + i]);
-                                    nonceHex += buf;
-                                }
-                                debug::log(0, "         ", nonceHex, std::dec);
+                                std::vector<uint8_t> nonceBytes(
+                                    decryptedData.begin() + FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET,
+                                    decryptedData.begin() + FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET + FalconConstants::NONCE_SIZE
+                                );
+                                debug::log(0, "      Raw bytes [200-207]: ", FormatHexDump(nonceBytes));
                                 
                                 /* Extract as BIG-endian (what convert::bytes2uint64 does) */
                                 uint64_t nonce_be = convert::bytes2uint64(std::vector<uint8_t>(
@@ -777,11 +793,25 @@ namespace LLP
                                     uint64_t nCurrentTime = std::chrono::duration_cast<std::chrono::seconds>(
                                         std::chrono::system_clock::now().time_since_epoch()).count();
                                     
-                                    int64_t nTimeDiff = std::abs(static_cast<int64_t>(nCurrentTime) - 
-                                                                static_cast<int64_t>(result.submission.nTimestamp));
+                                    /* SECURITY: Safe timestamp comparison to prevent integer overflow attacks
+                                     * We avoid casting to int64_t which could overflow with malicious timestamps.
+                                     * Instead, we directly compare uint64_t values to determine the time difference. */
+                                    const uint64_t FALCON_TIMESTAMP_TOLERANCE_SECONDS = 30;
+                                    uint64_t nTimeDiff = 0;
+                                    
+                                    if(result.submission.nTimestamp > nCurrentTime)
+                                    {
+                                        /* Timestamp is in the future */
+                                        nTimeDiff = result.submission.nTimestamp - nCurrentTime;
+                                    }
+                                    else
+                                    {
+                                        /* Timestamp is in the past */
+                                        nTimeDiff = nCurrentTime - result.submission.nTimestamp;
+                                    }
                                     
                                     /* Allow 30 second clock skew */
-                                    if(nTimeDiff > 30)
+                                    if(nTimeDiff > FALCON_TIMESTAMP_TOLERANCE_SECONDS)
                                     {
                                         debug::error(FUNCTION, "❌ Falcon signature timestamp too old (", nTimeDiff, "s skew)");
                                         debug::error(FUNCTION, "   This prevents replay attacks");
