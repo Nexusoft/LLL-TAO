@@ -45,6 +45,8 @@ ________________________________________________________________________________
 #include <Util/include/config.h>
 
 #include <chrono>
+#include <limits>
+#include <algorithm>
 
 namespace LLP
 {
@@ -142,7 +144,7 @@ namespace LLP
      *  @param maxBytes Maximum number of bytes to format (default: all)
      *  @return Hex string representation with spaces between bytes
      */
-    static std::string FormatHexDump(const std::vector<uint8_t>& data, size_t maxBytes = SIZE_MAX)
+    static std::string FormatHexDump(const std::vector<uint8_t>& data, size_t maxBytes = std::numeric_limits<size_t>::max())
     {
         /* Lookup table for hex characters (more efficient than snprintf) */
         static const char hex_chars[] = "0123456789abcdef";
@@ -172,7 +174,7 @@ namespace LLP
 
     /** Helper function to split hex dump into multiple lines for readability.
      *  @param hexDump The hex dump string to split (format: "ab cd ef ...")
-     *  @param bytesPerLine Number of bytes to show per line (default: 32)
+     *  @param bytesPerLine Number of bytes to show per line (default: 32, max: 256)
      *  @return Vector of lines
      */
     static std::vector<std::string> SplitHexDump(const std::string& hexDump, size_t bytesPerLine = 32)
@@ -181,17 +183,25 @@ namespace LLP
         if(hexDump.empty())
             return lines;
         
+        /* Clamp bytesPerLine to reasonable limits to prevent overflow */
+        /* Max 256 bytes per line = 768 chars, well within size_t range */
+        if(bytesPerLine == 0)
+            bytesPerLine = 1;
+        if(bytesPerLine > 256)
+            bytesPerLine = 256;
+        
         /* Each byte is "XX " (3 chars), except last which is "XX" (2 chars) */
-        /* We need to be careful with the calculation */
         size_t pos = 0;
         while(pos < hexDump.length())
         {
             /* Calculate how many characters to take for this line */
-            /* bytesPerLine bytes = (bytesPerLine-1)*3 + 2 chars total, except for partial lines */
             size_t remaining = hexDump.length() - pos;
             size_t charsThisLine;
             
-            if(remaining <= bytesPerLine * 3)
+            /* Safe calculation: bytesPerLine is clamped to [1, 256] so multiplication is safe */
+            size_t maxCharsPerLine = bytesPerLine * 3;
+            
+            if(remaining <= maxCharsPerLine)
             {
                 /* Last line or smaller - take everything */
                 charsThisLine = remaining;
@@ -200,9 +210,9 @@ namespace LLP
             {
                 /* Full line - calculate exact char count */
                 /* We want to split at a byte boundary (space character) */
-                charsThisLine = bytesPerLine * 3 - 1;  // (bytesPerLine-1)*3 + 2
+                charsThisLine = maxCharsPerLine - 1;  // Leave room for missing trailing space
                 
-                /* If the next character is not a space, adjust */
+                /* If the next character is not a space, adjust to nearest space */
                 if(pos + charsThisLine < hexDump.length() && hexDump[pos + charsThisLine] != ' ')
                 {
                     /* Find the nearest space before this position */
