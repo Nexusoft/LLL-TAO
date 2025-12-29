@@ -36,6 +36,8 @@ ________________________________________________________________________________
 
 #include <LLC/include/flkey.h>
 #include <LLC/include/eckey.h>
+#include <LLC/include/chacha20_helpers.h>
+#include <LLC/include/mining_session_keys.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
@@ -504,17 +506,53 @@ namespace LLP
                             {
                                 debug::log(2, FUNCTION, "   Extracting merkle and nonce from full block format");
                                 
+                                /* STEP 1: Decrypt ChaCha20 wrapper if active */
+                                std::vector<uint8_t> decryptedData;
+                                
+                                if(context.fEncryptionReady && !context.vChaChaKey.empty())
+                                {
+                                    debug::log(2, FUNCTION, "   🔓 Decrypting ChaCha20-Poly1305 wrapper...");
+                                    debug::log(2, FUNCTION, "      Encrypted payload size: ", PACKET.DATA.size(), " bytes");
+                                    
+                                    /* Decrypt using ChaCha20-Poly1305 helper */
+                                    bool fDecrypted = LLC::DecryptPayloadChaCha20(
+                                        PACKET.DATA,
+                                        context.vChaChaKey,
+                                        decryptedData
+                                    );
+                                    
+                                    if(!fDecrypted)
+                                    {
+                                        debug::error(FUNCTION, "❌ ChaCha20 decryption FAILED");
+                                        
+                                        Packet response(BLOCK_REJECTED);
+                                        response.DATA.push_back(0x0B);
+                                        respond(response);
+                                        
+                                        debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (ChaCha20 decryption failed) ===", ANSI_COLOR_RESET);
+                                        return true;
+                                    }
+                                    
+                                    debug::log(2, FUNCTION, "   ✅ ChaCha20 decrypted: ", decryptedData.size(), " bytes");
+                                }
+                                else
+                                {
+                                    debug::log(2, FUNCTION, "   ChaCha20 not active - using plaintext");
+                                    decryptedData = PACKET.DATA;
+                                }
+                                
+                                /* STEP 2: Extract from DECRYPTED data */
                                 /* Extract merkle root (64 bytes at offset 132) */
                                 uint512_t hashMerkleFromBlock;
                                 hashMerkleFromBlock.SetBytes(std::vector<uint8_t>(
-                                    PACKET.DATA.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET,
-                                    PACKET.DATA.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET + FalconConstants::MERKLE_ROOT_SIZE
+                                    decryptedData.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET,
+                                    decryptedData.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET + FalconConstants::MERKLE_ROOT_SIZE
                                 ));
                                 
                                 /* Extract nonce (8 bytes at offset 200 for Tritium) */
                                 uint64_t nonceFromBlock = convert::bytes2uint64(std::vector<uint8_t>(
-                                    PACKET.DATA.begin() + FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET,
-                                    PACKET.DATA.begin() + FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET + FalconConstants::NONCE_SIZE
+                                    decryptedData.begin() + FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET,
+                                    decryptedData.begin() + FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET + FalconConstants::NONCE_SIZE
                                 ));
                                 
                                 debug::log(2, FUNCTION, "   Extracted merkle: ", hashMerkleFromBlock.SubString());
@@ -538,8 +576,8 @@ namespace LLP
                                 
                                 /* Add timestamp + sig_len + signature (everything after the full block) */
                                 signedData.insert(signedData.end(),
-                                                PACKET.DATA.begin() + FalconConstants::FULL_BLOCK_TRITIUM_SIZE,
-                                                PACKET.DATA.end());
+                                                decryptedData.begin() + FalconConstants::FULL_BLOCK_TRITIUM_SIZE,
+                                                decryptedData.end());
                                 
                                 debug::log(2, FUNCTION, "   Reconstructed signed data: ", signedData.size(), " bytes");
                                 
