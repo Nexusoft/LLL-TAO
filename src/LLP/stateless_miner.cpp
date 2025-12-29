@@ -856,6 +856,36 @@ namespace LLP
             .WithNonce(std::vector<uint8_t>());  // Clear single-use nonce
             // Keep vMinerPubKey in context - it will be extracted and stored in mapSessionKeys
 
+        /* Set up ChaCha20 encryption context (CRITICAL for PR #111)
+         * This MUST be set after successful authentication for SUBMIT_BLOCK to work */
+        std::vector<uint8_t> vChaChaKey = LLC::MiningSessionKeys::DeriveChaCha20Key(hashGenesisFinal);
+        newContext = newContext.WithChaChaKey(vChaChaKey);
+        
+        /* Validate encryption context was set correctly */
+        if(!newContext.fEncryptionReady || newContext.vChaChaKey.empty() || newContext.vChaChaKey.size() != 32)
+        {
+            debug::error(FUNCTION, "❌ CRITICAL: Failed to set ChaCha20 encryption context!");
+            debug::error(FUNCTION, "   fEncryptionReady: ", newContext.fEncryptionReady);
+            debug::error(FUNCTION, "   vChaChaKey size: ", newContext.vChaChaKey.size(), " (expected: 32)");
+            
+            /* This should never happen, but fail loudly if it does */
+            Packet response(MINER_AUTH_RESULT);
+            response.DATA.push_back(0x00); // Failure
+            response.LENGTH = 1;
+            return ProcessResult::Success(context, response);
+        }
+        
+        /* Log encryption context setup */
+        debug::log(0, FUNCTION, "");
+        debug::log(0, FUNCTION, "🔐 ENCRYPTION CONTEXT SETUP:");
+        debug::log(0, FUNCTION, "   ChaCha20:     Ready for encryption");
+        debug::log(0, FUNCTION, "   Key size:     ", newContext.vChaChaKey.size(), " bytes");
+        debug::log(0, FUNCTION, "   Key (first 16 bytes): ", HexStr(newContext.vChaChaKey.begin(), 
+                                                                     newContext.vChaChaKey.begin() + 16, true));
+        debug::log(2, FUNCTION, "   ChaCha20 session key derived from genesis");
+        debug::log(2, FUNCTION, "   Encryption is now ACTIVE for session ", nSessionId);
+        debug::log(0, FUNCTION, "");
+
         /* Build success response */
         Packet response(MINER_AUTH_RESULT);
         response.DATA.push_back(0x01); // Success
