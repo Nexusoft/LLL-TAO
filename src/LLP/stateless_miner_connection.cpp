@@ -164,7 +164,7 @@ namespace LLP
             result += ' ';
         }
         
-        /* Remove trailing space (we know result is not empty and last char is space) */
+        /* Remove trailing space if present (defensive check) */
         if(!result.empty() && result.back() == ' ')
             result.pop_back();
         
@@ -231,6 +231,44 @@ namespace LLP
         }
         
         return lines;
+    }
+
+
+    /** Helper function to convert bytes to uint64_t in little-endian format.
+     *  This is needed because Falcon protocol uses little-endian encoding.
+     *  @param data The byte vector
+     *  @param offset Starting offset in the vector
+     *  @param count Number of bytes to read (max 8)
+     *  @return uint64_t value in native endianness
+     */
+    static uint64_t bytes_to_uint64_le(const std::vector<uint8_t>& data, size_t offset, size_t count = 8)
+    {
+        uint64_t result = 0;
+        size_t bytes = std::min(count, size_t(8));
+        
+        for(size_t i = 0; i < bytes && (offset + i) < data.size(); ++i)
+        {
+            result |= (uint64_t(data[offset + i]) << (i * 8));
+        }
+        
+        return result;
+    }
+
+
+    /** Helper function to append uint64_t to byte vector in little-endian format.
+     *  This is needed because Falcon protocol uses little-endian encoding.
+     *  @param vec The byte vector to append to
+     *  @param value The uint64_t value to append
+     *  @param count Number of bytes to write (max 8, default 8)
+     */
+    static void append_uint64_le(std::vector<uint8_t>& vec, uint64_t value, size_t count = 8)
+    {
+        size_t bytes = std::min(count, size_t(8));
+        
+        for(size_t i = 0; i < bytes; ++i)
+        {
+            vec.push_back((value >> (i * 8)) & 0xFF);
+        }
     }
 
 
@@ -737,12 +775,8 @@ namespace LLP
                                     decryptedData.begin() + FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET + FalconConstants::NONCE_SIZE
                                 ));
                                 
-                                /* Extract as LITTLE-endian (manual extraction) */
-                                uint64_t nonce_le = 0;
-                                for(size_t i = 0; i < FalconConstants::NONCE_SIZE; ++i)
-                                {
-                                    nonce_le |= (uint64_t(decryptedData[FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET + i]) << (i * 8));
-                                }
+                                /* Extract as LITTLE-endian (Falcon protocol standard) */
+                                uint64_t nonce_le = bytes_to_uint64_le(decryptedData, FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET);
                                 
                                 debug::log(0, "      BIG-endian interpretation:    0x", std::hex, nonce_be, std::dec);
                                 debug::log(0, "      LITTLE-endian interpretation: 0x", std::hex, nonce_le, std::dec);
@@ -760,12 +794,10 @@ namespace LLP
                                 signedData.insert(signedData.end(), merkleBytes.begin(), merkleBytes.end());
                                 
                                 /* Add nonce (8 bytes, little-endian)
-                                 * NOTE: Manual byte extraction is required because Falcon protocol uses little-endian,
-                                 * while convert::uint2bytes64() uses big-endian. This matches SignedWorkSubmission::Deserialize() */
-                                for(size_t i = 0; i < FalconConstants::NONCE_SIZE; ++i)
-                                {
-                                    signedData.push_back((nonceFromBlock >> (i * 8)) & 0xFF);
-                                }
+                                 * NOTE: Manual byte extraction via helper function is required because 
+                                 * Falcon protocol uses little-endian, while convert::uint2bytes64() uses 
+                                 * big-endian. This matches SignedWorkSubmission::Deserialize() */
+                                append_uint64_le(signedData, nonceFromBlock);
                                 
                                 /* Add timestamp + sig_len + signature (everything after the full block) */
                                 signedData.insert(signedData.end(),
@@ -843,13 +875,18 @@ namespace LLP
                                     fFalconVerified = true;
                                     
                                     /* Check timestamp freshness (replay protection) */
+                                    /* NOTE: FALCON_TIMESTAMP_TOLERANCE_SECONDS is defined locally here
+                                     * rather than in FalconConstants because it's a security policy parameter
+                                     * for timestamp validation, not a protocol-level constant. It may be
+                                     * made configurable in the future via command-line args or config file. */
+                                    const uint64_t FALCON_TIMESTAMP_TOLERANCE_SECONDS = 30;
+                                    
                                     uint64_t nCurrentTime = std::chrono::duration_cast<std::chrono::seconds>(
                                         std::chrono::system_clock::now().time_since_epoch()).count();
                                     
                                     /* SECURITY: Safe timestamp comparison to prevent integer overflow attacks
                                      * We avoid casting to int64_t which could overflow with malicious timestamps.
                                      * Instead, we directly compare uint64_t values to determine the time difference. */
-                                    const uint64_t FALCON_TIMESTAMP_TOLERANCE_SECONDS = 30;
                                     uint64_t nTimeDiff = 0;
                                     
                                     if(result.submission.nTimestamp > nCurrentTime)
@@ -863,7 +900,7 @@ namespace LLP
                                         nTimeDiff = nCurrentTime - result.submission.nTimestamp;
                                     }
                                     
-                                    /* Allow 30 second clock skew */
+                                    /* Allow clock skew up to tolerance limit */
                                     if(nTimeDiff > FALCON_TIMESTAMP_TOLERANCE_SECONDS)
                                     {
                                         debug::error(FUNCTION, "❌ Falcon signature timestamp too old (", nTimeDiff, "s skew)");
