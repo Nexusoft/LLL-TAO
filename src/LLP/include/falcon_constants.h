@@ -71,6 +71,16 @@ namespace FalconConstants
     
     /** Maximum signature size for validation (with safety margin) */
     static const size_t FALCON512_SIG_MAX_VALIDATION = 2048;
+    
+    /** Common Falcon-512 signature sizes for dynamic block size detection
+     *  When block size is unknown, we try these common signature sizes to
+     *  work backwards from the packet structure. These represent typical
+     *  signature sizes observed in practice, ordered by frequency. */
+    static const size_t FALCON512_SIG_COMMON_SIZE_1 = 809;  // CT signature (most common)
+    static const size_t FALCON512_SIG_COMMON_SIZE_2 = 800;  // Near-CT compression
+    static const size_t FALCON512_SIG_COMMON_SIZE_3 = 750;  // Good compression
+    static const size_t FALCON512_SIG_COMMON_SIZE_4 = 700;  // Better compression
+    static const size_t FALCON512_SIG_COMMON_SIZE_5 = 666;  // Best compression (minimum)
 
     /***************************************************************************
      * ChaCha20-Poly1305 AEAD Encryption Constants

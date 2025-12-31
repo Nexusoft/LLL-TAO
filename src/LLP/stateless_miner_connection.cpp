@@ -841,7 +841,13 @@ namespace LLP
                                     /* Try reading sig_len from various positions, working backwards from end */
                                     /* The signature is at the end, so: sig_len should be at (end - sigLen - 2) */
                                     /* Since we don't know sigLen yet, try common signature sizes */
-                                    const uint16_t commonSigSizes[] = {809, 800, 750, 700, 666};
+                                    const uint16_t commonSigSizes[] = {
+                                        FalconConstants::FALCON512_SIG_COMMON_SIZE_1,
+                                        FalconConstants::FALCON512_SIG_COMMON_SIZE_2,
+                                        FalconConstants::FALCON512_SIG_COMMON_SIZE_3,
+                                        FalconConstants::FALCON512_SIG_COMMON_SIZE_4,
+                                        FalconConstants::FALCON512_SIG_COMMON_SIZE_5
+                                    };
                                     
                                     for(uint16_t testSigLen : commonSigSizes)
                                     {
@@ -881,6 +887,16 @@ namespace LLP
                                 debug::log(0, "   Signature length: ", sigLen, " bytes");
                                 debug::log(0, "   Total packet size: ", decryptedData.size(), " bytes");
                                 debug::log(0, "   Expected format: [block][timestamp(8)][sig_len(2)][signature]");
+                                
+                                /* Verify we have enough data (should always pass given size detection above) */
+                                if(blockSize + 10 > decryptedData.size() || decryptedData.size() != blockSize + 8 + 2 + sigLen)
+                                {
+                                    debug::error(FUNCTION, "❌ Internal error: Invalid size after detection");
+                                    debug::error(FUNCTION, "   This should not happen - please report this bug");
+                                    Packet response(BLOCK_REJECTED);
+                                    respond(response);
+                                    return true;
+                                }
                                 
                                 /* Extract timestamp */
                                 uint64_t nTimestamp = bytes_to_uint64_le(decryptedData, blockSize);
