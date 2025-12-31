@@ -110,15 +110,27 @@ namespace FalconConstants
      * Note: These values are based on diagnostic data from actual miner submissions.
      * The offsets below were confirmed through real-world testing of NexusMiner
      * PR #65 and PR #66 which send full serialized blocks instead of compact merkle roots.
+     * 
+     * UPDATED: Now supports blocks with transactions (up to 2MB)
+     * Previous values were for empty blocks only (216 bytes for Tritium, 220 for Legacy)
+     * Current values support maximum network block size with transactions (2MB)
      **************************************************************************/
     
     /** Full Tritium block size (without signature or timestamp)
-     *  Based on diagnostic data showing 216-byte Tritium blocks */
-    static const size_t FULL_BLOCK_TRITIUM_SIZE = 216;
+     *  UPDATED: Now supports blocks with transactions (up to 2MB)
+     *  Previous: 216 bytes (empty Tritium block)
+     *  Current: 2MB (maximum network block size with transactions)
+     *  
+     *  NOTE: Block size varies:
+     *  - Empty block (coinbase only): 216 bytes
+     *  - Block with transactions: up to 2MB */
+    static const size_t FULL_BLOCK_TRITIUM_SIZE = 2 * 1024 * 1024;  // Was: 216
     
     /** Full Legacy block size (without signature or timestamp)
-     *  Based on diagnostic data showing 220-byte Legacy blocks */
-    static const size_t FULL_BLOCK_LEGACY_SIZE = 220;
+     *  UPDATED: Now supports blocks with transactions (up to 2MB)
+     *  Previous: 220 bytes (empty Legacy block)
+     *  Current: 2MB (maximum network block size with transactions) */
+    static const size_t FULL_BLOCK_LEGACY_SIZE = 2 * 1024 * 1024;  // Was: 220
     
     /** Merkle root offset in full block
      *  Located after: nVersion(4) + hashPrevBlock(128) = 132 bytes */
@@ -169,24 +181,32 @@ namespace FalconConstants
      *  Old value (merkle format): 891 bytes
      *    merkle(64) + nonce(8) + timestamp(8) + sig_len(2) + sig(809) = 891
      *  
-     *  New value (full block format): 1,035 bytes
+     *  Previous value (full block format): 1,035 bytes
      *    block(216) + timestamp(8) + sig_len(2) + sig(809) = 1,035
      *  
-     *  Updated in: NexusMiner PR #65/#66 (full block mining)
+     *  UPDATED: Now supports 2MB blocks with transactions
+     *  Format: [block(2MB max)][timestamp(8)][sig_len(2)][signature(809 max)]
+     *  Calculation: 2,097,152 + 8 + 2 + 809 = 2,097,971 bytes
+     *  
+     *  Updated in: NexusMiner PR #65/#66 (full block mining), PR #115 (2MB support)
      */
-    static const size_t SUBMIT_BLOCK_WRAPPER_MAX = 1035;  // Was 891
+    static const size_t SUBMIT_BLOCK_WRAPPER_MAX = 2097971;  // Was 1035
     
     /** Submit Block wrapper - PUBLIC MINER (with ChaCha20 encryption)
      *  
      *  Old value (merkle format): 919 bytes
      *    nonce(12) + encrypted_payload(891) + auth_tag(16) = 919
      *  
-     *  New value (full block format): 1,063 bytes
+     *  Previous value (full block format): 1,063 bytes
      *    nonce(12) + encrypted_payload(1,035) + auth_tag(16) = 1,063
      *  
-     *  Updated in: NexusMiner PR #65/#66 (full block mining)
+     *  UPDATED: Now supports 2MB blocks with transactions
+     *  Adds ChaCha20-Poly1305 overhead: nonce(12) + auth_tag(16) = 28 bytes
+     *  Calculation: 2,097,971 + 28 = 2,097,999 bytes
+     *  
+     *  Updated in: NexusMiner PR #65/#66 (full block mining), PR #115 (2MB support)
      */
-    static const size_t SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX = 1063;  // Was 919
+    static const size_t SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX = 2097999;  // Was 1063
 
     /***************************************************************************
      * Physical Block Signature (Stored on Blockchain - Emergency Backup System) - CT=809
@@ -248,12 +268,18 @@ namespace FalconConstants
      *  Old value (merkle format): 1,730 bytes
      *    Dual sig(1,702) + ChaCha20 overhead(28) = 1,730
      *  
-     *  New value (full block format): 1,878 bytes (Legacy - largest)
+     *  Previous value (full block format): 1,878 bytes (Legacy - largest)
      *    Dual sig(1,850) + ChaCha20 overhead(28) = 1,878
      *  
-     *  Updated in: NexusMiner PR #65/#66 (full block mining)
+     *  UPDATED: Now supports 2MB blocks with transactions
+     *  Includes space for dual signatures + ChaCha20 encryption
+     *  Calculation: 2MB block + timestamps + 2 signatures + encryption overhead
+     *  Approximate: 2,097,152 + 8 + 2 + 809 + 2 + 809 + 28 = 2,098,810 bytes
+     *  Using 2,098,000 for practical margin
+     *  
+     *  Updated in: NexusMiner PR #65/#66 (full block mining), PR #115 (2MB support)
      */
-    static const size_t SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX = 1878;  // Was 1,730
+    static const size_t SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX = 2098810;  // Was 1878
 
     /***************************************************************************
      * Full Block Format - Detailed Size Constants (Optional - For Reference)

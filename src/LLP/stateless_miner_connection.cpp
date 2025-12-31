@@ -785,26 +785,80 @@ namespace LLP
                                 /* Use little-endian value (correct for Falcon protocol) */
                                 uint64_t nonceFromBlock = nonce_le;
                                 
-                                /* Reconstruct the signed data that UnwrapWorkSubmission expects */
-                                /* Format: [merkle(64)][nonce(8)][timestamp(8)][sig_len(2)][signature] */
+                                /* Reconstruct signed data to match what miner signed: [full_block][timestamp] */
+                                /* Miner signs: [block][timestamp] */
+                                /* This is simpler, more secure (authenticates entire block), and matches miner behavior */
                                 std::vector<uint8_t> signedData;
                                 
-                                /* Add merkle root (64 bytes) */
-                                std::vector<uint8_t> merkleBytes = hashMerkleFromBlock.GetBytes();
-                                signedData.insert(signedData.end(), merkleBytes.begin(), merkleBytes.end());
+                                /* Format: [block(variable)][timestamp(8)][sig_len(2)][signature(variable)] */
+                                /* Read sig_len to determine where signature starts */
+                                if(decryptedData.size() < 10) {
+                                    debug::error(FUNCTION, "❌ Decrypted payload too small (need at least 10 bytes)");
+                                    Packet response(BLOCK_REJECTED);
+                                    respond(response);
+                                    return true;
+                                }
                                 
-                                /* Add nonce (8 bytes, little-endian)
-                                 * NOTE: Manual byte extraction via helper function is required because 
-                                 * Falcon protocol uses little-endian, while convert::uint2bytes64() uses 
-                                 * big-endian. This matches SignedWorkSubmission::Deserialize() */
-                                append_uint64_le(signedData, nonceFromBlock);
+                                /* Determine block size by reading sig_len */
+                                /* For Falcon-512, signature is typically 809 bytes, but can vary (666-809) */
+                                /* We need to read sig_len to know exact size */
                                 
-                                /* Add timestamp + sig_len + signature (everything after the full block) */
+                                /* Try reading sig_len at expected position (after timestamp) */
+                                /* Start by assuming standard block size first (216 for Tritium, 220 for Legacy) */
+                                size_t blockSize = 216;  // Start with Tritium size
+                                
+                                /* Check if we have enough data for: block + timestamp + sig_len + min_signature */
+                                if(decryptedData.size() < blockSize + 8 + 2 + FalconConstants::FALCON512_SIG_MIN) {
+                                    /* Try legacy size */
+                                    blockSize = 220;
+                                    
+                                    if(decryptedData.size() < blockSize + 8 + 2 + FalconConstants::FALCON512_SIG_MIN) {
+                                        debug::error(FUNCTION, "❌ Decrypted payload too small for block + signature");
+                                        Packet response(BLOCK_REJECTED);
+                                        respond(response);
+                                        return true;
+                                    }
+                                }
+                                
+                                /* Read sig_len (2 bytes, little-endian, at position: blockSize + 8) */
+                                uint16_t sigLen = static_cast<uint16_t>(decryptedData[blockSize + 8]) |
+                                                  (static_cast<uint16_t>(decryptedData[blockSize + 9]) << 8);
+                                
+                                debug::log(0, "📝 SIGNATURE VERIFICATION:");
+                                debug::log(0, "   Block size: ", blockSize, " bytes");
+                                debug::log(0, "   Signature length: ", sigLen, " bytes");
+                                debug::log(0, "   Expected format: [block][timestamp(8)][sig_len(2)][signature]");
+                                
+                                /* Validate sig_len */
+                                if(sigLen < FalconConstants::FALCON512_SIG_MIN || sigLen > FalconConstants::FALCON512_SIG_MAX_VALIDATION) {
+                                    debug::error(FUNCTION, "❌ Invalid signature length: ", sigLen);
+                                    Packet response(BLOCK_REJECTED);
+                                    respond(response);
+                                    return true;
+                                }
+                                
+                                /* Validate total size */
+                                if(decryptedData.size() != blockSize + 8 + 2 + sigLen) {
+                                    debug::error(FUNCTION, "❌ Size mismatch: expected ", blockSize + 8 + 2 + sigLen, 
+                                                           " got ", decryptedData.size());
+                                    Packet response(BLOCK_REJECTED);
+                                    respond(response);
+                                    return true;
+                                }
+                                
+                                /* Build signedData: [block][timestamp] (what miner actually signed) */
                                 signedData.insert(signedData.end(),
-                                                decryptedData.begin() + FalconConstants::FULL_BLOCK_TRITIUM_SIZE,
-                                                decryptedData.end());
+                                                 decryptedData.begin(),
+                                                 decryptedData.begin() + blockSize + 8);
                                 
-                                debug::log(0, "   Reconstructed signed data: ", signedData.size(), " bytes");
+                                /* Append [sig_len][signature] for UnwrapWorkSubmission to parse */
+                                signedData.insert(signedData.end(),
+                                                 decryptedData.begin() + blockSize + 8,
+                                                 decryptedData.end());
+                                
+                                debug::log(0, "   Signed data: [block(" + std::to_string(blockSize) + ")][timestamp(8)]");
+                                debug::log(0, "   Total: ", blockSize + 8, " bytes signed");
+                                debug::log(0, "   ✅ Matches miner's signing format");
                                 debug::log(0, "");
                                 debug::log(0, "🔐 FALCON SIGNATURE VERIFICATION:");
                                 
