@@ -136,11 +136,17 @@ namespace FalconConstants
      *  - Block with transactions: up to 2MB */
     static const size_t FULL_BLOCK_TRITIUM_SIZE = 2 * 1024 * 1024;  // Was: 216
     
+    /** Minimum Tritium block size (empty block, coinbase only) */
+    static const size_t FULL_BLOCK_TRITIUM_MIN = 216;
+    
     /** Full Legacy block size (without signature or timestamp)
      *  UPDATED: Now supports blocks with transactions (up to 2MB)
      *  Previous: 220 bytes (empty Legacy block)
      *  Current: 2MB (maximum network block size with transactions) */
     static const size_t FULL_BLOCK_LEGACY_SIZE = 2 * 1024 * 1024;  // Was: 220
+    
+    /** Minimum Legacy block size (empty block, coinbase only) */
+    static const size_t FULL_BLOCK_LEGACY_MIN = 220;
     
     /** Merkle root offset in full block
      *  Located after: nVersion(4) + hashPrevBlock(128) = 132 bytes */

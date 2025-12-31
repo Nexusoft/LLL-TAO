@@ -690,7 +690,7 @@ namespace LLP
                             /* UnwrapWorkSubmission expects: [merkle(64)][nonce(8)][timestamp(8)][sig_len(2)][signature] */
                             
                             /* Extract merkle root and nonce from the full block */
-                            if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_TRITIUM_SIZE + 
+                            if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_TRITIUM_MIN + 
                                                      FalconConstants::TIMESTAMP_SIZE + 
                                                      FalconConstants::LENGTH_FIELD_SIZE)
                             {
@@ -791,8 +791,11 @@ namespace LLP
                                 
                                 /* Format: [block(variable)][timestamp(8)][sig_len(2)][signature(variable)] */
                                 /* Read sig_len to determine where signature starts */
-                                if(decryptedData.size() < 10) {
-                                    debug::error(FUNCTION, "❌ Decrypted payload too small (need at least 10 bytes)");
+                                /* Minimum size: timestamp(8) + sig_len(2) = 10 bytes */
+                                const size_t MIN_METADATA_SIZE = FalconConstants::TIMESTAMP_SIZE + FalconConstants::LENGTH_FIELD_SIZE;
+                                
+                                if(decryptedData.size() < MIN_METADATA_SIZE) {
+                                    debug::error(FUNCTION, "❌ Decrypted payload too small (need at least ", MIN_METADATA_SIZE, " bytes)");
                                     Packet response(BLOCK_REJECTED);
                                     respond(response);
                                     return true;
@@ -801,8 +804,8 @@ namespace LLP
                                 /* Determine block size dynamically */
                                 /* Format: [block(variable)][timestamp(8)][sig_len(2)][signature(variable)] */
                                 /* Strategy: Work backwards from the end to find sig_len */
-                                /* We know: totalSize = blockSize + 8 + 2 + sigLen */
-                                /* Therefore: blockSize = totalSize - 8 - 2 - sigLen */
+                                /* We know: totalSize = blockSize + timestamp + sig_len_field + sigLen */
+                                /* Therefore: blockSize = totalSize - timestamp - sig_len_field - sigLen */
                                 
                                 /* Read sig_len from different potential positions and validate */
                                 /* Most blocks are 216 or 220 bytes, but can be up to 2MB */
@@ -811,21 +814,27 @@ namespace LLP
                                 bool fFoundValidSize = false;
                                 
                                 /* Try common block sizes first for efficiency: 216 (Tritium) and 220 (Legacy) */
-                                const size_t commonBlockSizes[] = {216, 220};
+                                const size_t commonBlockSizes[] = {
+                                    FalconConstants::FULL_BLOCK_TRITIUM_MIN,
+                                    FalconConstants::FULL_BLOCK_LEGACY_MIN
+                                };
                                 
                                 for(size_t testBlockSize : commonBlockSizes)
                                 {
-                                    if(decryptedData.size() < testBlockSize + 8 + 2 + FalconConstants::FALCON512_SIG_MIN)
+                                    if(decryptedData.size() < testBlockSize + FalconConstants::TIMESTAMP_SIZE + 
+                                                              FalconConstants::LENGTH_FIELD_SIZE + 
+                                                              FalconConstants::FALCON512_SIG_MIN)
                                         continue;  // Too small for this block size
                                     
                                     /* Read sig_len at this position */
-                                    uint16_t testSigLen = static_cast<uint16_t>(decryptedData[testBlockSize + 8]) |
-                                                          (static_cast<uint16_t>(decryptedData[testBlockSize + 9]) << 8);
+                                    uint16_t testSigLen = static_cast<uint16_t>(decryptedData[testBlockSize + FalconConstants::TIMESTAMP_SIZE]) |
+                                                          (static_cast<uint16_t>(decryptedData[testBlockSize + FalconConstants::TIMESTAMP_SIZE + 1]) << 8);
                                     
                                     /* Check if this gives a valid signature length and total size */
                                     if(testSigLen >= FalconConstants::FALCON512_SIG_MIN && 
                                        testSigLen <= FalconConstants::FALCON512_SIG_MAX_VALIDATION &&
-                                       decryptedData.size() == testBlockSize + 8 + 2 + testSigLen)
+                                       decryptedData.size() == testBlockSize + FalconConstants::TIMESTAMP_SIZE + 
+                                                               FalconConstants::LENGTH_FIELD_SIZE + testSigLen)
                                     {
                                         blockSize = testBlockSize;
                                         sigLen = testSigLen;
@@ -836,7 +845,7 @@ namespace LLP
                                 
                                 /* If common sizes didn't work, try computing from signature size */
                                 /* This handles blocks with transactions (larger than 220 bytes) */
-                                if(!fFoundValidSize && decryptedData.size() >= 10 + FalconConstants::FALCON512_SIG_MIN)
+                                if(!fFoundValidSize && decryptedData.size() >= MIN_METADATA_SIZE + FalconConstants::FALCON512_SIG_MIN)
                                 {
                                     /* Try reading sig_len from various positions, working backwards from end */
                                     /* The signature is at the end, so: sig_len should be at (end - sigLen - 2) */
@@ -851,14 +860,16 @@ namespace LLP
                                     
                                     for(uint16_t testSigLen : commonSigSizes)
                                     {
-                                        if(decryptedData.size() < 8 + 2 + testSigLen)
+                                        if(decryptedData.size() < FalconConstants::TIMESTAMP_SIZE + 
+                                                                  FalconConstants::LENGTH_FIELD_SIZE + testSigLen)
                                             continue;
                                         
-                                        size_t testBlockSize = decryptedData.size() - 8 - 2 - testSigLen;
+                                        size_t testBlockSize = decryptedData.size() - FalconConstants::TIMESTAMP_SIZE - 
+                                                               FalconConstants::LENGTH_FIELD_SIZE - testSigLen;
                                         
                                         /* Read actual sig_len at this position */
-                                        uint16_t actualSigLen = static_cast<uint16_t>(decryptedData[testBlockSize + 8]) |
-                                                                (static_cast<uint16_t>(decryptedData[testBlockSize + 9]) << 8);
+                                        uint16_t actualSigLen = static_cast<uint16_t>(decryptedData[testBlockSize + FalconConstants::TIMESTAMP_SIZE]) |
+                                                                (static_cast<uint16_t>(decryptedData[testBlockSize + FalconConstants::TIMESTAMP_SIZE + 1]) << 8);
                                         
                                         /* Check if the actual sig_len matches our test */
                                         if(actualSigLen == testSigLen &&
@@ -886,12 +897,16 @@ namespace LLP
                                 debug::log(0, "   Block size: ", blockSize, " bytes");
                                 debug::log(0, "   Signature length: ", sigLen, " bytes");
                                 debug::log(0, "   Total packet size: ", decryptedData.size(), " bytes");
-                                debug::log(0, "   Expected format: [block][timestamp(8)][sig_len(2)][signature]");
+                                debug::log(0, "   Expected format: [block][timestamp(", FalconConstants::TIMESTAMP_SIZE, 
+                                          ")][sig_len(", FalconConstants::LENGTH_FIELD_SIZE, ")][signature]");
                                 
                                 /* Verify we have enough data (should always pass given size detection above) */
-                                if(blockSize + 10 > decryptedData.size() || decryptedData.size() != blockSize + 8 + 2 + sigLen)
+                                const size_t expectedSize = blockSize + FalconConstants::TIMESTAMP_SIZE + 
+                                                           FalconConstants::LENGTH_FIELD_SIZE + sigLen;
+                                if(decryptedData.size() != expectedSize)
                                 {
                                     debug::error(FUNCTION, "❌ Internal error: Invalid size after detection");
+                                    debug::error(FUNCTION, "   Expected: ", expectedSize, " Got: ", decryptedData.size());
                                     debug::error(FUNCTION, "   This should not happen - please report this bug");
                                     Packet response(BLOCK_REJECTED);
                                     respond(response);
@@ -905,11 +920,11 @@ namespace LLP
                                 std::vector<uint8_t> vMessage;
                                 vMessage.insert(vMessage.end(),
                                                 decryptedData.begin(),
-                                                decryptedData.begin() + blockSize + 8);
+                                                decryptedData.begin() + blockSize + FalconConstants::TIMESTAMP_SIZE);
                                 
-                                /* Extract signature */
+                                /* Extract signature (skip block + timestamp + sig_len) */
                                 std::vector<uint8_t> vSignature(
-                                    decryptedData.begin() + blockSize + 10,  // Skip block + timestamp + sig_len
+                                    decryptedData.begin() + blockSize + FalconConstants::TIMESTAMP_SIZE + FalconConstants::LENGTH_FIELD_SIZE,
                                     decryptedData.end()
                                 );
                                 
@@ -1007,7 +1022,7 @@ namespace LLP
                                 /* Packet too small for Falcon-signed full block format */
                                 debug::error(FUNCTION, "❌ Packet too small for Falcon-signed full block format");
                                 debug::error(FUNCTION, "   Expected at least: ", 
-                                           FalconConstants::FULL_BLOCK_TRITIUM_SIZE + 
+                                           FalconConstants::FULL_BLOCK_TRITIUM_MIN + 
                                            FalconConstants::TIMESTAMP_SIZE + 
                                            FalconConstants::LENGTH_FIELD_SIZE, " bytes");
                                 debug::error(FUNCTION, "   Got: ", PACKET.DATA.size(), " bytes");
