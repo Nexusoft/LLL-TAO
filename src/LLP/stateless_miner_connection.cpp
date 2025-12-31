@@ -690,7 +690,7 @@ namespace LLP
                             /* UnwrapWorkSubmission expects: [merkle(64)][nonce(8)][timestamp(8)][sig_len(2)][signature] */
                             
                             /* Extract merkle root and nonce from the full block */
-                            if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_TRITIUM_SIZE + 
+                            if(PACKET.DATA.size() >= FalconConstants::FULL_BLOCK_TRITIUM_MIN + 
                                                      FalconConstants::TIMESTAMP_SIZE + 
                                                      FalconConstants::LENGTH_FIELD_SIZE)
                             {
@@ -785,145 +785,235 @@ namespace LLP
                                 /* Use little-endian value (correct for Falcon protocol) */
                                 uint64_t nonceFromBlock = nonce_le;
                                 
-                                /* Reconstruct the signed data that UnwrapWorkSubmission expects */
-                                /* Format: [merkle(64)][nonce(8)][timestamp(8)][sig_len(2)][signature] */
-                                std::vector<uint8_t> signedData;
+                                /* Reconstruct signed data to match what miner signed: [full_block][timestamp] */
+                                /* Miner signs: [block][timestamp] */
+                                /* This is simpler, more secure (authenticates entire block), and matches miner behavior */
                                 
-                                /* Add merkle root (64 bytes) */
-                                std::vector<uint8_t> merkleBytes = hashMerkleFromBlock.GetBytes();
-                                signedData.insert(signedData.end(), merkleBytes.begin(), merkleBytes.end());
+                                /* Format: [block(variable)][timestamp(8)][sig_len(2)][signature(variable)] */
+                                /* Read sig_len to determine where signature starts */
+                                /* Minimum size: timestamp(8) + sig_len(2) = 10 bytes */
+                                const size_t MIN_METADATA_SIZE = FalconConstants::TIMESTAMP_SIZE + FalconConstants::LENGTH_FIELD_SIZE;
                                 
-                                /* Add nonce (8 bytes, little-endian)
-                                 * NOTE: Manual byte extraction via helper function is required because 
-                                 * Falcon protocol uses little-endian, while convert::uint2bytes64() uses 
-                                 * big-endian. This matches SignedWorkSubmission::Deserialize() */
-                                append_uint64_le(signedData, nonceFromBlock);
+                                if(decryptedData.size() < MIN_METADATA_SIZE) {
+                                    debug::error(FUNCTION, "❌ Decrypted payload too small (need at least ", MIN_METADATA_SIZE, " bytes)");
+                                    Packet response(BLOCK_REJECTED);
+                                    respond(response);
+                                    return true;
+                                }
                                 
-                                /* Add timestamp + sig_len + signature (everything after the full block) */
-                                signedData.insert(signedData.end(),
-                                                decryptedData.begin() + FalconConstants::FULL_BLOCK_TRITIUM_SIZE,
-                                                decryptedData.end());
+                                /* Determine block size dynamically */
+                                /* Format: [block(variable)][timestamp(8)][sig_len(2)][signature(variable)] */
+                                /* Strategy: Work backwards from the end to find sig_len */
+                                /* We know: totalSize = blockSize + timestamp + sig_len_field + sigLen */
+                                /* Therefore: blockSize = totalSize - timestamp - sig_len_field - sigLen */
                                 
-                                debug::log(0, "   Reconstructed signed data: ", signedData.size(), " bytes");
+                                /* Read sig_len from different potential positions and validate */
+                                /* Most blocks are 216 or 220 bytes, but can be up to 2MB */
+                                size_t blockSize = 0;
+                                uint16_t sigLen = 0;
+                                bool fFoundValidSize = false;
+                                
+                                /* Try common block sizes first for efficiency: 216 (Tritium) and 220 (Legacy) */
+                                const size_t commonBlockSizes[] = {
+                                    FalconConstants::FULL_BLOCK_TRITIUM_MIN,
+                                    FalconConstants::FULL_BLOCK_LEGACY_MIN
+                                };
+                                
+                                for(size_t testBlockSize : commonBlockSizes)
+                                {
+                                    if(decryptedData.size() < testBlockSize + FalconConstants::TIMESTAMP_SIZE + 
+                                                              FalconConstants::LENGTH_FIELD_SIZE + 
+                                                              FalconConstants::FALCON512_SIG_MIN)
+                                        continue;  // Too small for this block size
+                                    
+                                    /* Read sig_len at this position */
+                                    uint16_t testSigLen = static_cast<uint16_t>(decryptedData[testBlockSize + FalconConstants::TIMESTAMP_SIZE]) |
+                                                          (static_cast<uint16_t>(decryptedData[testBlockSize + FalconConstants::TIMESTAMP_SIZE + 1]) << 8);
+                                    
+                                    /* Check if this gives a valid signature length and total size */
+                                    if(testSigLen >= FalconConstants::FALCON512_SIG_MIN && 
+                                       testSigLen <= FalconConstants::FALCON512_SIG_MAX_VALIDATION &&
+                                       decryptedData.size() == testBlockSize + FalconConstants::TIMESTAMP_SIZE + 
+                                                               FalconConstants::LENGTH_FIELD_SIZE + testSigLen)
+                                    {
+                                        blockSize = testBlockSize;
+                                        sigLen = testSigLen;
+                                        fFoundValidSize = true;
+                                        break;
+                                    }
+                                }
+                                
+                                /* If common sizes didn't work, try computing from signature size */
+                                /* This handles blocks with transactions (larger than 220 bytes) */
+                                if(!fFoundValidSize && decryptedData.size() >= MIN_METADATA_SIZE + FalconConstants::FALCON512_SIG_MIN)
+                                {
+                                    /* Try reading sig_len from various positions, working backwards from end */
+                                    /* The signature is at the end, so: sig_len should be at (end - sigLen - 2) */
+                                    /* Since we don't know sigLen yet, try common signature sizes */
+                                    const uint16_t commonSigSizes[] = {
+                                        FalconConstants::FALCON512_SIG_COMMON_SIZE_1,
+                                        FalconConstants::FALCON512_SIG_COMMON_SIZE_2,
+                                        FalconConstants::FALCON512_SIG_COMMON_SIZE_3,
+                                        FalconConstants::FALCON512_SIG_COMMON_SIZE_4,
+                                        FalconConstants::FALCON512_SIG_COMMON_SIZE_5
+                                    };
+                                    
+                                    for(uint16_t testSigLen : commonSigSizes)
+                                    {
+                                        if(decryptedData.size() < FalconConstants::TIMESTAMP_SIZE + 
+                                                                  FalconConstants::LENGTH_FIELD_SIZE + testSigLen)
+                                            continue;
+                                        
+                                        size_t testBlockSize = decryptedData.size() - FalconConstants::TIMESTAMP_SIZE - 
+                                                               FalconConstants::LENGTH_FIELD_SIZE - testSigLen;
+                                        
+                                        /* Read actual sig_len at this position */
+                                        uint16_t actualSigLen = static_cast<uint16_t>(decryptedData[testBlockSize + FalconConstants::TIMESTAMP_SIZE]) |
+                                                                (static_cast<uint16_t>(decryptedData[testBlockSize + FalconConstants::TIMESTAMP_SIZE + 1]) << 8);
+                                        
+                                        /* Check if the actual sig_len matches our test */
+                                        if(actualSigLen == testSigLen &&
+                                           actualSigLen >= FalconConstants::FALCON512_SIG_MIN &&
+                                           actualSigLen <= FalconConstants::FALCON512_SIG_MAX_VALIDATION)
+                                        {
+                                            blockSize = testBlockSize;
+                                            sigLen = actualSigLen;
+                                            fFoundValidSize = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                if(!fFoundValidSize)
+                                {
+                                    debug::error(FUNCTION, "❌ Could not determine block size from packet structure");
+                                    debug::error(FUNCTION, "   Decrypted size: ", decryptedData.size(), " bytes");
+                                    Packet response(BLOCK_REJECTED);
+                                    respond(response);
+                                    return true;
+                                }
+                                
+                                debug::log(0, "📝 SIGNATURE VERIFICATION:");
+                                debug::log(0, "   Block size: ", blockSize, " bytes");
+                                debug::log(0, "   Signature length: ", sigLen, " bytes");
+                                debug::log(0, "   Total packet size: ", decryptedData.size(), " bytes");
+                                debug::log(0, "   Expected format: [block][timestamp(", FalconConstants::TIMESTAMP_SIZE, 
+                                          ")][sig_len(", FalconConstants::LENGTH_FIELD_SIZE, ")][signature]");
+                                
+                                /* Verify we have enough data (should always pass given size detection above) */
+                                const size_t expectedSize = blockSize + FalconConstants::TIMESTAMP_SIZE + 
+                                                           FalconConstants::LENGTH_FIELD_SIZE + sigLen;
+                                if(decryptedData.size() != expectedSize)
+                                {
+                                    debug::error(FUNCTION, "❌ Internal error: Invalid size after detection");
+                                    debug::error(FUNCTION, "   Expected: ", expectedSize, " Got: ", decryptedData.size());
+                                    debug::error(FUNCTION, "   This should not happen - please report this bug");
+                                    Packet response(BLOCK_REJECTED);
+                                    respond(response);
+                                    return true;
+                                }
+                                
+                                /* Extract timestamp */
+                                uint64_t nTimestamp = bytes_to_uint64_le(decryptedData, blockSize);
+                                
+                                /* Build message that was signed: [block][timestamp] */
+                                std::vector<uint8_t> vMessage;
+                                vMessage.insert(vMessage.end(),
+                                                decryptedData.begin(),
+                                                decryptedData.begin() + blockSize + FalconConstants::TIMESTAMP_SIZE);
+                                
+                                /* Extract signature (skip block + timestamp + sig_len) */
+                                std::vector<uint8_t> vSignature(
+                                    decryptedData.begin() + blockSize + FalconConstants::TIMESTAMP_SIZE + FalconConstants::LENGTH_FIELD_SIZE,
+                                    decryptedData.end()
+                                );
+                                
+                                debug::log(0, "   Signed message: [block(" + std::to_string(blockSize) + ")][timestamp(8)]");
+                                debug::log(0, "   Total message bytes: ", vMessage.size());
+                                debug::log(0, "   Signature bytes: ", vSignature.size());
+                                debug::log(0, "   ✅ Matches miner's signing format");
                                 debug::log(0, "");
                                 debug::log(0, "🔐 FALCON SIGNATURE VERIFICATION:");
                                 
-                                /* Now unwrap with the correct format */
-                                auto result = m_pFalconWrapper->UnwrapWorkSubmission(signedData, vSessionPubKey);
-                                
-                                if(result.fSuccess)
+                                /* Set up Falcon key for verification */
+                                LLC::FLKey verifyKey;
+                                if(!verifyKey.SetPubKey(vSessionPubKey))
                                 {
-                                    debug::log(0, "   Status: ✅ VERIFIED");
-                                    debug::log(0, "   Key ID: ", result.hashKeyID.SubString());
-                                    debug::log(0, "   Timestamp: ", result.submission.nTimestamp);
-                                    debug::log(0, "   Merkle: ", result.submission.hashMerkleRoot.SubString());
-                                    debug::log(0, "   Nonce: 0x", std::hex, result.submission.nNonce, std::dec);
-                                    debug::log(0, "════════════════════════════════════════════════════════");
+                                    debug::error(FUNCTION, "❌ Failed to set public key for verification");
+                                    Packet response(BLOCK_REJECTED);
+                                    respond(response);
+                                    return true;
+                                }
+                                
+                                /* Verify Falcon signature directly */
+                                if(!verifyKey.Verify(vMessage, vSignature))
+                                {
+                                    debug::error(FUNCTION, "❌ Falcon signature verification FAILED");
+                                    debug::error(FUNCTION, "   Possible causes:");
+                                    debug::error(FUNCTION, "   - Signature was signed with different key");
+                                    debug::error(FUNCTION, "   - Message format mismatch");
+                                    debug::error(FUNCTION, "   - Corrupted signature data");
                                     
-                                    /* Verify merkle and nonce match what we extracted */
-                                    if(result.submission.hashMerkleRoot != hashMerkleFromBlock)
-                                    {
-                                        debug::error(FUNCTION, "❌ Merkle root mismatch after signature verification!");
-                                        debug::error(FUNCTION, "   From block:     ", hashMerkleFromBlock.SubString());
-                                        debug::error(FUNCTION, "   From signature: ", result.submission.hashMerkleRoot.SubString());
-                                        
-                                        Packet response(BLOCK_REJECTED);
-                                        response.DATA.push_back(0x0A);  // Data corruption
-                                        respond(response);
-                                        return true;
-                                    }
+                                    Packet response(BLOCK_REJECTED);
+                                    response.DATA.push_back(0x0C);  // Reason: Signature verification failed
+                                    respond(response);
                                     
-                                    if(result.submission.nNonce != nonceFromBlock)
-                                    {
-                                        debug::error(FUNCTION, "❌ Nonce mismatch after signature verification!");
-                                        debug::error(FUNCTION, "   From block:     0x", std::hex, nonceFromBlock, std::dec);
-                                        debug::error(FUNCTION, "   From signature: 0x", std::hex, result.submission.nNonce, std::dec);
-                                        
-                                        Packet response(BLOCK_REJECTED);
-                                        response.DATA.push_back(0x0A);  // Data corruption
-                                        respond(response);
-                                        return true;
-                                    }
-                                    
-                                    /* SECURITY: Verify signature key matches authenticated session key */
-                                    /* This prevents key substitution attacks where an attacker might try */
-                                    /* to submit work signed with a different key than the authenticated one */
-                                    /* NOTE: Current comparison is not constant-time, which could theoretically */
-                                    /* leak information via timing attacks. Consider using constant-time comparison */
-                                    /* if this becomes a concern (low priority since keyID is public). */
-                                    if(result.hashKeyID != context.hashKeyID)
-                                    {
-                                        debug::error(FUNCTION, "❌ Falcon key ID mismatch - SECURITY VIOLATION");
-                                        debug::error(FUNCTION, "   Signature key ID: ", result.hashKeyID.SubString());
-                                        debug::error(FUNCTION, "   Session key ID:   ", context.hashKeyID.SubString());
-                                        debug::error(FUNCTION, "   This prevents key substitution attacks");
-                                        
-                                        Packet response(BLOCK_REJECTED);
-                                        response.DATA.push_back(0x09);  // Reason: key ID mismatch
-                                        respond(response);
-                                        
-                                        debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Key ID mismatch) ===", ANSI_COLOR_RESET);
-                                        return true;
-                                    }
-                                    
-                                    debug::log(2, FUNCTION, "   ✓ Merkle and nonce validated (match block data)");
-                                    debug::log(2, FUNCTION, "   ✓ Key ID validated (matches session key)");
-                                    
-                                    /* Signature verified! Use the verified values */
-                                    hashMerkle = result.submission.hashMerkleRoot;
-                                    nonce = result.submission.nNonce;
-                                    fFalconVerified = true;
-                                    
-                                    /* Check timestamp freshness (replay protection) */
-                                    /* NOTE: FALCON_TIMESTAMP_TOLERANCE_SECONDS is defined locally here
-                                     * rather than in FalconConstants because it's a security policy parameter
-                                     * for timestamp validation, not a protocol-level constant. It may be
-                                     * made configurable in the future via command-line args or config file. */
-                                    const uint64_t FALCON_TIMESTAMP_TOLERANCE_SECONDS = 30;
-                                    
-                                    uint64_t nCurrentTime = std::chrono::duration_cast<std::chrono::seconds>(
-                                        std::chrono::system_clock::now().time_since_epoch()).count();
-                                    
-                                    /* SECURITY: Safe timestamp comparison to prevent integer overflow attacks
-                                     * We avoid casting to int64_t which could overflow with malicious timestamps.
-                                     * Instead, we directly compare uint64_t values to determine the time difference. */
-                                    uint64_t nTimeDiff = 0;
-                                    
-                                    if(result.submission.nTimestamp > nCurrentTime)
-                                    {
-                                        /* Timestamp is in the future */
-                                        nTimeDiff = result.submission.nTimestamp - nCurrentTime;
-                                    }
-                                    else
-                                    {
-                                        /* Timestamp is in the past */
-                                        nTimeDiff = nCurrentTime - result.submission.nTimestamp;
-                                    }
-                                    
-                                    /* Allow clock skew up to tolerance limit */
-                                    if(nTimeDiff > FALCON_TIMESTAMP_TOLERANCE_SECONDS)
-                                    {
-                                        debug::error(FUNCTION, "❌ Falcon signature timestamp too old (", nTimeDiff, "s skew)");
-                                        debug::error(FUNCTION, "   This prevents replay attacks");
-                                        
-                                        Packet response(BLOCK_REJECTED);
-                                        response.DATA.push_back(0x08);  // Reason: stale timestamp
-                                        respond(response);
-                                        
-                                        debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Stale Falcon signature) ===", ANSI_COLOR_RESET);
-                                        return true;
-                                    }
+                                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Signature verification failed) ===", ANSI_COLOR_RESET);
+                                    return true;
+                                }
+                                
+                                debug::log(0, "   Status: ✅ VERIFIED");
+                                debug::log(0, "   Timestamp: ", nTimestamp);
+                                debug::log(0, "   Merkle: ", hashMerkleFromBlock.SubString());
+                                debug::log(0, "   Nonce: 0x", std::hex, nonceFromBlock, std::dec);
+                                debug::log(0, "════════════════════════════════════════════════════════");
+                                
+                                /* Signature verified successfully */
+                                /* The signature verified the entire block + timestamp */
+                                /* This authenticates the full block content, not just merkle + nonce */
+                                
+                                /* Use the verified values from block extraction */
+                                hashMerkle = hashMerkleFromBlock;
+                                nonce = nonceFromBlock;
+                                fFalconVerified = true;
+                                
+                                /* Check timestamp freshness (replay protection) */
+                                /* NOTE: FALCON_TIMESTAMP_TOLERANCE_SECONDS is defined locally here
+                                 * rather than in FalconConstants because it's a security policy parameter
+                                 * for timestamp validation, not a protocol-level constant. It may be
+                                 * made configurable in the future via command-line args or config file. */
+                                const uint64_t FALCON_TIMESTAMP_TOLERANCE_SECONDS = 30;
+                                
+                                uint64_t nCurrentTime = std::chrono::duration_cast<std::chrono::seconds>(
+                                    std::chrono::system_clock::now().time_since_epoch()).count();
+                                
+                                /* SECURITY: Safe timestamp comparison to prevent integer overflow attacks
+                                 * We avoid casting to int64_t which could overflow with malicious timestamps.
+                                 * Instead, we directly compare uint64_t values to determine the time difference. */
+                                uint64_t nTimeDiff = 0;
+                                
+                                if(nTimestamp > nCurrentTime)
+                                {
+                                    /* Timestamp is in the future */
+                                    nTimeDiff = nTimestamp - nCurrentTime;
                                 }
                                 else
                                 {
-                                    /* Signature verification failed */
-                                    debug::error(FUNCTION, "❌ Falcon signature verification FAILED: ", result.strError);
+                                    /* Timestamp is in the past */
+                                    nTimeDiff = nCurrentTime - nTimestamp;
+                                }
+                                
+                                /* Allow clock skew up to tolerance limit */
+                                if(nTimeDiff > FALCON_TIMESTAMP_TOLERANCE_SECONDS)
+                                {
+                                    debug::error(FUNCTION, "❌ Falcon signature timestamp too old (", nTimeDiff, "s skew)");
+                                    debug::error(FUNCTION, "   This prevents replay attacks");
                                     
                                     Packet response(BLOCK_REJECTED);
-                                    response.DATA.push_back(0x07);  // Reason: invalid signature
+                                    response.DATA.push_back(0x08);  // Reason: stale timestamp
                                     respond(response);
                                     
-                                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Invalid Falcon signature) ===", ANSI_COLOR_RESET);
+                                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Stale Falcon signature) ===", ANSI_COLOR_RESET);
                                     return true;
                                 }
                             }
@@ -932,7 +1022,7 @@ namespace LLP
                                 /* Packet too small for Falcon-signed full block format */
                                 debug::error(FUNCTION, "❌ Packet too small for Falcon-signed full block format");
                                 debug::error(FUNCTION, "   Expected at least: ", 
-                                           FalconConstants::FULL_BLOCK_TRITIUM_SIZE + 
+                                           FalconConstants::FULL_BLOCK_TRITIUM_MIN + 
                                            FalconConstants::TIMESTAMP_SIZE + 
                                            FalconConstants::LENGTH_FIELD_SIZE, " bytes");
                                 debug::error(FUNCTION, "   Got: ", PACKET.DATA.size(), " bytes");
