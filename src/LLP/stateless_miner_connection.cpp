@@ -788,7 +788,6 @@ namespace LLP
                                 /* Reconstruct signed data to match what miner signed: [full_block][timestamp] */
                                 /* Miner signs: [block][timestamp] */
                                 /* This is simpler, more secure (authenticates entire block), and matches miner behavior */
-                                std::vector<uint8_t> signedData;
                                 
                                 /* Format: [block(variable)][timestamp(8)][sig_len(2)][signature(variable)] */
                                 /* Read sig_len to determine where signature starts */
@@ -846,138 +845,107 @@ namespace LLP
                                     return true;
                                 }
                                 
-                                /* Build signedData: [block][timestamp] (what miner actually signed) */
-                                signedData.insert(signedData.end(),
-                                                 decryptedData.begin(),
-                                                 decryptedData.begin() + blockSize + 8);
+                                /* Extract timestamp */
+                                uint64_t nTimestamp = bytes_to_uint64_le(decryptedData, blockSize);
                                 
-                                /* Append [sig_len][signature] for UnwrapWorkSubmission to parse */
-                                signedData.insert(signedData.end(),
-                                                 decryptedData.begin() + blockSize + 8,
-                                                 decryptedData.end());
+                                /* Build message that was signed: [block][timestamp] */
+                                std::vector<uint8_t> vMessage;
+                                vMessage.insert(vMessage.end(),
+                                                decryptedData.begin(),
+                                                decryptedData.begin() + blockSize + 8);
                                 
-                                debug::log(0, "   Signed data: [block(" + std::to_string(blockSize) + ")][timestamp(8)]");
-                                debug::log(0, "   Total: ", blockSize + 8, " bytes signed");
+                                /* Extract signature */
+                                std::vector<uint8_t> vSignature(
+                                    decryptedData.begin() + blockSize + 10,  // Skip block + timestamp + sig_len
+                                    decryptedData.end()
+                                );
+                                
+                                debug::log(0, "   Signed message: [block(" + std::to_string(blockSize) + ")][timestamp(8)]");
+                                debug::log(0, "   Total message bytes: ", vMessage.size());
+                                debug::log(0, "   Signature bytes: ", vSignature.size());
                                 debug::log(0, "   ✅ Matches miner's signing format");
                                 debug::log(0, "");
                                 debug::log(0, "🔐 FALCON SIGNATURE VERIFICATION:");
                                 
-                                /* Now unwrap with the correct format */
-                                auto result = m_pFalconWrapper->UnwrapWorkSubmission(signedData, vSessionPubKey);
-                                
-                                if(result.fSuccess)
+                                /* Set up Falcon key for verification */
+                                LLC::FLKey verifyKey;
+                                if(!verifyKey.SetPubKey(vSessionPubKey))
                                 {
-                                    debug::log(0, "   Status: ✅ VERIFIED");
-                                    debug::log(0, "   Key ID: ", result.hashKeyID.SubString());
-                                    debug::log(0, "   Timestamp: ", result.submission.nTimestamp);
-                                    debug::log(0, "   Merkle: ", result.submission.hashMerkleRoot.SubString());
-                                    debug::log(0, "   Nonce: 0x", std::hex, result.submission.nNonce, std::dec);
-                                    debug::log(0, "════════════════════════════════════════════════════════");
+                                    debug::error(FUNCTION, "❌ Failed to set public key for verification");
+                                    Packet response(BLOCK_REJECTED);
+                                    respond(response);
+                                    return true;
+                                }
+                                
+                                /* Verify Falcon signature directly */
+                                if(!verifyKey.Verify(vMessage, vSignature))
+                                {
+                                    debug::error(FUNCTION, "❌ Falcon signature verification FAILED");
+                                    debug::error(FUNCTION, "   Possible causes:");
+                                    debug::error(FUNCTION, "   - Signature was signed with different key");
+                                    debug::error(FUNCTION, "   - Message format mismatch");
+                                    debug::error(FUNCTION, "   - Corrupted signature data");
                                     
-                                    /* Verify merkle and nonce match what we extracted */
-                                    if(result.submission.hashMerkleRoot != hashMerkleFromBlock)
-                                    {
-                                        debug::error(FUNCTION, "❌ Merkle root mismatch after signature verification!");
-                                        debug::error(FUNCTION, "   From block:     ", hashMerkleFromBlock.SubString());
-                                        debug::error(FUNCTION, "   From signature: ", result.submission.hashMerkleRoot.SubString());
-                                        
-                                        Packet response(BLOCK_REJECTED);
-                                        response.DATA.push_back(0x0A);  // Data corruption
-                                        respond(response);
-                                        return true;
-                                    }
+                                    Packet response(BLOCK_REJECTED);
+                                    response.DATA.push_back(0x0C);  // Reason: Signature verification failed
+                                    respond(response);
                                     
-                                    if(result.submission.nNonce != nonceFromBlock)
-                                    {
-                                        debug::error(FUNCTION, "❌ Nonce mismatch after signature verification!");
-                                        debug::error(FUNCTION, "   From block:     0x", std::hex, nonceFromBlock, std::dec);
-                                        debug::error(FUNCTION, "   From signature: 0x", std::hex, result.submission.nNonce, std::dec);
-                                        
-                                        Packet response(BLOCK_REJECTED);
-                                        response.DATA.push_back(0x0A);  // Data corruption
-                                        respond(response);
-                                        return true;
-                                    }
-                                    
-                                    /* SECURITY: Verify signature key matches authenticated session key */
-                                    /* This prevents key substitution attacks where an attacker might try */
-                                    /* to submit work signed with a different key than the authenticated one */
-                                    /* NOTE: Current comparison is not constant-time, which could theoretically */
-                                    /* leak information via timing attacks. Consider using constant-time comparison */
-                                    /* if this becomes a concern (low priority since keyID is public). */
-                                    if(result.hashKeyID != context.hashKeyID)
-                                    {
-                                        debug::error(FUNCTION, "❌ Falcon key ID mismatch - SECURITY VIOLATION");
-                                        debug::error(FUNCTION, "   Signature key ID: ", result.hashKeyID.SubString());
-                                        debug::error(FUNCTION, "   Session key ID:   ", context.hashKeyID.SubString());
-                                        debug::error(FUNCTION, "   This prevents key substitution attacks");
-                                        
-                                        Packet response(BLOCK_REJECTED);
-                                        response.DATA.push_back(0x09);  // Reason: key ID mismatch
-                                        respond(response);
-                                        
-                                        debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Key ID mismatch) ===", ANSI_COLOR_RESET);
-                                        return true;
-                                    }
-                                    
-                                    debug::log(2, FUNCTION, "   ✓ Merkle and nonce validated (match block data)");
-                                    debug::log(2, FUNCTION, "   ✓ Key ID validated (matches session key)");
-                                    
-                                    /* Signature verified! Use the verified values */
-                                    hashMerkle = result.submission.hashMerkleRoot;
-                                    nonce = result.submission.nNonce;
-                                    fFalconVerified = true;
-                                    
-                                    /* Check timestamp freshness (replay protection) */
-                                    /* NOTE: FALCON_TIMESTAMP_TOLERANCE_SECONDS is defined locally here
-                                     * rather than in FalconConstants because it's a security policy parameter
-                                     * for timestamp validation, not a protocol-level constant. It may be
-                                     * made configurable in the future via command-line args or config file. */
-                                    const uint64_t FALCON_TIMESTAMP_TOLERANCE_SECONDS = 30;
-                                    
-                                    uint64_t nCurrentTime = std::chrono::duration_cast<std::chrono::seconds>(
-                                        std::chrono::system_clock::now().time_since_epoch()).count();
-                                    
-                                    /* SECURITY: Safe timestamp comparison to prevent integer overflow attacks
-                                     * We avoid casting to int64_t which could overflow with malicious timestamps.
-                                     * Instead, we directly compare uint64_t values to determine the time difference. */
-                                    uint64_t nTimeDiff = 0;
-                                    
-                                    if(result.submission.nTimestamp > nCurrentTime)
-                                    {
-                                        /* Timestamp is in the future */
-                                        nTimeDiff = result.submission.nTimestamp - nCurrentTime;
-                                    }
-                                    else
-                                    {
-                                        /* Timestamp is in the past */
-                                        nTimeDiff = nCurrentTime - result.submission.nTimestamp;
-                                    }
-                                    
-                                    /* Allow clock skew up to tolerance limit */
-                                    if(nTimeDiff > FALCON_TIMESTAMP_TOLERANCE_SECONDS)
-                                    {
-                                        debug::error(FUNCTION, "❌ Falcon signature timestamp too old (", nTimeDiff, "s skew)");
-                                        debug::error(FUNCTION, "   This prevents replay attacks");
-                                        
-                                        Packet response(BLOCK_REJECTED);
-                                        response.DATA.push_back(0x08);  // Reason: stale timestamp
-                                        respond(response);
-                                        
-                                        debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Stale Falcon signature) ===", ANSI_COLOR_RESET);
-                                        return true;
-                                    }
+                                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Signature verification failed) ===", ANSI_COLOR_RESET);
+                                    return true;
+                                }
+                                
+                                debug::log(0, "   Status: ✅ VERIFIED");
+                                debug::log(0, "   Timestamp: ", nTimestamp);
+                                debug::log(0, "   Merkle: ", hashMerkleFromBlock.SubString());
+                                debug::log(0, "   Nonce: 0x", std::hex, nonceFromBlock, std::dec);
+                                debug::log(0, "════════════════════════════════════════════════════════");
+                                
+                                /* Signature verified successfully */
+                                /* The signature verified the entire block + timestamp */
+                                /* This authenticates the full block content, not just merkle + nonce */
+                                
+                                /* Use the verified values from block extraction */
+                                hashMerkle = hashMerkleFromBlock;
+                                nonce = nonceFromBlock;
+                                fFalconVerified = true;
+                                
+                                /* Check timestamp freshness (replay protection) */
+                                /* NOTE: FALCON_TIMESTAMP_TOLERANCE_SECONDS is defined locally here
+                                 * rather than in FalconConstants because it's a security policy parameter
+                                 * for timestamp validation, not a protocol-level constant. It may be
+                                 * made configurable in the future via command-line args or config file. */
+                                const uint64_t FALCON_TIMESTAMP_TOLERANCE_SECONDS = 30;
+                                
+                                uint64_t nCurrentTime = std::chrono::duration_cast<std::chrono::seconds>(
+                                    std::chrono::system_clock::now().time_since_epoch()).count();
+                                
+                                /* SECURITY: Safe timestamp comparison to prevent integer overflow attacks
+                                 * We avoid casting to int64_t which could overflow with malicious timestamps.
+                                 * Instead, we directly compare uint64_t values to determine the time difference. */
+                                uint64_t nTimeDiff = 0;
+                                
+                                if(nTimestamp > nCurrentTime)
+                                {
+                                    /* Timestamp is in the future */
+                                    nTimeDiff = nTimestamp - nCurrentTime;
                                 }
                                 else
                                 {
-                                    /* Signature verification failed */
-                                    debug::error(FUNCTION, "❌ Falcon signature verification FAILED: ", result.strError);
+                                    /* Timestamp is in the past */
+                                    nTimeDiff = nCurrentTime - nTimestamp;
+                                }
+                                
+                                /* Allow clock skew up to tolerance limit */
+                                if(nTimeDiff > FALCON_TIMESTAMP_TOLERANCE_SECONDS)
+                                {
+                                    debug::error(FUNCTION, "❌ Falcon signature timestamp too old (", nTimeDiff, "s skew)");
+                                    debug::error(FUNCTION, "   This prevents replay attacks");
                                     
                                     Packet response(BLOCK_REJECTED);
-                                    response.DATA.push_back(0x07);  // Reason: invalid signature
+                                    response.DATA.push_back(0x08);  // Reason: stale timestamp
                                     respond(response);
                                     
-                                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Invalid Falcon signature) ===", ANSI_COLOR_RESET);
+                                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Stale Falcon signature) ===", ANSI_COLOR_RESET);
                                     return true;
                                 }
                             }
