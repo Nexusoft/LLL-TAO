@@ -1639,11 +1639,7 @@ namespace LLP
                     debug::error(FUNCTION, "   hashProof > nTarget (hash too high)");
                     debug::error(FUNCTION, "   Hash:   ", hashProof.ToString().substr(0, 64), "...");
                     debug::error(FUNCTION, "   Target: ", nTarget.ToString().substr(0, 64), "...");
-                    
-                    /* Calculate how far off */
-                    LLC::CBigNum bnProof(hashProof);
-                    double ratio = bnProof.getdouble() / bnTarget.getdouble();
-                    debug::error(FUNCTION, "   Ratio: ", std::fixed, std::setprecision(2), ratio, "x too high");
+                    debug::error(FUNCTION, "   Hash exceeds target (proof of work insufficient)");
                     
                     return false;
                 }
