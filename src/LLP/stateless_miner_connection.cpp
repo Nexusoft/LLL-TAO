@@ -21,6 +21,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/stateless_block_utility.h>
 #include <TAO/Ledger/include/prime.h>
+#include <TAO/Ledger/include/retarget.h>
+#include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/chainstate.h>
@@ -38,6 +40,7 @@ ________________________________________________________________________________
 #include <LLC/include/eckey.h>
 #include <LLC/include/chacha20_helpers.h>
 #include <LLC/include/mining_session_keys.h>
+#include <LLC/types/bignum.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
@@ -47,6 +50,7 @@ ________________________________________________________________________________
 #include <chrono>
 #include <limits>
 #include <algorithm>
+#include <iomanip>
 
 namespace LLP
 {
@@ -1544,9 +1548,121 @@ namespace LLP
             pBlock->UpdateTime();
             debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Timestamp updated", ANSI_COLOR_RESET);
 
-            /* Calculate prime offsets before validation. */
-            TAO::Ledger::GetOffsets(pBlock->GetPrime(), pBlock->vOffsets);
-            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Prime offsets calculated", ANSI_COLOR_RESET);
+            /* Channel-specific validation */
+            if(pBlock->nChannel == 1)  // Prime channel
+            {
+                /* Calculate prime base value */
+                uint1024_t hashPrime = pBlock->GetPrime();
+                debug::log(0, "   Prime base calculation:");
+                debug::log(0, "      hashPrime = ProofHash() + nNonce");
+                debug::log(0, "      hashPrime = ", hashPrime.ToString().substr(0, 64), "...");
+                
+                /* Check if base is prime */
+                debug::log(0, "   Checking if base is prime...");
+                if(!TAO::Ledger::PrimeCheck(hashPrime))
+                {
+                    debug::error(FUNCTION, "❌ Prime validation failed: base number is NOT prime");
+                    debug::error(FUNCTION, "   hashPrime: ", hashPrime.ToString().substr(0, 64), "...");
+                    debug::error(FUNCTION, "   The CPU miner should validate PrimeCheck() before submitting");
+                    debug::error(FUNCTION, "   This indicates the miner is submitting invalid prime candidates");
+                    return false;
+                }
+                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "      ✓ Base is prime", ANSI_COLOR_RESET);
+                
+                /* Calculate prime offsets (Cunningham chain) */
+                debug::log(0, "   Calculating Cunningham chain offsets...");
+                debug::log(0, "      Before GetOffsets: vOffsets.size() = ", pBlock->vOffsets.size());
+                
+                TAO::Ledger::GetOffsets(hashPrime, pBlock->vOffsets);
+                
+                debug::log(0, "      After GetOffsets: vOffsets.size() = ", pBlock->vOffsets.size());
+                
+                /* Validate offsets were found */
+                if(pBlock->vOffsets.empty())
+                {
+                    debug::error(FUNCTION, "❌ Prime validation failed: no valid Cunningham chain found");
+                    debug::error(FUNCTION, "   GetOffsets() returned zero offsets");
+                    debug::error(FUNCTION, "   This means the prime doesn't form a dense cluster");
+                    return false;
+                }
+                
+                /* Log offset details */
+                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "      ✓ Found ", pBlock->vOffsets.size(), " offsets", ANSI_COLOR_RESET);
+                size_t numToShow = std::min(pBlock->vOffsets.size(), size_t(5));
+                for(size_t i = 0; i < numToShow; i++) {
+                    debug::log(0, "         Offset[", i, "] = ", uint32_t(pBlock->vOffsets[i]));
+                }
+                if(pBlock->vOffsets.size() > 5) {
+                    debug::log(0, "         ... (", pBlock->vOffsets.size() - 5, " more)");
+                }
+                
+                /* Validate prime difficulty meets requirements */
+                debug::log(0, "   Validating prime difficulty...");
+                double nPrimeDifficulty = TAO::Ledger::GetPrimeDifficulty(hashPrime, pBlock->vOffsets, true);
+                double nRequiredDifficulty = TAO::Ledger::GetDifficulty(pBlock->nBits, 1);  // Channel 1 = Prime
+                
+                debug::log(0, "      Prime difficulty:    ", std::fixed, std::setprecision(6), nPrimeDifficulty);
+                debug::log(0, "      Required difficulty: ", std::fixed, std::setprecision(6), nRequiredDifficulty);
+                
+                if(nPrimeDifficulty < nRequiredDifficulty)
+                {
+                    debug::error(FUNCTION, "❌ Prime difficulty too low");
+                    debug::error(FUNCTION, "   Found:    ", nPrimeDifficulty);
+                    debug::error(FUNCTION, "   Required: ", nRequiredDifficulty);
+                    debug::error(FUNCTION, "   Deficit:  ", nRequiredDifficulty - nPrimeDifficulty);
+                    return false;
+                }
+                
+                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "      ✓ Prime difficulty validated", ANSI_COLOR_RESET);
+                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Prime offsets calculated and verified", ANSI_COLOR_RESET);
+            }
+            else if(pBlock->nChannel == 2)  // Hash channel
+            {
+                /* Verify hash meets proof-of-work target */
+                debug::log(0, "   Validating hash proof-of-work...");
+                
+                uint1024_t hashProof = pBlock->ProofHash();
+                debug::log(0, "      hashProof = ", hashProof.ToString().substr(0, 64), "...");
+                
+                /* Get target from nBits */
+                LLC::CBigNum bnTarget;
+                bnTarget.SetCompact(pBlock->nBits);
+                uint1024_t nTarget = bnTarget.getuint1024();
+                
+                debug::log(0, "      nTarget   = ", nTarget.ToString().substr(0, 64), "...");
+                debug::log(0, "      nBits     = 0x", std::hex, pBlock->nBits, std::dec);
+                
+                /* Check if hash meets target (hash must be <= target) */
+                if(hashProof > nTarget)
+                {
+                    debug::error(FUNCTION, "❌ Hash proof-of-work validation failed");
+                    debug::error(FUNCTION, "   hashProof > nTarget (hash too high)");
+                    debug::error(FUNCTION, "   Hash:   ", hashProof.ToString().substr(0, 64), "...");
+                    debug::error(FUNCTION, "   Target: ", nTarget.ToString().substr(0, 64), "...");
+                    
+                    /* Calculate how far off */
+                    LLC::CBigNum bnProof(hashProof);
+                    double ratio = bnProof.getdouble() / bnTarget.getdouble();
+                    debug::error(FUNCTION, "   Ratio: ", std::fixed, std::setprecision(2), ratio, "x too high");
+                    
+                    return false;
+                }
+                
+                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "      ✓ Hash meets target", ANSI_COLOR_RESET);
+                
+                /* Ensure no prime offsets for hash channel */
+                if(!pBlock->vOffsets.empty())
+                {
+                    debug::log(0, "      Note: Clearing ", pBlock->vOffsets.size(), " invalid offsets (hash channel shouldn't have offsets)");
+                    pBlock->vOffsets.clear();
+                }
+                
+                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Hash channel validated", ANSI_COLOR_RESET);
+            }
+            else
+            {
+                debug::log(0, "   Channel ", pBlock->nChannel, " (no mining-specific validation)");
+            }
 
             /* CRITICAL: DO NOT re-sign the block! 
              * The block was already wallet-signed during creation (new_block).
@@ -1582,6 +1698,51 @@ namespace LLP
         if(pBlock)
         {
             debug::log(2, FUNCTION, "Tritium");
+            
+            /* Pre-validation: Verify channel-specific requirements BEFORE Check() */
+            if(pBlock->nChannel == 1)  // Prime
+            {
+                /* Double-check offsets were calculated in sign_block() */
+                if(pBlock->vOffsets.empty())
+                {
+                    debug::error(FUNCTION, "❌ Prime block missing offsets");
+                    debug::error(FUNCTION, "   sign_block() should have populated vOffsets");
+                    debug::error(FUNCTION, "   This indicates sign_block() validation failed");
+                    return false;
+                }
+                
+                /* Re-verify prime difficulty (defense in depth) */
+                uint1024_t hashPrime = pBlock->GetPrime();
+                double nPrimeDifficulty = TAO::Ledger::GetPrimeDifficulty(hashPrime, pBlock->vOffsets, true);
+                double nRequiredDifficulty = TAO::Ledger::GetDifficulty(pBlock->nBits, 1);
+                
+                if(nPrimeDifficulty < nRequiredDifficulty)
+                {
+                    debug::error(FUNCTION, "❌ Prime difficulty validation failed in validate_block()");
+                    debug::error(FUNCTION, "   Difficulty: ", nPrimeDifficulty, " < Required: ", nRequiredDifficulty);
+                    return false;
+                }
+                
+                debug::log(1, FUNCTION, "Prime block pre-validated: difficulty ", std::fixed, std::setprecision(6), nPrimeDifficulty);
+            }
+            else if(pBlock->nChannel == 2)  // Hash
+            {
+                /* Re-verify hash meets target (defense in depth) */
+                uint1024_t hashProof = pBlock->ProofHash();
+                LLC::CBigNum bnTarget;
+                bnTarget.SetCompact(pBlock->nBits);
+                
+                if(hashProof > bnTarget.getuint1024())
+                {
+                    debug::error(FUNCTION, "❌ Hash proof-of-work validation failed in validate_block()");
+                    debug::error(FUNCTION, "   Hash: ", hashProof.ToString().substr(0, 64), "...");
+                    debug::error(FUNCTION, "   Target: ", bnTarget.getuint1024().ToString().substr(0, 64), "...");
+                    return false;
+                }
+                
+                debug::log(1, FUNCTION, "Hash block pre-validated: meets target");
+            }
+            
             pBlock->print();
 
             /* Log block found */
