@@ -56,7 +56,30 @@ namespace TAO::Ledger
             SecureString strPIN;
             RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING, hashSession));
             
+            /* Get current chain state (SAME as normal node does) */
+            const BlockState statePrev = ChainState::tStateBest.load();
+            
             TritiumBlock* pBlock = new TritiumBlock();
+            
+            /* Initialize block with proper chain context BEFORE CreateBlock()
+             * This ensures CreateBlock() has the correct context to populate the producer transaction.
+             * Without this, the block would have default-initialized values (zeros), causing validation failures.
+             * This matches the flow in normal nodes: AddBlockData() sets these fields. */
+            pBlock->hashPrevBlock = statePrev.GetHash();
+            pBlock->nHeight = statePrev.nHeight + 1;
+            pBlock->nChannel = nChannel;
+            pBlock->nBits = GetNextTargetRequired(statePrev, nChannel);
+            pBlock->nTime = std::max(
+                statePrev.GetBlockTime() + 1, 
+                runtime::unifiedtimestamp()
+            );
+            
+            debug::log(2, FUNCTION, "Block initialized with chain state:");
+            debug::log(2, FUNCTION, "  hashPrevBlock: ", pBlock->hashPrevBlock.SubString());
+            debug::log(2, FUNCTION, "  nHeight: ", pBlock->nHeight);
+            debug::log(2, FUNCTION, "  nChannel: ", pBlock->nChannel);
+            debug::log(2, FUNCTION, "  nBits: 0x", std::hex, pBlock->nBits, std::dec);
+            debug::log(2, FUNCTION, "  nTime: ", pBlock->nTime);
             
             // CreateBlock() handles wallet signing per consensus requirements
             bool success = CreateBlock(
@@ -75,7 +98,22 @@ namespace TAO::Ledger
                 return nullptr;
             }
             
+            /* Validate block using TritiumBlock::Check()
+             * This is the SAME validation normal nodes use before accepting blocks.
+             * It checks: merkle root, timestamps, proof-of-work, and other consensus rules. */
+            if (!pBlock->Check())
+            {
+                debug::error(FUNCTION, "Block failed TritiumBlock::Check() validation");
+                debug::error(FUNCTION, "  Height: ", pBlock->nHeight);
+                debug::error(FUNCTION, "  Channel: ", pBlock->nChannel);
+                debug::error(FUNCTION, "  nBits: 0x", std::hex, pBlock->nBits, std::dec);
+                debug::error(FUNCTION, "  hashMerkleRoot: ", pBlock->hashMerkleRoot.SubString());
+                delete pBlock;
+                return nullptr;
+            }
+            
             debug::log(2, FUNCTION, "✓ Wallet-signed block created successfully");
+            debug::log(2, FUNCTION, "✓ Block passed TritiumBlock::Check() validation");
             debug::log(2, FUNCTION, "  Height: ", pBlock->nHeight);
             debug::log(2, FUNCTION, "  Channel: ", pBlock->nChannel);
             debug::log(2, FUNCTION, "  Reward address: ", hashRewardAddress.SubString());
