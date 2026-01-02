@@ -343,7 +343,7 @@ namespace TAO::Ledger
         block.nHeight       = tStateBest.nHeight + 1;
         block.nBits         = GetNextTargetRequired(tStateBest, nChannel, false);
         block.nNonce        = 1;
-        block.nTime         = static_cast<uint32_t>(std::max(tStateBest.GetBlockTime() + 1, runtime::unifiedtimestamp()));
+        block.nTime         = std::max(tStateBest.GetBlockTime() + 1, runtime::unifiedtimestamp());
     }
 
 
