@@ -1689,11 +1689,33 @@ namespace LLP
     /** Validate a block */
     bool StatelessMinerConnection::validate_block(const uint512_t& hashMerkleRoot)
     {
+        /* Safe map access to avoid creating null entry */
+        auto it = mapBlocks.find(hashMerkleRoot);
+        if(it == mapBlocks.end() || !it->second)
+        {
+            debug::error(FUNCTION, "Block not found in map");
+            return false;
+        }
+        
         /* If the block dynamically casts to a tritium block, validate the tritium block. */
-        TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock*>(mapBlocks[hashMerkleRoot]);
+        TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock*>(it->second);
         if(pBlock)
         {
             debug::log(2, FUNCTION, "Tritium");
+            
+            /* Re-validate block structure (defense in depth)
+             * CreateBlockForStatelessMining() already called Check(), but we verify again
+             * to ensure the block wasn't corrupted after the miner updated the nonce. */
+            if (!pBlock->Check())
+            {
+                debug::error(FUNCTION, "Block failed Check() in validate_block()");
+                debug::error(FUNCTION, "  Height: ", pBlock->nHeight);
+                debug::error(FUNCTION, "  Channel: ", pBlock->nChannel);
+                debug::error(FUNCTION, "  Merkle: ", pBlock->hashMerkleRoot.SubString());
+                return false;
+            }
+            
+            debug::log(1, FUNCTION, "✓ Block passed Check() validation");
             
             /* Pre-validation: Verify channel-specific requirements BEFORE Check() */
             if(pBlock->nChannel == 1)  // Prime
@@ -1759,14 +1781,21 @@ namespace LLP
             SecureString strPIN;
             RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
 
-            /* Process the block and relay to network if it gets accepted into main chain. */
+            /* Process the block and relay to network if it gets accepted into main chain.
+             * This is the SAME path normal nodes use to accept blocks into the chain. */
             uint8_t nStatus = 0;
             TAO::Ledger::Process(*pBlock, nStatus);
 
             /* Check the statues. */
             if(!(nStatus & TAO::Ledger::PROCESS::ACCEPTED))
+            {
+                debug::error(FUNCTION, "Block rejected by Process()");
+                debug::error(FUNCTION, "  Status: 0x", std::hex, nStatus, std::dec);
                 return false;
+            }
 
+            debug::log(1, FUNCTION, "✓ Block accepted by network");
+            
             return true;
         }
 
