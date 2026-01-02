@@ -1551,7 +1551,9 @@ namespace LLP
             /* Channel-specific offset calculation (Prime only) */
             if(pBlock->nChannel == 1)  // Prime channel
             {
-                /* Calculate prime offsets (Cunningham chain) */
+                /* Calculate prime offsets (Cunningham chain)
+                 * GetPrime() calculates: ProofHash() + nNonce
+                 * This is safe to call here as we've already updated nNonce */
                 debug::log(0, "   Calculating Cunningham chain offsets...");
                 uint1024_t hashPrime = pBlock->GetPrime();
                 TAO::Ledger::GetOffsets(hashPrime, pBlock->vOffsets);
@@ -1604,11 +1606,11 @@ namespace LLP
             
             /* Validate block structure using canonical Check() 
              * This is the SINGLE SOURCE OF TRUTH for block validation.
-             * Check() validates:
-             *   - Block structure
-             *   - Producer transaction
-             *   - Proof-of-work (Prime: PrimeCheck + GetPrimeDifficulty, Hash: VerifyWork)
-             *   - Offsets (Prime channel requires non-empty vOffsets)
+             * Check() performs comprehensive validation including:
+             *   - Block structure and size limits
+             *   - Producer transaction validity
+             *   - Channel-specific proof-of-work validation
+             *   - Timestamp and version checks
              */
             if (!pBlock->Check())
             {
