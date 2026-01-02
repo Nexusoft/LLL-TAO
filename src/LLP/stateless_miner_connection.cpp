@@ -1548,34 +1548,165 @@ namespace LLP
             pBlock->UpdateTime();
             debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Timestamp updated", ANSI_COLOR_RESET);
 
-            /* Channel-specific offset calculation (Prime only) */
+            /* ============================================================
+             * TRAINING WHEELS MODE: Comprehensive Diagnostic Logging
+             * ============================================================ */
+            
             if(pBlock->nChannel == 1)  // Prime channel
             {
-                /* Calculate prime offsets (Cunningham chain)
-                 * GetPrime() calculates: ProofHash() + nNonce
-                 * This is safe to call here as we've already updated nNonce */
-                debug::log(0, "   Calculating Cunningham chain offsets...");
+                debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "🔬 === PRIME CHANNEL DIAGNOSTIC (Training Wheels Mode) ===", ANSI_COLOR_RESET);
+                
+                /* Calculate hashPrime (same calculation miner did) */
                 uint1024_t hashPrime = pBlock->GetPrime();
+                
+                debug::log(0, "📊 PRIME BASE CALCULATION:");
+                debug::log(0, "   ProofHash() = ", pBlock->ProofHash().ToString().substr(0, 64), "...");
+                debug::log(0, "   nNonce      = 0x", std::hex, pBlock->nNonce, std::dec);
+                debug::log(0, "   hashPrime   = ProofHash() + nNonce");
+                debug::log(0, "   hashPrime   = ", hashPrime.ToString().substr(0, 64), "...");
+                debug::log(0, "   (Full 1024-bit value shown in hex above)");
+                
+                /* Test if base is prime using node's PrimeCheck */
+                debug::log(0, "");
+                debug::log(0, "🧪 PRIME VALIDATION TEST:");
+                debug::log(0, "   Calling TAO::Ledger::PrimeCheck(hashPrime)...");
+                
+                bool isPrimeBase = TAO::Ledger::PrimeCheck(hashPrime);
+                
+                if(isPrimeBase)
+                {
+                    debug::log(0, "   Result: ", ANSI_COLOR_BRIGHT_GREEN, "✅ BASE IS PRIME", ANSI_COLOR_RESET);
+                }
+                else
+                {
+                    debug::log(0, "   Result: ", ANSI_COLOR_BRIGHT_RED, "❌ BASE IS NOT PRIME", ANSI_COLOR_RESET);
+                    debug::log(0, "   ⚠️  Mismatch: Miner validated this as prime, but node disagrees!");
+                    debug::log(0, "   ⚠️  This indicates either:");
+                    debug::log(0, "      - Different PrimeCheck implementations (miner vs node)");
+                    debug::log(0, "      - Different hashPrime calculation (endianness? encoding?)");
+                    debug::log(0, "      - Nonce corruption during transmission");
+                }
+                
+                /* Calculate Cunningham chain offsets */
+                debug::log(0, "");
+                debug::log(0, "🔗 CUNNINGHAM CHAIN CALCULATION:");
+                debug::log(0, "   Calling TAO::Ledger::GetOffsets(hashPrime, vOffsets)...");
+                debug::log(0, "   Before GetOffsets: vOffsets.size() = ", pBlock->vOffsets.size());
+                
                 TAO::Ledger::GetOffsets(hashPrime, pBlock->vOffsets);
-                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Offsets calculated", ANSI_COLOR_RESET);
+                
+                debug::log(0, "   After GetOffsets: vOffsets.size() = ", pBlock->vOffsets.size());
+                
+                if(!pBlock->vOffsets.empty())
+                {
+                    debug::log(0, "   ", ANSI_COLOR_BRIGHT_GREEN, "✅ Offsets found:", ANSI_COLOR_RESET);
+                    
+                    /* Show first 10 offsets (or all if fewer) */
+                    size_t numToShow = std::min(size_t(10), pBlock->vOffsets.size());
+                    for(size_t i = 0; i < numToShow; ++i)
+                    {
+                        debug::log(0, "      vOffsets[", i, "] = ", static_cast<int>(pBlock->vOffsets[i]));
+                    }
+                    
+                    if(pBlock->vOffsets.size() > 10)
+                    {
+                        debug::log(0, "      ... (", pBlock->vOffsets.size() - 10, " more offsets)");
+                    }
+                    
+                    /* Calculate difficulty from offsets */
+                    debug::log(0, "");
+                    debug::log(0, "📈 DIFFICULTY CALCULATION:");
+                    double nPrimeDifficulty = TAO::Ledger::GetPrimeDifficulty(hashPrime, pBlock->vOffsets, true);
+                    double nRequiredDifficulty = TAO::Ledger::GetDifficulty(pBlock->nBits, 1);
+                    
+                    debug::log(0, "   Prime difficulty:    ", std::fixed, std::setprecision(6), nPrimeDifficulty);
+                    debug::log(0, "   Required difficulty: ", std::fixed, std::setprecision(6), nRequiredDifficulty);
+                    
+                    if(nPrimeDifficulty >= nRequiredDifficulty)
+                    {
+                        debug::log(0, "   ", ANSI_COLOR_BRIGHT_GREEN, "✅ Difficulty meets requirement", ANSI_COLOR_RESET);
+                    }
+                    else
+                    {
+                        debug::log(0, "   ", ANSI_COLOR_BRIGHT_RED, "❌ Difficulty too low", ANSI_COLOR_RESET);
+                        debug::log(0, "   Deficit: ", nRequiredDifficulty - nPrimeDifficulty);
+                    }
+                }
+                else
+                {
+                    debug::log(0, "   ", ANSI_COLOR_BRIGHT_RED, "❌ NO OFFSETS FOUND", ANSI_COLOR_RESET);
+                    debug::log(0, "   ⚠️  This means GetOffsets() found zero valid primes in the Cunningham chain");
+                    debug::log(0, "   ⚠️  Expected: Array of offsets like [2, 6, 12, 66, 146, 32, 0]");
+                    debug::log(0, "   ⚠️  Got: Empty array");
+                    debug::log(0, "   ⚠️  Block will FAIL Check() validation");
+                }
+                
+                debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "🔬 === END PRIME DIAGNOSTIC ===", ANSI_COLOR_RESET);
             }
-
-            /* CRITICAL: DO NOT re-sign the block! 
-             * The block was already wallet-signed during creation (new_block).
-             * Re-signing here would overwrite the wallet signature and cause 
-             * "sign block failed" errors because the miner's nonce is already set.
-             * 
-             * Per PR #104: Blocks MUST be wallet-signed during creation and 
-             * that signature MUST be preserved when the miner submits a solution.
-             * 
-             * What we do here:
-             *   1. Update nonce (already done above)
-             *   2. Update timestamp (done above)
-             *   3. Calculate prime offsets (Prime channel only)
-             *   4. PRESERVE the original wallet signature (do nothing)
-             *   5. NO validation - defer to canonical TritiumBlock::Check()
-             */
+            else if(pBlock->nChannel == 2)  // Hash channel
+            {
+                debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "🔬 === HASH CHANNEL DIAGNOSTIC (Training Wheels Mode) ===", ANSI_COLOR_RESET);
+                
+                /* Calculate proof hash */
+                uint1024_t hashProof = pBlock->ProofHash();
+                
+                debug::log(0, "📊 HASH PROOF CALCULATION:");
+                debug::log(0, "   ProofHash() = SK1024(block_header)");
+                debug::log(0, "   hashProof   = ", hashProof.ToString().substr(0, 64), "...");
+                debug::log(0, "   nNonce      = 0x", std::hex, pBlock->nNonce, std::dec);
+                
+                /* Get target from nBits */
+                LLC::CBigNum bnTarget;
+                bnTarget.SetCompact(pBlock->nBits);
+                uint1024_t nTarget = bnTarget.getuint1024();
+                
+                debug::log(0, "");
+                debug::log(0, "🎯 TARGET VALIDATION:");
+                debug::log(0, "   nBits   = 0x", std::hex, pBlock->nBits, std::dec);
+                debug::log(0, "   nTarget = ", nTarget.ToString().substr(0, 64), "...");
+                
+                /* Check if hash meets target */
+                debug::log(0, "");
+                debug::log(0, "🧪 PROOF-OF-WORK TEST:");
+                debug::log(0, "   Checking: hashProof <= nTarget");
+                
+                if(hashProof <= nTarget)
+                {
+                    debug::log(0, "   Result: ", ANSI_COLOR_BRIGHT_GREEN, "✅ HASH MEETS TARGET", ANSI_COLOR_RESET);
+                    
+                    /* Calculate leading zeros for reference */
+                    int nLeadingZeros = 0;
+                    uint1024_t temp = hashProof;
+                    while(temp > 0 && nLeadingZeros < 1024)
+                    {
+                        if(temp.high_bits(0x80000000))
+                            break;
+                        temp <<= 1;
+                        ++nLeadingZeros;
+                    }
+                    
+                    debug::log(0, "   Leading zeros: ", nLeadingZeros, " bits");
+                }
+                else
+                {
+                    debug::log(0, "   Result: ", ANSI_COLOR_BRIGHT_RED, "❌ HASH DOES NOT MEET TARGET", ANSI_COLOR_RESET);
+                    debug::log(0, "   ⚠️  Mismatch: Miner validated this hash, but node disagrees!");
+                    debug::log(0, "   ⚠️  Hash is too high (difficulty not met)");
+                }
+                
+                /* Ensure no prime offsets for hash channel */
+                if(!pBlock->vOffsets.empty())
+                {
+                    debug::log(0, "");
+                    debug::log(0, "   ⚠️  WARNING: Hash channel has ", pBlock->vOffsets.size(), " offsets (should be empty)");
+                    debug::log(0, "   Clearing invalid offsets...");
+                    pBlock->vOffsets.clear();
+                }
+                
+                debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "🔬 === END HASH DIAGNOSTIC ===", ANSI_COLOR_RESET);
+            }
             
+            debug::log(0, "");
             debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Block prepared for validation", ANSI_COLOR_RESET);
             debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "📝 === SIGN_BLOCK: Complete ===", ANSI_COLOR_RESET);
             
@@ -1590,6 +1721,8 @@ namespace LLP
     /** Validate a block */
     bool StatelessMinerConnection::validate_block(const uint512_t& hashMerkleRoot)
     {
+        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "✅ === VALIDATE_BLOCK: Final consensus validation ===", ANSI_COLOR_RESET);
+        
         /* Safe map access to avoid creating null entry */
         auto it = mapBlocks.find(hashMerkleRoot);
         if(it == mapBlocks.end() || !it->second)
@@ -1603,27 +1736,70 @@ namespace LLP
         if(pBlock)
         {
             debug::log(2, FUNCTION, "Tritium");
+            pBlock->print();
             
-            /* Validate block structure using canonical Check() 
-             * This is the SINGLE SOURCE OF TRUTH for block validation.
-             * Check() performs comprehensive validation including:
-             *   - Block structure and size limits
-             *   - Producer transaction validity
-             *   - Channel-specific proof-of-work validation
-             *   - Timestamp and version checks
-             */
-            if (!pBlock->Check())
+            /* ============================================================
+             * TRAINING WHEELS MODE: Pre-Check() Diagnostic
+             * ============================================================ */
+            
+            debug::log(0, "");
+            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "🔬 === PRE-CHECK() DIAGNOSTIC ===", ANSI_COLOR_RESET);
+            debug::log(0, "📋 BLOCK STATE BEFORE Check():");
+            debug::log(0, "   Height:      ", pBlock->nHeight);
+            debug::log(0, "   Channel:     ", pBlock->nChannel);
+            debug::log(0, "   nBits:       0x", std::hex, pBlock->nBits, std::dec);
+            debug::log(0, "   nNonce:      0x", std::hex, pBlock->nNonce, std::dec);
+            debug::log(0, "   Merkle root: ", pBlock->hashMerkleRoot.SubString());
+            debug::log(0, "   vOffsets.size(): ", pBlock->vOffsets.size());
+            
+            if(pBlock->nChannel == 1 && !pBlock->vOffsets.empty())
             {
+                debug::log(0, "   First 5 offsets:");
+                for(size_t i = 0; i < std::min(size_t(5), pBlock->vOffsets.size()); ++i)
+                {
+                    debug::log(0, "      [", i, "] = ", static_cast<int>(pBlock->vOffsets[i]));
+                }
+            }
+            
+            debug::log(0, "");
+            debug::log(0, "🧪 CALLING TritiumBlock::Check()...");
+            
+            /* Call canonical Check() validation */
+            bool fCheckResult = pBlock->Check();
+            
+            debug::log(0, "");
+            if(fCheckResult)
+            {
+                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "✅ Check() PASSED", ANSI_COLOR_RESET);
+                debug::log(0, "   All block validations successful:");
+                debug::log(0, "   ✓ Block structure valid");
+                debug::log(0, "   ✓ Producer transaction valid");
+                debug::log(0, "   ✓ Proof-of-work valid");
+                if(pBlock->nChannel == 1)
+                    debug::log(0, "   ✓ Prime Cunningham chain valid");
+                else if(pBlock->nChannel == 2)
+                    debug::log(0, "   ✓ Hash meets target");
+            }
+            else
+            {
+                debug::log(0, ANSI_COLOR_BRIGHT_RED, "❌ Check() FAILED", ANSI_COLOR_RESET);
+                debug::log(0, "   Block failed consensus validation");
+                debug::log(0, "   Common failure reasons:");
+                debug::log(0, "   - Prime: Empty vOffsets or invalid Cunningham chain");
+                debug::log(0, "   - Hash: Proof hash doesn't meet target");
+                debug::log(0, "   - Producer transaction invalid");
+                debug::log(0, "   - Block structure malformed");
+                
                 debug::error(FUNCTION, "Block failed Check() validation");
                 debug::error(FUNCTION, "  Height: ", pBlock->nHeight);
                 debug::error(FUNCTION, "  Channel: ", pBlock->nChannel);
                 debug::error(FUNCTION, "  Merkle: ", pBlock->hashMerkleRoot.SubString());
+                
                 return false;
             }
             
-            debug::log(1, FUNCTION, "✓ Block passed Check() validation");
-            
-            pBlock->print();
+            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "🔬 === END PRE-CHECK() DIAGNOSTIC ===", ANSI_COLOR_RESET);
+            debug::log(0, "");
 
             /* Log block found */
             if(config::nVerbose > 0)
@@ -1643,21 +1819,31 @@ namespace LLP
             SecureString strPIN;
             RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
 
-            /* Process the block and relay to network if it gets accepted into main chain.
-             * This is the SAME path normal nodes use to accept blocks into the chain. */
+            /* Process the block and relay to network if it gets accepted into main chain. */
+            debug::log(0, "");
+            debug::log(0, "🌐 CALLING TAO::Ledger::Process()...");
+            debug::log(0, "   This will:");
+            debug::log(0, "   1. Validate against full consensus rules");
+            debug::log(0, "   2. Add block to blockchain database");
+            debug::log(0, "   3. Relay block to network peers");
+            debug::log(0, "");
+            
             uint8_t nStatus = 0;
             TAO::Ledger::Process(*pBlock, nStatus);
 
             /* Check the statues. */
             if(!(nStatus & TAO::Ledger::PROCESS::ACCEPTED))
             {
-                debug::error(FUNCTION, "Block rejected by Process()");
-                debug::error(FUNCTION, "  Status: 0x", std::hex, nStatus, std::dec);
+                debug::log(0, ANSI_COLOR_BRIGHT_RED, "❌ Process() REJECTED BLOCK", ANSI_COLOR_RESET);
+                debug::log(0, "   Status flags: 0x", std::hex, static_cast<int>(nStatus), std::dec);
                 return false;
             }
-
-            debug::log(1, FUNCTION, "✓ Block accepted by network");
             
+            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "✅ Process() ACCEPTED BLOCK", ANSI_COLOR_RESET);
+            debug::log(0, "   Block added to blockchain");
+            debug::log(0, "   Block relayed to network");
+            debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "✅ === VALIDATE_BLOCK: SUCCESS ===", ANSI_COLOR_RESET);
+
             return true;
         }
 
