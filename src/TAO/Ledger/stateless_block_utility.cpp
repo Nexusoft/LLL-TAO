@@ -59,6 +59,21 @@ namespace TAO::Ledger
             /* Get current chain state (SAME as normal node does) */
             const BlockState statePrev = ChainState::tStateBest.load();
             
+            /* Verify chain state is valid before proceeding */
+            if(!statePrev || statePrev.GetHash() == 0)
+            {
+                debug::error(FUNCTION, "Chain state not initialized - cannot create block template");
+                debug::error(FUNCTION, "  Node may still be starting up or synchronizing");
+                return nullptr;
+            }
+            
+            /* Don't create blocks while synchronizing */
+            if(ChainState::Synchronizing())
+            {
+                debug::error(FUNCTION, "Cannot create block templates while synchronizing");
+                return nullptr;
+            }
+            
             TritiumBlock* pBlock = new TritiumBlock();
             
             /* Initialize block with proper chain context BEFORE CreateBlock()
@@ -98,22 +113,20 @@ namespace TAO::Ledger
                 return nullptr;
             }
             
-            /* Validate block using TritiumBlock::Check()
-             * This is the SAME validation normal nodes use before accepting blocks.
-             * It checks: merkle root, timestamps, proof-of-work, and other consensus rules. */
-            if (!pBlock->Check())
+            /* DO NOT call Check() here - the block hasn't been mined yet.
+             * Check() validates PoW which requires a valid nonce from the miner.
+             * Validation happens in validate_block() AFTER miner submits solution. */
+            
+            /* Basic sanity check only - verify CreateBlock() produced valid output */
+            if(pBlock->hashMerkleRoot == 0)
             {
-                debug::error(FUNCTION, "Block failed TritiumBlock::Check() validation");
-                debug::error(FUNCTION, "  Height: ", pBlock->nHeight);
-                debug::error(FUNCTION, "  Channel: ", pBlock->nChannel);
-                debug::error(FUNCTION, "  nBits: 0x", std::hex, pBlock->nBits, std::dec);
-                debug::error(FUNCTION, "  hashMerkleRoot: ", pBlock->hashMerkleRoot.SubString());
+                debug::error(FUNCTION, "CreateBlock() produced invalid merkle root");
                 delete pBlock;
                 return nullptr;
             }
             
             debug::log(2, FUNCTION, "✓ Wallet-signed block created successfully");
-            debug::log(2, FUNCTION, "✓ Block passed TritiumBlock::Check() validation");
+            debug::log(2, FUNCTION, "  Note: PoW validation deferred until miner submits nonce");
             debug::log(2, FUNCTION, "  Height: ", pBlock->nHeight);
             debug::log(2, FUNCTION, "  Channel: ", pBlock->nChannel);
             debug::log(2, FUNCTION, "  Reward address: ", hashRewardAddress.SubString());
