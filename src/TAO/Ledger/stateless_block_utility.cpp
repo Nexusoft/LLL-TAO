@@ -68,11 +68,11 @@ namespace TAO::Ledger
             pBlock->hashPrevBlock = statePrev.GetHash();
             pBlock->nHeight = statePrev.nHeight + 1;
             pBlock->nChannel = nChannel;
-            pBlock->nBits = GetNextTargetRequired(statePrev, nChannel);
-            pBlock->nTime = std::max(
+            pBlock->nBits = GetNextTargetRequired(statePrev, nChannel, false);
+            pBlock->nTime = static_cast<uint32_t>(std::max(
                 statePrev.GetBlockTime() + 1, 
                 runtime::unifiedtimestamp()
-            );
+            ));
             
             debug::log(2, FUNCTION, "Block initialized with chain state:");
             debug::log(2, FUNCTION, "  hashPrevBlock: ", pBlock->hashPrevBlock.SubString());
