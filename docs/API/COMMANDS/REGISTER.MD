@@ -245,15 +245,15 @@ register/transactions/noun
 
 This command supports all the nouns.
 
-#### transactions/account
+#### transactions/finance:account
 
 List out all the transactions for the specified NXS account or token account.
 
-#### transactions/trust
+#### transactions/finance:trust
 
 List out all the transactions for the specified trust account
 
-#### transactions/token
+#### transactions/finance:token
 
 List out all the transactions for the specified token address.
 
@@ -287,6 +287,10 @@ List out all the transactions for the specified append register.
 
 ### Parameters:
 
+`name` : Required to **identify** the name of the account/trust/token. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). This is optional if the `address` is provided
+
+`address` : Required to **identify** the register address of the account/trust/token. This is optional if the `name` is provided.
+
 `verbose` : Optional, determines how much transaction data to include in the response. Supported values are :
 - `default` : hash
 
@@ -310,25 +314,25 @@ All these calls will require the latest build of the core and will not work with
 To calculate the sum of all NXS on the tritium chain:
 
 ```
-register/list/accounts,trust/total/sum sort=total order=desc limit=none where='object.token=0'
+register/list/finance:account,finance:trust/total/sum limit=none where='results.token=0'
 ```
 
 List all the namespaces created in ascending order:
 
 ```
-register/list/namespaces sort=created order=asc
+register/list/names:namespaces sort=created order=asc
 ```
 
 List all the global names on the network:
 
 ```
-register/list/names where=object.namespace=~GLOBAL~
+register/list/names:global
 ```
 
 Create a rich list:
 
 ```
-register/list/accounts,trust sort=total order=desc page=0 where=(object.token=0)
+register/list/finance:accounts,finance:trust/owner,type,total sort=total order=desc page=0 where='results.token=0'
 ```
 
 -----------------------------------
