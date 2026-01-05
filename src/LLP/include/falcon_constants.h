@@ -83,6 +83,48 @@ namespace FalconConstants
     static const size_t FALCON512_SIG_COMMON_SIZE_5 = 666;  // Best compression (minimum)
 
     /***************************************************************************
+     * Falcon-1024 Key Sizes (Fixed per Falcon Specification)
+     **************************************************************************/
+    
+    /** Falcon-1024 public key size (fixed) */
+    static const size_t FALCON1024_PUBKEY_SIZE = 1793;
+    
+    /** Falcon-1024 private key size (fixed) */
+    static const size_t FALCON1024_PRIVKEY_SIZE = 2305;
+
+    /***************************************************************************
+     * Falcon-1024 Signature Sizes (Variable due to compression algorithm)
+     **************************************************************************/
+    
+    /** Minimum Falcon-1024 signature size (typical lower bound) */
+    static const size_t FALCON1024_SIG_MIN = 1280;
+    
+    /** Typical maximum for authentication signatures (address + timestamp) */
+    static const size_t FALCON1024_SIG_AUTH_MAX = 1400;
+    
+    /** Constant-Time Falcon-1024 signature size (exact)
+     *  Per Falcon spec: FALCON_SIG_CT_SIZE(logn=10) = 1577 bytes
+     *  LLL-TAO's FLKey::Sign() uses ct=1, producing exactly 1577 bytes */
+    static const size_t FALCON1024_SIG_CT_SIZE = 1577;
+    
+    /** Absolute maximum Falcon-1024 signature size
+     *  This is the CT size since LLL-TAO uses constant-time signing */
+    static const size_t FALCON1024_SIG_ABSOLUTE_MAX = 1577;
+    
+    /** Maximum signature size for validation (with safety margin) */
+    static const size_t FALCON1024_SIG_MAX_VALIDATION = 2048;
+    
+    /** Common Falcon-1024 signature sizes for dynamic block size detection
+     *  When block size is unknown, we try these common signature sizes to
+     *  work backwards from the packet structure. These represent typical
+     *  signature sizes observed in practice, ordered by frequency. */
+    static const size_t FALCON1024_SIG_COMMON_SIZE_1 = 1577;  // CT signature (most common)
+    static const size_t FALCON1024_SIG_COMMON_SIZE_2 = 1550;  // Near-CT compression
+    static const size_t FALCON1024_SIG_COMMON_SIZE_3 = 1500;  // Good compression
+    static const size_t FALCON1024_SIG_COMMON_SIZE_4 = 1400;  // Better compression
+    static const size_t FALCON1024_SIG_COMMON_SIZE_5 = 1280;  // Best compression (minimum)
+
+    /***************************************************************************
      * ChaCha20-Poly1305 AEAD Encryption Constants
      **************************************************************************/
     
@@ -200,17 +242,18 @@ namespace FalconConstants
      *  Previous value (full block format, no Physical Falcon field): 1,035 bytes
      *    block(216) + timestamp(8) + sig_len(2) + sig(809) = 1,035
      *  
-     *  Current value (PR #122 - Physical Falcon support): 1,037 bytes (minimum)
+     *  Current value (PR #122 - Physical Falcon support): 1,037 bytes (minimum with Falcon-512)
      *    block(216) + timestamp(8) + sig_len(2) + sig(809) + physiglen(2) = 1,037
      *    Note: Physical Falcon length field is ALWAYS present (2 bytes), even when disabled (value=0)
      *  
-     *  UPDATED: Now supports 2MB blocks with transactions
-     *  Format: [block(2MB max)][timestamp(8)][sig_len(2)][signature(809 max)][physiglen(2)][physical_sig(optional)]
-     *  Calculation: 2,097,152 + 8 + 2 + 809 + 2 = 2,097,973 bytes (without physical signature)
+     *  UPDATED: Now supports 2MB blocks with transactions AND Falcon-1024
+     *  Format: [block(2MB max)][timestamp(8)][sig_len(2)][signature(1577 max)][physiglen(2)][physical_sig(optional)]
+     *  Calculation: 2,097,152 + 8 + 2 + 1577 + 2 = 2,098,741 bytes (Falcon-1024 without physical signature)
+     *  Note: Using Falcon-1024 size as maximum since nodes must accept both Falcon-512 and Falcon-1024
      *  
-     *  Updated in: NexusMiner PR #65/#66 (full block mining), PR #115 (2MB support), PR #122 (Physical Falcon)
+     *  Updated in: NexusMiner PR #65/#66 (full block mining), PR #115 (2MB support), PR #122 (Physical Falcon), PR #122 (Falcon-1024)
      */
-    static const size_t SUBMIT_BLOCK_WRAPPER_MAX = 2097973;  // Was 1035, then 2097971
+    static const size_t SUBMIT_BLOCK_WRAPPER_MAX = 2098741;  // Was 1035, then 2097971, then 2097973
     
     /** Submit Block wrapper - PUBLIC MINER (with ChaCha20 encryption)
      *  
@@ -220,17 +263,18 @@ namespace FalconConstants
      *  Previous value (full block format, no Physical Falcon field): 1,063 bytes
      *    nonce(12) + encrypted_payload(1,035) + auth_tag(16) = 1,063
      *  
-     *  Current value (PR #122 - Physical Falcon support): 1,065 bytes (minimum)
+     *  Current value (PR #122 - Physical Falcon support): 1,065 bytes (minimum with Falcon-512)
      *    nonce(12) + encrypted_payload(1,037) + auth_tag(16) = 1,065
      *    Note: Physical Falcon length field is ALWAYS present in encrypted payload
      *  
-     *  UPDATED: Now supports 2MB blocks with transactions
+     *  UPDATED: Now supports 2MB blocks with transactions AND Falcon-1024
      *  Adds ChaCha20-Poly1305 overhead: nonce(12) + auth_tag(16) = 28 bytes
-     *  Calculation: 2,097,973 + 28 = 2,098,001 bytes
+     *  Calculation: 2,098,741 + 28 = 2,098,769 bytes
+     *  Note: Using Falcon-1024 size as maximum since nodes must accept both Falcon-512 and Falcon-1024
      *  
-     *  Updated in: NexusMiner PR #65/#66 (full block mining), PR #115 (2MB support), PR #122 (Physical Falcon)
+     *  Updated in: NexusMiner PR #65/#66 (full block mining), PR #115 (2MB support), PR #122 (Physical Falcon), PR #122 (Falcon-1024)
      */
-    static const size_t SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX = 2098001;  // Was 1063, then 2097999
+    static const size_t SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX = 2098769;  // Was 1063, then 2097999, then 2098001
 
     /***************************************************************************
      * Physical Block Signature (Stored on Blockchain - Emergency Backup System) - CT=809
@@ -270,40 +314,40 @@ namespace FalconConstants
     static const size_t BLOCK_WITH_PHYSICAL_SIG_MIN_OVERHEAD = PHYSICAL_BLOCK_SIG_OVERHEAD;  // 811 bytes
 
     /***************************************************************************
-     * Dual Signature Scenario (Both Disposable Wrapper + Physical Signature) - CT=809
+     * Dual Signature Scenario (Both Disposable Wrapper + Physical Signature)
      * 
-     * UPDATED for full block format (NexusMiner PR #65/#66)
+     * UPDATED for full block format (NexusMiner PR #65/#66) and Falcon-1024 support
+     * Note: These use Falcon-1024 sizes as maximum to support both Falcon-512 and Falcon-1024
      **************************************************************************/
     
-    /** Submit block with BOTH signatures - LOCALHOST (no encryption)
+    /** Submit block with BOTH signatures (Falcon-512) - LOCALHOST (no encryption)
      *  
      *  Old value (merkle format): 1,702 bytes
      *    Disposable wrapper(891) + Physical signature overhead(811) = 1,702
      *  
-     *  New value (full block format): 1,850 bytes (Legacy - largest)
+     *  Current value (full block format, Falcon-512): 1,850 bytes (Legacy - largest)
      *    block(220) + timestamp(8) + sig_len(2) + sig(809) + sig_len(2) + sig(809) = 1,850
      *  
      *  Updated in: NexusMiner PR #65/#66 (full block mining)
      */
-    static const size_t SUBMIT_BLOCK_DUAL_SIG_MAX = 1850;  // Was 1,702
+    static const size_t SUBMIT_BLOCK_DUAL_SIG_MAX = 1850;  // Falcon-512, was 1,702
     
     /** Submit block with BOTH signatures - PUBLIC MINER (with ChaCha20 encryption)
      *  
      *  Old value (merkle format): 1,730 bytes
      *    Dual sig(1,702) + ChaCha20 overhead(28) = 1,730
      *  
-     *  Previous value (full block format): 1,878 bytes (Legacy - largest)
+     *  Previous value (full block format, Falcon-512): 1,878 bytes (Legacy - largest)
      *    Dual sig(1,850) + ChaCha20 overhead(28) = 1,878
      *  
-     *  UPDATED: Now supports 2MB blocks with transactions
-     *  Includes space for dual signatures + ChaCha20 encryption
-     *  Calculation: 2MB block + timestamps + 2 signatures + encryption overhead
-     *  Approximate: 2,097,152 + 8 + 2 + 809 + 2 + 809 + 28 = 2,098,810 bytes
-     *  Using 2,098,000 for practical margin
+     *  UPDATED: Now supports 2MB blocks with transactions AND Falcon-1024
+     *  Using Falcon-1024 sizes as maximum since nodes must accept both variants
+     *  Format: [block(2MB)][timestamp(8)][siglen(2)][sig(1577)][physiglen(2)][physical_sig(1577)]
+     *  Calculation: 2,097,152 + 8 + 2 + 1577 + 2 + 1577 + 28 = 2,100,346 bytes
      *  
-     *  Updated in: NexusMiner PR #65/#66 (full block mining), PR #115 (2MB support)
+     *  Updated in: NexusMiner PR #65/#66 (full block mining), PR #115 (2MB support), PR #122 (Falcon-1024)
      */
-    static const size_t SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX = 2098810;  // Was 1878
+    static const size_t SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX = 2100346;  // Falcon-1024, was 1878, then 2098810
 
     /***************************************************************************
      * Full Block Format - Detailed Size Constants (Optional - For Reference)
@@ -313,43 +357,100 @@ namespace FalconConstants
      * 
      * NOTE (PR #122): All sizes now include Physical Falcon length field (2 bytes)
      * which is ALWAYS present, even when Physical Falcon is disabled (value=0).
+     * 
+     * Falcon-512 constants are listed first, followed by Falcon-1024 constants.
      **************************************************************************/
 
-    /** Tritium wrapper signature - localhost
+    /** Tritium wrapper signature (Falcon-512) - localhost
      *  Format: [block(216)][timestamp(8)][siglen(2)][sig(809)][physiglen(2)]
      *  Was 1035, now 1037 (added physiglen field) */
     static const size_t SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_MAX = 1037;
 
-    /** Tritium wrapper signature - encrypted
+    /** Tritium wrapper signature (Falcon-512) - encrypted
      *  Was 1063, now 1065 (added physiglen field in encrypted payload) */
     static const size_t SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_ENCRYPTED_MAX = 1065;
 
-    /** Legacy wrapper signature - localhost
+    /** Legacy wrapper signature (Falcon-512) - localhost
      *  Format: [block(220)][timestamp(8)][siglen(2)][sig(809)][physiglen(2)]
      *  Was 1039, now 1041 (added physiglen field) */
     static const size_t SUBMIT_BLOCK_FULL_LEGACY_WRAPPER_MAX = 1041;
 
-    /** Legacy wrapper signature - encrypted
+    /** Legacy wrapper signature (Falcon-512) - encrypted
      *  Was 1067, now 1069 (added physiglen field in encrypted payload) */
     static const size_t SUBMIT_BLOCK_FULL_LEGACY_WRAPPER_ENCRYPTED_MAX = 1069;
 
-    /** Tritium dual signature - localhost
+    /** Tritium dual signature (Falcon-512) - localhost
      *  Format: [block(216)][timestamp(8)][siglen(2)][sig(809)][physiglen(2)][physical_sig(809)]
      *  Was 1846, stays 1846 (already included physical sig, just formalized the physiglen field) */
     static const size_t SUBMIT_BLOCK_FULL_DUAL_SIG_TRITIUM_MAX = 1846;
 
-    /** Tritium dual signature - encrypted
+    /** Tritium dual signature (Falcon-512) - encrypted
      *  Was 1874, stays 1874 (already included physical sig) */
     static const size_t SUBMIT_BLOCK_FULL_DUAL_SIG_TRITIUM_ENCRYPTED_MAX = 1874;
 
-    /** Legacy dual signature - localhost
+    /** Legacy dual signature (Falcon-512) - localhost
      *  Format: [block(220)][timestamp(8)][siglen(2)][sig(809)][physiglen(2)][physical_sig(809)]
      *  Was 1850, stays 1850 (already included physical sig) */
     static const size_t SUBMIT_BLOCK_FULL_DUAL_SIG_LEGACY_MAX = 1850;
 
-    /** Legacy dual signature - encrypted
+    /** Legacy dual signature (Falcon-512) - encrypted
      *  Was 1878, stays 1878 (already included physical sig) */
     static const size_t SUBMIT_BLOCK_FULL_DUAL_SIG_LEGACY_ENCRYPTED_MAX = 1878;
+
+    /***************************************************************************
+     * Falcon-1024 Packet Size Constants
+     * 
+     * These constants define packet sizes when using Falcon-1024 signatures.
+     * Falcon-1024 uses 1577-byte signatures vs Falcon-512's 809 bytes.
+     **************************************************************************/
+
+    /** Tritium wrapper signature (Falcon-1024) - localhost
+     *  Format: [block(216)][timestamp(8)][siglen(2)][sig(1577)][physiglen(2)]
+     *  Calculation: 216 + 8 + 2 + 1577 + 2 = 1805 bytes */
+    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_FALCON1024_MAX = 1805;
+
+    /** Tritium wrapper signature (Falcon-1024) - encrypted
+     *  Add ChaCha20 overhead: 1805 + 28 = 1833 bytes */
+    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_FALCON1024_ENCRYPTED_MAX = 1833;
+
+    /** Legacy wrapper signature (Falcon-1024) - localhost
+     *  Format: [block(220)][timestamp(8)][siglen(2)][sig(1577)][physiglen(2)]
+     *  Calculation: 220 + 8 + 2 + 1577 + 2 = 1809 bytes */
+    static const size_t SUBMIT_BLOCK_FULL_LEGACY_WRAPPER_FALCON1024_MAX = 1809;
+
+    /** Legacy wrapper signature (Falcon-1024) - encrypted
+     *  Add ChaCha20 overhead: 1809 + 28 = 1837 bytes */
+    static const size_t SUBMIT_BLOCK_FULL_LEGACY_WRAPPER_FALCON1024_ENCRYPTED_MAX = 1837;
+
+    /** Tritium dual signature (Falcon-1024) - localhost
+     *  Format: [block(216)][timestamp(8)][siglen(2)][sig(1577)][physiglen(2)][physical_sig(1577)]
+     *  Calculation: 216 + 8 + 2 + 1577 + 2 + 1577 = 3382 bytes */
+    static const size_t SUBMIT_BLOCK_FULL_DUAL_SIG_TRITIUM_FALCON1024_MAX = 3382;
+
+    /** Tritium dual signature (Falcon-1024) - encrypted
+     *  Add ChaCha20 overhead: 3382 + 28 = 3410 bytes */
+    static const size_t SUBMIT_BLOCK_FULL_DUAL_SIG_TRITIUM_FALCON1024_ENCRYPTED_MAX = 3410;
+
+    /** Legacy dual signature (Falcon-1024) - localhost
+     *  Format: [block(220)][timestamp(8)][siglen(2)][sig(1577)][physiglen(2)][physical_sig(1577)]
+     *  Calculation: 220 + 8 + 2 + 1577 + 2 + 1577 = 3386 bytes */
+    static const size_t SUBMIT_BLOCK_FULL_DUAL_SIG_LEGACY_FALCON1024_MAX = 3386;
+
+    /** Legacy dual signature (Falcon-1024) - encrypted
+     *  Add ChaCha20 overhead: 3386 + 28 = 3414 bytes */
+    static const size_t SUBMIT_BLOCK_FULL_DUAL_SIG_LEGACY_FALCON1024_ENCRYPTED_MAX = 3414;
+
+    /** Falcon-1024 physical block signature overhead
+     *  sig_len(2) + signature(1577) = 1579 bytes */
+    static const size_t PHYSICAL_BLOCK_SIG_FALCON1024_OVERHEAD = LENGTH_FIELD_SIZE + FALCON1024_SIG_ABSOLUTE_MAX;  // 1579 bytes
+
+    /** Falcon-1024 dual signature overhead (wrapper + physical)
+     *  (2 + 1577) + (2 + 1577) = 3158 bytes */
+    static const size_t DUAL_SIG_FALCON1024_OVERHEAD = 3158;
+
+    /** Falcon-1024 dual signature overhead + timestamp
+     *  3158 + 8 = 3166 bytes */
+    static const size_t DUAL_SIG_FALCON1024_TOTAL_OVERHEAD = 3166;
 
     /***************************************************************************
      * GET_BLOCK / BLOCK_DATA Response Sizes (Node → Miner)
