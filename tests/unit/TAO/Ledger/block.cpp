@@ -140,7 +140,9 @@ TEST_CASE( "Prime Calculation - Nonce Endianness (PR #128)", "[ledger][prime][en
         /* Verify that GetPrime produces the expected result */
         REQUIRE(nPrime1 == nExpected);
         
-        /* Verify it's NOT equal to the big-endian interpretation */
+        /* Verify it's NOT equal to the big-endian interpretation 
+         * Big-endian value derived by reversing bytes: 
+         * LE: 00 63 b5 07 02 00 00 34 -> BE: 34 00 00 02 07 b5 63 00 = 0x0063b50702000034 */
         uint1024_t nWrongBE = nProofHash + 0x0063b50702000034ULL;  // Big-endian (WRONG!)
         REQUIRE(nPrime1 != nWrongBE);
     }

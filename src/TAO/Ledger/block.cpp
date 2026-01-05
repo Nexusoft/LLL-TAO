@@ -248,7 +248,8 @@ namespace TAO
             uint64_t nNonceLE = nNonce;
             
             /* Training wheels logging (opt-in diagnostic mode) */
-            if(config::GetBoolArg("-trainingwheels", false))
+            bool fTrainingWheels = config::GetBoolArg("-trainingwheels", false);
+            if(fTrainingWheels)
             {
                 debug::log(0, "");
                 debug::log(0, "🔬 GetPrime() CALCULATION:");
@@ -266,7 +267,7 @@ namespace TAO
             /* Add nonce to prime */
             nPrime += nNonceLE;
             
-            if(config::GetBoolArg("-trainingwheels", false))
+            if(fTrainingWheels)
             {
                 debug::log(0, "   hashPrime:  ", nPrime.ToString().substr(0, 64), "...");
                 debug::log(0, "");
