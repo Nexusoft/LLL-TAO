@@ -1386,7 +1386,7 @@ namespace LLP
                 auto it = mapBlocks.find(hashMerkle);
                 if(it != mapBlocks.end() && it->second.pBlock)
                 {
-                    TAO::Ledger::Block *pBlock = it->second.pBlock;
+                    TAO::Ledger::Block *pBlock = it->second.pBlock.get();
                     debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   🎉 Block ", pBlock->nHeight, " accepted by Nexus network", ANSI_COLOR_RESET);
                     debug::log(0, "   Miner: ", GetAddress().ToStringIP());
                     debug::log(0, "   Channel: ", pBlock->nChannel, " (", (pBlock->nChannel == 1 ? "Prime" : "Hash"), ")");
@@ -1523,7 +1523,8 @@ namespace LLP
                 uint32_t nCurrentHeight = TAO::Ledger::ChainState::nBestHeight.load();
                 
                 /* Compare to miner's last known height */
-                if(context.nHeight != nCurrentHeight)
+                /* If context.nHeight is 0 (uninitialized), always send NEW_ROUND */
+                if(context.nHeight == 0 || context.nHeight != nCurrentHeight)
                 {
                     debug::log(0, FUNCTION, "🔔 Height change detected for ", GetAddress().ToStringIP());
                     debug::log(0, FUNCTION, "   Miner's height: ", context.nHeight);
@@ -1868,7 +1869,7 @@ namespace LLP
         }
         
         /* ✅ Template is valid - proceed with update */
-        TAO::Ledger::Block* pBaseBlock = meta.pBlock;
+        TAO::Ledger::Block* pBaseBlock = meta.pBlock.get();
         if(!pBaseBlock)
         {
             debug::error(FUNCTION, "❌ Template has null block pointer!");
@@ -2086,7 +2087,7 @@ namespace LLP
         }
         
         /* If the block dynamically casts to a tritium block, validate the tritium block. */
-        TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock*>(meta.pBlock);
+        TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock*>(meta.pBlock.get());
         if(pBlock)
         {
             debug::log(2, FUNCTION, "Tritium");
@@ -2257,14 +2258,7 @@ namespace LLP
     /** Clear the blocks map */
     void StatelessMinerConnection::clear_map()
     {
-        /* Delete all the blocks in the map (accessing via metadata). */
-        for(auto& pair : mapBlocks)
-        {
-            if(pair.second.pBlock)
-                delete pair.second.pBlock;
-        }
-
-        /* Clear the map. */
+        /* Clear the map - unique_ptr automatically deletes all blocks */
         mapBlocks.clear();
     }
 
@@ -2287,27 +2281,23 @@ namespace LLP
             const TemplateMetadata& meta = it->second;
             
             /* Check age-based staleness */
-            uint64_t nAge = nNow - meta.nCreationTime;
-            if(nAge > LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS)
+            if(meta.IsStale(nNow))
             {
+                uint64_t nAge = nNow - meta.nCreationTime;
                 debug::log(2, FUNCTION, "   ❌ Removing template (age: ", nAge, "s)");
                 debug::log(2, FUNCTION, "      Merkle: ", it->first.SubString());
-                if(meta.pBlock)
-                    delete meta.pBlock;
-                it = mapBlocks.erase(it);
+                it = mapBlocks.erase(it);  // unique_ptr automatically deletes pBlock
                 ++nRemoved;
                 continue;
             }
             
             /* Check height-based staleness */
-            if(meta.nHeight != nCurrentHeight + 1)
+            if(!meta.IsHeightValid(nCurrentHeight))
             {
                 debug::log(2, FUNCTION, "   ❌ Removing template (height: ", meta.nHeight, 
                           " vs current: ", nCurrentHeight + 1, ")");
                 debug::log(2, FUNCTION, "      Merkle: ", it->first.SubString());
-                if(meta.pBlock)
-                    delete meta.pBlock;
-                it = mapBlocks.erase(it);
+                it = mapBlocks.erase(it);  // unique_ptr automatically deletes pBlock
                 ++nRemoved;
                 continue;
             }

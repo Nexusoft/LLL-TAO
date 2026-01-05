@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <string>
 #include <cstdint>
 #include <vector>
+#include <memory>
 
 /* Forward declarations */
 namespace TAO { namespace Ledger { class Block; class TritiumBlock; } }
@@ -37,10 +38,13 @@ namespace LLP
      *  Used by StatelessMinerConnection to implement comprehensive
      *  template lifecycle management with age-based and height-based
      *  expiration (PR #131: Mining Template Staleness Prevention).
+     * 
+     *  Memory Management: Uses std::unique_ptr for automatic memory management
+     *  and clear ownership semantics. The TemplateMetadata owns the block pointer.
      */
     struct TemplateMetadata
     {
-        TAO::Ledger::Block* pBlock;      // Pointer to the block template
+        std::unique_ptr<TAO::Ledger::Block> pBlock;  // Owned block template pointer
         uint64_t nCreationTime;           // When template was created (unified timestamp)
         uint32_t nHeight;                 // Blockchain height at creation
         uint512_t hashMerkleRoot;         // Expected merkle root for validation
@@ -56,10 +60,10 @@ namespace LLP
         {
         }
         
-        /** Parameterized constructor */
+        /** Parameterized constructor - takes ownership of block pointer */
         TemplateMetadata(TAO::Ledger::Block* pBlock_, uint64_t nCreationTime_, 
                         uint32_t nHeight_, const uint512_t& hashMerkleRoot_, uint32_t nChannel_)
-            : pBlock(pBlock_)
+            : pBlock(pBlock_)  // unique_ptr takes ownership
             , nCreationTime(nCreationTime_)
             , nHeight(nHeight_)
             , hashMerkleRoot(hashMerkleRoot_)
