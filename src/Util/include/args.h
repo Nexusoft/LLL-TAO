@@ -190,16 +190,25 @@ namespace config
      *
      *  Get physical signer acceptance setting.
      *  
-     *  HARDCODED: Always returns true - node always accepts Physical Falcon-512 signatures.
-     *  Physical Falcon signatures are ALWAYS Falcon-512, NEVER Falcon-1024.
-     *  These are stored permanently on blockchain.
+     *  HARDCODED: Always returns true - node always accepts Physical Falcon signatures
+     *  (both Falcon-512 and Falcon-1024, auto-detected).
+     *  
+     *  KEY BONDING: Physical Falcon signature MUST use the SAME Falcon key pair as 
+     *  Disposable Falcon. If miner uses Falcon-512, both signatures are 512.
+     *  If miner uses Falcon-1024, both signatures are 1024.
+     *  
+     *  Physical Falcon signatures are OPTIONAL (can be disabled on miner) and stored
+     *  permanently on blockchain when enabled:
+     *  - Falcon-512: 809 bytes permanent
+     *  - Falcon-1024: 1577 bytes permanent
+     *  - Disabled: 0 bytes (backward compatible)
      *
-     *  @return Always returns true (always accept Physical Falcon-512)
+     *  @return Always returns true (always validate Physical Falcon when present)
      *
      **/
     inline bool GetPhysicalSigner()
     {
-        return true;  // HARDCODED: Always accept Physical Falcon-512 signatures
+        return true;  // HARDCODED: Always accept Physical Falcon (512 OR 1024, bonded, optional)
     }
 
 }
