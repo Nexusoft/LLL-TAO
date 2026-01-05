@@ -186,7 +186,8 @@ TEST_CASE("PrimeCheck uses Miller-Rabin validation", "[prime][miller-rabin]")
         /* Generate random test cases and verify consistency */
         for(int i = 0; i < 100; ++i)
         {
-            uint1024_t testValue = LLC::GetRand1024() |= 1;
+            uint1024_t testValue = LLC::GetRand1024();
+            testValue |= 1;  // Make odd
             
             /* Both functions should agree on primality */
             bool result1 = TAO::Ledger::PrimeCheck(testValue);
