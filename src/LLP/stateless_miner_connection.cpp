@@ -430,6 +430,10 @@ namespace LLP
             const uint8_t MINER_AUTH_INIT = 207;
             const uint8_t MINER_AUTH_RESPONSE = 209;
             const uint8_t MINER_AUTH_RESULT = 210;
+            
+            /* Block rejection reason codes (PR #122: Falcon Protocol Integration) */
+            const uint8_t REJECT_PHYSICAL_SIGNATURE_FAILED = 0x10;  // Physical Falcon signature verification failed
+            const uint8_t REJECT_KEY_BONDING_VIOLATION = 0x11;      // Key bonding violation (version mismatch)
 
             LOCK(MUTEX);
 
@@ -1038,7 +1042,7 @@ namespace LLP
                                             debug::error(FUNCTION, "   Key bonding requires same key for both signatures");
                                             
                                             Packet response(BLOCK_REJECTED);
-                                            response.DATA.push_back(0x10);  // Reason: Physical signature verification failed
+                                            response.DATA.push_back(REJECT_PHYSICAL_SIGNATURE_FAILED);
                                             respond(response);
                                             
                                             debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Physical signature failed) ===", ANSI_COLOR_RESET);
@@ -1063,7 +1067,7 @@ namespace LLP
                                             debug::error(FUNCTION, "   Got: ", vchPhysicalSignature.size());
                                             
                                             Packet response(BLOCK_REJECTED);
-                                            response.DATA.push_back(0x11);  // Reason: Key bonding violation
+                                            response.DATA.push_back(REJECT_KEY_BONDING_VIOLATION);
                                             respond(response);
                                             
                                             debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Key bonding violation) ===", ANSI_COLOR_RESET);
