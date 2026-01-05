@@ -319,6 +319,10 @@ namespace LLP
         if(nNow == 0)
             nNow = runtime::unifiedtimestamp();
 
+        /* Handle uninitialized or invalid timestamps */
+        if(nCreationTime == 0 || nNow < nCreationTime)
+            return true;  // Treat as stale if timestamp is invalid
+
         /* Calculate age in seconds */
         uint64_t nAge = nNow - nCreationTime;
 
