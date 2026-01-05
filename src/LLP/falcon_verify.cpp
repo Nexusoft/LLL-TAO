@@ -146,19 +146,20 @@ namespace FalconVerify
     LLC::FalconVersion DetectVersionFromSignature(const std::vector<uint8_t>& signature)
     {
         /* Note: Signature size detection is less reliable due to compression.
-         * Falcon-512 signatures range from ~600-809 bytes (CT).
-         * Falcon-1024 signatures range from ~1280-1577 bytes (CT).
-         * We use a threshold approach. */
+         * With constant-time signing (ct=1), which is the default:
+         * Falcon-512 signatures are exactly 809 bytes (CT).
+         * Falcon-1024 signatures are exactly 1577 bytes (CT).
+         * We use a threshold approach for detection. */
 
         size_t sigSize = signature.size();
 
-        /* If signature is clearly in Falcon-1024 range */
-        if(sigSize >= 1000)
+        /* If signature is clearly in Falcon-1024 CT range */
+        if(sigSize >= 1400)
         {
             return LLC::FalconVersion::FALCON_1024;
         }
-        /* If signature is in Falcon-512 range */
-        else if(sigSize >= 600 && sigSize <= 900)
+        /* If signature is in Falcon-512 CT range */
+        else if(sigSize >= 700 && sigSize <= 900)
         {
             return LLC::FalconVersion::FALCON_512;
         }

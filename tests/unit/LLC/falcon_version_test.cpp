@@ -70,9 +70,8 @@ TEST_CASE("Falcon Version Support - Signing and Verification", "[falcon][version
         REQUIRE(key.Sign(message, signature));
         REQUIRE(!signature.empty());
         
-        // Falcon-512 signatures should be between 600-809 bytes
-        REQUIRE(signature.size() >= 600);
-        REQUIRE(signature.size() <= 900);
+        // Falcon-512 CT signatures are exactly 809 bytes (ct=1 flag)
+        REQUIRE(signature.size() == 809);
 
         REQUIRE(key.Verify(message, signature));
     }
@@ -86,9 +85,8 @@ TEST_CASE("Falcon Version Support - Signing and Verification", "[falcon][version
         REQUIRE(key.Sign(message, signature));
         REQUIRE(!signature.empty());
         
-        // Falcon-1024 signatures should be between 1280-1577 bytes
-        REQUIRE(signature.size() >= 1000);
-        REQUIRE(signature.size() <= 1600);
+        // Falcon-1024 CT signatures are exactly 1577 bytes (ct=1 flag)
+        REQUIRE(signature.size() == 1577);
 
         REQUIRE(key.Verify(message, signature));
     }
@@ -267,7 +265,7 @@ TEST_CASE("Falcon Constants V2 - Runtime Size Getters", "[falcon][constants]")
     {
         REQUIRE(GetPublicKeySize(FalconVersion::FALCON_512) == 897);
         REQUIRE(GetPrivateKeySize(FalconVersion::FALCON_512) == 1281);
-        REQUIRE(GetSignatureSize(FalconVersion::FALCON_512) == 690);
+        REQUIRE(GetSignatureSize(FalconVersion::FALCON_512) == 809);  // CT default
         REQUIRE(GetSignatureCTSize(FalconVersion::FALCON_512) == 809);
     }
 
@@ -275,7 +273,7 @@ TEST_CASE("Falcon Constants V2 - Runtime Size Getters", "[falcon][constants]")
     {
         REQUIRE(GetPublicKeySize(FalconVersion::FALCON_1024) == 1793);
         REQUIRE(GetPrivateKeySize(FalconVersion::FALCON_1024) == 2305);
-        REQUIRE(GetSignatureSize(FalconVersion::FALCON_1024) == 1280);
+        REQUIRE(GetSignatureSize(FalconVersion::FALCON_1024) == 1577);  // CT default
         REQUIRE(GetSignatureCTSize(FalconVersion::FALCON_1024) == 1577);
     }
 

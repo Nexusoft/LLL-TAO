@@ -15,8 +15,8 @@ Nexus now supports **Falcon-1024** (NIST Level 5) alongside Falcon-512 (NIST Lev
 - **NIST Level 5** - Maximum standardized security
 
 ### Practical Costs
-- **85.5% signature overhead**: 690 → 1280 bytes (590 bytes increase)
-- **<3% block overhead**: 590 bytes / 2MB = 0.029% per block
+- **95% signature overhead**: 809 → 1577 bytes (768 bytes increase)
+- **<4% block overhead**: 768 bytes / 2MB = 0.038% per block
 - **<1.5ms signing time**: Still sub-second for mining operations
 - **Full backward compatibility**: Falcon-512 continues to work
 
@@ -160,7 +160,7 @@ Difference: 2^64 × more secure
 
 ### Recommendation
 - **Use Falcon-512** if you prioritize:
-  - Smaller signatures (690 vs 1280 bytes)
+  - Smaller signatures (809 vs 1577 bytes)
   - Slightly faster signing (<1ms vs <1.5ms)
   - Proven track record in production
 
@@ -183,16 +183,16 @@ Difference: 2^64 × more secure
 ### Signing
 | Metric | Falcon-512 | Falcon-1024 |
 |--------|-----------|------------|
-| Signature Size | ~690 bytes | ~1280 bytes |
+| Signature Size | 809 bytes | 1577 bytes |
 | Signing Time | <1ms | <1.5ms |
-| Overhead per Block | 690 bytes | 1280 bytes |
+| Overhead per Block | 809 bytes | 1577 bytes |
 
 ### Network Impact
 | Metric | Falcon-512 | Falcon-1024 |
 |--------|-----------|------------|
-| Block Overhead (2MB) | 0.034% | 0.063% |
-| Yearly Bandwidth (1000 blocks/day) | 252 MB | 467 MB |
-| **Difference** | - | **+215 MB/year** |
+| Block Overhead (2MB) | 0.040% | 0.077% |
+| Yearly Bandwidth (1000 blocks/day) | 295 MB | 575 MB |
+| **Difference** | - | **+280 MB/year** |
 
 **Conclusion:** Network impact is negligible for both versions.
 

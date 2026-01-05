@@ -45,14 +45,18 @@ namespace LLC
         // Falcon-512 (logn=9) sizes
         constexpr size_t FALCON512_PUBLIC_KEY_SIZE = 897;
         constexpr size_t FALCON512_PRIVATE_KEY_SIZE = 1281;
-        constexpr size_t FALCON512_SIGNATURE_SIZE = 690;     // Typical compressed size
-        constexpr size_t FALCON512_SIGNATURE_CT_SIZE = 809;  // Constant-time size
+        constexpr size_t FALCON512_SIGNATURE_SIZE = 809;      // Constant-time size (default, ct=1)
+        constexpr size_t FALCON512_SIGNATURE_CT_SIZE = 809;   // Constant-time size
+        constexpr size_t FALCON512_SIGNATURE_COMPRESSED_MIN = 666;  // Minimum compressed size
+        constexpr size_t FALCON512_SIGNATURE_COMPRESSED_AVG = 690;  // Average compressed size
 
         // Falcon-1024 (logn=10) sizes
         constexpr size_t FALCON1024_PUBLIC_KEY_SIZE = 1793;
         constexpr size_t FALCON1024_PRIVATE_KEY_SIZE = 2305;
-        constexpr size_t FALCON1024_SIGNATURE_SIZE = 1280;    // Typical compressed size
+        constexpr size_t FALCON1024_SIGNATURE_SIZE = 1577;    // Constant-time size (default, ct=1)
         constexpr size_t FALCON1024_SIGNATURE_CT_SIZE = 1577; // Constant-time size
+        constexpr size_t FALCON1024_SIGNATURE_COMPRESSED_MIN = 1280;  // Minimum compressed size
+        constexpr size_t FALCON1024_SIGNATURE_COMPRESSED_AVG = 1330;  // Average compressed size
     }
 
 

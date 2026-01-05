@@ -36,13 +36,13 @@ This PR implements **production-ready Falcon-512/1024 dual version support** for
 // Falcon-512 (logn=9)
 FALCON512_PUBLIC_KEY_SIZE = 897
 FALCON512_PRIVATE_KEY_SIZE = 1281
-FALCON512_SIGNATURE_SIZE = 690
+FALCON512_SIGNATURE_SIZE = 809      // Constant-time (ct=1)
 FALCON512_SIGNATURE_CT_SIZE = 809
 
 // Falcon-1024 (logn=10)
 FALCON1024_PUBLIC_KEY_SIZE = 1793
 FALCON1024_PRIVATE_KEY_SIZE = 2305
-FALCON1024_SIGNATURE_SIZE = 1280
+FALCON1024_SIGNATURE_SIZE = 1577    // Constant-time (ct=1)
 FALCON1024_SIGNATURE_CT_SIZE = 1577
 ```
 
@@ -153,10 +153,10 @@ inline bool GetPhysicalSigner() {
 - ✅ Existing keys and miners continue working
 
 ### Performance
-- **Falcon-512:** <1ms signing, 690-byte signatures (unchanged)
-- **Falcon-1024:** <1.5ms signing, 1280-byte signatures
-- **Network overhead:** 590 bytes per block ≈ 0.029% of 2MB
-- **Yearly bandwidth increase:** +215 MB/year per Falcon-1024 miner
+- **Falcon-512:** <1ms signing, 809-byte signatures (CT, unchanged)
+- **Falcon-1024:** <1.5ms signing, 1577-byte signatures (CT)
+- **Network overhead:** 768 bytes per block ≈ 0.038% of 2MB
+- **Yearly bandwidth increase:** +280 MB/year per Falcon-1024 miner
 - **Overall impact:** <0.1% (negligible)
 
 ### Code Quality

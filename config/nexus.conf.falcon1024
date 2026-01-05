@@ -59,22 +59,23 @@ falcon1024=1
 #   - RSA-2048 equivalent classical security
 #   - Public key: 897 bytes
 #   - Private key: 1281 bytes
-#   - Signature: ~690 bytes (compressed) or 809 bytes (constant-time)
+#   - Signature: 809 bytes (constant-time, ct=1)
 #   - Signing time: <1ms
-#   - Block overhead: ~0.034% (690 bytes / 2MB)
+#   - Block overhead: ~0.040% (809 bytes / 2MB)
 #
 # Falcon-1024 (Opt-in for miners):
 #   - NIST Level 5 security (256-bit quantum resistance)
 #   - RSA-4096 equivalent classical security
 #   - Public key: 1793 bytes
 #   - Private key: 2305 bytes
-#   - Signature: ~1280 bytes (compressed) or 1577 bytes (constant-time)
+#   - Signature: 1577 bytes (constant-time, ct=1)
 #   - Signing time: <1.5ms
-#   - Block overhead: ~0.063% (1280 bytes / 2MB)
+#   - Block overhead: ~0.077% (1577 bytes / 2MB)
 #   - 2^64 × stronger quantum attack resistance than Falcon-512
 #
 # Network Impact:
-#   - Bandwidth increase: +215 MB/year per miner using Falcon-1024
+#   - Bandwidth increase: +768 bytes per block
+#   - Yearly increase: +280 MB/year per miner using Falcon-1024
 #   - Overall network impact: <0.1% (negligible)
 #
 #==============================================================================

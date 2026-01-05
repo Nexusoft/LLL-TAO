@@ -36,7 +36,7 @@ namespace FalconConstants
     {
         constexpr size_t PUBLIC_KEY_SIZE = FalconSizes::FALCON512_PUBLIC_KEY_SIZE;
         constexpr size_t PRIVATE_KEY_SIZE = FalconSizes::FALCON512_PRIVATE_KEY_SIZE;
-        constexpr size_t SIGNATURE_SIZE = FalconSizes::FALCON512_SIGNATURE_SIZE;
+        constexpr size_t SIGNATURE_SIZE = FalconSizes::FALCON512_SIGNATURE_SIZE;  // CT default
         constexpr size_t SIGNATURE_CT_SIZE = FalconSizes::FALCON512_SIGNATURE_CT_SIZE;
     }
 
@@ -45,7 +45,7 @@ namespace FalconConstants
     {
         constexpr size_t PUBLIC_KEY_SIZE = FalconSizes::FALCON1024_PUBLIC_KEY_SIZE;
         constexpr size_t PRIVATE_KEY_SIZE = FalconSizes::FALCON1024_PRIVATE_KEY_SIZE;
-        constexpr size_t SIGNATURE_SIZE = FalconSizes::FALCON1024_SIGNATURE_SIZE;
+        constexpr size_t SIGNATURE_SIZE = FalconSizes::FALCON1024_SIGNATURE_SIZE;  // CT default
         constexpr size_t SIGNATURE_CT_SIZE = FalconSizes::FALCON1024_SIGNATURE_CT_SIZE;
     }
 
