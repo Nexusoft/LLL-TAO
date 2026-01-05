@@ -172,42 +172,46 @@ namespace FalconVerify
     }
 
 
-    /* Verify a Physical Falcon signature (ALWAYS Falcon-512). */
+    /* Verify a Physical Falcon signature (Falcon-512 OR Falcon-1024, auto-detected). */
     bool VerifyPhysicalFalconSignature(const std::vector<uint8_t>& pubkey,
                                        const std::vector<uint8_t>& message,
                                        const std::vector<uint8_t>& signature)
     {
-        /* Physical Falcon signatures MUST be Falcon-512 to minimize blockchain bloat */
+        /* Physical Falcon signatures can be EITHER Falcon-512 OR Falcon-1024.
+         * The miner uses the SAME key pair for both Disposable and Physical signatures.
+         * Key Bonding: Cannot mix Falcon-512 and Falcon-1024 keys on same miner.
+         * Auto-detect the version from the public key. */
         
-        /* Validate public key is Falcon-512 */
-        if(!VerifyPublicKey512(pubkey))
+        /* Auto-detect Falcon version from public key */
+        LLC::FalconVersion detected;
+        if(!VerifyPublicKey(pubkey, detected))
         {
-            debug::log(1, FUNCTION, "Physical Falcon: Public key is not valid Falcon-512");
+            debug::log(1, FUNCTION, "Physical Falcon: Invalid public key");
             return false;
         }
 
-        /* Validate signature size is Falcon-512 CT (809 bytes) */
-        if(signature.size() != LLC::FalconSizes::FALCON512_SIGNATURE_SIZE)
+        /* Validate signature size matches the detected version */
+        size_t expectedSigSize = (detected == LLC::FalconVersion::FALCON_512) 
+                                ? LLC::FalconSizes::FALCON512_SIGNATURE_SIZE 
+                                : LLC::FalconSizes::FALCON1024_SIGNATURE_SIZE;
+        
+        if(signature.size() != expectedSigSize)
         {
             debug::log(1, FUNCTION, "Physical Falcon: Signature size ", signature.size(),
-                      " is not Falcon-512 CT size (", LLC::FalconSizes::FALCON512_SIGNATURE_SIZE, " bytes)");
+                      " does not match expected size for ", 
+                      (detected == LLC::FalconVersion::FALCON_512 ? "Falcon-512" : "Falcon-1024"),
+                      " (", expectedSigSize, " bytes)");
             return false;
         }
 
-        /* Enforce: Physical Falcon NEVER uses Falcon-1024 */
-        LLC::FalconVersion detected;
-        if(VerifyPublicKey(pubkey, detected) && detected == LLC::FalconVersion::FALCON_1024)
-        {
-            debug::log(0, FUNCTION, "SECURITY: Attempted to use Falcon-1024 for Physical Falcon signature - REJECTED");
-            return false;
-        }
-
-        /* Verify the signature using Falcon-512 */
-        bool fValid = VerifySignature(pubkey, message, signature, LLC::FalconVersion::FALCON_512);
+        /* Verify the signature using the detected version */
+        bool fValid = VerifySignature(pubkey, message, signature, detected);
         
         if(fValid)
         {
-            debug::log(2, FUNCTION, "Physical Falcon signature verified successfully (Falcon-512 CT)");
+            debug::log(2, FUNCTION, "Physical Falcon signature verified successfully (",
+                      (detected == LLC::FalconVersion::FALCON_512 ? "Falcon-512" : "Falcon-1024"),
+                      " CT, ", signature.size(), " bytes)");
         }
         else
         {

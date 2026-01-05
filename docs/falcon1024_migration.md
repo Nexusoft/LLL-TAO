@@ -47,22 +47,34 @@ Nexus uses **two distinct types** of Falcon signatures:
 - **Purpose:** Emergency backup block authorship proof
 - **Storage:** STORED on blockchain permanently
 - **Lifetime:** Forever (immutable blockchain record)
-- **Version Support:** ALWAYS Falcon-512, NEVER Falcon-1024
-- **Rationale:** Minimize permanent blockchain bloat (809 vs 1577 bytes)
-- **Default:** physicalsigner=0 (OFF - minimize blockchain bloat)
-- **When to Enable:** Only when quantum computing threat requires permanent proof
-- **Implementation:** Auto-detects and auto-accepts Falcon-512 CT signatures only
+- **Version Support:** Falcon-512 OR Falcon-1024 (SAME as Disposable)
+- **Key Bonding:** Must use SAME key pair as Disposable Falcon
+- **Variable Size:** 809 bytes (Falcon-512) or 1577 bytes (Falcon-1024)
+- **Default:** Always enabled on node (auto-detects version)
+- **Miner Choice:** Security (1024) vs Blockchain Overhead (512)
+- **Implementation:** Auto-detects and validates both versions
+
+### Key Bonding Architecture ⭐ NEW
+Miners use a **single Falcon key pair** for BOTH signature types:
+- **Cannot mix versions:** If using Falcon-512, both Disposable AND Physical use 512
+- **Cannot mix versions:** If using Falcon-1024, both Disposable AND Physical use 1024
+- **Reason:** Miner can only configure ONE Falcon key pair (bonded to alias/session)
+- **Node behavior:** Auto-detects version from public key size
+- **Verification:** Both signatures validated with same key pair
 
 ### Design Rationale
-- Disposable signatures can use Falcon-1024 because they're NOT stored on blockchain
-- Physical signatures ALWAYS use Falcon-512 to avoid permanent 768-byte overhead per block
-- This gives miners maximum security (1024) without blockchain bloat
+- **Key Bonding:** Single key pair for both Disposable and Physical signatures
+- **Miner Choice:** Choose Falcon-512 (smaller) OR Falcon-1024 (more secure)
+- **Disposable:** Zero blockchain overhead regardless of version
+- **Physical:** Variable blockchain overhead (809 or 1577 bytes, miner's choice)
+- **Trade-off:** Security level vs permanent blockchain storage cost
 
 ---
 
 ## Deployment Architecture
 
-### **Stealth Mode** (Default) - For Disposable Falcon
+### **Hardcoded Acceptance** (Default) - No Configuration
+Node automatically accepts BOTH Falcon versions for BOTH signature types:
 The node operates in "stealth mode" by default for Disposable Falcon signatures:
 - ✅ Accepts **both** Falcon-512 and Falcon-1024 disposable signatures
 - ✅ Auto-detects version from miner's public key size

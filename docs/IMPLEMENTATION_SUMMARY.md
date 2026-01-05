@@ -4,17 +4,19 @@
 
 This PR implements **production-ready Falcon-512/1024 dual version support** for Nexus stateless mining, providing a 2^64× increase in quantum attack resistance while maintaining full backward compatibility.
 
-**Key Architectural Distinction:**
+**Key Architectural Feature - Key Bonding:**
 - **Disposable Falcon** (session-based, NOT on blockchain): Supports Falcon-512 OR Falcon-1024
-- **Physical Falcon** (permanent, ON blockchain): ALWAYS Falcon-512, NEVER Falcon-1024
+- **Physical Falcon** (permanent, ON blockchain): Supports Falcon-512 OR Falcon-1024
+- **Key Bonding:** Both signatures MUST use the SAME Falcon key pair (cannot mix versions)
+- **Miner Choice:** Choose Falcon-512 (smaller) OR Falcon-1024 (more secure) for BOTH signatures
 
-This design allows maximum security for real-time mining (1024) without permanent blockchain bloat.
+This design allows miners to choose their security/overhead trade-off with a single key pair.
 
 **Status:** ✅ Core cryptographic implementation complete and tested  
 **Test Coverage:** 43 comprehensive test sections  
 **Documentation:** Complete migration guide and configuration examples  
-**Security Impact:** 128-bit → 256-bit quantum security (opt-in for disposable signatures)  
-**Blockchain Impact:** ZERO (disposable signatures not stored)  
+**Security Impact:** 128-bit → 256-bit quantum security (opt-in)  
+**Blockchain Impact:** Variable (809 or 1577 bytes for physical signatures, miner's choice)  
 **Network Impact:** <0.1% bandwidth increase (negligible)
 
 ---
@@ -73,11 +75,12 @@ FALCON1024_SIGNATURE_CT_SIZE = 1577
   - `DetectVersionFromSignature(signature)` - Version from sig size
 - **Signature verification:**
   - `VerifySignature(pubkey, message, signature, version)` - Version-aware verification
-- **Physical Falcon support (NEW):**
-  - `VerifyPhysicalFalconSignature(pubkey, message, signature)` - Enforces Falcon-512 only
-  - `IsPhysicalFalconEnabled()` - Checks physicalsigner config
-  - Auto-detects and auto-accepts Falcon-512 CT signatures (809 bytes)
-  - Enforces rejection of Falcon-1024 for physical signatures
+- **Physical Falcon support (KEY BONDING):**
+  - `VerifyPhysicalFalconSignature(pubkey, message, signature)` - Accepts BOTH 512 and 1024
+  - `IsPhysicalFalconEnabled()` - Returns hardcoded true
+  - Auto-detects version from public key size
+  - Validates signature size matches detected version (809 or 1577 bytes)
+  - Both Disposable and Physical use SAME key pair (bonded)
 - **Error logging:** Comprehensive debug output for diagnostics
 
 ### 3. Node Configuration
@@ -95,11 +98,12 @@ Nexus implements two distinct types of Falcon signatures:
 **2. Physical Falcon (Permanent) - NOW IMPLEMENTED:**
 - Purpose: Emergency backup block authorship proof
 - Storage: STORED on blockchain permanently
-- Version support: ALWAYS Falcon-512, NEVER Falcon-1024
-- Rationale: Minimize permanent blockchain bloat (809 vs 1577 bytes)
-- Node behavior: HARDCODED - always accepts Falcon-512 (no config needed)
-- Implementation: Auto-detects and auto-accepts Falcon-512 CT signatures only
-- Security: Enforces rejection of Falcon-1024 for physical signatures
+- Version support: Falcon-512 OR Falcon-1024 (SAME as Disposable)
+- Key Bonding: MUST use SAME key pair as Disposable Falcon
+- Variable size: 809 bytes (Falcon-512) or 1577 bytes (Falcon-1024)
+- Node behavior: HARDCODED - always accepts both versions (no config needed)
+- Implementation: Auto-detects and validates both versions
+- Miner choice: Security (1024) vs Blockchain overhead (512)
 
 #### Args Helpers (`src/Util/include/args.h`)
 ```cpp
@@ -116,16 +120,18 @@ inline bool GetPhysicalSigner() {
 
 **Hardcoded Behavior - No Configuration Required:**
 - Node ALWAYS accepts Disposable Falcon-512 and Falcon-1024 (auto-detected)
-- Node ALWAYS accepts Physical Falcon-512 (enforced, never 1024)
+- Node ALWAYS accepts Physical Falcon-512 and Falcon-1024 (auto-detected)
 - Both signature types can coexist in the SAME Submit Block Structure
+- Key Bonding: Both signatures MUST use the SAME Falcon key pair
 - Zero configuration required from node operators
 - Maximum compatibility and security by default
 
-**Physical Falcon (Now Implemented):**
-- ALWAYS uses Falcon-512 regardless of configuration
-- Auto-detects and auto-accepts Falcon-512 CT signatures (809 bytes)
-- Enforces rejection of Falcon-1024 signatures for physical blocks
-- Minimizes permanent blockchain overhead (809 bytes vs 1577 bytes)
+**Physical Falcon (Now Implemented with Key Bonding):**
+- Accepts BOTH Falcon-512 and Falcon-1024 (auto-detected from pubkey)
+- Auto-detects version from public key size (897 or 1793 bytes)
+- Validates signature size matches version (809 or 1577 bytes)
+- MUST use same key pair as Disposable Falcon (bonded)
+- Variable blockchain overhead: 809 or 1577 bytes (miner's choice)
 - Always enabled - no configuration needed
 
 ### 4. Comprehensive Testing

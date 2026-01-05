@@ -105,17 +105,21 @@ namespace FalconVerify
 
     /** VerifyPhysicalFalconSignature
      *
-     *  Verify a Physical Falcon signature (ALWAYS Falcon-512).
+     *  Verify a Physical Falcon signature (Falcon-512 OR Falcon-1024).
      *  Physical Falcon signatures are permanently stored on blockchain.
      *  
-     *  This function enforces that Physical Falcon ONLY uses Falcon-512
-     *  to minimize permanent blockchain overhead.
+     *  This function auto-detects the Falcon version from the public key
+     *  and accepts BOTH Falcon-512 and Falcon-1024 signatures.
+     *  
+     *  Key Bonding: The miner uses the SAME key pair for both Disposable
+     *  and Physical signatures. If miner uses Falcon-1024 for disposable,
+     *  they must also use Falcon-1024 for physical (and vice versa).
      *
-     *  @param[in] pubkey Public key bytes (must be Falcon-512)
+     *  @param[in] pubkey Public key bytes (Falcon-512 OR Falcon-1024, auto-detected)
      *  @param[in] message Message bytes that were signed
-     *  @param[in] signature Signature bytes (must be Falcon-512 CT size: 809)
+     *  @param[in] signature Signature bytes (size varies by version)
      *
-     *  @return True if signature is valid Falcon-512 signature
+     *  @return True if signature is valid (either version)
      *
      **/
     bool VerifyPhysicalFalconSignature(const std::vector<uint8_t>& pubkey,
