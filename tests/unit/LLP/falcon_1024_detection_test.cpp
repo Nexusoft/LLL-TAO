@@ -142,7 +142,7 @@ TEST_CASE("Falcon-1024 Fallback Detection", "[falcon][falcon1024][detection]")
             FalconConstants::FALCON512_SIG_COMMON_SIZE_2,   // 800
             FalconConstants::FALCON512_SIG_COMMON_SIZE_3,   // 750
             FalconConstants::FALCON512_SIG_COMMON_SIZE_4,   // 720
-            FalconConstants::FALCON512_SIG_COMMON_SIZE_5,   // 700
+            FalconConstants::FALCON512_SIG_COMMON_SIZE_5,   // 666
         };
         
         // First 5 entries should be Falcon-1024

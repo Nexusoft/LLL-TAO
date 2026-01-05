@@ -144,6 +144,9 @@ namespace FalconConstants
     /** Constant-Time signature size for maximum variant (use largest) */
     static const size_t FALCON_SIG_CT_MAX = FALCON1024_SIG_CT_SIZE;  // 1577 bytes (Falcon-1024 CT)
 
+    /** Constant-Time signature size for minimum variant (use smallest) */
+    static const size_t FALCON_SIG_CT_MIN = FALCON512_SIG_CT_SIZE;  // 809 bytes (Falcon-512 CT)
+
     /***************************************************************************
      * ChaCha20-Poly1305 AEAD Encryption Constants
      **************************************************************************/
