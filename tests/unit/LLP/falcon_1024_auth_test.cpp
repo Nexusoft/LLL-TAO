@@ -44,7 +44,7 @@ TEST_CASE("Falcon-1024 Authentication Handler Tests", "[falcon][falcon1024][auth
             "test_falcon512_auth"
         );
 
-        REQUIRE(meta.pubkey.size() == 897);  // Falcon-512 pubkey size
+        REQUIRE(meta.pubkey.size() == LLC::FalconSizes::FALCON512_PUBLIC_KEY_SIZE);  // Falcon-512 pubkey size
 
         /* Create test genesis hash */
         uint256_t testGenesis;
@@ -95,7 +95,7 @@ TEST_CASE("Falcon-1024 Authentication Handler Tests", "[falcon][falcon1024][auth
             "test_falcon1024_auth"
         );
 
-        REQUIRE(meta.pubkey.size() == 1793);  // Falcon-1024 pubkey size
+        REQUIRE(meta.pubkey.size() == LLC::FalconSizes::FALCON1024_PUBLIC_KEY_SIZE);  // Falcon-1024 pubkey size
 
         /* Create test genesis hash */
         uint256_t testGenesis;
@@ -187,7 +187,8 @@ TEST_CASE("Falcon-1024 ChaCha20 Wrapped Authentication", "[falcon][falcon1024][c
             "test_wrapped_falcon1024"
         );
 
-        REQUIRE(meta.pubkey.size() == 1793);  // Falcon-1024 pubkey size
+        constexpr size_t FALCON1024_WRAPPED_SIZE = 1821; // 1793 + 12 + 16
+        REQUIRE(meta.pubkey.size() == LLC::FalconSizes::FALCON1024_PUBLIC_KEY_SIZE);  // Falcon-1024 pubkey size
 
         /* Create test genesis hash */
         uint256_t testGenesis;
@@ -204,7 +205,7 @@ TEST_CASE("Falcon-1024 ChaCha20 Wrapped Authentication", "[falcon][falcon1024][c
         );
 
         /* Wrapped size should be 1793 + 12 (nonce) + 16 (tag) = 1821 bytes */
-        REQUIRE(vWrappedPubKey.size() == 1821);
+        REQUIRE(vWrappedPubKey.size() == FALCON1024_WRAPPED_SIZE);
 
         /* Create MINER_AUTH_INIT packet */
         MiningContext ctx;
