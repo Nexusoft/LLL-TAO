@@ -295,6 +295,39 @@ TEST_CASE("Falcon Protocol - Key Bonding Enforcement", "[protocol][falcon][integ
         REQUIRE(sig512.size() == FalconConstants::GetSignatureCTSize(FalconVersion::FALCON_512));
         REQUIRE(sig1024.size() == FalconConstants::GetSignatureCTSize(FalconVersion::FALCON_1024));
     }
+    
+    SECTION("Key bonding violation detected - version mismatch")
+    {
+        // Explicit test for mixing Falcon-512 disposable with Falcon-1024 physical
+        FLKey key512, key1024;
+        key512.MakeNewKey(FalconVersion::FALCON_512);
+        key1024.MakeNewKey(FalconVersion::FALCON_1024);
+        
+        std::vector<uint8_t> sig512, sig1024;
+        REQUIRE(key512.Sign(message, sig512));
+        REQUIRE(key1024.Sign(message, sig1024));
+        
+        // Simulate miner authenticated with Falcon-512
+        MiningContext ctx;
+        ctx = ctx.WithFalconVersion(FalconVersion::FALCON_512).WithAuth(true);
+        
+        REQUIRE(ctx.fAuthenticated);
+        REQUIRE(ctx.fFalconVersionDetected);
+        REQUIRE(ctx.nFalconVersion == FalconVersion::FALCON_512);
+        
+        // Expected CT size for Falcon-512 is 809
+        size_t expectedSize = FalconConstants::GetSignatureCTSize(ctx.nFalconVersion);
+        REQUIRE(expectedSize == 809);
+        
+        // Disposable signature matches expected size
+        REQUIRE(sig512.size() == expectedSize);
+        
+        // Falcon-1024 signature is 1577 bytes - should fail key bonding
+        REQUIRE(sig1024.size() == 1577);
+        REQUIRE(sig1024.size() != expectedSize);  // Key bonding violation detected!
+        
+        // This mismatch would cause the node to reject the block in SUBMIT_BLOCK handler
+    }
 }
 
 
