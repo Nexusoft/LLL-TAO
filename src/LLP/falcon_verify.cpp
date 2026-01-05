@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLP/include/falcon_verify.h>
 #include <LLC/include/flkey.h>
 #include <Util/include/debug.h>
+#include <Util/include/args.h>
 
 namespace LLP
 {
@@ -168,6 +169,60 @@ namespace FalconVerify
             throw std::invalid_argument("Cannot determine Falcon version from signature size: " + 
                                        std::to_string(sigSize));
         }
+    }
+
+
+    /* Verify a Physical Falcon signature (ALWAYS Falcon-512). */
+    bool VerifyPhysicalFalconSignature(const std::vector<uint8_t>& pubkey,
+                                       const std::vector<uint8_t>& message,
+                                       const std::vector<uint8_t>& signature)
+    {
+        /* Physical Falcon signatures MUST be Falcon-512 to minimize blockchain bloat */
+        
+        /* Validate public key is Falcon-512 */
+        if(!VerifyPublicKey512(pubkey))
+        {
+            debug::log(1, FUNCTION, "Physical Falcon: Public key is not valid Falcon-512");
+            return false;
+        }
+
+        /* Validate signature size is Falcon-512 CT (809 bytes) */
+        if(signature.size() != LLC::FalconSizes::FALCON512_SIGNATURE_SIZE)
+        {
+            debug::log(1, FUNCTION, "Physical Falcon: Signature size ", signature.size(),
+                      " is not Falcon-512 CT size (", LLC::FalconSizes::FALCON512_SIGNATURE_SIZE, " bytes)");
+            return false;
+        }
+
+        /* Enforce: Physical Falcon NEVER uses Falcon-1024 */
+        LLC::FalconVersion detected;
+        if(VerifyPublicKey(pubkey, detected) && detected == LLC::FalconVersion::FALCON_1024)
+        {
+            debug::log(0, FUNCTION, "SECURITY: Attempted to use Falcon-1024 for Physical Falcon signature - REJECTED");
+            return false;
+        }
+
+        /* Verify the signature using Falcon-512 */
+        bool fValid = VerifySignature(pubkey, message, signature, LLC::FalconVersion::FALCON_512);
+        
+        if(fValid)
+        {
+            debug::log(2, FUNCTION, "Physical Falcon signature verified successfully (Falcon-512 CT)");
+        }
+        else
+        {
+            debug::log(1, FUNCTION, "Physical Falcon signature verification failed");
+        }
+
+        return fValid;
+    }
+
+
+    /* Check if Physical Falcon signatures are enabled. */
+    bool IsPhysicalFalconEnabled()
+    {
+        /* Check the physicalsigner configuration flag */
+        return config::GetBoolArg("-physicalsigner", false);
     }
 
 } // namespace FalconVerify

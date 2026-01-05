@@ -43,13 +43,15 @@ Nexus uses **two distinct types** of Falcon signatures:
 - **Opt-in:** Falcon-1024 (maximum quantum security)
 - **This PR enables:** Support for both versions in Disposable Falcon
 
-### 2. Physical Falcon (Permanent)
+### 2. Physical Falcon (Permanent) - **Now Implemented**
 - **Purpose:** Emergency backup block authorship proof
 - **Storage:** STORED on blockchain permanently
 - **Lifetime:** Forever (immutable blockchain record)
 - **Version Support:** ALWAYS Falcon-512, NEVER Falcon-1024
-- **Rationale:** Minimize permanent blockchain bloat
-- **Status:** Future feature (not yet implemented)
+- **Rationale:** Minimize permanent blockchain bloat (809 vs 1577 bytes)
+- **Default:** physicalsigner=0 (OFF - minimize blockchain bloat)
+- **When to Enable:** Only when quantum computing threat requires permanent proof
+- **Implementation:** Auto-detects and auto-accepts Falcon-512 CT signatures only
 
 ### Design Rationale
 - Disposable signatures can use Falcon-1024 because they're NOT stored on blockchain
@@ -88,9 +90,10 @@ Miners choose their Disposable Falcon version:
 # Node operators don't need to configure this
 falcon1024=1  # ON by default (stealth mode - accepts both versions)
 
-# Physical Falcon signature (future feature, not yet implemented)
-# When implemented, will ALWAYS use Falcon-512, never Falcon-1024
-physicalsigner=0
+# Physical Falcon signature (now implemented)
+# ALWAYS uses Falcon-512, never Falcon-1024
+# Default OFF to minimize permanent blockchain bloat
+physicalsigner=0  # OFF by default (enable only when quantum threat requires)
 ```
 
 **Node operators: No action required.** Stealth mode is automatic.
@@ -109,15 +112,17 @@ falcon1024=0  # Currently OFF by default (use Falcon-512 for disposable signatur
 # To enable Falcon-1024 for disposable signatures:
 # falcon1024=1
 
-# Physical Falcon signature (future feature)
-# When implemented, will ALWAYS use Falcon-512 regardless of above setting
-physicalsigner=0
+# Physical Falcon signature (now implemented)
+# ALWAYS uses Falcon-512, never Falcon-1024
+# Default OFF to minimize permanent blockchain bloat
+physicalsigner=0  # OFF by default (enable only when quantum threat requires)
 ```
 
 **Miner operators:**
 - **No action required** to keep using Falcon-512 for disposable signatures
 - **Set `falcon1024=1`** to upgrade disposable signatures to maximum quantum security
-- **Note:** Physical signatures (when implemented) will always be Falcon-512 
+- **Note:** Physical signatures (when enabled) always use Falcon-512 regardless of falcon1024 setting
+- **Physical Falcon:** Keep OFF (default) unless quantum computing requires permanent blockchain proof 
 - **No action required** to keep using Falcon-512
 - **Set `falcon1024=1`** to upgrade to maximum quantum security
 

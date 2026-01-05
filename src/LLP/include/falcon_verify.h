@@ -102,6 +102,36 @@ namespace FalconVerify
      **/
     LLC::FalconVersion DetectVersionFromSignature(const std::vector<uint8_t>& signature);
 
+
+    /** VerifyPhysicalFalconSignature
+     *
+     *  Verify a Physical Falcon signature (ALWAYS Falcon-512).
+     *  Physical Falcon signatures are permanently stored on blockchain.
+     *  
+     *  This function enforces that Physical Falcon ONLY uses Falcon-512
+     *  to minimize permanent blockchain overhead.
+     *
+     *  @param[in] pubkey Public key bytes (must be Falcon-512)
+     *  @param[in] message Message bytes that were signed
+     *  @param[in] signature Signature bytes (must be Falcon-512 CT size: 809)
+     *
+     *  @return True if signature is valid Falcon-512 signature
+     *
+     **/
+    bool VerifyPhysicalFalconSignature(const std::vector<uint8_t>& pubkey,
+                                       const std::vector<uint8_t>& message,
+                                       const std::vector<uint8_t>& signature);
+
+
+    /** IsPhysicalFalconEnabled
+     *
+     *  Check if Physical Falcon signatures are enabled.
+     *
+     *  @return True if physicalsigner config is enabled
+     *
+     **/
+    bool IsPhysicalFalconEnabled();
+
 } // namespace FalconVerify
 } // namespace LLP
 

@@ -73,6 +73,11 @@ FALCON1024_SIGNATURE_CT_SIZE = 1577
   - `DetectVersionFromSignature(signature)` - Version from sig size
 - **Signature verification:**
   - `VerifySignature(pubkey, message, signature, version)` - Version-aware verification
+- **Physical Falcon support (NEW):**
+  - `VerifyPhysicalFalconSignature(pubkey, message, signature)` - Enforces Falcon-512 only
+  - `IsPhysicalFalconEnabled()` - Checks physicalsigner config
+  - Auto-detects and auto-accepts Falcon-512 CT signatures (809 bytes)
+  - Enforces rejection of Falcon-1024 for physical signatures
 - **Error logging:** Comprehensive debug output for diagnostics
 
 ### 3. Node Configuration
@@ -87,13 +92,14 @@ Nexus implements two distinct types of Falcon signatures:
 - This PR enables: Support for both versions
 - Configuration: `falcon1024=1` (node accepts both)
 
-**2. Physical Falcon (Permanent):**
+**2. Physical Falcon (Permanent) - NOW IMPLEMENTED:**
 - Purpose: Emergency backup block authorship proof
 - Storage: STORED on blockchain permanently
 - Version support: ALWAYS Falcon-512, NEVER Falcon-1024
-- Rationale: Minimize permanent blockchain bloat
-- Status: Future feature (not implemented in this PR)
-- Configuration: `physicalsigner=0` (disabled)
+- Rationale: Minimize permanent blockchain bloat (809 vs 1577 bytes)
+- Default: `physicalsigner=0` (OFF - minimize bloat)
+- Implementation: Auto-detects and auto-accepts Falcon-512 CT signatures only
+- Security: Enforces rejection of Falcon-1024 for physical signatures
 
 #### Args Helpers (`src/Util/include/args.h`)
 ```cpp
@@ -102,9 +108,9 @@ inline bool GetFalcon1024() {
     return GetBoolArg("-falcon1024", true);  // Default: TRUE (stealth mode)
 }
 
-// For Physical Falcon - future feature, always uses Falcon-512
+// For Physical Falcon - now implemented, always uses Falcon-512
 inline bool GetPhysicalSigner() {
-    return GetBoolArg("-physicalsigner", false);  // Default: FALSE (future)
+    return GetBoolArg("-physicalsigner", false);  // Default: FALSE (minimize bloat)
 }
 ```
 
@@ -114,9 +120,12 @@ inline bool GetPhysicalSigner() {
 - Zero configuration required for node operators
 - Seamless protocol upgrade without network fork
 
-**Physical Falcon (Future):**
-- When implemented, will ALWAYS use Falcon-512 regardless of miner configuration
+**Physical Falcon (Now Implemented):**
+- ALWAYS uses Falcon-512 regardless of miner configuration
+- Auto-detects and auto-accepts Falcon-512 CT signatures (809 bytes)
+- Enforces rejection of Falcon-1024 signatures for physical blocks
 - Minimizes permanent blockchain overhead (809 bytes vs 1577 bytes)
+- Default OFF (`physicalsigner=0`) - enable only when quantum threat requires permanent proof
 
 ### 4. Comprehensive Testing
 
