@@ -561,16 +561,17 @@ namespace TAO
                         oss_offsets << "]";
                         debug::log(0, oss_offsets.str());
                         
-                        /* Show first few chain members */
+                        /* Show first few chain members (only if we have enough offsets) */
                         if(vOffsets.size() > 4)
                         {
+                            size_t nChainMembers = std::min(size_t(5), vOffsets.size() - 4);
                             debug::log(0, "");
-                            debug::log(0, "   Chain members (first 5):");
+                            debug::log(0, "   Chain members (first ", nChainMembers, "):");
                             uint1024_t nCurrent = nPrimeCandidate;
-                            for(size_t i = 0; i < std::min(size_t(5), vOffsets.size() - 4); ++i)
+                            for(size_t i = 0; i < nChainMembers; ++i)
                             {
                                 debug::log(0, "   [", i, "] ", nCurrent.ToString().substr(0, 32), "...");
-                                if(i < vOffsets.size() - 5 && vOffsets[i] > 0)
+                                if(i + 1 < nChainMembers && vOffsets[i] > 0)
                                     nCurrent = nCurrent * 2 + 1;
                             }
                         }
