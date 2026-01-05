@@ -559,6 +559,31 @@ namespace FalconConstants
      *  pubkey_len(2) + pubkey(897) + miner_id_len(2) + miner_id(256) + genesis(32) = 1189 bytes */
     static const size_t MINER_AUTH_INIT_MAX = 1189;
 
+    /***************************************************************************
+     * Mining Template Validity Constants
+     * 
+     * NOTE: These constants are defined for future implementation of 
+     * timestamp-based template staleness checking. Currently, template 
+     * validation is height-based only (templates are invalidated when 
+     * blockchain height changes). Time-based validation can be added in 
+     * future enhancements to provide additional staleness protection.
+     **************************************************************************/
+
+    /** Template timestamp tolerance in seconds
+     *  Allow clock skew between node and miner to prevent false rejections.
+     *  Example: Don't reject templates if miner's clock is 20 seconds behind node.
+     *  This is NOT a warning threshold - it's a tolerance for clock synchronization. */
+    static const uint64_t TEMPLATE_TIMESTAMP_TOLERANCE_SECONDS = 30;
+
+    /** Maximum age of a mining template in seconds
+     *  Hard cutoff for template validity - templates older than this are discarded.
+     *  Reasoning:
+     *    - Nexus block time: ~50 seconds average
+     *    - Template should be valid for at least one full block interval
+     *    - 60 seconds provides safe margin before next block likely arrives
+     *  Prevents miners from working on very stale templates. */
+    static const uint64_t MAX_TEMPLATE_AGE_SECONDS = 60;
+
 } // namespace FalconConstants
 } // namespace LLP
 
