@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <Util/include/debug.h>
 #include <Util/include/softfloat.h>
+#include <Util/include/config.h>
 
 
 /* Global TAO namespace. */
@@ -118,11 +119,37 @@ namespace TAO
 
 
         /* Return list of offsets for use in optimized prime proof of work calculations. */
+        /* Gets the offsets of the prime numbers in the cluster. */
         void GetOffsets(const uint1024_t& hashPrime, std::vector<uint8_t> &vOffsets)
         {
-            /* Check first prime. */
+            bool fDiagnostic = (config::nVerbose >= 2);
+            
+            if(fDiagnostic)
+            {
+                debug::log(2, FUNCTION, "════════════════════════════════════════");
+                debug::log(2, FUNCTION, "   GETOFFSETS DIAGNOSTIC");
+                debug::log(2, FUNCTION, "════════════════════════════════════════");
+                debug::log(2, FUNCTION, "Input hashPrime: ", hashPrime.ToString().substr(0, 64), "...");
+            }
+            
+            /* Check first prime */
+            if(fDiagnostic)
+                debug::log(2, FUNCTION, "🔍 Validating base prime...");
+            
             if(!PrimeCheck(hashPrime))
+            {
+                if(fDiagnostic)
+                {
+                    debug::log(2, FUNCTION, "❌ BASE PRIME FAILED PrimeCheck()");
+                    debug::log(2, FUNCTION, "   This is why vOffsets is empty!");
+                    debug::log(2, FUNCTION, "   The base number is NOT prime");
+                    debug::log(2, FUNCTION, "════════════════════════════════════════");
+                }
                 return;
+            }
+            
+            if(fDiagnostic)
+                debug::log(2, FUNCTION, "✅ Base prime is VALID");
 
             /* Erase offsets if any */
             vOffsets.clear();
@@ -130,22 +157,42 @@ namespace TAO
 
             /* Set temporary variables for the checks. */
             uint1024_t hashLast = hashPrime;
+            uint32_t nChainLength = 0;
+            
             for(uint1024_t hashNext = hashPrime + 2; nOffset <= 12; hashNext += 2, nOffset += 2)
             {
                 /* Check if this interval is prime. */
                 if(PrimeCheck(hashNext))
                 {
+                    if(fDiagnostic)
+                        debug::log(2, FUNCTION, "   ✅ Offset ", static_cast<int>(nOffset), " → PRIME");
+                    
                     hashLast = hashNext;
 
                     /* Add offset to vector. */
                     vOffsets.push_back(nOffset);
                     nOffset = 0;
+                    ++nChainLength;
+                }
+                else
+                {
+                    if(fDiagnostic)
+                        debug::log(2, FUNCTION, "   ❌ Offset ", static_cast<int>(nOffset), " → not prime (chain breaks)");
                 }
             }
 
             /* Get fractional difficulty. */
             uint32_t nFraction = GetFractionalDifficulty(hashLast + nOffset);
             vOffsets.insert(vOffsets.end(), (uint8_t*)&nFraction, (uint8_t*)&nFraction + 4);
+            
+            if(fDiagnostic)
+            {
+                debug::log(2, FUNCTION, "════════════════════════════════════════");
+                debug::log(2, FUNCTION, "Result: ", vOffsets.size() - 4, " offsets found");
+                debug::log(2, FUNCTION, "Cunningham chain length: ", nChainLength);
+                debug::log(2, FUNCTION, "Fractional difficulty: ", nFraction);
+                debug::log(2, FUNCTION, "════════════════════════════════════════");
+            }
         }
 
 
@@ -172,17 +219,60 @@ namespace TAO
         /* Determines if given number is Prime. */
         bool PrimeCheck(const uint1024_t& hashTest)
         {
+            /* ✅ Only log diagnostics if debug level >= 2 */
+            bool fDiagnostic = (config::nVerbose >= 2);
+            
+            if(fDiagnostic)
+            {
+                debug::log(2, FUNCTION, "════════════════════════════════════════");
+                debug::log(2, FUNCTION, "   PRIMECHECK DIAGNOSTIC");
+                debug::log(2, FUNCTION, "════════════════════════════════════════");
+                debug::log(2, FUNCTION, "Input prime (first 64 bytes):");
+                debug::log(2, FUNCTION, "  ", hashTest.ToString().substr(0, 64), "...");
+            }
+            
             /* Check A: Small Prime Divisor Tests */
             if(!SmallDivisors(hashTest))
+            {
+                if(fDiagnostic)
+                {
+                    debug::log(2, FUNCTION, "❌ FAILED: Small divisor test");
+                    debug::log(2, FUNCTION, "   Prime is divisible by 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, or 31");
+                }
                 return false;
+            }
+            if(fDiagnostic)
+                debug::log(2, FUNCTION, "✅ PASSED: Small divisor test");
 
             /* Check B: Miller-Rabin Test (OpenSSL probabilistic primality test) */
             if(!Miller_Rabin(hashTest))
+            {
+                if(fDiagnostic)
+                {
+                    debug::log(2, FUNCTION, "❌ FAILED: Miller-Rabin test");
+                    debug::log(2, FUNCTION, "   Prime failed cryptographic primality test (PR #129)");
+                }
                 return false;
+            }
+            if(fDiagnostic)
+                debug::log(2, FUNCTION, "✅ PASSED: Miller-Rabin test");
 
             /* Check C: Fermat Test */
             if(FermatTest(hashTest) != 1)
+            {
+                if(fDiagnostic)
+                {
+                    debug::log(2, FUNCTION, "❌ FAILED: Fermat test");
+                }
                 return false;
+            }
+            if(fDiagnostic)
+            {
+                debug::log(2, FUNCTION, "✅ PASSED: Fermat test");
+                debug::log(2, FUNCTION, "════════════════════════════════════════");
+                debug::log(2, FUNCTION, "✅ PRIME IS VALID");
+                debug::log(2, FUNCTION, "════════════════════════════════════════");
+            }
 
             return true;
         }

@@ -29,6 +29,8 @@ ________________________________________________________________________________
 #include <LLC/include/mining_session_keys.h>
 #include <LLC/hash/SK.h>
 
+#include <TAO/Ledger/include/chainstate.h>
+
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 #include <Util/include/config.h>
@@ -329,8 +331,6 @@ namespace LLP
         /* Get current blockchain height if not provided */
         if(nCurrentHeight == 0)
         {
-            /* Need to include chainstate header for this */
-            #include <TAO/Ledger/include/chainstate.h>
             nCurrentHeight = TAO::Ledger::ChainState::nBestHeight.load();
         }
 
