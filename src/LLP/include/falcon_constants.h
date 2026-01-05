@@ -197,32 +197,40 @@ namespace FalconConstants
      *  Old value (merkle format): 891 bytes
      *    merkle(64) + nonce(8) + timestamp(8) + sig_len(2) + sig(809) = 891
      *  
-     *  Previous value (full block format): 1,035 bytes
+     *  Previous value (full block format, no Physical Falcon field): 1,035 bytes
      *    block(216) + timestamp(8) + sig_len(2) + sig(809) = 1,035
      *  
-     *  UPDATED: Now supports 2MB blocks with transactions
-     *  Format: [block(2MB max)][timestamp(8)][sig_len(2)][signature(809 max)]
-     *  Calculation: 2,097,152 + 8 + 2 + 809 = 2,097,971 bytes
+     *  Current value (PR #122 - Physical Falcon support): 1,037 bytes (minimum)
+     *    block(216) + timestamp(8) + sig_len(2) + sig(809) + physiglen(2) = 1,037
+     *    Note: Physical Falcon length field is ALWAYS present (2 bytes), even when disabled (value=0)
      *  
-     *  Updated in: NexusMiner PR #65/#66 (full block mining), PR #115 (2MB support)
+     *  UPDATED: Now supports 2MB blocks with transactions
+     *  Format: [block(2MB max)][timestamp(8)][sig_len(2)][signature(809 max)][physiglen(2)][physical_sig(optional)]
+     *  Calculation: 2,097,152 + 8 + 2 + 809 + 2 = 2,097,973 bytes (without physical signature)
+     *  
+     *  Updated in: NexusMiner PR #65/#66 (full block mining), PR #115 (2MB support), PR #122 (Physical Falcon)
      */
-    static const size_t SUBMIT_BLOCK_WRAPPER_MAX = 2097971;  // Was 1035
+    static const size_t SUBMIT_BLOCK_WRAPPER_MAX = 2097973;  // Was 1035, then 2097971
     
     /** Submit Block wrapper - PUBLIC MINER (with ChaCha20 encryption)
      *  
      *  Old value (merkle format): 919 bytes
      *    nonce(12) + encrypted_payload(891) + auth_tag(16) = 919
      *  
-     *  Previous value (full block format): 1,063 bytes
+     *  Previous value (full block format, no Physical Falcon field): 1,063 bytes
      *    nonce(12) + encrypted_payload(1,035) + auth_tag(16) = 1,063
+     *  
+     *  Current value (PR #122 - Physical Falcon support): 1,065 bytes (minimum)
+     *    nonce(12) + encrypted_payload(1,037) + auth_tag(16) = 1,065
+     *    Note: Physical Falcon length field is ALWAYS present in encrypted payload
      *  
      *  UPDATED: Now supports 2MB blocks with transactions
      *  Adds ChaCha20-Poly1305 overhead: nonce(12) + auth_tag(16) = 28 bytes
-     *  Calculation: 2,097,971 + 28 = 2,097,999 bytes
+     *  Calculation: 2,097,973 + 28 = 2,098,001 bytes
      *  
-     *  Updated in: NexusMiner PR #65/#66 (full block mining), PR #115 (2MB support)
+     *  Updated in: NexusMiner PR #65/#66 (full block mining), PR #115 (2MB support), PR #122 (Physical Falcon)
      */
-    static const size_t SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX = 2097999;  // Was 1063
+    static const size_t SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX = 2098001;  // Was 1063, then 2097999
 
     /***************************************************************************
      * Physical Block Signature (Stored on Blockchain - Emergency Backup System) - CT=809
@@ -302,30 +310,45 @@ namespace FalconConstants
      * 
      * These constants provide granular details for different block types and
      * signature scenarios in the full block format.
+     * 
+     * NOTE (PR #122): All sizes now include Physical Falcon length field (2 bytes)
+     * which is ALWAYS present, even when Physical Falcon is disabled (value=0).
      **************************************************************************/
 
-    /** Tritium wrapper signature - localhost */
-    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_MAX = 1035;
+    /** Tritium wrapper signature - localhost
+     *  Format: [block(216)][timestamp(8)][siglen(2)][sig(809)][physiglen(2)]
+     *  Was 1035, now 1037 (added physiglen field) */
+    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_MAX = 1037;
 
-    /** Tritium wrapper signature - encrypted */
-    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_ENCRYPTED_MAX = 1063;
+    /** Tritium wrapper signature - encrypted
+     *  Was 1063, now 1065 (added physiglen field in encrypted payload) */
+    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_ENCRYPTED_MAX = 1065;
 
-    /** Legacy wrapper signature - localhost */
-    static const size_t SUBMIT_BLOCK_FULL_LEGACY_WRAPPER_MAX = 1039;
+    /** Legacy wrapper signature - localhost
+     *  Format: [block(220)][timestamp(8)][siglen(2)][sig(809)][physiglen(2)]
+     *  Was 1039, now 1041 (added physiglen field) */
+    static const size_t SUBMIT_BLOCK_FULL_LEGACY_WRAPPER_MAX = 1041;
 
-    /** Legacy wrapper signature - encrypted */
-    static const size_t SUBMIT_BLOCK_FULL_LEGACY_WRAPPER_ENCRYPTED_MAX = 1067;
+    /** Legacy wrapper signature - encrypted
+     *  Was 1067, now 1069 (added physiglen field in encrypted payload) */
+    static const size_t SUBMIT_BLOCK_FULL_LEGACY_WRAPPER_ENCRYPTED_MAX = 1069;
 
-    /** Tritium dual signature - localhost */
+    /** Tritium dual signature - localhost
+     *  Format: [block(216)][timestamp(8)][siglen(2)][sig(809)][physiglen(2)][physical_sig(809)]
+     *  Was 1846, stays 1846 (already included physical sig, just formalized the physiglen field) */
     static const size_t SUBMIT_BLOCK_FULL_DUAL_SIG_TRITIUM_MAX = 1846;
 
-    /** Tritium dual signature - encrypted */
+    /** Tritium dual signature - encrypted
+     *  Was 1874, stays 1874 (already included physical sig) */
     static const size_t SUBMIT_BLOCK_FULL_DUAL_SIG_TRITIUM_ENCRYPTED_MAX = 1874;
 
-    /** Legacy dual signature - localhost */
+    /** Legacy dual signature - localhost
+     *  Format: [block(220)][timestamp(8)][siglen(2)][sig(809)][physiglen(2)][physical_sig(809)]
+     *  Was 1850, stays 1850 (already included physical sig) */
     static const size_t SUBMIT_BLOCK_FULL_DUAL_SIG_LEGACY_MAX = 1850;
 
-    /** Legacy dual signature - encrypted */
+    /** Legacy dual signature - encrypted
+     *  Was 1878, stays 1878 (already included physical sig) */
     static const size_t SUBMIT_BLOCK_FULL_DUAL_SIG_LEGACY_ENCRYPTED_MAX = 1878;
 
     /***************************************************************************
