@@ -518,8 +518,11 @@ namespace LLP
 
         debug::log(3, FUNCTION, "MINER_AUTH_INIT: parsed pubkey_len=", nPubKeyLen);
 
-        /* Detect wrapped vs unwrapped */
-        bool fWrapped = (nPubKeyLen == 925);  // 897 + 12 + 16
+        /* Detect wrapped vs unwrapped - Support both Falcon-512 and Falcon-1024 */
+        constexpr size_t CHACHA20_OVERHEAD = 12 + 16;  // nonce(12) + tag(16)
+        constexpr size_t FALCON512_WRAPPED_SIZE = LLC::FalconSizes::FALCON512_PUBLIC_KEY_SIZE + CHACHA20_OVERHEAD;  // 897 + 28 = 925
+        constexpr size_t FALCON1024_WRAPPED_SIZE = LLC::FalconSizes::FALCON1024_PUBLIC_KEY_SIZE + CHACHA20_OVERHEAD; // 1793 + 28 = 1821
+        bool fWrapped = (nPubKeyLen == FALCON512_WRAPPED_SIZE || nPubKeyLen == FALCON1024_WRAPPED_SIZE);
 
         /* Validate pubkey_len */
         if(nPubKeyLen == 0 || nPubKeyLen > 2048)
@@ -552,10 +555,12 @@ namespace LLP
                 return ProcessResult::Error(context, "Wrapped key requires genesis");
             }
 
-            /* ChaCha20-Poly1305 format: nonce(12) + ciphertext(897) + tag(16) */
-            if(vPubKeyData.size() != 925)
+            /* ChaCha20-Poly1305 format: nonce(12) + ciphertext(897 or 1793) + tag(16) */
+            if(vPubKeyData.size() != FALCON512_WRAPPED_SIZE && 
+               vPubKeyData.size() != FALCON1024_WRAPPED_SIZE)
             {
-                debug::log(0, FUNCTION, "Invalid wrapped key size: ", vPubKeyData.size());
+                debug::log(0, FUNCTION, "Invalid wrapped key size: ", vPubKeyData.size(), 
+                          " (expected ", FALCON512_WRAPPED_SIZE, " or ", FALCON1024_WRAPPED_SIZE, ")");
                 return ProcessResult::Error(context, "Invalid wrapped key size");
             }
 
@@ -576,12 +581,29 @@ namespace LLP
             vPubKey = vPubKeyData;
         }
 
-        /* Validate pubkey size */
-        if(vPubKey.size() != 897)
+        /* Validate pubkey size - Accept BOTH Falcon-512 (897) and Falcon-1024 (1793) */
+        constexpr size_t FALCON512_PUBKEY_SIZE = LLC::FalconSizes::FALCON512_PUBLIC_KEY_SIZE;
+        constexpr size_t FALCON1024_PUBKEY_SIZE = LLC::FalconSizes::FALCON1024_PUBLIC_KEY_SIZE;
+        
+        if(vPubKey.size() != FALCON512_PUBKEY_SIZE && 
+           vPubKey.size() != FALCON1024_PUBKEY_SIZE)
         {
-            debug::log(0, FUNCTION, "Invalid pubkey size: ", vPubKey.size(), " (expected 897)");
+            debug::log(0, FUNCTION, "Invalid pubkey size: ", vPubKey.size(), 
+                      " (expected ", FALCON512_PUBKEY_SIZE, " or ", FALCON1024_PUBKEY_SIZE, ")");
             return ProcessResult::Error(context, "Invalid public key size");
         }
+
+        /* Auto-detect Falcon version from public key */
+        LLC::FalconVersion detected;
+        if(!LLP::FalconVerify::VerifyPublicKey(vPubKey, detected))
+        {
+            debug::log(0, FUNCTION, "❌ Invalid Falcon public key");
+            return ProcessResult::Error(context, "Invalid Falcon public key");
+        }
+
+        debug::log(2, FUNCTION, "✅ ", 
+                  (detected == LLC::FalconVersion::FALCON_512) ? "Falcon-512" : "Falcon-1024", 
+                  " public key detected (", vPubKey.size(), " bytes)");
 
         debug::log(3, FUNCTION, "MINER_AUTH_INIT: extracted pubkey, len=", vPubKey.size());
 
@@ -656,7 +678,8 @@ namespace LLP
             .WithPubKey(vPubKey)
             .WithNonce(vAuthNonce)
             .WithGenesis(hashGenesis)
-            .WithTimestamp(runtime::unifiedtimestamp());
+            .WithTimestamp(runtime::unifiedtimestamp())
+            .WithFalconVersion(detected);
 
         /* Build challenge */
         Packet response(MINER_AUTH_CHALLENGE);
