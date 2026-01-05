@@ -169,5 +169,33 @@ namespace config
     **/
     void CacheArgs();
 
+
+    /** GetFalcon1024
+     *
+     *  Get Falcon-1024 stealth mode setting.
+     *  Default: true (stealth mode - accept both Falcon-512 and Falcon-1024)
+     *
+     *  @return True if Falcon-1024 support is enabled
+     *
+     **/
+    inline bool GetFalcon1024()
+    {
+        return GetBoolArg("-falcon1024", true);
+    }
+
+
+    /** GetPhysicalSigner
+     *
+     *  Get physical signer setting (future feature).
+     *  Default: false (not implemented yet)
+     *
+     *  @return True if physical signer is enabled
+     *
+     **/
+    inline bool GetPhysicalSigner()
+    {
+        return GetBoolArg("-physicalsigner", false);
+    }
+
 }
 #endif
