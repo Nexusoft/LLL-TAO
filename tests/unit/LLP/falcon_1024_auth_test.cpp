@@ -191,7 +191,7 @@ TEST_CASE("Falcon-1024 ChaCha20 Wrapped Authentication", "[falcon][falcon1024][c
 
         /* Create test genesis hash */
         uint256_t testGenesis;
-        testGenesis.SetHex("d4a7344f26fd4f13fee8621715e4a0ffff66g6487628gd1278dg22da630fg455");
+        testGenesis.SetHex("d4a7344f26fd4f13fee8621715e4a0ffff66a6487628ad1278da22da630fa455");
 
         /* Derive ChaCha20 key from genesis */
         std::vector<uint8_t> vSessionKey = LLC::MiningSessionKeys::DeriveChaCha20Key(testGenesis);
