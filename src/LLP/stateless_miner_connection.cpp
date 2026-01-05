@@ -1744,11 +1744,8 @@ namespace LLP
                 return nullptr;
             }
             
-            /* ✅ ADD: Set template creation timestamp for staleness tracking */
-            uint64_t nTemplateTime = runtime::unifiedtimestamp();
             debug::log(0, "   ✓ Template validated at height ", pBlock->nHeight);
-            debug::log(0, "   Template timestamp: ", nTemplateTime);
-            debug::log(0, "   Valid until height change or 60 seconds");
+            debug::log(0, "   Valid until height change");
         }
         
         /* Store new template in map (wallet signature is already set by CreateBlockForStatelessMining) */

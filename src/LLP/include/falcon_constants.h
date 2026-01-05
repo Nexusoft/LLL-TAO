@@ -561,6 +561,12 @@ namespace FalconConstants
 
     /***************************************************************************
      * Mining Template Validity Constants
+     * 
+     * NOTE: These constants are defined for future implementation of 
+     * timestamp-based template staleness checking. Currently, template 
+     * validation is height-based only (templates are invalidated when 
+     * blockchain height changes). Time-based validation can be added in 
+     * future enhancements to provide additional staleness protection.
      **************************************************************************/
 
     /** Maximum age of a mining template in seconds
