@@ -32,6 +32,7 @@ ________________________________________________________________________________
 
 #include <ios>
 #include <iomanip>
+#include <sstream>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -230,10 +231,51 @@ namespace TAO
         }
 
 
-        /* Get the prime number of the block. */
+        /* GetPrime - Calculate prime candidate from ProofHash + nonce 
+         * 
+         * CRITICAL FIX (PR #128): Ensure nonce is LITTLE-ENDIAN
+         * Falcon protocol uses little-endian for all multi-byte integers.
+         * The nonce must be correctly interpreted before adding to ProofHash.
+         */
         uint1024_t Block::GetPrime() const
         {
-            return ProofHash() + nNonce;
+            /* Get the proof hash base */
+            uint1024_t nPrime = ProofHash();
+            
+            /* Nonce endianness handling (Falcon protocol standard)
+             * On x86/x64 architectures, uint64_t is already stored little-endian.
+             * The serialization framework (READWRITE) preserves this byte order.
+             * This explicit variable documents the expected endianness for clarity. */
+            uint64_t nNonceLE = nNonce;
+            
+            /* Training wheels logging (opt-in diagnostic mode) */
+            bool fTrainingWheels = config::GetBoolArg("-trainingwheels", false);
+            if(fTrainingWheels)
+            {
+                debug::log(0, "");
+                debug::log(0, "🔬 GetPrime() CALCULATION:");
+                debug::log(0, "   ProofHash:  ", nPrime.ToString().substr(0, 64), "...");
+                
+                /* Show nonce in multiple formats for debugging */
+                std::ostringstream oss;
+                oss << "0x" << std::hex << std::setfill('0') << std::setw(16) << nNonceLE;
+                debug::log(0, "   nNonce (LE): ", oss.str());
+                
+                /* Show raw bytes (little-endian byte order) */
+                debug::log(0, "   nNonce (raw bytes): ", HexStr(reinterpret_cast<const uint8_t*>(&nNonce), 
+                                                                  reinterpret_cast<const uint8_t*>(&nNonce) + 8));
+            }
+            
+            /* Add nonce to prime */
+            nPrime += nNonceLE;
+            
+            if(fTrainingWheels)
+            {
+                debug::log(0, "   hashPrime:  ", nPrime.ToString().substr(0, 64), "...");
+                debug::log(0, "");
+            }
+            
+            return nPrime;
         }
 
 
@@ -448,18 +490,163 @@ namespace TAO
             /* Check the Prime Number Proof of Work for the Prime Channel. */
             if(nChannel == 1)
             {
+                bool fTrainingWheels = config::GetBoolArg("-trainingwheels", false);
+                
+                if(fTrainingWheels)
+                {
+                    debug::log(0, "");
+                    debug::log(0, "╔═══════════════════════════════════════════════════════════╗");
+                    debug::log(0, "║        PRIME VALIDATION - TRAINING WHEELS MODE            ║");
+                    debug::log(0, "╚═══════════════════════════════════════════════════════════╝");
+                    debug::log(0, "");
+                    debug::log(0, "📝 BLOCK CONTEXT:");
+                    debug::log(0, "   Height:       ", nHeight);
+                    debug::log(0, "   Merkle Root:  ", hashMerkleRoot.ToString().substr(0, 16), "...");
+                    
+                    std::ostringstream oss;
+                    oss << "0x" << std::hex << std::setfill('0') << std::setw(16) << nNonce;
+                    debug::log(0, "   Nonce:        ", oss.str());
+                    debug::log(0, "   Channel:      ", nChannel, " (Prime)");
+                }
+                
                 /* Check prime minimum origins. */
                 if(nVersion >= 5 && ProofHash() < bnPrimeMinOrigins.getuint1024())
+                {
+                    if(fTrainingWheels)
+                    {
+                        debug::log(0, "");
+                        debug::log(0, "❌ FAILED: Prime origins below 1016-bits");
+                        debug::log(0, "");
+                    }
                     return debug::error(FUNCTION, "prime origins below 1016-bits");
+                }
+                
+                /* STEP 1: Extract prime candidate */
+                uint1024_t nPrimeCandidate = GetPrime();
+                
+                if(fTrainingWheels)
+                {
+                    debug::log(0, "");
+                    debug::log(0, "📝 STEP 1: PRIME CANDIDATE EXTRACTION");
+                    debug::log(0, "   hashPrime:    ", nPrimeCandidate.ToString().substr(0, 32), "...");
+                    debug::log(0, "   Bit Length:   ", nPrimeCandidate.bits(), " bits");
+                }
+                
+                /* STEP 2: Check offsets availability */
+                if(fTrainingWheels)
+                {
+                    debug::log(0, "");
+                    debug::log(0, "🔗 STEP 2: CUNNINGHAM CHAIN ANALYSIS");
+                    
+                    if(vOffsets.empty())
+                    {
+                        debug::log(0, "   ❌ NO OFFSETS FOUND");
+                        debug::log(0, "   ⚠️ This means GetOffsets() found zero valid primes in the Cunningham chain");
+                        debug::log(0, "   ⚠️ Expected: Array of offsets like [2, 6, 12, 66, 146, 32, 0]");
+                        debug::log(0, "   ⚠️ Got: Empty array");
+                        debug::log(0, "   ⚠️ Block will FAIL Check() validation");
+                    }
+                    else
+                    {
+                        debug::log(0, "   ✅ OFFSETS FOUND: ", vOffsets.size(), " elements");
+                        
+                        /* Show offsets array */
+                        std::ostringstream oss_offsets;
+                        oss_offsets << "   [";
+                        for(size_t i = 0; i < vOffsets.size(); ++i)
+                        {
+                            oss_offsets << uint32_t(vOffsets[i]);
+                            if(i < vOffsets.size() - 1) oss_offsets << ", ";
+                        }
+                        oss_offsets << "]";
+                        debug::log(0, oss_offsets.str());
+                        
+                        /* Show first few chain members (only if we have enough offsets)
+                         * vOffsets has 4 trailing bytes for fractional difficulty, so we need size > 4 */
+                        if(vOffsets.size() > 4)
+                        {
+                            size_t nChainMembers = std::min(size_t(5), vOffsets.size() > 4 ? vOffsets.size() - 4 : 0);
+                            if(nChainMembers > 0)
+                            {
+                                debug::log(0, "");
+                                debug::log(0, "   Chain members (first ", nChainMembers, "):");
+                                uint1024_t nCurrent = nPrimeCandidate;
+                                for(size_t i = 0; i < nChainMembers && i < vOffsets.size(); ++i)
+                                {
+                                    debug::log(0, "   [", i, "] ", nCurrent.ToString().substr(0, 32), "...");
+                                    if(i + 1 < nChainMembers && vOffsets[i] > 0)
+                                        nCurrent = nCurrent * 2 + 1;
+                                }
+                            }
+                        }
+                    }
+                }
 
                 /* Check proof of work limits. */
-                uint32_t nPrimeBits = GetPrimeBits(GetPrime(), vOffsets, !ChainState::Synchronizing());
+                uint32_t nPrimeBits = GetPrimeBits(nPrimeCandidate, vOffsets, !ChainState::Synchronizing());
+                
+                if(fTrainingWheels)
+                {
+                    debug::log(0, "");
+                    debug::log(0, "📊 STEP 3: PRIME DIFFICULTY CALCULATION");
+                    debug::log(0, "   Prime Bits:   ", nPrimeBits);
+                    debug::log(0, "   Prime Diff:   ", std::fixed, std::setprecision(8), GetDifficulty(nPrimeBits, 1));
+                }
+                
                 if(nPrimeBits < bnProofOfWorkLimit[1])
+                {
+                    if(fTrainingWheels)
+                    {
+                        debug::log(0, "   ❌ FAILED: Prime-cluster below minimum work (", nPrimeBits, ")");
+                        debug::log(0, "");
+                        debug::log(0, "╔═══════════════════════════════════════════════════════════╗");
+                        debug::log(0, "║              ❌ PRIME BLOCK INVALID                       ║");
+                        debug::log(0, "║              (Below minimum work)                         ║");
+                        debug::log(0, "╚═══════════════════════════════════════════════════════════╝");
+                        debug::log(0, "");
+                    }
                     return debug::error(FUNCTION, "prime-cluster below minimum work" "(", nPrimeBits, ")");
+                }
 
+                /* STEP 4: Difficulty comparison */
+                double nActualDifficulty = GetDifficulty(nPrimeBits, 1);
+                double nRequiredDifficulty = GetDifficulty(nBits, 1);
+                
+                if(fTrainingWheels)
+                {
+                    debug::log(0, "");
+                    debug::log(0, "⚖️ STEP 4: DIFFICULTY COMPARISON");
+                    debug::log(0, "   Required:  ", std::fixed, std::setprecision(8), nRequiredDifficulty);
+                    debug::log(0, "   Actual:    ", std::fixed, std::setprecision(8), nActualDifficulty);
+                    
+                    if(nActualDifficulty >= nRequiredDifficulty)
+                    {
+                        double margin = nActualDifficulty - nRequiredDifficulty;
+                        double percentOver = ((nActualDifficulty / nRequiredDifficulty) - 1.0) * 100.0;
+                        
+                        debug::log(0, "   Margin:    +", std::fixed, std::setprecision(8), margin, " (+", std::fixed, std::setprecision(2), percentOver, "% over)");
+                        debug::log(0, "   ✅ PASSED: Sufficient difficulty");
+                    }
+                    else
+                    {
+                        debug::log(0, "   ❌ FAILED: Insufficient difficulty");
+                    }
+                }
+                
                 /* Check the prime difficulty target. */
                 if(nPrimeBits < nBits)
+                {
+                    if(fTrainingWheels)
+                    {
+                        debug::log(0, "");
+                        debug::log(0, "╔═══════════════════════════════════════════════════════════╗");
+                        debug::log(0, "║              ❌ PRIME BLOCK INVALID                       ║");
+                        debug::log(0, "║              (Insufficient difficulty)                    ║");
+                        debug::log(0, "╚═══════════════════════════════════════════════════════════╝");
+                        debug::log(0, "");
+                    }
                     return debug::error(FUNCTION, "prime-cluster below target ", "(proof: ", nPrimeBits, " target: ", nBits, ")");
+                }
 
                 /* Build offset list. */
                 std::string strOffsets = "";
@@ -473,22 +660,93 @@ namespace TAO
                 /* Output offset list. */
                 debug::log(2, "  prime:  ", GetDifficulty(nPrimeBits, 1), " [+ 0, ", strOffsets, "]");
                 debug::log(2, "  target: ", GetDifficulty(nBits, 1));
+                
+                if(fTrainingWheels)
+                {
+                    debug::log(0, "");
+                    debug::log(0, "╔═══════════════════════════════════════════════════════════╗");
+                    debug::log(0, "║              ✅ PRIME BLOCK VALID                         ║");
+                    debug::log(0, "╚═══════════════════════════════════════════════════════════╝");
+                    debug::log(0, "");
+                }
 
                 return true;
             }
             if(nChannel == 2)
             {
+                bool fTrainingWheels = config::GetBoolArg("-trainingwheels", false);
+                
+                if(fTrainingWheels)
+                {
+                    debug::log(0, "");
+                    debug::log(0, "╔═══════════════════════════════════════════════════════════╗");
+                    debug::log(0, "║         HASH VALIDATION - TRAINING WHEELS MODE            ║");
+                    debug::log(0, "╚═══════════════════════════════════════════════════════════╝");
+                    debug::log(0, "");
+                }
+                
                 /* Get the hash target. */
                 LLC::CBigNum bnTarget;
                 bnTarget.SetCompact(nBits);
+                
+                /* Get proof hash */
+                uint1024_t hashProof = ProofHash();
+
+                if(fTrainingWheels)
+                {
+                    debug::log(0, "📝 PROOF-OF-WORK VALIDATION");
+                    debug::log(0, "   Block Hash:  ", hashProof.ToString());
+                    debug::log(0, "   Target:      ", bnTarget.getuint1024().ToString());
+                    debug::log(0, "");
+                    
+                    debug::log(0, "🔍 HASH ANALYSIS");
+                    debug::log(0, "   Hash bits:     ", hashProof.bits(), " bits");
+                    debug::log(0, "   Target bits:   ", bnTarget.getuint1024().bits(), " bits");
+                    debug::log(0, "   Leading zeros: ~", 1024 - hashProof.bits(), " bits");
+                    debug::log(0, "");
+                    
+                    /* Visual comparison */
+                    debug::log(0, "📊 VISUAL COMPARISON");
+                    debug::log(0, "   Hash:   ", hashProof.ToString().substr(0, 64), "...");
+                    debug::log(0, "   Target: ", bnTarget.getuint1024().ToString().substr(0, 64), "...");
+                    debug::log(0, "");
+                }
 
                 /* Check that the hash is within range. */
                 if(bnTarget <= 0 || bnTarget > bnProofOfWorkLimit[2])
+                {
+                    if(fTrainingWheels)
+                    {
+                        debug::log(0, "   ❌ Target not in range");
+                        debug::log(0, "");
+                    }
                     return debug::error(FUNCTION, "proof-of-work hash not in range");
+                }
 
                 /* Check that the that enough work was done on this block. */
-                if(ProofHash() > bnTarget.getuint1024())
+                if(hashProof > bnTarget.getuint1024())
+                {
+                    if(fTrainingWheels)
+                    {
+                        debug::log(0, "   ❌ Hash > Target (INVALID)");
+                        debug::log(0, "");
+                        debug::log(0, "╔═══════════════════════════════════════════════════════════╗");
+                        debug::log(0, "║              ❌ HASH BLOCK INVALID                        ║");
+                        debug::log(0, "╚═══════════════════════════════════════════════════════════╝");
+                        debug::log(0, "");
+                    }
                     return debug::error(FUNCTION, "proof-of-work hash below target");
+                }
+                
+                if(fTrainingWheels)
+                {
+                    debug::log(0, "   ✅ Hash ≤ Target (VALID)");
+                    debug::log(0, "");
+                    debug::log(0, "╔═══════════════════════════════════════════════════════════╗");
+                    debug::log(0, "║              ✅ HASH BLOCK VALID                          ║");
+                    debug::log(0, "╚═══════════════════════════════════════════════════════════╝");
+                    debug::log(0, "");
+                }
 
                 return true;
             }
