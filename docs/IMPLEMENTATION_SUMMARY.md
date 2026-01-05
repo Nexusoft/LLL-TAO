@@ -90,42 +90,43 @@ Nexus implements two distinct types of Falcon signatures:
 - Storage: NOT stored on blockchain (zero blockchain overhead)
 - Version support: Falcon-512 OR Falcon-1024 (miner's choice)
 - This PR enables: Support for both versions
-- Configuration: `falcon1024=1` (node accepts both)
+- Node behavior: HARDCODED - always accepts both (no config needed)
 
 **2. Physical Falcon (Permanent) - NOW IMPLEMENTED:**
 - Purpose: Emergency backup block authorship proof
 - Storage: STORED on blockchain permanently
 - Version support: ALWAYS Falcon-512, NEVER Falcon-1024
 - Rationale: Minimize permanent blockchain bloat (809 vs 1577 bytes)
-- Default: `physicalsigner=0` (OFF - minimize bloat)
+- Node behavior: HARDCODED - always accepts Falcon-512 (no config needed)
 - Implementation: Auto-detects and auto-accepts Falcon-512 CT signatures only
 - Security: Enforces rejection of Falcon-1024 for physical signatures
 
 #### Args Helpers (`src/Util/include/args.h`)
 ```cpp
-// For Disposable Falcon - accepts both 512 and 1024
+// HARDCODED: Node always accepts both Falcon-512 and Falcon-1024
 inline bool GetFalcon1024() {
-    return GetBoolArg("-falcon1024", true);  // Default: TRUE (stealth mode)
+    return true;  // Always accept Disposable Falcon (512 OR 1024)
 }
 
-// For Physical Falcon - now implemented, always uses Falcon-512
+// HARDCODED: Node always accepts Physical Falcon-512
 inline bool GetPhysicalSigner() {
-    return GetBoolArg("-physicalsigner", false);  // Default: FALSE (minimize bloat)
+    return true;  // Always accept Physical Falcon-512 only
 }
 ```
 
-**Stealth Mode (Default) - For Disposable Falcon:**
-- `falcon1024=1` (ON) - Node accepts both Falcon-512 and Falcon-1024 disposable signatures
-- Auto-detects version from miner's public key
-- Zero configuration required for node operators
-- Seamless protocol upgrade without network fork
+**Hardcoded Behavior - No Configuration Required:**
+- Node ALWAYS accepts Disposable Falcon-512 and Falcon-1024 (auto-detected)
+- Node ALWAYS accepts Physical Falcon-512 (enforced, never 1024)
+- Both signature types can coexist in the SAME Submit Block Structure
+- Zero configuration required from node operators
+- Maximum compatibility and security by default
 
 **Physical Falcon (Now Implemented):**
-- ALWAYS uses Falcon-512 regardless of miner configuration
+- ALWAYS uses Falcon-512 regardless of configuration
 - Auto-detects and auto-accepts Falcon-512 CT signatures (809 bytes)
 - Enforces rejection of Falcon-1024 signatures for physical blocks
 - Minimizes permanent blockchain overhead (809 bytes vs 1577 bytes)
-- Default OFF (`physicalsigner=0`) - enable only when quantum threat requires permanent proof
+- Always enabled - no configuration needed
 
 ### 4. Comprehensive Testing
 

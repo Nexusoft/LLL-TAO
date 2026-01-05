@@ -173,28 +173,33 @@ namespace config
     /** GetFalcon1024
      *
      *  Get Falcon-1024 stealth mode setting.
-     *  Default: true (stealth mode - accept both Falcon-512 and Falcon-1024)
+     *  
+     *  HARDCODED: Always returns true - node always accepts both Falcon-512 and Falcon-1024
+     *  for Disposable Falcon signatures (session-based, NOT stored on blockchain).
      *
-     *  @return True if Falcon-1024 support is enabled
+     *  @return Always returns true (stealth mode always enabled)
      *
      **/
     inline bool GetFalcon1024()
     {
-        return GetBoolArg("-falcon1024", true);
+        return true;  // HARDCODED: Always accept both Falcon-512 and Falcon-1024
     }
 
 
     /** GetPhysicalSigner
      *
-     *  Get physical signer setting (future feature).
-     *  Default: false (not implemented yet)
+     *  Get physical signer acceptance setting.
+     *  
+     *  HARDCODED: Always returns true - node always accepts Physical Falcon-512 signatures.
+     *  Physical Falcon signatures are ALWAYS Falcon-512, NEVER Falcon-1024.
+     *  These are stored permanently on blockchain.
      *
-     *  @return True if physical signer is enabled
+     *  @return Always returns true (always accept Physical Falcon-512)
      *
      **/
     inline bool GetPhysicalSigner()
     {
-        return GetBoolArg("-physicalsigner", false);
+        return true;  // HARDCODED: Always accept Physical Falcon-512 signatures
     }
 
 }

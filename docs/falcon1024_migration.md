@@ -84,19 +84,21 @@ Miners choose their Disposable Falcon version:
 
 ### Node Configuration (`nexus.conf`)
 
-```ini
-# Disposable Falcon Signature Configuration (Stealth Mode)
-# Default: Accept both Falcon-512 and Falcon-1024 disposable signatures
-# Node operators don't need to configure this
-falcon1024=1  # ON by default (stealth mode - accepts both versions)
+**NO CONFIGURATION REQUIRED**
 
-# Physical Falcon signature (now implemented)
-# ALWAYS uses Falcon-512, never Falcon-1024
-# Default OFF to minimize permanent blockchain bloat
-physicalsigner=0  # OFF by default (enable only when quantum threat requires)
+The node behavior is hardcoded:
+- Always accepts Disposable Falcon-512 OR Falcon-1024 (auto-detected)
+- Always accepts Physical Falcon-512 ONLY (enforced)
+- Both can be present in the SAME Submit Block Structure
+
+```ini
+# Falcon signature acceptance is hardcoded - no parameters needed
+# Node ALWAYS accepts:
+#   - Disposable Falcon: 512 OR 1024 (miner's choice)
+#   - Physical Falcon: 512 ONLY (enforced)
 ```
 
-**Node operators: No action required.** Stealth mode is automatic.
+**Node operators: No action required.** Acceptance is automatic and cannot be disabled.
 
 ---
 

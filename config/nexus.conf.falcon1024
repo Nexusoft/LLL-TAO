@@ -20,67 +20,25 @@ daemon=1
 # FALCON POST-QUANTUM SIGNATURE CONFIGURATION
 #==============================================================================
 
-# falcon1024 - Enable Falcon-1024 stealth mode (accepts both Falcon-512 and Falcon-1024)
-# 
-# Default: 1 (ON - stealth mode)
-# 
-# When enabled (default), the node accepts BOTH:
-#   - Falcon-512 signatures (NIST Level 1, 128-bit quantum security)
-#   - Falcon-1024 signatures (NIST Level 5, 256-bit quantum security)
-# 
-# The node auto-detects which version the miner is using from the public key size
-# and handles verification accordingly. This allows seamless protocol upgrade without
-# requiring all miners to upgrade simultaneously.
+# NOTE: Falcon signature acceptance is HARDCODED in the node software.
+# No configuration parameters are needed or available.
 #
-# NODE OPERATORS: Leave this at 1 (default). No action required.
+# The node ALWAYS accepts (cannot be disabled):
+#   1. Disposable Falcon signatures: Falcon-512 OR Falcon-1024 (auto-detected)
+#      - Session-based, NOT stored on blockchain
+#      - Miner can choose version
 #
-# Setting to 0 would reject Falcon-1024 miners (not recommended unless you have
-# a specific reason to restrict to Falcon-512 only).
+#   2. Physical Falcon signatures: Falcon-512 ONLY (enforced)
+#      - Permanently stored ON blockchain
+#      - ALWAYS Falcon-512, NEVER Falcon-1024
+#      - Minimizes permanent blockchain bloat
 #
-# falcon1024 - Enable Falcon-1024 stealth mode (accepts both Falcon-512 and Falcon-1024)
-# 
-# Default: 1 (ON - stealth mode)
-# 
-# When enabled (default), the node accepts BOTH:
-#   - Falcon-512 signatures (NIST Level 1, 128-bit quantum security)
-#   - Falcon-1024 signatures (NIST Level 5, 256-bit quantum security)
-# 
-# This applies to DISPOSABLE Falcon signatures used in the mining protocol.
-# These are session-based signatures that are NOT stored on the blockchain.
+# Both signature types can be present in the SAME Submit Block Structure:
+#   - Disposable Falcon: For real-time mining protocol authentication
+#   - Physical Falcon: For permanent block authorship proof
 #
-# The node auto-detects which version the miner is using from the public key size
-# and handles verification accordingly. This allows seamless protocol upgrade without
-# requiring all miners to upgrade simultaneously.
-#
-# NODE OPERATORS: Leave this at 1 (default). No action required.
-#
-# Setting to 0 would reject Falcon-1024 miners (not recommended unless you have
-# a specific reason to restrict to Falcon-512 only).
-#
-falcon1024=1
-
-# physicalsigner - Enable Physical Falcon block signatures
-#
-# Default: 0 (OFF - minimize permanent blockchain bloat)
-#
-# Physical Falcon signatures are permanently stored ON the blockchain.
-# They provide emergency backup proof of block authorship.
-#
-# When enabled (physicalsigner=1):
-#   - Blocks will include a Physical Falcon-512 CT signature (809 bytes)
-#   - Signature is stored permanently on blockchain
-#   - ALWAYS uses Falcon-512, NEVER Falcon-1024
-#   - Auto-detected and auto-accepted by nodes
-#
-# Key architectural distinction:
-#   - Disposable Falcon: Session-based, NOT on blockchain, CAN be Falcon-1024
-#   - Physical Falcon: Permanent, ON blockchain, ALWAYS Falcon-512
-#
-# Recommendation:
-#   - Keep OFF (default) to minimize blockchain bloat
-#   - Enable only when quantum computing threat requires permanent proof
-#
-physicalsigner=0
+# This provides maximum compatibility and security without requiring
+# any configuration from node operators.
 
 #==============================================================================
 # FALCON DUAL SIGNATURE ARCHITECTURE
