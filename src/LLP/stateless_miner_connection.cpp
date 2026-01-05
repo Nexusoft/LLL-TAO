@@ -821,8 +821,8 @@ namespace LLP
                                 /* Read sig_len to determine where signature starts */
                                 /* Minimum size: timestamp(8) + sig_len(2) + physiglen(2) = 12 bytes */
                                 const size_t MIN_METADATA_SIZE = FalconConstants::TIMESTAMP_SIZE + 
-                                                                 FalconConstants::LENGTH_FIELD_SIZE + 
-                                                                 FalconConstants::LENGTH_FIELD_SIZE;  // Physical Falcon length field
+                                                                 FalconConstants::LENGTH_FIELD_SIZE +  // sig_len field
+                                                                 FalconConstants::LENGTH_FIELD_SIZE;   // physiglen field
                                 
                                 if(decryptedData.size() < MIN_METADATA_SIZE) {
                                     debug::error(FUNCTION, "❌ Decrypted payload too small (need at least ", MIN_METADATA_SIZE, " bytes)");
@@ -906,17 +906,16 @@ namespace LLP
                                         
                                         /* Calculate block size assuming no physical signature (P = 0)
                                          * Format: [block(B)][timestamp(8)][siglen(2)][sig(S)][physiglen(2)][physical_sig(0)]
-                                         * testBlockSize = Total - timestamp - disposable_siglen_field - sig - physical_siglen_field */
-                                        const size_t disposableSigLenFieldSize = FalconConstants::LENGTH_FIELD_SIZE;
-                                        const size_t physicalSigLenFieldSize = FalconConstants::LENGTH_FIELD_SIZE;
-                                        
+                                         * testBlockSize = Total - timestamp - siglen_field - sig - physiglen_field */
                                         size_t testBlockSize = decryptedData.size() - FalconConstants::TIMESTAMP_SIZE - 
-                                                               disposableSigLenFieldSize - testSigLen -
-                                                               physicalSigLenFieldSize;
+                                                               FalconConstants::LENGTH_FIELD_SIZE -  // disposable sig_len field
+                                                               testSigLen -
+                                                               FalconConstants::LENGTH_FIELD_SIZE;   // physical sig_len field
                                         
                                         /* Read physical signature length to check if physical signature is present */
                                         size_t physSigLenOffset = testBlockSize + FalconConstants::TIMESTAMP_SIZE + 
-                                                                 disposableSigLenFieldSize + testSigLen;
+                                                                 FalconConstants::LENGTH_FIELD_SIZE +  // disposable sig_len field
+                                                                 testSigLen;
                                         
                                         if(physSigLenOffset + FalconConstants::LENGTH_FIELD_SIZE > decryptedData.size())
                                             continue;  // Not enough data for physiglen field
