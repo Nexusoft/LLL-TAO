@@ -1652,8 +1652,12 @@ namespace LLP
     {
         debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "=== NEW_BLOCK: Request from ", GetAddress().ToStringIP(), " ===", ANSI_COLOR_RESET);
         
-        /* Get current height for cleanup */
+        /* Get CURRENT blockchain height FIRST */
         uint32_t nCurrentHeight = TAO::Ledger::ChainState::nBestHeight.load();
+        
+        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "=== NEW_BLOCK: Creating template ===", ANSI_COLOR_RESET);
+        debug::log(0, "   Current blockchain height: ", nCurrentHeight);
+        debug::log(0, "   Template will target height: ", nCurrentHeight + 1);
         
         /* Cleanup old templates when height advances */
         debug::log(2, FUNCTION, "Cleaning up stale templates (current height: ", nCurrentHeight, ")");
@@ -1726,6 +1730,27 @@ namespace LLP
             pBlock = nullptr;
         }
         
+        /* ✅ ADD: AFTER block is created, verify height is still valid */
+        if(pBlock)
+        {
+            uint32_t nHeightNow = TAO::Ledger::ChainState::nBestHeight.load();
+            if(pBlock->nHeight != nHeightNow + 1)
+            {
+                debug::error(FUNCTION, "❌ Template became stale during creation!");
+                debug::error(FUNCTION, "   Created for height: ", pBlock->nHeight);
+                debug::error(FUNCTION, "   Blockchain now at: ", nHeightNow);
+                debug::error(FUNCTION, "   Template is INVALID - discarding");
+                delete pBlock;
+                return nullptr;
+            }
+            
+            /* ✅ ADD: Set template creation timestamp for staleness tracking */
+            uint64_t nTemplateTime = runtime::unifiedtimestamp();
+            debug::log(0, "   ✓ Template validated at height ", pBlock->nHeight);
+            debug::log(0, "   Template timestamp: ", nTemplateTime);
+            debug::log(0, "   Valid until height change or 60 seconds");
+        }
+        
         /* Store new template in map (wallet signature is already set by CreateBlockForStatelessMining) */
         mapBlocks[pBlock->hashMerkleRoot] = pBlock;
         debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Template stored in map", ANSI_COLOR_RESET);
@@ -1741,13 +1766,43 @@ namespace LLP
     /** Sign a block */
     bool StatelessMinerConnection::sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot)
     {
-        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "📝 === SIGN_BLOCK: Updating template with miner's nonce ===", ANSI_COLOR_RESET);
+        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "📝 === SIGN_BLOCK: Updating template ===", ANSI_COLOR_RESET);
+        debug::log(0, "   Looking for merkle root: ", hashMerkleRoot.SubString());
+        
+        /* ✅ ADD: Before lookup, log all known templates for diagnostics */
+        if(mapBlocks.empty())
+        {
+            debug::error(FUNCTION, "❌ No templates in map!");
+            debug::error(FUNCTION, "   This means:");
+            debug::error(FUNCTION, "   - Template expired (height changed)");
+            debug::error(FUNCTION, "   - Template was never created");
+            debug::error(FUNCTION, "   - Template cleanup removed it");
+            return false;
+        }
         
         /* Safe map access to avoid creating null entry */
         auto it = mapBlocks.find(hashMerkleRoot);
+        
+        /* ✅ ADD: If lookup fails, check for merkle mismatch */
         if(it == mapBlocks.end() || !it->second)
         {
-            return debug::error(FUNCTION, "Block not found in map for merkle root: ", hashMerkleRoot.SubString());
+            debug::error(FUNCTION, "❌ Template not found for submitted merkle root");
+            debug::error(FUNCTION, "   Submitted merkle: ", hashMerkleRoot.SubString());
+            debug::error(FUNCTION, "   Known templates in map:");
+            for(const auto& entry : mapBlocks)
+            {
+                if(entry.second)
+                {
+                    debug::error(FUNCTION, "     - ", entry.first.SubString(), 
+                               " (height: ", entry.second->nHeight, ")");
+                }
+            }
+            debug::error(FUNCTION, "");
+            debug::error(FUNCTION, "   POSSIBLE CAUSES:");
+            debug::error(FUNCTION, "   1. Miner computed wrong merkle root (BUG in miner)");
+            debug::error(FUNCTION, "   2. Miner is submitting work from old template");
+            debug::error(FUNCTION, "   3. Miner's nonce caused merkle to change (overflow?)");
+            return false;
         }
         
         TAO::Ledger::Block *pBaseBlock = it->second;
@@ -2004,11 +2059,37 @@ namespace LLP
             {
                 debug::log(0, ANSI_COLOR_BRIGHT_RED, "❌ Check() FAILED", ANSI_COLOR_RESET);
                 debug::log(0, "   Block failed consensus validation");
-                debug::log(0, "   Common failure reasons:");
-                debug::log(0, "   - Prime: Empty vOffsets or invalid Cunningham chain");
-                debug::log(0, "   - Hash: Proof hash doesn't meet target");
-                debug::log(0, "   - Producer transaction invalid");
-                debug::log(0, "   - Block structure malformed");
+                
+                /* ✅ ADD: Enhanced Prime channel diagnostics */
+                if(pBlock->nChannel == 1)  // Prime channel
+                {
+                    debug::error(FUNCTION, "════════════════════════════════════════");
+                    debug::error(FUNCTION, "   PRIME CHANNEL VALIDATION FAILED");
+                    debug::error(FUNCTION, "════════════════════════════════════════");
+                    debug::error(FUNCTION, "Block details:");
+                    debug::error(FUNCTION, "  Height: ", pBlock->nHeight);
+                    debug::error(FUNCTION, "  Channel: 1 (Prime)");
+                    debug::error(FUNCTION, "  Merkle: ", pBlock->hashMerkleRoot.SubString());
+                    debug::error(FUNCTION, "  nNonce: ", pBlock->nNonce);
+                    debug::error(FUNCTION, "");
+                    debug::error(FUNCTION, "NOTE: PR #129 added Miller-Rabin primality test");
+                    debug::error(FUNCTION, "If this is a recent build, Check() now uses");
+                    debug::error(FUNCTION, "cryptographically secure primality validation.");
+                    debug::error(FUNCTION, "");
+                    debug::error(FUNCTION, "Common Prime mining failures:");
+                    debug::error(FUNCTION, "  - Empty vOffsets (no valid Cunningham chain)");
+                    debug::error(FUNCTION, "  - Base prime not actually prime");
+                    debug::error(FUNCTION, "  - Chain length insufficient");
+                    debug::error(FUNCTION, "════════════════════════════════════════");
+                }
+                else
+                {
+                    debug::log(0, "   Common failure reasons:");
+                    debug::log(0, "   - Prime: Empty vOffsets or invalid Cunningham chain");
+                    debug::log(0, "   - Hash: Proof hash doesn't meet target");
+                    debug::log(0, "   - Producer transaction invalid");
+                    debug::log(0, "   - Block structure malformed");
+                }
                 
                 debug::error(FUNCTION, "Block failed Check() validation");
                 debug::error(FUNCTION, "  Height: ", pBlock->nHeight);

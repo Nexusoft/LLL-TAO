@@ -559,6 +559,20 @@ namespace FalconConstants
      *  pubkey_len(2) + pubkey(897) + miner_id_len(2) + miner_id(256) + genesis(32) = 1189 bytes */
     static const size_t MINER_AUTH_INIT_MAX = 1189;
 
+    /***************************************************************************
+     * Mining Template Validity Constants
+     **************************************************************************/
+
+    /** Maximum age of a mining template in seconds
+     *  Templates older than this should be discarded even if height hasn't changed.
+     *  Prevents miners from working on very stale templates. */
+    static const uint64_t MAX_TEMPLATE_AGE_SECONDS = 60;  // 1 minute
+
+    /** Template staleness warning threshold
+     *  Warn if template is this old but still valid by height.
+     *  Helps detect slow template distribution. */
+    static const uint64_t TEMPLATE_STALENESS_WARNING_SECONDS = 30;  // 30 seconds
+
 } // namespace FalconConstants
 } // namespace LLP
 

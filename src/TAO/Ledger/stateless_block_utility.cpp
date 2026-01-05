@@ -58,6 +58,15 @@ namespace TAO::Ledger
             
             /* Get current chain state (SAME as normal node does) */
             const BlockState statePrev = ChainState::tStateBest.load();
+            const uint32_t nChainHeight = ChainState::nBestHeight.load();
+            
+            /* ✅ ADD: Diagnostic logging */
+            debug::log(0, FUNCTION, "=== CHAIN STATE DIAGNOSTIC ===");
+            debug::log(0, FUNCTION, "  ChainState::nBestHeight: ", nChainHeight);
+            debug::log(0, FUNCTION, "  statePrev.nHeight: ", statePrev.nHeight);
+            debug::log(0, FUNCTION, "  statePrev.GetHash(): ", statePrev.GetHash().SubString());
+            debug::log(0, FUNCTION, "  Synchronizing: ", ChainState::Synchronizing() ? "YES" : "NO");
+            debug::log(0, FUNCTION, "  Template will be for height: ", statePrev.nHeight + 1);
             
             /* Verify chain state is valid before proceeding */
             if(!statePrev || statePrev.GetHash() == 0)
@@ -71,6 +80,16 @@ namespace TAO::Ledger
             if(ChainState::Synchronizing())
             {
                 debug::error(FUNCTION, "Cannot create block templates while synchronizing");
+                return nullptr;
+            }
+            
+            /* ✅ ADD: Validate consistency */
+            if(statePrev.nHeight != nChainHeight)
+            {
+                debug::error(FUNCTION, "❌ Chain state inconsistency detected!");
+                debug::error(FUNCTION, "   statePrev.nHeight: ", statePrev.nHeight);
+                debug::error(FUNCTION, "   nBestHeight: ", nChainHeight);
+                debug::error(FUNCTION, "   This indicates a race condition or chain state corruption");
                 return nullptr;
             }
             
