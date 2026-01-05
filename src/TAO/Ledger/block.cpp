@@ -561,18 +561,22 @@ namespace TAO
                         oss_offsets << "]";
                         debug::log(0, oss_offsets.str());
                         
-                        /* Show first few chain members (only if we have enough offsets) */
+                        /* Show first few chain members (only if we have enough offsets)
+                         * vOffsets has 4 trailing bytes for fractional difficulty, so we need size > 4 */
                         if(vOffsets.size() > 4)
                         {
-                            size_t nChainMembers = std::min(size_t(5), vOffsets.size() - 4);
-                            debug::log(0, "");
-                            debug::log(0, "   Chain members (first ", nChainMembers, "):");
-                            uint1024_t nCurrent = nPrimeCandidate;
-                            for(size_t i = 0; i < nChainMembers; ++i)
+                            size_t nChainMembers = std::min(size_t(5), vOffsets.size() > 4 ? vOffsets.size() - 4 : 0);
+                            if(nChainMembers > 0)
                             {
-                                debug::log(0, "   [", i, "] ", nCurrent.ToString().substr(0, 32), "...");
-                                if(i + 1 < nChainMembers && vOffsets[i] > 0)
-                                    nCurrent = nCurrent * 2 + 1;
+                                debug::log(0, "");
+                                debug::log(0, "   Chain members (first ", nChainMembers, "):");
+                                uint1024_t nCurrent = nPrimeCandidate;
+                                for(size_t i = 0; i < nChainMembers && i < vOffsets.size(); ++i)
+                                {
+                                    debug::log(0, "   [", i, "] ", nCurrent.ToString().substr(0, 32), "...");
+                                    if(i + 1 < nChainMembers && vOffsets[i] > 0)
+                                        nCurrent = nCurrent * 2 + 1;
+                                }
                             }
                         }
                     }

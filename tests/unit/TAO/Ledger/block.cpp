@@ -126,8 +126,10 @@ TEST_CASE( "Prime Calculation - Nonce Endianness (PR #128)", "[ledger][prime][en
         /* Create a block with known values */
         TAO::Ledger::Block block(1, 0, 1, 100);  // version=1, prev=0, channel=1 (prime), height=100
         
-        /* Set a known nonce value in little-endian format */
-        /* This represents the nonce 0x3400000207b56300 which is the value from the problem statement */
+        /* Set a known nonce value - this is stored in memory as little-endian on x86/x64
+         * Value: 0x3400000207b56300
+         * In memory (LE): [0x00, 0x63, 0xb5, 0x07, 0x02, 0x00, 0x00, 0x34]
+         * If same bytes misinterpreted as BE, they would represent: 0x0063b50702000034 */
         block.nNonce = 0x3400000207b56300ULL;
         
         /* Calculate prime - this should use the nonce value as-is (little-endian) */
@@ -140,10 +142,10 @@ TEST_CASE( "Prime Calculation - Nonce Endianness (PR #128)", "[ledger][prime][en
         /* Verify that GetPrime produces the expected result */
         REQUIRE(nPrime1 == nExpected);
         
-        /* Verify it's NOT equal to the big-endian interpretation 
-         * Original LE bytes: 00 63 b5 07 02 00 00 34 (LSB first)
-         * If interpreted as BE: 00 63 b5 07 02 00 00 34 (MSB first) = 0x0063b50702000034 */
-        uint1024_t nWrongBE = nProofHash + 0x0063b50702000034ULL;  // Big-endian interpretation (WRONG!)
+        /* Verify it's NOT equal if the byte array was misinterpreted as big-endian
+         * If bytes [0x00,0x63,0xb5,0x07,0x02,0x00,0x00,0x34] were read as BE,
+         * they would be interpreted as 0x0063b50702000034 instead of 0x3400000207b56300 */
+        uint1024_t nWrongBE = nProofHash + 0x0063b50702000034ULL;
         REQUIRE(nPrime1 != nWrongBE);
     }
     
