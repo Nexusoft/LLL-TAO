@@ -1470,44 +1470,48 @@ namespace LLP
                 /* Check authentication */
                 if(!context.fAuthenticated)
                 {
-                    debug::error(FUNCTION, "GET_ROUND rejected - authentication required");
-                    Packet response(MINER_AUTH_RESULT);
-                    response.DATA.push_back(0x00);  // Failure
+                    debug::log(0, FUNCTION, "Unauthenticated miner attempted GET_ROUND from ",
+                               GetAddress().ToStringIP());
+                    std::vector<uint8_t> vFail(1, 0x00);
+                    Packet response(OLD_ROUND);
+                    response.DATA = vFail;
                     respond(response);
                     return true;
                 }
 
-                debug::log(2, FUNCTION, "GET_ROUND request from ", GetAddress().ToStringIP(),
-                           " sessionId=", context.nSessionId);
-
-                /* Check if blockchain height has changed (indicating new round) */
+                /* Get current blockchain height */
                 uint32_t nCurrentHeight = TAO::Ledger::ChainState::nBestHeight.load();
-                bool fNewRound = (nCurrentHeight != context.nHeight);
-
-                /* Respond with appropriate round status */
-                Packet response;
-                if(fNewRound)
+                
+                /* Compare to miner's last known height */
+                if(context.nHeight != nCurrentHeight)
                 {
-                    response.HEADER = NEW_ROUND;
-                    debug::log(2, FUNCTION, "Responding NEW_ROUND (height changed from ",
-                               context.nHeight, " to ", nCurrentHeight, ")");
-                }
-                else
-                {
-                    response.HEADER = OLD_ROUND;
-                    debug::log(3, FUNCTION, "Responding OLD_ROUND (height still ", nCurrentHeight, ")");
+                    debug::log(0, FUNCTION, "🔔 Height change detected for ", GetAddress().ToStringIP());
+                    debug::log(0, FUNCTION, "   Miner's height: ", context.nHeight);
+                    debug::log(0, FUNCTION, "   Current height: ", nCurrentHeight);
+                    
+                    /* Notify miner of new round */
+                    Packet response(NEW_ROUND);
+                    response.DATA = convert::uint2bytes(nCurrentHeight);
+                    response.LENGTH = static_cast<uint32_t>(response.DATA.size());
+                    respond(response);
+                    
+                    /* Update context with new height */
+                    context = context.WithHeight(nCurrentHeight).WithTimestamp(runtime::unifiedtimestamp());
+                    StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
+                    
+                    /* Cleanup stale templates for this miner */
+                    CleanupStaleTemplates(nCurrentHeight);
+                    
+                    return true;
                 }
                 
-                response.LENGTH = 0;
+                /* No height change - send same round response */
+                Packet response(OLD_ROUND);
+                response.DATA = convert::uint2bytes(nCurrentHeight);
+                response.LENGTH = static_cast<uint32_t>(response.DATA.size());
                 respond(response);
 
-                /* Update context with current height if changed */
-                if(fNewRound)
-                {
-                    context = context.WithHeight(nCurrentHeight)
-                                     .WithTimestamp(runtime::unifiedtimestamp());
-                    StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
-                }
+                debug::log(3, FUNCTION, "GET_ROUND: same round (height ", nCurrentHeight, ")");
 
                 return true;
             }
@@ -1659,24 +1663,8 @@ namespace LLP
         debug::log(0, "   Current blockchain height: ", nCurrentHeight);
         debug::log(0, "   Template will target height: ", nCurrentHeight + 1);
         
-        /* Cleanup old templates when height advances */
-        debug::log(2, FUNCTION, "Cleaning up stale templates (current height: ", nCurrentHeight, ")");
-        for (auto it = mapBlocks.begin(); it != mapBlocks.end(); )
-        {
-            /* Check for null pointer before accessing */
-            if (it->second && it->second->nHeight < nCurrentHeight)
-            {
-                debug::log(2, FUNCTION, "   Removing stale template at height ", it->second->nHeight,
-                          " (merkle: ", it->first.SubString(), ")");
-                delete it->second;
-                it = mapBlocks.erase(it);
-            }
-            else
-            {
-                ++it;
-            }
-        }
-        debug::log(2, FUNCTION, "   Templates remaining in map: ", mapBlocks.size());
+        /* Cleanup old templates using the new dedicated method */
+        CleanupStaleTemplates(nCurrentHeight);
         
         /* Determine reward - same priority as miner.cpp */
         debug::log(0, "   Determining reward address...");
@@ -1748,11 +1736,15 @@ namespace LLP
             debug::log(0, "   Valid until height change");
         }
         
-        /* Store new template in map (wallet signature is already set by CreateBlockForStatelessMining) */
-        mapBlocks[pBlock->hashMerkleRoot] = pBlock;
-        debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Template stored in map", ANSI_COLOR_RESET);
+        /* Store new template in map with metadata (PR #131: Template Staleness Prevention) */
+        uint64_t nCreationTime = runtime::unifiedtimestamp();
+        TemplateMetadata meta(pBlock, nCreationTime, pBlock->nHeight, pBlock->hashMerkleRoot, context.nChannel);
+        mapBlocks[pBlock->hashMerkleRoot] = meta;
+        
+        debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Template stored in map with metadata", ANSI_COLOR_RESET);
         debug::log(0, "      Merkle root: ", pBlock->hashMerkleRoot.SubString());
         debug::log(0, "      Height: ", pBlock->nHeight);
+        debug::log(0, "      Creation time: ", nCreationTime);
         debug::log(0, "      Templates in map: ", mapBlocks.size());
         
         debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "=== NEW_BLOCK: Complete ===", ANSI_COLOR_RESET);
@@ -1764,48 +1756,90 @@ namespace LLP
     bool StatelessMinerConnection::sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot)
     {
         debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "📝 === SIGN_BLOCK: Updating template ===", ANSI_COLOR_RESET);
-        debug::log(0, "   Looking for merkle root: ", hashMerkleRoot.SubString());
+        debug::log(0, "   Requested merkle root: ", hashMerkleRoot.SubString());
+        debug::log(0, "   Nonce: 0x", std::hex, nNonce, std::dec);
         
-        /* ✅ ADD: Before lookup, log all known templates for diagnostics */
+        /* ✅ NEW: Check if any templates exist first */
         if(mapBlocks.empty())
         {
-            debug::error(FUNCTION, "❌ No templates in map!");
-            debug::error(FUNCTION, "   This means:");
-            debug::error(FUNCTION, "   - Template expired (height changed)");
-            debug::error(FUNCTION, "   - Template was never created");
-            debug::error(FUNCTION, "   - Template cleanup removed it");
+            debug::error(FUNCTION, "════════════════════════════════════════");
+            debug::error(FUNCTION, "   ❌ NO TEMPLATES AVAILABLE");
+            debug::error(FUNCTION, "════════════════════════════════════════");
+            debug::error(FUNCTION, "This means:");
+            debug::error(FUNCTION, "  - Template expired (height changed)");
+            debug::error(FUNCTION, "  - Template was never created");
+            debug::error(FUNCTION, "  - Template cleanup removed it");
+            debug::error(FUNCTION, "");
+            debug::error(FUNCTION, "ACTION: Miner should request new template via GET_BLOCK");
+            debug::error(FUNCTION, "════════════════════════════════════════");
             return false;
         }
         
-        /* Safe map access to avoid creating null entry */
+        /* ✅ NEW: Look up template by merkle root */
         auto it = mapBlocks.find(hashMerkleRoot);
-        
-        /* ✅ ADD: If lookup fails, check for merkle mismatch */
-        if(it == mapBlocks.end() || !it->second)
+        if(it == mapBlocks.end())
         {
-            debug::error(FUNCTION, "❌ Template not found for submitted merkle root");
-            debug::error(FUNCTION, "   Submitted merkle: ", hashMerkleRoot.SubString());
-            debug::error(FUNCTION, "   Known templates in map:");
+            debug::error(FUNCTION, "════════════════════════════════════════");
+            debug::error(FUNCTION, "   ❌ MERKLE ROOT MISMATCH");
+            debug::error(FUNCTION, "════════════════════════════════════════");
+            debug::error(FUNCTION, "Requested merkle: ", hashMerkleRoot.SubString());
+            debug::error(FUNCTION, "");
+            debug::error(FUNCTION, "Known templates in map:");
             for(const auto& entry : mapBlocks)
             {
-                if(entry.second)
-                {
-                    debug::error(FUNCTION, "     - ", entry.first.SubString(), 
-                               " (height: ", entry.second->nHeight, ")");
-                }
+                const TemplateMetadata& meta = entry.second;
+                uint64_t nAge = runtime::unifiedtimestamp() - meta.nCreationTime;
+                debug::error(FUNCTION, "  ✓ ", entry.first.SubString());
+                debug::error(FUNCTION, "    Height: ", meta.nHeight);
+                debug::error(FUNCTION, "    Age: ", nAge, "s");
+                debug::error(FUNCTION, "    Channel: ", meta.nChannel);
             }
             debug::error(FUNCTION, "");
-            debug::error(FUNCTION, "   POSSIBLE CAUSES:");
-            debug::error(FUNCTION, "   1. Miner computed wrong merkle root (BUG in miner)");
-            debug::error(FUNCTION, "   2. Miner is submitting work from old template");
-            debug::error(FUNCTION, "   3. Miner's nonce caused merkle to change (overflow?)");
+            debug::error(FUNCTION, "POSSIBLE CAUSES:");
+            debug::error(FUNCTION, "  1. Miner computed wrong merkle root (BUG in miner)");
+            debug::error(FUNCTION, "  2. Miner submitting work from old template");
+            debug::error(FUNCTION, "  3. Height changed between GET_BLOCK and SUBMIT_BLOCK");
+            debug::error(FUNCTION, "  4. Miner's nonce caused merkle to change (overflow?)");
+            debug::error(FUNCTION, "");
+            debug::error(FUNCTION, "ACTION: Miner should poll GET_ROUND and request new template");
+            debug::error(FUNCTION, "════════════════════════════════════════");
             return false;
         }
         
-        TAO::Ledger::Block *pBaseBlock = it->second;
-
-        /* Update block with the nonce and time. */
+        /* ✅ NEW: Validate template is still valid */
+        const TemplateMetadata& meta = it->second;
+        
+        if(meta.IsStale())
+        {
+            uint64_t nAge = runtime::unifiedtimestamp() - meta.nCreationTime;
+            debug::error(FUNCTION, "❌ Template is too old (", nAge, "s)");
+            debug::error(FUNCTION, "   Max age: ", LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS, "s");
+            return false;
+        }
+        
+        if(!meta.IsHeightValid())
+        {
+            uint32_t nCurrentHeight = TAO::Ledger::ChainState::nBestHeight.load();
+            debug::error(FUNCTION, "❌ Template height mismatch");
+            debug::error(FUNCTION, "   Template height: ", meta.nHeight);
+            debug::error(FUNCTION, "   Current height: ", nCurrentHeight + 1);
+            debug::error(FUNCTION, "   Template is STALE - height changed during mining");
+            return false;
+        }
+        
+        /* ✅ Template is valid - proceed with update */
+        TAO::Ledger::Block* pBaseBlock = meta.pBlock;
+        if(!pBaseBlock)
+        {
+            debug::error(FUNCTION, "❌ Template has null block pointer!");
+            return false;
+        }
+        
         pBaseBlock->nNonce = nNonce;
+        
+        debug::log(0, "   ✅ Template updated successfully");
+        debug::log(0, "      Height: ", meta.nHeight);
+        debug::log(0, "      Age: ", runtime::unifiedtimestamp() - meta.nCreationTime, "s");
 
         /* If the block dynamically casts to a tritium block, validate the tritium block. */
         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(pBaseBlock);
@@ -1997,14 +2031,22 @@ namespace LLP
         
         /* Safe map access to avoid creating null entry */
         auto it = mapBlocks.find(hashMerkleRoot);
-        if(it == mapBlocks.end() || !it->second)
+        if(it == mapBlocks.end())
         {
             debug::error(FUNCTION, "Block not found in map");
             return false;
         }
         
+        /* Get block from metadata */
+        const TemplateMetadata& meta = it->second;
+        if(!meta.pBlock)
+        {
+            debug::error(FUNCTION, "Block has null pointer in metadata");
+            return false;
+        }
+        
         /* If the block dynamically casts to a tritium block, validate the tritium block. */
-        TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock*>(it->second);
+        TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock*>(meta.pBlock);
         if(pBlock)
         {
             debug::log(2, FUNCTION, "Tritium");
@@ -2175,12 +2217,66 @@ namespace LLP
     /** Clear the blocks map */
     void StatelessMinerConnection::clear_map()
     {
-        /* Delete all the blocks in the map. */
+        /* Delete all the blocks in the map (accessing via metadata). */
         for(auto& pair : mapBlocks)
-            delete pair.second;
+        {
+            if(pair.second.pBlock)
+                delete pair.second.pBlock;
+        }
 
         /* Clear the map. */
         mapBlocks.clear();
+    }
+
+
+    /** CleanupStaleTemplates
+     * 
+     *  Remove templates that are no longer valid due to height changes or age.
+     */
+    void StatelessMinerConnection::CleanupStaleTemplates(uint32_t nCurrentHeight)
+    {
+        uint32_t nRemoved = 0;
+        uint64_t nNow = runtime::unifiedtimestamp();
+        
+        debug::log(2, FUNCTION, "🧹 Cleaning stale templates...");
+        debug::log(2, FUNCTION, "   Current height: ", nCurrentHeight);
+        debug::log(2, FUNCTION, "   Templates before cleanup: ", mapBlocks.size());
+        
+        for(auto it = mapBlocks.begin(); it != mapBlocks.end(); )
+        {
+            const TemplateMetadata& meta = it->second;
+            
+            /* Check age-based staleness */
+            uint64_t nAge = nNow - meta.nCreationTime;
+            if(nAge > LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS)
+            {
+                debug::log(2, FUNCTION, "   ❌ Removing template (age: ", nAge, "s)");
+                debug::log(2, FUNCTION, "      Merkle: ", it->first.SubString());
+                if(meta.pBlock)
+                    delete meta.pBlock;
+                it = mapBlocks.erase(it);
+                ++nRemoved;
+                continue;
+            }
+            
+            /* Check height-based staleness */
+            if(meta.nHeight != nCurrentHeight + 1)
+            {
+                debug::log(2, FUNCTION, "   ❌ Removing template (height: ", meta.nHeight, 
+                          " vs current: ", nCurrentHeight + 1, ")");
+                debug::log(2, FUNCTION, "      Merkle: ", it->first.SubString());
+                if(meta.pBlock)
+                    delete meta.pBlock;
+                it = mapBlocks.erase(it);
+                ++nRemoved;
+                continue;
+            }
+            
+            ++it;
+        }
+        
+        debug::log(2, FUNCTION, "   ✅ Cleanup complete: ", nRemoved, " templates removed");
+        debug::log(2, FUNCTION, "   Templates after cleanup: ", mapBlocks.size());
     }
 
 } // namespace LLP

@@ -51,8 +51,9 @@ namespace LLP
         /** Mutex for thread-safe context updates **/
         std::mutex MUTEX;
 
-        /** The map to hold the list of blocks that are being mined. **/
-        std::map<uint512_t, TAO::Ledger::Block *> mapBlocks;
+        /** The map to hold the list of blocks that are being mined with metadata. 
+         *  Updated in PR #131 to track template metadata for staleness detection. **/
+        std::map<uint512_t, TemplateMetadata> mapBlocks;
 
         /** Used as an ID iterator for generating unique hashes from same block transactions. **/
         static std::atomic<uint32_t> nBlockIterator;
@@ -178,6 +179,17 @@ namespace LLP
          *
          **/
         void clear_map();
+
+        /** CleanupStaleTemplates
+         *
+         *  Remove templates that are no longer valid due to height changes or age.
+         *  This is called automatically when blockchain height changes or periodically
+         *  to prevent miners from working on stale templates.
+         *
+         *  @param[in] nCurrentHeight Current blockchain height (templates for other heights are removed)
+         *
+         **/
+        void CleanupStaleTemplates(uint32_t nCurrentHeight);
     };
 }
 
