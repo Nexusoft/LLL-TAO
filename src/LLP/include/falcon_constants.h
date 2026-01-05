@@ -569,15 +569,20 @@ namespace FalconConstants
      * future enhancements to provide additional staleness protection.
      **************************************************************************/
 
-    /** Maximum age of a mining template in seconds
-     *  Templates older than this should be discarded even if height hasn't changed.
-     *  Prevents miners from working on very stale templates. */
-    static const uint64_t MAX_TEMPLATE_AGE_SECONDS = 60;  // 1 minute
+    /** Template timestamp tolerance in seconds
+     *  Allow clock skew between node and miner to prevent false rejections.
+     *  Example: Don't reject templates if miner's clock is 20 seconds behind node.
+     *  This is NOT a warning threshold - it's a tolerance for clock synchronization. */
+    static const uint64_t TEMPLATE_TIMESTAMP_TOLERANCE_SECONDS = 30;
 
-    /** Template staleness warning threshold
-     *  Warn if template is this old but still valid by height.
-     *  Helps detect slow template distribution. */
-    static const uint64_t TEMPLATE_STALENESS_WARNING_SECONDS = 30;  // 30 seconds
+    /** Maximum age of a mining template in seconds
+     *  Hard cutoff for template validity - templates older than this are discarded.
+     *  Reasoning:
+     *    - Nexus block time: ~50 seconds average
+     *    - Template should be valid for at least one full block interval
+     *    - 60 seconds provides safe margin before next block likely arrives
+     *  Prevents miners from working on very stale templates. */
+    static const uint64_t MAX_TEMPLATE_AGE_SECONDS = 60;
 
 } // namespace FalconConstants
 } // namespace LLP
