@@ -224,8 +224,7 @@ TEST_CASE("Mixed Falcon Version Scenarios", "[falcon][falcon1024][integration]")
         REQUIRE(sig512.size() == 809);
         REQUIRE(sig1024.size() == 1577);
         
-        // Node would reject this in SUBMIT_BLOCK handler
-        // (See stateless_miner_connection.cpp line ~1100)
+        // Node would reject this in SUBMIT_BLOCK handler during key bonding check
     }
     
     SECTION("Consistent Falcon-1024 for both auth and blocks is valid")
