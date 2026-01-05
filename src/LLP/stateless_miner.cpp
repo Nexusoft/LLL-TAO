@@ -29,6 +29,8 @@ ________________________________________________________________________________
 #include <LLC/include/mining_session_keys.h>
 #include <LLC/hash/SK.h>
 
+#include <TAO/Ledger/include/chainstate.h>
+
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 #include <Util/include/config.h>
@@ -307,6 +309,37 @@ namespace LLP
 
         /* Return time since session start */
         return nNow - nSessionStart;
+    }
+
+
+    /* TemplateMetadata method implementations */
+    bool TemplateMetadata::IsStale(uint64_t nNow) const
+    {
+        /* Get current time if not provided */
+        if(nNow == 0)
+            nNow = runtime::unifiedtimestamp();
+
+        /* Handle uninitialized or invalid timestamps */
+        if(nCreationTime == 0 || nNow < nCreationTime)
+            return true;  // Treat as stale if timestamp is invalid
+
+        /* Calculate age in seconds */
+        uint64_t nAge = nNow - nCreationTime;
+
+        /* Check against maximum template age from constants */
+        return (nAge > LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS);
+    }
+
+    bool TemplateMetadata::IsHeightValid(uint32_t nCurrentHeight) const
+    {
+        /* Get current blockchain height if not provided */
+        if(nCurrentHeight == 0)
+        {
+            nCurrentHeight = TAO::Ledger::ChainState::nBestHeight.load();
+        }
+
+        /* Template should be for next block (nBestHeight + 1) */
+        return (nHeight == nCurrentHeight + 1);
     }
 
 

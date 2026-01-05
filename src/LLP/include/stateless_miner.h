@@ -22,9 +22,76 @@ ________________________________________________________________________________
 #include <string>
 #include <cstdint>
 #include <vector>
+#include <memory>
+
+/* Forward declarations */
+namespace TAO { namespace Ledger { class Block; class TritiumBlock; } }
 
 namespace LLP
 {
+    /** TemplateMetadata
+     * 
+     *  Tracks metadata about mining templates for staleness detection.
+     *  This structure contains all the information needed to validate
+     *  whether a template is still valid for mining.
+     * 
+     *  Used by StatelessMinerConnection to implement comprehensive
+     *  template lifecycle management with age-based and height-based
+     *  expiration (PR #131: Mining Template Staleness Prevention).
+     * 
+     *  Memory Management: Uses std::unique_ptr for automatic memory management
+     *  and clear ownership semantics. The TemplateMetadata owns the block pointer.
+     */
+    struct TemplateMetadata
+    {
+        std::unique_ptr<TAO::Ledger::Block> pBlock;  // Owned block template pointer
+        uint64_t nCreationTime;           // When template was created (unified timestamp)
+        uint32_t nHeight;                 // Blockchain height at creation
+        uint512_t hashMerkleRoot;         // Expected merkle root for validation
+        uint32_t nChannel;                // Mining channel (1=Prime, 2=Hash)
+        
+        /** Default constructor */
+        TemplateMetadata() 
+            : pBlock(nullptr)
+            , nCreationTime(0)
+            , nHeight(0)
+            , hashMerkleRoot(0)
+            , nChannel(0)
+        {
+        }
+        
+        /** Parameterized constructor - takes ownership of block pointer */
+        TemplateMetadata(TAO::Ledger::Block* pBlock_, uint64_t nCreationTime_, 
+                        uint32_t nHeight_, const uint512_t& hashMerkleRoot_, uint32_t nChannel_)
+            : pBlock(pBlock_)  // unique_ptr takes ownership
+            , nCreationTime(nCreationTime_)
+            , nHeight(nHeight_)
+            , hashMerkleRoot(hashMerkleRoot_)
+            , nChannel(nChannel_)
+        {
+        }
+        
+        /** IsStale
+         * 
+         *  Check if template has exceeded maximum age.
+         *  Templates older than MAX_TEMPLATE_AGE_SECONDS are considered stale.
+         * 
+         *  @param[in] nNow Current timestamp (optional, uses current time if 0)
+         *  @return true if template is too old
+         */
+        bool IsStale(uint64_t nNow = 0) const;
+        
+        /** IsHeightValid
+         * 
+         *  Check if template height matches current blockchain height.
+         *  Templates are only valid for the next block (nBestHeight + 1).
+         * 
+         *  @param[in] nCurrentHeight Current blockchain best height (optional, reads from ChainState if 0)
+         *  @return true if template is for the correct height
+         */
+        bool IsHeightValid(uint32_t nCurrentHeight = 0) const;
+    };
+
     /** MiningContext
      *
      *  Immutable snapshot of a miner's state at a given moment.
