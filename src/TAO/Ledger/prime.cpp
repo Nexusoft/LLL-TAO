@@ -172,11 +172,15 @@ namespace TAO
         /* Determines if given number is Prime. */
         bool PrimeCheck(const uint1024_t& hashTest)
         {
-            /* Small Prime Divisor Tests */
+            /* Check A: Small Prime Divisor Tests */
             if(!SmallDivisors(hashTest))
                 return false;
 
-            /* Fermat Test */
+            /* Check B: Miller-Rabin Test (OpenSSL probabilistic primality test) */
+            if(!Miller_Rabin(hashTest))
+                return false;
+
+            /* Check C: Fermat Test */
             if(FermatTest(hashTest) != 1)
                 return false;
 
