@@ -133,20 +133,41 @@ context = context.WithFalconVersion(detectedVersion);
 
 ### Purpose
 
-Physical Falcon signatures provide **permanent blockchain-stored proof of block authorship**. Unlike disposable signatures (which are verified and discarded), Physical Falcon signatures are:
+Physical Falcon signatures are designed to provide **permanent blockchain-stored proof of block authorship**. 
 
-- Stored on the blockchain
-- Optional (backward compatible)
-- Use the same key pair as disposable signatures (key bonding)
+**Current Status (PR #122):** Physical Falcon signatures are **verified and validated** but **NOT yet stored on the blockchain**. This PR establishes the protocol-level infrastructure for Physical Falcon signatures, including:
+
+- ✅ Protocol format support (packet structure)
+- ✅ Signature verification and validation
+- ✅ Key bonding enforcement
+- ✅ Backward compatibility
+
+**Future Enhancement:** Blockchain storage will be added in a subsequent PR, which will require:
+- Block structure changes to add `vchPhysicalSignature` field
+- Serialization/deserialization updates
+- Consensus rule updates
+- Database schema changes
+
+### Current Behavior
+
+Physical Falcon signatures in PR #122 are:
+
+- **Verified** during block submission for immediate security
+- **Stored** in session context for auditing (temporary)
+- **Enforced** via key bonding (prevents version mixing)
+- **Discarded** after block acceptance (not written to blockchain)
+- **Optional** (backward compatible - blocks accepted without Physical sig)
+
+The disposable signature remains the primary authentication mechanism for this PR.
 
 ### When to Use Physical Falcon
 
 Physical Falcon signatures are recommended for:
 
 - **High-security mining operations**
-- **Regulatory compliance** (permanent audit trail)
-- **Dispute resolution** (proof of authorship)
-- **Emergency backup** (when disposable signature is insufficient)
+- **Regulatory compliance** (permanent audit trail - future enhancement)
+- **Dispute resolution** (proof of authorship - future enhancement)
+- **Testing and validation** (current PR supports protocol testing)
 
 ### Implementation
 

@@ -278,6 +278,24 @@ namespace LLP
     }
 
 
+    /** Helper function to calculate offset after disposable signature in SUBMIT_BLOCK packet.
+     *  This improves code readability and makes the offset calculation more maintainable.
+     *  
+     *  Packet format: [block][timestamp][sig_len][disposable_sig][physiglen?][physical_sig?]
+     *  
+     *  @param blockSize Size of the block data in bytes
+     *  @param timestampSize Size of timestamp field (typically 8 bytes)
+     *  @param lengthFieldSize Size of signature length field (typically 2 bytes)
+     *  @param sigLen Length of the disposable signature
+     *  @return Offset in bytes where Physical Falcon signature length field would start
+     */
+    inline static size_t GetDisposableSignatureEndOffset(size_t blockSize, size_t timestampSize, 
+                                                          size_t lengthFieldSize, size_t sigLen)
+    {
+        return blockSize + timestampSize + lengthFieldSize + sigLen;
+    }
+
+
     /** Handle custom message events. */
     void StatelessMinerConnection::Event(uint8_t EVENT, uint32_t LENGTH)
     {
@@ -986,8 +1004,12 @@ namespace LLP
                                 /* CHECK FOR OPTIONAL PHYSICAL FALCON SIGNATURE (PR #122)
                                  * Format after disposable sig: [physiglen(2)][physical_sig(var)]
                                  * Physical signature is OPTIONAL for backward compatibility */
-                                size_t offsetAfterDisposable = blockSize + FalconConstants::TIMESTAMP_SIZE + 
-                                                               FalconConstants::LENGTH_FIELD_SIZE + sigLen;
+                                size_t offsetAfterDisposable = GetDisposableSignatureEndOffset(
+                                    blockSize, 
+                                    FalconConstants::TIMESTAMP_SIZE, 
+                                    FalconConstants::LENGTH_FIELD_SIZE, 
+                                    sigLen
+                                );
                                 
                                 bool fHasPhysical = false;
                                 std::vector<uint8_t> vchPhysicalSignature;
@@ -1061,7 +1083,25 @@ namespace LLP
                                     debug::log(2, FUNCTION, "No Physical Falcon signature (backward compatible)");
                                 }
                                 
-                                /* Store Physical signature in context if present */
+                                /* Store Physical signature in context if present
+                                 * 
+                                 * NOTE (PR #122): Currently, Physical Falcon signatures are VERIFIED
+                                 * and stored in the session context for auditing purposes, but are
+                                 * NOT written to the blockchain. This is intentional for this PR.
+                                 * 
+                                 * Future Enhancement: Blockchain storage of Physical Falcon signatures
+                                 * will be added in a subsequent PR to provide permanent proof of
+                                 * block authorship. This will require:
+                                 * 1. Block structure changes to add vchPhysicalSignature field
+                                 * 2. Serialization/deserialization updates
+                                 * 3. Consensus rule updates for signature validation
+                                 * 4. Database schema changes
+                                 * 
+                                 * Current behavior: Physical signature is verified for immediate
+                                 * security and key bonding enforcement, then discarded after
+                                 * block acceptance. The disposable signature remains the primary
+                                 * authentication mechanism.
+                                 */
                                 if(fHasPhysical)
                                 {
                                     context = context.WithPhysicalSignature(vchPhysicalSignature);
