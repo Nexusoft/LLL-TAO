@@ -59,13 +59,15 @@ daemon=1
 #    - Version support: Falcon-512 OR Falcon-1024 (miner's choice)
 #    - Purpose: Prove work submission authenticity in real-time
 #
-# 2. PHYSICAL FALCON (Permanent, STORED on blockchain)
+# 2. PHYSICAL FALCON (Permanent, STORED on blockchain) - OPTIONAL
 #    - Used for: Emergency backup block authorship proof
 #    - Lifetime: Permanent (stored forever on blockchain)
 #    - Storage: STORED on blockchain (signature overhead)
 #    - Version support: Falcon-512 OR Falcon-1024 (SAME as disposable)
 #    - Purpose: Long-term proof of block authorship when needed
 #    - Variable size: 809 bytes (512) or 1577 bytes (1024)
+#    - **OPTIONAL**: Can be disabled on miner (physicalsigner=0)
+#    - **Backward Compatible**: Blocks without Physical Falcon are still valid
 #
 # KEY BONDING REQUIREMENT:
 # Both signatures MUST use the SAME Falcon key pair:
@@ -78,6 +80,16 @@ daemon=1
 # - Single key pair simplifies miner configuration
 # - Node auto-detects version from public key size
 # - Both signatures bonded to same ChaCha20 session
+#
+# BACKWARD COMPATIBILITY:
+# Physical Falcon signatures are OPTIONAL. Miners can disable them by setting
+# physicalsigner=0 in miner configuration. When disabled:
+#   - Blocks are submitted WITHOUT Physical Falcon signature
+#   - Node still accepts these blocks as valid (backward compatible)
+#   - Only Disposable Falcon signature is required (always present)
+#   - Permanent blockchain authorship proof is not stored
+#
+# This ensures full backward compatibility with existing mining setups.
 # - Variable blockchain overhead: 809 or 1577 bytes (miner's choice)
 #
 #==============================================================================

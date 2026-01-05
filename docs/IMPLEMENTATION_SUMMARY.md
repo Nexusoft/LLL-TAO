@@ -6,17 +6,19 @@ This PR implements **production-ready Falcon-512/1024 dual version support** for
 
 **Key Architectural Feature - Key Bonding:**
 - **Disposable Falcon** (session-based, NOT on blockchain): Supports Falcon-512 OR Falcon-1024
-- **Physical Falcon** (permanent, ON blockchain): Supports Falcon-512 OR Falcon-1024
+- **Physical Falcon** (permanent, ON blockchain, **OPTIONAL**): Supports Falcon-512 OR Falcon-1024
 - **Key Bonding:** Both signatures MUST use the SAME Falcon key pair (cannot mix versions)
 - **Miner Choice:** Choose Falcon-512 (smaller) OR Falcon-1024 (more secure) for BOTH signatures
+- **Backward Compatible:** Physical Falcon is OPTIONAL - blocks without it are still valid
 
-This design allows miners to choose their security/overhead trade-off with a single key pair.
+This design allows miners to choose their security/overhead trade-off with a single key pair while maintaining full backward compatibility.
 
 **Status:** ✅ Core cryptographic implementation complete and tested  
 **Test Coverage:** 43 comprehensive test sections  
 **Documentation:** Complete migration guide and configuration examples  
 **Security Impact:** 128-bit → 256-bit quantum security (opt-in)  
-**Blockchain Impact:** Variable (809 or 1577 bytes for physical signatures, miner's choice)  
+**Blockchain Impact:** Variable (809 or 1577 bytes for physical signatures when enabled, miner's choice)  
+**Backward Compatibility:** ✅ Physical Falcon optional - blocks without it are valid  
 **Network Impact:** <0.1% bandwidth increase (negligible)
 
 ---
@@ -123,16 +125,20 @@ inline bool GetPhysicalSigner() {
 - Node ALWAYS accepts Physical Falcon-512 and Falcon-1024 (auto-detected)
 - Both signature types can coexist in the SAME Submit Block Structure
 - Key Bonding: Both signatures MUST use the SAME Falcon key pair
+- **Physical Falcon is OPTIONAL:** Blocks without Physical Falcon are still valid
 - Zero configuration required from node operators
 - Maximum compatibility and security by default
 
-**Physical Falcon (Now Implemented with Key Bonding):**
+**Physical Falcon (Now Implemented with Key Bonding) - OPTIONAL:**
+- **OPTIONAL:** Can be disabled on miner (physicalsigner=0)
+- **Backward Compatible:** Blocks WITHOUT Physical Falcon are still valid
 - Accepts BOTH Falcon-512 and Falcon-1024 (auto-detected from pubkey)
 - Auto-detects version from public key size (897 or 1793 bytes)
 - Validates signature size matches version (809 or 1577 bytes)
 - MUST use same key pair as Disposable Falcon (bonded)
-- Variable blockchain overhead: 809 or 1577 bytes (miner's choice)
-- Always enabled - no configuration needed
+- Variable blockchain overhead: 809 or 1577 bytes (miner's choice, when enabled)
+- Always enabled on node - validates when present in block
+- When disabled on miner: Blocks submitted without Physical Falcon (still valid)
 
 ### 4. Comprehensive Testing
 

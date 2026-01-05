@@ -43,7 +43,7 @@ Nexus uses **two distinct types** of Falcon signatures:
 - **Opt-in:** Falcon-1024 (maximum quantum security)
 - **This PR enables:** Support for both versions in Disposable Falcon
 
-### 2. Physical Falcon (Permanent) - **Now Implemented**
+### 2. Physical Falcon (Permanent) - **Now Implemented** - OPTIONAL
 - **Purpose:** Emergency backup block authorship proof
 - **Storage:** STORED on blockchain permanently
 - **Lifetime:** Forever (immutable blockchain record)
@@ -52,7 +52,9 @@ Nexus uses **two distinct types** of Falcon signatures:
 - **Variable Size:** 809 bytes (Falcon-512) or 1577 bytes (Falcon-1024)
 - **Default:** Always enabled on node (auto-detects version)
 - **Miner Choice:** Security (1024) vs Blockchain Overhead (512)
-- **Implementation:** Auto-detects and validates both versions
+- **OPTIONAL:** Can be disabled on miner (physicalsigner=0)
+- **Backward Compatible:** Blocks without Physical Falcon are still valid
+- **Implementation:** Auto-detects and validates both versions when present
 
 ### Key Bonding Architecture ⭐ NEW
 Miners use a **single Falcon key pair** for BOTH signature types:
@@ -68,6 +70,28 @@ Miners use a **single Falcon key pair** for BOTH signature types:
 - **Disposable:** Zero blockchain overhead regardless of version
 - **Physical:** Variable blockchain overhead (809 or 1577 bytes, miner's choice)
 - **Trade-off:** Security level vs permanent blockchain storage cost
+
+### Backward Compatibility ⭐ CRITICAL
+**Physical Falcon signatures are OPTIONAL:**
+- ✅ Miners can disable Physical Falcon (physicalsigner=0 in miner config)
+- ✅ Blocks WITHOUT Physical Falcon signatures are still valid
+- ✅ Node accepts blocks with OR without Physical Falcon signature
+- ✅ Disposable Falcon signature is ALWAYS required (never optional)
+- ✅ This ensures full backward compatibility with existing mining setups
+
+**When Physical Falcon is Disabled:**
+- Blocks submitted WITHOUT Physical Falcon signature
+- Only Disposable Falcon signature is included
+- Node validates Disposable Falcon and accepts block
+- No permanent blockchain authorship proof stored
+- Reduces per-block overhead (no physical signature bytes)
+
+**When Physical Falcon is Enabled:**
+- Blocks submitted WITH Physical Falcon signature
+- Both Disposable AND Physical Falcon signatures included
+- Node validates BOTH signatures using bonded key pair
+- Permanent blockchain authorship proof stored
+- Adds 809 bytes (512) or 1577 bytes (1024) per block
 
 ---
 
