@@ -242,9 +242,10 @@ namespace TAO
             /* Get the proof hash base */
             uint1024_t nPrime = ProofHash();
             
-            /* Ensure nonce is treated as LITTLE-ENDIAN (Falcon protocol standard)
-             * If nNonce is uint64_t and was deserialized correctly, it's already LE.
-             * This explicit handling ensures no implicit big-endian conversion occurs. */
+            /* Nonce endianness handling (Falcon protocol standard)
+             * On x86/x64 architectures, uint64_t is already stored little-endian.
+             * The serialization framework (READWRITE) preserves this byte order.
+             * This explicit variable documents the expected endianness for clarity. */
             uint64_t nNonceLE = nNonce;
             
             /* Training wheels logging (opt-in diagnostic mode) */
@@ -260,8 +261,9 @@ namespace TAO
                 oss << "0x" << std::hex << std::setfill('0') << std::setw(16) << nNonceLE;
                 debug::log(0, "   nNonce (LE): ", oss.str());
                 
-                /* Show raw bytes */
-                debug::log(0, "   nNonce (raw bytes): ", HexStr((uint8_t*)&nNonce, (uint8_t*)&nNonce + 8));
+                /* Show raw bytes (little-endian byte order) */
+                debug::log(0, "   nNonce (raw bytes): ", HexStr(reinterpret_cast<const uint8_t*>(&nNonce), 
+                                                                  reinterpret_cast<const uint8_t*>(&nNonce) + 8));
             }
             
             /* Add nonce to prime */
