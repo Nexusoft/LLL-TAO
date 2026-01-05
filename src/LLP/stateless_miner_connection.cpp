@@ -56,6 +56,39 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    /**
+     * DetectedFalconVersionString
+     * 
+     * Convert detected Falcon version to human-readable string for logging.
+     * 
+     * @param fDetected Whether version was detected
+     * @param version The detected Falcon version
+     * @return String like "Falcon-512", "Falcon-1024", or "Unknown"
+     */
+    inline static std::string DetectedFalconVersionString(bool fDetected, LLC::FalconVersion version)
+    {
+        if(!fDetected)
+            return "Unknown";
+        
+        return (version == LLC::FalconVersion::FALCON_512) ? "Falcon-512" : "Falcon-1024";
+    }
+
+    /**
+     * LogFalconSignatureInfo
+     * 
+     * Log Falcon signature configuration for diagnostics.
+     * 
+     * @param context Mining context containing version and signature info
+     */
+    inline static void LogFalconSignatureInfo(const MiningContext& context)
+    {
+        std::string disposableVersion = DetectedFalconVersionString(context.fFalconVersionDetected, context.nFalconVersion);
+        std::string physicalStatus = context.fPhysicalFalconPresent ? "PRESENT" : "ABSENT";
+        
+        debug::log(0, FUNCTION, "   [Disposable: ", disposableVersion, 
+                  ", Physical: ", physicalStatus, "]");
+    }
+
     /* The block iterator to act as extra nonce. */
     std::atomic<uint32_t> StatelessMinerConnection::nBlockIterator(0);
     /** Default Constructor **/
@@ -1041,6 +1074,9 @@ namespace LLP
                                 }
                                 
                                 debug::log(0, "   Status: ✅ VERIFIED");
+                                debug::log(2, FUNCTION, "✅ Disposable ", 
+                                          DetectedFalconVersionString(context.fFalconVersionDetected, context.nFalconVersion),
+                                          " signature verified (", vSignature.size(), " bytes)");
                                 debug::log(0, "   Timestamp: ", nTimestamp);
                                 debug::log(0, "   Merkle: ", hashMerkleFromBlock.SubString());
                                 debug::log(0, "   Nonce: 0x", std::hex, nonceFromBlock, std::dec);
@@ -1126,8 +1162,8 @@ namespace LLP
                                         
                                         fHasPhysical = true;
                                         
-                                        debug::log(1, FUNCTION, "Physical Falcon-",
-                                                  (context.nFalconVersion == LLC::FalconVersion::FALCON_512 ? "512" : "1024"),
+                                        debug::log(1, FUNCTION, "✅ Physical ", 
+                                                  DetectedFalconVersionString(true, context.nFalconVersion),
                                                   " signature verified (", vchPhysicalSignature.size(), " bytes)");
                                     }
                                 }
@@ -1302,10 +1338,7 @@ namespace LLP
                 debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK result=accepted merkle=", hashMerkle.SubString());
                 
                 /* Log signature configuration (PR #122) */
-                debug::log(0, FUNCTION, "   [Disposable: Falcon-", 
-                          (context.fFalconVersionDetected ? 
-                           (context.nFalconVersion == LLC::FalconVersion::FALCON_512 ? "512" : "1024") : "Unknown"),
-                          ", Physical: ", (context.fPhysicalFalconPresent ? "PRESENT" : "ABSENT"), "]");
+                LogFalconSignatureInfo(context);
                 
                 debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "📥 === SUBMIT_BLOCK: SUCCESS ===", ANSI_COLOR_RESET);
                 
