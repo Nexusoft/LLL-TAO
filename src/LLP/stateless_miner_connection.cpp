@@ -817,10 +817,12 @@ namespace LLP
                                 /* Miner signs: [block][timestamp] */
                                 /* This is simpler, more secure (authenticates entire block), and matches miner behavior */
                                 
-                                /* Format: [block(variable)][timestamp(8)][sig_len(2)][signature(variable)] */
+                                /* Format: [block(variable)][timestamp(8)][sig_len(2)][signature(variable)][physiglen(2)][physical_sig(optional)] */
                                 /* Read sig_len to determine where signature starts */
-                                /* Minimum size: timestamp(8) + sig_len(2) = 10 bytes */
-                                const size_t MIN_METADATA_SIZE = FalconConstants::TIMESTAMP_SIZE + FalconConstants::LENGTH_FIELD_SIZE;
+                                /* Minimum size: timestamp(8) + sig_len(2) + physiglen(2) = 12 bytes */
+                                const size_t MIN_METADATA_SIZE = FalconConstants::TIMESTAMP_SIZE + 
+                                                                 FalconConstants::LENGTH_FIELD_SIZE + 
+                                                                 FalconConstants::LENGTH_FIELD_SIZE;  // Physical Falcon length field
                                 
                                 if(decryptedData.size() < MIN_METADATA_SIZE) {
                                     debug::error(FUNCTION, "❌ Decrypted payload too small (need at least ", MIN_METADATA_SIZE, " bytes)");
@@ -830,10 +832,10 @@ namespace LLP
                                 }
                                 
                                 /* Determine block size dynamically */
-                                /* Format: [block(variable)][timestamp(8)][sig_len(2)][signature(variable)] */
-                                /* Strategy: Work backwards from the end to find sig_len */
-                                /* We know: totalSize = blockSize + timestamp + sig_len_field + sigLen */
-                                /* Therefore: blockSize = totalSize - timestamp - sig_len_field - sigLen */
+                                /* Format: [block(B)][timestamp(8)][sig_len(2)][signature(S)][physiglen(2)][physical_sig(P)] */
+                                /* Strategy: Work backwards from the end to find sig_len and validate packet structure */
+                                /* We know: totalSize = B + 8 + 2 + S + 2 + P */
+                                /* Therefore: B = totalSize - 8 - 2 - S - 2 - P */
                                 
                                 /* Read sig_len from different potential positions and validate */
                                 /* Most blocks are 216 or 220 bytes, but can be up to 2MB */
@@ -849,9 +851,11 @@ namespace LLP
                                 
                                 for(size_t testBlockSize : commonBlockSizes)
                                 {
+                                    /* Check minimum size including physiglen field */
                                     if(decryptedData.size() < testBlockSize + FalconConstants::TIMESTAMP_SIZE + 
                                                               FalconConstants::LENGTH_FIELD_SIZE + 
-                                                              FalconConstants::FALCON512_SIG_MIN)
+                                                              FalconConstants::FALCON512_SIG_MIN +
+                                                              FalconConstants::LENGTH_FIELD_SIZE)  // Physical Falcon length field
                                         continue;  // Too small for this block size
                                     
                                     /* Read sig_len at this position */
