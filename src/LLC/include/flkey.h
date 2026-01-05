@@ -25,22 +25,55 @@ ________________________________________________________________________________
 
 namespace LLC
 {
+    /** Falcon Version Enumeration
+     *
+     *  Defines supported Falcon signature variants with different security levels.
+     **/
+    enum class FalconVersion : uint8_t
+    {
+        FALCON_512  = 1,  // logn=9, NIST Level 1, 128-bit quantum security
+        FALCON_1024 = 2   // logn=10, NIST Level 5, 256-bit quantum security
+    };
+
+
+    /** Falcon Size Constants Namespace
+     *
+     *  Compile-time constants for Falcon-512 and Falcon-1024 key and signature sizes.
+     **/
+    namespace FalconSizes
+    {
+        // Falcon-512 (logn=9) sizes
+        constexpr size_t FALCON512_PUBLIC_KEY_SIZE = 897;
+        constexpr size_t FALCON512_PRIVATE_KEY_SIZE = 1281;
+        constexpr size_t FALCON512_SIGNATURE_SIZE = 809;      // Constant-time size (default, ct=1)
+        constexpr size_t FALCON512_SIGNATURE_CT_SIZE = 809;   // Constant-time size
+        constexpr size_t FALCON512_SIGNATURE_COMPRESSED_MIN = 666;  // Minimum compressed size
+        constexpr size_t FALCON512_SIGNATURE_COMPRESSED_AVG = 690;  // Average compressed size
+
+        // Falcon-1024 (logn=10) sizes
+        constexpr size_t FALCON1024_PUBLIC_KEY_SIZE = 1793;
+        constexpr size_t FALCON1024_PRIVATE_KEY_SIZE = 2305;
+        constexpr size_t FALCON1024_SIGNATURE_SIZE = 1577;    // Constant-time size (default, ct=1)
+        constexpr size_t FALCON1024_SIGNATURE_CT_SIZE = 1577; // Constant-time size
+        constexpr size_t FALCON1024_SIGNATURE_COMPRESSED_MIN = 1280;  // Minimum compressed size
+        constexpr size_t FALCON1024_SIGNATURE_COMPRESSED_AVG = 1330;  // Average compressed size
+    }
 
 
     /** FLKey
      *
-     *  An encapsulated FALCON Key
+     *  An encapsulated FALCON Key with support for both Falcon-512 and Falcon-1024
      *  Falcon is a post-quantum lattice based signature scheme
      *
      *  It stands for Fast-Fourier Lattice-based Compact Signatures Over NTRU
-     *  This class uses a LOG value of 9, for 512-bit keys. It's relative
-     *  Classical security parameters are equivilent to RSA-2048.
+     *  
+     *  Falcon-512 (logn=9): NIST Level 1, ~128-bit quantum security, RSA-2048 equivalent
+     *  Falcon-1024 (logn=10): NIST Level 5, ~256-bit quantum security, RSA-4096 equivalent
      *
-     *  It is considered a quantum resistant signature scheme and is a second
-     *  Round candidate out of 9 other for the NIST post-quantum competetition:
+     *  It is considered a quantum resistant signature scheme and is a finalist in the
+     *  NIST post-quantum cryptography standardization:
      *
-     *  https://csrc.nist.gov/Projects/Post-Quantum-Cryptography/Round-2-Submissions
-     *
+     *  https://csrc.nist.gov/Projects/post-quantum-cryptography
      *
      **/
     class FLKey
@@ -60,6 +93,10 @@ namespace LLC
 
         /** FALCON context. **/
         shake256_context ctx;
+
+
+        /** Falcon version (512 or 1024). **/
+        FalconVersion nVersion;
 
 
     public:
@@ -118,10 +155,10 @@ namespace LLC
          *
          *  Create a new key from the Falcon random PRNG seeds
          *
-         *  @param[in] fCompressed Flag whether to make key in compressed form.
+         *  @param[in] ver Falcon version (512 or 1024). Default: Falcon-512
          *
          **/
-        void MakeNewKey();
+        void MakeNewKey(FalconVersion ver = FalconVersion::FALCON_512);
 
 
         /** SetPrivKey
@@ -220,6 +257,87 @@ namespace LLC
          *
          **/
         bool IsValid() const;
+
+
+        /** GetVersion
+         *
+         *  Get the Falcon version of this key.
+         *
+         *  @return FalconVersion (FALCON_512 or FALCON_1024)
+         *
+         **/
+        FalconVersion GetVersion() const;
+
+
+        /** GetPublicKeySize
+         *
+         *  Get the public key size for the current version.
+         *
+         *  @return Public key size in bytes
+         *
+         **/
+        size_t GetPublicKeySize() const;
+
+
+        /** GetPrivateKeySize
+         *
+         *  Get the private key size for the current version.
+         *
+         *  @return Private key size in bytes
+         *
+         **/
+        size_t GetPrivateKeySize() const;
+
+
+        /** GetSignatureSize
+         *
+         *  Get the typical signature size for the current version.
+         *
+         *  @return Signature size in bytes
+         *
+         **/
+        size_t GetSignatureSize() const;
+
+
+        /** ValidatePublicKey
+         *
+         *  Validate that the public key has the correct structure.
+         *
+         *  @return True if public key is valid
+         *
+         **/
+        bool ValidatePublicKey() const;
+
+
+        /** ValidatePrivateKey
+         *
+         *  Validate that the private key has the correct structure.
+         *
+         *  @return True if private key is valid
+         *
+         **/
+        bool ValidatePrivateKey() const;
+
+
+        /** Clear
+         *
+         *  Securely wipe all key material.
+         *
+         **/
+        void Clear();
+
+
+        /** DetectVersion (static)
+         *
+         *  Auto-detect Falcon version from key size.
+         *
+         *  @param[in] keySize Size of key in bytes
+         *  @param[in] isPublicKey True if detecting public key, false for private key
+         *
+         *  @return Detected FalconVersion, or throws if size doesn't match any version
+         *
+         **/
+        static FalconVersion DetectVersion(size_t keySize, bool isPublicKey = true);
 
     };
 }

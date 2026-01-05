@@ -27,6 +27,7 @@ namespace LLC
     , vchPrivKey  ( )
     , fSet        (false)
     , ctx         ( )
+    , nVersion    (FalconVersion::FALCON_512)
     {
 
     }
@@ -37,6 +38,7 @@ namespace LLC
     , vchPrivKey  (b.vchPrivKey)
     , fSet        (b.fSet)
     , ctx         (b.ctx)
+    , nVersion    (b.nVersion)
     {
     }
 
@@ -47,6 +49,7 @@ namespace LLC
     , vchPrivKey  (std::move(b.vchPrivKey))
     , fSet        (std::move(b.fSet))
     , ctx         (std::move(b.ctx))
+    , nVersion    (std::move(b.nVersion))
     {
     }
 
@@ -58,6 +61,7 @@ namespace LLC
         vchPrivKey  = b.vchPrivKey;
         fSet        = b.fSet;
         ctx         = b.ctx;
+        nVersion    = b.nVersion;
 
         return *this;
     }
@@ -70,6 +74,7 @@ namespace LLC
         vchPrivKey  = std::move(b.vchPrivKey);
         fSet        = std::move(b.fSet);
         ctx         = std::move(b.ctx);
+        nVersion    = std::move(b.nVersion);
 
         return *this;
     }
@@ -94,6 +99,7 @@ namespace LLC
         vchPrivKey.clear();
 
         fSet = false;
+        nVersion = FalconVersion::FALCON_512;
     }
 
 
@@ -105,8 +111,14 @@ namespace LLC
 
 
     /* Create a new key from the Falcon random PRNG seeds */
-    void FLKey::MakeNewKey()
+    void FLKey::MakeNewKey(FalconVersion ver)
     {
+        /* Store the version */
+        nVersion = ver;
+
+        /* Determine logn based on version */
+        unsigned int logn = (ver == FalconVersion::FALCON_1024) ? 10 : 9;
+
         /* Generate random seed from system. */
         if(shake256_init_prng_from_system(&ctx))
         {
@@ -115,14 +127,14 @@ namespace LLC
         }
 
         /* Resize the allocators to expected sizes. */
-        vchPubKey.resize(FALCON_PUBKEY_SIZE(9));
-        vchPrivKey.resize(FALCON_PRIVKEY_SIZE(9));
+        vchPubKey.resize(FALCON_PUBKEY_SIZE(logn));
+        vchPrivKey.resize(FALCON_PRIVKEY_SIZE(logn));
 
         /* Create temp memory. */
-        std::vector<uint8_t> vchTemp(FALCON_TMPSIZE_KEYGEN(9), 0);
+        std::vector<uint8_t> vchTemp(FALCON_TMPSIZE_KEYGEN(logn), 0);
 
         /* Generate the falcon key. */
-        if(falcon_keygen_make(&ctx, 9,
+        if(falcon_keygen_make(&ctx, logn,
             &vchPrivKey[0], vchPrivKey.size(),
             &vchPubKey[0],  vchPubKey.size(),
             &vchTemp[0],     vchTemp.size()))
@@ -139,8 +151,22 @@ namespace LLC
     /* Set the key from full private key. */
     bool FLKey::SetPrivKey(const CPrivKey& vchPrivKeyIn)
     {
-        /* Validate input size - Falcon private keys for log(9) have a specific size */
-        if(vchPrivKeyIn.size() != FALCON_PRIVKEY_SIZE(9))
+        /* Auto-detect version from private key size */
+        try
+        {
+            nVersion = DetectVersion(vchPrivKeyIn.size(), false);
+        }
+        catch(const std::exception& e)
+        {
+            Reset();
+            return false;
+        }
+
+        /* Determine logn based on detected version */
+        unsigned int logn = (nVersion == FalconVersion::FALCON_1024) ? 10 : 9;
+
+        /* Validate input size */
+        if(vchPrivKeyIn.size() != FALCON_PRIVKEY_SIZE(logn))
         {
             Reset();
             return false;
@@ -150,10 +176,10 @@ namespace LLC
         vchPrivKey = vchPrivKeyIn;
 
         /* Derive the public key from the private key. */
-        vchPubKey.resize(FALCON_PUBKEY_SIZE(9));
+        vchPubKey.resize(FALCON_PUBKEY_SIZE(logn));
 
         /* Create temp memory for public key extraction. */
-        std::vector<uint8_t> vchTemp(FALCON_TMPSIZE_KEYGEN(9), 0);
+        std::vector<uint8_t> vchTemp(FALCON_TMPSIZE_KEYGEN(logn), 0);
 
         /* Extract public key from private key.
          * Note: Falcon private keys contain the public key internally,
@@ -214,6 +240,16 @@ namespace LLC
     /* Returns true on the setting of a public key. */
     bool FLKey::SetPubKey(const std::vector<uint8_t>& vchPubKeyIn)
     {
+        /* Auto-detect version from public key size */
+        try
+        {
+            nVersion = DetectVersion(vchPubKeyIn.size(), true);
+        }
+        catch(const std::exception& e)
+        {
+            return false;
+        }
+
         /* Set the binary data. */
         vchPubKey = vchPubKeyIn;
 
@@ -238,19 +274,22 @@ namespace LLC
         if(!fSet || vchPrivKey.empty())
             return false;
 
-        /* Clear the signature data and resize. */
+        /* Determine logn based on version */
+        unsigned int logn = (nVersion == FalconVersion::FALCON_1024) ? 10 : 9;
+
+        /* Clear the signature data and resize to maximum possible size. */
         vchSig.clear();
-        vchSig.resize(1025); //NOTE: this is for log(9) for 512-bit (2n + 1)
+        vchSig.resize((logn == 10) ? 2049 : 1025); // (2n + 1) for dynamic signing
 
         /* Create temp memory. */
-        std::vector<uint8_t> vchTemp(FALCON_TMPSIZE_SIGNDYN(9), 0);
+        std::vector<uint8_t> vchTemp(FALCON_TMPSIZE_SIGNDYN(logn), 0);
 
         /* Create the signed message. */
         size_t nSize = vchSig.size();
         if(falcon_sign_dyn(&ctx, &vchSig[0], &nSize, &vchPrivKey[0], vchPrivKey.size(), &vchData[0], vchData.size(), 1, &vchTemp[0], vchTemp.size()))
             return false;
 
-        /* Resize the signature data. */
+        /* Resize the signature data to actual size. */
         vchSig.resize(nSize);
 
         return true;
@@ -264,8 +303,11 @@ namespace LLC
         if(!fSet || vchPubKey.empty())
             return false;
 
+        /* Determine logn based on version */
+        unsigned int logn = (nVersion == FalconVersion::FALCON_1024) ? 10 : 9;
+
         /* Create temp memory. */
-        std::vector<uint8_t> vchTemp(FALCON_TMPSIZE_VERIFY(9), 0);
+        std::vector<uint8_t> vchTemp(FALCON_TMPSIZE_VERIFY(logn), 0);
 
         /* Verify the signed message. */
         if(falcon_verify(&vchSig[0], vchSig.size(), &vchPubKey[0], vchPubKey.size(), &vchData[0], vchData.size(), &vchTemp[0], vchTemp.size()))
@@ -282,5 +324,121 @@ namespace LLC
             return false;
 
         return (!vchPubKey.empty() || !vchPrivKey.empty());
+    }
+
+
+    /* Get the Falcon version of this key. */
+    FalconVersion FLKey::GetVersion() const
+    {
+        return nVersion;
+    }
+
+
+    /* Get the public key size for the current version. */
+    size_t FLKey::GetPublicKeySize() const
+    {
+        return (nVersion == FalconVersion::FALCON_1024) 
+            ? FalconSizes::FALCON1024_PUBLIC_KEY_SIZE 
+            : FalconSizes::FALCON512_PUBLIC_KEY_SIZE;
+    }
+
+
+    /* Get the private key size for the current version. */
+    size_t FLKey::GetPrivateKeySize() const
+    {
+        return (nVersion == FalconVersion::FALCON_1024) 
+            ? FalconSizes::FALCON1024_PRIVATE_KEY_SIZE 
+            : FalconSizes::FALCON512_PRIVATE_KEY_SIZE;
+    }
+
+
+    /* Get the typical signature size for the current version. */
+    size_t FLKey::GetSignatureSize() const
+    {
+        return (nVersion == FalconVersion::FALCON_1024) 
+            ? FalconSizes::FALCON1024_SIGNATURE_SIZE 
+            : FalconSizes::FALCON512_SIGNATURE_SIZE;
+    }
+
+
+    /* Validate that the public key has the correct structure. */
+    bool FLKey::ValidatePublicKey() const
+    {
+        if(vchPubKey.empty())
+            return false;
+
+        /* Check size matches expected size for version */
+        size_t expected = GetPublicKeySize();
+        if(vchPubKey.size() != expected)
+            return false;
+
+        /* Check header byte (first byte should match version encoding) */
+        if(vchPubKey[0] != 0x00 && vchPubKey[0] != 0x01)
+            return false;
+
+        return true;
+    }
+
+
+    /* Validate that the private key has the correct structure. */
+    bool FLKey::ValidatePrivateKey() const
+    {
+        if(vchPrivKey.empty())
+            return false;
+
+        /* Check size matches expected size for version */
+        size_t expected = GetPrivateKeySize();
+        if(vchPrivKey.size() != expected)
+            return false;
+
+        return true;
+    }
+
+
+    /* Securely wipe all key material. */
+    void FLKey::Clear()
+    {
+        /* Securely wipe key data */
+        if(!vchPubKey.empty())
+        {
+            std::fill(vchPubKey.begin(), vchPubKey.end(), 0);
+            vchPubKey.clear();
+        }
+
+        if(!vchPrivKey.empty())
+        {
+            std::fill(vchPrivKey.begin(), vchPrivKey.end(), 0);
+            vchPrivKey.clear();
+        }
+
+        /* Reset context */
+        std::memset(&ctx, 0, sizeof(ctx));
+
+        fSet = false;
+        nVersion = FalconVersion::FALCON_512;
+    }
+
+
+    /* Auto-detect Falcon version from key size (static). */
+    FalconVersion FLKey::DetectVersion(size_t keySize, bool isPublicKey)
+    {
+        if(isPublicKey)
+        {
+            if(keySize == FalconSizes::FALCON512_PUBLIC_KEY_SIZE)
+                return FalconVersion::FALCON_512;
+            else if(keySize == FalconSizes::FALCON1024_PUBLIC_KEY_SIZE)
+                return FalconVersion::FALCON_1024;
+            else
+                throw std::invalid_argument("Invalid public key size: " + std::to_string(keySize));
+        }
+        else
+        {
+            if(keySize == FalconSizes::FALCON512_PRIVATE_KEY_SIZE)
+                return FalconVersion::FALCON_512;
+            else if(keySize == FalconSizes::FALCON1024_PRIVATE_KEY_SIZE)
+                return FalconVersion::FALCON_1024;
+            else
+                throw std::invalid_argument("Invalid private key size: " + std::to_string(keySize));
+        }
     }
 }
