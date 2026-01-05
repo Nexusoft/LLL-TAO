@@ -1,0 +1,128 @@
+#
+# Nexus Node Configuration with Falcon-1024 Support
+# This is an example nexus.conf for nodes with stateless mining enabled.
+#
+# This configuration file is for the 'master' branch.
+#
+
+# Basic RPC/API Configuration
+rpcuser=username
+rpcpassword=password
+apiuser=username
+apipassword=password
+daemon=1
+
+# Mining Configuration
+#mining=1
+#stake=1
+
+#==============================================================================
+# FALCON POST-QUANTUM SIGNATURE CONFIGURATION
+#==============================================================================
+
+# falcon1024 - Enable Falcon-1024 stealth mode (accepts both Falcon-512 and Falcon-1024)
+# 
+# Default: 1 (ON - stealth mode)
+# 
+# When enabled (default), the node accepts BOTH:
+#   - Falcon-512 signatures (NIST Level 1, 128-bit quantum security)
+#   - Falcon-1024 signatures (NIST Level 5, 256-bit quantum security)
+# 
+# The node auto-detects which version the miner is using from the public key size
+# and handles verification accordingly. This allows seamless protocol upgrade without
+# requiring all miners to upgrade simultaneously.
+#
+# NODE OPERATORS: Leave this at 1 (default). No action required.
+#
+# Setting to 0 would reject Falcon-1024 miners (not recommended unless you have
+# a specific reason to restrict to Falcon-512 only).
+#
+falcon1024=1
+
+# physicalsigner - Enable physical signer support (FUTURE FEATURE)
+#
+# Default: 0 (OFF - not yet implemented)
+#
+# Future feature: Will enable support for hardware signers and physical security modules
+# for enhanced key protection. This is planned for a future release.
+#
+# DO NOT ENABLE - Feature not implemented yet.
+#
+#physicalsigner=0
+
+#==============================================================================
+# FALCON SIGNATURE DETAILS
+#==============================================================================
+#
+# Falcon-512 (Default for miners):
+#   - NIST Level 1 security (128-bit quantum resistance)
+#   - RSA-2048 equivalent classical security
+#   - Public key: 897 bytes
+#   - Private key: 1281 bytes
+#   - Signature: ~690 bytes (compressed) or 809 bytes (constant-time)
+#   - Signing time: <1ms
+#   - Block overhead: ~0.034% (690 bytes / 2MB)
+#
+# Falcon-1024 (Opt-in for miners):
+#   - NIST Level 5 security (256-bit quantum resistance)
+#   - RSA-4096 equivalent classical security
+#   - Public key: 1793 bytes
+#   - Private key: 2305 bytes
+#   - Signature: ~1280 bytes (compressed) or 1577 bytes (constant-time)
+#   - Signing time: <1.5ms
+#   - Block overhead: ~0.063% (1280 bytes / 2MB)
+#   - 2^64 × stronger quantum attack resistance than Falcon-512
+#
+# Network Impact:
+#   - Bandwidth increase: +215 MB/year per miner using Falcon-1024
+#   - Overall network impact: <0.1% (negligible)
+#
+#==============================================================================
+
+#==============================================================================
+# STEALTH MODE OPERATION
+#==============================================================================
+#
+# With falcon1024=1 (default), the node operates in "stealth mode":
+#
+# 1. MINER_AUTH packet received:
+#    - Node reads public key from packet
+#    - Auto-detects Falcon version from public key size:
+#      * 897 bytes  → Falcon-512
+#      * 1793 bytes → Falcon-1024
+#    - Stores detected version in miner's session context
+#    - Verifies authentication signature using correct version
+#
+# 2. SUBMIT_BLOCK packet received:
+#    - Node retrieves miner's Falcon version from session
+#    - Uses version-specific verification for block signature
+#    - Accepts block if signature is valid
+#
+# This design allows:
+#   ✓ Zero configuration for node operators
+#   ✓ Seamless coexistence of Falcon-512 and Falcon-1024 miners
+#   ✓ No network fork required
+#   ✓ Miners can upgrade at their own pace
+#
+#==============================================================================
+
+#==============================================================================
+# SECURITY NOTES
+#==============================================================================
+#
+# - Falcon is a NIST-standardized post-quantum signature scheme
+# - Both Falcon-512 and Falcon-1024 are quantum-resistant
+# - Falcon-1024 provides 2^64 times more quantum attack resistance
+# - No known vulnerabilities in either variant
+# - Production-tested: Falcon-512 in use since 2023
+# - Falcon-1024: New in 2026, undergoing extended testing
+#
+# Recommendation for node operators:
+#   - Keep falcon1024=1 (default) to support all miners
+#   - Monitor logs for Falcon version distribution
+#   - Keep node software updated
+#
+#==============================================================================
+
+# Additional node configuration options below...
+# (Add your other nexus configuration settings here)
