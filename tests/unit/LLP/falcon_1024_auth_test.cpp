@@ -197,7 +197,7 @@ TEST_CASE("Falcon-1024 ChaCha20 Wrapped Authentication", "[falcon][falcon1024][c
         std::vector<uint8_t> vSessionKey = LLC::MiningSessionKeys::DeriveChaCha20Key(testGenesis);
 
         /* Wrap the public key with ChaCha20-Poly1305 */
-        std::vector<uint8_t> vWrappedPubKey = LLC::EncryptChaCha20Poly1305Wrapper(
+        std::vector<uint8_t> vWrappedPubKey = LLC::EncryptPayloadChaCha20(
             meta.pubkey,
             vSessionKey,
             {'F','A','L','C','O','N','_','P','U','B','K','E','Y'}
