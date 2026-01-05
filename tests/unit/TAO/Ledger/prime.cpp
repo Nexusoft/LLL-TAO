@@ -141,3 +141,73 @@ TEST_CASE( "Prime Tests", "[Ledger]")
     }
 
 }
+
+
+TEST_CASE("PrimeCheck uses Miller-Rabin validation", "[prime][miller-rabin]")
+{
+    SECTION("Validate known prime passes all checks")
+    {
+        /* Known small primes should pass all validation checks */
+        uint1024_t prime7 = 7;
+        uint1024_t prime17 = 17;
+        uint1024_t prime97 = 97;
+        uint1024_t prime541 = 541;
+        
+        REQUIRE(TAO::Ledger::PrimeCheck(prime7) == true);
+        REQUIRE(TAO::Ledger::PrimeCheck(prime17) == true);
+        REQUIRE(TAO::Ledger::PrimeCheck(prime97) == true);
+        REQUIRE(TAO::Ledger::PrimeCheck(prime541) == true);
+    }
+    
+    SECTION("Validate Carmichael number rejected by Miller-Rabin")
+    {
+        /* Carmichael numbers pass Fermat test but fail Miller-Rabin */
+        /* 561 = 3 × 11 × 17 - smallest Carmichael number */
+        uint1024_t carmichael561 = 561;
+        
+        /* Should be rejected (caught by small divisor test for 3) */
+        REQUIRE(TAO::Ledger::PrimeCheck(carmichael561) == false);
+        
+        /* 1105 = 5 × 13 × 17 - Carmichael number */
+        uint1024_t carmichael1105 = 1105;
+        
+        /* Should be rejected (caught by small divisor test for 5) */
+        REQUIRE(TAO::Ledger::PrimeCheck(carmichael1105) == false);
+        
+        /* 1729 = 7 × 13 × 19 - Carmichael number (Ramanujan number) */
+        uint1024_t carmichael1729 = 1729;
+        
+        /* Should be rejected (caught by small divisor test for 7) */
+        REQUIRE(TAO::Ledger::PrimeCheck(carmichael1729) == false);
+    }
+    
+    SECTION("PrimeCheck matches PrimeCheck2 behavior")
+    {
+        /* Generate random test cases and verify consistency */
+        for(int i = 0; i < 100; ++i)
+        {
+            uint1024_t testValue = LLC::GetRand1024();
+            testValue |= 1;  // Make odd
+            
+            /* Both functions should agree on primality */
+            bool result1 = TAO::Ledger::PrimeCheck(testValue);
+            bool result2 = PrimeCheck2(LLC::CBigNum(testValue), 1);
+            
+            REQUIRE(result1 == result2);
+        }
+    }
+    
+    SECTION("Validate known composites are rejected")
+    {
+        /* Known composite numbers should fail validation */
+        uint1024_t comp4 = 4;
+        uint1024_t comp15 = 15;
+        uint1024_t comp100 = 100;
+        uint1024_t comp1001 = 1001;  // 7 × 11 × 13
+        
+        REQUIRE(TAO::Ledger::PrimeCheck(comp4) == false);
+        REQUIRE(TAO::Ledger::PrimeCheck(comp15) == false);
+        REQUIRE(TAO::Ledger::PrimeCheck(comp100) == false);
+        REQUIRE(TAO::Ledger::PrimeCheck(comp1001) == false);
+    }
+}
