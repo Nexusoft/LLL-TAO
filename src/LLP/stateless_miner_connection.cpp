@@ -1296,11 +1296,51 @@ namespace LLP
                 /* Make sure the block was created by this mining server. */
                 if(!find_block(hashMerkle))
                 {
-                    debug::error(FUNCTION, "❌ Template not found for merkle root: ", hashMerkle.SubString());
-                    debug::error(FUNCTION, "   This can happen if:");
-                    debug::error(FUNCTION, "   - Template expired (height changed)");
-                    debug::error(FUNCTION, "   - Miner computed wrong merkle root");
-                    debug::error(FUNCTION, "   - Miner mining stale template");
+                    debug::error(FUNCTION, "════════════════════════════════════════");
+                    debug::error(FUNCTION, "   ❌ TEMPLATE NOT FOUND");
+                    debug::error(FUNCTION, "════════════════════════════════════════");
+                    debug::error(FUNCTION, "Submitted merkle root: ", hashMerkle.SubString());
+                    debug::error(FUNCTION, "");
+                    debug::error(FUNCTION, "Current blockchain state:");
+                    debug::error(FUNCTION, "  Height: ", TAO::Ledger::ChainState::nBestHeight.load());
+                    debug::error(FUNCTION, "  Synchronizing: ", TAO::Ledger::ChainState::Synchronizing() ? "YES" : "NO");
+                    debug::error(FUNCTION, "");
+                    debug::error(FUNCTION, "Known templates (", mapBlocks.size(), " total):");
+                    
+                    if(mapBlocks.empty())
+                    {
+                        debug::error(FUNCTION, "  (none - all templates expired)");
+                    }
+                    else
+                    {
+                        for(const auto& entry : mapBlocks)
+                        {
+                            const TemplateMetadata& meta = entry.second;
+                            uint64_t nAge = runtime::unifiedtimestamp() - meta.nCreationTime;
+                            
+                            debug::error(FUNCTION, "  ✓ ", entry.first.SubString());
+                            debug::error(FUNCTION, "    Height: ", meta.nHeight, 
+                                       " (current: ", TAO::Ledger::ChainState::nBestHeight.load() + 1, ")");
+                            debug::error(FUNCTION, "    Age: ", nAge, "s (max: ", LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS, "s)");
+                            debug::error(FUNCTION, "    Channel: ", meta.nChannel == 1 ? "Prime" : "Hash");
+                            debug::error(FUNCTION, "    Valid: ", meta.IsHeightValid() && !meta.IsStale() ? "YES" : "NO");
+                        }
+                    }
+                    
+                    debug::error(FUNCTION, "");
+                    debug::error(FUNCTION, "COMMON CAUSES:");
+                    debug::error(FUNCTION, "  1. Template expired (height changed during mining)");
+                    debug::error(FUNCTION, "     → Solution: Poll GET_ROUND more frequently");
+                    debug::error(FUNCTION, "");
+                    debug::error(FUNCTION, "  2. Miner computed wrong merkle root");
+                    debug::error(FUNCTION, "     → Solution: Check miner's merkle calculation");
+                    debug::error(FUNCTION, "");
+                    debug::error(FUNCTION, "  3. Miner mining stale template (>60s old)");
+                    debug::error(FUNCTION, "     → Solution: Reduce work time per template");
+                    debug::error(FUNCTION, "");
+                    debug::error(FUNCTION, "  4. Template cleanup removed it");
+                    debug::error(FUNCTION, "     → Solution: Request new template immediately");
+                    debug::error(FUNCTION, "════════════════════════════════════════");
                     
                     Packet response(BLOCK_REJECTED);
                     respond(response);
@@ -1344,9 +1384,9 @@ namespace LLP
                 
                 /* Get block for detailed logging (safe access since we know it exists) */
                 auto it = mapBlocks.find(hashMerkle);
-                if(it != mapBlocks.end() && it->second)
+                if(it != mapBlocks.end() && it->second.pBlock)
                 {
-                    TAO::Ledger::Block *pBlock = it->second;
+                    TAO::Ledger::Block *pBlock = it->second.pBlock;
                     debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   🎉 Block ", pBlock->nHeight, " accepted by Nexus network", ANSI_COLOR_RESET);
                     debug::log(0, "   Miner: ", GetAddress().ToStringIP());
                     debug::log(0, "   Channel: ", pBlock->nChannel, " (", (pBlock->nChannel == 1 ? "Prime" : "Hash"), ")");
