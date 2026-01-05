@@ -145,6 +145,36 @@ namespace FalconConstants
     static const size_t FALCON_SIG_CT_MAX = FALCON1024_SIG_CT_SIZE;  // 1577 bytes (Falcon-1024 CT)
 
     /***************************************************************************
+     * Version-Agnostic Overhead Aliases
+     * 
+     * These aliases use the maximum values from both Falcon-512 and Falcon-1024
+     * to ensure the node can allocate sufficient buffers for packets from either variant.
+     * Logic gates should use these aliases instead of version-specific constants.
+     **************************************************************************/
+
+    /** Physical block signature overhead - maximum across all Falcon variants
+     *  Falcon-512: sig_len(2) + signature(809) = 811 bytes
+     *  Falcon-1024: sig_len(2) + signature(1577) = 1579 bytes
+     *  Use largest for buffer allocation */
+    static const size_t PHYSICAL_BLOCK_SIG_MAX_OVERHEAD = PHYSICAL_BLOCK_SIG_FALCON1024_OVERHEAD;  // 1579 bytes
+
+    /** Dual signature overhead - maximum across all Falcon variants
+     *  Falcon-512: (2 + 809) + (2 + 809) = 1622 bytes
+     *  Falcon-1024: (2 + 1577) + (2 + 1577) = 3158 bytes
+     *  Use largest for buffer allocation */
+    static const size_t DUAL_SIG_MAX_OVERHEAD = DUAL_SIG_FALCON1024_OVERHEAD;  // 3158 bytes
+
+    /** Dual signature total overhead (with timestamp) - maximum across all Falcon variants
+     *  Falcon-512: 1622 + 8 = 1630 bytes
+     *  Falcon-1024: 3158 + 8 = 3166 bytes
+     *  Use largest for buffer allocation */
+    static const size_t DUAL_SIG_MAX_TOTAL_OVERHEAD = DUAL_SIG_FALCON1024_TOTAL_OVERHEAD;  // 3166 bytes
+
+    /** Minimum block submission size with physical signature overhead - minimum across variants
+     *  Use Falcon-512 minimum since it's smaller */
+    static const size_t BLOCK_WITH_PHYSICAL_SIG_MIN_OVERHEAD_AGNOSTIC = PHYSICAL_BLOCK_SIG_OVERHEAD;  // 811 bytes
+
+    /***************************************************************************
      * ChaCha20-Poly1305 AEAD Encryption Constants
      **************************************************************************/
     

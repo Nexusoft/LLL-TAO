@@ -890,7 +890,7 @@ namespace LLP
         debug::log(0, FUNCTION, "╠═══════════════════════════════════════════════════════════╣");
         debug::log(0, FUNCTION, "║ Key ID:       ", hashKeyID.SubString());
         debug::log(0, FUNCTION, "║ Session ID:   ", nSessionId);
-        debug::log(0, FUNCTION, "║ Falcon Ver:   ", (detectedVersion == LLC::FalconVersion::FALCON_512 ? "512" : "1024"));
+        debug::log(0, FUNCTION, "║ Falcon Ver:   ", (detectedVersion == LLC::FalconVersion::FALCON_512 ? "Falcon-512" : "Falcon-1024"));
         debug::log(0, FUNCTION, "║ Genesis:      ", hashGenesisFinal.SubString(), " (ChaCha20)");
         debug::log(0, FUNCTION, "║ ChaCha20:     Ready for encryption");
         debug::log(0, FUNCTION, "║ Reward Addr:  (awaiting MINER_SET_REWARD)");
