@@ -4,6 +4,12 @@
 
 Nexus now supports **Falcon-1024** (NIST Level 5) alongside Falcon-512 (NIST Level 1) for post-quantum signature security in stateless mining. This guide explains the upgrade, configuration, and migration path.
 
+**Important Architectural Note:**
+- **Disposable Falcon** (session-based, NOT on blockchain): Can use Falcon-512 OR Falcon-1024
+- **Physical Falcon** (permanent, ON blockchain): ALWAYS uses Falcon-512, NEVER Falcon-1024
+
+This design minimizes permanent blockchain overhead while allowing maximum security for real-time mining sessions.
+
 ---
 
 ## Why Falcon-1024?
@@ -14,28 +20,61 @@ Nexus now supports **Falcon-1024** (NIST Level 5) alongside Falcon-512 (NIST Lev
 - **RSA-4096 equivalent** classical security
 - **NIST Level 5** - Maximum standardized security
 
-### Practical Costs
+### Practical Costs (Disposable Falcon Only)
 - **95% signature overhead**: 809 → 1577 bytes (768 bytes increase)
-- **<4% block overhead**: 768 bytes / 2MB = 0.038% per block
+- **Zero blockchain overhead**: Disposable signatures not stored on blockchain
 - **<1.5ms signing time**: Still sub-second for mining operations
 - **Full backward compatibility**: Falcon-512 continues to work
+
+**Note:** Physical Falcon signatures (when implemented) will ALWAYS use Falcon-512 to minimize permanent blockchain bloat.
+
+---
+
+## Dual Signature Architecture
+
+Nexus uses **two distinct types** of Falcon signatures:
+
+### 1. Disposable Falcon (Session-Based)
+- **Purpose:** Real-time mining protocol authentication
+- **Storage:** NOT stored on blockchain (zero blockchain overhead)
+- **Lifetime:** Single mining session only
+- **Version Support:** Falcon-512 OR Falcon-1024 (miner's choice)
+- **Default:** Falcon-512 (proven, smaller)
+- **Opt-in:** Falcon-1024 (maximum quantum security)
+- **This PR enables:** Support for both versions in Disposable Falcon
+
+### 2. Physical Falcon (Permanent)
+- **Purpose:** Emergency backup block authorship proof
+- **Storage:** STORED on blockchain permanently
+- **Lifetime:** Forever (immutable blockchain record)
+- **Version Support:** ALWAYS Falcon-512, NEVER Falcon-1024
+- **Rationale:** Minimize permanent blockchain bloat
+- **Status:** Future feature (not yet implemented)
+
+### Design Rationale
+- Disposable signatures can use Falcon-1024 because they're NOT stored on blockchain
+- Physical signatures ALWAYS use Falcon-512 to avoid permanent 768-byte overhead per block
+- This gives miners maximum security (1024) without blockchain bloat
 
 ---
 
 ## Deployment Architecture
 
-### **Stealth Mode** (Default)
-The node operates in "stealth mode" by default:
-- ✅ Accepts **both** Falcon-512 and Falcon-1024 signatures
+### **Stealth Mode** (Default) - For Disposable Falcon
+The node operates in "stealth mode" by default for Disposable Falcon signatures:
+- ✅ Accepts **both** Falcon-512 and Falcon-1024 disposable signatures
 - ✅ Auto-detects version from miner's public key size
 - ✅ Zero configuration required for node operators
 - ✅ Seamless protocol upgrade without network fork
 
-### **Miner Choice**
-Miners opt-in to Falcon-1024:
+### **Miner Choice** - For Disposable Falcon
+Miners choose their Disposable Falcon version:
 - 🔧 Default: Falcon-512 (proven, faster, smaller)
 - 🔧 Opt-in: Falcon-1024 (maximum quantum resistance)
 - 🔧 Configuration: Single flag in `miner.conf`
+- 🔧 Future: Default will change to Falcon-1024 ON in NexusMiner
+
+**Note:** Physical Falcon (when implemented) will always use Falcon-512 regardless of miner config.
 
 ---
 
@@ -44,12 +83,13 @@ Miners opt-in to Falcon-1024:
 ### Node Configuration (`nexus.conf`)
 
 ```ini
-# Falcon Signature Configuration (Stealth Mode)
-# Default: Accept both Falcon-512 and Falcon-1024
+# Disposable Falcon Signature Configuration (Stealth Mode)
+# Default: Accept both Falcon-512 and Falcon-1024 disposable signatures
 # Node operators don't need to configure this
 falcon1024=1  # ON by default (stealth mode - accepts both versions)
 
-# Physical signer support (future feature, not yet implemented)
+# Physical Falcon signature (future feature, not yet implemented)
+# When implemented, will ALWAYS use Falcon-512, never Falcon-1024
 physicalsigner=0
 ```
 
@@ -60,19 +100,24 @@ physicalsigner=0
 ### Miner Configuration (`miner.conf` in NexusMiner)
 
 ```ini
-# Falcon Signature Mode
+# Disposable Falcon Signature Mode
 # Default: Falcon-512 (proven, faster, smaller signatures)
 # Opt-in: Falcon-1024 (maximum quantum resistance)
-falcon1024=0  # OFF by default (use Falcon-512)
+# Future: Will default to Falcon-1024 ON in upcoming NexusMiner release
+falcon1024=0  # Currently OFF by default (use Falcon-512 for disposable signatures)
 
-# To enable Falcon-1024:
+# To enable Falcon-1024 for disposable signatures:
 # falcon1024=1
 
-# Physical signer (future feature)
+# Physical Falcon signature (future feature)
+# When implemented, will ALWAYS use Falcon-512 regardless of above setting
 physicalsigner=0
 ```
 
-**Miner operators:** 
+**Miner operators:**
+- **No action required** to keep using Falcon-512 for disposable signatures
+- **Set `falcon1024=1`** to upgrade disposable signatures to maximum quantum security
+- **Note:** Physical signatures (when implemented) will always be Falcon-512 
 - **No action required** to keep using Falcon-512
 - **Set `falcon1024=1`** to upgrade to maximum quantum security
 

@@ -37,24 +37,79 @@ daemon=1
 # Setting to 0 would reject Falcon-1024 miners (not recommended unless you have
 # a specific reason to restrict to Falcon-512 only).
 #
+# falcon1024 - Enable Falcon-1024 stealth mode (accepts both Falcon-512 and Falcon-1024)
+# 
+# Default: 1 (ON - stealth mode)
+# 
+# When enabled (default), the node accepts BOTH:
+#   - Falcon-512 signatures (NIST Level 1, 128-bit quantum security)
+#   - Falcon-1024 signatures (NIST Level 5, 256-bit quantum security)
+# 
+# This applies to DISPOSABLE Falcon signatures used in the mining protocol.
+# These are session-based signatures that are NOT stored on the blockchain.
+#
+# The node auto-detects which version the miner is using from the public key size
+# and handles verification accordingly. This allows seamless protocol upgrade without
+# requiring all miners to upgrade simultaneously.
+#
+# NODE OPERATORS: Leave this at 1 (default). No action required.
+#
+# Setting to 0 would reject Falcon-1024 miners (not recommended unless you have
+# a specific reason to restrict to Falcon-512 only).
+#
 falcon1024=1
 
-# physicalsigner - Enable physical signer support (FUTURE FEATURE)
+# physicalsigner - Enable physical block signature (FUTURE FEATURE)
 #
 # Default: 0 (OFF - not yet implemented)
 #
-# Future feature: Will enable support for hardware signers and physical security modules
-# for enhanced key protection. This is planned for a future release.
+# Future feature: Will enable permanent Falcon signatures stored ON the blockchain.
+# When implemented, Physical Falcon signatures will ALWAYS use Falcon-512, never Falcon-1024.
+# This is the emergency backup system for proving block authorship.
+#
+# Key architectural distinction:
+#   - Disposable Falcon: Session-based, NOT on blockchain, CAN be Falcon-1024
+#   - Physical Falcon: Permanent, ON blockchain, ALWAYS Falcon-512
 #
 # DO NOT ENABLE - Feature not implemented yet.
 #
 #physicalsigner=0
 
 #==============================================================================
+# FALCON DUAL SIGNATURE ARCHITECTURE
+#==============================================================================
+#
+# Nexus uses TWO types of Falcon signatures with different purposes:
+#
+# 1. DISPOSABLE FALCON (Session-based, NOT stored on blockchain)
+#    - Used for: Real-time mining protocol authentication
+#    - Lifetime: Single mining session only
+#    - Storage: NOT stored on blockchain (zero overhead)
+#    - Version support: Falcon-512 OR Falcon-1024 (miner's choice)
+#    - Configuration: falcon1024=1 (node accepts both versions)
+#    - Purpose: Prove work submission authenticity in real-time
+#
+# 2. PHYSICAL FALCON (Permanent, STORED on blockchain)
+#    - Used for: Emergency backup block authorship proof
+#    - Lifetime: Permanent (stored forever on blockchain)
+#    - Storage: STORED on blockchain (signature overhead)
+#    - Version support: ALWAYS Falcon-512, NEVER Falcon-1024
+#    - Configuration: physicalsigner=0 (future feature, not implemented)
+#    - Purpose: Long-term proof of block authorship when needed
+#    - Rationale: Falcon-512 minimizes permanent blockchain bloat
+#
+# Key Design Decision:
+# Physical signatures are ALWAYS Falcon-512 to minimize permanent blockchain
+# overhead, while disposable signatures CAN be Falcon-1024 for maximum security
+# since they don't bloat the blockchain.
+#
+#==============================================================================
+
+#==============================================================================
 # FALCON SIGNATURE DETAILS
 #==============================================================================
 #
-# Falcon-512 (Default for miners):
+# Falcon-512 (Default for Disposable, ALWAYS for Physical):
 #   - NIST Level 1 security (128-bit quantum resistance)
 #   - RSA-2048 equivalent classical security
 #   - Public key: 897 bytes
@@ -63,7 +118,7 @@ falcon1024=1
 #   - Signing time: <1ms
 #   - Block overhead: ~0.040% (809 bytes / 2MB)
 #
-# Falcon-1024 (Opt-in for miners):
+# Falcon-1024 (Opt-in for Disposable only, NEVER for Physical):
 #   - NIST Level 5 security (256-bit quantum resistance)
 #   - RSA-4096 equivalent classical security
 #   - Public key: 1793 bytes
@@ -73,10 +128,11 @@ falcon1024=1
 #   - Block overhead: ~0.077% (1577 bytes / 2MB)
 #   - 2^64 × stronger quantum attack resistance than Falcon-512
 #
-# Network Impact:
+# Disposable Falcon Network Impact (Falcon-1024):
 #   - Bandwidth increase: +768 bytes per block
 #   - Yearly increase: +280 MB/year per miner using Falcon-1024
 #   - Overall network impact: <0.1% (negligible)
+#   - Blockchain overhead: ZERO (not stored)
 #
 #==============================================================================
 

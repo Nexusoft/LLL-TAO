@@ -4,10 +4,17 @@
 
 This PR implements **production-ready Falcon-512/1024 dual version support** for Nexus stateless mining, providing a 2^64× increase in quantum attack resistance while maintaining full backward compatibility.
 
+**Key Architectural Distinction:**
+- **Disposable Falcon** (session-based, NOT on blockchain): Supports Falcon-512 OR Falcon-1024
+- **Physical Falcon** (permanent, ON blockchain): ALWAYS Falcon-512, NEVER Falcon-1024
+
+This design allows maximum security for real-time mining (1024) without permanent blockchain bloat.
+
 **Status:** ✅ Core cryptographic implementation complete and tested  
 **Test Coverage:** 43 comprehensive test sections  
 **Documentation:** Complete migration guide and configuration examples  
-**Security Impact:** 128-bit → 256-bit quantum security (opt-in)  
+**Security Impact:** 128-bit → 256-bit quantum security (opt-in for disposable signatures)  
+**Blockchain Impact:** ZERO (disposable signatures not stored)  
 **Network Impact:** <0.1% bandwidth increase (negligible)
 
 ---
@@ -70,22 +77,46 @@ FALCON1024_SIGNATURE_CT_SIZE = 1577
 
 ### 3. Node Configuration
 
+#### Dual Signature Architecture
+Nexus implements two distinct types of Falcon signatures:
+
+**1. Disposable Falcon (Session-Based):**
+- Purpose: Real-time mining protocol authentication
+- Storage: NOT stored on blockchain (zero blockchain overhead)
+- Version support: Falcon-512 OR Falcon-1024 (miner's choice)
+- This PR enables: Support for both versions
+- Configuration: `falcon1024=1` (node accepts both)
+
+**2. Physical Falcon (Permanent):**
+- Purpose: Emergency backup block authorship proof
+- Storage: STORED on blockchain permanently
+- Version support: ALWAYS Falcon-512, NEVER Falcon-1024
+- Rationale: Minimize permanent blockchain bloat
+- Status: Future feature (not implemented in this PR)
+- Configuration: `physicalsigner=0` (disabled)
+
 #### Args Helpers (`src/Util/include/args.h`)
 ```cpp
+// For Disposable Falcon - accepts both 512 and 1024
 inline bool GetFalcon1024() {
     return GetBoolArg("-falcon1024", true);  // Default: TRUE (stealth mode)
 }
 
+// For Physical Falcon - future feature, always uses Falcon-512
 inline bool GetPhysicalSigner() {
     return GetBoolArg("-physicalsigner", false);  // Default: FALSE (future)
 }
 ```
 
-**Stealth Mode (Default):**
-- `falcon1024=1` (ON) - Node accepts both Falcon-512 and Falcon-1024
+**Stealth Mode (Default) - For Disposable Falcon:**
+- `falcon1024=1` (ON) - Node accepts both Falcon-512 and Falcon-1024 disposable signatures
 - Auto-detects version from miner's public key
 - Zero configuration required for node operators
 - Seamless protocol upgrade without network fork
+
+**Physical Falcon (Future):**
+- When implemented, will ALWAYS use Falcon-512 regardless of miner configuration
+- Minimizes permanent blockchain overhead (809 bytes vs 1577 bytes)
 
 ### 4. Comprehensive Testing
 
