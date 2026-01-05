@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLP/include/stateless_manager.h>
 #include <LLP/include/falcon_constants.h>
 #include <LLP/include/falcon_auth.h>
+#include <LLP/include/falcon_verify.h>
 #include <LLP/templates/events.h>
 
 #include <TAO/Ledger/include/create.h>
@@ -40,6 +41,7 @@ ________________________________________________________________________________
 #include <LLC/include/eckey.h>
 #include <LLC/include/chacha20_helpers.h>
 #include <LLC/include/mining_session_keys.h>
+#include <LLC/include/falcon_constants_v2.h>
 #include <LLC/types/bignum.h>
 
 #include <Util/include/debug.h>
@@ -276,6 +278,24 @@ namespace LLP
     }
 
 
+    /** Helper function to calculate offset after disposable signature in SUBMIT_BLOCK packet.
+     *  This improves code readability and makes the offset calculation more maintainable.
+     *  
+     *  Packet format: [block][timestamp][sig_len][disposable_sig][physiglen?][physical_sig?]
+     *  
+     *  @param blockSize Size of the block data in bytes
+     *  @param timestampSize Size of timestamp field (typically 8 bytes)
+     *  @param lengthFieldSize Size of signature length field (typically 2 bytes)
+     *  @param sigLen Length of the disposable signature
+     *  @return Offset in bytes where Physical Falcon signature length field would start
+     */
+    inline static size_t GetDisposableSignatureEndOffset(size_t blockSize, size_t timestampSize, 
+                                                          size_t lengthFieldSize, size_t sigLen)
+    {
+        return blockSize + timestampSize + lengthFieldSize + sigLen;
+    }
+
+
     /** Handle custom message events. */
     void StatelessMinerConnection::Event(uint8_t EVENT, uint32_t LENGTH)
     {
@@ -410,6 +430,10 @@ namespace LLP
             const uint8_t MINER_AUTH_INIT = 207;
             const uint8_t MINER_AUTH_RESPONSE = 209;
             const uint8_t MINER_AUTH_RESULT = 210;
+            
+            /* Block rejection reason codes (PR #122: Falcon Protocol Integration) */
+            const uint8_t REJECT_PHYSICAL_SIGNATURE_FAILED = 0x10;  // Physical Falcon signature verification failed
+            const uint8_t REJECT_KEY_BONDING_VIOLATION = 0x11;      // Key bonding violation (version mismatch)
 
             LOCK(MUTEX);
 
@@ -981,6 +1005,112 @@ namespace LLP
                                 nonce = nonceFromBlock;
                                 fFalconVerified = true;
                                 
+                                /* CHECK FOR OPTIONAL PHYSICAL FALCON SIGNATURE (PR #122)
+                                 * Format after disposable sig: [physiglen(2)][physical_sig(var)]
+                                 * Physical signature is OPTIONAL for backward compatibility */
+                                size_t offsetAfterDisposable = GetDisposableSignatureEndOffset(
+                                    blockSize, 
+                                    FalconConstants::TIMESTAMP_SIZE, 
+                                    FalconConstants::LENGTH_FIELD_SIZE, 
+                                    sigLen
+                                );
+                                
+                                bool fHasPhysical = false;
+                                std::vector<uint8_t> vchPhysicalSignature;
+                                
+                                if(decryptedData.size() > offsetAfterDisposable + FalconConstants::LENGTH_FIELD_SIZE)
+                                {
+                                    /* Read physical signature length */
+                                    uint16_t nPhysicalSigLen = static_cast<uint16_t>(decryptedData[offsetAfterDisposable]) |
+                                                               (static_cast<uint16_t>(decryptedData[offsetAfterDisposable + 1]) << 8);
+                                    
+                                    if(nPhysicalSigLen > 0 && 
+                                       decryptedData.size() >= offsetAfterDisposable + FalconConstants::LENGTH_FIELD_SIZE + nPhysicalSigLen)
+                                    {
+                                        /* Extract Physical Falcon signature */
+                                        vchPhysicalSignature.assign(
+                                            decryptedData.begin() + offsetAfterDisposable + FalconConstants::LENGTH_FIELD_SIZE,
+                                            decryptedData.begin() + offsetAfterDisposable + FalconConstants::LENGTH_FIELD_SIZE + nPhysicalSigLen
+                                        );
+                                        
+                                        debug::log(2, FUNCTION, "Physical Falcon signature present (", nPhysicalSigLen, " bytes)");
+                                        
+                                        /* Verify Physical Falcon signature using same key (key bonding) */
+                                        if(!LLP::FalconVerify::VerifyPhysicalFalconSignature(vSessionPubKey, vMessage, vchPhysicalSignature))
+                                        {
+                                            debug::error(FUNCTION, "❌ Physical Falcon signature verification FAILED");
+                                            debug::error(FUNCTION, "   Key bonding requires same key for both signatures");
+                                            
+                                            Packet response(BLOCK_REJECTED);
+                                            response.DATA.push_back(REJECT_PHYSICAL_SIGNATURE_FAILED);
+                                            respond(response);
+                                            
+                                            debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Physical signature failed) ===", ANSI_COLOR_RESET);
+                                            return true;
+                                        }
+                                        
+                                        /* Validate size matches session version (key bonding enforcement) */
+                                        if(!context.fFalconVersionDetected)
+                                        {
+                                            debug::error(FUNCTION, "❌ No Falcon version detected for session");
+                                            Packet response(BLOCK_REJECTED);
+                                            respond(response);
+                                            return true;
+                                        }
+                                        
+                                        size_t expectedPhysicalSize = LLC::FalconConstants::GetSignatureCTSize(context.nFalconVersion);
+                                        if(vchPhysicalSignature.size() != expectedPhysicalSize)
+                                        {
+                                            debug::error(FUNCTION, "❌ Physical signature size mismatch (key bonding violation)");
+                                            debug::error(FUNCTION, "   Expected: ", expectedPhysicalSize, " (Falcon-",
+                                                       (context.nFalconVersion == LLC::FalconVersion::FALCON_512 ? "512" : "1024"), ")");
+                                            debug::error(FUNCTION, "   Got: ", vchPhysicalSignature.size());
+                                            
+                                            Packet response(BLOCK_REJECTED);
+                                            response.DATA.push_back(REJECT_KEY_BONDING_VIOLATION);
+                                            respond(response);
+                                            
+                                            debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Key bonding violation) ===", ANSI_COLOR_RESET);
+                                            return true;
+                                        }
+                                        
+                                        fHasPhysical = true;
+                                        
+                                        debug::log(1, FUNCTION, "Physical Falcon-",
+                                                  (context.nFalconVersion == LLC::FalconVersion::FALCON_512 ? "512" : "1024"),
+                                                  " signature verified (", vchPhysicalSignature.size(), " bytes)");
+                                    }
+                                }
+                                
+                                if(!fHasPhysical)
+                                {
+                                    debug::log(2, FUNCTION, "No Physical Falcon signature (backward compatible)");
+                                }
+                                
+                                /* Store Physical signature in context if present
+                                 * 
+                                 * NOTE (PR #122): Currently, Physical Falcon signatures are VERIFIED
+                                 * and stored in the session context for auditing purposes, but are
+                                 * NOT written to the blockchain. This is intentional for this PR.
+                                 * 
+                                 * Future Enhancement: Blockchain storage of Physical Falcon signatures
+                                 * will be added in a subsequent PR to provide permanent proof of
+                                 * block authorship. This will require:
+                                 * 1. Block structure changes to add vchPhysicalSignature field
+                                 * 2. Serialization/deserialization updates
+                                 * 3. Consensus rule updates for signature validation
+                                 * 4. Database schema changes
+                                 * 
+                                 * Current behavior: Physical signature is verified for immediate
+                                 * security and key bonding enforcement, then discarded after
+                                 * block acceptance. The disposable signature remains the primary
+                                 * authentication mechanism.
+                                 */
+                                if(fHasPhysical)
+                                {
+                                    context = context.WithPhysicalSignature(vchPhysicalSignature);
+                                }
+                                
                                 /* Check timestamp freshness (replay protection) */
                                 /* NOTE: FALCON_TIMESTAMP_TOLERANCE_SECONDS is defined locally here
                                  * rather than in FalconConstants because it's a security policy parameter
@@ -1120,6 +1250,13 @@ namespace LLP
                 /* Generate an Accepted response. */
                 debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✅ Block accepted by network!", ANSI_COLOR_RESET);
                 debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK result=accepted merkle=", hashMerkle.SubString());
+                
+                /* Log signature configuration (PR #122) */
+                debug::log(0, FUNCTION, "   [Disposable: Falcon-", 
+                          (context.fFalconVersionDetected ? 
+                           (context.nFalconVersion == LLC::FalconVersion::FALCON_512 ? "512" : "1024") : "Unknown"),
+                          ", Physical: ", (context.fPhysicalFalconPresent ? "PRESENT" : "ABSENT"), "]");
+                
                 debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "📥 === SUBMIT_BLOCK: SUCCESS ===", ANSI_COLOR_RESET);
                 
                 /* Get block for detailed logging (safe access since we know it exists) */
