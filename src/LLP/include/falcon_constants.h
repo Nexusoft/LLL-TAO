@@ -125,6 +125,26 @@ namespace FalconConstants
     static const size_t FALCON1024_SIG_COMMON_SIZE_5 = 1280;  // Best compression (minimum)
 
     /***************************************************************************
+     * Version-Agnostic Aliases for Max/Min Constants
+     * 
+     * These aliases use the maximum values from both Falcon-512 and Falcon-1024
+     * to ensure the node can accept packets from miners using either variant.
+     * Logic gates should use these aliases instead of version-specific constants.
+     **************************************************************************/
+
+    /** Minimum signature size across all Falcon variants (use smallest) */
+    static const size_t FALCON_SIG_MIN = FALCON512_SIG_MIN;  // 600 bytes (Falcon-512 has smaller min)
+
+    /** Maximum signature size for validation across all Falcon variants (use largest) */
+    static const size_t FALCON_SIG_MAX_VALIDATION = FALCON1024_SIG_MAX_VALIDATION;  // 2048 bytes (both use same)
+
+    /** Absolute maximum signature size across all Falcon variants (use largest) */
+    static const size_t FALCON_SIG_ABSOLUTE_MAX = FALCON1024_SIG_ABSOLUTE_MAX;  // 1577 bytes (Falcon-1024 CT)
+
+    /** Constant-Time signature size for maximum variant (use largest) */
+    static const size_t FALCON_SIG_CT_MAX = FALCON1024_SIG_CT_SIZE;  // 1577 bytes (Falcon-1024 CT)
+
+    /***************************************************************************
      * ChaCha20-Poly1305 AEAD Encryption Constants
      **************************************************************************/
     

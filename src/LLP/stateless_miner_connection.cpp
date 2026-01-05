@@ -854,7 +854,7 @@ namespace LLP
                                     /* Check minimum size including physiglen field */
                                     if(decryptedData.size() < testBlockSize + FalconConstants::TIMESTAMP_SIZE + 
                                                               FalconConstants::LENGTH_FIELD_SIZE + 
-                                                              FalconConstants::FALCON512_SIG_MIN +
+                                                              FalconConstants::FALCON_SIG_MIN +
                                                               FalconConstants::LENGTH_FIELD_SIZE)  // Physical Falcon length field
                                         continue;  // Too small for this block size
                                     
@@ -869,8 +869,8 @@ namespace LLP
                                                                        FalconConstants::LENGTH_FIELD_SIZE + testSigLen + 
                                                                        FalconConstants::LENGTH_FIELD_SIZE;  // Physical Falcon length field
                                     
-                                    if(testSigLen >= FalconConstants::FALCON512_SIG_MIN && 
-                                       testSigLen <= FalconConstants::FALCON512_SIG_MAX_VALIDATION &&
+                                    if(testSigLen >= FalconConstants::FALCON_SIG_MIN && 
+                                       testSigLen <= FalconConstants::FALCON_SIG_MAX_VALIDATION &&
                                        decryptedData.size() >= expectedSizeWithPhysigLen)  // >= to allow optional physical sig
                                     {
                                         blockSize = testBlockSize;
@@ -882,13 +882,21 @@ namespace LLP
                                 
                                 /* If common sizes didn't work, try computing from signature size */
                                 /* This handles blocks with transactions (larger than 220 bytes) */
-                                if(!fFoundValidSize && decryptedData.size() >= MIN_METADATA_SIZE + FalconConstants::FALCON512_SIG_MIN)
+                                if(!fFoundValidSize && decryptedData.size() >= MIN_METADATA_SIZE + FalconConstants::FALCON_SIG_MIN)
                                 {
                                     /* Try reading sig_len from various positions, working backwards from end
                                      * Format: [block(B)][timestamp(8)][siglen(2)][sig(S)][physiglen(2)][physical_sig(P)]
                                      * Total = B + 8 + 2 + S + 2 + P
-                                     * We try common values for S and check if the packet structure makes sense */
+                                     * We try common values for S and check if the packet structure makes sense
+                                     * Include both Falcon-512 and Falcon-1024 signature sizes */
                                     const uint16_t commonSigSizes[] = {
+                                        // Falcon-1024 sizes (try first, as they're larger and less ambiguous)
+                                        FalconConstants::FALCON1024_SIG_COMMON_SIZE_1,
+                                        FalconConstants::FALCON1024_SIG_COMMON_SIZE_2,
+                                        FalconConstants::FALCON1024_SIG_COMMON_SIZE_3,
+                                        FalconConstants::FALCON1024_SIG_COMMON_SIZE_4,
+                                        FalconConstants::FALCON1024_SIG_COMMON_SIZE_5,
+                                        // Falcon-512 sizes
                                         FalconConstants::FALCON512_SIG_COMMON_SIZE_1,
                                         FalconConstants::FALCON512_SIG_COMMON_SIZE_2,
                                         FalconConstants::FALCON512_SIG_COMMON_SIZE_3,
@@ -938,8 +946,8 @@ namespace LLP
                                         
                                         /* Check if the actual sig_len matches our test */
                                         if(actualSigLen == testSigLen &&
-                                           actualSigLen >= FalconConstants::FALCON512_SIG_MIN &&
-                                           actualSigLen <= FalconConstants::FALCON512_SIG_MAX_VALIDATION)
+                                           actualSigLen >= FalconConstants::FALCON_SIG_MIN &&
+                                           actualSigLen <= FalconConstants::FALCON_SIG_MAX_VALIDATION)
                                         {
                                             blockSize = testBlockSize;
                                             sigLen = actualSigLen;
