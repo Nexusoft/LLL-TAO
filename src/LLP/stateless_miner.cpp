@@ -519,8 +519,9 @@ namespace LLP
         debug::log(3, FUNCTION, "MINER_AUTH_INIT: parsed pubkey_len=", nPubKeyLen);
 
         /* Detect wrapped vs unwrapped - Support both Falcon-512 and Falcon-1024 */
-        constexpr size_t FALCON512_WRAPPED_SIZE = 925;  // 897 + 12 + 16
-        constexpr size_t FALCON1024_WRAPPED_SIZE = 1821; // 1793 + 12 + 16
+        constexpr size_t CHACHA20_OVERHEAD = 12 + 16;  // nonce(12) + tag(16)
+        constexpr size_t FALCON512_WRAPPED_SIZE = LLC::FalconSizes::FALCON512_PUBLIC_KEY_SIZE + CHACHA20_OVERHEAD;  // 897 + 28 = 925
+        constexpr size_t FALCON1024_WRAPPED_SIZE = LLC::FalconSizes::FALCON1024_PUBLIC_KEY_SIZE + CHACHA20_OVERHEAD; // 1793 + 28 = 1821
         bool fWrapped = (nPubKeyLen == FALCON512_WRAPPED_SIZE || nPubKeyLen == FALCON1024_WRAPPED_SIZE);
 
         /* Validate pubkey_len */

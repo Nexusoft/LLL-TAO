@@ -187,7 +187,8 @@ TEST_CASE("Falcon-1024 ChaCha20 Wrapped Authentication", "[falcon][falcon1024][c
             "test_wrapped_falcon1024"
         );
 
-        constexpr size_t FALCON1024_WRAPPED_SIZE = 1821; // 1793 + 12 + 16
+        constexpr size_t CHACHA20_OVERHEAD = 12 + 16;  // nonce(12) + tag(16)
+        constexpr size_t FALCON1024_WRAPPED_SIZE = LLC::FalconSizes::FALCON1024_PUBLIC_KEY_SIZE + CHACHA20_OVERHEAD; // 1793 + 28 = 1821
         REQUIRE(meta.pubkey.size() == LLC::FalconSizes::FALCON1024_PUBLIC_KEY_SIZE);  // Falcon-1024 pubkey size
 
         /* Create test genesis hash */
