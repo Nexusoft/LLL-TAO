@@ -225,8 +225,11 @@ namespace FalconVerify
     /* Check if Physical Falcon signatures are enabled. */
     bool IsPhysicalFalconEnabled()
     {
-        /* Check the physicalsigner configuration flag */
-        return config::GetBoolArg("-physicalsigner", false);
+        /* Physical Falcon is always enabled on nodes (hardcoded).
+         * Node will validate Physical Falcon signatures when present in blocks.
+         * Physical Falcon is OPTIONAL - blocks without it are still valid.
+         * This ensures backward compatibility and zero configuration burden. */
+        return true;
     }
 
 } // namespace FalconVerify
