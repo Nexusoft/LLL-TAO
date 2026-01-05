@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLP/include/stateless_manager.h>
 #include <LLP/include/falcon_constants.h>
 #include <LLP/include/falcon_auth.h>
+#include <LLP/include/falcon_verify.h>
 #include <LLP/templates/events.h>
 
 #include <TAO/Ledger/include/create.h>
@@ -40,6 +41,7 @@ ________________________________________________________________________________
 #include <LLC/include/eckey.h>
 #include <LLC/include/chacha20_helpers.h>
 #include <LLC/include/mining_session_keys.h>
+#include <LLC/include/falcon_constants_v2.h>
 #include <LLC/types/bignum.h>
 
 #include <Util/include/debug.h>
@@ -981,6 +983,90 @@ namespace LLP
                                 nonce = nonceFromBlock;
                                 fFalconVerified = true;
                                 
+                                /* CHECK FOR OPTIONAL PHYSICAL FALCON SIGNATURE (PR #122)
+                                 * Format after disposable sig: [physiglen(2)][physical_sig(var)]
+                                 * Physical signature is OPTIONAL for backward compatibility */
+                                size_t offsetAfterDisposable = blockSize + FalconConstants::TIMESTAMP_SIZE + 
+                                                               FalconConstants::LENGTH_FIELD_SIZE + sigLen;
+                                
+                                bool fHasPhysical = false;
+                                std::vector<uint8_t> vchPhysicalSignature;
+                                
+                                if(decryptedData.size() > offsetAfterDisposable + FalconConstants::LENGTH_FIELD_SIZE)
+                                {
+                                    /* Read physical signature length */
+                                    uint16_t nPhysicalSigLen = static_cast<uint16_t>(decryptedData[offsetAfterDisposable]) |
+                                                               (static_cast<uint16_t>(decryptedData[offsetAfterDisposable + 1]) << 8);
+                                    
+                                    if(nPhysicalSigLen > 0 && 
+                                       decryptedData.size() >= offsetAfterDisposable + FalconConstants::LENGTH_FIELD_SIZE + nPhysicalSigLen)
+                                    {
+                                        /* Extract Physical Falcon signature */
+                                        vchPhysicalSignature.assign(
+                                            decryptedData.begin() + offsetAfterDisposable + FalconConstants::LENGTH_FIELD_SIZE,
+                                            decryptedData.begin() + offsetAfterDisposable + FalconConstants::LENGTH_FIELD_SIZE + nPhysicalSigLen
+                                        );
+                                        
+                                        debug::log(2, FUNCTION, "Physical Falcon signature present (", nPhysicalSigLen, " bytes)");
+                                        
+                                        /* Verify Physical Falcon signature using same key (key bonding) */
+                                        if(!LLP::FalconVerify::VerifyPhysicalFalconSignature(vSessionPubKey, vMessage, vchPhysicalSignature))
+                                        {
+                                            debug::error(FUNCTION, "❌ Physical Falcon signature verification FAILED");
+                                            debug::error(FUNCTION, "   Key bonding requires same key for both signatures");
+                                            
+                                            Packet response(BLOCK_REJECTED);
+                                            response.DATA.push_back(0x10);  // Reason: Physical signature verification failed
+                                            respond(response);
+                                            
+                                            debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Physical signature failed) ===", ANSI_COLOR_RESET);
+                                            return true;
+                                        }
+                                        
+                                        /* Validate size matches session version (key bonding enforcement) */
+                                        if(!context.fFalconVersionDetected)
+                                        {
+                                            debug::error(FUNCTION, "❌ No Falcon version detected for session");
+                                            Packet response(BLOCK_REJECTED);
+                                            respond(response);
+                                            return true;
+                                        }
+                                        
+                                        size_t expectedPhysicalSize = LLC::FalconConstants::GetSignatureCTSize(context.nFalconVersion);
+                                        if(vchPhysicalSignature.size() != expectedPhysicalSize)
+                                        {
+                                            debug::error(FUNCTION, "❌ Physical signature size mismatch (key bonding violation)");
+                                            debug::error(FUNCTION, "   Expected: ", expectedPhysicalSize, " (Falcon-",
+                                                       (context.nFalconVersion == LLC::FalconVersion::FALCON_512 ? "512" : "1024"), ")");
+                                            debug::error(FUNCTION, "   Got: ", vchPhysicalSignature.size());
+                                            
+                                            Packet response(BLOCK_REJECTED);
+                                            response.DATA.push_back(0x11);  // Reason: Key bonding violation
+                                            respond(response);
+                                            
+                                            debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Key bonding violation) ===", ANSI_COLOR_RESET);
+                                            return true;
+                                        }
+                                        
+                                        fHasPhysical = true;
+                                        
+                                        debug::log(1, FUNCTION, "Physical Falcon-",
+                                                  (context.nFalconVersion == LLC::FalconVersion::FALCON_512 ? "512" : "1024"),
+                                                  " signature verified (", vchPhysicalSignature.size(), " bytes)");
+                                    }
+                                }
+                                
+                                if(!fHasPhysical)
+                                {
+                                    debug::log(2, FUNCTION, "No Physical Falcon signature (backward compatible)");
+                                }
+                                
+                                /* Store Physical signature in context if present */
+                                if(fHasPhysical)
+                                {
+                                    context = context.WithPhysicalSignature(vchPhysicalSignature);
+                                }
+                                
                                 /* Check timestamp freshness (replay protection) */
                                 /* NOTE: FALCON_TIMESTAMP_TOLERANCE_SECONDS is defined locally here
                                  * rather than in FalconConstants because it's a security policy parameter
@@ -1120,6 +1206,13 @@ namespace LLP
                 /* Generate an Accepted response. */
                 debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✅ Block accepted by network!", ANSI_COLOR_RESET);
                 debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK result=accepted merkle=", hashMerkle.SubString());
+                
+                /* Log signature configuration (PR #122) */
+                debug::log(0, FUNCTION, "   [Disposable: Falcon-", 
+                          (context.fFalconVersionDetected ? 
+                           (context.nFalconVersion == LLC::FalconVersion::FALCON_512 ? "512" : "1024") : "Unknown"),
+                          ", Physical: ", (context.fPhysicalFalconPresent ? "PRESENT" : "ABSENT"), "]");
+                
                 debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "📥 === SUBMIT_BLOCK: SUCCESS ===", ANSI_COLOR_RESET);
                 
                 /* Get block for detailed logging (safe access since we know it exists) */
