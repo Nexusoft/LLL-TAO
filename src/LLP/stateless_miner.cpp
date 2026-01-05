@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/falcon_auth.h>
+#include <LLP/include/falcon_verify.h>
 #include <LLP/include/disposable_falcon.h>
 #include <LLP/include/falcon_constants.h>
 #include <LLP/include/genesis_constants.h>
@@ -22,6 +23,7 @@ ________________________________________________________________________________
 
 #include <LLC/include/random.h>
 #include <LLC/include/flkey.h>
+#include <LLC/include/falcon_constants_v2.h>
 #include <LLC/include/encrypt.h>
 #include <LLC/include/chacha20_helpers.h>
 #include <LLC/include/mining_session_keys.h>
@@ -73,6 +75,10 @@ namespace LLP
     , fRewardBound(false)
     , vChaChaKey()
     , fEncryptionReady(false)
+    , nFalconVersion(LLC::FalconVersion::FALCON_512)
+    , fFalconVersionDetected(false)
+    , vchPhysicalSignature()
+    , fPhysicalFalconPresent(false)
     {
     }
 
@@ -107,6 +113,10 @@ namespace LLP
     , fRewardBound(false)
     , vChaChaKey()
     , fEncryptionReady(false)
+    , nFalconVersion(LLC::FalconVersion::FALCON_512)
+    , fFalconVersionDetected(false)
+    , vchPhysicalSignature()
+    , fPhysicalFalconPresent(false)
     {
     }
 
@@ -215,6 +225,22 @@ namespace LLP
         MiningContext c = *this;
         c.vChaChaKey = vKey_;
         c.fEncryptionReady = !vKey_.empty();
+        return c;
+    }
+
+    MiningContext MiningContext::WithFalconVersion(LLC::FalconVersion version_) const
+    {
+        MiningContext c = *this;
+        c.nFalconVersion = version_;
+        c.fFalconVersionDetected = true;
+        return c;
+    }
+
+    MiningContext MiningContext::WithPhysicalSignature(const std::vector<uint8_t>& vSig_) const
+    {
+        MiningContext c = *this;
+        c.vchPhysicalSignature = vSig_;
+        c.fPhysicalFalconPresent = !vSig_.empty();
         return c;
     }
 
@@ -730,6 +756,35 @@ namespace LLP
         DisposableFalcon::DebugLogPacket("MINER_AUTH_RESPONSE::nonce", context.vAuthNonce, 4);
         DisposableFalcon::DebugLogPacket("MINER_AUTH_RESPONSE::signature", vSignature, 4);
 
+        /* AUTO-DETECT Falcon version from public key size (PR #122) */
+        LLC::FalconVersion detectedVersion;
+        if(!LLP::FalconVerify::VerifyPublicKey(context.vMinerPubKey, detectedVersion))
+        {
+            debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: invalid Falcon public key, len=",
+                       context.vMinerPubKey.size());
+            Packet response(MINER_AUTH_RESULT);
+            response.DATA.push_back(0x00); // Failure
+            response.LENGTH = 1;
+            return ProcessResult::Success(context, response);
+        }
+
+        debug::log(2, FUNCTION, "Detected Falcon-",
+                  (detectedVersion == LLC::FalconVersion::FALCON_512 ? "512" : "1024"),
+                  " from public key size ", context.vMinerPubKey.size());
+
+        /* Validate signature size matches detected version */
+        size_t expectedSize = LLC::FalconConstants::GetSignatureCTSize(detectedVersion);
+        if(vSignature.size() != expectedSize)
+        {
+            debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: signature size mismatch: ", vSignature.size(),
+                      " expected ", expectedSize, " for Falcon-",
+                      (detectedVersion == LLC::FalconVersion::FALCON_512 ? "512" : "1024"));
+            Packet response(MINER_AUTH_RESULT);
+            response.DATA.push_back(0x00); // Failure
+            response.LENGTH = 1;
+            return ProcessResult::Success(context, response);
+        }
+
         /* Verify Falcon signature using LLC::FLKey directly */
         LLC::FLKey flkey;
         if(!flkey.SetPubKey(context.vMinerPubKey))
@@ -835,6 +890,7 @@ namespace LLP
         debug::log(0, FUNCTION, "╠═══════════════════════════════════════════════════════════╣");
         debug::log(0, FUNCTION, "║ Key ID:       ", hashKeyID.SubString());
         debug::log(0, FUNCTION, "║ Session ID:   ", nSessionId);
+        debug::log(0, FUNCTION, "║ Falcon Ver:   ", (detectedVersion == LLC::FalconVersion::FALCON_512 ? "512" : "1024"));
         debug::log(0, FUNCTION, "║ Genesis:      ", hashGenesisFinal.SubString(), " (ChaCha20)");
         debug::log(0, FUNCTION, "║ ChaCha20:     Ready for encryption");
         debug::log(0, FUNCTION, "║ Reward Addr:  (awaiting MINER_SET_REWARD)");
@@ -853,7 +909,8 @@ namespace LLP
             .WithKeyId(hashKeyID)
             .WithGenesis(hashGenesis)
             .WithTimestamp(runtime::unifiedtimestamp())
-            .WithNonce(std::vector<uint8_t>());  // Clear single-use nonce
+            .WithNonce(std::vector<uint8_t>())  // Clear single-use nonce
+            .WithFalconVersion(detectedVersion);  // Store detected Falcon version (PR #122)
             // Keep vMinerPubKey in context - it will be extracted and stored in mapSessionKeys
 
         /* Set up ChaCha20 encryption context (CRITICAL for PR #111)

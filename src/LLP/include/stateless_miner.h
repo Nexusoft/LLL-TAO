@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <LLP/packets/packet.h>
 #include <LLC/types/uint1024.h>
+#include <LLC/include/flkey.h>
 
 #include <string>
 #include <cstdint>
@@ -64,6 +65,12 @@ namespace LLP
         /* ChaCha20 encryption state for secure communication */
         std::vector<uint8_t> vChaChaKey; // ChaCha20 session key derived from genesis
         bool fEncryptionReady;           // Whether ChaCha20 encryption is established
+
+        /* Falcon version tracking (PR #122: Falcon Protocol Integration) */
+        LLC::FalconVersion nFalconVersion;      // Detected Falcon version (512 or 1024)
+        bool fFalconVersionDetected;            // Whether version has been detected
+        std::vector<uint8_t> vchPhysicalSignature; // Optional Physical Falcon signature
+        bool fPhysicalFalconPresent;            // Whether Physical Falcon signature is present
 
         /** Default Constructor **/
         MiningContext();
@@ -191,6 +198,26 @@ namespace LLP
          *
          **/
         MiningContext WithChaChaKey(const std::vector<uint8_t>& vKey_) const;
+
+        /** WithFalconVersion
+         *
+         *  Returns a new context with updated Falcon version and detection flag.
+         *  Used during MINER_AUTH to store auto-detected Falcon version.
+         *
+         *  @param[in] version_ The detected Falcon version (512 or 1024)
+         *
+         **/
+        MiningContext WithFalconVersion(LLC::FalconVersion version_) const;
+
+        /** WithPhysicalSignature
+         *
+         *  Returns a new context with Physical Falcon signature stored.
+         *  Used during SUBMIT_BLOCK when Physical Falcon signature is present.
+         *
+         *  @param[in] vSig_ The Physical Falcon signature bytes
+         *
+         **/
+        MiningContext WithPhysicalSignature(const std::vector<uint8_t>& vSig_) const;
 
         /** GetPayoutAddress
          *
