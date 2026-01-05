@@ -901,14 +901,18 @@ namespace LLP
                                             continue;
                                         
                                         /* Calculate block size assuming no physical signature (P = 0)
-                                         * testBlockSize = Total - timestamp - siglen - sig - physiglen */
+                                         * Format: [block(B)][timestamp(8)][siglen(2)][sig(S)][physiglen(2)][physical_sig(0)]
+                                         * testBlockSize = Total - timestamp - disposable_siglen_field - sig - physical_siglen_field */
+                                        const size_t disposableSigLenFieldSize = FalconConstants::LENGTH_FIELD_SIZE;
+                                        const size_t physicalSigLenFieldSize = FalconConstants::LENGTH_FIELD_SIZE;
+                                        
                                         size_t testBlockSize = decryptedData.size() - FalconConstants::TIMESTAMP_SIZE - 
-                                                               FalconConstants::LENGTH_FIELD_SIZE - testSigLen -
-                                                               FalconConstants::LENGTH_FIELD_SIZE;  // Physical Falcon length field
+                                                               disposableSigLenFieldSize - testSigLen -
+                                                               physicalSigLenFieldSize;
                                         
                                         /* Read physical signature length to check if physical signature is present */
                                         size_t physSigLenOffset = testBlockSize + FalconConstants::TIMESTAMP_SIZE + 
-                                                                 FalconConstants::LENGTH_FIELD_SIZE + testSigLen;
+                                                                 disposableSigLenFieldSize + testSigLen;
                                         
                                         if(physSigLenOffset + FalconConstants::LENGTH_FIELD_SIZE > decryptedData.size())
                                             continue;  // Not enough data for physiglen field
