@@ -1505,6 +1505,7 @@ namespace LLP
             }
 
             /* Handle GET_ROUND - requires authentication */
+            /* PR #134: Enhanced to return unified + channel heights (16 bytes total) */
             if(PACKET.HEADER == GET_ROUND)
             {
                 /* Check authentication */
@@ -1519,8 +1520,73 @@ namespace LLP
                     return true;
                 }
 
-                /* Get current blockchain height */
+                /* ═════════════════════════════════════════════════════════════════════════ */
+                /* PR #134: CALCULATE CHANNEL-SPECIFIC HEIGHTS                              */
+                /* ═════════════════════════════════════════════════════════════════════════ */
+                
+                /* Get current blockchain state */
                 uint32_t nCurrentHeight = TAO::Ledger::ChainState::nBestHeight.load();
+                TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
+                
+                /* Calculate channel-specific heights */
+                uint32_t nPrimeChannelHeight = 0;
+                uint32_t nHashChannelHeight = 0;
+                uint32_t nStakeChannelHeight = 0;
+                
+                /* Prime channel (1) */
+                {
+                    TAO::Ledger::BlockState statePrime = stateBest;
+                    if(TAO::Ledger::GetLastState(statePrime, 1))
+                        nPrimeChannelHeight = statePrime.nChannelHeight;
+                }
+                
+                /* Hash channel (2) */
+                {
+                    TAO::Ledger::BlockState stateHash = stateBest;
+                    if(TAO::Ledger::GetLastState(stateHash, 2))
+                        nHashChannelHeight = stateHash.nChannelHeight;
+                }
+                
+                /* Stake channel (0) */
+                {
+                    TAO::Ledger::BlockState stateStake = stateBest;
+                    if(TAO::Ledger::GetLastState(stateStake, 0))
+                        nStakeChannelHeight = stateStake.nChannelHeight;
+                }
+                
+                /* ═════════════════════════════════════════════════════════════════════════ */
+                /* BUILD ENHANCED RESPONSE (16 bytes total)                                 */
+                /* ═════════════════════════════════════════════════════════════════════════ */
+                
+                /* Response format (PR #134):
+                 *   [0-3]   uint32_t nUnifiedHeight      - Current blockchain height (all channels)
+                 *   [4-7]   uint32_t nPrimeChannelHeight - Last Prime channel block height
+                 *   [8-11]  uint32_t nHashChannelHeight  - Last Hash channel block height
+                 *   [12-15] uint32_t nStakeChannelHeight - Last Stake channel block height
+                 * 
+                 * Backward compatible: Old miners read first 4 bytes, ignore rest
+                 */
+                std::vector<uint8_t> vData;
+                
+                /* Add unified height (bytes 0-3) */
+                std::vector<uint8_t> vUnified = convert::uint2bytes(nCurrentHeight);
+                vData.insert(vData.end(), vUnified.begin(), vUnified.end());
+                
+                /* Add Prime channel height (bytes 4-7) */
+                std::vector<uint8_t> vPrime = convert::uint2bytes(nPrimeChannelHeight);
+                vData.insert(vData.end(), vPrime.begin(), vPrime.end());
+                
+                /* Add Hash channel height (bytes 8-11) */
+                std::vector<uint8_t> vHash = convert::uint2bytes(nHashChannelHeight);
+                vData.insert(vData.end(), vHash.begin(), vHash.end());
+                
+                /* Add Stake channel height (bytes 12-15) */
+                std::vector<uint8_t> vStake = convert::uint2bytes(nStakeChannelHeight);
+                vData.insert(vData.end(), vStake.begin(), vStake.end());
+                
+                /* ═════════════════════════════════════════════════════════════════════════ */
+                /* DETERMINE IF NEW ROUND (unified height changed)                          */
+                /* ═════════════════════════════════════════════════════════════════════════ */
                 
                 /* Compare to miner's last known height */
                 /* If context.nHeight is 0 (uninitialized), always send NEW_ROUND */
@@ -1528,12 +1594,16 @@ namespace LLP
                 {
                     debug::log(0, FUNCTION, "🔔 Height change detected for ", GetAddress().ToStringIP());
                     debug::log(0, FUNCTION, "   Miner's height: ", context.nHeight);
-                    debug::log(0, FUNCTION, "   Current height: ", nCurrentHeight);
+                    debug::log(0, FUNCTION, "   Current unified height: ", nCurrentHeight);
+                    debug::log(0, FUNCTION, "   Channel heights:");
+                    debug::log(0, FUNCTION, "      Prime: ", nPrimeChannelHeight);
+                    debug::log(0, FUNCTION, "      Hash:  ", nHashChannelHeight);
+                    debug::log(0, FUNCTION, "      Stake: ", nStakeChannelHeight);
                     
-                    /* Notify miner of new round */
+                    /* Notify miner of new round with enhanced data */
                     Packet response(NEW_ROUND);
-                    response.DATA = convert::uint2bytes(nCurrentHeight);
-                    response.LENGTH = static_cast<uint32_t>(response.DATA.size());
+                    response.DATA = vData;
+                    response.LENGTH = static_cast<uint32_t>(vData.size());  // Should be 16
                     respond(response);
                     
                     /* Update context with new height */
@@ -1546,13 +1616,15 @@ namespace LLP
                     return true;
                 }
                 
-                /* No height change - send same round response */
+                /* No height change - send same round response with enhanced data */
                 Packet response(OLD_ROUND);
-                response.DATA = convert::uint2bytes(nCurrentHeight);
-                response.LENGTH = static_cast<uint32_t>(response.DATA.size());
+                response.DATA = vData;
+                response.LENGTH = static_cast<uint32_t>(vData.size());  // Should be 16
                 respond(response);
 
-                debug::log(3, FUNCTION, "GET_ROUND: same round (height ", nCurrentHeight, ")");
+                debug::log(3, FUNCTION, "GET_ROUND: same round (unified height ", nCurrentHeight, 
+                          ", prime=", nPrimeChannelHeight, ", hash=", nHashChannelHeight, 
+                          ", stake=", nStakeChannelHeight, ")");
 
                 return true;
             }
@@ -1778,13 +1850,53 @@ namespace LLP
         }
         
         /* Store new template in map with metadata (PR #131: Template Staleness Prevention) */
+        /* PR #134: Calculate channel-specific height for accurate staleness detection */
         uint64_t nCreationTime = runtime::unifiedtimestamp();
-        TemplateMetadata meta(pBlock, nCreationTime, pBlock->nHeight, pBlock->hashMerkleRoot, context.nChannel);
+        
+        /* Get channel-specific height by finding last block in this channel */
+        TAO::Ledger::BlockState stateCurrent = TAO::Ledger::ChainState::tStateBest.load();
+        uint32_t nChannelHeight = 0;
+        
+        /* Helper to get channel name for logging */
+        auto GetChannelName = [](uint32_t nCh) -> std::string {
+            switch(nCh) {
+                case 0:  return "Stake";
+                case 1:  return "Prime";
+                case 2:  return "Hash";
+                default: return "Unknown";
+            }
+        };
+        
+        if(TAO::Ledger::GetLastState(stateCurrent, context.nChannel))
+        {
+            /* GetLastState succeeded - use the channel height from that block */
+            nChannelHeight = stateCurrent.nChannelHeight;
+            
+            debug::log(0, "   ✓ Channel height calculated:");
+            debug::log(0, "      Unified blockchain height: ", pBlock->nHeight - 1, " (current)");
+            debug::log(0, "      ", GetChannelName(context.nChannel), " channel height: ", nChannelHeight, " (last block in channel)");
+            debug::log(0, "      Template mining for ", GetChannelName(context.nChannel), " height: ", nChannelHeight + 1);
+        }
+        else
+        {
+            /* GetLastState failed - this might be the first block in this channel */
+            /* Or genesis block case - set to 0 */
+            nChannelHeight = 0;
+            debug::warning(FUNCTION, "⚠ GetLastState failed for channel ", context.nChannel);
+            debug::warning(FUNCTION, "   This might be the first block in this channel");
+            debug::warning(FUNCTION, "   Using nChannelHeight = 0");
+        }
+        
+        /* Create metadata with channel height (PR #134) */
+        TemplateMetadata meta(pBlock, nCreationTime, pBlock->nHeight, nChannelHeight, 
+                             pBlock->hashMerkleRoot, context.nChannel);
         mapBlocks.emplace(pBlock->hashMerkleRoot, std::move(meta));
         
         debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Template stored in map with metadata", ANSI_COLOR_RESET);
         debug::log(0, "      Merkle root: ", pBlock->hashMerkleRoot.SubString());
-        debug::log(0, "      Height: ", pBlock->nHeight);
+        debug::log(0, "      Unified height: ", pBlock->nHeight);
+        debug::log(0, "      Channel height: ", nChannelHeight);
+        debug::log(0, "      Channel: ", GetChannelName(context.nChannel));
         debug::log(0, "      Creation time: ", nCreationTime);
         debug::log(0, "      Templates in map: ", mapBlocks.size());
         
