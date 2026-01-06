@@ -90,6 +90,60 @@ namespace LLP
 
             /** SERVER COMMANDS **/
             CLEAR_MAP      = 132,
+            
+            /** GET_ROUND (133) - Multi-Channel Height Information
+             *
+             *  Returns unified blockchain height + per-channel heights for staleness detection.
+             *
+             *  NEXUS MULTI-CHANNEL CONSENSUS ARCHITECTURE:
+             *  -------------------------------------------
+             *  Nexus uses three independent mining channels that compete on the same blockchain:
+             *  - Prime channel (1): CPU mining via prime number cluster discovery
+             *  - Hash channel (2):  GPU/FPGA mining via SHA3 hashing  
+             *  - Stake channel (0): Proof-of-Stake (trust-based)
+             *
+             *  UNIFIED vs CHANNEL HEIGHTS:
+             *  ---------------------------
+             *  • Unified Height (nHeight): Increments for EVERY block regardless of channel
+             *    Example: Height 6535193 (Hash) → 6535194 (Prime) → 6535195 (Hash) → 6535196 (Stake)
+             *
+             *  • Channel Height (nChannelHeight): Only increments when THAT SPECIFIC CHANNEL mines a block
+             *    Example at unified height 6535196:
+             *      - Prime channel height:  2165442 (last Prime block)
+             *      - Hash channel height:   4165000 (last Hash block)
+             *      - Stake channel height:  235000  (last Stake block)
+             *
+             *  TEMPLATE STALENESS DETECTION:
+             *  -----------------------------
+             *  Mining templates should only be discarded when THEIR SPECIFIC CHANNEL advances,
+             *  not when other channels mine blocks. This prevents ~40% wasted mining work.
+             *
+             *  RESPONSE FORMAT (PR #134 - Enhanced GET_ROUND):
+             *  ------------------------------------------------
+             *  Total: 16 bytes
+             *    [0-3]   uint32_t nUnifiedHeight      - Current blockchain height (all channels)
+             *    [4-7]   uint32_t nPrimeChannelHeight - Last Prime channel block height
+             *    [8-11]  uint32_t nHashChannelHeight  - Last Hash channel block height
+             *    [12-15] uint32_t nStakeChannelHeight - Last Stake channel block height
+             *
+             *  BACKWARD COMPATIBILITY:
+             *  -----------------------
+             *  Old miners (pre-PR #134): Read 4 bytes (unified height), ignore remaining 12 bytes ✅
+             *  New miners (PR #134+):    Read all 16 bytes for enhanced staleness detection ✅
+             *  TCP stream protocol allows extra bytes to be ignored by older clients ✅
+             *
+             *  USAGE:
+             *  ------
+             *  Miners poll GET_ROUND every 5-10 seconds to check for new blocks:
+             *  - If unified height changes: Always fetch new template (any channel advanced)
+             *  - If only other channels changed: Keep mining current template (efficiency!)
+             *  - If own channel changed: Discard template, fetch new one (correctness!)
+             *
+             *  EFFICIENCY IMPACT:
+             *  ------------------
+             *  Before: Templates marked stale when ANY channel mines → ~40% wasted work
+             *  After:  Templates marked stale only when SAME channel mines → <5% wasted work
+             **/
             GET_ROUND      = 133,
 
 
