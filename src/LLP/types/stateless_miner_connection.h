@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLP/templates/connection.h>
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/disposable_falcon.h>
+#include <LLP/include/channel_state_manager.h>
 #include <TAO/Ledger/types/block.h>
 #include <atomic>
 #include <mutex>
@@ -66,6 +67,10 @@ namespace LLP
 
         /** Mutex for thread-safe session key access **/
         mutable std::mutex SESSION_MUTEX;
+
+        /** Channel state managers for fork-aware mining (PR #136) **/
+        std::unique_ptr<PrimeStateManager> m_pPrimeState;
+        std::unique_ptr<HashStateManager> m_pHashState;
 
     public:
         /** Default Constructor **/
@@ -190,6 +195,16 @@ namespace LLP
          *
          **/
         void CleanupStaleTemplates(uint32_t nCurrentHeight);
+
+        /** GetChannelManager (PR #136: Fork-Aware Channel State Management)
+         *
+         *  Get the appropriate channel state manager for a given channel.
+         *  
+         *  @param[in] nChannel Mining channel (1=Prime, 2=Hash)
+         *  @return Pointer to channel manager, or nullptr if invalid channel
+         *
+         **/
+        ChannelStateManager* GetChannelManager(uint32_t nChannel);
     };
 }
 
