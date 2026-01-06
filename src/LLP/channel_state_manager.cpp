@@ -108,12 +108,11 @@ namespace LLP
     /* ValidateTemplateHeights */
     bool ChannelStateManager::ValidateTemplateHeights(uint32_t nUnified, uint32_t nChannel)
     {
-        /* Sync if cache invalid */
-        if(!IsCacheValid())
-        {
-            if(!SyncWithBlockchain())
-                return false;
-        }
+        /* Always sync to ensure unified and channel heights are from the same blockchain snapshot
+         * This prevents inconsistencies where we validate against fresh unified height
+         * but stale cached channel height (could be up to 1 second old) */
+        if(!SyncWithBlockchain())
+            return false;
         
         /* Get current best block for unified height */
         TAO::Ledger::BlockState tStateBest = TAO::Ledger::ChainState::tStateBest.load();
@@ -134,6 +133,8 @@ namespace LLP
         /* VALIDATION 2: Check channel height (Block::Accept logic)
          * Template should be for next channel block:
          *   channel at height M → template for height M+1
+         * 
+         * Use cached channel height which was synced from the same tStateBest snapshot above
          */
         uint32_t nCachedChannelHeight;
         {
