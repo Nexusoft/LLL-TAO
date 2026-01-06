@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <LLP/packets/packet.h>
 #include <LLC/types/uint1024.h>
+#include <TAO/Ledger/types/block.h>
 #include <LLC/include/flkey.h>
 
 #include <string>
