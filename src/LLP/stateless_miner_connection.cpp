@@ -1321,9 +1321,10 @@ namespace LLP
                             debug::error(FUNCTION, "  ✓ ", entry.first.SubString());
                             debug::error(FUNCTION, "    Height: ", meta.nHeight, 
                                        " (current: ", TAO::Ledger::ChainState::nBestHeight.load() + 1, ")");
+                            debug::error(FUNCTION, "    Channel Height: ", meta.nChannelHeight);
                             debug::error(FUNCTION, "    Age: ", nAge, "s (max: ", LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS, "s)");
-                            debug::error(FUNCTION, "    Channel: ", meta.nChannel == 1 ? "Prime" : "Hash");
-                            debug::error(FUNCTION, "    Valid: ", meta.IsHeightValid() && !meta.IsStale() ? "YES" : "NO");
+                            debug::error(FUNCTION, "    Channel: ", meta.GetChannelName());
+                            debug::error(FUNCTION, "    Valid: ", !meta.IsStale() ? "YES" : "NO");
                         }
                     }
                     
@@ -1970,13 +1971,16 @@ namespace LLP
             return false;
         }
         
-        if(!meta.IsHeightValid())
+        /* PR #134: Check channel-specific staleness using IsStale() */
+        /* Note: IsStale() now checks both age and channel height */
+        if(meta.IsStale())
         {
             uint32_t nCurrentHeight = TAO::Ledger::ChainState::nBestHeight.load();
-            debug::error(FUNCTION, "❌ Template height mismatch");
-            debug::error(FUNCTION, "   Template height: ", meta.nHeight);
-            debug::error(FUNCTION, "   Current height: ", nCurrentHeight + 1);
-            debug::error(FUNCTION, "   Template is STALE - height changed during mining");
+            debug::error(FUNCTION, "❌ Template is STALE");
+            debug::error(FUNCTION, "   Template unified height: ", meta.nHeight);
+            debug::error(FUNCTION, "   Template channel height: ", meta.nChannelHeight);
+            debug::error(FUNCTION, "   Current blockchain height: ", nCurrentHeight);
+            debug::error(FUNCTION, "   Reason: Channel height changed or age exceeded");
             return false;
         }
         
@@ -2403,11 +2407,13 @@ namespace LLP
                 continue;
             }
             
-            /* Check height-based staleness */
-            if(!meta.IsHeightValid(nCurrentHeight))
+            /* PR #134: Check staleness using IsStale() (checks both age and channel height) */
+            if(meta.IsStale())
             {
-                debug::log(2, FUNCTION, "   ❌ Removing template (height: ", meta.nHeight, 
-                          " vs current: ", nCurrentHeight + 1, ")");
+                debug::log(2, FUNCTION, "   ❌ Removing stale template");
+                debug::log(2, FUNCTION, "      Unified height: ", meta.nHeight, " (current: ", nCurrentHeight, ")");
+                debug::log(2, FUNCTION, "      Channel height: ", meta.nChannelHeight, " (", meta.GetChannelName(), ")");
+                debug::log(2, FUNCTION, "      Age: ", meta.GetAge(), "s");
                 debug::log(2, FUNCTION, "      Merkle: ", it->first.SubString());
                 it = mapBlocks.erase(it);  // unique_ptr automatically deletes pBlock
                 ++nRemoved;
