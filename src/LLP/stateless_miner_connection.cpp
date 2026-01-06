@@ -1780,7 +1780,7 @@ namespace LLP
         /* Store new template in map with metadata (PR #131: Template Staleness Prevention) */
         uint64_t nCreationTime = runtime::unifiedtimestamp();
         TemplateMetadata meta(pBlock, nCreationTime, pBlock->nHeight, pBlock->hashMerkleRoot, context.nChannel);
-        mapBlocks[pBlock->hashMerkleRoot] = meta;
+        mapBlocks.emplace(pBlock->hashMerkleRoot, std::move(meta));
         
         debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Template stored in map with metadata", ANSI_COLOR_RESET);
         debug::log(0, "      Merkle root: ", pBlock->hashMerkleRoot.SubString());

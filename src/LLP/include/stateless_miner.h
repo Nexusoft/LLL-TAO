@@ -72,6 +72,18 @@ namespace LLP
         {
         }
         
+        /** Move constructor - explicitly defaulted for move-only semantics */
+        TemplateMetadata(TemplateMetadata&& other) noexcept = default;
+        
+        /** Move assignment operator - explicitly defaulted for move-only semantics */
+        TemplateMetadata& operator=(TemplateMetadata&& other) noexcept = default;
+        
+        /** Copy constructor - explicitly deleted (struct contains move-only unique_ptr) */
+        TemplateMetadata(const TemplateMetadata&) = delete;
+        
+        /** Copy assignment operator - explicitly deleted (struct contains move-only unique_ptr) */
+        TemplateMetadata& operator=(const TemplateMetadata&) = delete;
+        
         /** IsStale
          * 
          *  Check if template has exceeded maximum age.
