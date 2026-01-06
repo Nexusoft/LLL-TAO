@@ -1892,7 +1892,11 @@ namespace LLP
             debug::warning(FUNCTION, "⚠ Fork detected during template creation!");
             debug::warning(FUNCTION, "   Blocks rolled back: ", pChannelMgr->GetBlocksRolledBack());
             debug::warning(FUNCTION, "   Clearing stale templates...");
+            
+            /* Clear templates first, then clear fork flag */
             clear_map();
+            
+            /* Clear fork flag after successful cleanup */
             pChannelMgr->ClearForkFlag();
         }
         

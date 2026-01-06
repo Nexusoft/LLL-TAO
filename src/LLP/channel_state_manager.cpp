@@ -66,6 +66,9 @@ namespace LLP
         
         /* Get channel-specific state using GetLastState() */
         TAO::Ledger::BlockState stateCurrent = tStateBest;
+        
+        /* GetLastState modifies stateCurrent in-place to contain the last block
+         * in the specified channel (walks backward through blockchain) */
         if(!TAO::Ledger::GetLastState(stateCurrent, m_nChannel))
         {
             /* GetLastState failed - might be genesis or invalid channel */
@@ -156,7 +159,8 @@ namespace LLP
          *   if(!ChainState::Synchronizing() && !IsDescendant(statePrev))
          *       return error;
          */
-        if(!TAO::Ledger::ChainState::Synchronizing() && !TAO::Ledger::IsDescendant(statePrev))
+        bool fSynchronizing = TAO::Ledger::ChainState::Synchronizing();
+        if(!fSynchronizing && !TAO::Ledger::IsDescendant(statePrev))
         {
             debug::error(FUNCTION, "Template not descendant of hardened checkpoint");
             return false;

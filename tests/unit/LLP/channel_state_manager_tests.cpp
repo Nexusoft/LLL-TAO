@@ -292,16 +292,16 @@ TEST_CASE("ValidateTemplateHeights Structure", "[channel_state_manager][validati
         /* Get expected heights */
         HeightInfo info = primeMgr.GetHeightInfo();
         
-        /* ValidateTemplateHeights should be callable */
+        /* Test with expected next heights - should validate correctly */
         bool fValid = primeMgr.ValidateTemplateHeights(
             info.nNextUnifiedHeight,
             info.nNextChannelHeight
         );
         
-        /* Result should be a valid boolean */
-        REQUIRE((fValid == true || fValid == false));
+        /* With correct next heights, validation depends on blockchain state
+         * We just verify the method works without crashing */
         
-        /* Invalid heights should fail */
+        /* Invalid heights (0,0) should definitely fail */
         bool fInvalid = primeMgr.ValidateTemplateHeights(0, 0);
         REQUIRE(fInvalid == false);  // Heights 0,0 should be invalid
     }
