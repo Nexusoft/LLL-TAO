@@ -438,6 +438,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_stateless_manager.o \
 		build/LLP_genesis_constants.o \
 		build/LLP_stateless_miner_connection.o \
+		build/LLP_channel_state_manager.o \
 		build/LLP_falcon_auth.o \
 		build/LLP_disposable_falcon.o \
 		build/LLP_mining_config.o \

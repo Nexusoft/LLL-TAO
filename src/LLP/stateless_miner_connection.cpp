@@ -99,6 +99,8 @@ namespace LLP
     , mapBlocks()
     , mapSessionKeys()
     , SESSION_MUTEX()
+    , m_pPrimeState(std::make_unique<PrimeStateManager>())
+    , m_pHashState(std::make_unique<HashStateManager>())
     {
         /* Create disposable Falcon wrapper instance */
         m_pFalconWrapper = LLP::DisposableFalcon::Create();
@@ -111,6 +113,9 @@ namespace LLP
         {
             debug::log(2, FUNCTION, "✓ Disposable Falcon wrapper initialized");
         }
+        
+        /* Log channel manager initialization */
+        debug::log(2, FUNCTION, "✓ Channel state managers initialized (Prime + Hash)");
     }
 
 
@@ -122,6 +127,8 @@ namespace LLP
     , mapBlocks()
     , mapSessionKeys()
     , SESSION_MUTEX()
+    , m_pPrimeState(std::make_unique<PrimeStateManager>())
+    , m_pHashState(std::make_unique<HashStateManager>())
     {
         /* Create disposable Falcon wrapper instance */
         m_pFalconWrapper = LLP::DisposableFalcon::Create();
@@ -134,6 +141,9 @@ namespace LLP
         {
             debug::log(2, FUNCTION, "✓ Disposable Falcon wrapper initialized");
         }
+        
+        /* Log channel manager initialization */
+        debug::log(2, FUNCTION, "✓ Channel state managers initialized (Prime + Hash)");
     }
 
 
@@ -145,6 +155,8 @@ namespace LLP
     , mapBlocks()
     , mapSessionKeys()
     , SESSION_MUTEX()
+    , m_pPrimeState(std::make_unique<PrimeStateManager>())
+    , m_pHashState(std::make_unique<HashStateManager>())
     {
         /* Create disposable Falcon wrapper instance */
         m_pFalconWrapper = LLP::DisposableFalcon::Create();
@@ -157,6 +169,9 @@ namespace LLP
         {
             debug::log(2, FUNCTION, "✓ Disposable Falcon wrapper initialized");
         }
+        
+        /* Log channel manager initialization */
+        debug::log(2, FUNCTION, "✓ Channel state managers initialized (Prime + Hash)");
     }
 
 
@@ -1850,54 +1865,67 @@ namespace LLP
             debug::log(0, "   Valid until height change");
         }
         
-        /* Store new template in map with metadata (PR #131: Template Staleness Prevention) */
-        /* PR #134: Calculate channel-specific height for accurate staleness detection */
+        /* PR #136: Use ChannelStateManager for fork-aware state management */
         uint64_t nCreationTime = runtime::unifiedtimestamp();
         
-        /* Get channel-specific height by finding last block in this channel */
-        TAO::Ledger::BlockState stateCurrent = TAO::Ledger::ChainState::tStateBest.load();
-        uint32_t nChannelHeight = 0;
-        
-        /* Helper to get channel name for logging */
-        auto GetChannelName = [](uint32_t nCh) -> std::string {
-            switch(nCh) {
-                case 0:  return "Stake";
-                case 1:  return "Prime";
-                case 2:  return "Hash";
-                default: return "Unknown";
-            }
-        };
-        
-        if(TAO::Ledger::GetLastState(stateCurrent, context.nChannel))
+        /* Get channel manager for this channel */
+        ChannelStateManager* pChannelMgr = GetChannelManager(context.nChannel);
+        if(!pChannelMgr)
         {
-            /* GetLastState succeeded - use the channel height from that block */
-            nChannelHeight = stateCurrent.nChannelHeight;
+            debug::error(FUNCTION, "Failed to get channel manager for channel ", context.nChannel);
+            delete pBlock;
+            return nullptr;
+        }
+        
+        /* Sync with blockchain (detects forks automatically) */
+        debug::log(0, "   📡 Syncing channel manager with blockchain...");
+        if(!pChannelMgr->SyncWithBlockchain())
+        {
+            debug::error(FUNCTION, "Failed to sync channel manager with blockchain");
+            delete pBlock;
+            return nullptr;
+        }
+        
+        /* Check for fork detection */
+        if(pChannelMgr->IsForkDetected())
+        {
+            debug::warning(FUNCTION, "⚠ Fork detected during template creation!");
+            debug::warning(FUNCTION, "   Blocks rolled back: ", pChannelMgr->GetBlocksRolledBack());
+            debug::warning(FUNCTION, "   Clearing stale templates...");
             
-            debug::log(0, "   ✓ Channel height calculated:");
-            debug::log(0, "      Unified blockchain height: ", pBlock->nHeight - 1, " (current)");
-            debug::log(0, "      ", GetChannelName(context.nChannel), " channel height: ", nChannelHeight, " (last block in channel)");
-            debug::log(0, "      Template mining for ", GetChannelName(context.nChannel), " height: ", nChannelHeight + 1);
-        }
-        else
-        {
-            /* GetLastState failed - this might be the first block in this channel */
-            /* Or genesis block case - set to 0 */
-            nChannelHeight = 0;
-            debug::warning(FUNCTION, "⚠ GetLastState failed for channel ", context.nChannel);
-            debug::warning(FUNCTION, "   This might be the first block in this channel");
-            debug::warning(FUNCTION, "   Using nChannelHeight = 0");
+            /* Clear templates first, then clear fork flag */
+            clear_map();
+            
+            /* Clear fork flag after successful cleanup */
+            pChannelMgr->ClearForkFlag();
         }
         
-        /* Create metadata with channel height (PR #134) */
-        TemplateMetadata meta(pBlock, nCreationTime, pBlock->nHeight, nChannelHeight, 
+        /* Get comprehensive height info from manager */
+        HeightInfo info = pChannelMgr->GetHeightInfo();
+        
+        /* Log comprehensive state (PR #136: Enhanced diagnostics) */
+        debug::log(0, "   ✓ Channel state synchronized:");
+        debug::log(0, "      Channel: ", pChannelMgr->GetChannelName());
+        debug::log(0, "      Unified blockchain height: ", info.nUnifiedHeight, " (current)");
+        debug::log(0, "      ", pChannelMgr->GetChannelName(), " channel height: ", info.nChannelHeight, " (last block in channel)");
+        debug::log(0, "      Template mining for unified height: ", info.nNextUnifiedHeight);
+        debug::log(0, "      Template mining for ", pChannelMgr->GetChannelName(), " height: ", info.nNextChannelHeight);
+        
+        if(info.fForkDetected)
+        {
+            debug::log(0, "      ⚠ Fork recently detected (", info.nBlocksRolledBack, " blocks rolled back)");
+        }
+        
+        /* Create metadata with heights from manager (PR #136) */
+        TemplateMetadata meta(pBlock, nCreationTime, pBlock->nHeight, info.nChannelHeight, 
                              pBlock->hashMerkleRoot, context.nChannel);
         mapBlocks.emplace(pBlock->hashMerkleRoot, std::move(meta));
         
         debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Template stored in map with metadata", ANSI_COLOR_RESET);
         debug::log(0, "      Merkle root: ", pBlock->hashMerkleRoot.SubString());
         debug::log(0, "      Unified height: ", pBlock->nHeight);
-        debug::log(0, "      Channel height: ", nChannelHeight);
-        debug::log(0, "      Channel: ", GetChannelName(context.nChannel));
+        debug::log(0, "      Channel height: ", info.nChannelHeight);
+        debug::log(0, "      Channel: ", pChannelMgr->GetChannelName());
         debug::log(0, "      Creation time: ", nCreationTime);
         debug::log(0, "      Templates in map: ", mapBlocks.size());
         
@@ -2376,6 +2404,27 @@ namespace LLP
     {
         /* Clear the map - unique_ptr automatically deletes all blocks */
         mapBlocks.clear();
+    }
+
+
+    /** GetChannelManager (PR #136: Fork-Aware Channel State Management)
+     * 
+     *  Get the appropriate channel state manager for a given channel.
+     */
+    ChannelStateManager* StatelessMinerConnection::GetChannelManager(uint32_t nChannel)
+    {
+        switch(nChannel)
+        {
+            case 1:  // Prime channel
+                return m_pPrimeState.get();
+            
+            case 2:  // Hash channel
+                return m_pHashState.get();
+            
+            default:
+                debug::error(FUNCTION, "Invalid channel: ", nChannel);
+                return nullptr;
+        }
     }
 
 
