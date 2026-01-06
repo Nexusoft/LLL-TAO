@@ -24,6 +24,7 @@ ________________________________________________________________________________
 #include <cstdint>
 #include <string>
 #include <functional>
+#include <mutex>
 
 namespace LLP
 {
@@ -146,8 +147,9 @@ namespace LLP
      *  =============
      *  - All BlockState accesses use atomic operations
      *  - ChainState::tStateBest.load() is atomic
-     *  - Member variables use std::atomic<>
-     *  - No locks required for read operations
+     *  - Atomic member variables use std::atomic<>
+     *  - Cache access protected by mutex (m_cacheMutex)
+     *  - Safe to call from multiple threads
      *  
      *  PERFORMANCE:
      *  ===========
@@ -155,6 +157,7 @@ namespace LLP
      *  - Cache validity period: 1 second
      *  - Fork detection adds <1ms per sync
      *  - Minimal overhead per template
+     *  - Mutex lock only held during cache read/write operations
      *  
      *  USAGE:
      *  =====
@@ -198,6 +201,9 @@ namespace LLP
         
         /** Cached channel state (BlockState from last sync) */
         TAO::Ledger::BlockState m_stateCache;
+        
+        /** Mutex for thread-safe cache access */
+        mutable std::mutex m_cacheMutex;
         
         /** Last cache update timestamp */
         std::atomic<uint64_t> m_nLastCacheTime;
@@ -247,6 +253,7 @@ namespace LLP
          *  =============
          *  - Uses atomic operations for all state access
          *  - ChainState::tStateBest.load() is atomic
+         *  - Cache updates protected by mutex
          *  - Safe to call from multiple threads
          *  
          *  @return true if sync succeeded, false on error

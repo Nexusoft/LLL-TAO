@@ -75,8 +75,11 @@ namespace LLP
             if(nCurrentUnified == 0)
             {
                 /* Genesis block - this is OK */
-                m_stateCache = tStateBest;
-                m_stateCache.nChannelHeight = 0;
+                {
+                    std::lock_guard<std::mutex> lock(m_cacheMutex);
+                    m_stateCache = tStateBest;
+                    m_stateCache.nChannelHeight = 0;
+                }
                 m_nLastCacheTime.store(runtime::unifiedtimestamp());
                 return true;
             }
@@ -86,8 +89,11 @@ namespace LLP
             debug::warning(FUNCTION, "   This might be the first block in this channel");
             
             /* Cache best state with channel height 0 */
-            m_stateCache = tStateBest;
-            m_stateCache.nChannelHeight = 0;
+            {
+                std::lock_guard<std::mutex> lock(m_cacheMutex);
+                m_stateCache = tStateBest;
+                m_stateCache.nChannelHeight = 0;
+            }
             m_nLastCacheTime.store(runtime::unifiedtimestamp());
             return true;
         }
@@ -129,12 +135,18 @@ namespace LLP
          * Template should be for next channel block:
          *   channel at height M → template for height M+1
          */
-        if(nChannel != m_stateCache.nChannelHeight + 1)
+        uint32_t nCachedChannelHeight;
+        {
+            std::lock_guard<std::mutex> lock(m_cacheMutex);
+            nCachedChannelHeight = m_stateCache.nChannelHeight;
+        }
+        
+        if(nChannel != nCachedChannelHeight + 1)
         {
             /* Channel height mismatch - another block mined in this channel */
             debug::log(2, FUNCTION, "Channel height mismatch for ", GetChannelName());
             debug::log(2, "   Template channel:  ", nChannel);
-            debug::log(2, "   Expected channel:  ", m_stateCache.nChannelHeight + 1);
+            debug::log(2, "   Expected channel:  ", nCachedChannelHeight + 1);
             return false;
         }
         
@@ -183,11 +195,17 @@ namespace LLP
         /* Get current best block */
         TAO::Ledger::BlockState tStateBest = TAO::Ledger::ChainState::tStateBest.load();
         
-        /* Fill in height information */
+        /* Fill in height information with mutex protection for cache access */
+        uint32_t nCachedChannelHeight;
+        {
+            std::lock_guard<std::mutex> lock(m_cacheMutex);
+            nCachedChannelHeight = m_stateCache.nChannelHeight;
+        }
+        
         info.nUnifiedHeight = tStateBest.nHeight;
-        info.nChannelHeight = m_stateCache.nChannelHeight;
+        info.nChannelHeight = nCachedChannelHeight;
         info.nNextUnifiedHeight = tStateBest.nHeight + 1;
-        info.nNextChannelHeight = m_stateCache.nChannelHeight + 1;
+        info.nNextChannelHeight = nCachedChannelHeight + 1;
         info.nPrevUnifiedHeight = m_nLastUnifiedHeight.load();
         info.fForkDetected = m_fForkDetected.load();
         info.nBlocksRolledBack = m_nBlocksRolledBack.load();
@@ -209,6 +227,7 @@ namespace LLP
     /* GetChannelHeight */
     uint32_t ChannelStateManager::GetChannelHeight() const
     {
+        std::lock_guard<std::mutex> lock(m_cacheMutex);
         return m_stateCache.nChannelHeight;
     }
 
@@ -223,6 +242,7 @@ namespace LLP
     /* GetNextChannelHeight */
     uint32_t ChannelStateManager::GetNextChannelHeight() const
     {
+        std::lock_guard<std::mutex> lock(m_cacheMutex);
         return m_stateCache.nChannelHeight + 1;
     }
 
@@ -339,7 +359,10 @@ namespace LLP
     /* UpdateCache (protected) */
     void ChannelStateManager::UpdateCache(const TAO::Ledger::BlockState& state)
     {
-        m_stateCache = state;
+        {
+            std::lock_guard<std::mutex> lock(m_cacheMutex);
+            m_stateCache = state;
+        }
         m_nLastCacheTime.store(runtime::unifiedtimestamp());
     }
 
