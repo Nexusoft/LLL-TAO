@@ -134,7 +134,9 @@ namespace LLP
          * Template should be for next channel block:
          *   channel at height M → template for height M+1
          * 
-         * Use cached channel height which was synced from the same tStateBest snapshot above
+         * Use cached channel height which was just updated by SyncWithBlockchain() above.
+         * While tStateBest is loaded twice (once in Sync, once here), the blockchain state
+         * is atomic and both reads occur in quick succession, ensuring temporal consistency.
          */
         uint32_t nCachedChannelHeight;
         {
