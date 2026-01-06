@@ -412,7 +412,16 @@ namespace LLP
          * 
          * Template is stale if blockchain has advanced:
          *   blockchain_channel_height != template_channel_height - 1
+         * 
+         * Special case: If nChannelHeight is 0 (uninitialized or first block in channel),
+         * we can't reliably determine staleness via channel height, so mark as stale for safety.
          */
+        if(nChannelHeight == 0)
+        {
+            /* Template has no valid channel height - mark as stale for safety */
+            return true;  // STALE: Invalid channel height
+        }
+        
         if(stateCurrent.nChannelHeight != nChannelHeight - 1)
         {
             /* Channel has advanced - template is obsolete */
