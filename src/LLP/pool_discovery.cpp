@@ -350,8 +350,8 @@ namespace LLP
                     for(const auto& keyMeta : vKeys)
                     {
                         // Check if key matches preferred version
-                        // Falcon-1024 pubkey: 1793 bytes, Falcon-512 pubkey: 897 bytes
-                        bool fIsFalcon1024 = (keyMeta.nPubKeySize == FalconConstants::FALCON1024_PUBKEY_SIZE);
+                        // Profile::FALCON_512 or Profile::FALCON_1024
+                        bool fIsFalcon1024 = (keyMeta.profile == FalconAuth::Profile::FALCON_1024);
                         
                         if(fUseFalcon1024 && fIsFalcon1024)
                         {
@@ -969,6 +969,16 @@ namespace LLP
     {
         std::lock_guard<std::mutex> lock(LOCAL_MUTEX);
         
+        /* Check if miner already exists */
+        auto it = m_localSessions.find(hashGenesis);
+        if(it != m_localSessions.end())
+        {
+            /* Update existing session */
+            it->second.nLastActivityTime = runtime::timestamp();
+            return;
+        }
+        
+        /* Create new session */
         MinerSession session;
         session.hashGenesis = hashGenesis;
         session.strAddress = strAddress;
@@ -1104,11 +1114,11 @@ namespace LLP
         AutoCooldownManager::Get().CleanupExpired();
         
         debug::log(2, FUNCTION, "Pool metrics refreshed:");
-        debug::log(2, "   Active miners: ", m_localMetrics.nActiveConnections.load());
-        debug::log(2, "   Falcon-1024 miners: ", m_localMetrics.nFalcon1024Miners.load());
-        debug::log(2, "   Falcon-512 miners: ", m_localMetrics.nFalcon512Miners.load());
-        debug::log(2, "   Blocks found: ", m_localMetrics.nBlocksAccepted.load());
-        debug::log(2, "   Active cooldowns: ", m_localMetrics.nActiveCooldowns.load());
+        debug::log(2, "   Active miners: ", m_localMetrics.nActiveConnections);
+        debug::log(2, "   Falcon-1024 miners: ", m_localMetrics.nFalcon1024Miners);
+        debug::log(2, "   Falcon-512 miners: ", m_localMetrics.nFalcon512Miners);
+        debug::log(2, "   Blocks found: ", m_localMetrics.nBlocksAccepted);
+        debug::log(2, "   Active cooldowns: ", m_localMetrics.nActiveCooldowns);
     }
 
 
@@ -1121,7 +1131,7 @@ namespace LLP
     uint64_t PoolDiscovery::GetRateLimitViolationCount()
     {
         std::lock_guard<std::mutex> lock(LOCAL_MUTEX);
-        return m_localMetrics.nRateLimitViolations.load();
+        return m_localMetrics.nRateLimitViolations;
     }
 
 } // namespace LLP

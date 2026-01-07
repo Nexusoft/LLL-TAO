@@ -66,11 +66,11 @@ namespace LLP
         uint64_t nConnectTime = 0;                // Connection timestamp
         uint64_t nLastActivityTime = 0;           // Last activity
         
-        // Per-miner statistics
-        std::atomic<uint64_t> nSharesSubmitted{0};
-        std::atomic<uint64_t> nSharesAccepted{0};
-        std::atomic<uint64_t> nBlocksFound{0};
-        std::atomic<uint64_t> nTotalRewardNXS{0}; // Accumulated rewards
+        // Per-miner statistics (non-atomic since map is mutex-protected)
+        uint64_t nSharesSubmitted = 0;
+        uint64_t nSharesAccepted = 0;
+        uint64_t nBlocksFound = 0;
+        uint64_t nTotalRewardNXS = 0;             // Accumulated rewards
         
         // Falcon version used by this miner
         bool fUsesFalcon1024 = true;              // Track miner's Falcon version
@@ -80,28 +80,30 @@ namespace LLP
 
     /** PoolMetrics
      *  Aggregated metrics for the local pool.
+     *  Note: Uses non-atomic types since returned by value.
+     *  Access protected by LOCAL_MUTEX in PoolDiscovery.
      */
     struct PoolMetrics
     {
         // Connection metrics
-        std::atomic<uint32_t> nActiveConnections{0};
-        std::atomic<uint32_t> nTotalConnections{0};
-        std::atomic<uint32_t> nAuthenticatedMiners{0};
-        std::atomic<uint32_t> nFalcon512Miners{0};    // Miners using Falcon-512
-        std::atomic<uint32_t> nFalcon1024Miners{0};   // Miners using Falcon-1024
+        uint32_t nActiveConnections = 0;
+        uint32_t nTotalConnections = 0;
+        uint32_t nAuthenticatedMiners = 0;
+        uint32_t nFalcon512Miners = 0;           // Miners using Falcon-512
+        uint32_t nFalcon1024Miners = 0;          // Miners using Falcon-1024
         
         // Block metrics
-        std::atomic<uint64_t> nBlocksSubmitted{0};
-        std::atomic<uint64_t> nBlocksAccepted{0};
-        std::atomic<uint64_t> nBlocksRejected{0};
+        uint64_t nBlocksSubmitted = 0;
+        uint64_t nBlocksAccepted = 0;
+        uint64_t nBlocksRejected = 0;
         
         // Protection metrics (from AutoCooldownManager)
-        std::atomic<uint32_t> nActiveCooldowns{0};
-        std::atomic<uint64_t> nRateLimitViolations{0};
+        uint32_t nActiveCooldowns = 0;
+        uint64_t nRateLimitViolations = 0;
         
         // Reward metrics
-        std::atomic<uint64_t> nTotalRewardsNXS{0};
-        std::atomic<uint64_t> nTotalFeesNXS{0};
+        uint64_t nTotalRewardsNXS = 0;
+        uint64_t nTotalFeesNXS = 0;
         
         // Uptime
         uint64_t nStartTime = 0;
