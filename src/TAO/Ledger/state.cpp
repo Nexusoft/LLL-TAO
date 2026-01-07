@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 #include <LLP/include/global.h>
 #include <LLP/include/inv.h>
+#include <LLP/include/channel_state_manager.h>
 
 #include <Legacy/types/legacy.h>
 #include <Legacy/wallet/wallet.h>
@@ -1130,6 +1131,19 @@ namespace TAO
                 if(!ChainState::Synchronizing())
                     Dispatch::Instance().PushRelay(ChainState::hashBestChain.load());
                 #endif
+
+                /* Verify unified height consistency using existing ChannelStateManager infrastructure */
+                uint32_t nVerifyInterval = config::GetArg("-verifyunified", 10);
+                if(nVerifyInterval > 0)
+                {
+                    if(!LLP::ChannelStateManager::VerifyAllChannels(nVerifyInterval))
+                    {
+                        debug::warning(FUNCTION, "Unified height verification failed at height ", nHeight);
+                        debug::warning(FUNCTION, "Chain may be in inconsistent state - fork callbacks triggered");
+                        /* Don't reject SetBest - block is already committed */
+                        /* Fork callbacks have been triggered on all channel managers */
+                    }
+                }
             }
 
             return true;

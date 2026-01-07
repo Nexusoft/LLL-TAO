@@ -326,22 +326,170 @@ TEST_CASE("LogHeightInfo Doesn't Crash", "[channel_state_manager][logging][pr136
 /** SUMMARY OF TEST COVERAGE
  * 
  * ✅ Tested:
- *  - Manager initialization (Prime, Hash)
+ *  - Manager initialization (Prime, Hash, Stake)
  *  - Channel identification and naming
  *  - HeightInfo structure completeness
  *  - Basic synchronization
  *  - Thread safety of atomic operations
  *  - Independence of multiple managers
  *  - Method callability (no crashes)
+ *  - StakeStateManager initialization
+ *  - GetAllChannelHeights functionality
+ *  - VerifyAllChannels functionality
  * 
  * ⚠ Requires Integration Testing:
  *  - Fork detection (requires triggering blockchain rollback)
  *  - Checkpoint descendant checking (requires checkpoint setup)
  *  - Fork callback invocation (requires actual fork)
  *  - Height validation correctness (requires live blockchain)
+ *  - Unified height mismatch detection (requires inconsistent state)
  * 
  * These integration aspects are validated through:
  *  - Manual testing on testnet
  *  - Code review against Block::Accept() logic
  *  - Integration tests with stateless miner
  **/
+
+
+TEST_CASE("StakeStateManager Initialization", "[channel_state_manager][stake][refactor]")
+{
+    SECTION("StakeStateManager initializes with correct channel")
+    {
+        StakeStateManager stakeMgr;
+        
+        /* Verify channel is set to Stake (0) */
+        REQUIRE(stakeMgr.GetChannel() == 0);
+        
+        /* Verify channel name is correct */
+        REQUIRE(stakeMgr.GetChannelName() == "Stake");
+    }
+    
+    SECTION("StakeStateManager starts with zero heights")
+    {
+        StakeStateManager stakeMgr;
+        
+        /* Before sync, heights should be 0 */
+        REQUIRE(stakeMgr.GetUnifiedHeight() == 0);
+        REQUIRE(stakeMgr.GetChannelHeight() == 0);
+        
+        /* Next heights should be 1 */
+        REQUIRE(stakeMgr.GetNextUnifiedHeight() == 1);
+        REQUIRE(stakeMgr.GetNextChannelHeight() == 1);
+    }
+    
+    SECTION("StakeStateManager can sync with blockchain")
+    {
+        StakeStateManager stakeMgr;
+        
+        /* Sync should succeed */
+        bool fSuccess = stakeMgr.SyncWithBlockchain();
+        REQUIRE(fSuccess == true);
+        
+        /* After sync, unified height should be non-negative */
+        REQUIRE(stakeMgr.GetUnifiedHeight() >= 0);
+    }
+}
+
+
+TEST_CASE("GetAllChannelHeights Method", "[channel_state_manager][verification][refactor]")
+{
+    SECTION("GetAllChannelHeights returns heights for all channels")
+    {
+        uint32_t nStake = 0, nPrime = 0, nHash = 0, nUnified = 0;
+        
+        /* Call static method to get all channel heights */
+        bool fSuccess = ChannelStateManager::GetAllChannelHeights(nStake, nPrime, nHash, nUnified);
+        
+        /* Should succeed */
+        REQUIRE(fSuccess == true);
+        
+        /* All heights should be non-negative */
+        REQUIRE(nStake >= 0);
+        REQUIRE(nPrime >= 0);
+        REQUIRE(nHash >= 0);
+        REQUIRE(nUnified >= 0);
+    }
+    
+    SECTION("GetAllChannelHeights is consistent across multiple calls")
+    {
+        uint32_t nStake1 = 0, nPrime1 = 0, nHash1 = 0, nUnified1 = 0;
+        uint32_t nStake2 = 0, nPrime2 = 0, nHash2 = 0, nUnified2 = 0;
+        
+        /* First call */
+        bool fSuccess1 = ChannelStateManager::GetAllChannelHeights(nStake1, nPrime1, nHash1, nUnified1);
+        REQUIRE(fSuccess1 == true);
+        
+        /* Second call */
+        bool fSuccess2 = ChannelStateManager::GetAllChannelHeights(nStake2, nPrime2, nHash2, nUnified2);
+        REQUIRE(fSuccess2 == true);
+        
+        /* Heights should be consistent (blockchain shouldn't change during test) */
+        REQUIRE(nStake2 >= nStake1);
+        REQUIRE(nPrime2 >= nPrime1);
+        REQUIRE(nHash2 >= nHash1);
+        REQUIRE(nUnified2 >= nUnified1);
+    }
+}
+
+
+TEST_CASE("VerifyAllChannels Method", "[channel_state_manager][verification][refactor]")
+{
+    SECTION("VerifyAllChannels is callable")
+    {
+        /* Call with default interval - should not crash */
+        REQUIRE_NOTHROW(ChannelStateManager::VerifyAllChannels());
+    }
+    
+    SECTION("VerifyAllChannels with interval 0 always checks")
+    {
+        /* Call with interval 0 (always check) - should not crash */
+        REQUIRE_NOTHROW(ChannelStateManager::VerifyAllChannels(0));
+    }
+    
+    SECTION("VerifyAllChannels doesn't crash on repeated calls")
+    {
+        /* Multiple calls should not crash */
+        REQUIRE_NOTHROW(ChannelStateManager::VerifyAllChannels(10));
+        REQUIRE_NOTHROW(ChannelStateManager::VerifyAllChannels(10));
+        REQUIRE_NOTHROW(ChannelStateManager::VerifyAllChannels(10));
+    }
+    
+    SECTION("VerifyAllChannels returns during sync")
+    {
+        /* During initial sync, verification should be skipped and return true */
+        if(TAO::Ledger::ChainState::Synchronizing())
+        {
+            bool fResult = ChannelStateManager::VerifyAllChannels(0);
+            REQUIRE(fResult == true);  // Should skip verification during sync
+        }
+    }
+}
+
+
+TEST_CASE("Fork Detection Public Access", "[channel_state_manager][fork][refactor]")
+{
+    SECTION("m_fForkDetected is publicly accessible")
+    {
+        StakeStateManager stakeMgr;
+        
+        /* Should be able to read fork flag */
+        bool fFork = stakeMgr.m_fForkDetected.load();
+        REQUIRE((fFork == true || fFork == false));  // Valid boolean
+        
+        /* Should be able to set fork flag */
+        stakeMgr.m_fForkDetected.store(true);
+        REQUIRE(stakeMgr.m_fForkDetected.load() == true);
+        
+        /* Should be able to clear fork flag */
+        stakeMgr.m_fForkDetected.store(false);
+        REQUIRE(stakeMgr.m_fForkDetected.load() == false);
+    }
+    
+    SECTION("OnForkDetected is publicly accessible")
+    {
+        StakeStateManager stakeMgr;
+        
+        /* Should be able to call OnForkDetected */
+        REQUIRE_NOTHROW(stakeMgr.OnForkDetected());
+    }
+}

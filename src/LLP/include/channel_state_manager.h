@@ -186,15 +186,16 @@ namespace LLP
      **/
     class ChannelStateManager
     {
+    public:
+        /** Fork detected flag - set when height regression detected **/
+        std::atomic<bool> m_fForkDetected;
+        
     protected:
         /** Mining channel (1=Prime, 2=Hash, 0=Stake) */
         uint32_t m_nChannel;
         
         /** Last known unified height (for fork detection) */
         std::atomic<uint32_t> m_nLastUnifiedHeight;
-        
-        /** Fork detected flag */
-        std::atomic<bool> m_fForkDetected;
         
         /** Number of blocks rolled back */
         std::atomic<int32_t> m_nBlocksRolledBack;
@@ -450,7 +451,7 @@ namespace LLP
          **/
         std::string GetChannelName() const;
 
-    protected:
+    public:
         /** OnForkDetected
          *
          *  Called when fork is detected during sync.
@@ -463,6 +464,39 @@ namespace LLP
          *
          **/
         virtual void OnForkDetected();
+        
+        /** VerifyAllChannels
+         *
+         *  Static method to verify unified height equals sum of all channel heights.
+         *  Uses existing PrimeStateManager, HashStateManager, and new StakeStateManager.
+         *  
+         *  Formula: nUnified = nStake + nPrime + nHash
+         *  
+         *  On mismatch, triggers fork callbacks on all channel managers.
+         *  
+         *  @param[in] nCheckInterval Only verify every N blocks (0 = always check)
+         *  
+         *  @return true if consistent or skipped, false if mismatch detected
+         *
+         **/
+        static bool VerifyAllChannels(uint32_t nCheckInterval = 10);
+        
+        
+        /** GetAllChannelHeights
+         *
+         *  Static method to get heights for all three channels using existing managers.
+         *  
+         *  @param[out] nStake Stake channel height (channel 0)
+         *  @param[out] nPrime Prime channel height (channel 1)  
+         *  @param[out] nHash Hash channel height (channel 2)
+         *  @param[out] nUnified Current unified blockchain height
+         *  
+         *  @return true if all channels retrieved successfully
+         *
+         **/
+        static bool GetAllChannelHeights(uint32_t& nStake, uint32_t& nPrime, uint32_t& nHash, uint32_t& nUnified);
+
+    protected:
         
         /** IsCacheValid
          *
@@ -529,6 +563,23 @@ namespace LLP
         
         /** Virtual destructor */
         virtual ~HashStateManager() = default;
+    };
+
+
+    /** StakeStateManager
+     *
+     *  Specialized ChannelStateManager for Stake channel (channel 0).
+     *  Completes the set: Stake(0), Prime(1), Hash(2).
+     *
+     **/
+    class StakeStateManager : public ChannelStateManager
+    {
+    public:
+        /** Default constructor - initializes for Stake channel (0) **/
+        StakeStateManager();
+        
+        /** Virtual destructor */
+        virtual ~StakeStateManager() = default;
     };
 
 } // namespace LLP
