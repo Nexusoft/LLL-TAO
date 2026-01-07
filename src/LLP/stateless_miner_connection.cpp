@@ -2672,14 +2672,31 @@ namespace LLP
             ResetMinuteCounters();
         }
         
-        // If in throttle mode, enforce delay on ALL requests
+        // If in throttle mode, check minimum interval enforcement (non-blocking)
+        // Instead of blocking with sleep, we reject requests that come too soon
         if (m_rateLimit.fThrottleMode) {
-            debug::log(1, FUNCTION, "⏳ Connection ", GetAddress().ToStringIP(), 
-                " is throttled - requests delayed");
-            std::this_thread::sleep_for(std::chrono::milliseconds(RateLimitConfig::THROTTLE_DELAY_MS));
+            auto lastRequestTime = m_rateLimit.tLastGetRound;
+            if (nRequestType == 129) {  // GET_BLOCK
+                lastRequestTime = m_rateLimit.tLastGetBlock;
+            } else if (nRequestType == 1) {  // SUBMIT_BLOCK
+                lastRequestTime = m_rateLimit.tLastSubmitBlock;
+            }
+            
+            auto timeSinceLastRequest = std::chrono::duration_cast<std::chrono::milliseconds>(
+                now - lastRequestTime).count();
+            
+            if (lastRequestTime.time_since_epoch().count() > 0 && 
+                timeSinceLastRequest < RateLimitConfig::THROTTLE_DELAY_MS) {
+                debug::log(1, FUNCTION, "⏳ Connection ", GetAddress().ToStringIP(), 
+                    " is throttled - request rejected (too soon: ", timeSinceLastRequest, "ms < ",
+                    RateLimitConfig::THROTTLE_DELAY_MS, "ms)");
+                RecordViolation("Throttle mode: request too soon");
+                return false;
+            }
         }
         
-        // Define request type constants (must match values in ProcessPacket)
+        // Use protocol constants that match ProcessPacket values
+        // These are defined locally to avoid circular dependencies
         const uint8_t GET_ROUND = 133;
         const uint8_t GET_BLOCK = 129;
         const uint8_t SUBMIT_BLOCK = 1;

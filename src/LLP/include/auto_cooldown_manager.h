@@ -42,8 +42,10 @@ namespace LLP
     class AutoCooldownManager
     {
     private:
-        /** IP address (IPv4) -> expiry timestamp (auto-expires) **/
-        std::map<uint32_t, uint64_t> m_cooldowns;
+        /** Address hash -> expiry timestamp (auto-expires) 
+         *  Using uint64_t for key to support both IPv4 and IPv6 with proper hashing
+         **/
+        std::map<uint64_t, uint64_t> m_cooldowns;
         
         /** Mutex for thread-safe cooldown map access **/
         mutable std::mutex m_mutex;

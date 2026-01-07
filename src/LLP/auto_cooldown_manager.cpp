@@ -15,8 +15,42 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 
+#include <Util/include/hex.h>
+#include <LLC/hash/SK.h>
+
 namespace LLP
 {
+    /** Helper function to convert BaseAddress to a uint64_t hash key
+     *  
+     *  For IPv4: Uses the 4-byte address directly
+     *  For IPv6: Uses SK256 hash of the 16-byte address to avoid collisions
+     *  
+     *  @param addr The address to convert
+     *  @return Hash key for cooldown map
+     */
+    static uint64_t AddressToKey(const BaseAddress& addr)
+    {
+        if (addr.IsIPv4()) {
+            /* For IPv4: pack 4 bytes into lower 32 bits */
+            uint64_t nIP = (static_cast<uint64_t>(addr.GetByte(3)) << 24) |
+                           (static_cast<uint64_t>(addr.GetByte(2)) << 16) |
+                           (static_cast<uint64_t>(addr.GetByte(1)) << 8) |
+                           static_cast<uint64_t>(addr.GetByte(0));
+            return nIP;
+        } else {
+            /* For IPv6: hash the full 16 bytes to avoid collisions */
+            std::vector<uint8_t> vAddr(16);
+            for (int i = 0; i < 16; ++i) {
+                vAddr[i] = addr.GetByte(15 - i);
+            }
+            
+            /* Use SK256 hash and take lower 64 bits */
+            uint256_t hash = LLC::SK256(vAddr);
+            uint64_t nKey = hash.GetUint64(0);  // Get lower 64 bits
+            return nKey;
+        }
+    }
+
     /** Get the singleton instance **/
     AutoCooldownManager& AutoCooldownManager::Get()
     {
@@ -33,28 +67,14 @@ namespace LLP
     {
         LOCK(m_mutex);
         
-        /* Get IPv4 address bytes for storage */
-        /* For IPv4: bytes are at [0][1][2][3] in standard order */
-        uint32_t nIP = 0;
-        if (addr.IsIPv4()) {
-            nIP = (static_cast<uint32_t>(addr.GetByte(3)) << 24) |
-                  (static_cast<uint32_t>(addr.GetByte(2)) << 16) |
-                  (static_cast<uint32_t>(addr.GetByte(1)) << 8) |
-                  static_cast<uint32_t>(addr.GetByte(0));
-        } else {
-            /* For IPv6, use a hash or just the lower 32 bits */
-            /* For now, use the last 4 bytes */
-            nIP = (static_cast<uint32_t>(addr.GetByte(3)) << 24) |
-                  (static_cast<uint32_t>(addr.GetByte(2)) << 16) |
-                  (static_cast<uint32_t>(addr.GetByte(1)) << 8) |
-                  static_cast<uint32_t>(addr.GetByte(0));
-        }
+        /* Get hash key for address */
+        uint64_t nKey = AddressToKey(addr);
         
         /* Calculate expiry timestamp */
         uint64_t nExpiry = runtime::unifiedtimestamp() + nDurationSeconds;
         
         /* Store cooldown with expiry */
-        m_cooldowns[nIP] = nExpiry;
+        m_cooldowns[nKey] = nExpiry;
         
         debug::log(0, FUNCTION, "AutoCooldown: Added ", addr.ToStringIP(), 
             " for ", nDurationSeconds, " seconds (expires at ", nExpiry, ")");
@@ -71,23 +91,11 @@ namespace LLP
     {
         LOCK(m_mutex);
         
-        /* Get IPv4 address bytes */
-        uint32_t nIP = 0;
-        if (addr.IsIPv4()) {
-            nIP = (static_cast<uint32_t>(addr.GetByte(3)) << 24) |
-                  (static_cast<uint32_t>(addr.GetByte(2)) << 16) |
-                  (static_cast<uint32_t>(addr.GetByte(1)) << 8) |
-                  static_cast<uint32_t>(addr.GetByte(0));
-        } else {
-            /* For IPv6, use the last 4 bytes */
-            nIP = (static_cast<uint32_t>(addr.GetByte(3)) << 24) |
-                  (static_cast<uint32_t>(addr.GetByte(2)) << 16) |
-                  (static_cast<uint32_t>(addr.GetByte(1)) << 8) |
-                  static_cast<uint32_t>(addr.GetByte(0));
-        }
+        /* Get hash key for address */
+        uint64_t nKey = AddressToKey(addr);
         
         /* Check if IP is in cooldown map */
-        auto it = m_cooldowns.find(nIP);
+        auto it = m_cooldowns.find(nKey);
         if (it == m_cooldowns.end()) {
             return false;  // Not in cooldown
         }
