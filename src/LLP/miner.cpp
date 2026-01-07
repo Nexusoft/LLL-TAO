@@ -747,19 +747,99 @@ namespace LLP
                     return debug::error(FUNCTION, "Authentication required for stateless miner commands");
                 }
 
-                /* Flag indicating the current round is no longer valid or there is a new block */
-                bool fNewRound = false;
+                debug::log(2, FUNCTION, "Processing GET_ROUND request from ", GetAddress().ToStringIP());
+                
+                /* Verify blockchain is ready */
+                TAO::Ledger::BlockState tStateBest = TAO::Ledger::ChainState::tStateBest.load();
+                if(!tStateBest.IsValid())
                 {
-                    LOCK(MUTEX);
-                    fNewRound = check_best_height();
+                    debug::error(FUNCTION, "GET_ROUND: Blockchain not ready (tStateBest invalid) from ", GetAddress().ToStringIP());
+                    debug::error(FUNCTION, "   Cannot provide height information yet");
+                    /* Don't send empty response - just return and let miner retry */
+                    return true;
                 }
-
-                /* If height was outdated, respond with old round, otherwise respond with a new round */
-                if(fNewRound)
-                    respond(NEW_ROUND);
+                
+                /* Get unified height */
+                uint32_t nUnifiedHeight = tStateBest.nHeight;
+                debug::log(2, FUNCTION, "Unified height: ", nUnifiedHeight);
+                
+                /* Reuse a single BlockState for all GetLastState calls to reduce memory allocation.
+                 * Note: GetLastState modifies the state parameter, so we must reset it before each call. */
+                TAO::Ledger::BlockState stateChannel = tStateBest;
+                
+                /* Get Prime channel height (Channel 1) */
+                uint32_t nPrimeHeight = 0;
+                stateChannel = tStateBest;  // Reset - GetLastState modifies the state
+                if(TAO::Ledger::GetLastState(stateChannel, 1))
+                {
+                    nPrimeHeight = stateChannel.nChannelHeight;
+                    debug::log(2, FUNCTION, "Prime channel height: ", nPrimeHeight);
+                }
                 else
-                    respond(OLD_ROUND);
-
+                {
+                    debug::log(1, FUNCTION, "Could not get Prime channel height, using 0");
+                }
+                
+                /* Get Hash channel height (Channel 2) */
+                uint32_t nHashHeight = 0;
+                stateChannel = tStateBest;  // Reset - GetLastState modifies the state
+                if(TAO::Ledger::GetLastState(stateChannel, 2))
+                {
+                    nHashHeight = stateChannel.nChannelHeight;
+                    debug::log(2, FUNCTION, "Hash channel height: ", nHashHeight);
+                }
+                else
+                {
+                    debug::log(1, FUNCTION, "Could not get Hash channel height, using 0");
+                }
+                
+                /* Get Stake channel height (Channel 0) */
+                uint32_t nStakeHeight = 0;
+                stateChannel = tStateBest;  // Reset - GetLastState modifies the state
+                if(TAO::Ledger::GetLastState(stateChannel, 0))
+                {
+                    nStakeHeight = stateChannel.nChannelHeight;
+                    debug::log(2, FUNCTION, "Stake channel height: ", nStakeHeight);
+                }
+                else
+                {
+                    debug::log(1, FUNCTION, "Could not get Stake channel height, using 0");
+                }
+                
+                /* Build 16-byte response packet
+                 * Format: [Unified(4)][Prime(4)][Hash(4)][Stake(4)] = 16 bytes total */
+                std::vector<uint8_t> vResponse;
+                vResponse.reserve(16);  // Pre-allocate to avoid reallocation
+                
+                /* Convert each uint32_t to bytes and append */
+                std::vector<uint8_t> vUnified = convert::uint2bytes(nUnifiedHeight);
+                std::vector<uint8_t> vPrime = convert::uint2bytes(nPrimeHeight);
+                std::vector<uint8_t> vHash = convert::uint2bytes(nHashHeight);
+                std::vector<uint8_t> vStake = convert::uint2bytes(nStakeHeight);
+                
+                vResponse.insert(vResponse.end(), vUnified.begin(), vUnified.end());  // [0-3]   Unified
+                vResponse.insert(vResponse.end(), vPrime.begin(), vPrime.end());      // [4-7]   Prime
+                vResponse.insert(vResponse.end(), vHash.begin(), vHash.end());        // [8-11]  Hash  
+                vResponse.insert(vResponse.end(), vStake.begin(), vStake.end());      // [12-15] Stake
+                
+                /* Verify packet size - critical for protocol correctness */
+                if(vResponse.size() != 16)
+                {
+                    debug::error(FUNCTION, "GET_ROUND: Packet size mismatch!");
+                    debug::error(FUNCTION, "   Expected: 16 bytes");
+                    debug::error(FUNCTION, "   Got: ", vResponse.size(), " bytes");
+                    return true;  // Don't send malformed packet
+                }
+                
+                debug::log(2, FUNCTION, "Sending NEW_ROUND response (16 bytes):");
+                debug::log(2, FUNCTION, "   Unified:  ", nUnifiedHeight);
+                debug::log(2, FUNCTION, "   Prime:    ", nPrimeHeight);
+                debug::log(2, FUNCTION, "   Hash:     ", nHashHeight);
+                debug::log(2, FUNCTION, "   Stake:    ", nStakeHeight);
+                
+                /* Send the response */
+                respond(NEW_ROUND, vResponse);
+                
                 return true;
             }
 
