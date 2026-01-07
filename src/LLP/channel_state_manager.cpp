@@ -474,8 +474,8 @@ namespace LLP
             return false;
         }
         
-        /* Calculate expected unified height */
-        uint32_t nCalculated = nStake + nPrime + nHash;
+        /* Calculate expected unified height using uint64_t to prevent theoretical overflow */
+        uint64_t nCalculated = static_cast<uint64_t>(nStake) + nPrime + nHash;
         
         /* Log verification at debug level */
         debug::log(2, FUNCTION, "═══ UNIFIED HEIGHT VERIFICATION (Height ", nUnified, ") ═══");
@@ -486,7 +486,7 @@ namespace LLP
         debug::log(2, FUNCTION, "   Actual:     ", nUnified);
         
         /* Check for match */
-        if(nCalculated == nUnified)
+        if(nCalculated == static_cast<uint64_t>(nUnified))
         {
             debug::log(2, FUNCTION, "✓ Unified height consistent");
             return true;
