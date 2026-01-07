@@ -562,10 +562,16 @@ namespace LLP
                     
                     debug::log(0, "   ✅ Serialized! Size: ", vData.size(), " bytes");
                     
-                    /* After serialization - verify nChannel was included */
-                    if(vData.size() >= 200)  // Minimum Tritium block size
+                    /* After serialization - verify nChannel was included
+                     * NOTE: This is diagnostic-only validation using hardcoded offset.
+                     * Offset 132 is the position of nChannel in Tritium block serialization
+                     * (nVersion=4 + hashPrevBlock=64 + hashMerkleRoot=64 = 132 bytes).
+                     * Minimum size 200 accounts for fixed fields before vtx variable section.
+                     * This verification helps diagnose serialization issues but doesn't
+                     * affect the actual block data sent to miners. */
+                    if(vData.size() >= 200)  // Minimum Tritium block template size
                     {
-                        // nChannel is at offset ~132 in serialized Tritium block
+                        // nChannel is at offset 132 in serialized Tritium block
                         uint32_t nChannelFromSerialized = convert::bytes2uint(vData, 132);
                         
                         debug::log(0, "   Serialization verification:");

@@ -38,6 +38,21 @@ namespace TAO::Ledger
         const uint64_t nExtraNonce,
         const uint256_t& hashRewardAddress)
     {
+        /* Validate input nChannel parameter (defense in depth) */
+        if(nChannel == 0)
+        {
+            debug::error(FUNCTION, "❌ Invalid input: nChannel is 0");
+            debug::error(FUNCTION, "   Caller must provide valid channel (1=Prime, 2=Hash)");
+            return nullptr;
+        }
+        
+        if(nChannel != 1 && nChannel != 2)
+        {
+            debug::error(FUNCTION, "❌ Invalid input: nChannel = ", nChannel);
+            debug::error(FUNCTION, "   Valid channels: 1 (Prime), 2 (Hash)");
+            return nullptr;
+        }
+        
         /* All blocks MUST be wallet-signed per Nexus consensus */
         if (!TAO::API::Authentication::Unlocked(TAO::Ledger::PinUnlock::MINING))
         {
