@@ -1834,7 +1834,7 @@ namespace LLP
                  * 
                  * NOTE: We do NOT call CleanupStaleTemplates() here because:
                  * 1. It's already called when creating new templates (NEW_BLOCK handler)
-                 * 2. Templates have age-based automatic expiration via IsStale()
+                 * 2. Templates have age-based automatic expiration via TemplateMetadata::IsStale()
                  * 3. Calling cleanup on every GET_ROUND poll (every 5-10s) would be excessive
                  * 4. Template cleanup should be driven by template creation, not polling
                  */
