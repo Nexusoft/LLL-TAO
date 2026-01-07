@@ -21,6 +21,48 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    namespace
+    {
+        /** GetStakeManager
+         *
+         *  Returns singleton StakeStateManager instance.
+         *  Thread-safe initialization guaranteed by C++11.
+         *
+         **/
+        StakeStateManager& GetStakeManager()
+        {
+            static StakeStateManager manager;
+            return manager;
+        }
+
+
+        /** GetPrimeManager
+         *
+         *  Returns singleton PrimeStateManager instance.
+         *  Thread-safe initialization guaranteed by C++11.
+         *
+         **/
+        PrimeStateManager& GetPrimeManager()
+        {
+            static PrimeStateManager manager;
+            return manager;
+        }
+
+
+        /** GetHashManager
+         *
+         *  Returns singleton HashStateManager instance.
+         *  Thread-safe initialization guaranteed by C++11.
+         *
+         **/
+        HashStateManager& GetHashManager()
+        {
+            static HashStateManager manager;
+            return manager;
+        }
+    }
+
+
     /* Constructor */
     ChannelStateManager::ChannelStateManager(uint32_t nChannel)
         : m_nChannel(nChannel)
@@ -387,21 +429,15 @@ namespace LLP
     /* Static: Get all channel heights */
     bool ChannelStateManager::GetAllChannelHeights(uint32_t& nStake, uint32_t& nPrime, uint32_t& nHash, uint32_t& nUnified)
     {
-        /* Use singleton instances for efficiency 
-         * NOTE: Static local variables have thread-safe initialization in C++11+ */
-        static StakeStateManager stakeManager;
-        static PrimeStateManager primeManager;
-        static HashStateManager hashManager;
-        
         /* Sync all managers with blockchain */
-        stakeManager.SyncWithBlockchain();
-        primeManager.SyncWithBlockchain();
-        hashManager.SyncWithBlockchain();
+        GetStakeManager().SyncWithBlockchain();
+        GetPrimeManager().SyncWithBlockchain();
+        GetHashManager().SyncWithBlockchain();
         
         /* Get heights from existing infrastructure */
-        nStake = stakeManager.GetChannelHeight();
-        nPrime = primeManager.GetChannelHeight();
-        nHash = hashManager.GetChannelHeight();
+        nStake = GetStakeManager().GetChannelHeight();
+        nPrime = GetPrimeManager().GetChannelHeight();
+        nHash = GetHashManager().GetChannelHeight();
         
         /* Get unified height from blockchain state (all managers see same unified height) */
         TAO::Ledger::BlockState tStateBest = TAO::Ledger::ChainState::tStateBest.load();
@@ -497,21 +533,15 @@ namespace LLP
         debug::error("     4. Check for disk/hardware errors");
         debug::error("═══════════════════════════════════════════");
         
-        /* Trigger fork detection on all managers using existing callback mechanism 
-         * NOTE: Static local variables have thread-safe initialization in C++11+ */
-        static StakeStateManager stakeManager;
-        static PrimeStateManager primeManager;
-        static HashStateManager hashManager;
-        
-        /* Set fork flags - this triggers existing fork handling */
-        stakeManager.m_fForkDetected.store(true);
-        primeManager.m_fForkDetected.store(true);
-        hashManager.m_fForkDetected.store(true);
+        /* Trigger fork detection on all managers using existing callback mechanism */
+        GetStakeManager().m_fForkDetected.store(true);
+        GetPrimeManager().m_fForkDetected.store(true);
+        GetHashManager().m_fForkDetected.store(true);
         
         /* Call existing OnForkDetected() which triggers user callbacks */
-        stakeManager.OnForkDetected();
-        primeManager.OnForkDetected();
-        hashManager.OnForkDetected();
+        GetStakeManager().OnForkDetected();
+        GetPrimeManager().OnForkDetected();
+        GetHashManager().OnForkDetected();
         
         return false;
     }
