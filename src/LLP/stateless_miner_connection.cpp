@@ -1818,11 +1818,11 @@ namespace LLP
                  * - Robust (works for all channel types)
                  */
                 
-                debug::log(2, FUNCTION, "GET_ROUND: Sending current heights to ", GetAddress().ToStringIP());
-                debug::log(2, FUNCTION, "   Unified: ", nCurrentHeight);
-                debug::log(2, FUNCTION, "   Prime:   ", nPrimeChannelHeight);
-                debug::log(2, FUNCTION, "   Hash:    ", nHashChannelHeight);
-                debug::log(2, FUNCTION, "   Stake:   ", nStakeChannelHeight);
+                debug::log(3, FUNCTION, "GET_ROUND: Sending current heights to ", GetAddress().ToStringIP());
+                debug::log(3, FUNCTION, "   Unified: ", nCurrentHeight);
+                debug::log(3, FUNCTION, "   Prime:   ", nPrimeChannelHeight);
+                debug::log(3, FUNCTION, "   Hash:    ", nHashChannelHeight);
+                debug::log(3, FUNCTION, "   Stake:   ", nStakeChannelHeight);
                 
                 /* ALWAYS send NEW_ROUND with 16-byte response */
                 Packet response(NEW_ROUND);
@@ -1830,7 +1830,14 @@ namespace LLP
                 response.LENGTH = static_cast<uint32_t>(vData.size());  // Should be 16
                 respond(response);
                 
-                /* Update context timestamp (but NOT height - we don't track miner state) */
+                /* Update context timestamp (but NOT height - we don't track miner state) 
+                 * 
+                 * NOTE: We do NOT call CleanupStaleTemplates() here because:
+                 * 1. It's already called when creating new templates (NEW_BLOCK handler)
+                 * 2. Templates have age-based automatic expiration via IsStale()
+                 * 3. Calling cleanup on every GET_ROUND poll (every 5-10s) would be excessive
+                 * 4. Template cleanup should be driven by template creation, not polling
+                 */
                 context = context.WithTimestamp(runtime::unifiedtimestamp());
                 StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
 
