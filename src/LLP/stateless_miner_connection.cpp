@@ -2672,13 +2672,19 @@ namespace LLP
             ResetMinuteCounters();
         }
         
+        // Use protocol constants that match ProcessPacket values
+        // These are defined locally to avoid circular dependencies with miner.h
+        const uint8_t GET_ROUND = 133;
+        const uint8_t GET_BLOCK = 129;
+        const uint8_t SUBMIT_BLOCK = 1;
+        
         // If in throttle mode, check minimum interval enforcement (non-blocking)
         // Instead of blocking with sleep, we reject requests that come too soon
         if (m_rateLimit.fThrottleMode) {
             auto lastRequestTime = m_rateLimit.tLastGetRound;
-            if (nRequestType == 129) {  // GET_BLOCK
+            if (nRequestType == GET_BLOCK) {
                 lastRequestTime = m_rateLimit.tLastGetBlock;
-            } else if (nRequestType == 1) {  // SUBMIT_BLOCK
+            } else if (nRequestType == SUBMIT_BLOCK) {
                 lastRequestTime = m_rateLimit.tLastSubmitBlock;
             }
             
@@ -2694,12 +2700,6 @@ namespace LLP
                 return false;
             }
         }
-        
-        // Use protocol constants that match ProcessPacket values
-        // These are defined locally to avoid circular dependencies
-        const uint8_t GET_ROUND = 133;
-        const uint8_t GET_BLOCK = 129;
-        const uint8_t SUBMIT_BLOCK = 1;
         
         switch (nRequestType) {
             case GET_ROUND:
@@ -2853,8 +2853,9 @@ namespace LLP
         m_rateLimit.tLastCounterReset = std::chrono::steady_clock::now();
         
         // Gradually reduce violation count (forgiveness over time)
+        // The if condition above prevents underflow
         if (m_rateLimit.nViolationCount > 0) {
-            m_rateLimit.nViolationCount = std::max(0u, m_rateLimit.nViolationCount - 1);
+            m_rateLimit.nViolationCount--;
             
             // Exit throttle mode if violations drop below threshold
             if (m_rateLimit.fThrottleMode && 

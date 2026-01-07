@@ -40,8 +40,9 @@ namespace LLP
         } else {
             /* For IPv6: hash the full 16 bytes to avoid collisions */
             std::vector<uint8_t> vAddr(16);
+            /* Copy bytes directly in network order (no reversal needed) */
             for (int i = 0; i < 16; ++i) {
-                vAddr[i] = addr.GetByte(15 - i);
+                vAddr[i] = addr.GetByte(i);
             }
             
             /* Use SK256 hash and take lower 64 bits */
