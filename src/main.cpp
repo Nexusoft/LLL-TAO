@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLP/types/miner.h>
 #include <LLP/include/lisp.h>
 #include <LLP/include/port.h>
+#include <LLP/include/channel_state_manager.h>
 
 #include <LLD/include/global.h>
 
@@ -197,6 +198,52 @@ int main(int argc, char** argv)
 
             return TAO::API::CommandLineRPC(argc, argv, i);
         }
+    }
+
+
+    /* Handle forensic fork analysis commands */
+    if(config::GetBoolArg("-forensicforks", false) || config::GetBoolArg("-analyzeforks", false))
+    {
+        /* Initialize minimal subsystems for forensic analysis */
+        debug::log(0, FUNCTION, "Starting forensic fork analysis...");
+        
+        /* Initialize LLD to access blockchain data */
+        LLD::Initialize();
+        
+        /* Initialize ChainState to access block data */
+        TAO::Ledger::ChainState::Initialize();
+        
+        /* Run comprehensive forensic analysis */
+        LLP::ForensicForkInfo info = LLP::ChannelStateManager::AnalyzeChannelHeightDiscrepancy();
+        
+        /* Shutdown and exit */
+        LLD::Shutdown();
+        debug::Shutdown();
+        
+        return 0;
+    }
+    
+    /* Handle channel statistics output */
+    if(config::GetBoolArg("-channelstats", false))
+    {
+        /* Initialize minimal subsystems for stats */
+        debug::log(0, FUNCTION, "Retrieving channel height statistics...");
+        
+        /* Initialize LLD to access blockchain data */
+        LLD::Initialize();
+        
+        /* Initialize ChainState to access block data */
+        TAO::Ledger::ChainState::Initialize();
+        
+        /* Get and output statistics */
+        std::string strStats = LLP::ChannelStateManager::GetChannelHeightStatistics();
+        debug::log(0, "\n", strStats);
+        
+        /* Shutdown and exit */
+        LLD::Shutdown();
+        debug::Shutdown();
+        
+        return 0;
     }
 
 

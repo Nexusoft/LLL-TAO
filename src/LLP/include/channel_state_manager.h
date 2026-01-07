@@ -90,6 +90,53 @@ namespace LLP
     };
 
 
+    /** ForensicForkInfo
+     *
+     *  Forensic analysis information for channel height discrepancies.
+     *  Used for debugging and analyzing blockchain fork/orphan block scenarios.
+     *
+     **/
+    struct ForensicForkInfo
+    {
+        /** Stake channel height */
+        uint32_t nStakeHeight;
+        
+        /** Prime channel height */
+        uint32_t nPrimeHeight;
+        
+        /** Hash channel height */
+        uint32_t nHashHeight;
+        
+        /** Sum of all channel heights */
+        uint64_t nCalculatedSum;
+        
+        /** Actual unified blockchain height */
+        uint32_t nUnifiedHeight;
+        
+        /** Difference between calculated and actual */
+        int64_t nDiscrepancy;
+        
+        /** Number of orphaned blocks found */
+        uint32_t nOrphanedBlocks;
+        
+        /** Is discrepancy within historical tolerance */
+        bool fWithinTolerance;
+        
+        /** Default constructor - initializes all fields to zero/false */
+        ForensicForkInfo()
+            : nStakeHeight(0)
+            , nPrimeHeight(0)
+            , nHashHeight(0)
+            , nCalculatedSum(0)
+            , nUnifiedHeight(0)
+            , nDiscrepancy(0)
+            , nOrphanedBlocks(0)
+            , fWithinTolerance(false)
+        {
+        }
+    };
+
+
     /** ChannelStateManager
      *
      *  Fork-aware channel state manager for stateless mining.
@@ -187,6 +234,61 @@ namespace LLP
     class ChannelStateManager
     {
     public:
+        /** HISTORICAL_FORK_TOLERANCE
+         *
+         *  Tolerance for historical unified height discrepancies (in blocks).
+         *
+         *  BACKGROUND:
+         *  ===========
+         *  The Nexus blockchain has a known +3 block discrepancy between the sum of 
+         *  channel heights (Stake + Prime + Hash) and the unified height. This resulted 
+         *  from a pre-Tritium mining difficulty attack where an adversary studied difficulty 
+         *  patterns for weeks/months before exploiting large beta increases to create 
+         *  3 oversized blocks that caused memory overflow during sync.
+         *
+         *  During fork resolution, Colin intentionally preserved these blocks on disk 
+         *  (not erased) for network resilience and forensic purposes. However, 
+         *  BlockState::Disconnect() did not decrement nChannelHeight, causing a 
+         *  permanent +3 discrepancy.
+         *
+         *  CURRENT STATE (as of height 6,537,420):
+         *  ========================================
+         *  Stake channel:  2,068,487
+         *  Prime channel:  2,302,664
+         *  Hash channel:   2,166,272
+         *  Sum:            6,537,423
+         *  Unified height: 6,537,420
+         *  Discrepancy:    +3 blocks
+         *
+         *  DESIGN DECISION:
+         *  ================
+         *  We set tolerance to 5 blocks to:
+         *  1. Accept the known +3 historical anomaly (with warning)
+         *  2. Detect NEW forks or corruption (discrepancy > 5 blocks)
+         *  3. Respect Colin's original design decision to preserve orphaned blocks
+         *  4. Provide forensic tools for blockchain analysis
+         *
+         *  WHY NOT "FIX" THE +3 DISCREPANCY:
+         *  =================================
+         *  - Loses forensic evidence of the attack
+         *  - Breaks network resilience design
+         *  - Requires full reindex for all nodes
+         *  - Risky database surgery
+         *  - Doesn't respect original architectural decisions
+         *
+         *  TOLERANCE-BASED VERIFICATION:
+         *  =============================
+         *  This approach is the correct, conservative solution for production blockchain software:
+         *  ✅ Respects historical design decisions
+         *  ✅ Detects new issues (discrepancy > 5 blocks)
+         *  ✅ Provides forensic tools
+         *  ✅ Backward compatible
+         *  ✅ No aggressive changes
+         *  ✅ Production-ready
+         *
+         **/
+        static constexpr uint32_t HISTORICAL_FORK_TOLERANCE = 5;
+        
         /** Fork detected flag - set when height regression detected **/
         std::atomic<bool> m_fForkDetected;
         
@@ -495,6 +597,93 @@ namespace LLP
          *
          **/
         static bool GetAllChannelHeights(uint32_t& nStake, uint32_t& nPrime, uint32_t& nHash, uint32_t& nUnified);
+        
+        
+        /** VerifyUnifiedHeightWithTolerance
+         *
+         *  Verify unified height with tolerance for historical anomalies.
+         *  
+         *  This method implements tolerance-based verification that:
+         *  1. Accepts perfect matches (nCalculated == nUnified)
+         *  2. Accepts discrepancies within tolerance (default: 5 blocks) with warning
+         *  3. Rejects discrepancies exceeding tolerance as critical errors
+         *  
+         *  RATIONALE:
+         *  =========
+         *  The Nexus blockchain has a known +3 block discrepancy from a pre-Tritium
+         *  fork resolution where orphaned blocks were intentionally preserved on disk.
+         *  This tolerance-based approach respects that historical design decision while
+         *  still detecting NEW forks or corruption.
+         *  
+         *  @param[in] nStake Stake channel height
+         *  @param[in] nPrime Prime channel height
+         *  @param[in] nHash Hash channel height
+         *  @param[in] nUnified Actual unified blockchain height
+         *  @param[in] nTolerance Maximum acceptable discrepancy (default: HISTORICAL_FORK_TOLERANCE)
+         *  
+         *  @return true if within tolerance, false if exceeds tolerance
+         *
+         **/
+        static bool VerifyUnifiedHeightWithTolerance(
+            uint32_t nStake, uint32_t nPrime, uint32_t nHash, uint32_t nUnified,
+            uint32_t nTolerance = HISTORICAL_FORK_TOLERANCE);
+        
+        
+        /** FindOrphanedBlocks
+         *
+         *  Forensic method to scan blockchain for orphaned blocks.
+         *  
+         *  Orphaned blocks are identified by having hashNextBlock == 0, meaning
+         *  they are not part of the best chain but are preserved on disk.
+         *  
+         *  This method scans backward from current height looking for blocks
+         *  with hashNextBlock == 0 that aren't the chain tip.
+         *  
+         *  @param[in] nMaxDepth Maximum depth to scan (default: 10000 blocks)
+         *  
+         *  @return Number of orphaned blocks found
+         *
+         **/
+        static uint32_t FindOrphanedBlocks(uint32_t nMaxDepth = 10000);
+        
+        
+        /** AnalyzeChannelHeightDiscrepancy
+         *
+         *  Generate comprehensive forensic report on channel height discrepancies.
+         *  
+         *  This method performs deep analysis including:
+         *  - Current channel heights and unified height
+         *  - Calculated vs actual discrepancy
+         *  - Tolerance check
+         *  - Orphaned block scan
+         *  - Detailed diagnostic recommendations
+         *  
+         *  Generates detailed log output suitable for debugging and forensic analysis.
+         *  
+         *  @return ForensicForkInfo structure with complete analysis
+         *
+         **/
+        static ForensicForkInfo AnalyzeChannelHeightDiscrepancy();
+        
+        
+        /** GetChannelHeightStatistics
+         *
+         *  Get channel height statistics in JSON format.
+         *  
+         *  Returns a JSON string containing:
+         *  - Individual channel heights (Stake, Prime, Hash)
+         *  - Unified blockchain height
+         *  - Calculated sum
+         *  - Discrepancy
+         *  - Tolerance status
+         *  - Orphaned block count
+         *  
+         *  Useful for programmatic access to blockchain state.
+         *  
+         *  @return JSON string with statistics
+         *
+         **/
+        static std::string GetChannelHeightStatistics();
 
     protected:
         

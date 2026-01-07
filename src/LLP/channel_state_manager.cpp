@@ -19,6 +19,8 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 
+#include <sstream>
+
 namespace LLP
 {
     namespace
@@ -474,6 +476,16 @@ namespace LLP
             return false;
         }
         
+        /* Use tolerance-based verification */
+        return VerifyUnifiedHeightWithTolerance(nStake, nPrime, nHash, nUnified);
+    }
+
+
+    /* Static: Verify unified height with tolerance */
+    bool ChannelStateManager::VerifyUnifiedHeightWithTolerance(
+        uint32_t nStake, uint32_t nPrime, uint32_t nHash, uint32_t nUnified,
+        uint32_t nTolerance)
+    {
         /* Calculate expected unified height using uint64_t to prevent theoretical overflow */
         uint64_t nCalculated = static_cast<uint64_t>(nStake) + nPrime + nHash;
         
@@ -484,54 +496,90 @@ namespace LLP
         debug::log(2, FUNCTION, "   Hash:       ", nHash);
         debug::log(2, FUNCTION, "   Calculated: ", nCalculated);
         debug::log(2, FUNCTION, "   Actual:     ", nUnified);
+        debug::log(2, FUNCTION, "   Tolerance:  ", nTolerance);
         
-        /* Check for match */
+        /* Perfect match - no discrepancy */
         if(nCalculated == static_cast<uint64_t>(nUnified))
         {
-            debug::log(2, FUNCTION, "✓ Unified height consistent");
+            debug::log(2, FUNCTION, "✓ Unified height consistent (perfect match)");
             return true;
         }
         
-        /* MISMATCH DETECTED - Use existing fork detection mechanism */
-        int64_t nDiff = static_cast<int64_t>(nUnified) - static_cast<int64_t>(nCalculated);
+        /* Calculate discrepancy */
+        int64_t nDifference = static_cast<int64_t>(nCalculated) - static_cast<int64_t>(nUnified);
+        uint32_t nAbsDifference = (nDifference >= 0) ? nDifference : -nDifference;
         
-        debug::error("═══════════════════════════════════════════");
-        debug::error("❌ UNIFIED HEIGHT MISMATCH DETECTED!");
-        debug::error("═══════════════════════════════════════════");
-        debug::error("   Expected (Stake+Prime+Hash): ", nCalculated);
-        debug::error("   Actual unified height:       ", nUnified);
-        debug::error("   Difference:                  ", nDiff);
+        /* Check if within tolerance */
+        if(nAbsDifference <= nTolerance)
+        {
+            /* Within tolerance - log warning but accept */
+            debug::log(0, "");
+            debug::log(0, "═══════════════════════════════════════════");
+            debug::log(0, "⚠ UNIFIED HEIGHT WITHIN TOLERANCE");
+            debug::log(0, "═══════════════════════════════════════════");
+            debug::log(0, "   Stake channel:      ", nStake);
+            debug::log(0, "   Prime channel:      ", nPrime);
+            debug::log(0, "   Hash channel:       ", nHash);
+            debug::log(0, "   Calculated sum:     ", nCalculated);
+            debug::log(0, "   Actual unified:     ", nUnified);
+            debug::log(0, "   Difference:         ", nDifference);
+            debug::log(0, "   Tolerance:          ", nTolerance);
+            debug::log(0, "");
+            debug::log(0, "   NOTE: This is expected from pre-Tritium fork resolution");
+            debug::log(0, "   where orphaned blocks were preserved for network resilience.");
+            debug::log(0, "   See docs/CHANNEL_HEIGHT_DISCREPANCY.md for details.");
+            debug::log(0, "");
+            debug::log(0, "✓ Unified height verification passed (within tolerance)");
+            debug::log(0, "═══════════════════════════════════════════");
+            debug::log(0, "");
+            
+            return true;
+        }
+        
+        /* CRITICAL: Discrepancy exceeds tolerance - this is a NEW issue */
         debug::error("");
-        debug::error("   Stake channel:  ", nStake);
-        debug::error("   Prime channel:  ", nPrime);
-        debug::error("   Hash channel:   ", nHash);
+        debug::error("═══════════════════════════════════════════");
+        debug::error("❌ CRITICAL: Unified height mismatch exceeds tolerance!");
+        debug::error("═══════════════════════════════════════════");
+        debug::error("   Stake channel:      ", nStake);
+        debug::error("   Prime channel:      ", nPrime);
+        debug::error("   Hash channel:       ", nHash);
+        debug::error("   Calculated sum:     ", nCalculated);
+        debug::error("   Actual unified:     ", nUnified);
+        debug::error("   Difference:         ", nDifference);
+        debug::error("   Tolerance:          ", nTolerance);
+        debug::error("");
+        debug::error("   This indicates a NEW fork or database corruption!");
         debug::error("");
         
         /* Diagnostic based on difference direction */
-        if(nDiff > 0)
+        if(nDifference > 0)
         {
-            debug::error("   DIAGNOSIS: Unified height is AHEAD");
+            debug::error("   DIAGNOSIS: Channel heights are AHEAD of unified");
             debug::error("   Possible causes:");
-            debug::error("     - Block double-counted in unified height");
-            debug::error("     - Channel height not incremented");
+            debug::error("     - Channel heights incorrectly incremented");
+            debug::error("     - Unified height not updated during block processing");
             debug::error("     - Database corruption");
         }
         else
         {
-            debug::error("   DIAGNOSIS: Unified height is BEHIND");
+            debug::error("   DIAGNOSIS: Unified height is AHEAD of channels");
             debug::error("   Possible causes:");
-            debug::error("     - Channel block not reflected in unified");
+            debug::error("     - Block double-counted in unified height");
+            debug::error("     - Channel height not incremented");
             debug::error("     - Incomplete rollback");
-            debug::error("     - Channel on fork");
+            debug::error("     - Database corruption");
         }
         
         debug::error("");
         debug::error("   RECOMMENDED ACTIONS:");
         debug::error("     1. Stop the node immediately");
-        debug::error("     2. Run: ./nexus -reindex");
-        debug::error("     3. If problem persists, run: ./nexus -rescan");
-        debug::error("     4. Check for disk/hardware errors");
+        debug::error("     2. Run: ./nexus -forensicforks (analyze the issue)");
+        debug::error("     3. Run: ./nexus -reindex (rebuild database)");
+        debug::error("     4. If problem persists, run: ./nexus -rescan");
+        debug::error("     5. Check for disk/hardware errors");
         debug::error("═══════════════════════════════════════════");
+        debug::error("");
         
         /* Trigger fork detection on all managers using existing callback mechanism */
         GetStakeManager().m_fForkDetected.store(true);
@@ -544,6 +592,190 @@ namespace LLP
         GetHashManager().OnForkDetected();
         
         return false;
+    }
+
+
+    /* Static: Find orphaned blocks */
+    uint32_t ChannelStateManager::FindOrphanedBlocks(uint32_t nMaxDepth)
+    {
+        /* Get current best block */
+        TAO::Ledger::BlockState tStateBest = TAO::Ledger::ChainState::tStateBest.load();
+        uint32_t nCurrentHeight = tStateBest.nHeight;
+        
+        /* Limit scan depth */
+        uint32_t nStartHeight = (nCurrentHeight > nMaxDepth) ? (nCurrentHeight - nMaxDepth) : 0;
+        
+        debug::log(0, FUNCTION, "Scanning for orphaned blocks from height ", nStartHeight, " to ", nCurrentHeight);
+        
+        uint32_t nOrphanedCount = 0;
+        
+        /* Scan backward through blockchain */
+        for(uint32_t nHeight = nCurrentHeight; nHeight > nStartHeight; --nHeight)
+        {
+            /* Get block at this height */
+            TAO::Ledger::BlockState state;
+            if(!LLD::Ledger->ReadBlock(nHeight, state))
+                continue;  // Skip if can't read
+            
+            /* Check if this is an orphaned block (not chain tip and hashNextBlock == 0) */
+            if(nHeight < nCurrentHeight && state.hashNextBlock == 0)
+            {
+                ++nOrphanedCount;
+                debug::log(0, "   Found orphaned block at height ", nHeight, 
+                          " hash: ", state.GetHash().SubString());
+            }
+        }
+        
+        debug::log(0, FUNCTION, "Found ", nOrphanedCount, " orphaned blocks");
+        
+        return nOrphanedCount;
+    }
+
+
+    /* Static: Analyze channel height discrepancy */
+    ForensicForkInfo ChannelStateManager::AnalyzeChannelHeightDiscrepancy()
+    {
+        ForensicForkInfo info;
+        
+        debug::log(0, "");
+        debug::log(0, "═══════════════════════════════════════════════════════");
+        debug::log(0, "       CHANNEL HEIGHT DISCREPANCY FORENSIC ANALYSIS      ");
+        debug::log(0, "═══════════════════════════════════════════════════════");
+        debug::log(0, "");
+        
+        /* Get all channel heights */
+        if(!GetAllChannelHeights(info.nStakeHeight, info.nPrimeHeight, 
+                                  info.nHashHeight, info.nUnifiedHeight))
+        {
+            debug::error(FUNCTION, "Failed to get channel heights for analysis");
+            return info;
+        }
+        
+        /* Calculate discrepancy */
+        info.nCalculatedSum = static_cast<uint64_t>(info.nStakeHeight) + 
+                              info.nPrimeHeight + info.nHashHeight;
+        info.nDiscrepancy = static_cast<int64_t>(info.nCalculatedSum) - 
+                           static_cast<int64_t>(info.nUnifiedHeight);
+        
+        uint32_t nAbsDiscrepancy = (info.nDiscrepancy >= 0) ? 
+            info.nDiscrepancy : -info.nDiscrepancy;
+        info.fWithinTolerance = (nAbsDiscrepancy <= HISTORICAL_FORK_TOLERANCE);
+        
+        /* Display current state */
+        debug::log(0, "CURRENT BLOCKCHAIN STATE:");
+        debug::log(0, "   Stake channel:      ", info.nStakeHeight);
+        debug::log(0, "   Prime channel:      ", info.nPrimeHeight);
+        debug::log(0, "   Hash channel:       ", info.nHashHeight);
+        debug::log(0, "   ───────────────────────────────────");
+        debug::log(0, "   Calculated sum:     ", info.nCalculatedSum);
+        debug::log(0, "   Actual unified:     ", info.nUnifiedHeight);
+        debug::log(0, "   Discrepancy:        ", info.nDiscrepancy);
+        debug::log(0, "");
+        
+        /* Check tolerance */
+        if(info.fWithinTolerance)
+        {
+            debug::log(0, "TOLERANCE CHECK: ✓ PASS");
+            debug::log(0, "   Discrepancy (", nAbsDiscrepancy, ") within tolerance (", 
+                      HISTORICAL_FORK_TOLERANCE, ")");
+            debug::log(0, "   This is consistent with historical fork resolution.");
+        }
+        else
+        {
+            debug::error("TOLERANCE CHECK: ❌ FAIL");
+            debug::error("   Discrepancy (", nAbsDiscrepancy, ") EXCEEDS tolerance (", 
+                        HISTORICAL_FORK_TOLERANCE, ")");
+            debug::error("   This indicates a NEW issue requiring investigation!");
+        }
+        debug::log(0, "");
+        
+        /* Scan for orphaned blocks */
+        debug::log(0, "ORPHANED BLOCK SCAN:");
+        info.nOrphanedBlocks = FindOrphanedBlocks(10000);
+        debug::log(0, "");
+        
+        /* Provide analysis */
+        debug::log(0, "ANALYSIS:");
+        if(info.nDiscrepancy > 0)
+        {
+            debug::log(0, "   Channel heights are AHEAD of unified height by ", 
+                      info.nDiscrepancy, " blocks");
+            debug::log(0, "   This suggests orphaned blocks were counted in channels");
+            debug::log(0, "   but excluded from unified height (expected behavior).");
+        }
+        else if(info.nDiscrepancy < 0)
+        {
+            debug::error("   Unified height is AHEAD of channel heights by ", 
+                        -info.nDiscrepancy, " blocks");
+            debug::error("   This is UNEXPECTED and may indicate database corruption!");
+        }
+        else
+        {
+            debug::log(0, "   Perfect match - no discrepancy detected.");
+        }
+        debug::log(0, "");
+        
+        /* Recommendations */
+        debug::log(0, "RECOMMENDATIONS:");
+        if(info.fWithinTolerance)
+        {
+            debug::log(0, "   ✓ No action required - blockchain state is consistent");
+            debug::log(0, "   ✓ Discrepancy within expected historical tolerance");
+            debug::log(0, "   See docs/CHANNEL_HEIGHT_DISCREPANCY.md for background");
+        }
+        else
+        {
+            debug::error("   ❌ IMMEDIATE ACTION REQUIRED:");
+            debug::error("   1. Backup your blockchain data");
+            debug::error("   2. Run: ./nexus -reindex");
+            debug::error("   3. If issue persists, run: ./nexus -rescan");
+            debug::error("   4. Report this issue with forensic logs");
+        }
+        
+        debug::log(0, "");
+        debug::log(0, "═══════════════════════════════════════════════════════");
+        debug::log(0, "");
+        
+        return info;
+    }
+
+
+    /* Static: Get channel height statistics */
+    std::string ChannelStateManager::GetChannelHeightStatistics()
+    {
+        /* Get all channel heights */
+        uint32_t nStake = 0, nPrime = 0, nHash = 0, nUnified = 0;
+        if(!GetAllChannelHeights(nStake, nPrime, nHash, nUnified))
+        {
+            return "{\"error\": \"Failed to get channel heights\"}";
+        }
+        
+        /* Calculate discrepancy */
+        uint64_t nCalculated = static_cast<uint64_t>(nStake) + nPrime + nHash;
+        int64_t nDiscrepancy = static_cast<int64_t>(nCalculated) - 
+                              static_cast<int64_t>(nUnified);
+        uint32_t nAbsDiscrepancy = (nDiscrepancy >= 0) ? nDiscrepancy : -nDiscrepancy;
+        bool fWithinTolerance = (nAbsDiscrepancy <= HISTORICAL_FORK_TOLERANCE);
+        
+        /* Find orphaned blocks */
+        uint32_t nOrphaned = FindOrphanedBlocks(10000);
+        
+        /* Build JSON response */
+        std::stringstream ss;
+        ss << "{\n";
+        ss << "  \"stake_height\": " << nStake << ",\n";
+        ss << "  \"prime_height\": " << nPrime << ",\n";
+        ss << "  \"hash_height\": " << nHash << ",\n";
+        ss << "  \"calculated_sum\": " << nCalculated << ",\n";
+        ss << "  \"unified_height\": " << nUnified << ",\n";
+        ss << "  \"discrepancy\": " << nDiscrepancy << ",\n";
+        ss << "  \"abs_discrepancy\": " << nAbsDiscrepancy << ",\n";
+        ss << "  \"tolerance\": " << HISTORICAL_FORK_TOLERANCE << ",\n";
+        ss << "  \"within_tolerance\": " << (fWithinTolerance ? "true" : "false") << ",\n";
+        ss << "  \"orphaned_blocks\": " << nOrphaned << "\n";
+        ss << "}";
+        
+        return ss.str();
     }
 
 
