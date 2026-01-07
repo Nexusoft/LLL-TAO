@@ -1974,7 +1974,7 @@ namespace LLP
         
         TemplateMetadata meta(pBlock, nCreationTime, pBlock->nHeight, info.nNextChannelHeight, 
                              pBlock->hashMerkleRoot, context.nChannel);
-        mapBlocks.emplace(pBlock->hashMerkleRoot, std::move(meta));
+        auto result = mapBlocks.emplace(pBlock->hashMerkleRoot, std::move(meta));
         
         debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Template stored in map with metadata", ANSI_COLOR_RESET);
         debug::log(0, "      Merkle root: ", pBlock->hashMerkleRoot.SubString());
@@ -1985,14 +1985,13 @@ namespace LLP
         debug::log(0, "      Templates in map: ", mapBlocks.size());
         
         /* ✅ ADD: Verify stored value matches what we intended */
-        auto stored_it = mapBlocks.find(pBlock->hashMerkleRoot);
-        if(stored_it != mapBlocks.end())
+        if(result.second)  // Successfully inserted
         {
-            if(stored_it->second.nChannelHeight != info.nNextChannelHeight)
+            if(result.first->second.nChannelHeight != info.nNextChannelHeight)
             {
                 debug::error(FUNCTION, "❌ CRITICAL: Template stored with wrong nChannelHeight!");
                 debug::error(FUNCTION, "   Expected: ", info.nNextChannelHeight);
-                debug::error(FUNCTION, "   Got: ", stored_it->second.nChannelHeight);
+                debug::error(FUNCTION, "   Got: ", result.first->second.nChannelHeight);
             }
             else
             {
