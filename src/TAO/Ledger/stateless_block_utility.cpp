@@ -102,6 +102,20 @@ namespace TAO::Ledger
             pBlock->hashPrevBlock = statePrev.GetHash();
             pBlock->nHeight = statePrev.nHeight + 1;
             pBlock->nChannel = nChannel;
+            
+            /* Verify nChannel was set correctly */
+            debug::log(0, FUNCTION, "✓ Block nChannel set to: ", pBlock->nChannel, 
+                       " (", (nChannel == 1 ? "Prime" : nChannel == 2 ? "Hash" : "INVALID"), ")");
+            
+            if(pBlock->nChannel == 0)
+            {
+                debug::error(FUNCTION, "❌ CRITICAL: nChannel is 0 after assignment!");
+                debug::error(FUNCTION, "   Input nChannel parameter: ", nChannel);
+                debug::error(FUNCTION, "   This should never happen - investigate immediately");
+                delete pBlock;
+                return nullptr;
+            }
+            
             pBlock->nBits = GetNextTargetRequired(statePrev, nChannel, false);
             pBlock->nTime = std::max(
                 statePrev.GetBlockTime() + 1, 

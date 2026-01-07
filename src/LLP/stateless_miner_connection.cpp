@@ -541,6 +541,12 @@ namespace LLP
                 try {
                     debug::log(0, "   Serializing block...");
                     
+                    /* Before serialization */
+                    debug::log(0, "   Block fields before serialization:");
+                    debug::log(0, "      nChannel: ", pBlock->nChannel);
+                    debug::log(0, "      nHeight: ", pBlock->nHeight);
+                    debug::log(0, "      Merkle: ", pBlock->hashMerkleRoot.SubString());
+                    
                     /* Use block's Serialize() method - returns 216-byte mining template */
                     std::vector<uint8_t> vData = pBlock->Serialize();
                     
@@ -555,6 +561,22 @@ namespace LLP
                     }
                     
                     debug::log(0, "   ✅ Serialized! Size: ", vData.size(), " bytes");
+                    
+                    /* After serialization - verify nChannel was included */
+                    if(vData.size() >= 200)  // Minimum Tritium block size
+                    {
+                        // nChannel is at offset ~132 in serialized Tritium block
+                        uint32_t nChannelFromSerialized = convert::bytes2uint(vData, 132);
+                        
+                        debug::log(0, "   Serialization verification:");
+                        debug::log(0, "      Original nChannel: ", pBlock->nChannel);
+                        debug::log(0, "      Serialized nChannel at offset 132: ", nChannelFromSerialized);
+                        
+                        if(nChannelFromSerialized != pBlock->nChannel)
+                        {
+                            debug::error(FUNCTION, "❌ nChannel mismatch after serialization!");
+                        }
+                    }
                     
                     /* Create response packet */
                     Packet response(BLOCK_DATA);
@@ -1784,6 +1806,26 @@ namespace LLP
     TAO::Ledger::Block* StatelessMinerConnection::new_block()
     {
         debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "=== NEW_BLOCK: Request from ", GetAddress().ToStringIP(), " ===", ANSI_COLOR_RESET);
+        
+        /* Validate channel is set BEFORE creating template */
+        if(context.nChannel == 0)
+        {
+            debug::error(FUNCTION, "❌ Cannot create template: nChannel not set");
+            debug::error(FUNCTION, "   Required: Miner must send SET_CHANNEL before GET_BLOCK");
+            debug::error(FUNCTION, "   Current context.nChannel: ", context.nChannel);
+            return nullptr;
+        }
+        
+        /* Validate channel value is valid (1=Prime, 2=Hash) */
+        if(context.nChannel != 1 && context.nChannel != 2)
+        {
+            debug::error(FUNCTION, "❌ Invalid channel: ", context.nChannel);
+            debug::error(FUNCTION, "   Valid channels: 1 (Prime), 2 (Hash)");
+            return nullptr;
+        }
+        
+        debug::log(0, "   Channel validated: ", context.nChannel, 
+                   " (", (context.nChannel == 1 ? "Prime" : "Hash"), ")");
         
         /* Get CURRENT blockchain height FIRST */
         uint32_t nCurrentHeight = TAO::Ledger::ChainState::nBestHeight.load();
