@@ -452,9 +452,6 @@ namespace LLP
         std::string GetChannelName() const;
 
     public:
-        /** Fork detection flag - set when height regression detected **/
-        std::atomic<bool> m_fForkDetected;
-        
         /** OnForkDetected
          *
          *  Called when fork is detected during sync.
