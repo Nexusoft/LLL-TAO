@@ -120,10 +120,10 @@ namespace TAO::Ledger
             /* CRITICAL: Use channel-specific height, NOT unified height
              * 
              * For multi-channel mining:
-             * - Unified height = 6.5M (sum of all channels)
+             * - Unified height = 6.5M (total across all channels)
              * - Prime channel = 2.3M blocks
              * - Hash channel = 2.1M blocks  
-             * - Stake channel = 2.0M blocks
+             * - Stake channel = 2.1M blocks
              * 
              * The miner needs the CHANNEL height to:
              * 1. Know which block they're mining (Prime block 2302585, not unified 6537246)

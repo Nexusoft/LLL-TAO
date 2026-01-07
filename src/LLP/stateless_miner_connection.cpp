@@ -1812,17 +1812,6 @@ namespace LLP
                 std::vector<uint8_t> vHash = convert::uint2bytes(nHashChannelHeight);
                 std::vector<uint8_t> vStake = convert::uint2bytes(nStakeChannelHeight);
                 
-                /* Validate conversions succeeded */
-                if(vUnified.size() != 4 || vPrime.size() != 4 || vHash.size() != 4 || vStake.size() != 4)
-                {
-                    debug::error(FUNCTION, "GET_ROUND: uint2bytes conversion failed!");
-                    debug::error(FUNCTION, "   vUnified size: ", vUnified.size());
-                    debug::error(FUNCTION, "   vPrime size: ", vPrime.size());
-                    debug::error(FUNCTION, "   vHash size: ", vHash.size());
-                    debug::error(FUNCTION, "   vStake size: ", vStake.size());
-                    return true;  // Don't send malformed response
-                }
-                
                 /* Assemble response */
                 vData.insert(vData.end(), vUnified.begin(), vUnified.end());
                 vData.insert(vData.end(), vPrime.begin(), vPrime.end());
@@ -1869,7 +1858,7 @@ namespace LLP
                 /* Send response */
                 Packet response(NEW_ROUND);
                 response.DATA = vData;
-                response.LENGTH = 16;
+                response.LENGTH = static_cast<uint32_t>(vData.size());
                 respond(response);
                 
                 /* Update context timestamp (but NOT height - we don't track miner state) 
