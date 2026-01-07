@@ -38,6 +38,21 @@ namespace TAO::Ledger
         const uint64_t nExtraNonce,
         const uint256_t& hashRewardAddress)
     {
+        /* Validate input nChannel parameter (defense in depth) */
+        if(nChannel == 0)
+        {
+            debug::error(FUNCTION, "❌ Invalid input: nChannel is 0");
+            debug::error(FUNCTION, "   Caller must provide valid channel (1=Prime, 2=Hash)");
+            return nullptr;
+        }
+        
+        if(nChannel != 1 && nChannel != 2)
+        {
+            debug::error(FUNCTION, "❌ Invalid input: nChannel = ", nChannel);
+            debug::error(FUNCTION, "   Valid channels: 1 (Prime), 2 (Hash)");
+            return nullptr;
+        }
+        
         /* All blocks MUST be wallet-signed per Nexus consensus */
         if (!TAO::API::Authentication::Unlocked(TAO::Ledger::PinUnlock::MINING))
         {
@@ -102,6 +117,20 @@ namespace TAO::Ledger
             pBlock->hashPrevBlock = statePrev.GetHash();
             pBlock->nHeight = statePrev.nHeight + 1;
             pBlock->nChannel = nChannel;
+            
+            /* Verify nChannel was set correctly */
+            debug::log(0, FUNCTION, "✓ Block nChannel set to: ", pBlock->nChannel, 
+                       " (", (nChannel == 1 ? "Prime" : nChannel == 2 ? "Hash" : "INVALID"), ")");
+            
+            if(pBlock->nChannel == 0)
+            {
+                debug::error(FUNCTION, "❌ CRITICAL: nChannel is 0 after assignment!");
+                debug::error(FUNCTION, "   Input nChannel parameter: ", nChannel);
+                debug::error(FUNCTION, "   This should never happen - investigate immediately");
+                delete pBlock;
+                return nullptr;
+            }
+            
             pBlock->nBits = GetNextTargetRequired(statePrev, nChannel, false);
             pBlock->nTime = std::max(
                 statePrev.GetBlockTime() + 1, 
