@@ -763,12 +763,15 @@ namespace LLP
                 uint32_t nUnifiedHeight = tStateBest.nHeight;
                 debug::log(2, FUNCTION, "Unified height: ", nUnifiedHeight);
                 
+                /* Reuse a single BlockState for efficiency - GetLastState modifies it in place */
+                TAO::Ledger::BlockState stateChannel = tStateBest;
+                
                 /* Get Prime channel height */
                 uint32_t nPrimeHeight = 0;
-                TAO::Ledger::BlockState statePrime = tStateBest;
-                if(TAO::Ledger::GetLastState(statePrime, 1))  // Channel 1 = Prime
+                stateChannel = tStateBest;  // Reset to best state
+                if(TAO::Ledger::GetLastState(stateChannel, 1))  // Channel 1 = Prime
                 {
-                    nPrimeHeight = statePrime.nChannelHeight;
+                    nPrimeHeight = stateChannel.nChannelHeight;
                     debug::log(2, FUNCTION, "Prime channel height: ", nPrimeHeight);
                 }
                 else
@@ -778,10 +781,10 @@ namespace LLP
                 
                 /* Get Hash channel height */
                 uint32_t nHashHeight = 0;
-                TAO::Ledger::BlockState stateHash = tStateBest;
-                if(TAO::Ledger::GetLastState(stateHash, 2))  // Channel 2 = Hash
+                stateChannel = tStateBest;  // Reset to best state
+                if(TAO::Ledger::GetLastState(stateChannel, 2))  // Channel 2 = Hash
                 {
-                    nHashHeight = stateHash.nChannelHeight;
+                    nHashHeight = stateChannel.nChannelHeight;
                     debug::log(2, FUNCTION, "Hash channel height: ", nHashHeight);
                 }
                 else
@@ -791,10 +794,10 @@ namespace LLP
                 
                 /* Get Stake channel height */
                 uint32_t nStakeHeight = 0;
-                TAO::Ledger::BlockState stateStake = tStateBest;
-                if(TAO::Ledger::GetLastState(stateStake, 0))  // Channel 0 = Stake
+                stateChannel = tStateBest;  // Reset to best state
+                if(TAO::Ledger::GetLastState(stateChannel, 0))  // Channel 0 = Stake
                 {
-                    nStakeHeight = stateStake.nChannelHeight;
+                    nStakeHeight = stateChannel.nChannelHeight;
                     debug::log(2, FUNCTION, "Stake channel height: ", nStakeHeight);
                 }
                 else
@@ -802,8 +805,11 @@ namespace LLP
                     debug::log(1, FUNCTION, "Could not get Stake channel height, using 0");
                 }
                 
-                /* Build 16-byte response packet */
+                /* Build 16-byte response packet efficiently */
                 std::vector<uint8_t> vResponse;
+                vResponse.reserve(16);  // Pre-allocate to avoid reallocation
+                
+                /* Append each uint32_t as 4 bytes directly */
                 std::vector<uint8_t> vUnified = convert::uint2bytes(nUnifiedHeight);
                 std::vector<uint8_t> vPrime = convert::uint2bytes(nPrimeHeight);
                 std::vector<uint8_t> vHash = convert::uint2bytes(nHashHeight);
@@ -823,11 +829,11 @@ namespace LLP
                     return true;  // Don't send malformed packet
                 }
                 
-                debug::log(0, FUNCTION, "Sending NEW_ROUND response (16 bytes):");
-                debug::log(0, FUNCTION, "   Unified:  ", nUnifiedHeight);
-                debug::log(0, FUNCTION, "   Prime:    ", nPrimeHeight);
-                debug::log(0, FUNCTION, "   Hash:     ", nHashHeight);
-                debug::log(0, FUNCTION, "   Stake:    ", nStakeHeight);
+                debug::log(2, FUNCTION, "Sending NEW_ROUND response (16 bytes):");
+                debug::log(2, FUNCTION, "   Unified:  ", nUnifiedHeight);
+                debug::log(2, FUNCTION, "   Prime:    ", nPrimeHeight);
+                debug::log(2, FUNCTION, "   Hash:     ", nHashHeight);
+                debug::log(2, FUNCTION, "   Stake:    ", nStakeHeight);
                 
                 /* Send the response */
                 respond(NEW_ROUND, vResponse);
