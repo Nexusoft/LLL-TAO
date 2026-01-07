@@ -27,6 +27,7 @@ ________________________________________________________________________________
 #include <LLP/types/stateless_miner_connection.h>
 
 #include <LLP/include/trust_address.h>
+#include <LLP/include/auto_cooldown_manager.h>
 
 #include <Util/include/args.h>
 #include <Util/include/signals.h>
@@ -988,6 +989,10 @@ namespace LLP
         /* Keep track of elapsed time. */
         runtime::timer TIMER;
         TIMER.Start();
+        
+        /* Keep track of cleanup timer (60 seconds for AutoCooldownManager) */
+        runtime::timer CLEANUP_TIMER;
+        CLEANUP_TIMER.Start();
 
         /* Loop until shutdown. */
         while(!config::fShutdown.load())
@@ -1030,6 +1035,13 @@ namespace LLP
             ProtocolType::PACKETS.store(0);
             ProtocolType::CONNECTIONS.store(0);
             ProtocolType::DISCONNECTS.store(0);
+            
+            /* Periodic cleanup for AutoCooldownManager (every 60 seconds) */
+            if(CLEANUP_TIMER.Elapsed() >= 60)
+            {
+                AutoCooldownManager::Get().CleanupExpired();
+                CLEANUP_TIMER.Reset();
+            }
         }
     }
 
