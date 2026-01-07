@@ -482,6 +482,11 @@ namespace LLP
             /* Block rejection reason codes (PR #122: Falcon Protocol Integration) */
             const uint8_t REJECT_PHYSICAL_SIGNATURE_FAILED = 0x10;  // Physical Falcon signature verification failed
             const uint8_t REJECT_KEY_BONDING_VIOLATION = 0x11;      // Key bonding violation (version mismatch)
+            
+            /* Tritium block serialization constants */
+            constexpr uint32_t TRITIUM_BLOCK_SIZE = 216;        // Total size of serialized Tritium block template
+            constexpr uint32_t TRITIUM_OFFSET_NCHANNEL = 196;   // Offset of nChannel field in serialized block
+            constexpr uint32_t TRITIUM_OFFSET_NHEIGHT = 200;    // Offset of nHeight field in serialized block
 
             LOCK(MUTEX);
 
@@ -562,26 +567,87 @@ namespace LLP
                     
                     debug::log(0, "   ✅ Serialized! Size: ", vData.size(), " bytes");
                     
-                    /* After serialization - verify nChannel was included
-                     * NOTE: This is diagnostic-only validation using hardcoded offset.
-                     * Offset 132 is the position of nChannel in Tritium block serialization
-                     * (nVersion=4 + hashPrevBlock=64 + hashMerkleRoot=64 = 132 bytes).
-                     * Minimum size 200 accounts for fixed fields before vtx variable section.
-                     * This verification helps diagnose serialization issues but doesn't
-                     * affect the actual block data sent to miners. */
-                    if(vData.size() >= 200)  // Minimum Tritium block template size
+                    /* ARCHITECTURAL NOTE: nChannelHeight vs nChannel vs nHeight
+                     * =========================================================
+                     * 
+                     * The 216-byte Tritium block template contains:
+                     *   - nChannel (offset 196): Which channel this block is for (1=Prime, 2=Hash)
+                     *   - nHeight (offset 200):  Unified blockchain height (all channels combined)
+                     * 
+                     * The TemplateMetadata structure ADDITIONALLY stores:
+                     *   - nChannelHeight: Channel-specific height (NOT in serialized template)
+                     * 
+                     * Why nChannelHeight is not in the template:
+                     *   - Block (216 bytes) = Minimal serializable data for mining
+                     *   - BlockState (extended) = Block + chain state (calculated during Accept())
+                     *   - nChannelHeight is calculated by Block::Accept() using GetLastState()
+                     *   - TemplateMetadata stores it for staleness detection before Accept()
+                     * 
+                     * Flow:
+                     *   1. Node creates Block with nChannel=1, nHeight=6536668
+                     *   2. Node calculates nChannelHeight=2302369 for metadata
+                     *   3. Node serializes Block (216 bytes, includes nChannel at offset 196)
+                     *   4. Node stores TemplateMetadata with nChannelHeight=2302369
+                     *   5. Miner receives 216-byte template, deserializes nChannel from offset 196
+                     *   6. When miner submits, Block::Accept() recalculates nChannelHeight
+                     */
+                    
+                    /* Verify both nChannel and nHeight in serialized template */
+                    if(vData.size() >= TRITIUM_BLOCK_SIZE)
                     {
-                        // nChannel is at offset 132 in serialized Tritium block
-                        uint32_t nChannelFromSerialized = convert::bytes2uint(vData, 132);
+                        /* Tritium block serialization format (216 bytes):
+                         *   [0-3]     nVersion (4 bytes)
+                         *   [4-131]   hashPrevBlock (128 bytes)
+                         *   [132-195] hashMerkleRoot (64 bytes)
+                         *   [196-199] nChannel (4 bytes)      ← CORRECT offset
+                         *   [200-203] nHeight (4 bytes)
+                         *   [204-207] nBits (4 bytes)
+                         *   [208-215] nNonce (8 bytes)
+                         * Total: 216 bytes
+                         */
+                        
+                        /* Extract nChannel at offset 196 */
+                        uint32_t nChannelFromSerialized = convert::bytes2uint(vData, TRITIUM_OFFSET_NCHANNEL);
+                        
+                        /* Extract nHeight at offset 200 */
+                        uint32_t nHeightFromSerialized = convert::bytes2uint(vData, TRITIUM_OFFSET_NHEIGHT);
                         
                         debug::log(0, "   Serialization verification:");
-                        debug::log(0, "      Original nChannel: ", pBlock->nChannel);
-                        debug::log(0, "      Serialized nChannel at offset 132: ", nChannelFromSerialized);
+                        debug::log(0, "      Template fields:");
+                        debug::log(0, "         nChannel: ", pBlock->nChannel, " → serialized: ", nChannelFromSerialized);
+                        debug::log(0, "         nHeight:  ", pBlock->nHeight, " → serialized: ", nHeightFromSerialized);
+                        debug::log(0, "      Metadata fields (not serialized in template):");
+                        debug::log(0, "         nChannelHeight: (stored in TemplateMetadata for staleness detection)");
                         
+                        /* Validate nChannel */
                         if(nChannelFromSerialized != pBlock->nChannel)
                         {
                             debug::error(FUNCTION, "❌ nChannel mismatch after serialization!");
+                            debug::error(FUNCTION, "   Expected: ", pBlock->nChannel);
+                            debug::error(FUNCTION, "   Got: ", nChannelFromSerialized);
+                            
+                            Packet response(BLOCK_DATA);
+                            response.LENGTH = 0;
+                            respond(response);
+                            debug::log(0, "📥 === GET_BLOCK: FAILED (CHANNEL MISMATCH) ===");
+                            return true;
                         }
+                        
+                        /* Validate nHeight */
+                        if(nHeightFromSerialized != pBlock->nHeight)
+                        {
+                            debug::error(FUNCTION, "❌ nHeight mismatch after serialization!");
+                            debug::error(FUNCTION, "   Expected: ", pBlock->nHeight);
+                            debug::error(FUNCTION, "   Got: ", nHeightFromSerialized);
+                            
+                            Packet response(BLOCK_DATA);
+                            response.LENGTH = 0;
+                            respond(response);
+                            debug::log(0, "📥 === GET_BLOCK: FAILED (HEIGHT MISMATCH) ===");
+                            return true;
+                        }
+                        
+                        debug::log(0, "   ✅ Serialization verified: nChannel and nHeight preserved correctly");
                     }
                     
                     /* Create response packet */
