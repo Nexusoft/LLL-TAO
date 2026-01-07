@@ -763,13 +763,14 @@ namespace LLP
                 uint32_t nUnifiedHeight = tStateBest.nHeight;
                 debug::log(2, FUNCTION, "Unified height: ", nUnifiedHeight);
                 
-                /* Reuse a single BlockState for efficiency - GetLastState modifies it in place */
+                /* Reuse a single BlockState for all GetLastState calls to reduce memory allocation.
+                 * Note: GetLastState modifies the state parameter, so we must reset it before each call. */
                 TAO::Ledger::BlockState stateChannel = tStateBest;
                 
-                /* Get Prime channel height */
+                /* Get Prime channel height (Channel 1) */
                 uint32_t nPrimeHeight = 0;
-                stateChannel = tStateBest;  // Reset to best state
-                if(TAO::Ledger::GetLastState(stateChannel, 1))  // Channel 1 = Prime
+                stateChannel = tStateBest;  // Reset - GetLastState modifies the state
+                if(TAO::Ledger::GetLastState(stateChannel, 1))
                 {
                     nPrimeHeight = stateChannel.nChannelHeight;
                     debug::log(2, FUNCTION, "Prime channel height: ", nPrimeHeight);
@@ -779,10 +780,10 @@ namespace LLP
                     debug::log(1, FUNCTION, "Could not get Prime channel height, using 0");
                 }
                 
-                /* Get Hash channel height */
+                /* Get Hash channel height (Channel 2) */
                 uint32_t nHashHeight = 0;
-                stateChannel = tStateBest;  // Reset to best state
-                if(TAO::Ledger::GetLastState(stateChannel, 2))  // Channel 2 = Hash
+                stateChannel = tStateBest;  // Reset - GetLastState modifies the state
+                if(TAO::Ledger::GetLastState(stateChannel, 2))
                 {
                     nHashHeight = stateChannel.nChannelHeight;
                     debug::log(2, FUNCTION, "Hash channel height: ", nHashHeight);
@@ -792,10 +793,10 @@ namespace LLP
                     debug::log(1, FUNCTION, "Could not get Hash channel height, using 0");
                 }
                 
-                /* Get Stake channel height */
+                /* Get Stake channel height (Channel 0) */
                 uint32_t nStakeHeight = 0;
-                stateChannel = tStateBest;  // Reset to best state
-                if(TAO::Ledger::GetLastState(stateChannel, 0))  // Channel 0 = Stake
+                stateChannel = tStateBest;  // Reset - GetLastState modifies the state
+                if(TAO::Ledger::GetLastState(stateChannel, 0))
                 {
                     nStakeHeight = stateChannel.nChannelHeight;
                     debug::log(2, FUNCTION, "Stake channel height: ", nStakeHeight);
@@ -805,11 +806,12 @@ namespace LLP
                     debug::log(1, FUNCTION, "Could not get Stake channel height, using 0");
                 }
                 
-                /* Build 16-byte response packet efficiently */
+                /* Build 16-byte response packet
+                 * Format: [Unified(4)][Prime(4)][Hash(4)][Stake(4)] = 16 bytes total */
                 std::vector<uint8_t> vResponse;
                 vResponse.reserve(16);  // Pre-allocate to avoid reallocation
                 
-                /* Append each uint32_t as 4 bytes directly */
+                /* Convert each uint32_t to bytes and append */
                 std::vector<uint8_t> vUnified = convert::uint2bytes(nUnifiedHeight);
                 std::vector<uint8_t> vPrime = convert::uint2bytes(nPrimeHeight);
                 std::vector<uint8_t> vHash = convert::uint2bytes(nHashHeight);
@@ -820,7 +822,7 @@ namespace LLP
                 vResponse.insert(vResponse.end(), vHash.begin(), vHash.end());        // [8-11]  Hash  
                 vResponse.insert(vResponse.end(), vStake.begin(), vStake.end());      // [12-15] Stake
                 
-                /* Verify packet size */
+                /* Verify packet size - critical for protocol correctness */
                 if(vResponse.size() != 16)
                 {
                     debug::error(FUNCTION, "GET_ROUND: Packet size mismatch!");
