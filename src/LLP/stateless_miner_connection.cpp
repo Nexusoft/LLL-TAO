@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <LLP/include/falcon_constants.h>
 #include <LLP/include/falcon_auth.h>
 #include <LLP/include/falcon_verify.h>
+#include <LLP/include/auto_cooldown_manager.h>
 #include <LLP/templates/events.h>
 
 #include <TAO/Ledger/include/create.h>
@@ -372,6 +373,17 @@ namespace LLP
             /* On Connect Event, Initialize Context. */
             case EVENTS::CONNECT:
             {
+                /* Check auto-expiring cooldown FIRST before accepting connection */
+                if (AutoCooldownManager::Get().IsInCooldown(GetAddress())) {
+                    debug::log(0, FUNCTION, "Connection rejected - IP in cooldown: ", GetAddress().ToStringIP());
+                    debug::log(0, FUNCTION, "   This is automated protection, not a ban");
+                    debug::log(0, FUNCTION, "   Cooldown will auto-expire - try again later");
+                    
+                    /* Disconnect immediately */
+                    Disconnect();
+                    return;
+                }
+                
                 /* Log connection details with remote address and port */
                 debug::log(0, FUNCTION, "MinerLLP: New stateless connection from ",
                            GetAddress().ToStringIP(), ":", GetAddress().GetPort());
@@ -2806,8 +2818,8 @@ namespace LLP
             debug::error(FUNCTION, "   → This is AUTOMATED protection, not a ban");
             debug::error(FUNCTION, "   → Cooldown auto-expires - miner can reconnect after");
             
-            // TODO: Add to auto-expiring cooldown list when manager is implemented
-            // AddToAutoCooldown(GetAddress(), RateLimitConfig::COOLDOWN_DURATION_SECONDS);
+            // Add to auto-expiring cooldown list
+            AutoCooldownManager::Get().AddCooldown(GetAddress(), RateLimitConfig::COOLDOWN_DURATION_SECONDS);
             
             // Disconnect the connection
             Disconnect();
