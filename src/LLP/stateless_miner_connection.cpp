@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLP/include/falcon_auth.h>
 #include <LLP/include/falcon_verify.h>
 #include <LLP/include/auto_cooldown_manager.h>
+#include <LLP/include/pool_discovery.h>
 #include <LLP/templates/events.h>
 
 #include <TAO/Ledger/include/create.h>
@@ -447,6 +448,12 @@ namespace LLP
                 debug::log(0, FUNCTION, "MinerLLP: Disconnected from ", GetAddress().ToStringIP(),
                            " reason: ", strReason);
 
+                /* Notify local pool if enabled */
+                if(PoolDiscovery::IsLocalPoolEnabled() && context.fAuthenticated && context.hashGenesis != 0)
+                {
+                    PoolDiscovery::OnMinerDisconnected(context.hashGenesis);
+                }
+
                 /* Remove from StatelessMinerManager tracking */
                 {
                     LOCK(MUTEX);
@@ -689,6 +696,25 @@ namespace LLP
                     
                     debug::log(0, "   ✅ Packet sent!");
                     debug::log(0, "📥 === GET_BLOCK: SUCCESS ===");
+                    
+                    /* Notify local pool of authenticated miner (if not already notified) */
+                    if(PoolDiscovery::IsLocalPoolEnabled() && context.fAuthenticated && context.hashGenesis != 0)
+                    {
+                        /* Detect Falcon version from context if available */
+                        bool fUsesFalcon1024 = false;
+                        if(context.fFalconVersionDetected)
+                        {
+                            fUsesFalcon1024 = (context.nFalconVersion == LLC::FalconVersion::FALCON_1024);
+                        }
+                        
+                        /* Notify pool (pool tracks unique miners internally) */
+                        PoolDiscovery::OnMinerAuthenticated(
+                            context.hashGenesis,
+                            GetAddress().ToStringIP(),
+                            context.nChannel,
+                            fUsesFalcon1024
+                        );
+                    }
                     
                     /* Update context timestamp and height */
                     context = context.WithTimestamp(runtime::unifiedtimestamp())
@@ -1507,6 +1533,13 @@ namespace LLP
                 if(!validate_block(hashMerkle))
                 {
                     debug::error(FUNCTION, "❌ validate_block failed (network rejected or stale)");
+                    
+                    /* Notify local pool if enabled */
+                    if(PoolDiscovery::IsLocalPoolEnabled() && context.hashGenesis != 0)
+                    {
+                        PoolDiscovery::OnBlockSubmitted(context.hashGenesis, false);
+                    }
+                    
                     Packet response(BLOCK_REJECTED);
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (validate_block failed) ===", ANSI_COLOR_RESET);
@@ -1515,6 +1548,26 @@ namespace LLP
 
                 /* Block accepted - track in manager */
                 StatelessMinerManager::Get().IncrementBlocksAccepted();
+
+                /* Notify local pool if enabled */
+                if(PoolDiscovery::IsLocalPoolEnabled() && context.hashGenesis != 0)
+                {
+                    PoolDiscovery::OnBlockSubmitted(context.hashGenesis, true);
+                    
+                    /* Calculate reward for block found notification */
+                    uint64_t nReward = 0;
+                    auto it = mapBlocks.find(hashMerkle);
+                    if(it != mapBlocks.end() && it->second.pBlock)
+                    {
+                        /* Get block reward (in NXS base units) */
+                        nReward = TAO::Ledger::GetCoinbaseReward(
+                            it->second.pBlock->nHeight, 
+                            it->second.pBlock->nChannel, 
+                            0);  // nFees = 0 for mining pools
+                        
+                        PoolDiscovery::OnBlockFound(context.hashGenesis, nReward);
+                    }
+                }
 
                 /* Generate an Accepted response. */
                 debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✅ Block accepted by network!", ANSI_COLOR_RESET);
@@ -2802,6 +2855,12 @@ namespace LLP
     void StatelessMinerConnection::RecordViolation(const std::string& strReason)
     {
         m_rateLimit.nViolationCount++;
+        
+        /* Notify local pool metrics if enabled */
+        if(PoolDiscovery::IsLocalPoolEnabled())
+        {
+            PoolDiscovery::IncrementRateLimitViolations();
+        }
         
         debug::warning(FUNCTION, "⚠️ Rate limit violation #", m_rateLimit.nViolationCount,
             " from ", GetAddress().ToStringIP(), ": ", strReason);

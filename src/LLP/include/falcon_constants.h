@@ -528,36 +528,116 @@ namespace FalconConstants
     static const size_t DUAL_SIG_TOTAL_OVERHEAD = 1630;
 
     /***************************************************************************
-     * Authentication Response Sizes - CT=809
+     * Authentication Response Sizes - Falcon-512
      **************************************************************************/
     
-    /** Auth response - LOCALHOST (no encryption on pubkey)
+    /** Auth response - LOCALHOST - Falcon-512
      *  pubkey_len(2) + pubkey(897) + timestamp(8) + sig_len(2) + sig(809) = 1718 bytes */
-    static const size_t AUTH_RESPONSE_MAX = LENGTH_FIELD_SIZE + FALCON512_PUBKEY_SIZE + TIMESTAMP_SIZE + LENGTH_FIELD_SIZE + FALCON512_SIG_ABSOLUTE_MAX;  // 1718 bytes
+    static const size_t AUTH_RESPONSE_FALCON512_MAX = LENGTH_FIELD_SIZE + FALCON512_PUBKEY_SIZE + TIMESTAMP_SIZE + LENGTH_FIELD_SIZE + FALCON512_SIG_ABSOLUTE_MAX;  // 1718 bytes
     
-    /** Auth response - PUBLIC MINER (ChaCha20 wrapped pubkey)
-     *  pubkey_len(2) + wrapped_pubkey(897+28) + timestamp(8) + sig_len(2) + sig(809) = 1746 bytes */
-    static const size_t AUTH_RESPONSE_ENCRYPTED_MAX = AUTH_RESPONSE_MAX + CHACHA20_OVERHEAD;  // 1746 bytes
+    /** Auth response - PUBLIC MINER (ChaCha20 wrapped) - Falcon-512
+     *  1718 + 28 = 1746 bytes */
+    static const size_t AUTH_RESPONSE_FALCON512_ENCRYPTED_MAX = AUTH_RESPONSE_FALCON512_MAX + CHACHA20_OVERHEAD;  // 1746 bytes
+
+    /***************************************************************************
+     * Authentication Response Sizes - Falcon-1024 (DEFAULT)
+     **************************************************************************/
+
+    /** Auth response - LOCALHOST - Falcon-1024
+     *  pubkey_len(2) + pubkey(1793) + timestamp(8) + sig_len(2) + sig(1577) = 3382 bytes */
+    static const size_t AUTH_RESPONSE_FALCON1024_MAX = 
+        LENGTH_FIELD_SIZE + FALCON1024_PUBKEY_SIZE + TIMESTAMP_SIZE + 
+        LENGTH_FIELD_SIZE + FALCON1024_SIG_ABSOLUTE_MAX;  // 3382 bytes
+
+    /** Auth response - PUBLIC MINER (ChaCha20 wrapped) - Falcon-1024
+     *  3382 + 28 = 3410 bytes */
+    static const size_t AUTH_RESPONSE_FALCON1024_ENCRYPTED_MAX = 
+        AUTH_RESPONSE_FALCON1024_MAX + CHACHA20_OVERHEAD;  // 3410 bytes
+
+    /***************************************************************************
+     * Version-Agnostic Authentication Response (use largest for buffers)
+     **************************************************************************/
+    
+    /** Auth response - Use Falcon-1024 size for buffer allocation */
+    static const size_t AUTH_RESPONSE_MAX = AUTH_RESPONSE_FALCON1024_MAX;  // 3382 bytes
+    
+    /** Auth response - PUBLIC MINER (encrypted) - Use Falcon-1024 size */
+    static const size_t AUTH_RESPONSE_ENCRYPTED_MAX = AUTH_RESPONSE_FALCON1024_ENCRYPTED_MAX;  // 3410 bytes
     
     /** Auth response with optional GenesisHash binding
      *  Add 32 bytes for Tritium genesis hash */
-    static const size_t AUTH_RESPONSE_WITH_GENESIS_MAX = AUTH_RESPONSE_ENCRYPTED_MAX + GENESIS_HASH_SIZE;  // 1778 bytes
+    static const size_t AUTH_RESPONSE_WITH_GENESIS_MAX = AUTH_RESPONSE_ENCRYPTED_MAX + GENESIS_HASH_SIZE;  // 3442 bytes
 
     /***************************************************************************
-     * MINER_AUTH_INIT Sizes (Enhanced with hashGenesis)
+     * MINER_AUTH_INIT Sizes - Falcon-512
      **************************************************************************/
 
-    /** MINER_AUTH_INIT minimum size (no miner_id, no genesis)
+    /** MINER_AUTH_INIT minimum size (no miner_id, no genesis) - Falcon-512
      *  pubkey_len(2) + pubkey(897) + miner_id_len(2) = 901 bytes */
-    static const size_t MINER_AUTH_INIT_MIN = 901;
+    static const size_t MINER_AUTH_INIT_FALCON512_MIN = 901;
 
-    /** MINER_AUTH_INIT with genesis but empty miner_id string
+    /** MINER_AUTH_INIT with genesis but empty miner_id string - Falcon-512
      *  pubkey_len(2) + pubkey(897) + miner_id_len(2, value=0) + genesis(32) = 933 bytes */
-    static const size_t MINER_AUTH_INIT_WITH_GENESIS = 933;
+    static const size_t MINER_AUTH_INIT_FALCON512_WITH_GENESIS = 933;
 
-    /** MINER_AUTH_INIT maximum size (with miner_id and genesis)
+    /** MINER_AUTH_INIT maximum size (with miner_id and genesis) - Falcon-512
      *  pubkey_len(2) + pubkey(897) + miner_id_len(2) + miner_id(256) + genesis(32) = 1189 bytes */
-    static const size_t MINER_AUTH_INIT_MAX = 1189;
+    static const size_t MINER_AUTH_INIT_FALCON512_MAX = 1189;
+
+    /***************************************************************************
+     * MINER_AUTH_INIT Sizes - Falcon-1024 (DEFAULT)
+     **************************************************************************/
+
+    /** MINER_AUTH_INIT minimum - Falcon-1024
+     *  pubkey_len(2) + pubkey(1793) + miner_id_len(2) = 1797 bytes */
+    static const size_t MINER_AUTH_INIT_FALCON1024_MIN = 1797;
+
+    /** MINER_AUTH_INIT with genesis but empty miner_id string - Falcon-1024
+     *  pubkey_len(2) + pubkey(1793) + miner_id_len(2, value=0) + genesis(32) = 1829 bytes */
+    static const size_t MINER_AUTH_INIT_FALCON1024_WITH_GENESIS = 1829;
+
+    /** MINER_AUTH_INIT maximum - Falcon-1024
+     *  pubkey_len(2) + pubkey(1793) + miner_id_len(2) + miner_id(256) + genesis(32) = 2085 bytes */
+    static const size_t MINER_AUTH_INIT_FALCON1024_MAX = 2085;
+
+    /***************************************************************************
+     * Version-Agnostic MINER_AUTH_INIT (use largest for buffer allocation)
+     **************************************************************************/
+
+    /** MINER_AUTH_INIT minimum size - Use Falcon-512 (smallest) */
+    static const size_t MINER_AUTH_INIT_MIN = MINER_AUTH_INIT_FALCON512_MIN;  // 901 bytes
+
+    /** MINER_AUTH_INIT with genesis - Use Falcon-512 (smallest) */
+    static const size_t MINER_AUTH_INIT_WITH_GENESIS = MINER_AUTH_INIT_FALCON512_WITH_GENESIS;  // 933 bytes
+
+    /** MINER_AUTH_INIT maximum size - Use Falcon-1024 (largest) for buffer allocation */
+    static const size_t MINER_AUTH_INIT_MAX = MINER_AUTH_INIT_FALCON1024_MAX;  // 2085 bytes
+
+    /***************************************************************************
+     * Pool Announcement Signature Sizes
+     **************************************************************************/
+
+    /** Pool announcement signature - Falcon-512 */
+    static const size_t POOL_ANNOUNCEMENT_SIG_FALCON512_MAX = FALCON512_SIG_ABSOLUTE_MAX;  // 809 bytes
+
+    /** Pool announcement signature - Falcon-1024 (DEFAULT) */
+    static const size_t POOL_ANNOUNCEMENT_SIG_FALCON1024_MAX = FALCON1024_SIG_ABSOLUTE_MAX;  // 1577 bytes
+
+    /** Pool announcement signature - Version agnostic (use largest) */
+    static const size_t POOL_ANNOUNCEMENT_SIG_MAX = FALCON1024_SIG_ABSOLUTE_MAX;  // 1577 bytes
+
+    /***************************************************************************
+     * Version-Agnostic Defaults for New Code
+     **************************************************************************/
+
+    /** Default Falcon version flag (true = Falcon-1024, false = Falcon-512) */
+    static const bool USE_FALCON1024_DEFAULT = true;
+
+    /** Default public key size (Falcon-1024) */
+    static const size_t FALCON_PUBKEY_DEFAULT = FALCON1024_PUBKEY_SIZE;  // 1793 bytes
+
+    /** Default signature size (Falcon-1024 CT) */
+    static const size_t FALCON_SIG_CT_DEFAULT = FALCON1024_SIG_CT_SIZE;  // 1577 bytes
 
     /***************************************************************************
      * Mining Template Validity Constants

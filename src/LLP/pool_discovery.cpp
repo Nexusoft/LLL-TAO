@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 #include <LLP/include/falcon_constants.h>
 #include <LLP/include/falcon_auth.h>
+#include <LLP/include/auto_cooldown_manager.h>
 
 #include <LLD/include/global.h>
 
@@ -43,6 +44,12 @@ namespace LLP
     std::map<uint256_t, PoolReputation> PoolDiscovery::mapPoolReputation;
     std::map<uint256_t, uint64_t> PoolDiscovery::mapLastAnnouncement;
     std::mutex PoolDiscovery::MUTEX;
+
+    /* Local pool static members */
+    LocalPoolConfig PoolDiscovery::m_localConfig;
+    std::map<uint512_t, MinerSession> PoolDiscovery::m_localSessions;
+    PoolMetrics PoolDiscovery::m_localMetrics;
+    std::mutex PoolDiscovery::LOCAL_MUTEX;
 
 
     /** MiningPoolAnnouncement implementation **/
@@ -90,13 +97,36 @@ namespace LLP
             return false;
         }
 
-        /* Validate signature size using existing Falcon constants */
-        if(vSignature.size() < FalconConstants::FALCON512_SIG_MIN || 
-           vSignature.size() > FalconConstants::FALCON512_SIG_MAX_VALIDATION)
+        /* Validate signature size - Accept BOTH Falcon-512 and Falcon-1024
+         * Falcon-512 CT: 809 bytes
+         * Falcon-1024 CT: 1577 bytes
+         */
+        bool fValidSize = false;
+        
+        // Check Falcon-512 range
+        if(vSignature.size() >= FalconConstants::FALCON512_SIG_MIN && 
+           vSignature.size() <= FalconConstants::FALCON512_SIG_ABSOLUTE_MAX)
+        {
+            fValidSize = true;
+            debug::log(2, FUNCTION, "Pool announcement signature detected as Falcon-512 (", 
+                       vSignature.size(), " bytes)");
+        }
+        // Check Falcon-1024 range
+        else if(vSignature.size() >= FalconConstants::FALCON1024_SIG_MIN && 
+                vSignature.size() <= FalconConstants::FALCON1024_SIG_ABSOLUTE_MAX)
+        {
+            fValidSize = true;
+            debug::log(2, FUNCTION, "Pool announcement signature detected as Falcon-1024 (", 
+                       vSignature.size(), " bytes)");
+        }
+        
+        if(!fValidSize)
         {
             debug::error(FUNCTION, "Pool announcement signature has invalid size: ", vSignature.size(),
-                        " (expected ", FalconConstants::FALCON512_SIG_MIN, "-", 
-                        FalconConstants::FALCON512_SIG_MAX_VALIDATION, ")");
+                        " (expected Falcon-512: ", FalconConstants::FALCON512_SIG_MIN, "-", 
+                        FalconConstants::FALCON512_SIG_ABSOLUTE_MAX,
+                        " or Falcon-1024: ", FalconConstants::FALCON1024_SIG_MIN, "-",
+                        FalconConstants::FALCON1024_SIG_ABSOLUTE_MAX, ")");
             return false;
         }
 
@@ -108,7 +138,8 @@ namespace LLP
          * For production deployment, this needs to:
          * 1. Query the blockchain/ledger for the genesis transaction
          * 2. Extract the Falcon public key from the genesis
-         * 3. Verify the signature against that public key
+         * 3. Auto-detect Falcon version from public key size
+         * 4. Verify the signature against that public key
          * 
          * Current implementation performs basic size validation.
          * The signature verification will be completed when the blockchain
@@ -286,17 +317,19 @@ namespace LLP
         announcement.strPoolName = strPoolName;
         announcement.nTimestamp = runtime::timestamp();
 
-        /* Sign announcement with Falcon signature using FalconAuth system
+        /* Sign announcement with Falcon-1024 (default) or Falcon-512
          * This integrates with the existing Falcon authentication infrastructure.
          * 
          * Integration approach:
          * 1. Check if FalconAuth system is available
          * 2. Use existing Falcon keys from the system if available
-         * 3. Otherwise, generate a temporary key for demonstration
+         * 3. Select key based on preferred Falcon version
+         * 4. Otherwise, generate a temporary key for demonstration
          * 
          * TODO: Complete integration requires binding pool operator's
          * genesis to a Falcon key in the FalconAuth system.
          */
+        bool fUseFalcon1024 = m_localConfig.fUseFalcon1024;
         std::vector<uint8_t> vPrivateKey;
         
         try
@@ -311,28 +344,57 @@ namespace LLP
                 
                 if(!vKeys.empty())
                 {
-                    /* Use the first available key
-                     * TODO: In production, select key based on genesis binding
-                     */
-                    const FalconAuth::KeyMetadata& keyMeta = vKeys.front();
-                    uint256_t keyId = keyMeta.keyId;
+                    /* Find a key matching the preferred Falcon version */
+                    const FalconAuth::KeyMetadata* pSelectedKey = nullptr;
                     
-                    /* Get the hash to sign */
-                    uint512_t hash = announcement.GetHash();
-                    std::vector<uint8_t> vchData(hash.begin(), hash.end());
-                    
-                    /* Sign using FalconAuth */
-                    std::vector<uint8_t> vSig = pFalconAuth->Sign(keyId, vchData);
-                    
-                    if(!vSig.empty())
+                    for(const auto& keyMeta : vKeys)
                     {
-                        announcement.vSignature = vSig;
-                        debug::log(1, FUNCTION, "Signed pool announcement using FalconAuth, size: ", vSig.size());
+                        // Check if key matches preferred version
+                        // Profile::FALCON_512 or Profile::FALCON_1024
+                        bool fIsFalcon1024 = (keyMeta.profile == FalconAuth::Profile::FALCON_1024);
+                        
+                        if(fUseFalcon1024 && fIsFalcon1024)
+                        {
+                            pSelectedKey = &keyMeta;
+                            debug::log(1, FUNCTION, "Selected Falcon-1024 key for pool announcement");
+                            break;
+                        }
+                        else if(!fUseFalcon1024 && !fIsFalcon1024)
+                        {
+                            pSelectedKey = &keyMeta;
+                            debug::log(1, FUNCTION, "Selected Falcon-512 key for pool announcement");
+                            break;
+                        }
                     }
-                    else
+                    
+                    // If preferred version not found, use first available
+                    if(!pSelectedKey && !vKeys.empty())
                     {
-                        debug::warning(FUNCTION, "FalconAuth signing failed, falling back to temporary key");
-                        throw std::runtime_error("FalconAuth signing failed");
+                        pSelectedKey = &vKeys.front();
+                        debug::warning(FUNCTION, "Preferred Falcon version not found, using available key");
+                    }
+                    
+                    if(pSelectedKey)
+                    {
+                        /* Get the hash to sign */
+                        uint512_t hash = announcement.GetHash();
+                        std::vector<uint8_t> vchData(hash.begin(), hash.end());
+                        
+                        /* Sign using FalconAuth */
+                        std::vector<uint8_t> vSig = pFalconAuth->Sign(pSelectedKey->keyId, vchData);
+                        
+                        if(!vSig.empty())
+                        {
+                            announcement.vSignature = vSig;
+                            debug::log(1, FUNCTION, "Signed pool announcement with ", 
+                                      (vSig.size() > 1000 ? "Falcon-1024" : "Falcon-512"),
+                                      ", size: ", vSig.size());
+                        }
+                        else
+                        {
+                            debug::warning(FUNCTION, "FalconAuth signing failed, falling back to temporary key");
+                            throw std::runtime_error("FalconAuth signing failed");
+                        }
                     }
                 }
                 else
@@ -355,7 +417,12 @@ namespace LLP
             debug::log(1, FUNCTION, "Using temporary Falcon key: ", e.what());
             
             LLC::FLKey tempKey;
-            tempKey.MakeNewKey();
+            
+            // Use Falcon-1024 by default
+            if(fUseFalcon1024)
+                tempKey.MakeNewKey(LLC::FalconVersion::FALCON_1024);
+            else
+                tempKey.MakeNewKey(LLC::FalconVersion::FALCON_512);
             
             /* Get the private key from secure storage */
             LLC::CPrivKey secureKey = tempKey.GetPrivKey();
@@ -368,6 +435,9 @@ namespace LLP
                 debug::error(FUNCTION, "Failed to sign pool announcement with temporary key");
                 return false;
             }
+            
+            debug::log(1, FUNCTION, "Pool announcement signed with temporary ", 
+                      (fUseFalcon1024 ? "Falcon-1024" : "Falcon-512"), " key");
         }
 
         /* Validate before broadcasting */
@@ -819,6 +889,256 @@ namespace LLP
         mapPoolReputation.clear();
         mapLastAnnouncement.clear();
         debug::log(0, FUNCTION, "Pool Discovery shutdown");
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════════
+    // LOCAL POOL OPERATIONS
+    // ═══════════════════════════════════════════════════════════════════
+
+
+    void PoolDiscovery::SetLocalPoolConfig(const LocalPoolConfig& config)
+    {
+        std::lock_guard<std::mutex> lock(LOCAL_MUTEX);
+        
+        if(config.nFeePercent > MAX_POOL_FEE_PERCENT)
+        {
+            debug::error(FUNCTION, "Pool fee exceeds maximum: ", 
+                static_cast<int>(config.nFeePercent), "% > ", 
+                static_cast<int>(MAX_POOL_FEE_PERCENT), "%");
+            return;
+        }
+        
+        m_localConfig = config;
+        
+        debug::log(0, FUNCTION, "Local pool configured:");
+        debug::log(0, "   Name: ", config.strPoolName);
+        debug::log(0, "   Fee: ", static_cast<int>(config.nFeePercent), "%");
+        debug::log(0, "   Max miners: ", config.nMaxMiners);
+        debug::log(0, "   Falcon version: ", (config.fUseFalcon1024 ? "Falcon-1024 (default)" : "Falcon-512"));
+        debug::log(0, "   Auto-announce: ", (config.fAutoAnnounce ? "YES" : "NO"));
+    }
+
+
+    const LocalPoolConfig& PoolDiscovery::GetLocalPoolConfig()
+    {
+        std::lock_guard<std::mutex> lock(LOCAL_MUTEX);
+        return m_localConfig;
+    }
+
+
+    bool PoolDiscovery::IsLocalPoolEnabled()
+    {
+        std::lock_guard<std::mutex> lock(LOCAL_MUTEX);
+        return m_localConfig.fEnabled;
+    }
+
+
+    uint64_t PoolDiscovery::CalculatePoolFee(uint64_t nRewardNXS)
+    {
+        std::lock_guard<std::mutex> lock(LOCAL_MUTEX);
+        
+        if(m_localConfig.nFeePercent == 0)
+            return 0;
+        
+        return (nRewardNXS * m_localConfig.nFeePercent) / 100;
+    }
+
+
+    bool PoolDiscovery::SetPoolFee(uint8_t nFeePercent)
+    {
+        if(nFeePercent > MAX_POOL_FEE_PERCENT)
+        {
+            debug::error(FUNCTION, "Fee exceeds maximum: ", static_cast<int>(nFeePercent), "%");
+            return false;
+        }
+        
+        std::lock_guard<std::mutex> lock(LOCAL_MUTEX);
+        m_localConfig.nFeePercent = nFeePercent;
+        
+        debug::log(0, FUNCTION, "Pool fee updated to ", static_cast<int>(nFeePercent), "%");
+        return true;
+    }
+
+
+    void PoolDiscovery::OnMinerAuthenticated(
+        const uint512_t& hashGenesis,
+        const std::string& strAddress,
+        uint32_t nChannel,
+        bool fUsesFalcon1024)
+    {
+        std::lock_guard<std::mutex> lock(LOCAL_MUTEX);
+        
+        /* Check if miner already exists */
+        auto it = m_localSessions.find(hashGenesis);
+        if(it != m_localSessions.end())
+        {
+            /* Update existing session */
+            it->second.nLastActivityTime = runtime::timestamp();
+            return;
+        }
+        
+        /* Create new session */
+        MinerSession session;
+        session.hashGenesis = hashGenesis;
+        session.strAddress = strAddress;
+        session.nChannel = nChannel;
+        session.fUsesFalcon1024 = fUsesFalcon1024;
+        session.nConnectTime = runtime::timestamp();
+        session.nLastActivityTime = session.nConnectTime;
+        
+        m_localSessions[hashGenesis] = session;
+        
+        /* Update metrics */
+        m_localMetrics.nAuthenticatedMiners++;
+        m_localMetrics.nActiveConnections++;
+        
+        if(fUsesFalcon1024)
+            m_localMetrics.nFalcon1024Miners++;
+        else
+            m_localMetrics.nFalcon512Miners++;
+        
+        debug::log(1, FUNCTION, "Miner authenticated: ", hashGenesis.SubString(),
+            " channel=", nChannel, 
+            " falcon=", (fUsesFalcon1024 ? "1024" : "512"),
+            " from ", strAddress);
+    }
+
+
+    void PoolDiscovery::OnMinerDisconnected(const uint512_t& hashGenesis)
+    {
+        std::lock_guard<std::mutex> lock(LOCAL_MUTEX);
+        
+        auto it = m_localSessions.find(hashGenesis);
+        if(it != m_localSessions.end())
+        {
+            // Update Falcon version counters
+            if(it->second.fUsesFalcon1024)
+            {
+                if(m_localMetrics.nFalcon1024Miners > 0)
+                    m_localMetrics.nFalcon1024Miners--;
+            }
+            else
+            {
+                if(m_localMetrics.nFalcon512Miners > 0)
+                    m_localMetrics.nFalcon512Miners--;
+            }
+            
+            m_localSessions.erase(it);
+            
+            if(m_localMetrics.nActiveConnections > 0)
+                m_localMetrics.nActiveConnections--;
+            
+            debug::log(1, FUNCTION, "Miner disconnected: ", hashGenesis.SubString());
+        }
+    }
+
+
+    void PoolDiscovery::OnBlockSubmitted(const uint512_t& hashGenesis, bool fAccepted)
+    {
+        std::lock_guard<std::mutex> lock(LOCAL_MUTEX);
+        
+        m_localMetrics.nBlocksSubmitted++;
+        
+        if(fAccepted)
+            m_localMetrics.nBlocksAccepted++;
+        else
+            m_localMetrics.nBlocksRejected++;
+        
+        auto it = m_localSessions.find(hashGenesis);
+        if(it != m_localSessions.end())
+        {
+            it->second.nSharesSubmitted++;
+            it->second.nLastActivityTime = runtime::timestamp();
+            
+            if(fAccepted)
+                it->second.nSharesAccepted++;
+        }
+    }
+
+
+    void PoolDiscovery::OnBlockFound(const uint512_t& hashGenesis, uint64_t nRewardNXS)
+    {
+        std::lock_guard<std::mutex> lock(LOCAL_MUTEX);
+        
+        uint64_t nFee = (nRewardNXS * m_localConfig.nFeePercent) / 100;
+        uint64_t nMinerReward = nRewardNXS - nFee;
+        
+        m_localMetrics.nTotalRewardsNXS += nRewardNXS;
+        m_localMetrics.nTotalFeesNXS += nFee;
+        
+        auto it = m_localSessions.find(hashGenesis);
+        if(it != m_localSessions.end())
+        {
+            it->second.nBlocksFound++;
+            it->second.nTotalRewardNXS += nMinerReward;
+            
+            debug::log(0, FUNCTION, "🎉 Block found by ", hashGenesis.SubString(),
+                " using ", (it->second.fUsesFalcon1024 ? "Falcon-1024" : "Falcon-512"));
+            debug::log(0, "   Reward: ", nRewardNXS, " NXS");
+            debug::log(0, "   Fee: ", nFee, " NXS (", static_cast<int>(m_localConfig.nFeePercent), "%)");
+            debug::log(0, "   Miner receives: ", nMinerReward, " NXS");
+        }
+    }
+
+
+    std::vector<MinerSession> PoolDiscovery::GetActiveSessions()
+    {
+        std::lock_guard<std::mutex> lock(LOCAL_MUTEX);
+        
+        std::vector<MinerSession> vSessions;
+        vSessions.reserve(m_localSessions.size());
+        
+        for(const auto& entry : m_localSessions)
+            vSessions.push_back(entry.second);
+        
+        return vSessions;
+    }
+
+
+    PoolMetrics PoolDiscovery::GetLocalPoolMetrics()
+    {
+        std::lock_guard<std::mutex> lock(LOCAL_MUTEX);
+        return m_localMetrics;
+    }
+
+
+    void PoolDiscovery::RefreshMetrics()
+    {
+        std::lock_guard<std::mutex> lock(LOCAL_MUTEX);
+        
+        /* Update protection metrics from AutoCooldownManager */
+        m_localMetrics.nActiveCooldowns = AutoCooldownManager::Get().GetCooldownCount();
+        
+        /* Trigger cooldown cleanup */
+        AutoCooldownManager::Get().CleanupExpired();
+        
+        debug::log(2, FUNCTION, "Pool metrics refreshed:");
+        debug::log(2, "   Active miners: ", m_localMetrics.nActiveConnections);
+        debug::log(2, "   Falcon-1024 miners: ", m_localMetrics.nFalcon1024Miners);
+        debug::log(2, "   Falcon-512 miners: ", m_localMetrics.nFalcon512Miners);
+        debug::log(2, "   Blocks found: ", m_localMetrics.nBlocksAccepted);
+        debug::log(2, "   Active cooldowns: ", m_localMetrics.nActiveCooldowns);
+    }
+
+
+    uint32_t PoolDiscovery::GetActiveCooldownCount()
+    {
+        return AutoCooldownManager::Get().GetCooldownCount();
+    }
+
+
+    uint64_t PoolDiscovery::GetRateLimitViolationCount()
+    {
+        std::lock_guard<std::mutex> lock(LOCAL_MUTEX);
+        return m_localMetrics.nRateLimitViolations;
+    }
+
+
+    void PoolDiscovery::IncrementRateLimitViolations()
+    {
+        std::lock_guard<std::mutex> lock(LOCAL_MUTEX);
+        m_localMetrics.nRateLimitViolations++;
     }
 
 } // namespace LLP
