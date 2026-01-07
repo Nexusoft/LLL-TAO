@@ -136,9 +136,9 @@ namespace TAO::Ledger
                 /* Template is for the NEXT block in this channel */
                 pBlock->nHeight = stateChannel.nChannelHeight + 1;
                 
-                debug::log(0, FUNCTION, "✓ Creating template for channel ", static_cast<uint32_t>(nChannel),
+                debug::log(2, FUNCTION, "✓ Creating template for channel ", static_cast<uint32_t>(nChannel),
                            " at channel height ", pBlock->nHeight);
-                debug::log(0, FUNCTION, "   (Unified height: ", statePrev.nHeight, " - for reference only)");
+                debug::log(2, FUNCTION, "   (Unified height: ", statePrev.nHeight, " - for reference only)");
             }
             else
             {
@@ -149,7 +149,7 @@ namespace TAO::Ledger
             }
             
             /* Verify nChannel was set correctly */
-            debug::log(0, FUNCTION, "✓ Block nChannel set to: ", pBlock->nChannel, 
+            debug::log(2, FUNCTION, "✓ Block nChannel set to: ", pBlock->nChannel, 
                        " (", (nChannel == 1 ? "Prime" : nChannel == 2 ? "Hash" : "INVALID"), ")");
             
             if(pBlock->nChannel == 0)
