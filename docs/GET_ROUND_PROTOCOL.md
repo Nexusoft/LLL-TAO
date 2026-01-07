@@ -62,11 +62,18 @@ Pool → Miner: MINER_AUTH_RESULT
 
 ```
 Miner → Pool: SET_CHANNEL
-              [channel(1)]  // 1=Prime, 2=Hash, 0=Stake
+              [channel(1)]  // 1=Prime, 2=Hash (Stake not supported for stateless mining)
 
 Pool → Miner: CHANNEL_ACK
               [channel(1)]  // Confirmation
 ```
+
+**Important Note about Channels:**
+- **Channel 0 (Stake):** NOT used for stateless mining. Stake mining uses a different mechanism (sigchain-based).
+- **Channel 1 (Prime):** Stateless mining supported via GET_ROUND
+- **Channel 2 (Hash):** Stateless mining supported via GET_ROUND
+
+For the purposes of GET_ROUND protocol, only Prime and Hash channels are valid.
 
 ### 3. Height Synchronization (GET_ROUND)
 

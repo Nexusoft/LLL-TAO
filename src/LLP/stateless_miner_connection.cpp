@@ -1730,10 +1730,15 @@ namespace LLP
                     return true;
                 }
 
-                /* Check that miner has set a channel */
+                /* Check that miner has set a valid channel for stateless mining
+                 * Note: Stateless mining only supports Prime (1) and Hash (2) channels.
+                 * Stake mining (channel 0) uses a different mechanism and does NOT use GET_ROUND.
+                 * Therefore, context.nChannel == 0 means "not set" or "invalid for stateless mining".
+                 */
                 if(context.nChannel == 0)
                 {
                     debug::error(FUNCTION, "GET_ROUND: Miner has not set channel (use SET_CHANNEL)");
+                    debug::error(FUNCTION, "   Valid channels: 1=Prime, 2=Hash (Stake mining uses different mechanism)");
                     Packet response(OLD_ROUND);
                     response.LENGTH = 0;
                     respond(response);
@@ -1772,7 +1777,10 @@ namespace LLP
                     /* Continue with height 0 - channel may not exist yet (first block) */
                 }
                 
-                /* Calculate next difficulty for this channel */
+                /* Calculate next difficulty for this channel
+                 * GetNextTargetRequired(state, channel, fDebug)
+                 * - fDebug=false: Suppress debug logging for production use
+                 */
                 uint32_t nDifficulty = TAO::Ledger::GetNextTargetRequired(stateBest, context.nChannel, false);
                 debug::log(3, FUNCTION, "GET_ROUND: Channel ", context.nChannel, " next difficulty: 0x", std::hex, nDifficulty, std::dec);
                 
