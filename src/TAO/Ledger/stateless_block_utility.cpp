@@ -115,11 +115,44 @@ namespace TAO::Ledger
              * Without this, the block would have default-initialized values (zeros), causing validation failures.
              * This matches the flow in normal nodes: AddBlockData() sets these fields. */
             pBlock->hashPrevBlock = statePrev.GetHash();
-            pBlock->nHeight = statePrev.nHeight + 1;
             pBlock->nChannel = nChannel;
             
+            /* CRITICAL: Use channel-specific height, NOT unified height
+             * 
+             * For multi-channel mining:
+             * - Unified height = 6.5M (total across all channels)
+             * - Prime channel = 2.3M blocks
+             * - Hash channel = 2.1M blocks  
+             * - Stake channel = 2.1M blocks
+             * 
+             * The miner needs the CHANNEL height to:
+             * 1. Know which block they're mining (Prime block 2302585, not unified 6537246)
+             * 2. Compare with GET_ROUND response to detect staleness
+             * 3. Set proper hashPrevBlock for the channel
+             */
+            BlockState stateChannel = statePrev;
+            if(GetLastState(stateChannel, nChannel))
+            {
+                /* Template is for the NEXT block in this channel */
+                pBlock->nHeight = stateChannel.nChannelHeight + 1;
+                
+                debug::log(2, FUNCTION, "✓ Creating template for channel ", static_cast<uint32_t>(nChannel),
+                           " at channel height ", pBlock->nHeight);
+                debug::log(2, FUNCTION, "   (Unified height: ", statePrev.nHeight, " - for reference only)");
+            }
+            else
+            {
+                /* Channel doesn't exist yet - mining first block in this channel
+                 * GetLastState returns false and sets stateChannel to genesis (nChannelHeight = 1)
+                 * So first block in channel has nChannelHeight = 2 */
+                pBlock->nHeight = stateChannel.nChannelHeight + 1;
+                debug::log(2, FUNCTION, "Mining first block in channel ", static_cast<uint32_t>(nChannel),
+                           " at channel height ", pBlock->nHeight);
+                debug::log(2, FUNCTION, "   (Genesis has nChannelHeight = ", stateChannel.nChannelHeight, ")");
+            }
+            
             /* Verify nChannel was set correctly */
-            debug::log(0, FUNCTION, "✓ Block nChannel set to: ", pBlock->nChannel, 
+            debug::log(2, FUNCTION, "✓ Block nChannel set to: ", pBlock->nChannel, 
                        " (", (nChannel == 1 ? "Prime" : nChannel == 2 ? "Hash" : "INVALID"), ")");
             
             if(pBlock->nChannel == 0)
@@ -139,8 +172,9 @@ namespace TAO::Ledger
             
             debug::log(2, FUNCTION, "Block initialized with chain state:");
             debug::log(2, FUNCTION, "  hashPrevBlock: ", pBlock->hashPrevBlock.SubString());
-            debug::log(2, FUNCTION, "  nHeight: ", pBlock->nHeight);
+            debug::log(2, FUNCTION, "  nHeight (channel): ", pBlock->nHeight, " ← This is what miner sees");
             debug::log(2, FUNCTION, "  nChannel: ", pBlock->nChannel);
+            debug::log(2, FUNCTION, "  Unified height: ", statePrev.nHeight, " (reference only)");
             debug::log(2, FUNCTION, "  nBits: 0x", std::hex, pBlock->nBits, std::dec);
             debug::log(2, FUNCTION, "  nTime: ", pBlock->nTime);
             
@@ -175,8 +209,9 @@ namespace TAO::Ledger
             
             debug::log(2, FUNCTION, "✓ Wallet-signed block created successfully");
             debug::log(2, FUNCTION, "  Note: PoW validation deferred until miner submits nonce");
-            debug::log(2, FUNCTION, "  Height: ", pBlock->nHeight);
+            debug::log(2, FUNCTION, "  Channel height: ", pBlock->nHeight, " ← This is what miner sees");
             debug::log(2, FUNCTION, "  Channel: ", pBlock->nChannel);
+            debug::log(2, FUNCTION, "  Unified height: ", statePrev.nHeight, " (reference only)");
             debug::log(2, FUNCTION, "  Reward address: ", hashRewardAddress.SubString());
             
             return pBlock;

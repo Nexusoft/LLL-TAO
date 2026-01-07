@@ -1735,33 +1735,60 @@ namespace LLP
                 /* ═════════════════════════════════════════════════════════════════════════ */
                 
                 /* Get current blockchain state */
-                uint32_t nCurrentHeight = TAO::Ledger::ChainState::nBestHeight.load();
                 TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
                 
-                /* Calculate channel-specific heights */
+                /* Validate blockchain is ready */
+                if(stateBest.nHeight == 0)
+                {
+                    debug::error(FUNCTION, "GET_ROUND: Blockchain not initialized");
+                    return true;  // Don't send response
+                }
+                
+                uint32_t nCurrentHeight = stateBest.nHeight;
+                debug::log(3, FUNCTION, "GET_ROUND: Unified height: ", nCurrentHeight);
+                
+                /* Get channel heights with error checking */
                 uint32_t nPrimeChannelHeight = 0;
                 uint32_t nHashChannelHeight = 0;
                 uint32_t nStakeChannelHeight = 0;
                 
-                /* Prime channel (1) */
+                TAO::Ledger::BlockState stateChannel = stateBest;
+                
+                /* Prime (Channel 1) */
+                stateChannel = stateBest;
+                if(!TAO::Ledger::GetLastState(stateChannel, 1))
                 {
-                    TAO::Ledger::BlockState statePrime = stateBest;
-                    if(TAO::Ledger::GetLastState(statePrime, 1))
-                        nPrimeChannelHeight = statePrime.nChannelHeight;
+                    debug::warning(FUNCTION, "GET_ROUND: Could not get Prime channel state");
+                    // Continue with height 0 - channel may not exist yet
+                }
+                else
+                {
+                    nPrimeChannelHeight = stateChannel.nChannelHeight;
+                    debug::log(3, FUNCTION, "GET_ROUND: Prime height: ", nPrimeChannelHeight);
                 }
                 
-                /* Hash channel (2) */
+                /* Hash (Channel 2) */
+                stateChannel = stateBest;
+                if(!TAO::Ledger::GetLastState(stateChannel, 2))
                 {
-                    TAO::Ledger::BlockState stateHash = stateBest;
-                    if(TAO::Ledger::GetLastState(stateHash, 2))
-                        nHashChannelHeight = stateHash.nChannelHeight;
+                    debug::warning(FUNCTION, "GET_ROUND: Could not get Hash channel state");
+                }
+                else
+                {
+                    nHashChannelHeight = stateChannel.nChannelHeight;
+                    debug::log(3, FUNCTION, "GET_ROUND: Hash height: ", nHashChannelHeight);
                 }
                 
-                /* Stake channel (0) */
+                /* Stake (Channel 0) */
+                stateChannel = stateBest;
+                if(!TAO::Ledger::GetLastState(stateChannel, 0))
                 {
-                    TAO::Ledger::BlockState stateStake = stateBest;
-                    if(TAO::Ledger::GetLastState(stateStake, 0))
-                        nStakeChannelHeight = stateStake.nChannelHeight;
+                    debug::warning(FUNCTION, "GET_ROUND: Could not get Stake channel state");
+                }
+                else
+                {
+                    nStakeChannelHeight = stateChannel.nChannelHeight;
+                    debug::log(3, FUNCTION, "GET_ROUND: Stake height: ", nStakeChannelHeight);
                 }
                 
                 /* ═════════════════════════════════════════════════════════════════════════ */
@@ -1777,22 +1804,29 @@ namespace LLP
                  * Backward compatible: Old miners read first 4 bytes, ignore rest
                  */
                 std::vector<uint8_t> vData;
+                vData.reserve(16);
                 
-                /* Add unified height (bytes 0-3) */
+                /* Convert heights to bytes */
                 std::vector<uint8_t> vUnified = convert::uint2bytes(nCurrentHeight);
-                vData.insert(vData.end(), vUnified.begin(), vUnified.end());
-                
-                /* Add Prime channel height (bytes 4-7) */
                 std::vector<uint8_t> vPrime = convert::uint2bytes(nPrimeChannelHeight);
-                vData.insert(vData.end(), vPrime.begin(), vPrime.end());
-                
-                /* Add Hash channel height (bytes 8-11) */
                 std::vector<uint8_t> vHash = convert::uint2bytes(nHashChannelHeight);
-                vData.insert(vData.end(), vHash.begin(), vHash.end());
-                
-                /* Add Stake channel height (bytes 12-15) */
                 std::vector<uint8_t> vStake = convert::uint2bytes(nStakeChannelHeight);
+                
+                /* Assemble response */
+                vData.insert(vData.end(), vUnified.begin(), vUnified.end());
+                vData.insert(vData.end(), vPrime.begin(), vPrime.end());
+                vData.insert(vData.end(), vHash.begin(), vHash.end());
                 vData.insert(vData.end(), vStake.begin(), vStake.end());
+                
+                /* CRITICAL VALIDATION: Ensure exactly 16 bytes */
+                if(vData.size() != 16)
+                {
+                    debug::error(FUNCTION, "GET_ROUND: Response size mismatch!");
+                    debug::error(FUNCTION, "   Expected: 16 bytes");
+                    debug::error(FUNCTION, "   Got: ", vData.size(), " bytes");
+                    debug::error(FUNCTION, "   This is a CRITICAL BUG - miner will receive malformed packet");
+                    return true;  // Don't send malformed response
+                }
                 
                 /* ═════════════════════════════════════════════════════════════════════════ */
                 /* ALWAYS SEND NEW_ROUND WITH CURRENT HEIGHTS                               */
@@ -1818,16 +1852,13 @@ namespace LLP
                  * - Robust (works for all channel types)
                  */
                 
-                debug::log(3, FUNCTION, "GET_ROUND: Sending current heights to ", GetAddress().ToStringIP());
-                debug::log(3, FUNCTION, "   Unified: ", nCurrentHeight);
-                debug::log(3, FUNCTION, "   Prime:   ", nPrimeChannelHeight);
-                debug::log(3, FUNCTION, "   Hash:    ", nHashChannelHeight);
-                debug::log(3, FUNCTION, "   Stake:   ", nStakeChannelHeight);
+                debug::log(3, FUNCTION, "✓ Sending NEW_ROUND (16 bytes): Unified=", nCurrentHeight,
+                           " Prime=", nPrimeChannelHeight, " Hash=", nHashChannelHeight, " Stake=", nStakeChannelHeight);
                 
-                /* ALWAYS send NEW_ROUND with 16-byte response */
+                /* Send response */
                 Packet response(NEW_ROUND);
                 response.DATA = vData;
-                response.LENGTH = static_cast<uint32_t>(vData.size());  // Should be 16
+                response.LENGTH = static_cast<uint32_t>(vData.size());
                 respond(response);
                 
                 /* Update context timestamp (but NOT height - we don't track miner state) 
