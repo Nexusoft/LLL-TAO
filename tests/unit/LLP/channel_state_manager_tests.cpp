@@ -436,20 +436,14 @@ TEST_CASE("VerifyAllChannels Method", "[channel_state_manager][verification][ref
 {
     SECTION("VerifyAllChannels is callable")
     {
-        /* Call with default interval */
-        bool fResult = ChannelStateManager::VerifyAllChannels();
-        
-        /* Should return true (either consistent or skipped due to interval) */
-        REQUIRE((fResult == true || fResult == false));  // Valid result
+        /* Call with default interval - should not crash */
+        REQUIRE_NOTHROW(ChannelStateManager::VerifyAllChannels());
     }
     
     SECTION("VerifyAllChannels with interval 0 always checks")
     {
-        /* Call with interval 0 (always check) */
-        bool fResult = ChannelStateManager::VerifyAllChannels(0);
-        
-        /* Should return a valid result */
-        REQUIRE((fResult == true || fResult == false));
+        /* Call with interval 0 (always check) - should not crash */
+        REQUIRE_NOTHROW(ChannelStateManager::VerifyAllChannels(0));
     }
     
     SECTION("VerifyAllChannels doesn't crash on repeated calls")
@@ -458,6 +452,16 @@ TEST_CASE("VerifyAllChannels Method", "[channel_state_manager][verification][ref
         REQUIRE_NOTHROW(ChannelStateManager::VerifyAllChannels(10));
         REQUIRE_NOTHROW(ChannelStateManager::VerifyAllChannels(10));
         REQUIRE_NOTHROW(ChannelStateManager::VerifyAllChannels(10));
+    }
+    
+    SECTION("VerifyAllChannels returns during sync")
+    {
+        /* During initial sync, verification should be skipped and return true */
+        if(TAO::Ledger::ChainState::Synchronizing())
+        {
+            bool fResult = ChannelStateManager::VerifyAllChannels(0);
+            REQUIRE(fResult == true);  // Should skip verification during sync
+        }
     }
 }
 
