@@ -47,7 +47,7 @@ namespace LLP
             
             /* Use SK256 hash and take lower 64 bits */
             uint256_t hash = LLC::SK256(vAddr);
-            uint64_t nKey = hash.GetUint64(0);  // Get lower 64 bits
+            uint64_t nKey = hash.Get64(0);  // Get lower 64 bits
             return nKey;
         }
     }
