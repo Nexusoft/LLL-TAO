@@ -582,6 +582,13 @@ namespace LLP
          *
          **/
         static uint64_t GetRateLimitViolationCount();
+        
+        /** IncrementRateLimitViolations
+         *
+         *  Increment the rate limit violations counter.
+         *
+         **/
+        static void IncrementRateLimitViolations();
     };
 
 } // namespace LLP

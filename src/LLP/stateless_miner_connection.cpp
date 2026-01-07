@@ -2859,8 +2859,7 @@ namespace LLP
         /* Notify local pool metrics if enabled */
         if(PoolDiscovery::IsLocalPoolEnabled())
         {
-            PoolMetrics metrics = PoolDiscovery::GetLocalPoolMetrics();
-            metrics.nRateLimitViolations++;
+            PoolDiscovery::IncrementRateLimitViolations();
         }
         
         debug::warning(FUNCTION, "⚠️ Rate limit violation #", m_rateLimit.nViolationCount,

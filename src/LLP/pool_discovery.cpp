@@ -1134,4 +1134,11 @@ namespace LLP
         return m_localMetrics.nRateLimitViolations;
     }
 
+
+    void PoolDiscovery::IncrementRateLimitViolations()
+    {
+        std::lock_guard<std::mutex> lock(LOCAL_MUTEX);
+        m_localMetrics.nRateLimitViolations++;
+    }
+
 } // namespace LLP
