@@ -751,10 +751,12 @@ namespace LLP
                 
                 /* Verify blockchain is ready */
                 TAO::Ledger::BlockState tStateBest = TAO::Ledger::ChainState::tStateBest.load();
-                if(!tStateBest.IsValid())
+                
+                /* Check if blockchain is initialized (height == 0 means not yet initialized) */
+                if(tStateBest.nHeight == 0)
                 {
-                    debug::error(FUNCTION, "GET_ROUND: Blockchain not ready (tStateBest invalid) from ", GetAddress().ToStringIP());
-                    debug::error(FUNCTION, "   Cannot provide height information yet");
+                    debug::error(FUNCTION, "GET_ROUND: Blockchain not initialized from ", GetAddress().ToStringIP());
+                    debug::error(FUNCTION, "   Node is still starting up or syncing - cannot provide height information yet");
                     /* Don't send empty response - just return and let miner retry */
                     return true;
                 }
