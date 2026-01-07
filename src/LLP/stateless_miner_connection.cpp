@@ -482,6 +482,11 @@ namespace LLP
             /* Block rejection reason codes (PR #122: Falcon Protocol Integration) */
             const uint8_t REJECT_PHYSICAL_SIGNATURE_FAILED = 0x10;  // Physical Falcon signature verification failed
             const uint8_t REJECT_KEY_BONDING_VIOLATION = 0x11;      // Key bonding violation (version mismatch)
+            
+            /* Tritium block serialization constants */
+            constexpr uint32_t TRITIUM_BLOCK_SIZE = 216;        // Total size of serialized Tritium block template
+            constexpr uint32_t TRITIUM_OFFSET_NCHANNEL = 196;   // Offset of nChannel field in serialized block
+            constexpr uint32_t TRITIUM_OFFSET_NHEIGHT = 200;    // Offset of nHeight field in serialized block
 
             LOCK(MUTEX);
 
@@ -588,7 +593,7 @@ namespace LLP
                      */
                     
                     /* Verify both nChannel and nHeight in serialized template */
-                    if(vData.size() >= 216)  // Exact Tritium block template size
+                    if(vData.size() >= TRITIUM_BLOCK_SIZE)
                     {
                         /* Tritium block serialization format (216 bytes):
                          *   [0-3]     nVersion (4 bytes)
@@ -602,10 +607,10 @@ namespace LLP
                          */
                         
                         /* Extract nChannel at offset 196 */
-                        uint32_t nChannelFromSerialized = convert::bytes2uint(vData, 196);
+                        uint32_t nChannelFromSerialized = convert::bytes2uint(vData, TRITIUM_OFFSET_NCHANNEL);
                         
                         /* Extract nHeight at offset 200 */
-                        uint32_t nHeightFromSerialized = convert::bytes2uint(vData, 200);
+                        uint32_t nHeightFromSerialized = convert::bytes2uint(vData, TRITIUM_OFFSET_NHEIGHT);
                         
                         debug::log(0, "   Serialization verification:");
                         debug::log(0, "      Template fields:");
