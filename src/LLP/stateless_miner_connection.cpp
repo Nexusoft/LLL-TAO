@@ -1795,46 +1795,51 @@ namespace LLP
                 vData.insert(vData.end(), vStake.begin(), vStake.end());
                 
                 /* ═════════════════════════════════════════════════════════════════════════ */
-                /* DETERMINE IF NEW ROUND (unified height changed)                          */
+                /* ALWAYS SEND NEW_ROUND WITH CURRENT HEIGHTS                               */
                 /* ═════════════════════════════════════════════════════════════════════════ */
                 
-                /* Compare to miner's last known height */
-                /* If context.nHeight is 0 (uninitialized), always send NEW_ROUND */
-                if(context.nHeight == 0 || context.nHeight != nCurrentHeight)
-                {
-                    debug::log(0, FUNCTION, "🔔 Height change detected for ", GetAddress().ToStringIP());
-                    debug::log(0, FUNCTION, "   Miner's height: ", context.nHeight);
-                    debug::log(0, FUNCTION, "   Current unified height: ", nCurrentHeight);
-                    debug::log(0, FUNCTION, "   Channel heights:");
-                    debug::log(0, FUNCTION, "      Prime: ", nPrimeChannelHeight);
-                    debug::log(0, FUNCTION, "      Hash:  ", nHashChannelHeight);
-                    debug::log(0, FUNCTION, "      Stake: ", nStakeChannelHeight);
-                    
-                    /* Notify miner of new round with enhanced data */
-                    Packet response(NEW_ROUND);
-                    response.DATA = vData;
-                    response.LENGTH = static_cast<uint32_t>(vData.size());  // Should be 16
-                    respond(response);
-                    
-                    /* Update context with new height */
-                    context = context.WithHeight(nCurrentHeight).WithTimestamp(runtime::unifiedtimestamp());
-                    StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
-                    
-                    /* Cleanup stale templates for this miner */
-                    CleanupStaleTemplates(nCurrentHeight);
-                    
-                    return true;
-                }
+                /* DESIGN: We ALWAYS send NEW_ROUND with 16 bytes containing current heights.
+                 * 
+                 * RATIONALE:
+                 * - Comparing unified heights is WRONG for multi-channel mining
+                 * - A Prime miner doesn't care if Hash/Stake channels advanced
+                 * - Only the miner knows which channel it's mining and can compare correctly
+                 * - This eliminates false positives that cause rate limiting
+                 * 
+                 * THE MINER will:
+                 * 1. Extract the channel height relevant to its mining mode
+                 * 2. Compare with its template's channel height
+                 * 3. Request new template only if channel height changed
+                 * 4. Back off polling if channel height unchanged
+                 * 
+                 * This makes the protocol:
+                 * - Stateless (node doesn't track miner's height)
+                 * - Correct (miner compares right heights)
+                 * - Robust (works for all channel types)
+                 */
                 
-                /* No height change - send same round response with enhanced data */
-                Packet response(OLD_ROUND);
+                debug::log(3, FUNCTION, "GET_ROUND: Sending current heights to ", GetAddress().ToStringIP());
+                debug::log(3, FUNCTION, "   Unified: ", nCurrentHeight);
+                debug::log(3, FUNCTION, "   Prime:   ", nPrimeChannelHeight);
+                debug::log(3, FUNCTION, "   Hash:    ", nHashChannelHeight);
+                debug::log(3, FUNCTION, "   Stake:   ", nStakeChannelHeight);
+                
+                /* ALWAYS send NEW_ROUND with 16-byte response */
+                Packet response(NEW_ROUND);
                 response.DATA = vData;
                 response.LENGTH = static_cast<uint32_t>(vData.size());  // Should be 16
                 respond(response);
-
-                debug::log(3, FUNCTION, "GET_ROUND: same round (unified height ", nCurrentHeight, 
-                          ", prime=", nPrimeChannelHeight, ", hash=", nHashChannelHeight, 
-                          ", stake=", nStakeChannelHeight, ")");
+                
+                /* Update context timestamp (but NOT height - we don't track miner state) 
+                 * 
+                 * NOTE: We do NOT call CleanupStaleTemplates() here because:
+                 * 1. It's already called when creating new templates (NEW_BLOCK handler)
+                 * 2. Templates have age-based automatic expiration via TemplateMetadata::IsStale()
+                 * 3. Calling cleanup on every GET_ROUND poll (every 5-10s) would be excessive
+                 * 4. Template cleanup should be driven by template creation, not polling
+                 */
+                context = context.WithTimestamp(runtime::unifiedtimestamp());
+                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
 
                 return true;
             }
