@@ -72,6 +72,66 @@ namespace LLP
         std::unique_ptr<PrimeStateManager> m_pPrimeState;
         std::unique_ptr<HashStateManager> m_pHashState;
 
+        // ═══════════════════════════════════════════════════════════════════════
+        // AUTOMATED RATE LIMITING (Layer 2 Protection)
+        // ═══════════════════════════════════════════════════════════════════════
+        // 
+        // SECURITY PRINCIPLES:
+        // - Fully automated: NO manual ban capability
+        // - Transparent: Clear rules, logged violations
+        // - Fair: Only verified bad behavior triggers penalties
+        // - Reversible: Temp cooldowns only, auto-expire
+        // - Non-invasive: Cannot steal work or target good miners
+        // ═══════════════════════════════════════════════════════════════════════
+        
+        struct RateLimitConfig {
+            // Request limits per minute
+            static constexpr uint32_t MAX_GET_ROUND_PER_MINUTE = 12;
+            static constexpr uint32_t MAX_GET_BLOCK_PER_MINUTE = 10;
+            static constexpr uint32_t MAX_SUBMIT_BLOCK_PER_MINUTE = 60;  // Lenient for solutions!
+            static constexpr uint32_t MAX_SET_CHANNEL_PER_MINUTE = 5;
+            
+            // Minimum intervals (milliseconds)
+            static constexpr uint32_t MIN_GET_ROUND_INTERVAL_MS = 5000;   // 5 seconds
+            static constexpr uint32_t MIN_GET_BLOCK_INTERVAL_MS = 6000;   // 6 seconds
+            static constexpr uint32_t MIN_SUBMIT_BLOCK_INTERVAL_MS = 1000; // 1 second (lenient)
+            
+            // Violation thresholds
+            static constexpr uint32_t VIOLATIONS_BEFORE_STRIKE = 3;
+            static constexpr uint32_t VIOLATIONS_BEFORE_THROTTLE = 6;
+            static constexpr uint32_t VIOLATIONS_BEFORE_DISCONNECT = 10;
+            
+            // Cooldown duration (NOT a ban - auto-expires)
+            static constexpr uint32_t COOLDOWN_DURATION_SECONDS = 300;  // 5 minutes
+            
+            // Throttle delay when in throttle mode
+            static constexpr uint32_t THROTTLE_DELAY_MS = 10000;  // 10 seconds forced delay
+        };
+        
+        struct RateLimitState {
+            // Per-minute request counters
+            uint32_t nGetRoundCount = 0;
+            uint32_t nGetBlockCount = 0;
+            uint32_t nSubmitBlockCount = 0;
+            uint32_t nSetChannelCount = 0;
+            
+            // Last request timestamps
+            std::chrono::steady_clock::time_point tLastGetRound;
+            std::chrono::steady_clock::time_point tLastGetBlock;
+            std::chrono::steady_clock::time_point tLastSubmitBlock;
+            std::chrono::steady_clock::time_point tLastCounterReset;
+            
+            // Violation tracking
+            uint32_t nViolationCount = 0;
+            uint32_t nStrikeCount = 0;
+            bool fThrottleMode = false;
+            
+            // Initialize timestamps
+            RateLimitState() : tLastCounterReset(std::chrono::steady_clock::now()) {}
+        };
+        
+        RateLimitState m_rateLimit;
+
     public:
         /** Default Constructor **/
         StatelessMinerConnection();
@@ -205,6 +265,54 @@ namespace LLP
          *
          **/
         ChannelStateManager* GetChannelManager(uint32_t nChannel);
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // RATE LIMIT METHODS
+        // ═══════════════════════════════════════════════════════════════════════
+        
+        /** CheckRateLimit
+         *
+         *  @brief Check if request is allowed under rate limits
+         * 
+         *  AUTOMATED: No manual override possible
+         *  TRANSPARENT: Logs all violations with clear reasons
+         *  FAIR: Same rules for all connections
+         * 
+         *  @param[in] nRequestType The request type being checked
+         *  @return true if allowed, false if rate limited
+         *
+         **/
+        bool CheckRateLimit(uint8_t nRequestType);
+        
+        /** RecordViolation
+         *
+         *  @brief Record a rate limit violation
+         * 
+         *  Graduated response:
+         *  - Violations 1-3: Warning only
+         *  - Violations 4-6: Add strike
+         *  - Violations 7-10: Enable throttle mode
+         *  - Violations 11+: Disconnect + cooldown
+         * 
+         *  @param[in] strReason Human-readable reason for the violation
+         *
+         **/
+        void RecordViolation(const std::string& strReason);
+        
+        /** ResetMinuteCounters
+         *
+         *  @brief Reset per-minute counters (called every 60 seconds)
+         *
+         **/
+        void ResetMinuteCounters();
+        
+        /** IsThrottled
+         *
+         *  @brief Check if connection should be in throttle mode
+         *  @return true if requests should be delayed
+         *
+         **/
+        bool IsThrottled() const { return m_rateLimit.fThrottleMode; }
     };
 }
 

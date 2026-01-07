@@ -53,6 +53,7 @@ ________________________________________________________________________________
 #include <limits>
 #include <algorithm>
 #include <iomanip>
+#include <thread>
 
 namespace LLP
 {
@@ -493,6 +494,17 @@ namespace LLP
             /* Handle GET_BLOCK - requires authentication and channel */
             if(PACKET.HEADER == GET_BLOCK)
             {
+                // AUTOMATED RATE LIMIT CHECK
+                if (!CheckRateLimit(GET_BLOCK)) {
+                    // Request rejected - violation already recorded
+                    // Send empty response to indicate rate limited
+                    debug::log(1, FUNCTION, "GET_BLOCK rate limited for ", GetAddress().ToStringIP());
+                    Packet response(BLOCK_DATA);
+                    response.LENGTH = 0;
+                    respond(response);
+                    return true;  // Handled (rejected)
+                }
+                
                 debug::log(0, "📥 === GET_BLOCK REQUEST ===");
                 debug::log(0, "   From: ", GetAddress().ToStringIP());
                 debug::log(0, "   Authenticated: ", (context.fAuthenticated ? "YES" : "NO"));
@@ -696,6 +708,15 @@ namespace LLP
              */
             if(PACKET.HEADER == SUBMIT_BLOCK)
             {
+                // AUTOMATED RATE LIMIT CHECK (lenient for solutions)
+                if (!CheckRateLimit(SUBMIT_BLOCK)) {
+                    // Rate limit exceeded - reject submission
+                    debug::log(1, FUNCTION, "SUBMIT_BLOCK rate limited for ", GetAddress().ToStringIP());
+                    Packet response(BLOCK_REJECTED);
+                    respond(response);
+                    return true;  // Handled (rejected)
+                }
+                
                 debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "📥 === SUBMIT_BLOCK received ===", ANSI_COLOR_RESET);
                 
                 /* Check authentication */
@@ -1618,6 +1639,17 @@ namespace LLP
             /* PR #134: Enhanced to return unified + channel heights (16 bytes total) */
             if(PACKET.HEADER == GET_ROUND)
             {
+                // AUTOMATED RATE LIMIT CHECK
+                if (!CheckRateLimit(GET_ROUND)) {
+                    // Request rejected - violation already recorded
+                    // Send OLD_ROUND response to indicate rate limited
+                    debug::log(1, FUNCTION, "GET_ROUND rate limited for ", GetAddress().ToStringIP());
+                    Packet response(OLD_ROUND);
+                    response.LENGTH = 0;
+                    respond(response);
+                    return true;  // Handled (rejected)
+                }
+                
                 /* Check authentication */
                 if(!context.fAuthenticated)
                 {
@@ -2610,6 +2642,202 @@ namespace LLP
         
         debug::log(2, FUNCTION, "   ✅ Cleanup complete: ", nRemoved, " templates removed");
         debug::log(2, FUNCTION, "   Templates after cleanup: ", mapBlocks.size());
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // RATE LIMITING IMPLEMENTATION
+    // ═══════════════════════════════════════════════════════════════════════
+
+    bool StatelessMinerConnection::CheckRateLimit(uint8_t nRequestType)
+    {
+        auto now = std::chrono::steady_clock::now();
+        
+        // Reset counters every minute
+        auto elapsedSinceReset = std::chrono::duration_cast<std::chrono::seconds>(
+            now - m_rateLimit.tLastCounterReset).count();
+        if (elapsedSinceReset >= 60) {
+            ResetMinuteCounters();
+        }
+        
+        // If in throttle mode, enforce delay on ALL requests
+        if (m_rateLimit.fThrottleMode) {
+            debug::log(1, FUNCTION, "⏳ Connection ", GetAddress().ToStringIP(), 
+                " is throttled - requests delayed");
+            std::this_thread::sleep_for(std::chrono::milliseconds(RateLimitConfig::THROTTLE_DELAY_MS));
+        }
+        
+        // Define request type constants (must match values in ProcessPacket)
+        const uint8_t GET_ROUND = 133;
+        const uint8_t GET_BLOCK = 129;
+        const uint8_t SUBMIT_BLOCK = 1;
+        
+        switch (nRequestType) {
+            case GET_ROUND:
+            {
+                // Check minimum interval
+                auto intervalMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    now - m_rateLimit.tLastGetRound).count();
+                
+                if (m_rateLimit.tLastGetRound.time_since_epoch().count() > 0 && 
+                    intervalMs < RateLimitConfig::MIN_GET_ROUND_INTERVAL_MS) 
+                {
+                    std::string reason = "GET_ROUND interval too short: " + 
+                        std::to_string(intervalMs) + "ms < " + 
+                        std::to_string(RateLimitConfig::MIN_GET_ROUND_INTERVAL_MS) + "ms minimum";
+                    RecordViolation(reason);
+                    return false;
+                }
+                
+                // Check per-minute limit
+                if (m_rateLimit.nGetRoundCount >= RateLimitConfig::MAX_GET_ROUND_PER_MINUTE) {
+                    std::string reason = "GET_ROUND limit exceeded: " + 
+                        std::to_string(m_rateLimit.nGetRoundCount) + "/" + 
+                        std::to_string(RateLimitConfig::MAX_GET_ROUND_PER_MINUTE) + " per minute";
+                    RecordViolation(reason);
+                    return false;
+                }
+                
+                // Request allowed - update tracking
+                m_rateLimit.nGetRoundCount++;
+                m_rateLimit.tLastGetRound = now;
+                return true;
+            }
+            
+            case GET_BLOCK:
+            {
+                // Check minimum interval
+                auto intervalMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    now - m_rateLimit.tLastGetBlock).count();
+                
+                if (m_rateLimit.tLastGetBlock.time_since_epoch().count() > 0 && 
+                    intervalMs < RateLimitConfig::MIN_GET_BLOCK_INTERVAL_MS) 
+                {
+                    std::string reason = "GET_BLOCK interval too short: " + 
+                        std::to_string(intervalMs) + "ms < " + 
+                        std::to_string(RateLimitConfig::MIN_GET_BLOCK_INTERVAL_MS) + "ms minimum";
+                    RecordViolation(reason);
+                    return false;
+                }
+                
+                // Check per-minute limit
+                if (m_rateLimit.nGetBlockCount >= RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE) {
+                    std::string reason = "GET_BLOCK limit exceeded: " + 
+                        std::to_string(m_rateLimit.nGetBlockCount) + "/" + 
+                        std::to_string(RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE) + " per minute";
+                    RecordViolation(reason);
+                    return false;
+                }
+                
+                // Request allowed
+                m_rateLimit.nGetBlockCount++;
+                m_rateLimit.tLastGetBlock = now;
+                return true;
+            }
+            
+            case SUBMIT_BLOCK:
+            {
+                // LENIENT for SUBMIT_BLOCK - miners need to submit solutions!
+                // Only check per-minute limit, allow fast submissions
+                
+                auto intervalMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    now - m_rateLimit.tLastSubmitBlock).count();
+                
+                if (m_rateLimit.tLastSubmitBlock.time_since_epoch().count() > 0 && 
+                    intervalMs < RateLimitConfig::MIN_SUBMIT_BLOCK_INTERVAL_MS) 
+                {
+                    // Very short interval - might be duplicate, just warn
+                    debug::log(2, FUNCTION, "⚠️ Rapid SUBMIT_BLOCK from ", GetAddress().ToStringIP(),
+                        " (", intervalMs, "ms interval) - allowing but logging");
+                }
+                
+                if (m_rateLimit.nSubmitBlockCount >= RateLimitConfig::MAX_SUBMIT_BLOCK_PER_MINUTE) {
+                    std::string reason = "SUBMIT_BLOCK limit exceeded: " + 
+                        std::to_string(m_rateLimit.nSubmitBlockCount) + "/" + 
+                        std::to_string(RateLimitConfig::MAX_SUBMIT_BLOCK_PER_MINUTE) + " per minute";
+                    RecordViolation(reason);
+                    return false;
+                }
+                
+                // Request allowed
+                m_rateLimit.nSubmitBlockCount++;
+                m_rateLimit.tLastSubmitBlock = now;
+                return true;
+            }
+            
+            default:
+                return true;  // Unknown request type - allow (don't break new features)
+        }
+    }
+
+    void StatelessMinerConnection::RecordViolation(const std::string& strReason)
+    {
+        m_rateLimit.nViolationCount++;
+        
+        debug::warning(FUNCTION, "⚠️ Rate limit violation #", m_rateLimit.nViolationCount,
+            " from ", GetAddress().ToStringIP(), ": ", strReason);
+        
+        // Graduated response based on violation count
+        if (m_rateLimit.nViolationCount <= RateLimitConfig::VIOLATIONS_BEFORE_STRIKE) {
+            // Violations 1-3: Warning only, no penalty
+            debug::log(1, FUNCTION, "   → Warning issued (", m_rateLimit.nViolationCount, "/", 
+                RateLimitConfig::VIOLATIONS_BEFORE_STRIKE, " before strike)");
+        }
+        else if (m_rateLimit.nViolationCount <= RateLimitConfig::VIOLATIONS_BEFORE_THROTTLE) {
+            // Violations 4-6: Add strike
+            m_rateLimit.nStrikeCount++;
+            debug::log(1, FUNCTION, "   → Strike #", m_rateLimit.nStrikeCount, " recorded");
+        }
+        else if (m_rateLimit.nViolationCount <= RateLimitConfig::VIOLATIONS_BEFORE_DISCONNECT) {
+            // Violations 7-10: Enable throttle mode
+            if (!m_rateLimit.fThrottleMode) {
+                m_rateLimit.fThrottleMode = true;
+                debug::warning(FUNCTION, "   → ⏳ THROTTLE MODE enabled for ", GetAddress().ToStringIP());
+                debug::warning(FUNCTION, "   → All requests will be delayed by ", 
+                    RateLimitConfig::THROTTLE_DELAY_MS, "ms");
+            }
+        }
+        else {
+            // Violations 11+: Disconnect with cooldown
+            debug::error(FUNCTION, "❌ Too many violations (", m_rateLimit.nViolationCount, 
+                ") from ", GetAddress().ToStringIP());
+            debug::error(FUNCTION, "   → Disconnecting with ", 
+                RateLimitConfig::COOLDOWN_DURATION_SECONDS, " second cooldown");
+            debug::error(FUNCTION, "   → This is AUTOMATED protection, not a ban");
+            debug::error(FUNCTION, "   → Cooldown auto-expires - miner can reconnect after");
+            
+            // TODO: Add to auto-expiring cooldown list when manager is implemented
+            // AddToAutoCooldown(GetAddress(), RateLimitConfig::COOLDOWN_DURATION_SECONDS);
+            
+            // Disconnect the connection
+            Disconnect();
+        }
+    }
+
+    void StatelessMinerConnection::ResetMinuteCounters()
+    {
+        // Reset per-minute counters
+        m_rateLimit.nGetRoundCount = 0;
+        m_rateLimit.nGetBlockCount = 0;
+        m_rateLimit.nSubmitBlockCount = 0;
+        m_rateLimit.nSetChannelCount = 0;
+        m_rateLimit.tLastCounterReset = std::chrono::steady_clock::now();
+        
+        // Gradually reduce violation count (forgiveness over time)
+        if (m_rateLimit.nViolationCount > 0) {
+            m_rateLimit.nViolationCount = std::max(0u, m_rateLimit.nViolationCount - 1);
+            
+            // Exit throttle mode if violations drop below threshold
+            if (m_rateLimit.fThrottleMode && 
+                m_rateLimit.nViolationCount < RateLimitConfig::VIOLATIONS_BEFORE_THROTTLE) 
+            {
+                m_rateLimit.fThrottleMode = false;
+                debug::log(1, FUNCTION, "✅ Throttle mode disabled for ", GetAddress().ToStringIP(),
+                    " - behavior improved");
+            }
+        }
+        
+        debug::log(3, FUNCTION, "Rate limit counters reset for ", GetAddress().ToStringIP());
     }
 
 } // namespace LLP
