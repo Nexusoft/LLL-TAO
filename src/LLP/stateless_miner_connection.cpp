@@ -1559,11 +1559,14 @@ namespace LLP
                     auto it = mapBlocks.find(hashMerkle);
                     if(it != mapBlocks.end() && it->second.pBlock)
                     {
+                        /* Get previous block state for reward calculation */
+                        TAO::Ledger::BlockState statePrev = TAO::Ledger::ChainState::tStateBest.load();
+                        
                         /* Get block reward (in NXS base units) */
                         nReward = TAO::Ledger::GetCoinbaseReward(
-                            it->second.pBlock->nHeight, 
+                            statePrev, 
                             it->second.pBlock->nChannel, 
-                            0);  // nFees = 0 for mining pools
+                            0);  // nType = 0 for mining rewards
                         
                         PoolDiscovery::OnBlockFound(context.hashGenesis, nReward);
                     }
