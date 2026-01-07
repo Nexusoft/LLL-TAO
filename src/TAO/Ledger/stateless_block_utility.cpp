@@ -142,10 +142,13 @@ namespace TAO::Ledger
             }
             else
             {
-                /* Channel doesn't exist yet - genesis block */
-                pBlock->nHeight = 1;
-                debug::warning(FUNCTION, "Could not get last state for channel ", static_cast<uint32_t>(nChannel));
-                debug::warning(FUNCTION, "Using genesis height (1) - this may be a new chain");
+                /* Channel doesn't exist yet - mining first block in this channel
+                 * GetLastState returns false and sets stateChannel to genesis (nChannelHeight = 1)
+                 * So first block in channel has nChannelHeight = 2 */
+                pBlock->nHeight = stateChannel.nChannelHeight + 1;
+                debug::log(2, FUNCTION, "Mining first block in channel ", static_cast<uint32_t>(nChannel),
+                           " at channel height ", pBlock->nHeight);
+                debug::log(2, FUNCTION, "   (Genesis has nChannelHeight = ", stateChannel.nChannelHeight, ")");
             }
             
             /* Verify nChannel was set correctly */
