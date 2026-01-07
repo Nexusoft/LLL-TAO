@@ -39,6 +39,77 @@ namespace LLP
     const uint8_t GOSSIP_FORWARD_PROBABILITY_PERCENT = 30;
 
 
+    /** LocalPoolConfig
+     *  Configuration for running this node as a mining pool.
+     */
+    struct LocalPoolConfig
+    {
+        bool fEnabled = false;                    // Pool mode enabled
+        std::string strPoolName = "Nexus Pool";   // Display name
+        uint8_t nFeePercent = 0;                  // 0-10% (0 = no fee)
+        std::string strFeeAddress = "";           // Fee recipient
+        uint16_t nMaxMiners = 1000;               // Connection limit
+        uint64_t nMinPayoutNXS = 1000000;         // Min payout (0.01 NXS)
+        bool fAutoAnnounce = true;                // Broadcast to network
+        uint32_t nAnnounceIntervalSec = 300;      // Announcement frequency
+        bool fUseFalcon1024 = true;               // Use Falcon-1024 for signatures (default)
+    };
+
+    /** MinerSession
+     *  Tracks an authenticated miner's session and statistics.
+     */
+    struct MinerSession
+    {
+        uint512_t hashGenesis;                    // Miner identity
+        std::string strAddress;                   // IP address
+        uint32_t nChannel = 0;                    // 1=Prime, 2=Hash
+        uint64_t nConnectTime = 0;                // Connection timestamp
+        uint64_t nLastActivityTime = 0;           // Last activity
+        
+        // Per-miner statistics
+        std::atomic<uint64_t> nSharesSubmitted{0};
+        std::atomic<uint64_t> nSharesAccepted{0};
+        std::atomic<uint64_t> nBlocksFound{0};
+        std::atomic<uint64_t> nTotalRewardNXS{0}; // Accumulated rewards
+        
+        // Falcon version used by this miner
+        bool fUsesFalcon1024 = true;              // Track miner's Falcon version
+        
+        MinerSession() = default;
+    };
+
+    /** PoolMetrics
+     *  Aggregated metrics for the local pool.
+     */
+    struct PoolMetrics
+    {
+        // Connection metrics
+        std::atomic<uint32_t> nActiveConnections{0};
+        std::atomic<uint32_t> nTotalConnections{0};
+        std::atomic<uint32_t> nAuthenticatedMiners{0};
+        std::atomic<uint32_t> nFalcon512Miners{0};    // Miners using Falcon-512
+        std::atomic<uint32_t> nFalcon1024Miners{0};   // Miners using Falcon-1024
+        
+        // Block metrics
+        std::atomic<uint64_t> nBlocksSubmitted{0};
+        std::atomic<uint64_t> nBlocksAccepted{0};
+        std::atomic<uint64_t> nBlocksRejected{0};
+        
+        // Protection metrics (from AutoCooldownManager)
+        std::atomic<uint32_t> nActiveCooldowns{0};
+        std::atomic<uint64_t> nRateLimitViolations{0};
+        
+        // Reward metrics
+        std::atomic<uint64_t> nTotalRewardsNXS{0};
+        std::atomic<uint64_t> nTotalFeesNXS{0};
+        
+        // Uptime
+        uint64_t nStartTime = 0;
+        
+        PoolMetrics() : nStartTime(0) {}
+    };
+
+
     /** MiningPoolAnnouncement
      *
      *  Structure broadcast by pool operators to announce their mining service.
@@ -200,6 +271,12 @@ namespace LLP
         /** Mutex for thread-safe access **/
         static std::mutex MUTEX;
 
+        /** Local pool state **/
+        static LocalPoolConfig m_localConfig;
+        static std::map<uint512_t, MinerSession> m_localSessions;
+        static PoolMetrics m_localMetrics;
+        static std::mutex LOCAL_MUTEX;
+
     public:
         /** BroadcastPoolAnnouncement
          *
@@ -357,6 +434,152 @@ namespace LLP
          *
          **/
         static void Shutdown();
+
+        // ═══════════════════════════════════════════════════════════════════
+        // LOCAL POOL OPERATIONS (NEW)
+        // ═══════════════════════════════════════════════════════════════════
+        
+        /** SetLocalPoolConfig
+         *
+         *  Set local pool configuration.
+         *
+         *  @param[in] config Pool configuration
+         *
+         **/
+        static void SetLocalPoolConfig(const LocalPoolConfig& config);
+        
+        /** GetLocalPoolConfig
+         *
+         *  Get local pool configuration.
+         *
+         *  @return Local pool configuration
+         *
+         **/
+        static const LocalPoolConfig& GetLocalPoolConfig();
+        
+        /** IsLocalPoolEnabled
+         *
+         *  Check if local pool mode is enabled.
+         *
+         *  @return true if local pool mode is enabled
+         *
+         **/
+        static bool IsLocalPoolEnabled();
+        
+        // Fee Management
+        
+        /** CalculatePoolFee
+         *
+         *  Calculate pool fee for a given reward.
+         *
+         *  @param[in] nRewardNXS Reward amount in NXS
+         *
+         *  @return Fee amount in NXS
+         *
+         **/
+        static uint64_t CalculatePoolFee(uint64_t nRewardNXS);
+        
+        /** SetPoolFee
+         *
+         *  Set pool fee percentage.
+         *
+         *  @param[in] nFeePercent Fee percentage (0-10)
+         *
+         *  @return true if fee was set successfully
+         *
+         **/
+        static bool SetPoolFee(uint8_t nFeePercent);
+        
+        // Session Tracking
+        
+        /** OnMinerAuthenticated
+         *
+         *  Record miner authentication.
+         *
+         *  @param[in] hashGenesis Miner's genesis hash
+         *  @param[in] strAddress Miner's IP address
+         *  @param[in] nChannel Mining channel (1=Prime, 2=Hash)
+         *  @param[in] fUsesFalcon1024 Whether miner uses Falcon-1024
+         *
+         **/
+        static void OnMinerAuthenticated(const uint512_t& hashGenesis, 
+                                         const std::string& strAddress, 
+                                         uint32_t nChannel,
+                                         bool fUsesFalcon1024);
+        
+        /** OnMinerDisconnected
+         *
+         *  Record miner disconnection.
+         *
+         *  @param[in] hashGenesis Miner's genesis hash
+         *
+         **/
+        static void OnMinerDisconnected(const uint512_t& hashGenesis);
+        
+        /** OnBlockSubmitted
+         *
+         *  Record block submission.
+         *
+         *  @param[in] hashGenesis Miner's genesis hash
+         *  @param[in] fAccepted Whether block was accepted
+         *
+         **/
+        static void OnBlockSubmitted(const uint512_t& hashGenesis, bool fAccepted);
+        
+        /** OnBlockFound
+         *
+         *  Record block found by miner.
+         *
+         *  @param[in] hashGenesis Miner's genesis hash
+         *  @param[in] nRewardNXS Block reward in NXS
+         *
+         **/
+        static void OnBlockFound(const uint512_t& hashGenesis, uint64_t nRewardNXS);
+        
+        /** GetActiveSessions
+         *
+         *  Get all active miner sessions.
+         *
+         *  @return Vector of active sessions
+         *
+         **/
+        static std::vector<MinerSession> GetActiveSessions();
+        
+        // Metrics Integration
+        
+        /** GetLocalPoolMetrics
+         *
+         *  Get local pool metrics.
+         *
+         *  @return Pool metrics
+         *
+         **/
+        static PoolMetrics GetLocalPoolMetrics();
+        
+        /** RefreshMetrics
+         *
+         *  Refresh pool metrics (integrates with AutoCooldownManager).
+         *
+         **/
+        static void RefreshMetrics();
+        
+        /** GetActiveCooldownCount
+         *
+         *  Get count of active cooldowns from AutoCooldownManager.
+         *
+         *  @return Number of active cooldowns
+         *
+         **/
+        static uint32_t GetActiveCooldownCount();
+        
+        /** GetRateLimitViolationCount
+         *
+         *  Get count of rate limit violations.
+         *
+         *  @return Number of rate limit violations
+         *
+         **/
+        static uint64_t GetRateLimitViolationCount();
     };
 
 } // namespace LLP
