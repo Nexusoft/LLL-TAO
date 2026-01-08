@@ -232,8 +232,9 @@ namespace LLP
         /** Header
          *
          *  Determines if header is fully read.
-         *  For data packets (HEADER < 128, Falcon auth 207-212, or reward binding 213-214), requires LENGTH > 0.
-         *  For request packets (128-206, 215-254), LENGTH must be 0.
+         *  For data packets (HEADER < 128, round response 204-205, Falcon auth 207-212,
+         *  or reward binding 213-214), requires LENGTH > 0.
+         *  For request packets (128-203, 206, 215-254), LENGTH must be 0.
          *
          **/
         bool Header() const
@@ -281,9 +282,9 @@ namespace LLP
          *
          *  Serializes class into a byte vector. Used to write packet to sockets.
          *
-         *  Handles both traditional data packets (HEADER < 128), Falcon
-         *  authentication packets (207-212), and reward binding packets (213-214)
-         *  which all require data payloads.
+         *  Handles both traditional data packets (HEADER < 128), mining round
+         *  response packets (204-205), Falcon authentication packets (207-212),
+         *  and reward binding packets (213-214) which all require data payloads.
          *
          *  DEBUG: This method logs detailed packet encoding information when
          *  config::nVerbose >= 5 to help diagnose packet encoding issues
@@ -314,6 +315,10 @@ namespace LLP
          *
          *  Serializes class into a byte vector with detailed debugging logs.
          *  Used for diagnosing packet encoding issues in Falcon handshake.
+         *
+         *  Handles both traditional data packets (HEADER < 128), mining round
+         *  response packets (204-205), Falcon authentication packets (207-212),
+         *  and reward binding packets (213-214) which all require data payloads.
          *
          *  @param[in] strContext Context string for log messages
          *
