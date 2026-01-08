@@ -159,11 +159,15 @@ namespace LLP
          *  Determines if this packet type requires a data payload.
          *  Traditional packets use HEADER < 128 for data packets and HEADER >= 128
          *  for request/command packets. However, the Falcon authentication protocol
-         *  (headers 207-212), reward address binding packets (213-214), and the
-         *  channel acknowledgment packet (206) require data payloads.
+         *  (headers 207-212), reward address binding packets (213-214), mining round
+         *  response packets (204-205), and the channel acknowledgment packet (206)
+         *  require data payloads.
          *
          *  Packet ranges requiring data:
          *  - 0-127: Traditional data packets (BLOCK_DATA, SUBMIT_BLOCK, etc.)
+         *  - 204-205: Mining round response packets (PR #151/PR #153)
+         *    - NEW_ROUND (204): 12 bytes - unified height + channel height + difficulty
+         *    - OLD_ROUND (205): variable - rejection reason or stale height info
          *  - 206: Channel acknowledgment
          *    - CHANNEL_ACK (206): channel number (1 byte)
          *  - 207-212: Falcon authentication and session packets
@@ -182,6 +186,14 @@ namespace LLP
          **/
         bool HasDataPayload() const
         {
+            /* Boundary constants for mining round response packets (PR #151/PR #153)
+             * These packets carry height and difficulty data for stateless mining.
+             * NEW_ROUND (204): 12 bytes - unified height (4) + channel height (4) + difficulty (4)
+             * OLD_ROUND (205): variable - rejection reason or stale height info
+             */
+            static const uint8_t ROUND_RESPONSE_FIRST = 204;  // NEW_ROUND
+            static const uint8_t ROUND_RESPONSE_LAST = 205;   // OLD_ROUND
+            
             /* Boundary constants for Falcon authentication packets */
             static const uint8_t FALCON_AUTH_FIRST = 207;  // MINER_AUTH_INIT
             static const uint8_t FALCON_AUTH_LAST = 212;   // SESSION_KEEPALIVE
@@ -195,6 +207,10 @@ namespace LLP
 
             /* Traditional data packets */
             if(HEADER < 128)
+                return true;
+
+            /* Mining round response packets carry height data (PR #151/PR #153) */
+            if(HEADER >= ROUND_RESPONSE_FIRST && HEADER <= ROUND_RESPONSE_LAST)
                 return true;
 
             /* Channel acknowledgment requires data (channel number) */
