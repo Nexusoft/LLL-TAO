@@ -302,6 +302,7 @@ ifdef UNIT_TESTS
 		   build/Tests_LLP_falcon_1024_detection_test.o \
 		   build/Tests_LLP_genesis_validation.o \
 		   build/Tests_LLP_packet_data_payload.o \
+		   build/Tests_LLP_packet_round_response.o \
 		   build/Tests_TAO_API_assets.o \
 		   build/Tests_TAO_API_finance.o \
 		   build/Tests_TAO_API_names.o \

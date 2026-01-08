@@ -159,11 +159,15 @@ namespace LLP
          *  Determines if this packet type requires a data payload.
          *  Traditional packets use HEADER < 128 for data packets and HEADER >= 128
          *  for request/command packets. However, the Falcon authentication protocol
-         *  (headers 207-212), reward address binding packets (213-214), and the
-         *  channel acknowledgment packet (206) require data payloads.
+         *  (headers 207-212), reward address binding packets (213-214), mining round
+         *  response packets (204-205), and the channel acknowledgment packet (206)
+         *  require data payloads.
          *
          *  Packet ranges requiring data:
          *  - 0-127: Traditional data packets (BLOCK_DATA, SUBMIT_BLOCK, etc.)
+         *  - 204-205: Mining round response packets (PR #151/PR #153)
+         *    - NEW_ROUND (204): 12 bytes - unified height + channel height + difficulty
+         *    - OLD_ROUND (205): variable - rejection reason or stale height info
          *  - 206: Channel acknowledgment
          *    - CHANNEL_ACK (206): channel number (1 byte)
          *  - 207-212: Falcon authentication and session packets
@@ -182,6 +186,14 @@ namespace LLP
          **/
         bool HasDataPayload() const
         {
+            /* Boundary constants for mining round response packets (PR #151/PR #153)
+             * These packets carry height and difficulty data for stateless mining.
+             * NEW_ROUND (204): 12 bytes - unified height (4) + channel height (4) + difficulty (4)
+             * OLD_ROUND (205): variable - rejection reason or stale height info
+             */
+            static const uint8_t ROUND_RESPONSE_FIRST = 204;  // NEW_ROUND
+            static const uint8_t ROUND_RESPONSE_LAST = 205;   // OLD_ROUND
+            
             /* Boundary constants for Falcon authentication packets */
             static const uint8_t FALCON_AUTH_FIRST = 207;  // MINER_AUTH_INIT
             static const uint8_t FALCON_AUTH_LAST = 212;   // SESSION_KEEPALIVE
@@ -195,6 +207,10 @@ namespace LLP
 
             /* Traditional data packets */
             if(HEADER < 128)
+                return true;
+
+            /* Mining round response packets carry height data (PR #151/PR #153) */
+            if(HEADER >= ROUND_RESPONSE_FIRST && HEADER <= ROUND_RESPONSE_LAST)
                 return true;
 
             /* Channel acknowledgment requires data (channel number) */
@@ -216,8 +232,9 @@ namespace LLP
         /** Header
          *
          *  Determines if header is fully read.
-         *  For data packets (HEADER < 128, Falcon auth 207-212, or reward binding 213-214), requires LENGTH > 0.
-         *  For request packets (128-206, 215-254), LENGTH must be 0.
+         *  For data packets (HEADER < 128, round response 204-205, channel ack 206,
+         *  Falcon auth 207-212, or reward binding 213-214), requires LENGTH > 0.
+         *  For request packets (128-203, 215-254), LENGTH must be 0.
          *
          **/
         bool Header() const
@@ -265,9 +282,9 @@ namespace LLP
          *
          *  Serializes class into a byte vector. Used to write packet to sockets.
          *
-         *  Handles both traditional data packets (HEADER < 128), Falcon
-         *  authentication packets (207-212), and reward binding packets (213-214)
-         *  which all require data payloads.
+         *  Handles both traditional data packets (HEADER < 128), mining round
+         *  response packets (204-205), Falcon authentication packets (207-212),
+         *  and reward binding packets (213-214) which all require data payloads.
          *
          *  DEBUG: This method logs detailed packet encoding information when
          *  config::nVerbose >= 5 to help diagnose packet encoding issues
@@ -298,6 +315,10 @@ namespace LLP
          *
          *  Serializes class into a byte vector with detailed debugging logs.
          *  Used for diagnosing packet encoding issues in Falcon handshake.
+         *
+         *  Handles both traditional data packets (HEADER < 128), mining round
+         *  response packets (204-205), Falcon authentication packets (207-212),
+         *  and reward binding packets (213-214) which all require data payloads.
          *
          *  @param[in] strContext Context string for log messages
          *
