@@ -1704,7 +1704,7 @@ namespace LLP
             }
 
             /* Handle GET_ROUND - requires authentication */
-            /* PR #134: Enhanced to return unified + channel heights (16 bytes total) */
+            /* FIXED SCHEMA: Returns unified height + channel-specific height + difficulty (12 bytes total) */
             if(PACKET.HEADER == GET_ROUND)
             {
                 // AUTOMATED RATE LIMIT CHECK
@@ -1730,8 +1730,23 @@ namespace LLP
                     return true;
                 }
 
+                /* Check that miner has set a valid channel for stateless mining
+                 * Note: Stateless mining only supports Prime (1) and Hash (2) channels.
+                 * Stake mining (channel 0) uses a different mechanism and does NOT use GET_ROUND.
+                 * Therefore, context.nChannel == 0 means "not set" or "invalid for stateless mining".
+                 */
+                if(context.nChannel == 0)
+                {
+                    debug::error(FUNCTION, "GET_ROUND: Miner has not set channel (use SET_CHANNEL)");
+                    debug::error(FUNCTION, "   Valid channels: 1=Prime, 2=Hash (Stake mining uses different mechanism)");
+                    Packet response(OLD_ROUND);
+                    response.LENGTH = 0;
+                    respond(response);
+                    return true;
+                }
+
                 /* ═════════════════════════════════════════════════════════════════════════ */
-                /* PR #134: CALCULATE CHANNEL-SPECIFIC HEIGHTS                              */
+                /* FIXED SCHEMA: GET_ROUND/NEW_ROUND with channel-specific height           */
                 /* ═════════════════════════════════════════════════════════════════════════ */
                 
                 /* Get current blockchain state */
@@ -1744,116 +1759,101 @@ namespace LLP
                     return true;  // Don't send response
                 }
                 
-                uint32_t nCurrentHeight = stateBest.nHeight;
-                debug::log(3, FUNCTION, "GET_ROUND: Unified height: ", nCurrentHeight);
+                uint32_t nUnifiedHeight = stateBest.nHeight;
+                debug::log(3, FUNCTION, "GET_ROUND: Unified height: ", nUnifiedHeight);
                 
-                /* Get channel heights with error checking */
-                uint32_t nPrimeChannelHeight = 0;
-                uint32_t nHashChannelHeight = 0;
-                uint32_t nStakeChannelHeight = 0;
-                
+                /* Get channel-specific height using GetLastState() */
                 TAO::Ledger::BlockState stateChannel = stateBest;
+                uint32_t nChannelHeight = 0;
                 
-                /* Prime (Channel 1) */
-                stateChannel = stateBest;
-                if(!TAO::Ledger::GetLastState(stateChannel, 1))
+                if(TAO::Ledger::GetLastState(stateChannel, context.nChannel))
                 {
-                    debug::warning(FUNCTION, "GET_ROUND: Could not get Prime channel state");
-                    // Continue with height 0 - channel may not exist yet
+                    nChannelHeight = stateChannel.nChannelHeight;
+                    debug::log(3, FUNCTION, "GET_ROUND: Channel ", context.nChannel, " height: ", nChannelHeight);
                 }
                 else
                 {
-                    nPrimeChannelHeight = stateChannel.nChannelHeight;
-                    debug::log(3, FUNCTION, "GET_ROUND: Prime height: ", nPrimeChannelHeight);
+                    debug::warning(FUNCTION, "GET_ROUND: Could not get channel ", context.nChannel, " state");
+                    /* Continue with height 0 - channel may not exist yet (first block) */
                 }
                 
-                /* Hash (Channel 2) */
-                stateChannel = stateBest;
-                if(!TAO::Ledger::GetLastState(stateChannel, 2))
-                {
-                    debug::warning(FUNCTION, "GET_ROUND: Could not get Hash channel state");
-                }
-                else
-                {
-                    nHashChannelHeight = stateChannel.nChannelHeight;
-                    debug::log(3, FUNCTION, "GET_ROUND: Hash height: ", nHashChannelHeight);
-                }
-                
-                /* Stake (Channel 0) */
-                stateChannel = stateBest;
-                if(!TAO::Ledger::GetLastState(stateChannel, 0))
-                {
-                    debug::warning(FUNCTION, "GET_ROUND: Could not get Stake channel state");
-                }
-                else
-                {
-                    nStakeChannelHeight = stateChannel.nChannelHeight;
-                    debug::log(3, FUNCTION, "GET_ROUND: Stake height: ", nStakeChannelHeight);
-                }
+                /* Calculate next difficulty for this channel
+                 * GetNextTargetRequired(state, channel, fDebug)
+                 * - fDebug=false: Suppress debug logging for production use
+                 */
+                uint32_t nDifficulty = TAO::Ledger::GetNextTargetRequired(stateBest, context.nChannel, false);
+                debug::log(3, FUNCTION, "GET_ROUND: Channel ", context.nChannel, " next difficulty: 0x", std::hex, nDifficulty, std::dec);
                 
                 /* ═════════════════════════════════════════════════════════════════════════ */
-                /* BUILD ENHANCED RESPONSE (16 bytes total)                                 */
+                /* BUILD FIXED RESPONSE (12 bytes total)                                    */
                 /* ═════════════════════════════════════════════════════════════════════════ */
                 
-                /* Response format (PR #134):
-                 *   [0-3]   uint32_t nUnifiedHeight      - Current blockchain height (all channels)
-                 *   [4-7]   uint32_t nPrimeChannelHeight - Last Prime channel block height
-                 *   [8-11]  uint32_t nHashChannelHeight  - Last Hash channel block height
-                 *   [12-15] uint32_t nStakeChannelHeight - Last Stake channel block height
+                /* Response format (FIXED SCHEMA):
+                 *   [0-3]   uint32_t nUnifiedHeight  - Current blockchain height (all channels)
+                 *   [4-7]   uint32_t nChannelHeight  - Last block height in miner's channel
+                 *   [8-11]  uint32_t nDifficulty     - Next target difficulty for miner's channel
                  * 
-                 * Backward compatible: Old miners read first 4 bytes, ignore rest
+                 * Total: 12 bytes
+                 * 
+                 * RATIONALE:
+                 * - Miner needs unified height for block template
+                 * - Miner needs channel height to validate Block::Accept() rule:
+                 *     if(statePrev.nChannelHeight + 1 != nChannelHeight) → REJECT
+                 * - Miner needs difficulty for block template nBits field
+                 * 
+                 * This eliminates FALSE OLD_ROUND rejections caused by missing channel height.
                  */
                 std::vector<uint8_t> vData;
-                vData.reserve(16);
+                vData.reserve(12);
                 
-                /* Convert heights to bytes */
-                std::vector<uint8_t> vUnified = convert::uint2bytes(nCurrentHeight);
-                std::vector<uint8_t> vPrime = convert::uint2bytes(nPrimeChannelHeight);
-                std::vector<uint8_t> vHash = convert::uint2bytes(nHashChannelHeight);
-                std::vector<uint8_t> vStake = convert::uint2bytes(nStakeChannelHeight);
+                /* Pack unified height (4 bytes, little-endian) */
+                vData.push_back((nUnifiedHeight >> 0) & 0xFF);
+                vData.push_back((nUnifiedHeight >> 8) & 0xFF);
+                vData.push_back((nUnifiedHeight >> 16) & 0xFF);
+                vData.push_back((nUnifiedHeight >> 24) & 0xFF);
                 
-                /* Assemble response */
-                vData.insert(vData.end(), vUnified.begin(), vUnified.end());
-                vData.insert(vData.end(), vPrime.begin(), vPrime.end());
-                vData.insert(vData.end(), vHash.begin(), vHash.end());
-                vData.insert(vData.end(), vStake.begin(), vStake.end());
+                /* Pack channel height (4 bytes, little-endian) */
+                vData.push_back((nChannelHeight >> 0) & 0xFF);
+                vData.push_back((nChannelHeight >> 8) & 0xFF);
+                vData.push_back((nChannelHeight >> 16) & 0xFF);
+                vData.push_back((nChannelHeight >> 24) & 0xFF);
                 
-                /* CRITICAL VALIDATION: Ensure exactly 16 bytes */
-                if(vData.size() != 16)
+                /* Pack difficulty (4 bytes, little-endian) */
+                vData.push_back((nDifficulty >> 0) & 0xFF);
+                vData.push_back((nDifficulty >> 8) & 0xFF);
+                vData.push_back((nDifficulty >> 16) & 0xFF);
+                vData.push_back((nDifficulty >> 24) & 0xFF);
+                
+                /* CRITICAL VALIDATION: Ensure exactly 12 bytes */
+                if(vData.size() != 12)
                 {
                     debug::error(FUNCTION, "GET_ROUND: Response size mismatch!");
-                    debug::error(FUNCTION, "   Expected: 16 bytes");
+                    debug::error(FUNCTION, "   Expected: 12 bytes");
                     debug::error(FUNCTION, "   Got: ", vData.size(), " bytes");
                     debug::error(FUNCTION, "   This is a CRITICAL BUG - miner will receive malformed packet");
                     return true;  // Don't send malformed response
                 }
                 
                 /* ═════════════════════════════════════════════════════════════════════════ */
-                /* ALWAYS SEND NEW_ROUND WITH CURRENT HEIGHTS                               */
+                /* SEND NEW_ROUND WITH CHANNEL-SPECIFIC HEIGHTS                             */
                 /* ═════════════════════════════════════════════════════════════════════════ */
                 
-                /* DESIGN: We ALWAYS send NEW_ROUND with 16 bytes containing current heights.
+                /* DESIGN: We send NEW_ROUND with 12 bytes containing:
+                 *   - Unified height (for block template nHeight)
+                 *   - Channel height (for block template nChannelHeight)
+                 *   - Difficulty (for block template nBits)
                  * 
-                 * RATIONALE:
-                 * - Comparing unified heights is WRONG for multi-channel mining
-                 * - A Prime miner doesn't care if Hash/Stake channels advanced
-                 * - Only the miner knows which channel it's mining and can compare correctly
-                 * - This eliminates false positives that cause rate limiting
+                 * This provides ALL information the miner needs to:
+                 * 1. Create a valid block template with correct heights
+                 * 2. Validate that channel height matches blockchain state
+                 * 3. Set correct difficulty in block header
                  * 
-                 * THE MINER will:
-                 * 1. Extract the channel height relevant to its mining mode
-                 * 2. Compare with its template's channel height
-                 * 3. Request new template only if channel height changed
-                 * 4. Back off polling if channel height unchanged
-                 * 
-                 * This makes the protocol:
-                 * - Stateless (node doesn't track miner's height)
-                 * - Correct (miner compares right heights)
-                 * - Robust (works for all channel types)
+                 * This eliminates FALSE OLD_ROUND rejections from Block::Accept():
+                 *   if(statePrev.nChannelHeight + 1 != nChannelHeight) → REJECT
                  */
                 
-                debug::log(3, FUNCTION, "✓ Sending NEW_ROUND (16 bytes): Unified=", nCurrentHeight,
-                           " Prime=", nPrimeChannelHeight, " Hash=", nHashChannelHeight, " Stake=", nStakeChannelHeight);
+                debug::log(3, FUNCTION, "✓ Sending NEW_ROUND (12 bytes): Unified=", nUnifiedHeight,
+                           " Channel=", nChannelHeight, " Difficulty=0x", std::hex, nDifficulty, std::dec);
                 
                 /* Send response */
                 Packet response(NEW_ROUND);
