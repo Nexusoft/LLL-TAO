@@ -232,9 +232,9 @@ namespace LLP
         /** Header
          *
          *  Determines if header is fully read.
-         *  For data packets (HEADER < 128, round response 204-205, Falcon auth 207-212,
-         *  or reward binding 213-214), requires LENGTH > 0.
-         *  For request packets (128-203, 206, 215-254), LENGTH must be 0.
+         *  For data packets (HEADER < 128, round response 204-205, channel ack 206,
+         *  Falcon auth 207-212, or reward binding 213-214), requires LENGTH > 0.
+         *  For request packets (128-203, 215-254), LENGTH must be 0.
          *
          **/
         bool Header() const
