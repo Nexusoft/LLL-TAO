@@ -1707,19 +1707,16 @@ namespace LLP
             /* FIXED SCHEMA: Returns unified height + channel-specific height + difficulty (12 bytes total) */
             if(PACKET.HEADER == GET_ROUND)
             {
-                // AUTOMATED RATE LIMIT CHECK - Log violation but DON'T send empty response
-                bool fRateLimited = !CheckRateLimit(GET_ROUND);
-                
-                if (fRateLimited) {
-                    // Violation already recorded by CheckRateLimit()
-                    // Log warning but CONTINUE to send valid response
-                    // Let AutoCooldownManager handle actual blocking if needed
-                    debug::log(1, FUNCTION, "GET_ROUND rate limited for ", GetAddress().ToStringIP(), 
-                               " - still sending valid response to prevent miner stall");
+                // AUTOMATED RATE LIMIT CHECK
+                if (!CheckRateLimit(GET_ROUND)) {
+                    // Request rejected - violation already recorded
+                    // Send OLD_ROUND response to indicate rate limited
+                    debug::log(1, FUNCTION, "GET_ROUND rate limited for ", GetAddress().ToStringIP());
+                    Packet response(OLD_ROUND);
+                    response.LENGTH = 0;
+                    respond(response);
+                    return true;  // Handled (rejected)
                 }
-                
-                // ALWAYS proceed to send 12-byte response (even if rate limited)
-                // The rate limit infrastructure handles DDoS protection separately
                 
                 /* Check authentication */
                 if(!context.fAuthenticated)
