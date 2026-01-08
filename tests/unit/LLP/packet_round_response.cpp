@@ -56,11 +56,12 @@ TEST_CASE("Packet::GetBytes() serialization for NEW_ROUND", "[packet][round_resp
         packet.HEADER = 204;  // NEW_ROUND
         packet.LENGTH = 12;
         
-        /* Create 12-byte payload: unified height (4) + channel height (4) + difficulty (4) */
+        /* Create 12-byte payload: unified height (4) + channel height (4) + difficulty (4)
+         * Note: These are example test values, not actual protocol constants */
         std::vector<uint8_t> vData = {
-            0xDC, 0xAE, 0x9E, 0x00,  // nUnifiedHeight (little-endian)
-            0x08, 0x28, 0x23, 0x00,  // nChannelHeight (little-endian)
-            0xFF, 0xFF, 0x00, 0x1D   // nDifficulty (little-endian)
+            0xDC, 0xAE, 0x9E, 0x00,  // nUnifiedHeight (little-endian example)
+            0x08, 0x28, 0x23, 0x00,  // nChannelHeight (little-endian example)
+            0xFF, 0xFF, 0x00, 0x1D   // nDifficulty (little-endian example)
         };
         packet.DATA = vData;
         
@@ -73,8 +74,11 @@ TEST_CASE("Packet::GetBytes() serialization for NEW_ROUND", "[packet][round_resp
         /* Verify header byte */
         REQUIRE(bytes[0] == 204);
         
-        /* Verify LENGTH field (4 bytes, big-endian) */
-        uint32_t serialized_length = (bytes[1] << 24) | (bytes[2] << 16) | (bytes[3] << 8) | bytes[4];
+        /* Verify LENGTH field (4 bytes, big-endian network byte order) */
+        const uint32_t serialized_length = (static_cast<uint32_t>(bytes[1]) << 24) | 
+                                          (static_cast<uint32_t>(bytes[2]) << 16) | 
+                                          (static_cast<uint32_t>(bytes[3]) << 8) | 
+                                          static_cast<uint32_t>(bytes[4]);
         REQUIRE(serialized_length == 12);
         
         /* Verify DATA field matches original */
@@ -110,8 +114,11 @@ TEST_CASE("Packet::GetBytes() serialization for OLD_ROUND", "[packet][round_resp
         /* Verify header byte */
         REQUIRE(bytes[0] == 205);
         
-        /* Verify LENGTH field (4 bytes, big-endian) */
-        uint32_t serialized_length = (bytes[1] << 24) | (bytes[2] << 16) | (bytes[3] << 8) | bytes[4];
+        /* Verify LENGTH field (4 bytes, big-endian network byte order) */
+        const uint32_t serialized_length = (static_cast<uint32_t>(bytes[1]) << 24) | 
+                                          (static_cast<uint32_t>(bytes[2]) << 16) | 
+                                          (static_cast<uint32_t>(bytes[3]) << 8) | 
+                                          static_cast<uint32_t>(bytes[4]);
         REQUIRE(serialized_length == 8);
         
         /* Verify DATA field matches original */
