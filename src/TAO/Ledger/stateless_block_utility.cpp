@@ -315,7 +315,7 @@ namespace TAO::Ledger
         auto start = std::chrono::high_resolution_clock::now();
         
         BlockState stateUnified = ChainState::tStateBest.load();
-        BlockState statePrev = stateUnified;
+        BlockState statePrev;  // Will be populated by GetLastState()
         
         if (!GetLastState(statePrev, nChannel))
         {
@@ -338,6 +338,7 @@ namespace TAO::Ledger
         ssBlock << *pBlock;
         std::vector<uint8_t> vSerialized(ssBlock.begin(), ssBlock.end());
         
+        /* Calculate difficulty for cache metadata (diagnostic purposes only) */
         uint32_t nDifficulty = GetNextTargetRequired(statePrev, nChannel, false);
         
         auto end = std::chrono::high_resolution_clock::now();
@@ -349,7 +350,7 @@ namespace TAO::Ledger
         cache.nChannelHeight = statePrev.nChannelHeight + 1;
         cache.nChannel = nChannel;
         cache.hashPrevBlock = pBlock->hashPrevBlock;
-        cache.nDifficulty = nDifficulty;
+        cache.nDifficulty = nDifficulty;  // Stored for diagnostics/logging
         cache.nCreationTime = runtime::unifiedtimestamp();
         cache.nCreationDurationUs = duration.count();
         cache.fValid = true;
@@ -460,6 +461,7 @@ namespace TAO::Ledger
         if (!ENABLE_TEMPLATE_CACHE_STATISTICS)
             return "Statistics disabled";
         
+        /* Always lock Prime first, then Hash to prevent deadlock */
         std::lock_guard<std::mutex> lockPrime(g_primeCacheMutex);
         std::lock_guard<std::mutex> lockHash(g_hashCacheMutex);
         
