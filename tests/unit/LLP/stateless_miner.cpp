@@ -1173,3 +1173,272 @@ TEST_CASE("DisposableFalcon Wrapper Basic Operations", "[disposable_falcon]")
         REQUIRE(unwrapResult.submission.nNonce == 9999);
     }
 }
+
+
+/* Push Notification Tests */
+TEST_CASE("Push Notification Protocol Tests", "[stateless_miner][push_notifications]")
+{
+    /* Packet type definitions for push notifications
+     * Note: These are redefined here to avoid including miner.h which would create
+     * a circular dependency. Values must match the constants in src/LLP/types/miner.h */
+    const Packet::message_t MINER_READY = 216;              // Must match Miner::MINER_READY
+    const Packet::message_t PRIME_BLOCK_AVAILABLE = 217;    // Must match Miner::PRIME_BLOCK_AVAILABLE
+    const Packet::message_t HASH_BLOCK_AVAILABLE = 218;     // Must match Miner::HASH_BLOCK_AVAILABLE
+    
+    SECTION("MiningContext push notification state initialization")
+    {
+        MiningContext ctx;
+        
+        /* Verify default initialization */
+        REQUIRE(ctx.fSubscribedToNotifications == false);
+        REQUIRE(ctx.nSubscribedChannel == 0);
+        REQUIRE(ctx.nLastNotificationTime == 0);
+        REQUIRE(ctx.nNotificationsSent == 0);
+    }
+    
+    SECTION("WithSubscription creates subscribed context")
+    {
+        MiningContext ctx;
+        
+        /* Subscribe to Prime channel */
+        MiningContext ctx2 = ctx.WithSubscription(1);
+        
+        /* Verify original unchanged */
+        REQUIRE(ctx.fSubscribedToNotifications == false);
+        REQUIRE(ctx.nSubscribedChannel == 0);
+        
+        /* Verify new context subscribed */
+        REQUIRE(ctx2.fSubscribedToNotifications == true);
+        REQUIRE(ctx2.nSubscribedChannel == 1);
+        REQUIRE(ctx2.nLastNotificationTime == 0);
+        REQUIRE(ctx2.nNotificationsSent == 0);
+    }
+    
+    SECTION("WithSubscription to Hash channel")
+    {
+        MiningContext ctx;
+        
+        /* Subscribe to Hash channel */
+        MiningContext ctx2 = ctx.WithSubscription(2);
+        
+        /* Verify subscribed to Hash */
+        REQUIRE(ctx2.fSubscribedToNotifications == true);
+        REQUIRE(ctx2.nSubscribedChannel == 2);
+    }
+    
+    SECTION("WithNotificationSent updates statistics")
+    {
+        MiningContext ctx = MiningContext().WithSubscription(1);
+        
+        /* Send first notification */
+        uint64_t timestamp1 = 1000000;
+        MiningContext ctx2 = ctx.WithNotificationSent(timestamp1);
+        
+        /* Verify statistics updated */
+        REQUIRE(ctx.nNotificationsSent == 0);  // Original unchanged
+        REQUIRE(ctx2.nLastNotificationTime == timestamp1);
+        REQUIRE(ctx2.nNotificationsSent == 1);
+        
+        /* Send second notification */
+        uint64_t timestamp2 = 2000000;
+        MiningContext ctx3 = ctx2.WithNotificationSent(timestamp2);
+        
+        /* Verify cumulative count */
+        REQUIRE(ctx3.nLastNotificationTime == timestamp2);
+        REQUIRE(ctx3.nNotificationsSent == 2);
+    }
+    
+    SECTION("Chained subscription and notification")
+    {
+        MiningContext ctx = MiningContext()
+            .WithChannel(1)
+            .WithAuth(true)
+            .WithSubscription(1)
+            .WithNotificationSent(12345);
+        
+        /* Verify all fields */
+        REQUIRE(ctx.nChannel == 1);
+        REQUIRE(ctx.fAuthenticated == true);
+        REQUIRE(ctx.fSubscribedToNotifications == true);
+        REQUIRE(ctx.nSubscribedChannel == 1);
+        REQUIRE(ctx.nLastNotificationTime == 12345);
+        REQUIRE(ctx.nNotificationsSent == 1);
+    }
+    
+    SECTION("Subscription preserves other context fields")
+    {
+        MiningContext ctx = MiningContext()
+            .WithChannel(2)
+            .WithHeight(123456)
+            .WithAuth(true)
+            .WithSession(789);
+        
+        /* Subscribe while preserving other fields */
+        MiningContext ctx2 = ctx.WithSubscription(2);
+        
+        /* Verify subscription added */
+        REQUIRE(ctx2.fSubscribedToNotifications == true);
+        REQUIRE(ctx2.nSubscribedChannel == 2);
+        
+        /* Verify other fields preserved */
+        REQUIRE(ctx2.nChannel == 2);
+        REQUIRE(ctx2.nHeight == 123456);
+        REQUIRE(ctx2.fAuthenticated == true);
+        REQUIRE(ctx2.nSessionId == 789);
+    }
+    
+    SECTION("Multiple notifications increment counter correctly")
+    {
+        MiningContext ctx = MiningContext().WithSubscription(1);
+        
+        /* Send 5 notifications */
+        for (int i = 0; i < 5; i++)
+        {
+            ctx = ctx.WithNotificationSent(1000000 + i * 1000);
+        }
+        
+        /* Verify final count */
+        REQUIRE(ctx.nNotificationsSent == 5);
+        REQUIRE(ctx.nLastNotificationTime == 1004000);
+    }
+    
+    SECTION("Subscription to channel 0 (Stake) - should be rejected at protocol level")
+    {
+        /* Note: Channel 0 subscription is allowed at context level,
+         * but will be rejected in MINER_READY handler at protocol level.
+         * This tests that context can represent the state, even if invalid. */
+        MiningContext ctx = MiningContext().WithSubscription(0);
+        
+        /* Context allows any value (protocol validates) */
+        REQUIRE(ctx.fSubscribedToNotifications == true);
+        REQUIRE(ctx.nSubscribedChannel == 0);
+    }
+}
+
+
+TEST_CASE("Push Notification Packet Format Tests", "[stateless_miner][push_notifications]")
+{
+    const Packet::message_t PRIME_BLOCK_AVAILABLE = 217;
+    const Packet::message_t HASH_BLOCK_AVAILABLE = 218;
+    
+    SECTION("PRIME_BLOCK_AVAILABLE packet structure")
+    {
+        /* Create notification packet */
+        Packet notification(PRIME_BLOCK_AVAILABLE);
+        
+        /* Example blockchain state */
+        uint32_t nUnifiedHeight = 6541700;  // 0x0063D184
+        uint32_t nPrimeHeight = 2302709;    // 0x002322F5
+        uint32_t nDifficulty = 0x0422E6FC;
+        
+        /* Build 12-byte payload (big-endian) */
+        // Unified height [0-3]
+        notification.DATA.push_back((nUnifiedHeight >> 24) & 0xFF);
+        notification.DATA.push_back((nUnifiedHeight >> 16) & 0xFF);
+        notification.DATA.push_back((nUnifiedHeight >> 8) & 0xFF);
+        notification.DATA.push_back((nUnifiedHeight >> 0) & 0xFF);
+        
+        // Prime height [4-7]
+        notification.DATA.push_back((nPrimeHeight >> 24) & 0xFF);
+        notification.DATA.push_back((nPrimeHeight >> 16) & 0xFF);
+        notification.DATA.push_back((nPrimeHeight >> 8) & 0xFF);
+        notification.DATA.push_back((nPrimeHeight >> 0) & 0xFF);
+        
+        // Difficulty [8-11]
+        notification.DATA.push_back((nDifficulty >> 24) & 0xFF);
+        notification.DATA.push_back((nDifficulty >> 16) & 0xFF);
+        notification.DATA.push_back((nDifficulty >> 8) & 0xFF);
+        notification.DATA.push_back((nDifficulty >> 0) & 0xFF);
+        
+        notification.LENGTH = 12;
+        
+        /* Verify packet structure */
+        REQUIRE(notification.HEADER == PRIME_BLOCK_AVAILABLE);
+        REQUIRE(notification.LENGTH == 12);
+        REQUIRE(notification.DATA.size() == 12);
+        
+        /* Verify big-endian encoding */
+        REQUIRE(notification.DATA[0] == 0x00);  // Unified high byte
+        REQUIRE(notification.DATA[1] == 0x63);
+        REQUIRE(notification.DATA[2] == 0xD1);
+        REQUIRE(notification.DATA[3] == 0x84);  // Unified low byte
+        
+        REQUIRE(notification.DATA[4] == 0x00);  // Prime high byte
+        REQUIRE(notification.DATA[5] == 0x23);
+        REQUIRE(notification.DATA[6] == 0x22);
+        REQUIRE(notification.DATA[7] == 0xF5);  // Prime low byte
+        
+        REQUIRE(notification.DATA[8] == 0x04);  // Difficulty high byte
+        REQUIRE(notification.DATA[9] == 0x22);
+        REQUIRE(notification.DATA[10] == 0xE6);
+        REQUIRE(notification.DATA[11] == 0xFC); // Difficulty low byte
+    }
+    
+    SECTION("HASH_BLOCK_AVAILABLE packet structure")
+    {
+        /* Create notification packet */
+        Packet notification(HASH_BLOCK_AVAILABLE);
+        
+        /* Example blockchain state */
+        uint32_t nUnifiedHeight = 6541701;  // 0x0063D185
+        uint32_t nHashHeight = 4165000;     // 0x003F83F8
+        uint32_t nDifficulty = 0x03ABCDEF;
+        
+        /* Build 12-byte payload (big-endian) */
+        // Unified height [0-3]
+        notification.DATA.push_back((nUnifiedHeight >> 24) & 0xFF);
+        notification.DATA.push_back((nUnifiedHeight >> 16) & 0xFF);
+        notification.DATA.push_back((nUnifiedHeight >> 8) & 0xFF);
+        notification.DATA.push_back((nUnifiedHeight >> 0) & 0xFF);
+        
+        // Hash height [4-7]
+        notification.DATA.push_back((nHashHeight >> 24) & 0xFF);
+        notification.DATA.push_back((nHashHeight >> 16) & 0xFF);
+        notification.DATA.push_back((nHashHeight >> 8) & 0xFF);
+        notification.DATA.push_back((nHashHeight >> 0) & 0xFF);
+        
+        // Difficulty [8-11]
+        notification.DATA.push_back((nDifficulty >> 24) & 0xFF);
+        notification.DATA.push_back((nDifficulty >> 16) & 0xFF);
+        notification.DATA.push_back((nDifficulty >> 8) & 0xFF);
+        notification.DATA.push_back((nDifficulty >> 0) & 0xFF);
+        
+        notification.LENGTH = 12;
+        
+        /* Verify packet structure */
+        REQUIRE(notification.HEADER == HASH_BLOCK_AVAILABLE);
+        REQUIRE(notification.LENGTH == 12);
+        REQUIRE(notification.DATA.size() == 12);
+        
+        /* Verify big-endian encoding */
+        REQUIRE(notification.DATA[0] == 0x00);  // Unified high byte
+        REQUIRE(notification.DATA[1] == 0x63);
+        REQUIRE(notification.DATA[2] == 0xD1);
+        REQUIRE(notification.DATA[3] == 0x85);  // Unified low byte
+        
+        REQUIRE(notification.DATA[4] == 0x00);  // Hash high byte
+        REQUIRE(notification.DATA[5] == 0x3F);
+        REQUIRE(notification.DATA[6] == 0x83);
+        REQUIRE(notification.DATA[7] == 0xF8);  // Hash low byte
+        
+        REQUIRE(notification.DATA[8] == 0x03);  // Difficulty high byte
+        REQUIRE(notification.DATA[9] == 0xAB);
+        REQUIRE(notification.DATA[10] == 0xCD);
+        REQUIRE(notification.DATA[11] == 0xEF); // Difficulty low byte
+    }
+    
+    SECTION("MINER_READY packet structure (header-only)")
+    {
+        const Packet::message_t MINER_READY = 216;
+        
+        /* Create MINER_READY packet */
+        Packet request(MINER_READY);
+        request.LENGTH = 0;
+        
+        /* Verify header-only packet */
+        REQUIRE(request.HEADER == MINER_READY);
+        REQUIRE(request.LENGTH == 0);
+        REQUIRE(request.DATA.empty());
+    }
+}
+

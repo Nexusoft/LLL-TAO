@@ -1132,6 +1132,23 @@ namespace TAO
                     Dispatch::Instance().PushRelay(ChainState::hashBestChain.load());
                 #endif
 
+                /* PUSH NOTIFICATIONS: Notify miners of channel-specific block */
+                uint32_t nBlockChannel = GetChannel();  // 0=Stake, 1=Prime, 2=Hash
+                
+                if (nBlockChannel == 1 || nBlockChannel == 2)
+                {
+                    /* Prime or Hash block - notify subscribed miners */
+                    if (LLP::STATELESS_MINER_SERVER)
+                    {
+                        LLP::STATELESS_MINER_SERVER->NotifyChannelMiners(nBlockChannel);
+                    }
+                }
+                else if (nBlockChannel == 0)
+                {
+                    /* Stake block - no stateless mining, no notification */
+                    debug::log(2, FUNCTION, "Stake block (no mining notification)");
+                }
+
                 /* Verify unified height consistency using existing ChannelStateManager infrastructure */
                 uint32_t nVerifyInterval = config::GetArg("-verifyunified", 10);
                 if(nVerifyInterval > 0)

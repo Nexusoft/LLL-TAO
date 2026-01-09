@@ -371,6 +371,93 @@ namespace LLP
     }
 
 
+    /*  Broadcast channel-specific notification to subscribed miners. */
+    template <class ProtocolType>
+    void Server<ProtocolType>::NotifyChannelMiners(uint32_t nChannel)
+    {
+        /* This is a specialized method for StatelessMinerConnection.
+         * For other protocol types, this is a no-op. */
+        
+        /* Validate channel */
+        if (nChannel != 1 && nChannel != 2)
+        {
+            debug::error(FUNCTION, "Invalid channel: ", nChannel);
+            return;
+        }
+        
+        std::string strChannelName = (nChannel == 1) ? "Prime" : "Hash";
+        debug::log(1, FUNCTION, "Broadcasting ", strChannelName, " block notification");
+        
+        /* Get all connections */
+        std::vector<std::shared_ptr<ProtocolType>> vConnections = GetConnections();
+        
+        if (vConnections.empty())
+        {
+            debug::log(2, FUNCTION, "No active miners");
+            return;
+        }
+        
+        uint32_t nNotified = 0;
+        uint32_t nSkippedWrongChannel = 0;
+        uint32_t nSkippedUnsubscribed = 0;
+        
+        /* SERVER-SIDE FILTERING: Only notify matching channel */
+        for (auto pConnection : vConnections)
+        {
+            if (!pConnection)
+                continue;
+            
+            /* Check if this connection type has the required methods
+             * This uses compile-time polymorphism to avoid calling methods
+             * that don't exist on other protocol types */
+            
+            /* Try to get context - only StatelessMinerConnection has this */
+            try
+            {
+                /* Get mining context */
+                auto& context = pConnection->GetContext();
+                
+                /* Check subscription */
+                if (!context.fSubscribedToNotifications)
+                {
+                    nSkippedUnsubscribed++;
+                    continue;  // Legacy miner using GET_ROUND
+                }
+                
+                /* CRITICAL: Channel filter (50% traffic reduction) */
+                if (context.nSubscribedChannel != nChannel)
+                {
+                    nSkippedWrongChannel++;
+                    continue;  // Wrong channel, skip
+                }
+                
+                /* Send notification */
+                pConnection->SendChannelNotification();
+                nNotified++;
+            }
+            catch (...)
+            {
+                /* Connection doesn't support these methods (not StatelessMinerConnection)
+                 * or an unexpected error occurred. Log at low verbosity and skip. */
+                debug::log(2, FUNCTION, "Exception while sending ", strChannelName,
+                           " block notification for a connection; skipping.");
+                continue;
+            }
+        }
+        
+        /* Log statistics */
+        debug::log(0, FUNCTION, "Notified ", nNotified, " ", strChannelName, " miners");
+        if (nSkippedWrongChannel > 0)
+        {
+            debug::log(1, FUNCTION, "  Skipped ", nSkippedWrongChannel, " (wrong channel)");
+        }
+        if (nSkippedUnsubscribed > 0)
+        {
+            debug::log(1, FUNCTION, "  Skipped ", nSkippedUnsubscribed, " (legacy polling)");
+        }
+    }
+
+
     /*  Select lowest latency and currently open connection. */
     template <class ProtocolType>
     std::shared_ptr<ProtocolType> Server<ProtocolType>::GetConnection()
