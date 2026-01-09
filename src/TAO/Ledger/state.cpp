@@ -47,6 +47,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/include/retarget.h>
+#include <TAO/Ledger/include/stateless_block_utility.h>
 
 #include <TAO/Ledger/types/genesis.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -1137,6 +1138,9 @@ namespace TAO
                 
                 if (nBlockChannel == 1 || nBlockChannel == 2)
                 {
+                    /* Create cache BEFORE push notifications for instant template serving */
+                    TAO::Ledger::CreateTemplateCache(nBlockChannel);
+                    
                     /* Prime or Hash block - notify subscribed miners */
                     if (LLP::STATELESS_MINER_SERVER)
                     {

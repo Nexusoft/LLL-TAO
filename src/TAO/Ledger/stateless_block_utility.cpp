@@ -26,8 +26,12 @@ ________________________________________________________________________________
 
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
+#include <Util/templates/datastream.h>
 
 #include <sstream>
+#include <mutex>
+#include <atomic>
+#include <chrono>
 
 /* Global TAO namespace. */
 namespace TAO::Ledger
@@ -220,6 +224,266 @@ namespace TAO::Ledger
             debug::error(FUNCTION, "Block creation failed: ", e.what());
             return nullptr;
         }
+    }
+
+
+    /* ==================== TEMPLATE CACHE IMPLEMENTATION ==================== */
+
+    using namespace TemplateConstants;
+    
+    /** Internal cache structure **/
+    struct CachedBlockTemplate
+    {
+        std::vector<uint8_t> vSerializedBlock;
+        uint32_t nUnifiedHeight;
+        uint32_t nChannelHeight;
+        uint32_t nChannel;
+        uint1024_t hashPrevBlock;
+        uint32_t nDifficulty;
+        uint64_t nCreationTime;
+        uint64_t nCreationDurationUs;
+        bool fValid;
+        mutable std::atomic<uint64_t> nServeCount;
+        
+        CachedBlockTemplate()
+            : nUnifiedHeight(0), nChannelHeight(0), nChannel(0)
+            , hashPrevBlock(0), nDifficulty(0)
+            , nCreationTime(0), nCreationDurationUs(0)
+            , fValid(false), nServeCount(0)
+        {
+            vSerializedBlock.reserve(TRITIUM_BLOCK_TEMPLATE_SIZE);
+        }
+        
+        bool IsStale() const
+        {
+            if (!fValid) return true;
+            uint64_t nAge = runtime::unifiedtimestamp() - nCreationTime;
+            return (nAge > TEMPLATE_CACHE_MAX_AGE_SECONDS);
+        }
+        
+        std::string ToString() const
+        {
+            std::stringstream ss;
+            ss << "CachedTemplate(";
+            ss << "channel=" << (nChannel == Channels::PRIME ? "Prime" : "Hash");
+            ss << ", unified=" << nUnifiedHeight;
+            ss << ", height=" << nChannelHeight;
+            ss << ", age=" << (runtime::unifiedtimestamp() - nCreationTime) << "s";
+            ss << ", served=" << nServeCount.load();
+            ss << ", valid=" << (fValid ? "yes" : "no");
+            ss << ")";
+            return ss.str();
+        }
+    };
+    
+    /** Module-level cache storage **/
+    namespace {
+        CachedBlockTemplate g_primeCache;
+        CachedBlockTemplate g_hashCache;
+        std::mutex g_primeCacheMutex;
+        std::mutex g_hashCacheMutex;
+        
+        std::atomic<uint64_t> g_nTotalCacheCreations{0};
+        std::atomic<uint64_t> g_nTotalCacheServes{0};
+        std::atomic<uint64_t> g_nTotalCacheHits{0};
+        std::atomic<uint64_t> g_nTotalCacheMisses{0};
+    }
+    
+    /** CreateTemplateCache **/
+    bool CreateTemplateCache(uint32_t nChannel)
+    {
+        if (nChannel != Channels::PRIME && nChannel != Channels::HASH)
+        {
+            debug::error(FUNCTION, "Invalid channel: ", nChannel);
+            return false;
+        }
+        
+        std::string channel_name = (nChannel == Channels::PRIME) ? "Prime" : "Hash";
+        InvalidateTemplateCache(nChannel);
+        
+        std::mutex& cacheMutex = (nChannel == Channels::PRIME) ? g_primeCacheMutex : g_hashCacheMutex;
+        CachedBlockTemplate& cache = (nChannel == Channels::PRIME) ? g_primeCache : g_hashCache;
+        
+        std::lock_guard<std::mutex> lock(cacheMutex);
+        
+        auto start = std::chrono::high_resolution_clock::now();
+        
+        BlockState stateBest = ChainState::tStateBest.load();
+        BlockState stateChannel = stateBest;
+        
+        if (!GetLastState(stateChannel, nChannel))
+        {
+            debug::error(FUNCTION, "Failed to get state for channel ", nChannel);
+            return false;
+        }
+        
+        /* Use existing CreateBlockForStatelessMining() */
+        uint256_t dummyRewardAddress;
+        TritiumBlock* pBlock = CreateBlockForStatelessMining(nChannel, 0, dummyRewardAddress);
+        
+        if (!pBlock)
+        {
+            debug::error(FUNCTION, "Failed to create block for channel ", nChannel);
+            return false;
+        }
+        
+        /* Serialize template */
+        DataStream ssBlock(SER_NETWORK, LLP::PROTOCOL_VERSION);
+        ssBlock << *pBlock;
+        std::vector<uint8_t> vSerialized(ssBlock.begin(), ssBlock.end());
+        
+        uint32_t nDifficulty = GetNextTargetRequired(stateBest, nChannel, false);
+        
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        
+        /* Populate cache */
+        cache.vSerializedBlock = std::move(vSerialized);
+        cache.nUnifiedHeight = stateBest.nHeight;
+        cache.nChannelHeight = stateChannel.nChannelHeight + 1;
+        cache.nChannel = nChannel;
+        cache.hashPrevBlock = pBlock->hashPrevBlock;
+        cache.nDifficulty = nDifficulty;
+        cache.nCreationTime = runtime::unifiedtimestamp();
+        cache.nCreationDurationUs = duration.count();
+        cache.fValid = true;
+        cache.nServeCount.store(0);
+        
+        delete pBlock;
+        
+        if (ENABLE_TEMPLATE_CACHE_STATISTICS)
+            g_nTotalCacheCreations++;
+        
+        debug::log(CACHE_CREATION_LOG_LEVEL, FUNCTION, "✓ ", channel_name, " template cached:");
+        debug::log(CACHE_CREATION_LOG_LEVEL, FUNCTION, "  Height:    ", cache.nChannelHeight);
+        debug::log(CACHE_CREATION_LOG_LEVEL, FUNCTION, "  Size:      ", cache.vSerializedBlock.size(), " bytes");
+        debug::log(CACHE_CREATION_LOG_LEVEL, FUNCTION, "  Created:   ", duration.count(), " μs");
+        
+        if (duration.count() / 1000 > TEMPLATE_CREATION_WARN_THRESHOLD_MS)
+            debug::warning(FUNCTION, "⚠️  Template creation slow: ", duration.count() / 1000, " ms");
+        
+        return true;
+    }
+    
+    /** GetCachedTemplate **/
+    bool GetCachedTemplate(uint32_t nChannel, TritiumBlock& block)
+    {
+        std::vector<uint8_t> vTemplate;
+        if (!GetCachedTemplateSerialized(nChannel, vTemplate))
+            return false;
+        
+        try {
+            DataStream ssBlock(vTemplate, SER_NETWORK, LLP::PROTOCOL_VERSION);
+            ssBlock >> block;
+            return true;
+        }
+        catch (const std::exception& e) {
+            debug::error(FUNCTION, "Failed to deserialize: ", e.what());
+            return false;
+        }
+    }
+    
+    /** GetCachedTemplateSerialized **/
+    bool GetCachedTemplateSerialized(uint32_t nChannel, std::vector<uint8_t>& vTemplate)
+    {
+        if (nChannel != Channels::PRIME && nChannel != Channels::HASH)
+            return false;
+        
+        std::mutex& cacheMutex = (nChannel == Channels::PRIME) ? g_primeCacheMutex : g_hashCacheMutex;
+        const CachedBlockTemplate& cache = (nChannel == Channels::PRIME) ? g_primeCache : g_hashCache;
+        
+        std::lock_guard<std::mutex> lock(cacheMutex);
+        
+        if (!cache.fValid || cache.IsStale())
+        {
+            if (ENABLE_TEMPLATE_CACHE_STATISTICS)
+                g_nTotalCacheMisses++;
+            return false;
+        }
+        
+        vTemplate = cache.vSerializedBlock;
+        
+        if (ENABLE_TEMPLATE_CACHE_STATISTICS)
+        {
+            g_nTotalCacheHits++;
+            g_nTotalCacheServes++;
+            cache.nServeCount++;
+        }
+        
+        debug::log(CACHE_HIT_LOG_LEVEL, FUNCTION, "✓ Cache hit: ", 
+                  (nChannel == Channels::PRIME ? "Prime" : "Hash"));
+        
+        return true;
+    }
+    
+    /** InvalidateTemplateCache **/
+    void InvalidateTemplateCache(uint32_t nChannel)
+    {
+        if (nChannel != Channels::PRIME && nChannel != Channels::HASH)
+            return;
+        
+        std::mutex& cacheMutex = (nChannel == Channels::PRIME) ? g_primeCacheMutex : g_hashCacheMutex;
+        CachedBlockTemplate& cache = (nChannel == Channels::PRIME) ? g_primeCache : g_hashCache;
+        
+        std::lock_guard<std::mutex> lock(cacheMutex);
+        
+        if (cache.fValid && ENABLE_TEMPLATE_CACHE_STATISTICS)
+        {
+            debug::log(CACHE_STATISTICS_LOG_LEVEL, FUNCTION, "📊 Cache stats: served ", cache.nServeCount.load());
+        }
+        
+        cache.fValid = false;
+    }
+    
+    /** IsTemplateCacheFresh **/
+    bool IsTemplateCacheFresh(uint32_t nChannel)
+    {
+        if (nChannel != Channels::PRIME && nChannel != Channels::HASH)
+            return false;
+        
+        std::mutex& cacheMutex = (nChannel == Channels::PRIME) ? g_primeCacheMutex : g_hashCacheMutex;
+        const CachedBlockTemplate& cache = (nChannel == Channels::PRIME) ? g_primeCache : g_hashCache;
+        
+        std::lock_guard<std::mutex> lock(cacheMutex);
+        return (cache.fValid && !cache.IsStale());
+    }
+    
+    /** GetTemplateCacheStatistics **/
+    std::string GetTemplateCacheStatistics()
+    {
+        if (!ENABLE_TEMPLATE_CACHE_STATISTICS)
+            return "Statistics disabled";
+        
+        std::lock_guard<std::mutex> lockPrime(g_primeCacheMutex);
+        std::lock_guard<std::mutex> lockHash(g_hashCacheMutex);
+        
+        std::stringstream ss;
+        ss << "\n══════════════════════════════════════════════════\n";
+        ss << "  TEMPLATE CACHE STATISTICS\n";
+        ss << "══════════════════════════════════════════════════\n";
+        ss << "Caches Created:   " << g_nTotalCacheCreations.load() << "\n";
+        ss << "Templates Served: " << g_nTotalCacheServes.load() << "\n";
+        ss << "Cache Hits:       " << g_nTotalCacheHits.load() << "\n";
+        ss << "Cache Misses:     " << g_nTotalCacheMisses.load() << "\n";
+        ss << "Hit Rate:         " << (GetTemplateCacheEfficiency() * 100.0) << "%\n\n";
+        ss << "PRIME:  " << g_primeCache.ToString() << "\n";
+        ss << "HASH:   " << g_hashCache.ToString() << "\n";
+        ss << "══════════════════════════════════════════════════\n";
+        
+        return ss.str();
+    }
+    
+    /** GetTemplateCacheEfficiency **/
+    double GetTemplateCacheEfficiency()
+    {
+        if (!ENABLE_TEMPLATE_CACHE_STATISTICS)
+            return 0.0;
+        
+        uint64_t nHits = g_nTotalCacheHits.load();
+        uint64_t nMisses = g_nTotalCacheMisses.load();
+        uint64_t nTotal = nHits + nMisses;
+        
+        return (nTotal > 0) ? (static_cast<double>(nHits) / nTotal) : 0.0;
     }
 
 }

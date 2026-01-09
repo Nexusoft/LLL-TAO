@@ -34,6 +34,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/include/genesis_block.h>
+#include <TAO/Ledger/include/stateless_block_utility.h>
 
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/client.h>
@@ -358,6 +359,15 @@ namespace TAO::Ledger
         /* Only allow prime, hash, and private channels. */
         if(nChannel < 1 || nChannel > 3)
             return debug::error(FUNCTION, "Invalid channel: ", nChannel);
+
+        /* TRY TEMPLATE CACHE FIRST (fast path for stateless mining) */
+        if (pCoinbaseRecipients == nullptr && nExtraNonce == 0 && (nChannel == 1 || nChannel == 2))
+        {
+            if (TAO::Ledger::GetCachedTemplate(nChannel, rBlockRet))
+            {
+                return true;  // Cache hit - 30× faster!
+            }
+        }
 
         /* Set the block to null. */
         rBlockRet.SetNull();
