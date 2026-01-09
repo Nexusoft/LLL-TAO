@@ -3032,27 +3032,25 @@ namespace LLP
     /* SendChannelNotification - Send push notification to subscribed miner */
     void StatelessMinerConnection::SendChannelNotification()
     {
-        /* Thread-safe context access */
-        MUTEX.lock();
-        
-        /* Validate subscription state */
-        if (!context.fSubscribedToNotifications)
+        /* Thread-safe context access - use RAII lock guard */
+        uint32_t nChannel;
         {
-            MUTEX.unlock();
-            return;
-        }
-        
-        /* Validate channel (1=Prime, 2=Hash only) */
-        if (context.nSubscribedChannel != 1 && context.nSubscribedChannel != 2)
-        {
-            MUTEX.unlock();
-            debug::error(FUNCTION, "Invalid subscribed channel: ", context.nSubscribedChannel);
-            return;
-        }
-        
-        /* Release lock before heavy operations */
-        uint32_t nChannel = context.nSubscribedChannel;
-        MUTEX.unlock();
+            LOCK(MUTEX);
+            
+            /* Validate subscription state */
+            if (!context.fSubscribedToNotifications)
+                return;
+            
+            /* Validate channel (1=Prime, 2=Hash only) */
+            if (context.nSubscribedChannel != 1 && context.nSubscribedChannel != 2)
+            {
+                debug::error(FUNCTION, "Invalid subscribed channel: ", context.nSubscribedChannel);
+                return;
+            }
+            
+            /* Copy channel for use outside lock */
+            nChannel = context.nSubscribedChannel;
+        }  // MUTEX automatically unlocked here
         
         /* Get blockchain state */
         TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::stateBest.load();
@@ -3102,9 +3100,10 @@ namespace LLP
         respond(notification);
         
         /* Update statistics (thread-safe) */
-        MUTEX.lock();
-        context = context.WithNotificationSent(runtime::unifiedtimestamp());
-        MUTEX.unlock();
+        {
+            LOCK(MUTEX);
+            context = context.WithNotificationSent(runtime::unifiedtimestamp());
+        }  // MUTEX automatically unlocked here
         
         debug::log(2, FUNCTION, "Sent ", (nChannel == 1 ? "Prime" : "Hash"), 
                    " notification to ", GetAddress().ToStringIP(),
