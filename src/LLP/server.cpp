@@ -385,8 +385,8 @@ namespace LLP
             return;
         }
         
-        std::string channel_name = (nChannel == 1) ? "Prime" : "Hash";
-        debug::log(1, FUNCTION, "Broadcasting ", channel_name, " block notification");
+        std::string strChannelName = (nChannel == 1) ? "Prime" : "Hash";
+        debug::log(1, FUNCTION, "Broadcasting ", strChannelName, " block notification");
         
         /* Get all connections */
         std::vector<std::shared_ptr<ProtocolType>> vConnections = GetConnections();
@@ -437,14 +437,16 @@ namespace LLP
             }
             catch (...)
             {
-                /* Connection doesn't support these methods (not StatelessMinerConnection) */
-                /* This is expected and normal for other protocol types */
+                /* Connection doesn't support these methods (not StatelessMinerConnection)
+                 * or an unexpected error occurred. Log at low verbosity and skip. */
+                debug::log(2, FUNCTION, "Exception while sending ", strChannelName,
+                           " block notification for a connection; skipping.");
                 continue;
             }
         }
         
         /* Log statistics */
-        debug::log(0, FUNCTION, "Notified ", nNotified, " ", channel_name, " miners");
+        debug::log(0, FUNCTION, "Notified ", nNotified, " ", strChannelName, " miners");
         if (nSkippedWrongChannel > 0)
         {
             debug::log(1, FUNCTION, "  Skipped ", nSkippedWrongChannel, " (wrong channel)");

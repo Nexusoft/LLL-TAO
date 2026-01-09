@@ -1178,10 +1178,12 @@ TEST_CASE("DisposableFalcon Wrapper Basic Operations", "[disposable_falcon]")
 /* Push Notification Tests */
 TEST_CASE("Push Notification Protocol Tests", "[stateless_miner][push_notifications]")
 {
-    /* Packet type definitions for push notifications */
-    const Packet::message_t MINER_READY = 216;
-    const Packet::message_t PRIME_BLOCK_AVAILABLE = 217;
-    const Packet::message_t HASH_BLOCK_AVAILABLE = 218;
+    /* Packet type definitions for push notifications
+     * Note: These are redefined here to avoid including miner.h which would create
+     * a circular dependency. Values must match the constants in src/LLP/types/miner.h */
+    const Packet::message_t MINER_READY = 216;              // Must match Miner::MINER_READY
+    const Packet::message_t PRIME_BLOCK_AVAILABLE = 217;    // Must match Miner::PRIME_BLOCK_AVAILABLE
+    const Packet::message_t HASH_BLOCK_AVAILABLE = 218;     // Must match Miner::HASH_BLOCK_AVAILABLE
     
     SECTION("MiningContext push notification state initialization")
     {

@@ -177,11 +177,12 @@ namespace LLP
         /** GetContext
          *
          *  Get the current mining context (for server-level operations like notifications).
+         *  Returns a copy under mutex protection to prevent data races.
          *
-         *  @return Reference to the current mining context
+         *  @return Copy of the current mining context
          *
          **/
-        MiningContext& GetContext();
+        MiningContext GetContext();
 
         /** SendChannelNotification
          *

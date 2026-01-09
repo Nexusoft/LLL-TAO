@@ -499,6 +499,11 @@ namespace LLP
             const uint8_t MINER_AUTH_RESPONSE = 209;
             const uint8_t MINER_AUTH_RESULT = 210;
             
+            /* Push notification opcodes (defined in src/LLP/types/miner.h) */
+            const uint8_t MINER_READY = 216;
+            const uint8_t PRIME_BLOCK_AVAILABLE = 217;
+            const uint8_t HASH_BLOCK_AVAILABLE = 218;
+            
             /* Block rejection reason codes (PR #122: Falcon Protocol Integration) */
             const uint8_t REJECT_PHYSICAL_SIGNATURE_FAILED = 0x10;  // Physical Falcon signature verification failed
             const uint8_t REJECT_KEY_BONDING_VIOLATION = 0x11;      // Key bonding violation (version mismatch)
@@ -1876,7 +1881,6 @@ namespace LLP
             }
 
             /* Handle MINER_READY - Subscribe to push notifications */
-            const uint8_t MINER_READY = 216;
             if(PACKET.HEADER == MINER_READY)
             {
                 debug::log(0, "📥 === MINER_READY REQUEST ===");
@@ -3012,9 +3016,15 @@ namespace LLP
     }
 
 
-    /* GetContext - Accessor for mining context (used by server for notifications) */
-    MiningContext& StatelessMinerConnection::GetContext()
+    /* GetContext - Accessor for mining context (used by server for notifications)
+     *
+     * Returns a copy of the mining context under the connection mutex to avoid
+     * data races with writers (e.g. in ProcessPacket). Callers get a snapshot
+     * of the state and cannot mutate the internal context directly.
+     */
+    MiningContext StatelessMinerConnection::GetContext()
     {
+        std::lock_guard<std::mutex> lock(MUTEX);
         return context;
     }
 
@@ -3058,11 +3068,14 @@ namespace LLP
         /* Get difficulty */
         uint32_t nDifficulty = TAO::Ledger::GetNextTargetRequired(stateBest, nChannel);
         
-        /* Determine opcode based on channel */
-        uint8_t nOpcode = (nChannel == 1) ? 217 : 218;  // PRIME_BLOCK_AVAILABLE : HASH_BLOCK_AVAILABLE
+        /* Determine opcode based on channel (use constants from miner.h) */
+        const uint8_t PRIME_BLOCK_AVAILABLE = 217;
+        const uint8_t HASH_BLOCK_AVAILABLE = 218;
+        uint8_t nOpcode = (nChannel == 1) ? PRIME_BLOCK_AVAILABLE : HASH_BLOCK_AVAILABLE;
         
         /* Build 12-byte packet (big-endian) */
         Packet notification(nOpcode);
+        notification.DATA.reserve(12);  // Pre-allocate to avoid reallocations
         
         // Unified height [0-3]
         notification.DATA.push_back((stateBest.nHeight >> 24) & 0xFF);
