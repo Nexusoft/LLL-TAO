@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2025
+            (c) Copyright The Nexus Developers 2014 - 2026
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -235,8 +235,8 @@ namespace TAO::Ledger
     struct CachedBlockTemplate
     {
         std::vector<uint8_t> vSerializedBlock;
-        uint32_t nUnifiedHeight;
-        uint32_t nChannelHeight;
+        uint32_t nUnifiedHeight;   // For cache invalidation on blockchain reorg
+        uint32_t nChannelHeight;   // For logging and diagnostics
         uint32_t nChannel;
         uint1024_t hashPrevBlock;
         uint32_t nDifficulty;
@@ -461,7 +461,12 @@ namespace TAO::Ledger
         if (!ENABLE_TEMPLATE_CACHE_STATISTICS)
             return "Statistics disabled";
         
-        /* Always lock Prime first, then Hash to prevent deadlock */
+        /* Lock ordering: Always Prime first, then Hash to prevent deadlock.
+         * While current implementation only uses single locks elsewhere,
+         * this establishes the pattern for future functions that may need both locks.
+         * Note: This function blocks cache operations briefly during statistics gathering.
+         * For production systems with high query rates, consider using atomic snapshots
+         * or try_lock patterns to avoid blocking active mining operations. */
         std::lock_guard<std::mutex> lockPrime(g_primeCacheMutex);
         std::lock_guard<std::mutex> lockHash(g_hashCacheMutex);
         
