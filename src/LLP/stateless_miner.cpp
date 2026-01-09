@@ -81,6 +81,10 @@ namespace LLP
     , fFalconVersionDetected(false)
     , vchPhysicalSignature()
     , fPhysicalFalconPresent(false)
+    , fSubscribedToNotifications(false)
+    , nSubscribedChannel(0)
+    , nLastNotificationTime(0)
+    , nNotificationsSent(0)
     {
     }
 
@@ -119,6 +123,10 @@ namespace LLP
     , fFalconVersionDetected(false)
     , vchPhysicalSignature()
     , fPhysicalFalconPresent(false)
+    , fSubscribedToNotifications(false)
+    , nSubscribedChannel(0)
+    , nLastNotificationTime(0)
+    , nNotificationsSent(0)
     {
     }
 
@@ -243,6 +251,24 @@ namespace LLP
         MiningContext c = *this;
         c.vchPhysicalSignature = vSig_;
         c.fPhysicalFalconPresent = !vSig_.empty();
+        return c;
+    }
+
+    MiningContext MiningContext::WithSubscription(uint32_t nChannel_) const
+    {
+        MiningContext c = *this;
+        c.fSubscribedToNotifications = true;
+        c.nSubscribedChannel = nChannel_;
+        c.nLastNotificationTime = 0;
+        c.nNotificationsSent = 0;
+        return c;
+    }
+
+    MiningContext MiningContext::WithNotificationSent(uint64_t nTime_) const
+    {
+        MiningContext c = *this;
+        c.nLastNotificationTime = nTime_;
+        c.nNotificationsSent = c.nNotificationsSent + 1;
         return c;
     }
 

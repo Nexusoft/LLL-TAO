@@ -437,6 +437,12 @@ namespace LLP
         std::vector<uint8_t> vchPhysicalSignature; // Optional Physical Falcon signature
         bool fPhysicalFalconPresent;            // Whether Physical Falcon signature is present
 
+        /* Push notification subscription state (PR #XXX: Push Notifications) */
+        bool fSubscribedToNotifications;    // MINER_READY received
+        uint32_t nSubscribedChannel;        // Which channel subscribed to (1=Prime, 2=Hash)
+        uint64_t nLastNotificationTime;     // Last notification sent (unix timestamp)
+        uint64_t nNotificationsSent;        // Total notifications sent to this session
+
         /** Default Constructor **/
         MiningContext();
 
@@ -583,6 +589,26 @@ namespace LLP
          *
          **/
         MiningContext WithPhysicalSignature(const std::vector<uint8_t>& vSig_) const;
+
+        /** WithSubscription
+         *
+         *  Returns a new context with push notification subscription enabled.
+         *  Called when MINER_READY is received to subscribe miner to channel-specific notifications.
+         *
+         *  @param[in] nChannel_ The channel to subscribe to (1=Prime, 2=Hash)
+         *
+         **/
+        MiningContext WithSubscription(uint32_t nChannel_) const;
+
+        /** WithNotificationSent
+         *
+         *  Returns a new context with updated notification statistics.
+         *  Called after sending a push notification to update counters.
+         *
+         *  @param[in] nTime_ Timestamp when notification was sent
+         *
+         **/
+        MiningContext WithNotificationSent(uint64_t nTime_) const;
 
         /** GetPayoutAddress
          *

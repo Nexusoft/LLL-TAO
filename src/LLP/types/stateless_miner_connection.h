@@ -174,6 +174,25 @@ namespace LLP
          **/
         bool ProcessPacket() final;
 
+        /** GetContext
+         *
+         *  Get the current mining context (for server-level operations like notifications).
+         *
+         *  @return Reference to the current mining context
+         *
+         **/
+        MiningContext& GetContext();
+
+        /** SendChannelNotification
+         *
+         *  Send a channel-specific push notification to this miner.
+         *  Called from server broadcast when blockchain advances.
+         *
+         *  Updates context with notification statistics after sending.
+         *
+         **/
+        void SendChannelNotification();
+
     private:
         /** respond
          *

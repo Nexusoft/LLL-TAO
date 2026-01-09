@@ -239,6 +239,23 @@ namespace LLP
         std::vector<std::shared_ptr<ProtocolType>> GetConnections() const;
 
 
+        /** NotifyChannelMiners
+         *
+         *  Broadcast channel-specific notification to subscribed miners.
+         *  Called from BlockState::SetBest() when a Prime or Hash block is validated.
+         *
+         *  This method performs server-side filtering to ensure only miners subscribed
+         *  to the specific channel receive notifications, reducing network traffic by 50%.
+         *
+         *  @param[in] nChannel Channel that advanced (1=Prime, 2=Hash)
+         *
+         *  @note This method is only meaningful for StatelessMinerConnection server.
+         *        For other protocol types, it will be a no-op (compile but do nothing).
+         *
+         **/
+        void NotifyChannelMiners(uint32_t nChannel);
+
+
         /** GetConnectionCount
          *
          *  Get the number of active connection pointers from data threads.

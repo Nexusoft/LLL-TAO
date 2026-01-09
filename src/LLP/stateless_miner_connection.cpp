@@ -1875,6 +1875,49 @@ namespace LLP
                 return true;
             }
 
+            /* Handle MINER_READY - Subscribe to push notifications */
+            const uint8_t MINER_READY = 216;
+            if(PACKET.HEADER == MINER_READY)
+            {
+                debug::log(0, "📥 === MINER_READY REQUEST ===");
+                debug::log(0, "   From: ", GetAddress().ToStringIP());
+                debug::log(0, "   Authenticated: ", (context.fAuthenticated ? "YES" : "NO"));
+                debug::log(0, "   Channel: ", context.nChannel);
+                
+                /* Validate authentication */
+                if (!context.fAuthenticated)
+                {
+                    debug::error(FUNCTION, "MINER_READY: authentication required");
+                    debug::log(0, "📥 === MINER_READY: REJECTED (AUTH) ===");
+                    return false;
+                }
+                
+                /* CRITICAL: Only Prime (1) and Hash (2) support stateless mining */
+                if (context.nChannel != 1 && context.nChannel != 2)
+                {
+                    debug::error(FUNCTION, "MINER_READY: invalid channel ", context.nChannel);
+                    debug::error(FUNCTION, "  Valid: 1 (Prime), 2 (Hash)");
+                    debug::error(FUNCTION, "  Stake (0) uses Proof-of-Stake, not mined");
+                    debug::log(0, "📥 === MINER_READY: REJECTED (INVALID CHANNEL) ===");
+                    return false;
+                }
+                
+                /* Subscribe to notifications */
+                context = context.WithSubscription(context.nChannel);
+                
+                debug::log(0, FUNCTION, "✓ Miner subscribed to ", 
+                          (context.nChannel == 1 ? "Prime" : "Hash"), " notifications");
+                
+                /* Send immediate notification with current state */
+                SendChannelNotification();
+                
+                /* Update manager */
+                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
+                
+                debug::log(0, "📥 === MINER_READY: SUCCESS ===");
+                return true;
+            }
+
             /* For all other packets, route through StatelessMiner processor */
             ProcessResult result = StatelessMiner::ProcessPacket(context, PACKET);
 
@@ -2966,6 +3009,95 @@ namespace LLP
         }
         
         debug::log(3, FUNCTION, "Rate limit counters reset for ", GetAddress().ToStringIP());
+    }
+
+
+    /* GetContext - Accessor for mining context (used by server for notifications) */
+    MiningContext& StatelessMinerConnection::GetContext()
+    {
+        return context;
+    }
+
+
+    /* SendChannelNotification - Send push notification to subscribed miner */
+    void StatelessMinerConnection::SendChannelNotification()
+    {
+        /* Thread-safe context access */
+        MUTEX.lock();
+        
+        /* Validate subscription state */
+        if (!context.fSubscribedToNotifications)
+        {
+            MUTEX.unlock();
+            return;
+        }
+        
+        /* Validate channel (1=Prime, 2=Hash only) */
+        if (context.nSubscribedChannel != 1 && context.nSubscribedChannel != 2)
+        {
+            MUTEX.unlock();
+            debug::error(FUNCTION, "Invalid subscribed channel: ", context.nSubscribedChannel);
+            return;
+        }
+        
+        /* Release lock before heavy operations */
+        uint32_t nChannel = context.nSubscribedChannel;
+        MUTEX.unlock();
+        
+        /* Get blockchain state */
+        TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::stateBest.load();
+        
+        /* Get channel-specific state */
+        TAO::Ledger::BlockState stateChannel = stateBest;
+        if (!TAO::Ledger::GetLastState(stateChannel, nChannel))
+        {
+            debug::error(FUNCTION, "Failed to get channel state for channel ", nChannel);
+            return;
+        }
+        
+        /* Get difficulty */
+        uint32_t nDifficulty = TAO::Ledger::GetNextTargetRequired(stateBest, nChannel);
+        
+        /* Determine opcode based on channel */
+        uint8_t nOpcode = (nChannel == 1) ? 217 : 218;  // PRIME_BLOCK_AVAILABLE : HASH_BLOCK_AVAILABLE
+        
+        /* Build 12-byte packet (big-endian) */
+        Packet notification(nOpcode);
+        
+        // Unified height [0-3]
+        notification.DATA.push_back((stateBest.nHeight >> 24) & 0xFF);
+        notification.DATA.push_back((stateBest.nHeight >> 16) & 0xFF);
+        notification.DATA.push_back((stateBest.nHeight >> 8) & 0xFF);
+        notification.DATA.push_back((stateBest.nHeight >> 0) & 0xFF);
+        
+        // Channel height [4-7]
+        uint32_t nChannelHeight = stateChannel.nChannelHeight;
+        notification.DATA.push_back((nChannelHeight >> 24) & 0xFF);
+        notification.DATA.push_back((nChannelHeight >> 16) & 0xFF);
+        notification.DATA.push_back((nChannelHeight >> 8) & 0xFF);
+        notification.DATA.push_back((nChannelHeight >> 0) & 0xFF);
+        
+        // Difficulty [8-11]
+        notification.DATA.push_back((nDifficulty >> 24) & 0xFF);
+        notification.DATA.push_back((nDifficulty >> 16) & 0xFF);
+        notification.DATA.push_back((nDifficulty >> 8) & 0xFF);
+        notification.DATA.push_back((nDifficulty >> 0) & 0xFF);
+        
+        notification.LENGTH = 12;
+        
+        /* Send to miner */
+        respond(notification);
+        
+        /* Update statistics (thread-safe) */
+        MUTEX.lock();
+        context = context.WithNotificationSent(runtime::unifiedtimestamp());
+        MUTEX.unlock();
+        
+        debug::log(2, FUNCTION, "Sent ", (nChannel == 1 ? "Prime" : "Hash"), 
+                   " notification to ", GetAddress().ToStringIP(),
+                   " (unified=", stateBest.nHeight, 
+                   ", channel=", nChannelHeight,
+                   ", diff=", std::hex, nDifficulty, std::dec, ")");
     }
 
 } // namespace LLP
