@@ -299,19 +299,25 @@ namespace TAO::Ledger
         }
         
         std::string channel_name = (nChannel == Channels::PRIME) ? "Prime" : "Hash";
-        InvalidateTemplateCache(nChannel);
         
         std::mutex& cacheMutex = (nChannel == Channels::PRIME) ? g_primeCacheMutex : g_hashCacheMutex;
         CachedBlockTemplate& cache = (nChannel == Channels::PRIME) ? g_primeCache : g_hashCache;
         
         std::lock_guard<std::mutex> lock(cacheMutex);
         
+        /* Invalidate old cache within same lock scope */
+        if (cache.fValid && ENABLE_TEMPLATE_CACHE_STATISTICS)
+        {
+            debug::log(CACHE_STATISTICS_LOG_LEVEL, FUNCTION, "📊 Cache stats: served ", cache.nServeCount.load());
+        }
+        cache.fValid = false;
+        
         auto start = std::chrono::high_resolution_clock::now();
         
-        BlockState stateBest = ChainState::tStateBest.load();
-        BlockState stateChannel = stateBest;
+        BlockState stateUnified = ChainState::tStateBest.load();
+        BlockState statePrev = stateUnified;
         
-        if (!GetLastState(stateChannel, nChannel))
+        if (!GetLastState(statePrev, nChannel))
         {
             debug::error(FUNCTION, "Failed to get state for channel ", nChannel);
             return false;
@@ -332,15 +338,15 @@ namespace TAO::Ledger
         ssBlock << *pBlock;
         std::vector<uint8_t> vSerialized(ssBlock.begin(), ssBlock.end());
         
-        uint32_t nDifficulty = GetNextTargetRequired(stateBest, nChannel, false);
+        uint32_t nDifficulty = GetNextTargetRequired(statePrev, nChannel, false);
         
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
         
         /* Populate cache */
         cache.vSerializedBlock = std::move(vSerialized);
-        cache.nUnifiedHeight = stateBest.nHeight;
-        cache.nChannelHeight = stateChannel.nChannelHeight + 1;
+        cache.nUnifiedHeight = stateUnified.nHeight;
+        cache.nChannelHeight = statePrev.nChannelHeight + 1;
         cache.nChannel = nChannel;
         cache.hashPrevBlock = pBlock->hashPrevBlock;
         cache.nDifficulty = nDifficulty;
