@@ -220,9 +220,6 @@ namespace LLP
             MINER_SET_REWARD     = 213,  // 0xd5 - miner -> node: Encrypted reward address (32 bytes)
             MINER_REWARD_RESULT  = 214,  // 0xd6 - node -> miner: Encrypted validation result
 
-            /** PUSH NOTIFICATION SUBSCRIPTION **/
-            MINER_READY          = 216,  // 0xd8 - miner -> node: Subscribe to channel-specific push notifications
-
             /** PRIME_BLOCK_AVAILABLE (217 / 0xd9) - Prime Block Notification
              *
              *  Node → Miner: New Prime block has been validated (channel 1 only).
