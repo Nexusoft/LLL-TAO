@@ -412,42 +412,26 @@ namespace LLP
                 if (!pConnection)
                     continue;
                 
-                /* Check if this connection type has the required methods
-                 * This uses compile-time polymorphism to avoid calling methods
-                 * that don't exist on other protocol types */
+                /* Get mining context */
+                auto context = pConnection->GetContext();
                 
-                /* Try to get context - only StatelessMinerConnection has this */
-                try
+                /* Check subscription */
+                if (!context.fSubscribedToNotifications)
                 {
-                    /* Get mining context */
-                    auto context = pConnection->GetContext();
-                    
-                    /* Check subscription */
-                    if (!context.fSubscribedToNotifications)
-                    {
-                        nSkippedUnsubscribed++;
-                        continue;  // Legacy miner using GET_ROUND
-                    }
-                    
-                    /* CRITICAL: Channel filter (50% traffic reduction) */
-                    if (context.nSubscribedChannel != nChannel)
-                    {
-                        nSkippedWrongChannel++;
-                        continue;  // Wrong channel, skip
-                    }
-                    
-                    /* Send notification */
-                    pConnection->SendChannelNotification();
-                    nNotified++;
+                    nSkippedUnsubscribed++;
+                    continue;  // Legacy miner using GET_ROUND
                 }
-                catch (...)
+                
+                /* CRITICAL: Channel filter (50% traffic reduction) */
+                if (context.nSubscribedChannel != nChannel)
                 {
-                    /* Connection doesn't support these methods (not StatelessMinerConnection)
-                     * or an unexpected error occurred. Log at low verbosity and skip. */
-                    debug::log(2, FUNCTION, "Exception while sending ", strChannelName,
-                               " block notification for a connection; skipping.");
-                    continue;
+                    nSkippedWrongChannel++;
+                    continue;  // Wrong channel, skip
                 }
+                
+                /* Send notification */
+                pConnection->SendChannelNotification();
+                nNotified++;
             }
             
             /* Log statistics */
