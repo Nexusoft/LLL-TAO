@@ -3053,7 +3053,7 @@ namespace LLP
         }  // MUTEX automatically unlocked here
         
         /* Get blockchain state */
-        TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::stateBest.load();
+        TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
         
         /* Get channel-specific state */
         TAO::Ledger::BlockState stateChannel = stateBest;

@@ -17,6 +17,8 @@ ________________________________________________________________________________
 #include <LLP/templates/static.h>
 #include <LLP/include/network.h>
 
+#include <type_traits>
+
 #include <LLP/types/tritium.h>
 #include <LLP/types/time.h>
 #include <LLP/types/apinode.h>
@@ -378,44 +380,40 @@ namespace LLP
         /* This is a specialized method for StatelessMinerConnection.
          * For other protocol types, this is a no-op. */
         
-        /* Validate channel */
-        if (nChannel != 1 && nChannel != 2)
+        /* Only process if ProtocolType is StatelessMinerConnection */
+        if constexpr (std::is_same<ProtocolType, StatelessMinerConnection>::value)
         {
-            debug::error(FUNCTION, "Invalid channel: ", nChannel);
-            return;
-        }
-        
-        std::string strChannelName = (nChannel == 1) ? "Prime" : "Hash";
-        debug::log(1, FUNCTION, "Broadcasting ", strChannelName, " block notification");
-        
-        /* Get all connections */
-        std::vector<std::shared_ptr<ProtocolType>> vConnections = GetConnections();
-        
-        if (vConnections.empty())
-        {
-            debug::log(2, FUNCTION, "No active miners");
-            return;
-        }
-        
-        uint32_t nNotified = 0;
-        uint32_t nSkippedWrongChannel = 0;
-        uint32_t nSkippedUnsubscribed = 0;
-        
-        /* SERVER-SIDE FILTERING: Only notify matching channel */
-        for (auto pConnection : vConnections)
-        {
-            if (!pConnection)
-                continue;
-            
-            /* Check if this connection type has the required methods
-             * This uses compile-time polymorphism to avoid calling methods
-             * that don't exist on other protocol types */
-            
-            /* Try to get context - only StatelessMinerConnection has this */
-            try
+            /* Validate channel */
+            if (nChannel != 1 && nChannel != 2)
             {
+                debug::error(FUNCTION, "Invalid channel: ", nChannel);
+                return;
+            }
+            
+            std::string strChannelName = (nChannel == 1) ? "Prime" : "Hash";
+            debug::log(1, FUNCTION, "Broadcasting ", strChannelName, " block notification");
+            
+            /* Get all connections */
+            std::vector<std::shared_ptr<ProtocolType>> vConnections = GetConnections();
+            
+            if (vConnections.empty())
+            {
+                debug::log(2, FUNCTION, "No active miners");
+                return;
+            }
+            
+            uint32_t nNotified = 0;
+            uint32_t nSkippedWrongChannel = 0;
+            uint32_t nSkippedUnsubscribed = 0;
+            
+            /* SERVER-SIDE FILTERING: Only notify matching channel */
+            for (auto pConnection : vConnections)
+            {
+                if (!pConnection)
+                    continue;
+                
                 /* Get mining context */
-                auto& context = pConnection->GetContext();
+                auto context = pConnection->GetContext();
                 
                 /* Check subscription */
                 if (!context.fSubscribedToNotifications)
@@ -435,26 +433,19 @@ namespace LLP
                 pConnection->SendChannelNotification();
                 nNotified++;
             }
-            catch (...)
+            
+            /* Log statistics */
+            debug::log(0, FUNCTION, "Notified ", nNotified, " ", strChannelName, " miners");
+            if (nSkippedWrongChannel > 0)
             {
-                /* Connection doesn't support these methods (not StatelessMinerConnection)
-                 * or an unexpected error occurred. Log at low verbosity and skip. */
-                debug::log(2, FUNCTION, "Exception while sending ", strChannelName,
-                           " block notification for a connection; skipping.");
-                continue;
+                debug::log(1, FUNCTION, "  Skipped ", nSkippedWrongChannel, " (wrong channel)");
+            }
+            if (nSkippedUnsubscribed > 0)
+            {
+                debug::log(1, FUNCTION, "  Skipped ", nSkippedUnsubscribed, " (legacy polling)");
             }
         }
-        
-        /* Log statistics */
-        debug::log(0, FUNCTION, "Notified ", nNotified, " ", strChannelName, " miners");
-        if (nSkippedWrongChannel > 0)
-        {
-            debug::log(1, FUNCTION, "  Skipped ", nSkippedWrongChannel, " (wrong channel)");
-        }
-        if (nSkippedUnsubscribed > 0)
-        {
-            debug::log(1, FUNCTION, "  Skipped ", nSkippedUnsubscribed, " (legacy polling)");
-        }
+        /* For other protocol types, this is a no-op */
     }
 
 
