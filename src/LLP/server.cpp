@@ -415,7 +415,7 @@ namespace LLP
             try
             {
                 /* Get mining context */
-                auto& context = pConnection->GetContext();
+                auto context = pConnection->GetContext();
                 
                 /* Check subscription */
                 if (!context.fSubscribedToNotifications)
