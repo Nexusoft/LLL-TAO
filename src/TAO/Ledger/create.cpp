@@ -398,6 +398,15 @@ namespace TAO::Ledger
         {
             /* Set the block to cached block. */
             rBlockRet = tBlockCached;
+            
+            /* ✅ FIX: Ensure nChannel is set correctly from parameter (defense in depth)
+             * While cached block should already have correct nChannel from when it was stored,
+             * explicitly setting it here ensures correctness even if cache had issues. */
+            rBlockRet.nChannel = nChannel;
+            
+            /* Diagnostic logging for template validation */
+            debug::log(2, FUNCTION, "Using cached block template for channel ", nChannel);
+            debug::log(2, FUNCTION, "  nChannel verified: ", rBlockRet.nChannel);
 
             /* Add new transactions. */
             AddTransactions(rBlockRet);
@@ -467,6 +476,12 @@ namespace TAO::Ledger
 
             /* Populate the block metadata */
             AddBlockData(tStateBest, nChannel, rBlockRet);
+            
+            /* Diagnostic logging for template validation */
+            debug::log(2, FUNCTION, "Created new block template for channel ", nChannel);
+            debug::log(2, FUNCTION, "  nChannel verified: ", rBlockRet.nChannel);
+            debug::log(2, FUNCTION, "  nHeight: ", rBlockRet.nHeight);
+            debug::log(2, FUNCTION, "  hashPrevBlock: ", rBlockRet.hashPrevBlock.SubString());
 
             /* Store the cached block. */
             tBlockCache[nChannel].store(rBlockRet);
@@ -474,6 +489,20 @@ namespace TAO::Ledger
 
         /* Update the time for the newly created block. */
         rBlockRet.UpdateTime();
+        
+        /* ✅ FINAL VERIFICATION: Ensure nChannel is correct before returning
+         * This catches any unexpected issues in the CreateBlock() flow */
+        if(rBlockRet.nChannel != nChannel)
+        {
+            debug::error(FUNCTION, "❌ CRITICAL: nChannel mismatch detected before return!");
+            debug::error(FUNCTION, "   Expected nChannel: ", nChannel);
+            debug::error(FUNCTION, "   Actual nChannel: ", rBlockRet.nChannel);
+            debug::error(FUNCTION, "   This indicates a bug in CreateBlock() - forcing correction");
+            rBlockRet.nChannel = nChannel;  // Force correct value
+        }
+        
+        debug::log(2, FUNCTION, "✓ CreateBlock() returning: nChannel=", rBlockRet.nChannel, 
+                   " nHeight=", rBlockRet.nHeight);
 
         return true;
     }
