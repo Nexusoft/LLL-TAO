@@ -324,7 +324,7 @@ namespace TAO::Ledger
         }
         
         /* Use existing CreateBlockForStatelessMining() */
-        uint256_t dummyRewardAddress;
+        uint256_t dummyRewardAddress(0);  // Explicitly zero-initialize to avoid undefined behavior
         TritiumBlock* pBlock = CreateBlockForStatelessMining(nChannel, 0, dummyRewardAddress);
         
         if (!pBlock)
