@@ -44,6 +44,8 @@ ________________________________________________________________________________
 #include <sys/resource.h>
 #endif
 
+#include <Util/include/initialize.h>
+
 
 /** Startup
  *
@@ -267,6 +269,11 @@ int main(int argc, char** argv)
     }
 
 
+    /* Initialize the underlying network resources such as sockets, etc */
+    if(!LLP::NetworkInitialize())
+        return debug::error(FUNCTION, "NetworkInitialize: Failed initializing network resources.");
+
+
     /* Check for failures or shutdown. */
     bool fFailed = config::fShutdown.load();
     if(!fFailed)
@@ -283,23 +290,30 @@ int main(int argc, char** argv)
         TAO::Ledger::ChainState::Initialize();
 
 
+        /* Initialize our API server so we can monitor initialization messages. */
+        TAO::API::Initialize();
+
+
         /* Run our LLD indexing operations. */
+        Initialize::Update("Indexing Databases...");
         LLD::Indexing();
 
 
         /* Initialize Legacy Environment. */
+        Initialize::Update("Initializing Legacy...");
         if(!Legacy::Initialize())
         {
             config::fShutdown.store(true);
             fFailed = true;
         }
 
-
         /* Initialize the Lower Level Protocol. */
+        Initialize::Update("Initializing Protocols...");
         LLP::Initialize();
 
 
         /* Startup performance metric. */
+        Initialize::Update("Running");
         debug::log(0, FUNCTION, "Started up in ", timer.ElapsedMilliseconds(), "ms");
 
 

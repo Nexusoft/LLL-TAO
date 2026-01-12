@@ -20,7 +20,7 @@ ________________________________________________________________________________
 template<uint8_t WORD_MAX>
 inline void assign(uint32_t *l, uint32_t *r)
 {
-    //#pragma unroll
+    #pragma unroll
     for(uint8_t i = 0; i < WORD_MAX; ++i)
         l[i] = r[i];
 }
@@ -29,7 +29,7 @@ inline void assign(uint32_t *l, uint32_t *r)
 template<uint8_t WORD_MAX>
 inline void assign_zero(uint32_t *l)
 {
-    //#pragma unroll
+    #pragma unroll
     for(uint8_t i = 0; i < WORD_MAX; ++i)
         l[i] = 0;
 }
@@ -68,7 +68,7 @@ inline uint8_t sub_n(uint32_t *z, uint32_t *x, uint32_t *y)
     uint32_t temp;
     uint8_t c = 0;
 
-    //#pragma unroll
+    #pragma unroll
     for(uint8_t i = 0; i < WORD_MAX; ++i)
     {
         temp = x[i] - y[i] - c;
@@ -86,7 +86,7 @@ inline void sub_ui(uint32_t *z, uint32_t *x, const uint32_t &ui)
     uint8_t c = temp > x[0];
     z[0] = temp;
 
-    //#pragma unroll
+    #pragma unroll
     for(uint8_t i = 1; i < WORD_MAX; ++i)
     {
         temp = x[i] - c;
@@ -107,7 +107,7 @@ inline void add_ui(uint32_t *z, uint32_t *x, const uint64_t &ui)
     c = temp < x[1];
     z[1] = temp;
 
-    //#pragma unroll
+    #pragma unroll
     for(uint8_t i = 2; i < WORD_MAX; ++i)
     {
         temp = x[i] + c;
@@ -123,7 +123,7 @@ inline uint32_t addmul_1(uint32_t *z, uint32_t *x, const uint32_t y)
     uint64_t prod;
     uint32_t c = 0;
 
-    //#pragma unroll
+    #pragma unroll
     for(uint8_t i = 0; i < WORD_MAX; ++i)
     {
         prod = static_cast<uint64_t>(x[i]) * static_cast<uint64_t>(y);
@@ -148,12 +148,14 @@ inline void sqrredc(uint32_t *z, uint32_t *x, uint32_t *n, const uint32_t d, uin
     uint8_t i;
     uint8_t j;
 
+    #pragma unroll
     for(i = 0; i < (WORD_MAX<<1); ++i)
         t[i] = 0;
 
-
+    #pragma unroll
     for(i = 0; i < WORD_MAX; ++i)
     {
+        #pragma unroll
         for(j = i + 1; j < WORD_MAX; ++j)
         {
             prod = static_cast<uint64_t>(x[j]) * static_cast<uint64_t>(x[i]) +
@@ -166,7 +168,7 @@ inline void sqrredc(uint32_t *z, uint32_t *x, uint32_t *n, const uint32_t d, uin
         c = 0;
     }
 
-
+    #pragma unroll
     for(i = 0; i < (WORD_MAX<<1); ++i)
     {
         prod = (static_cast<uint64_t>(t[i]) << 1) + c;
@@ -174,7 +176,7 @@ inline void sqrredc(uint32_t *z, uint32_t *x, uint32_t *n, const uint32_t d, uin
         c = prod >> 32;
     }
 
-
+    #pragma unroll
     for(i = 0; i < WORD_MAX; ++i)
     {
         prod = static_cast<uint64_t>(x[i]) * static_cast<uint64_t>(x[i]) +
@@ -183,6 +185,7 @@ inline void sqrredc(uint32_t *z, uint32_t *x, uint32_t *n, const uint32_t d, uin
         t[i + i] = prod;
         c = prod >> 32;
 
+        #pragma unroll
         for(j = i + 1; j < WORD_MAX; ++j)
         {
             prod = static_cast<uint64_t>(t[i + j]) + c;
@@ -197,10 +200,12 @@ inline void sqrredc(uint32_t *z, uint32_t *x, uint32_t *n, const uint32_t d, uin
 
     c = 0;
 
+    #pragma unroll
     for(i = 0; i < WORD_MAX; ++i)
     {
         m = t[i] * d;
 
+        #pragma unroll
         for(j = 0; j < WORD_MAX; ++j)
         {
             prod = static_cast<uint64_t>(t[i + j]) + m * static_cast<uint64_t>(n[j]) + c;
@@ -210,6 +215,7 @@ inline void sqrredc(uint32_t *z, uint32_t *x, uint32_t *n, const uint32_t d, uin
 
         j = i;
 
+        #pragma unroll
         while(c != 0)
         {
             prod = static_cast<uint64_t>(t[WORD_MAX + j]) + c;
@@ -237,6 +243,7 @@ inline void mulredc(uint32_t *z, uint32_t *x, uint32_t *y, uint32_t *n, const ui
     t[WORD_MAX] = 0;
     t[WORD_MAX+1] = 0;
 
+    #pragma unroll
     for(uint8_t i = 0; i < WORD_MAX; ++i)
     {
         //c = addmul_1(t, x, y[i]);
@@ -256,14 +263,14 @@ inline void mulredc(uint32_t *z, uint32_t *x, uint32_t *y, uint32_t *n, const ui
         //t[WORD_MAX] += c;
         //t[WORD_MAX + 1] = temp >> 32;
 
-        //#pragma unroll
+        #pragma unroll
         for(uint8_t j = 0; j <= WORD_MAX; ++j)
             t[j] = t[j+1];
     }
     if(cmp_ge_n<WORD_MAX>(t, n))
         sub_n<WORD_MAX>(t, t, n);
 
-    //#pragma unroll
+    #pragma unroll
     for(uint8_t i = 0; i < WORD_MAX; ++i)
         z[i] = t[i];
 }
@@ -278,11 +285,13 @@ void redc(uint32_t *z, uint32_t *x, uint32_t *n, const uint32_t d, uint32_t *t)
 
     t[WORD_MAX] = 0;
 
+    #pragma unroll
     for(uint8_t i = 0; i < WORD_MAX; ++i)
     {
         m = t[0]*d;
         t[WORD_MAX] = addmul_1<WORD_MAX>(t, n, m);
 
+        #pragma unroll
         for(uint8_t j = 0; j < WORD_MAX; ++j)
             t[j] = t[j+1];
 
@@ -301,7 +310,7 @@ uint16_t bit_count(uint32_t *x)
 {
     uint16_t msb = 0; //most significant bit
 
-    //#pragma unroll
+    #pragma unroll
     for(uint16_t i = 0; i < (WORD_MAX << 5); ++i)
     {
         if(x[i>>5] & (1 << (i & 31)))
@@ -320,6 +329,7 @@ inline void lshift(uint32_t *r, uint32_t *a, uint16_t shift)
     uint8_t k = shift >> 5;
     shift = shift & 31;
 
+    #pragma unroll
     for(int8_t i = 0; i < WORD_MAX; ++i)
     {
         uint8_t ik = i + k;
@@ -341,6 +351,7 @@ inline void rshift(uint32_t *r, uint32_t *a, uint16_t shift)
     uint8_t k = shift >> 5;
     shift = shift & 31;
 
+    #pragma unroll
     for(int8_t i = 0; i < WORD_MAX; ++i)
     {
         int8_t ik = i - k;
@@ -360,6 +371,8 @@ inline void lshift1(uint32_t *r, uint32_t *a)
     uint32_t t = a[0];
     uint32_t t2;
     r[0] = t << 1;
+
+    #pragma unroll
     for(uint8_t i = 1; i < WORD_MAX; ++i)
     {
         t2 = a[i];
@@ -376,6 +389,8 @@ inline void rshift1(uint32_t *r, uint32_t *a)
     uint32_t t2;
 
     r[WORD_MAX-1] = t >> 1;
+
+    #pragma unroll
     for(int8_t i = WORD_MAX-2; i >= 0; --i)
     {
         t2 = a[i];
@@ -394,6 +409,7 @@ void calcBar(uint32_t *a, uint32_t *b, uint32_t *n, uint32_t *t)
     lshift<WORD_MAX>(t, n, (WORD_MAX<<5) - bit_count<WORD_MAX>(n));
     sub_n<WORD_MAX>(a, a, t);
 
+    #pragma unroll
     while(cmp_ge_n<WORD_MAX>(a, n))  //calculate R mod N;
     {
         rshift1<WORD_MAX>(t, t);
@@ -416,6 +432,7 @@ void calcBar(uint32_t *a, uint32_t *n, uint32_t *t)
     lshift<WORD_MAX>(t, n, (WORD_MAX<<5) - bit_count<WORD_MAX>(n));
     sub_n<WORD_MAX>(a, a, t);
 
+    #pragma unroll
     while(cmp_ge_n<WORD_MAX>(a, n))  //calculate R mod N;
     {
         rshift1<WORD_MAX>(t, t);
@@ -436,7 +453,7 @@ void calcTable(uint32_t *a, uint32_t *n, uint32_t *t, uint32_t *table)
 
     assign<WORD_MAX>(&table[WORD_MAX], t);
 
-
+    #pragma unroll
     for(uint16_t i = 2; i < WINDOW_SIZE; ++i) //calculate 2^i R mod N
     {
         lshift1<WORD_MAX>(t, t);
@@ -464,6 +481,7 @@ void pow2m(uint32_t *X, uint32_t *Exp, uint32_t *N, uint32_t *table)
     uint32_t bits = bit_count<WORD_MAX>(Exp);
     uint32_t start = (bits / WINDOW_BITS) * WINDOW_BITS;
 
+    #pragma unroll
     for(int16_t i = bits-1; i >= 0; --i)
     {
 
@@ -502,6 +520,7 @@ void pow2m(uint32_t *X, uint32_t *Exp, uint32_t *N)
 
     uint32_t bits = bit_count<WORD_MAX>(Exp);
 
+    #pragma unroll
     for(int16_t i = bits-1; i >= 0; --i)
     {
         //mulredc<WORD_MAX>(X, X, X, N, d, t);
@@ -528,7 +547,7 @@ bool fermat_prime(uint32_t *p)
 
     uint32_t result = r[0] - 1;
 
-    //#pragma unroll
+    #pragma unroll
     for(uint8_t i = 1; i < WORD_MAX; ++i)
     {
         if(r[i])

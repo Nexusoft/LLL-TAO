@@ -281,7 +281,11 @@ namespace TAO::Ledger
              */
             TAO::Ledger::StakeChange tStakeChange;
             if(LLD::Local->ReadStakeChange(hashGenesis, tStakeChange))
-                nStake += tStakeChange.nAmount;
+            {
+                /* Only add stake change on amounts increasing, otherwise you won't be able to unstake from 0. */
+                if(tStakeChange.nAmount > 0)
+                    nStake += tStakeChange.nAmount;
+            }
         }
 
         /* Calculate the minimum Required Energy Efficiency Threshold.
@@ -321,31 +325,31 @@ namespace TAO::Ledger
 
 
     /* Calculate the coinstake reward for a solo mined Proof of Stake block */
-    uint64_t TritiumMinter::CalculateCoinstakeReward(uint64_t nTime)
+    uint64_t TritiumMinter::CalculateCoinstakeReward(const uint64_t nTime, const uint32_t nVersion)
     {
         uint64_t nReward = 0;
 
         if(!fGenesis)
         {
             /* Trust reward based on current stake amount, new trust score, and time since last stake block. */
-            const uint64_t nTimeLast = stateLast.GetBlockTime();
+            const uint64_t nTimeLast =
+                stateLast.GetBlockTime();
 
-            if(nTime < nTimeLast)
-                nTime = nTimeLast;
+            /* Find the time between last stake block and this current block. */
+            const uint64_t nTimeStake =
+                std::max(nTime, nTimeLast) - nTimeLast;
 
-            const uint64_t nTimeStake = nTime - nTimeLast;
-
-            nReward = GetCoinstakeReward(account.get<uint64_t>("stake"), nTimeStake, nTrust);
+            /* Calculate the reward no based on version and our times. */
+            nReward = GetCoinstakeReward(account.get<uint64_t>("stake"), nTimeStake, nTrust, nVersion, false);
         }
         else
         {
-            /* Genesis reward based on trust account balance and coin age based on trust register timestamp. */
-            if(nTime < account.nModified)
-                nTime = account.nModified;
+            /* Find the time between our block time and the last modified time of our register. */
+            const uint64_t nAge =
+                std::max(nTime, account.nModified) - account.nModified;
 
-            const uint64_t nAge = nTime - account.nModified;
-
-            nReward = GetCoinstakeReward(account.get<uint64_t>("balance"), nAge, 0, true); //pass true for Genesis
+            /* Calculate the reward now based on version and our times. */
+            nReward = GetCoinstakeReward(account.get<uint64_t>("balance"), nAge, 0, nVersion, true); //pass true for Genesis
         }
 
         return nReward;

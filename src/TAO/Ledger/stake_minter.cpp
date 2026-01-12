@@ -613,7 +613,8 @@ namespace TAO
              * Reward is based on final block time for block. Block time is updated with each iteration so we
              * have deferred reward calculation until after the block is found to get the exact correct amount.
              */
-            uint64_t nReward = CalculateCoinstakeReward(block.GetBlockTime());
+            const uint64_t nReward =
+                CalculateCoinstakeReward(block.GetBlockTime(), block.nVersion);
 
             /* Add coinstake reward */
             block.producer[0] << nReward;

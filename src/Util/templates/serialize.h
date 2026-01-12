@@ -74,6 +74,7 @@ enum SER_OPERATIONS
     // layers
     SER_REGISTER        = (1 << 5),
     SER_OPERATIONS      = (1 << 6),
+	SER_LEDGER          = (1 << 7),
 
 
     // mining

@@ -30,6 +30,8 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::Operation
 {
+
+
     /* Default Constructor. */
     Contract::Contract()
     : ssOperation ( )
@@ -215,6 +217,135 @@ namespace TAO::Operation
         debug::fLogError = true;
 
         return fSanitized;
+    }
+
+
+    /* Check that a given contract is well formed. */
+    bool Contract::Valid() const
+    {
+        /* We don't need to check our conditions if empty. */
+        if(ssCondition.size() == 0)
+            return true;
+
+        /* Make a copy of our conditions to check them for errors. */
+        Stream ssConditions =
+            ssCondition;
+
+        /* Check our contract data byte by byte. */
+        uint32_t nPos = 0; //so we can skip through conditions vector.
+        while(!ssConditions.end())
+        {
+            /* Read our instruction from contract. */
+            uint8_t nCode;
+            ssConditions >> nCode;
+
+            /* Check if our opcode has been disabled. */
+            if(Conditions::mapDeactivated.count(nCode) && Conditions::mapDeactivated.at(nCode) >= nVersion)
+                return debug::error(FUNCTION, "OP", std::hex, nCode, " deactivated for version ", nVersion);
+
+            /* Make sure this is a valid opcode. */
+            if(!Conditions::mapActrivated.count(nCode))
+                return debug::error(FUNCTION, "OP", std::hex, nCode, " illegal instruction, malformed binary stream");
+
+            /* Check if our opcode has yet to be enabled. */
+            if(Conditions::mapActrivated.at(nCode) < nVersion)
+                return debug::error(FUNCTION, "OP", std::hex, nCode, " not activated for version ", nVersion);
+
+            /* Check for a valid parameter type. */
+            switch(nCode)
+            {
+                /* Handle for standard 8-bit unsigned integer. */
+                case OP::TYPES::UINT8_T:
+                {
+                    ssConditions.seek(1);
+                    break;
+                }
+
+                /* Handle for standard 16-bit unsigned integer. */
+                case OP::TYPES::UINT16_T:
+                {
+                    ssConditions.seek(2);
+                    break;
+                }
+
+                /* Handle for standard 32-bit unsigned integer. */
+                case OP::TYPES::UINT32_T:
+                case OP::SUBDATA: //subdata is just two shorts concatenated so handle on 32 bit case
+                {
+                    ssConditions.seek(4);
+                    break;
+                }
+
+                /* Handle for standard 64-bit unsigned integer. */
+                case OP::TYPES::UINT64_T:
+                {
+                    ssConditions.seek(8);
+                    break;
+                }
+
+                /* Handle for standard 256-bit unsigned integer. */
+                case OP::TYPES::UINT256_T:
+                {
+                    ssConditions.seek(32);
+                    break;
+                }
+
+                /* Handle for standard 512-bit unsigned integer. */
+                case OP::TYPES::UINT512_T:
+                {
+                    ssConditions.seek(64);
+                    break;
+                }
+
+                /* Handle for standard 1024-bit unsigned integer. */
+                case OP::TYPES::UINT1024_T:
+                {
+                    ssConditions.seek(128);
+                    break;
+                }
+
+                /* Handle for standard byte vector or strings. */
+                case OP::TYPES::BYTES:
+                case OP::TYPES::STRING:
+                case OP::CALLER::PRESTATE::VALUE: //this instruction has a string parameter
+                {
+                    /* Get the size of our value. */
+                    const uint64_t nSize =
+                        ::ReadCompactSize(ssConditions);
+
+                    /* Seek over the binary data. */
+                    ssConditions.seek(nSize);
+                    break;
+                }
+
+                /* Handle for register codes. */
+                case OP::REGISTER::CREATED:
+                case OP::REGISTER::MODIFIED:
+                case OP::REGISTER::OWNER:
+                case OP::REGISTER::TYPE:
+                case OP::REGISTER::STATE:
+                case OP::REGISTER::VALUE:
+                {
+                    /* A register code requires a 256-bit input parameter. */
+                    ssConditions.seek(32);
+
+                    /* Register value requires string. */
+                    if(nCode == OP::REGISTER::VALUE)
+                    {
+                        /* Get the size of our byte vector. */
+                        const uint64_t nSize =
+                            ::ReadCompactSize(ssConditions);
+
+                        /* Seek over the requested field now. */
+                        ssConditions.seek(nSize);
+                    }
+
+                    break;
+                }
+            }
+        }
+
+        return true;
     }
 
 

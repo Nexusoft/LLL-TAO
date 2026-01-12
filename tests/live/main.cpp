@@ -12,588 +12,243 @@
 ____________________________________________________________________________________________*/
 
 #include <LLC/types/uint1024.h>
-#include <LLC/hash/SK.h>
 #include <LLC/include/random.h>
+#include <LLC/prime/fermat.h>
 
-#include <LLD/include/global.h>
-#include <LLD/cache/binary_lru.h>
-#include <LLD/keychain/hashmap.h>
-#include <LLD/templates/sector.h>
+#include <TAO/Ledger/include/prime.h>
 
-#include <Util/include/debug.h>
-#include <Util/include/base64.h>
+#include <TAO/Ledger/types/stream.h>
 
-#include <openssl/rand.h>
-
-#include <LLC/hash/argon2.h>
-#include <LLC/hash/SK.h>
-#include <LLC/include/flkey.h>
-#include <LLC/types/bignum.h>
-
-#include <Util/include/hex.h>
-
-#include <iostream>
-
-#include <TAO/Register/types/address.h>
-#include <TAO/Register/types/object.h>
-
-#include <TAO/Register/include/create.h>
-
-#include <TAO/Ledger/types/genesis.h>
-#include <TAO/Ledger/types/credentials.h>
-#include <TAO/Ledger/types/transaction.h>
-
-#include <TAO/Ledger/include/ambassador.h>
-
-#include <Legacy/types/address.h>
-#include <Legacy/types/transaction.h>
-
-#include <LLP/templates/ddos.h>
 #include <Util/include/runtime.h>
+#include <Util/include/debug.h>
 
-#include <list>
-#include <variant>
+#include <limits>
 
-#include <Util/include/softfloat.h>
 
-#include <TAO/Ledger/include/constants.h>
-#include <TAO/Ledger/include/stake.h>
 
-#include <LLP/types/tritium.h>
-
-#include <TAO/Ledger/include/chainstate.h>
-#include <TAO/Ledger/types/locator.h>
-
-class TestDB : public LLD::SectorDatabase<LLD::BinaryHashMap, LLD::BinaryLRU>
-{
-public:
-    TestDB()
-    : SectorDatabase("testdb"
-    , LLD::FLAGS::CREATE | LLD::FLAGS::FORCE
-    , 256 * 256 * 64
-    , 1024 * 1024 * 4)
-    {
-    }
-
-    ~TestDB()
-    {
-
-    }
-
-    bool WriteKey(const uint1024_t& key, const uint1024_t& value)
-    {
-        return Write(std::make_pair(std::string("key"), key), std::make_pair(key, value));
-    }
-
-
-    bool ReadKey(const uint1024_t& key, uint1024_t &value)
-    {
-        std::pair<uint1024_t, uint1024_t&> pairResults = std::make_pair(key, std::ref(value));
-
-        return Read(std::make_pair(std::string("key"), key), pairResults);
-    }
-
-
-    bool WriteLast(const uint1024_t& last)
-    {
-        return Write(std::string("last"), last);
-    }
-
-    bool ReadLast(uint1024_t &last)
-    {
-        return Read(std::string("last"), last);
-    }
-
-};
-
-
-
-#include <TAO/Ledger/include/genesis_block.h>
-
-const uint256_t hashSeed = 55;
-
-#include <Util/include/math.h>
-
-#include <Util/include/json.h>
-
-#include <TAO/API/types/function.h>
-#include <TAO/API/types/exception.h>
-
-#include <TAO/Operation/include/enum.h>
-
-#include <Util/encoding/include/utf-8.h>
-
-#include <TAO/API/include/contracts/build.h>
-#include <TAO/API/include/contracts/verify.h>
-
-#include <TAO/API/types/contracts/expiring.h>
-#include <TAO/API/types/contracts/params.h>
-
-#include <TAO/Operation/include/enum.h>
-
-
-
-#include <TAO/API/include/extract.h>
-
-#include <Legacy/types/address.h>
-
-#include <Util/types/precision.h>
-
-extern "C"
-{
-    #include <LLC/kyber/kem.h>
-    #include <LLC/kyber/symmetric.h>
-}
-
-#include <LLC/include/encrypt.h>
-
-
-class KyberHandshake
-{
-    std::vector<uint8_t> vPubKey;
-    std::vector<uint8_t> vPrivKey;
-
-    std::vector<uint8_t> vSeed;
-
-    /** The shared key stored as a 256-bit unsigned integer. **/
-    uint256_t hashKey;
-
-public:
-
-    KyberHandshake(const uint256_t& hashSeedIn)
-    : vPubKey  (CRYPTO_PUBLICKEYBYTES, 0)
-    , vPrivKey (CRYPTO_SECRETKEYBYTES, 0)
-    , vSeed    (hashSeedIn.GetBytes())
-    , hashKey  ( )
-    {
-    }
-
-    const uint256_t PubKeyHash() const
-    {
-        return LLC::SK256(vPubKey);
-    }
-
-
-    const uint256_t SharedKey() const
-    {
-        return hashKey;
-    }
-
-
-    const std::vector<uint8_t> InitiateHandshake()
-    {
-        /* Generate our shared key using entropy from our seed hash. */
-        crypto_kem_keypair_seed(&vPubKey[0], &vPrivKey[0], &vSeed[0]);
-
-        return vPubKey;
-    }
-
-
-    const std::vector<uint8_t> RespondHandshake(const std::vector<uint8_t>& vPeerPub)
-    {
-        std::vector<uint8_t> vCiphertext(CRYPTO_CIPHERTEXTBYTES, 0);
-
-        crypto_kem_keypair_seed(&vPubKey[0], &vPrivKey[0], &vSeed[0]);
-
-        std::vector<uint8_t> vShared(CRYPTO_BYTES, 0);
-        crypto_kem_enc(&vCiphertext[0], &vShared[0], &vPeerPub[0]);
-
-        hashKey = LLC::SK256(vShared);
-
-        DataStream ssHandshake(SER_NETWORK, 1);
-        ssHandshake << vPubKey << vCiphertext;
-
-        return ssHandshake.Bytes();
-    }
-
-
-    void CompleteHandshake(const std::vector<uint8_t>& vHandshake)
-    {
-        /* Get our handshake in a datastream to deserialize. */
-        DataStream ssHandshake(vHandshake, SER_NETWORK, 1);
-
-        /* Get our peer's public key. */
-        std::vector<uint8_t> vPeerPub(CRYPTO_PUBLICKEYBYTES, 0);
-        ssHandshake >> vPeerPub;
-
-        /* Get our cyphertext to decode our shared key from. */
-        std::vector<uint8_t> vCiphertext(CRYPTO_CIPHERTEXTBYTES, 0);
-        ssHandshake >> vCiphertext;
-
-        /* Decode our shared key from the cyphertext. */
-        std::vector<uint8_t> vShared(CRYPTO_BYTES, 0);
-        crypto_kem_dec(&vShared[0], &vCiphertext[0], &vPrivKey[0]);
-
-        /* Hash our shared key binary data to provide additional level of security. */
-        hashKey = LLC::SK256(vShared);
-    }
-
-
-    bool Encrypt(const std::vector<uint8_t>& vPlainText, std::vector<uint8_t> &vCipherText)
-    {
-        return LLC::EncryptAES256(hashKey.GetBytes(), vPlainText, vCipherText);
-    }
-
-
-    bool Decrypt(const std::vector<uint8_t>& vCipherText, std::vector<uint8_t> &vPlainText)
-    {
-        return LLC::DecryptAES256(hashKey.GetBytes(), vCipherText, vPlainText);
-    }
-};
-
-int main(void)
-{
-    uint256_t hash = LLC::SK256("testing");
-
-    uint256_t hash2 = LLC::SK256("testing2");
-
-    KyberHandshake shake(hash);
-    KyberHandshake shake2(hash2);
-
-    const std::vector<uint8_t> vPayload = shake.InitiateHandshake();
-
-    const std::vector<uint8_t> vResponse = shake2.RespondHandshake(vPayload);
-
-    shake.CompleteHandshake(vResponse);
-
-    debug::log(0, "PubKey 1: ", shake.PubKeyHash().ToString());
-    debug::log(0, "PubKey 2: ", shake2.PubKeyHash().ToString());
-
-    debug::log(0, "Shared 1: ", shake.SharedKey().ToString());
-    debug::log(0, "Shared 2: ", shake2.SharedKey().ToString());
-
-    std::string strPayload = "This is our message to encrypt!";
-
-    std::vector<uint8_t> vCipherText;
-    shake.Encrypt(std::vector<uint8_t>(strPayload.begin(), strPayload.end()), vCipherText);
-    debug::log(0, "Encrypted: ", std::string(vCipherText.begin(), vCipherText.end()));
-
-    std::vector<uint8_t> vPlainText;
-    shake2.Decrypt(vCipherText, vPlainText);
-    debug::log(0, "Decrypted: ", std::string(vPlainText.begin(), vPlainText.end()));
-
-  return 0;
-}
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
-int oldmain(int argc, char** argv)
+int main(int argc, char** argv)
 {
-    precision_t nDigits1 = precision_t(5.98198, 5);
-    precision_t nDigits2 = precision_t(3.321, 3);
-
-    precision_t nDigits3 = std::move(precision_t("333.141592654", 9, true));
-
-    precision_t nSum = nDigits1 + nDigits2;
-    //nSum += nDigits2;//(nDigits1);// = nDigits1;// + nDigits2;
-
-    precision_t nProduct = nDigits1;// * nDigits2;
-    nProduct *= nDigits2;
-
-    precision_t nDiv = nDigits1 / nDigits2;
-
-    debug::log(0, VARIABLE(nDigits1.double_t()), " | ", VARIABLE(nDigits2.double_t()), " | ",
-                  VARIABLE(nSum.double_t()), " | ", VARIABLE(nProduct.double_t()), " | ", VARIABLE(nDiv.double_t()));
-
-
-    debug::log(0, VARIABLE(nDigits3.dump()));
-
-    precision_t nDigits4 = precision_t("3.142238743879234");
-
-    encoding::json jValue;
-    jValue["test"] = nDigits4.double_t();
-
-    debug::log(0, VARIABLE(jValue["test"].dump()), " | ", jValue.dump());
-
-    precision_t nDigits5 =
-        precision_t(jValue["test"].dump());
-
-    nDigits5 = nDigits5 / 2;
-
-    debug::log(0, VARIABLE(nDigits5.dump()));
-
-    nDigits5 = nDigits5 * 2;
-
-    debug::log(0, VARIABLE(nDigits5.dump()));
-
-    debug::log(0, jValue.dump());
-
-    debug::log(0, VARIABLE(nDigits4.dump()));
-
-    if(nDigits2 < nDigits1)
-        debug::log(0, "We have lessthan");
-
-
-    if(nDigits1 > nDigits2)
-        debug::log(0, "We have greaterthan");
-
-    if(nDigits1 == precision_t(5.98198, 6))
-        debug::log(0, "We have equal precision");
-
-    return 0;
-
-    encoding::json jParams;
-    jParams["test1"] = "12.58";
-    jParams["test2"] = 1.589;
-
-    uint64_t nAmount1 = TAO::API::ExtractAmount(jParams, 100, "test1");
-    uint64_t nAmount2 = TAO::API::ExtractAmount(jParams, 1000, "test2");
-
-    debug::log(0, VARIABLE(nAmount1), " | ", VARIABLE(nAmount2));
-
-    return 0;
-
-    TAO::Operation::Contract tContract;
-
-    //debug::log(0, "First param is ", ssParams.find(0, uint8_t(TAO::Operation::OP::TYPES::UINT256_T)).ToString());
-    TAO::API::Contracts::Build(TAO::API::Contracts::Expiring::Receiver[1], tContract, uint64_t(3333));
-
-    if(!TAO::API::Contracts::Verify(TAO::API::Contracts::Expiring::Receiver[1], tContract))
-        return debug::error("Contract binary template mismatch");
-
-    return 0;
-
-    /* Read the configuration file. Pass argc and argv for possible -datadir setting */
-    config::ReadConfigFile(config::mapArgs, config::mapMultiArgs, argc, argv);
-
-
-    /* Parse out the parameters */
-    config::ParseParameters(argc, argv);
-
-
-    /* Once we have read in the CLI paramters and config file, cache the args into global variables*/
-    config::CacheArgs();
-
-
-    /* Initalize the debug logger. */
-    debug::Initialize();
-
-    //config::mapArgs["-datadir"] = "/database/SYNC1";
-
-    TestDB* DB = new TestDB();
-
-    uint1024_t hashKey = LLC::GetRand1024();
-    uint1024_t hashValue = LLC::GetRand1024();
-
-    debug::log(0, VARIABLE(hashKey.SubString()), " | ", VARIABLE(hashValue.SubString()));
-
-    DB->WriteKey(hashKey, hashValue);
 
     {
-        uint1024_t hashValue2;
-        DB->ReadKey(hashKey, hashValue2);
+        uint256_t hashFalcon, hashFalcon2; //these act as hardcoded values for us to set a predefined set of credentials
 
-        debug::log(0, VARIABLE(hashKey.SubString()), " | ", VARIABLE(hashValue2.SubString()));
+        hashFalcon.SetType(AUTH::TYPES::FALCON);
+
+        using namespace TAO::Ledger;
+
+        TAO::Ledger::Stream ssAuthorization;
+
+        //create an auth script for a single falcon key
+        //(NextHash.Falcon(OP::ALL) == hashFalcon)
+
+        //single signature authentication
+        ssAuthorization << AUTH::ENABLE_IF << uint16_t(OP::ALL);
+        ssAuthorization << AUTH::VERIFY::NEXTHASH << hashFalcon;
+        ssAuthorization << AUTH::OP::THEN;
+
+        ssAuthorization << AUTH::RETURN << AUTH::GRANTED << uint16_t(OP::ALL);
+        ssAuthorization << AUTH::ENDIF;
+
+
+        //lottery slip claimant
+        uint256_t hashLottery, hashAddress;
+        ssAuthorization << AUTH::IF;
+        ssAuthorization << AUTH::CALLER::PAYLOAD << AUTH::CRYPTO::SHA3 << OP::EQUALS << hashLottery;
+        ssAuthorization << AUTH::AND;
+        ssAuthorization << AUTH::TRANSFER::PARAMS::ADDRESS << AUTH::OP::EQUALS << hashAddress;
+        ssAuthorization << AUTH::OP::THEN;
+
+        ssAuthorization << AUTH::RETURN << AUTH::GRANTED << uint16_t(OP::TRANSFER);
+        ssAuthorization << AUTH::ENDIF;
+
+
+        //multisignature authentication with user generated credentials
+        ssAuthorization << AUTH::ENABLE_IF << uint16_t(OP::ALL);
+        ssAuthorization << AUTH::VERIFY::NEXTHASH << hashFalcon;
+        ssAuthorization << AUTH::OP::AND;
+        ssAuthorization << AUTH::VERIFY::NEXTHASH << hashFalcon2;
+        ssAuthorization << AUTH::OP::THEN;
+
+        ssAuthorization << AUTH::RETURN << AUTH::GRANTED << uint16_t(OP::ALL);
+        ssAuthorization << AUTH::ENDIF;
+
+
+
+        //multisignature authentication with multiple sigchains
+        uint256_t hashGenesis2, hashGenesis3; 
+        ssAuthorization << AUTH::ENABLE_IF << uint16_t(AUTH::OPS::ALL);
+        ssAuthorization << AUTH::VERIFY::NEXTHASH << AUTH::VERIFY::GENESIS << hashGenesis2 << AUTH::CALLER::CRYPTO::AUTH;
+        ssAuthorization << AUTH::OP::AND;
+        ssAuthorization << AUTH::VERIFY::NEXTHASH << AUTH::VERIFY::GENESIS << hashGenesis3 << AUTH::CALLER::CRYPTO::AUTH;
+        ssAuthorization << AUTH::OP::THEN;
+
+        ssAuthorization << AUTH::RETURN << AUTH::GRANTED << uint16_t(OP::ALL);
+        ssAuthorization << AUTH::ENDIF;
+
+
+
+
+        //staking and credit only, no unstake coins
+        ssAuthorization << AUTH::ENABLE_IF << uint16_t(AUTH::PRIMITIVES::TRUST::ENABLED | AUTH::PRIMITIVES::CREDIT::ENABLED);
+        ssAuthorization << AUTH::VERIFY::NEXTHASH << hashStaking;
+        ssAuthorization << AUTH::OP::THEN;
+
+        //check that we are not removing stake with these credentials
+        ssAuthorization << AUTH::OP::CHECK_IF << uint16_t(AUTH::PRIMITIVES::TRUST::CHECK);
+        ssAuthorization << AUTH::TRUST::PARAM::CHANGE << AUTH::OP::LESSTHAN << AUTH::TYPES::INT64 << int64_t(0);
+        ssAuthorization << AUTH::OP::THEN;
+
+        ssAuthorization << AUTH::RETURN << AUTH::DENIED;
+        ssAuthorization << AUTH::ENDIF;
+
+        //default exit from authorization routine
+        ssAuthorization << AUTH::RETURN << AUTH::GRANTED << uint16_t(TRUST::ENABLED | CREDIT::ENABLED);
+        ssAuthorization << AUTH::ENDIF;
+
+
+
+        //system authentication for processing methods for augmented contracts
+        ssAuthorization << AUTH::ENABLE_IF << uint16_t(INVOKE::ENABLED);
+
+        //we can use this access pattern to allow any external sigchain to invoke a function in any object register we have
+        ssAuthorization << AUTH::VERIFY::NEXTHASH << AUTH::CALLER::CRYPTO::SIGN; //this is a 256 bit hash of any caller
+        ssAuthorization << AUTH::OP::THEN;
+
+        //default exit from authorization routine
+        ssAuthorization << AUTH::RETURN << AUTH::GRANTED << uint16_t(INVOKE::ENABLED);
+        ssAuthorization << AUTH::ENDIF;
+
+
+
+        //system authentication for processing methods for augmented contracts for a single individual
+        uint256_t hashGenesis;
+        ssAuthorization << AUTH::ENABLE_IF << uint16_t(INVOKE::ENABLED);
+
+        //we can use this access pattern to allow any external sigchain to invoke a function in any object register we have
+        ssAuthorization << AUTH::VERIFY::NEXTHASH << AUTH::CALLER::CRYPTO::SIGN; //this is a 256 bit hash of any caller
+
+        //only allow invoke from a specific sigchain
+        ssAuthorization << AUTH::OP::AND;
+        ssAuthorization << AUTH::CALLER::GENESIS << AUTH::OP::EQUALS << AUTH::TYPES::UINT256 << hashGenesis;
+        ssAuthorization << AUTH::OP::THEN;
+
+        ssAuthorization << AUTH::RETURN << AUTH::GRANTED << uint16_t(INVOKE::ENABLED);
+        ssAuthorization << AUTH::ENDIF;
+
+
+
+        //system authentication for processing methods for augmented contracts for a single individual with single operation code
+        ssAuthorization << AUTH::ENABLE_IF << uint16_t(INVOKE::ENABLED);
+
+        //by adding param genesis in here we can skip the checks for auth::caller::genesis and integrate in the single call
+        ssAuthorization << AUTH::VERIFY::NEXTHASH << AUTH::PARAM::GENESIS << hashGenesis << AUTH::CALLER::CRYPTO::SIGN;
+        ssAuthorization << AUTH::OP::THEN;
+
+        ssAuthorization << AUTH::RETURN << AUTH::GRANTED << uint16_t(INVOKE::ENABLED);
+        ssAuthorization << AUTH::ENDIF;
+
+
+
+        //recovery authentication
+        ssAuthorization << AUTH::ENABLE_IF << uint16_t(OP::ALL);
+        ssAuthorization << AUTH::VERIFY::RECOVERY << hashFalcon;
+        ssAuthorization << AUTH::OP::THEN;
+
+        ssAuthorization << AUTH::RETURN << AUTH::GRANTED << uint16_t(OP::NONE);
+        ssAuthorization << AUTH::ENDIF;
+
+
+
+        //multisig recovery authentication with two recovery phrases (can wipe entire ledger VM script except own recovery hash)
+        ssAuthorization << AUTH::ENABLE_IF << uint16_t(OP::ALL);
+        ssAuthorization << AUTH::TYPES::RECOVERY << hashRecovery1;
+        ssAuthorization << AUTH::OP::AND;
+        ssAuthorization << AUTH::TYPES::RECOVERY << hashRecovery2;
+        ssAuthorization << AUTH::OP::THEN;
+
+        ssAuthorization << AUTH::RETURN << AUTH::GRANTED << uint16_t(OP::NONE);
+        ssAuthorization << AUTH::ENDIF;
     }
 
-    hashKey = LLC::GetRand1024();
-    hashValue = LLC::GetRand1024();
-
-    debug::log(0, VARIABLE(hashKey.SubString()), " | ", VARIABLE(hashValue.SubString()));
-
-    DB->WriteKey(hashKey, hashValue);
 
     {
-        uint1024_t hashValue2;
-        DB->ReadKey(hashKey, hashValue2);
+        //let's make some functions now for an object register
 
-        debug::log(0, VARIABLE(hashKey.SubString()), " | ", VARIABLE(hashValue2.SubString()));
-    }
+        TAO::Register::Object account;
 
-    return 0;
+        /* Generate the object register values. */
+        account << std::string("balance")       << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                << std::string("token")         << uint8_t(TYPES::UINT256_T) << uint256_t(0);
 
-    std::string strTest = "This is a test unicode string";
+        //let us now create a function of binary data.
+        account << std::string("total") << uint8_t(TYPES::UINT64_T) << uint64_t(0);
+        account << std::string("last") << uint8_t(TYPES::UINT64_T) << uint64_t(0);
 
-    std::vector<uint8_t> vHash = LLC::GetRand256().GetBytes();
+        TAO::Operation::Stream ssMethod;
 
-    debug::log(0, strTest);
-    debug::log(0, "VALID: ", encoding::utf8::is_valid(strTest.begin(), strTest.end()) ? "TRUE" : "FALSE");
-    debug::log(0, HexStr(vHash.begin(), vHash.end()));
-    debug::log(0, "VALID: ", encoding::utf8::is_valid(vHash.begin(), vHash.end()) ? "TRUE" : "FALSE");
+        //TODO: impelement order of operations PEMDAS
 
-    return 0;
-
-    /* Initialize LLD. */
-    LLD::Initialize();
-
-    uint32_t nScannedCount = 0;
-
-    uint512_t hashLast = 0;
-
-    /* If started from a Legacy block, read the first Tritium tx to set hashLast */
-    std::vector<TAO::Ledger::Transaction> vtx;
-    if(LLD::Ledger->BatchRead("tx", vtx, 1))
-        hashLast = vtx[0].GetHash();
-
-    bool fFirst = true;
-
-    runtime::timer timer;
-    timer.Start();
-
-    uint32_t nTransactionCount = 0;
-
-    debug::log(0, FUNCTION, "Scanning Tritium from tx ", hashLast.SubString());
-    while(!config::fShutdown.load())
-    {
-        /* Read the next batch of inventory. */
-        std::vector<TAO::Ledger::Transaction> vtx;
-        if(!LLD::Ledger->BatchRead(hashLast, "tx", vtx, 1000, !fFirst))
-            break;
-
-        /* Loop through found transactions. */
-        TAO::Ledger::BlockState state;
-        for(const auto& tx : vtx)
-        {
-            //_unused(tx);
-
-            for(uint32_t n = 0; n < tx.Size(); ++n)
+        /*
+            object Account : public standard.account
             {
-                uint8_t nOP = 0;
-                tx[n] >> nOP;
+                uint64_t total;
+                uint64_t last;
 
-                if(nOP == TAO::Operation::OP::CONDITION || nOP == TAO::Operation::OP::VALIDATE)
-                    ++nTransactionCount;
-            }
+                Account()
+                : total   (0)
+                , last    (0)
+                {
+                }
 
-            /* Update the scanned count for meters. */
-            ++nScannedCount;
+                bool CheckBalance(to, from, amount, reference) extend standard.account.debit, standard.account.credit
+                {
+                    uint64_t a = (timestamp - this.last) / 3600;
+                    uint64_t t = this.total / a;
 
-            /* Meter for output. */
-            if(nScannedCount % 100000 == 0)
-            {
-                /* Get the time it took to rescan. */
-                uint32_t nElapsedSeconds = timer.Elapsed();
-                debug::log(0, FUNCTION, "Processed ", nTransactionCount, " of ", nScannedCount, " in ", nElapsedSeconds, " seconds (",
-                    std::fixed, (double)(nScannedCount / (nElapsedSeconds > 0 ? nElapsedSeconds : 1 )), " tx/s)");
-            }
-        }
+                    //make sure we are not sending more than 1000 NXS per hour
+                    if(t < 1000 NXS)
+                    {
+                        this.last  = timestamp;
+                        this.total += amount;
 
-        /* Set hash Last. */
-        hashLast = vtx.back().GetHash();
+                        return true;
+                    }
 
-        /* Check for end. */
-        if(vtx.size() != 1000)
-            break;
+                    return false;
+                }
+            };
+        */
 
-        /* Set first flag. */
-        fFirst = false;
+        //uint64_t a = (Caller.Timestamp - Caller.PreState.Value("last")) / 3600;
+        ssMethod << OP::GROUP << OP::CALLER::TIMESTAMP << OP::SUB << OP::CALLER::PRESTATE::VALUE << std::string("last") << OP::UNGROUP;
+        ssMethod << OP::DIV << OP::TYPES::UINT64_T << uint64_t(3600);
+        ssMethod << OP::STORE << OP::TYPES::UINT64_T << std::string("a");
+
+        //uint64_t t = Caller.Prestate.Value("total") / a;
+        ssMethod << OP::CALLER::PRESTATE::VALUE << std::string("total") << OP::DIV << OP::LOAD << std::string("a") << OP::STORE << OP::TYPES::UINT64_T << std::string("t");
+
+        //if(t < 1000 NXS) {
+        ssMethod << OP::IF << OP::GROUP << OP::LOAD << std::string("t") << OP::LESSTHAN << OP::TYPES::UINT64_T << uint64_t(1000) << OP::MUL << OP::TOKENS::DIGITS << std::string("NXS");
+
+        //this.last  = timestamp;
+        ssMethod << OP::CALLER::TIMESTAMP << OP::THIS::STORE << std::string("last");
+
+        //this.total += amount;
+        ssMethod << OP::CALLER::PRESTATE::VALUE << std::string("total") << OP::ADD << OP::CALLER::PARAMS::_3;
+        ssMethod << OP::THIS::STORE << std::string("total");
+
+        //return true };
+        ssMethod << OP::RETURN << OP::TYPES::TRUE;
+        ssMethod << OP::ENDIF;
+
+        //return false;
+        ssMethod << OP::RETURN << OP::TYPES::FALSE; //this will block the debit from processing with operator overloads
+
+        //by default if no return always return false for an overloaded method
+        account << std::string("::DEBIT") << uint8_t(TYPES::METHOD) << ssMethod.Bytes();
     }
-
-    return 0;
-
-
-    {
-        uint1024_t hashBlock = uint1024_t("0x9e804d2d1e1d3f64629939c6f405f15bdcf8cd18688e140a43beb2ac049333a230d409a1c4172465b6642710ba31852111abbd81e554b4ecb122bdfeac9f73d4f1570b6b976aa517da3c1ff753218e1ba940a5225b7366b0623e4200b8ea97ba09cb93be7d473b47b5aa75b593ff4b8ec83ed7f3d1b642b9bba9e6eda653ead9");
-
-
-        TAO::Ledger::BlockState state = TAO::Ledger::TritiumGenesis();
-        debug::log(0, state.hashMerkleRoot.ToString());
-
-        return 0;
-
-        if(!LLD::Ledger->ReadBlock(hashBlock, state))
-            return debug::error("failed to read block");
-
-        printf("block.hashPrevBlock = uint1024_t(\"0x%s\");\n", state.hashPrevBlock.ToString().c_str());
-        printf("block.nVersion = %u;\n", state.nVersion);
-        printf("block.nHeight = %u;\n", state.nHeight);
-        printf("block.nChannel = %u;\n", state.nChannel);
-        printf("block.nTime = %lu;\n",    state.nTime);
-        printf("block.nBits = %u;\n", state.nBits);
-        printf("block.nNonce = %lu;\n", state.nNonce);
-
-        for(int i = 0; i < state.vtx.size(); ++i)
-        {
-            printf("/* Hardcoded VALUE for INDEX %i. */\n", i);
-            printf("vHashes.push_back(uint512_t(\"0x%s\"));\n\n", state.vtx[i].second.ToString().c_str());
-            //printf("block.vtx.push_back(std::make_pair(%u, uint512_t(\"0x%s\")));\n\n", state.vtx[i].first, state.vtx[i].second.ToString().c_str());
-        }
-
-        for(int i = 0; i < state.vOffsets.size(); ++i)
-            printf("block.vOffsets.push_back(%u);\n", state.vOffsets[i]);
-
-
-        return 0;
-
-        //config::mapArgs["-datadir"] = "/public/tests";
-
-        //TestDB* db = new TestDB();
-
-        uint1024_t hashLast = 0;
-        //db->ReadLast(hashLast);
-
-        std::fstream stream1(config::GetDataDir() + "/test1.txt", std::ios::in | std::ios::out | std::ios::binary);
-        std::fstream stream2(config::GetDataDir() + "/test2.txt", std::ios::in | std::ios::out | std::ios::binary);
-        std::fstream stream3(config::GetDataDir() + "/test3.txt", std::ios::in | std::ios::out | std::ios::binary);
-        std::fstream stream4(config::GetDataDir() + "/test4.txt", std::ios::in | std::ios::out | std::ios::binary);
-        std::fstream stream5(config::GetDataDir() + "/test5.txt", std::ios::in | std::ios::out | std::ios::binary);
-
-        std::vector<uint8_t> vBlank(1024, 0); //1 kb
-
-        stream1.write((char*)&vBlank[0], vBlank.size());
-        stream2.write((char*)&vBlank[0], vBlank.size());
-        stream3.write((char*)&vBlank[0], vBlank.size());
-        stream4.write((char*)&vBlank[0], vBlank.size());
-        stream5.write((char*)&vBlank[0], vBlank.size());
-
-        runtime::timer timer;
-        timer.Start();
-        for(uint64_t n = 0; n < 100000; ++n)
-        {
-            stream1.seekp(0, std::ios::beg);
-            stream1.write((char*)&vBlank[0], vBlank.size());
-
-            stream1.seekp(8, std::ios::beg);
-            stream1.write((char*)&vBlank[0], vBlank.size());
-
-            stream1.seekp(16, std::ios::beg);
-            stream1.write((char*)&vBlank[0], vBlank.size());
-
-            stream1.seekp(32, std::ios::beg);
-            stream1.write((char*)&vBlank[0], vBlank.size());
-
-            stream1.seekp(64, std::ios::beg);
-            stream1.write((char*)&vBlank[0], vBlank.size());
-            stream1.flush();
-
-            //db->WriteKey(n, n);
-        }
-
-        debug::log(0, "Wrote 100k records in ", timer.ElapsedMicroseconds(), " micro-seconds");
-
-
-        timer.Reset();
-        for(uint64_t n = 0; n < 100000; ++n)
-        {
-            stream1.seekp(0, std::ios::beg);
-            stream1.write((char*)&vBlank[0], vBlank.size());
-            stream1.flush();
-
-            stream2.seekp(8, std::ios::beg);
-            stream2.write((char*)&vBlank[0], vBlank.size());
-            stream2.flush();
-
-            stream3.seekp(16, std::ios::beg);
-            stream3.write((char*)&vBlank[0], vBlank.size());
-            stream3.flush();
-
-            stream4.seekp(32, std::ios::beg);
-            stream4.write((char*)&vBlank[0], vBlank.size());
-            stream4.flush();
-
-            stream5.seekp(64, std::ios::beg);
-            stream5.write((char*)&vBlank[0], vBlank.size());
-            stream5.flush();
-            //db->WriteKey(n, n);
-        }
-        timer.Stop();
-
-        debug::log(0, "Wrote 100k records in ", timer.ElapsedMicroseconds(), " micro-seconds");
-
-        //db->WriteLast(hashLast + 100000);
-    }
-
-
-
 
     return 0;
 }

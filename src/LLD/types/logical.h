@@ -43,6 +43,30 @@ namespace LLD
         virtual ~LogicalDB();
 
 
+        /** ReadLegacySurplus
+         *
+         *  Reads the surplus coins that are not on tritium
+         *
+         *  @param[out] nSurplus The total surplus coins not on Tritium
+         *
+         *  @return true if read successfully
+         *
+         **/
+        bool ReadLegacySurplus(uint64_t &nSurplus);
+
+
+        /** WriteLegacySurplus
+         *
+         *  Writes the surplus coins that are not on tritium
+         *
+         *  @param[out] nSurplus The total surplus coins not on Tritium
+         *
+         *  @return true if read successfully
+         *
+         **/
+        bool WriteLegacySurplus(const uint64_t nSurplus);
+
+
         /** ReadLastIndex
          *
          *  Reads the last txid that was indexed.

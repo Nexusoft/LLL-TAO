@@ -16,15 +16,14 @@ ________________________________________________________________________________
 
 namespace version
 {
-
     /* Major version X (X.y.z | X > 0). */
-    const uint32_t CLIENT_MAJOR = 5;
+    const uint32_t CLIENT_MAJOR = 6;
 
     /* Minor version Y (x.Y.z | Y > 0). */
-    const uint32_t CLIENT_MINOR = 1;
+    const uint32_t CLIENT_MINOR = 0;
 
     /* Patch version Z (x.y.Z | Z > 0). */
-    const uint32_t CLIENT_PATCH = 6;
+    const uint32_t CLIENT_PATCH = 0;
 
     /* Build version determines release candidate. */
     const uint32_t CLIENT_REVISION = 1;
@@ -44,7 +43,14 @@ namespace version
 
     /* The version number */
     const std::string CLIENT_VERSION_STRING =
-        debug::safe_printstr(CLIENT_MAJOR, ".", CLIENT_MINOR, ".", CLIENT_PATCH, (CLIENT_REVISION == 0) ? "" : debug::safe_printstr("-rc", CLIENT_REVISION, "-", CLIENT_BUILD));
+                                  debug::safe_printstr
+                                  (
+                                      CLIENT_MAJOR, ".",
+                                      CLIENT_MINOR, ".",
+                                      CLIENT_PATCH,
+                                      (CLIENT_REVISION == 0) ? "" :
+                                      debug::safe_printstr("-rc", CLIENT_REVISION, "-", CLIENT_BUILD)
+                                  );
 
 
     /* The interface used Qt, CLI, or Tritium) */

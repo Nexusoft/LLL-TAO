@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <Util/include/config.h>
 #include <Util/include/convert.h>
 #include <Util/include/filesystem.h>
+#include <Util/include/initialize.h>
 #include <Util/include/mutex.h>
 #include <Util/include/runtime.h>
 #include <Util/include/version.h>
@@ -48,6 +49,13 @@ ________________________________________________________________________________
 #include <windows.h>
 
 #endif
+
+
+/* Our initial message will show we are starting up the daemon. */
+std::string Initialize::strMessage = "Starting Daemon...";
+
+/* Declare our static mutex for our internal Initialize class. */
+std::recursive_mutex Initialize::MUTEX;
 
 
 namespace debug

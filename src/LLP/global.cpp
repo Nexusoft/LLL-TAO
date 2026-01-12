@@ -50,9 +50,6 @@ namespace LLP
     /*  Initialize the LLP. */
     bool Initialize()
     {
-        /* Initialize the underlying network resources such as sockets, etc */
-        if(!NetworkInitialize())
-            return debug::error(FUNCTION, "NetworkInitialize: Failed initializing network resources.");
 
         /* Get our current hostname. */
         char chHostname[128];
@@ -258,6 +255,7 @@ namespace LLP
 
         /* STATELESS_MINER_SERVER instance - Phase 2 Stateless Miner LLP */
         /* This server repurposes miningport as the canonical stateless miner LLP port */
+        /* MINING_SERVER instance */
         if(config::GetBoolArg(std::string("-mining"), false) && !config::fClient.load())
         {
             /* Load and validate mining configuration before starting server */

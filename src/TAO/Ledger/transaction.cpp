@@ -410,6 +410,10 @@ namespace TAO
                 if(contract.Empty(TAO::Operation::Contract::OPERATIONS))
                     return debug::error(FUNCTION, "contract is empty");
 
+                /* Version 5 rule to check the conditions are not malformed. */
+                if(nVersion >= 5 && !contract.Valid())
+                    return debug::error(FUNCTION, "conditions byte-code contains invalid instruction: ", debug::GetLastError());
+
                 /* Skip over fees as counting against total contracts. */
                 if(contract.Primitive() != TAO::Operation::OP::FEE)
                     ++nContracts;
@@ -494,9 +498,19 @@ namespace TAO
 
                     #endif
 
-                    /* Check that the there are not more than the allowable default contracts */
-                    if(vContracts.size() > 5 || nNames > 2 || nTrust > 1 || nAccounts > 1 || nCrypto > 1)
-                        return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
+                    /* We want to be explicit here to keep genesis transactions consistent. */
+                    if(nVersion >= 5)
+                    {
+                        /* Check that the there are not more than the allowable default contracts */
+                        if(vContracts.size() != 5 || nNames != 2 || nTrust != 1 || nAccounts != 1 || nCrypto != 1)
+                            return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
+                    }
+                    else
+                    {
+                        /* Check that the there are not more than the allowable default contracts */
+                        if(vContracts.size() > 5 || nNames > 2 || nTrust > 1 || nAccounts > 1 || nCrypto > 1)
+                            return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
+                    }
                 }
 
                 /* Check our hybrid proofs. */
@@ -684,7 +698,7 @@ namespace TAO
 
                 /* Calculate the coinstake reward */
                 const uint64_t nTime = pblock->GetBlockTime() - stateLast.GetBlockTime();
-                nReward = GetCoinstakeReward(nStake, nTime, nTrust, false);
+                nReward = GetCoinstakeReward(nStake, nTime, nTrust, pblock->nVersion, false);
 
                 /* Validate the coinstake reward calculation */
                 if(nClaimedReward != nReward)
@@ -714,7 +728,7 @@ namespace TAO
                 nTrustWeight = GenesisWeight(nAge);
 
                 /* Calculate the coinstake reward */
-                nReward = GetCoinstakeReward(nStake, nAge, 0, true);
+                nReward = GetCoinstakeReward(nStake, nAge, 0, pblock->nVersion, true);
 
                 /* Validate the coinstake reward calculation */
                 if(nClaimedReward != nReward)
@@ -733,7 +747,7 @@ namespace TAO
                 nStakeApplied += nStakeChange;
 
             /* Check the stake balance. */
-            if(nStakeApplied == 0)
+            if(pblock->nVersion < 9 && nStakeApplied == 0) //we want to allow stake to go to zero
                 return debug::error(FUNCTION, "cannot stake if stake balance is zero");
 
             /* Calculate the energy efficiency thresholds. */

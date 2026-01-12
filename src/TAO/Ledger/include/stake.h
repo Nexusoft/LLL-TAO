@@ -7,7 +7,7 @@
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-			"ad vocem populi" - To the Voice of the People
+			"ad vocem populi" To the Voice of the People
 
 ____________________________________________________________________________________________*/
 
@@ -73,7 +73,7 @@ namespace TAO
          *
          *  Retrieve the minimum number of blocks required between an account's stake transactions.
          *
-         *  @param[in] block - Proof of Stake block to which this interval will apply
+         *  @param[in] block Proof of Stake block to which this interval will apply
          *
          *  @return the current system setting for minimum stake interval
          *
@@ -95,10 +95,10 @@ namespace TAO
          *
          *  Calculate new trust score from parameters.
          *
-         *  @param[in] nScorePrev - previous trust score of trust account
-         *  @param[in] nBlockAge - current block age (time since last stake block for trust account)
-         *  @param[in] nStake - current stake amount
-         *  @param[in] nStakeChange - amount added to or removed from stake, unstake penalty applied if this is a negative amount
+         *  @param[in] nScorePrev previous trust score of trust account
+         *  @param[in] nBlockAge current block age (time since last stake block for trust account)
+         *  @param[in] nStake current stake amount
+         *  @param[in] nStakeChange amount added to or removed from stake, unstake penalty applied if this is a negative amount
          *  @param[in] nVersion The version for checking trust score by.
          *
          *  @return new value for trust score
@@ -136,7 +136,7 @@ namespace TAO
          *
          *  Calculate the proof of stake trust weight for a given trust score.
          *
-         *  @param[in] nTrust - Trust score
+         *  @param[in] nTrust Trust score
          *
          *  @return value for trust weight
          *
@@ -149,8 +149,8 @@ namespace TAO
          *  Calculate the current threshold value for Proof of Stake.
          *  This value must exceed required threshold for staking to proceed.
          *
-         *  @param[in] nBlockTime - Amount of time since last block generated on the network
-         *  @param[in] nNonce - Nonce value for stake iteration
+         *  @param[in] nBlockTime Amount of time since last block generated on the network
+         *  @param[in] nNonce Nonce value for stake iteration
          *
          *  @return value for current threshold
          *
@@ -163,9 +163,9 @@ namespace TAO
          *  Calculate the minimum Required Energy Efficiency Threshold.
          *  Can only mine Proof of Stake when current threshold exceeds this value.
          *
-         *  @param[in] nTrustWeight - Current trust weight
-         *  @param[in] nBlockWeight - Current block weight
-         *  @param[in] nStake - Current stake balance
+         *  @param[in] nTrustWeight Current trust weight
+         *  @param[in] nBlockWeight Current block weight
+         *  @param[in] nStake Current stake balance
          *
          *  @return value for minimum required threshold
          *
@@ -179,29 +179,31 @@ namespace TAO
          *
          *  Returned value is absolute rate. To display a percent, multiply by 100.
          *
-         *  @param[in] nTrust - Current trust score (ignored when fGenesis = true)
-         *  @param[in] fGenesis - Set true if staking for Genesis transaction
+         *  @param[in] nTrust Current trust score (ignored when fGenesis = true)
+         *  @param[in] nVersion The version to adjust parameters by
+         *  @param[in] fGenesis Set true if staking for Genesis transaction
          *
          *  @return value for stake rate
          *
          **/
-        cv::softdouble StakeRate(const uint64_t nTrust, const bool fGenesis = false);
+        cv::softdouble StakeRate(const uint64_t nTrust, const uint32_t nVersion, const bool fGenesis = false);
 
 
         /** GetCoinstakeReward
          *
          *  Calculate the coinstake reward for a given stake.
          *
-         *  @param[in] nStake - Stake balance on which reward is to be paid
-         *  @param[in] nStakeTime - Amount of time reward is for
-         *  @param[in] nTrust - Current trust score (ignored when fGenesis = true)
-         *  @param[in] fGenesis - Set true if staking for Genesis transaction
+         *  @param[in] nStake Stake balance on which reward is to be paid
+         *  @param[in] nStakeTime Amount of time reward is for
+         *  @param[in] nTrust Current trust score (ignored when fGenesis = true)
+         *  @param[in] nVersion The version to adjust parameters by
+         *  @param[in] fGenesis Set true if staking for Genesis transaction
          *
          *  @return amount of coinstake reward
          *
          **/
         uint64_t GetCoinstakeReward(const uint64_t nStake, const uint64_t nStakeTime,
-                                    const uint64_t nTrust, const bool fGenesis = false);
+                                    const uint64_t nTrust, const uint32_t nVersion, const bool fGenesis = false);
 
 
         /** CheckConsistency
@@ -221,9 +223,9 @@ namespace TAO
          *
          *  Gets the trust account for a signature chain.
          *
-         *  @param[in] hashGenesis - genesis of user account signature chain that is staking
-         *  @param[out] account - trust account belonging to hashGenesis sig chain
-         *  @param[out] fIndexed - true if trust account has previously staked genesis
+         *  @param[in] hashGenesis genesis of user account signature chain that is staking
+         *  @param[out] account trust account belonging to hashGenesis sig chain
+         *  @param[out] fIndexed true if trust account has previously staked genesis
          *
          *  @return true if the trust account was successfully retrieved
          *
@@ -235,8 +237,8 @@ namespace TAO
          *
          *  Find the last stake transaction for a user signature chain.
          *
-         *  @param[in] hashGenesis - User genesis of signature chain to search
-         *  @param[out] tx - Last stake transaction for user
+         *  @param[in] hashGenesis User genesis of signature chain to search
+         *  @param[out] tx Last stake transaction for user
          *
          *  @return True if last stake found, false otherwise
          *

@@ -29,7 +29,7 @@ namespace LLD
 {
     /** The Database Constructor. To determine file location and the Bytes per Record. **/
     LogicalDB::LogicalDB(const uint8_t nFlagsIn, const uint32_t nBucketsIn, const uint32_t nCacheIn)
-    : SectorDatabase(std::string("_API")
+    : SectorDatabase(std::string("_LOGICAL")
     , nFlagsIn
     , nBucketsIn
     , nCacheIn)
@@ -40,6 +40,20 @@ namespace LLD
     /** Default Destructor **/
     LogicalDB::~LogicalDB()
     {
+    }
+
+
+    /* Reads the surplus coins that are not on tritium */
+    bool LogicalDB::ReadLegacySurplus(uint64_t &nSurplus)
+    {
+        return Read(std::string("legacy.surplus"), nSurplus);
+    }
+
+
+    /* Writes the surplus coins that are not on tritium */
+    bool LogicalDB::WriteLegacySurplus(const uint64_t nSurplus)
+    {
+        return Write(std::string("legacy.surplus"), nSurplus);
     }
 
 

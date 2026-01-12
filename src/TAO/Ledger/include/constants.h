@@ -120,6 +120,14 @@ namespace TAO::Ledger
     const uint32_t ONE_YEAR = 60 * 60 * 24 * 28 * 13;
 
 
+    /** Stake reward rate is annual. Define one year (364 days) of time for reward calculations **/
+    const uint32_t FIVE_YEARS = (60 * 60 * 24) * (365 * 5 + 1); //we use +1 here to count for the single leap day in 5 year cycle
+
+
+    /** Stake reward rate is annual. Define one year (365 days) of time for reward calculations **/
+    const uint32_t FULL_YEAR = 60 * 60 * 24 * 365;
+
+
     /** nVersion 4 and earlier trust keys expire after 24 hours. **/
     const uint32_t TRUST_KEY_EXPIRE   = 60 * 60 * 24;
 
@@ -195,6 +203,13 @@ namespace TAO::Ledger
     /* The cost per contract when creating transactions faster than the fee-free threshold */
     const uint64_t TX_FEE = 0.01 * NXS_COIN;
 
+
+    /** The total different between total supply and the tritium supply. **/
+    const uint64_t MAINNET_LEGACY_MINT = 14642235699093; //14642235.699093
+
+
+    /** The total different between total supply and the tritium supply. **/
+    const uint64_t TESTNET_LEGACY_MINT = 31415926535897; //3.14MM
 
 
     /** MaturityCoinbase

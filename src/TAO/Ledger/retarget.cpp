@@ -126,7 +126,8 @@ namespace TAO
                 return bnProofOfWorkStart[0].GetCompact();
 
             /* Get the Block Time and Target Spacing. */
-            uint64_t nBlockTime   = GetWeightedTimes(first, state.nVersion >= 7 ? 2 : 5);
+            uint64_t nBlockTime   = (state.nVersion < 9 ? GetWeightedTimes(first, state.nVersion >= 7 ? 2 : 5) :
+                std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t)1));
 
             /* Check for minimum difficulty reset for testnet. */
             if(config::fTestNet.load() && nBlockTime > 3600) //if more than one hour since last block, reset difficulty
@@ -134,6 +135,10 @@ namespace TAO
 
             /* Get target difficulty. */
             uint64_t nBlockTarget = config::fTestNet.load() ? TESTNET_STAKE_TARGET_SPACING : STAKE_TARGET_SPACING;
+
+            /* For version 9 blocks we want to have double the block target. */
+            if(state.nVersion >= 9)
+                nBlockTarget *= 2;
 
             /* The Upper and Lower Bound Adjusters. */
             uint64_t nUpperBound = nBlockTarget;
@@ -228,14 +233,15 @@ namespace TAO
                 return bnProofOfWorkStart[1].getuint32();
 
             /* Standard Time Proportions */
-            uint64_t nBlockTime = ((state.nVersion >= 4) ?
+            uint64_t nBlockTime = ((state.nVersion >= 4 && state.nVersion < 9) ?
                 GetWeightedTimes(first, state.nVersion >= 7 ? 2 : 5) : std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t)1));
 
             /* Check for minimum difficulty reset for testnet. */
             if(config::fTestNet.load() && nBlockTime > 3600) //if more than one hour since last block, reset difficulty
                 return bnProofOfWorkLimit[1].getuint32();
 
-            uint64_t nBlockTarget = config::fTestNet.load() ? TESTNET_MINING_TARGET_SPACING : MINING_TARGET_SPACING;
+            uint64_t nBlockTarget =
+                config::fTestNet.load() ? TESTNET_MINING_TARGET_SPACING : MINING_TARGET_SPACING;
 
             /* Chain Mod: Is a proportion to reflect outstanding released funds. Version 1 Deflates difficulty slightly
             to allow more blocks through when blockchain has been slow, Version 2 Deflates Target Timespan to lower the minimum difficulty.
@@ -247,7 +253,7 @@ namespace TAO
             nChainMod = std::max(nChainMod, (state.nVersion == 1) ? cv::softdouble(0.75) : cv::softdouble(0.5));
 
             /* Enforce Block Version 2 Rule. Chain mod changes block time requirements, not actual mod after block times. */
-            if(state.nVersion >= 2)
+            if(state.nVersion >= 2 && state.nVersion < 9) //we disable chain mode for version 9 blocks
                 nBlockTarget = static_cast<uint64_t>(cv::softdouble(nBlockTarget) * nChainMod);
 
             /* These figures reduce the increase and decrease max and mins as difficulty rises
@@ -369,7 +375,7 @@ namespace TAO
                 return bnProofOfWorkStart[2].GetCompact();
 
             /* Get the Block Times with Minimum of 1 to Prevent Time Warps. */
-            uint64_t nBlockTime = ((state.nVersion >= 4) ?
+            uint64_t nBlockTime = ((state.nVersion >= 4 && state.nVersion < 9) ?
                 GetWeightedTimes(first, state.nVersion >= 7 ? 2 : 5) : std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1));
 
             /* Check for minimum difficulty reset for testnet. */
@@ -377,7 +383,8 @@ namespace TAO
                 return bnProofOfWorkLimit[2].GetCompact();
 
             /* Set the block target timespan. */
-            uint64_t nBlockTarget = config::fTestNet.load() ? TESTNET_MINING_TARGET_SPACING : MINING_TARGET_SPACING;
+            uint64_t nBlockTarget =
+                config::fTestNet.load() ? TESTNET_MINING_TARGET_SPACING : MINING_TARGET_SPACING;
 
             /* Get the Chain Modular from Reserves. */
             cv::softdouble nChainMod = cv::softdouble(GetFractionalSubsidy(GetChainAge(first.GetBlockTime()), 0,
@@ -387,7 +394,7 @@ namespace TAO
             nChainMod = std::max(nChainMod, (state.nVersion == 1) ? cv::softdouble(0.75) : cv::softdouble(0.5));
 
             /* Enforce Block Version 2 Rule. Chain mod changes block time requirements, not actual mod after block times. */
-            if(state.nVersion >= 2)
+            if(state.nVersion >= 2 && state.nVersion < 9) //we disable chain mode for version 9 blocks
                 nBlockTarget = static_cast<uint64_t>(cv::softdouble(nBlockTarget) * nChainMod);
 
             /* The Upper and Lower Bound Adjusters. */

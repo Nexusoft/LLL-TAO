@@ -204,11 +204,34 @@ namespace TAO
 
 
         /* Calculate the stake rate corresponding to a given trust score. */
-        cv::softdouble StakeRate(const uint64_t nTrust, const bool fGenesis)
+        cv::softdouble StakeRate(const uint64_t nTrust, const uint32_t nVersion, const bool fGenesis)
         {
             /* Stake rate fixed at 0.005 (0.5%) when staking Genesis */
             if(fGenesis)
                 return cv::softdouble(0.005);
+
+            /*  Special rule for subsidy types ratified by following poll:
+             *  https://t.me/NexusOfficial/211386/269954.
+             *
+             *  This poll voted on two items, stake rate increase and developer supply increase.
+             *  This protocol modification is the result of consensus reached related to developer income.
+             *
+             *  38% Increase stake rate to 5% for 5 years of Trust
+             *  26% Do not increase stake rate at all.
+             *
+             */
+            if(nVersion >= 9) //this is for block version 9 and above
+            {
+                /* Keep track of our local timespan so we only calculate it once. */
+                static const uint32_t nTimespan =
+                    config::fTestNet ? TRUST_SCORE_MAX_TESTNET : FIVE_YEARS;
+
+                /* Stake rate starts at 0.005 (0.5%) and grows to 0.03 (3%) when trust score reaches or exceeds one year */
+                const cv::softdouble nTrustRatio =
+                    (cv::softdouble(nTrust) / cv::softdouble(nTimespan));
+
+                return std::min(cv::softdouble(0.05), (cv::softdouble(0.045) * cv::log((cv::softdouble(9.0) * nTrustRatio) + cv::softdouble(1.0)) / cv::log(cv::softdouble(10))) + cv::softdouble(0.005));
+            }
 
             /* No trust score cap in Tritium staking, but use testnet max for testnet stake rate (so it grows faster) */
             static const uint32_t nRateBase = config::fTestNet ? TRUST_SCORE_MAX_TESTNET : ONE_YEAR;
@@ -221,25 +244,28 @@ namespace TAO
 
 
         /* Calculate the coinstake reward for a given stake. */
-        uint64_t GetCoinstakeReward(const uint64_t nStake, const uint64_t nStakeTime, const uint64_t nTrust, const bool fGenesis)
+        uint64_t GetCoinstakeReward(const uint64_t nStake,
+                                    const uint64_t nStakeTime, const uint64_t nTrust, const uint32_t nVersion, const bool fGenesis)
         {
+            /* Calculate the stake rate based on version switch. */
+            const cv::softdouble nStakeRate =
+                StakeRate(nTrust, nVersion, fGenesis);
 
-            cv::softdouble nStakeRate = StakeRate(nTrust, fGenesis);
-
-            /* Reward rate for time period is annual rate * (time period / annual time) or nStakeRate * (nStakeTime / ONE_YEAR)
-             * Then, overall nStakeReward = nStake * reward rate
+            /*  Special rule for subsidy types ratified by following poll:
+             *  https://t.me/NexusOfficial/211386/269954.
              *
-             * Thus, the appropriate way to write this (for clarity) would be:
-             *      StakeReward = nStake * nStakeRate * (nStakeTime / ONE_YEAR)
+             *  This poll voted on two items, stake rate increase and developer supply increase.
+             *  This protocol modification is the result of consensus reached related to developer income.
              *
-             * However, with integer arithmetic (nStakeTime / ONE_YEAR) would evaluate to 0 or 1, etc. and the nStakeReward
-             * would be erroneous.
+             *  38% Increase stake rate to 5% for 5 years of Trust
+             *  26% Do not increase stake rate at all.
              *
-             * Therefore, it performs the full multiplication portion first.
              */
-            uint64_t nStakeReward = (nStake * nStakeRate * nStakeTime) / TAO::Ledger::ONE_YEAR;
+            if(nVersion >= 9) //this is for block version 9 and above
+                return (nStake * nStakeRate * nStakeTime) / TAO::Ledger::FULL_YEAR; //we want to adjust to use FULL_YEAR here
 
-            return nStakeReward;
+            /* Legacy calculation for sub verion 5 protocols. */
+            return (nStake * nStakeRate * nStakeTime) / TAO::Ledger::ONE_YEAR;
         }
 
 
@@ -370,7 +396,6 @@ namespace TAO
         /*  Gets the trust account for a signature chain */
         bool FindTrustAccount(const uint256_t& hashGenesis, TAO::Register::Object &account, bool &fIndexed)
         {
-
             /* Reset trust account data */
             account = TAO::Register::Object();
 
@@ -379,48 +404,53 @@ namespace TAO
              * Upon staking Genesis, that account is indexed into the register DB and is directly retrievable.
              * Pre-Genesis, we have to retrieve the name register to obtain the trust account address.
              */
-
             if(LLD::Register->HasTrust(hashGenesis))
             {
                 /* Trust account is indexed */
-                fIndexed = true;
-                TAO::Register::Object reg;
-
-                if(!LLD::Register->ReadTrust(hashGenesis, reg))
+                TAO::Register::Object oTrust;
+                if(!LLD::Register->ReadTrust(hashGenesis, oTrust))
                    return debug::error(FUNCTION, "Unable to retrieve trust account");
 
-                if(!reg.Parse())
+                /* Parse the object data from the account */
+                if(!oTrust.Parse())
                     return debug::error(FUNCTION, "Unable to parse trust account register");
 
-                if(reg.Standard() != TAO::Register::OBJECTS::TRUST)
+                /* Check that we have the proper standard from disk. */
+                if(oTrust.Standard() != TAO::Register::OBJECTS::TRUST)
                     return debug::error(FUNCTION, "Invalid trust account register");
 
                 /* Found valid trust account register. */
-                account = reg;
+                account = oTrust;
+
+                /* Set our return value. */
+                fIndexed = true;
 
                 return true;
             }
             else
             {
-                /* Trust account is not indexed */
-                fIndexed = false;
-                TAO::Register::Object reg;
-
                 /* Retrieve the trust address */
-                uint256_t hashAddress = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+                const uint256_t hashAddress =
+                    TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
-                if(!LLD::Register->ReadState(hashAddress, reg))
+                /* Read account from disk. */
+                TAO::Register::Object oTrust;
+                if(!LLD::Register->ReadState(hashAddress, oTrust))
                     return debug::error(FUNCTION, "Unable to retrieve trust account for Genesis");
 
-                /* Verify we have trust account register for the user account */
-                if(!reg.Parse())
+                /* Parse the object data from the account */
+                if(!oTrust.Parse())
                     return debug::error(FUNCTION, "Unable to parse trust account register for Genesis");
 
-                if(reg.Standard() != TAO::Register::OBJECTS::TRUST)
+                /* Check that we have the proper standard from disk. */
+                if(oTrust.Standard() != TAO::Register::OBJECTS::TRUST)
                     return debug::error(FUNCTION, "Invalid trust account register for Genesis");
 
                 /* Found valid trust account register. */
-                account = reg;
+                account = oTrust;
+
+                /* Set our return value. */
+                fIndexed = false;
 
                 return true;
             }

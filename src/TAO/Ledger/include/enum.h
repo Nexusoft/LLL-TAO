@@ -214,8 +214,8 @@ namespace TAO
                 /** BRAINPOOL ECDSA curve. **/
                 BRAINPOOL   = 0x02,
 
-                /** SECP256K1 ECDSA curve. **/
-                SECP256K1   = 0x03
+                /** ED448-Goldilocks EdDSA curve. **/
+                ED448       = 0x03
             };
 
             /* Track a mapping to enum. */
@@ -230,8 +230,8 @@ namespace TAO
                     return SIGNATURE::FALCON;
 
                 /* Check for brainpool standard. */
-                if(strType == "secp256k1")
-                    return SIGNATURE::SECP256K1;
+                if(strType == "ed448")
+                    return SIGNATURE::ED448;
 
                 return SIGNATURE::RESERVED;
             }
@@ -314,6 +314,272 @@ namespace TAO
 
                 /* Private hybrid hash. */
                 CHECKPOINT = 0x02, //for private chain checkpointing into mainnet blocks.
+            };
+        };
+
+
+        /** Struct to hold the authorization enumerated values for building an authorization script. **/
+        namespace AUTH
+        {
+            /** We track this as our first invalid opcode. **/
+            static const uint8_t RESERVED  = 0x00;
+
+            /** Core validation types. **/
+            enum class TYPES : uint8_t
+            {
+                //RESERVED to 0x7f
+
+                UINT8     = 0x01,
+                UINT16    = 0x02,
+                UINT32    = 0x03,
+                UINT64    = 0x04,
+                UINT256   = 0x05,
+                UINT512   = 0x06,
+                UINT1024  = 0x07,
+                STRING    = 0x08,
+                BYTES     = 0x09,
+
+                //signature types
+                FALCON    = 0x0a, //FALCON QR DSA
+                ED448     = 0x0b, //ED448-Goldilocks
+
+                //keys and signatures
+                PUBKEY    = 0x0c,
+                SIGNATURE = 0x0d
+
+                //RESERVED 0x0e
+                //RESERVED 0x0f
+            };
+
+            /** Core comparison operations. **/
+            enum class OP : uint8_t
+            {
+                //RESERVED from 0x10 to 0x1f
+                EQUALS        = 0x10,
+                LESSTHAN      = 0x11,
+                GREATERTHAN   = 0x12,
+                NOTEQUALS     = 0x13,
+                CONTAINS      = 0x14,
+                LESSEQUALS    = 0x15,
+                GREATEREQUALS = 0x16,
+
+                //logical operators
+                AND           = 0x17,
+                OR            = 0x18,
+                GROUP         = 0x19,
+                UNGROUP       = 0x1a,
+
+                //RESERVED 0x20 to to 0x2f
+                ADD          = 0x20,
+                SUB          = 0x21,
+                DIV          = 0x22,
+                MUL          = 0x23,
+                MOD          = 0x24,
+                INC          = 0x25,
+                DEC          = 0x26,
+                EXP          = 0x27,
+
+                //conditional operators
+                IF           = 0x28,
+                THEN         = 0x29,
+                ENDIF        = 0x30,
+                RETURN       = 0x31,
+                DENIED       = 0x32,
+                GRANTED      = 0x33,
+
+            };
+
+            /** Information about the caller and their transaction information. **/
+            struct CALLER
+            {
+                enum : uint8_t
+                {
+                    GENESIS     = 0x34,
+                    TIMESTAMP   = 0x35,
+                    PAYLOAD     = 0x36, //this is our input payload that contains our keys or input parameters
+                };
+
+                /** Information about the caller crypto object register. **/
+                enum class CRYPTO : uint8_t
+                {
+                    AUTH    = 0x37, //our AUTH crypto object key
+                    SIGN    = 0x38, //our SIGN crypto object key
+                };
+            };
+
+            /** Verification opcodes for cryptographic proofs. **/
+            enum class VERIFY : uint8_t
+            {
+                NEXTHASH    = 0x3a,
+                RECOVERY    = 0x3b,
+                GENESIS     = 0x3c,
+            };
+
+            namespace OPS
+            {
+                /** Primitive OP::WRITE operation. **/
+                struct WRITE
+                {
+                    static const uint16_t ENABLED = (1 << 1);
+
+                    /** Input parameters for OP::WRITE. **/
+                    enum class PARAM : uint8_t
+                    {
+                        ADDRESS = 0x40,
+                        DATA    = 0x41,
+                    };
+                };
+
+                /** Primitive OP::CREATE operation. **/
+                struct CREATE
+                {
+                    static const uint16_t ENABLED = (1 << 2);
+
+                    /** Input parameters for OP::CREATE. **/
+                    enum class PARAM : uint8_t
+                    {
+                        ADDRESS = 0x42,
+                        TYPE    = 0x43,
+                        DATA    = 0x44,
+                    };
+                };
+
+                /** Primitive OP::TRANSFER operation. **/
+                struct TRANSFER
+                {
+                    static const uint16_t ENABLED = (1 << 3);
+
+                    /** Input parameters for OP::TRANSFER. **/
+                    enum class PARAM : uint8_t
+                    {
+                        ADDRESS   = 0x43,
+                        RECIPIENT = 0x44,
+                        TYPE      = 0x45,
+                    };
+                };
+
+                /** Primitive OP::CLAIM operation. **/
+                struct CLAIM
+                {
+                    static const uint16_t ENABLED = (1 << 4);
+
+                    /** Input parameters for OP::CLAIM. **/
+                    enum class PARAM : uint8_t
+                    {
+                        TRANSACTION  = 0x46, //the transaction that we are claiming from
+                        ADDRESS      = 0x47,
+                    };
+                };
+
+                /** Primitive OP::COINBASE operation. **/
+                struct COINBASE
+                {
+                    static const uint16_t ENABLED = (1 << 5);
+
+                    /** Input parameters for OP::COINBASE. **/
+                    enum class PARAM : uint8_t
+                    {
+                        GENESIS      = 0x47,
+                    };
+                };
+
+                /** Primitive OP::TRUST operation. **/
+                struct TRUST
+                {
+                    static const uint16_t ENABLED = (1 << 6);
+
+                    /** Input parameters for OP::COINBASE. **/
+                    enum class PARAM : uint8_t
+                    {
+                        TRUST  = 0x48,
+                        CHANGE = 0x49,
+                        REWARD = 0x4a,
+                    };
+                };
+
+                /** Primitive OP::GENESIS operation. **/
+                struct GENESIS
+                {
+                    static const uint16_t ENABLED = (1 << 7);
+
+                    /** Input parameters for OP::COINBASE. **/
+                    enum class PARAM : uint8_t
+                    {
+                        REWARD = 0x4b,
+                    };
+                };
+
+                /** Primitive OP::DEBIT operation. **/
+                struct DEBIT
+                {
+                    static const uint16_t ENABLED = (1 << 8);
+
+                    /** Input parameters for OP::COINBASE. **/
+                    enum class PARAM : uint8_t
+                    {
+                        ADDRESS   = 0x4c,
+                        TO        = 0x4d,
+                        AMOUNT    = 0x4e,
+                        REFERENCE = 0x4f
+                    };
+                };
+
+                /** Primitive OP::CREDIT operation. **/
+                struct CREDIT
+                {
+                    static const uint16_t ENABLED = (1 << 9);
+
+                    /** Input parameters for OP::COINBASE. **/
+                    enum class PARAM : uint8_t
+                    {
+                        TRANSACTION = 0x50,
+                        ADDRESS     = 0x51,
+                        PROOF       = 0x52,
+                        AMOUNT      = 0x53
+                    };
+                };
+
+                /** Primitive OP::FEE operation. **/
+                struct FEE
+                {
+                    static const uint16_t ENABLED = (1 << 10);
+
+                    /** Input parameters for OP::COINBASE. **/
+                    enum class PARAM : uint8_t
+                    {
+                        ADDRESS = 0x54,
+                        AMOUNT  = 0x55
+                    };
+                };
+
+
+                /** Primitive OP::INVOKE operation. **/
+                struct INVOKE
+                {
+                    static const uint16_t ENABLED = (1 << 11);
+
+                    /** Input parameters for OP::COINBASE. **/
+                    enum class PARAM : uint8_t
+                    {
+                        ADDRESS = 0x56,
+                        METHOD  = 0x57,
+                        PARAMS  = 0x58,
+                    };
+                };
+
+
+                /** This tracks all of our opcodes that can be enabled with AUTH::OPS::ALL. **/
+                static const uint16_t ALL = WRITE::ENABLED
+                                          | CREATE::ENABLED
+                                          | TRANSFER::ENABLED
+                                          | CLAIM::ENABLED
+                                          | COINBASE::ENABLED
+                                          | TRUST::ENABLED
+                                          | GENESIS::ENABLED
+                                          | DEBIT::ENABLED
+                                          | CREDIT::ENABLED
+                                          | FEE::ENABLED
+                                          | INVOKE::ENABLED;
             };
         };
     }

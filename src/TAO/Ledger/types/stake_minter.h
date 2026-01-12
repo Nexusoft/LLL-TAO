@@ -313,11 +313,12 @@ namespace TAO
          *  Each staking algorithm will implement its own reward calculation.
          *
          *  @param[in] nTime the time for which the reward will be calculated
+         *  @param[in] nVersion the version that will switch parameters for
          *
          *  @return the amount of reward paid by the block
          *
          **/
-        virtual uint64_t CalculateCoinstakeReward(uint64_t nTime) = 0;
+        virtual uint64_t CalculateCoinstakeReward(const uint64_t nTime, const uint32_t nVersion) = 0;
 
 
         /** CheckUser
