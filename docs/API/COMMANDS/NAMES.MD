@@ -40,6 +40,8 @@ The following verbs are currently supported by this API command-set:
 [`claim`](#claim) - Claim ownership of an object register.  
 [`history`](#history) - Generate the history of all last states.  
 [`transactions`](#transactions) - List all transactions that modified specified object.  
+[`rename`](#rename) - Rename a local or namespaced name.  
+[`reverse`](#reverse) - Reverse lookup a name from an address.  
  
 
 ## `Supported Nouns`
@@ -50,6 +52,7 @@ The following nouns are supported for this API command-set:
 [`namespace`] - An object register containing a namespace object.  
 [`global`] - An object register which is recognised globally on the network.  
 [`local`] - An object register which is recognised only within the context of a user profile.  
+[`inactive`] - A name object that has been disabled (address set to 0).  
 [`any`] - An object selection noun allowing mixed names nouns.  
 
 -----------------------------------
@@ -324,7 +327,7 @@ This method allows the register address within a name object to be changed.
 names/update/noun
 ```
 
-This command does not support the `name` `namespace`or `any` nouns.
+This command supports all the nouns.
 
 ### Parameters:
 
@@ -493,7 +496,7 @@ This command supports all the nouns.
 
 `address` : Required to **identify** the name using the register address. This is optional if the `name` is provided.
 
-#### history/namesapce
+#### history/namespace
 
 `namespace` : Required to **identify** the Name of the namespace object. This is optional if the namespace `address` is provided.
 
@@ -578,7 +581,7 @@ This command supports all the nouns.
 
 `address` : Required to **identify** the name using the register address. This is optional if the `name` is provided.
 
-#### transactions/namesapce
+#### transactions/namespace
 
 `namespace` : Required to **identify** the Name of the namespace object. This is optional if the namespace `address` is provided.
 
@@ -682,5 +685,103 @@ This method supports the Sorting / Filtering parameters.
 
 `object` : Returns a list of all the object details (register, name or namespace).
 )
+
+-----------------------------------
+# <a name="rename"></a> `rename`
+
+This will rename a local or namespaced name to a new name within the same namespace.
+
+```
+names/rename/noun
+```
+
+This command supports the `name` and `local` nouns.
+
+**NOTE:** Global names cannot be renamed.
+
+### Parameters:
+
+`pin` : Required if **locked**. The PIN to authorize the transaction.
+
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
+
+`name` : Required to **identify** the current name to be renamed. The name should be in the format name (for local names) or namespace::name (for names in a namespace).
+
+`new` : Required the **new name** that the name should be renamed to.
+
+### Results:
+
+#### Return value JSON object:
+
+```
+{
+    "success": true,
+    "txid": "01947f824e9b117d618ed49a7dd84f0e7c4bb0896e40d0a95e04e27917e6ecb6b9a5ccfba7d0d5c308b684b95e98ada4f39bbac84db75e7300a09befd1ac0999"
+}
+[Completed in 4981.591417 ms]
+```
+
+#### Return values:
+
+`success` : Boolean flag indicating that the name was renamed successfully.
+
+`txid` : The ID (hash) of the transaction for the rename operation.
+
+-----------------------------------
+
+# <a name="reverse"></a> `reverse`
+
+This will perform a reverse lookup of a name from a register address.
+
+```
+names/reverse/lookup
+```
+
+This command uses the `lookup` noun.
+
+### Parameters:
+
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
+
+`address` : Required the **register address** to lookup the name for.
+
+### Results:
+
+#### Return value JSON object:
+
+```
+{
+    "owner": "b7fa11647c02a3a65a72970d8e703d8804eb127c7e7c41d565c3514a4d3fdf13",
+    "version": 1,
+    "created": 1656571493,
+    "modified": 1656571493,
+    "type": "OBJECT",
+    "register": "8BJ747ASK45oU7UC5e2dePXeMviskmU1t5Kd4iyKLdSiCgKtLcJ",
+    "name": "Block_Token",
+    "namespace": "",
+    "address": "8HeR7kxrk9zsAcEAqaQaD2juMnZ73m4WDb4sW16pW93qd7i2Q3G"
+}
+[Completed in 0.418167 ms]
+```
+
+#### Return values:
+
+`owner` : The username hash of the owners profile.
+
+`version` : The serialization version of the Name.
+
+`created` : The UNIX timestamp when the Name was created.
+
+`modified` : The UNIX timestamp when the Name was last modified.
+
+`type` : Asset register type. Can be OBJECT, RAW or READONLY.
+
+`register` : The register address of the object that this Name points to.
+
+`name` : The name identifying the object register.
+
+`namespace` : The namespace that the name was created in. Empty for local names, ~GLOBAL~ for global names.
+
+`address` : The register address of the Name.
 
 -----------------------------------

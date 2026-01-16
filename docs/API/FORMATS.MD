@@ -1,6 +1,6 @@
 # `Formats`
 
-When creating or modifying a register for any command-set, a format is required to encode the operations to the given register. The following sections outline the formats and their corresponding syntax. This syntax is accessed when one supplies `format=basic` as a paramter to a command that creates a new register, or updates its current state.
+When creating or modifying a register for any command-set, a format is required to encode the operations to the given register. The following sections outline the formats and their corresponding syntax. This syntax is accessed when one supplies `format=basic` as a parameter to a command that creates a new register, or updates its current state.
 
 ## `readonly` or `raw`
 
@@ -45,7 +45,7 @@ Would result in an object with the following structure:
     "type": "OBJECT",
     "field1" : "value1",
     "field2" : "value2",
-    "field3" : "321"
+    "field3" : "321",
     "address": "87Wai2JoS4hNAEVXZVmejLS6pK21XQWKoLAkaep5aXFdrYnJJyk",
     "name": "test"
 }
@@ -68,13 +68,15 @@ Would result in an object with the following structure:
     "type": "OBJECT",
     "field1" : "100",
     "field2" : "value2",
-    "field3" : "321"
+    "field3" : "321",
     "address": "87Wai2JoS4hNAEVXZVmejLS6pK21XQWKoLAkaep5aXFdrYnJJyk",
     "name": "test"
 }
 ```
 
 **NOTE:** The basic format only works for an object register of supported type `asset` or `schema`.
+
+**TIP:** To create a read-only (immutable) field using the basic format, prefix the value with `const:`. For example: `field1=const:myvalue` will create a field that cannot be updated after creation.
 
 ## `JSON`
 
