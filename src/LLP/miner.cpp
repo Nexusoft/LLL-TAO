@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/falcon_constants.h>
 #include <LLP/include/falcon_auth.h>
+#include <LLP/include/opcode_utility.h>
 #include <LLP/types/miner.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
@@ -409,7 +410,18 @@ namespace LLP
             /* Log incoming packet */
             debug::log(1, FUNCTION, "MinerLLP: ProcessPacket from ", GetAddress().ToStringIP(),
                        " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec,
+                       " (", OpcodeUtility::GetOpcodeName(PACKET.HEADER), ")",
                        " length=", PACKET.LENGTH);
+
+            /* Validate packet length using opcode utility */
+            std::string strLengthReason;
+            if(!OpcodeUtility::ValidatePacketLength(PACKET, &strLengthReason))
+            {
+                debug::error(FUNCTION, "MinerLLP: Packet length validation failed from ", 
+                           GetAddress().ToStringIP(), ": ", strLengthReason);
+                Disconnect();
+                return false;
+            }
 
             /* Route ALL stateless mining packets to StatelessMiner.
              * 
