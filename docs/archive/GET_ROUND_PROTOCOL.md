@@ -1,8 +1,36 @@
 # GET_ROUND Protocol Documentation
 
-## Overview
+⚠️ **DEPRECATED - DO NOT USE FOR NEW IMPLEMENTATIONS** ⚠️
 
-The GET_ROUND protocol is the core synchronization mechanism between mining pools and miners in the Nexus stateless mining architecture. This document describes the fixed protocol schema that eliminates FALSE OLD_ROUND rejections.
+**Status:** Archived (Superseded by Push Notification Protocol)  
+**Archived Date:** 2026-01-12  
+**Superseded By:** [STATELESS_MINING_PROTOCOL.md](STATELESS_MINING_PROTOCOL.md)  
+
+---
+
+## ⚠️ Migration Notice
+
+This protocol has been **superseded by the push notification-based Stateless Mining Protocol**. The polling-based GET_ROUND mechanism described here is no longer the recommended approach.
+
+**For New Implementations:**
+- ✅ Use [STATELESS_MINING_PROTOCOL.md](STATELESS_MINING_PROTOCOL.md) - Current production protocol
+- ✅ Use [TEMPLATE_FORMAT.md](TEMPLATE_FORMAT.md) - Wire format specification
+- ✅ Use [MIGRATION_GET_ROUND_TO_GETBLOCK.md](MIGRATION_GET_ROUND_TO_GETBLOCK.md) - Migration guide
+
+**Why This Was Deprecated:**
+- ❌ Polling creates unnecessary network traffic (12 requests/min per miner)
+- ❌ High latency (0-5 second delay for block detection)
+- ❌ Uses old uint8_t opcodes (0x85, 0xCC) instead of new uint16_t range
+- ❌ Requires two-step process (GET_ROUND → GET_BLOCK)
+- ✅ Replaced by server-push notifications (<10ms latency, 50% bandwidth reduction)
+
+**This document is preserved for historical reference only.**
+
+---
+
+## Overview (DEPRECATED)
+
+The GET_ROUND protocol was the core synchronization mechanism between mining pools and miners in the Nexus stateless mining architecture. This document describes the fixed protocol schema that eliminated FALSE OLD_ROUND rejections.
 
 ## Problem Statement
 
