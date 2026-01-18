@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLP/include/falcon_verify.h>
 #include <LLP/include/auto_cooldown_manager.h>
 #include <LLP/include/pool_discovery.h>
+#include <LLP/include/opcode_utility.h>
 #include <LLP/templates/events.h>
 
 #include <TAO/Ledger/include/create.h>
@@ -477,7 +478,20 @@ namespace LLP
             /* Log entry */
             debug::log(1, FUNCTION, "MinerLLP: ProcessPacket from ", GetAddress().ToStringIP(),
                        " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec,
+                       " (", OpcodeUtility::GetOpcodeName(PACKET.HEADER), ")",
                        " length=", PACKET.LENGTH);
+
+            /* Validate packet using opcode utility */
+            std::string strValidationReason;
+            if(!OpcodeUtility::ValidatePacket(PACKET, context.fAuthenticated, &strValidationReason))
+            {
+                debug::error(FUNCTION, "MinerLLP: Packet validation failed from ", GetAddress().ToStringIP(),
+                           ": ", strValidationReason);
+                
+                /* Disconnect on validation failure */
+                Disconnect();
+                return false;
+            }
 
             /* Handle block-related packets that require stateful block management */
             /* These are handled directly here instead of through StatelessMiner */
