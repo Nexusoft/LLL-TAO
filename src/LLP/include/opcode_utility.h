@@ -27,13 +27,13 @@ namespace OpcodeUtility
 {
     /** Opcode range constants for stateless mining protocol
      *  
-     *  The stateless miner port uses a dedicated opcode range 0xD0-0xDA (208-218)
+     *  The stateless miner port uses a dedicated opcode range 0xCF-0xDA (207-218)
      *  for mining-specific operations. These opcodes are NOT available on legacy
      *  mining ports and are part of the stateless authentication protocol.
      **/
     
-    /** First stateless mining opcode (MINER_AUTH_CHALLENGE = 208 / 0xD0) */
-    static const uint8_t STATELESS_OPCODE_FIRST = 208;
+    /** First stateless mining opcode (MINER_AUTH_INIT = 207 / 0xCF) */
+    static const uint8_t STATELESS_OPCODE_FIRST = 207;
     
     /** Last stateless mining opcode (HASH_BLOCK_AVAILABLE = 218 / 0xDA) */
     static const uint8_t STATELESS_OPCODE_LAST = 218;

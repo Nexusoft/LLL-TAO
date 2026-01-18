@@ -23,7 +23,13 @@ namespace LLP
 {
 namespace OpcodeUtility
 {
-    /** Opcode constants from miner.h for reference */
+    /** Opcode constants from miner.h for reference
+     *  
+     *  NOTE: These are duplicated here rather than including miner.h to avoid
+     *  circular dependencies. The opcode_utility is intended to be a lightweight
+     *  utility that can be included by miner.h and other files without creating
+     *  include cycles. The values must be kept in sync with src/LLP/types/miner.h.
+     **/
     namespace Opcodes
     {
         /* Data packets */
@@ -71,7 +77,7 @@ namespace OpcodeUtility
 
     bool IsStatelessMiningOpcode(uint8_t nOpcode)
     {
-        /* Stateless mining opcodes are in range 0xD0-0xDA (208-218) */
+        /* Stateless mining opcodes are in range 0xCF-0xDA (207-218) */
         return (nOpcode >= STATELESS_OPCODE_FIRST && nOpcode <= STATELESS_OPCODE_LAST);
     }
 
@@ -85,7 +91,10 @@ namespace OpcodeUtility
 
     bool IsLegacyOpcodeAllowedOnStatelessPort(uint8_t nOpcode)
     {
-        /* Whitelist of legacy opcodes allowed on stateless port */
+        /* Whitelist of legacy opcodes allowed on stateless port
+         * Note: Stateless-specific opcodes (207-218) are handled separately
+         * by IsStatelessMiningOpcode() and should not be listed here.
+         */
         switch(nOpcode)
         {
             /* Block operations */
@@ -97,9 +106,6 @@ namespace OpcodeUtility
             
             /* Channel management */
             case Opcodes::SET_CHANNEL:    // 3
-            
-            /* Push notifications */
-            case Opcodes::MINER_READY:    // 216
             
             /* Generic */
             case Opcodes::PING:           // 253
