@@ -56,7 +56,7 @@ namespace OpcodeUtility
     /** IsStatelessMiningOpcode
      *
      *  Determines if an opcode is part of the stateless mining protocol range.
-     *  Stateless mining opcodes are in range 0xD0-0xDA (208-218).
+     *  Stateless mining opcodes are in range 0xCF-0xDA (207-218).
      *
      *  @param[in] nOpcode The opcode to check
      *

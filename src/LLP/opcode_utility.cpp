@@ -216,15 +216,24 @@ namespace OpcodeUtility
         {
             /* MINER_AUTH_RESPONSE: pubkey_len(2) + pubkey(897-1793) + timestamp(8) + sig_len(2) + sig(600-1577)
              * With optional ChaCha20 encryption overhead: +28 bytes
+             * Minimum: ~1510 bytes (Falcon-512, no encryption)
              * Maximum: 3410 bytes (Falcon-1024 encrypted)
              */
-            if(packet.LENGTH > FalconConstants::AUTH_RESPONSE_ENCRYPTED_MAX)
+            const size_t MIN_AUTH_RESPONSE = FalconConstants::LENGTH_FIELD_SIZE + 
+                                              FalconConstants::FALCON512_PUBKEY_SIZE + 
+                                              FalconConstants::TIMESTAMP_SIZE + 
+                                              FalconConstants::LENGTH_FIELD_SIZE + 
+                                              FalconConstants::FALCON512_SIG_MIN;  // ~1509 bytes
+            
+            if(packet.LENGTH < MIN_AUTH_RESPONSE || 
+               packet.LENGTH > FalconConstants::AUTH_RESPONSE_ENCRYPTED_MAX)
             {
                 if(strReason)
                 {
                     std::ostringstream oss;
                     oss << "MINER_AUTH_RESPONSE length " << packet.LENGTH 
-                        << " exceeds maximum " << FalconConstants::AUTH_RESPONSE_ENCRYPTED_MAX;
+                        << " outside valid range [" << MIN_AUTH_RESPONSE
+                        << ", " << FalconConstants::AUTH_RESPONSE_ENCRYPTED_MAX << "]";
                     *strReason = oss.str();
                 }
                 return false;
