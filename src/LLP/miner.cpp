@@ -851,6 +851,25 @@ namespace LLP
                 debug::log(2, FUNCTION, "   Hash:     ", nHashHeight);
                 debug::log(2, FUNCTION, "   Stake:    ", nStakeHeight);
                 
+                /* Enhanced diagnostic logging for debugging flow issues */
+                debug::log(2, "════════════════════════════════════════════════════════════");
+                debug::log(2, "📤 LEGACY MINER: SENDING NEW_ROUND RESPONSE");
+                debug::log(2, "════════════════════════════════════════════════════════════");
+                debug::log(2, "   To:             ", GetAddress().ToStringIP());
+                debug::log(2, "   Opcode:         NEW_ROUND (204/0xCC)");
+                debug::log(2, "   Response Data:");
+                debug::log(2, "      Unified Height:  ", nUnifiedHeight);
+                debug::log(2, "      Prime Height:    ", nPrimeHeight);
+                debug::log(2, "      Hash Height:     ", nHashHeight);
+                debug::log(2, "      Stake Height:    ", nStakeHeight);
+                debug::log(2, "   Packet Size:    16 bytes");
+                debug::log(2, "");
+                debug::log(2, "   ℹ️  LEGACY PROTOCOL:");
+                debug::log(2, "      This is the traditional GET_ROUND → NEW_ROUND flow.");
+                debug::log(2, "      Client should now decide whether to fetch new template");
+                debug::log(2, "      based on height changes in their mining channel.");
+                debug::log(2, "════════════════════════════════════════════════════════════");
+                
                 /* Send the response */
                 respond(NEW_ROUND, vResponse);
                 
