@@ -24,6 +24,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/version.h>
 
+#include <Util/include/args.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 
@@ -38,6 +39,13 @@ namespace TAO::Ledger
         const uint64_t nExtraNonce,
         const uint256_t& hashRewardAddress)
     {
+        /* Early exit if shutdown is in progress */
+        if(config::fShutdown.load())
+        {
+            debug::log(1, FUNCTION, "Shutdown in progress; skipping block creation");
+            return nullptr;
+        }
+        
         /* Validate input nChannel parameter (defense in depth) */
         if(nChannel == 0)
         {

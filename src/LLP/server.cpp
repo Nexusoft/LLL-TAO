@@ -400,6 +400,13 @@ namespace LLP
         /* Use compile-time check to only execute for protocols that support mining notifications */
         if constexpr (has_mining_notifications_v<ProtocolType>)
         {
+            /* Early exit if shutdown is in progress */
+            if (config::fShutdown.load())
+            {
+                debug::log(1, FUNCTION, "Shutdown in progress; skipping NotifyChannelMiners");
+                return;
+            }
+            
             /* Validate channel */
             if (nChannel != 1 && nChannel != 2)
             {
@@ -428,6 +435,13 @@ namespace LLP
             {
                 if (!pConnection)
                     continue;
+                
+                /* Check for shutdown during iteration to exit quickly if needed */
+                if (config::fShutdown.load())
+                {
+                    debug::log(1, FUNCTION, "Shutdown detected during iteration; stopping notifications");
+                    break;
+                }
                 
                 /* Get mining context - returns by value, so use auto (not auto&) */
                 auto context = pConnection->GetContext();
