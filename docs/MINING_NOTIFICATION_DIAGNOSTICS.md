@@ -233,9 +233,13 @@ Miner                           Node
 
 ## Debugging Tips
 
-1. **Enable verbose logging:** Set debug level to 0 to see all diagnostic messages
+1. **Enable verbose logging:** Set debug level to 2 or lower to see diagnostic messages
    ```bash
+   # Level 0: All messages (most verbose)
    ./nexus -verbose=0
+   
+   # Level 2: Diagnostic messages (recommended for troubleshooting)
+   ./nexus -verbose=2
    ```
 
 2. **Search logs for flow issues:**

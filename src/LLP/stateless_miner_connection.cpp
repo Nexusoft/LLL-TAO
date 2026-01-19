@@ -543,7 +543,7 @@ namespace LLP
                     return true;  // Handled (rejected)
                 }
                 
-                debug::log(0, "📥 === GET_BLOCK REQUEST ===");
+                debug::log(2, "📥 === GET_BLOCK REQUEST ===");
                 debug::log(0, "   From: ", GetAddress().ToStringIP());
                 debug::log(0, "   Authenticated: ", (context.fAuthenticated ? "YES" : "NO"));
                 debug::log(0, "   Channel: ", context.nChannel);
@@ -557,7 +557,7 @@ namespace LLP
                     response.DATA.push_back(0x00);  // Failure
                     response.LENGTH = 1;
                     respond(response);
-                    debug::log(0, "📥 === GET_BLOCK: REJECTED (AUTH) ===");
+                    debug::log(2, "📥 === GET_BLOCK: REJECTED (AUTH) ===");
                     return true;
                 }
                 
@@ -565,7 +565,7 @@ namespace LLP
                 if(context.nChannel == 0)
                 {
                     debug::error("   ❌ Channel not set");
-                    debug::log(0, "📥 === GET_BLOCK: REJECTED (NO CHANNEL) ===");
+                    debug::log(2, "📥 === GET_BLOCK: REJECTED (NO CHANNEL) ===");
                     return true;
                 }
                 
@@ -582,7 +582,7 @@ namespace LLP
                     Packet response(BLOCK_DATA);
                     response.LENGTH = 0;
                     respond(response);
-                    debug::log(0, "📥 === GET_BLOCK: FAILED (NO BLOCK) ===");
+                    debug::log(2, "📥 === GET_BLOCK: FAILED (NO BLOCK) ===");
                     return true;
                 }
                 
@@ -611,7 +611,7 @@ namespace LLP
                         Packet response(BLOCK_DATA);
                         response.LENGTH = 0;
                         respond(response);
-                        debug::log(0, "📥 === GET_BLOCK: FAILED (EMPTY SERIALIZATION) ===");
+                        debug::log(2, "📥 === GET_BLOCK: FAILED (EMPTY SERIALIZATION) ===");
                         return true;
                     }
                     
@@ -679,7 +679,7 @@ namespace LLP
                             Packet response(BLOCK_DATA);
                             response.LENGTH = 0;
                             respond(response);
-                            debug::log(0, "📥 === GET_BLOCK: FAILED (CHANNEL MISMATCH) ===");
+                            debug::log(2, "📥 === GET_BLOCK: FAILED (CHANNEL MISMATCH) ===");
                             return true;
                         }
                         
@@ -693,7 +693,7 @@ namespace LLP
                             Packet response(BLOCK_DATA);
                             response.LENGTH = 0;
                             respond(response);
-                            debug::log(0, "📥 === GET_BLOCK: FAILED (HEIGHT MISMATCH) ===");
+                            debug::log(2, "📥 === GET_BLOCK: FAILED (HEIGHT MISMATCH) ===");
                             return true;
                         }
                         
@@ -714,7 +714,7 @@ namespace LLP
                     respond(response);
                     
                     debug::log(0, "   ✅ Packet sent!");
-                    debug::log(0, "📥 === GET_BLOCK: SUCCESS ===");
+                    debug::log(2, "📥 === GET_BLOCK: SUCCESS ===");
                     
                     /* Notify local pool of authenticated miner (if not already notified) */
                     if(PoolDiscovery::IsLocalPoolEnabled() && context.fAuthenticated && context.hashGenesis != 0)
@@ -747,7 +747,7 @@ namespace LLP
                 }
                 catch(const std::exception& e) {
                     debug::error("   ❌ Serialization exception: ", e.what());
-                    debug::log(0, "📥 === GET_BLOCK: EXCEPTION ===");
+                    debug::log(2, "📥 === GET_BLOCK: EXCEPTION ===");
                     
                     Packet response(BLOCK_DATA);
                     response.LENGTH = 0;
@@ -814,9 +814,9 @@ namespace LLP
                 }
 
                 /* Training Wheels Diagnostic Mode */
-                debug::log(0, "════════════════════════════════════════════════════════");
+                debug::log(2, "════════════════════════════════════════════════════════");
                 debug::log(0, "🚀 SUBMIT_BLOCK DIAGNOSTIC (Training Wheels Mode)");
-                debug::log(0, "════════════════════════════════════════════════════════");
+                debug::log(2, "════════════════════════════════════════════════════════");
                 
                 /* Connection state */
                 debug::log(0, "📡 CONNECTION:");
@@ -838,7 +838,7 @@ namespace LLP
                         debug::log(0, "      ", line);
                 }
                 
-                debug::log(0, "════════════════════════════════════════════════════════");
+                debug::log(2, "════════════════════════════════════════════════════════");
                 
                 debug::log(2, FUNCTION, "SUBMIT_BLOCK from ", GetAddress().ToStringIP(),
                            " channel=", context.nChannel, " sessionId=", context.nSessionId,
@@ -1267,7 +1267,7 @@ namespace LLP
                                 debug::log(0, "   Timestamp: ", nTimestamp);
                                 debug::log(0, "   Merkle: ", hashMerkleFromBlock.SubString());
                                 debug::log(0, "   Nonce: 0x", std::hex, nonceFromBlock, std::dec);
-                                debug::log(0, "════════════════════════════════════════════════════════");
+                                debug::log(2, "════════════════════════════════════════════════════════");
                                 
                                 /* Signature verified successfully */
                                 /* The signature verified the entire block + timestamp */
@@ -1875,23 +1875,23 @@ namespace LLP
                            " Channel=", nChannelHeight, " Difficulty=0x", std::hex, nDifficulty, std::dec);
                 
                 /* Enhanced diagnostic logging */
-                debug::log(0, "════════════════════════════════════════════════════════════");
-                debug::log(0, "📤 SENDING NEW_ROUND RESPONSE");
-                debug::log(0, "════════════════════════════════════════════════════════════");
-                debug::log(0, "   To:             ", GetAddress().ToStringIP());
-                debug::log(0, "   Opcode:         NEW_ROUND (204/0xCC)");
-                debug::log(0, "   Response Data:");
-                debug::log(0, "      Unified Height:  ", nUnifiedHeight);
-                debug::log(0, "      Channel Height:  ", nChannelHeight, " (channel ", context.nChannel, ")");
-                debug::log(0, "      Difficulty:      0x", std::hex, nDifficulty, std::dec);
-                debug::log(0, "   Packet Size:    12 bytes");
-                debug::log(0, "");
-                debug::log(0, "   ⚠️  NOTE:");
-                debug::log(0, "      This is the legacy polling flow response.");
-                debug::log(0, "      Preferred flow is push notifications:");
-                debug::log(0, "         MINER_READY → ", (context.nChannel == 1 ? "PRIME" : "HASH"), "_BLOCK_AVAILABLE");
-                debug::log(0, "         Then client issues GET_BLOCK automatically.");
-                debug::log(0, "════════════════════════════════════════════════════════════");
+                debug::log(2, "════════════════════════════════════════════════════════════");
+                debug::log(2, "📤 SENDING NEW_ROUND RESPONSE");
+                debug::log(2, "════════════════════════════════════════════════════════════");
+                debug::log(2, "   To:             ", GetAddress().ToStringIP());
+                debug::log(2, "   Opcode:         NEW_ROUND (204/0xCC)");
+                debug::log(2, "   Response Data:");
+                debug::log(2, "      Unified Height:  ", nUnifiedHeight);
+                debug::log(2, "      Channel Height:  ", nChannelHeight, " (channel ", context.nChannel, ")");
+                debug::log(2, "      Difficulty:      0x", std::hex, nDifficulty, std::dec);
+                debug::log(2, "   Packet Size:    12 bytes");
+                debug::log(2, "");
+                debug::log(2, "   ⚠️  NOTE:");
+                debug::log(2, "      This is the legacy polling flow response.");
+                debug::log(2, "      Preferred flow is push notifications:");
+                debug::log(2, "         MINER_READY → ", (context.nChannel == 1 ? "PRIME" : "HASH"), "_BLOCK_AVAILABLE");
+                debug::log(2, "         Then client issues GET_BLOCK automatically.");
+                debug::log(2, "════════════════════════════════════════════════════════════");
                 
                 /* Send response */
                 Packet response(NEW_ROUND);
@@ -1916,7 +1916,7 @@ namespace LLP
             /* Handle MINER_READY - Subscribe to push notifications */
             if(PACKET.HEADER == MINER_READY)
             {
-                debug::log(0, "📥 === MINER_READY REQUEST ===");
+                debug::log(2, "📥 === MINER_READY REQUEST ===");
                 debug::log(0, "   From: ", GetAddress().ToStringIP());
                 debug::log(0, "   Authenticated: ", (context.fAuthenticated ? "YES" : "NO"));
                 debug::log(0, "   Channel: ", context.nChannel);
@@ -1925,7 +1925,7 @@ namespace LLP
                 if (!context.fAuthenticated)
                 {
                     debug::error(FUNCTION, "MINER_READY: authentication required");
-                    debug::log(0, "📥 === MINER_READY: REJECTED (AUTH) ===");
+                    debug::log(2, "📥 === MINER_READY: REJECTED (AUTH) ===");
                     return false;
                 }
                 
@@ -1935,7 +1935,7 @@ namespace LLP
                     debug::error(FUNCTION, "MINER_READY: invalid channel ", context.nChannel);
                     debug::error(FUNCTION, "  Valid: 1 (Prime), 2 (Hash)");
                     debug::error(FUNCTION, "  Stake (0) uses Proof-of-Stake, not mined");
-                    debug::log(0, "📥 === MINER_READY: REJECTED (INVALID CHANNEL) ===");
+                    debug::log(2, "📥 === MINER_READY: REJECTED (INVALID CHANNEL) ===");
                     return false;
                 }
                 
@@ -1951,7 +1951,7 @@ namespace LLP
                 /* Update manager */
                 StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
                 
-                debug::log(0, "📥 === MINER_READY: SUCCESS ===");
+                debug::log(2, "📥 === MINER_READY: SUCCESS ===");
                 return true;
             }
 
@@ -2876,45 +2876,45 @@ namespace LLP
         switch (nRequestType) {
             case GET_ROUND:
             {
-                debug::log(0, "════════════════════════════════════════════════════════════");
-                debug::log(0, "📥 RECEIVED GET_ROUND REQUEST");
-                debug::log(0, "════════════════════════════════════════════════════════════");
-                debug::log(0, "   From:           ", GetAddress().ToStringIP());
-                debug::log(0, "   Opcode:         GET_ROUND (133/0x85)");
-                debug::log(0, "   Context:");
-                debug::log(0, "      Authenticated:  ", (context.fAuthenticated ? "YES" : "NO"));
-                debug::log(0, "      Channel:        ", context.nChannel, " (", 
+                debug::log(2, "════════════════════════════════════════════════════════════");
+                debug::log(2, "📥 RECEIVED GET_ROUND REQUEST");
+                debug::log(2, "════════════════════════════════════════════════════════════");
+                debug::log(2, "   From:           ", GetAddress().ToStringIP());
+                debug::log(2, "   Opcode:         GET_ROUND (133/0x85)");
+                debug::log(2, "   Context:");
+                debug::log(2, "      Authenticated:  ", (context.fAuthenticated ? "YES" : "NO"));
+                debug::log(2, "      Channel:        ", context.nChannel, " (", 
                           (context.nChannel == 1 ? "Prime" : context.nChannel == 2 ? "Hash" : "Unknown"), ")");
-                debug::log(0, "      Subscribed:     ", (context.fSubscribedToNotifications ? "YES" : "NO"));
+                debug::log(2, "      Subscribed:     ", (context.fSubscribedToNotifications ? "YES" : "NO"));
                 
                 // Determine if this is legacy polling or fallback from failed notifications
                 if(context.fSubscribedToNotifications)
                 {
-                    debug::log(0, "");
-                    debug::log(0, "   ⚠️  POTENTIAL ISSUE DETECTED:");
-                    debug::log(0, "      Miner is subscribed to push notifications but");
-                    debug::log(0, "      is polling with GET_ROUND. This suggests:");
-                    debug::log(0, "      1. Client didn't receive push notification, OR");
-                    debug::log(0, "      2. Client timed out waiting for notification, OR");
-                    debug::log(0, "      3. Client is using hybrid polling+push strategy");
-                    debug::log(0, "");
-                    debug::log(0, "   Expected flow should be:");
-                    debug::log(0, "      Server → ", (context.nChannel == 1 ? "PRIME" : "HASH"), "_BLOCK_AVAILABLE");
-                    debug::log(0, "      Client → GET_BLOCK");
-                    debug::log(0, "");
-                    debug::log(0, "   Fallback behavior (what's happening now):");
-                    debug::log(0, "      Client → GET_ROUND (polling)");
-                    debug::log(0, "      Server → NEW_ROUND (with heights)");
+                    debug::log(2, "");
+                    debug::log(2, "   ⚠️  POTENTIAL ISSUE DETECTED:");
+                    debug::log(2, "      Miner is subscribed to push notifications but");
+                    debug::log(2, "      is polling with GET_ROUND. This suggests:");
+                    debug::log(2, "      1. Client didn't receive push notification, OR");
+                    debug::log(2, "      2. Client timed out waiting for notification, OR");
+                    debug::log(2, "      3. Client is using hybrid polling+push strategy");
+                    debug::log(2, "");
+                    debug::log(2, "   Expected flow should be:");
+                    debug::log(2, "      Server → ", (context.nChannel == 1 ? "PRIME" : "HASH"), "_BLOCK_AVAILABLE");
+                    debug::log(2, "      Client → GET_BLOCK");
+                    debug::log(2, "");
+                    debug::log(2, "   Fallback behavior (what's happening now):");
+                    debug::log(2, "      Client → GET_ROUND (polling)");
+                    debug::log(2, "      Server → NEW_ROUND (with heights)");
                 }
                 else
                 {
-                    debug::log(0, "");
-                    debug::log(0, "   ℹ️  LEGACY POLLING MODE:");
-                    debug::log(0, "      Miner is not subscribed to notifications.");
-                    debug::log(0, "      Using traditional GET_ROUND polling flow.");
-                    debug::log(0, "      This is expected for legacy clients.");
+                    debug::log(2, "");
+                    debug::log(2, "   ℹ️  LEGACY POLLING MODE:");
+                    debug::log(2, "      Miner is not subscribed to notifications.");
+                    debug::log(2, "      Using traditional GET_ROUND polling flow.");
+                    debug::log(2, "      This is expected for legacy clients.");
                 }
-                debug::log(0, "════════════════════════════════════════════════════════════");
+                debug::log(2, "════════════════════════════════════════════════════════════");
                 
                 // Check minimum interval
                 auto intervalMs = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -2947,36 +2947,44 @@ namespace LLP
             
             case GET_BLOCK:
             {
-                debug::log(0, "════════════════════════════════════════════════════════════");
-                debug::log(0, "📥 RECEIVED GET_BLOCK REQUEST");
-                debug::log(0, "════════════════════════════════════════════════════════════");
-                debug::log(0, "   From:           ", GetAddress().ToStringIP());
-                debug::log(0, "   Opcode:         GET_BLOCK (129/0x81)");
-                debug::log(0, "   Context:");
-                debug::log(0, "      Authenticated:  ", (context.fAuthenticated ? "YES" : "NO"));
-                debug::log(0, "      Channel:        ", context.nChannel, " (", 
+                debug::log(2, "════════════════════════════════════════════════════════════");
+                debug::log(2, "📥 RECEIVED GET_BLOCK REQUEST");
+                debug::log(2, "════════════════════════════════════════════════════════════");
+                debug::log(2, "   From:           ", GetAddress().ToStringIP());
+                debug::log(2, "   Opcode:         GET_BLOCK (129/0x81)");
+                debug::log(2, "   Context:");
+                debug::log(2, "      Authenticated:  ", (context.fAuthenticated ? "YES" : "NO"));
+                debug::log(2, "      Channel:        ", context.nChannel, " (", 
                           (context.nChannel == 1 ? "Prime" : context.nChannel == 2 ? "Hash" : "Unknown"), ")");
-                debug::log(0, "      Subscribed:     ", (context.fSubscribedToNotifications ? "YES" : "NO"));
+                debug::log(2, "      Subscribed:     ", (context.fSubscribedToNotifications ? "YES" : "NO"));
                 
                 // Check if this is likely in response to a notification
                 if(context.fSubscribedToNotifications && context.nLastNotificationTime > 0)
                 {
-                    uint64_t nTimeSinceNotification = runtime::unifiedtimestamp() - context.nLastNotificationTime;
-                    debug::log(0, "");
-                    debug::log(0, "   ✅ NOTIFICATION FLOW DETECTED:");
-                    debug::log(0, "      Time since last notification: ", nTimeSinceNotification, " seconds");
-                    debug::log(0, "      This appears to be a response to:");
-                    debug::log(0, "         ", (context.nChannel == 1 ? "PRIME_BLOCK_AVAILABLE" : "HASH_BLOCK_AVAILABLE"));
-                    debug::log(0, "         (NEW_", (context.nChannel == 1 ? "PRIME" : "HASH"), "_AVAILABLE)");
+                    uint64_t nCurrentTime = runtime::unifiedtimestamp();
+                    uint64_t nTimeSinceNotification = 0;
+                    
+                    // Guard against clock adjustments or race conditions
+                    if(nCurrentTime >= context.nLastNotificationTime)
+                    {
+                        nTimeSinceNotification = nCurrentTime - context.nLastNotificationTime;
+                    }
+                    
+                    debug::log(2, "");
+                    debug::log(2, "   ✅ NOTIFICATION FLOW DETECTED:");
+                    debug::log(2, "      Time since last notification: ", nTimeSinceNotification, " seconds");
+                    debug::log(2, "      This appears to be a response to:");
+                    debug::log(2, "         ", (context.nChannel == 1 ? "PRIME_BLOCK_AVAILABLE" : "HASH_BLOCK_AVAILABLE"));
+                    debug::log(2, "         (NEW_", (context.nChannel == 1 ? "PRIME" : "HASH"), "_AVAILABLE)");
                 }
                 else
                 {
-                    debug::log(0, "");
-                    debug::log(0, "   ℹ️  POLLING MODE:");
-                    debug::log(0, "      This request is NOT following a notification.");
-                    debug::log(0, "      Client may be using legacy polling flow.");
+                    debug::log(2, "");
+                    debug::log(2, "   ℹ️  POLLING MODE:");
+                    debug::log(2, "      This request is NOT following a notification.");
+                    debug::log(2, "      Client may be using legacy polling flow.");
                 }
-                debug::log(0, "════════════════════════════════════════════════════════════");
+                debug::log(2, "════════════════════════════════════════════════════════════");
                 
                 // Check minimum interval
                 auto intervalMs = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -3205,27 +3213,27 @@ namespace LLP
             "PRIME_BLOCK_AVAILABLE (NEW_PRIME_AVAILABLE)" : 
             "HASH_BLOCK_AVAILABLE (NEW_HASH_AVAILABLE)";
         
-        debug::log(0, "════════════════════════════════════════════════════════════");
-        debug::log(0, "📢 SENDING PUSH NOTIFICATION TO MINER");
-        debug::log(0, "════════════════════════════════════════════════════════════");
-        debug::log(0, "   Opcode:         ", strOpcodeName);
-        debug::log(0, "   Opcode Value:   0x", std::hex, static_cast<uint32_t>(nOpcode), std::dec, " (", static_cast<uint32_t>(nOpcode), ")");
-        debug::log(0, "   To Address:     ", GetAddress().ToStringIP());
-        debug::log(0, "   Channel:        ", nChannel, " (", (nChannel == 1 ? "Prime" : "Hash"), ")");
-        debug::log(0, "   Payload:");
-        debug::log(0, "      Unified Height:  ", stateBest.nHeight);
-        debug::log(0, "      Channel Height:  ", nChannelHeight);
-        debug::log(0, "      Difficulty:      0x", std::hex, nDifficulty, std::dec);
-        debug::log(0, "   Packet Size:    ", notification.LENGTH, " bytes");
-        debug::log(0, "");
-        debug::log(0, "   ⚠️  EXPECTED CLIENT ACTION:");
-        debug::log(0, "      Client should respond with GET_BLOCK (129/0x81)");
-        debug::log(0, "      to fetch new mining template for this channel.");
-        debug::log(0, "");
-        debug::log(0, "   🔄 FALLBACK BEHAVIOR:");
-        debug::log(0, "      If client times out or doesn't receive this,");
-        debug::log(0, "      client may fall back to polling GET_ROUND (133/0x85).");
-        debug::log(0, "════════════════════════════════════════════════════════════");
+        debug::log(2, "════════════════════════════════════════════════════════════");
+        debug::log(2, "📢 SENDING PUSH NOTIFICATION TO MINER");
+        debug::log(2, "════════════════════════════════════════════════════════════");
+        debug::log(2, "   Opcode:         ", strOpcodeName);
+        debug::log(2, "   Opcode Value:   0x", std::hex, static_cast<uint32_t>(nOpcode), std::dec, " (", static_cast<uint32_t>(nOpcode), ")");
+        debug::log(2, "   To Address:     ", GetAddress().ToStringIP());
+        debug::log(2, "   Channel:        ", nChannel, " (", (nChannel == 1 ? "Prime" : "Hash"), ")");
+        debug::log(2, "   Payload:");
+        debug::log(2, "      Unified Height:  ", stateBest.nHeight);
+        debug::log(2, "      Channel Height:  ", nChannelHeight);
+        debug::log(2, "      Difficulty:      0x", std::hex, nDifficulty, std::dec);
+        debug::log(2, "   Packet Size:    ", notification.LENGTH, " bytes");
+        debug::log(2, "");
+        debug::log(2, "   ⚠️  EXPECTED CLIENT ACTION:");
+        debug::log(2, "      Client should respond with GET_BLOCK (129/0x81)");
+        debug::log(2, "      to fetch new mining template for this channel.");
+        debug::log(2, "");
+        debug::log(2, "   🔄 FALLBACK BEHAVIOR:");
+        debug::log(2, "      If client times out or doesn't receive this,");
+        debug::log(2, "      client may fall back to polling GET_ROUND (133/0x85).");
+        debug::log(2, "════════════════════════════════════════════════════════════");
         
         /* Send to miner */
         respond(notification);
