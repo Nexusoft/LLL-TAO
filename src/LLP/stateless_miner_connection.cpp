@@ -47,11 +47,11 @@ ________________________________________________________________________________
 #include <LLC/include/falcon_constants_v2.h>
 #include <LLC/types/bignum.h>
 
+#include <Util/include/config.h>
+#include <Util/include/args.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 #include <Util/include/convert.h>
-#include <Util/include/config.h>
-#include <Util/include/args.h>
 
 #include <chrono>
 #include <limits>
