@@ -2969,6 +2969,12 @@ namespace LLP
                     {
                         nTimeSinceNotification = nCurrentTime - context.nLastNotificationTime;
                     }
+                    else
+                    {
+                        // Clock adjustment detected - log warning
+                        debug::log(1, FUNCTION, "⚠️ Clock adjustment detected: current time < last notification time");
+                        debug::log(1, FUNCTION, "   This may indicate system clock was adjusted backwards");
+                    }
                     
                     debug::log(2, "");
                     debug::log(2, "   ✅ NOTIFICATION FLOW DETECTED:");
@@ -3238,10 +3244,14 @@ namespace LLP
         /* Send to miner */
         respond(notification);
         
+        /* Capture timestamp for accurate timing measurements
+         * Using same timestamp both for updating context and for client timing calculations */
+        uint64_t nNotificationTimestamp = runtime::unifiedtimestamp();
+        
         /* Update statistics (thread-safe) */
         {
             LOCK(MUTEX);
-            context = context.WithNotificationSent(runtime::unifiedtimestamp());
+            context = context.WithNotificationSent(nNotificationTimestamp);
         }  // MUTEX automatically unlocked here
         
         debug::log(2, FUNCTION, "Sent ", (nChannel == 1 ? "Prime" : "Hash"), 
