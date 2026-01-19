@@ -33,14 +33,15 @@ The following verbs are currently supported by this command-set:
 | :-----:  | :-------- | :---- |
 |[`create`](#-create) | Generate a register of specified type | `asset`, `raw`, `readonly`, `schema` |
 |[`get`](#-get) | Get register of supported type | `any`, `asset`, `raw`, `readonly`, `schema`
-|[`list`](#-list) | List all registers owned by active session | `any`, `asset`, `raw`, `readonly`, `partial`, `schema` |
+|[`list`](#-list) | List all registers owned by active session | `any`, `asset`, `raw`, `readonly`, `schema` |
+|[`list/partial`](#listpartial) | List users partial ownership of tokenized assets | N/A (special command) |
 |[`transfer`](#-transfer) | Transfer a specified register | `any`, `asset`, `raw`, `readonly` |
 |[`claim`](#-claim) | Claim ownership of a register | `any`, `asset`, `raw`, `readonly` |
 |[`tokenize`](#-tokenize) | To represent ownership of an asset object with a token object | `asset` |
 |[`transactions`](#-transactions) | List all transactions that modified specified object | `any`, `asset`, `raw`, `readonly`, `schema` |
 |[`history`](#-history) | Generate the history of all last states | `any`, `asset`, `raw`, `readonly`, `schema` |
-|[`update`](#-update) | Update a specified object | `any`, `asset`, `raw`, `readonly`, `schema` |
-|[`verify`](#-verify) | Verify if a given register has been tokenized | `partial` |
+|[`update`](#-update) | Update a specified object | `asset`, `raw` |
+|[`verify/partial`](#verifypartial) | Verify if a given register has been tokenized | N/A (special command) |
 
 ### Example:
 
@@ -229,9 +230,9 @@ Retrieves a list of all the asset objects owned by the profile specified by the 
 assets/list/noun
 ```
 
-This command supports the `asset`, `readonly`, `raw`, and `any` nouns.
+This command supports the `asset`, `readonly`, `raw`, `any`, and `schema` nouns.
 
-#### list/assets
+#### list/asset
 
 Lists all the assets for object register type.
 
@@ -247,7 +248,7 @@ Lists all assets for raw register type.
 
 Lists all assets for all supported register types.
 
-[`list/partial`](#list/partial) - List users partial ownership details for tokenized assets.      
+See also: [`list/partial`](#listpartial) - List users partial ownership details for tokenized assets.      
 
 ### Parameters:
 
@@ -332,9 +333,9 @@ This updates the data values for the raw item register.
 
 `address` : Required to **identify** the register address of the asset. This is optional if the `name` is provided.
 
-`format` : Required to **specify** the format of the asset to update. Values can be `readonly`, `raw`, `basic` and `JSON`.
+`format` : Required to **specify** the format of the asset to update. Values can be `raw`, `basic` and `JSON`.
 
-`data` : Required if **format** is `readonly` or `raw`, allows caller to update the data object.  
+`data` : Required if **format** is `raw`, allows caller to update the data object.  
 
 `<fieldname>=<value>` : Optional for **format** `basic`, The caller can provide 'key=value' pairs to update each piece of data for the asset.
 
@@ -730,7 +731,7 @@ This command supports all nouns.
 
 -----------------------------------
 
-# <a name="list/partial"></a> `list/partial`
+# <a name="listpartial"></a> `list/partial`
 
 Retrieves a list of all the partial ownership details of tokenized assets for the user.
 
@@ -786,5 +787,44 @@ assets/list/partial
 `name` : The name identifying the asset.
 
 `ownership` : This is the percentage of the asset owned by the caller, based on the number of tokens owned.
+
+-----------------------------------
+
+# <a name="verifypartial"></a> `verify/partial`
+
+Verifies if a given token has been used to tokenize an asset. Returns the asset details if valid.
+
+```
+assets/verify/partial
+```
+
+### Parameters:
+
+`token` : Required to **identify** the token to verify. It can be the name (for global names), username:tokenname (for local names), or the register address of the token.
+
+
+### Results:
+
+#### Return value JSON object:
+
+```
+{
+    "asset": {
+        "address": "88NcYcKtMTRwtwDgfXFkZ4TbrHvkRGzsQkqVZco77Hqx1WRgCyi",
+        "owner": "d751c1ddbd2a50a0bee9883f4f8e029272551e8d09b336aeca876e1270e91422"
+    },
+    "valid": true
+}
+```
+
+#### Return Values:
+
+`asset` : Object containing the asset details if the token is valid.
+
+`asset.address` : The register address of the tokenized asset.
+
+`asset.owner` : The username hash of the profile that owns the asset.
+
+`valid` : Boolean flag indicating whether the token is a valid tokenized asset.
 
 -----------------------------------
