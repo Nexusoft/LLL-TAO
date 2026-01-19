@@ -52,6 +52,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/client.h>
 
+#include <Util/include/args.h>
 #include <Util/include/softfloat.h>
 
 
@@ -1133,20 +1134,28 @@ namespace TAO
                 #endif
 
                 /* PUSH NOTIFICATIONS: Notify miners of channel-specific block */
-                uint32_t nBlockChannel = GetChannel();  // 0=Stake, 1=Prime, 2=Hash
-                
-                if (nBlockChannel == 1 || nBlockChannel == 2)
+                /* Skip notifications during shutdown to prevent hang */
+                if (config::fShutdown.load())
                 {
-                    /* Prime or Hash block - notify subscribed miners */
-                    if (LLP::STATELESS_MINER_SERVER)
-                    {
-                        LLP::STATELESS_MINER_SERVER->NotifyChannelMiners(nBlockChannel);
-                    }
+                    debug::log(1, FUNCTION, "Shutdown requested; skipping miner notifications");
                 }
-                else if (nBlockChannel == 0)
+                else
                 {
-                    /* Stake block - no stateless mining, no notification */
-                    debug::log(2, FUNCTION, "Stake block (no mining notification)");
+                    uint32_t nBlockChannel = GetChannel();  // 0=Stake, 1=Prime, 2=Hash
+                    
+                    if (nBlockChannel == 1 || nBlockChannel == 2)
+                    {
+                        /* Prime or Hash block - notify subscribed miners */
+                        if (LLP::STATELESS_MINER_SERVER)
+                        {
+                            LLP::STATELESS_MINER_SERVER->NotifyChannelMiners(nBlockChannel);
+                        }
+                    }
+                    else if (nBlockChannel == 0)
+                    {
+                        /* Stake block - no stateless mining, no notification */
+                        debug::log(2, FUNCTION, "Stake block (no mining notification)");
+                    }
                 }
 
                 /* Verify unified height consistency using existing ChannelStateManager infrastructure */

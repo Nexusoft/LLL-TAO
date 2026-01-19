@@ -51,6 +51,7 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <Util/include/convert.h>
 #include <Util/include/config.h>
+#include <Util/include/args.h>
 
 #include <chrono>
 #include <limits>
@@ -2074,6 +2075,13 @@ namespace LLP
     /** Create a new block */
     TAO::Ledger::Block* StatelessMinerConnection::new_block()
     {
+        /* Early exit if shutdown is in progress */
+        if (config::fShutdown.load())
+        {
+            debug::log(1, FUNCTION, "Shutdown in progress; skipping template creation");
+            return nullptr;
+        }
+        
         debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "=== NEW_BLOCK: Request from ", GetAddress().ToStringIP(), " ===", ANSI_COLOR_RESET);
         
         /* Validate channel is set BEFORE creating template */
@@ -3046,6 +3054,13 @@ namespace LLP
     /* SendChannelNotification - Send push notification to subscribed miner */
     void StatelessMinerConnection::SendChannelNotification()
     {
+        /* Early exit if shutdown is in progress */
+        if (config::fShutdown.load())
+        {
+            debug::log(2, FUNCTION, "Shutdown in progress; skipping channel notification");
+            return;
+        }
+        
         /* Thread-safe context access - use RAII lock guard */
         uint32_t nChannel;
         {
