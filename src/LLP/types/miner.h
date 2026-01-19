@@ -289,6 +289,41 @@ namespace LLP
              **/
             HASH_BLOCK_AVAILABLE  = 218,  // 0xda - node -> miner: New Hash block available (channel 2 only)
 
+            /** ALIAS OPCODES - Backward Compatibility & Client Clarity
+             *
+             *  These aliases provide alternative names for existing notification opcodes
+             *  to improve code clarity and maintain compatibility with different client
+             *  implementations. They map to the same opcode values and handlers.
+             *
+             *  Purpose:
+             *  - Provide semantic clarity about what "new work" means
+             *  - Allow clients to use either naming convention
+             *  - Document expected client behavior more explicitly
+             *
+             *  Client Expected Behavior:
+             *  - Upon receiving NEW_PRIME_AVAILABLE: Issue GET_BLOCK request
+             *  - Upon receiving NEW_HASH_AVAILABLE: Issue GET_BLOCK request
+             *  - Fallback to polling GET_ROUND if notifications timeout
+             **/
+            
+            /** NEW_PRIME_AVAILABLE - Alias for PRIME_BLOCK_AVAILABLE
+             *
+             *  Alternative name emphasizing "new work available" semantics.
+             *  Maps to same opcode (217) and handler as PRIME_BLOCK_AVAILABLE.
+             *
+             *  Client Action: Upon receipt, send GET_BLOCK to fetch new Prime template.
+             **/
+            NEW_PRIME_AVAILABLE = 217,  // Alias for PRIME_BLOCK_AVAILABLE (0xd9)
+            
+            /** NEW_HASH_AVAILABLE - Alias for HASH_BLOCK_AVAILABLE
+             *
+             *  Alternative name emphasizing "new work available" semantics.
+             *  Maps to same opcode (218) and handler as HASH_BLOCK_AVAILABLE.
+             *
+             *  Client Action: Upon receipt, send GET_BLOCK to fetch new Hash template.
+             **/
+            NEW_HASH_AVAILABLE = 218,   // Alias for HASH_BLOCK_AVAILABLE (0xda)
+
             /** GENERIC **/
             PING           = 253,
             CLOSE          = 254

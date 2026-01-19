@@ -69,6 +69,10 @@ namespace OpcodeUtility
         const uint8_t PRIME_BLOCK_AVAILABLE = 217;
         const uint8_t HASH_BLOCK_AVAILABLE  = 218;
         
+        /* Alias opcodes for compatibility (map to same values as above) */
+        const uint8_t NEW_PRIME_AVAILABLE = 217;  // Alias for PRIME_BLOCK_AVAILABLE
+        const uint8_t NEW_HASH_AVAILABLE  = 218;  // Alias for HASH_BLOCK_AVAILABLE
+        
         /* Generic packets */
         const uint8_t PING           = 253;
         const uint8_t CLOSE          = 254;
@@ -156,8 +160,8 @@ namespace OpcodeUtility
             
             /* Push notification packets */
             case Opcodes::MINER_READY:             return "MINER_READY";
-            case Opcodes::PRIME_BLOCK_AVAILABLE:   return "PRIME_BLOCK_AVAILABLE";
-            case Opcodes::HASH_BLOCK_AVAILABLE:    return "HASH_BLOCK_AVAILABLE";
+            case Opcodes::PRIME_BLOCK_AVAILABLE:   return "PRIME_BLOCK_AVAILABLE / NEW_PRIME_AVAILABLE";
+            case Opcodes::HASH_BLOCK_AVAILABLE:    return "HASH_BLOCK_AVAILABLE / NEW_HASH_AVAILABLE";
             
             /* Generic packets */
             case Opcodes::PING:                    return "PING";
