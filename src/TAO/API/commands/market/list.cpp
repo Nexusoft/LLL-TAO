@@ -99,9 +99,25 @@ namespace TAO::API
                         if(LLD::Ledger->HasProof(hashRegister, pairOrder.first, pairOrder.second) && !fExecuted)
                             continue;
 
+                        /* Get execution timestamp if this is an executed order. */
+                        uint64_t nExecutionTimestamp = 0;
+                        if(fExecuted)
+                        {
+                            /* Read the execution transaction hash. */
+                            uint256_t hashCaller;
+                            uint512_t hashExecution;
+                            if(LLD::Contract->ReadContract(pairOrder, hashCaller, hashExecution, TAO::Ledger::FLAGS::MEMPOOL))
+                            {
+                                /* Get the execution transaction to retrieve its timestamp. */
+                                TAO::Ledger::Transaction txExecution;
+                                if(LLD::Ledger->ReadTx(hashExecution, txExecution))
+                                    nExecutionTimestamp = txExecution.nTimestamp;
+                            }
+                        }
+
                         /* Get our order's json. */
                         encoding::json jOrder =
-                            OrderToJSON(tContract, pairMarket);
+                            OrderToJSON(tContract, pairMarket, nExecutionTimestamp);
 
                         /* Check for null value. */
                         if(jOrder.is_null())
@@ -186,9 +202,25 @@ namespace TAO::API
                         if(LLD::Ledger->HasProof(hashRegister, pairOrder.first, pairOrder.second) && !fExecuted)
                             continue;
 
+                        /* Get execution timestamp if this is an executed order. */
+                        uint64_t nExecutionTimestamp = 0;
+                        if(fExecuted)
+                        {
+                            /* Read the execution transaction hash. */
+                            uint256_t hashCaller;
+                            uint512_t hashExecution;
+                            if(LLD::Contract->ReadContract(pairOrder, hashCaller, hashExecution, TAO::Ledger::FLAGS::MEMPOOL))
+                            {
+                                /* Get the execution transaction to retrieve its timestamp. */
+                                TAO::Ledger::Transaction txExecution;
+                                if(LLD::Ledger->ReadTx(hashExecution, txExecution))
+                                    nExecutionTimestamp = txExecution.nTimestamp;
+                            }
+                        }
+
                         /* Get our order's json. */
                         encoding::json jOrder =
-                            OrderToJSON(tContract, pairMarket);
+                            OrderToJSON(tContract, pairMarket, nExecutionTimestamp);
 
                         /* Check for null value. */
                         if(jOrder.is_null())

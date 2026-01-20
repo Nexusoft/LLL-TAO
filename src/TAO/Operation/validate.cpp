@@ -31,7 +31,8 @@ namespace TAO
     {
 
          /* Commit validation proofs. **/
-        bool Validate::Commit(const Contract& contract, const uint512_t& hashTx, const uint32_t nContract, const uint256_t& hashCaller, const uint8_t nFlags)
+        bool Validate::Commit(const Contract& contract, const uint512_t& hashTx, const uint32_t nContract,
+                              const uint256_t& hashCaller, const uint512_t& hashExecution, const uint8_t nFlags)
         {
             /* Check for disk write to add indexes. */
             if(nFlags == TAO::Ledger::FLAGS::BLOCK && config::fIndexProofs.load())
@@ -45,8 +46,8 @@ namespace TAO
             if(LLD::Contract->HasContract(std::make_pair(hashTx, nContract), nFlags))
                 return debug::error(FUNCTION, "OP::VALIDATE: cannot validate when already fulfilled");
 
-            /* Write the contract caller. */
-            if(!LLD::Contract->WriteContract(std::make_pair(hashTx, nContract), hashCaller, nFlags))
+            /* Write the contract caller and execution hash. */
+            if(!LLD::Contract->WriteContract(std::make_pair(hashTx, nContract), hashCaller, hashExecution, nFlags))
                 return debug::error(FUNCTION, "OP::VALIDATE: failed to write contract caller to disk");
 
             return true;
