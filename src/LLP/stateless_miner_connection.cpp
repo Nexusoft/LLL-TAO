@@ -3436,6 +3436,11 @@ namespace LLP
     /* SendStatelessTemplate - Send complete template using 16-bit opcode 0xD008 */
     void StatelessMinerConnection::SendStatelessTemplate()
     {
+        /* Protocol constants for stateless template push */
+        static const size_t TRITIUM_BLOCK_SIZE = 216;        // Serialized Tritium block template size
+        static const size_t METADATA_SIZE = 12;              // Height (4) + channel height (4) + difficulty (4)
+        static const size_t STATELESS_TEMPLATE_SIZE = 228;   // Total: metadata + block template
+        
         /* Early exit if shutdown is in progress */
         if (config::fShutdown.load())
         {
@@ -3480,7 +3485,7 @@ namespace LLP
         /* Get difficulty */
         uint32_t nDifficulty = TAO::Ledger::GetNextTargetRequired(stateBest, nChannel);
         
-        /* Create new block template */
+        /* Create new block template - note: new_block() stores in mapBlocks, so we don't own the pointer */
         TAO::Ledger::Block* pBlock = new_block();
         if (!pBlock)
         {
@@ -3489,18 +3494,19 @@ namespace LLP
             return;
         }
         
-        /* Serialize block template (216 bytes for Tritium) */
+        /* Serialize block template (expected: 216 bytes for Tritium) */
         std::vector<uint8_t> vBlockData = pBlock->Serialize();
-        if (vBlockData.empty() || vBlockData.size() != 216)
+        if (vBlockData.empty() || vBlockData.size() != TRITIUM_BLOCK_SIZE)
         {
-            debug::error(FUNCTION, "Invalid block serialization: ", vBlockData.size(), " bytes (expected 216)");
+            debug::error(FUNCTION, "Invalid block serialization: ", vBlockData.size(), 
+                        " bytes (expected ", TRITIUM_BLOCK_SIZE, ")");
             debug::log(2, "════════════════════════════════════════════════════════════");
             return;
         }
         
         /* Build 16-bit opcode packet (228 bytes total: 12 metadata + 216 template) */
         Packet notification(Miner::STATELESS_GET_BLOCK);  // 16-bit constructor
-        notification.DATA.reserve(228);  // Pre-allocate
+        notification.DATA.reserve(STATELESS_TEMPLATE_SIZE);  // Pre-allocate
         
         /* Add 12-byte metadata (big-endian) */
         // Unified height [0-3]
@@ -3531,7 +3537,8 @@ namespace LLP
         debug::log(2, "      Difficulty:      0x", std::hex, nDifficulty, std::dec);
         debug::log(2, "      Block Hash:      ", pBlock->GetHash().SubString());
         debug::log(2, "      Merkle Root:     ", pBlock->hashMerkleRoot.SubString());
-        debug::log(2, "   Total Size:     ", notification.DATA.size(), " bytes (12 meta + 216 template)");
+        debug::log(2, "   Total Size:     ", notification.DATA.size(), " bytes (", 
+                   METADATA_SIZE, " meta + ", TRITIUM_BLOCK_SIZE, " template)");
         debug::log(2, "");
         debug::log(2, "   ⚡ STATELESS PROTOCOL:");
         debug::log(2, "      Miner can begin hashing immediately (no GET_BLOCK needed)");

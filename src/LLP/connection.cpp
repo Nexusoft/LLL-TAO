@@ -47,6 +47,10 @@ namespace LLP
     /*  Regular Connection Read Packet Method. */
     void Connection::ReadPacket()
     {
+        /* 16-bit opcode prefix byte.
+         * Note: 0xD0 (208) is MINER_AUTH_CHALLENGE which is only sent FROM node TO miner,
+         * never FROM miner TO node. So incoming 0xD0 signals a 16-bit opcode. */
+        static const uint8_t OPCODE_16BIT_PREFIX = 0xD0;
 
         /* Handle Reading Packet Type Header. */
         if(Available() >= 1 && INCOMING.IsNull())
@@ -54,10 +58,8 @@ namespace LLP
             std::vector<uint8_t> HEADER(1, 255);
             if(Read(HEADER, 1) == 1)
             {
-                /* Check if this is a 16-bit opcode (prefix byte 0xD0).
-                 * Note: 0xD0 (208) is MINER_AUTH_CHALLENGE which is only sent FROM node TO miner,
-                 * never FROM miner TO node. So if we're receiving 0xD0, it's a 16-bit opcode prefix. */
-                if(HEADER[0] == 0xD0)
+                /* Check if this is a 16-bit opcode (prefix byte 0xD0). */
+                if(HEADER[0] == OPCODE_16BIT_PREFIX)
                 {
                     /* Read second byte to complete 16-bit opcode */
                     if(Available() >= 1)

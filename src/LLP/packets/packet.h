@@ -144,7 +144,17 @@ namespace LLP
         }
 
 
-        /** Constructor for 16-bit opcode **/
+        /** Constructor for 16-bit opcode
+         *
+         *  Creates a packet with a 16-bit opcode value (e.g., 0xD007, 0xD008).
+         *  These are used by the stateless mining protocol for NexusMiner.
+         *
+         *  The HEADER field is set to the high byte for compatibility/debugging,
+         *  but the full 16-bit opcode is stored in nOpcode16 and fIs16BitOpcode is set.
+         *
+         *  @param[in] nOpcode The 16-bit opcode value (big-endian)
+         *
+         **/
         Packet(const uint16_t nOpcode)
         {
             SetNull();
