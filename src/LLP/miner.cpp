@@ -950,6 +950,14 @@ namespace LLP
                                     debug::log(2, "      Block height:     ", pBlock->nHeight);
                                     debug::log(2, "      Block channel:    ", pBlock->nChannel);
                                     debug::log(2, "      Merkle root:      ", pBlock->hashMerkleRoot.SubString());
+                                    
+                                    /* Update statistics (same as stateless miner for consistency) */
+                                    StatelessMinerManager::Get().IncrementTemplatesServed();
+                                    
+                                    /* Update tracked height to prevent sending template on every GET_ROUND 
+                                     * until check_round() updates it. This ensures templates are only sent
+                                     * when height actually changes. */
+                                    nBestHeight = nUnifiedHeight;
                                 }
                             }
                             catch(const std::exception& e) {
