@@ -891,13 +891,15 @@ namespace LLP
                  * on GET_ROUND polling to automatically deliver templates.
                  */
                 
-                /* Load current best height for comparison */
-                uint32_t nCurrentBestHeight = nBestHeight.load();
-                bool fHeightChanged = (nCurrentBestHeight != nUnifiedHeight);
+                /* Check if height has changed since last time 
+                 * Note: nBestHeight is updated by check_round() which is called periodically
+                 * We compare the miner's tracked height against the current blockchain height
+                 */
+                bool fHeightChanged = (nBestHeight.load() != nUnifiedHeight);
                 
                 debug::log(2, "");
                 debug::log(2, "   🔍 GET_ROUND TEMPLATE AUTO-SEND CHECK:");
-                debug::log(2, "      Last best height:     ", nCurrentBestHeight);
+                debug::log(2, "      Miner's last height:  ", nBestHeight.load());
                 debug::log(2, "      Current height:       ", nUnifiedHeight);
                 debug::log(2, "      Height changed:       ", (fHeightChanged ? "YES" : "NO"));
                 
@@ -920,20 +922,8 @@ namespace LLP
                     }
                     else
                     {
-                        /* Create a new block template (calls new_block() internally) */
-                        TAO::Ledger::Block* pBlock = nullptr;
-                        
-                        /* Get the block from the map if it exists, or create new one */
-                        if(mapBlocks.count(tStateBest.GetHash()))
-                        {
-                            pBlock = mapBlocks[tStateBest.GetHash()];
-                            debug::log(2, "   ✓ Using cached template");
-                        }
-                        else
-                        {
-                            pBlock = new_block();
-                            debug::log(2, "   ✓ Created new template");
-                        }
+                        /* Create a new block template (same as stateless miner for consistency) */
+                        TAO::Ledger::Block* pBlock = new_block();
                         
                         if(!pBlock)
                         {
