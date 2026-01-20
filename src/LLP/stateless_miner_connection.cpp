@@ -2164,6 +2164,15 @@ namespace LLP
         debug::log(0, "   Calling CreateBlockForStatelessMining...");
         uint32_t nAttempts = 0;
         while(true) {
+            /* Check for shutdown during template creation loop */
+            if (config::fShutdown.load())
+            {
+                debug::log(1, FUNCTION, "Shutdown detected during block creation; aborting");
+                if(pBlock)
+                    delete pBlock;
+                return nullptr;
+            }
+            
             ++nAttempts;
             pBlock = TAO::Ledger::CreateBlockForStatelessMining(
                 context.nChannel,
