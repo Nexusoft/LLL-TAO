@@ -329,6 +329,35 @@ namespace LLP
             CLOSE          = 254
         };
 
+        /** Stateless Mining 16-bit Opcodes
+         *
+         *  NEW STATELESS PROTOCOL (Compatible with NexusMiner):
+         *  ====================================================
+         *
+         *  These 16-bit opcodes enable a simplified stateless mining protocol where:
+         *  1. Miner connects and sends STATELESS_MINER_READY (0xD007)
+         *  2. Node immediately pushes template via STATELESS_GET_BLOCK (0xD008)
+         *  3. Miner begins hashing (no authentication or round polling needed)
+         *
+         *  PACKET FORMAT (16-bit):
+         *  - Header: 2 bytes (big-endian, e.g., [0xD0, 0x07])
+         *  - Data: Direct payload (no 4-byte LENGTH field)
+         *
+         *  DETECTION:
+         *  - First byte 0xD0 signals 16-bit opcode (safe because 0xD0 = MINER_AUTH_CHALLENGE
+         *    is only sent FROM node TO miner, never FROM miner TO node)
+         *
+         *  BACKWARD COMPATIBILITY:
+         *  - Existing 8-bit opcodes (216-218) continue to work
+         *  - Old miners use MINER_READY (216) with GET_BLOCK polling
+         *  - New miners use STATELESS_MINER_READY (0xD007) with push notifications
+         *
+         **/
+        
+        /* 16-bit opcode constants */
+        static const uint16_t STATELESS_MINER_READY = 0xD007;   // Miner -> Node: Subscribe to template push
+        static const uint16_t STATELESS_GET_BLOCK   = 0xD008;   // Node -> Miner: Template push (228 bytes)
+
     private:
 
         /* Externally set coinbase to be set on mined blocks */

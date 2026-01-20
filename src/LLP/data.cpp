@@ -210,14 +210,18 @@ namespace LLP
             CONDITION.wait(CONDITION_LOCK,
             [this]
             {
+                /* CRITICAL: Check for shutdown FIRST, before checking suspend state.
+                 * This ensures the thread wakes up during shutdown even if protocol is suspended.
+                 * Bug fix: Previously checked fSuspendProtocol first, causing shutdown hang. */
+                if(fDestruct.load() || config::fShutdown.load())
+                    return true;
+
                 /* Check for suspended state. */
                 if(config::fSuspendProtocol.load())
                     return false;
 
-                return fDestruct.load()
-                || config::fShutdown.load()
-                || nIncoming.load() > 0
-                || nOutbound.load() > 0;
+                /* Wake up if there are active connections to process. */
+                return nIncoming.load() > 0 || nOutbound.load() > 0;
             });
 
             /* Check for close. */
@@ -284,6 +288,10 @@ namespace LLP
             /* Check all connections for data and packets. */
             for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
+                /* Break early if shutdown signaled mid-iteration. */
+                if(fDestruct.load() || config::fShutdown.load())
+                    break;
+
                 /* Access the shared pointer. */
                 std::shared_ptr<ProtocolType> CONNECTION = CONNECTIONS->at(nIndex);
                 try
@@ -555,6 +563,10 @@ namespace LLP
             uint32_t nSize = CONNECTIONS->size();
             for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
+                /* Break early if shutdown signaled mid-iteration. */
+                if(fDestruct.load() || config::fShutdown.load())
+                    break;
+
                 try
                 {
                     /* Reset stream read position. */

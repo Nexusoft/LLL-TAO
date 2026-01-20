@@ -194,6 +194,24 @@ namespace LLP
          **/
         void SendChannelNotification();
 
+        /** SendStatelessTemplate
+         *
+         *  Send a complete mining template using 16-bit opcode 0xD008 (STATELESS_GET_BLOCK).
+         *  This is used by the stateless mining protocol for NexusMiner.
+         *
+         *  Packet format (228 bytes total):
+         *  - Opcode: 0xD008 (2 bytes, big-endian)
+         *  - Metadata (12 bytes, big-endian):
+         *    - Unified height (4 bytes)
+         *    - Channel height (4 bytes)
+         *    - Difficulty (4 bytes)
+         *  - Block template (216 bytes): Serialized Tritium block
+         *
+         *  Called after miner sends STATELESS_MINER_READY (0xD007).
+         *
+         **/
+        void SendStatelessTemplate();
+
     private:
         /** respond
          *
