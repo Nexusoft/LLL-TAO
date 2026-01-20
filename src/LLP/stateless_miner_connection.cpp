@@ -494,6 +494,56 @@ namespace LLP
                 return false;
             }
 
+            /* ============================================================================
+             * 16-BIT OPCODE HANDLERS (Stateless Mining Protocol for NexusMiner)
+             * ============================================================================ */
+            
+            /* Handle STATELESS_MINER_READY (0xD007) - Subscribe to template push notifications */
+            if(PACKET.Is16Bit() && PACKET.GetOpcode() == Miner::STATELESS_MINER_READY)
+            {
+                debug::log(2, "📥 === STATELESS_MINER_READY (0xD007) REQUEST ===");
+                debug::log(0, "   From: ", GetAddress().ToStringIP());
+                debug::log(0, "   Authenticated: ", (context.fAuthenticated ? "YES" : "NO"));
+                debug::log(0, "   Channel: ", context.nChannel);
+                
+                /* Validate authentication - required for stateless mining */
+                if (!context.fAuthenticated)
+                {
+                    debug::error(FUNCTION, "STATELESS_MINER_READY: authentication required");
+                    debug::log(2, "📥 === STATELESS_MINER_READY: REJECTED (AUTH) ===");
+                    return false;
+                }
+                
+                /* CRITICAL: Only Prime (1) and Hash (2) support stateless mining */
+                if (context.nChannel != 1 && context.nChannel != 2)
+                {
+                    debug::error(FUNCTION, "STATELESS_MINER_READY: invalid channel ", context.nChannel);
+                    debug::error(FUNCTION, "  Valid: 1 (Prime), 2 (Hash)");
+                    debug::error(FUNCTION, "  Stake (0) uses Proof-of-Stake, not mined");
+                    debug::log(2, "📥 === STATELESS_MINER_READY: REJECTED (INVALID CHANNEL) ===");
+                    return false;
+                }
+                
+                /* Subscribe to notifications (same logic as 8-bit MINER_READY) */
+                context = context.WithSubscription(context.nChannel);
+                
+                debug::log(0, FUNCTION, "✓ Miner subscribed to ", 
+                          (context.nChannel == 1 ? "Prime" : "Hash"), " notifications (stateless protocol)");
+                
+                /* Send immediate template push using STATELESS_GET_BLOCK (0xD008) */
+                SendStatelessTemplate();
+                
+                /* Update manager */
+                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
+                
+                debug::log(2, "📥 === STATELESS_MINER_READY: SUCCESS ===");
+                return true;
+            }
+
+            /* ============================================================================
+             * 8-BIT OPCODE HANDLERS (Traditional Mining Protocol)
+             * ============================================================================ */
+
             /* Handle block-related packets that require stateful block management */
             /* These are handled directly here instead of through StatelessMiner */
             const uint8_t GET_BLOCK = 129;
@@ -3377,6 +3427,128 @@ namespace LLP
         
         debug::log(2, FUNCTION, "Sent ", (nChannel == 1 ? "Prime" : "Hash"), 
                    " notification to ", GetAddress().ToStringIP(),
+                   " (unified=", stateBest.nHeight, 
+                   ", channel=", nChannelHeight,
+                   ", diff=", std::hex, nDifficulty, std::dec, ")");
+    }
+
+
+    /* SendStatelessTemplate - Send complete template using 16-bit opcode 0xD008 */
+    void StatelessMinerConnection::SendStatelessTemplate()
+    {
+        /* Early exit if shutdown is in progress */
+        if (config::fShutdown.load())
+        {
+            debug::log(2, FUNCTION, "Shutdown in progress; skipping stateless template");
+            return;
+        }
+        
+        /* Thread-safe context access */
+        uint32_t nChannel;
+        {
+            LOCK(MUTEX);
+            
+            /* Validate channel (1=Prime, 2=Hash only) */
+            if (context.nChannel != 1 && context.nChannel != 2)
+            {
+                debug::error(FUNCTION, "Invalid channel: ", context.nChannel);
+                return;
+            }
+            
+            /* Copy channel for use outside lock */
+            nChannel = context.nChannel;
+        }  // MUTEX automatically unlocked here
+        
+        debug::log(2, "════════════════════════════════════════════════════════════");
+        debug::log(2, "📤 SENDING STATELESS TEMPLATE (0xD008)");
+        debug::log(2, "════════════════════════════════════════════════════════════");
+        debug::log(2, "   To Address:     ", GetAddress().ToStringIP());
+        debug::log(2, "   Channel:        ", nChannel, " (", (nChannel == 1 ? "Prime" : "Hash"), ")");
+        
+        /* Get blockchain state */
+        TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
+        
+        /* Get channel-specific state */
+        TAO::Ledger::BlockState stateChannel = stateBest;
+        if (!TAO::Ledger::GetLastState(stateChannel, nChannel))
+        {
+            debug::error(FUNCTION, "Failed to get channel state for channel ", nChannel);
+            debug::log(2, "════════════════════════════════════════════════════════════");
+            return;
+        }
+        
+        /* Get difficulty */
+        uint32_t nDifficulty = TAO::Ledger::GetNextTargetRequired(stateBest, nChannel);
+        
+        /* Create new block template */
+        TAO::Ledger::Block* pBlock = new_block();
+        if (!pBlock)
+        {
+            debug::error(FUNCTION, "Failed to create block template");
+            debug::log(2, "════════════════════════════════════════════════════════════");
+            return;
+        }
+        
+        /* Serialize block template (216 bytes for Tritium) */
+        std::vector<uint8_t> vBlockData = pBlock->Serialize();
+        if (vBlockData.empty() || vBlockData.size() != 216)
+        {
+            debug::error(FUNCTION, "Invalid block serialization: ", vBlockData.size(), " bytes (expected 216)");
+            debug::log(2, "════════════════════════════════════════════════════════════");
+            return;
+        }
+        
+        /* Build 16-bit opcode packet (228 bytes total: 12 metadata + 216 template) */
+        Packet notification(Miner::STATELESS_GET_BLOCK);  // 16-bit constructor
+        notification.DATA.reserve(228);  // Pre-allocate
+        
+        /* Add 12-byte metadata (big-endian) */
+        // Unified height [0-3]
+        notification.DATA.push_back((stateBest.nHeight >> 24) & 0xFF);
+        notification.DATA.push_back((stateBest.nHeight >> 16) & 0xFF);
+        notification.DATA.push_back((stateBest.nHeight >> 8) & 0xFF);
+        notification.DATA.push_back((stateBest.nHeight >> 0) & 0xFF);
+        
+        // Channel height [4-7]
+        uint32_t nChannelHeight = stateChannel.nChannelHeight;
+        notification.DATA.push_back((nChannelHeight >> 24) & 0xFF);
+        notification.DATA.push_back((nChannelHeight >> 16) & 0xFF);
+        notification.DATA.push_back((nChannelHeight >> 8) & 0xFF);
+        notification.DATA.push_back((nChannelHeight >> 0) & 0xFF);
+        
+        // Difficulty [8-11]
+        notification.DATA.push_back((nDifficulty >> 24) & 0xFF);
+        notification.DATA.push_back((nDifficulty >> 16) & 0xFF);
+        notification.DATA.push_back((nDifficulty >> 8) & 0xFF);
+        notification.DATA.push_back((nDifficulty >> 0) & 0xFF);
+        
+        /* Add 216-byte block template [12-227] */
+        notification.DATA.insert(notification.DATA.end(), vBlockData.begin(), vBlockData.end());
+        
+        debug::log(2, "   Payload:");
+        debug::log(2, "      Unified Height:  ", stateBest.nHeight);
+        debug::log(2, "      Channel Height:  ", nChannelHeight);
+        debug::log(2, "      Difficulty:      0x", std::hex, nDifficulty, std::dec);
+        debug::log(2, "      Block Hash:      ", pBlock->GetHash().SubString());
+        debug::log(2, "      Merkle Root:     ", pBlock->hashMerkleRoot.SubString());
+        debug::log(2, "   Total Size:     ", notification.DATA.size(), " bytes (12 meta + 216 template)");
+        debug::log(2, "");
+        debug::log(2, "   ⚡ STATELESS PROTOCOL:");
+        debug::log(2, "      Miner can begin hashing immediately (no GET_BLOCK needed)");
+        debug::log(2, "      Template pushed automatically on new blocks");
+        debug::log(2, "════════════════════════════════════════════════════════════");
+        
+        /* Send to miner */
+        respond(notification);
+        
+        /* Update statistics */
+        uint64_t nNotificationTimestamp = runtime::unifiedtimestamp();
+        {
+            LOCK(MUTEX);
+            context = context.WithNotificationSent(nNotificationTimestamp);
+        }
+        
+        debug::log(2, FUNCTION, "Sent stateless template (0xD008) to ", GetAddress().ToStringIP(),
                    " (unified=", stateBest.nHeight, 
                    ", channel=", nChannelHeight,
                    ", diff=", std::hex, nDifficulty, std::dec, ")");
