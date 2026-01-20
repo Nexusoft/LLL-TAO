@@ -2168,8 +2168,6 @@ namespace LLP
             if (config::fShutdown.load())
             {
                 debug::log(1, FUNCTION, "Shutdown detected during block creation; aborting");
-                if(pBlock)
-                    delete pBlock;
                 return nullptr;
             }
             
