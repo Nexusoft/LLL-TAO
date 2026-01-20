@@ -215,53 +215,72 @@ namespace LLP
     template <class ProtocolType>
     Server<ProtocolType>::~Server()
     {
+        debug::log(1, FUNCTION, "Shutting down ", Name(), " server - waiting for threads...");
+        
         /* Wait for address manager. */
+        debug::log(1, FUNCTION, "  Joining address manager thread...");
         if(THREAD_MANAGER.joinable())
             THREAD_MANAGER.join();
+        debug::log(1, FUNCTION, "  Address manager thread joined");
 
         /* Wait for meter thread. */
+        debug::log(1, FUNCTION, "  Joining meter thread...");
         if(THREAD_METER.joinable())
             THREAD_METER.join();
+        debug::log(1, FUNCTION, "  Meter thread joined");
 
         /* Check all registered listening threads. */
+        debug::log(1, FUNCTION, "  Joining ", THREAD_LISTEN.size(), " listening threads...");
         for(auto& THREAD : THREAD_LISTEN)
         {
             /* Wait on listening threads. */
             if(THREAD.joinable())
                 THREAD.join();
         }
+        debug::log(1, FUNCTION, "  Listening threads joined");
 
 
         /* Check all registered upnp threads. */
+        debug::log(1, FUNCTION, "  Joining ", THREAD_UPNP.size(), " UPNP threads...");
         for(auto& THREAD : THREAD_UPNP)
         {
             /* Wait on listening threads. */
             if(THREAD.joinable())
                 THREAD.join();
         }
+        debug::log(1, FUNCTION, "  UPNP threads joined");
 
 
         /* Delete the data threads. */
+        debug::log(1, FUNCTION, "  Deleting ", CONFIG.MAX_THREADS, " data threads...");
         for(uint16_t nIndex = 0; nIndex < CONFIG.MAX_THREADS; ++nIndex)
         {
+            debug::log(2, FUNCTION, "    Deleting data thread ", nIndex);
             delete THREADS_DATA[nIndex];
             THREADS_DATA[nIndex] = nullptr;
         }
+        debug::log(1, FUNCTION, "  Data threads deleted");
 
         /* Delete the DDOS entries. */
+        debug::log(1, FUNCTION, "  Deleting DDOS entries...");
         for(auto it = DDOS_MAP->begin(); it != DDOS_MAP->end(); ++it)
         {
             /* Delete each DDOS entry if they are not set to nullptr. */
             if(it->second)
                 delete it->second;
         }
+        debug::log(1, FUNCTION, "  DDOS entries deleted");
 
         /* Clear the address manager. */
         if(pAddressManager)
         {
+            debug::log(1, FUNCTION, "  Deleting address manager...");
             delete pAddressManager;
             pAddressManager = nullptr;
+            debug::log(1, FUNCTION, "  Address manager deleted");
         }
+        
+        debug::log(1, FUNCTION, Name(), " server shutdown complete");
     }
 
 

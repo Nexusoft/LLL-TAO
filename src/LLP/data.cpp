@@ -60,18 +60,26 @@ namespace LLP
     template <class ProtocolType>
     DataThread<ProtocolType>::~DataThread()
     {
+        debug::log(2, FUNCTION, "Shutting down data thread ", ID);
+        
         fDestruct = true;
         CONDITION.notify_all();
 
         /* Wait for all data threads. */
+        debug::log(2, FUNCTION, "  Joining DATA_THREAD for thread ", ID);
         if(DATA_THREAD.joinable())
             DATA_THREAD.join();
+        debug::log(2, FUNCTION, "  DATA_THREAD joined for thread ", ID);
 
         FLUSH_CONDITION.notify_all();
 
         /* Wait for any threads still flushing buffers. */
+        debug::log(2, FUNCTION, "  Joining FLUSH_THREAD for thread ", ID);
         if(FLUSH_THREAD.joinable())
             FLUSH_THREAD.join();
+        debug::log(2, FUNCTION, "  FLUSH_THREAD joined for thread ", ID);
+        
+        debug::log(2, FUNCTION, "Data thread ", ID, " shutdown complete");
     }
 
 
