@@ -53,48 +53,98 @@ namespace LLP
         {
             std::vector<uint8_t> HEADER(1, 255);
             if(Read(HEADER, 1) == 1)
-                INCOMING.HEADER = HEADER[0];
+            {
+                /* Check if this is a 16-bit opcode (prefix byte 0xD0).
+                 * Note: 0xD0 (208) is MINER_AUTH_CHALLENGE which is only sent FROM node TO miner,
+                 * never FROM miner TO node. So if we're receiving 0xD0, it's a 16-bit opcode prefix. */
+                if(HEADER[0] == 0xD0)
+                {
+                    /* Read second byte to complete 16-bit opcode */
+                    if(Available() >= 1)
+                    {
+                        std::vector<uint8_t> SECOND_BYTE(1, 0);
+                        if(Read(SECOND_BYTE, 1) == 1)
+                        {
+                            /* Form 16-bit opcode (big-endian) */
+                            uint16_t nOpcode16 = (static_cast<uint16_t>(HEADER[0]) << 8) | SECOND_BYTE[0];
+                            
+                            /* Set as 16-bit opcode packet */
+                            INCOMING.Set16BitOpcode(nOpcode16);
+                            
+                            /* For 16-bit opcodes, we read all available data directly (no LENGTH field) */
+                            /* The handler will know how much data to expect based on the opcode */
+                        }
+                    }
+                }
+                else
+                {
+                    /* Standard 8-bit opcode */
+                    INCOMING.HEADER = HEADER[0];
+                }
+            }
         }
 
-        /* At this point we need to check agin whether the packet is considered complete as some
+        /* At this point we need to check again whether the packet is considered complete as some
            packet types only require a header and no length or data*/
         if(!INCOMING.IsNull() && !INCOMING.Complete())
         {
-            /* Read the packet length. */
-            if(Available() >= 4 && INCOMING.LENGTH == 0)
+            /* 16-bit opcodes don't have a LENGTH field - data is read directly if available */
+            if(INCOMING.Is16Bit())
             {
-                /* Handle Reading Packet Length Header. */
-                std::vector<uint8_t> BYTES(4, 0);
-                if(Read(BYTES, 4) == 4)
+                /* Read all available data for 16-bit opcode packets */
+                uint32_t nAvailable = Available();
+                if(nAvailable > 0)
                 {
-                    INCOMING.SetLength(BYTES);
-                    Event(EVENTS::HEADER);
+                    std::vector<uint8_t> DATA(nAvailable, 0);
+                    int32_t nRead = Read(DATA, DATA.size());
+                    
+                    if(nRead > 0)
+                        INCOMING.DATA.insert(INCOMING.DATA.end(), DATA.begin(), DATA.begin() + nRead);
                 }
+                
+                /* Fire packet complete event (16-bit opcodes are complete after reading opcode) */
+                Event(EVENTS::PACKET, static_cast<uint32_t>(INCOMING.DATA.size()));
             }
-
-            /* Handle Reading Packet Data. */
-            uint32_t nAvailable = Available();
-            if(INCOMING.Header() && nAvailable > 0 && !INCOMING.IsNull() && INCOMING.DATA.size() < INCOMING.LENGTH)
+            else
             {
-                /* The maximum number of bytes to read is th number of bytes specified in the message length,
-                   minus any already read on previous reads*/
-                uint32_t nMaxRead = (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size());
+                /* Standard 8-bit format with LENGTH field */
+                
+                /* Read the packet length. */
+                if(Available() >= 4 && INCOMING.LENGTH == 0)
+                {
+                    /* Handle Reading Packet Length Header. */
+                    std::vector<uint8_t> BYTES(4, 0);
+                    if(Read(BYTES, 4) == 4)
+                    {
+                        INCOMING.SetLength(BYTES);
+                        Event(EVENTS::HEADER);
+                    }
+                }
 
-                /* Vector to receve the read bytes. This should be the smaller of the number of bytes currently available or the
-                   maximum amount to read */
-                std::vector<uint8_t> DATA(std::min(nAvailable, nMaxRead), 0);
+                /* Handle Reading Packet Data. */
+                uint32_t nAvailable = Available();
+                if(INCOMING.Header() && nAvailable > 0 && !INCOMING.IsNull() && INCOMING.DATA.size() < INCOMING.LENGTH)
+                {
+                    /* The maximum number of bytes to read is th number of bytes specified in the message length,
+                       minus any already read on previous reads*/
+                    uint32_t nMaxRead = (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size());
 
-                /* Read up to the buffer size. */
-                int32_t nRead = Read(DATA, DATA.size());
+                    /* Vector to receve the read bytes. This should be the smaller of the number of bytes currently available or the
+                       maximum amount to read */
+                    std::vector<uint8_t> DATA(std::min(nAvailable, nMaxRead), 0);
 
-                /* If something was read, insert it into the packet data.  NOTE: that due to SSL packet framing we could end up
-                   reading less bytes than appear available.  Therefore we only copy the number of bytes actually read */
-                if(nRead > 0)
-                    INCOMING.DATA.insert(INCOMING.DATA.end(), DATA.begin(), DATA.begin() + nRead);
+                    /* Read up to the buffer size. */
+                    int32_t nRead = Read(DATA, DATA.size());
 
-                /* If the packet is now considered complete, fire the packet complete event */
-                if(INCOMING.Complete())
-                    Event(EVENTS::PACKET, static_cast<uint32_t>(DATA.size()));
+                    /* If something was read, insert it into the packet data.  NOTE: that due to SSL packet framing we could end up
+                       reading less bytes than appear available.  Therefore we only copy the number of bytes actually read */
+                    if(nRead > 0)
+                        INCOMING.DATA.insert(INCOMING.DATA.end(), DATA.begin(), DATA.begin() + nRead);
+
+                    /* If the packet is now considered complete, fire the packet complete event */
+                    if(INCOMING.Complete())
+                        Event(EVENTS::PACKET, static_cast<uint32_t>(DATA.size()));
+                }
             }
         }
     }

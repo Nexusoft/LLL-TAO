@@ -28,10 +28,18 @@ namespace LLP
      *
      *  Class to handle sending and receiving of LLP Packets.
      *
-     *  Components of an LLP Packet.
-     *   BYTE 0       : Header
-     *   BYTE 1 - 5   : Length
-     *   BYTE 6 - End : Data
+     *  Components of an LLP Packet (8-bit format - traditional):
+     *   BYTE 0       : Header (8-bit opcode)
+     *   BYTE 1 - 4   : Length (32-bit, big-endian)
+     *   BYTE 5 - End : Data
+     *
+     *  Components of an LLP Packet (16-bit format - stateless mining):
+     *   BYTE 0 - 1   : Header (16-bit opcode, big-endian)
+     *   BYTE 2 - End : Data (implicit length, no LENGTH field)
+     *
+     *  Note: 16-bit opcodes are detected by first byte being 0xD0 (208).
+     *  This is safe because 208 is MINER_AUTH_CHALLENGE which is only sent
+     *  FROM node TO miner, never FROM miner TO node.
      *
      **/
     class Packet
@@ -41,11 +49,11 @@ namespace LLP
         typedef uint8_t message_t;
 
 
-        /** The packet message. **/
+        /** The packet message (8-bit format). **/
         uint8_t                 HEADER;
 
 
-        /** The length of the packet data. **/
+        /** The length of the packet data (8-bit format only). **/
         uint32_t                LENGTH;
 
 
@@ -53,11 +61,21 @@ namespace LLP
         std::vector<uint8_t>    DATA;
 
 
+        /** Flag indicating if this is a 16-bit opcode packet. **/
+        bool                    fIs16BitOpcode;
+
+
+        /** The full 16-bit opcode (only valid if fIs16BitOpcode is true). **/
+        uint16_t                nOpcode16;
+
+
         /** Default Constructor **/
         Packet()
         : HEADER (255)
         , LENGTH (0)
         , DATA   ( )
+        , fIs16BitOpcode (false)
+        , nOpcode16 (0)
         {
         }
 
@@ -67,6 +85,8 @@ namespace LLP
         : HEADER (packet.HEADER)
         , LENGTH (packet.LENGTH)
         , DATA   (packet.DATA)
+        , fIs16BitOpcode (packet.fIs16BitOpcode)
+        , nOpcode16 (packet.nOpcode16)
         {
         }
 
@@ -76,6 +96,8 @@ namespace LLP
         : HEADER (std::move(packet.HEADER))
         , LENGTH (std::move(packet.LENGTH))
         , DATA   (std::move(packet.DATA))
+        , fIs16BitOpcode (std::move(packet.fIs16BitOpcode))
+        , nOpcode16 (std::move(packet.nOpcode16))
         {
         }
 
@@ -86,6 +108,8 @@ namespace LLP
             HEADER = packet.HEADER;
             LENGTH = packet.LENGTH;
             DATA   = packet.DATA;
+            fIs16BitOpcode = packet.fIs16BitOpcode;
+            nOpcode16 = packet.nOpcode16;
 
             return *this;
         }
@@ -97,6 +121,8 @@ namespace LLP
             HEADER = std::move(packet.HEADER);
             LENGTH = std::move(packet.LENGTH);
             DATA   = std::move(packet.DATA);
+            fIs16BitOpcode = std::move(packet.fIs16BitOpcode);
+            nOpcode16 = std::move(packet.nOpcode16);
 
             return *this;
         }
@@ -118,6 +144,17 @@ namespace LLP
         }
 
 
+        /** Constructor for 16-bit opcode **/
+        Packet(const uint16_t nOpcode)
+        {
+            SetNull();
+
+            fIs16BitOpcode = true;
+            nOpcode16 = nOpcode;
+            HEADER = static_cast<uint8_t>(nOpcode >> 8); // High byte
+        }
+
+
         /** SetNull
          *
          *  Set the Packet Null Flags.
@@ -129,6 +166,9 @@ namespace LLP
             LENGTH   = 0;
 
             DATA.clear();
+            
+            fIs16BitOpcode = false;
+            nOpcode16 = 0;
         }
 
 
@@ -139,17 +179,65 @@ namespace LLP
          **/
         bool IsNull() const
         {
-            return (HEADER == 255);
+            return (HEADER == 255 && !fIs16BitOpcode);
+        }
+
+
+        /** GetOpcode
+         *
+         *  Get the opcode value (handles both 8-bit and 16-bit).
+         *
+         *  @return The opcode as a 16-bit value (8-bit opcodes are zero-extended)
+         *
+         **/
+        uint16_t GetOpcode() const
+        {
+            return fIs16BitOpcode ? nOpcode16 : static_cast<uint16_t>(HEADER);
+        }
+
+
+        /** Is16Bit
+         *
+         *  Check if this is a 16-bit opcode packet.
+         *
+         *  @return true if 16-bit opcode, false if 8-bit
+         *
+         **/
+        bool Is16Bit() const
+        {
+            return fIs16BitOpcode;
+        }
+
+
+        /** Set16BitOpcode
+         *
+         *  Set this packet to use a 16-bit opcode.
+         *
+         *  @param[in] nOpcode The 16-bit opcode value
+         *
+         **/
+        void Set16BitOpcode(uint16_t nOpcode)
+        {
+            fIs16BitOpcode = true;
+            nOpcode16 = nOpcode;
+            HEADER = static_cast<uint8_t>(nOpcode >> 8); // High byte for compatibility
         }
 
 
         /** Complete
          *
          *  Determines if a packet is fully read.
+         *  For 8-bit opcodes: checks if data size matches LENGTH
+         *  For 16-bit opcodes: always returns true after opcode is read (no LENGTH field)
          *
          **/
         bool Complete() const
         {
+            /* 16-bit opcodes have no LENGTH field, so they're complete once opcode is read */
+            if(fIs16BitOpcode)
+                return true;
+                
+            /* 8-bit opcodes need header and length to match data */
             return (Header() && static_cast<uint32_t>(DATA.size()) == LENGTH);
         }
 
@@ -282,17 +370,28 @@ namespace LLP
          *
          *  Serializes class into a byte vector. Used to write packet to sockets.
          *
-         *  Handles both traditional data packets (HEADER < 128), mining round
-         *  response packets (204-205), Falcon authentication packets (207-212),
-         *  and reward binding packets (213-214) which all require data payloads.
+         *  Handles both traditional 8-bit packets and new 16-bit opcode packets.
          *
-         *  DEBUG: This method logs detailed packet encoding information when
-         *  config::nVerbose >= 5 to help diagnose packet encoding issues
-         *  affecting the Falcon handshake protocol.
+         *  8-bit format: [HEADER (1)] [LENGTH (4)] [DATA (variable)]
+         *  16-bit format: [OPCODE (2, big-endian)] [DATA (implicit length)]
          *
          **/
         std::vector<uint8_t> GetBytes() const
         {
+            /* Handle 16-bit opcode format */
+            if(fIs16BitOpcode)
+            {
+                std::vector<uint8_t> BYTES(2);
+                BYTES[0] = static_cast<uint8_t>(nOpcode16 >> 8);   // High byte
+                BYTES[1] = static_cast<uint8_t>(nOpcode16 & 0xFF); // Low byte
+                
+                /* Append data directly (no LENGTH field) */
+                BYTES.insert(BYTES.end(), DATA.begin(), DATA.end());
+                
+                return BYTES;
+            }
+
+            /* Handle traditional 8-bit format */
             std::vector<uint8_t> BYTES(1, HEADER);
 
             /* Handle packets that carry data payloads (traditional data packets,
