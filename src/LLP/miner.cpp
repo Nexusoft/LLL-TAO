@@ -873,6 +873,100 @@ namespace LLP
                 /* Send the response */
                 respond(NEW_ROUND, vResponse);
                 
+                /* ═════════════════════════════════════════════════════════════════════════ */
+                /* GET_ROUND COMPATIBILITY: AUTO-SEND TEMPLATE                              */
+                /* ═════════════════════════════════════════════════════════════════════════ */
+                
+                /* DESIGN RATIONALE:
+                 * Legacy miners using GET_ROUND polling expect to receive BLOCK_DATA automatically
+                 * when the height changes, without needing to explicitly request GET_BLOCK.
+                 * 
+                 * This compatibility behavior:
+                 * 1. Sends NEW_ROUND first (already done above)
+                 * 2. Checks if blockchain height has changed since last poll
+                 * 3. If changed: Auto-send BLOCK_DATA (like GET_BLOCK does)
+                 * 4. If same: Skip template send (miner already has current template)
+                 * 
+                 * This maintains backward compatibility with legacy mining software that relies
+                 * on GET_ROUND polling to automatically deliver templates.
+                 */
+                
+                /* Check if height has changed since last time 
+                 * Note: nBestHeight is updated by check_round() which is called periodically
+                 * We compare the miner's tracked height against the current blockchain height
+                 */
+                bool fHeightChanged = (nBestHeight.load() != nUnifiedHeight);
+                
+                debug::log(2, "");
+                debug::log(2, "   🔍 GET_ROUND TEMPLATE AUTO-SEND CHECK:");
+                debug::log(2, "      Miner's last height:  ", nBestHeight.load());
+                debug::log(2, "      Current height:       ", nUnifiedHeight);
+                debug::log(2, "      Height changed:       ", (fHeightChanged ? "YES" : "NO"));
+                
+                if(fHeightChanged)
+                {
+                    debug::log(2, "");
+                    debug::log(2, "   ✅ HEIGHT CHANGED - AUTO-SENDING TEMPLATE");
+                    debug::log(2, "      This maintains compatibility with legacy miners");
+                    debug::log(2, "      that expect GET_ROUND to automatically deliver templates.");
+                    debug::log(2, "");
+                    debug::log(2, "   📤 Creating new block template...");
+                    
+                    /* Create a new block template (same as stateless miner for consistency) 
+                     * Note: Channel validation already done at start of GET_ROUND handler,
+                     * so we can proceed directly to template creation. */
+                    TAO::Ledger::Block* pBlock = new_block();
+                    
+                    if(!pBlock)
+                    {
+                        debug::error(FUNCTION, "   ❌ GET_ROUND auto-send: new_block() returned nullptr");
+                        debug::error(FUNCTION, "      Template will not be sent - miner must use GET_BLOCK");
+                    }
+                    else
+                    {
+                        try {
+                            /* Serialize block template (216 bytes for Tritium) */
+                            std::vector<uint8_t> vBlockData = pBlock->Serialize();
+                            
+                            if(vBlockData.empty())
+                            {
+                                debug::error(FUNCTION, "   ❌ GET_ROUND auto-send: Serialization returned empty");
+                            }
+                            else
+                            {
+                                /* Send BLOCK_DATA packet */
+                                respond(BLOCK_DATA, vBlockData);
+                                
+                                debug::log(2, "   ✅ BLOCK_DATA AUTO-SENT!");
+                                debug::log(2, "      Template size:    ", vBlockData.size(), " bytes");
+                                debug::log(2, "      Block height:     ", pBlock->nHeight);
+                                debug::log(2, "      Block channel:    ", pBlock->nChannel);
+                                debug::log(2, "      Merkle root:      ", pBlock->hashMerkleRoot.SubString());
+                                
+                                /* Update statistics (same as stateless miner for consistency) */
+                                StatelessMinerManager::Get().IncrementTemplatesServed();
+                                
+                                /* Update tracked height to prevent sending template on every GET_ROUND 
+                                 * until check_round() updates it. This ensures templates are only sent
+                                 * when height actually changes. Use .store() for explicit atomic operation. */
+                                nBestHeight.store(nUnifiedHeight);
+                            }
+                        }
+                        catch(const std::exception& e) {
+                            debug::error(FUNCTION, "   ❌ GET_ROUND auto-send exception: ", e.what());
+                        }
+                    }
+                }
+                else
+                {
+                    debug::log(2, "");
+                    debug::log(2, "   ℹ️  HEIGHT UNCHANGED - NO TEMPLATE SENT");
+                    debug::log(2, "      Miner should continue mining current template.");
+                    debug::log(2, "      If miner needs new template, use GET_BLOCK explicitly.");
+                }
+                
+                debug::log(2, "════════════════════════════════════════════════════════════");
+                
                 return true;
             }
 
