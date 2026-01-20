@@ -60,8 +60,14 @@ namespace LLD
 
     /* Writes a caller that fulfilled a conditional agreement.*/
     bool ContractDB::WriteContract(const std::pair<uint512_t, uint32_t>& pair,
-                                   const uint256_t& hashCaller, const uint8_t nFlags)
+                                   const uint256_t& hashCaller, const uint512_t& hashExecution,
+                                   const uint8_t nFlags)
     {
+        /* Build our contract data struct. */
+        ContractData tData;
+        tData.hashCaller    = hashCaller;
+        tData.hashExecution = hashExecution;
+
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
@@ -72,13 +78,13 @@ namespace LLD
             {
                 /* Write proof to memory. */
                 pMemory->setErase.erase(pair);
-                pMemory->mapContracts[pair] = hashCaller;
+                pMemory->mapContracts[pair] = tData;
 
                 return true;
             }
 
             /* Write proof to commited memory. */
-            pCommit->mapContracts[pair] = hashCaller;
+            pCommit->mapContracts[pair] = tData;
 
             return true;
         }
@@ -88,7 +94,7 @@ namespace LLD
 
             /* Check for pending transactions. */
             if(pMiner)
-                pMiner->mapContracts[pair] = hashCaller;
+                pMiner->mapContracts[pair] = tData;
 
             return true;
         }
@@ -98,7 +104,7 @@ namespace LLD
 
             /* Check for pending transactions. */
             if(pSanitize)
-                pSanitize->mapContracts[pair] = hashCaller;
+                pSanitize->mapContracts[pair] = tData;
 
             return true;
         }
@@ -120,7 +126,7 @@ namespace LLD
                 return true;
         }
 
-        return Write(pair, hashCaller);
+        return Write(pair, tData);
     }
 
 
@@ -174,7 +180,8 @@ namespace LLD
 
 
     /* Reads a caller that fulfilled a conditional agreement.*/
-    bool ContractDB::ReadContract(const std::pair<uint512_t, uint32_t>& pairContract, uint256_t& hashCaller, const uint8_t nFlags)
+    bool ContractDB::ReadContract(const std::pair<uint512_t, uint32_t>& pairContract, uint256_t& hashCaller,
+                                  uint512_t& hashExecution, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
@@ -185,7 +192,9 @@ namespace LLD
             if(pMemory && pMemory->mapContracts.count(pairContract))
             {
                 /* Get the state from temporary transaction. */
-                hashCaller = pMemory->mapContracts[pairContract];
+                const ContractData& tData = pMemory->mapContracts[pairContract];
+                hashCaller    = tData.hashCaller;
+                hashExecution = tData.hashExecution;
 
                 return true;
             }
@@ -194,7 +203,9 @@ namespace LLD
             if(pCommit->mapContracts.count(pairContract))
             {
                 /* Get the state from commited memory. */
-                hashCaller = pCommit->mapContracts[pairContract];
+                const ContractData& tData = pCommit->mapContracts[pairContract];
+                hashCaller    = tData.hashCaller;
+                hashExecution = tData.hashExecution;
 
                 return true;
             }
@@ -207,7 +218,9 @@ namespace LLD
             if(pMiner && pMiner->mapContracts.count(pairContract))
             {
                 /* Get the state from temporary transaction. */
-                hashCaller = pMiner->mapContracts[pairContract];
+                const ContractData& tData = pMiner->mapContracts[pairContract];
+                hashCaller    = tData.hashCaller;
+                hashExecution = tData.hashExecution;
 
                 return true;
             }
@@ -220,14 +233,24 @@ namespace LLD
             if(pSanitize && pSanitize->mapContracts.count(pairContract))
             {
                 /* Get the state from temporary transaction. */
-                hashCaller = pSanitize->mapContracts[pairContract];
+                const ContractData& tData = pSanitize->mapContracts[pairContract];
+                hashCaller    = tData.hashCaller;
+                hashExecution = tData.hashExecution;
 
                 return true;
             }
         }
 
         /* Check our disk state first. */
-        return Read(pairContract, hashCaller);
+        ContractData tData;
+        if(!Read(pairContract, tData))
+            return false;
+
+        /* Extract values from struct. */
+        hashCaller    = tData.hashCaller;
+        hashExecution = tData.hashExecution;
+
+        return true;
     }
 
 

@@ -110,8 +110,8 @@ namespace TAO::Operation
                     if(!Validate::Verify(contract, condition, nCost))
                         return false;
 
-                    /* Commit the validation to disk. */
-                    if(!Validate::Commit(contract, hashTx, nContract, contract.Caller(), nFlags))
+                    /* Commit the validation to disk with execution transaction hash. */
+                    if(!Validate::Commit(contract, hashTx, nContract, contract.Caller(), contract.Hash(), nFlags))
                         return false;
 
                     /* Get next OP. */

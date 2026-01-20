@@ -167,9 +167,24 @@ namespace TAO::API
                         if(!TAO::Register::Unpack(tContract, hashRegister))
                             continue;
 
+                        /* Get execution timestamp for this executed order. */
+                        uint64_t nExecutionTimestamp = 0;
+                        {
+                            /* Read the execution transaction hash. */
+                            uint256_t hashCaller;
+                            uint512_t hashExecution;
+                            if(LLD::Contract->ReadContract(pairOrder, hashCaller, hashExecution, TAO::Ledger::FLAGS::MEMPOOL))
+                            {
+                                /* Get the execution transaction to retrieve its timestamp. */
+                                TAO::Ledger::Transaction txExecution;
+                                if(LLD::Ledger->ReadTx(hashExecution, txExecution))
+                                    nExecutionTimestamp = txExecution.nTimestamp;
+                            }
+                        }
+
                         /* Get our order's json. */
                         encoding::json jOrder =
-                            OrderToJSON(tContract, hashBase);
+                            OrderToJSON(tContract, hashBase, nExecutionTimestamp);
 
                         /* Check for valid base token. */
                         const std::pair<uint256_t, uint256_t> pairMarket = std::make_pair

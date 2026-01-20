@@ -53,12 +53,14 @@ namespace TAO
              *  @param[in] hashTx The transaction-id being claimed.
              *  @param[in] nContract The contract output being claimed.
              *  @param[in] hashCaller The contract caller.
+             *  @param[in] hashExecution The transaction hash of the execution.
              *  @param[in] nFlags Flags to the LLD instance.
              *
              *  @return true if successful.
              *
              **/
-            bool Commit(const Contract& contract, const uint512_t& hashTx, const uint32_t nContract, const uint256_t& hashCaller, const uint8_t nFlags);
+            bool Commit(const Contract& contract, const uint512_t& hashTx, const uint32_t nContract,
+                        const uint256_t& hashCaller, const uint512_t& hashExecution, const uint8_t nFlags);
 
 
             /** Verify
