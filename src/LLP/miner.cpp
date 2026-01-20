@@ -912,57 +912,48 @@ namespace LLP
                     debug::log(2, "");
                     debug::log(2, "   📤 Creating new block template...");
                     
-                    /* Get the channel for this miner */
-                    uint32_t nMinerChannel = nChannel.load();
+                    /* Create a new block template (same as stateless miner for consistency) 
+                     * Note: Channel validation already done at start of GET_ROUND handler,
+                     * so we can proceed directly to template creation. */
+                    TAO::Ledger::Block* pBlock = new_block();
                     
-                    if(nMinerChannel == 0)
+                    if(!pBlock)
                     {
-                        debug::log(2, "   ⚠️  NO CHANNEL SET - skipping template auto-send");
-                        debug::log(2, "      Miner must set channel with SET_CHANNEL first");
+                        debug::error(FUNCTION, "   ❌ GET_ROUND auto-send: new_block() returned nullptr");
+                        debug::error(FUNCTION, "      Template will not be sent - miner must use GET_BLOCK");
                     }
                     else
                     {
-                        /* Create a new block template (same as stateless miner for consistency) */
-                        TAO::Ledger::Block* pBlock = new_block();
-                        
-                        if(!pBlock)
-                        {
-                            debug::error(FUNCTION, "   ❌ GET_ROUND auto-send: new_block() returned nullptr");
-                            debug::error(FUNCTION, "      Template will not be sent - miner must use GET_BLOCK");
-                        }
-                        else
-                        {
-                            try {
-                                /* Serialize block template (216 bytes for Tritium) */
-                                std::vector<uint8_t> vBlockData = pBlock->Serialize();
+                        try {
+                            /* Serialize block template (216 bytes for Tritium) */
+                            std::vector<uint8_t> vBlockData = pBlock->Serialize();
+                            
+                            if(vBlockData.empty())
+                            {
+                                debug::error(FUNCTION, "   ❌ GET_ROUND auto-send: Serialization returned empty");
+                            }
+                            else
+                            {
+                                /* Send BLOCK_DATA packet */
+                                respond(BLOCK_DATA, vBlockData);
                                 
-                                if(vBlockData.empty())
-                                {
-                                    debug::error(FUNCTION, "   ❌ GET_ROUND auto-send: Serialization returned empty");
-                                }
-                                else
-                                {
-                                    /* Send BLOCK_DATA packet */
-                                    respond(BLOCK_DATA, vBlockData);
-                                    
-                                    debug::log(2, "   ✅ BLOCK_DATA AUTO-SENT!");
-                                    debug::log(2, "      Template size:    ", vBlockData.size(), " bytes");
-                                    debug::log(2, "      Block height:     ", pBlock->nHeight);
-                                    debug::log(2, "      Block channel:    ", pBlock->nChannel);
-                                    debug::log(2, "      Merkle root:      ", pBlock->hashMerkleRoot.SubString());
-                                    
-                                    /* Update statistics (same as stateless miner for consistency) */
-                                    StatelessMinerManager::Get().IncrementTemplatesServed();
-                                    
-                                    /* Update tracked height to prevent sending template on every GET_ROUND 
-                                     * until check_round() updates it. This ensures templates are only sent
-                                     * when height actually changes. */
-                                    nBestHeight = nUnifiedHeight;
-                                }
+                                debug::log(2, "   ✅ BLOCK_DATA AUTO-SENT!");
+                                debug::log(2, "      Template size:    ", vBlockData.size(), " bytes");
+                                debug::log(2, "      Block height:     ", pBlock->nHeight);
+                                debug::log(2, "      Block channel:    ", pBlock->nChannel);
+                                debug::log(2, "      Merkle root:      ", pBlock->hashMerkleRoot.SubString());
+                                
+                                /* Update statistics (same as stateless miner for consistency) */
+                                StatelessMinerManager::Get().IncrementTemplatesServed();
+                                
+                                /* Update tracked height to prevent sending template on every GET_ROUND 
+                                 * until check_round() updates it. This ensures templates are only sent
+                                 * when height actually changes. Use .store() for explicit atomic operation. */
+                                nBestHeight.store(nUnifiedHeight);
                             }
-                            catch(const std::exception& e) {
-                                debug::error(FUNCTION, "   ❌ GET_ROUND auto-send exception: ", e.what());
-                            }
+                        }
+                        catch(const std::exception& e) {
+                            debug::error(FUNCTION, "   ❌ GET_ROUND auto-send exception: ", e.what());
                         }
                     }
                 }

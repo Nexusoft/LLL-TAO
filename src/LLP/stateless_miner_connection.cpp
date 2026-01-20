@@ -1987,6 +1987,9 @@ namespace LLP
                 debug::log(2, "════════════════════════════════════════════════════════════");
                 
                 /* Update context timestamp and height 
+                 * Note: Height is only updated if template was sent to prevent duplicate sends.
+                 * If no template was sent (height unchanged), we keep the old height so next
+                 * GET_ROUND at a new height will trigger template send.
                  * 
                  * NOTE: We do NOT call CleanupStaleTemplates() here because:
                  * 1. It's already called when creating new templates (NEW_BLOCK handler)
@@ -1994,8 +1997,17 @@ namespace LLP
                  * 3. Calling cleanup on every GET_ROUND poll (every 5-10s) would be excessive
                  * 4. Template cleanup should be driven by template creation, not polling
                  */
-                context = context.WithTimestamp(runtime::unifiedtimestamp())
-                                 .WithHeight(nUnifiedHeight);
+                if(fHeightChanged)
+                {
+                    /* Update height only if we sent a template */
+                    context = context.WithTimestamp(runtime::unifiedtimestamp())
+                                     .WithHeight(nUnifiedHeight);
+                }
+                else
+                {
+                    /* Update only timestamp, keep existing height */
+                    context = context.WithTimestamp(runtime::unifiedtimestamp());
+                }
                 StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
 
                 return true;
