@@ -362,7 +362,7 @@ namespace LLP
                 /* Log packet header received */
                 if(Incoming())
                 {
-                    Packet PACKET = this->INCOMING;
+                    StatelessPacket PACKET = this->INCOMING;
                     debug::log(2, FUNCTION, "MinerLLP: HEADER from ", GetAddress().ToStringIP(),
                                " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec,
                                " length=", PACKET.LENGTH);
@@ -576,7 +576,7 @@ namespace LLP
                     // Request rejected - violation already recorded
                     // Send empty response to indicate rate limited
                     debug::log(1, FUNCTION, "GET_BLOCK rate limited for ", GetAddress().ToStringIP());
-                    Packet response(BLOCK_DATA);
+                    StatelessPacket response(BLOCK_DATA);
                     response.LENGTH = 0;
                     respond(response);
                     return true;  // Handled (rejected)
@@ -592,7 +592,7 @@ namespace LLP
                 if(!context.fAuthenticated)
                 {
                     debug::error("   ❌ Authentication required");
-                    Packet response(MINER_AUTH_RESULT);
+                    StatelessPacket response(MINER_AUTH_RESULT);
                     response.DATA.push_back(0x00);  // Failure
                     response.LENGTH = 1;
                     respond(response);
@@ -618,7 +618,7 @@ namespace LLP
                 if(!pBlock)
                 {
                     debug::error("   ❌ new_block() returned nullptr");
-                    Packet response(BLOCK_DATA);
+                    StatelessPacket response(BLOCK_DATA);
                     response.LENGTH = 0;
                     respond(response);
                     debug::log(2, "📥 === GET_BLOCK: FAILED (NO BLOCK) ===");
@@ -647,7 +647,7 @@ namespace LLP
                     if(vData.empty())
                     {
                         debug::error("   ❌ Serialization returned empty vector!");
-                        Packet response(BLOCK_DATA);
+                        StatelessPacket response(BLOCK_DATA);
                         response.LENGTH = 0;
                         respond(response);
                         debug::log(2, "📥 === GET_BLOCK: FAILED (EMPTY SERIALIZATION) ===");
@@ -715,7 +715,7 @@ namespace LLP
                             debug::error(FUNCTION, "   Expected: ", pBlock->nChannel);
                             debug::error(FUNCTION, "   Got: ", nChannelFromSerialized);
                             
-                            Packet response(BLOCK_DATA);
+                            StatelessPacket response(BLOCK_DATA);
                             response.LENGTH = 0;
                             respond(response);
                             debug::log(2, "📥 === GET_BLOCK: FAILED (CHANNEL MISMATCH) ===");
@@ -729,7 +729,7 @@ namespace LLP
                             debug::error(FUNCTION, "   Expected: ", pBlock->nHeight);
                             debug::error(FUNCTION, "   Got: ", nHeightFromSerialized);
                             
-                            Packet response(BLOCK_DATA);
+                            StatelessPacket response(BLOCK_DATA);
                             response.LENGTH = 0;
                             respond(response);
                             debug::log(2, "📥 === GET_BLOCK: FAILED (HEIGHT MISMATCH) ===");
@@ -740,7 +740,7 @@ namespace LLP
                     }
                     
                     /* Create response packet */
-                    Packet response(BLOCK_DATA);
+                    StatelessPacket response(BLOCK_DATA);
                     response.DATA = vData;
                     response.LENGTH = static_cast<uint32_t>(vData.size());  // ⭐ CRITICAL FIX!
                     
@@ -788,7 +788,7 @@ namespace LLP
                     debug::error("   ❌ Serialization exception: ", e.what());
                     debug::log(2, "📥 === GET_BLOCK: EXCEPTION ===");
                     
-                    Packet response(BLOCK_DATA);
+                    StatelessPacket response(BLOCK_DATA);
                     response.LENGTH = 0;
                     respond(response);
                     
@@ -808,7 +808,7 @@ namespace LLP
                 if (!CheckRateLimit(SUBMIT_BLOCK)) {
                     // Rate limit exceeded - reject submission
                     debug::log(1, FUNCTION, "SUBMIT_BLOCK rate limited for ", GetAddress().ToStringIP());
-                    Packet response(BLOCK_REJECTED);
+                    StatelessPacket response(BLOCK_REJECTED);
                     respond(response);
                     return true;  // Handled (rejected)
                 }
@@ -819,7 +819,7 @@ namespace LLP
                 if(!context.fAuthenticated)
                 {
                     debug::error(FUNCTION, "❌ Authentication required");
-                    Packet response(BLOCK_REJECTED);
+                    StatelessPacket response(BLOCK_REJECTED);
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (AUTH) ===", ANSI_COLOR_RESET);
                     return true;
@@ -829,7 +829,7 @@ namespace LLP
                 if(context.nChannel == 0)
                 {
                     debug::error(FUNCTION, "❌ Channel not set");
-                    Packet response(BLOCK_REJECTED);
+                    StatelessPacket response(BLOCK_REJECTED);
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (NO CHANNEL) ===", ANSI_COLOR_RESET);
                     return true;
@@ -844,7 +844,7 @@ namespace LLP
                     debug::error(FUNCTION, "   vChaChaKey size: ", context.vChaChaKey.size(), " (expected: 32)");
                     debug::error(FUNCTION, "   Legacy plaintext mining is no longer supported");
                     
-                    Packet response(BLOCK_REJECTED);
+                    StatelessPacket response(BLOCK_REJECTED);
                     response.DATA.push_back(0x0C);  // Reason: Encryption required
                     respond(response);
                     
@@ -895,7 +895,7 @@ namespace LLP
                 {
                     debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK packet too small: ", 
                                PACKET.DATA.size(), " < ", MIN_SIZE);
-                    Packet response(BLOCK_REJECTED);
+                    StatelessPacket response(BLOCK_REJECTED);
                     respond(response);
                     return true;
                 }
@@ -904,7 +904,7 @@ namespace LLP
                 {
                     debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK packet too large: ",
                                PACKET.DATA.size(), " > ", MAX_SIZE);
-                    Packet response(BLOCK_REJECTED);
+                    StatelessPacket response(BLOCK_REJECTED);
                     respond(response);
                     return true;
                 }
@@ -963,7 +963,7 @@ namespace LLP
                             debug::error(FUNCTION, "❌ No Falcon pubkey stored for session");
                             debug::error(FUNCTION, "   Session may have expired or never authenticated properly");
                             
-                            Packet response(BLOCK_REJECTED);
+                            StatelessPacket response(BLOCK_REJECTED);
                             response.DATA.push_back(0x0D);  // Reason: No session key
                             respond(response);
                             
@@ -1013,7 +1013,7 @@ namespace LLP
                                     debug::error(FUNCTION, "   - Wrong decryption key (session key mismatch)");
                                     debug::error(FUNCTION, "   - Authentication tag verification failed");
                                     
-                                    Packet response(BLOCK_REJECTED);
+                                    StatelessPacket response(BLOCK_REJECTED);
                                     response.DATA.push_back(0x0B);  // Reason: ChaCha20 decryption failure
                                     respond(response);
                                     
@@ -1085,7 +1085,7 @@ namespace LLP
                                 
                                 if(decryptedData.size() < MIN_METADATA_SIZE) {
                                     debug::error(FUNCTION, "❌ Decrypted payload too small (need at least ", MIN_METADATA_SIZE, " bytes)");
-                                    Packet response(BLOCK_REJECTED);
+                                    StatelessPacket response(BLOCK_REJECTED);
                                     respond(response);
                                     return true;
                                 }
@@ -1220,7 +1220,7 @@ namespace LLP
                                 {
                                     debug::error(FUNCTION, "❌ Could not determine block size from packet structure");
                                     debug::error(FUNCTION, "   Decrypted size: ", decryptedData.size(), " bytes");
-                                    Packet response(BLOCK_REJECTED);
+                                    StatelessPacket response(BLOCK_REJECTED);
                                     respond(response);
                                     return true;
                                 }
@@ -1243,7 +1243,7 @@ namespace LLP
                                     debug::error(FUNCTION, "❌ Internal error: Invalid size after detection");
                                     debug::error(FUNCTION, "   Expected at least: ", expectedMinSize, " Got: ", decryptedData.size());
                                     debug::error(FUNCTION, "   This should not happen - please report this bug");
-                                    Packet response(BLOCK_REJECTED);
+                                    StatelessPacket response(BLOCK_REJECTED);
                                     respond(response);
                                     return true;
                                 }
@@ -1277,7 +1277,7 @@ namespace LLP
                                 if(!verifyKey.SetPubKey(vSessionPubKey))
                                 {
                                     debug::error(FUNCTION, "❌ Failed to set public key for verification");
-                                    Packet response(BLOCK_REJECTED);
+                                    StatelessPacket response(BLOCK_REJECTED);
                                     respond(response);
                                     return true;
                                 }
@@ -1291,7 +1291,7 @@ namespace LLP
                                     debug::error(FUNCTION, "   - Message format mismatch");
                                     debug::error(FUNCTION, "   - Corrupted signature data");
                                     
-                                    Packet response(BLOCK_REJECTED);
+                                    StatelessPacket response(BLOCK_REJECTED);
                                     response.DATA.push_back(0x0C);  // Reason: Signature verification failed
                                     respond(response);
                                     
@@ -1353,7 +1353,7 @@ namespace LLP
                                             debug::error(FUNCTION, "❌ Physical Falcon signature verification FAILED");
                                             debug::error(FUNCTION, "   Key bonding requires same key for both signatures");
                                             
-                                            Packet response(BLOCK_REJECTED);
+                                            StatelessPacket response(BLOCK_REJECTED);
                                             response.DATA.push_back(REJECT_PHYSICAL_SIGNATURE_FAILED);
                                             respond(response);
                                             
@@ -1365,7 +1365,7 @@ namespace LLP
                                         if(!context.fFalconVersionDetected)
                                         {
                                             debug::error(FUNCTION, "❌ No Falcon version detected for session");
-                                            Packet response(BLOCK_REJECTED);
+                                            StatelessPacket response(BLOCK_REJECTED);
                                             respond(response);
                                             return true;
                                         }
@@ -1378,7 +1378,7 @@ namespace LLP
                                                        (context.nFalconVersion == LLC::FalconVersion::FALCON_512 ? "512" : "1024"), ")");
                                             debug::error(FUNCTION, "   Got: ", vchPhysicalSignature.size());
                                             
-                                            Packet response(BLOCK_REJECTED);
+                                            StatelessPacket response(BLOCK_REJECTED);
                                             response.DATA.push_back(REJECT_KEY_BONDING_VIOLATION);
                                             respond(response);
                                             
@@ -1455,7 +1455,7 @@ namespace LLP
                                     debug::error(FUNCTION, "❌ Falcon signature timestamp too old (", nTimeDiff, "s skew)");
                                     debug::error(FUNCTION, "   This prevents replay attacks");
                                     
-                                    Packet response(BLOCK_REJECTED);
+                                    StatelessPacket response(BLOCK_REJECTED);
                                     response.DATA.push_back(0x08);  // Reason: stale timestamp
                                     respond(response);
                                     
@@ -1473,7 +1473,7 @@ namespace LLP
                                            FalconConstants::LENGTH_FIELD_SIZE, " bytes");
                                 debug::error(FUNCTION, "   Got: ", PACKET.DATA.size(), " bytes");
                                 
-                                Packet response(BLOCK_REJECTED);
+                                StatelessPacket response(BLOCK_REJECTED);
                                 response.DATA.push_back(0x0E);  // Reason: Invalid packet size
                                 respond(response);
                                 
@@ -1491,7 +1491,7 @@ namespace LLP
                     debug::error(FUNCTION, "   Got: ", PACKET.DATA.size(), " bytes");
                     debug::error(FUNCTION, "   Legacy plaintext mining is no longer supported");
                     
-                    Packet response(BLOCK_REJECTED);
+                    StatelessPacket response(BLOCK_REJECTED);
                     response.DATA.push_back(0x0F);  // Reason: Packet too small
                     respond(response);
                     
@@ -1508,7 +1508,7 @@ namespace LLP
                     debug::error(FUNCTION, "   fFalconVerified should always be true at this point");
                     debug::error(FUNCTION, "   This indicates a bug in the SUBMIT_BLOCK handler");
                     
-                    Packet response(BLOCK_REJECTED);
+                    StatelessPacket response(BLOCK_REJECTED);
                     response.DATA.push_back(0xFF);  // Reason: Internal error
                     respond(response);
                     
@@ -1569,7 +1569,7 @@ namespace LLP
                     debug::error(FUNCTION, "     → Solution: Request new template immediately");
                     debug::error(FUNCTION, "════════════════════════════════════════");
                     
-                    Packet response(BLOCK_REJECTED);
+                    StatelessPacket response(BLOCK_REJECTED);
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Unknown template) ===", ANSI_COLOR_RESET);
                     return true;
@@ -1581,7 +1581,7 @@ namespace LLP
                 if(!sign_block(nonce, hashMerkle))
                 {
                     debug::error(FUNCTION, "❌ sign_block failed (nonce update failed)");
-                    Packet response(BLOCK_REJECTED);
+                    StatelessPacket response(BLOCK_REJECTED);
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (sign_block failed) ===", ANSI_COLOR_RESET);
                     return true;
@@ -1598,7 +1598,7 @@ namespace LLP
                         PoolDiscovery::OnBlockSubmitted(context.hashGenesis, false);
                     }
                     
-                    Packet response(BLOCK_REJECTED);
+                    StatelessPacket response(BLOCK_REJECTED);
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (validate_block failed) ===", ANSI_COLOR_RESET);
                     return true;
@@ -1649,7 +1649,7 @@ namespace LLP
                     debug::log(0, "   Channel: ", pBlock->nChannel, " (", (pBlock->nChannel == 1 ? "Prime" : "Hash"), ")");
                 }
                 
-                Packet response(BLOCK_ACCEPTED);
+                StatelessPacket response(BLOCK_ACCEPTED);
                 respond(response);
 
                 /* Update context timestamp */
@@ -1668,7 +1668,7 @@ namespace LLP
                 if(!context.fAuthenticated)
                 {
                     debug::error(FUNCTION, "GET_HEIGHT rejected - authentication required");
-                    Packet response(MINER_AUTH_RESULT);
+                    StatelessPacket response(MINER_AUTH_RESULT);
                     response.DATA.push_back(0x00);  // Failure
                     respond(response);
                     return true;
@@ -1682,7 +1682,7 @@ namespace LLP
                            " - responding with height ", nCurrentHeight + 1);
 
                 /* Create the response packet with height (next block to mine, 4-byte little-endian) */
-                Packet response(BLOCK_HEIGHT);
+                StatelessPacket response(BLOCK_HEIGHT);
                 response.DATA = convert::uint2bytes(nCurrentHeight + 1);
                 response.LENGTH = static_cast<uint32_t>(response.DATA.size());
                 
@@ -1705,7 +1705,7 @@ namespace LLP
                 if(!context.fAuthenticated)
                 {
                     debug::error(FUNCTION, "GET_REWARD rejected - authentication required");
-                    Packet response(MINER_AUTH_RESULT);
+                    StatelessPacket response(MINER_AUTH_RESULT);
                     response.DATA.push_back(0x00);  // Failure
                     respond(response);
                     return true;
@@ -1718,7 +1718,7 @@ namespace LLP
                     debug::error(FUNCTION, "  Required flow: Auth → MINER_SET_REWARD → SET_CHANNEL → GET_REWARD");
                     
                     /* Send error response */
-                    Packet response(BLOCK_REJECTED);
+                    StatelessPacket response(BLOCK_REJECTED);
                     respond(response);
                     return true;
                 }
@@ -1738,7 +1738,7 @@ namespace LLP
                     debug::error(FUNCTION, "No coinbase reward available for this channel");
                     
                     /* Send error response */
-                    Packet response(BLOCK_REJECTED);
+                    StatelessPacket response(BLOCK_REJECTED);
                     respond(response);
                     return true;
                 }
@@ -1746,7 +1746,7 @@ namespace LLP
                 debug::log(2, FUNCTION, "Sending Coinbase Reward of ", nReward);
 
                 /* Create the response packet with reward (8-byte little-endian) */
-                Packet response(BLOCK_REWARD);
+                StatelessPacket response(BLOCK_REWARD);
                 response.DATA = convert::uint2bytes64(nReward);
                 response.LENGTH = static_cast<uint32_t>(response.DATA.size());
                 
@@ -1770,7 +1770,7 @@ namespace LLP
                     // Request rejected - violation already recorded
                     // Send OLD_ROUND response to indicate rate limited
                     debug::log(1, FUNCTION, "GET_ROUND rate limited for ", GetAddress().ToStringIP());
-                    Packet response(OLD_ROUND);
+                    StatelessPacket response(OLD_ROUND);
                     response.LENGTH = 0;
                     respond(response);
                     return true;  // Handled (rejected)
@@ -1782,7 +1782,7 @@ namespace LLP
                     debug::log(0, FUNCTION, "Unauthenticated miner attempted GET_ROUND from ",
                                GetAddress().ToStringIP());
                     std::vector<uint8_t> vFail(1, 0x00);
-                    Packet response(OLD_ROUND);
+                    StatelessPacket response(OLD_ROUND);
                     response.DATA = vFail;
                     respond(response);
                     return true;
@@ -1797,7 +1797,7 @@ namespace LLP
                 {
                     debug::error(FUNCTION, "GET_ROUND: Miner has not set channel (use SET_CHANNEL)");
                     debug::error(FUNCTION, "   Valid channels: 1=Prime, 2=Hash (Stake mining uses different mechanism)");
-                    Packet response(OLD_ROUND);
+                    StatelessPacket response(OLD_ROUND);
                     response.LENGTH = 0;
                     respond(response);
                     return true;
@@ -1933,7 +1933,7 @@ namespace LLP
                 debug::log(2, "════════════════════════════════════════════════════════════");
                 
                 /* Send response */
-                Packet response(NEW_ROUND);
+                StatelessPacket response(NEW_ROUND);
                 response.DATA = vData;
                 response.LENGTH = static_cast<uint32_t>(vData.size());
                 respond(response);
@@ -1994,7 +1994,7 @@ namespace LLP
                             else
                             {
                                 /* Send BLOCK_DATA packet */
-                                Packet blockPacket(BLOCK_DATA);
+                                StatelessPacket blockPacket(BLOCK_DATA);
                                 blockPacket.DATA = vBlockData;
                                 blockPacket.LENGTH = static_cast<uint32_t>(vBlockData.size());
                                 respond(blockPacket);
@@ -3349,7 +3349,7 @@ namespace LLP
         uint8_t nOpcode = (nChannel == 1) ? PRIME_BLOCK_AVAILABLE : HASH_BLOCK_AVAILABLE;
         
         /* Build 12-byte packet (big-endian) */
-        Packet notification(nOpcode);
+        StatelessPacket notification(nOpcode);
         notification.DATA.reserve(12);  // Pre-allocate to avoid reallocations
         
         // Unified height [0-3]
@@ -3493,7 +3493,7 @@ namespace LLP
         }
         
         /* Build 16-bit opcode packet (228 bytes total: 12 metadata + 216 template) */
-        Packet notification(Miner::STATELESS_GET_BLOCK);  // 16-bit constructor
+        StatelessPacket notification(Miner::STATELESS_GET_BLOCK);  // 16-bit constructor
         notification.DATA.reserve(STATELESS_TEMPLATE_SIZE);  // Pre-allocate
         
         /* Add 12-byte metadata (big-endian) */
