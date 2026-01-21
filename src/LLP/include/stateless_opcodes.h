@@ -29,312 +29,128 @@ namespace LLP
      *  - LENGTH: 4 bytes (32-bit, big-endian)
      *  - DATA:   LENGTH bytes
      *
+     *  MIRROR-MAPPED SCHEME:
+     *  All stateless opcodes are mirror-mapped from legacy 8-bit opcodes:
+     *      statelessOpcode = 0xD000 | legacyOpcode
+     *
+     *  This provides a 1:1 mapping between legacy and stateless protocols while
+     *  maintaining backward compatibility and simplifying protocol bridging.
+     *
      **/
     namespace StatelessOpcodes
     {
-        /** STATELESS_MINER_READY (0xD007)
+        /** Helper Functions **/
+        
+        /** Mirror
          *
-         *  Miner -> Node: Subscribe to template push notifications
+         *  Convert legacy 8-bit opcode to mirror-mapped 16-bit stateless opcode.
          *
-         *  When miner sends this opcode, it signals readiness to receive mining
-         *  templates. The node immediately responds with STATELESS_GET_BLOCK.
+         *  @param[in] legacyOpcode The legacy 8-bit opcode
+         *  @return The mirror-mapped 16-bit stateless opcode (0xD000 | legacyOpcode)
          *
          **/
-        static constexpr uint16_t STATELESS_MINER_READY = 0xD007;
+        constexpr uint16_t Mirror(uint8_t legacyOpcode)
+        {
+            return 0xD000 | legacyOpcode;
+        }
 
-        /** STATELESS_GET_BLOCK (0xD008)
+        /** IsStateless
          *
-         *  Node -> Miner: Push mining template (228 bytes)
+         *  Check if an opcode is a valid stateless opcode (in range 0xD000-0xD0FF).
          *
-         *  Packet format:
-         *  - Opcode: 0xD008 (2 bytes, big-endian)
-         *  - Metadata (12 bytes, big-endian):
-         *    - Unified height (4 bytes)
-         *    - Channel height (4 bytes)
-         *    - Difficulty (4 bytes)
-         *  - Block template (216 bytes): Serialized Tritium block
+         *  @param[in] opcode The 16-bit opcode to check
+         *  @return true if opcode is in valid stateless range, false otherwise
          *
          **/
-        static constexpr uint16_t STATELESS_GET_BLOCK = 0xD008;
+        constexpr bool IsStateless(uint16_t opcode)
+        {
+            return (opcode & 0xFF00) == 0xD000;
+        }
 
-        /** STATELESS_SUBMIT_BLOCK (0xD009)
+        /** Unmirror
          *
-         *  Miner -> Node: Submit solved block with nonce-in-header
+         *  Convert mirror-mapped 16-bit stateless opcode back to legacy 8-bit opcode.
          *
-         *  This is the nonce-in-header submission format where the miner
-         *  embeds the nonce directly into the block header before submission.
-         *
-         *  Packet format:
-         *  - Opcode: 0xD009 (2 bytes, big-endian)
-         *  - Block header with nonce:
-         *    - Tritium: 216 bytes
-         *    - Legacy: 220 bytes
-         *
-         *  The node extracts the nonce from the header and validates the block.
+         *  @param[in] statelessOpcode The 16-bit stateless opcode
+         *  @return The legacy 8-bit opcode (statelessOpcode & 0xFF)
          *
          **/
-        static constexpr uint16_t STATELESS_SUBMIT_BLOCK = 0xD009;
+        constexpr uint8_t Unmirror(uint16_t statelessOpcode)
+        {
+            return static_cast<uint8_t>(statelessOpcode & 0xFF);
+        }
+        /** MIRROR-MAPPED OPCODES
+         *
+         *  All opcodes below are derived from legacy 8-bit mining opcodes using
+         *  the mirror-mapping formula: statelessOpcode = 0xD000 | legacyOpcode
+         *
+         *  Legacy Reference (from miner.h):
+         *    BLOCK_DATA=0, SUBMIT_BLOCK=1, BLOCK_HEIGHT=2, SET_CHANNEL=3,
+         *    BLOCK_REWARD=4, SET_COINBASE=5, GOOD_BLOCK=6, ORPHAN_BLOCK=7,
+         *    CHECK_BLOCK=64, SUBSCRIBE=65, GET_BLOCK=129, GET_HEIGHT=130,
+         *    GET_REWARD=131, CLEAR_MAP=132, GET_ROUND=133, BLOCK_ACCEPTED=200,
+         *    BLOCK_REJECTED=201, COINBASE_SET=202, COINBASE_FAIL=203,
+         *    NEW_ROUND=204, OLD_ROUND=205, CHANNEL_ACK=206,
+         *    MINER_AUTH_INIT=207, MINER_AUTH_CHALLENGE=208,
+         *    MINER_AUTH_RESPONSE=209, MINER_AUTH_RESULT=210,
+         *    SESSION_START=211, SESSION_KEEPALIVE=212,
+         *    MINER_SET_REWARD=213, MINER_REWARD_RESULT=214,
+         *    MINER_READY=216, PRIME_BLOCK_AVAILABLE=217,
+         *    HASH_BLOCK_AVAILABLE=218, PING=253, CLOSE=254
+         **/
 
-        /** STATELESS_BLOCK_ACCEPTED (0xD00A)
-         *
-         *  Node -> Miner: Block submission accepted
-         *
-         *  Sent when a submitted block is valid and accepted into the chain.
-         *
-         *  Packet format:
-         *  - Opcode: 0xD00A (2 bytes, big-endian)
-         *  - No payload (empty DATA field)
-         *
-         **/
-        static constexpr uint16_t STATELESS_BLOCK_ACCEPTED = 0xD00A;
+        /** DATA PACKETS (mirror-mapped from 0-7) **/
+        static constexpr uint16_t STATELESS_BLOCK_DATA   = Mirror(0);   // 0xD000
+        static constexpr uint16_t STATELESS_SUBMIT_BLOCK = Mirror(1);   // 0xD001
+        static constexpr uint16_t STATELESS_BLOCK_HEIGHT = Mirror(2);   // 0xD002
+        static constexpr uint16_t STATELESS_SET_CHANNEL  = Mirror(3);   // 0xD003
+        static constexpr uint16_t STATELESS_BLOCK_REWARD = Mirror(4);   // 0xD004
+        static constexpr uint16_t STATELESS_SET_COINBASE = Mirror(5);   // 0xD005
+        static constexpr uint16_t STATELESS_GOOD_BLOCK   = Mirror(6);   // 0xD006
+        static constexpr uint16_t STATELESS_ORPHAN_BLOCK = Mirror(7);   // 0xD007
 
-        /** STATELESS_BLOCK_REJECTED (0xD00B)
-         *
-         *  Node -> Miner: Block submission rejected
-         *
-         *  Sent when a submitted block is invalid or rejected.
-         *
-         *  Packet format:
-         *  - Opcode: 0xD00B (2 bytes, big-endian)
-         *  - Optional payload: UTF-8 string with rejection reason
-         *
-         **/
-        static constexpr uint16_t STATELESS_BLOCK_REJECTED = 0xD00B;
+        /** DATA REQUESTS (mirror-mapped from 64-65) **/
+        static constexpr uint16_t STATELESS_CHECK_BLOCK  = Mirror(64);  // 0xD040
+        static constexpr uint16_t STATELESS_SUBSCRIBE    = Mirror(65);  // 0xD041
 
-        /** STATELESS_SET_CHANNEL (0xD00C)
-         *
-         *  Miner -> Node: Set mining channel preference
-         *
-         *  Allows miner to specify which channel to mine on:
-         *  - Channel 1: Prime (CPU mining)
-         *  - Channel 2: Hash (GPU mining)
-         *
-         *  Packet format:
-         *  - Opcode: 0xD00C (2 bytes, big-endian)
-         *  - Channel ID (1 byte): 1=Prime, 2=Hash
-         *
-         **/
-        static constexpr uint16_t STATELESS_SET_CHANNEL = 0xD00C;
+        /** REQUEST PACKETS (mirror-mapped from 129-133) **/
+        static constexpr uint16_t STATELESS_GET_BLOCK    = Mirror(129); // 0xD081
+        static constexpr uint16_t STATELESS_GET_HEIGHT   = Mirror(130); // 0xD082
+        static constexpr uint16_t STATELESS_GET_REWARD   = Mirror(131); // 0xD083
+        static constexpr uint16_t STATELESS_CLEAR_MAP    = Mirror(132); // 0xD084
+        static constexpr uint16_t STATELESS_GET_ROUND    = Mirror(133); // 0xD085
 
-        /** STATELESS_SET_REWARD (0xD00D)
-         *
-         *  Miner -> Node: Bind reward address
-         *
-         *  Sets the address that will receive mining rewards.
-         *
-         *  Packet format:
-         *  - Opcode: 0xD00D (2 bytes, big-endian)
-         *  - Address (variable length, typically 32-64 bytes for Nexus addresses)
-         *
-         **/
-        static constexpr uint16_t STATELESS_SET_REWARD = 0xD00D;
+        /** RESPONSE PACKETS (mirror-mapped from 200-206) **/
+        static constexpr uint16_t STATELESS_BLOCK_ACCEPTED = Mirror(200); // 0xD0C8
+        static constexpr uint16_t STATELESS_BLOCK_REJECTED = Mirror(201); // 0xD0C9
+        static constexpr uint16_t STATELESS_COINBASE_SET   = Mirror(202); // 0xD0CA
+        static constexpr uint16_t STATELESS_COINBASE_FAIL  = Mirror(203); // 0xD0CB
+        static constexpr uint16_t STATELESS_NEW_ROUND      = Mirror(204); // 0xD0CC
+        static constexpr uint16_t STATELESS_OLD_ROUND      = Mirror(205); // 0xD0CD
+        static constexpr uint16_t STATELESS_CHANNEL_ACK    = Mirror(206); // 0xD0CE
 
-        /** STATELESS_REWARD_RESULT (0xD00E)
-         *
-         *  Node -> Miner: Reward address binding result
-         *
-         *  Confirms whether the reward address was successfully bound.
-         *
-         *  Packet format:
-         *  - Opcode: 0xD00E (2 bytes, big-endian)
-         *  - Status (1 byte): 0=failure, 1=success
-         *  - Optional payload: UTF-8 string with status message
-         *
-         **/
-        static constexpr uint16_t STATELESS_REWARD_RESULT = 0xD00E;
+        /** AUTHENTICATION PACKETS (mirror-mapped from 207-210) **/
+        static constexpr uint16_t STATELESS_AUTH_INIT      = Mirror(207); // 0xD0CF
+        static constexpr uint16_t STATELESS_AUTH_CHALLENGE = Mirror(208); // 0xD0D0
+        static constexpr uint16_t STATELESS_AUTH_RESPONSE  = Mirror(209); // 0xD0D1
+        static constexpr uint16_t STATELESS_AUTH_RESULT    = Mirror(210); // 0xD0D2
 
-        /** STATELESS_PING (0xD00F)
-         *
-         *  Bidirectional: Keepalive/heartbeat
-         *
-         *  Either party can send this to keep the connection alive.
-         *  The receiver should respond with STATELESS_PONG.
-         *
-         *  Packet format:
-         *  - Opcode: 0xD00F (2 bytes, big-endian)
-         *  - No payload (empty DATA field)
-         *
-         **/
-        static constexpr uint16_t STATELESS_PING = 0xD00F;
+        /** SESSION MANAGEMENT (mirror-mapped from 211-212) **/
+        static constexpr uint16_t STATELESS_SESSION_START     = Mirror(211); // 0xD0D3
+        static constexpr uint16_t STATELESS_SESSION_KEEPALIVE = Mirror(212); // 0xD0D4
 
-        /** STATELESS_PONG (0xD010)
-         *
-         *  Bidirectional: Keepalive/heartbeat response
-         *
-         *  Sent in response to STATELESS_PING.
-         *
-         *  Packet format:
-         *  - Opcode: 0xD010 (2 bytes, big-endian)
-         *  - No payload (empty DATA field)
-         *
-         **/
-        static constexpr uint16_t STATELESS_PONG = 0xD010;
+        /** REWARD ADDRESS BINDING (mirror-mapped from 213-214) **/
+        static constexpr uint16_t STATELESS_SET_REWARD     = Mirror(213); // 0xD0D5
+        static constexpr uint16_t STATELESS_REWARD_RESULT  = Mirror(214); // 0xD0D6
 
-        /** STATELESS_AUTH_INIT (0xD011)
-         *
-         *  Miner -> Node: Initialize Falcon authentication
-         *
-         *  First step in Falcon authentication handshake.
-         *
-         *  Packet format:
-         *  - Opcode: 0xD011 (2 bytes, big-endian)
-         *  - Falcon public key (variable length)
-         *
-         **/
-        static constexpr uint16_t STATELESS_AUTH_INIT = 0xD011;
+        /** PUSH NOTIFICATIONS (mirror-mapped from 216-218) **/
+        static constexpr uint16_t STATELESS_MINER_READY           = Mirror(216); // 0xD0D8
+        static constexpr uint16_t STATELESS_PRIME_BLOCK_AVAILABLE = Mirror(217); // 0xD0D9
+        static constexpr uint16_t STATELESS_HASH_BLOCK_AVAILABLE  = Mirror(218); // 0xD0DA
 
-        /** STATELESS_AUTH_RESPONSE (0xD012)
-         *
-         *  Miner -> Node: Falcon authentication response
-         *
-         *  Contains Falcon signature proving ownership of public key.
-         *
-         *  Packet format:
-         *  - Opcode: 0xD012 (2 bytes, big-endian)
-         *  - Falcon signature (variable length)
-         *
-         **/
-        static constexpr uint16_t STATELESS_AUTH_RESPONSE = 0xD012;
-
-        /** STATELESS_AUTH_RESULT (0xD013)
-         *
-         *  Node -> Miner: Authentication result
-         *
-         *  Indicates success or failure of authentication.
-         *
-         *  Packet format:
-         *  - Opcode: 0xD013 (2 bytes, big-endian)
-         *  - Status (1 byte): 0=failure, 1=success
-         *  - Optional payload: UTF-8 string with status message
-         *
-         **/
-        static constexpr uint16_t STATELESS_AUTH_RESULT = 0xD013;
-
-        /** STATELESS_GET_HEIGHT (0xD014)
-         *
-         *  Miner -> Node: Request blockchain height
-         *
-         *  Packet format:
-         *  - Opcode: 0xD014 (2 bytes, big-endian)
-         *  - No payload (empty DATA field)
-         *
-         **/
-        static constexpr uint16_t STATELESS_GET_HEIGHT = 0xD014;
-
-        /** STATELESS_BLOCK_HEIGHT (0xD015)
-         *
-         *  Node -> Miner: Blockchain height response
-         *
-         *  Packet format:
-         *  - Opcode: 0xD015 (2 bytes, big-endian)
-         *  - Height (4 bytes, big-endian)
-         *
-         **/
-        static constexpr uint16_t STATELESS_BLOCK_HEIGHT = 0xD015;
-
-        /** STATELESS_GET_REWARD (0xD016)
-         *
-         *  Miner -> Node: Request current mining reward
-         *
-         *  Packet format:
-         *  - Opcode: 0xD016 (2 bytes, big-endian)
-         *  - No payload (empty DATA field)
-         *
-         **/
-        static constexpr uint16_t STATELESS_GET_REWARD = 0xD016;
-
-        /** STATELESS_BLOCK_REWARD (0xD017)
-         *
-         *  Node -> Miner: Mining reward response
-         *
-         *  Packet format:
-         *  - Opcode: 0xD017 (2 bytes, big-endian)
-         *  - Reward amount (8 bytes, uint64_t)
-         *
-         **/
-        static constexpr uint16_t STATELESS_BLOCK_REWARD = 0xD017;
-
-        /** STATELESS_GET_ROUND (0xD018)
-         *
-         *  Miner -> Node: Request round/height information
-         *
-         *  This provides multi-channel height information for staleness detection.
-         *
-         *  Packet format:
-         *  - Opcode: 0xD018 (2 bytes, big-endian)
-         *  - No payload (empty DATA field)
-         *
-         **/
-        static constexpr uint16_t STATELESS_GET_ROUND = 0xD018;
-
-        /** STATELESS_NEW_ROUND (0xD019)
-         *
-         *  Node -> Miner: New round response (height info)
-         *
-         *  Contains unified height and per-channel heights for multi-channel
-         *  staleness detection.
-         *
-         *  Packet format:
-         *  - Opcode: 0xD019 (2 bytes, big-endian)
-         *  - Unified height (4 bytes)
-         *  - Prime channel height (4 bytes)
-         *  - Hash channel height (4 bytes)
-         *  - Stake channel height (4 bytes)
-         *
-         **/
-        static constexpr uint16_t STATELESS_NEW_ROUND = 0xD019;
-
-        /** STATELESS_OLD_ROUND (0xD01A)
-         *
-         *  Node -> Miner: Old/stale round response
-         *
-         *  Sent when the round information is stale or unchanged.
-         *
-         *  Packet format:
-         *  - Opcode: 0xD01A (2 bytes, big-endian)
-         *  - No payload (empty DATA field)
-         *
-         **/
-        static constexpr uint16_t STATELESS_OLD_ROUND = 0xD01A;
-
-        /** STATELESS_MINER_READY (0xD01B)
-         *
-         *  Miner -> Node: Miner ready notification
-         *
-         *  Indicates miner is ready to receive work.
-         *
-         *  Packet format:
-         *  - Opcode: 0xD01B (2 bytes, big-endian)
-         *  - No payload (empty DATA field)
-         *
-         **/
-        static constexpr uint16_t STATELESS_MINER_READY_ALT = 0xD01B;
-
-        /** STATELESS_PRIME_BLOCK_AVAILABLE (0xD01C)
-         *
-         *  Node -> Miner: Prime channel block available notification
-         *
-         *  Push notification that a new Prime channel block is ready.
-         *
-         *  Packet format:
-         *  - Opcode: 0xD01C (2 bytes, big-endian)
-         *  - No payload (empty DATA field)
-         *
-         **/
-        static constexpr uint16_t STATELESS_PRIME_BLOCK_AVAILABLE = 0xD01C;
-
-        /** STATELESS_HASH_BLOCK_AVAILABLE (0xD01D)
-         *
-         *  Node -> Miner: Hash channel block available notification
-         *
-         *  Push notification that a new Hash channel block is ready.
-         *
-         *  Packet format:
-         *  - Opcode: 0xD01D (2 bytes, big-endian)
-         *  - No payload (empty DATA field)
-         *
-         **/
-        static constexpr uint16_t STATELESS_HASH_BLOCK_AVAILABLE = 0xD01D;
+        /** GENERIC (mirror-mapped from 253-254) **/
+        static constexpr uint16_t STATELESS_PING  = Mirror(253); // 0xD0FD
+        static constexpr uint16_t STATELESS_CLOSE = Mirror(254); // 0xD0FE
 
     } // namespace StatelessOpcodes
 

@@ -545,9 +545,26 @@ namespace LLP
                     /* Send response if present */
                     if(!result.response.IsNull())
                     {
+                        /* HARDENING: Validate that response opcode is safe for legacy 8-bit port
+                         * Prevent 16-bit stateless opcodes (0xD000-0xD0FF) from leaking to legacy port.
+                         * Legacy port expects 8-bit opcodes only; truncating 16-bit opcodes would
+                         * cause protocol corruption. */
+                        if((result.response.HEADER & 0xFF00) != 0)
+                        {
+                            debug::error(FUNCTION, "Cannot send 16-bit stateless opcode 0x", 
+                                        std::hex, uint32_t(result.response.HEADER), std::dec,
+                                        " on legacy 8-bit port");
+                            debug::error(FUNCTION, "  High byte is non-zero: 0x", 
+                                        std::hex, (result.response.HEADER >> 8), std::dec);
+                            debug::error(FUNCTION, "  Dropping packet to prevent protocol corruption");
+                            
+                            /* Do NOT send this packet - it would corrupt the legacy protocol */
+                            return true;  /* Return true to prevent disconnect (this is our fault, not miner's) */
+                        }
+                        
                         /* Convert StatelessPacket response to legacy Packet for writing */
                         Packet legacyResponse;
-                        legacyResponse.HEADER = static_cast<uint8_t>(result.response.HEADER);  // 16-bit to 8-bit
+                        legacyResponse.HEADER = static_cast<uint8_t>(result.response.HEADER);  // 16-bit to 8-bit (validated)
                         legacyResponse.LENGTH = result.response.LENGTH;
                         legacyResponse.DATA = result.response.DATA;
                         
@@ -597,9 +614,22 @@ namespace LLP
                     /* Try to send error response if available */
                     if(!result.response.IsNull())
                     {
+                        /* HARDENING: Validate that response opcode is safe for legacy 8-bit port */
+                        if((result.response.HEADER & 0xFF00) != 0)
+                        {
+                            debug::error(FUNCTION, "Cannot send 16-bit stateless opcode 0x", 
+                                        std::hex, uint32_t(result.response.HEADER), std::dec,
+                                        " on legacy 8-bit port (error response)");
+                            debug::error(FUNCTION, "  Dropping error response to prevent protocol corruption");
+                            
+                            /* Do NOT send - disconnect as originally intended */
+                            this->Disconnect();
+                            return false;
+                        }
+                        
                         /* Convert StatelessPacket response to legacy Packet for writing */
                         Packet legacyResponse;
-                        legacyResponse.HEADER = static_cast<uint8_t>(result.response.HEADER);  // 16-bit to 8-bit
+                        legacyResponse.HEADER = static_cast<uint8_t>(result.response.HEADER);  // 16-bit to 8-bit (validated)
                         legacyResponse.LENGTH = result.response.LENGTH;
                         legacyResponse.DATA = result.response.DATA;
                         
