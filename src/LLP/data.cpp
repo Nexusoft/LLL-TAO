@@ -226,7 +226,10 @@ namespace LLP
 
             /* Check for close. */
             if(fDestruct.load() || config::fShutdown.load())
+            {
+                debug::log(2, FUNCTION, "DATA_THREAD ", ID, " exiting: shutdown requested");
                 return;
+            }
 
             /* Check if we are suspended. */
             if(config::fSuspendProtocol.load())
