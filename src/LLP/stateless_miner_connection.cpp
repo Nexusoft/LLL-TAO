@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <LLP/packets/stateless_packet.h>
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/stateless_manager.h>
+#include <LLP/include/stateless_opcodes.h>
 #include <LLP/include/falcon_constants.h>
 #include <LLP/include/falcon_auth.h>
 #include <LLP/include/falcon_verify.h>
@@ -99,7 +100,7 @@ namespace LLP
     std::atomic<uint32_t> StatelessMinerConnection::nBlockIterator(0);
     /** Default Constructor **/
     StatelessMinerConnection::StatelessMinerConnection()
-    : Connection()
+    : StatelessConnection()
     , context()
     , MUTEX()
     , mapBlocks()
@@ -127,7 +128,7 @@ namespace LLP
 
     /** Constructor **/
     StatelessMinerConnection::StatelessMinerConnection(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool fDDOSIn)
-    : Connection(SOCKET_IN, DDOS_IN, fDDOSIn)
+    : StatelessConnection(SOCKET_IN, DDOS_IN, fDDOSIn)
     , context()
     , MUTEX()
     , mapBlocks()
@@ -155,7 +156,7 @@ namespace LLP
 
     /** Constructor **/
     StatelessMinerConnection::StatelessMinerConnection(DDOS_Filter* DDOS_IN, bool fDDOSIn)
-    : Connection(DDOS_IN, fDDOSIn)
+    : StatelessConnection(DDOS_IN, fDDOSIn)
     , context()
     , MUTEX()
     , mapBlocks()
@@ -487,7 +488,7 @@ namespace LLP
              * ============================================================================ */
             
             /* Handle STATELESS_MINER_READY (0xD007) - Subscribe to template push notifications */
-            if(PACKET.GetOpcode() == Miner::STATELESS_MINER_READY)
+            if(PACKET.GetOpcode() == StatelessOpcodes::STATELESS_MINER_READY)
             {
                 debug::log(2, "📥 === STATELESS_MINER_READY (0xD007) REQUEST ===");
                 debug::log(0, "   From: ", GetAddress().ToStringIP());
@@ -3493,7 +3494,7 @@ namespace LLP
         }
         
         /* Build 16-bit opcode packet (228 bytes total: 12 metadata + 216 template) */
-        StatelessPacket notification(Miner::STATELESS_GET_BLOCK);  // 16-bit constructor
+        StatelessPacket notification(StatelessOpcodes::STATELESS_GET_BLOCK);  // 16-bit constructor
         notification.DATA.reserve(STATELESS_TEMPLATE_SIZE);  // Pre-allocate
         
         /* Add 12-byte metadata (big-endian) */
