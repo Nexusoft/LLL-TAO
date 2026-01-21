@@ -535,18 +535,19 @@ namespace LLP
 
             /* Handle block-related packets that require stateful block management */
             /* These are handled directly here instead of through StatelessMiner */
-            const uint8_t GET_BLOCK = 129;
-            const uint8_t GET_HEIGHT = 130;
-            const uint8_t GET_REWARD = 131;
-            const uint8_t GET_ROUND = 133;
-            const uint8_t SUBMIT_BLOCK = 1;
-            const uint8_t BLOCK_DATA = 0;
-            const uint8_t BLOCK_HEIGHT = 2;
-            const uint8_t BLOCK_REWARD = 4;
-            const uint8_t BLOCK_ACCEPTED = 200;
-            const uint8_t BLOCK_REJECTED = 201;
-            const uint8_t NEW_ROUND = 204;
-            const uint8_t OLD_ROUND = 205;
+            /* Using 16-bit stateless opcodes from stateless_opcodes.h */
+            using namespace StatelessOpcodes;
+            
+            const uint16_t GET_BLOCK = STATELESS_GET_BLOCK;
+            const uint16_t SUBMIT_BLOCK = STATELESS_SUBMIT_BLOCK;
+            const uint16_t BLOCK_DATA = STATELESS_GET_BLOCK;
+            const uint16_t BLOCK_ACCEPTED = STATELESS_BLOCK_ACCEPTED;
+            const uint16_t BLOCK_REJECTED = STATELESS_BLOCK_REJECTED;
+            
+            /* Authentication packet types (16-bit stateless) */
+            const uint16_t MINER_AUTH_INIT = STATELESS_AUTH_INIT;
+            const uint16_t MINER_AUTH_RESPONSE = STATELESS_AUTH_RESPONSE;
+            const uint16_t MINER_AUTH_RESULT = STATELESS_AUTH_RESULT;
             
             /* Authentication packet types */
             const uint8_t MINER_AUTH_INIT = 207;
@@ -2191,7 +2192,7 @@ namespace LLP
             try
             {
                 Packet errorResponse;
-                errorResponse. HEADER = 210;  // MINER_AUTH_RESULT
+                errorResponse.HEADER = MINER_AUTH_RESULT;
                 errorResponse.DATA.push_back(0x00);  /* Failure status */
                 errorResponse.LENGTH = 1;
                 respond(errorResponse);
@@ -2986,7 +2987,7 @@ namespace LLP
     // RATE LIMITING IMPLEMENTATION
     // ═══════════════════════════════════════════════════════════════════════
 
-    bool StatelessMinerConnection::CheckRateLimit(uint8_t nRequestType)
+    bool StatelessMinerConnection::CheckRateLimit(uint16_t nRequestType)
     {
         auto now = std::chrono::steady_clock::now();
         
@@ -2997,11 +2998,11 @@ namespace LLP
             ResetMinuteCounters();
         }
         
-        // Use protocol constants that match ProcessPacket values
-        // These are defined locally to avoid circular dependencies with miner.h
-        const uint8_t GET_ROUND = 133;
-        const uint8_t GET_BLOCK = 129;
-        const uint8_t SUBMIT_BLOCK = 1;
+        // Use stateless protocol constants (16-bit opcodes)
+        using namespace StatelessOpcodes;
+        const uint16_t GET_ROUND = 133;  // TODO: Add STATELESS_GET_ROUND to stateless_opcodes.h
+        const uint16_t GET_BLOCK = STATELESS_GET_BLOCK;
+        const uint16_t SUBMIT_BLOCK = STATELESS_SUBMIT_BLOCK;
         
         // If in throttle mode, check minimum interval enforcement (non-blocking)
         // Instead of blocking with sleep, we reject requests that come too soon

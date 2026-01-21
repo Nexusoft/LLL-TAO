@@ -317,11 +317,11 @@ namespace LLP
          *  TRANSPARENT: Logs all violations with clear reasons
          *  FAIR: Same rules for all connections
          * 
-         *  @param[in] nRequestType The request type being checked
+         *  @param[in] nRequestType The request type being checked (16-bit opcode)
          *  @return true if allowed, false if rate limited
          *
          **/
-        bool CheckRateLimit(uint8_t nRequestType);
+        bool CheckRateLimit(uint16_t nRequestType);
         
         /** RecordViolation
          *
