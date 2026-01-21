@@ -3004,7 +3004,7 @@ namespace LLP
         
         // Use stateless protocol constants (16-bit opcodes)
         using namespace StatelessOpcodes;
-        const uint16_t GET_ROUND = 133;  // TODO: Add STATELESS_GET_ROUND to stateless_opcodes.h
+        const uint16_t GET_ROUND = STATELESS_GET_ROUND;
         const uint16_t GET_BLOCK = STATELESS_GET_BLOCK;
         const uint16_t SUBMIT_BLOCK = STATELESS_SUBMIT_BLOCK;
         
