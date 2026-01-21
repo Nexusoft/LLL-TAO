@@ -59,7 +59,11 @@ ________________________________________________________________________________
 
 
 #ifndef MAINNET_MINING_LLP_PORT
-#define MAINNET_MINING_LLP_PORT 9325
+#define MAINNET_MINING_LLP_PORT 9323
+#endif
+
+#ifndef MAINNET_LEGACY_MINING_LLP_PORT
+#define MAINNET_LEGACY_MINING_LLP_PORT 8323
 #endif
 
 #ifndef MAINNET_P2P_PORT
@@ -106,7 +110,11 @@ ________________________________________________________________________________
 #endif
 
 #ifndef TESTNET_MINING_LLP_PORT
-#define TESTNET_MINING_LLP_PORT 8323
+#define TESTNET_MINING_LLP_PORT 9323
+#endif
+
+#ifndef TESTNET_LEGACY_MINING_LLP_PORT
+#define TESTNET_LEGACY_MINING_LLP_PORT 8323
 #endif
 
 #ifndef TESTNET_P2P_PORT
@@ -209,7 +217,7 @@ namespace LLP
 
     /** GetMiningPort
      *
-     *  Get the Main Mining LLP Port for Nexus.
+     *  Get the Main Mining LLP Port for Nexus (stateless mining).
      *
      *  @return Returns a 16-bit port number for mining mainnet or testnet.
      *
@@ -222,6 +230,25 @@ namespace LLP
             config::fTestNet.load() ?
                 TESTNET_MINING_LLP_PORT :
                 MAINNET_MINING_LLP_PORT)
+        );
+    }
+
+
+    /** GetLegacyMiningPort
+     *
+     *  Get the Legacy Mining LLP Port for Nexus (legacy 8-bit framing).
+     *
+     *  @return Returns a 16-bit port number for legacy mining mainnet or testnet.
+     *
+     **/
+    inline uint16_t GetLegacyMiningPort()
+    {
+        return static_cast<uint16_t>
+        (
+            config::GetArg(std::string("-legacyminingport"),
+            config::fTestNet.load() ?
+                TESTNET_LEGACY_MINING_LLP_PORT :
+                MAINNET_LEGACY_MINING_LLP_PORT)
         );
     }
 

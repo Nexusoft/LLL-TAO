@@ -296,8 +296,34 @@ namespace LLP
 
         /* MINING_SERVER instance - Legacy hybrid stateful/stateless miner (optional) */
         /* This can be enabled on a different port if needed for backward compatibility */
-        /* For now, we disable it when stateless miner is enabled to avoid conflicts */
-        /* TODO: Make this configurable via -legacyminingport if needed */
+        if(config::GetBoolArg(std::string("-mining"), false) && 
+           config::HasArg(std::string("-legacyminingport")) && 
+           !config::fClient.load())
+        {
+            /* Generate our config object for legacy miner LLP server. */
+            LLP::Config LEGACY_CONFIG     = LLP::Config(GetLegacyMiningPort());
+            LEGACY_CONFIG.ENABLE_LISTEN   = true;
+            LEGACY_CONFIG.ENABLE_METERS   = false;
+            LEGACY_CONFIG.ENABLE_DDOS     = config::GetBoolArg(std::string("-miningddos"), false);
+            LEGACY_CONFIG.ENABLE_MANAGER  = false;
+            LEGACY_CONFIG.ENABLE_SSL      = config::GetBoolArg(std::string("-miningssl"), false);
+            LEGACY_CONFIG.ENABLE_REMOTE   = true;
+            LEGACY_CONFIG.REQUIRE_SSL     = config::GetBoolArg(std::string("-miningsslrequired"), false);
+            LEGACY_CONFIG.PORT_SSL        = 0;
+            LEGACY_CONFIG.MAX_INCOMING    = 128;
+            LEGACY_CONFIG.MAX_CONNECTIONS = 128;
+            LEGACY_CONFIG.MAX_THREADS     = config::GetArg(std::string("-miningthreads"), 4);
+            LEGACY_CONFIG.DDOS_CSCORE     = config::GetArg(std::string("-miningcscore"), 1);
+            LEGACY_CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-miningrscore"), 50);
+            LEGACY_CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-miningtimespan"), 60);
+            LEGACY_CONFIG.MANAGER_SLEEP   = 0; //this is disabled
+            LEGACY_CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-miningtimeout"), 30);
+
+            /* Create the legacy miner server instance. */
+            MINING_SERVER = new Server<Miner>(LEGACY_CONFIG);
+
+            debug::log(0, FUNCTION, "Legacy Mining LLP server started on port ", GetLegacyMiningPort());
+        }
 
         return true;
     }
