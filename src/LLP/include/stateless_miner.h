@@ -811,7 +811,7 @@ namespace LLP
          **/
         static ProcessResult ProcessSessionKeepalive(
             const MiningContext& context,
-            const Packet& packet
+            const StatelessPacket& packet
         );
 
         /** ProcessSetReward
@@ -827,7 +827,7 @@ namespace LLP
          **/
         static ProcessResult ProcessSetReward(
             const MiningContext& context,
-            const Packet& packet
+            const StatelessPacket& packet
         );
 
     private:
