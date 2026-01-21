@@ -1,384 +1,2291 @@
 Help on module nexus_sdk:
 
 NAME
-    nexus_sdk - The Nexus python SDK supports the following Nexus API calls.
-
-FILE
-    /Users/dino/code/nexus/git/LLL-TAO-dev/sdk/nexus_sdk.py
+    nexus_sdk - The Nexus Python SDK supports the following Nexus API calls.
 
 DESCRIPTION
-    Low-level APIs:
-    
-    System API:               Objects API:           Ledger API:
-    -----------               ------------           -----------
-    system/get/info           objects/create/schema  ledger/get/blockhash
-    system/list/peers         objects/get/schema     ledger/get/block
-    system/list/lisp-eids                            ledger/list/blocks
-                                                     ledger/get/transaction
-                                                     ledger/submit/transaction
-                                                     ledger/get/mininginfo
-    
-    Use-case APIs:
-    
-    Users API:                Supply API:               Assets API:       
-    ----------                -----------               -----------       
-    users/create/user         supply/create/item        assets/create/asset
-    users/login/user          supply/get/item           assets/get/asset       
-    users/logout/user         supply/udpate/item        assets/update/asset  
-    users/unlock/user         supply/transfer/item      assets/transfer/asset
-    users/lock/user           supply/claim/item         assets/claim/asset
-    users/list/transactions   supply/list/item/history  assets/list/asset/history
-    users/list/notifications                            assets/tokenize/asset
-    users/list/assets
-    users/list/accounts
-    users/list/tokens
-    
-    Tokens API:               Finance API:
-    -----------               ------------
-    tokens/create/token       finance/create/account
-    tokens/create/account     finance/debit/account
-    tokens/get/token          finance/credit/account
-    tokens/get/account        finance/get/account
-    tokens/debit/token        finance/list/accounts
-    tokens/debit/account      finance/get/stakeinfo
-    tokens/credit/account     finance/set/stake
+    System APIs:
+
+    System API:               Ledger API:                Network API:
+    -----------               -----------                ------------
+    system/get/info           ledger/get/blockhash       network/list/node
+    system/get/metrics        ledger/get/block           network/list/peer
+    system/stop               ledger/get/info
+    system/list/peers         ledger/get/metrics
+    system/list/lisp-eids     ledger/get/transaction
+    system/validate/address   ledger/list/blocks
+                              ledger/list/transactions
+                              ledger/recent/blocks
+                              ledger/submit/transaction
+                              ledger/sync/status
+
+    Session/Profile APIs:
+
+    Sessions API:             Profiles API:
+    -------------             -------------
+    sessions/create           profiles/create
+    sessions/load             profiles/notifications
+    sessions/save             profiles/list
+    sessions/lock             profiles/recover
+    sessions/unlock           profiles/status
+    sessions/status           profiles/transactions
+    sessions/terminate        profiles/update
+    sessions/validate/pin
+
+    Finance APIs:
+
+    Finance API:              Tokens API (deprecated):
+    ------------              -----------------------
+    finance/create            Use finance/* instead
+    finance/burn
+    finance/credit
+    finance/debit
+    finance/get
+    finance/list
+    finance/history
+    finance/transactions
+    finance/get/balances
+    finance/get/stakeinfo
+    finance/set/stake
+    finance/void/transaction
+
+    Object APIs:
+
+    Assets API:               Supply API:               Names API:
+    -----------               -----------               ----------
+    assets/claim              supply/claim              names/claim
+    assets/create             supply/create             names/create
+    assets/get                supply/get                names/get
+    assets/history            supply/history            names/history
+    assets/list               supply/list               names/list
+    assets/list/partial       supply/transactions       names/rename
+    assets/verify/partial     supply/transfer           names/reverse/lookup
+    assets/tokenize           supply/update             names/transactions
+    assets/transactions                                 names/transfer
+    assets/transfer                                     names/update
+    assets/update
+
+    Register API:             Market API:               Invoices API:
+    -------------             -----------               -------------
+    register/get              market/create/bid         invoices/create
+    register/list             market/create/ask         invoices/get
+    register/history          market/list/bid           invoices/pay
+    register/transactions     market/list/ask           invoices/cancel
+                              market/list/order         invoices/reject
+                              market/list/executed      invoices/list
+                              market/execute/bid        invoices/history
+                              market/execute/ask        invoices/transactions
+                              market/execute/order
+                              market/cancel/bid
+                              market/cancel/ask
+                              market/cancel/order
+                              market/user/order
+                              market/user/executed
+
+    Local API:
+    ----------
+    local/erase/record
+    local/has/record
+    local/list/record
+    local/push/record
 
 CLASSES
-    sdk_init
-    
-    class sdk_init
+    builtins.object
+        NexusSDK
+            sdk_init
+
+    class NexusSDK(builtins.object)
+     |  NexusSDK(username: str = '', password: str = '', pin: str = '', timeout: int = 30, verify_ssl: bool = True)
+     |
+     |  Nexus SDK class for interacting with the Nexus Tritium++ API.
+     |
+     |  This class provides methods for all Nexus API endpoints including
+     |  sessions, profiles, finance, assets, supply, market, and more.
+     |
      |  Methods defined here:
-     |  
-     |  __init__(self, user, pw, pin)
-     |      Initialize the API with user account credentials. This function
-     |      must be calledd to create a login instance before using any other
-     |      calls.
-     |  
-     |  nexus_assets_claim_asset(self, txid)
-     |      Claim an asset that has been transfered to username. The transaction 
-     |      id, specified in 'txid' is returned from when the user did a 
-     |      assets//transfer/asset API call.
-     |  
-     |  nexus_assets_create_asset(self, asset_name, data)
-     |      Create asset with name 'asset_name' and store data specified in
-     |      'data' for asset transaction.
-     |  
-     |  nexus_assets_get_asset_by_address(self, asset_address)
-     |      Get asset with by register address 'asset_address'.
-     |  
-     |  nexus_assets_get_asset_by_name(self, asset_name)
-     |      Get asset with by name 'asset_name'.
-     |  
-     |  nexus_assets_list_asset_history_by_address(self, asset_address)
-     |      List assets history by address specified in 'address'.
-     |  
-     |  nexus_assets_list_asset_history_by_name(self, asset_name)
-     |      List assets history by name specified in 'name'.
-     |  
-     |  nexus_assets_tokenize_asset_by_address(self, asset_address, token_address)
-     |      Tokenize an asset specified by 'asset_address' to a previously created 
-     |      token specified by 'token_address'.
-     |  
-     |  nexus_assets_tokenize_asset_by_name(self, asset_name, token_name)
-     |      Tokenize an asset specified by 'asset_name' to a previously created 
-     |      token specified by 'token_name'.
-     |  
-     |  nexus_assets_transfer_asset_by_address(self, asset_address, dest_address)
-     |      Transfer ownership of an asset by address specified in 'asset_address'
-     |      to address specified in 'dest_address'.
-     |  
-     |  nexus_assets_transfer_asset_by_name(self, asset_name, dest_username)
-     |      Transfer ownership of an asset by name specified in 'asset_name' to 
-     |      username specified in 'dest_username'.
-     |  
-     |  nexus_assets_update_asset_by_address(self, asset_address, data)
-     |      Update data stored in asset by address specified in 'asset_address'
-     |      with JSON data stored in 'data'.
-     |  
-     |  nexus_assets_update_asset_by_name(self, asset_name, data)
-     |      Update data stored in asset by name specified in 'asset_name' with
-     |      JSON data stored in 'data'.
-     |  
-     |  nexus_finance_create_account(self, name)
-     |      Create a NXS crypto-currency account with name specified in 'name'.
-     |  
-     |  nexus_finance_credit_account_by_address(self, to_address, amount, txid)
-     |      Credit NXS by address to account 'to_address' for account 'amount' from
-     |      debit transaction-id 'txid'.
-     |  
-     |  nexus_finance_credit_account_by_name(self, to_name, amount, txid)
-     |      Credit NXS by name to account 'to_name' for account 'amount' from
-     |      debit transaction-id 'txid'.
-     |  
-     |  nexus_finance_debit_account_by_address(self, from_address, to_address, amount)
-     |      Debit NXS by address from account 'from_address' to account 
-     |      'to_address' for the amount 'amount'.
-     |  
-     |  nexus_finance_debit_account_by_name(self, from_name, to_name, amount)
-     |      Debit NXS by name from account 'from_name' to account 'to_name' for the
-     |      amount 'amount'.
-     |  
-     |  nexus_finance_get_account_by_address(self, address)
-     |      Get NXS crypto-currency account information with register address
-     |      specified in 'address'.
-     |  
-     |  nexus_finance_get_account_by_name(self, name)
-     |      Get NXS crypto-currency account information with name specified in 
-     |      'name'.
-     |  
-     |  nexus_finance_get_stakeinfo(self)
-     |      Get staking information for user.
-     |  
-     |  nexus_finance_list_accounts(self)
-     |      List NXS transactions for user account.
-     |  
-     |  nexus_finance_set_stake(self, amount)
-     |      Add amount specified in "amount" to staking account.
-     |  
-     |  nexus_ledger_get_block_by_hash(self, block_hash, verbosity)
-     |      Retrieve the block with supplied hash 'block_hash'. See API 
-     |      documentation for 'verbosity' values.
-     |  
-     |  nexus_ledger_get_block_by_height(self, block_height, verbosity)
-     |      Retrieve the block with supplied hash 'block_height'. See API 
-     |      documentation for 'verbosity' values.
-     |  
-     |  nexus_ledger_get_blockhash(self, height)
-     |      Retrieve the block hash for a block with supplied parameter 'height'.
-     |  
-     |  nexus_ledger_get_mininginfo(self)
-     |      Retrieve mining information for the Nexus blockchain.
-     |  
-     |  nexus_ledger_get_transaction(self, tx_hash, verbosity)
-     |      Retrieve transaction with transactioin hash 'tx_hash' with specific
-     |      verbose. See API documentation for 'verbosity' values.
-     |  
-     |  nexus_ledger_list_blocks_by_hash(self, block_hash, limit, verbosity)
-     |      Retrieve list of blocks starting with hash 'block_hash'. The number
-     |      of blocks is specified in 'limit'. See API documentation for 
-     |      'verbosity' values.
-     |  
-     |  nexus_ledger_list_blocks_by_height(self, block_height, limit, verbosity)
-     |      Retrieve list of blocks starting with block height 'block_height'. 
-     |      The number of blocks is specified in 'limit'. See API documentation 
-     |      for 'verbosity' values.
-     |  
-     |  nexus_ledger_submit_transaction(self, tx_data)
-     |      Submit a transaction to the Nexus blockchain. The data stored for
-     |      the transaction is specified in 'tx_data'.
-     |  
-     |  nexus_objects_create_schema(self, name, data)
-     |      Create object register schema. See API documentation for format
-     |      of 'data' parameter.
-     |  
-     |  nexus_supply_claim_item(self, txid)
-     |      Claim supply chain item that has been transfered to username. The
-     |      transaction id, specified in 'txid' is returned from when the
-     |      user did a supply/transfer/item API call.
-     |  
-     |  nexus_supply_create_item(self, name, data)
-     |      Create supply chain item with name specified in 'name'. Store data 
-     |      with item specified in 'data'.
-     |  
-     |  nexus_supply_get_item_by_address(self, address)
-     |      Get supply chain item from blockchain using register address specified
-     |      in 'address'.
-     |  
-     |  nexus_supply_get_item_by_name(self, name)
-     |      Get supply chain item from blockchain using name specified in 'name'.
-     |  
-     |  nexus_supply_list_item_history_by_address(self, address)
-     |      List supply chain item history by address specified in 'address'.
-     |  
-     |  nexus_supply_list_item_history_by_name(self, name)
-     |      List supply chain item history by name specified in 'name'.
-     |  
-     |  nexus_supply_transfer_item_by_address(self, address, new_owner)
-     |      Transfer supply chain item, specified by address in 'address' to new 
-     |      owner. The new owner genesis-id is specified in 'new_owner'.
-     |  
-     |  nexus_supply_transfer_item_by_name(self, name, new_owner)
-     |      Transfer supply chain item, specified by name in 'name' to new owner.
-     |      The new owner username is specified in 'new_owner'.
-     |  
-     |  nexus_supply_update_item_by_address(self, address, data)
-     |      Update data stored from a previously created supply chain item using
-     |      register address specifiied in 'address' with data stored in 'data'.
-     |  
-     |  nexus_supply_update_item_by_name(self, name, data)
-     |      Update data stored from a previously created supply chain item using
-     |      name specified in 'name' with data stored in 'data'.
-     |  
-     |  nexus_system_get_info(self)
-     |      Get system information about Nexus node. Login not required.
-     |  
-     |  nexus_system_list_lisp_eids(self)
+     |
+     |  __init__(self, username: str = '', password: str = '', pin: str = '', timeout: int = 30, verify_ssl: bool = True)
+     |      Initialize the SDK with optional user credentials.
+     |
+     |      Args:
+     |          username: The username for the Nexus account
+     |          password: The password for the Nexus account
+     |          pin: The PIN for the Nexus account
+     |          timeout: Request timeout in seconds (default 30)
+     |          verify_ssl: Whether to verify SSL certificates (default True)
+     |
+     |  assets_claim(self, txid: str) -> Dict[str, Any]
+     |      Claim a transferred asset.
+     |
+     |      Args:
+     |          txid: Transfer transaction ID
+     |
+     |      Returns:
+     |          JSON response with claim result.
+     |
+     |  assets_create(self, name: str, data: Union[str, dict], format: str = 'raw') -> Dict[str, Any]
+     |      Create a new asset.
+     |
+     |      Args:
+     |          name: Name for the asset
+     |          data: Asset data (string or dict for JSON format)
+     |          format: Format - "raw", "readonly", "basic", "json"
+     |
+     |      Returns:
+     |          JSON response with creation result.
+     |
+     |  assets_get(self, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Get an asset.
+     |
+     |      Args:
+     |          name: Asset name
+     |          address: Asset address
+     |
+     |      Returns:
+     |          JSON response with asset data.
+     |
+     |  assets_history(self, name: Optional[str] = None, address: Optional[str] = None, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      Get asset history.
+     |
+     |      Args:
+     |          name: Asset name
+     |          address: Asset address
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with history.
+     |
+     |  assets_list(self, noun: str = 'asset', page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List assets.
+     |
+     |      Args:
+     |          noun: Type - "asset", "raw", "readonly", "any"
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with asset list.
+     |
+     |  assets_list_partial(self, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      List partial ownership of a tokenized asset.
+     |
+     |      Args:
+     |          name: Asset name
+     |          address: Asset address
+     |
+     |      Returns:
+     |          JSON response with partial ownership info.
+     |
+     |  assets_tokenize(self, token: str, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Tokenize an asset.
+     |
+     |      Args:
+     |          token: Token name or address to tokenize with
+     |          name: Asset name
+     |          address: Asset address
+     |
+     |      Returns:
+     |          JSON response with tokenization result.
+     |
+     |  assets_transactions(self, name: Optional[str] = None, address: Optional[str] = None, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      Get asset transactions.
+     |
+     |      Args:
+     |          name: Asset name
+     |          address: Asset address
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with transactions.
+     |
+     |  assets_transfer(self, destination: str, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Transfer asset ownership.
+     |
+     |      Args:
+     |          destination: Destination username or address
+     |          name: Asset name
+     |          address: Asset address
+     |
+     |      Returns:
+     |          JSON response with transfer result.
+     |
+     |  assets_update(self, data: Union[str, dict], name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Update an asset.
+     |
+     |      Args:
+     |          data: New data for the asset
+     |          name: Asset name
+     |          address: Asset address
+     |
+     |      Returns:
+     |          JSON response with update result.
+     |
+     |  assets_verify_partial(self, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Verify partial ownership of a tokenized asset.
+     |
+     |      Args:
+     |          name: Asset name
+     |          address: Asset address
+     |
+     |      Returns:
+     |          JSON response with verification result.
+     |
+     |  finance_burn(self, name: Optional[str] = None, address: Optional[str] = None, amount: float = 0) -> Dict[str, Any]
+     |      Burn tokens from a token register.
+     |
+     |      Args:
+     |          name: Name of the token
+     |          address: Address of the token
+     |          amount: Amount to burn
+     |
+     |      Returns:
+     |          JSON response with burn result.
+     |
+     |  finance_create(self, noun: str, name: str, token: Optional[str] = None, supply: Optional[int] = None, decimals: int = 2, **kwargs) -> Dict[str, Any]
+     |      Create a finance object (account, token, or trust).
+     |
+     |      Args:
+     |          noun: Type to create - "account", "token", or "trust"
+     |          name: Name for the new object
+     |          token: Token identifier (for accounts)
+     |          supply: Initial supply (for tokens)
+     |          decimals: Decimal places (for tokens)
+     |          **kwargs: Additional parameters
+     |
+     |      Returns:
+     |          JSON response with creation result.
+     |
+     |  finance_credit(self, txid: str, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Credit (claim) a pending debit transaction.
+     |
+     |      Args:
+     |          txid: Transaction ID of the debit to credit
+     |          name: Name of the account to credit
+     |          address: Address of the account to credit
+     |
+     |      Returns:
+     |          JSON response with credit result.
+     |
+     |  finance_debit(self, amount: float, name_from: Optional[str] = None, address_from: Optional[str] = None, name_to: Optional[str] = None, address_to: Optional[str] = None, reference: Optional[str] = None) -> Dict[str, Any]
+     |      Debit (send) from an account.
+     |
+     |      Args:
+     |          amount: Amount to send
+     |          name_from: Name of source account
+     |          address_from: Address of source account
+     |          name_to: Name of destination account
+     |          address_to: Address of destination
+     |          reference: Optional reference number
+     |
+     |      Returns:
+     |          JSON response with debit result.
+     |
+     |  finance_get(self, noun: str, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Get a finance object.
+     |
+     |      Args:
+     |          noun: Type to get - "account", "token", "trust", "any"
+     |          name: Name of the object
+     |          address: Address of the object
+     |
+     |      Returns:
+     |          JSON response with object data.
+     |
+     |  finance_get_balances(self) -> Dict[str, Any]
+     |      Get balances for all accounts.
+     |
+     |      Returns:
+     |          JSON response with account balances.
+     |
+     |  finance_get_stakeinfo(self) -> Dict[str, Any]
+     |      Get staking information for the current user.
+     |
+     |      Returns:
+     |          JSON response with staking information.
+     |
+     |  finance_history(self, noun: str, name: Optional[str] = None, address: Optional[str] = None, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      Get history for a finance object.
+     |
+     |      Args:
+     |          noun: Type - "account", "token", "trust"
+     |          name: Name of the object
+     |          address: Address of the object
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with history.
+     |
+     |  finance_list(self, noun: str = 'any', page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List finance objects.
+     |
+     |      Args:
+     |          noun: Type to list - "any", "account", "token", "trust"
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with object list.
+     |
+     |  finance_set_stake(self, amount: float) -> Dict[str, Any]
+     |      Set the stake amount.
+     |
+     |      Args:
+     |          amount: Amount to stake
+     |
+     |      Returns:
+     |          JSON response with stake result.
+     |
+     |  finance_transactions(self, noun: str, name: Optional[str] = None, address: Optional[str] = None, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      Get transactions for a finance object.
+     |
+     |      Args:
+     |          noun: Type - "account", "token", "trust"
+     |          name: Name of the object
+     |          address: Address of the object
+     |          page: Page offset
+     |          limit: Number of transactions to return
+     |
+     |      Returns:
+     |          JSON response with transactions.
+     |
+     |  finance_void_transaction(self, txid: str) -> Dict[str, Any]
+     |      Void a pending transaction.
+     |
+     |      Args:
+     |          txid: Transaction ID to void
+     |
+     |      Returns:
+     |          JSON response with void result.
+     |
+     |  invoices_cancel(self, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Cancel an invoice (issuer only).
+     |
+     |      Args:
+     |          name: Invoice name
+     |          address: Invoice address
+     |
+     |      Returns:
+     |          JSON response with cancellation result.
+     |
+     |  invoices_create(self, recipient: str, items: list, account: Optional[str] = None, account_name: Optional[str] = None) -> Dict[str, Any]
+     |      Create an invoice.
+     |
+     |      Args:
+     |          recipient: Recipient genesis or username
+     |          items: List of invoice items with description, units, unit_amount
+     |          account: Account address for payment
+     |          account_name: Account name for payment
+     |
+     |      Returns:
+     |          JSON response with invoice creation result.
+     |
+     |  invoices_get(self, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Get an invoice.
+     |
+     |      Args:
+     |          name: Invoice name
+     |          address: Invoice address
+     |
+     |      Returns:
+     |          JSON response with invoice data.
+     |
+     |  invoices_history(self, name: Optional[str] = None, address: Optional[str] = None, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      Get invoice history.
+     |
+     |      Args:
+     |          name: Invoice name
+     |          address: Invoice address
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with history.
+     |
+     |  invoices_list(self, noun: str = 'invoice', page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List invoices.
+     |
+     |      Args:
+     |          noun: Type - "invoice", "outstanding", "paid", "cancelled"
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with invoice list.
+     |
+     |  invoices_pay(self, name: Optional[str] = None, address: Optional[str] = None, from_name: Optional[str] = None, from_address: Optional[str] = None) -> Dict[str, Any]
+     |      Pay an invoice.
+     |
+     |      Args:
+     |          name: Invoice name
+     |          address: Invoice address
+     |          from_name: Payment account name
+     |          from_address: Payment account address
+     |
+     |      Returns:
+     |          JSON response with payment result.
+     |
+     |  invoices_reject(self, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Reject an invoice (recipient only).
+     |
+     |      Args:
+     |          name: Invoice name
+     |          address: Invoice address
+     |
+     |      Returns:
+     |          JSON response with rejection result.
+     |
+     |  invoices_transactions(self, name: Optional[str] = None, address: Optional[str] = None, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      Get invoice transactions.
+     |
+     |      Args:
+     |          name: Invoice name
+     |          address: Invoice address
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with transactions.
+     |
+     |  ledger_get_block(self, block_hash: Optional[str] = None, height: Optional[int] = None, verbose: str = 'default') -> Dict[str, Any]
+     |      Retrieve a block by hash or height.
+     |
+     |      Args:
+     |          block_hash: The block hash (optional if height provided)
+     |          height: The block height (optional if hash provided)
+     |          verbose: Verbosity level - "default", "summary", "detail"
+     |
+     |      Returns:
+     |          JSON response with block data.
+     |
+     |  ledger_get_blockhash(self, height: int) -> Dict[str, Any]
+     |      Retrieve the block hash for a block at the specified height.
+     |
+     |      Args:
+     |          height: The block height
+     |
+     |      Returns:
+     |          JSON response with block hash.
+     |
+     |  ledger_get_info(self) -> Dict[str, Any]
+     |      Get ledger/blockchain information.
+     |
+     |      Returns:
+     |          JSON response with ledger info (replaces get/mininginfo).
+     |
+     |  ledger_get_metrics(self) -> Dict[str, Any]
+     |      Get ledger metrics.
+     |
+     |      Returns:
+     |          JSON response with ledger metrics.
+     |
+     |  ledger_get_transaction(self, txid: str, verbose: str = 'default') -> Dict[str, Any]
+     |      Retrieve a transaction by its hash.
+     |
+     |      Args:
+     |          txid: The transaction hash
+     |          verbose: Verbosity level
+     |
+     |      Returns:
+     |          JSON response with transaction data.
+     |
+     |  ledger_list_blocks(self, block_hash: Optional[str] = None, height: Optional[int] = None, limit: int = 10, verbose: str = 'default') -> Dict[str, Any]
+     |      List blocks starting from a hash or height.
+     |
+     |      Args:
+     |          block_hash: Starting block hash
+     |          height: Starting block height
+     |          limit: Number of blocks to return
+     |          verbose: Verbosity level
+     |
+     |      Returns:
+     |          JSON response with list of blocks.
+     |
+     |  ledger_list_transactions(self, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List transactions from the mempool.
+     |
+     |      Args:
+     |          page: Page offset
+     |          limit: Number of transactions to return
+     |
+     |      Returns:
+     |          JSON response with transaction list.
+     |
+     |  ledger_recent_blocks(self, limit: int = 10) -> Dict[str, Any]
+     |      Get the most recent blocks.
+     |
+     |      Args:
+     |          limit: Number of recent blocks to return
+     |
+     |      Returns:
+     |          JSON response with recent blocks.
+     |
+     |  ledger_submit_transaction(self, tx_data: str) -> Dict[str, Any]
+     |      Submit a transaction to the network.
+     |
+     |      Args:
+     |          tx_data: The serialized transaction data
+     |
+     |      Returns:
+     |          JSON response with submission result.
+     |
+     |  ledger_sync_status(self) -> Dict[str, Any]
+     |      Get the synchronization status of the node.
+     |
+     |      Returns:
+     |          JSON response with sync status.
+     |
+     |  local_erase(self, key: str) -> Dict[str, Any]
+     |      Erase a record from local storage.
+     |
+     |      Args:
+     |          key: Record key
+     |
+     |      Returns:
+     |          JSON response with erase result.
+     |
+     |  local_has(self, key: str) -> Dict[str, Any]
+     |      Check if a record exists in local storage.
+     |
+     |      Args:
+     |          key: Record key
+     |
+     |      Returns:
+     |          JSON response with existence check result.
+     |
+     |  local_list(self, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List records in local storage.
+     |
+     |      Args:
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with record list.
+     |
+     |  local_push(self, key: str, value: Union[str, dict]) -> Dict[str, Any]
+     |      Push a record to local storage.
+     |
+     |      Args:
+     |          key: Record key
+     |          value: Record value
+     |
+     |      Returns:
+     |          JSON response with push result.
+     |
+     |  market_cancel(self, order_type: str, txid: str) -> Dict[str, Any]
+     |      Cancel a market order.
+     |
+     |      Args:
+     |          order_type: "bid", "ask", or "order"
+     |          txid: Transaction ID of the order to cancel
+     |
+     |      Returns:
+     |          JSON response with cancellation result.
+     |
+     |  market_create(self, order_type: str, market: str, amount: float, price: float, from_name: Optional[str] = None, from_address: Optional[str] = None) -> Dict[str, Any]
+     |      Create a market order (bid or ask).
+     |
+     |      Args:
+     |          order_type: "bid" or "ask"
+     |          market: Market pair (e.g., "TOKEN/NXS")
+     |          amount: Amount to buy/sell
+     |          price: Price per unit
+     |          from_name: Name of account to use
+     |          from_address: Address of account to use
+     |
+     |      Returns:
+     |          JSON response with order creation result.
+     |
+     |  market_execute(self, order_type: str, txid: str, from_name: Optional[str] = None, from_address: Optional[str] = None) -> Dict[str, Any]
+     |      Execute a market order.
+     |
+     |      Args:
+     |          order_type: "bid", "ask", or "order"
+     |          txid: Transaction ID of the order to execute
+     |          from_name: Name of account to use
+     |          from_address: Address of account to use
+     |
+     |      Returns:
+     |          JSON response with execution result.
+     |
+     |  market_list(self, noun: str, market: str, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List market orders.
+     |
+     |      Args:
+     |          noun: Type - "bid", "ask", "order", "executed"
+     |          market: Market pair
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with order list.
+     |
+     |  market_user(self, noun: str, market: str, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List user's market orders.
+     |
+     |      Args:
+     |          noun: Type - "order", "executed"
+     |          market: Market pair
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with user's order list.
+     |
+     |  names_claim(self, txid: str) -> Dict[str, Any]
+     |      Claim a transferred name.
+     |
+     |      Args:
+     |          txid: Transfer transaction ID
+     |
+     |      Returns:
+     |          JSON response with claim result.
+     |
+     |  names_create(self, noun: str, name: str, register_address: Optional[str] = None, namespace: Optional[str] = None) -> Dict[str, Any]
+     |      Create a name or namespace.
+     |
+     |      Args:
+     |          noun: Type - "name", "namespace", "global"
+     |          name: The name to create
+     |          register_address: Address the name points to (for names)
+     |          namespace: Namespace for the name
+     |
+     |      Returns:
+     |          JSON response with creation result.
+     |
+     |  names_get(self, noun: str = 'name', name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Get a name or namespace.
+     |
+     |      Args:
+     |          noun: Type - "name", "namespace"
+     |          name: The name
+     |          address: The address
+     |
+     |      Returns:
+     |          JSON response with name data.
+     |
+     |  names_history(self, name: Optional[str] = None, address: Optional[str] = None, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      Get name history.
+     |
+     |      Args:
+     |          name: The name
+     |          address: The address
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with history.
+     |
+     |  names_list(self, noun: str = 'name', page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List names or namespaces.
+     |
+     |      Args:
+     |          noun: Type - "name", "namespace", "local", "global", "any"
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with name list.
+     |
+     |  names_rename(self, old_name: str, new_name: str) -> Dict[str, Any]
+     |      Rename a local name.
+     |
+     |      Args:
+     |          old_name: Current name
+     |          new_name: New name
+     |
+     |      Returns:
+     |          JSON response with rename result.
+     |
+     |  names_reverse_lookup(self, address: str) -> Dict[str, Any]
+     |      Reverse lookup an address to find its name.
+     |
+     |      Args:
+     |          address: The register address
+     |
+     |      Returns:
+     |          JSON response with name information.
+     |
+     |  names_transactions(self, name: Optional[str] = None, address: Optional[str] = None, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      Get name transactions.
+     |
+     |      Args:
+     |          name: The name
+     |          address: The address
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with transactions.
+     |
+     |  names_transfer(self, destination: str, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Transfer a name.
+     |
+     |      Args:
+     |          destination: Destination username or address
+     |          name: Name to transfer
+     |          address: Address of the name
+     |
+     |      Returns:
+     |          JSON response with transfer result.
+     |
+     |  names_update(self, register_address: str, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Update a name to point to a different register.
+     |
+     |      Args:
+     |          register_address: New register address
+     |          name: Name to update
+     |          address: Address of the name register
+     |
+     |      Returns:
+     |          JSON response with update result.
+     |
+     |  network_list_nodes(self, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List network nodes.
+     |
+     |      Args:
+     |          page: Page offset
+     |          limit: Number of nodes to return
+     |
+     |      Returns:
+     |          JSON response with node list.
+     |
+     |  network_list_peers(self, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List connected peers.
+     |
+     |      Args:
+     |          page: Page offset
+     |          limit: Number of peers to return
+     |
+     |      Returns:
+     |          JSON response with peer list.
+     |
+     |  profiles_create(self, username: Optional[str] = None, password: Optional[str] = None, pin: Optional[str] = None, recovery: Optional[str] = None) -> Dict[str, Any]
+     |      Create a new user profile (signature chain).
+     |
+     |      Args:
+     |          username: Username for the new profile
+     |          password: Password for the new profile
+     |          pin: PIN for the new profile
+     |          recovery: Optional recovery phrase
+     |
+     |      Returns:
+     |          JSON response with new profile information.
+     |
+     |  profiles_list(self, noun: str = 'register', page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List registers owned by the current profile.
+     |
+     |      Args:
+     |          noun: Type of register to list
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with register list.
+     |
+     |  profiles_notifications(self, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List notifications for the current profile.
+     |
+     |      Args:
+     |          page: Page offset
+     |          limit: Number of notifications to return
+     |
+     |      Returns:
+     |          JSON response with notifications list.
+     |
+     |  profiles_recover(self, username: str, recovery: str, password: str, pin: str) -> Dict[str, Any]
+     |      Recover a profile using the recovery phrase.
+     |
+     |      Args:
+     |          username: Username to recover
+     |          recovery: Recovery phrase
+     |          password: New password
+     |          pin: New PIN
+     |
+     |      Returns:
+     |          JSON response with recovery result.
+     |
+     |  profiles_status(self) -> Dict[str, Any]
+     |      Get the status of the current profile.
+     |
+     |      Returns:
+     |          JSON response with profile status.
+     |
+     |  profiles_transactions(self, page: int = 0, limit: int = 100, verbose: str = 'default') -> Dict[str, Any]
+     |      List transactions for the current profile.
+     |
+     |      Args:
+     |          page: Page offset
+     |          limit: Number of transactions to return
+     |          verbose: Verbosity level
+     |
+     |      Returns:
+     |          JSON response with transaction list.
+     |
+     |  profiles_update(self, update_type: str = 'credentials', password: Optional[str] = None, pin: Optional[str] = None, new_password: Optional[str] = None, new_pin: Optional[str] = None, recovery: Optional[str] = None, new_recovery: Optional[str] = None) -> Dict[str, Any]
+     |      Update profile credentials or recovery phrase.
+     |
+     |      Args:
+     |          update_type: "credentials" or "recovery"
+     |          password: Current password
+     |          pin: Current PIN
+     |          new_password: New password (for credentials update)
+     |          new_pin: New PIN (for credentials update)
+     |          recovery: Current recovery phrase (for recovery update)
+     |          new_recovery: New recovery phrase
+     |
+     |      Returns:
+     |          JSON response with update result.
+     |
+     |  register_get(self, address: str) -> Dict[str, Any]
+     |      Get any register by address.
+     |
+     |      Args:
+     |          address: Register address
+     |
+     |      Returns:
+     |          JSON response with register data.
+     |
+     |  register_history(self, address: str, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      Get register history.
+     |
+     |      Args:
+     |          address: Register address
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with history.
+     |
+     |  register_list(self, noun: str = 'any', page: int = 0, limit: int = 100, where: Optional[str] = None) -> Dict[str, Any]
+     |      List registers.
+     |
+     |      Args:
+     |          noun: Type - "any", "object", "raw", "readonly", "crypto"
+     |          page: Page offset
+     |          limit: Number of items to return
+     |          where: Optional WHERE clause for filtering
+     |
+     |      Returns:
+     |          JSON response with register list.
+     |
+     |  register_transactions(self, address: str, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      Get register transactions.
+     |
+     |      Args:
+     |          address: Register address
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with transactions.
+     |
+     |  sessions_create(self, username: Optional[str] = None, password: Optional[str] = None, pin: Optional[str] = None) -> Dict[str, Any]
+     |      Create a new session (login) for a user.
+     |
+     |      Args:
+     |          username: Username (uses instance username if not provided)
+     |          password: Password (uses instance password if not provided)
+     |          pin: PIN (uses instance pin if not provided)
+     |
+     |      Returns:
+     |          JSON response with session information including session ID.
+     |
+     |  sessions_load(self, username: Optional[str] = None, password: Optional[str] = None, pin: Optional[str] = None) -> Dict[str, Any]
+     |      Load a previously saved session.
+     |
+     |      Args:
+     |          username: Username
+     |          password: Password
+     |          pin: PIN
+     |
+     |      Returns:
+     |          JSON response with session information.
+     |
+     |  sessions_lock(self, minting: int = 0, transactions: int = 0) -> Dict[str, Any]
+     |      Lock the current session.
+     |
+     |      Args:
+     |          minting: 1 to keep minting enabled while locked
+     |          transactions: 1 to keep transactions enabled while locked
+     |
+     |      Returns:
+     |          JSON response confirming lock.
+     |
+     |  sessions_save(self) -> Dict[str, Any]
+     |      Save the current session to disk.
+     |
+     |      Returns:
+     |          JSON response confirming save.
+     |
+     |  sessions_status(self) -> Dict[str, Any]
+     |      Get the status of the current session.
+     |
+     |      Returns:
+     |          JSON response with session status.
+     |
+     |  sessions_terminate(self) -> Dict[str, Any]
+     |      Terminate the current session (logout).
+     |
+     |      Returns:
+     |          JSON response confirming logout.
+     |
+     |  sessions_unlock(self, pin: Optional[str] = None, minting: int = 0, transactions: int = 0) -> Dict[str, Any]
+     |      Unlock the current session.
+     |
+     |      Args:
+     |          pin: PIN to unlock (uses instance pin if not provided)
+     |          minting: 1 to enable minting
+     |          transactions: 1 to enable transactions
+     |
+     |      Returns:
+     |          JSON response confirming unlock.
+     |
+     |  sessions_validate_pin(self, pin: Optional[str] = None) -> Dict[str, Any]
+     |      Validate the PIN for the current session.
+     |
+     |      Args:
+     |          pin: PIN to validate
+     |
+     |      Returns:
+     |          JSON response with validation result.
+     |
+     |  supply_claim(self, txid: str) -> Dict[str, Any]
+     |      Claim a transferred supply chain item.
+     |
+     |      Args:
+     |          txid: Transfer transaction ID
+     |
+     |      Returns:
+     |          JSON response with claim result.
+     |
+     |  supply_create(self, name: str, data: Union[str, dict], format: str = 'raw') -> Dict[str, Any]
+     |      Create a new supply chain item.
+     |
+     |      Args:
+     |          name: Name for the item
+     |          data: Item data
+     |          format: Format - "raw", "readonly", "basic", "json"
+     |
+     |      Returns:
+     |          JSON response with creation result.
+     |
+     |  supply_get(self, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Get a supply chain item.
+     |
+     |      Args:
+     |          name: Item name
+     |          address: Item address
+     |
+     |      Returns:
+     |          JSON response with item data.
+     |
+     |  supply_history(self, name: Optional[str] = None, address: Optional[str] = None, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      Get supply chain item history.
+     |
+     |      Args:
+     |          name: Item name
+     |          address: Item address
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with history.
+     |
+     |  supply_list(self, noun: str = 'item', page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List supply chain items.
+     |
+     |      Args:
+     |          noun: Type - "item", "raw", "readonly", "any"
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with item list.
+     |
+     |  supply_transactions(self, name: Optional[str] = None, address: Optional[str] = None, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      Get supply chain item transactions.
+     |
+     |      Args:
+     |          name: Item name
+     |          address: Item address
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with transactions.
+     |
+     |  supply_transfer(self, destination: str, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Transfer a supply chain item.
+     |
+     |      Args:
+     |          destination: Destination username or address
+     |          name: Item name
+     |          address: Item address
+     |
+     |      Returns:
+     |          JSON response with transfer result.
+     |
+     |  supply_update(self, data: Union[str, dict], name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Update a supply chain item.
+     |
+     |      Args:
+     |          data: New data for the item
+     |          name: Item name
+     |          address: Item address
+     |
+     |      Returns:
+     |          JSON response with update result.
+     |
+     |  system_get_info(self) -> Dict[str, Any]
+     |      Get system information about the Nexus node. Login not required.
+     |
+     |      Returns:
+     |          JSON response with node information including version,
+     |          protocol version, timestamp, hostname, etc.
+     |
+     |  system_get_metrics(self) -> Dict[str, Any]
+     |      Get system metrics for the Nexus node. Login not required.
+     |
+     |      Returns:
+     |          JSON response with system metrics.
+     |
+     |  system_list_lisp_eids(self) -> Dict[str, Any]
      |      List configured LISP EIDs for this node. Login not required.
-     |  
-     |  nexus_system_list_peers(self)
+     |
+     |      Returns:
+     |          JSON response with LISP EID information.
+     |
+     |  system_list_peers(self) -> Dict[str, Any]
      |      List established Nexus peer connections. Login not required.
-     |  
+     |
+     |      Returns:
+     |          JSON response with list of connected peers.
+     |
+     |  system_stop(self, password: Optional[str] = None) -> Dict[str, Any]
+     |      Stop the Nexus server.
+     |
+     |      Args:
+     |          password: Optional password if -system/stop config is set
+     |
+     |      Returns:
+     |          JSON response confirming shutdown.
+     |
+     |  system_validate_address(self, address: str) -> Dict[str, Any]
+     |      Validate a Nexus register address.
+     |
+     |      Args:
+     |          address: The register address to validate
+     |
+     |      Returns:
+     |          JSON response with validation result.
+     |
+     |  ----------------------------------------------------------------------
+     |  Data descriptors defined here:
+     |
+     |  __dict__
+     |      dictionary for instance variables
+     |
+     |  __weakref__
+     |      list of weak references to the object
+
+    class sdk_init(NexusSDK)
+     |  sdk_init(user: str, pw: str, pin: str)
+     |
+     |  Legacy compatibility class. Use NexusSDK instead.
+     |
+     |  This class provides backward compatibility with the old SDK API.
+     |  New code should use the NexusSDK class directly.
+     |
+     |  Method resolution order:
+     |      sdk_init
+     |      NexusSDK
+     |      builtins.object
+     |
+     |  Methods defined here:
+     |
+     |  __init__(self, user: str, pw: str, pin: str)
+     |      Initialize with legacy parameters.
+     |
+     |      Args:
+     |          user: Username
+     |          pw: Password
+     |          pin: PIN
+     |
+     |  nexus_assets_claim_asset(self, txid)
+     |
+     |  nexus_assets_create_asset(self, asset_name, data)
+     |
+     |  nexus_assets_get_asset_by_address(self, asset_address)
+     |
+     |  nexus_assets_get_asset_by_name(self, asset_name)
+     |
+     |  nexus_assets_list_asset_history_by_address(self, asset_address)
+     |
+     |  nexus_assets_list_asset_history_by_name(self, asset_name)
+     |
+     |  nexus_assets_tokenize_asset_by_address(self, asset_address, token_address)
+     |
+     |  nexus_assets_tokenize_asset_by_name(self, asset_name, token_name)
+     |
+     |  nexus_assets_transfer_asset_by_address(self, asset_address, dest_address)
+     |
+     |  nexus_assets_transfer_asset_by_name(self, asset_name, dest_username)
+     |
+     |  nexus_assets_update_asset_by_address(self, asset_address, data)
+     |
+     |  nexus_assets_update_asset_by_name(self, asset_name, data)
+     |
+     |  nexus_finance_create_account(self, name)
+     |
+     |  nexus_finance_credit_account_by_address(self, to_address, amount, txid)
+     |
+     |  nexus_finance_credit_account_by_name(self, to_name, amount, txid)
+     |
+     |  nexus_finance_debit_account_by_address(self, from_address, to_address, amount)
+     |
+     |  nexus_finance_debit_account_by_name(self, from_name, to_name, amount)
+     |
+     |  nexus_finance_get_account_by_address(self, address)
+     |
+     |  nexus_finance_get_account_by_name(self, name)
+     |
+     |  nexus_finance_get_stakeinfo(self)
+     |
+     |  nexus_finance_list_accounts(self)
+     |
+     |  nexus_finance_set_stake(self, amount)
+     |
+     |  nexus_ledger_get_block_by_hash(self, block_hash, verbosity)
+     |
+     |  nexus_ledger_get_block_by_height(self, block_height, verbosity)
+     |
+     |  nexus_ledger_get_blockhash(self, height)
+     |
+     |  nexus_ledger_get_mininginfo(self)
+     |
+     |  nexus_ledger_get_transaction(self, tx_hash, verbosity)
+     |
+     |  nexus_ledger_list_blocks_by_hash(self, block_hash, limit, verbosity)
+     |
+     |  nexus_ledger_list_blocks_by_height(self, block_height, limit, verbosity)
+     |
+     |  nexus_ledger_submit_transaction(self, tx_data)
+     |
+     |  nexus_supply_claim_item(self, txid)
+     |
+     |  nexus_supply_create_item(self, name, data)
+     |
+     |  nexus_supply_get_item_by_address(self, address)
+     |
+     |  nexus_supply_get_item_by_name(self, name)
+     |
+     |  nexus_supply_list_item_history_by_address(self, address)
+     |
+     |  nexus_supply_list_item_history_by_name(self, name)
+     |
+     |  nexus_supply_transfer_item_by_address(self, address, new_owner)
+     |
+     |  nexus_supply_transfer_item_by_name(self, name, new_owner)
+     |
+     |  nexus_supply_update_item_by_address(self, address, data)
+     |
+     |  nexus_supply_update_item_by_name(self, name, data)
+     |
+     |  nexus_system_get_info(self)
+     |      # Legacy method aliases for backward compatibility
+     |
+     |  nexus_system_list_lisp_eids(self)
+     |
+     |  nexus_system_list_peers(self)
+     |
      |  nexus_tokens_create_account(self, account_name, token_name)
-     |      Create a token account associated with previously create token
-     |      with token name 'token_name'.
-     |  
+     |
      |  nexus_tokens_create_token(self, token_name, supply, decimals=2)
-     |      Create a token by name with with an initial reserve supply of 
-     |      'supply'. Give the token accuracy precision specified in 'decimals'.
-     |  
-     |  nexus_tokens_credit_account_by_address(self, to_address, amount, txid, address_proof)
-     |      Credit token account by address specified in 'to_address' for the 
-     |      amount specified in 'amount' from the debit transaction with 
-     |      transaction id 'txid'.
-     |  
+     |
+     |  nexus_tokens_credit_account_by_address(self, to_address, amount, txid, address_proof=None)
+     |
      |  nexus_tokens_credit_account_by_name(self, to_name, amount, txid, name_proof=None)
-     |      Credit token account by name specified in 'to_name' for the amount
-     |      specified in 'amount' from the debit transaction with transaction
-     |      id 'txid'.
-     |  
+     |
      |  nexus_tokens_credit_token_by_address(self, to_address, amount, txid)
-     |      Credit token account by address specified in 'to_address' for the 
-     |      amount specified in 'amount' from the debit transaction with 
-     |      transaction id 'txid'. This function is used to replenish tokens.
-     |  
+     |
      |  nexus_tokens_credit_token_by_name(self, to_name, amount, txid)
-     |      Credit token by name specified in 'name' for the amount specified in 
-     |      'amount' from the debit transaction with transaction id 'txid'. This
-     |      function is used to replenish tokens.
-     |  
+     |
      |  nexus_tokens_debit_account_by_address(self, from_address, to_address, amount)
-     |      Debit token account from token account 'from_name' for the amount
-     |      specified in 'amount' for token account 'to_name'.
-     |  
+     |
      |  nexus_tokens_debit_account_by_name(self, from_name, to_name, amount)
-     |      Debit token account from token account 'from_name' for the amount
-     |      specified in 'amount' for token account 'to_name'.
-     |  
+     |
      |  nexus_tokens_debit_token_by_address(self, from_address, to_address, amount)
-     |      Debit token by address specified iin 'from_address' for the amount
-     |      specified in 'amount' for token account address 'to_address'.
-     |  
+     |
      |  nexus_tokens_debit_token_by_name(self, from_name, to_name, amount)
-     |      Debit token with name specified iin 'from_name' for the amount
-     |      specified in 'amount' for token account 'to_name'.
-     |  
+     |
      |  nexus_tokens_get_account_by_address(self, account_address)
-     |      Get token account by address specified in 'account_address'.
-     |  
+     |
      |  nexus_tokens_get_account_by_name(self, account_name)
-     |      Get token account by name specified in 'account_name'.
-     |  
+     |
      |  nexus_tokens_get_token_by_address(self, token_address)
-     |      Get token by address specified in 'token_address'.
-     |  
+     |
      |  nexus_tokens_get_token_by_name(self, token_name)
-     |      Get token by name specified in 'token_name'.
-     |  
+     |
      |  nexus_users_create_user(self)
-     |      Create a user account on the Nexus blockchain. Username, password,
-     |      and pin parameters are supplied on the sdk_init() call.
-     |  
-     |  nexus_users_list_accounts_by_genesis(self, page, limit)
-     |      List user created supply-chain items by genesis-id. The number of 
-     |      item entries returned is specified in 'limit' starting with entry 
-     |      offset specified in 'page'.
-     |  
-     |  nexus_users_list_accounts_by_username(self, page, limit)
-     |      List user created supply-chain items by username. The number of account
-     |      entries returned is specified in 'limit' starting with entry offset 
-     |      specified in 'page'.
-     |  
-     |  nexus_users_list_assets_by_genesis(self, page, limit)
-     |      List user account created assets by genesis-id. The number of asset
-     |      entries returned is specified in 'limit' starting with entry offset 
-     |      specified in 'page'.
-     |  
-     |  nexus_users_list_assets_by_username(self, page, limit)
-     |      List user account created assets by username. The number of asset
-     |      entries returned is specified in 'limit' starting with entry offset 
-     |      specified in 'page'.
-     |  
-     |  nexus_users_list_items_by_genesis(self, page, limit)
-     |      List user account created assets by genesis-id. The number of asset
-     |      entries returned is specified in 'limit' starting with entry offset 
-     |      specified in 'page'.
-     |  
-     |  nexus_users_list_items_by_username(self, page, limit)
-     |      List user account created assets by username. The number of asset
-     |      entries returned is specified in 'limit' starting with entry offset 
-     |      specified in 'page'.
-     |  
-     |  nexus_users_list_notifications_by_genesis(self, page, limit)
-     |      List user account notifications by genesis-id. The entry offset (first
-     |      is 0) is specified in 'page' and the number of transactions returned 
-     |      is specified in 'limit'.
-     |  
-     |  nexus_users_list_notifications_by_username(self, page, limit)
-     |      List user account notifications by username. The entry offset (first
-     |      is 0) is specified in 'page' and the number of transactions returned 
-     |      is specified in 'limit'.
-     |  
-     |  nexus_users_list_tokens_by_genesis(self, page, limit)
-     |      List user created tokens by genesis-id. The number of token
-     |      entries returned is specified in 'limit' starting with entry offset 
-     |      specified in 'page'.
-     |  
-     |  nexus_users_list_tokens_by_username(self, page, limit)
-     |      List user created tokens by username. The number of token
-     |      entries returned is specified in 'limit' starting with entry offset 
-     |      specified in 'page'.
-     |  
-     |  nexus_users_list_transactions_by_genesis(self, page, limit, verbosity='default')
-     |      List user account transactions by genesis-id. The entry offset (first 
-     |      is 0) is specified in 'page' and the number of transactions returned 
-     |      is specified in 'limit'. Valid values for 'verbosity' are "default", 
-     |      "summary", "detail".
-     |  
-     |  nexus_users_list_transactions_by_username(self, page, limit, verbosity='default')
-     |      List user account transactions by username. The entry offset (first 
-     |      is 0) is specified in 'page' and the number of transactions returned 
-     |      is specified in 'limit'. Valid values for 'verbosity' are "default", 
-     |      "summary", "detail".
-     |  
+     |
      |  nexus_users_lock_user(self, minting=0, transactions=0)
-     |      Lock a user account on the Nexus blockchain. This disallows any API
-     |      activity to the blockchain for this user account signature chain.
-     |      Set 'minting' to 1 if the user account is staking or mining. Set 
-     |      'transactions' to 0 if the user account should not create or claim 
-     |      transactions.
-     |  
+     |
      |  nexus_users_login_user(self)
-     |      Login a user on the Nexus blockchain. Username, password, and pin 
-     |      parameters are supplied on the sdk_init() call.
-     |  
+     |
      |  nexus_users_logout_user(self)
-     |      Logout a user from the Nexus blockchain.
-     |  
+     |
      |  nexus_users_unlock_user(self, minting=0, transactions=0)
-     |      Unlock a user account on the Nexus blockchain that was previously
-     |      locked with nexus_users_lock(). This now allows API activity 
-     |      to the blockchain for this user account signature chain.
-     |      Set 'minting' to 1 if the user account is staking or mining. Set 
-     |      'transactions' to 0 if the user account should not create or claim 
-     |      transactions.
+     |
+     |  ----------------------------------------------------------------------
+     |  Methods inherited from NexusSDK:
+     |
+     |  assets_claim(self, txid: str) -> Dict[str, Any]
+     |      Claim a transferred asset.
+     |
+     |      Args:
+     |          txid: Transfer transaction ID
+     |
+     |      Returns:
+     |          JSON response with claim result.
+     |
+     |  assets_create(self, name: str, data: Union[str, dict], format: str = 'raw') -> Dict[str, Any]
+     |      Create a new asset.
+     |
+     |      Args:
+     |          name: Name for the asset
+     |          data: Asset data (string or dict for JSON format)
+     |          format: Format - "raw", "readonly", "basic", "json"
+     |
+     |      Returns:
+     |          JSON response with creation result.
+     |
+     |  assets_get(self, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Get an asset.
+     |
+     |      Args:
+     |          name: Asset name
+     |          address: Asset address
+     |
+     |      Returns:
+     |          JSON response with asset data.
+     |
+     |  assets_history(self, name: Optional[str] = None, address: Optional[str] = None, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      Get asset history.
+     |
+     |      Args:
+     |          name: Asset name
+     |          address: Asset address
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with history.
+     |
+     |  assets_list(self, noun: str = 'asset', page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List assets.
+     |
+     |      Args:
+     |          noun: Type - "asset", "raw", "readonly", "any"
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with asset list.
+     |
+     |  assets_list_partial(self, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      List partial ownership of a tokenized asset.
+     |
+     |      Args:
+     |          name: Asset name
+     |          address: Asset address
+     |
+     |      Returns:
+     |          JSON response with partial ownership info.
+     |
+     |  assets_tokenize(self, token: str, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Tokenize an asset.
+     |
+     |      Args:
+     |          token: Token name or address to tokenize with
+     |          name: Asset name
+     |          address: Asset address
+     |
+     |      Returns:
+     |          JSON response with tokenization result.
+     |
+     |  assets_transactions(self, name: Optional[str] = None, address: Optional[str] = None, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      Get asset transactions.
+     |
+     |      Args:
+     |          name: Asset name
+     |          address: Asset address
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with transactions.
+     |
+     |  assets_transfer(self, destination: str, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Transfer asset ownership.
+     |
+     |      Args:
+     |          destination: Destination username or address
+     |          name: Asset name
+     |          address: Asset address
+     |
+     |      Returns:
+     |          JSON response with transfer result.
+     |
+     |  assets_update(self, data: Union[str, dict], name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Update an asset.
+     |
+     |      Args:
+     |          data: New data for the asset
+     |          name: Asset name
+     |          address: Asset address
+     |
+     |      Returns:
+     |          JSON response with update result.
+     |
+     |  assets_verify_partial(self, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Verify partial ownership of a tokenized asset.
+     |
+     |      Args:
+     |          name: Asset name
+     |          address: Asset address
+     |
+     |      Returns:
+     |          JSON response with verification result.
+     |
+     |  finance_burn(self, name: Optional[str] = None, address: Optional[str] = None, amount: float = 0) -> Dict[str, Any]
+     |      Burn tokens from a token register.
+     |
+     |      Args:
+     |          name: Name of the token
+     |          address: Address of the token
+     |          amount: Amount to burn
+     |
+     |      Returns:
+     |          JSON response with burn result.
+     |
+     |  finance_create(self, noun: str, name: str, token: Optional[str] = None, supply: Optional[int] = None, decimals: int = 2, **kwargs) -> Dict[str, Any]
+     |      Create a finance object (account, token, or trust).
+     |
+     |      Args:
+     |          noun: Type to create - "account", "token", or "trust"
+     |          name: Name for the new object
+     |          token: Token identifier (for accounts)
+     |          supply: Initial supply (for tokens)
+     |          decimals: Decimal places (for tokens)
+     |          **kwargs: Additional parameters
+     |
+     |      Returns:
+     |          JSON response with creation result.
+     |
+     |  finance_credit(self, txid: str, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Credit (claim) a pending debit transaction.
+     |
+     |      Args:
+     |          txid: Transaction ID of the debit to credit
+     |          name: Name of the account to credit
+     |          address: Address of the account to credit
+     |
+     |      Returns:
+     |          JSON response with credit result.
+     |
+     |  finance_debit(self, amount: float, name_from: Optional[str] = None, address_from: Optional[str] = None, name_to: Optional[str] = None, address_to: Optional[str] = None, reference: Optional[str] = None) -> Dict[str, Any]
+     |      Debit (send) from an account.
+     |
+     |      Args:
+     |          amount: Amount to send
+     |          name_from: Name of source account
+     |          address_from: Address of source account
+     |          name_to: Name of destination account
+     |          address_to: Address of destination
+     |          reference: Optional reference number
+     |
+     |      Returns:
+     |          JSON response with debit result.
+     |
+     |  finance_get(self, noun: str, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Get a finance object.
+     |
+     |      Args:
+     |          noun: Type to get - "account", "token", "trust", "any"
+     |          name: Name of the object
+     |          address: Address of the object
+     |
+     |      Returns:
+     |          JSON response with object data.
+     |
+     |  finance_get_balances(self) -> Dict[str, Any]
+     |      Get balances for all accounts.
+     |
+     |      Returns:
+     |          JSON response with account balances.
+     |
+     |  finance_get_stakeinfo(self) -> Dict[str, Any]
+     |      Get staking information for the current user.
+     |
+     |      Returns:
+     |          JSON response with staking information.
+     |
+     |  finance_history(self, noun: str, name: Optional[str] = None, address: Optional[str] = None, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      Get history for a finance object.
+     |
+     |      Args:
+     |          noun: Type - "account", "token", "trust"
+     |          name: Name of the object
+     |          address: Address of the object
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with history.
+     |
+     |  finance_list(self, noun: str = 'any', page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List finance objects.
+     |
+     |      Args:
+     |          noun: Type to list - "any", "account", "token", "trust"
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with object list.
+     |
+     |  finance_set_stake(self, amount: float) -> Dict[str, Any]
+     |      Set the stake amount.
+     |
+     |      Args:
+     |          amount: Amount to stake
+     |
+     |      Returns:
+     |          JSON response with stake result.
+     |
+     |  finance_transactions(self, noun: str, name: Optional[str] = None, address: Optional[str] = None, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      Get transactions for a finance object.
+     |
+     |      Args:
+     |          noun: Type - "account", "token", "trust"
+     |          name: Name of the object
+     |          address: Address of the object
+     |          page: Page offset
+     |          limit: Number of transactions to return
+     |
+     |      Returns:
+     |          JSON response with transactions.
+     |
+     |  finance_void_transaction(self, txid: str) -> Dict[str, Any]
+     |      Void a pending transaction.
+     |
+     |      Args:
+     |          txid: Transaction ID to void
+     |
+     |      Returns:
+     |          JSON response with void result.
+     |
+     |  invoices_cancel(self, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Cancel an invoice (issuer only).
+     |
+     |      Args:
+     |          name: Invoice name
+     |          address: Invoice address
+     |
+     |      Returns:
+     |          JSON response with cancellation result.
+     |
+     |  invoices_create(self, recipient: str, items: list, account: Optional[str] = None, account_name: Optional[str] = None) -> Dict[str, Any]
+     |      Create an invoice.
+     |
+     |      Args:
+     |          recipient: Recipient genesis or username
+     |          items: List of invoice items with description, units, unit_amount
+     |          account: Account address for payment
+     |          account_name: Account name for payment
+     |
+     |      Returns:
+     |          JSON response with invoice creation result.
+     |
+     |  invoices_get(self, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Get an invoice.
+     |
+     |      Args:
+     |          name: Invoice name
+     |          address: Invoice address
+     |
+     |      Returns:
+     |          JSON response with invoice data.
+     |
+     |  invoices_history(self, name: Optional[str] = None, address: Optional[str] = None, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      Get invoice history.
+     |
+     |      Args:
+     |          name: Invoice name
+     |          address: Invoice address
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with history.
+     |
+     |  invoices_list(self, noun: str = 'invoice', page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List invoices.
+     |
+     |      Args:
+     |          noun: Type - "invoice", "outstanding", "paid", "cancelled"
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with invoice list.
+     |
+     |  invoices_pay(self, name: Optional[str] = None, address: Optional[str] = None, from_name: Optional[str] = None, from_address: Optional[str] = None) -> Dict[str, Any]
+     |      Pay an invoice.
+     |
+     |      Args:
+     |          name: Invoice name
+     |          address: Invoice address
+     |          from_name: Payment account name
+     |          from_address: Payment account address
+     |
+     |      Returns:
+     |          JSON response with payment result.
+     |
+     |  invoices_reject(self, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Reject an invoice (recipient only).
+     |
+     |      Args:
+     |          name: Invoice name
+     |          address: Invoice address
+     |
+     |      Returns:
+     |          JSON response with rejection result.
+     |
+     |  invoices_transactions(self, name: Optional[str] = None, address: Optional[str] = None, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      Get invoice transactions.
+     |
+     |      Args:
+     |          name: Invoice name
+     |          address: Invoice address
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with transactions.
+     |
+     |  ledger_get_block(self, block_hash: Optional[str] = None, height: Optional[int] = None, verbose: str = 'default') -> Dict[str, Any]
+     |      Retrieve a block by hash or height.
+     |
+     |      Args:
+     |          block_hash: The block hash (optional if height provided)
+     |          height: The block height (optional if hash provided)
+     |          verbose: Verbosity level - "default", "summary", "detail"
+     |
+     |      Returns:
+     |          JSON response with block data.
+     |
+     |  ledger_get_blockhash(self, height: int) -> Dict[str, Any]
+     |      Retrieve the block hash for a block at the specified height.
+     |
+     |      Args:
+     |          height: The block height
+     |
+     |      Returns:
+     |          JSON response with block hash.
+     |
+     |  ledger_get_info(self) -> Dict[str, Any]
+     |      Get ledger/blockchain information.
+     |
+     |      Returns:
+     |          JSON response with ledger info (replaces get/mininginfo).
+     |
+     |  ledger_get_metrics(self) -> Dict[str, Any]
+     |      Get ledger metrics.
+     |
+     |      Returns:
+     |          JSON response with ledger metrics.
+     |
+     |  ledger_get_transaction(self, txid: str, verbose: str = 'default') -> Dict[str, Any]
+     |      Retrieve a transaction by its hash.
+     |
+     |      Args:
+     |          txid: The transaction hash
+     |          verbose: Verbosity level
+     |
+     |      Returns:
+     |          JSON response with transaction data.
+     |
+     |  ledger_list_blocks(self, block_hash: Optional[str] = None, height: Optional[int] = None, limit: int = 10, verbose: str = 'default') -> Dict[str, Any]
+     |      List blocks starting from a hash or height.
+     |
+     |      Args:
+     |          block_hash: Starting block hash
+     |          height: Starting block height
+     |          limit: Number of blocks to return
+     |          verbose: Verbosity level
+     |
+     |      Returns:
+     |          JSON response with list of blocks.
+     |
+     |  ledger_list_transactions(self, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List transactions from the mempool.
+     |
+     |      Args:
+     |          page: Page offset
+     |          limit: Number of transactions to return
+     |
+     |      Returns:
+     |          JSON response with transaction list.
+     |
+     |  ledger_recent_blocks(self, limit: int = 10) -> Dict[str, Any]
+     |      Get the most recent blocks.
+     |
+     |      Args:
+     |          limit: Number of recent blocks to return
+     |
+     |      Returns:
+     |          JSON response with recent blocks.
+     |
+     |  ledger_submit_transaction(self, tx_data: str) -> Dict[str, Any]
+     |      Submit a transaction to the network.
+     |
+     |      Args:
+     |          tx_data: The serialized transaction data
+     |
+     |      Returns:
+     |          JSON response with submission result.
+     |
+     |  ledger_sync_status(self) -> Dict[str, Any]
+     |      Get the synchronization status of the node.
+     |
+     |      Returns:
+     |          JSON response with sync status.
+     |
+     |  local_erase(self, key: str) -> Dict[str, Any]
+     |      Erase a record from local storage.
+     |
+     |      Args:
+     |          key: Record key
+     |
+     |      Returns:
+     |          JSON response with erase result.
+     |
+     |  local_has(self, key: str) -> Dict[str, Any]
+     |      Check if a record exists in local storage.
+     |
+     |      Args:
+     |          key: Record key
+     |
+     |      Returns:
+     |          JSON response with existence check result.
+     |
+     |  local_list(self, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List records in local storage.
+     |
+     |      Args:
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with record list.
+     |
+     |  local_push(self, key: str, value: Union[str, dict]) -> Dict[str, Any]
+     |      Push a record to local storage.
+     |
+     |      Args:
+     |          key: Record key
+     |          value: Record value
+     |
+     |      Returns:
+     |          JSON response with push result.
+     |
+     |  market_cancel(self, order_type: str, txid: str) -> Dict[str, Any]
+     |      Cancel a market order.
+     |
+     |      Args:
+     |          order_type: "bid", "ask", or "order"
+     |          txid: Transaction ID of the order to cancel
+     |
+     |      Returns:
+     |          JSON response with cancellation result.
+     |
+     |  market_create(self, order_type: str, market: str, amount: float, price: float, from_name: Optional[str] = None, from_address: Optional[str] = None) -> Dict[str, Any]
+     |      Create a market order (bid or ask).
+     |
+     |      Args:
+     |          order_type: "bid" or "ask"
+     |          market: Market pair (e.g., "TOKEN/NXS")
+     |          amount: Amount to buy/sell
+     |          price: Price per unit
+     |          from_name: Name of account to use
+     |          from_address: Address of account to use
+     |
+     |      Returns:
+     |          JSON response with order creation result.
+     |
+     |  market_execute(self, order_type: str, txid: str, from_name: Optional[str] = None, from_address: Optional[str] = None) -> Dict[str, Any]
+     |      Execute a market order.
+     |
+     |      Args:
+     |          order_type: "bid", "ask", or "order"
+     |          txid: Transaction ID of the order to execute
+     |          from_name: Name of account to use
+     |          from_address: Address of account to use
+     |
+     |      Returns:
+     |          JSON response with execution result.
+     |
+     |  market_list(self, noun: str, market: str, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List market orders.
+     |
+     |      Args:
+     |          noun: Type - "bid", "ask", "order", "executed"
+     |          market: Market pair
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with order list.
+     |
+     |  market_user(self, noun: str, market: str, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List user's market orders.
+     |
+     |      Args:
+     |          noun: Type - "order", "executed"
+     |          market: Market pair
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with user's order list.
+     |
+     |  names_claim(self, txid: str) -> Dict[str, Any]
+     |      Claim a transferred name.
+     |
+     |      Args:
+     |          txid: Transfer transaction ID
+     |
+     |      Returns:
+     |          JSON response with claim result.
+     |
+     |  names_create(self, noun: str, name: str, register_address: Optional[str] = None, namespace: Optional[str] = None) -> Dict[str, Any]
+     |      Create a name or namespace.
+     |
+     |      Args:
+     |          noun: Type - "name", "namespace", "global"
+     |          name: The name to create
+     |          register_address: Address the name points to (for names)
+     |          namespace: Namespace for the name
+     |
+     |      Returns:
+     |          JSON response with creation result.
+     |
+     |  names_get(self, noun: str = 'name', name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Get a name or namespace.
+     |
+     |      Args:
+     |          noun: Type - "name", "namespace"
+     |          name: The name
+     |          address: The address
+     |
+     |      Returns:
+     |          JSON response with name data.
+     |
+     |  names_history(self, name: Optional[str] = None, address: Optional[str] = None, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      Get name history.
+     |
+     |      Args:
+     |          name: The name
+     |          address: The address
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with history.
+     |
+     |  names_list(self, noun: str = 'name', page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List names or namespaces.
+     |
+     |      Args:
+     |          noun: Type - "name", "namespace", "local", "global", "any"
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with name list.
+     |
+     |  names_rename(self, old_name: str, new_name: str) -> Dict[str, Any]
+     |      Rename a local name.
+     |
+     |      Args:
+     |          old_name: Current name
+     |          new_name: New name
+     |
+     |      Returns:
+     |          JSON response with rename result.
+     |
+     |  names_reverse_lookup(self, address: str) -> Dict[str, Any]
+     |      Reverse lookup an address to find its name.
+     |
+     |      Args:
+     |          address: The register address
+     |
+     |      Returns:
+     |          JSON response with name information.
+     |
+     |  names_transactions(self, name: Optional[str] = None, address: Optional[str] = None, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      Get name transactions.
+     |
+     |      Args:
+     |          name: The name
+     |          address: The address
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with transactions.
+     |
+     |  names_transfer(self, destination: str, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Transfer a name.
+     |
+     |      Args:
+     |          destination: Destination username or address
+     |          name: Name to transfer
+     |          address: Address of the name
+     |
+     |      Returns:
+     |          JSON response with transfer result.
+     |
+     |  names_update(self, register_address: str, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Update a name to point to a different register.
+     |
+     |      Args:
+     |          register_address: New register address
+     |          name: Name to update
+     |          address: Address of the name register
+     |
+     |      Returns:
+     |          JSON response with update result.
+     |
+     |  network_list_nodes(self, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List network nodes.
+     |
+     |      Args:
+     |          page: Page offset
+     |          limit: Number of nodes to return
+     |
+     |      Returns:
+     |          JSON response with node list.
+     |
+     |  network_list_peers(self, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List connected peers.
+     |
+     |      Args:
+     |          page: Page offset
+     |          limit: Number of peers to return
+     |
+     |      Returns:
+     |          JSON response with peer list.
+     |
+     |  profiles_create(self, username: Optional[str] = None, password: Optional[str] = None, pin: Optional[str] = None, recovery: Optional[str] = None) -> Dict[str, Any]
+     |      Create a new user profile (signature chain).
+     |
+     |      Args:
+     |          username: Username for the new profile
+     |          password: Password for the new profile
+     |          pin: PIN for the new profile
+     |          recovery: Optional recovery phrase
+     |
+     |      Returns:
+     |          JSON response with new profile information.
+     |
+     |  profiles_list(self, noun: str = 'register', page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List registers owned by the current profile.
+     |
+     |      Args:
+     |          noun: Type of register to list
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with register list.
+     |
+     |  profiles_notifications(self, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List notifications for the current profile.
+     |
+     |      Args:
+     |          page: Page offset
+     |          limit: Number of notifications to return
+     |
+     |      Returns:
+     |          JSON response with notifications list.
+     |
+     |  profiles_recover(self, username: str, recovery: str, password: str, pin: str) -> Dict[str, Any]
+     |      Recover a profile using the recovery phrase.
+     |
+     |      Args:
+     |          username: Username to recover
+     |          recovery: Recovery phrase
+     |          password: New password
+     |          pin: New PIN
+     |
+     |      Returns:
+     |          JSON response with recovery result.
+     |
+     |  profiles_status(self) -> Dict[str, Any]
+     |      Get the status of the current profile.
+     |
+     |      Returns:
+     |          JSON response with profile status.
+     |
+     |  profiles_transactions(self, page: int = 0, limit: int = 100, verbose: str = 'default') -> Dict[str, Any]
+     |      List transactions for the current profile.
+     |
+     |      Args:
+     |          page: Page offset
+     |          limit: Number of transactions to return
+     |          verbose: Verbosity level
+     |
+     |      Returns:
+     |          JSON response with transaction list.
+     |
+     |  profiles_update(self, update_type: str = 'credentials', password: Optional[str] = None, pin: Optional[str] = None, new_password: Optional[str] = None, new_pin: Optional[str] = None, recovery: Optional[str] = None, new_recovery: Optional[str] = None) -> Dict[str, Any]
+     |      Update profile credentials or recovery phrase.
+     |
+     |      Args:
+     |          update_type: "credentials" or "recovery"
+     |          password: Current password
+     |          pin: Current PIN
+     |          new_password: New password (for credentials update)
+     |          new_pin: New PIN (for credentials update)
+     |          recovery: Current recovery phrase (for recovery update)
+     |          new_recovery: New recovery phrase
+     |
+     |      Returns:
+     |          JSON response with update result.
+     |
+     |  register_get(self, address: str) -> Dict[str, Any]
+     |      Get any register by address.
+     |
+     |      Args:
+     |          address: Register address
+     |
+     |      Returns:
+     |          JSON response with register data.
+     |
+     |  register_history(self, address: str, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      Get register history.
+     |
+     |      Args:
+     |          address: Register address
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with history.
+     |
+     |  register_list(self, noun: str = 'any', page: int = 0, limit: int = 100, where: Optional[str] = None) -> Dict[str, Any]
+     |      List registers.
+     |
+     |      Args:
+     |          noun: Type - "any", "object", "raw", "readonly", "crypto"
+     |          page: Page offset
+     |          limit: Number of items to return
+     |          where: Optional WHERE clause for filtering
+     |
+     |      Returns:
+     |          JSON response with register list.
+     |
+     |  register_transactions(self, address: str, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      Get register transactions.
+     |
+     |      Args:
+     |          address: Register address
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with transactions.
+     |
+     |  sessions_create(self, username: Optional[str] = None, password: Optional[str] = None, pin: Optional[str] = None) -> Dict[str, Any]
+     |      Create a new session (login) for a user.
+     |
+     |      Args:
+     |          username: Username (uses instance username if not provided)
+     |          password: Password (uses instance password if not provided)
+     |          pin: PIN (uses instance pin if not provided)
+     |
+     |      Returns:
+     |          JSON response with session information including session ID.
+     |
+     |  sessions_load(self, username: Optional[str] = None, password: Optional[str] = None, pin: Optional[str] = None) -> Dict[str, Any]
+     |      Load a previously saved session.
+     |
+     |      Args:
+     |          username: Username
+     |          password: Password
+     |          pin: PIN
+     |
+     |      Returns:
+     |          JSON response with session information.
+     |
+     |  sessions_lock(self, minting: int = 0, transactions: int = 0) -> Dict[str, Any]
+     |      Lock the current session.
+     |
+     |      Args:
+     |          minting: 1 to keep minting enabled while locked
+     |          transactions: 1 to keep transactions enabled while locked
+     |
+     |      Returns:
+     |          JSON response confirming lock.
+     |
+     |  sessions_save(self) -> Dict[str, Any]
+     |      Save the current session to disk.
+     |
+     |      Returns:
+     |          JSON response confirming save.
+     |
+     |  sessions_status(self) -> Dict[str, Any]
+     |      Get the status of the current session.
+     |
+     |      Returns:
+     |          JSON response with session status.
+     |
+     |  sessions_terminate(self) -> Dict[str, Any]
+     |      Terminate the current session (logout).
+     |
+     |      Returns:
+     |          JSON response confirming logout.
+     |
+     |  sessions_unlock(self, pin: Optional[str] = None, minting: int = 0, transactions: int = 0) -> Dict[str, Any]
+     |      Unlock the current session.
+     |
+     |      Args:
+     |          pin: PIN to unlock (uses instance pin if not provided)
+     |          minting: 1 to enable minting
+     |          transactions: 1 to enable transactions
+     |
+     |      Returns:
+     |          JSON response confirming unlock.
+     |
+     |  sessions_validate_pin(self, pin: Optional[str] = None) -> Dict[str, Any]
+     |      Validate the PIN for the current session.
+     |
+     |      Args:
+     |          pin: PIN to validate
+     |
+     |      Returns:
+     |          JSON response with validation result.
+     |
+     |  supply_claim(self, txid: str) -> Dict[str, Any]
+     |      Claim a transferred supply chain item.
+     |
+     |      Args:
+     |          txid: Transfer transaction ID
+     |
+     |      Returns:
+     |          JSON response with claim result.
+     |
+     |  supply_create(self, name: str, data: Union[str, dict], format: str = 'raw') -> Dict[str, Any]
+     |      Create a new supply chain item.
+     |
+     |      Args:
+     |          name: Name for the item
+     |          data: Item data
+     |          format: Format - "raw", "readonly", "basic", "json"
+     |
+     |      Returns:
+     |          JSON response with creation result.
+     |
+     |  supply_get(self, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Get a supply chain item.
+     |
+     |      Args:
+     |          name: Item name
+     |          address: Item address
+     |
+     |      Returns:
+     |          JSON response with item data.
+     |
+     |  supply_history(self, name: Optional[str] = None, address: Optional[str] = None, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      Get supply chain item history.
+     |
+     |      Args:
+     |          name: Item name
+     |          address: Item address
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with history.
+     |
+     |  supply_list(self, noun: str = 'item', page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      List supply chain items.
+     |
+     |      Args:
+     |          noun: Type - "item", "raw", "readonly", "any"
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with item list.
+     |
+     |  supply_transactions(self, name: Optional[str] = None, address: Optional[str] = None, page: int = 0, limit: int = 100) -> Dict[str, Any]
+     |      Get supply chain item transactions.
+     |
+     |      Args:
+     |          name: Item name
+     |          address: Item address
+     |          page: Page offset
+     |          limit: Number of items to return
+     |
+     |      Returns:
+     |          JSON response with transactions.
+     |
+     |  supply_transfer(self, destination: str, name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Transfer a supply chain item.
+     |
+     |      Args:
+     |          destination: Destination username or address
+     |          name: Item name
+     |          address: Item address
+     |
+     |      Returns:
+     |          JSON response with transfer result.
+     |
+     |  supply_update(self, data: Union[str, dict], name: Optional[str] = None, address: Optional[str] = None) -> Dict[str, Any]
+     |      Update a supply chain item.
+     |
+     |      Args:
+     |          data: New data for the item
+     |          name: Item name
+     |          address: Item address
+     |
+     |      Returns:
+     |          JSON response with update result.
+     |
+     |  system_get_info(self) -> Dict[str, Any]
+     |      Get system information about the Nexus node. Login not required.
+     |
+     |      Returns:
+     |          JSON response with node information including version,
+     |          protocol version, timestamp, hostname, etc.
+     |
+     |  system_get_metrics(self) -> Dict[str, Any]
+     |      Get system metrics for the Nexus node. Login not required.
+     |
+     |      Returns:
+     |          JSON response with system metrics.
+     |
+     |  system_list_lisp_eids(self) -> Dict[str, Any]
+     |      List configured LISP EIDs for this node. Login not required.
+     |
+     |      Returns:
+     |          JSON response with LISP EID information.
+     |
+     |  system_list_peers(self) -> Dict[str, Any]
+     |      List established Nexus peer connections. Login not required.
+     |
+     |      Returns:
+     |          JSON response with list of connected peers.
+     |
+     |  system_stop(self, password: Optional[str] = None) -> Dict[str, Any]
+     |      Stop the Nexus server.
+     |
+     |      Args:
+     |          password: Optional password if -system/stop config is set
+     |
+     |      Returns:
+     |          JSON response confirming shutdown.
+     |
+     |  system_validate_address(self, address: str) -> Dict[str, Any]
+     |      Validate a Nexus register address.
+     |
+     |      Args:
+     |          address: The register address to validate
+     |
+     |      Returns:
+     |          JSON response with validation result.
+     |
+     |  ----------------------------------------------------------------------
+     |  Data descriptors inherited from NexusSDK:
+     |
+     |  __dict__
+     |      dictionary for instance variables
+     |
+     |  __weakref__
+     |      list of weak references to the object
 
 FUNCTIONS
-    sdk_change_url(url='http://localhost:8080')
-        # sdk_change_url
-        #
-        # Change URL that the SDK uses. Make sure that the URL is formatted with http,
-        # double slashes and colon with number after colon.
+    sdk_change_url(url: str = 'http://localhost:8080') -> bool
+        Change the URL that the SDK uses.
+
+        Args:
+            url: The URL formatted with http/https, e.g., "http://localhost:8080"
+
+        Returns:
+            True if URL was valid and set, False otherwise.
 
 DATA
-    assets_url = '{}/assets/{}'
-    finance_url = '{}/finance/{}'
-    ledger_url = '{}/ledger/{}'
-    objects_url = '{}/objects/{}'
-    sdk_default_url = 'http://localhost:8080'
+    ASSETS_URL = '{}/assets/{}'
+    Dict = typing.Dict
+        A generic version of dict.
+
+    FINANCE_URL = '{}/finance/{}'
+    INVOICES_URL = '{}/invoices/{}'
+    LEDGER_URL = '{}/ledger/{}'
+    LOCAL_URL = '{}/local/{}'
+    MARKET_URL = '{}/market/{}'
+    NAMES_URL = '{}/names/{}'
+    NETWORK_URL = '{}/network/{}'
+    Optional = typing.Optional
+        Optional[X] is equivalent to Union[X, None].
+
+    PROFILES_URL = '{}/profiles/{}'
+    REGISTER_URL = '{}/register/{}'
+    SDK_DEFAULT_URL = 'http://localhost:8080'
+    SESSIONS_URL = '{}/sessions/{}'
+    SUPPLY_URL = '{}/supply/{}'
+    SYSTEM_URL = '{}/system/{}'
+    TOKENS_URL = '{}/tokens/{}'
+    Union = typing.Union
+        Union type; Union[X, Y] means either X or Y.
+
+        On Python 3.10 and higher, the | operator
+        can also be used to denote unions;
+        X | Y means the same thing to the type checker as Union[X, Y].
+
+        To define a union, use e.g. Union[int, str]. Details:
+        - The arguments must be types and there must be at least one.
+        - None as an argument is a special case and is replaced by
+          type(None).
+        - Unions of unions are flattened, e.g.::
+
+            assert Union[Union[int, str], float] == Union[int, str, float]
+
+        - Unions of a single argument vanish, e.g.::
+
+            assert Union[int] == int  # The constructor actually returns int
+
+        - Redundant arguments are skipped, e.g.::
+
+            assert Union[int, str, int] == Union[int, str]
+
+        - When comparing unions, the argument order is ignored, e.g.::
+
+            assert Union[int, str] == Union[str, int]
+
+        - You cannot subclass or instantiate a union.
+        - You can use Optional[X] as a shorthand for Union[X, None].
+
     sdk_url = 'http://localhost:8080'
-    supply_url = '{}/supply/{}'
-    system_url = '{}/system/{}'
-    tokens_url = '{}/tokens/{}'
-    users_url = '{}/users/{}'
+
+FILE
+    /home/arne/Github/LLL-TAO/sdk/nexus_sdk.py
 
 
