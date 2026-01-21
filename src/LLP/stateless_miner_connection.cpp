@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/types/stateless_miner_connection.h>
+#include <LLP/packets/stateless_packet.h>
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/stateless_manager.h>
 #include <LLP/include/falcon_constants.h>
@@ -474,32 +475,19 @@ namespace LLP
         try
         {
             /* Get the incoming packet. */
-            Packet PACKET = this->INCOMING;
+            StatelessPacket PACKET = this->INCOMING;
 
             /* Log entry */
             debug::log(1, FUNCTION, "MinerLLP: ProcessPacket from ", GetAddress().ToStringIP(),
                        " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec,
-                       " (", OpcodeUtility::GetOpcodeName(PACKET.HEADER), ")",
                        " length=", PACKET.LENGTH);
-
-            /* Validate packet using opcode utility */
-            std::string strValidationReason;
-            if(!OpcodeUtility::ValidatePacket(PACKET, context.fAuthenticated, &strValidationReason))
-            {
-                debug::error(FUNCTION, "MinerLLP: Packet validation failed from ", GetAddress().ToStringIP(),
-                           ": ", strValidationReason);
-                
-                /* Disconnect on validation failure */
-                Disconnect();
-                return false;
-            }
 
             /* ============================================================================
              * 16-BIT OPCODE HANDLERS (Stateless Mining Protocol for NexusMiner)
              * ============================================================================ */
             
             /* Handle STATELESS_MINER_READY (0xD007) - Subscribe to template push notifications */
-            if(PACKET.Is16Bit() && PACKET.GetOpcode() == Miner::STATELESS_MINER_READY)
+            if(PACKET.GetOpcode() == Miner::STATELESS_MINER_READY)
             {
                 debug::log(2, "📥 === STATELESS_MINER_READY (0xD007) REQUEST ===");
                 debug::log(0, "   From: ", GetAddress().ToStringIP());
@@ -2218,8 +2206,8 @@ namespace LLP
     }
 
 
-    /** Send a packet response */
-    void StatelessMinerConnection::respond(const Packet& packet)
+    /** Send a stateless packet response */
+    void StatelessMinerConnection::respond(const StatelessPacket& packet)
     {
         /* Serialize and write the packet */
         WritePacket(packet);

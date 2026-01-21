@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TYPES_STATELESS_MINER_CONNECTION_H
 #define NEXUS_LLP_TYPES_STATELESS_MINER_CONNECTION_H
 
-#include <LLP/templates/connection.h>
+#include <LLP/templates/stateless_connection.h>
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/disposable_falcon.h>
 #include <LLP/include/channel_state_manager.h>
@@ -37,13 +37,14 @@ namespace LLP
      *  through StatelessMiner::ProcessPacket for pure functional processing.
      *
      *  PROTOCOL DESIGN:
+     *  - Uses 16-bit stateless packet framing (HEADER + LENGTH + DATA)
      *  - Falcon authentication is mandatory before any mining operations
      *  - All state is managed through immutable MiningContext objects
      *  - Packet processing is stateless and returns ProcessResult with updated context
      *  - Compatible with NexusMiner Phase 2 protocol
      *
      **/
-    class StatelessMinerConnection : public Connection
+    class StatelessMinerConnection : public StatelessConnection
     {
     private:
         /** The current mining context (immutable snapshot) **/
@@ -215,12 +216,12 @@ namespace LLP
     private:
         /** respond
          *
-         *  Sends a packet response.
+         *  Sends a stateless packet response.
          *
-         *  @param[in] packet The packet to send.
+         *  @param[in] packet The stateless packet to send.
          *
          **/
-        void respond(const Packet& packet);
+        void respond(const StatelessPacket& packet);
 
         /** new_block
          *
