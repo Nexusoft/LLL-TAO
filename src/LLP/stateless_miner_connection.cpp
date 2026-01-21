@@ -516,8 +516,27 @@ namespace LLP
                 /* Subscribe to notifications (same logic as 8-bit MINER_READY) */
                 context = context.WithSubscription(context.nChannel);
                 
+                /* Ensure encryption is properly set up before mining starts
+                 * CRITICAL: ChaCha20 key should have been derived during authentication.
+                 * If not present, derive it now from genesis hash. */
+                if(context.hashGenesis != 0 && !context.fEncryptionReady)
+                {
+                    /* Derive ChaCha20 encryption key from genesis hash */
+                    context = context.WithChaChaKey(LLC::MiningSessionKeys::DeriveChaCha20Key(context.hashGenesis));
+                    
+                    debug::log(0, FUNCTION, "✓ Derived ChaCha20 key on MINER_READY");
+                    debug::log(0, "   Genesis: ", context.hashGenesis.SubString());
+                    debug::log(0, "   Encryption ready: YES");
+                }
+                
+                /* Update StatelessMinerManager with COMPLETE context including encryption state */
+                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
+                
                 debug::log(0, FUNCTION, "✓ Miner subscribed to ", 
                           (context.nChannel == 1 ? "Prime" : "Hash"), " notifications (stateless protocol)");
+                debug::log(0, "   Updated StatelessMinerManager with complete context");
+                debug::log(0, "   Encryption ready: ", (context.fEncryptionReady ? "YES" : "NO"));
+                debug::log(0, "   ChaCha key size: ", context.vChaChaKey.size(), " bytes");
                 
                 /* Send immediate template push using STATELESS_GET_BLOCK (0xD008) */
                 SendStatelessTemplate();
@@ -2086,13 +2105,28 @@ namespace LLP
                 /* Subscribe to notifications */
                 context = context.WithSubscription(context.nChannel);
                 
+                /* Ensure encryption is properly set up before mining starts
+                 * CRITICAL: ChaCha20 key should have been derived during authentication.
+                 * If not present, derive it now from genesis hash. */
+                if(context.hashGenesis != 0 && !context.fEncryptionReady)
+                {
+                    /* Derive ChaCha20 encryption key from genesis hash */
+                    context = context.WithChaChaKey(LLC::MiningSessionKeys::DeriveChaCha20Key(context.hashGenesis));
+                    
+                    debug::log(0, FUNCTION, "✓ Derived ChaCha20 key on MINER_READY (8-bit)");
+                    debug::log(0, "   Genesis: ", context.hashGenesis.SubString());
+                    debug::log(0, "   Encryption ready: YES");
+                }
+                
                 debug::log(0, FUNCTION, "✓ Miner subscribed to ", 
                           (context.nChannel == 1 ? "Prime" : "Hash"), " notifications");
+                debug::log(0, "   Encryption ready: ", (context.fEncryptionReady ? "YES" : "NO"));
+                debug::log(0, "   ChaCha key size: ", context.vChaChaKey.size(), " bytes");
                 
                 /* Send immediate notification with current state */
                 SendChannelNotification();
                 
-                /* Update manager */
+                /* Update manager with COMPLETE context including encryption state */
                 StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
                 
                 debug::log(2, "📥 === MINER_READY: SUCCESS ===");
@@ -2143,7 +2177,30 @@ namespace LLP
                 
                 context = result.context;
 
+                /* Derive ChaCha20 key from genesis using unified helper (same as legacy miner) */
+                if(PACKET.HEADER == MINER_AUTH_RESPONSE && context.fAuthenticated)
+                {
+                    if(context.hashGenesis != 0 && !context.fEncryptionReady)
+                    {
+                        /* Derive ChaCha20 encryption key from genesis hash */
+                        context = context.WithChaChaKey(LLC::MiningSessionKeys::DeriveChaCha20Key(context.hashGenesis));
+                        
+                        debug::log(0, FUNCTION, "✓ Derived ChaCha20 key from genesis for session 0x",
+                                  std::hex, context.nSessionId, std::dec);
+                        debug::log(0, "   Genesis: ", context.hashGenesis.SubString());
+                        debug::log(0, "   Encryption ready: YES");
+                    }
+                    else if(context.hashGenesis == 0)
+                    {
+                        debug::warning(FUNCTION, "⚠ Authentication succeeded but genesis hash is 0");
+                        debug::warning(FUNCTION, "   ChaCha20 encryption will NOT be available");
+                        debug::warning(FUNCTION, "   This may indicate incomplete Falcon authentication");
+                    }
+                }
+
                 /* Update manager with new context after successful packet processing */
+                /* CRITICAL: This must be done AFTER ChaCha20 key derivation to ensure
+                 * StatelessMinerManager has the complete encryption state */
                 StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
                 
                 /* Log session registration for auth packets */
