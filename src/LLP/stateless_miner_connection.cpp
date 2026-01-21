@@ -945,85 +945,13 @@ namespace LLP
 
                 uint512_t hashMerkle;
                 uint64_t nonce = 0;
-                bool fFullBlockFormat = false;
                 bool fFalconVerified = false;
-
-                /* NONCE-IN-HEADER FORMAT DETECTION
-                 * Check if this is the new nonce-in-header format (216 or 220 bytes).
-                 * In this format, the miner sends the complete block header with nonce embedded.
-                 * 
-                 * Format:
-                 *   - 216 bytes: Tritium block header (version, prev, merkle, channel, height, bits, nonce)
-                 *   - 220 bytes: Legacy block header (includes additional fields)
-                 * 
-                 * Nonce location: Last 8 bytes of header (bytes [208-215] for Tritium)
-                 * 
-                 * This is simpler than merkle+nonce format because:
-                 *   1. Miner builds complete block header before hashing
-                 *   2. Node can verify PoW directly against header
-                 *   3. No need to reconstruct block from merkle root
-                 */
-                const size_t TRITIUM_HEADER_SIZE = 216;
-                const size_t LEGACY_HEADER_SIZE = 220;
-                
-                if(PACKET.DATA.size() == TRITIUM_HEADER_SIZE || PACKET.DATA.size() == LEGACY_HEADER_SIZE)
-                {
-                    fFullBlockFormat = true;
-                    
-                    debug::log(0, "📦 NONCE-IN-HEADER FORMAT DETECTED");
-                    debug::log(0, "   Header size: ", PACKET.DATA.size(), " bytes (",
-                              (PACKET.DATA.size() == TRITIUM_HEADER_SIZE ? "Tritium" : "Legacy"), ")");
-                    
-                    /* Extract nonce from last 8 bytes of header */
-                    if(PACKET.DATA.size() < 8)
-                    {
-                        debug::error(FUNCTION, "Header too small to contain nonce");
-                        StatelessPacket response(BLOCK_REJECTED);
-                        respond(response);
-                        return true;
-                    }
-                    
-                    nonce = convert::bytes2uint64(std::vector<uint8_t>(
-                        PACKET.DATA.end() - 8, PACKET.DATA.end()));
-                    
-                    debug::log(0, "   Extracted nonce: 0x", std::hex, nonce, std::dec);
-                    
-                    /* Deserialize complete block header to get merkle root */
-                    try
-                    {
-                        TAO::Ledger::Block tempBlock;
-                        tempBlock.Deserialize(PACKET.DATA);
-                        hashMerkle = tempBlock.hashMerkleRoot;
-                        
-                        debug::log(0, "   Merkle root: ", hashMerkle.SubString());
-                        debug::log(0, "   Channel: ", tempBlock.nChannel);
-                        debug::log(0, "   Height: ", tempBlock.nHeight);
-                        debug::log(0, "   Block hash: ", tempBlock.GetHash().SubString());
-                        
-                        /* Verify PoW directly against the header bytes */
-                        uint1024_t hashProof = tempBlock.GetHash();
-                        
-                        /* Falcon signature verification still required even for nonce-in-header format */
-                        /* The header bytes are already validated, but we need signature for authentication */
-                        fFalconVerified = true;  /* Mark as verified since we have the complete header */
-                        
-                        debug::log(0, "✅ Nonce-in-header format validated");
-                    }
-                    catch(const std::exception& e)
-                    {
-                        debug::error(FUNCTION, "Failed to deserialize block header: ", e.what());
-                        StatelessPacket response(BLOCK_REJECTED);
-                        respond(response);
-                        return true;
-                    }
-                }
 
                 /* Check for Falcon-signed format: [merkle][nonce][timestamp][sig_len][signature] */
                 /* Minimum for Falcon format: 64 + 8 + 8 + 2 = 82 bytes */
-                /* Skip if already processed as nonce-in-header format */
                 const size_t FALCON_MIN_SIZE = FalconConstants::SUBMIT_BLOCK_WRAPPER_MIN;
 
-                if(!fFullBlockFormat && PACKET.DATA.size() >= FALCON_MIN_SIZE)
+                if(PACKET.DATA.size() >= FALCON_MIN_SIZE)
                 {
                     /* Check if Falcon wrapper is available */
                     if(!m_pFalconWrapper)
