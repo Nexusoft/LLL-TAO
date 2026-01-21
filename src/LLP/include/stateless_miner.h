@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #define NEXUS_LLP_INCLUDE_STATELESS_MINER_H
 
 #include <LLP/packets/stateless_packet.h>
+#include <LLP/packets/packet.h>
 #include <LLC/types/uint1024.h>
 #include <TAO/Ledger/types/block.h>
 #include <LLC/include/flkey.h>
@@ -722,6 +723,25 @@ namespace LLP
         static ProcessResult ProcessPacket(
             const MiningContext& context,
             const StatelessPacket& packet
+        );
+
+        /** ProcessPacket (Legacy Packet Overload)
+         *
+         *  Overload for legacy 8-bit Packet type.
+         *  Converts legacy Packet to StatelessPacket and calls main ProcessPacket.
+         *
+         *  This allows the legacy Miner class to use StatelessMiner for authentication
+         *  and session management while maintaining backward compatibility.
+         *
+         *  @param[in] context Current miner state
+         *  @param[in] packet Incoming legacy packet to process
+         *
+         *  @return ProcessResult with updated context and optional response
+         *
+         **/
+        static ProcessResult ProcessPacket(
+            const MiningContext& context,
+            const Packet& packet
         );
 
         /** ProcessFalconResponse

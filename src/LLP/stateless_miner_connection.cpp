@@ -516,8 +516,27 @@ namespace LLP
                 /* Subscribe to notifications (same logic as 8-bit MINER_READY) */
                 context = context.WithSubscription(context.nChannel);
                 
+                /* Ensure encryption is properly set up before mining starts
+                 * CRITICAL: ChaCha20 key should have been derived during authentication.
+                 * If not present, derive it now from genesis hash. */
+                if(context.hashGenesis != 0 && !context.fEncryptionReady)
+                {
+                    /* Derive ChaCha20 encryption key from genesis hash */
+                    context = context.WithChaChaKey(LLC::MiningSessionKeys::DeriveChaCha20Key(context.hashGenesis));
+                    
+                    debug::log(0, FUNCTION, "✓ Derived ChaCha20 key on MINER_READY");
+                    debug::log(0, "   Genesis: ", context.hashGenesis.SubString());
+                    debug::log(0, "   Encryption ready: YES");
+                }
+                
+                /* Update StatelessMinerManager with COMPLETE context including encryption state */
+                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
+                
                 debug::log(0, FUNCTION, "✓ Miner subscribed to ", 
                           (context.nChannel == 1 ? "Prime" : "Hash"), " notifications (stateless protocol)");
+                debug::log(0, "   Updated StatelessMinerManager with complete context");
+                debug::log(0, "   Encryption ready: ", (context.fEncryptionReady ? "YES" : "NO"));
+                debug::log(0, "   ChaCha key size: ", context.vChaChaKey.size(), " bytes");
                 
                 /* Send immediate template push using STATELESS_GET_BLOCK (0xD008) */
                 SendStatelessTemplate();
@@ -535,28 +554,33 @@ namespace LLP
 
             /* Handle block-related packets that require stateful block management */
             /* These are handled directly here instead of through StatelessMiner */
-            const uint8_t GET_BLOCK = 129;
-            const uint8_t GET_HEIGHT = 130;
-            const uint8_t GET_REWARD = 131;
-            const uint8_t GET_ROUND = 133;
-            const uint8_t SUBMIT_BLOCK = 1;
-            const uint8_t BLOCK_DATA = 0;
-            const uint8_t BLOCK_HEIGHT = 2;
-            const uint8_t BLOCK_REWARD = 4;
-            const uint8_t BLOCK_ACCEPTED = 200;
-            const uint8_t BLOCK_REJECTED = 201;
-            const uint8_t NEW_ROUND = 204;
-            const uint8_t OLD_ROUND = 205;
+            /* Using 16-bit stateless opcodes from stateless_opcodes.h */
+            using namespace StatelessOpcodes;
             
-            /* Authentication packet types */
-            const uint8_t MINER_AUTH_INIT = 207;
-            const uint8_t MINER_AUTH_RESPONSE = 209;
-            const uint8_t MINER_AUTH_RESULT = 210;
+            const uint16_t GET_BLOCK = STATELESS_GET_BLOCK;
+            const uint16_t SUBMIT_BLOCK = STATELESS_SUBMIT_BLOCK;
+            const uint16_t BLOCK_DATA = STATELESS_GET_BLOCK;
+            const uint16_t BLOCK_ACCEPTED = STATELESS_BLOCK_ACCEPTED;
+            const uint16_t BLOCK_REJECTED = STATELESS_BLOCK_REJECTED;
             
-            /* Push notification opcodes (defined in src/LLP/types/miner.h) */
-            const uint8_t MINER_READY = 216;
-            const uint8_t PRIME_BLOCK_AVAILABLE = 217;
-            const uint8_t HASH_BLOCK_AVAILABLE = 218;
+            /* Authentication packet types (16-bit stateless) */
+            const uint16_t MINER_AUTH_INIT = STATELESS_AUTH_INIT;
+            const uint16_t MINER_AUTH_RESPONSE = STATELESS_AUTH_RESPONSE;
+            const uint16_t MINER_AUTH_RESULT = STATELESS_AUTH_RESULT;
+            
+            /* Additional stateless opcodes for mining operations */
+            const uint16_t GET_HEIGHT = STATELESS_GET_HEIGHT;
+            const uint16_t BLOCK_HEIGHT = STATELESS_BLOCK_HEIGHT;
+            const uint16_t GET_REWARD = STATELESS_GET_REWARD;
+            const uint16_t BLOCK_REWARD = STATELESS_BLOCK_REWARD;
+            const uint16_t GET_ROUND = STATELESS_GET_ROUND;
+            const uint16_t NEW_ROUND = STATELESS_NEW_ROUND;
+            const uint16_t OLD_ROUND = STATELESS_OLD_ROUND;
+            
+            /* Push notification opcodes (16-bit stateless) */
+            const uint16_t MINER_READY = STATELESS_MINER_READY_ALT;
+            const uint16_t PRIME_BLOCK_AVAILABLE = STATELESS_PRIME_BLOCK_AVAILABLE;
+            const uint16_t HASH_BLOCK_AVAILABLE = STATELESS_HASH_BLOCK_AVAILABLE;
             
             /* Block rejection reason codes (PR #122: Falcon Protocol Integration) */
             const uint8_t REJECT_PHYSICAL_SIGNATURE_FAILED = 0x10;  // Physical Falcon signature verification failed
@@ -2081,13 +2105,28 @@ namespace LLP
                 /* Subscribe to notifications */
                 context = context.WithSubscription(context.nChannel);
                 
+                /* Ensure encryption is properly set up before mining starts
+                 * CRITICAL: ChaCha20 key should have been derived during authentication.
+                 * If not present, derive it now from genesis hash. */
+                if(context.hashGenesis != 0 && !context.fEncryptionReady)
+                {
+                    /* Derive ChaCha20 encryption key from genesis hash */
+                    context = context.WithChaChaKey(LLC::MiningSessionKeys::DeriveChaCha20Key(context.hashGenesis));
+                    
+                    debug::log(0, FUNCTION, "✓ Derived ChaCha20 key on MINER_READY (8-bit)");
+                    debug::log(0, "   Genesis: ", context.hashGenesis.SubString());
+                    debug::log(0, "   Encryption ready: YES");
+                }
+                
                 debug::log(0, FUNCTION, "✓ Miner subscribed to ", 
                           (context.nChannel == 1 ? "Prime" : "Hash"), " notifications");
+                debug::log(0, "   Encryption ready: ", (context.fEncryptionReady ? "YES" : "NO"));
+                debug::log(0, "   ChaCha key size: ", context.vChaChaKey.size(), " bytes");
                 
                 /* Send immediate notification with current state */
                 SendChannelNotification();
                 
-                /* Update manager */
+                /* Update manager with COMPLETE context including encryption state */
                 StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
                 
                 debug::log(2, "📥 === MINER_READY: SUCCESS ===");
@@ -2138,7 +2177,30 @@ namespace LLP
                 
                 context = result.context;
 
+                /* Derive ChaCha20 key from genesis using unified helper (same as legacy miner) */
+                if(PACKET.HEADER == MINER_AUTH_RESPONSE && context.fAuthenticated)
+                {
+                    if(context.hashGenesis != 0 && !context.fEncryptionReady)
+                    {
+                        /* Derive ChaCha20 encryption key from genesis hash */
+                        context = context.WithChaChaKey(LLC::MiningSessionKeys::DeriveChaCha20Key(context.hashGenesis));
+                        
+                        debug::log(0, FUNCTION, "✓ Derived ChaCha20 key from genesis for session 0x",
+                                  std::hex, context.nSessionId, std::dec);
+                        debug::log(0, "   Genesis: ", context.hashGenesis.SubString());
+                        debug::log(0, "   Encryption ready: YES");
+                    }
+                    else if(context.hashGenesis == 0)
+                    {
+                        debug::warning(FUNCTION, "⚠ Authentication succeeded but genesis hash is 0");
+                        debug::warning(FUNCTION, "   ChaCha20 encryption will NOT be available");
+                        debug::warning(FUNCTION, "   This may indicate incomplete Falcon authentication");
+                    }
+                }
+
                 /* Update manager with new context after successful packet processing */
+                /* CRITICAL: This must be done AFTER ChaCha20 key derivation to ensure
+                 * StatelessMinerManager has the complete encryption state */
                 StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
                 
                 /* Log session registration for auth packets */
@@ -2162,7 +2224,7 @@ namespace LLP
                 /* Send generic error response based on packet type */
                 /* This allows miner to handle errors gracefully instead of timing out */
                 
-                Packet errorResponse;
+                StatelessPacket errorResponse;
                 
                 /* Send appropriate error response based on what was requested */
                 if(PACKET.HEADER == MINER_AUTH_INIT || PACKET.HEADER == MINER_AUTH_RESPONSE)
@@ -2190,8 +2252,8 @@ namespace LLP
             /* This prevents node from locking up on unexpected errors */
             try
             {
-                Packet errorResponse;
-                errorResponse. HEADER = 210;  // MINER_AUTH_RESULT
+                StatelessPacket errorResponse;
+                errorResponse.HEADER = StatelessOpcodes::STATELESS_AUTH_RESULT;
                 errorResponse.DATA.push_back(0x00);  /* Failure status */
                 errorResponse.LENGTH = 1;
                 respond(errorResponse);
@@ -2986,7 +3048,7 @@ namespace LLP
     // RATE LIMITING IMPLEMENTATION
     // ═══════════════════════════════════════════════════════════════════════
 
-    bool StatelessMinerConnection::CheckRateLimit(uint8_t nRequestType)
+    bool StatelessMinerConnection::CheckRateLimit(uint16_t nRequestType)
     {
         auto now = std::chrono::steady_clock::now();
         
@@ -2997,11 +3059,11 @@ namespace LLP
             ResetMinuteCounters();
         }
         
-        // Use protocol constants that match ProcessPacket values
-        // These are defined locally to avoid circular dependencies with miner.h
-        const uint8_t GET_ROUND = 133;
-        const uint8_t GET_BLOCK = 129;
-        const uint8_t SUBMIT_BLOCK = 1;
+        // Use stateless protocol constants (16-bit opcodes)
+        using namespace StatelessOpcodes;
+        const uint16_t GET_ROUND = STATELESS_GET_ROUND;
+        const uint16_t GET_BLOCK = STATELESS_GET_BLOCK;
+        const uint16_t SUBMIT_BLOCK = STATELESS_SUBMIT_BLOCK;
         
         // If in throttle mode, check minimum interval enforcement (non-blocking)
         // Instead of blocking with sleep, we reject requests that come too soon

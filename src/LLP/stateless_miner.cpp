@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/include/stateless_miner.h>
+#include <LLP/packets/packet.h>
 #include <LLP/include/falcon_auth.h>
 #include <LLP/include/falcon_verify.h>
 #include <LLP/include/disposable_falcon.h>
@@ -560,6 +561,32 @@ namespace LLP
         MINER_SET_REWARD     = 213,  // 0xd5 - miner -> node: Encrypted reward address (32 bytes)
         MINER_REWARD_RESULT  = 214,  // 0xd6 - node -> miner: Encrypted validation result
     };
+
+
+    /* ProcessPacket overload for legacy 8-bit Packet type.
+     * Converts legacy Packet to StatelessPacket for processing. */
+    ProcessResult StatelessMiner::ProcessPacket(
+        const MiningContext& context,
+        const Packet& legacyPacket)
+    {
+        /* Convert legacy 8-bit Packet to 16-bit StatelessPacket */
+        StatelessPacket packet;
+        packet.HEADER = legacyPacket.HEADER;  // 8-bit to 16-bit (zero-extended)
+        packet.LENGTH = legacyPacket.LENGTH;
+        packet.DATA = legacyPacket.DATA;
+
+        /* Call main ProcessPacket with converted packet */
+        ProcessResult result = ProcessPacket(context, packet);
+
+        /* NOTE: result.response is a StatelessPacket, but the legacy Miner class
+         * uses BaseConnection<Packet>, so WritePacket expects Packet type.
+         * However, since both Packet and StatelessPacket have the same structure
+         * (HEADER, LENGTH, DATA), and the legacy Miner needs the response as-is,
+         * we leave result.response as a StatelessPacket. The Miner class will
+         * need to handle this type mismatch by converting the response manually. */
+
+        return result;
+    }
 
 
     /* Main packet processing entry point */

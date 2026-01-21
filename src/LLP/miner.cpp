@@ -545,7 +545,13 @@ namespace LLP
                     /* Send response if present */
                     if(!result.response.IsNull())
                     {
-                        WritePacket(result.response);
+                        /* Convert StatelessPacket response to legacy Packet for writing */
+                        Packet legacyResponse;
+                        legacyResponse.HEADER = static_cast<uint8_t>(result.response.HEADER);  // 16-bit to 8-bit
+                        legacyResponse.LENGTH = result.response.LENGTH;
+                        legacyResponse.DATA = result.response.DATA;
+                        
+                        WritePacket(legacyResponse);
                     }
 
                     return true;
@@ -591,7 +597,13 @@ namespace LLP
                     /* Try to send error response if available */
                     if(!result.response.IsNull())
                     {
-                        WritePacket(result.response);
+                        /* Convert StatelessPacket response to legacy Packet for writing */
+                        Packet legacyResponse;
+                        legacyResponse.HEADER = static_cast<uint8_t>(result.response.HEADER);  // 16-bit to 8-bit
+                        legacyResponse.LENGTH = result.response.LENGTH;
+                        legacyResponse.DATA = result.response.DATA;
+                        
+                        WritePacket(legacyResponse);
                     }
                     
                     this->Disconnect();
