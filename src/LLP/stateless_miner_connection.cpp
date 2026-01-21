@@ -483,14 +483,23 @@ namespace LLP
                        " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec,
                        " length=", PACKET.LENGTH);
 
+            /* Validate opcode range - reject opcodes outside 0xD000-0xD0FF */
+            if(!StatelessOpcodes::IsStateless(PACKET.HEADER))
+            {
+                debug::error(FUNCTION, "Invalid stateless opcode: 0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
+                debug::error(FUNCTION, "  Stateless opcodes must be in range 0xD000-0xD0FF");
+                debug::error(FUNCTION, "  Rejecting packet from ", GetAddress().ToStringIP());
+                return false;
+            }
+
             /* ============================================================================
              * 16-BIT OPCODE HANDLERS (Stateless Mining Protocol for NexusMiner)
              * ============================================================================ */
             
-            /* Handle STATELESS_MINER_READY (0xD007) - Subscribe to template push notifications */
+            /* Handle STATELESS_MINER_READY (0xD0D8 = Mirror(216)) - Subscribe to template push notifications */
             if(PACKET.GetOpcode() == StatelessOpcodes::STATELESS_MINER_READY)
             {
-                debug::log(2, "📥 === STATELESS_MINER_READY (0xD007) REQUEST ===");
+                debug::log(2, "📥 === STATELESS_MINER_READY (0xD0D8) REQUEST ===");
                 debug::log(0, "   From: ", GetAddress().ToStringIP());
                 debug::log(0, "   Authenticated: ", (context.fAuthenticated ? "YES" : "NO"));
                 debug::log(0, "   Channel: ", context.nChannel);
@@ -538,7 +547,7 @@ namespace LLP
                 debug::log(0, "   Encryption ready: ", (context.fEncryptionReady ? "YES" : "NO"));
                 debug::log(0, "   ChaCha key size: ", context.vChaChaKey.size(), " bytes");
                 
-                /* Send immediate template push using STATELESS_GET_BLOCK (0xD008) */
+                /* Send immediate template push using STATELESS_GET_BLOCK (0xD081 = Mirror(129)) */
                 SendStatelessTemplate();
                 
                 /* Update manager */
@@ -578,7 +587,7 @@ namespace LLP
             const uint16_t OLD_ROUND = STATELESS_OLD_ROUND;
             
             /* Push notification opcodes (16-bit stateless) */
-            const uint16_t MINER_READY = STATELESS_MINER_READY_ALT;
+            const uint16_t MINER_READY = STATELESS_MINER_READY;
             const uint16_t PRIME_BLOCK_AVAILABLE = STATELESS_PRIME_BLOCK_AVAILABLE;
             const uint16_t HASH_BLOCK_AVAILABLE = STATELESS_HASH_BLOCK_AVAILABLE;
             
@@ -3484,7 +3493,7 @@ namespace LLP
     }
 
 
-    /* SendStatelessTemplate - Send complete template using 16-bit opcode 0xD008 */
+    /* SendStatelessTemplate - Send complete template using 16-bit opcode 0xD081 = Mirror(129) */
     void StatelessMinerConnection::SendStatelessTemplate()
     {
         /* Protocol constants for stateless template push */
@@ -3516,7 +3525,7 @@ namespace LLP
         }  // MUTEX automatically unlocked here
         
         debug::log(2, "════════════════════════════════════════════════════════════");
-        debug::log(2, "📤 SENDING STATELESS TEMPLATE (0xD008)");
+        debug::log(2, "📤 SENDING STATELESS TEMPLATE (0xD081)");
         debug::log(2, "════════════════════════════════════════════════════════════");
         debug::log(2, "   To Address:     ", GetAddress().ToStringIP());
         debug::log(2, "   Channel:        ", nChannel, " (", (nChannel == 1 ? "Prime" : "Hash"), ")");
@@ -3606,7 +3615,7 @@ namespace LLP
             context = context.WithNotificationSent(nNotificationTimestamp);
         }
         
-        debug::log(2, FUNCTION, "Sent stateless template (0xD008) to ", GetAddress().ToStringIP(),
+        debug::log(2, FUNCTION, "Sent stateless template (0xD081) to ", GetAddress().ToStringIP(),
                    " (unified=", stateBest.nHeight, 
                    ", channel=", nChannelHeight,
                    ", diff=", std::hex, nDifficulty, std::dec, ")");
