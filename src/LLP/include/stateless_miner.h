@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_INCLUDE_STATELESS_MINER_H
 #define NEXUS_LLP_INCLUDE_STATELESS_MINER_H
 
-#include <LLP/packets/packet.h>
+#include <LLP/packets/stateless_packet.h>
 #include <LLC/types/uint1024.h>
 #include <TAO/Ledger/types/block.h>
 #include <LLC/include/flkey.h>
@@ -665,7 +665,7 @@ namespace LLP
         const MiningContext context;
         const bool fSuccess;
         const std::string strError;
-        const Packet response;
+        const StatelessPacket response;
 
         /** Success
          *
@@ -674,7 +674,7 @@ namespace LLP
          **/
         static ProcessResult Success(
             const MiningContext& ctx,
-            const Packet& resp = Packet()
+            const StatelessPacket& resp = StatelessPacket()
         );
 
         /** Error
@@ -692,7 +692,7 @@ namespace LLP
             const MiningContext& ctx_,
             bool fSuccess_,
             const std::string& error_,
-            const Packet& resp_
+            const StatelessPacket& resp_
         );
     };
 
@@ -721,7 +721,7 @@ namespace LLP
          **/
         static ProcessResult ProcessPacket(
             const MiningContext& context,
-            const Packet& packet
+            const StatelessPacket& packet
         );
 
         /** ProcessFalconResponse
@@ -742,7 +742,7 @@ namespace LLP
          **/
         static ProcessResult ProcessFalconResponse(
             const MiningContext& context,
-            const Packet& packet
+            const StatelessPacket& packet
         );
 
         /** ProcessMinerAuthInit
@@ -764,7 +764,7 @@ namespace LLP
          **/
         static ProcessResult ProcessMinerAuthInit(
             const MiningContext& context,
-            const Packet& packet
+            const StatelessPacket& packet
         );
 
         /** ProcessSessionStart
@@ -780,7 +780,7 @@ namespace LLP
          **/
         static ProcessResult ProcessSessionStart(
             const MiningContext& context,
-            const Packet& packet
+            const StatelessPacket& packet
         );
 
         /** ProcessSetChannel
@@ -795,7 +795,7 @@ namespace LLP
          **/
         static ProcessResult ProcessSetChannel(
             const MiningContext& context,
-            const Packet& packet
+            const StatelessPacket& packet
         );
 
         /** ProcessSessionKeepalive
@@ -811,7 +811,7 @@ namespace LLP
          **/
         static ProcessResult ProcessSessionKeepalive(
             const MiningContext& context,
-            const Packet& packet
+            const StatelessPacket& packet
         );
 
         /** ProcessSetReward
@@ -827,7 +827,7 @@ namespace LLP
          **/
         static ProcessResult ProcessSetReward(
             const MiningContext& context,
-            const Packet& packet
+            const StatelessPacket& packet
         );
 
     private:
