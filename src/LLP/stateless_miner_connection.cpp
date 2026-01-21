@@ -549,21 +549,19 @@ namespace LLP
             const uint16_t MINER_AUTH_RESPONSE = STATELESS_AUTH_RESPONSE;
             const uint16_t MINER_AUTH_RESULT = STATELESS_AUTH_RESULT;
             
-            /* Additional stateless opcodes needed for mining operations */
-            /* TODO: Add these to stateless_opcodes.h */
-            const uint16_t GET_HEIGHT = 0xD014;  // Get blockchain height
-            const uint16_t BLOCK_HEIGHT = 0xD015;  // Height response
-            const uint16_t GET_REWARD = 0xD016;  // Get current reward
-            const uint16_t BLOCK_REWARD = 0xD017;  // Reward response
-            const uint16_t GET_ROUND = 0xD018;  // Get round/height info
-            const uint16_t NEW_ROUND = 0xD019;  // New round response
-            const uint16_t OLD_ROUND = 0xD01A;  // Old round response
+            /* Additional stateless opcodes for mining operations */
+            const uint16_t GET_HEIGHT = STATELESS_GET_HEIGHT;
+            const uint16_t BLOCK_HEIGHT = STATELESS_BLOCK_HEIGHT;
+            const uint16_t GET_REWARD = STATELESS_GET_REWARD;
+            const uint16_t BLOCK_REWARD = STATELESS_BLOCK_REWARD;
+            const uint16_t GET_ROUND = STATELESS_GET_ROUND;
+            const uint16_t NEW_ROUND = STATELESS_NEW_ROUND;
+            const uint16_t OLD_ROUND = STATELESS_OLD_ROUND;
             
             /* Push notification opcodes (16-bit stateless) */
-            /* TODO: Add these to stateless_opcodes.h */
-            const uint16_t MINER_READY = 0xD01B;
-            const uint16_t PRIME_BLOCK_AVAILABLE = 0xD01C;
-            const uint16_t HASH_BLOCK_AVAILABLE = 0xD01D;
+            const uint16_t MINER_READY = STATELESS_MINER_READY_ALT;
+            const uint16_t PRIME_BLOCK_AVAILABLE = STATELESS_PRIME_BLOCK_AVAILABLE;
+            const uint16_t HASH_BLOCK_AVAILABLE = STATELESS_HASH_BLOCK_AVAILABLE;
             
             /* Block rejection reason codes (PR #122: Falcon Protocol Integration) */
             const uint8_t REJECT_PHYSICAL_SIGNATURE_FAILED = 0x10;  // Physical Falcon signature verification failed
