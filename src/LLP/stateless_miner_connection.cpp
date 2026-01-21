@@ -549,15 +549,21 @@ namespace LLP
             const uint16_t MINER_AUTH_RESPONSE = STATELESS_AUTH_RESPONSE;
             const uint16_t MINER_AUTH_RESULT = STATELESS_AUTH_RESULT;
             
-            /* Authentication packet types */
-            const uint8_t MINER_AUTH_INIT = 207;
-            const uint8_t MINER_AUTH_RESPONSE = 209;
-            const uint8_t MINER_AUTH_RESULT = 210;
+            /* Additional stateless opcodes needed for mining operations */
+            /* TODO: Add these to stateless_opcodes.h */
+            const uint16_t GET_HEIGHT = 0xD014;  // Get blockchain height
+            const uint16_t BLOCK_HEIGHT = 0xD015;  // Height response
+            const uint16_t GET_REWARD = 0xD016;  // Get current reward
+            const uint16_t BLOCK_REWARD = 0xD017;  // Reward response
+            const uint16_t GET_ROUND = 0xD018;  // Get round/height info
+            const uint16_t NEW_ROUND = 0xD019;  // New round response
+            const uint16_t OLD_ROUND = 0xD01A;  // Old round response
             
-            /* Push notification opcodes (defined in src/LLP/types/miner.h) */
-            const uint8_t MINER_READY = 216;
-            const uint8_t PRIME_BLOCK_AVAILABLE = 217;
-            const uint8_t HASH_BLOCK_AVAILABLE = 218;
+            /* Push notification opcodes (16-bit stateless) */
+            /* TODO: Add these to stateless_opcodes.h */
+            const uint16_t MINER_READY = 0xD01B;
+            const uint16_t PRIME_BLOCK_AVAILABLE = 0xD01C;
+            const uint16_t HASH_BLOCK_AVAILABLE = 0xD01D;
             
             /* Block rejection reason codes (PR #122: Falcon Protocol Integration) */
             const uint8_t REJECT_PHYSICAL_SIGNATURE_FAILED = 0x10;  // Physical Falcon signature verification failed
@@ -2163,7 +2169,7 @@ namespace LLP
                 /* Send generic error response based on packet type */
                 /* This allows miner to handle errors gracefully instead of timing out */
                 
-                Packet errorResponse;
+                StatelessPacket errorResponse;
                 
                 /* Send appropriate error response based on what was requested */
                 if(PACKET.HEADER == MINER_AUTH_INIT || PACKET.HEADER == MINER_AUTH_RESPONSE)
@@ -2191,8 +2197,8 @@ namespace LLP
             /* This prevents node from locking up on unexpected errors */
             try
             {
-                Packet errorResponse;
-                errorResponse.HEADER = MINER_AUTH_RESULT;
+                StatelessPacket errorResponse;
+                errorResponse.HEADER = StatelessOpcodes::STATELESS_AUTH_RESULT;
                 errorResponse.DATA.push_back(0x00);  /* Failure status */
                 errorResponse.LENGTH = 1;
                 respond(errorResponse);

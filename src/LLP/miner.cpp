@@ -423,18 +423,15 @@ namespace LLP
                 return false;
             }
 
-            /* Route ALL stateless mining packets to StatelessMiner.
+            /* Legacy mining server uses 8-bit packet framing.
+             * All packets are handled by ProcessPacketStateless for backward compatibility.
              * 
              * ARCHITECTURAL NOTE:
-             * This Miner class is a THIN WRAPPER for backward compatibility.
-             * All stateless mining packets are routed to StatelessMiner processor.
+             * The legacy Miner class uses LLP::Packet (8-bit framing).
+             * The stateless StatelessMinerConnection class uses LLP::StatelessPacket (16-bit framing).
+             * These are separate code paths and should not be mixed.
              * 
-             * Stateless mining uses:
-             *   - MiningContext for state (not TAO API sessions)
-             *   - hashRewardAddress for payouts (not hashGenesis)  
-             *   - Falcon signatures for auth (not username/password)
-             * 
-             * Packet categories routed to StatelessMiner:
+             * Legacy server handles:
              *   - Authentication: 207, 208, 209, 210 (Falcon challenge-response)
              *   - Session: 211, 212 (optional session management)
              *   - Configuration: 3, 206 (channel selection + ack)
@@ -442,164 +439,6 @@ namespace LLP
              *   - Mining: 0, 1, 129, 200, 201 (block operations)
              *   - Info: 130 (height polling)
              */
-            if(PACKET.HEADER == BLOCK_DATA ||             // 0   - node → miner: Block template
-               PACKET.HEADER == SUBMIT_BLOCK ||           // 1   - miner → node: Submit solution
-               PACKET.HEADER == SET_CHANNEL ||            // 3   - miner → node: Set channel
-               PACKET.HEADER == GET_BLOCK ||              // 129 - miner → node: Request template
-               PACKET.HEADER == GET_HEIGHT ||             // 130 - miner → node: Request height
-               PACKET.HEADER == BLOCK_ACCEPTED ||         // 200 - node → miner: Block accepted
-               PACKET.HEADER == BLOCK_REJECTED ||         // 201 - node → miner: Block rejected
-               PACKET.HEADER == CHANNEL_ACK ||            // 206 - node → miner: Channel ack (has data!)
-               PACKET.HEADER == MINER_AUTH_INIT ||        // 207 - miner → node: Start auth
-               PACKET.HEADER == MINER_AUTH_CHALLENGE ||   // 208 - node → miner: Challenge
-               PACKET.HEADER == MINER_AUTH_RESPONSE ||    // 209 - miner → node: Signature
-               PACKET.HEADER == MINER_AUTH_RESULT ||      // 210 - node → miner: Auth result
-               PACKET.HEADER == SESSION_START ||          // 211 - Session init
-               PACKET.HEADER == SESSION_KEEPALIVE ||      // 212 - Session keepalive
-               PACKET.HEADER == MINER_SET_REWARD ||       // 213 - miner → node: Set reward address
-               PACKET.HEADER == MINER_REWARD_RESULT)      // 214 - node → miner: Reward result
-            {
-                /* Build MiningContext from current connection state */
-                std::string strAddress = GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort());
-                
-                MiningContext context(
-                    nChannel,                      // Current channel
-                    nBestHeight,                   // Current height
-                    runtime::unifiedtimestamp(),   // Current timestamp
-                    strAddress,                    // Connection address
-                    1,                             // Protocol version
-                    fMinerAuthenticated,           // Authentication state
-                    nSessionId,                    // Session ID
-                    uint256_t(0),                  // hashKeyID (set to 0, will be derived in StatelessMiner from pubkey)
-                    hashGenesis                    // Genesis hash
-                );
-
-                /* Add authentication nonce if present */
-                if(!vAuthNonce.empty())
-                    context = context.WithNonce(vAuthNonce);
-
-                /* Add miner public key if present */
-                if(!vMinerPubKey.empty())
-                    context = context.WithPubKey(vMinerPubKey);
-
-                /* Add reward address if bound */
-                if(fRewardBound)
-                    context = context.WithRewardAddress(hashRewardAddress);
-
-                /* Add ChaCha20 key if encryption is ready
-                 * CRITICAL: This ensures the context sent to StatelessMiner includes
-                 * the encryption key derived from genesis. Without this, the context
-                 * in StatelessMinerManager will be missing encryption state. */
-                if(fEncryptionReady && !vChaChaKey.empty())
-                    context = context.WithChaChaKey(vChaChaKey);
-
-                /* Route ALL authentication/session packet processing to StatelessMiner */
-                ProcessResult result = StatelessMiner::ProcessPacket(context, PACKET);
-
-                /* Handle result */
-                if(result.fSuccess)
-                {
-                    /* Update connection state from result context */
-                    nChannel = result.context.nChannel;
-                    nBestHeight = result.context.nHeight;
-                    fMinerAuthenticated = result.context.fAuthenticated;
-                    nSessionId = result.context.nSessionId;
-                    hashGenesis = result.context.hashGenesis;
-                    
-                    /* Update authentication state */
-                    if(!result.context.vAuthNonce.empty())
-                        vAuthNonce = result.context.vAuthNonce;
-                    
-                    if(!result.context.vMinerPubKey.empty())
-                        vMinerPubKey = result.context.vMinerPubKey;
-
-                    /* Update reward address if bound */
-                    if(result.context.fRewardBound)
-                    {
-                        hashRewardAddress = result.context.hashRewardAddress;
-                        fRewardBound = true;
-                    }
-
-                    /* Derive ChaCha20 key from genesis using unified helper */
-                    if(hashGenesis != 0 && !fEncryptionReady)
-                    {
-                        vChaChaKey = LLC::MiningSessionKeys::DeriveChaCha20Key(hashGenesis);
-                        fEncryptionReady = true;
-                    }
-
-                    /* Update the context with the ChaCha20 key before sending to manager.
-                     * CRITICAL: The context returned from StatelessMiner may not include
-                     * the ChaCha20 key in all cases:
-                     * 1. If it was just derived above, result.context won't have it
-                     * 2. If encryption was already ready, result.context should have it from line 452
-                     * We always add/update it here to ensure StatelessMinerManager has complete state. */
-                    MiningContext updatedContext = result.context;
-                    if(fEncryptionReady && !vChaChaKey.empty())
-                    {
-                        updatedContext = updatedContext.WithChaChaKey(vChaChaKey);
-                    }
-
-                    /* Update StatelessMinerManager with COMPLETE context including encryption state */
-                    StatelessMinerManager::Get().UpdateMiner(updatedContext.strAddress, updatedContext);
-
-                    /* Send response if present */
-                    if(!result.response.IsNull())
-                    {
-                        WritePacket(result.response);
-                    }
-
-                    return true;
-                }
-                else
-                {
-                    /* Handle "Unknown packet type" errors from StatelessMiner.
-                     * 
-                     * ARCHITECTURAL PATTERN:
-                     * All stateless packets (16 opcodes) are routed to StatelessMiner first.
-                     * StatelessMiner currently implements only a subset (auth/session/config/rewards).
-                     * For unimplemented packets, StatelessMiner returns "Unknown packet type".
-                     * This fallback enables gradual migration - packets move from legacy to stateless
-                     * incrementally without breaking the protocol.
-                     * 
-                     * Currently handled by StatelessMiner:
-                     *   - Auth: MINER_AUTH_INIT(207), MINER_AUTH_RESPONSE(209)
-                     *   - Session: SESSION_START(211), SESSION_KEEPALIVE(212)  
-                     *   - Config: SET_CHANNEL(3)
-                     *   - Rewards: MINER_SET_REWARD(213)
-                     * 
-                     * Currently falling back to legacy ProcessPacketStateless:
-                     *   - Mining: GET_BLOCK(129), SUBMIT_BLOCK(1), BLOCK_DATA(0)
-                     *   - Status: BLOCK_ACCEPTED(200), BLOCK_REJECTED(201)
-                     *   - Info: GET_HEIGHT(130), CHANNEL_ACK(206)
-                     *   - Responses: MINER_AUTH_CHALLENGE(208), MINER_AUTH_RESULT(210), MINER_REWARD_RESULT(214)
-                     * 
-                     * TODO: Replace string-based error detection with error codes or exception types
-                     * for more robust error handling (current implementation is temporary).
-                     */
-                    if(result.strError.find("Unknown packet type") != std::string::npos)
-                    {
-                        debug::log(2, FUNCTION, "MinerLLP: StatelessMiner doesn't handle opcode 0x", 
-                                   std::hex, uint32_t(PACKET.HEADER), std::dec,
-                                   " - falling back to ProcessPacketStateless for backward compatibility");
-                        return ProcessPacketStateless(PACKET);
-                    }
-                    
-                    /* Processing error - log and disconnect */
-                    debug::error(FUNCTION, "MinerLLP: Processing error from ", GetAddress().ToStringIP(),
-                                ": ", result.strError);
-                    
-                    /* Try to send error response if available */
-                    if(!result.response.IsNull())
-                    {
-                        WritePacket(result.response);
-                    }
-                    
-                    this->Disconnect();
-                    return false;
-                }
-            }
-
-            /* All other packets (block operations, PING, etc.) handled by ProcessPacketStateless */
             return ProcessPacketStateless(PACKET);
         }
         catch(const std::exception& e)

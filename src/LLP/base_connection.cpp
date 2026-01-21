@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLP/templates/events.h>
 
 #include <LLP/packets/packet.h>
+#include <LLP/packets/stateless_packet.h>
 #include <LLP/packets/http.h>
 #include <LLP/packets/message.h>
 
@@ -338,5 +339,6 @@ namespace LLP
     template class BaseConnection<Packet>;
     template class BaseConnection<MessagePacket>;
     template class BaseConnection<HTTPPacket>;
+    template class BaseConnection<StatelessPacket>;
 
 }
