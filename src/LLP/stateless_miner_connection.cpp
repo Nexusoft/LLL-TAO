@@ -60,7 +60,6 @@ ________________________________________________________________________________
 #include <algorithm>
 #include <iomanip>
 #include <thread>
-#include <atomic>
 
 namespace LLP
 {
@@ -1625,7 +1624,7 @@ namespace LLP
                     dynamic_cast<TAO::Ledger::TritiumBlock*>(it->second.pBlock.get());
                 if(!pTritium)
                 {
-                    debug::error(FUNCTION, "❌ validate_block failed (invalid block type)");
+                    debug::error(FUNCTION, "❌ invalid block type (expected TritiumBlock)");
                     StatelessPacket response(BLOCK_REJECTED);
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (invalid block type) ===", ANSI_COLOR_RESET);
