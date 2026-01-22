@@ -2393,7 +2393,7 @@ namespace LLP
             
             ++nAttempts;
             const uint32_t extraNonce =
-                nBlockIterator.fetch_add(1, std::memory_order_relaxed);
+                nBlockIterator.fetch_add(1, std::memory_order_relaxed) + 1;
             pBlock = TAO::Ledger::CreateBlockForStatelessMining(
                 context.nChannel,
                 extraNonce,
