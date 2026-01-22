@@ -37,7 +37,7 @@ namespace TAO
             std::string reason;
             uint32_t nChannel = 0;
             uint32_t nHeight = 0;
-            uint512_t hashBlock = 0; // Merkle root for mined block submissions.
+            uint512_t hashBlock = 0; // Merkle root (submission key).
         };
 
 

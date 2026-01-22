@@ -1211,7 +1211,7 @@ namespace LLP
                     dynamic_cast<TAO::Ledger::TritiumBlock*>(mapBlocks[hashMerkle]);
                 if(!pTritium)
                 {
-                    debug::error(FUNCTION, "SUBMIT_BLOCK block exists but is not Tritium for merkle ",
+                    debug::error(FUNCTION, "SUBMIT_BLOCK unexpected non-Tritium block for merkle ",
                                  hashMerkle.SubString());
                     respond(BLOCK_REJECTED);
                     return true;
