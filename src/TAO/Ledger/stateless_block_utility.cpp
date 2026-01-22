@@ -238,7 +238,7 @@ namespace TAO::Ledger
         SubmitResult result;
         result.nChannel = block.nChannel;
         result.nHeight = block.nHeight;
-        result.hashBlock = block.GetHash();
+        result.hashBlock = block.hashMerkleRoot;
 
         if(config::fShutdown.load())
         {

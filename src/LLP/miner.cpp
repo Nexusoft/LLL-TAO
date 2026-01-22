@@ -1207,31 +1207,26 @@ namespace LLP
                     return true;
                 }
 
-                /* Make sure there is no inconsistencies in validating block. */
                 TAO::Ledger::TritiumBlock* pTritium =
                     dynamic_cast<TAO::Ledger::TritiumBlock*>(mapBlocks[hashMerkle]);
-                if(pTritium)
+                if(!pTritium)
                 {
-                    TAO::Ledger::SubmitResult submitResult =
-                        TAO::Ledger::SubmitMinedBlockForStatelessMining(*pTritium);
-                    if(!submitResult.accepted)
-                    {
-                        debug::error(FUNCTION, "SUBMIT_BLOCK rejected: ", submitResult.reason);
-                        respond(BLOCK_REJECTED);
-                        return true;
-                    }
-
-                    respond(BLOCK_ACCEPTED);
-                    return true;
-                }
-
-                debug::error(FUNCTION, "SUBMIT_BLOCK invalid block type for merkle ", hashMerkle.SubString());
-                if(!validate_block(hashMerkle))
-                {
+                    debug::error(FUNCTION, "SUBMIT_BLOCK invalid block type for merkle ", hashMerkle.SubString());
                     respond(BLOCK_REJECTED);
                     return true;
                 }
 
+                TAO::Ledger::SubmitResult submitResult =
+                    TAO::Ledger::SubmitMinedBlockForStatelessMining(*pTritium);
+                if(!submitResult.accepted)
+                {
+                    debug::error(FUNCTION, "SUBMIT_BLOCK rejected: ", submitResult.reason);
+                    respond(BLOCK_REJECTED);
+                    return true;
+                }
+
+                debug::log(2, FUNCTION, "SUBMIT_BLOCK accepted merkle=", hashMerkle.SubString(),
+                           " channel=", submitResult.nChannel, " height=", submitResult.nHeight);
                 respond(BLOCK_ACCEPTED);
                 return true;
             }
