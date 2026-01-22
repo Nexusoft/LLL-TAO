@@ -224,7 +224,7 @@
 - Defers PoW validation until miner submits solution
 
 **Why this matters:**
-- Channel-height correctness prevent “template staleness false positives”
+- Channel-height correctness prevents “template staleness false positives”
 - This file should also host the **canonical mined-block acceptance helper** (future refactor)
 
 ---
