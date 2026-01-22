@@ -1,6 +1,6 @@
 # Mining Lanes Cheat Sheet (Legacy vs Stateless)
 
-**Current date:** 2026-01-22  
+**Last updated:** 2026-01-22  
 **Purpose:** fast navigation + keyword/entrypoint map for **legacy vs stateless protocol lanes**, including **Auth/Session/Reward** and **mining/blockchain lifecycle**.
 
 ---
@@ -213,7 +213,7 @@
 **Function:** `TAO::Ledger::CreateBlockForStatelessMining(uint32_t nChannel, uint64_t nExtraNonce, const uint256_t& hashRewardAddress)`
 
 **Core behavior (high confidence from code):**
-- Validates input channel (must be 1 or 2; rejects channel 0)
+- Validates input channel (must be 1 or 2; rejects channel 0). Channel 1 = Prime, channel 2 = Hash; channel 0 is stake-only and not mined.
 - Requires wallet unlock for mining (consensus signing requirement)
 - Anchors template to `ChainState::tStateBest`:
   - `hashPrevBlock = statePrev.GetHash()`
@@ -251,7 +251,7 @@
   - respond `BLOCK_ACCEPTED (200)` or `BLOCK_REJECTED (201)`
 
 **Prime rule reminder:**
-- Prime channel (`nChannel==1`) requires `vOffsets` non-empty during `TritiumBlock::Check()`.
+- Prime channel (`nChannel==1`) requires `vOffsets` non-empty during `TritiumBlock::Check()`. `vOffsets` contains the prime sieve offsets used to validate Prime PoW solutions.
   - If miner doesn’t submit offsets, offsets must already exist in template or be derived.
   - If offsets are missing, `Check()` will reject.
 
