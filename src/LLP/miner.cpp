@@ -1220,18 +1220,18 @@ namespace LLP
                         respond(BLOCK_REJECTED);
                         return true;
                     }
-                }
-                else
-                {
-                    debug::error(FUNCTION, "SUBMIT_BLOCK invalid block type for merkle ", hashMerkle.SubString());
-                    if(!validate_block(hashMerkle))
-                    {
-                        respond(BLOCK_REJECTED);
-                        return true;
-                    }
+
+                    respond(BLOCK_ACCEPTED);
+                    return true;
                 }
 
-                /* Generate an Accepted response. */
+                debug::error(FUNCTION, "SUBMIT_BLOCK invalid block type for merkle ", hashMerkle.SubString());
+                if(!validate_block(hashMerkle))
+                {
+                    respond(BLOCK_REJECTED);
+                    return true;
+                }
+
                 respond(BLOCK_ACCEPTED);
                 return true;
             }
