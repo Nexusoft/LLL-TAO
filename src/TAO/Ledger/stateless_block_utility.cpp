@@ -258,6 +258,7 @@ namespace TAO::Ledger
             return result;
         }
 
+        /* Stale detection uses unified chain tip shared across channels. */
         if(block.hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
         {
             result.reason = "submitted block is stale";
