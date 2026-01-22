@@ -1223,6 +1223,7 @@ namespace LLP
                 }
                 else
                 {
+                    debug::error(FUNCTION, "SUBMIT_BLOCK invalid block type for merkle ", hashMerkle.SubString());
                     if(!validate_block(hashMerkle))
                     {
                         respond(BLOCK_REJECTED);
