@@ -37,7 +37,7 @@ namespace TAO
             std::string reason;
             uint32_t nChannel = 0;
             uint32_t nHeight = 0;
-            uint512_t hashBlock = 0;
+            uint1024_t hashBlock = 0;
         };
 
 
