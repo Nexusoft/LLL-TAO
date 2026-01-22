@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/timelocks.h>
+#include <TAO/Ledger/include/process.h>
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/types/authentication.h>
@@ -228,6 +229,65 @@ namespace TAO::Ledger
             debug::error(FUNCTION, "Block creation failed: ", e.what());
             return nullptr;
         }
+    }
+
+
+    /* Canonical acceptance entrypoint for mined Tritium blocks. */
+    SubmitResult SubmitMinedBlockForStatelessMining(TAO::Ledger::TritiumBlock& block)
+    {
+        SubmitResult result;
+        result.nChannel = block.nChannel;
+        result.nHeight = block.nHeight;
+        result.hashBlock = block.hashMerkleRoot;
+
+        if(config::fShutdown.load())
+        {
+            result.reason = "shutdown in progress";
+            return result;
+        }
+
+        if(block.IsNull())
+        {
+            result.reason = "block is null";
+            return result;
+        }
+
+        if(!block.Check())
+        {
+            result.reason = "block Check() failed";
+            return result;
+        }
+
+        /* Stale detection uses unified chain tip shared across channels. */
+        if(block.hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
+        {
+            result.reason = "submitted block is stale";
+            return result;
+        }
+
+        uint8_t nStatus = 0;
+        TAO::Ledger::Process(block, nStatus);
+
+        if(!(nStatus & TAO::Ledger::PROCESS::ACCEPTED))
+        {
+            if(nStatus & TAO::Ledger::PROCESS::ORPHAN)
+                result.reason = "block is orphan";
+            else if(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
+                result.reason = "duplicate block";
+            else if(nStatus & TAO::Ledger::PROCESS::INCOMPLETE)
+                result.reason = "block incomplete";
+            else if(nStatus & TAO::Ledger::PROCESS::REJECTED)
+                result.reason = "block rejected";
+            else if(nStatus & TAO::Ledger::PROCESS::IGNORED)
+                result.reason = "block ignored";
+            else
+                result.reason = "block not accepted";
+            return result;
+        }
+
+        result.accepted = true;
+        result.reason = "accepted";
+        return result;
     }
 
 }

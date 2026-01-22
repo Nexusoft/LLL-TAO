@@ -1207,14 +1207,27 @@ namespace LLP
                     return true;
                 }
 
-                /* Make sure there is no inconsistencies in validating block. */
-                if(!validate_block(hashMerkle))
+                TAO::Ledger::TritiumBlock* pTritium =
+                    dynamic_cast<TAO::Ledger::TritiumBlock*>(mapBlocks[hashMerkle]);
+                if(!pTritium)
                 {
+                    debug::error(FUNCTION, "SUBMIT_BLOCK unexpected non-Tritium block for merkle ",
+                                 hashMerkle.SubString());
                     respond(BLOCK_REJECTED);
                     return true;
                 }
 
-                /* Generate an Accepted response. */
+                TAO::Ledger::SubmitResult submitResult =
+                    TAO::Ledger::SubmitMinedBlockForStatelessMining(*pTritium);
+                if(!submitResult.accepted)
+                {
+                    debug::error(FUNCTION, "SUBMIT_BLOCK rejected: ", submitResult.reason);
+                    respond(BLOCK_REJECTED);
+                    return true;
+                }
+
+                debug::log(2, FUNCTION, "SUBMIT_BLOCK accepted merkle=", hashMerkle.SubString(),
+                           " channel=", submitResult.nChannel, " height=", submitResult.nHeight);
                 respond(BLOCK_ACCEPTED);
                 return true;
             }

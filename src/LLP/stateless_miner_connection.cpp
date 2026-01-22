@@ -1602,7 +1602,7 @@ namespace LLP
                     debug::error(FUNCTION, "     → Solution: Request new template immediately");
                     debug::error(FUNCTION, "════════════════════════════════════════");
                     
-                    StatelessPacket response(BLOCK_REJECTED);
+                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Unknown template) ===", ANSI_COLOR_RESET);
                     return true;
@@ -1614,16 +1614,28 @@ namespace LLP
                 if(!sign_block(nonce, hashMerkle))
                 {
                     debug::error(FUNCTION, "❌ sign_block failed (nonce update failed)");
-                    StatelessPacket response(BLOCK_REJECTED);
+                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (sign_block failed) ===", ANSI_COLOR_RESET);
                     return true;
                 }
 
-                /* Make sure there is no inconsistencies in validating block. */
-                if(!validate_block(hashMerkle))
+                TAO::Ledger::TritiumBlock* pTritium =
+                    dynamic_cast<TAO::Ledger::TritiumBlock*>(it->second.pBlock.get());
+                if(!pTritium)
                 {
-                    debug::error(FUNCTION, "❌ validate_block failed (network rejected or stale)");
+                    debug::error(FUNCTION, "❌ invalid block type (expected TritiumBlock)");
+                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                    respond(response);
+                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (invalid block type) ===", ANSI_COLOR_RESET);
+                    return true;
+                }
+
+                TAO::Ledger::SubmitResult submitResult =
+                    TAO::Ledger::SubmitMinedBlockForStatelessMining(*pTritium);
+                if(!submitResult.accepted)
+                {
+                    debug::error(FUNCTION, "❌ SubmitMinedBlockForStatelessMining failed: ", submitResult.reason);
                     
                     /* Notify local pool if enabled */
                     if(PoolDiscovery::IsLocalPoolEnabled() && context.hashGenesis != 0)
@@ -1631,9 +1643,9 @@ namespace LLP
                         PoolDiscovery::OnBlockSubmitted(context.hashGenesis, false);
                     }
                     
-                    StatelessPacket response(BLOCK_REJECTED);
+                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
-                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (validate_block failed) ===", ANSI_COLOR_RESET);
+                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (", submitResult.reason, ") ===", ANSI_COLOR_RESET);
                     return true;
                 }
 
@@ -1665,7 +1677,8 @@ namespace LLP
 
                 /* Generate an Accepted response. */
                 debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✅ Block accepted by network!", ANSI_COLOR_RESET);
-                debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK result=accepted merkle=", hashMerkle.SubString());
+                debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK result=accepted merkle=", hashMerkle.SubString(),
+                           " channel=", submitResult.nChannel, " height=", submitResult.nHeight);
                 
                 /* Log signature configuration (PR #122) */
                 LogFalconSignatureInfo(context);
@@ -1682,7 +1695,7 @@ namespace LLP
                     debug::log(0, "   Channel: ", pBlock->nChannel, " (", (pBlock->nChannel == 1 ? "Prime" : "Hash"), ")");
                 }
                 
-                StatelessPacket response(BLOCK_ACCEPTED);
+                StatelessPacket response(STATELESS_BLOCK_ACCEPTED);
                 respond(response);
 
                 /* Update context timestamp */
@@ -2380,9 +2393,11 @@ namespace LLP
             }
             
             ++nAttempts;
+            const uint32_t extraNonce =
+                nBlockIterator.fetch_add(1, std::memory_order_relaxed) + 1;
             pBlock = TAO::Ledger::CreateBlockForStatelessMining(
                 context.nChannel,
-                ++nBlockIterator,
+                extraNonce,
                 hashReward
             );
             
