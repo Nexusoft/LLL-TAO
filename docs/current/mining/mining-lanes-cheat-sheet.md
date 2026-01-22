@@ -268,7 +268,7 @@
 
 **Template push flow (stateless):**
 - `SendStatelessTemplate()` sends `STATELESS_GET_BLOCK (0xD081)` payload:
-  - 12 bytes metadata (big-endian):
+  - 12 bytes metadata (big endian):
     - unified height
     - channel height
     - difficulty
@@ -305,7 +305,7 @@ This is not currently wired as the authoritative template store for mining valid
 Template creation is already centralized in `TAO::Ledger::CreateBlockForStatelessMining`.
 The next refactor should add:
 
-- `TAO::Ledger::SubmitMinedBlockForStatelessMining(TAO::Ledger::TritiumBlock&) -> SubmitResult`
+- `TAO::Ledger::SubmitMinedBlockForStatelessMining(TAO::Ledger::TritiumBlock&) -> SubmitResult` (success/failure + rejection reason)
 
 Then both lanes can standardize:
 1. parse submission payload
