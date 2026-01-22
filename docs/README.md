@@ -19,6 +19,7 @@ Welcome to the comprehensive Nexus LLL-TAO node documentation. This documentatio
 
 - **[Stateless Mining Protocol](current/mining/stateless-protocol.md)** - Node implementation
 - **[Mining Server Architecture](current/mining/mining-server.md)** - Server design
+- **[Mining Lanes Cheat Sheet](current/mining/mining-lanes-cheat-sheet.md)** - Legacy vs stateless entrypoints
 - **[Troubleshooting](current/troubleshooting/mining-server-issues.md)** - Fix common issues
 
 ### 🔐 Security & Authentication
