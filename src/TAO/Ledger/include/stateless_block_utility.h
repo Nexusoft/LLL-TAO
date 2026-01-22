@@ -17,6 +17,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/tritium.h>
 
+#include <string>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -24,6 +26,20 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
+        /** SubmitResult
+         *
+         *  Structured result for mined block submissions.
+         *
+         **/
+        struct SubmitResult
+        {
+            bool accepted = false;
+            std::string reason;
+            uint32_t nChannel = 0;
+            uint32_t nHeight = 0;
+            uint512_t hashBlock = 0;
+        };
+
 
         /** CreateBlockForStatelessMining
          *
@@ -52,6 +68,18 @@ namespace TAO
             const uint32_t nChannel,
             const uint64_t nExtraNonce,
             const uint256_t& hashRewardAddress);
+
+
+        /** SubmitMinedBlockForStatelessMining
+         *
+         *  Canonical acceptance entrypoint for mined Tritium blocks.
+         *
+         *  @param[in] block The mined block to validate and accept
+         *
+         *  @return Structured submission result
+         *
+         **/
+        SubmitResult SubmitMinedBlockForStatelessMining(TAO::Ledger::TritiumBlock& block);
 
     }
 }

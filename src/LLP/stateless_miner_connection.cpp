@@ -60,6 +60,7 @@ ________________________________________________________________________________
 #include <algorithm>
 #include <iomanip>
 #include <thread>
+#include <atomic>
 
 namespace LLP
 {
@@ -1620,10 +1621,22 @@ namespace LLP
                     return true;
                 }
 
-                /* Make sure there is no inconsistencies in validating block. */
-                if(!validate_block(hashMerkle))
+                TAO::Ledger::TritiumBlock* pTritium =
+                    dynamic_cast<TAO::Ledger::TritiumBlock*>(it->second.pBlock.get());
+                if(!pTritium)
                 {
-                    debug::error(FUNCTION, "❌ validate_block failed (network rejected or stale)");
+                    debug::error(FUNCTION, "❌ validate_block failed (invalid block type)");
+                    StatelessPacket response(BLOCK_REJECTED);
+                    respond(response);
+                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (invalid block type) ===", ANSI_COLOR_RESET);
+                    return true;
+                }
+
+                TAO::Ledger::SubmitResult submitResult =
+                    TAO::Ledger::SubmitMinedBlockForStatelessMining(*pTritium);
+                if(!submitResult.accepted)
+                {
+                    debug::error(FUNCTION, "❌ SubmitMinedBlockForStatelessMining failed: ", submitResult.reason);
                     
                     /* Notify local pool if enabled */
                     if(PoolDiscovery::IsLocalPoolEnabled() && context.hashGenesis != 0)
@@ -1633,7 +1646,7 @@ namespace LLP
                     
                     StatelessPacket response(BLOCK_REJECTED);
                     respond(response);
-                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (validate_block failed) ===", ANSI_COLOR_RESET);
+                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (", submitResult.reason, ") ===", ANSI_COLOR_RESET);
                     return true;
                 }
 
@@ -2380,9 +2393,11 @@ namespace LLP
             }
             
             ++nAttempts;
+            const uint32_t extraNonce =
+                nBlockIterator.fetch_add(1, std::memory_order_relaxed) + 1;
             pBlock = TAO::Ledger::CreateBlockForStatelessMining(
                 context.nChannel,
-                ++nBlockIterator,
+                extraNonce,
                 hashReward
             );
             
