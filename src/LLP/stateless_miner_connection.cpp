@@ -1610,6 +1610,17 @@ namespace LLP
                 
                 debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Found original template (wallet-signed)", ANSI_COLOR_RESET);
 
+                /* Get iterator to block template for processing */
+                auto it = mapBlocks.find(hashMerkle);
+                if(it == mapBlocks.end())
+                {
+                    debug::error(FUNCTION, "❌ Template lookup failed (race condition)");
+                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                    respond(response);
+                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (template lookup failed) ===", ANSI_COLOR_RESET);
+                    return true;
+                }
+
                 /* Make sure there is no inconsistencies in signing block. */
                 if(!sign_block(nonce, hashMerkle))
                 {
@@ -1685,8 +1696,7 @@ namespace LLP
                 
                 debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "📥 === SUBMIT_BLOCK: SUCCESS ===", ANSI_COLOR_RESET);
                 
-                /* Get block for detailed logging (safe access since we know it exists) */
-                auto it = mapBlocks.find(hashMerkle);
+                /* Get block for detailed logging (reuse iterator from earlier) */
                 if(it != mapBlocks.end() && it->second.pBlock)
                 {
                     TAO::Ledger::Block *pBlock = it->second.pBlock.get();
