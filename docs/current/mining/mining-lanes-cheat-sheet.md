@@ -1,6 +1,5 @@
 # Mining Lanes Cheat Sheet (Legacy vs Stateless)
 
-**Last updated:** 2026-01-22  
 **Purpose:** fast navigation + keyword/entrypoint map for **legacy vs stateless protocol lanes**, including **Auth/Session/Reward** and **mining/blockchain lifecycle**.
 
 ---
@@ -214,7 +213,7 @@
 
 **Core behavior (high confidence from code):**
 - Validates input channel (must be 1 or 2; rejects channel 0). Channel 1 = Prime, channel 2 = Hash; channel 0 is stake-only and not mined.
-- Requires wallet unlock for mining (consensus signing requirement)
+- Require wallet unlock for mining (consensus signing requirement)
 - Anchors template to `ChainState::tStateBest`:
   - `hashPrevBlock = statePrev.GetHash()`
   - `nBits = GetNextTargetRequired(statePrev, nChannel, false)`
@@ -225,7 +224,7 @@
 - Defers PoW validation until miner submits solution
 
 **Why this matters:**
-- Channel-height correctness prevents “template staleness false positives”
+- Channel-height correctness prevent “template staleness false positives”
 - This file should also host the **canonical mined-block acceptance helper** (future refactor)
 
 ---
