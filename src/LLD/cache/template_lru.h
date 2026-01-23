@@ -121,11 +121,28 @@ namespace LLD
 
 
         /** Copy Constructor. **/
-        TemplateLRU(const TemplateLRU& cache)            = delete;
+        TemplateLRU(const TemplateLRU& cacheIn)
+        : MAX_CACHE_ELEMENTS (cacheIn.MAX_CACHE_ELEMENTS)
+        , MUTEX              ( )
+        , cache              ()
+        , pfirst             ()
+        , plast              ()
+        {
+            /* Loop through the incoming cache and add the data items. */
+            for(auto & item : cacheIn.cache)
+                Put(item.second->Key, item.second->Data);
+        }
 
 
         /** Move Constructor. **/
-        TemplateLRU(TemplateLRU&& cache)                 = delete;
+        TemplateLRU(TemplateLRU&& cacheIn)
+        : MAX_CACHE_ELEMENTS (std::move(cacheIn.MAX_CACHE_ELEMENTS))
+        , MUTEX              ( )
+        , cache              (std::move(cacheIn.cache))
+        , pfirst             (std::move(cacheIn.pfirst))
+        , plast              (std::move(cacheIn.plast))
+        {
+        }
 
 
         /** Copy assignment. **/
@@ -146,19 +163,10 @@ namespace LLD
         {
             MAX_CACHE_ELEMENTS = std::move(cacheIn.MAX_CACHE_ELEMENTS);
 
-            /* Loop through the incoming cache and copy the pointers and set source to null. */
-            for(auto& item : cacheIn.cache)
-            {
-                /* Set the pointers in our cache. */
-                cache[item.first] = item.second;
-
-                /* Set to null now so we don't delete them when source is destructed. */
-                item.second = nullptr;
-            }
-
-            /* Set our internal head and tail of the linked list. */
-            pfirst = cacheIn.pfirst;
-            plast  = cacheIn.plast;
+            /* Move the cache over now. */
+            cache  = std::move(cacheIn.cache);
+            pfirst = std::move(cacheIn.pfirst);
+            plast  = std::move(cacheIn.plast);
 
             return *this;
         }

@@ -157,38 +157,44 @@ namespace LLD
                 if(!LLP::TRITIUM_SERVER || !LLP::LOOKUP_SERVER)
                     throw debug::exception(FUNCTION, "tritium or lookup servers inactive");
 
-                /* Try to find a connection first. */
-                std::shared_ptr<LLP::LookupNode> pConnection = LLP::LOOKUP_SERVER->GetConnection();
-                if(pConnection == nullptr)
+                /* Try to get the needed data until we have no connections. */
+                while(!config::fShutdown.load())
                 {
-                    /* Attempt to get an active tritium connection for lookup. */
-                    std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
-                    if(pNode != nullptr)
+                    /* Try to find a connection first. */
+                    std::shared_ptr<LLP::LookupNode> pConnection = LLP::LOOKUP_SERVER->RandomConnection();
+                    if(pConnection == nullptr)
                     {
-                        /* Get our lookup address now. */
-                        const std::string strAddress =
-                            pNode->GetAddress().ToStringIP();
+                        /* Attempt to get an active tritium connection for lookup. */
+                        std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->RandomConnection();
+                        if(pNode != nullptr)
+                        {
+                            /* Get our lookup address now. */
+                            const std::string strAddress =
+                                pNode->GetAddress().ToStringIP();
 
-                        /* Make our new connection now. */
-                        if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
-                            throw debug::exception(FUNCTION, "failed to connect to node");
+                            /* Make our new connection now. */
+                            if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
+                                continue;
+                        }
                     }
+
+                    /* Check that we were able to make a connection. */
+                    if(!pConnection)
+                        throw debug::exception(FUNCTION, "no connections found");
+
+                    /* Debug output to console. */
+                    //debug::log(2, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::PROOF for ", hashTx.SubString());
+                    if(pConnection->BlockingLookup
+                    (
+                        5000,
+                        LLP::LookupNode::REQUEST::PROOF,
+                        uint8_t(LLP::LookupNode::SPECIFIER::TRITIUM),
+                        hashProof, hashTx, nContract
+                    ))
+                        break; //this is a success
+                    //debug::log(2, FUNCTION, "CLIENT MODE: TYPES::PROOF received for ", hashTx.SubString());
                 }
 
-                /* Check that we were able to make a connection. */
-                if(!pConnection)
-                    throw debug::exception(FUNCTION, "no connections found");
-
-                /* Debug output to console. */
-                //debug::log(2, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::PROOF for ", hashTx.SubString());
-                pConnection->BlockingLookup
-                (
-                    5000,
-                    LLP::LookupNode::REQUEST::PROOF,
-                    uint8_t(LLP::LookupNode::SPECIFIER::TRITIUM),
-                    hashProof, hashTx, nContract
-                );
-                //debug::log(2, FUNCTION, "CLIENT MODE: TYPES::PROOF received for ", hashTx.SubString());
             }
 
             return Exists(tIndex);
@@ -315,38 +321,43 @@ namespace LLD
                 if(!LLP::TRITIUM_SERVER || !LLP::LOOKUP_SERVER)
                     throw debug::exception(FUNCTION, "tritium or lookup servers inactive");
 
-                /* Try to find a connection first. */
-                std::shared_ptr<LLP::LookupNode> pConnection = LLP::LOOKUP_SERVER->GetConnection();
-                if(pConnection == nullptr)
+                /* Keep trying until we get the data we want or we have no connections. */
+                while(!config::fShutdown.load())
                 {
-                    /* Attempt to get an active tritium connection for lookup. */
-                    std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
-                    if(pNode != nullptr)
+                    /* Try to find a connection first. */
+                    std::shared_ptr<LLP::LookupNode> pConnection = LLP::LOOKUP_SERVER->RandomConnection();
+                    if(pConnection == nullptr)
                     {
-                        /* Get our lookup address now. */
-                        const std::string strAddress =
-                            pNode->GetAddress().ToStringIP();
+                        /* Attempt to get an active tritium connection for lookup. */
+                        std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->RandomConnection();
+                        if(pNode != nullptr)
+                        {
+                            /* Get our lookup address now. */
+                            const std::string strAddress =
+                                pNode->GetAddress().ToStringIP();
 
-                        /* Make our new connection now. */
-                        if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
-                            throw debug::exception(FUNCTION, "failed to connect to node");
+                            /* Make our new connection now. */
+                            if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
+                                continue;
+                        }
                     }
+
+                    /* Check that we were able to make a connection. */
+                    if(!pConnection)
+                        throw debug::exception(FUNCTION, "no connections found");
+
+                    /* Debug output to console. */
+                    //debug::log(2, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::PROOF for ", hashTx.SubString());
+                    if(pConnection->BlockingLookup
+                    (
+                        5000,
+                        LLP::LookupNode::REQUEST::PROOF,
+                        uint8_t(LLP::LookupNode::SPECIFIER::LEGACY),
+                        hashTx, nOutput
+                    ))
+                        break; //this is a success
+                    //debug::log(2, FUNCTION, "CLIENT MODE: TYPES::PROOF received for ", hashTx.SubString());
                 }
-
-                /* Check that we were able to make a connection. */
-                if(!pConnection)
-                    throw debug::exception(FUNCTION, "no connections found");
-
-                /* Debug output to console. */
-                //debug::log(2, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::PROOF for ", hashTx.SubString());
-                pConnection->BlockingLookup
-                (
-                    5000,
-                    LLP::LookupNode::REQUEST::PROOF,
-                    uint8_t(LLP::LookupNode::SPECIFIER::LEGACY),
-                    hashTx, nOutput
-                );
-                //debug::log(2, FUNCTION, "CLIENT MODE: TYPES::PROOF received for ", hashTx.SubString());
             }
 
             return Exists(tIndex);
