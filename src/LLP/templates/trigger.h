@@ -90,7 +90,7 @@ namespace LLP
 
 
         /** Timestamp update if doing long list commands. **/
-        void RefreshTimeout()
+        void refresh_timeout()
         {
             nTimestamp = runtime::timestamp(true);
         }
@@ -146,7 +146,7 @@ namespace LLP
             uint64_t nNonce = 0;
 
             /* Track the time elapsed now as well. */
-            RefreshTimeout();
+            refresh_timeout();
 
             /* Wait for trigger to complete. */
             CONDITION.wait_for(REQUEST_LOCK, std::chrono::milliseconds(1000),
@@ -225,30 +225,6 @@ namespace LLP
 
                 return false;
             });
-        }
-
-
-        /** wait_for
-         *
-         *  wrapper for std::condition_variable::wait_for with Predicate
-         *
-         **/
-        template <class Rep, class Period, class Predicate>
-        bool wait_for (std::unique_lock<std::mutex>& lck, const std::chrono::duration<Rep, Period>& rel_time, Predicate pred)
-        {
-            return CONDITION.wait_for(lck, rel_time, pred);
-        }
-
-
-        /** wait_for
-         *
-         *  wrapper for std::condition_variable::wait_for without Predicate
-         *
-         **/
-        template <class Rep, class Period>
-        bool wait_for (std::unique_lock<std::mutex>& lck, const std::chrono::duration<Rep, Period>& rel_time)
-        {
-            return CONDITION.wait_for(lck, rel_time);
         }
 
 
