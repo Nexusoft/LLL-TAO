@@ -478,7 +478,7 @@ namespace LLD
         if(!LLD::Ledger->ReadBlock(hashBegin, state))
         {
             Write(std::string("reindexed"));
-            
+
             debug::warning(FUNCTION, "No tritium blocks available ", hashBegin.SubString());
             return;
         }
@@ -726,7 +726,7 @@ namespace LLD
                 //debug::log(1, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::REGISTER for ", hashRegister.SubString());
                 pConnection->BlockingLookup
                 (
-                    10000,
+                    5000,
                     LLP::LookupNode::REQUEST::DEPENDANT,
                     uint8_t(LLP::LookupNode::SPECIFIER::REGISTER), hashRegister
                 );

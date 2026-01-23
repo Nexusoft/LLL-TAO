@@ -616,11 +616,11 @@ namespace LLP
          *  @param[in] args variable args to be sent in the message.
          **/
         template<typename... Args>
-        static void BlockingMessage(const uint32_t nTimeout, LLP::TritiumNode* pNode, const uint16_t nMsg, Args&&... args)
+        static bool BlockingMessage(const uint32_t nTimeout, LLP::TritiumNode* pNode, const uint16_t nMsg, Args&&... args)
         {
             /* Check for shutdown. */
             if(config::fShutdown.load())
-                return;
+                return false;
 
             /* Create our trigger nonce. */
             uint64_t nNonce = LLC::GetRand();
@@ -630,14 +630,17 @@ namespace LLP
             pNode->PushMessage(nMsg, std::forward<Args>(args)...);
 
             /* Create the condition variable trigger. */
-            LLP::Trigger REQUEST_TRIGGER(pNode->nLastRecv);
+            LLP::Trigger REQUEST_TRIGGER;
             pNode->AddTrigger(LLP::TritiumNode::RESPONSE::COMPLETED, &REQUEST_TRIGGER);
 
             /* Process the event. */
-            REQUEST_TRIGGER.wait_for_timeout(nNonce, nTimeout);
+            const bool fSuccess =
+                REQUEST_TRIGGER.wait_for_timeout(nNonce, nTimeout);
 
             /* Cleanup our event trigger. */
             pNode->Release(LLP::TritiumNode::RESPONSE::COMPLETED);
+
+            return fSuccess;
         }
 
 

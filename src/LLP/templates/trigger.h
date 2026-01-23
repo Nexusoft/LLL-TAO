@@ -39,16 +39,16 @@ namespace LLP
 
 
         /** The Last Received timestamp. **/
-        const std::atomic<uint64_t>& rLastRecv;
+        uint64_t nTimestamp;
 
     public:
 
         /** Default Constructor. **/
-        Trigger(const std::atomic<uint64_t>& rLastRecvIn)
+        Trigger()
         : CONDITION     ( )
         , TRIGGER_MUTEX ( )
         , ssArgs        (SER_NETWORK, MIN_PROTO_VERSION)
-        , rLastRecv     (rLastRecvIn)
+        , nTimestamp    (0)
         {
         }
 
@@ -86,6 +86,13 @@ namespace LLP
         void notify_all()
         {
             CONDITION.notify_all();
+        }
+
+
+        /** Timestamp update if doing long list commands. **/
+        void RefreshTimeout()
+        {
+            nTimestamp = runtime::timestamp(true);
         }
 
 
@@ -135,31 +142,48 @@ namespace LLP
             std::mutex REQUEST_MUTEX;
             std::unique_lock<std::mutex> REQUEST_LOCK(REQUEST_MUTEX);
 
+            /* We want to track our nonce outside of the lambda. */
+            uint64_t nNonce = 0;
+
+            /* Track the time elapsed now as well. */
+            RefreshTimeout();
+
             /* Wait for trigger to complete. */
-            return CONDITION.wait_for(REQUEST_LOCK, std::chrono::milliseconds(nTimeout),
-            [this, nTriggerNonce]
+            CONDITION.wait_for(REQUEST_LOCK, std::chrono::milliseconds(1000),
+            [this, &nTriggerNonce, &nNonce, &nTimeout]
             {
                 /* Break out if shutdown. */
                 if(config::fShutdown.load())
                     return true;
 
-                LOCK(TRIGGER_MUTEX);
+                { LOCK(TRIGGER_MUTEX);
 
-                /* Reset the stream. */
-                ssArgs.Reset();
-                if(ssArgs.size() == 0)
-                    return false;
+                    /* Reset the stream. */
+                    ssArgs.Reset();
+                    if(ssArgs.size() == 0)
+                        return false;
+                }
 
                 /* Check for genesis. */
-                uint64_t nNonce = 0;
                 ssArgs >> nNonce;
 
                 /* Check the nonce for trigger. */
                 if(nNonce == nTriggerNonce)
                     return true;
 
+                /* Calculate Elapsed Time. */
+                const uint64_t nElapsed =
+                    (runtime::timestamp(true) - nTimestamp);
+
+                /* Check if our timeout has elapsed. */
+                if(nElapsed >= nTimeout)
+                    return true;
+
                 return false;
             });
+
+            /* Check that we got a response. */
+            return (nNonce == nTriggerNonce);
         }
 
 

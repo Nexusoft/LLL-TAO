@@ -165,11 +165,11 @@ namespace LLP
          *  @param[in] args variable args to be sent in the message.
          **/
         template<typename... Args>
-        void BlockingLookup(const uint32_t nTimeout, const uint8_t nRequest, Args&&... args)
+        bool BlockingLookup(const uint32_t nTimeout, const uint8_t nRequest, Args&&... args)
         {
             /* Check for shutdown. */
             if(config::fShutdown.load())
-                return;
+                return false;
 
             /* Create our trigger nonce. */
             const uint64_t nRequestID = LLC::GetRand();
@@ -179,14 +179,17 @@ namespace LLP
             PushMessage(nRequest, nRequestID, std::forward<Args>(args)...);
 
             /* Create the condition variable trigger. */
-            LLP::Trigger REQUEST_TRIGGER(nLastRecv);
+            LLP::Trigger REQUEST_TRIGGER;
             AddTrigger(RESPONSE::MERKLE, &REQUEST_TRIGGER);
 
             /* Process the event. */
-            REQUEST_TRIGGER.wait_for_timeout(nRequestID, nTimeout);
+            const bool fSuccess =
+                REQUEST_TRIGGER.wait_for_timeout(nRequestID, nTimeout);
 
             /* Cleanup our event trigger. */
             Release(RESPONSE::MERKLE);
+
+            return fSuccess;
         }
     };
 }
