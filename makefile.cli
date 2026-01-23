@@ -153,7 +153,7 @@ ifdef DEBUG_MISSING
 	DEFS += -DDEBUG_MISSING
 endif
 
-ifdef NO_MEMORY_MAPS
+ifndef USE_MEMORY_MAPS
     DEFS += -DNO_MMAP
 endif
 

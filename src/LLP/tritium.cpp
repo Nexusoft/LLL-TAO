@@ -3881,10 +3881,10 @@ namespace LLP
             TAO::Ledger::nSyncSession.store(0);
 
             /* Logging to verify (for debugging). */
-            debug::log(0, FUNCTION, "No Sync Nodes Available, reconnecting to DNS seeds in 15 seconds...");
+            debug::log(0, FUNCTION, "No Sync Nodes Available, reconnecting to DNS seeds in 3 seconds...");
 
             /* Wait for timeouts and then restart. */
-            runtime::sleep(15000);
+            runtime::sleep(3000);
 
             /* Reconnect to our seed nodes. */
             LLP::MakeConnections(TRITIUM_SERVER);

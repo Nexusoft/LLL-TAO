@@ -37,13 +37,18 @@ namespace LLP
         /** The data stream for args. **/
         DataStream ssArgs;
 
+
+        /** The Last Received timestamp. **/
+        const std::atomic<uint64_t>& rLastRecv;
+
     public:
 
         /** Default Constructor. **/
-        Trigger()
+        Trigger(const std::atomic<uint64_t>& rLastRecvIn)
         : CONDITION     ( )
         , TRIGGER_MUTEX ( )
         , ssArgs        (SER_NETWORK, MIN_PROTO_VERSION)
+        , rLastRecv     (rLastRecvIn)
         {
         }
 

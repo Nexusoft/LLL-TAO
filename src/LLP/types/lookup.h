@@ -179,7 +179,7 @@ namespace LLP
             PushMessage(nRequest, nRequestID, std::forward<Args>(args)...);
 
             /* Create the condition variable trigger. */
-            LLP::Trigger REQUEST_TRIGGER;
+            LLP::Trigger REQUEST_TRIGGER(nLastRecv);
             AddTrigger(RESPONSE::MERKLE, &REQUEST_TRIGGER);
 
             /* Process the event. */
