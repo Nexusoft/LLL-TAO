@@ -357,7 +357,7 @@ namespace LLD::Templates
             uint64_t nSize = vData.size() + GetSizeOfCompactSize(vData.size());
 
             /* Create a new Sector Key. */
-            SectorKey key(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile.load()),
+            SectorKey key(vKey, static_cast<uint16_t>(nCurrentFile.load()),
                             nCurrentFileSize.load(), static_cast<uint32_t>(nSize));
 
             /* Create new file if above current file size. */
@@ -478,6 +478,9 @@ namespace LLD::Templates
         if(!pSectorKeys->Erase(vKey))
             return false;
 
+        /* Delete it from our LRU cache. */
+        cachePool->Remove(vKey);
+
         /* Check that this key isn't a keychain only entry. */
         if(key.nSectorFile ==0 && key.nSectorSize == 0 && key.nSectorStart == 0)
             return true;
@@ -592,7 +595,7 @@ namespace LLD::Templates
                 uint64_t nSize = vData.size() + GetSizeOfCompactSize(vData.size());
 
                 /* Create a new Sector Key. */
-                SectorKey key(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile.load()),
+                SectorKey key(vKey, static_cast<uint16_t>(nCurrentFile.load()),
                                 nCurrentFileSize.load(), static_cast<uint32_t>(nSize));
 
                 /* Write the data into the memory cache. */
@@ -814,7 +817,7 @@ namespace LLD::Templates
             /* Commit keychain entries. */
             for(const auto& item : pTransaction->setKeychain)
             {
-                SectorKey key(STATE::READY, item, 0, 0, 0);
+                SectorKey key(item, 0, 0, 0);
                 if(!pSectorKeys->Put(key))
                     return debug::error(FUNCTION, "failed to commit to keychain");
             }

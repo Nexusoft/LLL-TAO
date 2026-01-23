@@ -836,8 +836,7 @@ namespace LLD
 
                     /* Debug Output of Sector Key Information. */
                     if(config::nVerbose >= 4)
-                        debug::log(4, FUNCTION, ANSI_COLOR_BRIGHT_CYAN, "State: ", key.nState == STATE::READY ? "Valid" : "Invalid",
-                            " | Length: ", key.nLength,
+                        debug::log(4, FUNCTION, ANSI_COLOR_BRIGHT_CYAN,
                             " | Bucket ", nBucket,
                             " | Pos ", nFilePos,
                             " | Probe ", nProbe,
@@ -943,7 +942,7 @@ namespace LLD
 
 
                     /* Check if this bucket has the key */
-                    if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKeyCompressed.size(), vKeyCompressed.begin()))
+                    if(std::equal(vBucket.begin() + 10, vBucket.begin() + 10 + vKeyCompressed.size(), vKeyCompressed.begin()))
                     {
                         /* Seek if we are not at position. */
                         if(pstream->tellp() != nFilePos)
@@ -960,7 +959,7 @@ namespace LLD
 
                         /* Debug Output of Sector Key Information. */
                         if(config::nVerbose >= 4)
-                            debug::log(4, FUNCTION, ANSI_COLOR_BRIGHT_CYAN, "State: Empty",
+                            debug::log(4, FUNCTION, ANSI_COLOR_BRIGHT_CYAN,
                                 " | Bucket ", nBucket,
                                 " | Pos ", nFilePos,
                                 " | Probe ", nProbe,
@@ -1073,7 +1072,7 @@ namespace LLD
                 }
 
                 /* Check if this bucket has the key */
-                if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKeyCompressed.size(), vKeyCompressed.begin()))
+                if(std::equal(vBucket.begin() + 10, vBucket.begin() + 10 + vKeyCompressed.size(), vKeyCompressed.begin()))
                 {
                     /* Deserialie key and return if found. */
                     DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
@@ -1085,8 +1084,7 @@ namespace LLD
 
                     /* Debug Output of Sector Key Information. */
                     if(config::nVerbose >= 4)
-                        debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_CYAN, "State: ", key.nState == STATE::READY ? "Valid" : "Invalid",
-                        " | Length: ", key.nLength,
+                        debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_CYAN,
                         " | Bucket ", nBucket,
                         " | Pos ", nFilePos,
                         " | Probe ", nProbe,

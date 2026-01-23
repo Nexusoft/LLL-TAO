@@ -631,7 +631,7 @@ namespace LLD::Templates
             }
 
             /* Return the Key existance in the Keychain Database. */
-            SectorKey cKey(STATE::READY, vKey, 0, 0, 0);
+            SectorKey cKey(vKey, 0, 0, 0);
             return pSectorKeys->Put(cKey);
         }
 

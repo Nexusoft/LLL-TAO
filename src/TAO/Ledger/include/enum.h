@@ -42,11 +42,14 @@ namespace TAO
         {
             enum : uint8_t
             {
-                /** A transaction is unconfirmed if not connected to chain. **/
-                UNCONFIRMED = 0x00,
+                /** A block/transaction is unconfirmed if not connected to chain. **/
+                UNCONFIRMED  = 0x00,
 
-                /** A transaction is at head if it is the last transaction. **/
-                HEAD        = 0x01
+                /** A block/transaction is at head if it is the last transaction. **/
+                HEAD         = 0x01,
+
+                /** A block/transaction is connected into the main chain. **/
+                CONFIRMED    = 0x02,
 
             };
         };

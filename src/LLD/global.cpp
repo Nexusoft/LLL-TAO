@@ -51,8 +51,8 @@ namespace LLD
             /* Create the ContractDB keychain configuration object. */
             Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
             KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 77773;
-            KEYCHAIN.MAX_HASHMAPS             = 256;
-            KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 64;
+            KEYCHAIN.MAX_HASHMAPS             = config::fClient.load() ? 32 : 256;
+            KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 32;
 
             /* Create the ContractDB database instance. */
             Contract = new ContractDB(SECTOR, KEYCHAIN);
@@ -74,9 +74,9 @@ namespace LLD
 
             /* Create the RegisterDB keychain configuration object. */
             Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
-            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 256 * 256 * 16;
-            KEYCHAIN.MAX_HASHMAPS             = 16;
-            KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 16;
+            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = config::fClient.load() ? 77773 : 256 * 256 * 16;
+            KEYCHAIN.MAX_HASHMAPS             = 32;
+            KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 32;
             KEYCHAIN.MIN_LINEAR_PROBES        = 1;
             KEYCHAIN.MAX_LINEAR_PROBE_CYCLES  = 16;
 
@@ -99,9 +99,9 @@ namespace LLD
 
             /* Create the LedgerDB keychain configuration object. */
             Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
-            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = config::fClient.load() ? 77773 : (256 * 256 * 64);
-            KEYCHAIN.MAX_HASHMAPS             = 128;
-            KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 128;
+            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = config::fClient.load() ? 1111 : (256 * 256 * 64);
+            KEYCHAIN.MAX_HASHMAPS             = config::fClient.load() ? 32 : 128;
+            KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = config::fClient.load() ? 32 : 128;
             KEYCHAIN.MIN_LINEAR_PROBES        = 1;
             KEYCHAIN.MAX_LINEAR_PROBE_CYCLES  = 16;
 
@@ -125,8 +125,8 @@ namespace LLD
             /* Create the LedgerDB keychain configuration object. */
             Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
             KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = config::fClient.load() ? 77773 : (256 * 256);
-            KEYCHAIN.MAX_HASHMAPS             = 128;
-            KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 128;
+            KEYCHAIN.MAX_HASHMAPS             = config::fClient.load() ? 32 : 128;
+            KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = config::fClient.load() ? 32 : 128;
             KEYCHAIN.MIN_LINEAR_PROBES        = 1;
             KEYCHAIN.MAX_LINEAR_PROBE_CYCLES  = 16;
 
@@ -185,6 +185,7 @@ namespace LLD
         }
 
         /* _TRUST database instance. */
+        if(!config::fClient.load())
         {
             /* Create the TrustDB configuration object. */
             Config::Base BASE =

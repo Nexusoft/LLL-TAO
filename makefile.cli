@@ -153,6 +153,10 @@ ifdef DEBUG_MISSING
 	DEFS += -DDEBUG_MISSING
 endif
 
+ifdef NO_MEMORY_MAPS
+    DEFS += -DNO_MMAP
+endif
+
 #Oracle DB Support Config
 ifndef ORACLE
 	override ORACLE= 0

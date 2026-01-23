@@ -190,22 +190,26 @@ namespace TAO
             /* Get the best chain stats. */
             if(!LLD::Ledger->ReadBlock(hashBestChain.load(), tStateBest))
             {
-                debug::error(FUNCTION, "failed to read best block, attempting to recover database");
-
-                /* If hashBestChain exists, but block doesn't attempt to recover database from invalid write.  */
-                BlockState tStateBestKnown = tStateGenesis;
-                while(!tStateBestKnown.IsNull() && tStateBestKnown.hashNextBlock != 0)
+                /* Only attempt the database recovery when not in -client mode. **/
+                if(!config::fClient.load())
                 {
-                    tStateBest = tStateBestKnown;
-                    tStateBestKnown = tStateBestKnown.Next();
+                    debug::error(FUNCTION, "failed to read best block, attempting to recover database");
+
+                    /* If hashBestChain exists, but block doesn't attempt to recover database from invalid write.  */
+                    BlockState tStateBestKnown = tStateGenesis;
+                    while(!tStateBestKnown.IsNull() && tStateBestKnown.hashNextBlock != 0)
+                    {
+                        tStateBest = tStateBestKnown;
+                        tStateBestKnown = tStateBestKnown.Next();
+                    }
+
+                    /* Once new best chain is found, write it to disk. */
+                    hashBestChain = tStateBest.load().GetHash();
+                    if(!LLD::Ledger->WriteBestChain(hashBestChain.load()))
+                        return debug::error(FUNCTION, "failed to write best chain");
+
+                    debug::log(0, FUNCTION, "database successfully recovered");
                 }
-
-                /* Once new best chain is found, write it to disk. */
-                hashBestChain = tStateBest.load().GetHash();
-                if(!LLD::Ledger->WriteBestChain(hashBestChain.load()))
-                    return debug::error(FUNCTION, "failed to write best chain");
-
-                debug::log(0, FUNCTION, "database successfully recovered");
             }
 
             /* Check database consistency. */

@@ -35,11 +35,11 @@ namespace LLD
     public:
 
         /** The current state of the sector (eg. WRITE, EMTPY, READ). **/
-        uint8_t   		   	nState;
+        //uint16_t   		   	nState;
 
 
         /** The length of the sector key on disk. **/
-        uint16_t 		    nLength;
+        //uint16_t 		    nLength;
 
 
         /** The file number that data is stored in. **/
@@ -61,8 +61,6 @@ namespace LLD
         /* Serialization Macro. */
         IMPLEMENT_SERIALIZE
         (
-            READWRITE(nState);
-            READWRITE(nLength);
             READWRITE(nSectorFile);
             READWRITE(nSectorSize);
             READWRITE(nSectorStart);
@@ -94,7 +92,7 @@ namespace LLD
 
 
         /** Constructor **/
-        SectorKey(const uint8_t nStateIn, const std::vector<uint8_t>& vKeyIn,
+        SectorKey(const std::vector<uint8_t>& vKeyIn,
                   const uint16_t nSectorFileIn, const uint32_t nSectorStartIn, const uint32_t nSectorSizeIn);
 
 
@@ -130,30 +128,6 @@ namespace LLD
          *
          **/
         void Print() const;
-
-
-        /** Empty
-         *
-         *  Determines if the key is in an empty state.
-         *
-         **/
-        bool Empty() const;
-
-
-        /** Ready
-         *
-         *  Determines if the key is in a ready state.
-         *
-         **/
-        bool Ready() const;
-
-
-        /** IsTxn
-         *
-         *  Determines if the key is in a transaction state.
-         *
-         **/
-        bool IsTxn() const;
 
     };
 }

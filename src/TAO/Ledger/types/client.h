@@ -47,6 +47,10 @@ namespace TAO
             uint64_t nTime;
 
 
+            /** State whether in the main chain or not. */
+            mutable uint8_t nState;
+
+
             /** System Script
              *
              *  The critical system level pre-states and post-states.
@@ -80,7 +84,10 @@ namespace TAO
             (
                 READWRITE(nVersion);
                 READWRITE(hashPrevBlock);
-                READWRITE(hashNextBlock);
+
+                if(!(nSerType & SER_LLD))
+                    READWRITE(hashNextBlock);
+
                 READWRITE(hashMerkleRoot);
                 READWRITE(nChannel);
                 READWRITE(nHeight);
@@ -88,14 +95,20 @@ namespace TAO
                 READWRITE(nNonce);
                 READWRITE(nTime);
 
-                READWRITE(nMoneySupply);
-                READWRITE(nChannelHeight);
-                READWRITE(nChannelWeight[0]);
-                READWRITE(nChannelWeight[1]);
-                READWRITE(nChannelWeight[2]);
-                READWRITE(nReleasedReserve[0]);
-                READWRITE(nReleasedReserve[1]);
-                READWRITE(nReleasedReserve[2]);
+                if(nSerType & SER_LLD)
+                    READWRITE(nState);
+
+                if(!(nSerType & SER_LLD))
+                {
+                    READWRITE(nMoneySupply);
+                    READWRITE(nChannelHeight);
+                    READWRITE(nChannelWeight[0]);
+                    READWRITE(nChannelWeight[1]);
+                    READWRITE(nChannelWeight[2]);
+                    READWRITE(nReleasedReserve[0]);
+                    READWRITE(nReleasedReserve[1]);
+                    READWRITE(nReleasedReserve[2]);
+                }
 
                 READWRITE(ssSystem);
                 READWRITE(vOffsets);
@@ -175,16 +188,6 @@ namespace TAO
              *
              **/
             ClientBlock Prev() const;
-
-
-            /** Next
-             *
-             *  Get the next client block in chain.
-             *
-             *  @return The next client block.
-             *
-             **/
-            ClientBlock Next() const;
 
 
             /** GetBlockTime

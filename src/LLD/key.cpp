@@ -19,9 +19,7 @@ namespace LLD
 
     /* Default Constructor. */
     SectorKey::SectorKey()
-    : nState       (0)
-    , nLength      (0)
-    , nSectorFile  (0)
+    : nSectorFile  (0)
     , nSectorSize  (0)
     , nSectorStart (0)
     , vKey         ( )
@@ -31,9 +29,7 @@ namespace LLD
 
     /* Copy Constructor */
     SectorKey::SectorKey(const SectorKey& key)
-    : nState       (key.nState)
-    , nLength      (key.nLength)
-    , nSectorFile  (key.nSectorFile)
+    : nSectorFile  (key.nSectorFile)
     , nSectorSize  (key.nSectorSize)
     , nSectorStart (key.nSectorStart)
     , vKey         (key.vKey)
@@ -43,9 +39,7 @@ namespace LLD
 
     /* Move Constructor */
     SectorKey::SectorKey(SectorKey&& key) noexcept
-    : nState       (std::move(key.nState))
-    , nLength      (std::move(key.nLength))
-    , nSectorFile  (std::move(key.nSectorFile))
+    : nSectorFile  (std::move(key.nSectorFile))
     , nSectorSize  (std::move(key.nSectorSize))
     , nSectorStart (std::move(key.nSectorStart))
     , vKey         (std::move(key.vKey))
@@ -56,8 +50,6 @@ namespace LLD
     /* Copy Assignment Operator */
     SectorKey& SectorKey::operator=(const SectorKey& key)
     {
-        nState          = key.nState;
-        nLength         = key.nLength;
         nSectorFile     = key.nSectorFile;
         nSectorSize     = key.nSectorSize;
         nSectorStart    = key.nSectorStart;
@@ -70,8 +62,6 @@ namespace LLD
     /* Move Assignment Operator */
     SectorKey& SectorKey::operator=(SectorKey&& key) noexcept
     {
-        nState          = std::move(key.nState);
-        nLength         = std::move(key.nLength);
         nSectorFile     = std::move(key.nSectorFile);
         nSectorSize     = std::move(key.nSectorSize);
         nSectorStart    = std::move(key.nSectorStart);
@@ -88,11 +78,9 @@ namespace LLD
 
 
     /* Constructor */
-    SectorKey::SectorKey(const uint8_t nStateIn, const std::vector<uint8_t>& vKeyIn,
+    SectorKey::SectorKey(const std::vector<uint8_t>& vKeyIn,
               const uint16_t nSectorFileIn, const uint32_t nSectorStartIn, const uint32_t nSectorSizeIn)
-    : nState(nStateIn)
-    , nLength(static_cast<uint16_t>(vKeyIn.size()))
-    , nSectorFile(nSectorFileIn)
+    : nSectorFile(nSectorFileIn)
     , nSectorSize(nSectorSizeIn)
     , nSectorStart(nSectorStartIn)
     , vKey(vKeyIn)
@@ -104,54 +92,31 @@ namespace LLD
     void SectorKey::SetKey(const std::vector<uint8_t>& vKeyIn)
     {
         vKey = vKeyIn;
-        nLength = static_cast<uint16_t>(vKey.size());
     }
 
 
     /*  Iterator to the beginning of the raw key. */
     uint32_t SectorKey::Begin() const
     {
-        return 13;
+        return 10;
     }
 
 
     /*  Return the size of the key sector on disk. */
     uint32_t SectorKey::Size() const
     {
-        return (13 + nLength);
+        return (10 + 16);
     }
 
 
     /*  Dump Key to Debug Console. */
     void SectorKey::Print() const
     {
-        debug::log(0, "SectorKey(nState=", uint32_t(nState),
-        ", nLength=", nLength,
-        ", nSectorFile=", nSectorFile,
-        ", nSectorSize=", nSectorSize,
-        ", nSectorStart=)", nSectorStart);
+        debug::log(0,
+            "SectorKey(",
+            ", nSectorFile=", nSectorFile,
+            ", nSectorSize=", nSectorSize,
+            ", nSectorStart=)", nSectorStart
+        );
     }
-
-
-    /*  Determines if the key is in an empty state. */
-    bool SectorKey::Empty() const
-    {
-        return (nState == STATE::EMPTY);
-    }
-
-
-    /*  Determines if the key is in a ready state. */
-    bool SectorKey::Ready() const
-    {
-        return (nState == STATE::READY);
-    }
-
-
-    /*  Determines if the key is in a transaction state. */
-    bool SectorKey::IsTxn() const
-    {
-        return (nState == STATE::TRANSACTION);
-    }
-
-
 }

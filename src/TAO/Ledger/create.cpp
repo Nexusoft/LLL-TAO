@@ -688,7 +688,6 @@ namespace TAO::Ledger
                 else
                     state = LegacyGenesis();
 
-
                 /* Write the block to disk. */
                 if(!LLD::Client->WriteBlock(hashGenesis, ClientBlock(state)))
                     return debug::error(FUNCTION, "genesis didn't commit to disk");

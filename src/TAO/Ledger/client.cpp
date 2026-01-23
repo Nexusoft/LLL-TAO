@@ -88,6 +88,7 @@ namespace TAO
         ClientBlock::ClientBlock()
         : Block            ( )
         , nTime            (runtime::unifiedtimestamp())
+        , nState           (STATE::UNCONFIRMED)
         , ssSystem         ( )
         , nMoneySupply     (0)
         , nChannelHeight   (0)
@@ -102,6 +103,7 @@ namespace TAO
         ClientBlock::ClientBlock(const ClientBlock& block)
         : Block            (block)
         , nTime            (block.nTime)
+        , nState           (block.nState)
         , ssSystem         (block.ssSystem)
         , nMoneySupply     (block.nMoneySupply)
         , nChannelHeight   (block.nChannelHeight)
@@ -120,6 +122,7 @@ namespace TAO
         ClientBlock::ClientBlock(ClientBlock&& block) noexcept
         : Block            (std::move(block))
         , nTime            (std::move(block.nTime))
+        , nState           (std::move(block.nState))
         , ssSystem         (std::move(block.ssSystem))
         , nMoneySupply     (std::move(block.nMoneySupply))
         , nChannelHeight   (std::move(block.nChannelHeight))
@@ -151,6 +154,7 @@ namespace TAO
             fConflicted         = block.fConflicted;
 
             nTime               = block.nTime;
+            nState              = block.nState;
             ssSystem            = block.ssSystem;
             nMoneySupply        = block.nMoneySupply;
             nChannelHeight      = block.nChannelHeight;
@@ -183,6 +187,7 @@ namespace TAO
             fConflicted         = std::move(block.fConflicted);
 
             nTime               = std::move(block.nTime);
+            nState              = std::move(block.nState);
             ssSystem            = std::move(block.ssSystem);
             nMoneySupply        = std::move(block.nMoneySupply);
             nChannelHeight      = std::move(block.nChannelHeight);
@@ -202,6 +207,7 @@ namespace TAO
         ClientBlock::ClientBlock(const BlockState& block)
         : Block            (block)
         , nTime            (block.nTime)
+        , nState           (STATE::UNCONFIRMED)
         , ssSystem         (block.ssSystem)
         , nMoneySupply     (block.nMoneySupply)
         , nChannelHeight   (block.nChannelHeight)
@@ -220,6 +226,7 @@ namespace TAO
         ClientBlock::ClientBlock(BlockState&& block)
         : Block            (std::move(block))
         , nTime            (std::move(block.nTime))
+        , nState           (STATE::UNCONFIRMED)
         , ssSystem         (std::move(block.ssSystem))
         , nMoneySupply     (std::move(block.nMoneySupply))
         , nChannelHeight   (std::move(block.nChannelHeight))
@@ -251,6 +258,7 @@ namespace TAO
             fConflicted         = block.fConflicted;
 
             nTime               = block.nTime;
+            nState              = STATE::UNCONFIRMED;
             ssSystem            = block.ssSystem;
             nMoneySupply        = block.nMoneySupply;
             nChannelHeight      = block.nChannelHeight;
@@ -283,6 +291,7 @@ namespace TAO
             fConflicted         = std::move(block.fConflicted);
 
             nTime               = std::move(block.nTime);
+            nState              = STATE::UNCONFIRMED;
             ssSystem            = std::move(block.ssSystem);
             nMoneySupply        = std::move(block.nMoneySupply);
             nChannelHeight      = std::move(block.nChannelHeight);
@@ -363,22 +372,6 @@ namespace TAO
 
             /* Read the previous block from ledger. */
             if(LLD::Client->ReadBlock(hashPrevBlock, state))
-                return state;
-
-            return ClientBlock();
-        }
-
-
-        /* Get the next block state in chain. */
-        ClientBlock ClientBlock::Next() const
-        {
-            /* Check for genesis. */
-            ClientBlock state;
-            if(hashNextBlock == 0)
-                return state;
-
-            /* Read next block from the ledger. */
-            if(LLD::Client->ReadBlock(hashNextBlock, state))
                 return state;
 
             return ClientBlock();
@@ -664,42 +657,29 @@ namespace TAO
         /* Connect a block state into chain. */
         bool ClientBlock::Connect() const
         {
-            /* Update the previous state's next pointer. */
-            ClientBlock prev = Prev();
-            if(!prev.IsNull())
-            {
-                prev.hashNextBlock = GetHash();
-                if(!LLD::Client->WriteBlock(prev.GetHash(), prev))
-                    return debug::error(FUNCTION, "failed to update previous block state");
+            /* We set our state to confirmed so that we know that this block is in the main chain. */
+            nState = STATE::CONFIRMED;
 
-                /* If we just updated hashNextBlock for genesis block, update the in-memory genesis */
-                if(prev.nHeight == 0)
-                    ChainState::tStateGenesis = prev;
-            }
-
-            return true;
+            /* Write the block to disk. */
+            return LLD::Client->WriteBlock(GetHash(), *this);
         }
 
 
         /* Disconnect a block state from the chain. */
         bool ClientBlock::Disconnect() const
         {
-            /* Update the previous state's next pointer. */
-            ClientBlock prev = Prev();
-            if(!prev.IsNull())
-            {
-                prev.hashNextBlock = 0;
-                LLD::Ledger->WriteBlock(prev.GetHash(), prev);
-            }
+            /* We set our state to unconfirmed so that we know that this block is not in the main chain. */
+            nState = STATE::UNCONFIRMED;
 
-            return true;
+            /* Write the block to disk. */
+            return LLD::Client->WriteBlock(GetHash(), *this);
         }
 
 
         /* Function to determine if this block has been connected into the main chain. */
         bool ClientBlock::IsInMainChain() const
         {
-            return (hashNextBlock != 0 || GetHash() == ChainState::hashBestChain.load());
+            return nState == STATE::CONFIRMED || GetHash() == ChainState::hashBestChain.load();
         }
 
 

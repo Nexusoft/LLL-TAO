@@ -323,6 +323,7 @@ namespace LLD::Config
             check_limits<uint32_t>(PARAMS(HASHMAP_TOTAL_BUCKETS));
 
             /* Check for maximum ranges. */
+            check_ranges<uint32_t>(PARAMS(MIN_LINEAR_PROBES), 1);           //we only allow a probing range of 1 for now
             check_ranges<uint16_t>(PARAMS(MAX_FILES_PER_HASHMAP),     999); //we only provide 3 digits in the filenames, so 999 is max
             check_ranges<uint16_t>(PARAMS(MAX_HASHMAP_FILE_STREAMS), 9999);
             check_ranges<uint16_t>(PARAMS(MAX_FILES_PER_INDEX),       999); //we only provide 3 digits in the filenames, so 999 is max
