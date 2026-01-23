@@ -22,10 +22,6 @@ namespace TAO::API
     /* Standard initialization function. */
     void Profiles::Initialize()
     {
-        /* Populate our operators. */
-        Operators::Initialize(mapOperators);
-
-
         /* Populate our any standard. */
         mapStandards["register"] = Standard
         (

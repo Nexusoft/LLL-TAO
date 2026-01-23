@@ -449,7 +449,11 @@ namespace TAO
                 }
             }
 
+            /* Print our best block to console. */
             tStateBest.load().print();
+
+            /* Set our cache best height. */
+            TAO::API::nBlockCounter.store(tStateBest.load().nHeight);
 
             /* Log the weights. */
             debug::log(0, FUNCTION, "WEIGHTS",

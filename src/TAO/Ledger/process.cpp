@@ -95,7 +95,15 @@ namespace TAO
                     /* Check if we have an active node. */
                     if(pnode)
                     {
-                        /* Send a request to download the orphaned block. */
+                        /* Ask for list of blocks. */
+                        pnode->PushMessage(LLP::TritiumNode::ACTION::LIST,
+                            uint8_t(LLP::TritiumNode::TYPES::BLOCK),
+                            uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
+                            TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                            uint1024_t(block.hashPrevBlock)
+                        );
+
+                        /* Send a request to download the orphaned block.
                         pnode->PushMessage(LLP::TritiumNode::ACTION::GET,
 
                             #ifndef DEBUG_MISSING
@@ -103,6 +111,7 @@ namespace TAO
                             #endif
 
                             uint8_t(LLP::TritiumNode::TYPES::BLOCK), block.hashPrevBlock);
+                        */
                     }
 
 

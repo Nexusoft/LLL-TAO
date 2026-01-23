@@ -26,10 +26,6 @@ namespace TAO::API
     /* Standard initialization function. */
     void Register::Initialize()
     {
-        /* Populate our operators. */
-        Operators::Initialize(mapOperators);
-
-
         /* Populate our CRYPTO standard. */
         mapStandards["crypto"] = Standard
         (
@@ -105,6 +101,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , ENABLE::CACHING | ENABLE::PAGING | ENABLE::SORTING | ENABLE::FILTERS | ENABLE::QUERIES | ENABLE::OPERATORS
         );
 
         /* Handle for generic list operations. */

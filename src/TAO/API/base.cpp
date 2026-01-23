@@ -14,8 +14,10 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/base.h>
 #include <TAO/API/types/exception.h>
+#include <TAO/API/types/operators/initialize.h>
 
 #include <TAO/API/include/check.h>
+#include <TAO/API/include/filter.h>
 
 #include <TAO/Register/types/object.h>
 
@@ -24,12 +26,20 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
+
+    /** Default Constructor **/
+    Base::Base ( )
+    : fInitialized  (false)
+    , mapFunctions  ( )
+    , mapStandards  ( )
+    {
+    }
+
     /* Destructor. */
     Base::~Base()
     {
         mapFunctions.clear();
         mapStandards.clear();
-        mapOperators.clear();
     }
 
     /* Get the current status of a given command. */
@@ -99,7 +109,7 @@ namespace TAO::API
 
 
     /* Handles the processing of the requested method. */
-    encoding::json Base::Execute(std::string &strMethod, encoding::json &jParams, const bool fHelp)
+    encoding::json Base::Execute(std::string &strMethod, encoding::json &jParams, const bool fHelp) const
     {
          /* If the incoming method is not in the function map then rewrite the URL to one that does */
         if(mapFunctions.find(strMethod) == mapFunctions.end())
@@ -108,43 +118,143 @@ namespace TAO::API
         /* Execute the function map if method is found. */
         if(mapFunctions.find(strMethod) != mapFunctions.end())
         {
-            /* Get the result of command. */
-            const encoding::json& jResults =
-                mapFunctions[strMethod].Execute(jParams, fHelp);
+            /* Get a reference of our function. */
+            const Function& xFunction =
+                mapFunctions.at(strMethod);
+
+            /* Check if we need to do anything for our function enum's. */
+            const uint8_t nSettings =
+                xFunction.oCache.nSettings;
+
+            /* Check if we may have some caches available or execute the function. */
+            encoding::json jResults;
+            if(nSettings & ENABLE::CACHING)
+            {
+                /* Check if we can get it in a cache. */
+                if(!xFunction.oCache.Get(jParams, jResults))
+                {
+                    /* Execute our function so we can have an up to date cache. */
+                    jResults =
+                        xFunction.Execute(jParams, fHelp);
+
+                    /* Now insert it into our cache. */
+                    xFunction.oCache.Insert(jParams, jResults);
+                }
+                else
+                    debug::notice("Using CACHE for ", strMethod, " of size ", jResults.size());
+            }
+            else
+                jResults = xFunction.Execute(jParams, fHelp);
+
+            /* Check our settings for queries and filters. */
+            if(nSettings & ENABLE::QUERIES || nSettings & ENABLE::FILTERS)
+            {
+                /* Check if we need to filter on an array. */
+                if(jResults.is_array())
+                {
+                    /* Compute all of our results. */
+                    encoding::json jProcessed = encoding::json::array();
+                    for(auto& jItem : jResults)
+                    {
+                        /* Check that we match our filters. */
+                        if((nSettings & ENABLE::QUERIES) && !FilterResults(jParams, jItem))
+                            continue;
+
+                        /* Check that we match our filters. */
+                        if((nSettings & ENABLE::FILTERS) && !FilterFieldname(jParams, jItem))
+                            continue;
+
+                        /* Add the item to our new array. */
+                        jProcessed.emplace_back(std::move(jItem));
+                    }
+
+                    /* Now copy this back. */
+                    jResults = std::move(jProcessed);
+                }
+                else
+                {
+                    /* This will be a filter for a single item cache. */
+                    if(nSettings & ENABLE::FILTERS)
+                        FilterFieldname(jParams, jResults);
+                }
+            }
 
             /* Check for operator. */
-            if(CheckRequest(jParams, "operator", "string, array"))
+            if(nSettings & ENABLE::OPERATORS)
             {
-                /* Check for single string operator. */
-                if(jParams["request"]["operator"].is_string())
+                /* Check if an operator was supplied. */
+                if(CheckRequest(jParams, "operator", "string, array"))
                 {
-                    /* Grab our current operator. */
-                    const std::string& strOperator =
-                        jParams["request"]["operator"].get<std::string>();
-
-                    /* Compute and return from our operator function. */
-                    return mapOperators[strOperator].Execute(jParams, jResults);
-                }
-
-                /* Check if we are mapping multiple types. */
-                if(jParams["request"]["operator"].is_array())
-                {
-                    /* Grab our current operator. */
-                    const encoding::json& jOperators =
-                        jParams["request"]["operator"];
-
-                    /* Loop through our nouns now. */
-                    encoding::json jResult = jResults; //interim results to chain through operators
-                    for(auto& jOperator : jOperators)
+                    /* Check for single string operator. */
+                    if(jParams["request"]["operator"].is_string())
                     {
                         /* Grab our current operator. */
                         const std::string& strOperator =
-                            jOperator.get<std::string>();
+                            jParams["request"]["operator"].get<std::string>();
 
-                        jResult = mapOperators[strOperator].Execute(jParams, jResult);
+                        /* Compute and return from our operator function. */
+                        return Operators::mapOperators.at(strOperator).Execute(jParams, jResults);
                     }
 
-                    return jResult;
+                    /* Check if we are mapping multiple types. */
+                    if(jParams["request"]["operator"].is_array())
+                    {
+                        /* Grab our current operator. */
+                        const encoding::json& jOperators =
+                            jParams["request"]["operator"];
+
+                        /* Loop through our nouns now. */
+                        encoding::json jResult = jResults; //interim results to chain through operators
+                        for(auto& jOperator : jOperators)
+                        {
+                            /* Grab our current operator. */
+                            const std::string& strOperator =
+                                jOperator.get<std::string>();
+
+                            jResult = Operators::mapOperators.at(strOperator).Execute(jParams, jResult);
+                        }
+
+                        return jResult;
+                    }
+                }
+            }
+
+            /* Check our settings for paging only if not applying an operator. */
+            if(nSettings & ENABLE::PAGING)
+            {
+                /* We only page results that are in an array. */
+                if(jResults.is_array())
+                {
+                    /* Build our results object. */
+                    encoding::json jPage =
+                        encoding::json::array();
+
+                    /* Number of results to return. */
+                    uint32_t nLimit = 100, nOffset = 0;
+                    ExtractList(jParams, nLimit, nOffset);
+
+                    /* Handle paging and offsets. */
+                    uint32_t nTotal = 0;
+
+                    /* Check that our offset is in range. */
+                    if(nOffset > jResults.size())
+                        throw Exception(-75, "Value [offset=", nOffset, "] exceeds dataset size [", jResults.size(), "]");
+
+                    /* Page through our results array now. */
+                    for(const auto& jItem : jResults)
+                    {
+                        /* Check the offset. */
+                        if(++nTotal <= nOffset)
+                            continue;
+
+                        /* Check the limit */
+                        if(jPage.size() >= nLimit)
+                            break;
+
+                        jPage.emplace_back(jItem);
+                    }
+
+                    return jPage;
                 }
             }
 
@@ -157,7 +267,7 @@ namespace TAO::API
 
 
     /* Allows derived API's to handle custom/dynamic URL's where the strMethod does not map directly to a function */
-    std::string Base::RewriteURL(const std::string& strMethod, encoding::json &jParams)
+    std::string Base::RewriteURL(const std::string& strMethod, encoding::json &jParams) const
     {
         /* Grab our components of the URL to rewrite. */
         std::vector<std::string> vMethods;
@@ -183,13 +293,16 @@ namespace TAO::API
                     {
                         /* Set our returned verb. */
                         strVerb = strFunction;
-
                         continue; //go to next fieldname
                     }
 
                     /* Check that we have this method available. */
                     if(!mapFunctions.count(strVerb))
                         throw Exception(-2, "Method not found: ", strVerb);
+
+                    /* Get a reference of our function now. */
+                    const Function& xFunction =
+                        mapFunctions.at(strVerb);
 
                     /* Check if we are mapping multiple types. */
                     if(vMethods[n].find(",") != vMethods[n].npos)
@@ -210,11 +323,11 @@ namespace TAO::API
                                 : strCheck);  //we are taking out the last char if it happens to be an 's' as special for 'list' command
 
                             /* Handle our supported override. */
-                            if(!mapFunctions[strVerb].Supported(strNoun) && !mapFunctions[strVerb].Standards())
+                            if(!xFunction.Supported(strNoun) && !xFunction.Standards())
                                 throw Exception(-36, "Type [", strNoun, "] not supported for command");
 
                             /* Check for unexpected types. */
-                            if(!mapStandards.count(strNoun) && mapFunctions[strVerb].Standards())
+                            if(!mapStandards.count(strNoun) && xFunction.Standards())
                                 throw Exception(-36, "Standard [", strNoun, "] not found for command");
 
                             /* Add our type to request object. */
@@ -230,11 +343,11 @@ namespace TAO::API
                         : vMethods[n]);  //we are taking out the last char if it happens to be an 's' as special for 'list' command
 
                     /* Handle our supported override. */
-                    if(!mapFunctions[strVerb].Supported(strNoun) && !mapFunctions[strVerb].Standards())
+                    if(!xFunction.Supported(strNoun) && !xFunction.Standards())
                         throw Exception(-36, "Type [", strNoun, "] not supported for command");
 
                     /* Check for unexpected types. */
-                    if(!mapStandards.count(strNoun) && mapFunctions[strVerb].Standards())
+                    if(!mapStandards.count(strNoun) && xFunction.Standards())
                         throw Exception(-36, "Object [", strNoun, "] not supported for command");
 
                     /* Add our type to request object. */
@@ -246,6 +359,14 @@ namespace TAO::API
                 /* Field URI component. */
                 case URI::FIELD:
                 {
+                    /* Get our calling function object. */
+                    const uint8_t nSettings =
+                        mapFunctions.at(strVerb).oCache.nSettings;
+
+                    /* Check that filters are enabled to use the URI. */
+                    if(!(nSettings & ENABLE::FILTERS))
+                        throw Exception(-36, "Filters [", vMethods[n], "] not enabled for this command, URI handle disabled");
+
                     /* Check if we are mapping multiple types. */
                     if(vMethods[n].find(",") != vMethods[n].npos)
                     {
@@ -272,6 +393,14 @@ namespace TAO::API
                 /* Operator URI component. */
                 case URI::OPERATOR:
                 {
+                    /* Get our calling function object. */
+                    const uint8_t nSettings =
+                        mapFunctions.at(strVerb).oCache.nSettings;
+
+                    /* Check that filters are enabled to use the URI. */
+                    if(!(nSettings & ENABLE::OPERATORS))
+                        throw Exception(-36, "Operators [", vMethods[n], "] not enabled for this command, URI handle disabled");
+
                     /* Grab our operator. */
                     const std::string& strOperators = vMethods[n];
 
@@ -284,10 +413,10 @@ namespace TAO::API
 
                         /* Loop through compound operators. */
                         encoding::json jOperators = encoding::json::array();
-                        for(auto& strOperator : vOperators)
+                        for(const auto& strOperator : vOperators)
                         {
                             /* Check if the operator is available. */
-                            if(!mapOperators.count(strOperator))
+                            if(!Operators::mapOperators.count(strOperator))
                                 throw Exception(-118, "[", strOperator, "] operator not supported for this command-set");
 
                             /* Add to a results array. */
@@ -301,7 +430,7 @@ namespace TAO::API
                     }
 
                     /* Check if the operator is available. */
-                    if(!mapOperators.count(strOperators))
+                    if(!Operators::mapOperators.count(strOperators))
                         throw Exception(-118, "[", strOperators, "] operator not supported for this command-set");
 
                     /* Add to input parameters. */

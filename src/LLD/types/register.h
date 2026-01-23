@@ -25,6 +25,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/enum.h>
 
+namespace TAO::API { extern std::atomic<uint32_t> nRegisterCounter; } //we need to track register database updates
+
 namespace LLD
 {
     /** Type to handle internal FLAGS::LOOKUP cache entries. **/

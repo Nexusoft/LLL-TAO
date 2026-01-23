@@ -24,10 +24,6 @@ namespace TAO::API
     /* Standard initialization function. */
     void Names::Initialize()
     {
-        /* Populate our operators. */
-        Operators::Initialize(mapOperators);
-
-
         /* Populate our asset standard. */
         mapStandards["name"] = Standard
         (

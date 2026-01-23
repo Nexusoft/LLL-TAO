@@ -23,10 +23,6 @@ namespace TAO::API
     /* Standard initialization function. */
     void Ledger::Initialize()
     {
-        /* Populate our operators. */
-        Operators::Initialize(mapOperators);
-
-
         /* Handle for get/blockhash. */
         mapFunctions["get/blockhash"] = Function
         (
@@ -60,7 +56,11 @@ namespace TAO::API
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2
-            )
+            ),
+            {
+                ENABLE::CACHING | ENABLE::FILTERS,
+                &nBlockCounter
+            }
         );
 
         /* Handle for get/metrics. */
@@ -72,7 +72,11 @@ namespace TAO::API
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2
-            )
+            ),
+            {
+                ENABLE::CACHING | ENABLE::FILTERS,
+                &nBlockCounter
+            }
         );
 
         /* Handle for list/blocks. */
@@ -84,7 +88,8 @@ namespace TAO::API
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2
-            )
+            ),
+            ENABLE::FILTERS | ENABLE::OPERATORS
         );
 
         /* Handle for list/transactions. */

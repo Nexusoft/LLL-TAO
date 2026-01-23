@@ -43,7 +43,7 @@ namespace TAO::API
      *  @return the formatted JSON object
      *
      **/
-    __attribute__((pure)) encoding::json BlockToJSON(const TAO::Ledger::BlockState& block, const uint32_t nVerbose);
+    encoding::json BlockToJSON(const TAO::Ledger::BlockState& block, const uint32_t nVerbose);
 
 
     /** TransactionToJSON
@@ -57,7 +57,7 @@ namespace TAO::API
      *  @return the formatted JSON object
      *
      **/
-    __attribute__((pure)) encoding::json TransactionToJSON(const TAO::Ledger::Transaction& tx,
+    encoding::json TransactionToJSON(const TAO::Ledger::Transaction& tx,
                                                            const TAO::Ledger::BlockState& block, const uint32_t nVerbose = 0);
 
 
@@ -72,7 +72,7 @@ namespace TAO::API
      *  @return the formatted JSON object
      *
      **/
-    __attribute__((pure)) encoding::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block,
+    encoding::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block,
                                                            const uint32_t nVerbose = 0);
 
 
@@ -87,7 +87,7 @@ namespace TAO::API
      *  @return the formatted JSON object
      *
      **/
-    __attribute__((pure)) encoding::json ContractToJSON(const TAO::Operation::Contract& rContract,
+    encoding::json ContractToJSON(const TAO::Operation::Contract& rContract,
                                                         const uint32_t nContract, const uint32_t nVerbose = 0);
 
 
@@ -102,7 +102,7 @@ namespace TAO::API
      *  @return the formatted JSON object
      *
      **/
-    __attribute__((pure)) std::string ConditionToJSON(const TAO::Operation::Contract& rContract, const uint32_t nVerbose = 0);
+    std::string ConditionToJSON(const TAO::Operation::Contract& rContract, const uint32_t nVerbose = 0);
 
 
     /** RegisterToJSON
@@ -115,7 +115,7 @@ namespace TAO::API
      *  @return the formatted JSON object
      *
      **/
-    __attribute__((const)) encoding::json RegisterToJSON(const TAO::Register::Object& rObject,
+    encoding::json RegisterToJSON(const TAO::Register::Object& rObject,
                                                          const TAO::Register::Address& hashRegister = uint256_t(0));
 
 
@@ -152,7 +152,7 @@ namespace TAO::API
      *
      *
      **/
-    __attribute__((const)) std::string StateToJSON(const std::vector<uint8_t>& vState);
+    std::string StateToJSON(const std::vector<uint8_t>& vState);
 
 
     /** StandardToJSON
@@ -166,7 +166,7 @@ namespace TAO::API
      *  @return True if the object type is what was specified.
      *
      **/
-    __attribute__((pure)) encoding::json StandardToJSON(const encoding::json& jParams,
+    encoding::json StandardToJSON(const encoding::json& jParams,
                                                         const TAO::Register::Object& rObject,
                                                         const TAO::Register::Address& hashRegister = uint256_t(0));
 
@@ -180,7 +180,7 @@ namespace TAO::API
      *  @return encoded json object with given channel stats.
      *
      **/
-    __attribute__((pure)) encoding::json ChannelToJSON(const uint32_t nChannel);
+    encoding::json ChannelToJSON(const uint32_t nChannel);
 
 
     /** StatementToJSON
@@ -194,7 +194,7 @@ namespace TAO::API
      *  @return The JSON statement generated with query.
      *
      **/
-    __attribute__((pure)) encoding::json StatementToJSON(std::vector<std::string> &vWhere, uint32_t &nIndex, encoding::json &jStatement);
+    encoding::json StatementToJSON(std::vector<std::string> &vWhere, uint32_t &nIndex, encoding::json &jStatement);
 
 
     /** QueryToJSON
@@ -206,7 +206,7 @@ namespace TAO::API
      *  @return The JSON object generated with query.
      *
      **/
-    __attribute__((pure)) encoding::json QueryToJSON(const std::string& strWhere);
+    encoding::json QueryToJSON(const std::string& strWhere);
 
 
     /** VariableToJSON
@@ -216,7 +216,7 @@ namespace TAO::API
      *  Varibles needs to be modular functional statements with return type specifications.
      *  This function is hard coded variables for now, need to make it modular.
      */
-    __attribute__((pure)) std::string VariableToJSON(const std::string& strValue);
+    std::string VariableToJSON(const std::string& strValue);
 
 
     /** ClauseToJSON
@@ -228,7 +228,7 @@ namespace TAO::API
      *  @return The JSON object generated with query.
      *
      **/
-    __attribute__((pure)) encoding::json ClauseToJSON(const std::string& strClause);
+    encoding::json ClauseToJSON(const std::string& strClause);
 
 
     /** ParamsToJSON
@@ -240,7 +240,7 @@ namespace TAO::API
      *  @return The JSON object generated with query.
      *
      **/
-    __attribute__((pure)) encoding::json ParamsToJSON(const std::vector<std::string>& vParams);
+    encoding::json ParamsToJSON(const std::vector<std::string>& vParams);
 
 
     /** AddressToJSON
@@ -253,7 +253,7 @@ namespace TAO::API
      *  @return The JSON object generated with query.
      *
      **/
-    __attribute__((pure)) encoding::json AddressToJSON(const TAO::Register::Address& hashRegister, const TAO::Operation::Contract& rContract);
+    encoding::json AddressToJSON(const TAO::Register::Address& hashRegister, const TAO::Operation::Contract& rContract);
 
 
     /** AddressToJSON
@@ -266,7 +266,7 @@ namespace TAO::API
      *  @return The JSON object generated with query.
      *
      **/
-    __attribute__((pure)) encoding::json AddressToJSON(const TAO::Register::Address& hashRegister);
+    encoding::json AddressToJSON(const TAO::Register::Address& hashRegister);
 
 
     /** AddressToJSON

@@ -165,6 +165,9 @@ namespace LLD
                 return true;
         }
 
+        /* Trigger that a register state was written to disk here. */
+        TAO::API::nRegisterCounter++;
+
         /* Check for register address index. */
         if(config::fIndexAddress.load())
         {

@@ -266,6 +266,18 @@ namespace TAO::API
      *  Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result
      *
      *  @param[in] jParams The parameters passed into the request
+     *  @param[out] nLimit The number of results to return
+     *  @param[out] nOffset The offset to apply to the results
+     *
+     **/
+    void ExtractList(const encoding::json& jParams, uint32_t &nLimit, uint32_t &nOffset);
+
+
+    /** ExtractList
+     *
+     *  Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result
+     *
+     *  @param[in] jParams The parameters passed into the request
      *  @param[out] strOrder The sort order to apply
      *  @param[out] nLimit The number of results to return
      *  @param[out] nOffset The offset to apply to the results
@@ -287,6 +299,33 @@ namespace TAO::API
      *
      **/
     void ExtractList(const encoding::json& jParams, std::string &strOrder, std::string &strSort, uint32_t &nLimit, uint32_t &nOffset);
+
+
+    /** ExtractSort
+     *
+     *  Extracts the order and sorting field from incoming parameters
+     *
+     *  @param[in] jParams The parameters passed into the request
+     *  @param[out] strOrder The sort order to apply
+     *  @param[out] strSort The column to sort by.
+     *
+     *  @return the order string if we succeed without throwing exception
+     *
+     **/
+    void ExtractSort(const encoding::json& jParams, std::string &strOrder, std::string &strSort);
+
+
+    /** ExtractOrder
+     *
+     *  Extracts the order applicable to a List API call in order to apply a filter/offset/limit to the result
+     *
+     *  @param[in] jParams The parameters passed into the request
+     *  @param[in] fThrow Check if we throw or return
+     *
+     *  @return the order string if we succeed without throwing exception
+     *
+     **/
+    std::string ExtractOrder(const encoding::json& jParams, const bool fThrow = false);
 
 
     /** ExtractBoolean
