@@ -239,6 +239,7 @@ namespace TAO::Ledger
         if(!validation.valid)
         {
             SubmitResult result;
+            result.accepted = false;
             result.reason = validation.reason;
             result.nChannel = validation.nChannel;
             result.nHeight = validation.nHeight;
@@ -332,8 +333,9 @@ namespace TAO::Ledger
         uint8_t nStatus = 0;
         TAO::Ledger::Process(block, nStatus);
         result.nStatus = nStatus;
+        result.accepted = (nStatus & TAO::Ledger::PROCESS::ACCEPTED);
 
-        if(!(nStatus & TAO::Ledger::PROCESS::ACCEPTED))
+        if(!result.accepted)
         {
             if(nStatus & TAO::Ledger::PROCESS::ORPHAN)
                 result.reason = "block is orphan";
@@ -350,7 +352,6 @@ namespace TAO::Ledger
             return result;
         }
 
-        result.accepted = true;
         result.reason = "accepted";
         return result;
     }

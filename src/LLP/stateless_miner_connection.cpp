@@ -442,19 +442,21 @@ namespace LLP
         {
             /* Get the incoming packet. */
             StatelessPacket PACKET = this->INCOMING;
-            uint16_t nHeaderSwapped = static_cast<uint16_t>((PACKET.HEADER >> 8) | (PACKET.HEADER << 8));
-
             /* Log entry */
             debug::log(1, FUNCTION, "MinerLLP: ProcessPacket from ", GetAddress().ToStringIP(),
                        " header=0x", std::hex, std::setw(4), std::setfill('0'),
                        uint32_t(PACKET.HEADER), std::dec,
                        " length=", PACKET.LENGTH);
 
-            if(StatelessOpcodes::IsStateless(nHeaderSwapped) && !StatelessOpcodes::IsStateless(PACKET.HEADER))
+            if(!StatelessOpcodes::IsStateless(PACKET.HEADER))
             {
-                debug::error(FUNCTION, "Header endian mismatch detected: header=0x", std::hex, uint32_t(PACKET.HEADER),
-                             " swapped=0x", uint32_t(nHeaderSwapped), std::dec);
-                PACKET.HEADER = nHeaderSwapped;
+                uint16_t nHeaderSwapped = static_cast<uint16_t>((PACKET.HEADER >> 8) | (PACKET.HEADER << 8));
+                if(StatelessOpcodes::IsStateless(nHeaderSwapped))
+                {
+                    debug::error(FUNCTION, "Header endian mismatch detected: header=0x", std::hex, uint32_t(PACKET.HEADER),
+                                 " swapped=0x", uint32_t(nHeaderSwapped), std::dec);
+                    PACKET.HEADER = nHeaderSwapped;
+                }
             }
 
             /* Validate opcode range - reject opcodes outside 0xD000-0xD0FF */
@@ -940,7 +942,11 @@ namespace LLP
                         debug::error(FUNCTION, "   ⚠️  SECURITY WARNING: Falling back to legacy format (INSECURE)");
                         debug::error(FUNCTION, "   ⚠️  In production, this node should reject Falcon packets");
                         debug::error(FUNCTION, "   ⚠️  Consider blocking submissions until wrapper is fixed");
-                        
+
+                        StatelessPacket response(BLOCK_REJECTED);
+                        response.DATA.push_back(0xFF);  // Reason: Internal error
+                        respond(response);
+
                         pFalconWrapper.reset();
                         return true;
                     }
