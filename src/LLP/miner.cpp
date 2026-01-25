@@ -1217,17 +1217,26 @@ namespace LLP
                     return true;
                 }
 
-                TAO::Ledger::SubmitResult submitResult =
-                    TAO::Ledger::SubmitMinedBlockForStatelessMining(*pTritium);
-                if(!submitResult.accepted)
+                TAO::Ledger::BlockValidationResult validationResult =
+                    TAO::Ledger::ValidateMinedBlock(*pTritium);
+                if(!validationResult.valid)
                 {
-                    debug::error(FUNCTION, "SUBMIT_BLOCK rejected: ", submitResult.reason);
+                    debug::error(FUNCTION, "SUBMIT_BLOCK rejected: ", validationResult.reason);
+                    respond(BLOCK_REJECTED);
+                    return true;
+                }
+
+                TAO::Ledger::BlockAcceptanceResult acceptanceResult =
+                    TAO::Ledger::AcceptMinedBlock(*pTritium);
+                if(!acceptanceResult.accepted)
+                {
+                    debug::error(FUNCTION, "SUBMIT_BLOCK rejected: ", acceptanceResult.reason);
                     respond(BLOCK_REJECTED);
                     return true;
                 }
 
                 debug::log(2, FUNCTION, "SUBMIT_BLOCK accepted merkle=", hashMerkle.SubString(),
-                           " channel=", submitResult.nChannel, " height=", submitResult.nHeight);
+                           " channel=", acceptanceResult.nChannel, " height=", acceptanceResult.nHeight);
                 respond(BLOCK_ACCEPTED);
                 return true;
             }
@@ -1583,34 +1592,15 @@ namespace LLP
         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock*>(mapBlocks[hashMerkleRoot]);
         if(pBlock)
         {
-            debug::log(2, FUNCTION, "Tritium");
-            pBlock->print();
+            TAO::Ledger::BlockValidationResult validationResult =
+                TAO::Ledger::ValidateMinedBlock(*pBlock);
+            if(!validationResult.valid)
+                return debug::error(FUNCTION, validationResult.reason);
 
-            /* Log block found */
-            if(config::nVerbose > 0)
-            {
-                std::string strTimestamp(convert::DateTimeStrFormat(runtime::unifiedtimestamp()));
-                if(pBlock->nChannel == 1)
-                    debug::log(1, FUNCTION, "new prime block found at unified time ", strTimestamp);
-                else
-                    debug::log(1, FUNCTION, "new hash block found at unified time ", strTimestamp);
-            }
-
-            /* Check if the block is stale. */
-            if(pBlock->hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
-                return debug::error(FUNCTION, "submitted block is stale");
-
-            /* Unlock sigchain to create new block. */
-            SecureString strPIN;
-            RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
-
-            /* Process the block and relay to network if it gets accepted into main chain. */
-            uint8_t nStatus = 0;
-            TAO::Ledger::Process(*pBlock, nStatus);
-
-            /* Check the statues. */
-            if(!(nStatus & TAO::Ledger::PROCESS::ACCEPTED))
-                return false;
+            TAO::Ledger::BlockAcceptanceResult acceptanceResult =
+                TAO::Ledger::AcceptMinedBlock(*pBlock);
+            if(!acceptanceResult.accepted)
+                return debug::error(FUNCTION, acceptanceResult.reason);
 
             return true;
         }
