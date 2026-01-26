@@ -149,47 +149,6 @@ namespace TAO
          *
          **/
         SubmitResult SubmitMinedBlockForStatelessMining(TAO::Ledger::TritiumBlock& block);
-
-
- copilot/centralize-mining-utilities-another-one
-        /** ParseStatelessWorkSubmission
-         *
-         *  Parse stateless miner work submission payloads (merkle + nonce).
-         *
-         *  This helper extracts the merkle root and nonce from the start of the
-         *  payload. Any additional Falcon wrapper data is ignored here.
-         *
-         *  @param[in] vData Raw submission payload
-         *
-         *  @return Parsed result with merkle root and nonce
-         *
-         **/
-        ParseResult ParseStatelessWorkSubmission(const std::vector<uint8_t>& vData);
-
-        /** ValidateMinedBlock
-         *
-         *  Canonical validation entrypoint for mined Tritium blocks.
-         *
-         *  @param[in] block The mined block to validate
-         *
-         *  @return Structured validation result
-         *
-         **/
-        BlockValidationResult ValidateMinedBlock(TAO::Ledger::TritiumBlock& block);
-
-
-        /** AcceptMinedBlock
-         *
-         *  Canonical acceptance entrypoint for mined Tritium blocks.
-         *
-         *  @param[in] block The mined block to accept
-         *
-         *  @return Structured acceptance result
-         *
-         **/
-        BlockAcceptanceResult AcceptMinedBlock(TAO::Ledger::TritiumBlock& block);
- STATELESS-NODE
-
     }
 }
 

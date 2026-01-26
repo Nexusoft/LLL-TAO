@@ -304,7 +304,7 @@ namespace TAO::Ledger
         /* Unlock sigchain to process mined block. */
         try
         {
-            SecureString strPIN; // empty PIN; Authentication::Unlock retrieves mining PIN internally
+            SecureString strPIN; // empty PIN; Authentication::Unlock fetches mining PIN internally
             RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
         }
         catch(const std::exception& e)

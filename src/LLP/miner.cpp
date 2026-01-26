@@ -1595,7 +1595,6 @@ namespace LLP
         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock*>(mapBlocks[hashMerkleRoot]);
         if(pBlock)
         {
- copilot/centralize-mining-utilities-another-one
             debug::log(2, FUNCTION, "Tritium");
             pBlock->print();
 
@@ -1624,17 +1623,6 @@ namespace LLP
                 debug::error(FUNCTION, "AcceptMinedBlock failed: ", acceptanceResult.reason);
                 return false;
             }
-
-            TAO::Ledger::BlockValidationResult validationResult =
-                TAO::Ledger::ValidateMinedBlock(*pBlock);
-            if(!validationResult.valid)
-                return debug::error(FUNCTION, validationResult.reason);
-
-            TAO::Ledger::BlockAcceptanceResult acceptanceResult =
-                TAO::Ledger::AcceptMinedBlock(*pBlock);
-            if(!acceptanceResult.accepted)
-                return debug::error(FUNCTION, acceptanceResult.reason);
- STATELESS-NODE
 
             return true;
         }
