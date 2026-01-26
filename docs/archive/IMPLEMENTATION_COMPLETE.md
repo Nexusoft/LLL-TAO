@@ -62,7 +62,7 @@ This approach:
 - `src/LLP/packets/packet.h` - Simplified by 125 lines (removed 16-bit support)
 - `src/LLP/types/stateless_miner_connection.h` - Minor change (inheritance)
 - `src/LLP/stateless_miner_connection.cpp` - Updated to use StatelessPacket
-- `STATELESS_PACKET_FRAMING_CHANGES.md` - 212 lines documentation
+- `docs/archive/STATELESS_PACKET_FRAMING_CHANGES.md` - 212 lines documentation
 
 **Net Change:**
 - +766 lines added
@@ -133,7 +133,7 @@ This approach:
 
 ## References
 
-- Technical documentation: `STATELESS_PACKET_FRAMING_CHANGES.md`
+- Technical documentation: `docs/archive/STATELESS_PACKET_FRAMING_CHANGES.md`
 - Original issue: Problem statement in PR description
 - Code review: All changes committed with clear commit messages
 

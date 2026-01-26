@@ -48,7 +48,7 @@ docs/
 │
 ├── archive/                    # Historical documentation
 │   ├── migration-guides/       # Legacy protocol migration
-│   └── pr-summaries/           # Pull request summaries
+│   └── pr-summaries/           # Pull request summaries and rollups
 │
 ├── reference/                  # Master references
 │   ├── nexus.conf.md           # Complete config reference (800+ lines)
@@ -81,6 +81,14 @@ Complete node-side implementation of the stateless mining protocol introduced in
 - Performance metrics
 
 **Target audience:** Node operators, pool operators, developers
+
+---
+
+### Archived Summaries
+
+Historical PR summaries, verification reports, and implementation notes now live under:
+- `docs/archive/pr-summaries/`
+- `docs/archive/`
 
 ---
 
