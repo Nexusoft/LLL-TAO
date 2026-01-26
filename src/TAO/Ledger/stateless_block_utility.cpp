@@ -380,21 +380,6 @@ namespace TAO::Ledger
             return result;
         }
 
-        bool fParsedLegacy = false;
-        uint512_t legacyMerkle;
-        uint64_t legacyNonce = 0;
-
-        legacyMerkle.SetBytes(std::vector<uint8_t>(
-            vData.begin(),
-            vData.begin() + LLP::FalconConstants::MERKLE_ROOT_SIZE));
-
-        /* Nonce is little-endian per Falcon stateless protocol. */
-        for(size_t i = 0; i < LLP::FalconConstants::NONCE_SIZE; ++i)
-        {
-            legacyNonce |= static_cast<uint64_t>(vData[LLP::FalconConstants::MERKLE_ROOT_SIZE + i]) << (8 * i);
-        }
-        fParsedLegacy = true;
-
         if(vData.size() >= LLP::FalconConstants::SUBMIT_BLOCK_WRAPPER_MIN)
         {
             LLP::DisposableFalcon::SignedWorkSubmission submission;
@@ -408,15 +393,19 @@ namespace TAO::Ledger
             }
         }
 
-        if(fParsedLegacy)
-        {
-            result.hashMerkle = legacyMerkle;
-            result.nonce = legacyNonce;
-            result.success = true;
-            return result;
-        }
+        result.hashMerkle.SetBytes(std::vector<uint8_t>(
+            vData.begin(),
+            vData.begin() + LLP::FalconConstants::MERKLE_ROOT_SIZE));
 
-        result.reason = "failed to parse submission payload";
+        /* Nonce is little-endian per Falcon stateless protocol. */
+        uint64_t nonce = 0;
+        for(size_t i = 0; i < LLP::FalconConstants::NONCE_SIZE; ++i)
+        {
+            nonce |= static_cast<uint64_t>(vData[LLP::FalconConstants::MERKLE_ROOT_SIZE + i]) << (8 * i);
+        }
+        result.nonce = nonce;
+
+        result.success = true;
         return result;
     }
 
