@@ -961,8 +961,8 @@ namespace LLP
                         debug::error(FUNCTION, "   Packet size suggests Falcon format but wrapper unavailable");
                         debug::error(FUNCTION, "   This should not happen in production - investigate immediately");
                         debug::error(FUNCTION, "");
-                        debug::error(FUNCTION, "   ⚠️  SECURITY WARNING: Falling back to legacy format (INSECURE)");
-                        debug::error(FUNCTION, "   ⚠️  In production, this node should reject Falcon packets");
+                        debug::error(FUNCTION, "   ⚠️  SECURITY WARNING: rejecting Falcon packet (wrapper unavailable)");
+                        debug::error(FUNCTION, "   ⚠️  In production, reject Falcon packets until wrapper is fixed");
                         debug::error(FUNCTION, "   ⚠️  Consider blocking submissions until wrapper is fixed");
 
                         StatelessPacket response(BLOCK_REJECTED);
