@@ -39,6 +39,31 @@ namespace TAO
             uint32_t nHeight = 0;
             uint512_t hashBlock = 0; // Merkle root (submission key).
         };
+
+
+        /** BlockValidationResult
+         *
+         *  Result of validating a mined block before acceptance.
+         *
+         **/
+        struct BlockValidationResult
+        {
+            bool valid = false;
+            std::string reason;
+        };
+
+
+        /** BlockAcceptanceResult
+         *
+         *  Result of accepting a mined block into the ledger.
+         *
+         **/
+        struct BlockAcceptanceResult
+        {
+            bool accepted = false;
+            std::string reason;
+            uint8_t status = 0;
+        };
         
         
         /** ParseResult
@@ -82,6 +107,30 @@ namespace TAO
             const uint32_t nChannel,
             const uint64_t nExtraNonce,
             const uint256_t& hashRewardAddress);
+
+
+        /** ValidateMinedBlock
+         *
+         *  Validate a mined Tritium block prior to acceptance.
+         *
+         *  @param[in] block The mined block to validate
+         *
+         *  @return Structured validation result
+         *
+         **/
+        BlockValidationResult ValidateMinedBlock(const TAO::Ledger::TritiumBlock& block);
+
+
+        /** AcceptMinedBlock
+         *
+         *  Accept a mined Tritium block into the ledger.
+         *
+         *  @param[in] block The mined block to accept
+         *
+         *  @return Structured acceptance result
+         *
+         **/
+        BlockAcceptanceResult AcceptMinedBlock(TAO::Ledger::TritiumBlock& block);
 
 
         /** SubmitMinedBlockForStatelessMining

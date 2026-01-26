@@ -1599,21 +1599,21 @@ namespace LLP
                     debug::log(1, FUNCTION, "new hash block found at unified time ", strTimestamp);
             }
 
-            /* Check if the block is stale. */
-            if(pBlock->hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
-                return debug::error(FUNCTION, "submitted block is stale");
-
-            /* Unlock sigchain to create new block. */
-            SecureString strPIN;
-            RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
-
-            /* Process the block and relay to network if it gets accepted into main chain. */
-            uint8_t nStatus = 0;
-            TAO::Ledger::Process(*pBlock, nStatus);
-
-            /* Check the statues. */
-            if(!(nStatus & TAO::Ledger::PROCESS::ACCEPTED))
+            const TAO::Ledger::BlockValidationResult validationResult =
+                TAO::Ledger::ValidateMinedBlock(*pBlock);
+            if(!validationResult.valid)
+            {
+                debug::error(FUNCTION, "ValidateMinedBlock failed: ", validationResult.reason);
                 return false;
+            }
+
+            const TAO::Ledger::BlockAcceptanceResult acceptanceResult =
+                TAO::Ledger::AcceptMinedBlock(*pBlock);
+            if(!acceptanceResult.accepted)
+            {
+                debug::error(FUNCTION, "AcceptMinedBlock failed: ", acceptanceResult.reason);
+                return false;
+            }
 
             return true;
         }

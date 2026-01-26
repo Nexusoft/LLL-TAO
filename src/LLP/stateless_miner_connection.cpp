@@ -2921,37 +2921,25 @@ namespace LLP
                     debug::log(1, FUNCTION, "new hash block found at unified time ", strTimestamp);
             }
 
-            /* Check if the block is stale. */
-            if(pBlock->hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
-                return debug::error(FUNCTION, "submitted block is stale");
-
-            /* Unlock sigchain to create new block. */
-            SecureString strPIN;
-            RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
-
-            /* Process the block and relay to network if it gets accepted into main chain. */
-            debug::log(0, "");
-            debug::log(0, "🌐 CALLING TAO::Ledger::Process()...");
-            debug::log(0, "   This will:");
-            debug::log(0, "   1. Validate against full consensus rules");
-            debug::log(0, "   2. Add block to blockchain database");
-            debug::log(0, "   3. Relay block to network peers");
-            debug::log(0, "");
-            
-            uint8_t nStatus = 0;
-            TAO::Ledger::Process(*pBlock, nStatus);
-
-            /* Check the statues. */
-            if(!(nStatus & TAO::Ledger::PROCESS::ACCEPTED))
+            const TAO::Ledger::BlockValidationResult validationResult =
+                TAO::Ledger::ValidateMinedBlock(*pBlock);
+            if(!validationResult.valid)
             {
-                debug::log(0, ANSI_COLOR_BRIGHT_RED, "❌ Process() REJECTED BLOCK", ANSI_COLOR_RESET);
-                debug::log(0, "   Status flags: 0x", std::hex, static_cast<int>(nStatus), std::dec);
+                debug::error(FUNCTION, "ValidateMinedBlock failed: ", validationResult.reason);
                 return false;
             }
-            
-            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "✅ Process() ACCEPTED BLOCK", ANSI_COLOR_RESET);
-            debug::log(0, "   Block added to blockchain");
-            debug::log(0, "   Block relayed to network");
+
+            const TAO::Ledger::BlockAcceptanceResult acceptanceResult =
+                TAO::Ledger::AcceptMinedBlock(*pBlock);
+            if(!acceptanceResult.accepted)
+            {
+                debug::log(0, ANSI_COLOR_BRIGHT_RED, "❌ AcceptMinedBlock rejected block", ANSI_COLOR_RESET);
+                debug::log(0, "   Reason: ", acceptanceResult.reason);
+                debug::log(0, "   Status flags: 0x", std::hex, static_cast<int>(acceptanceResult.status), std::dec);
+                return false;
+            }
+
+            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "✅ AcceptMinedBlock accepted block", ANSI_COLOR_RESET);
             debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "✅ === VALIDATE_BLOCK: SUCCESS ===", ANSI_COLOR_RESET);
 
             return true;

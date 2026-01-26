@@ -232,13 +232,10 @@ namespace TAO::Ledger
     }
 
 
-    /* Canonical acceptance entrypoint for mined Tritium blocks. */
-    SubmitResult SubmitMinedBlockForStatelessMining(TAO::Ledger::TritiumBlock& block)
+    /* Validate a mined block prior to acceptance. */
+    BlockValidationResult ValidateMinedBlock(const TAO::Ledger::TritiumBlock& block)
     {
-        SubmitResult result;
-        result.nChannel = block.nChannel;
-        result.nHeight = block.nHeight;
-        result.hashBlock = block.hashMerkleRoot;
+        BlockValidationResult result;
 
         if(config::fShutdown.load())
         {
@@ -265,8 +262,20 @@ namespace TAO::Ledger
             return result;
         }
 
+        result.valid = true;
+        result.reason = "valid";
+        return result;
+    }
+
+
+    /* Accept a mined block into the ledger. */
+    BlockAcceptanceResult AcceptMinedBlock(TAO::Ledger::TritiumBlock& block)
+    {
+        BlockAcceptanceResult result;
+
         uint8_t nStatus = 0;
         TAO::Ledger::Process(block, nStatus);
+        result.status = nStatus;
 
         if(!(nStatus & TAO::Ledger::PROCESS::ACCEPTED))
         {
@@ -287,6 +296,34 @@ namespace TAO::Ledger
 
         result.accepted = true;
         result.reason = "accepted";
+        return result;
+    }
+
+
+    /* Canonical acceptance entrypoint for mined Tritium blocks. */
+    SubmitResult SubmitMinedBlockForStatelessMining(TAO::Ledger::TritiumBlock& block)
+    {
+        SubmitResult result;
+        result.nChannel = block.nChannel;
+        result.nHeight = block.nHeight;
+        result.hashBlock = block.hashMerkleRoot;
+
+        const BlockValidationResult validationResult = ValidateMinedBlock(block);
+        if(!validationResult.valid)
+        {
+            result.reason = validationResult.reason;
+            return result;
+        }
+
+        const BlockAcceptanceResult acceptanceResult = AcceptMinedBlock(block);
+        if(!acceptanceResult.accepted)
+        {
+            result.reason = acceptanceResult.reason;
+            return result;
+        }
+
+        result.accepted = true;
+        result.reason = acceptanceResult.reason;
         return result;
     }
 
