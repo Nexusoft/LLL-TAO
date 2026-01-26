@@ -1,0 +1,14 @@
+build:
+  skip_tests: true
+  compile_only: true
+  timeout_minutes: 10
+
+validation:
+  require_compilation: true
+  require_tests: false
+
+dependencies:
+  skip_install:
+    - libdb-dev
+    - libdb++-dev
+    - berkeley-db
