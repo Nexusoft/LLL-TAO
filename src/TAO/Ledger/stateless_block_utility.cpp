@@ -380,41 +380,43 @@ namespace TAO::Ledger
             return result;
         }
 
-        if(vData.size() >= LLP::FalconConstants::SUBMIT_BLOCK_WRAPPER_MIN)
-        {
-            LLP::DisposableFalcon::SignedWorkSubmission submission;
-            if(!submission.Deserialize(vData))
-            {
-                result.reason = "falcon wrapper deserialization failed";
-                return result;
-            }
+        bool fParsedLegacy = false;
+        uint512_t legacyMerkle;
+        uint64_t legacyNonce = 0;
 
-            if(!submission.IsValid())
-            {
-                result.reason = "falcon wrapper invalid";
-                return result;
-            }
-
-            result.hashMerkle = submission.hashMerkleRoot;
-            result.nonce = submission.nNonce;
-            result.timestamp = submission.nTimestamp;
-            result.success = true;
-            return result;
-        }
-
-        result.hashMerkle.SetBytes(std::vector<uint8_t>(
+        legacyMerkle.SetBytes(std::vector<uint8_t>(
             vData.begin(),
             vData.begin() + LLP::FalconConstants::MERKLE_ROOT_SIZE));
 
         /* Nonce is little-endian per Falcon stateless protocol. */
-        uint64_t nonce = 0;
         for(size_t i = 0; i < LLP::FalconConstants::NONCE_SIZE; ++i)
         {
-            nonce |= static_cast<uint64_t>(vData[LLP::FalconConstants::MERKLE_ROOT_SIZE + i]) << (8 * i);
+            legacyNonce |= static_cast<uint64_t>(vData[LLP::FalconConstants::MERKLE_ROOT_SIZE + i]) << (8 * i);
         }
-        result.nonce = nonce;
+        fParsedLegacy = true;
 
-        result.success = true;
+        if(vData.size() >= LLP::FalconConstants::SUBMIT_BLOCK_WRAPPER_MIN)
+        {
+            LLP::DisposableFalcon::SignedWorkSubmission submission;
+            if(submission.Deserialize(vData) && submission.IsValid())
+            {
+                result.hashMerkle = submission.hashMerkleRoot;
+                result.nonce = submission.nNonce;
+                result.timestamp = submission.nTimestamp;
+                result.success = true;
+                return result;
+            }
+        }
+
+        if(fParsedLegacy)
+        {
+            result.hashMerkle = legacyMerkle;
+            result.nonce = legacyNonce;
+            result.success = true;
+            return result;
+        }
+
+        result.reason = "failed to parse submission payload";
         return result;
     }
 
