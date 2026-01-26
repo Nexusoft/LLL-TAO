@@ -61,7 +61,7 @@ Confirms that the following **DO EXIST** and are functional:
 **Key Point**: No caching layer - templates always generated fresh on demand.
 
 ## Files Modified
-- **VERIFICATION_REPORT.md** (new) - Detailed analysis of codebase state
+- **docs/archive/VERIFICATION_REPORT.md** (new) - Detailed analysis of codebase state
 
 ## Files Analyzed (No Changes Needed)
 - `src/TAO/Ledger/include/stateless_block_utility.h` - No cache APIs present
@@ -203,7 +203,7 @@ No migration needed - the codebase is already in the desired state.
 5. ⏭️ Monitor for any issues
 
 ## Related Documentation
-- `VERIFICATION_REPORT.md` - Detailed technical analysis
+- `docs/archive/VERIFICATION_REPORT.md` - Detailed technical analysis
 - `docs/MINING_NOTIFICATION_DIAGNOSTICS.md` - Push notification protocol
 - `src/LLP/types/miner.h` - Opcode documentation
 
