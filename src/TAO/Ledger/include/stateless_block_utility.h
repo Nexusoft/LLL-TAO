@@ -83,6 +83,7 @@ namespace TAO
             std::string reason;
             uint512_t hashMerkle = 0;
             uint64_t nonce = 0;
+            uint64_t timestamp = 0;
         };
 
 
@@ -137,6 +138,22 @@ namespace TAO
          *
          **/
         BlockAcceptanceResult AcceptMinedBlock(TAO::Ledger::TritiumBlock& block);
+
+
+        /** ParseStatelessWorkSubmission
+         *
+         *  Parse stateless miner work submission payloads (merkle + nonce).
+         *
+         *  This helper validates and extracts Falcon wrapper data when present.
+         *  For legacy payloads, it extracts merkle and nonce from the start of
+         *  the payload.
+         *
+         *  @param[in] vData Raw submission payload
+         *
+         *  @return Parsed result with merkle root and nonce
+         *
+         **/
+        ParseResult ParseStatelessWorkSubmission(const std::vector<uint8_t>& vData);
 
 
         /** SubmitMinedBlockForStatelessMining

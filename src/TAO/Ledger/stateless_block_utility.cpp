@@ -25,6 +25,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/version.h>
 #include <LLP/include/falcon_constants.h>
+#include <LLP/include/disposable_falcon.h>
 
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
@@ -376,6 +377,28 @@ namespace TAO::Ledger
         if(vData.size() < LLP::FalconConstants::MERKLE_ROOT_SIZE + LLP::FalconConstants::NONCE_SIZE)
         {
             result.reason = "submission payload too small";
+            return result;
+        }
+
+        if(vData.size() >= LLP::FalconConstants::SUBMIT_BLOCK_WRAPPER_MIN)
+        {
+            LLP::DisposableFalcon::SignedWorkSubmission submission;
+            if(!submission.Deserialize(vData))
+            {
+                result.reason = "falcon wrapper deserialization failed";
+                return result;
+            }
+
+            if(!submission.IsValid())
+            {
+                result.reason = "falcon wrapper invalid";
+                return result;
+            }
+
+            result.hashMerkle = submission.hashMerkleRoot;
+            result.nonce = submission.nNonce;
+            result.timestamp = submission.nTimestamp;
+            result.success = true;
             return result;
         }
 
