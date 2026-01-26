@@ -148,7 +148,7 @@ This pull request implements comprehensive enhancements to the LLL-TAO Node's mi
 5. `tests/unit/LLP/node_cache.cpp` - Cache unit tests
 6. `tests/unit/LLP/falcon_handshake.cpp` - Handshake unit tests
 7. `docs/mining.md` - Mining guide and documentation
-8. `docs/PR_SUMMARY.md` - This summary document
+8. `docs/archive/pr-summaries/PR_SUMMARY_FALCON_CACHE_ENHANCEMENTS.md` - This summary document
 
 **Modified Files (3):**
 1. `src/LLP/include/stateless_manager.h` - Added cache management methods
