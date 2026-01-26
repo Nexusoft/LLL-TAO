@@ -274,10 +274,14 @@ namespace TAO::Ledger
         BlockAcceptanceResult result;
 
         /* Unlock sigchain to create new block. */
-        SecureString strPIN;
-        if(!TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING))
+        try
         {
-            result.reason = "failed to unlock mining key";
+            SecureString strPIN;
+            RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
+        }
+        catch(const std::exception& e)
+        {
+            result.reason = e.what();
             return result;
         }
 
