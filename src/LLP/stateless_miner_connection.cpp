@@ -109,18 +109,6 @@ namespace LLP
     , m_pPrimeState(std::make_unique<PrimeStateManager>())
     , m_pHashState(std::make_unique<HashStateManager>())
     {
-        /* Create disposable Falcon wrapper instance */
-        m_pFalconWrapper = LLP::DisposableFalcon::Create();
-        
-        if (!m_pFalconWrapper)
-        {
-            debug::error(FUNCTION, "Failed to create DisposableFalconWrapper");
-        }
-        else
-        {
-            debug::log(2, FUNCTION, "✓ Disposable Falcon wrapper initialized");
-        }
-        
         /* Log channel manager initialization */
         debug::log(2, FUNCTION, "✓ Channel state managers initialized (Prime + Hash)");
     }
@@ -137,18 +125,6 @@ namespace LLP
     , m_pPrimeState(std::make_unique<PrimeStateManager>())
     , m_pHashState(std::make_unique<HashStateManager>())
     {
-        /* Create disposable Falcon wrapper instance */
-        m_pFalconWrapper = LLP::DisposableFalcon::Create();
-        
-        if (!m_pFalconWrapper)
-        {
-            debug::error(FUNCTION, "Failed to create DisposableFalconWrapper");
-        }
-        else
-        {
-            debug::log(2, FUNCTION, "✓ Disposable Falcon wrapper initialized");
-        }
-        
         /* Log channel manager initialization */
         debug::log(2, FUNCTION, "✓ Channel state managers initialized (Prime + Hash)");
     }
@@ -165,18 +141,6 @@ namespace LLP
     , m_pPrimeState(std::make_unique<PrimeStateManager>())
     , m_pHashState(std::make_unique<HashStateManager>())
     {
-        /* Create disposable Falcon wrapper instance */
-        m_pFalconWrapper = LLP::DisposableFalcon::Create();
-        
-        if (!m_pFalconWrapper)
-        {
-            debug::error(FUNCTION, "Failed to create DisposableFalconWrapper");
-        }
-        else
-        {
-            debug::log(2, FUNCTION, "✓ Disposable Falcon wrapper initialized");
-        }
-        
         /* Log channel manager initialization */
         debug::log(2, FUNCTION, "✓ Channel state managers initialized (Prime + Hash)");
     }
@@ -365,7 +329,8 @@ namespace LLP
                 {
                     StatelessPacket PACKET = this->INCOMING;
                     debug::log(2, FUNCTION, "MinerLLP: HEADER from ", GetAddress().ToStringIP(),
-                               " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec,
+                               " header=0x", std::hex, std::setw(4), std::setfill('0'),
+                               uint32_t(PACKET.HEADER), std::dec,
                                " length=", PACKET.LENGTH);
                 }
                 break;
@@ -477,11 +442,22 @@ namespace LLP
         {
             /* Get the incoming packet. */
             StatelessPacket PACKET = this->INCOMING;
-
             /* Log entry */
             debug::log(1, FUNCTION, "MinerLLP: ProcessPacket from ", GetAddress().ToStringIP(),
-                       " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec,
+                       " header=0x", std::hex, std::setw(4), std::setfill('0'),
+                       uint32_t(PACKET.HEADER), std::dec,
                        " length=", PACKET.LENGTH);
+
+            if(!StatelessOpcodes::IsStateless(PACKET.HEADER))
+            {
+                uint16_t nHeaderSwapped = static_cast<uint16_t>((PACKET.HEADER >> 8) | (PACKET.HEADER << 8));
+                if(StatelessOpcodes::IsStateless(nHeaderSwapped))
+                {
+                    debug::error(FUNCTION, "Header endian mismatch detected: header=0x", std::hex, uint32_t(PACKET.HEADER),
+                                 " swapped=0x", uint32_t(nHeaderSwapped), std::dec);
+                    PACKET.HEADER = nHeaderSwapped;
+                }
+            }
 
             /* Validate opcode range - reject opcodes outside 0xD000-0xD0FF */
             if(!StatelessOpcodes::IsStateless(PACKET.HEADER))
@@ -946,6 +922,7 @@ namespace LLP
                 uint512_t hashMerkle;
                 uint64_t nonce = 0;
                 bool fFalconVerified = false;
+                std::unique_ptr<LLP::DisposableFalcon::IDisposableFalconWrapper> pFalconWrapper;
 
                 /* Check for Falcon-signed format: [merkle][nonce][timestamp][sig_len][signature] */
                 /* Minimum for Falcon format: 64 + 8 + 8 + 2 = 82 bytes */
@@ -953,8 +930,9 @@ namespace LLP
 
                 if(PACKET.DATA.size() >= FALCON_MIN_SIZE)
                 {
-                    /* Check if Falcon wrapper is available */
-                    if(!m_pFalconWrapper)
+                    /* Create disposable Falcon wrapper for this submission */
+                    pFalconWrapper = LLP::DisposableFalcon::Create();
+                    if(!pFalconWrapper)
                     {
                         debug::error(FUNCTION, "❌ CRITICAL: Falcon wrapper not initialized");
                         debug::error(FUNCTION, "   Cannot verify Falcon signatures - check constructor logs");
@@ -964,13 +942,17 @@ namespace LLP
                         debug::error(FUNCTION, "   ⚠️  SECURITY WARNING: Falling back to legacy format (INSECURE)");
                         debug::error(FUNCTION, "   ⚠️  In production, this node should reject Falcon packets");
                         debug::error(FUNCTION, "   ⚠️  Consider blocking submissions until wrapper is fixed");
-                        
-                        /* Fall through to legacy format processing */
-                        /* NOTE: This fallback is for compatibility/debugging only. */
-                        /* Production nodes should reject packets if wrapper fails. */
+
+                        StatelessPacket response(BLOCK_REJECTED);
+                        response.DATA.push_back(0xFF);  // Reason: Internal error
+                        respond(response);
+
+                        pFalconWrapper.reset();
+                        return true;
                     }
                     else
                     {
+                        debug::log(2, FUNCTION, "✓ Disposable Falcon wrapper created for SUBMIT_BLOCK");
                         /* Get session public key */
                         std::vector<uint8_t> vSessionPubKey;
                         {
@@ -1001,6 +983,7 @@ namespace LLP
                             respond(response);
                             
                             debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (No Falcon session key) ===", ANSI_COLOR_RESET);
+                            pFalconWrapper.reset();
                             return true;
                         }
                         else
@@ -1051,6 +1034,7 @@ namespace LLP
                                     respond(response);
                                     
                                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (ChaCha20 decryption failed) ===", ANSI_COLOR_RESET);
+                                    pFalconWrapper.reset();
                                     return true;
                                 }
                                 
@@ -1120,6 +1104,7 @@ namespace LLP
                                     debug::error(FUNCTION, "❌ Decrypted payload too small (need at least ", MIN_METADATA_SIZE, " bytes)");
                                     StatelessPacket response(BLOCK_REJECTED);
                                     respond(response);
+                                    pFalconWrapper.reset();
                                     return true;
                                 }
                                 
@@ -1255,6 +1240,7 @@ namespace LLP
                                     debug::error(FUNCTION, "   Decrypted size: ", decryptedData.size(), " bytes");
                                     StatelessPacket response(BLOCK_REJECTED);
                                     respond(response);
+                                    pFalconWrapper.reset();
                                     return true;
                                 }
                                 
@@ -1278,6 +1264,7 @@ namespace LLP
                                     debug::error(FUNCTION, "   This should not happen - please report this bug");
                                     StatelessPacket response(BLOCK_REJECTED);
                                     respond(response);
+                                    pFalconWrapper.reset();
                                     return true;
                                 }
                                 
@@ -1312,6 +1299,7 @@ namespace LLP
                                     debug::error(FUNCTION, "❌ Failed to set public key for verification");
                                     StatelessPacket response(BLOCK_REJECTED);
                                     respond(response);
+                                    pFalconWrapper.reset();
                                     return true;
                                 }
                                 
@@ -1329,6 +1317,7 @@ namespace LLP
                                     respond(response);
                                     
                                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Signature verification failed) ===", ANSI_COLOR_RESET);
+                                    pFalconWrapper.reset();
                                     return true;
                                 }
                                 
@@ -1391,6 +1380,7 @@ namespace LLP
                                             respond(response);
                                             
                                             debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Physical signature failed) ===", ANSI_COLOR_RESET);
+                                            pFalconWrapper.reset();
                                             return true;
                                         }
                                         
@@ -1400,6 +1390,7 @@ namespace LLP
                                             debug::error(FUNCTION, "❌ No Falcon version detected for session");
                                             StatelessPacket response(BLOCK_REJECTED);
                                             respond(response);
+                                            pFalconWrapper.reset();
                                             return true;
                                         }
                                         
@@ -1416,6 +1407,7 @@ namespace LLP
                                             respond(response);
                                             
                                             debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Key bonding violation) ===", ANSI_COLOR_RESET);
+                                            pFalconWrapper.reset();
                                             return true;
                                         }
                                         
@@ -1493,6 +1485,7 @@ namespace LLP
                                     respond(response);
                                     
                                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Stale Falcon signature) ===", ANSI_COLOR_RESET);
+                                    pFalconWrapper.reset();
                                     return true;
                                 }
                             }
@@ -1511,6 +1504,7 @@ namespace LLP
                                 respond(response);
                                 
                                 debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Invalid packet size) ===", ANSI_COLOR_RESET);
+                                pFalconWrapper.reset();
                                 return true;
                             }
                         }
@@ -1529,6 +1523,7 @@ namespace LLP
                     respond(response);
                     
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Packet too small) ===", ANSI_COLOR_RESET);
+                    pFalconWrapper.reset();
                     return true;
                 }
 
@@ -1546,6 +1541,7 @@ namespace LLP
                     respond(response);
                     
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Internal error) ===", ANSI_COLOR_RESET);
+                    pFalconWrapper.reset();
                     return true;
                 }
 
@@ -1605,6 +1601,7 @@ namespace LLP
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Unknown template) ===", ANSI_COLOR_RESET);
+                    pFalconWrapper.reset();
                     return true;
                 }
                 
@@ -1618,6 +1615,7 @@ namespace LLP
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (template lookup failed) ===", ANSI_COLOR_RESET);
+                    pFalconWrapper.reset();
                     return true;
                 }
 
@@ -1628,6 +1626,7 @@ namespace LLP
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (sign_block failed) ===", ANSI_COLOR_RESET);
+                    pFalconWrapper.reset();
                     return true;
                 }
 
@@ -1639,14 +1638,15 @@ namespace LLP
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (invalid block type) ===", ANSI_COLOR_RESET);
+                    pFalconWrapper.reset();
                     return true;
                 }
 
-                TAO::Ledger::SubmitResult submitResult =
-                    TAO::Ledger::SubmitMinedBlockForStatelessMining(*pTritium);
-                if(!submitResult.accepted)
+                TAO::Ledger::BlockValidationResult validationResult =
+                    TAO::Ledger::ValidateMinedBlock(*pTritium);
+                if(!validationResult.valid)
                 {
-                    debug::error(FUNCTION, "❌ SubmitMinedBlockForStatelessMining failed: ", submitResult.reason);
+                    debug::error(FUNCTION, "❌ ValidateMinedBlock failed: ", validationResult.reason);
                     
                     /* Notify local pool if enabled */
                     if(PoolDiscovery::IsLocalPoolEnabled() && context.hashGenesis != 0)
@@ -1656,7 +1656,27 @@ namespace LLP
                     
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
-                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (", submitResult.reason, ") ===", ANSI_COLOR_RESET);
+                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (", validationResult.reason, ") ===", ANSI_COLOR_RESET);
+                    pFalconWrapper.reset();
+                    return true;
+                }
+
+                TAO::Ledger::BlockAcceptanceResult acceptanceResult =
+                    TAO::Ledger::AcceptMinedBlock(*pTritium);
+                if(!acceptanceResult.accepted)
+                {
+                    debug::error(FUNCTION, "❌ AcceptMinedBlock failed: ", acceptanceResult.reason);
+
+                    /* Notify local pool if enabled */
+                    if(PoolDiscovery::IsLocalPoolEnabled() && context.hashGenesis != 0)
+                    {
+                        PoolDiscovery::OnBlockSubmitted(context.hashGenesis, false);
+                    }
+
+                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                    respond(response);
+                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (", acceptanceResult.reason, ") ===", ANSI_COLOR_RESET);
+                    pFalconWrapper.reset();
                     return true;
                 }
 
@@ -1689,7 +1709,7 @@ namespace LLP
                 /* Generate an Accepted response. */
                 debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✅ Block accepted by network!", ANSI_COLOR_RESET);
                 debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK result=accepted merkle=", hashMerkle.SubString(),
-                           " channel=", submitResult.nChannel, " height=", submitResult.nHeight);
+                           " channel=", acceptanceResult.nChannel, " height=", acceptanceResult.nHeight);
                 
                 /* Log signature configuration (PR #122) */
                 LogFalconSignatureInfo(context);
@@ -1707,6 +1727,8 @@ namespace LLP
                 
                 StatelessPacket response(STATELESS_BLOCK_ACCEPTED);
                 respond(response);
+                pFalconWrapper.reset();
+                debug::log(2, FUNCTION, "✓ Disposable Falcon wrapper discarded after SUBMIT_BLOCK");
 
                 /* Update context timestamp */
                 context = context.WithTimestamp(runtime::unifiedtimestamp());
@@ -2813,7 +2835,7 @@ namespace LLP
     bool StatelessMinerConnection::validate_block(const uint512_t& hashMerkleRoot)
     {
         debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "✅ === VALIDATE_BLOCK: Final consensus validation ===", ANSI_COLOR_RESET);
-        
+
         /* Safe map access to avoid creating null entry */
         auto it = mapBlocks.find(hashMerkleRoot);
         if(it == mapBlocks.end())
@@ -2821,7 +2843,7 @@ namespace LLP
             debug::error(FUNCTION, "Block not found in map");
             return false;
         }
-        
+
         /* Get block from metadata */
         const TemplateMetadata& meta = it->second;
         if(!meta.pBlock)
@@ -2829,151 +2851,32 @@ namespace LLP
             debug::error(FUNCTION, "Block has null pointer in metadata");
             return false;
         }
-        
-        /* If the block dynamically casts to a tritium block, validate the tritium block. */
+
         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock*>(meta.pBlock.get());
-        if(pBlock)
+        if(!pBlock)
         {
-            debug::log(2, FUNCTION, "Tritium");
-            pBlock->print();
-            
-            /* ============================================================
-             * TRAINING WHEELS MODE: Pre-Check() Diagnostic
-             * ============================================================ */
-            
-            debug::log(0, "");
-            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "🔬 === PRE-CHECK() DIAGNOSTIC ===", ANSI_COLOR_RESET);
-            debug::log(0, "📋 BLOCK STATE BEFORE Check():");
-            debug::log(0, "   Height:      ", pBlock->nHeight);
-            debug::log(0, "   Channel:     ", pBlock->nChannel);
-            debug::log(0, "   nBits:       0x", std::hex, pBlock->nBits, std::dec);
-            debug::log(0, "   nNonce:      0x", std::hex, pBlock->nNonce, std::dec);
-            debug::log(0, "   Merkle root: ", pBlock->hashMerkleRoot.SubString());
-            debug::log(0, "   vOffsets.size(): ", pBlock->vOffsets.size());
-            
-            if(pBlock->nChannel == 1 && !pBlock->vOffsets.empty())
-            {
-                debug::log(0, "   First 5 offsets:");
-                for(size_t i = 0; i < std::min(size_t(5), pBlock->vOffsets.size()); ++i)
-                {
-                    debug::log(0, "      [", i, "] = ", static_cast<int>(pBlock->vOffsets[i]));
-                }
-            }
-            
-            debug::log(0, "");
-            debug::log(0, "🧪 CALLING TritiumBlock::Check()...");
-            
-            /* Call canonical Check() validation */
-            bool fCheckResult = pBlock->Check();
-            
-            debug::log(0, "");
-            if(fCheckResult)
-            {
-                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "✅ Check() PASSED", ANSI_COLOR_RESET);
-                debug::log(0, "   All block validations successful:");
-                debug::log(0, "   ✓ Block structure valid");
-                debug::log(0, "   ✓ Producer transaction valid");
-                debug::log(0, "   ✓ Proof-of-work valid");
-                if(pBlock->nChannel == 1)
-                    debug::log(0, "   ✓ Prime Cunningham chain valid");
-                else if(pBlock->nChannel == 2)
-                    debug::log(0, "   ✓ Hash meets target");
-            }
-            else
-            {
-                debug::log(0, ANSI_COLOR_BRIGHT_RED, "❌ Check() FAILED", ANSI_COLOR_RESET);
-                debug::log(0, "   Block failed consensus validation");
-                
-                /* ✅ ADD: Enhanced Prime channel diagnostics */
-                if(pBlock->nChannel == 1)  // Prime channel
-                {
-                    debug::error(FUNCTION, "════════════════════════════════════════");
-                    debug::error(FUNCTION, "   PRIME CHANNEL VALIDATION FAILED");
-                    debug::error(FUNCTION, "════════════════════════════════════════");
-                    debug::error(FUNCTION, "Block details:");
-                    debug::error(FUNCTION, "  Height: ", pBlock->nHeight);
-                    debug::error(FUNCTION, "  Channel: 1 (Prime)");
-                    debug::error(FUNCTION, "  Merkle: ", pBlock->hashMerkleRoot.SubString());
-                    debug::error(FUNCTION, "  nNonce: ", pBlock->nNonce);
-                    debug::error(FUNCTION, "");
-                    debug::error(FUNCTION, "NOTE: PR #129 added Miller-Rabin primality test");
-                    debug::error(FUNCTION, "If this is a recent build, Check() now uses");
-                    debug::error(FUNCTION, "cryptographically secure primality validation.");
-                    debug::error(FUNCTION, "");
-                    debug::error(FUNCTION, "Common Prime mining failures:");
-                    debug::error(FUNCTION, "  - Empty vOffsets (no valid Cunningham chain)");
-                    debug::error(FUNCTION, "  - Base prime not actually prime");
-                    debug::error(FUNCTION, "  - Chain length insufficient");
-                    debug::error(FUNCTION, "════════════════════════════════════════");
-                }
-                else
-                {
-                    debug::log(0, "   Common failure reasons:");
-                    debug::log(0, "   - Prime: Empty vOffsets or invalid Cunningham chain");
-                    debug::log(0, "   - Hash: Proof hash doesn't meet target");
-                    debug::log(0, "   - Producer transaction invalid");
-                    debug::log(0, "   - Block structure malformed");
-                }
-                
-                debug::error(FUNCTION, "Block failed Check() validation");
-                debug::error(FUNCTION, "  Height: ", pBlock->nHeight);
-                debug::error(FUNCTION, "  Channel: ", pBlock->nChannel);
-                debug::error(FUNCTION, "  Merkle: ", pBlock->hashMerkleRoot.SubString());
-                
-                return false;
-            }
-            
-            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "🔬 === END PRE-CHECK() DIAGNOSTIC ===", ANSI_COLOR_RESET);
-            debug::log(0, "");
-
-            /* Log block found */
-            if(config::nVerbose > 0)
-            {
-                std::string strTimestamp(convert::DateTimeStrFormat(runtime::unifiedtimestamp()));
-                if(pBlock->nChannel == 1)
-                    debug::log(1, FUNCTION, "new prime block found at unified time ", strTimestamp);
-                else
-                    debug::log(1, FUNCTION, "new hash block found at unified time ", strTimestamp);
-            }
-
-            /* Check if the block is stale. */
-            if(pBlock->hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
-                return debug::error(FUNCTION, "submitted block is stale");
-
-            /* Unlock sigchain to create new block. */
-            SecureString strPIN;
-            RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
-
-            /* Process the block and relay to network if it gets accepted into main chain. */
-            debug::log(0, "");
-            debug::log(0, "🌐 CALLING TAO::Ledger::Process()...");
-            debug::log(0, "   This will:");
-            debug::log(0, "   1. Validate against full consensus rules");
-            debug::log(0, "   2. Add block to blockchain database");
-            debug::log(0, "   3. Relay block to network peers");
-            debug::log(0, "");
-            
-            uint8_t nStatus = 0;
-            TAO::Ledger::Process(*pBlock, nStatus);
-
-            /* Check the statues. */
-            if(!(nStatus & TAO::Ledger::PROCESS::ACCEPTED))
-            {
-                debug::log(0, ANSI_COLOR_BRIGHT_RED, "❌ Process() REJECTED BLOCK", ANSI_COLOR_RESET);
-                debug::log(0, "   Status flags: 0x", std::hex, static_cast<int>(nStatus), std::dec);
-                return false;
-            }
-            
-            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "✅ Process() ACCEPTED BLOCK", ANSI_COLOR_RESET);
-            debug::log(0, "   Block added to blockchain");
-            debug::log(0, "   Block relayed to network");
-            debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "✅ === VALIDATE_BLOCK: SUCCESS ===", ANSI_COLOR_RESET);
-
-            return true;
+            debug::error(FUNCTION, "Unexpected non-Tritium block in metadata");
+            return false;
         }
 
-        /* If we get here, the block is null or doesn't exist. */
-        return false;
+        TAO::Ledger::BlockValidationResult validationResult =
+            TAO::Ledger::ValidateMinedBlock(*pBlock);
+        if(!validationResult.valid)
+        {
+            debug::error(FUNCTION, validationResult.reason);
+            return false;
+        }
+
+        TAO::Ledger::BlockAcceptanceResult acceptanceResult =
+            TAO::Ledger::AcceptMinedBlock(*pBlock);
+        if(!acceptanceResult.accepted)
+        {
+            debug::error(FUNCTION, acceptanceResult.reason);
+            return false;
+        }
+
+        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "✅ === VALIDATE_BLOCK: SUCCESS ===", ANSI_COLOR_RESET);
+        return true;
     }
 
 
