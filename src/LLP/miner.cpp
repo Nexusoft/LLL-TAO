@@ -1179,14 +1179,17 @@ namespace LLP
 
                 uint512_t hashMerkle;
                 uint64_t nonce = 0;
+                TAO::Ledger::ParseResult parseResult =
+                    TAO::Ledger::ParseStatelessWorkSubmission(PACKET.DATA);
+                if(!parseResult.success)
+                {
+                    debug::error(FUNCTION, "SUBMIT_BLOCK parse failed: ", parseResult.reason);
+                    respond(BLOCK_REJECTED);
+                    return true;
+                }
 
-                /* Get the merkle root (first 64 bytes). */
-                hashMerkle.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE));
-
-                /* Get the nonce (next 8 bytes) */
-                nonce = convert::bytes2uint64(std::vector<uint8_t>(
-                    PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE,
-                    PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE));
+                hashMerkle = parseResult.hashMerkle;
+                nonce = parseResult.nonce;
 
                 debug::log(3, FUNCTION, "Block merkle root: ", hashMerkle.SubString(), " nonce: ", nonce);
 

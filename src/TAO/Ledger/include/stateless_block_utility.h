@@ -39,6 +39,20 @@ namespace TAO
             uint32_t nHeight = 0;
             uint512_t hashBlock = 0; // Merkle root (submission key).
         };
+        
+        
+        /** ParseResult
+         *
+         *  Result of parsing a stateless miner work submission.
+         *
+         **/
+        struct ParseResult
+        {
+            bool success = false;
+            std::string reason;
+            uint512_t hashMerkle = 0;
+            uint64_t nonce = 0;
+        };
 
 
         /** CreateBlockForStatelessMining
@@ -80,6 +94,21 @@ namespace TAO
          *
          **/
         SubmitResult SubmitMinedBlockForStatelessMining(TAO::Ledger::TritiumBlock& block);
+
+
+        /** ParseStatelessWorkSubmission
+         *
+         *  Parse stateless miner work submission payloads (merkle + nonce).
+         *
+         *  Supports legacy payloads (merkle + nonce) and Falcon wrappers
+         *  (merkle + nonce + timestamp + signature).
+         *
+         *  @param[in] vData Raw submission payload
+         *
+         *  @return Parsed result with merkle root and nonce
+         *
+         **/
+        ParseResult ParseStatelessWorkSubmission(const std::vector<uint8_t>& vData);
 
     }
 }

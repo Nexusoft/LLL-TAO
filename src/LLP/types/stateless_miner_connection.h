@@ -17,7 +17,6 @@ ________________________________________________________________________________
 
 #include <LLP/templates/stateless_connection.h>
 #include <LLP/include/stateless_miner.h>
-#include <LLP/include/disposable_falcon.h>
 #include <LLP/include/channel_state_manager.h>
 #include <TAO/Ledger/types/block.h>
 #include <atomic>
@@ -59,9 +58,6 @@ namespace LLP
 
         /** Used as an ID iterator for generating unique hashes from same block transactions. **/
         static std::atomic<uint32_t> nBlockIterator;
-
-        /** Disposable Falcon wrapper for signature verification **/
-        std::unique_ptr<LLP::DisposableFalcon::IDisposableFalconWrapper> m_pFalconWrapper;
 
         /** Map of session ID -> Falcon public key for signature verification **/
         std::map<uint32_t, std::vector<uint8_t>> mapSessionKeys;

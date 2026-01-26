@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLP/include/falcon_constants.h>
 #include <LLP/include/falcon_auth.h>
 #include <LLP/include/falcon_verify.h>
+#include <LLP/include/disposable_falcon.h>
 #include <LLP/include/auto_cooldown_manager.h>
 #include <LLP/include/pool_discovery.h>
 #include <LLP/include/opcode_utility.h>
@@ -109,18 +110,6 @@ namespace LLP
     , m_pPrimeState(std::make_unique<PrimeStateManager>())
     , m_pHashState(std::make_unique<HashStateManager>())
     {
-        /* Create disposable Falcon wrapper instance */
-        m_pFalconWrapper = LLP::DisposableFalcon::Create();
-        
-        if (!m_pFalconWrapper)
-        {
-            debug::error(FUNCTION, "Failed to create DisposableFalconWrapper");
-        }
-        else
-        {
-            debug::log(2, FUNCTION, "✓ Disposable Falcon wrapper initialized");
-        }
-        
         /* Log channel manager initialization */
         debug::log(2, FUNCTION, "✓ Channel state managers initialized (Prime + Hash)");
     }
@@ -137,18 +126,6 @@ namespace LLP
     , m_pPrimeState(std::make_unique<PrimeStateManager>())
     , m_pHashState(std::make_unique<HashStateManager>())
     {
-        /* Create disposable Falcon wrapper instance */
-        m_pFalconWrapper = LLP::DisposableFalcon::Create();
-        
-        if (!m_pFalconWrapper)
-        {
-            debug::error(FUNCTION, "Failed to create DisposableFalconWrapper");
-        }
-        else
-        {
-            debug::log(2, FUNCTION, "✓ Disposable Falcon wrapper initialized");
-        }
-        
         /* Log channel manager initialization */
         debug::log(2, FUNCTION, "✓ Channel state managers initialized (Prime + Hash)");
     }
@@ -165,18 +142,6 @@ namespace LLP
     , m_pPrimeState(std::make_unique<PrimeStateManager>())
     , m_pHashState(std::make_unique<HashStateManager>())
     {
-        /* Create disposable Falcon wrapper instance */
-        m_pFalconWrapper = LLP::DisposableFalcon::Create();
-        
-        if (!m_pFalconWrapper)
-        {
-            debug::error(FUNCTION, "Failed to create DisposableFalconWrapper");
-        }
-        else
-        {
-            debug::log(2, FUNCTION, "✓ Disposable Falcon wrapper initialized");
-        }
-        
         /* Log channel manager initialization */
         debug::log(2, FUNCTION, "✓ Channel state managers initialized (Prime + Hash)");
     }
@@ -351,6 +316,7 @@ namespace LLP
     }
 
 
+
     /** Handle custom message events. */
     void StatelessMinerConnection::Event(uint8_t EVENT, uint32_t LENGTH)
     {
@@ -484,6 +450,13 @@ namespace LLP
                        " length=", PACKET.LENGTH);
 
             /* Validate opcode range - reject opcodes outside 0xD000-0xD0FF */
+            uint16_t header = PACKET.HEADER;
+            if(!StatelessOpcodes::IsStateless(header))
+            {
+                header = static_cast<uint16_t>((header >> 8) | (header << 8));
+            }
+            PACKET.HEADER = header;
+
             if(!StatelessOpcodes::IsStateless(PACKET.HEADER))
             {
                 debug::error(FUNCTION, "Invalid stateless opcode: 0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
@@ -730,10 +703,14 @@ namespace LLP
                          */
                         
                         /* Extract nChannel at offset 196 */
-                        uint32_t nChannelFromSerialized = convert::bytes2uint(vData, TRITIUM_OFFSET_NCHANNEL);
+                        uint32_t nChannelFromSerialized = convert::bytes2uint(std::vector<uint8_t>(
+                            vData.begin() + TRITIUM_OFFSET_NCHANNEL,
+                            vData.begin() + TRITIUM_OFFSET_NCHANNEL + 4));
                         
                         /* Extract nHeight at offset 200 */
-                        uint32_t nHeightFromSerialized = convert::bytes2uint(vData, TRITIUM_OFFSET_NHEIGHT);
+                        uint32_t nHeightFromSerialized = convert::bytes2uint(std::vector<uint8_t>(
+                            vData.begin() + TRITIUM_OFFSET_NHEIGHT,
+                            vData.begin() + TRITIUM_OFFSET_NHEIGHT + 4));
                         
                         debug::log(0, "   Serialization verification:");
                         debug::log(0, "      Template fields:");
@@ -953,23 +930,6 @@ namespace LLP
 
                 if(PACKET.DATA.size() >= FALCON_MIN_SIZE)
                 {
-                    /* Check if Falcon wrapper is available */
-                    if(!m_pFalconWrapper)
-                    {
-                        debug::error(FUNCTION, "❌ CRITICAL: Falcon wrapper not initialized");
-                        debug::error(FUNCTION, "   Cannot verify Falcon signatures - check constructor logs");
-                        debug::error(FUNCTION, "   Packet size suggests Falcon format but wrapper unavailable");
-                        debug::error(FUNCTION, "   This should not happen in production - investigate immediately");
-                        debug::error(FUNCTION, "");
-                        debug::error(FUNCTION, "   ⚠️  SECURITY WARNING: Falling back to legacy format (INSECURE)");
-                        debug::error(FUNCTION, "   ⚠️  In production, this node should reject Falcon packets");
-                        debug::error(FUNCTION, "   ⚠️  Consider blocking submissions until wrapper is fixed");
-                        
-                        /* Fall through to legacy format processing */
-                        /* NOTE: This fallback is for compatibility/debugging only. */
-                        /* Production nodes should reject packets if wrapper fails. */
-                    }
-                    else
                     {
                         /* Get session public key */
                         std::vector<uint8_t> vSessionPubKey;
@@ -1498,20 +1458,45 @@ namespace LLP
                             }
                             else
                             {
-                                /* Packet too small for Falcon-signed full block format */
-                                debug::error(FUNCTION, "❌ Packet too small for Falcon-signed full block format");
-                                debug::error(FUNCTION, "   Expected at least: ", 
-                                           FalconConstants::FULL_BLOCK_TRITIUM_MIN + 
-                                           FalconConstants::TIMESTAMP_SIZE + 
-                                           FalconConstants::LENGTH_FIELD_SIZE, " bytes");
-                                debug::error(FUNCTION, "   Got: ", PACKET.DATA.size(), " bytes");
-                                
-                                StatelessPacket response(BLOCK_REJECTED);
-                                response.DATA.push_back(0x0E);  // Reason: Invalid packet size
-                                respond(response);
-                                
-                                debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Invalid packet size) ===", ANSI_COLOR_RESET);
-                                return true;
+                                /* Fallback: legacy Falcon wrapper [merkle][nonce][timestamp][sig_len][signature] */
+                                std::vector<uint8_t> decryptedData;
+                                if(!LLC::DecryptPayloadChaCha20(PACKET.DATA, context.vChaChaKey, decryptedData))
+                                {
+                                    debug::error(FUNCTION, "❌ ChaCha20 decryption FAILED (legacy wrapper)");
+                                    StatelessPacket response(BLOCK_REJECTED);
+                                    response.DATA.push_back(0x0B);  // Reason: ChaCha20 decryption failure
+                                    respond(response);
+                                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (ChaCha20 decryption failed) ===", ANSI_COLOR_RESET);
+                                    return true;
+                                }
+
+                                auto falconWrapper = LLP::DisposableFalcon::Create();
+                                if(!falconWrapper)
+                                {
+                                    debug::error(FUNCTION, "❌ Failed to create disposable Falcon wrapper");
+                                    StatelessPacket response(BLOCK_REJECTED);
+                                    response.DATA.push_back(0xFF);  // Reason: Internal error
+                                    respond(response);
+                                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Internal error) ===", ANSI_COLOR_RESET);
+                                    return true;
+                                }
+
+                                auto unwrapResult = falconWrapper->UnwrapWorkSubmission(decryptedData, vSessionPubKey);
+                                if(!unwrapResult.fSuccess || !unwrapResult.submission.fSigned)
+                                {
+                                    debug::error(FUNCTION, "❌ Falcon wrapper verification failed: ", unwrapResult.strError);
+                                    StatelessPacket response(BLOCK_REJECTED);
+                                    response.DATA.push_back(0x0C);  // Reason: Signature verification failed
+                                    respond(response);
+                                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Signature verification failed) ===", ANSI_COLOR_RESET);
+                                    return true;
+                                }
+
+                                hashMerkle = unwrapResult.submission.hashMerkleRoot;
+                                nonce = unwrapResult.submission.nNonce;
+                                fFalconVerified = true;
+
+                                debug::log(2, FUNCTION, "✅ Disposable Falcon wrapper verified legacy submission");
                             }
                         }
                     }
