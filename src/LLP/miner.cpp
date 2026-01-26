@@ -1179,14 +1179,17 @@ namespace LLP
 
                 uint512_t hashMerkle;
                 uint64_t nonce = 0;
+                TAO::Ledger::ParseResult parseResult =
+                    TAO::Ledger::ParseStatelessWorkSubmission(PACKET.DATA);
+                if(!parseResult.success)
+                {
+                    debug::error(FUNCTION, "SUBMIT_BLOCK parse failed: ", parseResult.reason);
+                    respond(BLOCK_REJECTED);
+                    return true;
+                }
 
-                /* Get the merkle root (first 64 bytes). */
-                hashMerkle.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE));
-
-                /* Get the nonce (next 8 bytes) */
-                nonce = convert::bytes2uint64(std::vector<uint8_t>(
-                    PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE,
-                    PACKET.DATA.begin() + FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE));
+                hashMerkle = parseResult.hashMerkle;
+                nonce = parseResult.nonce;
 
                 debug::log(3, FUNCTION, "Block merkle root: ", hashMerkle.SubString(), " nonce: ", nonce);
 
@@ -1592,15 +1595,34 @@ namespace LLP
         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock*>(mapBlocks[hashMerkleRoot]);
         if(pBlock)
         {
-            TAO::Ledger::BlockValidationResult validationResult =
+            debug::log(2, FUNCTION, "Tritium");
+            pBlock->print();
+
+            /* Log block found */
+            if(config::nVerbose > 0)
+            {
+                std::string strTimestamp(convert::DateTimeStrFormat(runtime::unifiedtimestamp()));
+                if(pBlock->nChannel == 1)
+                    debug::log(1, FUNCTION, "new prime block found at unified time ", strTimestamp);
+                else
+                    debug::log(1, FUNCTION, "new hash block found at unified time ", strTimestamp);
+            }
+
+            const TAO::Ledger::BlockValidationResult validationResult =
                 TAO::Ledger::ValidateMinedBlock(*pBlock);
             if(!validationResult.valid)
-                return debug::error(FUNCTION, validationResult.reason);
+            {
+                debug::error(FUNCTION, "ValidateMinedBlock failed: ", validationResult.reason);
+                return false;
+            }
 
-            TAO::Ledger::BlockAcceptanceResult acceptanceResult =
+            const TAO::Ledger::BlockAcceptanceResult acceptanceResult =
                 TAO::Ledger::AcceptMinedBlock(*pBlock);
             if(!acceptanceResult.accepted)
-                return debug::error(FUNCTION, acceptanceResult.reason);
+            {
+                debug::error(FUNCTION, "AcceptMinedBlock failed: ", acceptanceResult.reason);
+                return false;
+            }
 
             return true;
         }

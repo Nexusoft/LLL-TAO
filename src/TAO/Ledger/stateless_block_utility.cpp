@@ -24,11 +24,12 @@ ________________________________________________________________________________
 #include <TAO/API/types/authentication.h>
 
 #include <LLP/include/version.h>
+#include <LLP/include/falcon_constants.h>
+#include <LLP/include/disposable_falcon.h>
 
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
-
 #include <sstream>
 
 /* Global TAO namespace. */
@@ -232,35 +233,8 @@ namespace TAO::Ledger
     }
 
 
-    /* Canonical acceptance entrypoint for mined Tritium blocks. */
-    SubmitResult SubmitMinedBlockForStatelessMining(TAO::Ledger::TritiumBlock& block)
-    {
-        BlockValidationResult validation = ValidateMinedBlock(block);
-        if(!validation.valid)
-        {
-            SubmitResult result;
-            result.accepted = false;
-            result.reason = validation.reason;
-            result.nChannel = validation.nChannel;
-            result.nHeight = validation.nHeight;
-            result.hashBlock = validation.hashBlock;
-            return result;
-        }
-
-        BlockAcceptanceResult acceptance = AcceptMinedBlock(block);
-
-        SubmitResult result;
-        result.accepted = acceptance.accepted;
-        result.reason = acceptance.reason;
-        result.nChannel = acceptance.nChannel;
-        result.nHeight = acceptance.nHeight;
-        result.hashBlock = acceptance.hashBlock;
-        return result;
-    }
-
-
     /* Canonical validation entrypoint for mined Tritium blocks. */
-    BlockValidationResult ValidateMinedBlock(TAO::Ledger::TritiumBlock& block)
+    BlockValidationResult ValidateMinedBlock(const TAO::Ledger::TritiumBlock& block)
     {
         BlockValidationResult result;
         result.nChannel = block.nChannel;
@@ -317,8 +291,6 @@ namespace TAO::Ledger
         result.reason = "valid";
         return result;
     }
-
-
     /* Canonical acceptance entrypoint for mined Tritium blocks. */
     BlockAcceptanceResult AcceptMinedBlock(TAO::Ledger::TritiumBlock& block)
     {
@@ -330,9 +302,21 @@ namespace TAO::Ledger
         debug::log(2, FUNCTION, "Centralized acceptance for block ", block.hashMerkleRoot.SubString(),
                    " channel=", block.nChannel, " height=", block.nHeight);
 
+        /* Unlock sigchain to process mined block. */
+        try
+        {
+            SecureString strPIN; // empty PIN expected; Authentication::Unlock fetches mining PIN for unlocked session
+            RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
+        }
+        catch(const std::exception& e)
+        {
+            result.reason = e.what();
+            return result;
+        }
+
         uint8_t nStatus = 0;
         TAO::Ledger::Process(block, nStatus);
-        result.nStatus = nStatus;
+        result.status = nStatus;
         result.accepted = (nStatus & TAO::Ledger::PROCESS::ACCEPTED);
 
         if(!result.accepted)
@@ -353,6 +337,75 @@ namespace TAO::Ledger
         }
 
         result.reason = "accepted";
+        return result;
+    }
+
+
+    /* Canonical acceptance entrypoint for mined Tritium blocks. */
+    SubmitResult SubmitMinedBlockForStatelessMining(TAO::Ledger::TritiumBlock& block)
+    {
+        SubmitResult result;
+        result.nChannel = block.nChannel;
+        result.nHeight = block.nHeight;
+        result.hashBlock = block.hashMerkleRoot;
+
+        const BlockValidationResult validationResult = ValidateMinedBlock(block);
+        if(!validationResult.valid)
+        {
+            result.reason = validationResult.reason;
+            return result;
+        }
+
+        const BlockAcceptanceResult acceptanceResult = AcceptMinedBlock(block);
+        if(!acceptanceResult.accepted)
+        {
+            result.reason = acceptanceResult.reason;
+            return result;
+        }
+
+        result.accepted = true;
+        result.reason = acceptanceResult.reason;
+        return result;
+    }
+
+
+    /* Parse stateless miner work submission payloads. */
+    ParseResult ParseStatelessWorkSubmission(const std::vector<uint8_t>& vData)
+    {
+        ParseResult result;
+
+        if(vData.size() < LLP::FalconConstants::MERKLE_ROOT_SIZE + LLP::FalconConstants::NONCE_SIZE)
+        {
+            result.reason = "submission payload too small";
+            return result;
+        }
+
+        if(vData.size() >= LLP::FalconConstants::SUBMIT_BLOCK_WRAPPER_MIN)
+        {
+            LLP::DisposableFalcon::SignedWorkSubmission submission;
+            if(submission.Deserialize(vData) && submission.IsValid())
+            {
+                result.hashMerkle = submission.hashMerkleRoot;
+                result.nonce = submission.nNonce;
+                result.timestamp = submission.nTimestamp;
+                result.success = true;
+                return result;
+            }
+        }
+
+        result.hashMerkle.SetBytes(std::vector<uint8_t>(
+            vData.begin(),
+            vData.begin() + LLP::FalconConstants::MERKLE_ROOT_SIZE));
+
+        /* Nonce is little-endian per Falcon stateless protocol. */
+        uint64_t nonce = 0;
+        for(size_t i = 0; i < LLP::FalconConstants::NONCE_SIZE; ++i)
+        {
+            nonce |= static_cast<uint64_t>(vData[LLP::FalconConstants::MERKLE_ROOT_SIZE + i]) << (8 * i);
+        }
+        result.nonce = nonce;
+
+        result.success = true;
         return result;
     }
 

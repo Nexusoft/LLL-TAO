@@ -26,9 +26,24 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
+        /** SubmitResult
+         *
+         *  Structured result for mined block submissions.
+         *
+         **/
+        struct SubmitResult
+        {
+            bool accepted = false;
+            std::string reason;
+            uint32_t nChannel = 0;
+            uint32_t nHeight = 0;
+            uint512_t hashBlock = 0; // Merkle root (submission key).
+        };
+
+
         /** BlockValidationResult
          *
-         *  Structured result for mined block validation.
+         *  Result of validating a mined block before acceptance.
          *
          **/
         struct BlockValidationResult
@@ -43,7 +58,7 @@ namespace TAO
 
         /** BlockAcceptanceResult
          *
-         *  Structured result for mined block acceptance.
+         *  Result of accepting a mined block into the ledger.
          *
          **/
         struct BlockAcceptanceResult
@@ -53,22 +68,22 @@ namespace TAO
             uint32_t nChannel = 0;
             uint32_t nHeight = 0;
             uint512_t hashBlock = 0; // Merkle root (submission key).
-            uint8_t nStatus = 0;
+            uint8_t status = 0;
         };
 
 
-        /** SubmitResult
+        /** ParseResult
          *
-         *  Structured result for mined block submissions.
+         *  Result of parsing a stateless miner work submission.
          *
          **/
-        struct SubmitResult
+        struct ParseResult
         {
-            bool accepted = false;
+            bool success = false;
             std::string reason;
-            uint32_t nChannel = 0;
-            uint32_t nHeight = 0;
-            uint512_t hashBlock = 0; // Merkle root (submission key).
+            uint512_t hashMerkle = 0;
+            uint64_t nonce = 0;
+            uint64_t timestamp = 0; // Set when Falcon wrapper includes timestamp; legacy payloads remain 0.
         };
 
 
@@ -101,6 +116,46 @@ namespace TAO
             const uint256_t& hashRewardAddress);
 
 
+        /** ValidateMinedBlock
+         *
+         *  Validate a mined Tritium block prior to acceptance.
+         *
+         *  @param[in] block The mined block to validate
+         *
+         *  @return Structured validation result
+         *
+         **/
+        BlockValidationResult ValidateMinedBlock(const TAO::Ledger::TritiumBlock& block);
+
+
+        /** AcceptMinedBlock
+         *
+         *  Accept a mined Tritium block into the ledger.
+         *
+         *  @param[in] block The mined block to accept
+         *
+         *  @return Structured acceptance result
+         *
+         **/
+        BlockAcceptanceResult AcceptMinedBlock(TAO::Ledger::TritiumBlock& block);
+
+
+        /** ParseStatelessWorkSubmission
+         *
+         *  Parse stateless miner work submission payloads (merkle + nonce).
+         *
+         *  This helper validates and extracts Falcon wrapper data when present.
+         *  For legacy payloads, it extracts merkle and nonce from the start of
+         *  the payload.
+         *
+         *  @param[in] vData Raw submission payload
+         *
+         *  @return Parsed result with merkle root and nonce
+         *
+         **/
+        ParseResult ParseStatelessWorkSubmission(const std::vector<uint8_t>& vData);
+
+
         /** SubmitMinedBlockForStatelessMining
          *
          *  Canonical acceptance entrypoint for mined Tritium blocks.
@@ -111,31 +166,6 @@ namespace TAO
          *
          **/
         SubmitResult SubmitMinedBlockForStatelessMining(TAO::Ledger::TritiumBlock& block);
-
-
-        /** ValidateMinedBlock
-         *
-         *  Canonical validation entrypoint for mined Tritium blocks.
-         *
-         *  @param[in] block The mined block to validate
-         *
-         *  @return Structured validation result
-         *
-         **/
-        BlockValidationResult ValidateMinedBlock(TAO::Ledger::TritiumBlock& block);
-
-
-        /** AcceptMinedBlock
-         *
-         *  Canonical acceptance entrypoint for mined Tritium blocks.
-         *
-         *  @param[in] block The mined block to accept
-         *
-         *  @return Structured acceptance result
-         *
-         **/
-        BlockAcceptanceResult AcceptMinedBlock(TAO::Ledger::TritiumBlock& block);
-
     }
 }
 

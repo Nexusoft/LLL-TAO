@@ -17,7 +17,6 @@ ________________________________________________________________________________
 
 #include <LLP/templates/stateless_connection.h>
 #include <LLP/include/stateless_miner.h>
-#include <LLP/include/disposable_falcon.h>
 #include <LLP/include/channel_state_manager.h>
 #include <TAO/Ledger/types/block.h>
 #include <atomic>

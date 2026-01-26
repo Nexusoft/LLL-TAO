@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLP/include/falcon_constants.h>
 #include <LLP/include/falcon_auth.h>
 #include <LLP/include/falcon_verify.h>
+#include <LLP/include/disposable_falcon.h>
 #include <LLP/include/auto_cooldown_manager.h>
 #include <LLP/include/pool_discovery.h>
 #include <LLP/include/opcode_utility.h>
@@ -315,6 +316,7 @@ namespace LLP
     }
 
 
+
     /** Handle custom message events. */
     void StatelessMinerConnection::Event(uint8_t EVENT, uint32_t LENGTH)
     {
@@ -460,6 +462,24 @@ namespace LLP
             }
 
             /* Validate opcode range - reject opcodes outside 0xD000-0xD0FF */
+            const uint16_t originalHeader = PACKET.HEADER;
+            if(!StatelessOpcodes::IsStateless(originalHeader))
+            {
+                const uint16_t swappedHeader =
+                    static_cast<uint16_t>((originalHeader >> 8) | (originalHeader << 8));
+                if(StatelessOpcodes::IsStateless(swappedHeader))
+                {
+                    PACKET.HEADER = swappedHeader;
+                }
+                else
+                {
+                    debug::error(FUNCTION, "Invalid stateless opcode: 0x", std::hex, uint32_t(originalHeader), std::dec);
+                    debug::error(FUNCTION, "  Stateless opcodes must be in range 0xD000-0xD0FF");
+                    debug::error(FUNCTION, "  Rejecting packet from ", GetAddress().ToStringIP());
+                    return false;
+                }
+            }
+
             if(!StatelessOpcodes::IsStateless(PACKET.HEADER))
             {
                 debug::error(FUNCTION, "Invalid stateless opcode: 0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
@@ -706,10 +726,12 @@ namespace LLP
                          */
                         
                         /* Extract nChannel at offset 196 */
-                        uint32_t nChannelFromSerialized = convert::bytes2uint(vData, TRITIUM_OFFSET_NCHANNEL);
+                        uint32_t nChannelFromSerialized =
+                            convert::bytes2uint(vData, TRITIUM_OFFSET_NCHANNEL);
                         
                         /* Extract nHeight at offset 200 */
-                        uint32_t nHeightFromSerialized = convert::bytes2uint(vData, TRITIUM_OFFSET_NHEIGHT);
+                        uint32_t nHeightFromSerialized =
+                            convert::bytes2uint(vData, TRITIUM_OFFSET_NHEIGHT);
                         
                         debug::log(0, "   Serialization verification:");
                         debug::log(0, "      Template fields:");
@@ -939,8 +961,8 @@ namespace LLP
                         debug::error(FUNCTION, "   Packet size suggests Falcon format but wrapper unavailable");
                         debug::error(FUNCTION, "   This should not happen in production - investigate immediately");
                         debug::error(FUNCTION, "");
-                        debug::error(FUNCTION, "   ⚠️  SECURITY WARNING: Falling back to legacy format (INSECURE)");
-                        debug::error(FUNCTION, "   ⚠️  In production, this node should reject Falcon packets");
+                        debug::error(FUNCTION, "   ⚠️  SECURITY WARNING: rejecting Falcon packet (wrapper unavailable)");
+                        debug::error(FUNCTION, "   ⚠️  In production, reject Falcon packets until wrapper is fixed");
                         debug::error(FUNCTION, "   ⚠️  Consider blocking submissions until wrapper is fixed");
 
                         StatelessPacket response(BLOCK_REJECTED);
@@ -1491,21 +1513,45 @@ namespace LLP
                             }
                             else
                             {
-                                /* Packet too small for Falcon-signed full block format */
-                                debug::error(FUNCTION, "❌ Packet too small for Falcon-signed full block format");
-                                debug::error(FUNCTION, "   Expected at least: ", 
-                                           FalconConstants::FULL_BLOCK_TRITIUM_MIN + 
-                                           FalconConstants::TIMESTAMP_SIZE + 
-                                           FalconConstants::LENGTH_FIELD_SIZE, " bytes");
-                                debug::error(FUNCTION, "   Got: ", PACKET.DATA.size(), " bytes");
-                                
-                                StatelessPacket response(BLOCK_REJECTED);
-                                response.DATA.push_back(0x0E);  // Reason: Invalid packet size
-                                respond(response);
-                                
-                                debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Invalid packet size) ===", ANSI_COLOR_RESET);
-                                pFalconWrapper.reset();
-                                return true;
+                                /* Fallback: legacy Falcon wrapper [merkle][nonce][timestamp][sig_len][signature] */
+                                std::vector<uint8_t> decryptedData;
+                                if(!LLC::DecryptPayloadChaCha20(PACKET.DATA, context.vChaChaKey, decryptedData))
+                                {
+                                    debug::error(FUNCTION, "❌ ChaCha20 decryption FAILED (legacy wrapper)");
+                                    StatelessPacket response(BLOCK_REJECTED);
+                                    response.DATA.push_back(0x0B);  // Reason: ChaCha20 decryption failure
+                                    respond(response);
+                                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (ChaCha20 decryption failed) ===", ANSI_COLOR_RESET);
+                                    return true;
+                                }
+
+                                auto falconWrapper = LLP::DisposableFalcon::Create();
+                                if(!falconWrapper)
+                                {
+                                    debug::error(FUNCTION, "❌ Failed to create disposable Falcon wrapper");
+                                    StatelessPacket response(BLOCK_REJECTED);
+                                    response.DATA.push_back(0xFF);  // Reason: Internal error
+                                    respond(response);
+                                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Internal error) ===", ANSI_COLOR_RESET);
+                                    return true;
+                                }
+
+                                auto unwrapResult = falconWrapper->UnwrapWorkSubmission(decryptedData, vSessionPubKey);
+                                if(!unwrapResult.fSuccess || !unwrapResult.submission.fSigned)
+                                {
+                                    debug::error(FUNCTION, "❌ Falcon wrapper verification failed: ", unwrapResult.strError);
+                                    StatelessPacket response(BLOCK_REJECTED);
+                                    response.DATA.push_back(0x0C);  // Reason: Signature verification failed
+                                    respond(response);
+                                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Signature verification failed) ===", ANSI_COLOR_RESET);
+                                    return true;
+                                }
+
+                                hashMerkle = unwrapResult.submission.hashMerkleRoot;
+                                nonce = unwrapResult.submission.nNonce;
+                                fFalconVerified = true;
+
+                                debug::log(2, FUNCTION, "✅ Disposable Falcon wrapper verified legacy submission");
                             }
                         }
                     }
@@ -2853,30 +2899,135 @@ namespace LLP
         }
 
         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock*>(meta.pBlock.get());
-        if(!pBlock)
+        if(pBlock)
         {
-            debug::error(FUNCTION, "Unexpected non-Tritium block in metadata");
-            return false;
+            debug::log(2, FUNCTION, "Tritium");
+            pBlock->print();
+            
+            /* ============================================================
+             * TRAINING WHEELS MODE: Pre-Check() Diagnostic
+             * ============================================================ */
+            
+            debug::log(0, "");
+            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "🔬 === PRE-CHECK() DIAGNOSTIC ===", ANSI_COLOR_RESET);
+            debug::log(0, "📋 BLOCK STATE BEFORE Check():");
+            debug::log(0, "   Height:      ", pBlock->nHeight);
+            debug::log(0, "   Channel:     ", pBlock->nChannel);
+            debug::log(0, "   nBits:       0x", std::hex, pBlock->nBits, std::dec);
+            debug::log(0, "   nNonce:      0x", std::hex, pBlock->nNonce, std::dec);
+            debug::log(0, "   Merkle root: ", pBlock->hashMerkleRoot.SubString());
+            debug::log(0, "   vOffsets.size(): ", pBlock->vOffsets.size());
+            
+            if(pBlock->nChannel == 1 && !pBlock->vOffsets.empty())
+            {
+                debug::log(0, "   First 5 offsets:");
+                for(size_t i = 0; i < std::min(size_t(5), pBlock->vOffsets.size()); ++i)
+                {
+                    debug::log(0, "      [", i, "] = ", static_cast<int>(pBlock->vOffsets[i]));
+                }
+            }
+            
+            debug::log(0, "");
+            debug::log(0, "🧪 CALLING TritiumBlock::Check()...");
+            
+            /* Call canonical Check() validation */
+            bool fCheckResult = pBlock->Check();
+            
+            debug::log(0, "");
+            if(fCheckResult)
+            {
+                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "✅ Check() PASSED", ANSI_COLOR_RESET);
+                debug::log(0, "   All block validations successful:");
+                debug::log(0, "   ✓ Block structure valid");
+                debug::log(0, "   ✓ Producer transaction valid");
+                debug::log(0, "   ✓ Proof-of-work valid");
+                if(pBlock->nChannel == 1)
+                    debug::log(0, "   ✓ Prime Cunningham chain valid");
+                else if(pBlock->nChannel == 2)
+                    debug::log(0, "   ✓ Hash meets target");
+            }
+            else
+            {
+                debug::log(0, ANSI_COLOR_BRIGHT_RED, "❌ Check() FAILED", ANSI_COLOR_RESET);
+                debug::log(0, "   Block failed consensus validation");
+                
+                /* ✅ ADD: Enhanced Prime channel diagnostics */
+                if(pBlock->nChannel == 1)  // Prime channel
+                {
+                    debug::error(FUNCTION, "════════════════════════════════════════");
+                    debug::error(FUNCTION, "   PRIME CHANNEL VALIDATION FAILED");
+                    debug::error(FUNCTION, "════════════════════════════════════════");
+                    debug::error(FUNCTION, "Block details:");
+                    debug::error(FUNCTION, "  Height: ", pBlock->nHeight);
+                    debug::error(FUNCTION, "  Channel: 1 (Prime)");
+                    debug::error(FUNCTION, "  Merkle: ", pBlock->hashMerkleRoot.SubString());
+                    debug::error(FUNCTION, "  nNonce: ", pBlock->nNonce);
+                    debug::error(FUNCTION, "");
+                    debug::error(FUNCTION, "NOTE: PR #129 added Miller-Rabin primality test");
+                    debug::error(FUNCTION, "If this is a recent build, Check() now uses");
+                    debug::error(FUNCTION, "cryptographically secure primality validation.");
+                    debug::error(FUNCTION, "");
+                    debug::error(FUNCTION, "Common Prime mining failures:");
+                    debug::error(FUNCTION, "  - Empty vOffsets (no valid Cunningham chain)");
+                    debug::error(FUNCTION, "  - Base prime not actually prime");
+                    debug::error(FUNCTION, "  - Chain length insufficient");
+                    debug::error(FUNCTION, "════════════════════════════════════════");
+                }
+                else
+                {
+                    debug::log(0, "   Common failure reasons:");
+                    debug::log(0, "   - Prime: Empty vOffsets or invalid Cunningham chain");
+                    debug::log(0, "   - Hash: Proof hash doesn't meet target");
+                    debug::log(0, "   - Producer transaction invalid");
+                    debug::log(0, "   - Block structure malformed");
+                }
+                
+                debug::error(FUNCTION, "Block failed Check() validation");
+                debug::error(FUNCTION, "  Height: ", pBlock->nHeight);
+                debug::error(FUNCTION, "  Channel: ", pBlock->nChannel);
+                debug::error(FUNCTION, "  Merkle: ", pBlock->hashMerkleRoot.SubString());
+                
+                return false;
+            }
+            
+            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "🔬 === END PRE-CHECK() DIAGNOSTIC ===", ANSI_COLOR_RESET);
+            debug::log(0, "");
+
+            /* Log block found */
+            if(config::nVerbose > 0)
+            {
+                std::string strTimestamp(convert::DateTimeStrFormat(runtime::unifiedtimestamp()));
+                if(pBlock->nChannel == 1)
+                    debug::log(1, FUNCTION, "new prime block found at unified time ", strTimestamp);
+                else
+                    debug::log(1, FUNCTION, "new hash block found at unified time ", strTimestamp);
+            }
+
+            const TAO::Ledger::BlockValidationResult validationResult =
+                TAO::Ledger::ValidateMinedBlock(*pBlock);
+            if(!validationResult.valid)
+            {
+                debug::error(FUNCTION, "ValidateMinedBlock failed: ", validationResult.reason);
+                return false;
+            }
+
+            const TAO::Ledger::BlockAcceptanceResult acceptanceResult =
+                TAO::Ledger::AcceptMinedBlock(*pBlock);
+            if(!acceptanceResult.accepted)
+            {
+                debug::log(0, ANSI_COLOR_BRIGHT_RED, "❌ AcceptMinedBlock rejected block", ANSI_COLOR_RESET);
+                debug::log(0, "   Reason: ", acceptanceResult.reason);
+                debug::log(0, "   Status flags: 0x", std::hex, static_cast<int>(acceptanceResult.status), std::dec);
+                return false;
+            }
+
+            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "✅ AcceptMinedBlock accepted block", ANSI_COLOR_RESET);
+            debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "✅ === VALIDATE_BLOCK: SUCCESS ===", ANSI_COLOR_RESET);
+            return true;
         }
 
-        TAO::Ledger::BlockValidationResult validationResult =
-            TAO::Ledger::ValidateMinedBlock(*pBlock);
-        if(!validationResult.valid)
-        {
-            debug::error(FUNCTION, validationResult.reason);
-            return false;
-        }
-
-        TAO::Ledger::BlockAcceptanceResult acceptanceResult =
-            TAO::Ledger::AcceptMinedBlock(*pBlock);
-        if(!acceptanceResult.accepted)
-        {
-            debug::error(FUNCTION, acceptanceResult.reason);
-            return false;
-        }
-
-        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "✅ === VALIDATE_BLOCK: SUCCESS ===", ANSI_COLOR_RESET);
-        return true;
+        debug::error(FUNCTION, "Unexpected non-Tritium block in metadata");
+        return false;
     }
 
 
