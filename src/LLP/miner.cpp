@@ -1220,17 +1220,26 @@ namespace LLP
                     return true;
                 }
 
-                TAO::Ledger::SubmitResult submitResult =
-                    TAO::Ledger::SubmitMinedBlockForStatelessMining(*pTritium);
-                if(!submitResult.accepted)
+                TAO::Ledger::BlockValidationResult validationResult =
+                    TAO::Ledger::ValidateMinedBlock(*pTritium);
+                if(!validationResult.valid)
                 {
-                    debug::error(FUNCTION, "SUBMIT_BLOCK rejected: ", submitResult.reason);
+                    debug::error(FUNCTION, "SUBMIT_BLOCK rejected: ", validationResult.reason);
+                    respond(BLOCK_REJECTED);
+                    return true;
+                }
+
+                TAO::Ledger::BlockAcceptanceResult acceptanceResult =
+                    TAO::Ledger::AcceptMinedBlock(*pTritium);
+                if(!acceptanceResult.accepted)
+                {
+                    debug::error(FUNCTION, "SUBMIT_BLOCK rejected: ", acceptanceResult.reason);
                     respond(BLOCK_REJECTED);
                     return true;
                 }
 
                 debug::log(2, FUNCTION, "SUBMIT_BLOCK accepted merkle=", hashMerkle.SubString(),
-                           " channel=", submitResult.nChannel, " height=", submitResult.nHeight);
+                           " channel=", acceptanceResult.nChannel, " height=", acceptanceResult.nHeight);
                 respond(BLOCK_ACCEPTED);
                 return true;
             }
@@ -1586,6 +1595,7 @@ namespace LLP
         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock*>(mapBlocks[hashMerkleRoot]);
         if(pBlock)
         {
+ copilot/centralize-mining-utilities-another-one
             debug::log(2, FUNCTION, "Tritium");
             pBlock->print();
 
@@ -1614,6 +1624,17 @@ namespace LLP
                 debug::error(FUNCTION, "AcceptMinedBlock failed: ", acceptanceResult.reason);
                 return false;
             }
+
+            TAO::Ledger::BlockValidationResult validationResult =
+                TAO::Ledger::ValidateMinedBlock(*pBlock);
+            if(!validationResult.valid)
+                return debug::error(FUNCTION, validationResult.reason);
+
+            TAO::Ledger::BlockAcceptanceResult acceptanceResult =
+                TAO::Ledger::AcceptMinedBlock(*pBlock);
+            if(!acceptanceResult.accepted)
+                return debug::error(FUNCTION, acceptanceResult.reason);
+ STATELESS-NODE
 
             return true;
         }

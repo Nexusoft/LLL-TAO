@@ -235,7 +235,44 @@ namespace TAO::Ledger
     /* Validate a mined block prior to acceptance. */
     BlockValidationResult ValidateMinedBlock(const TAO::Ledger::TritiumBlock& block)
     {
+ copilot/centralize-mining-utilities-another-one
         BlockValidationResult result;
+
+        BlockValidationResult validation = ValidateMinedBlock(block);
+        if(!validation.valid)
+        {
+            SubmitResult result;
+            result.accepted = false;
+            result.reason = validation.reason;
+            result.nChannel = validation.nChannel;
+            result.nHeight = validation.nHeight;
+            result.hashBlock = validation.hashBlock;
+            return result;
+        }
+
+        BlockAcceptanceResult acceptance = AcceptMinedBlock(block);
+
+        SubmitResult result;
+        result.accepted = acceptance.accepted;
+        result.reason = acceptance.reason;
+        result.nChannel = acceptance.nChannel;
+        result.nHeight = acceptance.nHeight;
+        result.hashBlock = acceptance.hashBlock;
+        return result;
+    }
+
+
+    /* Canonical validation entrypoint for mined Tritium blocks. */
+    BlockValidationResult ValidateMinedBlock(TAO::Ledger::TritiumBlock& block)
+    {
+        BlockValidationResult result;
+        result.nChannel = block.nChannel;
+        result.nHeight = block.nHeight;
+        result.hashBlock = block.hashMerkleRoot;
+ STATELESS-NODE
+
+        debug::log(2, FUNCTION, "Centralized validation for block ", block.hashMerkleRoot.SubString(),
+                   " channel=", block.nChannel, " height=", block.nHeight);
 
         if(config::fShutdown.load())
         {
@@ -246,6 +283,24 @@ namespace TAO::Ledger
         if(block.IsNull())
         {
             result.reason = "block is null";
+            return result;
+        }
+
+        if(block.hashMerkleRoot == 0)
+        {
+            result.reason = "block merkle root is null";
+            return result;
+        }
+
+        if(block.nChannel != 1 && block.nChannel != 2)
+        {
+            result.reason = "invalid block channel";
+            return result;
+        }
+
+        if(block.nHeight == 0)
+        {
+            result.reason = "invalid block height";
             return result;
         }
 
@@ -268,6 +323,7 @@ namespace TAO::Ledger
     }
 
 
+ copilot/centralize-mining-utilities-another-one
     /* Accept a mined block into the ledger. */
     BlockAcceptanceResult AcceptMinedBlock(TAO::Ledger::TritiumBlock& block)
     {
@@ -289,7 +345,24 @@ namespace TAO::Ledger
         TAO::Ledger::Process(block, nStatus);
         result.status = nStatus;
 
-        if(!(nStatus & TAO::Ledger::PROCESS::ACCEPTED))
+    /* Canonical acceptance entrypoint for mined Tritium blocks. */
+    BlockAcceptanceResult AcceptMinedBlock(TAO::Ledger::TritiumBlock& block)
+    {
+        BlockAcceptanceResult result;
+        result.nChannel = block.nChannel;
+        result.nHeight = block.nHeight;
+        result.hashBlock = block.hashMerkleRoot;
+
+        debug::log(2, FUNCTION, "Centralized acceptance for block ", block.hashMerkleRoot.SubString(),
+                   " channel=", block.nChannel, " height=", block.nHeight);
+
+        uint8_t nStatus = 0;
+        TAO::Ledger::Process(block, nStatus);
+        result.nStatus = nStatus;
+        result.accepted = (nStatus & TAO::Ledger::PROCESS::ACCEPTED);
+ STATELESS-NODE
+
+        if(!result.accepted)
         {
             if(nStatus & TAO::Ledger::PROCESS::ORPHAN)
                 result.reason = "block is orphan";
@@ -306,7 +379,6 @@ namespace TAO::Ledger
             return result;
         }
 
-        result.accepted = true;
         result.reason = "accepted";
         return result;
     }
