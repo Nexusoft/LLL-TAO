@@ -83,7 +83,7 @@ namespace TAO
             std::string reason;
             uint512_t hashMerkle = 0;
             uint64_t nonce = 0;
-            uint64_t timestamp = 0;
+            uint64_t timestamp = 0; // Set when Falcon wrapper includes timestamp; legacy payloads remain 0.
         };
 
 
