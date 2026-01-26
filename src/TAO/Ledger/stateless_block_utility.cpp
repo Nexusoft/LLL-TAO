@@ -273,10 +273,10 @@ namespace TAO::Ledger
     {
         BlockAcceptanceResult result;
 
-        /* Unlock sigchain to create new block. */
+        /* Unlock sigchain to process mined block. */
         try
         {
-            SecureString strPIN;
+            SecureString strPIN; // required output parameter for Unlock
             RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
         }
         catch(const std::exception& e)
