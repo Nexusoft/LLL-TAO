@@ -952,8 +952,6 @@ namespace LLP
 
                 if(PACKET.DATA.size() >= FALCON_MIN_SIZE)
                 {
- copilot/centralize-mining-utilities-another-one
-
                     /* Create disposable Falcon wrapper for this submission */
                     pFalconWrapper = LLP::DisposableFalcon::Create();
                     if(!pFalconWrapper)
@@ -975,7 +973,6 @@ namespace LLP
                         return true;
                     }
                     else
- STATELESS-NODE
                     {
                         debug::log(2, FUNCTION, "✓ Disposable Falcon wrapper created for SUBMIT_BLOCK");
                         /* Get session public key */
@@ -1516,7 +1513,6 @@ namespace LLP
                             }
                             else
                             {
- copilot/centralize-mining-utilities-another-one
                                 /* Fallback: legacy Falcon wrapper [merkle][nonce][timestamp][sig_len][signature] */
                                 std::vector<uint8_t> decryptedData;
                                 if(!LLC::DecryptPayloadChaCha20(PACKET.DATA, context.vChaChaKey, decryptedData))
@@ -1556,23 +1552,6 @@ namespace LLP
                                 fFalconVerified = true;
 
                                 debug::log(2, FUNCTION, "✅ Disposable Falcon wrapper verified legacy submission");
-
-                                /* Packet too small for Falcon-signed full block format */
-                                debug::error(FUNCTION, "❌ Packet too small for Falcon-signed full block format");
-                                debug::error(FUNCTION, "   Expected at least: ", 
-                                           FalconConstants::FULL_BLOCK_TRITIUM_MIN + 
-                                           FalconConstants::TIMESTAMP_SIZE + 
-                                           FalconConstants::LENGTH_FIELD_SIZE, " bytes");
-                                debug::error(FUNCTION, "   Got: ", PACKET.DATA.size(), " bytes");
-                                
-                                StatelessPacket response(BLOCK_REJECTED);
-                                response.DATA.push_back(0x0E);  // Reason: Invalid packet size
-                                respond(response);
-                                
-                                debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Invalid packet size) ===", ANSI_COLOR_RESET);
-                                pFalconWrapper.reset();
-                                return true;
- STATELESS-NODE
                             }
                         }
                     }
@@ -2920,9 +2899,8 @@ namespace LLP
         }
 
         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock*>(meta.pBlock.get());
-        if(!pBlock)
+        if(pBlock)
         {
- copilot/centralize-mining-utilities-another-one
             debug::log(2, FUNCTION, "Tritium");
             pBlock->print();
             
@@ -3045,30 +3023,11 @@ namespace LLP
 
             debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "✅ AcceptMinedBlock accepted block", ANSI_COLOR_RESET);
             debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "✅ === VALIDATE_BLOCK: SUCCESS ===", ANSI_COLOR_RESET);
-
-            debug::error(FUNCTION, "Unexpected non-Tritium block in metadata");
-            return false;
+            return true;
         }
 
-        TAO::Ledger::BlockValidationResult validationResult =
-            TAO::Ledger::ValidateMinedBlock(*pBlock);
-        if(!validationResult.valid)
-        {
-            debug::error(FUNCTION, validationResult.reason);
-            return false;
-        }
- STATELESS-NODE
-
-        TAO::Ledger::BlockAcceptanceResult acceptanceResult =
-            TAO::Ledger::AcceptMinedBlock(*pBlock);
-        if(!acceptanceResult.accepted)
-        {
-            debug::error(FUNCTION, acceptanceResult.reason);
-            return false;
-        }
-
-        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "✅ === VALIDATE_BLOCK: SUCCESS ===", ANSI_COLOR_RESET);
-        return true;
+        debug::error(FUNCTION, "Unexpected non-Tritium block in metadata");
+        return false;
     }
 
 

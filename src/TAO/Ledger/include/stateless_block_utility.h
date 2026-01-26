@@ -26,37 +26,6 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
-        /** BlockValidationResult
-         *
-         *  Structured result for mined block validation.
-         *
-         **/
-        struct BlockValidationResult
-        {
-            bool valid = false;
-            std::string reason;
-            uint32_t nChannel = 0;
-            uint32_t nHeight = 0;
-            uint512_t hashBlock = 0; // Merkle root (submission key).
-        };
-
-
-        /** BlockAcceptanceResult
-         *
-         *  Structured result for mined block acceptance.
-         *
-         **/
-        struct BlockAcceptanceResult
-        {
-            bool accepted = false;
-            std::string reason;
-            uint32_t nChannel = 0;
-            uint32_t nHeight = 0;
-            uint512_t hashBlock = 0; // Merkle root (submission key).
-            uint8_t nStatus = 0;
-        };
-
-
         /** SubmitResult
          *
          *  Structured result for mined block submissions.
@@ -81,6 +50,9 @@ namespace TAO
         {
             bool valid = false;
             std::string reason;
+            uint32_t nChannel = 0;
+            uint32_t nHeight = 0;
+            uint512_t hashBlock = 0; // Merkle root (submission key).
         };
 
 
@@ -93,6 +65,9 @@ namespace TAO
         {
             bool accepted = false;
             std::string reason;
+            uint32_t nChannel = 0;
+            uint32_t nHeight = 0;
+            uint512_t hashBlock = 0; // Merkle root (submission key).
             uint8_t status = 0;
         };
 
