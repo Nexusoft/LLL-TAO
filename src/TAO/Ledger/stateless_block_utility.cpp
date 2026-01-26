@@ -273,6 +273,10 @@ namespace TAO::Ledger
     {
         BlockAcceptanceResult result;
 
+        /* Unlock sigchain to create new block. */
+        SecureString strPIN;
+        RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
+
         uint8_t nStatus = 0;
         TAO::Ledger::Process(block, nStatus);
         result.status = nStatus;
