@@ -450,12 +450,23 @@ namespace LLP
                        " length=", PACKET.LENGTH);
 
             /* Validate opcode range - reject opcodes outside 0xD000-0xD0FF */
-            uint16_t header = PACKET.HEADER;
-            if(!StatelessOpcodes::IsStateless(header))
+            const uint16_t originalHeader = PACKET.HEADER;
+            if(!StatelessOpcodes::IsStateless(originalHeader))
             {
-                header = static_cast<uint16_t>((header >> 8) | (header << 8));
+                const uint16_t swappedHeader =
+                    static_cast<uint16_t>((originalHeader >> 8) | (originalHeader << 8));
+                if(StatelessOpcodes::IsStateless(swappedHeader))
+                {
+                    PACKET.HEADER = swappedHeader;
+                }
+                else
+                {
+                    debug::error(FUNCTION, "Invalid stateless opcode: 0x", std::hex, uint32_t(originalHeader), std::dec);
+                    debug::error(FUNCTION, "  Stateless opcodes must be in range 0xD000-0xD0FF");
+                    debug::error(FUNCTION, "  Rejecting packet from ", GetAddress().ToStringIP());
+                    return false;
+                }
             }
-            PACKET.HEADER = header;
 
             if(!StatelessOpcodes::IsStateless(PACKET.HEADER))
             {
@@ -703,14 +714,12 @@ namespace LLP
                          */
                         
                         /* Extract nChannel at offset 196 */
-                        uint32_t nChannelFromSerialized = convert::bytes2uint(std::vector<uint8_t>(
-                            vData.begin() + TRITIUM_OFFSET_NCHANNEL,
-                            vData.begin() + TRITIUM_OFFSET_NCHANNEL + 4));
+                        uint32_t nChannelFromSerialized =
+                            convert::bytes2uint(vData, TRITIUM_OFFSET_NCHANNEL);
                         
                         /* Extract nHeight at offset 200 */
-                        uint32_t nHeightFromSerialized = convert::bytes2uint(std::vector<uint8_t>(
-                            vData.begin() + TRITIUM_OFFSET_NHEIGHT,
-                            vData.begin() + TRITIUM_OFFSET_NHEIGHT + 4));
+                        uint32_t nHeightFromSerialized =
+                            convert::bytes2uint(vData, TRITIUM_OFFSET_NHEIGHT);
                         
                         debug::log(0, "   Serialization verification:");
                         debug::log(0, "      Template fields:");

@@ -64,8 +64,8 @@ namespace TAO
             std::string reason;
             uint8_t status = 0;
         };
-        
-        
+
+
         /** ParseResult
          *
          *  Result of parsing a stateless miner work submission.
@@ -149,8 +149,8 @@ namespace TAO
          *
          *  Parse stateless miner work submission payloads (merkle + nonce).
          *
-         *  Supports legacy payloads (merkle + nonce) and Falcon wrappers
-         *  (merkle + nonce + timestamp + signature).
+         *  This helper extracts the merkle root and nonce from the start of the
+         *  payload. Any additional Falcon wrapper data is ignored here.
          *
          *  @param[in] vData Raw submission payload
          *
