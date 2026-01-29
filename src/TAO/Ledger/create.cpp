@@ -337,13 +337,68 @@ namespace TAO::Ledger
             block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
         }
 
+        /* Get the latest block state for THIS channel (consensus requirement)
+         * 
+         * CRITICAL: Must use channel-specific height, NOT unified height.
+         * The block's nHeight field MUST contain the channel height for:
+         * 1. Proper consensus validation
+         * 2. Correct staleness detection by miners
+         * 3. Accurate channel-specific block tracking
+         * 
+         * Channel heights are ~2-3M, unified height is ~6-7M.
+         * Using unified height here would break miner staleness detection
+         * because GET_ROUND returns channel height, not unified height.
+         */
+        TAO::Ledger::BlockState stateChannel = tStateBest;
+        if(!GetLastState(stateChannel, nChannel))
+        {
+            /* Channel doesn't exist yet - mining first block in this channel
+             * GetLastState returns false and sets stateChannel to genesis (nChannelHeight = 1) 
+             * So first block in channel has nChannelHeight = 2 */
+            debug::log(2, FUNCTION, "Mining first block in channel ", nChannel,
+                       " at channel height ", stateChannel.nChannelHeight + 1);
+        }
+
+        /* Calculate next block height for this channel (consensus requirement) */
+        uint32_t nChannelHeight = stateChannel.nChannelHeight + 1;
+        
+        /* Calculate unified height for reference/diagnostics only */
+        uint32_t nUnifiedHeight = tStateBest.nHeight + 1;
+
         /* Add remaining block data */
         block.hashPrevBlock = tStateBest.GetHash();
         block.nChannel      = nChannel;
-        block.nHeight       = tStateBest.nHeight + 1;
+        block.nHeight       = nChannelHeight;  // ✅ FIX: Use channel height, NOT unified
         block.nBits         = GetNextTargetRequired(tStateBest, nChannel, false);
         block.nNonce        = 1;
         block.nTime         = std::max(tStateBest.GetBlockTime() + 1, runtime::unifiedtimestamp());
+        
+        /* Diagnostic logging to verify correct height assignment */
+        debug::log(2, FUNCTION, "Block height assignment:");
+        debug::log(2, FUNCTION, "  Channel: ", nChannel, (nChannel == 1 ? " (Prime)" : nChannel == 2 ? " (Hash)" : nChannel == 0 ? " (Stake)" : " (Private)"));
+        debug::log(2, FUNCTION, "  block.nHeight = ", block.nHeight, " (channel height) ✓");
+        debug::log(2, FUNCTION, "  Unified height: ", nUnifiedHeight, " (reference only)");
+        
+        /* Sanity check: channel heights are ~2-3M, unified is ~6-7M
+         * If nHeight looks like unified, we have a critical bug */
+        if(block.nHeight > 5000000)
+        {
+            debug::error(FUNCTION, "════════════════════════════════════════");
+            debug::error(FUNCTION, "⚠️  CRITICAL BUG DETECTED");
+            debug::error(FUNCTION, "════════════════════════════════════════");
+            debug::error(FUNCTION, "Block assigned UNIFIED height instead of channel height!");
+            debug::error(FUNCTION, "  Channel: ", block.nChannel);
+            debug::error(FUNCTION, "  block.nHeight: ", block.nHeight, " (looks like unified)");
+            debug::error(FUNCTION, "  Expected: ~2-3 million (channel height)");
+            debug::error(FUNCTION, "  Got: ~6-7 million (unified height)");
+            debug::error(FUNCTION, "This will break miner staleness detection!");
+            debug::error(FUNCTION, "════════════════════════════════════════");
+        }
+        else
+        {
+            /* Verify block height matches expected channel height */
+            debug::log(2, FUNCTION, "✓ Block height verification passed (channel height in valid range)");
+        }
     }
 
 
