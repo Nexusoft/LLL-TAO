@@ -217,11 +217,13 @@ namespace TAO::Ledger
                 return nullptr;
             }
             
-            debug::log(2, FUNCTION, "✓ Wallet-signed block created successfully");
+            /* Log with explicit channel/unified height distinction */
+            const uint32_t nChannelHeight = pBlock->nHeight;
+            const uint32_t nUnifiedHeight = statePrev.nHeight + 1;
+            
+            debug::log(2, FUNCTION, "CreateBlock: channel ", pBlock->nChannel, 
+                       " height ", nChannelHeight, " (unified ", nUnifiedHeight, " - ref)");
             debug::log(2, FUNCTION, "  Note: PoW validation deferred until miner submits nonce");
-            debug::log(2, FUNCTION, "  Channel height: ", pBlock->nHeight, " ← This is what miner sees");
-            debug::log(2, FUNCTION, "  Channel: ", pBlock->nChannel);
-            debug::log(2, FUNCTION, "  Unified height: ", statePrev.nHeight, " (reference only)");
             debug::log(2, FUNCTION, "  Reward address: ", hashRewardAddress.SubString());
             
             return pBlock;
@@ -239,6 +241,8 @@ namespace TAO::Ledger
         BlockValidationResult result;
         result.nChannel = block.nChannel;
         result.nHeight = block.nHeight;
+        result.nChannelHeight = block.nHeight;  // block.nHeight is channel height
+        result.nUnifiedHeight = ChainState::tStateBest.load().nHeight + 1;  // Reference
         result.hashBlock = block.hashMerkleRoot;
 
         debug::log(2, FUNCTION, "Centralized validation for block ", block.hashMerkleRoot.SubString(),
@@ -297,6 +301,8 @@ namespace TAO::Ledger
         BlockAcceptanceResult result;
         result.nChannel = block.nChannel;
         result.nHeight = block.nHeight;
+        result.nChannelHeight = block.nHeight;  // block.nHeight is channel height
+        result.nUnifiedHeight = ChainState::tStateBest.load().nHeight + 1;  // Reference
         result.hashBlock = block.hashMerkleRoot;
 
         debug::log(2, FUNCTION, "Centralized acceptance for block ", block.hashMerkleRoot.SubString(),
@@ -347,6 +353,8 @@ namespace TAO::Ledger
         SubmitResult result;
         result.nChannel = block.nChannel;
         result.nHeight = block.nHeight;
+        result.nChannelHeight = block.nHeight;  // block.nHeight is channel height
+        result.nUnifiedHeight = ChainState::tStateBest.load().nHeight + 1;  // Reference
         result.hashBlock = block.hashMerkleRoot;
 
         const BlockValidationResult validationResult = ValidateMinedBlock(block);
