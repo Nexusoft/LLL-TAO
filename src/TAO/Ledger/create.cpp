@@ -58,6 +58,14 @@ namespace TAO::Ledger
 
     /* Create a new block object from the chain.*/
     static memory::atomic<TAO::Ledger::TritiumBlock> tBlockCache[4];
+    
+    
+    /* Sanity check threshold for channel height validation.
+     * Channel heights are expected to be in the 2-3 million range.
+     * Unified height is in the 6-7 million range.
+     * If block.nHeight exceeds this threshold, it indicates unified height was assigned instead of channel height.
+     * This is a critical bug that breaks miner staleness detection. */
+    static constexpr uint32_t MAX_EXPECTED_CHANNEL_HEIGHT = 5000000;
 
 
     /* Create a new transaction object from signature chain. */
@@ -381,7 +389,7 @@ namespace TAO::Ledger
         
         /* Sanity check: channel heights are ~2-3M, unified is ~6-7M
          * If nHeight looks like unified, we have a critical bug */
-        if(block.nHeight > 5000000)
+        if(block.nHeight > MAX_EXPECTED_CHANNEL_HEIGHT)
         {
             debug::error(FUNCTION, "════════════════════════════════════════");
             debug::error(FUNCTION, "⚠️  CRITICAL BUG DETECTED");
@@ -393,6 +401,9 @@ namespace TAO::Ledger
             debug::error(FUNCTION, "  Got: ~6-7 million (unified height)");
             debug::error(FUNCTION, "This will break miner staleness detection!");
             debug::error(FUNCTION, "════════════════════════════════════════");
+            debug::error(FUNCTION, "IMPORTANT: This should never happen after the fix.");
+            debug::error(FUNCTION, "           If you see this error, the fix has regressed.");
+            debug::error(FUNCTION, "           Continuing anyway to allow investigation...");
         }
         else
         {
