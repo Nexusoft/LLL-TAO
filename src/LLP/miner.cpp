@@ -287,8 +287,9 @@ namespace LLP
                     /* Create and send a packet response */
                     respond(BLOCK_DATA, vData);
 
-                    /* Debug output. */
-                    debug::log(2, FUNCTION, "Sent Block ", hashBlock.SubString(), " to Worker.");
+                    /* Debug output with channel height */
+                    debug::log(2, FUNCTION, "BLOCK_DATA: channel=", pBlock->nChannel, 
+                               " height=", pBlock->nHeight, " (block ", hashBlock.SubString(), ")");
                 }
                 return;
             }
@@ -980,10 +981,9 @@ namespace LLP
                                 respond(BLOCK_DATA, vBlockData);
                                 
                                 debug::log(2, "   ✅ BLOCK_DATA AUTO-SENT!");
-                                debug::log(2, "      Template size:    ", vBlockData.size(), " bytes");
-                                debug::log(2, "      Block height:     ", pBlock->nHeight);
-                                debug::log(2, "      Block channel:    ", pBlock->nChannel);
-                                debug::log(2, "      Merkle root:      ", pBlock->hashMerkleRoot.SubString());
+                                debug::log(2, "      BLOCK_DATA: channel=", pBlock->nChannel, " height=", pBlock->nHeight);
+                                debug::log(2, "      Template size: ", vBlockData.size(), " bytes");
+                                debug::log(2, "      Merkle root:   ", pBlock->hashMerkleRoot.SubString());
                                 
                                 /* Update statistics (same as stateless miner for consistency) */
                                 StatelessMinerManager::Get().IncrementTemplatesServed();
@@ -1122,6 +1122,10 @@ namespace LLP
 
                 /* Create and write the response packet. */
                 respond(BLOCK_DATA, vData);
+                
+                /* Log with channel height */
+                debug::log(2, FUNCTION, "BLOCK_DATA: channel=", pBlock->nChannel, 
+                           " height=", pBlock->nHeight);
 
                 return true;
             }
