@@ -27,6 +27,12 @@ Welcome to the comprehensive Nexus LLL-TAO node documentation. This documentatio
 - **[Falcon Verification](current/authentication/falcon-verification.md)** - Post-quantum auth
 - **[Quantum Resistance](current/security/quantum-resistance.md)** - Security properties
 
+### 🤖 Coding Agent Guidance
+
+- **[Coding Agent Best Practices](CODING_AGENT_BEST_PRACTICES.md)** - Collaboration framework
+- **[Coding Agent Cheat Sheet](CODING_AGENT_CHEAT_SHEET.md)** - Budget + case studies
+- **[Diagram Templates](diagrams/README.md)** - ASCII reference diagrams
+
 ### 📚 Reference
 
 - **[nexus.conf Reference](reference/nexus.conf.md)** - All configuration options
@@ -39,6 +45,14 @@ Welcome to the comprehensive Nexus LLL-TAO node documentation. This documentatio
 
 ```
 docs/
+├── CODING_AGENT_BEST_PRACTICES.md # Agent collaboration framework
+├── CODING_AGENT_CHEAT_SHEET.md    # Budget + case studies
+├── diagrams/                      # ASCII diagram templates
+│   ├── README.md
+│   ├── architecture-boxes.md
+│   ├── flow-chart.md
+│   ├── state-machine.md
+│   └── data-pipeline.md
 ├── current/                    # Active node features
 │   ├── mining/                 # Mining server & stateless protocol
 │   ├── authentication/         # Falcon verification & sessions

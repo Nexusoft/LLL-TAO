@@ -209,3 +209,24 @@ bool ProcessBlock(const Block& block) {
 ---
 
 **Remember: 2,800 well-crafted characters beats 7,000 truncated characters every time.**
+
+## Case Studies (PRs #214-217)
+
+### PR #214 Failure Analysis
+- Issue: 7000 chars truncated at ~3000
+- Missing: MiningContext helper methods
+- Lesson: Hard 3000 char limit enforcement
+
+### PR #215 Success Analysis
+- Approach: 2950 chars, fully visible
+- Result: Complete implementation
+- Lesson: Precision + brevity = success
+
+### PR #216 Failure Analysis
+- Issue: Truncated instructions (>3000 chars)
+- Result: Incomplete unwrapping logic
+- Lesson: Verify char count before submission
+
+### PR #217 Innovation
+- Breakthrough: Diagram-first documentation
+- Lesson: Diagrams transcend text limitations
