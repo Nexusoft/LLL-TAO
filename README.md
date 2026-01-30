@@ -85,3 +85,9 @@ information or see https://opensource.org/licenses/MIT.
 ## Contributing
 
 If you would like to contribute as always submit a pull request. All code contributions should follow the comments and style guides. See [COMMENTS](contrib/COMMENTS.md) or [STYLEGUIDE](contrib/STYLEGUIDE.md) for more information.
+
+### Working with GitHub Copilot Coding Agent
+
+See [Coding Agent Best Practices](docs/CODING_AGENT_BEST_PRACTICES.md) for guidelines on creating effective PR descriptions that work within the 3,000 character limit.
+
+Quick reference: [Cheat Sheet](docs/CODING_AGENT_CHEAT_SHEET.md)
