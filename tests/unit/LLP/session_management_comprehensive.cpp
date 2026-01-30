@@ -282,7 +282,7 @@ TEST_CASE("Session: Manager Integration", "[session][manager]")
             .WithAuth(true);
         ctx.strAddress = "192.168.1.100:9325";
         
-        manager.UpdateMiner(ctx.strAddress, ctx);
+        manager.UpdateMiner(ctx.strAddress, ctx, 0);
         
         auto retrieved = manager.GetMinerContext(ctx.strAddress);
         
@@ -312,8 +312,8 @@ TEST_CASE("Session: Manager Integration", "[session][manager]")
             .WithAuth(true);
         ctx2.strAddress = "192.168.1.101:9325";
         
-        manager.UpdateMiner(ctx1.strAddress, ctx1);
-        manager.UpdateMiner(ctx2.strAddress, ctx2);
+        manager.UpdateMiner(ctx1.strAddress, ctx1, 0);
+        manager.UpdateMiner(ctx2.strAddress, ctx2, 0);
         
         auto r1 = manager.GetMinerContext(ctx1.strAddress);
         auto r2 = manager.GetMinerContext(ctx2.strAddress);
@@ -346,7 +346,7 @@ TEST_CASE("Session: Recovery Scenarios", "[session][recovery]")
             .WithAuth(true);
         original.strAddress = "192.168.1.100:9325";
         
-        manager.UpdateMiner(original.strAddress, original);
+        manager.UpdateMiner(original.strAddress, original, 0);
         
         /* Simulate disconnection and reconnection */
         /* Miner can prove identity with same genesis/keyId */
@@ -358,7 +358,7 @@ TEST_CASE("Session: Recovery Scenarios", "[session][recovery]")
             .WithTimestamp(runtime::unifiedtimestamp());
         reconnected.strAddress = "192.168.1.100:9325";
         
-        manager.UpdateMiner(reconnected.strAddress, reconnected);
+        manager.UpdateMiner(reconnected.strAddress, reconnected, 0);
         
         auto retrieved = manager.GetMinerContext(reconnected.strAddress);
         
@@ -511,7 +511,7 @@ TEST_CASE("Session: Concurrent Access Safety", "[session][concurrency]")
             
             ctx.strAddress = "192.168.1." + std::to_string(100 + i) + ":9325";
             
-            manager.UpdateMiner(ctx.strAddress, ctx);
+            manager.UpdateMiner(ctx.strAddress, ctx, 0);
         }
         
         /* Verify all stored correctly */
@@ -558,7 +558,7 @@ TEST_CASE("Session: Complete Lifecycle", "[session][lifecycle]")
             .WithSession(12345)
             .WithSessionTimeout(300);
         
-        manager.UpdateMiner(authenticated.strAddress, authenticated);
+        manager.UpdateMiner(authenticated.strAddress, authenticated, 0);
         
         auto phase2 = manager.GetMinerContext(authenticated.strAddress);
         REQUIRE(phase2.has_value());
@@ -571,7 +571,7 @@ TEST_CASE("Session: Complete Lifecycle", "[session][lifecycle]")
             .WithHeight(100000)
             .WithKeepaliveCount(1);
         
-        manager.UpdateMiner(mining.strAddress, mining);
+        manager.UpdateMiner(mining.strAddress, mining, 0);
         
         auto phase3 = manager.GetMinerContext(mining.strAddress);
         REQUIRE(phase3.has_value());

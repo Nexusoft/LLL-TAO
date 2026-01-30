@@ -32,6 +32,11 @@ TEST_CASE("SessionRecoveryData Basic Tests", "[session_recovery]")
         REQUIRE(data.hashGenesis == uint256_t(0));
         REQUIRE(data.nChannel == 0);
         REQUIRE(data.fAuthenticated == false);
+        REQUIRE(data.nLastLane == 0);
+        REQUIRE(data.hashChaCha20Key == uint256_t(0));
+        REQUIRE(data.nChaCha20Nonce == 0);
+        REQUIRE(data.vDisposablePubKey.empty());
+        REQUIRE(data.hashDisposableKeyID == uint256_t(0));
     }
     
     SECTION("Constructor from MiningContext preserves data")
@@ -120,6 +125,42 @@ TEST_CASE("SessionRecoveryManager Basic Tests", "[session_recovery]")
         REQUIRE(manager.HasSession(testKeyId) == true);
         
         /* Cleanup */
+        manager.RemoveSession(testKeyId);
+    }
+
+    SECTION("ChaCha20 and disposable key state persists")
+    {
+        uint256_t testKeyId;
+        testKeyId.SetHex("4444444444444444444444444444444444444444444444444444444444444444");
+
+        MiningContext ctx = MiningContext()
+            .WithSession(55555)
+            .WithKeyId(testKeyId)
+            .WithAuth(true);
+
+        manager.SaveSession(ctx);
+
+        uint256_t chachaKey;
+        chachaKey.SetHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+        manager.SaveChaCha20State(testKeyId, chachaKey, 42);
+
+        std::vector<uint8_t> disposablePubKey = {0x01, 0x02, 0x03};
+        uint256_t disposableKeyId;
+        disposableKeyId.SetHex("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+        manager.SaveDisposableKey(testKeyId, disposablePubKey, disposableKeyId);
+
+        uint256_t restoredKey(0);
+        uint64_t restoredNonce = 0;
+        REQUIRE(manager.RestoreChaCha20State(testKeyId, restoredKey, restoredNonce) == true);
+        REQUIRE(restoredKey == chachaKey);
+        REQUIRE(restoredNonce == 42);
+
+        std::vector<uint8_t> restoredPubKey;
+        uint256_t restoredDisposableId(0);
+        REQUIRE(manager.RestoreDisposableKey(testKeyId, restoredPubKey, restoredDisposableId) == true);
+        REQUIRE(restoredPubKey == disposablePubKey);
+        REQUIRE(restoredDisposableId == disposableKeyId);
+
         manager.RemoveSession(testKeyId);
     }
     

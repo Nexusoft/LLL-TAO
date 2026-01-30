@@ -135,7 +135,7 @@ TEST_CASE("Reward Address Binding Tests", "[reward_routing]")
         ctx.strAddress = "192.168.1.100:54321";
         
         /* Update manager with context */
-        manager.UpdateMiner(ctx.strAddress, ctx);
+        manager.UpdateMiner(ctx.strAddress, ctx, 0);
         
         /* Retrieve and verify */
         auto retrieved = manager.GetMinerContext(ctx.strAddress);
@@ -200,8 +200,8 @@ TEST_CASE("Stateless Mining Enforcement Tests", "[reward_routing]")
         ctx2.strAddress = "192.168.1.101:54321";
         
         /* Add both miners */
-        manager.UpdateMiner(ctx1.strAddress, ctx1);
-        manager.UpdateMiner(ctx2.strAddress, ctx2);
+        manager.UpdateMiner(ctx1.strAddress, ctx1, 0);
+        manager.UpdateMiner(ctx2.strAddress, ctx2, 0);
         
         /* Only one has reward bound */
         REQUIRE(manager.GetRewardBoundCount() >= 1);
@@ -251,7 +251,7 @@ TEST_CASE("ProcessSetReward completes successfully and updates context", "[rewar
         REQUIRE(updatedContext.fAuthenticated == true);
         
         /* Update manager to persist the change */
-        manager.UpdateMiner(context.strAddress, updatedContext);
+        manager.UpdateMiner(context.strAddress, updatedContext, 0);
         
         /* Verify context was persisted in manager */
         auto retrievedContext = manager.GetMinerContext(context.strAddress);
@@ -285,8 +285,8 @@ TEST_CASE("ProcessSetReward completes successfully and updates context", "[rewar
         ctxNotBound.strAddress = "127.0.0.1:9327";
         
         /* Add both miners */
-        manager.UpdateMiner(ctxBound.strAddress, ctxBound);
-        manager.UpdateMiner(ctxNotBound.strAddress, ctxNotBound);
+        manager.UpdateMiner(ctxBound.strAddress, ctxBound, 0);
+        manager.UpdateMiner(ctxNotBound.strAddress, ctxNotBound, 0);
         
         /* Verify reward bound count includes the bound miner */
         size_t boundCount = manager.GetRewardBoundCount();

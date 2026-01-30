@@ -116,7 +116,7 @@ TEST_CASE("Cache Size Limit Enforcement Tests", "[node_cache]")
             /* i=0 is least recently active (600s ago), i=9 is most recently active (60s ago) */
             ctx = ctx.WithTimestamp(runtime::unifiedtimestamp() - (10 - i) * 60);
             ctx.strAddress = strAddress;
-            manager.UpdateMiner(strAddress, ctx);
+            manager.UpdateMiner(strAddress, ctx, 0);
         }
 
         REQUIRE(manager.GetMinerCount() == 10);
@@ -167,7 +167,7 @@ TEST_CASE("Cache Size Limit Enforcement Tests", "[node_cache]")
             MiningContext ctx;
             ctx = ctx.WithTimestamp(runtime::unifiedtimestamp() - 100);
             ctx.strAddress = strAddress;
-            manager.UpdateMiner(strAddress, ctx);
+            manager.UpdateMiner(strAddress, ctx, 0);
         }
 
         /* Add localhost miner (older timestamp but localhost) */
@@ -175,7 +175,7 @@ TEST_CASE("Cache Size Limit Enforcement Tests", "[node_cache]")
             MiningContext ctx;
             ctx = ctx.WithTimestamp(runtime::unifiedtimestamp() - 1000);
             ctx.strAddress = "127.0.0.1";
-            manager.UpdateMiner("127.0.0.1", ctx);
+            manager.UpdateMiner("127.0.0.1", ctx, 0);
         }
 
         REQUIRE(manager.GetMinerCount() == 6);
@@ -216,7 +216,7 @@ TEST_CASE("Purge Inactive Miners Tests", "[node_cache]")
             MiningContext ctx;
             ctx = ctx.WithTimestamp(runtime::unifiedtimestamp() - (8 * 86400));
             ctx.strAddress = "192.168.1.100";
-            manager.UpdateMiner("192.168.1.100", ctx);
+            manager.UpdateMiner("192.168.1.100", ctx, 0);
         }
 
         /* Add active remote miner (1 day old - should remain) */
@@ -224,7 +224,7 @@ TEST_CASE("Purge Inactive Miners Tests", "[node_cache]")
             MiningContext ctx;
             ctx = ctx.WithTimestamp(runtime::unifiedtimestamp() - 86400);
             ctx.strAddress = "192.168.1.101";
-            manager.UpdateMiner("192.168.1.101", ctx);
+            manager.UpdateMiner("192.168.1.101", ctx, 0);
         }
 
         /* Add inactive localhost miner (8 days old - should remain due to extended timeout) */
@@ -232,7 +232,7 @@ TEST_CASE("Purge Inactive Miners Tests", "[node_cache]")
             MiningContext ctx;
             ctx = ctx.WithTimestamp(runtime::unifiedtimestamp() - (8 * 86400));
             ctx.strAddress = "127.0.0.1";
-            manager.UpdateMiner("127.0.0.1", ctx);
+            manager.UpdateMiner("127.0.0.1", ctx, 0);
         }
 
         REQUIRE(manager.GetMinerCount() == 3);
@@ -277,7 +277,7 @@ TEST_CASE("Keepalive Check Tests", "[node_cache]")
             MiningContext ctx;
             ctx = ctx.WithTimestamp(runtime::unifiedtimestamp() - (25 * 3600));
             ctx.strAddress = "192.168.1.1";
-            manager.UpdateMiner("192.168.1.1", ctx);
+            manager.UpdateMiner("192.168.1.1", ctx, 0);
         }
 
         /* Should require keepalive (24 hour default interval) */
@@ -288,7 +288,7 @@ TEST_CASE("Keepalive Check Tests", "[node_cache]")
             MiningContext ctx;
             ctx = ctx.WithTimestamp(runtime::unifiedtimestamp() - 3600);
             ctx.strAddress = "192.168.1.2";
-            manager.UpdateMiner("192.168.1.2", ctx);
+            manager.UpdateMiner("192.168.1.2", ctx, 0);
         }
 
         /* Should not require keepalive */
@@ -326,7 +326,7 @@ TEST_CASE("Cache DDOS Protection Integration Test", "[node_cache]")
             MiningContext ctx;
             ctx = ctx.WithTimestamp(runtime::unifiedtimestamp() - (500 - i));
             ctx.strAddress = strAddress;
-            manager.UpdateMiner(strAddress, ctx);
+            manager.UpdateMiner(strAddress, ctx, 0);
         }
 
         REQUIRE(manager.GetMinerCount() == 500);
@@ -336,7 +336,7 @@ TEST_CASE("Cache DDOS Protection Integration Test", "[node_cache]")
             MiningContext ctx;
             ctx = ctx.WithTimestamp(runtime::unifiedtimestamp());
             ctx.strAddress = "192.168.99.99";
-            manager.UpdateMiner("192.168.99.99", ctx);
+            manager.UpdateMiner("192.168.99.99", ctx, 0);
         }
 
         /* Cache should stay at or below limit */

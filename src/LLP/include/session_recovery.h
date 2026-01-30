@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <vector>
 #include <chrono>
 #include <atomic>
+#include <optional>
 
 namespace LLP
 {
@@ -43,6 +44,11 @@ namespace LLP
         std::string strAddress;                 // Original connection address
         uint32_t nReconnectCount;               // Number of reconnection attempts
         bool fAuthenticated;                    // Authentication status
+        uint8_t nLastLane;                      // Last known lane (0=Legacy, 1=Stateless)
+        uint256_t hashChaCha20Key;              // ChaCha20 session key hash
+        uint64_t nChaCha20Nonce;                // ChaCha20 nonce counter
+        std::vector<uint8_t> vDisposablePubKey; // Disposable Falcon session public key
+        uint256_t hashDisposableKeyID;          // Disposable Falcon session key ID
 
         /** Default Constructor **/
         SessionRecoveryData();
@@ -129,7 +135,6 @@ namespace LLP
         /** RecoverSessionByAddress
          *
          *  Attempt to recover a session by network address.
-         *  Used when miner reconnects from same IP.
          *
          *  @param[in] strAddress Network address
          *  @param[out] context Recovered context if found
@@ -138,6 +143,17 @@ namespace LLP
          *
          **/
         bool RecoverSessionByAddress(const std::string& strAddress, MiningContext& context);
+
+        /** RecoverSessionByAddress
+         *
+         *  Attempt to recover a session by network address.
+         *
+         *  @param[in] strAddress Network address
+         *
+         *  @return Optional recovery data if found
+         *
+         **/
+        std::optional<SessionRecoveryData> RecoverSessionByAddress(const std::string& strAddress);
 
         /** RemoveSession
          *
@@ -160,6 +176,43 @@ namespace LLP
          *
          **/
         bool UpdateSession(const MiningContext& context);
+
+        /** SaveChaCha20State
+         *
+         *  Persist ChaCha20 session key and nonce for cross-lane recovery.
+         *
+         **/
+        bool SaveChaCha20State(const uint256_t& hashKeyID, const uint256_t& hashKey, uint64_t nNonce);
+
+        /** RestoreChaCha20State
+         *
+         *  Restore ChaCha20 session key and nonce for cross-lane recovery.
+         *
+         **/
+        bool RestoreChaCha20State(const uint256_t& hashKeyID, uint256_t& hashKey, uint64_t& nNonce);
+
+        /** SaveDisposableKey
+         *
+         *  Persist disposable Falcon session key data.
+         *
+         **/
+        bool SaveDisposableKey(const uint256_t& hashKeyID, const std::vector<uint8_t>& vPubKey,
+                               const uint256_t& hashDisposableKeyID);
+
+        /** RestoreDisposableKey
+         *
+         *  Restore disposable Falcon session key data.
+         *
+         **/
+        bool RestoreDisposableKey(const uint256_t& hashKeyID, std::vector<uint8_t>& vPubKey,
+                                  uint256_t& hashDisposableKeyID);
+
+        /** UpdateLane
+         *
+         *  Persist last known lane for session recovery coordination.
+         *
+         **/
+        bool UpdateLane(const uint256_t& hashKeyID, uint8_t nNewLane);
 
         /** HasSession
          *

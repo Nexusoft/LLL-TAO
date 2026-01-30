@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLP/include/falcon_constants.h>
 #include <LLP/include/genesis_constants.h>
 #include <LLP/include/stateless_manager.h>
+#include <LLP/include/session_recovery.h>
 
 #include <LLD/include/global.h>
 
@@ -1534,7 +1535,18 @@ namespace LLP
         MiningContext newContext = context.WithRewardAddress(hashReward);
 
         /* Update the context in StatelessMinerManager to persist the change */
-        StatelessMinerManager::Get().UpdateMiner(context.strAddress, newContext);
+        StatelessMinerManager::Get().UpdateMiner(context.strAddress, newContext, 0);
+
+        if(newContext.fAuthenticated && newContext.hashKeyID != 0)
+        {
+            SessionRecoveryManager::Get().SaveSession(newContext);
+            SessionRecoveryManager::Get().UpdateLane(newContext.hashKeyID, 0);
+            if(newContext.fEncryptionReady && !newContext.vChaChaKey.empty())
+            {
+                uint256_t hashKey(newContext.vChaChaKey);
+                SessionRecoveryManager::Get().SaveChaCha20State(newContext.hashKeyID, hashKey, 0);
+            }
+        }
 
         /* Log successful binding */
         debug::log(0, FUNCTION, "✓ Reward address bound: ", hashReward.ToString());

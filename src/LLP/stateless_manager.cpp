@@ -38,7 +38,8 @@ namespace LLP
     /* Update or add a miner */
     void StatelessMinerManager::UpdateMiner(
         const std::string& strAddress,
-        const MiningContext& context
+        const MiningContext& context,
+        uint8_t nLane
     )
     {
         /* Get existing context once to avoid double lookups */
@@ -62,6 +63,9 @@ namespace LLP
 
         /* Update main miner map */
         mapMiners.InsertOrUpdate(strAddress, context);
+
+        /* Track lane for cross-lane session coordination */
+        mapAddressToLane.InsertOrUpdate(strAddress, nLane);
 
         /* Update atomic counters for lock-free stats */
         if(fNewMiner)
@@ -108,6 +112,27 @@ namespace LLP
         }
     }
 
+    /* Get miner lane by address */
+    std::optional<uint8_t> StatelessMinerManager::GetMinerLane(
+        const std::string& strAddress
+    ) const
+    {
+        return mapAddressToLane.Get(strAddress);
+    }
+
+    /* Check if miner has switched lanes */
+    bool StatelessMinerManager::HasSwitchedLanes(
+        const std::string& strAddress,
+        uint8_t nNewLane
+    ) const
+    {
+        auto optLane = mapAddressToLane.Get(strAddress);
+        if(!optLane.has_value())
+            return false;
+
+        return optLane.value() != nNewLane;
+    }
+
     /* Remove a miner by address */
     bool StatelessMinerManager::RemoveMiner(const std::string& strAddress)
     {
@@ -133,6 +158,8 @@ namespace LLP
 
         if(ctx.hashGenesis != 0)
             mapGenesisToAddress.Erase(ctx.hashGenesis);
+
+        mapAddressToLane.Erase(strAddress);
 
         return true;
     }

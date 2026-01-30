@@ -199,8 +199,8 @@ TEST_CASE("Dual-Identity: Register Address Support", "[dual-identity][register-a
             .WithAuth(true);
         ctx2.strAddress = "192.168.1.101:9325";
         
-        manager.UpdateMiner(ctx1.strAddress, ctx1);
-        manager.UpdateMiner(ctx2.strAddress, ctx2);
+        manager.UpdateMiner(ctx1.strAddress, ctx1, 0);
+        manager.UpdateMiner(ctx2.strAddress, ctx2, 0);
         
         /* Verify both contexts stored correctly */
         auto retrieved1 = manager.GetMinerContext(ctx1.strAddress);
@@ -309,9 +309,9 @@ TEST_CASE("Dual-Identity: Mixed Miner Scenarios", "[dual-identity][mixed-scenari
             .WithAuth(true);
         ctx3.strAddress = "192.168.1.102:9325";
         
-        manager.UpdateMiner(ctx1.strAddress, ctx1);
-        manager.UpdateMiner(ctx2.strAddress, ctx2);
-        manager.UpdateMiner(ctx3.strAddress, ctx3);
+        manager.UpdateMiner(ctx1.strAddress, ctx1, 0);
+        manager.UpdateMiner(ctx2.strAddress, ctx2, 0);
+        manager.UpdateMiner(ctx3.strAddress, ctx3, 0);
         
         /* Verify all stored correctly */
         auto r1 = manager.GetMinerContext(ctx1.strAddress);
@@ -398,7 +398,7 @@ TEST_CASE("Dual-Identity: Manager Integration", "[dual-identity][manager]")
             .WithAuth(true);
         ctx.strAddress = "192.168.1.100:9325";
         
-        manager.UpdateMiner(ctx.strAddress, ctx);
+        manager.UpdateMiner(ctx.strAddress, ctx, 0);
         
         auto retrieved = manager.GetMinerContext(ctx.strAddress);
         
@@ -432,9 +432,9 @@ TEST_CASE("Dual-Identity: Manager Integration", "[dual-identity][manager]")
             .WithAuth(true);
         ctx3.strAddress = "192.168.1.102:9325";
         
-        manager.UpdateMiner(ctx1.strAddress, ctx1);
-        manager.UpdateMiner(ctx2.strAddress, ctx2);
-        manager.UpdateMiner(ctx3.strAddress, ctx3);
+        manager.UpdateMiner(ctx1.strAddress, ctx1, 0);
+        manager.UpdateMiner(ctx2.strAddress, ctx2, 0);
+        manager.UpdateMiner(ctx3.strAddress, ctx3, 0);
         
         /* At least 2 should be reward bound */
         REQUIRE(manager.GetRewardBoundCount() >= 2);
@@ -522,7 +522,7 @@ TEST_CASE("Dual-Identity: Protocol Flow Simulation", "[dual-identity][protocol-f
             .WithNonce(nonce)
             .WithAuth(true);
         
-        manager.UpdateMiner(authenticated.strAddress, authenticated);
+        manager.UpdateMiner(authenticated.strAddress, authenticated, 0);
         
         /* Verify authentication stored */
         auto ctx1 = manager.GetMinerContext(authenticated.strAddress);
@@ -537,7 +537,7 @@ TEST_CASE("Dual-Identity: Protocol Flow Simulation", "[dual-identity][protocol-f
         MiningContext rewardBound = authenticated
             .WithRewardAddress(rewardAddr);
         
-        manager.UpdateMiner(rewardBound.strAddress, rewardBound);
+        manager.UpdateMiner(rewardBound.strAddress, rewardBound, 0);
         
         /* Verify reward binding stored */
         auto ctx2 = manager.GetMinerContext(rewardBound.strAddress);
@@ -558,7 +558,7 @@ TEST_CASE("Dual-Identity: Protocol Flow Simulation", "[dual-identity][protocol-f
             .WithChannel(2)
             .WithHeight(100000);
         
-        manager.UpdateMiner(mining.strAddress, mining);
+        manager.UpdateMiner(mining.strAddress, mining, 0);
         
         /* Verify complete state */
         auto ctx3 = manager.GetMinerContext(mining.strAddress);

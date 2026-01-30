@@ -89,7 +89,7 @@ TEST_CASE("Integration: Complete Mining Cycle - Single Miner", "[integration][fu
             .WithSession(12345)
             .WithSessionTimeout(300);
         
-        manager.UpdateMiner(authenticated.strAddress, authenticated);
+        manager.UpdateMiner(authenticated.strAddress, authenticated, 0);
         
         auto phase2 = manager.GetMinerContext(authenticated.strAddress);
         REQUIRE(phase2.has_value());
@@ -103,7 +103,7 @@ TEST_CASE("Integration: Complete Mining Cycle - Single Miner", "[integration][fu
         MiningContext rewardBound = authenticated
             .WithRewardAddress(rewardAddr);
         
-        manager.UpdateMiner(rewardBound.strAddress, rewardBound);
+        manager.UpdateMiner(rewardBound.strAddress, rewardBound, 0);
         
         auto phase3 = manager.GetMinerContext(rewardBound.strAddress);
         REQUIRE(phase3.has_value());
@@ -115,7 +115,7 @@ TEST_CASE("Integration: Complete Mining Cycle - Single Miner", "[integration][fu
         MiningContext channelSelected = rewardBound
             .WithChannel(2);  // Hash channel
         
-        manager.UpdateMiner(channelSelected.strAddress, channelSelected);
+        manager.UpdateMiner(channelSelected.strAddress, channelSelected, 0);
         
         auto phase4 = manager.GetMinerContext(channelSelected.strAddress);
         REQUIRE(phase4.has_value());
@@ -126,7 +126,7 @@ TEST_CASE("Integration: Complete Mining Cycle - Single Miner", "[integration][fu
             .WithHeight(100000)
             .WithTimestamp(runtime::unifiedtimestamp());
         
-        manager.UpdateMiner(blockRequested.strAddress, blockRequested);
+        manager.UpdateMiner(blockRequested.strAddress, blockRequested, 0);
         
         auto phase5 = manager.GetMinerContext(blockRequested.strAddress);
         REQUIRE(phase5.has_value());
@@ -138,7 +138,7 @@ TEST_CASE("Integration: Complete Mining Cycle - Single Miner", "[integration][fu
             .WithTimestamp(runtime::unifiedtimestamp())
             .WithKeepaliveCount(blockRequested.nKeepaliveCount + 1);
         
-        manager.UpdateMiner(submitted.strAddress, submitted);
+        manager.UpdateMiner(submitted.strAddress, submitted, 0);
         
         /* === VERIFICATION: Complete state preserved === */
         auto final = manager.GetMinerContext(submitted.strAddress);
@@ -204,9 +204,9 @@ TEST_CASE("Integration: Multi-Miner Concurrent Mining", "[integration][multi-min
         miner3.strAddress = "192.168.1.102:9325";
         
         /* === UPDATE ALL MINERS === */
-        manager.UpdateMiner(miner1.strAddress, miner1);
-        manager.UpdateMiner(miner2.strAddress, miner2);
-        manager.UpdateMiner(miner3.strAddress, miner3);
+        manager.UpdateMiner(miner1.strAddress, miner1, 0);
+        manager.UpdateMiner(miner2.strAddress, miner2, 0);
+        manager.UpdateMiner(miner3.strAddress, miner3, 0);
         
         /* === VERIFY ALL MINERS STORED CORRECTLY === */
         auto r1 = manager.GetMinerContext(miner1.strAddress);
@@ -240,19 +240,19 @@ TEST_CASE("Integration: Multi-Miner Concurrent Mining", "[integration][multi-min
         MiningContext m1Updated = r1.value()
             .WithTimestamp(runtime::unifiedtimestamp())
             .WithKeepaliveCount(1);
-        manager.UpdateMiner(m1Updated.strAddress, m1Updated);
+        manager.UpdateMiner(m1Updated.strAddress, m1Updated, 0);
         
         /* Miner 2 switches channel */
         MiningContext m2Updated = r2.value()
             .WithChannel(2)
             .WithTimestamp(runtime::unifiedtimestamp());
-        manager.UpdateMiner(m2Updated.strAddress, m2Updated);
+        manager.UpdateMiner(m2Updated.strAddress, m2Updated, 0);
         
         /* Miner 3 sends keepalive */
         MiningContext m3Updated = r3.value()
             .WithTimestamp(runtime::unifiedtimestamp())
             .WithKeepaliveCount(1);
-        manager.UpdateMiner(m3Updated.strAddress, m3Updated);
+        manager.UpdateMiner(m3Updated.strAddress, m3Updated, 0);
         
         /* === VERIFY UPDATES === */
         auto final1 = manager.GetMinerContext(miner1.strAddress);
@@ -298,7 +298,7 @@ TEST_CASE("Integration: Miner Disconnection and Reconnection", "[integration][re
             .WithTimestamp(sessionStart);
         connected.strAddress = "192.168.1.100:9325";
         
-        manager.UpdateMiner(connected.strAddress, connected);
+        manager.UpdateMiner(connected.strAddress, connected, 0);
         
         /* === SIMULATE DISCONNECTION === */
         /* (Manager keeps context for potential reconnection) */
@@ -324,7 +324,7 @@ TEST_CASE("Integration: Miner Disconnection and Reconnection", "[integration][re
                 .WithHeight(previous->nHeight);
         }
         
-        manager.UpdateMiner(reconnected.strAddress, reconnected);
+        manager.UpdateMiner(reconnected.strAddress, reconnected, 0);
         
         /* === VERIFY RECOVERY === */
         auto recovered = manager.GetMinerContext(reconnected.strAddress);
@@ -350,7 +350,7 @@ TEST_CASE("Integration: Channel Switching During Mining", "[integration][channel
         MiningContext prime = CreateFullMiningContext(1);  // Prime
         prime.strAddress = "192.168.1.100:9325";
         
-        manager.UpdateMiner(prime.strAddress, prime);
+        manager.UpdateMiner(prime.strAddress, prime, 0);
         
         auto phase1 = manager.GetMinerContext(prime.strAddress);
         REQUIRE(phase1.has_value());
@@ -361,7 +361,7 @@ TEST_CASE("Integration: Channel Switching During Mining", "[integration][channel
             .WithChannel(2)
             .WithTimestamp(runtime::unifiedtimestamp());
         
-        manager.UpdateMiner(hash.strAddress, hash);
+        manager.UpdateMiner(hash.strAddress, hash, 0);
         
         auto phase2 = manager.GetMinerContext(hash.strAddress);
         REQUIRE(phase2.has_value());
@@ -397,9 +397,9 @@ TEST_CASE("Integration: Height Updates and New Rounds", "[integration][height-up
         miner3.strAddress = "192.168.1.102:9325";
         miner3 = miner3.WithHeight(100000);
         
-        manager.UpdateMiner(miner1.strAddress, miner1);
-        manager.UpdateMiner(miner2.strAddress, miner2);
-        manager.UpdateMiner(miner3.strAddress, miner3);
+        manager.UpdateMiner(miner1.strAddress, miner1, 0);
+        manager.UpdateMiner(miner2.strAddress, miner2, 0);
+        manager.UpdateMiner(miner3.strAddress, miner3, 0);
         
         /* === VERIFY INITIAL HEIGHT === */
         REQUIRE(manager.GetCurrentHeight() >= 100000);
@@ -451,8 +451,8 @@ TEST_CASE("Integration: Session Expiration and Cleanup", "[integration][session-
             .WithSessionTimeout(300);     // 300s timeout
         expired.strAddress = "192.168.1.101:9325";
         
-        manager.UpdateMiner(active.strAddress, active);
-        manager.UpdateMiner(expired.strAddress, expired);
+        manager.UpdateMiner(active.strAddress, active, 0);
+        manager.UpdateMiner(expired.strAddress, expired, 0);
         
         /* === CHECK EXPIRATION === */
         auto activeCtx = manager.GetMinerContext(active.strAddress);
@@ -500,7 +500,7 @@ TEST_CASE("Integration: Stress Test with Many Miners", "[integration][stress]")
             ctx.strAddress = "192.168.1." + std::to_string(i) + ":9325";
             addresses.push_back(ctx.strAddress);
             
-            manager.UpdateMiner(ctx.strAddress, ctx);
+            manager.UpdateMiner(ctx.strAddress, ctx, 0);
         }
         
         /* === VERIFY ALL STORED === */

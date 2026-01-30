@@ -40,6 +40,11 @@ namespace LLP
     , strAddress()
     , nReconnectCount(0)
     , fAuthenticated(false)
+    , nLastLane(0)
+    , hashChaCha20Key(0)
+    , nChaCha20Nonce(0)
+    , vDisposablePubKey()
+    , hashDisposableKeyID(0)
     {
     }
 
@@ -56,6 +61,11 @@ namespace LLP
     , strAddress(context.strAddress)
     , nReconnectCount(0)
     , fAuthenticated(context.fAuthenticated)
+    , nLastLane(0)
+    , hashChaCha20Key(0)
+    , nChaCha20Nonce(0)
+    , vDisposablePubKey()
+    , hashDisposableKeyID(0)
     {
     }
 
@@ -200,6 +210,35 @@ namespace LLP
     }
 
 
+    /** RecoverSessionByAddress (data) **/
+    std::optional<SessionRecoveryData> SessionRecoveryManager::RecoverSessionByAddress(const std::string& strAddress)
+    {
+        auto optKeyID = mapAddressToKey.Get(strAddress);
+        if(!optKeyID.has_value())
+        {
+            debug::log(3, FUNCTION, "No session mapping for address=", strAddress);
+            return std::nullopt;
+        }
+
+        auto optData = mapSessionsByKey.Get(optKeyID.value());
+        if(!optData.has_value())
+        {
+            debug::log(3, FUNCTION, "No recoverable session for keyID=", optKeyID.value().SubString());
+            return std::nullopt;
+        }
+
+        SessionRecoveryData data = optData.value();
+        if(data.IsExpired(nSessionTimeout.load()))
+        {
+            debug::log(2, FUNCTION, "Session expired for keyID=", optKeyID.value().SubString());
+            mapSessionsByKey.Erase(optKeyID.value());
+            return std::nullopt;
+        }
+
+        return data;
+    }
+
+
     /** RemoveSession **/
     bool SessionRecoveryManager::RemoveSession(const uint256_t& hashKeyID)
     {
@@ -234,6 +273,112 @@ namespace LLP
         data.fAuthenticated = context.fAuthenticated;
 
         mapSessionsByKey.Update(context.hashKeyID, data);
+        return true;
+    }
+
+
+    /** SaveChaCha20State **/
+    bool SessionRecoveryManager::SaveChaCha20State(
+        const uint256_t& hashKeyID,
+        const uint256_t& hashKey,
+        uint64_t nNonce
+    )
+    {
+        if(hashKeyID == 0)
+            return false;
+
+        auto optData = mapSessionsByKey.Get(hashKeyID);
+        if(!optData.has_value())
+            return false;
+
+        SessionRecoveryData data = optData.value();
+        data.hashChaCha20Key = hashKey;
+        data.nChaCha20Nonce = nNonce;
+        mapSessionsByKey.Update(hashKeyID, data);
+
+        return true;
+    }
+
+
+    /** RestoreChaCha20State **/
+    bool SessionRecoveryManager::RestoreChaCha20State(
+        const uint256_t& hashKeyID,
+        uint256_t& hashKey,
+        uint64_t& nNonce
+    )
+    {
+        if(hashKeyID == 0)
+            return false;
+
+        auto optData = mapSessionsByKey.Get(hashKeyID);
+        if(!optData.has_value())
+            return false;
+
+        hashKey = optData.value().hashChaCha20Key;
+        nNonce = optData.value().nChaCha20Nonce;
+        return hashKey != 0;
+    }
+
+
+    /** SaveDisposableKey **/
+    bool SessionRecoveryManager::SaveDisposableKey(
+        const uint256_t& hashKeyID,
+        const std::vector<uint8_t>& vPubKey,
+        const uint256_t& hashDisposableKeyID
+    )
+    {
+        if(hashKeyID == 0)
+            return false;
+
+        auto optData = mapSessionsByKey.Get(hashKeyID);
+        if(!optData.has_value())
+            return false;
+
+        SessionRecoveryData data = optData.value();
+        data.vDisposablePubKey = vPubKey;
+        data.hashDisposableKeyID = hashDisposableKeyID;
+        mapSessionsByKey.Update(hashKeyID, data);
+
+        return true;
+    }
+
+
+    /** RestoreDisposableKey **/
+    bool SessionRecoveryManager::RestoreDisposableKey(
+        const uint256_t& hashKeyID,
+        std::vector<uint8_t>& vPubKey,
+        uint256_t& hashDisposableKeyID
+    )
+    {
+        if(hashKeyID == 0)
+            return false;
+
+        auto optData = mapSessionsByKey.Get(hashKeyID);
+        if(!optData.has_value())
+            return false;
+
+        vPubKey = optData.value().vDisposablePubKey;
+        hashDisposableKeyID = optData.value().hashDisposableKeyID;
+        return !vPubKey.empty();
+    }
+
+
+    /** UpdateLane **/
+    bool SessionRecoveryManager::UpdateLane(
+        const uint256_t& hashKeyID,
+        uint8_t nNewLane
+    )
+    {
+        if(hashKeyID == 0)
+            return false;
+
+        auto optData = mapSessionsByKey.Get(hashKeyID);
+        if(!optData.has_value())
+            return false;
+
+        SessionRecoveryData data = optData.value();
+        data.nLastLane = nNewLane;
+        mapSessionsByKey.Update(hashKeyID, data);
         return true;
     }
 
