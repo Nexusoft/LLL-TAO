@@ -118,20 +118,211 @@ Method `ProcessBlock()`: Add validation before line 145:
 
 ## Architecture Guidance: Diagrams Over Code
 
-When explaining complex interactions, use ASCII diagrams, not code examples.
+When explaining complex interactions, use ASCII diagrams, not code examples. **Diagrams are 70-90% more character-efficient than code.**
 
-**✅ GOOD - Shows architecture concisely:**
+### Why Diagrams Beat Code Examples
+
+| Approach | Characters | Clarity |
+|----------|-----------|---------|
+| Code example | 800-1,200 | Shows HOW (unnecessary) |
+| ASCII diagram | 50-200 | Shows WHAT (essential) |
+| **Savings** | **600-1,000 chars** | **Better focus** |
+
+### Effective Diagram Types
+
+**1. Data Flow Diagrams (50-100 chars)**
+
+Simple linear flow:
 ```
-Data flow:
 Client → API → Validation → Database → Response
          ↓
     Error Handler
 ```
 
-**❌ BAD - Code example for architecture:**
-```cpp
-// Shows entire code flow with actual implementation
+Multi-path flow:
 ```
+Request → Router → Auth? → [Yes] → Handler → Response
+                     ↓              
+                   [No] → 401 Error
+```
+
+**2. Component Architecture (100-150 chars)**
+
+```
+┌─────────┐    ┌──────────┐    ┌─────────┐
+│ Miner   │───→│  Node    │───→│ Ledger  │
+│ Client  │←───│  Cache   │←───│ Manager │
+└─────────┘    └──────────┘    └─────────┘
+```
+
+Layered architecture:
+```
+┌─────────────────────┐
+│   API Layer         │
+├─────────────────────┤
+│   Business Logic    │
+├─────────────────────┤
+│   Data Access       │
+└─────────────────────┘
+```
+
+**3. State Machines (80-120 chars)**
+
+```
+[Idle] → [Validating] → [Processing] → [Complete]
+   ↑          ↓              ↓              ↓
+   └─────[Error]←───────────┴──────────────┘
+```
+
+**4. Class/Module Relationships (70-100 chars)**
+
+```
+Connection
+    ├─→ Timestamp (nLastActive)
+    ├─→ Authentication
+    └─→ PurgeLogic
+```
+
+Hierarchical:
+```
+MinerConnection (base)
+    ├─→ PoolConnection
+    └─→ SoloConnection
+```
+
+**5. Sequence Diagrams (120-180 chars)**
+
+```
+Miner         Node          Ledger
+  │──Submit──→ │             │
+  │            │──Validate─→ │
+  │            │←───OK───────│
+  │←─Accept────│             │
+```
+
+**6. Network Topology (100-150 chars)**
+
+```
+        [Load Balancer]
+           /    |    \
+       API1   API2   API3
+          \     |     /
+          [Shared DB]
+```
+
+### Using Diagrams in PR Descriptions
+
+**Example: Adding Cache Purge Logic**
+
+Instead of showing implementation code (800+ chars), use a diagram (120 chars):
+
+```markdown
+## Implementation
+
+### Architecture:
+```
+Connection Objects
+    ↓
+[Timer: 1hr] → Check nLastActive
+    ↓
+Remote: age > 7d  → Purge
+Local:  age > 30d → Purge
+```
+
+### File: src/LLP/miner.cpp
+- Add `uint64_t nLastActive` member
+- Update in Submit(), Ping() methods
+- New method: PurgeInactiveConnections()
+```
+
+**Character count: ~300 chars (diagram + requirements)**
+**vs. code example: ~1,200 chars**
+**Savings: 900 chars (75%)**
+
+### Quick Diagram Templates
+
+**Copy-paste these and customize:**
+
+**Flow:**
+```
+A → B → C → D
+    ↓
+    E
+```
+
+**Branching:**
+```
+Input → Check? → [Yes] → Process
+          ↓
+        [No] → Reject
+```
+
+**Layers:**
+```
+┌─────┐
+│  A  │
+├─────┤
+│  B  │
+└─────┘
+```
+
+**Bidirectional:**
+```
+Client ←──→ Server ←──→ Database
+```
+
+**Tree:**
+```
+Root
+ ├─ Branch1
+ │   ├─ Leaf1
+ │   └─ Leaf2
+ └─ Branch2
+```
+
+### When to Use Which Diagram
+
+| Use Case | Best Diagram Type | Char Count |
+|----------|------------------|------------|
+| API request flow | Data flow | 50-100 |
+| System components | Box diagram | 100-150 |
+| State transitions | State machine | 80-120 |
+| Class inheritance | Tree | 70-100 |
+| Async operations | Sequence | 120-180 |
+| Error handling | Branching flow | 60-100 |
+
+**❌ BAD - Code example for architecture (800 chars):**
+```cpp
+class MinerConnection {
+    Connection* base;
+    uint64_t timestamp;
+    
+    void handleSubmit() {
+        if (validate()) {
+            timestamp = now();
+            process();
+        }
+    }
+    
+    void purge() {
+        for (auto& conn : connections) {
+            if (isExpired(conn)) {
+                remove(conn);
+            }
+        }
+    }
+};
+```
+
+**✅ GOOD - Diagram for architecture (120 chars):**
+```
+MinerConnection
+    ├─→ timestamp
+    ├─→ handleSubmit() → validate → update timestamp
+    └─→ purge() → check expiry → remove
+```
+
+**Saved: 680 chars (85% reduction)**
 
 ## Precision in Specifying Changes
 
@@ -324,6 +515,7 @@ Add method declaration:
 Before submitting your PR description:
 
 - [ ] Character count < 3,000 (check in text editor)
+- [ ] Used ASCII diagrams for architecture (not code examples)
 - [ ] No code examples included (describe requirements instead)
 - [ ] All file paths are absolute from repo root
 - [ ] All method names are exact and quoted
@@ -397,13 +589,14 @@ Create a new PR with description under 2,800 characters. Focus only on: [core re
 
 1. **3,000 character hard limit** - Every character must justify its existence
 2. **WHAT and WHERE, not HOW** - Requirements, not implementation
-3. **Agent is an expert** - No syntax lessons, no code examples
-4. **Spend wisely** - 67% of budget on implementation details
-5. **Be surgical** - Precise file paths, exact method names, specific line numbers
-6. **Set boundaries** - Explicitly state what NOT to change
-7. **Architecture over code** - Diagrams beat code examples
-8. **One solution** - Don't present options, make decisions
-9. **Minimal context** - Background info is expensive
-10. **Test concisely** - Verification steps, not tutorials
+3. **Use ASCII diagrams** - 50-200 chars vs 800-1,200 for code examples (70-90% savings)
+4. **Agent is an expert** - No syntax lessons, no code examples
+5. **Spend wisely** - 67% of budget on implementation details
+6. **Be surgical** - Precise file paths, exact method names, specific line numbers
+7. **Set boundaries** - Explicitly state what NOT to change
+8. **Diagrams for architecture** - Flow, components, states convey structure efficiently
+9. **One solution** - Don't present options, make decisions
+10. **Minimal context** - Background info is expensive
+11. **Test concisely** - Verification steps, not tutorials
 
-**Remember: A well-crafted 2,800 character description beats a truncated 7,000 character description every time.**
+**Remember: A well-crafted 2,800 character description with diagrams beats a truncated 7,000 character description with code every time.**

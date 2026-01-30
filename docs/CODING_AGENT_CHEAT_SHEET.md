@@ -3,7 +3,7 @@
 ## 🚨 CRITICAL RULES
 
 1. **3,000 CHARACTER HARD LIMIT** - Descriptions truncate at ~3k. Agent never sees the rest.
-2. **NO CODE EXAMPLES** - Agent knows C++. Code examples waste 500-1,000+ chars.
+2. **USE DIAGRAMS, NOT CODE** - ASCII diagrams convey architecture in 50-200 chars vs 500-1,000+ for code.
 3. **WHAT/WHERE, NOT HOW** - Describe requirements, not implementation.
 
 ## Perfect PR Template (2,800 chars)
@@ -61,6 +61,42 @@
 | Add verbose context | 2-3 sentence problem statement |
 | Write implementation tutorials | State specific actions |
 
+## Submitting Diagrams (Character Efficient!)
+
+**Use ASCII diagrams to show architecture/flow in 50-200 chars:**
+
+**Data Flow (65 chars):**
+```
+Client → API → Validate → DB
+          ↓
+       Error Log
+```
+
+**Component Architecture (120 chars):**
+```
+┌─────────┐    ┌──────────┐    ┌─────────┐
+│ Miner   │───→│  Node    │───→│ Ledger  │
+│ Client  │←───│  Cache   │←───│ Manager │
+└─────────┘    └──────────┘    └─────────┘
+```
+
+**State Machine (85 chars):**
+```
+[Idle] → [Validating] → [Processing]
+   ↑          ↓              ↓
+   └────────[Error]←────────┘
+```
+
+**Class Relationships (90 chars):**
+```
+Connection
+    ├─→ Timestamp
+    ├─→ Authentication
+    └─→ PurgeLogic
+```
+
+**Diagrams save 70-90% characters vs code examples!**
+
 ## Precision Examples
 
 **❌ Vague:**
@@ -98,6 +134,7 @@ Simple solution only: [minimal change]
 ## Pre-Flight Checklist
 
 - [ ] Char count < 3,000 (paste in text editor)
+- [ ] ASCII diagrams used for architecture/flow
 - [ ] Zero code examples (only requirements)
 - [ ] File paths are absolute from repo root  
 - [ ] Method names exact and quoted
@@ -150,15 +187,16 @@ bool ProcessBlock(const Block& block) {
 ## Golden Rules Summary
 
 1. **3k limit** - No exceptions
-2. **WHAT/WHERE** - Not HOW
-3. **Expert agent** - Skip syntax lessons  
-4. **67% implementation** - Requirements focused
-5. **Surgical precision** - Exact paths/methods
-6. **Set boundaries** - Say what NOT to change
-7. **Diagrams > code** - Architecture simplified
-8. **One solution** - Decide, don't present options
-9. **Minimal context** - Every char counts
-10. **Concise tests** - Steps, not tutorials
+2. **ASCII diagrams** - 50-200 chars vs 800+ for code (70-90% savings)
+3. **WHAT/WHERE** - Not HOW
+4. **Expert agent** - Skip syntax lessons  
+5. **67% implementation** - Requirements focused
+6. **Surgical precision** - Exact paths/methods
+7. **Set boundaries** - Say what NOT to change
+8. **Diagrams for structure** - Flow, components, states
+9. **One solution** - Decide, don't present options
+10. **Minimal context** - Every char counts
+11. **Concise tests** - Steps, not tutorials
 
 ## Quick Calculation
 
