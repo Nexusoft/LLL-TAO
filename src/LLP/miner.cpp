@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/falcon_constants.h>
 #include <LLP/include/falcon_auth.h>
+#include <LLP/include/disposable_falcon.h>
 #include <LLP/include/opcode_utility.h>
 #include <LLP/include/session_recovery.h>
 #include <LLP/types/miner.h>
@@ -1200,17 +1201,128 @@ namespace LLP
 
                 uint512_t hashMerkle;
                 uint64_t nonce = 0;
-                TAO::Ledger::ParseResult parseResult =
-                    TAO::Ledger::ParseStatelessWorkSubmission(PACKET.DATA);
-                if(!parseResult.success)
+                bool fParsed = false;
+                std::vector<uint8_t> vWorkData = PACKET.DATA;
+
+                /* Attempt to unwrap ChaCha20-encrypted payloads */
+                if(fEncryptionReady && !vChaChaKey.empty() &&
+                   PACKET.DATA.size() >= FalconConstants::SUBMIT_BLOCK_WRAPPER_MIN)
                 {
-                    debug::error(FUNCTION, "SUBMIT_BLOCK parse failed: ", parseResult.reason);
-                    respond(BLOCK_REJECTED);
-                    return true;
+                    std::vector<uint8_t> vDecrypted;
+                    if(LLC::DecryptPayloadChaCha20(PACKET.DATA, vChaChaKey, vDecrypted))
+                    {
+                        debug::log(2, FUNCTION, "SUBMIT_BLOCK: Unwrapping ChaCha20-encrypted submission");
+                        vWorkData = std::move(vDecrypted);
+
+                        if(vMinerPubKey.empty())
+                        {
+                            debug::error(FUNCTION, "SUBMIT_BLOCK unwrap failed: missing Falcon public key");
+                            respond(BLOCK_REJECTED);
+                            return true;
+                        }
+
+                        auto pWrapper = DisposableFalcon::Create();
+                        if(!pWrapper)
+                        {
+                            debug::error(FUNCTION, "SUBMIT_BLOCK unwrap failed: disposable Falcon wrapper unavailable");
+                            respond(BLOCK_REJECTED);
+                            return true;
+                        }
+
+                        std::vector<uint8_t> vUnwrapData = vWorkData;
+                        if(vWorkData.size() >= FalconConstants::SUBMIT_BLOCK_FORMAT_DETECTION_THRESHOLD)
+                        {
+                            auto BuildSignedSubmission = [&](size_t blockSize, size_t nonceOffset,
+                                                             std::vector<uint8_t>& vSigned) -> bool
+                            {
+                                if(vWorkData.size() < blockSize + FalconConstants::TIMESTAMP_SIZE +
+                                                     FalconConstants::LENGTH_FIELD_SIZE)
+                                    return false;
+
+                                if(vWorkData.size() < FalconConstants::FULL_BLOCK_MERKLE_OFFSET +
+                                                     FalconConstants::MERKLE_ROOT_SIZE ||
+                                   vWorkData.size() < nonceOffset + FalconConstants::NONCE_SIZE)
+                                    return false;
+
+                                size_t sigLenOffset = blockSize + FalconConstants::TIMESTAMP_SIZE;
+                                uint16_t sigLen = static_cast<uint16_t>(vWorkData[sigLenOffset]) |
+                                                  (static_cast<uint16_t>(vWorkData[sigLenOffset + 1]) << 8);
+
+                                size_t sigStart = sigLenOffset + FalconConstants::LENGTH_FIELD_SIZE;
+                                if(vWorkData.size() < sigStart + sigLen)
+                                    return false;
+
+                                uint64_t nonceValue = convert::bytes2uint64(std::vector<uint8_t>(
+                                    vWorkData.begin() + nonceOffset,
+                                    vWorkData.begin() + nonceOffset + FalconConstants::NONCE_SIZE));
+
+                                vSigned.clear();
+                                vSigned.reserve(FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE +
+                                                FalconConstants::TIMESTAMP_SIZE + FalconConstants::LENGTH_FIELD_SIZE +
+                                                sigLen);
+
+                                vSigned.insert(vSigned.end(),
+                                               vWorkData.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET,
+                                               vWorkData.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET +
+                                               FalconConstants::MERKLE_ROOT_SIZE);
+
+                                for(size_t i = 0; i < FalconConstants::NONCE_SIZE; ++i)
+                                {
+                                    vSigned.push_back(static_cast<uint8_t>((nonceValue >> (i * 8)) & 0xFF));
+                                }
+
+                                vSigned.insert(vSigned.end(), vWorkData.begin() + blockSize,
+                                               vWorkData.begin() + sigStart + sigLen);
+
+                                return true;
+                            };
+
+                            std::vector<uint8_t> vSigned;
+                            if(BuildSignedSubmission(FalconConstants::FULL_BLOCK_TRITIUM_MIN,
+                                                     FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET,
+                                                     vSigned) ||
+                               BuildSignedSubmission(FalconConstants::FULL_BLOCK_LEGACY_MIN,
+                                                     FalconConstants::FULL_BLOCK_LEGACY_NONCE_OFFSET,
+                                                     vSigned))
+                            {
+                                vUnwrapData = std::move(vSigned);
+                            }
+                            else
+                            {
+                                debug::error(FUNCTION, "SUBMIT_BLOCK unwrap failed: unable to reconstruct signed data");
+                                respond(BLOCK_REJECTED);
+                                return true;
+                            }
+                        }
+
+                        auto unwrapResult = pWrapper->UnwrapWorkSubmission(vUnwrapData, vMinerPubKey);
+                        if(!unwrapResult.fSuccess)
+                        {
+                            debug::error(FUNCTION, "SUBMIT_BLOCK unwrap failed: ", unwrapResult.strError);
+                            respond(BLOCK_REJECTED);
+                            return true;
+                        }
+
+                        hashMerkle = unwrapResult.submission.hashMerkleRoot;
+                        nonce = unwrapResult.submission.nNonce;
+                        fParsed = true;
+                    }
                 }
 
-                hashMerkle = parseResult.hashMerkle;
-                nonce = parseResult.nonce;
+                if(!fParsed)
+                {
+                    TAO::Ledger::ParseResult parseResult =
+                        TAO::Ledger::ParseStatelessWorkSubmission(PACKET.DATA);
+                    if(!parseResult.success)
+                    {
+                        debug::error(FUNCTION, "SUBMIT_BLOCK parse failed: ", parseResult.reason);
+                        respond(BLOCK_REJECTED);
+                        return true;
+                    }
+
+                    hashMerkle = parseResult.hashMerkle;
+                    nonce = parseResult.nonce;
+                }
 
                 debug::log(3, FUNCTION, "Block merkle root: ", hashMerkle.SubString(), " nonce: ", nonce);
 
