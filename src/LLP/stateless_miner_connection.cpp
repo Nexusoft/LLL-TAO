@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLP/include/falcon_auth.h>
 #include <LLP/include/falcon_verify.h>
 #include <LLP/include/disposable_falcon.h>
+#include <LLP/include/session_recovery.h>
 #include <LLP/include/auto_cooldown_manager.h>
 #include <LLP/include/pool_discovery.h>
 #include <LLP/include/opcode_utility.h>
@@ -385,7 +386,7 @@ namespace LLP
                 );
 
                 /* Register with StatelessMinerManager for tracking */
-                StatelessMinerManager::Get().UpdateMiner(strAddr, context);
+                StatelessMinerManager::Get().UpdateMiner(strAddr, context, 1);
 
                 return;
             }
@@ -517,6 +518,31 @@ namespace LLP
                     debug::log(2, "📥 === STATELESS_MINER_READY: REJECTED (INVALID CHANNEL) ===");
                     return false;
                 }
+
+                /* Attempt lane-switch recovery based on address */
+                auto optExisting = SessionRecoveryManager::Get().RecoverSessionByAddress(GetAddress().ToStringIP());
+                if(optExisting.has_value())
+                {
+                    uint256_t hashRecoveredKey(0);
+                    uint64_t nRecoveredNonce = 0;
+                    if(SessionRecoveryManager::Get().RestoreChaCha20State(optExisting->hashKeyID, hashRecoveredKey, nRecoveredNonce)
+                       && hashRecoveredKey != 0)
+                    {
+                        context = context.WithChaChaKey(hashRecoveredKey.GetBytes());
+                    }
+
+                    std::vector<uint8_t> vRecoveredPubKey;
+                    uint256_t hashDisposableKeyID(0);
+                    if(SessionRecoveryManager::Get().RestoreDisposableKey(optExisting->hashKeyID, vRecoveredPubKey, hashDisposableKeyID)
+                       && !vRecoveredPubKey.empty())
+                    {
+                        std::lock_guard<std::mutex> lock(SESSION_MUTEX);
+                        if(optExisting->nSessionId != 0)
+                            mapSessionKeys[optExisting->nSessionId] = vRecoveredPubKey;
+                    }
+
+                    debug::log(0, FUNCTION, "Session recovered from lane switch");
+                }
                 
                 /* Subscribe to notifications (same logic as 8-bit MINER_READY) */
                 context = context.WithSubscription(context.nChannel);
@@ -534,8 +560,20 @@ namespace LLP
                     debug::log(0, "   Encryption ready: YES");
                 }
                 
+                /* Persist session and lane state for cross-lane recovery */
+                if(context.fAuthenticated && context.hashKeyID != 0)
+                {
+                    SessionRecoveryManager::Get().SaveSession(context);
+                    SessionRecoveryManager::Get().UpdateLane(context.hashKeyID, 1);
+                    if(context.fEncryptionReady && !context.vChaChaKey.empty())
+                    {
+                        uint256_t hashKey(context.vChaChaKey);
+                        SessionRecoveryManager::Get().SaveChaCha20State(context.hashKeyID, hashKey, 0);
+                    }
+                }
+
                 /* Update StatelessMinerManager with COMPLETE context including encryption state */
-                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
+                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
                 
                 debug::log(0, FUNCTION, "✓ Miner subscribed to ", 
                           (context.nChannel == 1 ? "Prime" : "Hash"), " notifications (stateless protocol)");
@@ -545,10 +583,7 @@ namespace LLP
                 
                 /* Send immediate template push using STATELESS_GET_BLOCK (0xD081 = Mirror(129)) */
                 SendStatelessTemplate();
-                
-                /* Update manager */
-                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
-                
+
                 debug::log(2, "📥 === STATELESS_MINER_READY: SUCCESS ===");
                 return true;
             }
@@ -811,7 +846,7 @@ namespace LLP
                                      .WithHeight(pBlock->nHeight);
                     
                     /* Update manager with new context after template served */
-                    StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
+                    StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
                     StatelessMinerManager::Get().IncrementTemplatesServed();
                     
                     return true;
@@ -1780,7 +1815,7 @@ namespace LLP
                 context = context.WithTimestamp(runtime::unifiedtimestamp());
 
                 /* Update manager with new context */
-                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
+                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
 
                 return true;
             }
@@ -1817,7 +1852,7 @@ namespace LLP
                                  .WithHeight(nCurrentHeight);
 
                 /* Update manager with new context */
-                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
+                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
 
                 return true;
             }
@@ -1880,7 +1915,7 @@ namespace LLP
                 context = context.WithTimestamp(runtime::unifiedtimestamp());
 
                 /* Update manager with new context */
-                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
+                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
 
                 return true;
             }
@@ -2170,7 +2205,7 @@ namespace LLP
                     /* Update only timestamp, keep existing height */
                     context = context.WithTimestamp(runtime::unifiedtimestamp());
                 }
-                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
+                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
 
                 return true;
             }
@@ -2200,6 +2235,31 @@ namespace LLP
                     debug::log(2, "📥 === MINER_READY: REJECTED (INVALID CHANNEL) ===");
                     return false;
                 }
+
+                /* Attempt lane-switch recovery based on address */
+                auto optExisting = SessionRecoveryManager::Get().RecoverSessionByAddress(GetAddress().ToStringIP());
+                if(optExisting.has_value())
+                {
+                    uint256_t hashRecoveredKey(0);
+                    uint64_t nRecoveredNonce = 0;
+                    if(SessionRecoveryManager::Get().RestoreChaCha20State(optExisting->hashKeyID, hashRecoveredKey, nRecoveredNonce)
+                       && hashRecoveredKey != 0)
+                    {
+                        context = context.WithChaChaKey(hashRecoveredKey.GetBytes());
+                    }
+
+                    std::vector<uint8_t> vRecoveredPubKey;
+                    uint256_t hashDisposableKeyID(0);
+                    if(SessionRecoveryManager::Get().RestoreDisposableKey(optExisting->hashKeyID, vRecoveredPubKey, hashDisposableKeyID)
+                       && !vRecoveredPubKey.empty())
+                    {
+                        std::lock_guard<std::mutex> lock(SESSION_MUTEX);
+                        if(optExisting->nSessionId != 0)
+                            mapSessionKeys[optExisting->nSessionId] = vRecoveredPubKey;
+                    }
+
+                    debug::log(0, FUNCTION, "Session recovered from lane switch");
+                }
                 
                 /* Subscribe to notifications */
                 context = context.WithSubscription(context.nChannel);
@@ -2225,8 +2285,20 @@ namespace LLP
                 /* Send immediate notification with current state */
                 SendChannelNotification();
                 
+                /* Persist session and lane state for cross-lane recovery */
+                if(context.fAuthenticated && context.hashKeyID != 0)
+                {
+                    SessionRecoveryManager::Get().SaveSession(context);
+                    SessionRecoveryManager::Get().UpdateLane(context.hashKeyID, 1);
+                    if(context.fEncryptionReady && !context.vChaChaKey.empty())
+                    {
+                        uint256_t hashKey(context.vChaChaKey);
+                        SessionRecoveryManager::Get().SaveChaCha20State(context.hashKeyID, hashKey, 0);
+                    }
+                }
+
                 /* Update manager with COMPLETE context including encryption state */
-                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
+                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
                 
                 debug::log(2, "📥 === MINER_READY: SUCCESS ===");
                 return true;
@@ -2260,6 +2332,15 @@ namespace LLP
                         }
                         
                         mapSessionKeys[result.context.nSessionId] = result.context.vMinerPubKey;
+
+                        if(result.context.hashKeyID != 0)
+                        {
+                            SessionRecoveryManager::Get().SaveDisposableKey(
+                                result.context.hashKeyID,
+                                result.context.vMinerPubKey,
+                                LLC::SK256(result.context.vMinerPubKey)
+                            );
+                        }
                         
                         debug::log(1, FUNCTION, "✓ Extracted and stored miner's Falcon pubkey for session 0x",
                                   std::hex, result.context.nSessionId, std::dec,
@@ -2297,10 +2378,22 @@ namespace LLP
                     }
                 }
 
+                /* Persist session and lane state for cross-lane recovery */
+                if(context.fAuthenticated && context.hashKeyID != 0)
+                {
+                    SessionRecoveryManager::Get().SaveSession(context);
+                    SessionRecoveryManager::Get().UpdateLane(context.hashKeyID, 1);
+                    if(context.fEncryptionReady && !context.vChaChaKey.empty())
+                    {
+                        uint256_t hashKey(context.vChaChaKey);
+                        SessionRecoveryManager::Get().SaveChaCha20State(context.hashKeyID, hashKey, 0);
+                    }
+                }
+
                 /* Update manager with new context after successful packet processing */
                 /* CRITICAL: This must be done AFTER ChaCha20 key derivation to ensure
                  * StatelessMinerManager has the complete encryption state */
-                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context);
+                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
                 
                 /* Log session registration for auth packets */
                 if(PACKET.HEADER == MINER_AUTH_RESPONSE && context.fAuthenticated)

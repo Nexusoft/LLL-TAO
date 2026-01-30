@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLP/include/falcon_constants.h>
 #include <LLP/include/falcon_auth.h>
 #include <LLP/include/opcode_utility.h>
+#include <LLP/include/session_recovery.h>
 #include <LLP/types/miner.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
@@ -540,8 +541,24 @@ namespace LLP
                         updatedContext = updatedContext.WithChaChaKey(vChaChaKey);
                     }
 
+                    /* Persist session and lane state for cross-lane recovery */
+                    if(updatedContext.fAuthenticated && updatedContext.hashKeyID != 0)
+                    {
+                        SessionRecoveryManager::Get().SaveSession(updatedContext);
+                        SessionRecoveryManager::Get().UpdateLane(updatedContext.hashKeyID, 0);
+                        if(fEncryptionReady && !vChaChaKey.empty())
+                        {
+                            uint256_t hashKey(vChaChaKey);
+                            SessionRecoveryManager::Get().SaveChaCha20State(
+                                updatedContext.hashKeyID,
+                                hashKey,
+                                0
+                            );
+                        }
+                    }
+
                     /* Update StatelessMinerManager with COMPLETE context including encryption state */
-                    StatelessMinerManager::Get().UpdateMiner(updatedContext.strAddress, updatedContext);
+                    StatelessMinerManager::Get().UpdateMiner(updatedContext.strAddress, updatedContext, 0);
 
                     /* Send response if present */
                     if(!result.response.IsNull())

@@ -423,7 +423,7 @@ TEST_CASE("Error Handling: Resource Exhaustion", "[error-handling][resources]")
             ctx.strAddress = "192.168.1." + std::to_string(i % 256) + ":" + std::to_string(9000 + i);
             addresses.push_back(ctx.strAddress);
             
-            manager.UpdateMiner(ctx.strAddress, ctx);
+            manager.UpdateMiner(ctx.strAddress, ctx, 0);
         }
         
         /* Verify system still responsive */
@@ -475,7 +475,7 @@ TEST_CASE("Error Handling: Edge Case Scenarios", "[error-handling][edge-cases]")
         for(int i = 0; i < 100; i++)
         {
             ctx = ctx.WithHeight(100000 + i);
-            manager.UpdateMiner(ctx.strAddress, ctx);
+            manager.UpdateMiner(ctx.strAddress, ctx, 0);
         }
         
         /* Verify final state */
@@ -539,7 +539,7 @@ TEST_CASE("Error Handling: Concurrent Access Safety", "[error-handling][concurre
             ctx.strAddress = "192.168.1." + std::to_string(i) + ":9325";
             addresses.push_back(ctx.strAddress);
             
-            manager.UpdateMiner(ctx.strAddress, ctx);
+            manager.UpdateMiner(ctx.strAddress, ctx, 0);
         }
         
         /* Update all miners multiple times */
@@ -554,7 +554,7 @@ TEST_CASE("Error Handling: Concurrent Access Safety", "[error-handling][concurre
                         .WithHeight(100000 + round)
                         .WithTimestamp(runtime::unifiedtimestamp());
                     
-                    manager.UpdateMiner(addr, updated);
+                    manager.UpdateMiner(addr, updated, 0);
                 }
             }
         }

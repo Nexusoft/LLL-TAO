@@ -94,7 +94,7 @@ TEST_CASE("StatelessMinerManager Concurrent Registration", "[concurrency][manage
                         .WithAuth(true)
                         .WithTimestamp(runtime::unifiedtimestamp());
 
-                    manager.UpdateMiner(strAddress, ctx);
+                    manager.UpdateMiner(strAddress, ctx, 0);
                     ++nRegistered;
                 }
             });
@@ -135,7 +135,7 @@ TEST_CASE("StatelessMinerManager Concurrent Registration", "[concurrency][manage
                     .WithAuth(true)
                     .WithTimestamp(runtime::unifiedtimestamp());
 
-                manager.UpdateMiner(strAddress, ctx);
+                manager.UpdateMiner(strAddress, ctx, 0);
                 ++nAdded;
             }
         });
@@ -188,7 +188,7 @@ TEST_CASE("StatelessMinerManager Concurrent Updates", "[concurrency][updates]")
             .WithAuth(true)
             .WithTimestamp(runtime::unifiedtimestamp());
 
-        manager.UpdateMiner(strAddress, initial);
+        manager.UpdateMiner(strAddress, initial, 0);
 
         /* Concurrent updates from multiple threads */
         const int nThreads = 20;
@@ -209,7 +209,7 @@ TEST_CASE("StatelessMinerManager Concurrent Updates", "[concurrency][updates]")
                         .WithTimestamp(runtime::unifiedtimestamp())
                         .WithKeepaliveCount(u);
 
-                    manager.UpdateMiner(strAddress, ctx);
+                    manager.UpdateMiner(strAddress, ctx, 0);
                     ++nUpdates;
                 }
             });
@@ -304,13 +304,13 @@ TEST_CASE("StatelessMinerManager Concurrent Statistics", "[concurrency][statisti
                         .WithTimestamp(runtime::unifiedtimestamp())
                         .WithKeepaliveCount(0);
 
-                    manager.UpdateMiner(strAddress, ctx);
+                    manager.UpdateMiner(strAddress, ctx, 0);
 
                     /* Increment keepalives */
                     for(int k = 1; k <= 5; ++k)
                     {
                         MiningContext updated = ctx.WithKeepaliveCount(k);
-                        manager.UpdateMiner(strAddress, updated);
+                        manager.UpdateMiner(strAddress, updated, 0);
                         ctx = updated;
                     }
                 }
@@ -366,7 +366,7 @@ TEST_CASE("StatelessMinerManager Genesis Hash Index Concurrency", "[concurrency]
                         .WithAuth(true)
                         .WithTimestamp(runtime::unifiedtimestamp());
 
-                    manager.UpdateMiner(strAddress, ctx);
+                    manager.UpdateMiner(strAddress, ctx, 0);
                 }
             });
         }
@@ -414,7 +414,7 @@ TEST_CASE("StatelessMinerManager Genesis Hash Index Concurrency", "[concurrency]
                 .WithAuth(true)
                 .WithTimestamp(runtime::unifiedtimestamp());
 
-            manager.UpdateMiner(strAddress, ctx);
+            manager.UpdateMiner(strAddress, ctx, 0);
         }
 
         /* Concurrent lookups */
@@ -473,7 +473,7 @@ TEST_CASE("StatelessMinerManager Session ID Index Concurrency", "[concurrency][s
                 .WithAuth(true)
                 .WithTimestamp(runtime::unifiedtimestamp());
 
-            manager.UpdateMiner(strAddress, ctx);
+            manager.UpdateMiner(strAddress, ctx, 0);
         }
 
         /* Concurrent lookups by session ID */
@@ -528,7 +528,7 @@ TEST_CASE("StatelessMinerManager New Round Notification Concurrency", "[concurre
                 .WithAuth(true)
                 .WithTimestamp(runtime::unifiedtimestamp());
 
-            manager.UpdateMiner(strAddress, ctx);
+            manager.UpdateMiner(strAddress, ctx, 0);
         }
 
         /* Concurrent round notifications */
@@ -639,7 +639,7 @@ TEST_CASE("StatelessMinerManager Peak Session Tracking", "[concurrency][peak]")
                 .WithAuth(true)
                 .WithTimestamp(runtime::unifiedtimestamp());
 
-            manager.UpdateMiner(strAddress, ctx);
+            manager.UpdateMiner(strAddress, ctx, 0);
         }
 
         size_t nNewPeak = manager.GetPeakSessionCount();

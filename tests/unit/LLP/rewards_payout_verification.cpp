@@ -163,7 +163,7 @@ TEST_CASE("StatelessMinerManager Genesis Indexing for Rewards", "[rewards][manag
             .WithAuth(true)
             .WithTimestamp(runtime::unifiedtimestamp());
 
-        manager.UpdateMiner("genesis.test.1", ctx);
+        manager.UpdateMiner("genesis.test.1", ctx, 0);
 
         /* Lookup by genesis */
         auto result = manager.GetMinerContextByGenesis(testGenesis);
@@ -194,7 +194,7 @@ TEST_CASE("StatelessMinerManager Genesis Indexing for Rewards", "[rewards][manag
                 .WithAuth(true)
                 .WithTimestamp(runtime::unifiedtimestamp());
 
-            manager.UpdateMiner(ss.str(), ctx);
+            manager.UpdateMiner(ss.str(), ctx, 0);
         }
 
         /* List all miners for this genesis */
@@ -231,7 +231,7 @@ TEST_CASE("StatelessMinerManager Genesis Indexing for Rewards", "[rewards][manag
             .WithAuth(true)
             .WithTimestamp(runtime::unifiedtimestamp());
 
-        manager.UpdateMiner("switching.miner", ctx1);
+        manager.UpdateMiner("switching.miner", ctx1, 0);
 
         /* Verify first genesis lookup */
         auto result1 = manager.GetMinerContextByGenesis(genesis1);
@@ -244,7 +244,7 @@ TEST_CASE("StatelessMinerManager Genesis Indexing for Rewards", "[rewards][manag
             .WithAuth(true)
             .WithTimestamp(runtime::unifiedtimestamp());
 
-        manager.UpdateMiner("switching.miner", ctx2);
+        manager.UpdateMiner("switching.miner", ctx2, 0);
 
         /* Verify second genesis lookup works */
         auto result2 = manager.GetMinerContextByGenesis(genesis2);
@@ -377,7 +377,7 @@ TEST_CASE("Reward Pathways - SOLO and Pool Structures", "[rewards][pathways]")
             .WithAuth(true)
             .WithTimestamp(runtime::unifiedtimestamp());
 
-        manager.UpdateMiner("solo.miner.1", soloCtx);
+        manager.UpdateMiner("solo.miner.1", soloCtx, 0);
 
         /* SOLO miner should be uniquely identifiable */
         auto miners = manager.ListMinersByGenesis(soloGenesis);
@@ -407,7 +407,7 @@ TEST_CASE("Reward Pathways - SOLO and Pool Structures", "[rewards][pathways]")
                 .WithAuth(true)
                 .WithTimestamp(runtime::unifiedtimestamp());
 
-            manager.UpdateMiner(ss.str(), poolCtx);
+            manager.UpdateMiner(ss.str(), poolCtx, 0);
         }
 
         /* Pool miners should all be found under same genesis */
@@ -455,8 +455,8 @@ TEST_CASE("Reward Pathways - SOLO and Pool Structures", "[rewards][pathways]")
             .WithAuth(true)
             .WithTimestamp(runtime::unifiedtimestamp());
 
-        manager.UpdateMiner("mixed.solo.1", solo1);
-        manager.UpdateMiner("mixed.solo.2", solo2);
+        manager.UpdateMiner("mixed.solo.1", solo1, 0);
+        manager.UpdateMiner("mixed.solo.2", solo2, 0);
 
         /* Register Pool miners */
         for(int i = 0; i < 5; ++i)
@@ -471,7 +471,7 @@ TEST_CASE("Reward Pathways - SOLO and Pool Structures", "[rewards][pathways]")
                 .WithAuth(true)
                 .WithTimestamp(runtime::unifiedtimestamp());
 
-            manager.UpdateMiner(ss.str(), poolCtx);
+            manager.UpdateMiner(ss.str(), poolCtx, 0);
         }
 
         /* Verify each genesis has correct miners */
@@ -577,7 +577,7 @@ TEST_CASE("Hybrid Session Support", "[rewards][hybrid]")
             .WithAuth(true)
             .WithTimestamp(runtime::unifiedtimestamp());
 
-        manager.UpdateMiner("hybrid.miner", legacyCtx);
+        manager.UpdateMiner("hybrid.miner", legacyCtx, 0);
 
         /* Simulate upgrade to Stateless with Falcon auth */
         uint256_t keyId = LLC::GetRand256();
@@ -585,7 +585,7 @@ TEST_CASE("Hybrid Session Support", "[rewards][hybrid]")
         MiningContext statelessCtx = legacyCtx
             .WithKeyId(keyId);
 
-        manager.UpdateMiner("hybrid.miner", statelessCtx);
+        manager.UpdateMiner("hybrid.miner", statelessCtx, 0);
 
         /* Verify genesis preserved through transition */
         auto result = manager.GetMinerContext("hybrid.miner");
@@ -610,7 +610,7 @@ TEST_CASE("Hybrid Session Support", "[rewards][hybrid]")
             .WithAuth(true)
             .WithTimestamp(runtime::unifiedtimestamp());
 
-        manager.UpdateMiner("pool.legacy", legacyPoolMiner);
+        manager.UpdateMiner("pool.legacy", legacyPoolMiner, 0);
 
         /* Stateless pool miner (with keyID) */
         uint256_t keyId = LLC::GetRand256();
@@ -623,7 +623,7 @@ TEST_CASE("Hybrid Session Support", "[rewards][hybrid]")
             .WithAuth(true)
             .WithTimestamp(runtime::unifiedtimestamp());
 
-        manager.UpdateMiner("pool.stateless", statelessPoolMiner);
+        manager.UpdateMiner("pool.stateless", statelessPoolMiner, 0);
 
         /* Both should be found under pool genesis */
         auto poolMiners = manager.ListMinersByGenesis(poolGenesis);
@@ -666,7 +666,7 @@ TEST_CASE("Ledger Auditing Support", "[rewards][audit]")
                 .WithAuth(true)
                 .WithTimestamp(runtime::unifiedtimestamp());
 
-            manager.UpdateMiner(ss.str(), ctx);
+            manager.UpdateMiner(ss.str(), ctx, 0);
         }
 
         /* Get all miners status (JSON) */
@@ -697,7 +697,7 @@ TEST_CASE("Ledger Auditing Support", "[rewards][audit]")
             .WithTimestamp(runtime::unifiedtimestamp())
             .WithKeepaliveCount(42);
 
-        manager.UpdateMiner("audit.single", ctx);
+        manager.UpdateMiner("audit.single", ctx, 0);
 
         std::string status = manager.GetMinerStatus("audit.single");
 

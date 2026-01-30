@@ -73,8 +73,8 @@ TEST_CASE("StatelessMinerManager Template Feeding Tests", "[mining_template][int
         MiningContext ctx2(2, 1000, runtime::unifiedtimestamp(), "192.168.1.2", 1, true, 22222, uint256_t(0), uint256_t(0));
         
         /* Register miners */
-        manager.UpdateMiner("192.168.1.1", ctx1);
-        manager.UpdateMiner("192.168.1.2", ctx2);
+        manager.UpdateMiner("192.168.1.1", ctx1, 0);
+        manager.UpdateMiner("192.168.1.2", ctx2, 0);
         
         /* Notify new round */
         uint32_t nNotified = manager.NotifyNewRound(1001);
@@ -115,8 +115,8 @@ TEST_CASE("StatelessMinerManager Template Feeding Tests", "[mining_template][int
         MiningContext ctxPrime = MiningContext(1, 5000, runtime::unifiedtimestamp(), "10.0.0.1", 1, true, 33333, uint256_t(0), uint256_t(0));
         MiningContext ctxHash = MiningContext(2, 5000, runtime::unifiedtimestamp(), "10.0.0.2", 1, true, 44444, uint256_t(0), uint256_t(0));
         
-        manager.UpdateMiner("10.0.0.1", ctxPrime);
-        manager.UpdateMiner("10.0.0.2", ctxHash);
+        manager.UpdateMiner("10.0.0.1", ctxPrime, 0);
+        manager.UpdateMiner("10.0.0.2", ctxHash, 0);
         
         /* Get prime miners */
         auto primeMiners = manager.GetMinersForChannel(1);
@@ -269,8 +269,8 @@ TEST_CASE("Legacy and Stateless Miner Unified Flow Tests", "[mining_template][un
         );
         
         /* Register both */
-        manager.UpdateMiner("127.0.0.1", legacyCtx);
-        manager.UpdateMiner("192.168.1.100", statelessCtx);
+        manager.UpdateMiner("127.0.0.1", legacyCtx, 0);
+        manager.UpdateMiner("192.168.1.100", statelessCtx, 0);
         
         /* Verify both are tracked */
         REQUIRE(manager.GetMinerCount() >= 2);
@@ -309,7 +309,7 @@ TEST_CASE("Legacy and Stateless Miner Unified Flow Tests", "[mining_template][un
             1, 2000, runtime::unifiedtimestamp(), "10.10.10.1",
             1, true, 77777, uint256_t(0), uint256_t(0)
         );
-        manager.UpdateMiner("10.10.10.1", authCtx);
+        manager.UpdateMiner("10.10.10.1", authCtx, 0);
         
         /* Count should increase */
         REQUIRE(manager.GetAuthenticatedCount() >= nBefore + 1);
