@@ -114,6 +114,22 @@ namespace OpcodeUtility
     std::string GetOpcodeName(uint8_t nOpcode);
 
 
+    /** IsHeaderOnlyRequest
+     *
+     *  Check if an opcode represents a header-only request packet.
+     *  
+     *  Header-only requests are commands that contain no data payload
+     *  (LENGTH must be 0). These are typically GET-style operations that
+     *  request information from the node without submitting any data.
+     *
+     *  @param[in] nOpcode The opcode to check
+     *
+     *  @return true if opcode is a header-only request, false otherwise
+     *
+     **/
+    bool IsHeaderOnlyRequest(uint8_t nOpcode);
+
+
     /** ValidatePacketLength
      *
      *  Validates that a packet's length is within acceptable bounds.

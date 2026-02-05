@@ -177,6 +177,69 @@ namespace OpcodeUtility
     }
 
 
+    /** IsHeaderOnlyRequest
+     *
+     *  Check if an opcode represents a header-only request packet.
+     *  
+     *  Header-only requests are commands that contain no data payload
+     *  (LENGTH must be 0). These are typically GET-style operations that
+     *  request information from the node without submitting any data.
+     *
+     *  @param[in] nOpcode The packet opcode to check.
+     *
+     *  @return True if the opcode is a header-only request, false otherwise.
+     *
+     **/
+    bool IsHeaderOnlyRequest(uint8_t nOpcode)
+    {
+        /* These opcodes are requests that contain no data payload */
+        return (nOpcode == Opcodes::GET_BLOCK || nOpcode == Opcodes::GET_HEIGHT ||
+                nOpcode == Opcodes::GET_REWARD || nOpcode == Opcodes::GET_ROUND ||
+                nOpcode == Opcodes::PING || nOpcode == Opcodes::CLOSE ||
+                nOpcode == Opcodes::MINER_READY);
+    }
+
+
+    /** GetMaxPayloadSize
+     *
+     *  Get the maximum allowed payload size for opcodes with fixed-length constraints.
+     *  
+     *  Returns the maximum number of bytes allowed in a packet's data payload
+     *  for opcodes that have known, fixed upper bounds. These limits prevent
+     *  resource exhaustion attacks and ensure protocol compliance.
+     *
+     *  Maximum sizes are based on protocol specifications:
+     *  - SET_CHANNEL: 4 bytes (supports both 1-byte and legacy 4-byte LE format)
+     *  - SESSION_KEEPALIVE: 8 bytes (4-byte session ID + optional padding)
+     *  - SESSION_START: 8 bytes (optional timeout value + padding)
+     *  - MINER_AUTH_CHALLENGE: 40 bytes (length field + 32-byte nonce + padding)
+     *  - MINER_AUTH_RESULT: 10 bytes (status + session ID + error code + padding)
+     *
+     *  @param[in] nOpcode The packet opcode to check.
+     *
+     *  @return Maximum payload size in bytes, or -1 if no fixed maximum applies.
+     *          Returning -1 means the opcode is validated elsewhere (e.g., SUBMIT_BLOCK)
+     *          or has no specific maximum constraint.
+     *
+     **/
+    static int32_t GetMaxPayloadSize(uint8_t nOpcode)
+    {
+        /* Return -1 for opcodes with no fixed maximum (already validated elsewhere) */
+        if(nOpcode == Opcodes::SET_CHANNEL)
+            return 4;  /* 1-byte or 4-byte LE format */
+        if(nOpcode == Opcodes::SESSION_KEEPALIVE)
+            return 8;  /* 4-byte session ID + padding */
+        if(nOpcode == Opcodes::SESSION_START)
+            return 8;  /* optional timeout + padding */
+        if(nOpcode == Opcodes::MINER_AUTH_CHALLENGE)
+            return 40; /* nonce length field + 32-byte nonce + padding */
+        if(nOpcode == Opcodes::MINER_AUTH_RESULT)
+            return 10; /* status byte + session ID + error code + padding */
+        
+        return -1; /* No fixed maximum */
+    }
+
+
     bool ValidatePacketLength(const Packet& packet, std::string* strReason)
     {
         /* Check against maximum packet length */
@@ -259,6 +322,36 @@ namespace OpcodeUtility
                 }
                 return false;
             }
+        }
+        
+        /* Validate header-only requests have no payload */
+        if(IsHeaderOnlyRequest(nOpcode))
+        {
+            if(packet.LENGTH != 0)
+            {
+                if(strReason)
+                {
+                    std::ostringstream oss;
+                    oss << GetOpcodeName(nOpcode) << " expects no data payload, received " 
+                        << packet.LENGTH << " bytes";
+                    *strReason = oss.str();
+                }
+                return false;
+            }
+        }
+        
+        /* Validate fixed-size opcodes don't exceed maximum */
+        int32_t nMaxSize = GetMaxPayloadSize(nOpcode);
+        if(nMaxSize >= 0 && packet.LENGTH > static_cast<uint32_t>(nMaxSize))
+        {
+            if(strReason)
+            {
+                std::ostringstream oss;
+                oss << GetOpcodeName(nOpcode) << " payload size " << packet.LENGTH 
+                    << " exceeds maximum of " << nMaxSize << " bytes";
+                *strReason = oss.str();
+            }
+            return false;
         }
         
         return true;
