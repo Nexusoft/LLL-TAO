@@ -2405,7 +2405,25 @@ namespace LLP
                 /* Send response if present */
                 if(!result.response.IsNull())
                 {
-                    respond(result.response);
+                    /* Mirror 8-bit response opcodes to 16-bit for stateless lane.
+                     * StatelessMiner builds responses with 8-bit opcodes (e.g., MINER_AUTH_CHALLENGE = 208),
+                     * but the stateless lane expects 16-bit mirror-mapped opcodes (0xD0D0).
+                     * Legacy 8-bit opcodes (< 256) that are NOT already stateless need mirroring.
+                     */
+                    if(result.response.HEADER < 256 && !StatelessOpcodes::IsStateless(result.response.HEADER))
+                    {
+                        uint8_t nLegacyOpcode = static_cast<uint8_t>(result.response.HEADER);
+                        StatelessPacket mirroredResponse = result.response;  // Create a copy
+                        mirroredResponse.HEADER = StatelessOpcodes::Mirror(nLegacyOpcode);
+                        debug::log(3, FUNCTION, "Mirrored 8-bit response opcode ", 
+                                  uint32_t(nLegacyOpcode), " → 16-bit 0x", std::hex, mirroredResponse.HEADER, std::dec);
+                        
+                        respond(mirroredResponse);  // Send the modified copy
+                    }
+                    else
+                    {
+                        respond(result.response);  // Send original if no mirroring needed
+                    }
                 }
             }
             else
@@ -2421,7 +2439,7 @@ namespace LLP
                 /* Send appropriate error response based on what was requested */
                 if(PACKET.HEADER == MINER_AUTH_INIT || PACKET.HEADER == MINER_AUTH_RESPONSE)
                 {
-                    errorResponse.HEADER = MINER_AUTH_RESULT;
+                    errorResponse.HEADER = MINER_AUTH_RESULT;  // This is 16-bit (0xD0D2) already from local const
                     errorResponse.DATA.push_back(0x00);  /* Failure status */
                     errorResponse.LENGTH = 1;
                     respond(errorResponse);
