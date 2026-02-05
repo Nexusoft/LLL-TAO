@@ -235,7 +235,11 @@ namespace LLP
                     if(OpcodeUtility::IsHeaderOnlyRequest(PACKET.HEADER) && PACKET.LENGTH > 0)
                         DDOS->Ban();
 
-                    /* Ban SESSION_KEEPALIVE with oversized payload */
+                    /* Ban SESSION_KEEPALIVE with oversized payload
+                     * Defense-in-depth: This check happens at HEADER stage (before full
+                     * packet body is read), allowing immediate rejection of malicious packets.
+                     * ValidatePacketLength() provides the same check later, but this early
+                     * detection prevents resource allocation for obviously invalid packets. */
                     if(PACKET.HEADER == SESSION_KEEPALIVE && PACKET.LENGTH > 8)
                         DDOS->Ban();
 

@@ -185,18 +185,18 @@ namespace OpcodeUtility
      *  (LENGTH must be 0). These are typically GET-style operations that
      *  request information from the node without submitting any data.
      *
-     *  @param[in] opcode The packet opcode to check.
+     *  @param[in] nOpcode The packet opcode to check.
      *
      *  @return True if the opcode is a header-only request, false otherwise.
      *
      **/
-    bool IsHeaderOnlyRequest(uint8_t opcode)
+    bool IsHeaderOnlyRequest(uint8_t nOpcode)
     {
         /* These opcodes are requests that contain no data payload */
-        return (opcode == Opcodes::GET_BLOCK || opcode == Opcodes::GET_HEIGHT ||
-                opcode == Opcodes::GET_REWARD || opcode == Opcodes::GET_ROUND ||
-                opcode == Opcodes::PING || opcode == Opcodes::CLOSE ||
-                opcode == Opcodes::MINER_READY);
+        return (nOpcode == Opcodes::GET_BLOCK || nOpcode == Opcodes::GET_HEIGHT ||
+                nOpcode == Opcodes::GET_REWARD || nOpcode == Opcodes::GET_ROUND ||
+                nOpcode == Opcodes::PING || nOpcode == Opcodes::CLOSE ||
+                nOpcode == Opcodes::MINER_READY);
     }
 
 
@@ -215,25 +215,25 @@ namespace OpcodeUtility
      *  - MINER_AUTH_CHALLENGE: 40 bytes (length field + 32-byte nonce + padding)
      *  - MINER_AUTH_RESULT: 10 bytes (status + session ID + error code + padding)
      *
-     *  @param[in] opcode The packet opcode to check.
+     *  @param[in] nOpcode The packet opcode to check.
      *
      *  @return Maximum payload size in bytes, or -1 if no fixed maximum applies.
      *          Returning -1 means the opcode is validated elsewhere (e.g., SUBMIT_BLOCK)
      *          or has no specific maximum constraint.
      *
      **/
-    static int32_t GetMaxPayloadSize(uint8_t opcode)
+    static int32_t GetMaxPayloadSize(uint8_t nOpcode)
     {
         /* Return -1 for opcodes with no fixed maximum (already validated elsewhere) */
-        if(opcode == Opcodes::SET_CHANNEL)
+        if(nOpcode == Opcodes::SET_CHANNEL)
             return 4;  /* 1-byte or 4-byte LE format */
-        if(opcode == Opcodes::SESSION_KEEPALIVE)
+        if(nOpcode == Opcodes::SESSION_KEEPALIVE)
             return 8;  /* 4-byte session ID + padding */
-        if(opcode == Opcodes::SESSION_START)
+        if(nOpcode == Opcodes::SESSION_START)
             return 8;  /* optional timeout + padding */
-        if(opcode == Opcodes::MINER_AUTH_CHALLENGE)
+        if(nOpcode == Opcodes::MINER_AUTH_CHALLENGE)
             return 40; /* nonce length field + 32-byte nonce + padding */
-        if(opcode == Opcodes::MINER_AUTH_RESULT)
+        if(nOpcode == Opcodes::MINER_AUTH_RESULT)
             return 10; /* status byte + session ID + error code + padding */
         
         return -1; /* No fixed maximum */
