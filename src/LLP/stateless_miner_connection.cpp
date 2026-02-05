@@ -913,6 +913,7 @@ namespace LLP
                     
                     StatelessPacket response(BLOCK_REJECTED);
                     response.DATA.push_back(0x0C);  // Reason: Encryption required
+                    response.LENGTH = 1;
                     respond(response);
                     
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (ChaCha20 encryption required) ===", ANSI_COLOR_RESET);
@@ -1002,6 +1003,7 @@ namespace LLP
 
                         StatelessPacket response(BLOCK_REJECTED);
                         response.DATA.push_back(0xFF);  // Reason: Internal error
+                        response.LENGTH = 1;
                         respond(response);
 
                         pFalconWrapper.reset();
@@ -1037,6 +1039,7 @@ namespace LLP
                             
                             StatelessPacket response(BLOCK_REJECTED);
                             response.DATA.push_back(0x0D);  // Reason: No session key
+                            response.LENGTH = 1;
                             respond(response);
                             
                             debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (No Falcon session key) ===", ANSI_COLOR_RESET);
@@ -1088,6 +1091,7 @@ namespace LLP
                                     
                                     StatelessPacket response(BLOCK_REJECTED);
                                     response.DATA.push_back(0x0B);  // Reason: ChaCha20 decryption failure
+                                    response.LENGTH = 1;
                                     respond(response);
                                     
                                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (ChaCha20 decryption failed) ===", ANSI_COLOR_RESET);
@@ -1371,6 +1375,7 @@ namespace LLP
                                     
                                     StatelessPacket response(BLOCK_REJECTED);
                                     response.DATA.push_back(0x0C);  // Reason: Signature verification failed
+                                    response.LENGTH = 1;
                                     respond(response);
                                     
                                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Signature verification failed) ===", ANSI_COLOR_RESET);
@@ -1434,6 +1439,7 @@ namespace LLP
                                             
                                             StatelessPacket response(BLOCK_REJECTED);
                                             response.DATA.push_back(REJECT_PHYSICAL_SIGNATURE_FAILED);
+                                            response.LENGTH = 1;
                                             respond(response);
                                             
                                             debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Physical signature failed) ===", ANSI_COLOR_RESET);
@@ -1461,6 +1467,7 @@ namespace LLP
                                             
                                             StatelessPacket response(BLOCK_REJECTED);
                                             response.DATA.push_back(REJECT_KEY_BONDING_VIOLATION);
+                                            response.LENGTH = 1;
                                             respond(response);
                                             
                                             debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Key bonding violation) ===", ANSI_COLOR_RESET);
@@ -1539,6 +1546,7 @@ namespace LLP
                                     
                                     StatelessPacket response(BLOCK_REJECTED);
                                     response.DATA.push_back(0x08);  // Reason: stale timestamp
+                                    response.LENGTH = 1;
                                     respond(response);
                                     
                                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Stale Falcon signature) ===", ANSI_COLOR_RESET);
@@ -1555,6 +1563,7 @@ namespace LLP
                                     debug::error(FUNCTION, "❌ ChaCha20 decryption FAILED (legacy wrapper)");
                                     StatelessPacket response(BLOCK_REJECTED);
                                     response.DATA.push_back(0x0B);  // Reason: ChaCha20 decryption failure
+                                    response.LENGTH = 1;
                                     respond(response);
                                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (ChaCha20 decryption failed) ===", ANSI_COLOR_RESET);
                                     return true;
@@ -1566,6 +1575,7 @@ namespace LLP
                                     debug::error(FUNCTION, "❌ Failed to create disposable Falcon wrapper");
                                     StatelessPacket response(BLOCK_REJECTED);
                                     response.DATA.push_back(0xFF);  // Reason: Internal error
+                                    response.LENGTH = 1;
                                     respond(response);
                                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Internal error) ===", ANSI_COLOR_RESET);
                                     return true;
@@ -1577,6 +1587,7 @@ namespace LLP
                                     debug::error(FUNCTION, "❌ Falcon wrapper verification failed: ", unwrapResult.strError);
                                     StatelessPacket response(BLOCK_REJECTED);
                                     response.DATA.push_back(0x0C);  // Reason: Signature verification failed
+                                    response.LENGTH = 1;
                                     respond(response);
                                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Signature verification failed) ===", ANSI_COLOR_RESET);
                                     return true;
@@ -1601,6 +1612,7 @@ namespace LLP
                     
                     StatelessPacket response(BLOCK_REJECTED);
                     response.DATA.push_back(0x0F);  // Reason: Packet too small
+                    response.LENGTH = 1;
                     respond(response);
                     
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Packet too small) ===", ANSI_COLOR_RESET);
@@ -1619,6 +1631,7 @@ namespace LLP
                     
                     StatelessPacket response(BLOCK_REJECTED);
                     response.DATA.push_back(0xFF);  // Reason: Internal error
+                    response.LENGTH = 1;
                     respond(response);
                     
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Internal error) ===", ANSI_COLOR_RESET);
@@ -1829,6 +1842,7 @@ namespace LLP
                     debug::error(FUNCTION, "GET_HEIGHT rejected - authentication required");
                     StatelessPacket response(MINER_AUTH_RESULT);
                     response.DATA.push_back(0x00);  // Failure
+                    response.LENGTH = 1;
                     respond(response);
                     return true;
                 }
@@ -1866,6 +1880,7 @@ namespace LLP
                     debug::error(FUNCTION, "GET_REWARD rejected - authentication required");
                     StatelessPacket response(MINER_AUTH_RESULT);
                     response.DATA.push_back(0x00);  // Failure
+                    response.LENGTH = 1;
                     respond(response);
                     return true;
                 }
@@ -3786,6 +3801,12 @@ namespace LLP
         
         /* Add 216-byte block template [12-227] */
         notification.DATA.insert(notification.DATA.end(), vBlockData.begin(), vBlockData.end());
+        
+        /* Set LENGTH field to match DATA size before serialization.
+         * CRITICAL: Unlike error responses (which always have 1 byte of data),
+         * this notification carries variable-size payload (228 bytes = 12 metadata + 216 template).
+         * Must use DATA.size() instead of hardcoded value to ensure correct framing. */
+        notification.LENGTH = static_cast<uint32_t>(notification.DATA.size());
         
         debug::log(2, "   Payload:");
         debug::log(2, "      Unified Height:  ", stateBest.nHeight);

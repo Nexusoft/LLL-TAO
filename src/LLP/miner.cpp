@@ -594,6 +594,9 @@ namespace LLP
                 /* Handle result */
                 if(result.fSuccess)
                 {
+                    /* Reset connection activity timer to prevent idle disconnection */
+                    this->Reset();
+                    
                     /* Update connection state from result context */
                     nChannel = result.context.nChannel;
                     nBestHeight = result.context.nHeight;
@@ -846,6 +849,9 @@ namespace LLP
         /* Log that we've reached the switch statement */
         debug::log(0, FUNCTION, "MinerLLP: >>> STATELESS REACHED_SWITCH with header=0x", std::hex, 
                    uint32_t(PACKET.HEADER), std::dec, " length=", PACKET.LENGTH);
+
+        /* Reset connection activity timer to prevent idle disconnection on any packet processing */
+        this->Reset();
 
         /* Evaluate the packet header to determine what to do. */
         switch(PACKET.HEADER)
