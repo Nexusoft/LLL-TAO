@@ -466,7 +466,8 @@ namespace LLP
 
                 MiningContext sessionContext = optContext.value();
                 uint64_t nNow = runtime::unifiedtimestamp();
-                uint64_t nExpirySeconds = NodeCache::GetPurgeTimeout(sessionContext.strAddress);
+                const uint32_t nExpirySeconds =
+                    static_cast<uint32_t>(NodeCache::GetPurgeTimeout(sessionContext.strAddress));
 
                 sessionContext = sessionContext
                     .WithTimestamp(nNow)
@@ -482,16 +483,17 @@ namespace LLP
                 if(sessionContext.fAuthenticated && sessionContext.hashKeyID != 0)
                     SessionRecoveryManager::Get().SaveSession(sessionContext);
 
+                constexpr uint64_t SECONDS_PER_DAY = 86400;
                 debug::log(2, FUNCTION, "Session refreshed:");
                 debug::log(2, FUNCTION, "  Keepalives: ", sessionContext.nKeepaliveCount);
                 debug::log(2, FUNCTION, "  New expiry: ", (nNow + nExpirySeconds), " (",
-                           (nExpirySeconds / 86400), "d)");
+                           (nExpirySeconds / SECONDS_PER_DAY), "d)");
 
                 std::vector<uint8_t> vResponse(4);
-                vResponse[0] = static_cast<uint8_t>((nExpirySeconds >> 24) & 0xFF);
-                vResponse[1] = static_cast<uint8_t>((nExpirySeconds >> 16) & 0xFF);
-                vResponse[2] = static_cast<uint8_t>((nExpirySeconds >> 8) & 0xFF);
-                vResponse[3] = static_cast<uint8_t>(nExpirySeconds & 0xFF);
+                vResponse[0] = static_cast<uint8_t>(nExpirySeconds & 0xFF);
+                vResponse[1] = static_cast<uint8_t>((nExpirySeconds >> 8) & 0xFF);
+                vResponse[2] = static_cast<uint8_t>((nExpirySeconds >> 16) & 0xFF);
+                vResponse[3] = static_cast<uint8_t>((nExpirySeconds >> 24) & 0xFF);
 
                 respond(SESSION_KEEPALIVE, vResponse);
 
@@ -620,7 +622,8 @@ namespace LLP
                     if(updatedContext.fAuthenticated && updatedContext.nSessionId != 0)
                     {
                         uint64_t nNow = runtime::unifiedtimestamp();
-                        uint64_t nExpirySeconds = NodeCache::GetPurgeTimeout(updatedContext.strAddress);
+                        const uint32_t nExpirySeconds =
+                            static_cast<uint32_t>(NodeCache::GetPurgeTimeout(updatedContext.strAddress));
 
                         if(updatedContext.nSessionStart == 0)
                             updatedContext = updatedContext.WithSessionStart(nNow);
