@@ -2442,7 +2442,11 @@ namespace LLP
                 /* Send appropriate error response based on what was requested */
                 if(PACKET.HEADER == MINER_AUTH_INIT || PACKET.HEADER == MINER_AUTH_RESPONSE)
                 {
-                    errorResponse.HEADER = MINER_AUTH_RESULT;  // This is 16-bit (0xD0D2) already from local const
+                    /* Note: MINER_AUTH_RESULT is a local const initialized from STATELESS_AUTH_RESULT (0xD0D2)
+                     * at line 609, so it's already the correct 16-bit opcode for the stateless lane.
+                     * Unlike responses from StatelessMiner (which use 8-bit enum values and need mirroring),
+                     * error responses built here use the local 16-bit consts directly. */
+                    errorResponse.HEADER = MINER_AUTH_RESULT;  // Already 16-bit (0xD0D2)
                     errorResponse.DATA.push_back(0x00);  /* Failure status */
                     errorResponse.LENGTH = 1;
                     respond(errorResponse);
