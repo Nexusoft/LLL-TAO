@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLP/include/genesis_constants.h>
 #include <LLP/include/stateless_manager.h>
 #include <LLP/include/session_recovery.h>
+#include <LLP/include/stateless_opcodes.h>
 
 #include <LLD/include/global.h>
 
@@ -605,10 +606,25 @@ namespace LLP
             DisposableFalcon::DebugLogPacket("ProcessPacket::incoming", packet.DATA, 5);
         }
 
+        /* Normalize 16-bit mirror-mapped opcodes to their 8-bit base values.
+         * Mirror-mapped opcodes are in the 0xD000-0xD0FF range (see stateless_opcodes.h).
+         * The low byte contains the original 8-bit opcode: 0xD0CF → 0xCF = 207.
+         * This allows the same switch statement to handle packets from both:
+         *   - Legacy lane (miner.cpp): header already 8-bit (207)
+         *   - Stateless lane (stateless_miner_connection.cpp): header is 16-bit (0xD0CF)
+         */
+        uint16_t nRouteOpcode = packet.HEADER;
+        if(StatelessOpcodes::IsStateless(nRouteOpcode))
+        {
+            nRouteOpcode = StatelessOpcodes::Unmirror(nRouteOpcode);
+            debug::log(3, FUNCTION, "Unmirrored 16-bit opcode 0x", std::hex, packet.HEADER, 
+                      " → 8-bit ", std::dec, nRouteOpcode);
+        }
+
         /* Route based on packet type */
         /* Note: GET_BLOCK and SUBMIT_BLOCK are handled in StatelessMinerConnection */
         /* due to their need for stateful block management */
-        switch(packet.HEADER)
+        switch(nRouteOpcode)
         {
             case MINER_AUTH_INIT:
                 debug::log(2, FUNCTION, "Routing to ProcessMinerAuthInit");

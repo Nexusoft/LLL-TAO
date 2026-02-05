@@ -17,6 +17,8 @@ ________________________________________________________________________________
 #include <LLP/include/falcon_auth.h>
 #include <LLP/include/disposable_falcon.h>
 #include <LLP/packets/packet.h>
+#include <LLP/packets/stateless_packet.h>
+#include <LLP/include/stateless_opcodes.h>
 
 #include <Util/include/runtime.h>
 #include <Util/include/hex.h>
@@ -1439,6 +1441,138 @@ TEST_CASE("Push Notification Packet Format Tests", "[stateless_miner][push_notif
         REQUIRE(request.HEADER == MINER_READY);
         REQUIRE(request.LENGTH == 0);
         REQUIRE(request.DATA.empty());
+    }
+}
+
+
+TEST_CASE("Stateless Opcode Conversion for 16-bit Lane", "[stateless_miner][opcodes]")
+{
+    /* Test the opcode conversion that enables both 8-bit (legacy) and 16-bit (stateless)
+     * lanes to work with the same StatelessMiner::ProcessPacket() switch statement.
+     * This fix addresses the "Unknown miner opcode: 53455" issue on port 9323. */
+    
+    SECTION("StatelessOpcodes::Mirror converts 8-bit to 16-bit opcodes")
+    {
+        /* Authentication opcodes */
+        REQUIRE(StatelessOpcodes::Mirror(207) == 0xD0CF);  // MINER_AUTH_INIT
+        REQUIRE(StatelessOpcodes::Mirror(208) == 0xD0D0);  // MINER_AUTH_CHALLENGE
+        REQUIRE(StatelessOpcodes::Mirror(209) == 0xD0D1);  // MINER_AUTH_RESPONSE
+        REQUIRE(StatelessOpcodes::Mirror(210) == 0xD0D2);  // MINER_AUTH_RESULT
+        
+        /* Session management opcodes */
+        REQUIRE(StatelessOpcodes::Mirror(211) == 0xD0D3);  // SESSION_START
+        REQUIRE(StatelessOpcodes::Mirror(212) == 0xD0D4);  // SESSION_KEEPALIVE
+        
+        /* Reward opcodes */
+        REQUIRE(StatelessOpcodes::Mirror(213) == 0xD0D5);  // MINER_SET_REWARD
+        REQUIRE(StatelessOpcodes::Mirror(214) == 0xD0D6);  // MINER_REWARD_RESULT
+    }
+    
+    SECTION("StatelessOpcodes::Unmirror converts 16-bit to 8-bit opcodes")
+    {
+        /* Authentication opcodes */
+        REQUIRE(StatelessOpcodes::Unmirror(0xD0CF) == 207);  // MINER_AUTH_INIT
+        REQUIRE(StatelessOpcodes::Unmirror(0xD0D0) == 208);  // MINER_AUTH_CHALLENGE
+        REQUIRE(StatelessOpcodes::Unmirror(0xD0D1) == 209);  // MINER_AUTH_RESPONSE
+        REQUIRE(StatelessOpcodes::Unmirror(0xD0D2) == 210);  // MINER_AUTH_RESULT
+        
+        /* Session management opcodes */
+        REQUIRE(StatelessOpcodes::Unmirror(0xD0D3) == 211);  // SESSION_START
+        REQUIRE(StatelessOpcodes::Unmirror(0xD0D4) == 212);  // SESSION_KEEPALIVE
+        
+        /* Reward opcodes */
+        REQUIRE(StatelessOpcodes::Unmirror(0xD0D5) == 213);  // MINER_SET_REWARD
+        REQUIRE(StatelessOpcodes::Unmirror(0xD0D6) == 214);  // MINER_REWARD_RESULT
+    }
+    
+    SECTION("StatelessOpcodes::IsStateless correctly identifies 16-bit opcodes")
+    {
+        /* Valid stateless opcodes (0xD000-0xD0FF range) */
+        REQUIRE(StatelessOpcodes::IsStateless(0xD0CF) == true);   // MINER_AUTH_INIT
+        REQUIRE(StatelessOpcodes::IsStateless(0xD0D0) == true);   // MINER_AUTH_CHALLENGE
+        REQUIRE(StatelessOpcodes::IsStateless(0xD0D1) == true);   // MINER_AUTH_RESPONSE
+        REQUIRE(StatelessOpcodes::IsStateless(0xD0D2) == true);   // MINER_AUTH_RESULT
+        REQUIRE(StatelessOpcodes::IsStateless(0xD000) == true);   // BLOCK_DATA
+        REQUIRE(StatelessOpcodes::IsStateless(0xD0FF) == true);   // Upper bound
+        
+        /* Invalid: 8-bit legacy opcodes */
+        REQUIRE(StatelessOpcodes::IsStateless(207) == false);     // Legacy MINER_AUTH_INIT
+        REQUIRE(StatelessOpcodes::IsStateless(208) == false);     // Legacy MINER_AUTH_CHALLENGE
+        REQUIRE(StatelessOpcodes::IsStateless(209) == false);     // Legacy MINER_AUTH_RESPONSE
+        REQUIRE(StatelessOpcodes::IsStateless(210) == false);     // Legacy MINER_AUTH_RESULT
+        
+        /* Invalid: Out of range */
+        REQUIRE(StatelessOpcodes::IsStateless(0xD100) == false);  // Above range
+        REQUIRE(StatelessOpcodes::IsStateless(0xCFFF) == false);  // Below range
+        REQUIRE(StatelessOpcodes::IsStateless(0x0000) == false);  // Zero
+    }
+    
+    SECTION("Round-trip conversion: 8-bit → 16-bit → 8-bit")
+    {
+        /* Test that Mirror and Unmirror are inverses */
+        for(int i = 0; i <= 255; ++i)
+        {
+            uint8_t opcode = static_cast<uint8_t>(i);
+            uint16_t mirrored = StatelessOpcodes::Mirror(opcode);
+            uint8_t unmirrored = StatelessOpcodes::Unmirror(mirrored);
+            REQUIRE(unmirrored == opcode);
+        }
+    }
+    
+    SECTION("StatelessPacket with 16-bit opcode can be unmirrored for routing")
+    {
+        /* Simulate receiving MINER_AUTH_INIT (0xD0CF) from stateless lane */
+        StatelessPacket packet;
+        packet.HEADER = 0xD0CF;  // 16-bit mirror-mapped opcode
+        packet.LENGTH = 0;
+        
+        /* Verify it's a stateless opcode */
+        REQUIRE(StatelessOpcodes::IsStateless(packet.HEADER) == true);
+        
+        /* Unmirror to get 8-bit routing opcode */
+        uint16_t routeOpcode = StatelessOpcodes::Unmirror(packet.HEADER);
+        REQUIRE(routeOpcode == 207);  // Should match MINER_AUTH_INIT enum value
+        
+        /* This allows the switch statement to match case 207 */
+    }
+    
+    SECTION("StatelessPacket with 8-bit opcode from legacy lane needs no conversion")
+    {
+        /* Simulate receiving MINER_AUTH_INIT (207) from legacy lane (via conversion) */
+        StatelessPacket packet;
+        packet.HEADER = 207;  // 8-bit legacy opcode (zero-extended to 16-bit)
+        packet.LENGTH = 0;
+        
+        /* Verify it's NOT a stateless opcode */
+        REQUIRE(StatelessOpcodes::IsStateless(packet.HEADER) == false);
+        
+        /* No unmirror needed - can route directly */
+        uint16_t routeOpcode = packet.HEADER;
+        REQUIRE(routeOpcode == 207);  // Already correct for switch statement
+    }
+    
+    SECTION("Response mirroring: 8-bit response → 16-bit for stateless lane")
+    {
+        /* StatelessMiner builds responses with 8-bit opcodes like MINER_AUTH_CHALLENGE = 208
+         * Before sending on stateless lane, must mirror to 16-bit (0xD0D0) */
+        
+        StatelessPacket response;
+        response.HEADER = 208;  // 8-bit opcode from StatelessMiner
+        response.LENGTH = 64;   // Some challenge data
+        
+        /* Check if response needs mirroring (< 256 and not already stateless) */
+        REQUIRE(response.HEADER < 256);
+        REQUIRE(StatelessOpcodes::IsStateless(response.HEADER) == false);
+        
+        /* Mirror the opcode for stateless lane */
+        uint8_t legacyOpcode = static_cast<uint8_t>(response.HEADER);
+        StatelessPacket mirroredResponse = response;
+        mirroredResponse.HEADER = StatelessOpcodes::Mirror(legacyOpcode);
+        
+        /* Verify mirrored response has correct 16-bit opcode */
+        REQUIRE(mirroredResponse.HEADER == 0xD0D0);  // Mirror(208)
+        REQUIRE(mirroredResponse.LENGTH == response.LENGTH);  // Data unchanged
+        REQUIRE(StatelessOpcodes::IsStateless(mirroredResponse.HEADER) == true);
     }
 }
 
