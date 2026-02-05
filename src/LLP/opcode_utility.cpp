@@ -177,8 +177,20 @@ namespace OpcodeUtility
     }
 
 
-    /** Helper: Check if opcode is a header-only request (no payload allowed) */
-    static bool IsHeaderOnlyRequest(uint8_t opcode)
+    /** IsHeaderOnlyRequest
+     *
+     *  Check if an opcode represents a header-only request packet.
+     *  
+     *  Header-only requests are commands that contain no data payload
+     *  (LENGTH must be 0). These are typically GET-style operations that
+     *  request information from the node without submitting any data.
+     *
+     *  @param[in] opcode The packet opcode to check.
+     *
+     *  @return True if the opcode is a header-only request, false otherwise.
+     *
+     **/
+    bool IsHeaderOnlyRequest(uint8_t opcode)
     {
         /* These opcodes are requests that contain no data payload */
         return (opcode == Opcodes::GET_BLOCK || opcode == Opcodes::GET_HEIGHT ||
@@ -188,7 +200,28 @@ namespace OpcodeUtility
     }
 
 
-    /** Helper: Get maximum allowed payload size for fixed-length opcodes */
+    /** GetMaxPayloadSize
+     *
+     *  Get the maximum allowed payload size for opcodes with fixed-length constraints.
+     *  
+     *  Returns the maximum number of bytes allowed in a packet's data payload
+     *  for opcodes that have known, fixed upper bounds. These limits prevent
+     *  resource exhaustion attacks and ensure protocol compliance.
+     *
+     *  Maximum sizes are based on protocol specifications:
+     *  - SET_CHANNEL: 4 bytes (supports both 1-byte and legacy 4-byte LE format)
+     *  - SESSION_KEEPALIVE: 8 bytes (4-byte session ID + optional padding)
+     *  - SESSION_START: 8 bytes (optional timeout value + padding)
+     *  - MINER_AUTH_CHALLENGE: 40 bytes (length field + 32-byte nonce + padding)
+     *  - MINER_AUTH_RESULT: 10 bytes (status + session ID + error code + padding)
+     *
+     *  @param[in] opcode The packet opcode to check.
+     *
+     *  @return Maximum payload size in bytes, or -1 if no fixed maximum applies.
+     *          Returning -1 means the opcode is validated elsewhere (e.g., SUBMIT_BLOCK)
+     *          or has no specific maximum constraint.
+     *
+     **/
     static int32_t GetMaxPayloadSize(uint8_t opcode)
     {
         /* Return -1 for opcodes with no fixed maximum (already validated elsewhere) */

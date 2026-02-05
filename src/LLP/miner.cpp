@@ -232,12 +232,7 @@ namespace LLP
                         DDOS->Ban();
 
                     /* Ban request opcodes that should never have payloads */
-                    bool bInvalidRequestSize = 
-                        ((PACKET.HEADER == GET_BLOCK || PACKET.HEADER == GET_HEIGHT ||
-                          PACKET.HEADER == GET_REWARD || PACKET.HEADER == GET_ROUND ||
-                          PACKET.HEADER == MINER_READY || PACKET.HEADER == PING) && PACKET.LENGTH > 0);
-                    
-                    if(bInvalidRequestSize)
+                    if(OpcodeUtility::IsHeaderOnlyRequest(PACKET.HEADER) && PACKET.LENGTH > 0)
                         DDOS->Ban();
 
                     /* Ban SESSION_KEEPALIVE with oversized payload */
