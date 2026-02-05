@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLP/include/falcon_auth.h>
 #include <LLP/include/disposable_falcon.h>
 #include <LLP/include/opcode_utility.h>
+#include <LLP/include/node_cache.h>
 #include <LLP/include/session_recovery.h>
 #include <LLP/types/miner.h>
 #include <LLP/templates/events.h>
@@ -426,6 +427,80 @@ namespace LLP
                 return false;
             }
 
+            /* Handle SESSION_KEEPALIVE (212 / 0xD4) locally to refresh cache expiry */
+            if(PACKET.HEADER == SESSION_KEEPALIVE)
+            {
+                debug::log(2, FUNCTION, "════════════════════════════════════");
+                debug::log(2, FUNCTION, "SESSION_KEEPALIVE received");
+
+                uint32_t nKeepaliveSession = 0;
+                if(PACKET.DATA.size() >= 4)
+                {
+                    nKeepaliveSession =
+                        static_cast<uint32_t>(PACKET.DATA[0]) |
+                        (static_cast<uint32_t>(PACKET.DATA[1]) << 8) |
+                        (static_cast<uint32_t>(PACKET.DATA[2]) << 16) |
+                        (static_cast<uint32_t>(PACKET.DATA[3]) << 24);
+                }
+                else if(nSessionId != 0)
+                {
+                    nKeepaliveSession = nSessionId;
+                    debug::log(2, FUNCTION, "SESSION_KEEPALIVE missing session ID, using connection session");
+                }
+                else
+                {
+                    debug::error(FUNCTION, "Invalid SESSION_KEEPALIVE length");
+                    return true;
+                }
+
+                debug::log(2, FUNCTION, "Session ID: 0x", std::hex, nKeepaliveSession, std::dec);
+
+                auto optContext = StatelessMinerManager::Get().GetMinerContextBySessionID(nKeepaliveSession);
+                if(!optContext.has_value())
+                {
+                    debug::error(FUNCTION, "Unknown session_id: 0x", std::hex, nKeepaliveSession, std::dec);
+                    debug::error(FUNCTION, "Session may have expired or never existed");
+                    Disconnect();
+                    return true;
+                }
+
+                MiningContext sessionContext = optContext.value();
+                uint64_t nNow = runtime::unifiedtimestamp();
+                uint64_t nExpirySeconds = NodeCache::GetPurgeTimeout(sessionContext.strAddress);
+
+                sessionContext = sessionContext
+                    .WithTimestamp(nNow)
+                    .WithSessionTimeout(nExpirySeconds)
+                    .WithKeepaliveCount(sessionContext.nKeepaliveCount + 1);
+
+                auto optLane = StatelessMinerManager::Get().GetMinerLane(sessionContext.strAddress);
+                StatelessMinerManager::Get().UpdateMiner(
+                    sessionContext.strAddress,
+                    sessionContext,
+                    optLane.value_or(0));
+
+                if(sessionContext.fAuthenticated && sessionContext.hashKeyID != 0)
+                    SessionRecoveryManager::Get().SaveSession(sessionContext);
+
+                debug::log(2, FUNCTION, "Session refreshed:");
+                debug::log(2, FUNCTION, "  Keepalives: ", sessionContext.nKeepaliveCount);
+                debug::log(2, FUNCTION, "  New expiry: ", (nNow + nExpirySeconds), " (",
+                           (nExpirySeconds / 86400), "d)");
+
+                std::vector<uint8_t> vResponse(4);
+                vResponse[0] = static_cast<uint8_t>((nExpirySeconds >> 24) & 0xFF);
+                vResponse[1] = static_cast<uint8_t>((nExpirySeconds >> 16) & 0xFF);
+                vResponse[2] = static_cast<uint8_t>((nExpirySeconds >> 8) & 0xFF);
+                vResponse[3] = static_cast<uint8_t>(nExpirySeconds & 0xFF);
+
+                respond(SESSION_KEEPALIVE, vResponse);
+
+                debug::log(2, FUNCTION, "Sent SESSION_KEEPALIVE response");
+                debug::log(2, FUNCTION, "════════════════════════════════════");
+
+                return true;
+            }
+
             /* Route ALL stateless mining packets to StatelessMiner.
              * 
              * ARCHITECTURAL NOTE:
@@ -540,6 +615,17 @@ namespace LLP
                     if(fEncryptionReady && !vChaChaKey.empty())
                     {
                         updatedContext = updatedContext.WithChaChaKey(vChaChaKey);
+                    }
+
+                    if(updatedContext.fAuthenticated && updatedContext.nSessionId != 0)
+                    {
+                        uint64_t nNow = runtime::unifiedtimestamp();
+                        uint64_t nExpirySeconds = NodeCache::GetPurgeTimeout(updatedContext.strAddress);
+
+                        if(updatedContext.nSessionStart == 0)
+                            updatedContext = updatedContext.WithSessionStart(nNow);
+
+                        updatedContext = updatedContext.WithSessionTimeout(nExpirySeconds);
                     }
 
                     /* Persist session and lane state for cross-lane recovery */
