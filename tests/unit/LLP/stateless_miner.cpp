@@ -1510,8 +1510,9 @@ TEST_CASE("Stateless Opcode Conversion for 16-bit Lane", "[stateless_miner][opco
     SECTION("Round-trip conversion: 8-bit → 16-bit → 8-bit")
     {
         /* Test that Mirror and Unmirror are inverses */
-        for(uint8_t opcode = 0; opcode <= 255; ++opcode)
+        for(int i = 0; i <= 255; ++i)
         {
+            uint8_t opcode = static_cast<uint8_t>(i);
             uint16_t mirrored = StatelessOpcodes::Mirror(opcode);
             uint8_t unmirrored = StatelessOpcodes::Unmirror(mirrored);
             REQUIRE(unmirrored == opcode);

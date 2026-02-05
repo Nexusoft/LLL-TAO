@@ -2409,6 +2409,9 @@ namespace LLP
                      * StatelessMiner builds responses with 8-bit opcodes (e.g., MINER_AUTH_CHALLENGE = 208),
                      * but the stateless lane expects 16-bit mirror-mapped opcodes (0xD0D0).
                      * Legacy 8-bit opcodes (< 256) that are NOT already stateless need mirroring.
+                     * 
+                     * NOTE: result.response is const, so we must create a copy before modifying.
+                     * This is necessary for correctness to avoid violating const-correctness.
                      */
                     if(result.response.HEADER < 256 && !StatelessOpcodes::IsStateless(result.response.HEADER))
                     {
