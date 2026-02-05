@@ -177,6 +177,36 @@ namespace OpcodeUtility
     }
 
 
+    /** Helper: Check if opcode is a header-only request (no payload allowed) */
+    static bool IsHeaderOnlyRequest(uint8_t opcode)
+    {
+        /* These opcodes are requests that contain no data payload */
+        return (opcode == Opcodes::GET_BLOCK || opcode == Opcodes::GET_HEIGHT ||
+                opcode == Opcodes::GET_REWARD || opcode == Opcodes::GET_ROUND ||
+                opcode == Opcodes::PING || opcode == Opcodes::CLOSE ||
+                opcode == Opcodes::MINER_READY);
+    }
+
+
+    /** Helper: Get maximum allowed payload size for fixed-length opcodes */
+    static int32_t GetMaxPayloadSize(uint8_t opcode)
+    {
+        /* Return -1 for opcodes with no fixed maximum (already validated elsewhere) */
+        if(opcode == Opcodes::SET_CHANNEL)
+            return 4;  /* 1-byte or 4-byte LE format */
+        if(opcode == Opcodes::SESSION_KEEPALIVE)
+            return 8;  /* 4-byte session ID + padding */
+        if(opcode == Opcodes::SESSION_START)
+            return 8;  /* optional timeout + padding */
+        if(opcode == Opcodes::MINER_AUTH_CHALLENGE)
+            return 40; /* nonce length field + 32-byte nonce + padding */
+        if(opcode == Opcodes::MINER_AUTH_RESULT)
+            return 10; /* status byte + session ID + error code + padding */
+        
+        return -1; /* No fixed maximum */
+    }
+
+
     bool ValidatePacketLength(const Packet& packet, std::string* strReason)
     {
         /* Check against maximum packet length */
@@ -259,6 +289,36 @@ namespace OpcodeUtility
                 }
                 return false;
             }
+        }
+        
+        /* Validate header-only requests have no payload */
+        if(IsHeaderOnlyRequest(nOpcode))
+        {
+            if(packet.LENGTH != 0)
+            {
+                if(strReason)
+                {
+                    std::ostringstream oss;
+                    oss << GetOpcodeName(nOpcode) << " expects no data payload, received " 
+                        << packet.LENGTH << " bytes";
+                    *strReason = oss.str();
+                }
+                return false;
+            }
+        }
+        
+        /* Validate fixed-size opcodes don't exceed maximum */
+        int32_t nMaxSize = GetMaxPayloadSize(nOpcode);
+        if(nMaxSize >= 0 && packet.LENGTH > static_cast<uint32_t>(nMaxSize))
+        {
+            if(strReason)
+            {
+                std::ostringstream oss;
+                oss << GetOpcodeName(nOpcode) << " payload size " << packet.LENGTH 
+                    << " exceeds maximum of " << nMaxSize << " bytes";
+                *strReason = oss.str();
+            }
+            return false;
         }
         
         return true;

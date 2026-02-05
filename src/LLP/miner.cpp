@@ -231,6 +231,19 @@ namespace LLP
                     if(PACKET.HEADER == OLD_ROUND)
                         DDOS->Ban();
 
+                    /* Ban request opcodes that should never have payloads */
+                    bool bInvalidRequestSize = 
+                        ((PACKET.HEADER == GET_BLOCK || PACKET.HEADER == GET_HEIGHT ||
+                          PACKET.HEADER == GET_REWARD || PACKET.HEADER == GET_ROUND ||
+                          PACKET.HEADER == MINER_READY || PACKET.HEADER == PING) && PACKET.LENGTH > 0);
+                    
+                    if(bInvalidRequestSize)
+                        DDOS->Ban();
+
+                    /* Ban SESSION_KEEPALIVE with oversized payload */
+                    if(PACKET.HEADER == SESSION_KEEPALIVE && PACKET.LENGTH > 8)
+                        DDOS->Ban();
+
                 }
             }
 
@@ -482,6 +495,9 @@ namespace LLP
 
                 if(sessionContext.fAuthenticated && sessionContext.hashKeyID != 0)
                     SessionRecoveryManager::Get().SaveSession(sessionContext);
+
+                /* Reset connection activity timer to prevent idle disconnection */
+                this->Reset();
 
                 constexpr uint64_t SECONDS_PER_DAY = 86400;
                 debug::log(2, FUNCTION, "Session refreshed:");
