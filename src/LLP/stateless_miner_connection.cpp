@@ -3802,7 +3802,10 @@ namespace LLP
         /* Add 216-byte block template [12-227] */
         notification.DATA.insert(notification.DATA.end(), vBlockData.begin(), vBlockData.end());
         
-        /* Set LENGTH field to match DATA size before serialization */
+        /* Set LENGTH field to match DATA size before serialization.
+         * CRITICAL: Unlike error responses (which always have 1 byte of data),
+         * this notification carries variable-size payload (228 bytes = 12 metadata + 216 template).
+         * Must use DATA.size() instead of hardcoded value to ensure correct framing. */
         notification.LENGTH = static_cast<uint32_t>(notification.DATA.size());
         
         debug::log(2, "   Payload:");
