@@ -589,38 +589,11 @@ namespace LLP
             }
 
             /* ============================================================================
-             * 8-BIT OPCODE HANDLERS (Traditional Mining Protocol)
+             * 16-BIT STATELESS OPCODE HANDLERS
              * ============================================================================ */
 
-            /* Handle block-related packets that require stateful block management */
-            /* These are handled directly here instead of through StatelessMiner */
-            /* Using 16-bit stateless opcodes from stateless_opcodes.h */
+            /* All opcodes reference OpcodeUtility::Stateless (via StatelessOpcodes alias) */
             using namespace StatelessOpcodes;
-            
-            const uint16_t GET_BLOCK = STATELESS_GET_BLOCK;
-            const uint16_t SUBMIT_BLOCK = STATELESS_SUBMIT_BLOCK;
-            const uint16_t BLOCK_DATA = STATELESS_GET_BLOCK;
-            const uint16_t BLOCK_ACCEPTED = STATELESS_BLOCK_ACCEPTED;
-            const uint16_t BLOCK_REJECTED = STATELESS_BLOCK_REJECTED;
-            
-            /* Authentication packet types (16-bit stateless) */
-            const uint16_t MINER_AUTH_INIT = STATELESS_AUTH_INIT;
-            const uint16_t MINER_AUTH_RESPONSE = STATELESS_AUTH_RESPONSE;
-            const uint16_t MINER_AUTH_RESULT = STATELESS_AUTH_RESULT;
-            
-            /* Additional stateless opcodes for mining operations */
-            const uint16_t GET_HEIGHT = STATELESS_GET_HEIGHT;
-            const uint16_t BLOCK_HEIGHT = STATELESS_BLOCK_HEIGHT;
-            const uint16_t GET_REWARD = STATELESS_GET_REWARD;
-            const uint16_t BLOCK_REWARD = STATELESS_BLOCK_REWARD;
-            const uint16_t GET_ROUND = STATELESS_GET_ROUND;
-            const uint16_t NEW_ROUND = STATELESS_NEW_ROUND;
-            const uint16_t OLD_ROUND = STATELESS_OLD_ROUND;
-            
-            /* Push notification opcodes (16-bit stateless) */
-            const uint16_t MINER_READY = STATELESS_MINER_READY;
-            const uint16_t PRIME_BLOCK_AVAILABLE = STATELESS_PRIME_BLOCK_AVAILABLE;
-            const uint16_t HASH_BLOCK_AVAILABLE = STATELESS_HASH_BLOCK_AVAILABLE;
             
             /* Block rejection reason codes (PR #122: Falcon Protocol Integration) */
             const uint8_t REJECT_PHYSICAL_SIGNATURE_FAILED = 0x10;  // Physical Falcon signature verification failed

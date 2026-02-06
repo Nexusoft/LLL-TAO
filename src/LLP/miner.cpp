@@ -374,44 +374,10 @@ namespace LLP
     }
 
 
-    /* Helper function to get packet name for logging */
+    /* Helper function to get packet name for logging - delegates to OpcodeUtility */
     static std::string GetMinerPacketName(uint8_t header)
     {
-        switch(header) {
-            case 0:   return "BLOCK_DATA";
-            case 1:   return "SUBMIT_BLOCK";
-            case 2:   return "BLOCK_HEIGHT";
-            case 3:   return "SET_CHANNEL";
-            case 4:   return "BLOCK_REWARD";
-            case 5:   return "SET_COINBASE";
-            case 6:   return "GOOD_BLOCK";
-            case 7:   return "ORPHAN_BLOCK";
-            case 64:  return "CHECK_BLOCK";
-            case 65:  return "SUBSCRIBE";
-            case 129: return "GET_BLOCK";
-            case 130: return "GET_HEIGHT";
-            case 131: return "GET_REWARD";
-            case 132: return "CLEAR_MAP";
-            case 133: return "GET_ROUND";
-            case 200: return "BLOCK_ACCEPTED";
-            case 201: return "BLOCK_REJECTED";
-            case 202: return "COINBASE_SET";
-            case 203: return "COINBASE_FAIL";
-            case 204: return "NEW_ROUND";
-            case 205: return "OLD_ROUND";
-            case 206: return "CHANNEL_ACK";
-            case 207: return "MINER_AUTH_INIT";
-            case 208: return "MINER_AUTH_CHALLENGE";
-            case 209: return "MINER_AUTH_RESPONSE";
-            case 210: return "MINER_AUTH_RESULT";
-            case 211: return "SESSION_START";
-            case 212: return "SESSION_KEEPALIVE";
-            case 213: return "MINER_SET_REWARD";
-            case 214: return "MINER_REWARD_RESULT";
-            case 253: return "PING";
-            case 254: return "CLOSE";
-            default:  return "UNKNOWN";
-        }
+        return OpcodeUtility::GetOpcodeName(header);
     }
 
 
