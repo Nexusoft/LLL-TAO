@@ -3626,10 +3626,9 @@ namespace LLP
         /* Get difficulty */
         uint32_t nDifficulty = TAO::Ledger::GetNextTargetRequired(stateBest, nChannel);
         
-        /* Determine opcode based on channel (use constants from miner.h) */
-        const uint8_t PRIME_BLOCK_AVAILABLE = 217;
-        const uint8_t HASH_BLOCK_AVAILABLE = 218;
-        uint8_t nOpcode = (nChannel == 1) ? PRIME_BLOCK_AVAILABLE : HASH_BLOCK_AVAILABLE;
+        /* Determine opcode based on channel (use 16-bit stateless mirror opcodes) */
+        using namespace StatelessOpcodes;
+        uint16_t nOpcode = (nChannel == 1) ? STATELESS_PRIME_BLOCK_AVAILABLE : STATELESS_HASH_BLOCK_AVAILABLE;
         
         /* Build 12-byte packet (big-endian) */
         StatelessPacket notification(nOpcode);
