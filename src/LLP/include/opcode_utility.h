@@ -25,6 +25,173 @@ namespace LLP
 {
 namespace OpcodeUtility
 {
+    //=========================================================================
+    // CANONICAL 8-BIT OPCODE DEFINITIONS
+    // This is the SINGLE SOURCE OF TRUTH for all mining protocol opcodes.
+    // DO NOT duplicate these values elsewhere.
+    //=========================================================================
+    namespace Opcodes
+    {
+        /* Data packets (0-127) - carry payload */
+        static constexpr uint8_t BLOCK_DATA     = 0;
+        static constexpr uint8_t SUBMIT_BLOCK   = 1;
+        static constexpr uint8_t BLOCK_HEIGHT   = 2;
+        static constexpr uint8_t SET_CHANNEL    = 3;
+        static constexpr uint8_t BLOCK_REWARD   = 4;
+        static constexpr uint8_t SET_COINBASE   = 5;
+        static constexpr uint8_t GOOD_BLOCK     = 6;
+        static constexpr uint8_t ORPHAN_BLOCK   = 7;
+        static constexpr uint8_t CHECK_BLOCK    = 64;
+        static constexpr uint8_t SUBSCRIBE      = 65;
+
+        /* Request packets (128-203) - header-only, no payload */
+        static constexpr uint8_t GET_BLOCK      = 129;
+        static constexpr uint8_t GET_HEIGHT     = 130;
+        static constexpr uint8_t GET_REWARD     = 131;
+        static constexpr uint8_t CLEAR_MAP      = 132;
+        static constexpr uint8_t GET_ROUND      = 133;
+
+        /* Response packets (200-205) */
+        static constexpr uint8_t BLOCK_ACCEPTED = 200;
+        static constexpr uint8_t BLOCK_REJECTED = 201;
+        static constexpr uint8_t COINBASE_SET   = 202;
+        static constexpr uint8_t COINBASE_FAIL  = 203;
+        static constexpr uint8_t NEW_ROUND      = 204;
+        static constexpr uint8_t OLD_ROUND      = 205;
+
+        /* Channel acknowledgment (206) - carries 1-byte payload */
+        static constexpr uint8_t CHANNEL_ACK    = 206;
+
+        /* Authentication packets (207-212) - carry payload */
+        static constexpr uint8_t MINER_AUTH_INIT      = 207;
+        static constexpr uint8_t MINER_AUTH_CHALLENGE = 208;
+        static constexpr uint8_t MINER_AUTH_RESPONSE  = 209;
+        static constexpr uint8_t MINER_AUTH_RESULT    = 210;
+        static constexpr uint8_t SESSION_START        = 211;
+        static constexpr uint8_t SESSION_KEEPALIVE    = 212;
+
+        /* Reward binding packets (213-214) - carry encrypted payload */
+        static constexpr uint8_t MINER_SET_REWARD     = 213;
+        static constexpr uint8_t MINER_REWARD_RESULT  = 214;
+
+        /* Push notification packets (216-218) */
+        static constexpr uint8_t MINER_READY          = 216;  // header-only
+        static constexpr uint8_t PRIME_BLOCK_AVAILABLE = 217; // 12-byte payload
+        static constexpr uint8_t HASH_BLOCK_AVAILABLE  = 218; // 12-byte payload
+
+        /* Alias opcodes for compatibility (map to same values as above) */
+        static constexpr uint8_t NEW_PRIME_AVAILABLE = 217;  // Alias for PRIME_BLOCK_AVAILABLE
+        static constexpr uint8_t NEW_HASH_AVAILABLE  = 218;  // Alias for HASH_BLOCK_AVAILABLE
+
+        /* Generic packets */
+        static constexpr uint8_t PING  = 253;
+        static constexpr uint8_t CLOSE = 254;
+    }
+
+    //=========================================================================
+    // 16-BIT STATELESS MIRROR-MAPPED OPCODES
+    // Formula: statelessOpcode = 0xD000 | legacyOpcode
+    // Absorbs everything from stateless_opcodes.h
+    //=========================================================================
+    namespace Stateless
+    {
+        /** Convert legacy 8-bit opcode to 16-bit stateless opcode */
+        constexpr uint16_t Mirror(uint8_t legacyOpcode)
+        {
+            return 0xD000 | legacyOpcode;
+        }
+
+        /** Convert 16-bit stateless opcode back to legacy 8-bit */
+        constexpr uint8_t Unmirror(uint16_t statelessOpcode)
+        {
+            return static_cast<uint8_t>(statelessOpcode & 0xFF);
+        }
+
+        /** Check if opcode is in valid stateless range (0xD000-0xD0FF) */
+        constexpr bool IsStateless(uint16_t opcode)
+        {
+            return (opcode & 0xFF00) == 0xD000;
+        }
+
+        /* All mirror-mapped constants */
+        static constexpr uint16_t BLOCK_DATA     = Mirror(Opcodes::BLOCK_DATA);       // 0xD000
+        static constexpr uint16_t SUBMIT_BLOCK   = Mirror(Opcodes::SUBMIT_BLOCK);     // 0xD001
+        static constexpr uint16_t BLOCK_HEIGHT   = Mirror(Opcodes::BLOCK_HEIGHT);     // 0xD002
+        static constexpr uint16_t SET_CHANNEL    = Mirror(Opcodes::SET_CHANNEL);      // 0xD003
+        static constexpr uint16_t BLOCK_REWARD   = Mirror(Opcodes::BLOCK_REWARD);     // 0xD004
+        static constexpr uint16_t SET_COINBASE   = Mirror(Opcodes::SET_COINBASE);     // 0xD005
+        static constexpr uint16_t GOOD_BLOCK     = Mirror(Opcodes::GOOD_BLOCK);       // 0xD006
+        static constexpr uint16_t ORPHAN_BLOCK   = Mirror(Opcodes::ORPHAN_BLOCK);     // 0xD007
+        static constexpr uint16_t CHECK_BLOCK    = Mirror(Opcodes::CHECK_BLOCK);      // 0xD040
+        static constexpr uint16_t SUBSCRIBE      = Mirror(Opcodes::SUBSCRIBE);        // 0xD041
+        static constexpr uint16_t GET_BLOCK      = Mirror(Opcodes::GET_BLOCK);        // 0xD081
+        static constexpr uint16_t GET_HEIGHT     = Mirror(Opcodes::GET_HEIGHT);       // 0xD082
+        static constexpr uint16_t GET_REWARD     = Mirror(Opcodes::GET_REWARD);       // 0xD083
+        static constexpr uint16_t CLEAR_MAP      = Mirror(Opcodes::CLEAR_MAP);        // 0xD084
+        static constexpr uint16_t GET_ROUND      = Mirror(Opcodes::GET_ROUND);        // 0xD085
+        static constexpr uint16_t BLOCK_ACCEPTED = Mirror(Opcodes::BLOCK_ACCEPTED);   // 0xD0C8
+        static constexpr uint16_t BLOCK_REJECTED = Mirror(Opcodes::BLOCK_REJECTED);   // 0xD0C9
+        static constexpr uint16_t COINBASE_SET   = Mirror(Opcodes::COINBASE_SET);     // 0xD0CA
+        static constexpr uint16_t COINBASE_FAIL  = Mirror(Opcodes::COINBASE_FAIL);    // 0xD0CB
+        static constexpr uint16_t NEW_ROUND      = Mirror(Opcodes::NEW_ROUND);        // 0xD0CC
+        static constexpr uint16_t OLD_ROUND      = Mirror(Opcodes::OLD_ROUND);        // 0xD0CD
+        static constexpr uint16_t CHANNEL_ACK    = Mirror(Opcodes::CHANNEL_ACK);      // 0xD0CE
+        static constexpr uint16_t AUTH_INIT      = Mirror(Opcodes::MINER_AUTH_INIT);      // 0xD0CF
+        static constexpr uint16_t AUTH_CHALLENGE = Mirror(Opcodes::MINER_AUTH_CHALLENGE); // 0xD0D0
+        static constexpr uint16_t AUTH_RESPONSE  = Mirror(Opcodes::MINER_AUTH_RESPONSE);  // 0xD0D1
+        static constexpr uint16_t AUTH_RESULT    = Mirror(Opcodes::MINER_AUTH_RESULT);    // 0xD0D2
+        static constexpr uint16_t SESSION_START     = Mirror(Opcodes::SESSION_START);     // 0xD0D3
+        static constexpr uint16_t SESSION_KEEPALIVE = Mirror(Opcodes::SESSION_KEEPALIVE); // 0xD0D4
+        static constexpr uint16_t SET_REWARD     = Mirror(Opcodes::MINER_SET_REWARD);     // 0xD0D5
+        static constexpr uint16_t REWARD_RESULT  = Mirror(Opcodes::MINER_REWARD_RESULT);  // 0xD0D6
+        static constexpr uint16_t MINER_READY           = Mirror(Opcodes::MINER_READY);           // 0xD0D8
+        static constexpr uint16_t PRIME_BLOCK_AVAILABLE = Mirror(Opcodes::PRIME_BLOCK_AVAILABLE); // 0xD0D9
+        static constexpr uint16_t HASH_BLOCK_AVAILABLE  = Mirror(Opcodes::HASH_BLOCK_AVAILABLE);  // 0xD0DA
+        static constexpr uint16_t PING  = Mirror(Opcodes::PING);   // 0xD0FD
+        static constexpr uint16_t CLOSE = Mirror(Opcodes::CLOSE);  // 0xD0FE
+
+        /* Backward compatibility aliases with STATELESS_ prefix */
+        static constexpr uint16_t STATELESS_BLOCK_DATA     = BLOCK_DATA;
+        static constexpr uint16_t STATELESS_SUBMIT_BLOCK   = SUBMIT_BLOCK;
+        static constexpr uint16_t STATELESS_BLOCK_HEIGHT   = BLOCK_HEIGHT;
+        static constexpr uint16_t STATELESS_SET_CHANNEL    = SET_CHANNEL;
+        static constexpr uint16_t STATELESS_BLOCK_REWARD   = BLOCK_REWARD;
+        static constexpr uint16_t STATELESS_SET_COINBASE   = SET_COINBASE;
+        static constexpr uint16_t STATELESS_GOOD_BLOCK     = GOOD_BLOCK;
+        static constexpr uint16_t STATELESS_ORPHAN_BLOCK   = ORPHAN_BLOCK;
+        static constexpr uint16_t STATELESS_CHECK_BLOCK    = CHECK_BLOCK;
+        static constexpr uint16_t STATELESS_SUBSCRIBE      = SUBSCRIBE;
+        static constexpr uint16_t STATELESS_GET_BLOCK      = GET_BLOCK;
+        static constexpr uint16_t STATELESS_GET_HEIGHT     = GET_HEIGHT;
+        static constexpr uint16_t STATELESS_GET_REWARD     = GET_REWARD;
+        static constexpr uint16_t STATELESS_CLEAR_MAP      = CLEAR_MAP;
+        static constexpr uint16_t STATELESS_GET_ROUND      = GET_ROUND;
+        static constexpr uint16_t STATELESS_BLOCK_ACCEPTED = BLOCK_ACCEPTED;
+        static constexpr uint16_t STATELESS_BLOCK_REJECTED = BLOCK_REJECTED;
+        static constexpr uint16_t STATELESS_COINBASE_SET   = COINBASE_SET;
+        static constexpr uint16_t STATELESS_COINBASE_FAIL  = COINBASE_FAIL;
+        static constexpr uint16_t STATELESS_NEW_ROUND      = NEW_ROUND;
+        static constexpr uint16_t STATELESS_OLD_ROUND      = OLD_ROUND;
+        static constexpr uint16_t STATELESS_CHANNEL_ACK    = CHANNEL_ACK;
+        static constexpr uint16_t STATELESS_AUTH_INIT      = AUTH_INIT;
+        static constexpr uint16_t STATELESS_AUTH_CHALLENGE = AUTH_CHALLENGE;
+        static constexpr uint16_t STATELESS_AUTH_RESPONSE  = AUTH_RESPONSE;
+        static constexpr uint16_t STATELESS_AUTH_RESULT    = AUTH_RESULT;
+        static constexpr uint16_t STATELESS_SESSION_START     = SESSION_START;
+        static constexpr uint16_t STATELESS_SESSION_KEEPALIVE = SESSION_KEEPALIVE;
+        static constexpr uint16_t STATELESS_SET_REWARD     = SET_REWARD;
+        static constexpr uint16_t STATELESS_REWARD_RESULT  = REWARD_RESULT;
+        static constexpr uint16_t STATELESS_MINER_READY           = MINER_READY;
+        static constexpr uint16_t STATELESS_PRIME_BLOCK_AVAILABLE = PRIME_BLOCK_AVAILABLE;
+        static constexpr uint16_t STATELESS_HASH_BLOCK_AVAILABLE  = HASH_BLOCK_AVAILABLE;
+        static constexpr uint16_t STATELESS_PING  = PING;
+        static constexpr uint16_t STATELESS_CLOSE = CLOSE;
+    }
+
+    //=========================================================================
+    // OPCODE CLASSIFICATION FUNCTIONS
+    //=========================================================================
+
     /** Opcode range constants for stateless mining protocol
      *  
      *  The stateless miner port uses a dedicated opcode range 0xCF-0xDA (207-218)
@@ -33,10 +200,10 @@ namespace OpcodeUtility
      **/
     
     /** First stateless mining opcode (MINER_AUTH_INIT = 207 / 0xCF) */
-    static const uint8_t STATELESS_OPCODE_FIRST = 207;
+    static constexpr uint8_t STATELESS_OPCODE_FIRST = 207;
     
     /** Last stateless mining opcode (HASH_BLOCK_AVAILABLE = 218 / 0xDA) */
-    static const uint8_t STATELESS_OPCODE_LAST = 218;
+    static constexpr uint8_t STATELESS_OPCODE_LAST = 218;
     
     /** Authentication opcode range (207-212)
      *  MINER_AUTH_INIT      = 207 (0xCF)
@@ -46,11 +213,11 @@ namespace OpcodeUtility
      *  SESSION_START        = 211 (0xD3)
      *  SESSION_KEEPALIVE    = 212 (0xD4)
      **/
-    static const uint8_t AUTH_OPCODE_FIRST = 207;
-    static const uint8_t AUTH_OPCODE_LAST = 212;
+    static constexpr uint8_t AUTH_OPCODE_FIRST = 207;
+    static constexpr uint8_t AUTH_OPCODE_LAST = 212;
     
     /** Maximum packet length for any mining packet (2MB + overhead for full blocks) */
-    static const uint32_t MAX_ANY_PACKET_LENGTH = 3 * 1024 * 1024;  // 3 MB safety margin
+    static constexpr uint32_t MAX_ANY_PACKET_LENGTH = 3 * 1024 * 1024;  // 3 MB safety margin
 
 
     /** IsStatelessMiningOpcode
@@ -104,7 +271,7 @@ namespace OpcodeUtility
 
     /** GetOpcodeName
      *
-     *  Returns a human-readable name for an opcode for logging purposes.
+     *  Returns a human-readable name for an 8-bit opcode for logging purposes.
      *
      *  @param[in] nOpcode The opcode to get the name for
      *
@@ -112,6 +279,18 @@ namespace OpcodeUtility
      *
      **/
     std::string GetOpcodeName(uint8_t nOpcode);
+
+
+    /** GetOpcodeName16
+     *
+     *  Returns a human-readable name for a 16-bit stateless opcode for logging purposes.
+     *
+     *  @param[in] nOpcode The 16-bit opcode to get the name for
+     *
+     *  @return String name of the opcode (e.g., "STATELESS_GET_BLOCK", "STATELESS_SUBMIT_BLOCK")
+     *
+     **/
+    std::string GetOpcodeName16(uint16_t nOpcode);
 
 
     /** IsHeaderOnlyRequest
@@ -128,6 +307,22 @@ namespace OpcodeUtility
      *
      **/
     bool IsHeaderOnlyRequest(uint8_t nOpcode);
+
+
+    /** HasDataPayload
+     *
+     *  Check if an opcode carries a data payload in the packet body.
+     *  
+     *  This replaces hardcoded range constants previously scattered in
+     *  packet.h and other files. Provides a centralized classification
+     *  of which opcodes carry payload data vs header-only packets.
+     *
+     *  @param[in] nOpcode The opcode to check
+     *
+     *  @return true if opcode carries data payload, false for header-only
+     *
+     **/
+    bool HasDataPayload(uint8_t nOpcode);
 
 
     /** ValidatePacketLength

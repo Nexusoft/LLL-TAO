@@ -23,60 +23,6 @@ namespace LLP
 {
 namespace OpcodeUtility
 {
-    /** Opcode constants from miner.h for reference
-     *  
-     *  NOTE: These are duplicated here rather than including miner.h to avoid
-     *  circular dependencies. The opcode_utility is intended to be a lightweight
-     *  utility that can be included by miner.h and other files without creating
-     *  include cycles. The values must be kept in sync with src/LLP/types/miner.h.
-     **/
-    namespace Opcodes
-    {
-        /* Data packets */
-        const uint8_t BLOCK_DATA     = 0;
-        const uint8_t SUBMIT_BLOCK   = 1;
-        const uint8_t BLOCK_HEIGHT   = 2;
-        const uint8_t SET_CHANNEL    = 3;
-        const uint8_t BLOCK_REWARD   = 4;
-        
-        /* Request packets */
-        const uint8_t GET_BLOCK      = 129;
-        const uint8_t GET_HEIGHT     = 130;
-        const uint8_t GET_REWARD     = 131;
-        const uint8_t GET_ROUND      = 133;
-        
-        /* Response packets */
-        const uint8_t BLOCK_ACCEPTED = 200;
-        const uint8_t BLOCK_REJECTED = 201;
-        const uint8_t NEW_ROUND      = 204;
-        const uint8_t OLD_ROUND      = 205;
-        const uint8_t CHANNEL_ACK    = 206;
-        
-        /* Authentication packets */
-        const uint8_t MINER_AUTH_INIT      = 207;
-        const uint8_t MINER_AUTH_CHALLENGE = 208;
-        const uint8_t MINER_AUTH_RESPONSE  = 209;
-        const uint8_t MINER_AUTH_RESULT    = 210;
-        const uint8_t SESSION_START        = 211;
-        const uint8_t SESSION_KEEPALIVE    = 212;
-        
-        /* Reward binding packets */
-        const uint8_t MINER_SET_REWARD     = 213;
-        const uint8_t MINER_REWARD_RESULT  = 214;
-        
-        /* Push notification packets */
-        const uint8_t MINER_READY          = 216;
-        const uint8_t PRIME_BLOCK_AVAILABLE = 217;
-        const uint8_t HASH_BLOCK_AVAILABLE  = 218;
-        
-        /* Alias opcodes for compatibility (map to same values as above) */
-        const uint8_t NEW_PRIME_AVAILABLE = 217;  // Alias for PRIME_BLOCK_AVAILABLE
-        const uint8_t NEW_HASH_AVAILABLE  = 218;  // Alias for HASH_BLOCK_AVAILABLE
-        
-        /* Generic packets */
-        const uint8_t PING           = 253;
-        const uint8_t CLOSE          = 254;
-    }
 
 
     bool IsStatelessMiningOpcode(uint8_t nOpcode)
@@ -431,6 +377,64 @@ namespace OpcodeUtility
             return false;
         
         return true;
+    }
+
+
+    std::string GetOpcodeName16(uint16_t nOpcode)
+    {
+        /* Check if it's a stateless opcode */
+        if(Stateless::IsStateless(nOpcode))
+        {
+            /* Convert to legacy opcode and get name, then prefix with STATELESS_ */
+            uint8_t legacyOpcode = Stateless::Unmirror(nOpcode);
+            std::string strLegacyName = GetOpcodeName(legacyOpcode);
+            
+            /* If it's an unknown opcode, return hex format */
+            if(strLegacyName.find("UNKNOWN") != std::string::npos)
+            {
+                std::ostringstream oss;
+                oss << "STATELESS_UNKNOWN(0x" << std::hex << nOpcode << ")";
+                return oss.str();
+            }
+            
+            return "STATELESS_" + strLegacyName;
+        }
+        
+        /* Not a stateless opcode */
+        std::ostringstream oss;
+        oss << "INVALID_16BIT(0x" << std::hex << nOpcode << ")";
+        return oss.str();
+    }
+
+
+    bool HasDataPayload(uint8_t nOpcode)
+    {
+        /* Traditional data packets (0-127) carry payload */
+        if(nOpcode < 128)
+            return true;
+        
+        /* Mining round response packets carry height data (204-205) */
+        if(nOpcode >= Opcodes::NEW_ROUND && nOpcode <= Opcodes::OLD_ROUND)
+            return true;
+        
+        /* Channel acknowledgment requires data (channel number) */
+        if(nOpcode == Opcodes::CHANNEL_ACK)
+            return true;
+        
+        /* Falcon authentication packets (207-212) carry crypto payloads */
+        if(nOpcode >= Opcodes::MINER_AUTH_INIT && nOpcode <= Opcodes::SESSION_KEEPALIVE)
+            return true;
+        
+        /* Reward binding packets (213-214) carry encrypted payloads */
+        if(nOpcode >= Opcodes::MINER_SET_REWARD && nOpcode <= Opcodes::MINER_REWARD_RESULT)
+            return true;
+        
+        /* Push notification packets (217-218) carry block metadata */
+        if(nOpcode == Opcodes::PRIME_BLOCK_AVAILABLE || nOpcode == Opcodes::HASH_BLOCK_AVAILABLE)
+            return true;
+        
+        /* All other opcodes are header-only */
+        return false;
     }
 
 } // namespace OpcodeUtility

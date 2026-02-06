@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #define NEXUS_LLP_TYPES_MINER_H
 
 #include <LLP/templates/connection.h>
+#include <LLP/include/opcode_utility.h>
 #include <TAO/Ledger/types/block.h>
 #include <Legacy/types/coinbase.h>
 #include <atomic>
@@ -63,33 +64,36 @@ namespace LLP
      **/
     class Miner : public Connection
     {
-        /* Protocol messages based on Default Packet. */
+        /* Protocol messages based on Default Packet.
+         * All opcode values reference OpcodeUtility::Opcodes (opcode_utility.h).
+         * Legacy enum aliases maintained for backward compatibility.
+         */
         enum : Packet::message_t
         {
             /** DATA PACKETS **/
-            BLOCK_DATA     = 0,
-            SUBMIT_BLOCK   = 1,
-            BLOCK_HEIGHT   = 2,
-            SET_CHANNEL    = 3,
-            BLOCK_REWARD   = 4,
-            SET_COINBASE   = 5,
-            GOOD_BLOCK     = 6,
-            ORPHAN_BLOCK   = 7,
+            BLOCK_DATA     = OpcodeUtility::Opcodes::BLOCK_DATA,
+            SUBMIT_BLOCK   = OpcodeUtility::Opcodes::SUBMIT_BLOCK,
+            BLOCK_HEIGHT   = OpcodeUtility::Opcodes::BLOCK_HEIGHT,
+            SET_CHANNEL    = OpcodeUtility::Opcodes::SET_CHANNEL,
+            BLOCK_REWARD   = OpcodeUtility::Opcodes::BLOCK_REWARD,
+            SET_COINBASE   = OpcodeUtility::Opcodes::SET_COINBASE,
+            GOOD_BLOCK     = OpcodeUtility::Opcodes::GOOD_BLOCK,
+            ORPHAN_BLOCK   = OpcodeUtility::Opcodes::ORPHAN_BLOCK,
 
 
             /** DATA REQUESTS **/
-            CHECK_BLOCK    = 64,
-            SUBSCRIBE      = 65,
+            CHECK_BLOCK    = OpcodeUtility::Opcodes::CHECK_BLOCK,
+            SUBSCRIBE      = OpcodeUtility::Opcodes::SUBSCRIBE,
 
 
             /** REQUEST PACKETS **/
-            GET_BLOCK      = 129,
-            GET_HEIGHT     = 130,
-            GET_REWARD     = 131,
+            GET_BLOCK      = OpcodeUtility::Opcodes::GET_BLOCK,
+            GET_HEIGHT     = OpcodeUtility::Opcodes::GET_HEIGHT,
+            GET_REWARD     = OpcodeUtility::Opcodes::GET_REWARD,
 
 
             /** SERVER COMMANDS **/
-            CLEAR_MAP      = 132,
+            CLEAR_MAP      = OpcodeUtility::Opcodes::CLEAR_MAP,
             
             /** GET_ROUND (133) - Multi-Channel Height Information
              *
@@ -144,7 +148,7 @@ namespace LLP
              *  Before: Templates marked stale when ANY channel mines → ~40% wasted work
              *  After:  Templates marked stale only when SAME channel mines → <5% wasted work
              **/
-            GET_ROUND      = 133,
+            GET_ROUND      = OpcodeUtility::Opcodes::GET_ROUND,
 
             /** MINER_READY (216 / 0xd8) - Subscribe to Push Notifications
              *
@@ -187,38 +191,38 @@ namespace LLP
              *  - Both protocols coexist on same node
              *  - No breaking changes to existing miners
              **/
-            MINER_READY    = 216,
+            MINER_READY    = OpcodeUtility::Opcodes::MINER_READY,
 
 
             /** RESPONSE PACKETS **/
-            BLOCK_ACCEPTED = 200,
-            BLOCK_REJECTED = 201,
+            BLOCK_ACCEPTED = OpcodeUtility::Opcodes::BLOCK_ACCEPTED,
+            BLOCK_REJECTED = OpcodeUtility::Opcodes::BLOCK_REJECTED,
 
 
             /** VALIDATION RESPONSES **/
-            COINBASE_SET   = 202,
-            COINBASE_FAIL  = 203,
-            CHANNEL_ACK    = 206,
+            COINBASE_SET   = OpcodeUtility::Opcodes::COINBASE_SET,
+            COINBASE_FAIL  = OpcodeUtility::Opcodes::COINBASE_FAIL,
+            CHANNEL_ACK    = OpcodeUtility::Opcodes::CHANNEL_ACK,
 
             /** ROUND VALIDATIONS. **/
-            NEW_ROUND      = 204,
-            OLD_ROUND      = 205,
+            NEW_ROUND      = OpcodeUtility::Opcodes::NEW_ROUND,
+            OLD_ROUND      = OpcodeUtility::Opcodes::OLD_ROUND,
 
             /** AUTHENTICATION PACKETS **/
-            MINER_AUTH_INIT      = 207,  // 0xcf - miner -> node: Genesis + Falcon pubkey + miner ID
-            MINER_AUTH_CHALLENGE = 208,  // 0xd0 - node -> miner: Random nonce challenge
-            MINER_AUTH_RESPONSE  = 209,  // 0xd1 - miner -> node: Falcon signature over nonce
-            MINER_AUTH_RESULT    = 210,  // 0xd2 - node -> miner: Auth success/failure + session ID
+            MINER_AUTH_INIT      = OpcodeUtility::Opcodes::MINER_AUTH_INIT,  // 0xcf - miner -> node: Genesis + Falcon pubkey + miner ID
+            MINER_AUTH_CHALLENGE = OpcodeUtility::Opcodes::MINER_AUTH_CHALLENGE,  // 0xd0 - node -> miner: Random nonce challenge
+            MINER_AUTH_RESPONSE  = OpcodeUtility::Opcodes::MINER_AUTH_RESPONSE,  // 0xd1 - miner -> node: Falcon signature over nonce
+            MINER_AUTH_RESULT    = OpcodeUtility::Opcodes::MINER_AUTH_RESULT,  // 0xd2 - node -> miner: Auth success/failure + session ID
 
             /** SESSION MANAGEMENT (handled via Node Cache) **/
             // Note: Keep-alive is handled automatically via the node's connection cache
             // SESSION_START (211) and SESSION_KEEPALIVE (212) reserved but not actively used
-            SESSION_START        = 211,  // session start request (not fully implemented yet)
-            SESSION_KEEPALIVE    = 212,  // session keepalive ping (not fully implemented yet)
+            SESSION_START        = OpcodeUtility::Opcodes::SESSION_START,  // session start request (not fully implemented yet)
+            SESSION_KEEPALIVE    = OpcodeUtility::Opcodes::SESSION_KEEPALIVE,  // session keepalive ping (not fully implemented yet)
 
             /** REWARD ADDRESS BINDING (encrypted with ChaCha20 after Falcon auth) **/
-            MINER_SET_REWARD     = 213,  // 0xd5 - miner -> node: Encrypted reward address (32 bytes)
-            MINER_REWARD_RESULT  = 214,  // 0xd6 - node -> miner: Encrypted validation result
+            MINER_SET_REWARD     = OpcodeUtility::Opcodes::MINER_SET_REWARD,  // 0xd5 - miner -> node: Encrypted reward address (32 bytes)
+            MINER_REWARD_RESULT  = OpcodeUtility::Opcodes::MINER_REWARD_RESULT,  // 0xd6 - node -> miner: Encrypted validation result
 
             /** PRIME_BLOCK_AVAILABLE (217 / 0xd9) - Prime Block Notification
              *
@@ -250,7 +254,7 @@ namespace LLP
              *  - No polling overhead
              *  - 50% less traffic vs broadcast to all miners
              **/
-            PRIME_BLOCK_AVAILABLE = 217,  // 0xd9 - node -> miner: New Prime block available (channel 1 only)
+            PRIME_BLOCK_AVAILABLE = OpcodeUtility::Opcodes::PRIME_BLOCK_AVAILABLE,  // 0xd9 - node -> miner: New Prime block available (channel 1 only)
 
             /** HASH_BLOCK_AVAILABLE (218 / 0xda) - Hash Block Notification
              *
@@ -287,7 +291,7 @@ namespace LLP
              *  - Stake uses Proof-of-Stake, not stateless mining
              *  - No STAKE_BLOCK_AVAILABLE opcode exists (not needed)
              **/
-            HASH_BLOCK_AVAILABLE  = 218,  // 0xda - node -> miner: New Hash block available (channel 2 only)
+            HASH_BLOCK_AVAILABLE  = OpcodeUtility::Opcodes::HASH_BLOCK_AVAILABLE,  // 0xda - node -> miner: New Hash block available (channel 2 only)
 
             /** ALIAS OPCODES - Backward Compatibility & Client Clarity
              *
@@ -313,7 +317,7 @@ namespace LLP
              *
              *  Client Action: Upon receipt, send GET_BLOCK to fetch new Prime template.
              **/
-            NEW_PRIME_AVAILABLE = 217,  // Alias for PRIME_BLOCK_AVAILABLE (0xd9)
+            NEW_PRIME_AVAILABLE = OpcodeUtility::Opcodes::NEW_PRIME_AVAILABLE,  // Alias for PRIME_BLOCK_AVAILABLE (0xd9)
             
             /** NEW_HASH_AVAILABLE - Alias for HASH_BLOCK_AVAILABLE
              *
@@ -322,11 +326,11 @@ namespace LLP
              *
              *  Client Action: Upon receipt, send GET_BLOCK to fetch new Hash template.
              **/
-            NEW_HASH_AVAILABLE = 218,   // Alias for HASH_BLOCK_AVAILABLE (0xda)
+            NEW_HASH_AVAILABLE = OpcodeUtility::Opcodes::NEW_HASH_AVAILABLE,   // Alias for HASH_BLOCK_AVAILABLE (0xda)
 
             /** GENERIC **/
-            PING           = 253,
-            CLOSE          = 254
+            PING           = OpcodeUtility::Opcodes::PING,
+            CLOSE          = OpcodeUtility::Opcodes::CLOSE
         };
 
         /** Stateless Mining 16-bit Opcodes
@@ -355,9 +359,9 @@ namespace LLP
          *
          **/
         
-        /* 16-bit opcode constants (now in stateless_opcodes.h as mirror-mapped values) */
-        static const uint16_t STATELESS_MINER_READY = 0xD0D8;   // Mirror(216): Miner -> Node: Subscribe to template push
-        static const uint16_t STATELESS_GET_BLOCK   = 0xD081;   // Mirror(129): Node -> Miner: Template push (228 bytes)
+        /* 16-bit opcode constants reference OpcodeUtility::Stateless (opcode_utility.h) */
+        static const uint16_t STATELESS_MINER_READY = OpcodeUtility::Stateless::MINER_READY;   // Mirror(216): Miner -> Node: Subscribe to template push
+        static const uint16_t STATELESS_GET_BLOCK   = OpcodeUtility::Stateless::GET_BLOCK;   // Mirror(129): Node -> Miner: Template push (228 bytes)
 
     private:
 
