@@ -8,6 +8,7 @@ Ready-to-copy diagram templates for PR descriptions and documentation.
 2. **[flow-chart.md](flow-chart.md)** - Decision flows and conditional logic
 3. **[state-machine.md](state-machine.md)** - State transitions and lifecycle
 4. **[data-pipeline.md](data-pipeline.md)** - Data flow and transformations
+5. **[push-notification-flow.md](push-notification-flow.md)** - Push notification sequence (Legacy vs Stateless Tritium Protocol)
 
 ## Why Use ASCII Diagrams?
 

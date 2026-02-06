@@ -224,11 +224,27 @@ namespace LLP
             MINER_SET_REWARD     = OpcodeUtility::Opcodes::MINER_SET_REWARD,  // 0xd5 - miner -> node: Encrypted reward address (32 bytes)
             MINER_REWARD_RESULT  = OpcodeUtility::Opcodes::MINER_REWARD_RESULT,  // 0xd6 - node -> miner: Encrypted validation result
 
+            /** UNIFIED PUSH NOTIFICATION SYSTEM (PR #230)
+             *
+             *  Both protocol lanes use identical 12-byte payload:
+             *    [0-3]   nUnifiedHeight  (uint32, big-endian)
+             *    [4-7]   nChannelHeight  (uint32, big-endian)
+             *    [8-11]  nBits           (uint32, big-endian)
+             *
+             *  Legacy Tritium Protocol lane:    PRIME_BLOCK_AVAILABLE (0xD9), HASH_BLOCK_AVAILABLE (0xDA)
+             *  Stateless Tritium Protocol lane: STATELESS_PRIME_BLOCK_AVAILABLE (0xD0D9), STATELESS_HASH_BLOCK_AVAILABLE (0xD0DA)
+             *
+             *  Unified builder: PushNotificationBuilder::BuildChannelNotification<T>(channel, heights)
+             *    - BuildChannelNotification<Packet>          = Legacy Tritium Protocol (8-bit opcodes)
+             *    - BuildChannelNotification<StatelessPacket>  = Stateless Tritium Protocol (16-bit opcodes)
+             **/
+
             /** PRIME_BLOCK_AVAILABLE (217 / 0xd9) - Prime Block Notification
              *
              *  Node → Miner: New Prime block has been validated (channel 1 only).
              *  
              *  SERVER-INITIATED: Sent automatically when a Prime block is added to blockchain.
+             *  Delivered on both Legacy Tritium Protocol (0xD9) and Stateless Tritium Protocol (0xD0D9) lanes.
              *  
              *  CHANNEL FILTERING:
              *  - Only sent to miners subscribed to Prime channel (1)
@@ -261,6 +277,7 @@ namespace LLP
              *  Node → Miner: New Hash block has been validated (channel 2 only).
              *  
              *  SERVER-INITIATED: Sent automatically when a Hash block is added to blockchain.
+             *  Delivered on both Legacy Tritium Protocol (0xDA) and Stateless Tritium Protocol (0xD0DA) lanes.
              *  
              *  CHANNEL FILTERING:
              *  - Only sent to miners subscribed to Hash channel (2)
@@ -333,10 +350,10 @@ namespace LLP
             CLOSE          = OpcodeUtility::Opcodes::CLOSE
         };
 
-        /** Stateless Mining 16-bit Opcodes
+        /** Stateless Tritium Protocol 16-bit Opcodes
          *
-         *  NEW STATELESS PROTOCOL (Compatible with NexusMiner):
-         *  ====================================================
+         *  STATELESS TRITIUM PROTOCOL (Compatible with NexusMiner):
+         *  ========================================================
          *
          *  These 16-bit opcodes enable a simplified stateless mining protocol where:
          *  1. Miner connects and sends STATELESS_MINER_READY (0xD0D8 = Mirror(216))
@@ -349,13 +366,13 @@ namespace LLP
          *
          *  MIRROR-MAPPED SCHEME:
          *  - All stateless opcodes follow: statelessOpcode = 0xD000 | legacyOpcode
-         *  - This provides 1:1 mapping with legacy protocol
+         *  - This provides 1:1 mapping with Legacy Tritium Protocol
          *  - Simplifies protocol bridging and maintains compatibility
          *
          *  BACKWARD COMPATIBILITY:
-         *  - Existing 8-bit opcodes (216-218) continue to work
+         *  - Existing 8-bit opcodes (216-218) continue to work on Legacy Tritium Protocol (port 9325)
          *  - Old miners use MINER_READY (216) with GET_BLOCK polling
-         *  - New miners use STATELESS_MINER_READY (0xD0D8) with push notifications
+         *  - New miners use STATELESS_MINER_READY (0xD0D8) on Stateless Tritium Protocol (port 9323)
          *
          **/
         
@@ -592,7 +609,8 @@ namespace LLP
          *  Send a channel-specific push notification to this miner.
          *  Called when miner subscribes via MINER_READY (216/0xD8).
          *
-         *  Uses 8-bit opcodes (217/218) for legacy lane.
+         *  Uses 8-bit opcodes (217/218) for Legacy Tritium Protocol lane.
+         *  See also: PushNotificationBuilder for unified builder supporting both lanes.
          *
          **/
         void SendChannelNotification();

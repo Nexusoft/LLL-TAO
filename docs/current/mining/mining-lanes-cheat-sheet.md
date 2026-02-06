@@ -34,9 +34,9 @@
 
 ### A1.1 Authentication (Falcon challenge-response)
 **Intent:** Miner identity/session auth (NOT block signing).  
-**Who uses it:** Stateless lane mandatory; legacy lane may still support for compatibility depending on policy.
+**Who uses it:** Stateless Tritium Protocol lane mandatory; Legacy Tritium Protocol lane may still support for compatibility depending on policy.
 
-**Typical flow (8-bit naming, conceptually same for stateless lane):**
+**Typical flow (8-bit naming, conceptually same for Stateless Tritium Protocol lane):**
 1. Miner → Node: `MINER_AUTH_INIT (207)`
 2. Node → Miner: `MINER_AUTH_CHALLENGE (208)`
 3. Miner → Node: `MINER_AUTH_RESPONSE (209)`
@@ -51,7 +51,7 @@
 
 **Cross references:**
 - `src/LLP/miner.cpp` routes some packets to `StatelessMiner::ProcessPacket(...)` (migration scaffold)
-- `src/LLP/stateless_miner_connection.cpp` handles stateless lane opcodes and uses `MiningContext`
+- `src/LLP/stateless_miner_connection.cpp` handles Stateless Tritium Protocol lane opcodes and uses `MiningContext`
 
 ### A1.2 Encryption (ChaCha20 session wrapping)
 **Intent:** Encrypt selected payloads after auth (e.g., reward binding, submit wrappers depending on protocol stage).
@@ -79,7 +79,7 @@
 
 ---
 
-## A2) Legacy lane (8323 / 8-bit) — Auth/Session/Reward touchpoints
+## A2) Legacy Tritium Protocol lane (8323 / 8-bit) — Auth/Session/Reward touchpoints
 
 **Port:** `MAINNET_LEGACY_MINING_LLP_PORT` / `TESTNET_LEGACY_MINING_LLP_PORT` = 8323 (`src/LLP/include/port.h`)
 
@@ -104,7 +104,7 @@
 
 ---
 
-## A3) Stateless lane (9323+ / 16-bit) — Auth/Session/Reward touchpoints
+## A3) Stateless Tritium Protocol lane (9323+ / 16-bit) — Auth/Session/Reward touchpoints
 
 **Port:** `MAINNET_MINING_LLP_PORT` / `TESTNET_MINING_LLP_PORT` = 9323 (`src/LLP/include/port.h`)
 
@@ -229,7 +229,7 @@
 
 ---
 
-## B2) Legacy lane mining server (8323): `LLP::Miner`
+## B2) Legacy Tritium Protocol lane mining server (8323): `LLP::Miner`
 
 **Files:**
 - `src/LLP/miner.cpp`
@@ -256,7 +256,7 @@
 
 ---
 
-## B3) Stateless lane mining server (9323+): `LLP::StatelessMinerConnection`
+## B3) Stateless Tritium Protocol lane mining server (9323+): `LLP::StatelessMinerConnection`
 
 **Files:**
 - `src/LLP/stateless_miner_connection.cpp`
