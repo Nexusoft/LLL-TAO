@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <string>
 
 #include <Util/templates/datastream.h>
+#include <LLP/include/opcode_utility.h>
 
 namespace LLP
 {
@@ -200,46 +201,11 @@ namespace LLP
          **/
         bool HasDataPayload() const
         {
-            /* Boundary constants for mining round response packets (PR #151/PR #153)
-             * These packets carry height and difficulty data for stateless mining.
-             * NEW_ROUND (204): 12 bytes - unified height (4) + channel height (4) + difficulty (4)
-             * OLD_ROUND (205): variable - rejection reason or stale height info
+            /* Delegate to centralized opcode classification in OpcodeUtility.
+             * This eliminates duplicate hardcoded range constants and ensures
+             * consistency across the codebase.
              */
-            static const uint8_t ROUND_RESPONSE_FIRST = 204;  // NEW_ROUND
-            static const uint8_t ROUND_RESPONSE_LAST = 205;   // OLD_ROUND
-            
-            /* Boundary constants for Falcon authentication packets */
-            static const uint8_t FALCON_AUTH_FIRST = 207;  // MINER_AUTH_INIT
-            static const uint8_t FALCON_AUTH_LAST = 212;   // SESSION_KEEPALIVE
-            
-            /* Boundary constants for reward address binding packets */
-            static const uint8_t REWARD_BINDING_FIRST = 213;  // MINER_SET_REWARD
-            static const uint8_t REWARD_BINDING_LAST = 214;   // MINER_REWARD_RESULT
-            
-            /* Channel acknowledgment packet */
-            static const uint8_t CHANNEL_ACK = 206;
-
-            /* Traditional data packets */
-            if(HEADER < 128)
-                return true;
-
-            /* Mining round response packets carry height data (PR #151/PR #153) */
-            if(HEADER >= ROUND_RESPONSE_FIRST && HEADER <= ROUND_RESPONSE_LAST)
-                return true;
-
-            /* Channel acknowledgment requires data (channel number) */
-            if(HEADER == CHANNEL_ACK)
-                return true;
-
-            /* Falcon authentication packets require data */
-            if(HEADER >= FALCON_AUTH_FIRST && HEADER <= FALCON_AUTH_LAST)
-                return true;
-            
-            /* Reward address binding packets require data (encrypted) */
-            if(HEADER >= REWARD_BINDING_FIRST && HEADER <= REWARD_BINDING_LAST)
-                return true;
-
-            return false;
+            return OpcodeUtility::HasDataPayload(HEADER);
         }
 
 
