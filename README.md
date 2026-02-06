@@ -82,6 +82,17 @@ Developing on Nexus has been designed to be powerful, yet simple to use. Tritium
 Nexus is released under the terms of the MIT license. See [COPYING](COPYING.MD) for more
 information or see https://opensource.org/licenses/MIT.
 
+## Documentation & Diagrams
+
+Architecture diagrams, protocol visualizations, and onboarding guides:
+
+- [Diagram Templates & Architecture Diagrams](docs/diagrams/README.md) - 15+ Mermaid and ASCII diagrams
+- [AI-Assisted Developer Onboarding](docs/onboarding/ai-assisted-onboarding.md) - Learning pathways with AI guidance
+- [AI-Human Advancement Thesis](docs/philosophy/ai-human-advancement.md) - Collaboration philosophy
+- [Mining Debug Cheat Sheet](docs/onboarding/cheat-sheets/mining-debug.md)
+- [Consensus Debug Cheat Sheet](docs/onboarding/cheat-sheets/consensus-debug.md)
+- [Performance Tuning](docs/onboarding/cheat-sheets/performance-tuning.md)
+
 ## Contributing
 
 If you would like to contribute as always submit a pull request. All code contributions should follow the comments and style guides. See [COMMENTS](contrib/COMMENTS.md) or [STYLEGUIDE](contrib/STYLEGUIDE.md) for more information.
