@@ -544,9 +544,9 @@ verbose=5  # Maximum verbosity (trace level)
 
 **Related Documentation:**
 - [Stateless Protocol](stateless-protocol.md)
-- [Template Generation](template-generation.md)
-- [Session Management](session-management.md)
-- [Push Notifications](push-notifications.md)
+- [Mining Lanes Cheat Sheet](mining-lanes-cheat-sheet.md)
+- [Protocol Lanes](../../protocol/mining-protocol.md)
+- [Push Notification Flow Diagram](../../diagrams/push-notification-flow.md)
 - [Configuration Reference](../../reference/nexus.conf.md)
 - [Troubleshooting](../troubleshooting/mining-server-issues.md)
 

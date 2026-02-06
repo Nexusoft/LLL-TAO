@@ -53,6 +53,9 @@ docs/
 │   ├── flow-chart.md
 │   ├── state-machine.md
 │   └── data-pipeline.md
+│   └── push-notification-flow.md
+├── protocol/                   # Protocol specifications
+│   └── mining-protocol.md      # Legacy vs Stateless Tritium Protocol lanes
 ├── current/                    # Active node features
 │   ├── mining/                 # Mining server & stateless protocol
 │   ├── authentication/         # Falcon verification & sessions

@@ -645,9 +645,9 @@ void StatelessMinerConnection::ProcessSubmitBlock(const Packet& packet)
 
 **Node Documentation:**
 - [Mining Server Architecture](mining-server.md)
-- [Template Generation](template-generation.md)
-- [Session Management](session-management.md)
-- [Push Notifications](push-notifications.md)
+- [Mining Lanes Cheat Sheet](mining-lanes-cheat-sheet.md)
+- [Protocol Lanes](../../protocol/mining-protocol.md)
+- [Push Notification Flow Diagram](../../diagrams/push-notification-flow.md)
 - [Opcodes Reference](../../reference/opcodes-reference.md)
 - [Configuration Reference](../../reference/nexus.conf.md)
 
