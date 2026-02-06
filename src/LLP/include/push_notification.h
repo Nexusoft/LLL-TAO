@@ -35,7 +35,7 @@ namespace LLP
      **/
     enum class ProtocolLane : uint8_t
     {
-        LEGACY    = 0,  // Legacy Tritium Protocol: 8-bit opcodes (port 9325)
+        LEGACY    = 0,  // Legacy Tritium Protocol: 8-bit opcodes (port 8323)
         STATELESS = 1   // Stateless Tritium Protocol: 16-bit opcodes (port 9323)
     };
 

@@ -12,7 +12,7 @@ sequenceDiagram
     participant N as Node (Legacy Lane)
     participant S as Node (Stateless Lane)
     
-    Note over M,N: Legacy Tritium Protocol (8-bit, port 9325)
+    Note over M,N: Legacy Tritium Protocol (8-bit, port 8323)
     M->>N: MINER_READY (0xD8)
     N->>M: PRIME_BLOCK_AVAILABLE (0xD9) [12 bytes]
     M->>N: GET_BLOCK (0x81)

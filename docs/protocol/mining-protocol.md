@@ -7,7 +7,7 @@ This document defines the two protocol lanes used for mining communication betwe
 ## Protocol Lanes
 
 ### Legacy Tritium Protocol (8-bit)
-- **Port:** 9325 (mainnet), 8323 (testnet)
+- **Port:** 8323 (mainnet and testnet)
 - **Opcodes:** 0x00-0xFF (single byte)
 - **Wire format:** `[opcode(1)][length(4)][payload]`
 - **Push notifications:**
