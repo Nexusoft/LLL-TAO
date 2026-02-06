@@ -21,6 +21,7 @@ ________________________________________________________________________________
 #include <LLP/include/opcode_utility.h>
 #include <LLP/include/node_cache.h>
 #include <LLP/include/session_recovery.h>
+#include <LLP/include/push_notification.h>
 #include <LLP/types/miner.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
@@ -95,6 +96,8 @@ namespace LLP
     , fEncryptionReady(false)
     , hashRewardAddress(0)
     , fRewardBound(false)
+    , fSubscribedToNotifications(false)
+    , nSubscribedChannel(0)
     {
     }
 
@@ -118,6 +121,8 @@ namespace LLP
     , fEncryptionReady(false)
     , hashRewardAddress(0)
     , fRewardBound(false)
+    , fSubscribedToNotifications(false)
+    , nSubscribedChannel(0)
     {
     }
 
@@ -141,6 +146,8 @@ namespace LLP
     , fEncryptionReady(false)
     , hashRewardAddress(0)
     , fRewardBound(false)
+    , fSubscribedToNotifications(false)
+    , nSubscribedChannel(0)
     {
     }
 
@@ -850,6 +857,47 @@ namespace LLP
 
                 LOCK(MUTEX);
                 clear_map();
+                return true;
+            }
+
+
+            /* MINER_READY (216 / 0xD8) - Subscribe to Push Notifications
+             * 
+             * Miner sends this after authentication to subscribe to channel-specific
+             * push notifications instead of polling GET_ROUND.
+             */
+            case MINER_READY:
+            {
+                debug::log(2, FUNCTION, "════════════════════════════════════════════════════════════");
+                debug::log(2, FUNCTION, "MINER_READY received from ", GetAddress().ToStringIP());
+                
+                /* Validate channel (1=Prime, 2=Hash only) */
+                if(nChannel != 1 && nChannel != 2)
+                {
+                    debug::error(FUNCTION, "Invalid channel for MINER_READY: ", nChannel);
+                    debug::error(FUNCTION, "  Channel must be 1 (Prime) or 2 (Hash)");
+                    debug::error(FUNCTION, "  Miner must send SET_CHANNEL before MINER_READY");
+                    debug::log(2, FUNCTION, "════════════════════════════════════════════════════════════");
+                    Disconnect();
+                    return false;
+                }
+                
+                /* Update subscription state */
+                fSubscribedToNotifications = true;
+                nSubscribedChannel = nChannel;
+                
+                debug::log(2, FUNCTION, "Subscription activated:");
+                debug::log(2, FUNCTION, "  Channel: ", nChannel, " (", (nChannel == 1 ? "Prime" : "Hash"), ")");
+                debug::log(2, FUNCTION, "  Address: ", GetAddress().ToStringIP());
+                debug::log(2, FUNCTION, "");
+                debug::log(2, FUNCTION, "Sending immediate notification...");
+                
+                /* Send immediate notification */
+                SendChannelNotification();
+                
+                debug::log(2, FUNCTION, "MINER_READY handler complete");
+                debug::log(2, FUNCTION, "════════════════════════════════════════════════════════════");
+                
                 return true;
             }
 
@@ -1865,6 +1913,38 @@ namespace LLP
 
         /* Otherwise keep looping. */
         return false;
+    }
+
+
+    /* SendChannelNotification - Send push notification to subscribed miner (legacy lane) */
+    void Miner::SendChannelNotification()
+    {
+        /* Get blockchain state */
+        TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
+        
+        /* Get channel-specific state */
+        TAO::Ledger::BlockState stateChannel = stateBest;
+        if (!TAO::Ledger::GetLastState(stateChannel, nSubscribedChannel))
+        {
+            debug::error(FUNCTION, "Failed to get channel state for channel ", nSubscribedChannel);
+            return;
+        }
+        
+        /* Get difficulty */
+        uint32_t nDifficulty = TAO::Ledger::GetNextTargetRequired(stateBest, nSubscribedChannel);
+        
+        /* Build notification using unified builder (8-bit opcodes for legacy lane) */
+        Packet notification = PushNotificationBuilder::BuildChannelNotification<Packet>(
+            nSubscribedChannel, ProtocolLane::LEGACY, stateBest, stateChannel, nDifficulty);
+        
+        /* Send to miner */
+        respond(notification.HEADER, notification.DATA);
+        
+        debug::log(2, FUNCTION, "Sent ", (nSubscribedChannel == 1 ? "Prime" : "Hash"), 
+                   " notification to ", GetAddress().ToStringIP(),
+                   " (unified=", stateBest.nHeight, 
+                   ", channel=", stateChannel.nChannelHeight,
+                   ", diff=", std::hex, nDifficulty, std::dec, ")");
     }
 
 }

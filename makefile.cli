@@ -453,6 +453,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_falcon_handshake.o \
 		build/LLP_falcon_verify.o \
 		build/LLP_opcode_utility.o \
+		build/LLP_push_notification.o \
 		build/API_commands_assets_initialize.o \
 		build/API_commands_assets_json.o \
 		build/API_commands_assets_partial.o \

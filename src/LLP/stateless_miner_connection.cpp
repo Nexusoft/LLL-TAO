@@ -24,6 +24,7 @@ ________________________________________________________________________________
 #include <LLP/include/auto_cooldown_manager.h>
 #include <LLP/include/pool_discovery.h>
 #include <LLP/include/opcode_utility.h>
+#include <LLP/include/push_notification.h>
 #include <LLP/templates/events.h>
 
 #include <TAO/Ledger/include/create.h>
@@ -3599,45 +3600,22 @@ namespace LLP
         /* Get difficulty */
         uint32_t nDifficulty = TAO::Ledger::GetNextTargetRequired(stateBest, nChannel);
         
-        /* Determine opcode based on channel (use 16-bit stateless mirror opcodes) */
-        using namespace StatelessOpcodes;
-        uint16_t nOpcode = (nChannel == 1) ? STATELESS_PRIME_BLOCK_AVAILABLE : STATELESS_HASH_BLOCK_AVAILABLE;
-        
-        /* Build 12-byte packet (big-endian) */
-        StatelessPacket notification(nOpcode);
-        notification.DATA.reserve(12);  // Pre-allocate to avoid reallocations
-        
-        // Unified height [0-3]
-        notification.DATA.push_back((stateBest.nHeight >> 24) & 0xFF);
-        notification.DATA.push_back((stateBest.nHeight >> 16) & 0xFF);
-        notification.DATA.push_back((stateBest.nHeight >> 8) & 0xFF);
-        notification.DATA.push_back((stateBest.nHeight >> 0) & 0xFF);
-        
-        // Channel height [4-7]
-        uint32_t nChannelHeight = stateChannel.nChannelHeight;
-        notification.DATA.push_back((nChannelHeight >> 24) & 0xFF);
-        notification.DATA.push_back((nChannelHeight >> 16) & 0xFF);
-        notification.DATA.push_back((nChannelHeight >> 8) & 0xFF);
-        notification.DATA.push_back((nChannelHeight >> 0) & 0xFF);
-        
-        // Difficulty [8-11]
-        notification.DATA.push_back((nDifficulty >> 24) & 0xFF);
-        notification.DATA.push_back((nDifficulty >> 16) & 0xFF);
-        notification.DATA.push_back((nDifficulty >> 8) & 0xFF);
-        notification.DATA.push_back((nDifficulty >> 0) & 0xFF);
-        
-        notification.LENGTH = 12;
+        /* Build notification using unified builder */
+        StatelessPacket notification = PushNotificationBuilder::BuildChannelNotification<StatelessPacket>(
+            nChannel, ProtocolLane::STATELESS, stateBest, stateChannel, nDifficulty);
         
         /* Log the notification details BEFORE sending for diagnostics */
         const std::string strOpcodeName = (nChannel == 1) ? 
             "PRIME_BLOCK_AVAILABLE (NEW_PRIME_AVAILABLE)" : 
             "HASH_BLOCK_AVAILABLE (NEW_HASH_AVAILABLE)";
         
+        uint32_t nChannelHeight = stateChannel.nChannelHeight;
+        
         debug::log(2, "════════════════════════════════════════════════════════════");
         debug::log(2, "📢 SENDING PUSH NOTIFICATION TO MINER");
         debug::log(2, "════════════════════════════════════════════════════════════");
         debug::log(2, "   Opcode:         ", strOpcodeName);
-        debug::log(2, "   Opcode Value:   0x", std::hex, static_cast<uint32_t>(nOpcode), std::dec, " (", static_cast<uint32_t>(nOpcode), ")");
+        debug::log(2, "   Opcode Value:   0x", std::hex, static_cast<uint32_t>(notification.HEADER), std::dec, " (", static_cast<uint32_t>(notification.HEADER), ")");
         debug::log(2, "   To Address:     ", GetAddress().ToStringIP());
         debug::log(2, "   Channel:        ", nChannel, " (", (nChannel == 1 ? "Prime" : "Hash"), ")");
         debug::log(2, "   Payload:");
