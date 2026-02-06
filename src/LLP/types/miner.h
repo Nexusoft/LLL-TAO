@@ -418,6 +418,10 @@ namespace LLP
         uint256_t            hashRewardAddress;  // Where to send mining rewards
         bool                 fRewardBound;       // True after successful MINER_SET_REWARD
 
+        /* Push notification subscription state */
+        bool                 fSubscribedToNotifications;  // Whether miner subscribed to push notifications
+        uint32_t             nSubscribedChannel;         // Channel miner subscribed to (1=Prime, 2=Hash)
+
     public:
 
         /** Default Constructor **/
@@ -581,6 +585,17 @@ namespace LLP
          *
          **/
         bool is_prime_mod(uint32_t nBitMask, TAO::Ledger::Block *pBlock);
+
+
+        /** SendChannelNotification
+         *
+         *  Send a channel-specific push notification to this miner.
+         *  Called when miner subscribes via MINER_READY (216/0xD8).
+         *
+         *  Uses 8-bit opcodes (217/218) for legacy lane.
+         *
+         **/
+        void SendChannelNotification();
 
     };
 }
