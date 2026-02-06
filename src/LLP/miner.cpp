@@ -887,7 +887,7 @@ namespace LLP
                 nSubscribedChannel = nChannel;
                 
                 debug::log(2, FUNCTION, "Subscription activated:");
-                debug::log(2, FUNCTION, "  Channel: ", nChannel, " (", (nChannel == 1 ? "Prime" : "Hash"), ")");
+                debug::log(2, FUNCTION, "  Channel: ", nChannel, " (", GetChannelName(nChannel), ")");
                 debug::log(2, FUNCTION, "  Address: ", GetAddress().ToStringIP());
                 debug::log(2, FUNCTION, "");
                 debug::log(2, FUNCTION, "Sending immediate notification...");
@@ -1940,7 +1940,7 @@ namespace LLP
         /* Send to miner */
         respond(notification.HEADER, notification.DATA);
         
-        debug::log(2, FUNCTION, "Sent ", (nSubscribedChannel == 1 ? "Prime" : "Hash"), 
+        debug::log(2, FUNCTION, "Sent ", GetChannelName(nSubscribedChannel), 
                    " notification to ", GetAddress().ToStringIP(),
                    " (unified=", stateBest.nHeight, 
                    ", channel=", stateChannel.nChannelHeight,

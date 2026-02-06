@@ -24,6 +24,9 @@ namespace TAO { namespace Ledger { class BlockState; } }
 
 namespace LLP
 {
+    /** Protocol constants for mining **/
+    static constexpr size_t TRITIUM_BLOCK_SIZE = 216;  // Serialized Tritium block template size
+
     /** ProtocolLane
      *
      *  Identifies which mining protocol lane (8-bit legacy or 16-bit stateless)
@@ -35,6 +38,20 @@ namespace LLP
         LEGACY    = 0,  // 8-bit opcodes (port 8323)
         STATELESS = 1   // 16-bit opcodes (port 9323)
     };
+
+    /** GetChannelName
+     *
+     *  Get the human-readable name for a mining channel.
+     *
+     *  @param[in] nChannel Mining channel (1=Prime, 2=Hash)
+     *
+     *  @return "Prime" for channel 1, "Hash" for channel 2, "Unknown" otherwise
+     *
+     **/
+    inline const char* GetChannelName(uint32_t nChannel)
+    {
+        return (nChannel == 1) ? "Prime" : (nChannel == 2) ? "Hash" : "Unknown";
+    }
 
     /** PushNotificationBuilder
      *

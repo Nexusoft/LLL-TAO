@@ -3617,7 +3617,7 @@ namespace LLP
         debug::log(2, "   Opcode:         ", strOpcodeName);
         debug::log(2, "   Opcode Value:   0x", std::hex, static_cast<uint32_t>(notification.HEADER), std::dec, " (", static_cast<uint32_t>(notification.HEADER), ")");
         debug::log(2, "   To Address:     ", GetAddress().ToStringIP());
-        debug::log(2, "   Channel:        ", nChannel, " (", (nChannel == 1 ? "Prime" : "Hash"), ")");
+        debug::log(2, "   Channel:        ", nChannel, " (", GetChannelName(nChannel), ")");
         debug::log(2, "   Payload:");
         debug::log(2, "      Unified Height:  ", stateBest.nHeight);
         debug::log(2, "      Channel Height:  ", nChannelHeight);
@@ -3646,7 +3646,7 @@ namespace LLP
             context = context.WithNotificationSent(nNotificationTimestamp);
         }  // MUTEX automatically unlocked here
         
-        debug::log(2, FUNCTION, "Sent ", (nChannel == 1 ? "Prime" : "Hash"), 
+        debug::log(2, FUNCTION, "Sent ", GetChannelName(nChannel), 
                    " notification to ", GetAddress().ToStringIP(),
                    " (unified=", stateBest.nHeight, 
                    ", channel=", nChannelHeight,
@@ -3658,7 +3658,6 @@ namespace LLP
     void StatelessMinerConnection::SendStatelessTemplate()
     {
         /* Protocol constants for stateless template push */
-        static const size_t TRITIUM_BLOCK_SIZE = 216;        // Serialized Tritium block template size
         static const size_t METADATA_SIZE = 12;              // Height (4) + channel height (4) + difficulty (4)
         static const size_t STATELESS_TEMPLATE_SIZE = 228;   // Total: metadata + block template
         
@@ -3689,7 +3688,7 @@ namespace LLP
         debug::log(2, "📤 SENDING STATELESS TEMPLATE (0xD081)");
         debug::log(2, "════════════════════════════════════════════════════════════");
         debug::log(2, "   To Address:     ", GetAddress().ToStringIP());
-        debug::log(2, "   Channel:        ", nChannel, " (", (nChannel == 1 ? "Prime" : "Hash"), ")");
+        debug::log(2, "   Channel:        ", nChannel, " (", GetChannelName(nChannel), ")");
         
         /* Get blockchain state */
         TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
