@@ -22,7 +22,18 @@ ________________________________________________________________________________
  *  been consolidated into OpcodeUtility::Stateless in opcode_utility.h
  *
  *  New code should use OpcodeUtility::Stateless directly.
- *  This alias allows legacy code to continue working without changes.
+ *  
+ *  INTENTIONAL NAMESPACE ALIAS:
+ *  This header intentionally introduces the StatelessOpcodes alias into
+ *  the including scope to maintain backward compatibility with existing
+ *  code that uses patterns like:
+ *    - using namespace StatelessOpcodes;
+ *    - StatelessOpcodes::Mirror(opcode)
+ *    - StatelessOpcodes::STATELESS_GET_BLOCK
+ *  
+ *  This is a transitional compatibility layer. Legacy code continues to
+ *  work without changes, while all definitions come from the canonical
+ *  source (OpcodeUtility::Stateless).
  **/
 
 #include <LLP/include/opcode_utility.h>
@@ -31,6 +42,9 @@ namespace LLP
 {
     /** Backward compatibility namespace alias
      *  StatelessOpcodes now points to OpcodeUtility::Stateless
+     *  
+     *  NOTE: Including this header introduces the StatelessOpcodes alias.
+     *  This is intentional for backward compatibility.
      **/
     namespace StatelessOpcodes = OpcodeUtility::Stateless;
 
