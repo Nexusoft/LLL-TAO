@@ -40,6 +40,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/include/process.h>
+#include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/credentials.h>
 #include <TAO/Ledger/types/transaction.h>
