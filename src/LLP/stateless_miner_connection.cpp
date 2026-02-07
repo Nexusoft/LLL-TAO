@@ -66,6 +66,14 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    /* Import opcode constants for stateless mining protocol */
+    using LLP::OpcodeUtility::Opcodes::MINER_AUTH_INIT;
+    using LLP::OpcodeUtility::Opcodes::MINER_AUTH_CHALLENGE;
+    using LLP::OpcodeUtility::Opcodes::MINER_AUTH_RESPONSE;
+    using LLP::OpcodeUtility::Opcodes::MINER_AUTH_RESULT;
+    using LLP::OpcodeUtility::Opcodes::SESSION_START;
+    using LLP::OpcodeUtility::Opcodes::SESSION_KEEPALIVE;
+
     /**
      * DetectedFalconVersionString
      * 
