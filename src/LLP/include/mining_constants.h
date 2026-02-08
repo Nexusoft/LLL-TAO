@@ -68,18 +68,25 @@ namespace MiningConstants
     // OPCODE VALIDATION RANGES
     //=========================================================================
     
-    /** Start of valid mining opcodes (BLOCK_ACCEPTED = 200) */
+    /** Start of valid mining opcodes (BLOCK_ACCEPTED = 200)
+     *  This covers both legacy responses (200-206) and stateless-specific opcodes (207-218)
+     */
     constexpr uint8_t MINING_OPCODE_MIN = 200;
     
-    /** End of valid mining opcodes (HASH_BLOCK_AVAILABLE = 218) */
+    /** End of valid mining opcodes (HASH_BLOCK_AVAILABLE = 218)
+     *  This is the highest opcode in the mining protocol range
+     */
     constexpr uint8_t MINING_OPCODE_MAX = 218;
     
     /** Start of stateless-specific opcodes (MINER_AUTH_INIT = 207)
      *  These opcodes should NOT be mirrored as they are already stateless-protocol-specific
+     *  Legacy responses (200-206) are mirrored, stateless-specific (207-218) are not
      */
     constexpr uint8_t STATELESS_MINING_OPCODE_MIN = 207;
     
-    /** End of stateless-specific opcodes (HASH_BLOCK_AVAILABLE = 218) */
+    /** End of stateless-specific opcodes (HASH_BLOCK_AVAILABLE = 218)
+     *  Same as MINING_OPCODE_MAX - all opcodes from 207-218 are stateless-specific
+     */
     constexpr uint8_t STATELESS_MINING_OPCODE_MAX = 218;
     
     //=========================================================================
@@ -90,6 +97,11 @@ namespace MiningConstants
      *  Reduces expensive GetNextTargetRequired() calls during high mining activity
      */
     constexpr uint32_t DIFFICULTY_CACHE_TTL_MS = 1000;
+    
+    /** Difficulty cache TTL in seconds (for runtime comparison)
+     *  Precalculated to avoid division in hot path
+     */
+    constexpr uint64_t DIFFICULTY_CACHE_TTL_SECONDS = DIFFICULTY_CACHE_TTL_MS / 1000;
     
 } // namespace MiningConstants
 } // namespace LLP

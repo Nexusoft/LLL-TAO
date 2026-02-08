@@ -111,13 +111,9 @@ namespace LLP
     /* The block iterator to act as extra nonce. */
     std::atomic<uint32_t> StatelessMinerConnection::nBlockIterator(0);
     
-    /* Difficulty cache static variables */
+    /* Difficulty cache static variables with padding to prevent false sharing */
     std::atomic<uint64_t> StatelessMinerConnection::nDiffCacheTime(0);
-    std::atomic<uint32_t> StatelessMinerConnection::nDiffCacheValue[3] = {
-        std::atomic<uint32_t>(0),  // PoS channel
-        std::atomic<uint32_t>(0),  // Prime channel
-        std::atomic<uint32_t>(0)   // Hash channel
-    };
+    StatelessMinerConnection::PaddedDifficultyCache StatelessMinerConnection::nDiffCacheValue[3];
     
     /** Default Constructor **/
     StatelessMinerConnection::StatelessMinerConnection()
@@ -203,15 +199,14 @@ namespace LLP
         }
         
         /* Check if cache is still valid (within TTL)
-         * runtime::unifiedtimestamp() returns seconds, so compare directly with TTL in seconds */
+         * runtime::unifiedtimestamp() returns seconds, compare with precalculated TTL in seconds */
         uint64_t nNow = runtime::unifiedtimestamp();
         uint64_t nCacheTime = nDiffCacheTime.load(std::memory_order_acquire);
-        uint64_t nCacheTTLSeconds = MiningConstants::DIFFICULTY_CACHE_TTL_MS / 1000;
         
-        if(nCacheTime > 0 && (nNow - nCacheTime) < nCacheTTLSeconds)
+        if(nCacheTime > 0 && (nNow - nCacheTime) < MiningConstants::DIFFICULTY_CACHE_TTL_SECONDS)
         {
             /* Cache hit - return cached value */
-            uint32_t nCachedDiff = nDiffCacheValue[nChannel].load(std::memory_order_acquire);
+            uint32_t nCachedDiff = nDiffCacheValue[nChannel].nDifficulty.load(std::memory_order_acquire);
             debug::log(3, FUNCTION, "Difficulty cache HIT for channel ", nChannel, 
                       " (age: ", (nNow - nCacheTime), "s)");
             return nCachedDiff;
@@ -231,14 +226,14 @@ namespace LLP
                                                    std::memory_order_acquire))
         {
             /* We won the race - update the cached difficulty value */
-            nDiffCacheValue[nChannel].store(nDiff, std::memory_order_release);
+            nDiffCacheValue[nChannel].nDifficulty.store(nDiff, std::memory_order_release);
             debug::log(3, FUNCTION, "Difficulty cache MISS for channel ", nChannel, 
                       " - recalculated: 0x", std::hex, nDiff, std::dec);
         }
         else
         {
             /* Another thread updated the cache - use their value to avoid redundant work */
-            nDiff = nDiffCacheValue[nChannel].load(std::memory_order_acquire);
+            nDiff = nDiffCacheValue[nChannel].nDifficulty.load(std::memory_order_acquire);
             debug::log(3, FUNCTION, "Difficulty cache race avoided for channel ", nChannel,
                       " - using concurrent update");
         }

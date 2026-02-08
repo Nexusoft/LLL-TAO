@@ -355,9 +355,16 @@ namespace LLP
         // DIFFICULTY CACHING (Performance Optimization)
         // ═══════════════════════════════════════════════════════════════════════
         
-        /** Static difficulty cache (shared across all connections) **/
+        /** Static difficulty cache (shared across all connections) 
+         *  Note: Each atomic is padded to prevent false sharing on cache lines
+         **/
         static std::atomic<uint64_t> nDiffCacheTime;
-        static std::atomic<uint32_t> nDiffCacheValue[3];  // Per channel [0=PoS, 1=Prime, 2=Hash]
+        
+        /** Padded cache values to prevent false sharing (64-byte cache line alignment) **/
+        struct alignas(64) PaddedDifficultyCache {
+            std::atomic<uint32_t> nDifficulty{0};
+        };
+        static PaddedDifficultyCache nDiffCacheValue[3];  // Per channel [0=PoS, 1=Prime, 2=Hash]
         
         /** GetCachedDifficulty
          *
