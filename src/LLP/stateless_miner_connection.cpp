@@ -234,6 +234,7 @@ namespace LLP
             debug::log(3, FUNCTION, "Blockchain advanced during calculation - recalculating");
             stateBest = stateBestCheck;
             nDiff = TAO::Ledger::GetNextTargetRequired(stateBest, nChannel);
+            nNow = runtime::unifiedtimestamp();  // Update timestamp after recalculation
         }
         
         /* Try to update cache atomically - only succeeds if timestamp hasn't changed
