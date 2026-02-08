@@ -452,7 +452,13 @@ namespace LLP
             /* SERVER-SIDE FILTERING: Only notify matching channel */
             for (auto pConnection : vConnections)
             {
+                /* CRITICAL: Skip null connections WITHOUT any counting */
                 if (!pConnection)
+                    continue;
+                
+                /* Verify connection is still valid before GetContext()
+                 * Prevents ghost connection counting from stale disconnected connections */
+                if (!pConnection->Connected())
                     continue;
                 
                 /* Check for shutdown during iteration to exit quickly if needed */
