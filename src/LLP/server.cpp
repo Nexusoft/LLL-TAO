@@ -456,8 +456,9 @@ namespace LLP
                 if (!pConnection)
                     continue;
                 
-                /* Verify connection is still valid before GetContext()
-                 * Prevents ghost connection counting from stale disconnected connections */
+                /* Verify connection is still active before processing
+                 * Prevents ghost connection counting from stale disconnected connections
+                 * that would otherwise be counted in subscription/channel filter logic below */
                 if (!pConnection->Connected())
                     continue;
                 
