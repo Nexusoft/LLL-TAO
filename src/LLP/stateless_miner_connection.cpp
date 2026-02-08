@@ -710,7 +710,7 @@ namespace LLP
                     // Request rejected - violation already recorded
                     // Send empty response to indicate rate limited
                     debug::log(1, FUNCTION, "GET_BLOCK rate limited for ", GetAddress().ToStringIP());
-                    StatelessPacket response(BLOCK_DATA);
+                    StatelessPacket response(StatelessOpcodes::BLOCK_DATA);
                     response.LENGTH = 0;
                     respond(response);
                     return true;  // Handled (rejected)
@@ -752,7 +752,7 @@ namespace LLP
                 if(!pBlock)
                 {
                     debug::error("   ❌ new_block() returned nullptr");
-                    StatelessPacket response(BLOCK_DATA);
+                    StatelessPacket response(StatelessOpcodes::BLOCK_DATA);
                     response.LENGTH = 0;
                     respond(response);
                     debug::log(2, "📥 === GET_BLOCK: FAILED (NO BLOCK) ===");
@@ -781,7 +781,7 @@ namespace LLP
                     if(vData.empty())
                     {
                         debug::error("   ❌ Serialization returned empty vector!");
-                        StatelessPacket response(BLOCK_DATA);
+                        StatelessPacket response(StatelessOpcodes::BLOCK_DATA);
                         response.LENGTH = 0;
                         respond(response);
                         debug::log(2, "📥 === GET_BLOCK: FAILED (EMPTY SERIALIZATION) ===");
@@ -851,7 +851,7 @@ namespace LLP
                             debug::error(FUNCTION, "   Expected: ", pBlock->nChannel);
                             debug::error(FUNCTION, "   Got: ", nChannelFromSerialized);
                             
-                            StatelessPacket response(BLOCK_DATA);
+                            StatelessPacket response(StatelessOpcodes::BLOCK_DATA);
                             response.LENGTH = 0;
                             respond(response);
                             debug::log(2, "📥 === GET_BLOCK: FAILED (CHANNEL MISMATCH) ===");
@@ -865,7 +865,7 @@ namespace LLP
                             debug::error(FUNCTION, "   Expected: ", pBlock->nHeight);
                             debug::error(FUNCTION, "   Got: ", nHeightFromSerialized);
                             
-                            StatelessPacket response(BLOCK_DATA);
+                            StatelessPacket response(StatelessOpcodes::BLOCK_DATA);
                             response.LENGTH = 0;
                             respond(response);
                             debug::log(2, "📥 === GET_BLOCK: FAILED (HEIGHT MISMATCH) ===");
@@ -876,7 +876,7 @@ namespace LLP
                     }
                     
                     /* Create response packet */
-                    StatelessPacket response(BLOCK_DATA);
+                    StatelessPacket response(StatelessOpcodes::BLOCK_DATA);
                     response.DATA = vData;
                     response.LENGTH = static_cast<uint32_t>(vData.size());  // ⭐ CRITICAL FIX!
                     
@@ -924,7 +924,7 @@ namespace LLP
                     debug::error("   ❌ Serialization exception: ", e.what());
                     debug::log(2, "📥 === GET_BLOCK: EXCEPTION ===");
                     
-                    StatelessPacket response(BLOCK_DATA);
+                    StatelessPacket response(StatelessOpcodes::BLOCK_DATA);
                     response.LENGTH = 0;
                     respond(response);
                     
@@ -2013,7 +2013,7 @@ namespace LLP
                     // Request rejected - violation already recorded
                     // Send OLD_ROUND response to indicate rate limited
                     debug::log(1, FUNCTION, "GET_ROUND rate limited for ", GetAddress().ToStringIP());
-                    StatelessPacket response(OLD_ROUND);
+                    StatelessPacket response(StatelessOpcodes::OLD_ROUND);
                     response.LENGTH = 0;
                     respond(response);
                     return true;  // Handled (rejected)
@@ -2025,7 +2025,7 @@ namespace LLP
                     debug::log(0, FUNCTION, "Unauthenticated miner attempted GET_ROUND from ",
                                GetAddress().ToStringIP());
                     std::vector<uint8_t> vFail(1, 0x00);
-                    StatelessPacket response(OLD_ROUND);
+                    StatelessPacket response(StatelessOpcodes::OLD_ROUND);
                     response.DATA = vFail;
                     respond(response);
                     return true;
@@ -2040,7 +2040,7 @@ namespace LLP
                 {
                     debug::error(FUNCTION, "GET_ROUND: Miner has not set channel (use SET_CHANNEL)");
                     debug::error(FUNCTION, "   Valid channels: 1=Prime, 2=Hash (Stake mining uses different mechanism)");
-                    StatelessPacket response(OLD_ROUND);
+                    StatelessPacket response(StatelessOpcodes::OLD_ROUND);
                     response.LENGTH = 0;
                     respond(response);
                     return true;
@@ -2179,7 +2179,7 @@ namespace LLP
                 debug::log(2, "════════════════════════════════════════════════════════════");
                 
                 /* Send response */
-                StatelessPacket response(NEW_ROUND);
+                StatelessPacket response(StatelessOpcodes::NEW_ROUND);
                 response.DATA = vData;
                 response.LENGTH = static_cast<uint32_t>(vData.size());
                 respond(response);
@@ -2240,7 +2240,7 @@ namespace LLP
                             else
                             {
                                 /* Send BLOCK_DATA packet */
-                                StatelessPacket blockPacket(BLOCK_DATA);
+                                StatelessPacket blockPacket(StatelessOpcodes::BLOCK_DATA);
                                 blockPacket.DATA = vBlockData;
                                 blockPacket.LENGTH = static_cast<uint32_t>(vBlockData.size());
                                 respond(blockPacket);
