@@ -533,36 +533,13 @@ namespace LLP
     }
 
 
-    /* Packet type definitions - must match miner.h and NexusMiner Phase 2 protocol */
-    enum : StatelessPacket::message_t
-    {
-        /* Data packets */
-        BLOCK_DATA           = 0,
-        SUBMIT_BLOCK         = 1,
-        SET_CHANNEL          = 3,
-
-        /* Request packets */
-        GET_BLOCK            = 129,
-
-        /* Response packets */
-        BLOCK_ACCEPTED       = 200,
-        BLOCK_REJECTED       = 201,
-        CHANNEL_ACK          = 206,
-
-        /* Authentication packets - Phase 2 Unified Hybrid Protocol */
-        MINER_AUTH_INIT      = 207,  // miner -> node, sends Falcon pubkey + label
-        MINER_AUTH_CHALLENGE = 208,  // node -> miner, sends random nonce
-        MINER_AUTH_RESPONSE  = 209,  // miner -> node, sends Falcon signature over nonce
-        MINER_AUTH_RESULT    = 210,  // node -> miner, indicates success/fail
-
-        /* Session management packets */
-        SESSION_START        = 211,
-        SESSION_KEEPALIVE    = 212,
-
-        /* Reward address binding (encrypted with ChaCha20 after Falcon auth) */
-        MINER_SET_REWARD     = 213,  // 0xd5 - miner -> node: Encrypted reward address (32 bytes)
-        MINER_REWARD_RESULT  = 214,  // 0xd6 - node -> miner: Encrypted validation result
-    };
+    /* Packet type definitions - must match miner.h and NexusMiner Phase 2 protocol
+     * 
+     * NOTE: For case statements in ProcessPacket, use 8-bit opcodes from OpcodeUtility::Opcodes
+     * since incoming packets are unmirrored before routing. For constructing response packets,
+     * use 16-bit opcodes from StatelessOpcodes:: (alias to OpcodeUtility::Stateless::).
+     */
+    using namespace OpcodeUtility::Opcodes;  // 8-bit opcodes for case statements
 
 
     /* ProcessPacket overload for legacy 8-bit Packet type.
@@ -920,7 +897,7 @@ namespace LLP
             .WithFalconVersion(detected);
 
         /* Build challenge */
-        StatelessPacket response(MINER_AUTH_CHALLENGE);
+        StatelessPacket response(StatelessOpcodes::AUTH_CHALLENGE);
         uint16_t nNonceLen = static_cast<uint16_t>(vAuthNonce.size());
         response.DATA.push_back(static_cast<uint8_t>(nNonceLen >> 8));
         response.DATA.push_back(static_cast<uint8_t>(nNonceLen & 0xFF));
@@ -952,7 +929,7 @@ namespace LLP
         if(context.vAuthNonce.empty())
         {
             debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: no nonce (MINER_AUTH_INIT not received)");
-            StatelessPacket response(MINER_AUTH_RESULT);
+            StatelessPacket response(StatelessOpcodes::AUTH_RESULT);
             response.DATA.push_back(0x00); // Failure
             response.LENGTH = 1;
             return ProcessResult::Success(context, response);
@@ -961,7 +938,7 @@ namespace LLP
         if(context.vMinerPubKey.empty())
         {
             debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: no pubkey (MINER_AUTH_INIT not received)");
-            StatelessPacket response(MINER_AUTH_RESULT);
+            StatelessPacket response(StatelessOpcodes::AUTH_RESULT);
             response.DATA.push_back(0x00); // Failure
             response.LENGTH = 1;
             return ProcessResult::Success(context, response);
@@ -973,7 +950,7 @@ namespace LLP
         if(vData.size() < 2)
         {
             debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: packet too small, size=", vData.size());
-            StatelessPacket response(MINER_AUTH_RESULT);
+            StatelessPacket response(StatelessOpcodes::AUTH_RESULT);
             response.DATA.push_back(0x00); // Failure
             response.LENGTH = 1;
             return ProcessResult::Success(context, response);
@@ -990,7 +967,7 @@ namespace LLP
         if(nSigLen == 0 || nSigLen > FalconConstants::FALCON512_SIG_MAX_VALIDATION)
         {
             debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: invalid sig_len ", nSigLen);
-            StatelessPacket response(MINER_AUTH_RESULT);
+            StatelessPacket response(StatelessOpcodes::AUTH_RESULT);
             response.DATA.push_back(0x00); // Failure
             response.LENGTH = 1;
             return ProcessResult::Success(context, response);
@@ -1000,7 +977,7 @@ namespace LLP
         {
             debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: packet too small for signature, need=",
                        2 + nSigLen, " have=", vData.size());
-            StatelessPacket response(MINER_AUTH_RESULT);
+            StatelessPacket response(StatelessOpcodes::AUTH_RESULT);
             response.DATA.push_back(0x00); // Failure
             response.LENGTH = 1;
             return ProcessResult::Success(context, response);
@@ -1023,7 +1000,7 @@ namespace LLP
         {
             debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: invalid Falcon public key, len=",
                        context.vMinerPubKey.size());
-            StatelessPacket response(MINER_AUTH_RESULT);
+            StatelessPacket response(StatelessOpcodes::AUTH_RESULT);
             response.DATA.push_back(0x00); // Failure
             response.LENGTH = 1;
             return ProcessResult::Success(context, response);
@@ -1040,7 +1017,7 @@ namespace LLP
             debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: signature size mismatch: ", vSignature.size(),
                       " expected ", expectedSize, " for Falcon-",
                       (detectedVersion == LLC::FalconVersion::FALCON_512 ? "512" : "1024"));
-            StatelessPacket response(MINER_AUTH_RESULT);
+            StatelessPacket response(StatelessOpcodes::AUTH_RESULT);
             response.DATA.push_back(0x00); // Failure
             response.LENGTH = 1;
             return ProcessResult::Success(context, response);
@@ -1052,7 +1029,7 @@ namespace LLP
         {
             debug::log(0, FUNCTION, "MINER_AUTH_RESPONSE: invalid public key, len=",
                        context.vMinerPubKey.size());
-            StatelessPacket response(MINER_AUTH_RESULT);
+            StatelessPacket response(StatelessOpcodes::AUTH_RESULT);
             response.DATA.push_back(0x00); // Failure
             response.LENGTH = 1;
             return ProcessResult::Success(context, response);
@@ -1063,7 +1040,7 @@ namespace LLP
         if(!flkey.Verify(context.vAuthNonce, vSignature))
         {
             debug::log(0, FUNCTION, "MINER_AUTH verification FAILED from ", context.strAddress);
-            StatelessPacket response(MINER_AUTH_RESULT);
+            StatelessPacket response(StatelessOpcodes::AUTH_RESULT);
             response.DATA.push_back(0x00); // Failure
             response.LENGTH = 1;
             return ProcessResult::Success(context, response);
@@ -1120,7 +1097,7 @@ namespace LLP
                 debug::log(0, FUNCTION, "✗ Genesis not found on blockchain");
                 debug::log(0, FUNCTION, "════════════════════════════════════════════════════════");
                 
-                StatelessPacket response(MINER_AUTH_RESULT);
+                StatelessPacket response(StatelessOpcodes::AUTH_RESULT);
                 response.DATA.push_back(0x00); // Failure
                 response.LENGTH = 1;
                 return ProcessResult::Success(context, response);
@@ -1138,7 +1115,7 @@ namespace LLP
             debug::log(0, FUNCTION, "✗ No genesis hash provided - ChaCha20 encryption not possible");
             debug::log(0, FUNCTION, "  Genesis hash is required for secure session key derivation");
             
-            StatelessPacket response(MINER_AUTH_RESULT);
+            StatelessPacket response(StatelessOpcodes::AUTH_RESULT);
             response.DATA.push_back(0x00); // Failure
             response.LENGTH = 1;
             return ProcessResult::Success(context, response);
@@ -1187,7 +1164,7 @@ namespace LLP
             debug::error(FUNCTION, "   vChaChaKey size: ", newContext.vChaChaKey.size(), " (expected: 32)");
             
             /* This should never happen, but fail loudly if it does */
-            StatelessPacket response(MINER_AUTH_RESULT);
+            StatelessPacket response(StatelessOpcodes::AUTH_RESULT);
             response.DATA.push_back(0x00); // Failure
             response.LENGTH = 1;
             return ProcessResult::Success(context, response);
@@ -1203,7 +1180,7 @@ namespace LLP
         debug::log(0, FUNCTION, "");
 
         /* Build success response */
-        StatelessPacket response(MINER_AUTH_RESULT);
+        StatelessPacket response(StatelessOpcodes::AUTH_RESULT);
         response.DATA.push_back(0x01); // Success
         
         // Append session ID (4 bytes, little-endian)
@@ -1290,7 +1267,7 @@ namespace LLP
 
         /* Build acknowledgment response with session parameters */
         /* Response format: [success (1)][session_id (4)][timeout (4)][genesis (32)] */
-        StatelessPacket response(SESSION_START);
+        StatelessPacket response(StatelessOpcodes::SESSION_START);
         response.DATA.push_back(0x01); // Success
 
         /* Add session ID (4 bytes, little-endian) */
@@ -1355,7 +1332,7 @@ namespace LLP
             .WithTimestamp(runtime::unifiedtimestamp());
 
         /* Build acknowledgment response with channel number */
-        StatelessPacket response(CHANNEL_ACK);
+        StatelessPacket response(StatelessOpcodes::CHANNEL_ACK);
         response.DATA.push_back(static_cast<uint8_t>(nChannel));
         response.LENGTH = 1;
 
@@ -1403,7 +1380,7 @@ namespace LLP
 
         /* Build keepalive response with session status */
         /* Response format: [status (1)][remaining_timeout (4)] */
-        StatelessPacket response(SESSION_KEEPALIVE);
+        StatelessPacket response(StatelessOpcodes::SESSION_KEEPALIVE);
         response.DATA.push_back(0x01); // Success/active
 
         /* Calculate remaining time before timeout */
@@ -1575,7 +1552,7 @@ namespace LLP
         std::vector<uint8_t> vSuccessMsg = {0x01};  // Success status
         std::vector<uint8_t> vEncryptedSuccess = EncryptRewardResult(vSuccessMsg, vChaChaKey);
         
-        StatelessPacket response(MINER_REWARD_RESULT);
+        StatelessPacket response(StatelessOpcodes::REWARD_RESULT);
         response.DATA = vEncryptedSuccess;
         response.LENGTH = static_cast<uint32_t>(vEncryptedSuccess.size());
 
