@@ -79,6 +79,8 @@ namespace LLP
         // - Fair: Only verified bad behavior triggers penalties
         // - Reversible: Temp cooldowns only, auto-expire
         // - Non-invasive: Cannot steal work or target good miners
+        // 
+        // CONFIGURATION: See src/LLP/include/mining_constants.h for DEBUG vs PRODUCTION
         // ═══════════════════════════════════════════════════════════════════════
         
         struct RateLimitConfig {
@@ -88,9 +90,9 @@ namespace LLP
             static constexpr uint32_t MAX_SUBMIT_BLOCK_PER_MINUTE = 60;  // Lenient for solutions!
             static constexpr uint32_t MAX_SET_CHANNEL_PER_MINUTE = 5;
             
-            // Minimum intervals (milliseconds)
+            // Minimum intervals (from mining_constants.h - DEBUG vs PRODUCTION)
             static constexpr uint32_t MIN_GET_ROUND_INTERVAL_MS = 5000;   // 5 seconds
-            static constexpr uint32_t MIN_GET_BLOCK_INTERVAL_MS = 6000;   // 6 seconds
+            // MIN_GET_BLOCK_INTERVAL_MS: See MiningConstants::GET_BLOCK_MIN_INTERVAL_MS
             static constexpr uint32_t MIN_SUBMIT_BLOCK_INTERVAL_MS = 1000; // 1 second (lenient)
             
             // Violation thresholds
@@ -348,6 +350,27 @@ namespace LLP
          *
          **/
         bool IsThrottled() const { return m_rateLimit.fThrottleMode; }
+        
+        // ═══════════════════════════════════════════════════════════════════════
+        // DIFFICULTY CACHING (Performance Optimization)
+        // ═══════════════════════════════════════════════════════════════════════
+        
+        /** Static difficulty cache (shared across all connections) **/
+        static std::atomic<uint64_t> nDiffCacheTime;
+        static std::atomic<uint32_t> nDiffCacheValue[3];  // Per channel [0=PoS, 1=Prime, 2=Hash]
+        
+        /** GetCachedDifficulty
+         *
+         *  @brief Get difficulty with 1-second TTL cache
+         *  
+         *  Reduces expensive GetNextTargetRequired() calls during high mining activity.
+         *  Cache is shared across all miner connections for consistency.
+         * 
+         *  @param[in] nChannel Mining channel (0=PoS, 1=Prime, 2=Hash)
+         *  @return Target difficulty bits for the channel
+         *
+         **/
+        static uint32_t GetCachedDifficulty(uint32_t nChannel);
     };
 }
 
