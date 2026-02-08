@@ -72,7 +72,7 @@ namespace MiningConstants
     constexpr uint8_t MINING_OPCODE_MIN = 200;
     
     /** End of valid mining opcodes (HASH_BLOCK_AVAILABLE = 218) */
-    constexpr uint8_t MINING_OPCODE_MAX = 220;
+    constexpr uint8_t MINING_OPCODE_MAX = 218;
     
     /** Start of stateless-specific opcodes (MINER_AUTH_INIT = 207)
      *  These opcodes should NOT be mirrored as they are already stateless-protocol-specific

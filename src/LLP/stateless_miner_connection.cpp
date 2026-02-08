@@ -202,29 +202,46 @@ namespace LLP
             nChannel = 1;
         }
         
-        /* Check if cache is still valid (within TTL) */
+        /* Check if cache is still valid (within TTL)
+         * runtime::unifiedtimestamp() returns seconds, so compare directly with TTL in seconds */
         uint64_t nNow = runtime::unifiedtimestamp();
-        uint64_t nCacheTime = nDiffCacheTime.load(std::memory_order_relaxed);
+        uint64_t nCacheTime = nDiffCacheTime.load(std::memory_order_acquire);
+        uint64_t nCacheTTLSeconds = MiningConstants::DIFFICULTY_CACHE_TTL_MS / 1000;
         
-        if(nCacheTime > 0 && (nNow - nCacheTime) < (MiningConstants::DIFFICULTY_CACHE_TTL_MS / 1000))
+        if(nCacheTime > 0 && (nNow - nCacheTime) < nCacheTTLSeconds)
         {
             /* Cache hit - return cached value */
-            uint32_t nCachedDiff = nDiffCacheValue[nChannel].load(std::memory_order_relaxed);
+            uint32_t nCachedDiff = nDiffCacheValue[nChannel].load(std::memory_order_acquire);
             debug::log(3, FUNCTION, "Difficulty cache HIT for channel ", nChannel, 
                       " (age: ", (nNow - nCacheTime), "s)");
             return nCachedDiff;
         }
         
-        /* Cache miss or expired - recalculate */
+        /* Cache miss or expired - recalculate
+         * Use compare-and-swap to ensure only one thread updates the cache.
+         * Other threads will either get the new value or retry with the updated cache. */
         TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
         uint32_t nDiff = TAO::Ledger::GetNextTargetRequired(stateBest, nChannel);
         
-        /* Update cache */
-        nDiffCacheValue[nChannel].store(nDiff, std::memory_order_relaxed);
-        nDiffCacheTime.store(nNow, std::memory_order_relaxed);
-        
-        debug::log(3, FUNCTION, "Difficulty cache MISS for channel ", nChannel, 
-                  " - recalculated: 0x", std::hex, nDiff, std::dec);
+        /* Try to update cache atomically - only succeeds if timestamp hasn't changed
+         * (meaning no other thread beat us to it) */
+        uint64_t nExpectedTime = nCacheTime;
+        if(nDiffCacheTime.compare_exchange_strong(nExpectedTime, nNow, 
+                                                   std::memory_order_release, 
+                                                   std::memory_order_acquire))
+        {
+            /* We won the race - update the cached difficulty value */
+            nDiffCacheValue[nChannel].store(nDiff, std::memory_order_release);
+            debug::log(3, FUNCTION, "Difficulty cache MISS for channel ", nChannel, 
+                      " - recalculated: 0x", std::hex, nDiff, std::dec);
+        }
+        else
+        {
+            /* Another thread updated the cache - use their value to avoid redundant work */
+            nDiff = nDiffCacheValue[nChannel].load(std::memory_order_acquire);
+            debug::log(3, FUNCTION, "Difficulty cache race avoided for channel ", nChannel,
+                      " - using concurrent update");
+        }
         
         return nDiff;
     }
@@ -2124,7 +2141,7 @@ namespace LLP
                 
                 debug::log(3, FUNCTION, "✓ Sending NEW_ROUND (12 bytes): Unified=", nUnifiedHeight,
                            " Channel=", nChannelHeight, " Difficulty=0x", std::hex, nDifficulty, std::dec,
-                           " (", std::fixed, std::setprecision(2), TAO::Ledger::GetDifficulty(nDifficulty, context.nChannel), ")");
+                           " (", std::fixed, std::setprecision(6), TAO::Ledger::GetDifficulty(nDifficulty, context.nChannel), ")");
                 
                 /* Enhanced diagnostic logging */
                 debug::log(2, "════════════════════════════════════════════════════════════");
