@@ -210,6 +210,34 @@ namespace LLP
          *
          **/
         void SendStatelessTemplate();
+        
+        // ═══════════════════════════════════════════════════════════════════════
+        // DIFFICULTY CACHING (Performance Optimization)
+        // ═══════════════════════════════════════════════════════════════════════
+        
+        /** Static difficulty cache (shared across all connections) 
+         *  Note: Each atomic is padded to prevent false sharing on cache lines
+         **/
+        static std::atomic<uint64_t> nDiffCacheTime;
+        
+        /** Padded cache values to prevent false sharing (64-byte cache line alignment) **/
+        struct alignas(64) PaddedDifficultyCache {
+            std::atomic<uint32_t> nDifficulty{0};
+        };
+        static PaddedDifficultyCache nDiffCacheValue[3];  // Per channel [0=PoS, 1=Prime, 2=Hash]
+        
+        /** GetCachedDifficulty
+         *
+         *  @brief Get difficulty with 1-second TTL cache
+         *  
+         *  Reduces expensive GetNextTargetRequired() calls during high mining activity.
+         *  Cache is shared across all miner connections for consistency.
+         * 
+         *  @param[in] nChannel Mining channel (0=PoS, 1=Prime, 2=Hash)
+         *  @return Target difficulty bits for the channel
+         *
+         **/
+        static uint32_t GetCachedDifficulty(uint32_t nChannel);
 
     private:
         /** respond
@@ -350,34 +378,6 @@ namespace LLP
          *
          **/
         bool IsThrottled() const { return m_rateLimit.fThrottleMode; }
-        
-        // ═══════════════════════════════════════════════════════════════════════
-        // DIFFICULTY CACHING (Performance Optimization)
-        // ═══════════════════════════════════════════════════════════════════════
-        
-        /** Static difficulty cache (shared across all connections) 
-         *  Note: Each atomic is padded to prevent false sharing on cache lines
-         **/
-        static std::atomic<uint64_t> nDiffCacheTime;
-        
-        /** Padded cache values to prevent false sharing (64-byte cache line alignment) **/
-        struct alignas(64) PaddedDifficultyCache {
-            std::atomic<uint32_t> nDifficulty{0};
-        };
-        static PaddedDifficultyCache nDiffCacheValue[3];  // Per channel [0=PoS, 1=Prime, 2=Hash]
-        
-        /** GetCachedDifficulty
-         *
-         *  @brief Get difficulty with 1-second TTL cache
-         *  
-         *  Reduces expensive GetNextTargetRequired() calls during high mining activity.
-         *  Cache is shared across all miner connections for consistency.
-         * 
-         *  @param[in] nChannel Mining channel (0=PoS, 1=Prime, 2=Hash)
-         *  @return Target difficulty bits for the channel
-         *
-         **/
-        static uint32_t GetCachedDifficulty(uint32_t nChannel);
     };
 }
 

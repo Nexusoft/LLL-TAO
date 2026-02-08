@@ -1932,7 +1932,7 @@ namespace LLP
         }
         
         /* Get difficulty */
-        uint32_t nDifficulty = TAO::Ledger::GetNextTargetRequired(stateBest, nSubscribedChannel);
+        uint32_t nDifficulty = LLP::StatelessMinerConnection::GetCachedDifficulty(nSubscribedChannel);
         
         /* Build notification using unified builder (8-bit opcodes for legacy lane) */
         Packet notification = PushNotificationBuilder::BuildChannelNotification<Packet>(
@@ -1944,7 +1944,7 @@ namespace LLP
         debug::log(2, FUNCTION, "Sent ", GetChannelName(nSubscribedChannel), 
                    " notification to ", GetAddress().ToStringIP(),
                    " (unified=", stateBest.nHeight, 
-                   ", channel=", stateChannel.nChannelHeight,
+                   ", channelHeight=", stateChannel.nChannelHeight,
                    ", diff=", std::hex, nDifficulty, std::dec, ")");
     }
 
