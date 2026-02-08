@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <LLP/include/pool_discovery.h>
 #include <LLP/include/opcode_utility.h>
 #include <LLP/include/push_notification.h>
+#include <LLP/include/mining_constants.h>
 #include <LLP/templates/events.h>
 
 #include <TAO/Ledger/include/create.h>
@@ -109,6 +110,11 @@ namespace LLP
 
     /* The block iterator to act as extra nonce. */
     std::atomic<uint32_t> StatelessMinerConnection::nBlockIterator(0);
+    
+    /* Difficulty cache static variables with padding to prevent false sharing */
+    std::atomic<uint64_t> StatelessMinerConnection::nDiffCacheTime(0);
+    StatelessMinerConnection::PaddedDifficultyCache StatelessMinerConnection::nDiffCacheValue[3];
+    
     /** Default Constructor **/
     StatelessMinerConnection::StatelessMinerConnection()
     : StatelessConnection()
@@ -171,6 +177,76 @@ namespace LLP
         /* Clean up block map */
         LOCK(MUTEX);
         clear_map();
+    }
+
+
+    /** GetCachedDifficulty
+     *
+     *  Get difficulty with 1-second TTL cache to reduce expensive GetNextTargetRequired() calls.
+     *  Cache is shared across all miner connections for consistency.
+     *
+     *  @param[in] nChannel Mining channel (0=PoS, 1=Prime, 2=Hash)
+     *  @return Target difficulty bits for the channel
+     *
+     **/
+    uint32_t StatelessMinerConnection::GetCachedDifficulty(uint32_t nChannel)
+    {
+        /* Validate channel range */
+        if(nChannel > 2)
+        {
+            debug::error(FUNCTION, "Invalid channel ", nChannel, ", defaulting to Prime (1)");
+            nChannel = 1;
+        }
+        
+        /* Check if cache is still valid (within TTL)
+         * runtime::unifiedtimestamp() returns seconds, compare with precalculated TTL in seconds
+         * Note: Check for clock adjustments (nNow >= nCacheTime) to prevent underflow */
+        uint64_t nNow = runtime::unifiedtimestamp();
+        uint64_t nCacheTime = nDiffCacheTime.load(std::memory_order_acquire);
+        
+        if(nCacheTime > 0 && nNow >= nCacheTime && 
+           (nNow - nCacheTime) < MiningConstants::DIFFICULTY_CACHE_TTL_SECONDS)
+        {
+            /* Cache hit - return cached value */
+            uint32_t nCachedDiff = nDiffCacheValue[nChannel].nDifficulty.load(std::memory_order_acquire);
+            debug::log(3, FUNCTION, "Difficulty cache HIT for channel ", nChannel, 
+                      " (age: ", (nNow - nCacheTime), "s)");
+            return nCachedDiff;
+        }
+        
+        /* Cache miss, expired, or clock adjusted backwards - recalculate */
+        if(nCacheTime > 0 && nNow < nCacheTime)
+        {
+            debug::log(2, FUNCTION, "⚠️  Clock adjustment detected (backwards) - invalidating difficulty cache");
+        }
+        
+        /* Cache miss or expired - recalculate
+         * Use compare-and-swap to ensure only one thread updates the cache.
+         * Other threads will either get the new value or retry with the updated cache. */
+        TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
+        uint32_t nDiff = TAO::Ledger::GetNextTargetRequired(stateBest, nChannel);
+        
+        /* Try to update cache atomically - only succeeds if timestamp hasn't changed
+         * (meaning no other thread beat us to it) */
+        uint64_t nExpectedTime = nCacheTime;
+        if(nDiffCacheTime.compare_exchange_strong(nExpectedTime, nNow, 
+                                                   std::memory_order_release, 
+                                                   std::memory_order_acquire))
+        {
+            /* We won the race - update the cached difficulty value */
+            nDiffCacheValue[nChannel].nDifficulty.store(nDiff, std::memory_order_release);
+            debug::log(3, FUNCTION, "Difficulty cache MISS for channel ", nChannel, 
+                      " - recalculated: 0x", std::hex, nDiff, std::dec);
+        }
+        else
+        {
+            /* Another thread updated the cache - use their value to avoid redundant work */
+            nDiff = nDiffCacheValue[nChannel].nDifficulty.load(std::memory_order_acquire);
+            debug::log(3, FUNCTION, "Difficulty cache race avoided for channel ", nChannel,
+                      " - using concurrent update");
+        }
+        
+        return nDiff;
     }
 
 
@@ -2067,7 +2143,8 @@ namespace LLP
                  */
                 
                 debug::log(3, FUNCTION, "✓ Sending NEW_ROUND (12 bytes): Unified=", nUnifiedHeight,
-                           " Channel=", nChannelHeight, " Difficulty=0x", std::hex, nDifficulty, std::dec);
+                           " Channel=", nChannelHeight, " Difficulty=0x", std::hex, nDifficulty, std::dec,
+                           " (", std::fixed, std::setprecision(6), TAO::Ledger::GetDifficulty(nDifficulty, context.nChannel), ")");
                 
                 /* Enhanced diagnostic logging */
                 debug::log(2, "════════════════════════════════════════════════════════════");
@@ -2078,7 +2155,9 @@ namespace LLP
                 debug::log(2, "   Response Data:");
                 debug::log(2, "      Unified Height:  ", nUnifiedHeight);
                 debug::log(2, "      Channel Height:  ", nChannelHeight, " (channel ", context.nChannel, ")");
-                debug::log(2, "      Difficulty:      0x", std::hex, nDifficulty, std::dec);
+                debug::log(2, "      Difficulty (nBits): 0x", std::hex, nDifficulty, std::dec);
+                debug::log(2, "      Difficulty (calc):  ", std::fixed, std::setprecision(6), 
+                           TAO::Ledger::GetDifficulty(nDifficulty, context.nChannel));
                 debug::log(2, "   Packet Size:    12 bytes");
                 debug::log(2, "");
                 debug::log(2, "   ⚠️  NOTE:");
@@ -2405,23 +2484,40 @@ namespace LLP
                     /* Mirror 8-bit response opcodes to 16-bit for stateless lane.
                      * StatelessMiner builds responses with 8-bit opcodes (e.g., MINER_AUTH_CHALLENGE = 208),
                      * but the stateless lane expects 16-bit mirror-mapped opcodes (0xD0D0).
-                     * Legacy 8-bit opcodes (< 256) that are NOT already stateless need mirroring.
+                     * 
+                     * FIX: Only mirror legacy response opcodes (200-206) that need mirroring.
+                     * DO NOT mirror stateless-specific opcodes (207-218) - they're already protocol-specific.
+                     * DO NOT mirror already-mirrored 16-bit opcodes (0xD000+ range).
+                     * 
+                     * Valid ranges:
+                     * - 200-206: Legacy responses (BLOCK_ACCEPTED, etc.) → SHOULD mirror
+                     * - 207-218: Stateless-specific (AUTH, PUSH) → SKIP mirroring
+                     * - 0xD000+: Already mirrored 16-bit opcodes → SKIP mirroring
                      * 
                      * NOTE: result.response is const, so we must create a copy before modifying.
-                     * This is necessary for correctness to avoid violating const-correctness.
                      */
-                    if(result.response.HEADER < 256 && !StatelessOpcodes::IsStateless(result.response.HEADER))
+                    if(result.response.HEADER < 256 && 
+                       result.response.HEADER >= MiningConstants::MINING_OPCODE_MIN &&
+                       result.response.HEADER < MiningConstants::STATELESS_MINING_OPCODE_MIN)
                     {
+                        /* This is a legacy response opcode (200-206) that needs mirroring */
                         uint8_t nLegacyOpcode = static_cast<uint8_t>(result.response.HEADER);
                         StatelessPacket mirroredResponse = result.response;  // Create a copy
                         mirroredResponse.HEADER = StatelessOpcodes::Mirror(nLegacyOpcode);
-                        debug::log(3, FUNCTION, "Mirrored 8-bit response opcode ", 
+                        debug::log(3, FUNCTION, "Mirrored legacy response opcode ", 
                                   uint32_t(nLegacyOpcode), " → 16-bit 0x", std::hex, mirroredResponse.HEADER, std::dec);
                         
                         respond(mirroredResponse);  // Send the modified copy
                     }
                     else
                     {
+                        /* Send original - either already stateless-specific (207-218) or 16-bit */
+                        if(result.response.HEADER >= MiningConstants::STATELESS_MINING_OPCODE_MIN &&
+                           result.response.HEADER <= MiningConstants::STATELESS_MINING_OPCODE_MAX)
+                        {
+                            debug::log(3, FUNCTION, "Sending stateless-specific opcode ", 
+                                      uint32_t(result.response.HEADER), " without mirroring");
+                        }
                         respond(result.response);  // Send original if no mirroring needed
                     }
                 }
@@ -3281,10 +3377,10 @@ namespace LLP
                 now - lastRequestTime).count();
             
             if (lastRequestTime.time_since_epoch().count() > 0 && 
-                timeSinceLastRequest < RateLimitConfig::THROTTLE_DELAY_MS) {
+                timeSinceLastRequest < MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS) {
                 debug::log(1, FUNCTION, "⏳ Connection ", GetAddress().ToStringIP(), 
                     " is throttled - request rejected (too soon: ", timeSinceLastRequest, "ms < ",
-                    RateLimitConfig::THROTTLE_DELAY_MS, "ms)");
+                    MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS, "ms)");
                 RecordViolation("Throttle mode: request too soon");
                 return false;
             }
@@ -3409,16 +3505,31 @@ namespace LLP
                 }
                 debug::log(2, "════════════════════════════════════════════════════════════");
                 
+                // Check for localhost bypass in DEBUG mode
+                #ifdef ENABLE_DEBUG
+                if (MiningConstants::DISABLE_LOCALHOST_RATE_LIMITING)
+                {
+                    std::string strIP = GetAddress().ToStringIP();
+                    if (strIP == "127.0.0.1" || strIP == "::1" || strIP == "localhost")
+                    {
+                        debug::log(2, "🔓 DEBUG: Skipping rate limit for localhost connection");
+                        m_rateLimit.nGetBlockCount++;
+                        m_rateLimit.tLastGetBlock = now;
+                        return true;
+                    }
+                }
+                #endif
+                
                 // Check minimum interval
                 auto intervalMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                     now - m_rateLimit.tLastGetBlock).count();
                 
                 if (m_rateLimit.tLastGetBlock.time_since_epoch().count() > 0 && 
-                    intervalMs < RateLimitConfig::MIN_GET_BLOCK_INTERVAL_MS) 
+                    intervalMs < MiningConstants::GET_BLOCK_MIN_INTERVAL_MS) 
                 {
                     std::string reason = "GET_BLOCK interval too short: " + 
                         std::to_string(intervalMs) + "ms < " + 
-                        std::to_string(RateLimitConfig::MIN_GET_BLOCK_INTERVAL_MS) + "ms minimum";
+                        std::to_string(MiningConstants::GET_BLOCK_MIN_INTERVAL_MS) + "ms minimum";
                     RecordViolation(reason);
                     return false;
                 }
@@ -3629,7 +3740,9 @@ namespace LLP
         debug::log(2, "   Payload:");
         debug::log(2, "      Unified Height:  ", stateBest.nHeight);
         debug::log(2, "      Channel Height:  ", nChannelHeight);
-        debug::log(2, "      Difficulty:      0x", std::hex, nDifficulty, std::dec);
+        debug::log(2, "      Difficulty (nBits): 0x", std::hex, nDifficulty, std::dec);
+        debug::log(2, "      Difficulty (calc):  ", std::fixed, std::setprecision(6), 
+                   TAO::Ledger::GetDifficulty(nDifficulty, nChannel));
         debug::log(2, "   Packet Size:    ", notification.LENGTH, " bytes");
         debug::log(2, "");
         debug::log(2, "   ⚠️  EXPECTED CLIENT ACTION:");
@@ -3768,7 +3881,9 @@ namespace LLP
         debug::log(2, "   Payload:");
         debug::log(2, "      Unified Height:  ", stateBest.nHeight);
         debug::log(2, "      Channel Height:  ", nChannelHeight);
-        debug::log(2, "      Difficulty:      0x", std::hex, nDifficulty, std::dec);
+        debug::log(2, "      Difficulty (nBits): 0x", std::hex, nDifficulty, std::dec);
+        debug::log(2, "      Difficulty (calc):  ", std::fixed, std::setprecision(6), 
+                   TAO::Ledger::GetDifficulty(nDifficulty, nChannel));
         debug::log(2, "      Block Hash:      ", pBlock->GetHash().SubString());
         debug::log(2, "      Merkle Root:     ", pBlock->hashMerkleRoot.SubString());
         debug::log(2, "   Total Size:     ", notification.DATA.size(), " bytes (", 
