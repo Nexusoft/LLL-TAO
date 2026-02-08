@@ -2481,18 +2481,13 @@ namespace LLP
                 /* Send response if present */
                 if(!result.response.IsNull())
                 {
-                    /* Mirror 8-bit response opcodes to 16-bit for stateless lane.
-                     * StatelessMiner builds responses with 8-bit opcodes (e.g., MINER_AUTH_CHALLENGE = 208),
-                     * but the stateless lane expects 16-bit mirror-mapped opcodes (0xD0D0).
-                     * 
-                     * FIX: Only mirror legacy response opcodes (200-206) that need mirroring.
-                     * DO NOT mirror stateless-specific opcodes (207-218) - they're already protocol-specific.
-                     * DO NOT mirror already-mirrored 16-bit opcodes (0xD000+ range).
+                    /* StatelessMiner now builds responses with 16-bit opcodes directly (0xD0D0, etc.).
+                     * Only legacy response opcodes (200-206) from other parts of the codebase
+                     * need mirroring to 16-bit format for the stateless lane.
                      * 
                      * Valid ranges:
-                     * - 200-206: Legacy responses (BLOCK_ACCEPTED, etc.) → SHOULD mirror
-                     * - 207-218: Stateless-specific (AUTH, PUSH) → SKIP mirroring
-                     * - 0xD000+: Already mirrored 16-bit opcodes → SKIP mirroring
+                     * - 200-206: Legacy responses (BLOCK_ACCEPTED, etc.) → SHOULD mirror to 16-bit
+                     * - 0xD000+: Already 16-bit opcodes from StatelessMiner → Send as-is
                      * 
                      * NOTE: result.response is const, so we must create a copy before modifying.
                      */
@@ -2511,14 +2506,10 @@ namespace LLP
                     }
                     else
                     {
-                        /* Send original - either already stateless-specific (207-218) or 16-bit */
-                        if(result.response.HEADER >= MiningConstants::STATELESS_MINING_OPCODE_MIN &&
-                           result.response.HEADER <= MiningConstants::STATELESS_MINING_OPCODE_MAX)
-                        {
-                            debug::log(3, FUNCTION, "Sending stateless-specific opcode ", 
-                                      uint32_t(result.response.HEADER), " without mirroring");
-                        }
-                        respond(result.response);  // Send original if no mirroring needed
+                        /* Send as-is - already 16-bit opcodes from StatelessMiner */
+                        debug::log(3, FUNCTION, "Sending response with opcode 0x", 
+                                  std::hex, result.response.HEADER, std::dec);
+                        respond(result.response);
                     }
                 }
             }
