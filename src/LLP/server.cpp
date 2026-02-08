@@ -452,7 +452,14 @@ namespace LLP
             /* SERVER-SIDE FILTERING: Only notify matching channel */
             for (auto pConnection : vConnections)
             {
+                /* CRITICAL: Skip null connections WITHOUT any counting */
                 if (!pConnection)
+                    continue;
+                
+                /* Verify connection is still active before processing
+                 * Prevents ghost connection counting from stale disconnected connections
+                 * that would otherwise be counted in subscription/channel filter logic below */
+                if (!pConnection->Connected())
                     continue;
                 
                 /* Check for shutdown during iteration to exit quickly if needed */
