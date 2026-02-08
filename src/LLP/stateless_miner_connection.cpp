@@ -199,17 +199,25 @@ namespace LLP
         }
         
         /* Check if cache is still valid (within TTL)
-         * runtime::unifiedtimestamp() returns seconds, compare with precalculated TTL in seconds */
+         * runtime::unifiedtimestamp() returns seconds, compare with precalculated TTL in seconds
+         * Note: Check for clock adjustments (nNow >= nCacheTime) to prevent underflow */
         uint64_t nNow = runtime::unifiedtimestamp();
         uint64_t nCacheTime = nDiffCacheTime.load(std::memory_order_acquire);
         
-        if(nCacheTime > 0 && (nNow - nCacheTime) < MiningConstants::DIFFICULTY_CACHE_TTL_SECONDS)
+        if(nCacheTime > 0 && nNow >= nCacheTime && 
+           (nNow - nCacheTime) < MiningConstants::DIFFICULTY_CACHE_TTL_SECONDS)
         {
             /* Cache hit - return cached value */
             uint32_t nCachedDiff = nDiffCacheValue[nChannel].nDifficulty.load(std::memory_order_acquire);
             debug::log(3, FUNCTION, "Difficulty cache HIT for channel ", nChannel, 
                       " (age: ", (nNow - nCacheTime), "s)");
             return nCachedDiff;
+        }
+        
+        /* Cache miss, expired, or clock adjusted backwards - recalculate */
+        if(nCacheTime > 0 && nNow < nCacheTime)
+        {
+            debug::log(2, FUNCTION, "⚠️  Clock adjustment detected (backwards) - invalidating difficulty cache");
         }
         
         /* Cache miss or expired - recalculate

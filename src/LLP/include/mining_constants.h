@@ -100,8 +100,12 @@ namespace MiningConstants
     
     /** Difficulty cache TTL in seconds (for runtime comparison)
      *  Precalculated to avoid division in hot path
+     *  NOTE: Requires DIFFICULTY_CACHE_TTL_MS >= 1000 for correct operation
      */
     constexpr uint64_t DIFFICULTY_CACHE_TTL_SECONDS = DIFFICULTY_CACHE_TTL_MS / 1000;
+    
+    static_assert(DIFFICULTY_CACHE_TTL_MS >= 1000, 
+                  "DIFFICULTY_CACHE_TTL_MS must be >= 1000ms (1 second) to avoid truncation");
     
 } // namespace MiningConstants
 } // namespace LLP
