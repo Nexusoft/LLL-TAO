@@ -217,7 +217,8 @@ namespace LLP
         /* Cache miss, expired, or clock adjusted backwards - recalculate */
         if(nCacheTime > 0 && nNow < nCacheTime)
         {
-            debug::log(2, FUNCTION, "⚠️  Clock adjustment detected (backwards) - invalidating difficulty cache");
+            debug::log(2, FUNCTION, "⚠️  Clock adjustment detected (", nCacheTime, " → ", nNow, 
+                       ") - invalidating difficulty cache");
         }
         
         /* Cache miss or expired - recalculate
@@ -225,6 +226,15 @@ namespace LLP
          * Other threads will either get the new value or retry with the updated cache. */
         TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
         uint32_t nDiff = TAO::Ledger::GetNextTargetRequired(stateBest, nChannel);
+        
+        /* Validate stateBest hasn't changed during calculation */
+        TAO::Ledger::BlockState stateBestCheck = TAO::Ledger::ChainState::tStateBest.load();
+        if(stateBest.nHeight != stateBestCheck.nHeight)
+        {
+            debug::log(3, FUNCTION, "Blockchain advanced during calculation - recalculating");
+            stateBest = stateBestCheck;
+            nDiff = TAO::Ledger::GetNextTargetRequired(stateBest, nChannel);
+        }
         
         /* Try to update cache atomically - only succeeds if timestamp hasn't changed
          * (meaning no other thread beat us to it) */
@@ -3770,7 +3780,7 @@ namespace LLP
         debug::log(2, FUNCTION, "Sent ", GetChannelName(nChannel), 
                    " notification to ", GetAddress().ToStringIP(),
                    " (unified=", stateBest.nHeight, 
-                   ", channel=", nChannelHeight,
+                   ", channelHeight=", nChannelHeight,
                    ", diff=", std::hex, nDifficulty, std::dec, ")");
     }
 
