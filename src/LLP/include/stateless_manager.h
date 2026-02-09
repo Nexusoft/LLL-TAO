@@ -281,7 +281,7 @@ namespace LLP
          *  @return Number of miners removed
          *
          **/
-        uint32_t CleanupInactive(uint64_t nTimeoutSec = 300);
+        uint32_t CleanupInactive(uint64_t nTimeoutSec = 3600);
 
         /** CleanupExpiredSessions
          *

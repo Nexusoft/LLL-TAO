@@ -490,30 +490,59 @@ namespace LLP
             /* On Disconnect Event */
             case EVENTS::DISCONNECT:
             {
-                /* Debug output. */
+                /* Classify disconnect reason as network or software */
                 uint32_t reason = LENGTH;
                 std::string strReason;
+                std::string strCategory;
 
                 switch(reason)
                 {
+                    /* Network disconnects - real TCP/connection failures */
                     case DISCONNECT::TIMEOUT:
-                        strReason = "DISCONNECT::TIMEOUT";
+                        strReason = "DISCONNECT::TIMEOUT (socket read idle)";
+                        strCategory = "NETWORK";
                         break;
                     case DISCONNECT::ERRORS:
-                        strReason = "DISCONNECT::ERRORS";
+                        strReason = "DISCONNECT::ERRORS (socket I/O error)";
+                        strCategory = "NETWORK";
                         break;
+                    case DISCONNECT::POLL_ERROR:
+                        strReason = "DISCONNECT::POLL_ERROR (poll failure)";
+                        strCategory = "NETWORK";
+                        break;
+                    case DISCONNECT::POLL_EMPTY:
+                        strReason = "DISCONNECT::POLL_EMPTY (EOF from remote)";
+                        strCategory = "NETWORK";
+                        break;
+                    case DISCONNECT::PEER:
+                        strReason = "DISCONNECT::PEER (remote closed connection)";
+                        strCategory = "NETWORK";
+                        break;
+
+                    /* Software disconnects - local policy decisions */
                     case DISCONNECT::DDOS:
-                        strReason = "DISCONNECT::DDOS";
+                        strReason = "DISCONNECT::DDOS (rate limit exceeded)";
+                        strCategory = "SOFTWARE";
                         break;
                     case DISCONNECT::FORCE:
-                        strReason = "DISCONNECT::FORCE";
+                        strReason = "DISCONNECT::FORCE (server shutdown)";
+                        strCategory = "SOFTWARE";
+                        break;
+                    case DISCONNECT::BUFFER:
+                        strReason = "DISCONNECT::BUFFER (send buffer overflow)";
+                        strCategory = "SOFTWARE";
+                        break;
+                    case DISCONNECT::TIMEOUT_WRITE:
+                        strReason = "DISCONNECT::TIMEOUT_WRITE (write stall)";
+                        strCategory = "SOFTWARE";
                         break;
                     default:
                         strReason = "UNKNOWN";
+                        strCategory = "UNKNOWN";
                         break;
                 }
 
-                debug::log(0, FUNCTION, "MinerLLP: Disconnected from ", GetAddress().ToStringIP(),
+                debug::log(0, FUNCTION, "MinerLLP: [", strCategory, "] Disconnected from ", GetAddress().ToStringIP(),
                            " reason: ", strReason);
 
                 /* Notify local pool if enabled */

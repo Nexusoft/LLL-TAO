@@ -50,9 +50,10 @@ namespace LLP
 {
     /* Default session timeout in seconds for mining sessions.
      * This is the inactivity timeout - sessions expire if no keepalive
-     * is received within this window. Different from session_recovery.cpp
-     * which uses a longer 1-hour timeout for recovery purposes. */
-    static const uint64_t DEFAULT_SESSION_TIMEOUT = 300;
+     * is received within this window. Set to 1 hour to prevent premature
+     * disconnection of active miners. Network-only disconnect policy:
+     * only disconnect on actual TCP errors, not idle time. */
+    static const uint64_t DEFAULT_SESSION_TIMEOUT = 3600;
 
     /* AAD (Additional Authenticated Data) strings for ChaCha20-Poly1305 AEAD
      * These provide domain separation between different packet types */
@@ -1223,11 +1224,11 @@ namespace LLP
             nRequestedTimeout = vData[0] | (vData[1] << 8) |
                                (vData[2] << 16) | (vData[3] << 24);
 
-            /* Clamp timeout to reasonable range (60s to 3600s) */
+            /* Clamp timeout to reasonable range (60s to 86400s / 24 hours) */
             if(nRequestedTimeout < 60)
                 nRequestedTimeout = 60;
-            else if(nRequestedTimeout > 3600)
-                nRequestedTimeout = 3600;
+            else if(nRequestedTimeout > 86400)
+                nRequestedTimeout = 86400;
         }
 
         /* Initialize session timing */

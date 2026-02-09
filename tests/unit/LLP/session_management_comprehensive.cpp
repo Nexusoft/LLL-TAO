@@ -134,7 +134,7 @@ TEST_CASE("Session: Timeout Configuration", "[session][timeout]")
         MiningContext ctx = MiningContext()
             .WithSessionTimeout(Constants::DEFAULT_SESSION_TIMEOUT);
         
-        REQUIRE(ctx.nSessionTimeout == 300);
+        REQUIRE(ctx.nSessionTimeout == 3600);
     }
     
     SECTION("Custom timeouts can be configured")
