@@ -679,9 +679,49 @@ namespace LLP
                                       std::hex, uint32_t(result.response.HEADER), std::dec,
                                       " length=", result.response.LENGTH);
 
-                            /* Send StatelessPacket directly (no conversion) */
-                            const std::vector<uint8_t> vBytes = result.response.GetBytes();
-                            Write(vBytes, vBytes.size());
+                            /* Validate response packet: LENGTH must match DATA size */
+                            if(result.response.LENGTH != result.response.DATA.size())
+                            {
+                                debug::error(FUNCTION, "Stateless lane: LENGTH/DATA mismatch (",
+                                            result.response.LENGTH, " vs ", result.response.DATA.size(),
+                                            ") for packet 0x", std::hex, uint32_t(result.response.HEADER), std::dec);
+                            }
+                            else
+                            {
+                                /* Serialize to wire format and validate */
+                                const std::vector<uint8_t> vBytes = result.response.GetBytes();
+                                if(vBytes.size() < 6)
+                                {
+                                    debug::error(FUNCTION, "Stateless lane: GetBytes returned invalid data (",
+                                                vBytes.size(), " bytes) for packet 0x",
+                                                std::hex, uint32_t(result.response.HEADER), std::dec);
+                                }
+                                else
+                                {
+                                    /* Send with buffer overflow protection (mirrors WritePacket logic) */
+                                    static const uint64_t nMaxSendBuffer =
+                                        config::GetArg("-maxsendbuffer", MAX_SEND_BUFFER);
+
+                                    if(Buffered() + vBytes.size() + 1024 < nMaxSendBuffer
+                                    || (fBufferFull.load() && Buffered() + vBytes.size() < nMaxSendBuffer))
+                                    {
+                                        if(Write(vBytes, vBytes.size()) < 0)
+                                            debug::error(FUNCTION, "Stateless lane: Write failed for packet 0x",
+                                                        std::hex, uint32_t(result.response.HEADER), std::dec);
+
+                                        ++PACKETS;
+                                    }
+                                    else
+                                    {
+                                        debug::log(4, NODE, "Stateless lane: Buffer full. Packet: ",
+                                                  vBytes.size(), " bytes. Buffered: ", Buffered(), " bytes");
+                                        fBufferFull.store(true);
+                                    }
+
+                                    if(FLUSH_CONDITION && Buffered())
+                                        FLUSH_CONDITION->notify_all();
+                                }
+                            }
                         }
                     }
 
@@ -750,13 +790,54 @@ namespace LLP
                         }
                         else
                         {
-                            /* Stateless lane: send native packet */
+                            /* Stateless lane: send native error packet */
                             debug::log(2, FUNCTION, "Stateless lane: Sending native error packet 0x",
                                       std::hex, uint32_t(result.response.HEADER), std::dec,
                                       " length=", result.response.LENGTH);
 
-                            const std::vector<uint8_t> vBytes = result.response.GetBytes();
-                            Write(vBytes, vBytes.size());
+                            /* Validate response packet: LENGTH must match DATA size */
+                            if(result.response.LENGTH != result.response.DATA.size())
+                            {
+                                debug::error(FUNCTION, "Stateless lane: Error packet LENGTH/DATA mismatch (",
+                                            result.response.LENGTH, " vs ", result.response.DATA.size(),
+                                            ") for packet 0x", std::hex, uint32_t(result.response.HEADER), std::dec);
+                            }
+                            else
+                            {
+                                /* Serialize to wire format and validate */
+                                const std::vector<uint8_t> vBytes = result.response.GetBytes();
+                                if(vBytes.size() < 6)
+                                {
+                                    debug::error(FUNCTION, "Stateless lane: GetBytes returned invalid error data (",
+                                                vBytes.size(), " bytes) for packet 0x",
+                                                std::hex, uint32_t(result.response.HEADER), std::dec);
+                                }
+                                else
+                                {
+                                    /* Send with buffer overflow protection (mirrors WritePacket logic) */
+                                    static const uint64_t nMaxSendBuffer =
+                                        config::GetArg("-maxsendbuffer", MAX_SEND_BUFFER);
+
+                                    if(Buffered() + vBytes.size() + 1024 < nMaxSendBuffer
+                                    || (fBufferFull.load() && Buffered() + vBytes.size() < nMaxSendBuffer))
+                                    {
+                                        if(Write(vBytes, vBytes.size()) < 0)
+                                            debug::error(FUNCTION, "Stateless lane: Write failed for error packet 0x",
+                                                        std::hex, uint32_t(result.response.HEADER), std::dec);
+
+                                        ++PACKETS;
+                                    }
+                                    else
+                                    {
+                                        debug::log(4, NODE, "Stateless lane: Buffer full for error packet. Packet: ",
+                                                  vBytes.size(), " bytes. Buffered: ", Buffered(), " bytes");
+                                        fBufferFull.store(true);
+                                    }
+
+                                    if(FLUSH_CONDITION && Buffered())
+                                        FLUSH_CONDITION->notify_all();
+                                }
+                            }
                         }
                     }
                     
