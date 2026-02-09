@@ -423,6 +423,8 @@ namespace LLP
         uint64_t nSessionStart;      // Timestamp when session was established
         uint64_t nSessionTimeout;    // Session timeout in seconds (default 300s)
         uint32_t nKeepaliveCount;    // Number of keepalives received
+        uint32_t nKeepaliveSent;     // Number of keepalive responses sent
+        uint64_t nLastKeepaliveTime; // Timestamp of last keepalive exchange
         
         /* Reward address binding (set via MINER_SET_REWARD) */
         uint256_t hashRewardAddress; // Reward payout address (separate from auth genesis)
@@ -550,6 +552,20 @@ namespace LLP
          *
          **/
         MiningContext WithKeepaliveCount(uint32_t nKeepaliveCount_) const;
+
+        /** WithKeepaliveSent
+         *
+         *  Returns a new context with updated keepalive sent count.
+         *
+         **/
+        MiningContext WithKeepaliveSent(uint32_t nKeepaliveSent_) const;
+
+        /** WithLastKeepaliveTime
+         *
+         *  Returns a new context with updated last keepalive timestamp.
+         *
+         **/
+        MiningContext WithLastKeepaliveTime(uint64_t nLastKeepaliveTime_) const;
 
         /** WithRewardAddress
          *

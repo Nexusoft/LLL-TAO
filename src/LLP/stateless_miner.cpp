@@ -77,6 +77,8 @@ namespace LLP
     , nSessionStart(0)
     , nSessionTimeout(DEFAULT_SESSION_TIMEOUT)
     , nKeepaliveCount(0)
+    , nKeepaliveSent(0)
+    , nLastKeepaliveTime(0)
     , hashRewardAddress(0)
     , fRewardBound(false)
     , vChaChaKey()
@@ -119,6 +121,8 @@ namespace LLP
     , nSessionStart(0)
     , nSessionTimeout(DEFAULT_SESSION_TIMEOUT)
     , nKeepaliveCount(0)
+    , nKeepaliveSent(0)
+    , nLastKeepaliveTime(0)
     , hashRewardAddress(0)
     , fRewardBound(false)
     , vChaChaKey()
@@ -223,6 +227,20 @@ namespace LLP
     {
         MiningContext c = *this;
         c.nKeepaliveCount = nKeepaliveCount_;
+        return c;
+    }
+
+    MiningContext MiningContext::WithKeepaliveSent(uint32_t nKeepaliveSent_) const
+    {
+        MiningContext c = *this;
+        c.nKeepaliveSent = nKeepaliveSent_;
+        return c;
+    }
+
+    MiningContext MiningContext::WithLastKeepaliveTime(uint64_t nLastKeepaliveTime_) const
+    {
+        MiningContext c = *this;
+        c.nLastKeepaliveTime = nLastKeepaliveTime_;
         return c;
     }
 
@@ -627,6 +645,24 @@ namespace LLP
             case MINER_SET_REWARD:
                 debug::log(2, FUNCTION, "Routing to ProcessSetReward");
                 return ProcessSetReward(context, packet);
+
+            /* Legacy opcodes handled by connection layer (StatelessMinerConnection/ProcessPacketStateless).
+             * Return "Unknown packet type" to trigger fallback without logging a warning. */
+            case GET_BLOCK:
+            case SUBMIT_BLOCK:
+            case BLOCK_DATA:
+            case GET_HEIGHT:
+            case GET_REWARD:
+            case GET_ROUND:
+            case BLOCK_ACCEPTED:
+            case BLOCK_REJECTED:
+            case CHANNEL_ACK:
+            case MINER_AUTH_CHALLENGE:
+            case MINER_AUTH_RESULT:
+            case MINER_REWARD_RESULT:
+                debug::log(3, FUNCTION, "Legacy opcode ", uint32_t(nRouteOpcode),
+                           " handled by connection layer");
+                return ProcessResult::Error(context, "Unknown packet type");
 
             default:
                 debug::log(1, FUNCTION, "Unknown miner opcode: ", uint32_t(packet.HEADER));
@@ -1367,16 +1403,20 @@ namespace LLP
             return ProcessResult::Error(context, "Session expired");
         }
 
-        /* Update timestamp and increment keepalive count */
+        /* Update timestamp and increment keepalive counters */
         uint32_t nNewKeepaliveCount = context.nKeepaliveCount + 1;
+        uint32_t nNewKeepaliveSent = context.nKeepaliveSent + 1;
         MiningContext newContext = context
             .WithTimestamp(nNow)
-            .WithKeepaliveCount(nNewKeepaliveCount);
+            .WithKeepaliveCount(nNewKeepaliveCount)
+            .WithKeepaliveSent(nNewKeepaliveSent)
+            .WithLastKeepaliveTime(nNow);
 
         /* Log at different verbosity levels based on keepalive frequency */
         uint32_t nLogLevel = (nNewKeepaliveCount % 10 == 0) ? 2 : 3;
         debug::log(nLogLevel, FUNCTION, "SESSION_KEEPALIVE from sessionId=", context.nSessionId,
-                   " keepalive_count=", nNewKeepaliveCount,
+                   " keepalive_rx=", nNewKeepaliveCount,
+                   " keepalive_tx=", nNewKeepaliveSent,
                    " session_duration=", newContext.GetSessionDuration(nNow), "s");
 
         /* Build keepalive response with session status */
