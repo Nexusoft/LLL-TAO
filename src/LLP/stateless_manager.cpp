@@ -28,6 +28,10 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    /* Grace period for keepalive check in smart timeout logic.
+     * Sessions with a keepalive exchange within this window are not considered idle. */
+    static const uint64_t KEEPALIVE_GRACE_PERIOD_SEC = 120;
+
     /* Get singleton instance */
     StatelessMinerManager& StatelessMinerManager::Get()
     {
@@ -306,7 +310,7 @@ namespace LLP
             bool bTrulyIdle =
                 (nTimeSinceActivity > nTimeoutSec) &&
                 (ctx.nKeepaliveCount == 0) &&
-                (nTimeSinceKeepalive > 120);
+                (nTimeSinceKeepalive > KEEPALIVE_GRACE_PERIOD_SEC);
 
             if(bTrulyIdle)
             {
