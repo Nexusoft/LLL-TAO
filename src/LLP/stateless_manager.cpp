@@ -28,6 +28,10 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    /* Grace period for keepalive check in smart timeout logic.
+     * Sessions with a keepalive exchange within this window are not considered idle. */
+    static const uint64_t KEEPALIVE_GRACE_PERIOD_SEC = 120;
+
     /* Get singleton instance */
     StatelessMinerManager& StatelessMinerManager::Get()
     {
@@ -292,8 +296,29 @@ namespace LLP
         auto pairs = mapMiners.GetAllPairs();
         for(const auto& pair : pairs)
         {
-            if((nNow - pair.second.nTimestamp) > nTimeoutSec)
+            const MiningContext& ctx = pair.second;
+            uint64_t nTimeSinceActivity = nNow - ctx.nTimestamp;
+            uint64_t nTimeSinceKeepalive = (ctx.nLastKeepaliveTime > 0)
+                                         ? (nNow - ctx.nLastKeepaliveTime)
+                                         : nTimeSinceActivity;
+
+            /* Smart timeout: Only disconnect if truly idle.
+             * All conditions must be met:
+             * 1. No activity for timeout period
+             * 2. No keepalives received (counter is 0)
+             * 3. No recent keepalive exchange (within last 2 minutes) */
+            bool bTrulyIdle =
+                (nTimeSinceActivity > nTimeoutSec) &&
+                (ctx.nKeepaliveCount == 0) &&
+                (nTimeSinceKeepalive > KEEPALIVE_GRACE_PERIOD_SEC);
+
+            if(bTrulyIdle)
             {
+                debug::log(0, FUNCTION, "Session ", ctx.strAddress,
+                          " truly idle - activity: ", nTimeSinceActivity, "s, ",
+                          "keepalives_rx: ", ctx.nKeepaliveCount, ", ",
+                          "keepalives_tx: ", ctx.nKeepaliveSent);
+
                 if(RemoveMiner(pair.first))
                     ++nRemoved;
             }
@@ -301,7 +326,7 @@ namespace LLP
 
         if(nRemoved > 0)
         {
-            debug::log(2, FUNCTION, "Cleaned up ", nRemoved, " inactive miners");
+            debug::log(0, FUNCTION, "Cleaned up ", nRemoved, " truly idle miners");
         }
 
         return nRemoved;

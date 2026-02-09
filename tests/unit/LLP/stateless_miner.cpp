@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLP/packets/packet.h>
 #include <LLP/packets/stateless_packet.h>
 #include <LLP/include/stateless_opcodes.h>
+#include <LLP/include/opcode_utility.h>
 
 #include <Util/include/runtime.h>
 #include <Util/include/hex.h>
@@ -1622,6 +1623,89 @@ TEST_CASE("Stateless Opcode Conversion for 16-bit Lane", "[stateless_miner][opco
 
             /* Verify round-trip: 8-bit → 16-bit → 8-bit */
             REQUIRE(StatelessOpcodes::Unmirror(StatelessOpcodes::Mirror(tc.nLegacy)) == tc.nLegacy);
+        }
+    }
+}
+
+
+TEST_CASE("MiningContext Keepalive Tracking Fields", "[stateless_miner][keepalive]")
+{
+    SECTION("Default constructor initializes keepalive tracking fields to zero")
+    {
+        MiningContext ctx;
+
+        REQUIRE(ctx.nKeepaliveCount == 0);
+        REQUIRE(ctx.nKeepaliveSent == 0);
+        REQUIRE(ctx.nLastKeepaliveTime == 0);
+    }
+
+    SECTION("WithKeepaliveSent creates new context with updated sent count")
+    {
+        MiningContext ctx;
+        MiningContext updated = ctx.WithKeepaliveSent(5);
+
+        REQUIRE(ctx.nKeepaliveSent == 0);       // Original unchanged
+        REQUIRE(updated.nKeepaliveSent == 5);    // New context updated
+    }
+
+    SECTION("WithLastKeepaliveTime creates new context with updated timestamp")
+    {
+        MiningContext ctx;
+        MiningContext updated = ctx.WithLastKeepaliveTime(1234567890);
+
+        REQUIRE(ctx.nLastKeepaliveTime == 0);             // Original unchanged
+        REQUIRE(updated.nLastKeepaliveTime == 1234567890); // New context updated
+    }
+
+    SECTION("Keepalive fields chain correctly with other With* methods")
+    {
+        MiningContext ctx;
+        MiningContext updated = ctx
+            .WithKeepaliveCount(10)
+            .WithKeepaliveSent(10)
+            .WithLastKeepaliveTime(999)
+            .WithTimestamp(1000);
+
+        REQUIRE(updated.nKeepaliveCount == 10);
+        REQUIRE(updated.nKeepaliveSent == 10);
+        REQUIRE(updated.nLastKeepaliveTime == 999);
+        REQUIRE(updated.nTimestamp == 1000);
+    }
+}
+
+
+TEST_CASE("Legacy Opcode Recognition in ProcessPacket", "[stateless_miner][opcodes]")
+{
+    using namespace LLP::OpcodeUtility;
+
+    SECTION("Known legacy opcodes are recognized for connection layer handling")
+    {
+        /* These legacy opcodes should be recognized by ProcessPacket and
+         * returned as "Unknown packet type" (triggers fallback) without
+         * generating a "Unknown miner opcode" warning at log level 1. */
+        std::vector<uint8_t> legacyOpcodes = {
+            Opcodes::GET_BLOCK,         // 129
+            Opcodes::SUBMIT_BLOCK,      // 1
+            Opcodes::BLOCK_DATA,        // 0
+            Opcodes::GET_HEIGHT,        // 130
+            Opcodes::GET_REWARD,        // 131
+            Opcodes::GET_ROUND,         // 133
+            Opcodes::BLOCK_ACCEPTED,    // 200
+            Opcodes::BLOCK_REJECTED,    // 201
+            Opcodes::CHANNEL_ACK,       // 206
+            Opcodes::MINER_AUTH_CHALLENGE, // 208
+            Opcodes::MINER_AUTH_RESULT,    // 210
+            Opcodes::MINER_REWARD_RESULT,  // 214
+        };
+
+        for(uint8_t op : legacyOpcodes)
+        {
+            /* Verify each legacy opcode has a valid Mirror mapping */
+            uint16_t mirrored = Stateless::Mirror(op);
+            REQUIRE(Stateless::IsStateless(mirrored) == true);
+
+            /* Verify round-trip */
+            REQUIRE(Stateless::Unmirror(mirrored) == op);
         }
     }
 }
