@@ -565,6 +565,13 @@ namespace LLP
                 /* Route ALL authentication/session packet processing to StatelessMiner */
                 ProcessResult result = StatelessMiner::ProcessPacket(context, PACKET);
 
+                /* Lane-aware response transmission.
+                 * StatelessMiner::ProcessPacket() returns 16-bit stateless opcodes (0xD0xx).
+                 * Legacy lane expects 8-bit opcodes, so we unmirror and convert.
+                 * Stateless lane sends native 16-bit packets directly. */
+                const bool bIsLegacyLane = (!LLP::MINING_SERVER ||
+                    LLP::MINING_SERVER->GetPort() == GetLegacyMiningPort());
+
                 /* Handle result */
                 if(result.fSuccess)
                 {
@@ -645,13 +652,6 @@ namespace LLP
                     /* Send response if present */
                     if(!result.response.IsNull())
                     {
-                        /* Lane-aware response transmission.
-                         * StatelessMiner::ProcessPacket() returns 16-bit stateless opcodes (0xD0xx).
-                         * Legacy lane expects 8-bit opcodes, so we unmirror and convert.
-                         * Stateless lane sends native 16-bit packets directly. */
-                        const bool bIsLegacyLane = (!LLP::MINING_SERVER ||
-                            LLP::MINING_SERVER->GetPort() == GetLegacyMiningPort());
-
                         if(bIsLegacyLane)
                         {
                             /* LEGACY LANE (port 8323): Unmirror 16-bit → 8-bit */
@@ -728,10 +728,6 @@ namespace LLP
                     /* Try to send error response if available */
                     if(!result.response.IsNull())
                     {
-                        /* Lane-aware error response transmission */
-                        const bool bIsLegacyLane = (!LLP::MINING_SERVER ||
-                            LLP::MINING_SERVER->GetPort() == GetLegacyMiningPort());
-
                         if(bIsLegacyLane)
                         {
                             /* Legacy lane: unmirror and convert */
