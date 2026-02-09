@@ -1574,5 +1574,55 @@ TEST_CASE("Stateless Opcode Conversion for 16-bit Lane", "[stateless_miner][opco
         REQUIRE(mirroredResponse.LENGTH == response.LENGTH);  // Data unchanged
         REQUIRE(StatelessOpcodes::IsStateless(mirroredResponse.HEADER) == true);
     }
+
+    SECTION("Response unmirroring: 16-bit response → 8-bit for legacy lane")
+    {
+        /* StatelessMiner::ProcessPacket() always builds responses with 16-bit stateless opcodes.
+         * When sending on legacy lane (port 8323), must unmirror to 8-bit.
+         * This test validates the lane-aware opcode conversion fix. */
+
+        /* Test all authentication/session opcodes that flow through the legacy lane */
+        struct OpcodeTestCase {
+            uint16_t nStateless;  // 16-bit opcode from StatelessMiner
+            uint8_t  nLegacy;    // Expected 8-bit opcode for legacy lane
+            const char* name;
+        };
+
+        OpcodeTestCase cases[] = {
+            { StatelessOpcodes::AUTH_CHALLENGE,    208, "MINER_AUTH_CHALLENGE" },
+            { StatelessOpcodes::AUTH_RESULT,       210, "MINER_AUTH_RESULT"    },
+            { StatelessOpcodes::SESSION_START,     211, "SESSION_START"        },
+            { StatelessOpcodes::SESSION_KEEPALIVE, 212, "SESSION_KEEPALIVE"    },
+            { StatelessOpcodes::CHANNEL_ACK,       206, "CHANNEL_ACK"         },
+            { StatelessOpcodes::NEW_ROUND,         204, "NEW_ROUND"           },
+            { StatelessOpcodes::OLD_ROUND,         205, "OLD_ROUND"           },
+            { StatelessOpcodes::BLOCK_ACCEPTED,    200, "BLOCK_ACCEPTED"      },
+            { StatelessOpcodes::BLOCK_REJECTED,    201, "BLOCK_REJECTED"      },
+        };
+
+        for(const auto& tc : cases)
+        {
+            /* Simulate response from StatelessMiner with 16-bit opcode */
+            StatelessPacket response;
+            response.HEADER = tc.nStateless;
+            response.LENGTH = 1;
+            response.DATA = {0x01};
+
+            /* Verify it's a valid 16-bit stateless opcode */
+            REQUIRE(StatelessOpcodes::IsStateless(response.HEADER) == true);
+
+            /* Lane-aware conversion: unmirror for legacy lane */
+            uint16_t nResponseHeader = response.HEADER;
+            if(StatelessOpcodes::IsStateless(nResponseHeader))
+                nResponseHeader = StatelessOpcodes::Unmirror(nResponseHeader);
+
+            /* Verify unmirror produces correct 8-bit opcode */
+            REQUIRE(nResponseHeader == tc.nLegacy);
+            REQUIRE(nResponseHeader < 256);
+
+            /* Verify round-trip: 8-bit → 16-bit → 8-bit */
+            REQUIRE(StatelessOpcodes::Unmirror(StatelessOpcodes::Mirror(tc.nLegacy)) == tc.nLegacy);
+        }
+    }
 }
 
