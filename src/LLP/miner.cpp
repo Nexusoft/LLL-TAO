@@ -645,27 +645,44 @@ namespace LLP
                     /* Send response if present */
                     if(!result.response.IsNull())
                     {
-                        /* Lane-aware opcode conversion for legacy 8-bit port.
+                        /* Lane-aware response transmission.
                          * StatelessMiner::ProcessPacket() returns 16-bit stateless opcodes (0xD0xx).
-                         * Legacy port expects 8-bit opcodes, so we unmirror them back to 8-bit.
-                         * This enables the same StatelessMiner logic to serve both lanes. */
-                        uint16_t nResponseHeader = result.response.HEADER;
-                        if(OpcodeUtility::Stateless::IsStateless(nResponseHeader))
+                         * Legacy lane expects 8-bit opcodes, so we unmirror and convert.
+                         * Stateless lane sends native 16-bit packets directly. */
+                        const bool bIsLegacyLane = (!LLP::MINING_SERVER ||
+                            LLP::MINING_SERVER->GetPort() == GetLegacyMiningPort());
+
+                        if(bIsLegacyLane)
                         {
-                            nResponseHeader = OpcodeUtility::Stateless::Unmirror(nResponseHeader);
-                            debug::log(2, FUNCTION, "Unmirror 16-bit opcode 0x",
-                                      std::hex, uint32_t(result.response.HEADER),
-                                      " → 8-bit ", uint32_t(nResponseHeader), std::dec,
-                                      " for legacy lane");
+                            /* LEGACY LANE (port 8323): Unmirror 16-bit → 8-bit */
+                            uint16_t nResponseHeader = result.response.HEADER;
+                            if(OpcodeUtility::Stateless::IsStateless(nResponseHeader))
+                            {
+                                nResponseHeader = OpcodeUtility::Stateless::Unmirror(nResponseHeader);
+                                debug::log(2, FUNCTION, "Legacy lane: Unmirror 0x",
+                                          std::hex, uint32_t(result.response.HEADER),
+                                          " → 0x", nResponseHeader, std::dec);
+                            }
+
+                            /* Convert StatelessPacket response to legacy Packet for writing */
+                            Packet legacyResponse;
+                            legacyResponse.HEADER = static_cast<uint8_t>(nResponseHeader);
+                            legacyResponse.LENGTH = result.response.LENGTH;
+                            legacyResponse.DATA = result.response.DATA;
+
+                            WritePacket(legacyResponse);
                         }
-                        
-                        /* Convert StatelessPacket response to legacy Packet for writing */
-                        Packet legacyResponse;
-                        legacyResponse.HEADER = static_cast<uint8_t>(nResponseHeader);
-                        legacyResponse.LENGTH = result.response.LENGTH;
-                        legacyResponse.DATA = result.response.DATA;
-                        
-                        WritePacket(legacyResponse);
+                        else
+                        {
+                            /* STATELESS LANE (port 9323): Send native 16-bit packets */
+                            debug::log(2, FUNCTION, "Stateless lane: Sending native packet 0x",
+                                      std::hex, uint32_t(result.response.HEADER), std::dec,
+                                      " length=", result.response.LENGTH);
+
+                            /* Send StatelessPacket directly (no conversion) */
+                            const std::vector<uint8_t> vBytes = result.response.GetBytes();
+                            Write(vBytes, vBytes.size());
+                        }
                     }
 
                     return true;
@@ -711,24 +728,40 @@ namespace LLP
                     /* Try to send error response if available */
                     if(!result.response.IsNull())
                     {
-                        /* Lane-aware opcode conversion for error response on legacy 8-bit port */
-                        uint16_t nErrHeader = result.response.HEADER;
-                        if(OpcodeUtility::Stateless::IsStateless(nErrHeader))
+                        /* Lane-aware error response transmission */
+                        const bool bIsLegacyLane = (!LLP::MINING_SERVER ||
+                            LLP::MINING_SERVER->GetPort() == GetLegacyMiningPort());
+
+                        if(bIsLegacyLane)
                         {
-                            nErrHeader = OpcodeUtility::Stateless::Unmirror(nErrHeader);
-                            debug::log(2, FUNCTION, "Unmirror error response 0x",
-                                      std::hex, uint32_t(result.response.HEADER),
-                                      " → 8-bit ", uint32_t(nErrHeader), std::dec,
-                                      " for legacy lane");
+                            /* Legacy lane: unmirror and convert */
+                            uint16_t nErrHeader = result.response.HEADER;
+                            if(OpcodeUtility::Stateless::IsStateless(nErrHeader))
+                            {
+                                nErrHeader = OpcodeUtility::Stateless::Unmirror(nErrHeader);
+                                debug::log(2, FUNCTION, "Legacy lane: Unmirror error 0x",
+                                          std::hex, uint32_t(result.response.HEADER),
+                                          " → 0x", nErrHeader, std::dec);
+                            }
+
+                            /* Convert StatelessPacket response to legacy Packet for writing */
+                            Packet legacyResponse;
+                            legacyResponse.HEADER = static_cast<uint8_t>(nErrHeader);
+                            legacyResponse.LENGTH = result.response.LENGTH;
+                            legacyResponse.DATA = result.response.DATA;
+
+                            WritePacket(legacyResponse);
                         }
-                        
-                        /* Convert StatelessPacket response to legacy Packet for writing */
-                        Packet legacyResponse;
-                        legacyResponse.HEADER = static_cast<uint8_t>(nErrHeader);
-                        legacyResponse.LENGTH = result.response.LENGTH;
-                        legacyResponse.DATA = result.response.DATA;
-                        
-                        WritePacket(legacyResponse);
+                        else
+                        {
+                            /* Stateless lane: send native packet */
+                            debug::log(2, FUNCTION, "Stateless lane: Sending native error packet 0x",
+                                      std::hex, uint32_t(result.response.HEADER), std::dec,
+                                      " length=", result.response.LENGTH);
+
+                            const std::vector<uint8_t> vBytes = result.response.GetBytes();
+                            Write(vBytes, vBytes.size());
+                        }
                     }
                     
                     this->Disconnect();
