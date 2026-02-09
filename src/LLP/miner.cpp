@@ -594,6 +594,13 @@ namespace LLP
                 /* Route ALL authentication/session packet processing to StatelessMiner */
                 ProcessResult result = StatelessMiner::ProcessPacket(context, PACKET);
 
+                /* Lane-aware response transmission.
+                 * StatelessMiner::ProcessPacket() returns 16-bit stateless opcodes (0xD0xx).
+                 * Legacy lane expects 8-bit opcodes, so we unmirror and convert.
+                 * Stateless lane sends native 16-bit packets directly. */
+                const bool bIsLegacyLane = (!LLP::MINING_SERVER ||
+                    LLP::MINING_SERVER->GetPort() == GetLegacyMiningPort());
+
                 /* Handle result */
                 if(result.fSuccess)
                 {
@@ -674,27 +681,77 @@ namespace LLP
                     /* Send response if present */
                     if(!result.response.IsNull())
                     {
-                        /* Lane-aware opcode conversion for legacy 8-bit port.
-                         * StatelessMiner::ProcessPacket() returns 16-bit stateless opcodes (0xD0xx).
-                         * Legacy port expects 8-bit opcodes, so we unmirror them back to 8-bit.
-                         * This enables the same StatelessMiner logic to serve both lanes. */
-                        uint16_t nResponseHeader = result.response.HEADER;
-                        if(OpcodeUtility::Stateless::IsStateless(nResponseHeader))
+                        if(bIsLegacyLane)
                         {
-                            nResponseHeader = OpcodeUtility::Stateless::Unmirror(nResponseHeader);
-                            debug::log(2, FUNCTION, "Unmirror 16-bit opcode 0x",
-                                      std::hex, uint32_t(result.response.HEADER),
-                                      " → 8-bit ", uint32_t(nResponseHeader), std::dec,
-                                      " for legacy lane");
+                            /* LEGACY LANE (port 8323): Unmirror 16-bit → 8-bit */
+                            uint16_t nResponseHeader = result.response.HEADER;
+                            if(OpcodeUtility::Stateless::IsStateless(nResponseHeader))
+                            {
+                                nResponseHeader = OpcodeUtility::Stateless::Unmirror(nResponseHeader);
+                                debug::log(2, FUNCTION, "Legacy lane: Unmirror 0x",
+                                          std::hex, uint32_t(result.response.HEADER),
+                                          " → 0x", nResponseHeader, std::dec);
+                            }
+
+                            /* Convert StatelessPacket response to legacy Packet for writing */
+                            Packet legacyResponse;
+                            legacyResponse.HEADER = static_cast<uint8_t>(nResponseHeader);
+                            legacyResponse.LENGTH = result.response.LENGTH;
+                            legacyResponse.DATA = result.response.DATA;
+
+                            WritePacket(legacyResponse);
                         }
-                        
-                        /* Convert StatelessPacket response to legacy Packet for writing */
-                        Packet legacyResponse;
-                        legacyResponse.HEADER = static_cast<uint8_t>(nResponseHeader);
-                        legacyResponse.LENGTH = result.response.LENGTH;
-                        legacyResponse.DATA = result.response.DATA;
-                        
-                        WritePacket(legacyResponse);
+                        else
+                        {
+                            /* STATELESS LANE (port 9323): Send native 16-bit packets */
+                            debug::log(2, FUNCTION, "Stateless lane: Sending native packet 0x",
+                                      std::hex, uint32_t(result.response.HEADER), std::dec,
+                                      " length=", result.response.LENGTH);
+
+                            /* Validate response packet: LENGTH must match DATA size */
+                            if(result.response.LENGTH != result.response.DATA.size())
+                            {
+                                debug::error(FUNCTION, "Stateless lane: LENGTH/DATA mismatch (",
+                                            result.response.LENGTH, " vs ", result.response.DATA.size(),
+                                            ") for packet 0x", std::hex, uint32_t(result.response.HEADER), std::dec);
+                            }
+                            else
+                            {
+                                /* Serialize to wire format and validate */
+                                const std::vector<uint8_t> vBytes = result.response.GetBytes();
+                                if(vBytes.size() < 6)
+                                {
+                                    debug::error(FUNCTION, "Stateless lane: GetBytes returned invalid data (",
+                                                vBytes.size(), " bytes) for packet 0x",
+                                                std::hex, uint32_t(result.response.HEADER), std::dec);
+                                }
+                                else
+                                {
+                                    /* Send with buffer overflow protection (mirrors WritePacket logic) */
+                                    static const uint64_t nMaxSendBuffer =
+                                        config::GetArg("-maxsendbuffer", MAX_SEND_BUFFER);
+
+                                    if(Buffered() + vBytes.size() + 1024 < nMaxSendBuffer
+                                    || (fBufferFull.load() && Buffered() + vBytes.size() < nMaxSendBuffer))
+                                    {
+                                        if(Write(vBytes, vBytes.size()) < 0)
+                                            debug::error(FUNCTION, "Stateless lane: Write failed for packet 0x",
+                                                        std::hex, uint32_t(result.response.HEADER), std::dec);
+
+                                        ++PACKETS;
+                                    }
+                                    else
+                                    {
+                                        debug::log(4, NODE, "Stateless lane: Buffer full. Packet: ",
+                                                  vBytes.size(), " bytes. Buffered: ", Buffered(), " bytes");
+                                        fBufferFull.store(true);
+                                    }
+
+                                    if(FLUSH_CONDITION && Buffered())
+                                        FLUSH_CONDITION->notify_all();
+                                }
+                            }
+                        }
                     }
 
                     return true;
@@ -740,24 +797,77 @@ namespace LLP
                     /* Try to send error response if available */
                     if(!result.response.IsNull())
                     {
-                        /* Lane-aware opcode conversion for error response on legacy 8-bit port */
-                        uint16_t nErrHeader = result.response.HEADER;
-                        if(OpcodeUtility::Stateless::IsStateless(nErrHeader))
+                        if(bIsLegacyLane)
                         {
-                            nErrHeader = OpcodeUtility::Stateless::Unmirror(nErrHeader);
-                            debug::log(2, FUNCTION, "Unmirror error response 0x",
-                                      std::hex, uint32_t(result.response.HEADER),
-                                      " → 8-bit ", uint32_t(nErrHeader), std::dec,
-                                      " for legacy lane");
+                            /* Legacy lane: unmirror and convert */
+                            uint16_t nErrHeader = result.response.HEADER;
+                            if(OpcodeUtility::Stateless::IsStateless(nErrHeader))
+                            {
+                                nErrHeader = OpcodeUtility::Stateless::Unmirror(nErrHeader);
+                                debug::log(2, FUNCTION, "Legacy lane: Unmirror error 0x",
+                                          std::hex, uint32_t(result.response.HEADER),
+                                          " → 0x", nErrHeader, std::dec);
+                            }
+
+                            /* Convert StatelessPacket response to legacy Packet for writing */
+                            Packet legacyResponse;
+                            legacyResponse.HEADER = static_cast<uint8_t>(nErrHeader);
+                            legacyResponse.LENGTH = result.response.LENGTH;
+                            legacyResponse.DATA = result.response.DATA;
+
+                            WritePacket(legacyResponse);
                         }
-                        
-                        /* Convert StatelessPacket response to legacy Packet for writing */
-                        Packet legacyResponse;
-                        legacyResponse.HEADER = static_cast<uint8_t>(nErrHeader);
-                        legacyResponse.LENGTH = result.response.LENGTH;
-                        legacyResponse.DATA = result.response.DATA;
-                        
-                        WritePacket(legacyResponse);
+                        else
+                        {
+                            /* Stateless lane: send native error packet */
+                            debug::log(2, FUNCTION, "Stateless lane: Sending native error packet 0x",
+                                      std::hex, uint32_t(result.response.HEADER), std::dec,
+                                      " length=", result.response.LENGTH);
+
+                            /* Validate response packet: LENGTH must match DATA size */
+                            if(result.response.LENGTH != result.response.DATA.size())
+                            {
+                                debug::error(FUNCTION, "Stateless lane: Error packet LENGTH/DATA mismatch (",
+                                            result.response.LENGTH, " vs ", result.response.DATA.size(),
+                                            ") for packet 0x", std::hex, uint32_t(result.response.HEADER), std::dec);
+                            }
+                            else
+                            {
+                                /* Serialize to wire format and validate */
+                                const std::vector<uint8_t> vBytes = result.response.GetBytes();
+                                if(vBytes.size() < 6)
+                                {
+                                    debug::error(FUNCTION, "Stateless lane: GetBytes returned invalid error data (",
+                                                vBytes.size(), " bytes) for packet 0x",
+                                                std::hex, uint32_t(result.response.HEADER), std::dec);
+                                }
+                                else
+                                {
+                                    /* Send with buffer overflow protection (mirrors WritePacket logic) */
+                                    static const uint64_t nMaxSendBuffer =
+                                        config::GetArg("-maxsendbuffer", MAX_SEND_BUFFER);
+
+                                    if(Buffered() + vBytes.size() + 1024 < nMaxSendBuffer
+                                    || (fBufferFull.load() && Buffered() + vBytes.size() < nMaxSendBuffer))
+                                    {
+                                        if(Write(vBytes, vBytes.size()) < 0)
+                                            debug::error(FUNCTION, "Stateless lane: Write failed for error packet 0x",
+                                                        std::hex, uint32_t(result.response.HEADER), std::dec);
+
+                                        ++PACKETS;
+                                    }
+                                    else
+                                    {
+                                        debug::log(4, NODE, "Stateless lane: Buffer full for error packet. Packet: ",
+                                                  vBytes.size(), " bytes. Buffered: ", Buffered(), " bytes");
+                                        fBufferFull.store(true);
+                                    }
+
+                                    if(FLUSH_CONDITION && Buffered())
+                                        FLUSH_CONDITION->notify_all();
+                                }
+                            }
+                        }
                     }
                     
                     this->Disconnect();
