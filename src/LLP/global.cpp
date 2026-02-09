@@ -285,7 +285,7 @@ namespace LLP
                 CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-miningrscore"), 50);
                 CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-miningtimespan"), 60);
                 CONFIG.MANAGER_SLEEP   = 0; //this is disabled
-                CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-miningtimeout"), 30);
+                CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-miningtimeout"), 120);
 
                 /* Create the Phase 2 stateless miner server instance. */
                 STATELESS_MINER_SERVER = new Server<StatelessMinerConnection>(CONFIG);
@@ -321,7 +321,7 @@ namespace LLP
                 LEGACY_CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-miningrscore"), 50);
                 LEGACY_CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-miningtimespan"), 60);
                 LEGACY_CONFIG.MANAGER_SLEEP   = 0; //this is disabled
-                LEGACY_CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-miningtimeout"), 30);
+                LEGACY_CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-miningtimeout"), 120);
 
                 /* Create the legacy miner server instance. */
                 MINING_SERVER = new Server<Miner>(LEGACY_CONFIG);
