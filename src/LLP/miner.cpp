@@ -432,6 +432,17 @@ namespace LLP
                        " (", OpcodeUtility::GetOpcodeName(PACKET.HEADER), ")",
                        " length=", PACKET.LENGTH);
 
+            /* Strict legacy lane enforcement (port 8323):
+             * 0xD0 is a valid 8-bit auth opcode here (MINER_AUTH_CHALLENGE), not a stateless prefix.
+             * Large payloads on this opcode indicate a wrong-lane stateless frame. */
+            if(PACKET.HEADER == MINER_AUTH_CHALLENGE && PACKET.LENGTH > 40)
+            {
+                debug::error(FUNCTION, "Wrong protocol lane on legacy mining port (expected 8-bit framing)");
+                debug::error(FUNCTION, "Rejecting stateless-framed packet from ", GetAddress().ToStringIP());
+                Disconnect();
+                return false;
+            }
+
             /* Validate packet length using opcode utility */
             std::string strLengthReason;
             if(!OpcodeUtility::ValidatePacketLength(PACKET, &strLengthReason))
@@ -598,8 +609,7 @@ namespace LLP
                  * StatelessMiner::ProcessPacket() returns 16-bit stateless opcodes (0xD0xx).
                  * Legacy lane expects 8-bit opcodes, so we unmirror and convert.
                  * Stateless lane sends native 16-bit packets directly. */
-                const bool bIsLegacyLane = (!LLP::MINING_SERVER ||
-                    LLP::MINING_SERVER->GetPort() == GetLegacyMiningPort());
+                const bool bIsLegacyLane = true;
 
                 /* Handle result */
                 if(result.fSuccess)
@@ -758,36 +768,11 @@ namespace LLP
                 }
                 else
                 {
-                    /* Handle "Unknown packet type" errors from StatelessMiner.
-                     * 
-                     * ARCHITECTURAL PATTERN:
-                     * All stateless packets (16 opcodes) are routed to StatelessMiner first.
-                     * StatelessMiner currently implements only a subset (auth/session/config/rewards).
-                     * For unimplemented packets, StatelessMiner returns "Unknown packet type".
-                     * This fallback enables gradual migration - packets move from legacy to stateless
-                     * incrementally without breaking the protocol.
-                     * 
-                     * Currently handled by StatelessMiner:
-                     *   - Auth: MINER_AUTH_INIT(207), MINER_AUTH_RESPONSE(209)
-                     *   - Session: SESSION_START(211), SESSION_KEEPALIVE(212)  
-                     *   - Config: SET_CHANNEL(3)
-                     *   - Rewards: MINER_SET_REWARD(213)
-                     * 
-                     * Currently falling back to legacy ProcessPacketStateless:
-                     *   - Mining: GET_BLOCK(129), SUBMIT_BLOCK(1), BLOCK_DATA(0)
-                     *   - Status: BLOCK_ACCEPTED(200), BLOCK_REJECTED(201)
-                     *   - Info: GET_HEIGHT(130), CHANNEL_ACK(206)
-                     *   - Responses: MINER_AUTH_CHALLENGE(208), MINER_AUTH_RESULT(210), MINER_REWARD_RESULT(214)
-                     * 
-                     * TODO: Replace string-based error detection with error codes or exception types
-                     * for more robust error handling (current implementation is temporary).
-                     */
                     if(result.strError.find("Unknown packet type") != std::string::npos)
                     {
-                        debug::log(2, FUNCTION, "MinerLLP: StatelessMiner doesn't handle opcode 0x", 
-                                   std::hex, uint32_t(PACKET.HEADER), std::dec,
-                                   " - falling back to ProcessPacketStateless for backward compatibility");
-                        return ProcessPacketStateless(PACKET);
+                        debug::error(FUNCTION, "Legacy lane received unsupported opcode 0x",
+                                     std::hex, uint32_t(PACKET.HEADER), std::dec,
+                                     " (no cross-lane fallback)");
                     }
                     
                     /* Processing error - log and disconnect */

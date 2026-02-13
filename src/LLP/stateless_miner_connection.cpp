@@ -68,12 +68,12 @@ ________________________________________________________________________________
 namespace LLP
 {
     /* Import opcode constants for stateless mining protocol */
-    using LLP::OpcodeUtility::Opcodes::MINER_AUTH_INIT;
-    using LLP::OpcodeUtility::Opcodes::MINER_AUTH_CHALLENGE;
-    using LLP::OpcodeUtility::Opcodes::MINER_AUTH_RESPONSE;
-    using LLP::OpcodeUtility::Opcodes::MINER_AUTH_RESULT;
-    using LLP::OpcodeUtility::Opcodes::SESSION_START;
-    using LLP::OpcodeUtility::Opcodes::SESSION_KEEPALIVE;
+    static constexpr uint16_t MINER_AUTH_INIT = OpcodeUtility::Stateless::AUTH_INIT;
+    static constexpr uint16_t MINER_AUTH_CHALLENGE = OpcodeUtility::Stateless::AUTH_CHALLENGE;
+    static constexpr uint16_t MINER_AUTH_RESPONSE = OpcodeUtility::Stateless::AUTH_RESPONSE;
+    static constexpr uint16_t MINER_AUTH_RESULT = OpcodeUtility::Stateless::AUTH_RESULT;
+    static constexpr uint16_t SESSION_START = OpcodeUtility::Stateless::SESSION_START;
+    static constexpr uint16_t SESSION_KEEPALIVE = OpcodeUtility::Stateless::SESSION_KEEPALIVE;
 
     /**
      * DetectedFalconVersionString
@@ -576,40 +576,13 @@ namespace LLP
                        uint32_t(PACKET.HEADER), std::dec,
                        " length=", PACKET.LENGTH);
 
-            if(!StatelessOpcodes::IsStateless(PACKET.HEADER))
-            {
-                uint16_t nHeaderSwapped = static_cast<uint16_t>((PACKET.HEADER >> 8) | (PACKET.HEADER << 8));
-                if(StatelessOpcodes::IsStateless(nHeaderSwapped))
-                {
-                    debug::error(FUNCTION, "Header endian mismatch detected: header=0x", std::hex, uint32_t(PACKET.HEADER),
-                                 " swapped=0x", uint32_t(nHeaderSwapped), std::dec);
-                    PACKET.HEADER = nHeaderSwapped;
-                }
-            }
-
-            /* Validate opcode range - reject opcodes outside 0xD000-0xD0FF */
-            const uint16_t originalHeader = PACKET.HEADER;
-            if(!StatelessOpcodes::IsStateless(originalHeader))
-            {
-                const uint16_t swappedHeader =
-                    static_cast<uint16_t>((originalHeader >> 8) | (originalHeader << 8));
-                if(StatelessOpcodes::IsStateless(swappedHeader))
-                {
-                    PACKET.HEADER = swappedHeader;
-                }
-                else
-                {
-                    debug::error(FUNCTION, "Invalid stateless opcode: 0x", std::hex, uint32_t(originalHeader), std::dec);
-                    debug::error(FUNCTION, "  Stateless opcodes must be in range 0xD000-0xD0FF");
-                    debug::error(FUNCTION, "  Rejecting packet from ", GetAddress().ToStringIP());
-                    return false;
-                }
-            }
-
+            /* Strict stateless lane enforcement (port 9323):
+             * reject anything outside 0xD000-0xD0FF with no endian/lane fallback. */
             if(!StatelessOpcodes::IsStateless(PACKET.HEADER))
             {
                 debug::error(FUNCTION, "Invalid stateless opcode: 0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
                 debug::error(FUNCTION, "  Stateless opcodes must be in range 0xD000-0xD0FF");
+                debug::error(FUNCTION, "  Wrong protocol lane on stateless mining port (expected 16-bit framing)");
                 debug::error(FUNCTION, "  Rejecting packet from ", GetAddress().ToStringIP());
                 return false;
             }
