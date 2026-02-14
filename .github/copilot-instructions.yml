@@ -8,7 +8,3 @@ validation:
   require_tests: false
 
 dependencies:
-  skip_install:
-    - libdb-dev
-    - libdb++-dev
-    - berkeley-db
