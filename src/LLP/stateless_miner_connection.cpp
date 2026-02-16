@@ -576,6 +576,23 @@ namespace LLP
                        uint32_t(PACKET.HEADER), std::dec,
                        " length=", PACKET.LENGTH);
 
+            /* ============================================================================
+             * MINER_READY COMPATIBILITY REMAPPING
+             * ============================================================================
+             * Some miners send non-standard opcodes for MINER_READY:
+             *   0x00D8 - 8-bit MINER_READY (216) in 16-bit frame with leading zero
+             *   0xD090 - Alternative MINER_READY variant
+             * Remap these to the canonical STATELESS_MINER_READY (0xD0D8) before
+             * stateless range validation. */
+            if(PACKET.HEADER == 0x00D8 || PACKET.HEADER == 0xD090)
+            {
+                debug::log(1, FUNCTION, "Compatibility: Remapping 0x", std::hex,
+                           uint32_t(PACKET.HEADER), std::dec,
+                           " → 0xD0D8 (STATELESS_MINER_READY) from ",
+                           GetAddress().ToStringIP());
+                PACKET.HEADER = StatelessOpcodes::STATELESS_MINER_READY;
+            }
+
             /* Strict stateless lane enforcement (port 9323):
              * reject anything outside 0xD000-0xD0FF with no endian/lane fallback. */
             if(!StatelessOpcodes::IsStateless(PACKET.HEADER))
@@ -681,6 +698,12 @@ namespace LLP
                 
                 /* Send immediate template push using STATELESS_GET_BLOCK (0xD081 = Mirror(129)) */
                 SendStatelessTemplate();
+
+                /* Update last template height to current blockchain height */
+                {
+                    TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
+                    context = context.WithLastTemplateHeight(stateBest.nHeight);
+                }
 
                 debug::log(2, "📥 === STATELESS_MINER_READY: SUCCESS ===");
                 return true;
@@ -912,9 +935,10 @@ namespace LLP
                         );
                     }
                     
-                    /* Update context timestamp and height */
+                    /* Update context timestamp, height, and last template height */
                     context = context.WithTimestamp(runtime::unifiedtimestamp())
-                                     .WithHeight(pBlock->nHeight);
+                                     .WithHeight(pBlock->nHeight)
+                                     .WithLastTemplateHeight(pBlock->nHeight);
                     
                     /* Update manager with new context after template served */
                     StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
@@ -2222,13 +2246,13 @@ namespace LLP
                  * on GET_ROUND polling to automatically deliver templates.
                  */
                 
-                bool fHeightChanged = (context.nHeight != nUnifiedHeight);
+                bool fHeightChanged = (context.nLastTemplateHeight != nUnifiedHeight);
                 
                 debug::log(2, "");
                 debug::log(2, "   🔍 GET_ROUND TEMPLATE AUTO-SEND CHECK:");
-                debug::log(2, "      Miner's last height:  ", context.nHeight);
-                debug::log(2, "      Current height:       ", nUnifiedHeight);
-                debug::log(2, "      Height changed:       ", (fHeightChanged ? "YES" : "NO"));
+                debug::log(2, "      Miner's last template height:  ", context.nLastTemplateHeight);
+                debug::log(2, "      Current height:                ", nUnifiedHeight);
+                debug::log(2, "      Height changed:                ", (fHeightChanged ? "YES" : "NO"));
                 
                 if(fHeightChanged)
                 {
@@ -2303,9 +2327,10 @@ namespace LLP
                  */
                 if(fHeightChanged)
                 {
-                    /* Update height only if we sent a template */
+                    /* Update last template height only if we sent a template */
                     context = context.WithTimestamp(runtime::unifiedtimestamp())
-                                     .WithHeight(nUnifiedHeight);
+                                     .WithHeight(nUnifiedHeight)
+                                     .WithLastTemplateHeight(nUnifiedHeight);
                 }
                 else
                 {
@@ -2391,6 +2416,17 @@ namespace LLP
                 
                 /* Send immediate notification with current state */
                 SendChannelNotification();
+                
+                /* Auto-send template so miner can resume mining immediately.
+                 * This is critical for MINER_READY recovery from degraded mode -
+                 * miners need both the push notification AND the actual template. */
+                SendStatelessTemplate();
+
+                /* Update last template height to current blockchain height */
+                {
+                    TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
+                    context = context.WithLastTemplateHeight(stateBest.nHeight);
+                }
                 
                 /* Persist session and lane state for cross-lane recovery */
                 if(context.fAuthenticated && context.hashKeyID != 0)
@@ -3791,6 +3827,7 @@ namespace LLP
         
         debug::log(2, FUNCTION, "Sent ", GetChannelName(nChannel), 
                    " notification to ", GetAddress().ToStringIP(),
+                   " session=", context.nSessionId,
                    " (unified=", stateBest.nHeight, 
                    ", channelHeight=", nChannelHeight,
                    ", diff=", std::hex, nDifficulty, std::dec, ")");
@@ -3927,6 +3964,7 @@ namespace LLP
         }
         
         debug::log(2, FUNCTION, "Sent stateless template (0xD081) to ", GetAddress().ToStringIP(),
+                   " session=", context.nSessionId,
                    " (unified=", stateBest.nHeight, 
                    ", channel=", nChannelHeight,
                    ", diff=", std::hex, nDifficulty, std::dec, ")");

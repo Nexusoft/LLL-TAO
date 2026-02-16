@@ -446,6 +446,11 @@ namespace LLP
         uint64_t nLastNotificationTime;     // Last notification sent (unix timestamp)
         uint64_t nNotificationsSent;        // Total notifications sent to this session
 
+        /* Per-connection template tracking for staleness detection.
+         * Only updated when an actual template (BLOCK_DATA) is sent to this miner.
+         * Used by GET_ROUND to detect height changes and auto-send new templates. */
+        uint32_t nLastTemplateHeight;       // Height of last template sent to this miner
+
         /** Default Constructor **/
         MiningContext();
 
@@ -475,6 +480,14 @@ namespace LLP
          *
          **/
         MiningContext WithHeight(uint32_t nHeight_) const;
+
+        /** WithLastTemplateHeight
+         *
+         *  Returns a new context with updated last template height.
+         *  Only updated when an actual template (BLOCK_DATA) is sent to the miner.
+         *
+         **/
+        MiningContext WithLastTemplateHeight(uint32_t nLastTemplateHeight_) const;
 
         /** WithTimestamp
          *

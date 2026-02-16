@@ -91,6 +91,7 @@ namespace LLP
     , nSubscribedChannel(0)
     , nLastNotificationTime(0)
     , nNotificationsSent(0)
+    , nLastTemplateHeight(0)
     {
     }
 
@@ -135,6 +136,7 @@ namespace LLP
     , nSubscribedChannel(0)
     , nLastNotificationTime(0)
     , nNotificationsSent(0)
+    , nLastTemplateHeight(0)
     {
     }
 
@@ -150,6 +152,13 @@ namespace LLP
     {
         MiningContext c = *this;
         c.nHeight = nHeight_;
+        return c;
+    }
+
+    MiningContext MiningContext::WithLastTemplateHeight(uint32_t nLastTemplateHeight_) const
+    {
+        MiningContext c = *this;
+        c.nLastTemplateHeight = nLastTemplateHeight_;
         return c;
     }
 
