@@ -1054,16 +1054,23 @@ namespace LLP
                 
                 /* Enhanced diagnostic logging for debugging flow issues */
                 debug::log(2, "════════════════════════════════════════════════════════════");
-                debug::log(2, "📤 LEGACY MINER: SENDING NEW_ROUND RESPONSE");
+                debug::log(2, "📤 LEGACY PORT (8323): SENDING NEW_ROUND RESPONSE");
                 debug::log(2, "════════════════════════════════════════════════════════════");
+                debug::log(2, "   Thread ID:      ", std::this_thread::get_id());
                 debug::log(2, "   To:             ", GetAddress().ToStringIP());
                 debug::log(2, "   Opcode:         NEW_ROUND (204/0xCC)");
                 debug::log(2, "   Response Data:");
-                debug::log(2, "      Unified Height:  ", nUnifiedHeight);
+                debug::log(2, "      Unified Height:  ", nUnifiedHeight, " (0x", std::hex, nUnifiedHeight, std::dec, ")");
                 debug::log(2, "      Prime Height:    ", nPrimeHeight);
                 debug::log(2, "      Hash Height:     ", nHashHeight);
                 debug::log(2, "      Stake Height:    ", nStakeHeight);
                 debug::log(2, "   Packet Size:    16 bytes");
+                debug::log(2, "   Byte Order:     BIG-ENDIAN (network order)");
+                debug::log(2, "   Raw Bytes [0-3]: [", std::hex, std::setfill('0'),
+                           std::setw(2), static_cast<int>(vResponse[0]), " ",
+                           std::setw(2), static_cast<int>(vResponse[1]), " ",
+                           std::setw(2), static_cast<int>(vResponse[2]), " ",
+                           std::setw(2), static_cast<int>(vResponse[3]), "]", std::dec);
                 debug::log(2, "");
                 debug::log(2, "   ℹ️  LEGACY PROTOCOL:");
                 debug::log(2, "      This is the traditional GET_ROUND → NEW_ROUND flow.");

@@ -2109,23 +2109,34 @@ namespace LLP
                 std::vector<uint8_t> vData;
                 vData.reserve(12);
                 
-                /* Pack unified height (4 bytes, little-endian) */
-                vData.push_back((nUnifiedHeight >> 0) & 0xFF);
-                vData.push_back((nUnifiedHeight >> 8) & 0xFF);
+                /* Pack unified height (4 bytes, big-endian - FIXED: must match push notification byte order)
+                 * 
+                 * BUG FIX: Changed from little-endian to big-endian to match:
+                 * 1. Push notification byte order (PRIME_BLOCK_AVAILABLE, HASH_BLOCK_AVAILABLE)
+                 * 2. Network byte order standard (big-endian)
+                 * 3. Legacy miner.cpp GET_ROUND response (uses convert::uint2bytes which is big-endian)
+                 * 
+                 * ROOT CAUSE: When stateless port used little-endian but push notifications used big-endian,
+                 * miners configured for big-endian would misinterpret GET_ROUND responses:
+                 *   Example: 6,594,161 (0x00649E71) sent as [71 9e 64 00] (LE)
+                 *            Read as big-endian: 0x719E6400 = 1,906,205,696 (corruption!)
+                 */
+                vData.push_back((nUnifiedHeight >> 24) & 0xFF);  // MSB first (big-endian)
                 vData.push_back((nUnifiedHeight >> 16) & 0xFF);
-                vData.push_back((nUnifiedHeight >> 24) & 0xFF);
+                vData.push_back((nUnifiedHeight >> 8) & 0xFF);
+                vData.push_back((nUnifiedHeight >> 0) & 0xFF);   // LSB last
                 
-                /* Pack channel height (4 bytes, little-endian) */
-                vData.push_back((nChannelHeight >> 0) & 0xFF);
-                vData.push_back((nChannelHeight >> 8) & 0xFF);
-                vData.push_back((nChannelHeight >> 16) & 0xFF);
+                /* Pack channel height (4 bytes, big-endian) */
                 vData.push_back((nChannelHeight >> 24) & 0xFF);
+                vData.push_back((nChannelHeight >> 16) & 0xFF);
+                vData.push_back((nChannelHeight >> 8) & 0xFF);
+                vData.push_back((nChannelHeight >> 0) & 0xFF);
                 
-                /* Pack difficulty (4 bytes, little-endian) */
-                vData.push_back((nDifficulty >> 0) & 0xFF);
-                vData.push_back((nDifficulty >> 8) & 0xFF);
-                vData.push_back((nDifficulty >> 16) & 0xFF);
+                /* Pack difficulty (4 bytes, big-endian) */
                 vData.push_back((nDifficulty >> 24) & 0xFF);
+                vData.push_back((nDifficulty >> 16) & 0xFF);
+                vData.push_back((nDifficulty >> 8) & 0xFF);
+                vData.push_back((nDifficulty >> 0) & 0xFF);
                 
                 /* CRITICAL VALIDATION: Ensure exactly 12 bytes */
                 if(vData.size() != 12)
@@ -2159,19 +2170,26 @@ namespace LLP
                            " Channel=", nChannelHeight, " Difficulty=0x", std::hex, nDifficulty, std::dec,
                            " (", std::fixed, std::setprecision(6), TAO::Ledger::GetDifficulty(nDifficulty, context.nChannel), ")");
                 
-                /* Enhanced diagnostic logging */
+                /* Enhanced diagnostic logging with thread ID and byte order verification */
                 debug::log(2, "════════════════════════════════════════════════════════════");
-                debug::log(2, "📤 SENDING NEW_ROUND RESPONSE");
+                debug::log(2, "📤 STATELESS PORT (9323): SENDING NEW_ROUND RESPONSE");
                 debug::log(2, "════════════════════════════════════════════════════════════");
+                debug::log(2, "   Thread ID:      ", std::this_thread::get_id());
                 debug::log(2, "   To:             ", GetAddress().ToStringIP());
                 debug::log(2, "   Opcode:         NEW_ROUND (204/0xCC)");
                 debug::log(2, "   Response Data:");
-                debug::log(2, "      Unified Height:  ", nUnifiedHeight);
+                debug::log(2, "      Unified Height:  ", nUnifiedHeight, " (0x", std::hex, nUnifiedHeight, std::dec, ")");
                 debug::log(2, "      Channel Height:  ", nChannelHeight, " (channel ", context.nChannel, ")");
                 debug::log(2, "      Difficulty (nBits): 0x", std::hex, nDifficulty, std::dec);
                 debug::log(2, "      Difficulty (calc):  ", std::fixed, std::setprecision(6), 
                            TAO::Ledger::GetDifficulty(nDifficulty, context.nChannel));
                 debug::log(2, "   Packet Size:    12 bytes");
+                debug::log(2, "   Byte Order:     BIG-ENDIAN (network order)");
+                debug::log(2, "   Raw Bytes [0-3]: [", std::hex, std::setfill('0'),
+                           std::setw(2), static_cast<int>(vData[0]), " ",
+                           std::setw(2), static_cast<int>(vData[1]), " ",
+                           std::setw(2), static_cast<int>(vData[2]), " ",
+                           std::setw(2), static_cast<int>(vData[3]), "]", std::dec);
                 debug::log(2, "");
                 debug::log(2, "   ⚠️  NOTE:");
                 debug::log(2, "      This is the legacy polling flow response.");
