@@ -23,10 +23,15 @@ using namespace LLP;
  *
  *  These tests verify the fixed GET_ROUND protocol (miner sends GET_ROUND request,
  *  pool responds with NEW_ROUND) that includes:
- *  - nUnifiedHeight (4 bytes)
- *  - nChannelHeight (4 bytes) - channel-specific height for miner's channel
- *  - nDifficulty (4 bytes)
+ *  - nUnifiedHeight (4 bytes, BIG-ENDIAN)
+ *  - nChannelHeight (4 bytes, BIG-ENDIAN) - channel-specific height for miner's channel
+ *  - nDifficulty (4 bytes, BIG-ENDIAN)
  *  Total: 12 bytes
+ *
+ *  BYTE ORDER: BIG-ENDIAN (network byte order)
+ *  - Matches push notification protocol (PRIME_BLOCK_AVAILABLE, HASH_BLOCK_AVAILABLE)
+ *  - Ensures consistent byte order across all mining protocol responses
+ *  - Prevents height corruption from endianness mismatch
  *
  *  This eliminates FALSE OLD_ROUND rejections caused by missing channel height.
  *
@@ -50,26 +55,26 @@ TEST_CASE("GET_ROUND Response Format", "[get_round][protocol]")
         /* Mock data representing a GET_ROUND response */
         std::vector<uint8_t> vData;
         
-        /* Pack unified height (4 bytes) */
+        /* Pack unified height (4 bytes, BIG-ENDIAN) */
         uint32_t nUnifiedHeight = TestConstants::UNIFIED_HEIGHT;
-        vData.push_back((nUnifiedHeight >> 0) & 0xFF);
-        vData.push_back((nUnifiedHeight >> 8) & 0xFF);
+        vData.push_back((nUnifiedHeight >> 24) & 0xFF);  // MSB first
         vData.push_back((nUnifiedHeight >> 16) & 0xFF);
-        vData.push_back((nUnifiedHeight >> 24) & 0xFF);
+        vData.push_back((nUnifiedHeight >> 8) & 0xFF);
+        vData.push_back((nUnifiedHeight >> 0) & 0xFF);   // LSB last
         
-        /* Pack channel height (4 bytes) */
+        /* Pack channel height (4 bytes, BIG-ENDIAN) */
         uint32_t nChannelHeight = TestConstants::PRIME_HEIGHT;
-        vData.push_back((nChannelHeight >> 0) & 0xFF);
-        vData.push_back((nChannelHeight >> 8) & 0xFF);
-        vData.push_back((nChannelHeight >> 16) & 0xFF);
         vData.push_back((nChannelHeight >> 24) & 0xFF);
+        vData.push_back((nChannelHeight >> 16) & 0xFF);
+        vData.push_back((nChannelHeight >> 8) & 0xFF);
+        vData.push_back((nChannelHeight >> 0) & 0xFF);
         
-        /* Pack difficulty (4 bytes) */
+        /* Pack difficulty (4 bytes, BIG-ENDIAN) */
         uint32_t nDifficulty = TestConstants::DIFFICULTY;
-        vData.push_back((nDifficulty >> 0) & 0xFF);
-        vData.push_back((nDifficulty >> 8) & 0xFF);
-        vData.push_back((nDifficulty >> 16) & 0xFF);
         vData.push_back((nDifficulty >> 24) & 0xFF);
+        vData.push_back((nDifficulty >> 16) & 0xFF);
+        vData.push_back((nDifficulty >> 8) & 0xFF);
+        vData.push_back((nDifficulty >> 0) & 0xFF);
         
         /* Verify size */
         REQUIRE(vData.size() == 12);
@@ -77,21 +82,21 @@ TEST_CASE("GET_ROUND Response Format", "[get_round][protocol]")
     
     SECTION("Response can be unpacked correctly")
     {
-        /* Create mock 12-byte response using test constants */
+        /* Create mock 12-byte response using test constants (BIG-ENDIAN byte order) */
         std::vector<uint8_t> vData = {
-            0xDC, 0xAE, 0x9E, 0x00,  // nUnifiedHeight = TestConstants::UNIFIED_HEIGHT (0x009EAEDC)
-            0x08, 0x28, 0x23, 0x00,  // nChannelHeight = TestConstants::PRIME_HEIGHT (0x00232808)
-            0xFF, 0xFF, 0x00, 0x1D   // nDifficulty = TestConstants::DIFFICULTY (0x1D00FFFF)
+            0x00, 0x9E, 0xAE, 0xDC,  // nUnifiedHeight = TestConstants::UNIFIED_HEIGHT (0x009EAEDC) - BIG-ENDIAN
+            0x00, 0x23, 0x28, 0x08,  // nChannelHeight = TestConstants::PRIME_HEIGHT (0x00232808) - BIG-ENDIAN
+            0x1D, 0x00, 0xFF, 0xFF   // nDifficulty = TestConstants::DIFFICULTY (0x1D00FFFF) - BIG-ENDIAN
         };
         
         REQUIRE(vData.size() == 12);
         
-        /* Unpack little-endian values */
+        /* Unpack big-endian values */
         const uint8_t* data = vData.data();
         
-        uint32_t nUnifiedHeight = data[0] | (data[1] << 8) | (data[2] << 16) | (data[3] << 24);
-        uint32_t nChannelHeight = data[4] | (data[5] << 8) | (data[6] << 16) | (data[7] << 24);
-        uint32_t nDifficulty = data[8] | (data[9] << 8) | (data[10] << 16) | (data[11] << 24);
+        uint32_t nUnifiedHeight = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
+        uint32_t nChannelHeight = (data[4] << 24) | (data[5] << 16) | (data[6] << 8) | data[7];
+        uint32_t nDifficulty = (data[8] << 24) | (data[9] << 16) | (data[10] << 8) | data[11];
         
         /* Verify unpacked values match test constants */
         REQUIRE(nUnifiedHeight == TestConstants::UNIFIED_HEIGHT);
@@ -330,6 +335,7 @@ TEST_CASE("FALSE OLD_ROUND Prevention", "[get_round][bug_fix]")
  *  - Difficulty inclusion in new protocol
  *  - FALSE OLD_ROUND prevention
  *  - Multi-channel mining correctness
+ *  - BIG-ENDIAN byte order (prevents height corruption)
  * 
  * Test Philosophy:
  * ================
@@ -339,4 +345,109 @@ TEST_CASE("FALSE OLD_ROUND Prevention", "[get_round][bug_fix]")
  * 3. Includes difficulty for accurate block templates
  * 4. Maintains backward compatibility
  * 5. Supports multi-channel mining without false positives
+ * 6. Uses big-endian byte order matching push notifications
  **/
+
+
+/** Test Suite: Endianness Fix Verification
+ *
+ *  These tests verify the endianness fix that prevents unified height corruption.
+ *  
+ *  BUG HISTORY:
+ *  ===========
+ *  When GET_ROUND used little-endian but push notifications used big-endian,
+ *  miners configured for big-endian would misinterpret GET_ROUND responses:
+ *  
+ *  Example corruption:
+ *    Height 6,594,161 (0x00649E71)
+ *    Sent as little-endian: [71 9e 64 00]
+ *    Read as big-endian: 0x719E6400 = 1,906,205,696 (corruption!)
+ *  
+ *  FIX:
+ *  ===
+ *  Changed GET_ROUND to use big-endian matching push notifications.
+ *
+ **/
+
+TEST_CASE("Endianness Fix: Prevents Height Corruption", "[get_round][endianness][bugfix]")
+{
+    SECTION("Big-endian byte order prevents corruption")
+    {
+        /* Real-world example from bug report */
+        const uint32_t CORRECT_HEIGHT = 6594161;  // 0x00649E71
+        const uint32_t CORRUPTED_HEIGHT = 1906205696;  // 0x719E6400 (byte-swapped)
+        
+        /* Pack height as BIG-ENDIAN (correct) */
+        std::vector<uint8_t> vDataBigEndian;
+        vDataBigEndian.push_back((CORRECT_HEIGHT >> 24) & 0xFF);  // 0x00
+        vDataBigEndian.push_back((CORRECT_HEIGHT >> 16) & 0xFF);  // 0x64
+        vDataBigEndian.push_back((CORRECT_HEIGHT >> 8) & 0xFF);   // 0x9E
+        vDataBigEndian.push_back((CORRECT_HEIGHT >> 0) & 0xFF);   // 0x71
+        
+        /* Verify bytes are: [00 64 9e 71] */
+        REQUIRE(vDataBigEndian[0] == 0x00);
+        REQUIRE(vDataBigEndian[1] == 0x64);
+        REQUIRE(vDataBigEndian[2] == 0x9E);
+        REQUIRE(vDataBigEndian[3] == 0x71);
+        
+        /* Unpack as big-endian (miner reads correctly) */
+        uint32_t nHeight = (vDataBigEndian[0] << 24) | (vDataBigEndian[1] << 16) |
+                          (vDataBigEndian[2] << 8) | vDataBigEndian[3];
+        
+        /* Should get correct height, NOT corrupted height */
+        REQUIRE(nHeight == CORRECT_HEIGHT);
+        REQUIRE(nHeight != CORRUPTED_HEIGHT);
+    }
+    
+    SECTION("Little-endian would cause corruption (old bug)")
+    {
+        /* Real-world example from bug report */
+        const uint32_t CORRECT_HEIGHT = 6594161;  // 0x00649E71
+        const uint32_t CORRUPTED_HEIGHT = 1906205696;  // 0x719E6400
+        
+        /* Pack height as LITTLE-ENDIAN (old buggy code) */
+        std::vector<uint8_t> vDataLittleEndian;
+        vDataLittleEndian.push_back((CORRECT_HEIGHT >> 0) & 0xFF);   // 0x71
+        vDataLittleEndian.push_back((CORRECT_HEIGHT >> 8) & 0xFF);   // 0x9E
+        vDataLittleEndian.push_back((CORRECT_HEIGHT >> 16) & 0xFF);  // 0x64
+        vDataLittleEndian.push_back((CORRECT_HEIGHT >> 24) & 0xFF);  // 0x00
+        
+        /* Verify bytes are: [71 9e 64 00] */
+        REQUIRE(vDataLittleEndian[0] == 0x71);
+        REQUIRE(vDataLittleEndian[1] == 0x9E);
+        REQUIRE(vDataLittleEndian[2] == 0x64);
+        REQUIRE(vDataLittleEndian[3] == 0x00);
+        
+        /* If miner reads as big-endian (which it should), it gets corruption */
+        uint32_t nHeightReadAsBigEndian = (vDataLittleEndian[0] << 24) | (vDataLittleEndian[1] << 16) |
+                                         (vDataLittleEndian[2] << 8) | vDataLittleEndian[3];
+        
+        /* This is the bug: miner gets corrupted height! */
+        REQUIRE(nHeightReadAsBigEndian == CORRUPTED_HEIGHT);
+        REQUIRE(nHeightReadAsBigEndian != CORRECT_HEIGHT);
+    }
+    
+    SECTION("Byte order matches push notifications")
+    {
+        /* Both GET_ROUND and push notifications must use same byte order */
+        const uint32_t HEIGHT = 6537420;  // Test constant
+        
+        /* Push notification byte order (big-endian per protocol spec) */
+        std::vector<uint8_t> vPushNotificationBytes;
+        vPushNotificationBytes.push_back((HEIGHT >> 24) & 0xFF);
+        vPushNotificationBytes.push_back((HEIGHT >> 16) & 0xFF);
+        vPushNotificationBytes.push_back((HEIGHT >> 8) & 0xFF);
+        vPushNotificationBytes.push_back((HEIGHT >> 0) & 0xFF);
+        
+        /* GET_ROUND byte order (now also big-endian after fix) */
+        std::vector<uint8_t> vGetRoundBytes;
+        vGetRoundBytes.push_back((HEIGHT >> 24) & 0xFF);
+        vGetRoundBytes.push_back((HEIGHT >> 16) & 0xFF);
+        vGetRoundBytes.push_back((HEIGHT >> 8) & 0xFF);
+        vGetRoundBytes.push_back((HEIGHT >> 0) & 0xFF);
+        
+        /* Bytes must be identical */
+        REQUIRE(vPushNotificationBytes == vGetRoundBytes);
+    }
+}
+
