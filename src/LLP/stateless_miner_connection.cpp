@@ -699,10 +699,14 @@ namespace LLP
                 /* Send immediate template push using STATELESS_GET_BLOCK (0xD081 = Mirror(129)) */
                 SendStatelessTemplate();
 
-                /* Update last template height to current blockchain height */
+                /* Update last template channel height after sending template */
                 {
                     TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
-                    context = context.WithLastTemplateHeight(stateBest.nHeight);
+                    TAO::Ledger::BlockState stateChannel = stateBest;
+                    uint32_t nChannelHeight = 0;
+                    if(TAO::Ledger::GetLastState(stateChannel, context.nChannel))
+                        nChannelHeight = stateChannel.nChannelHeight;
+                    context = context.WithLastTemplateChannelHeight(nChannelHeight);
                 }
 
                 debug::log(2, "📥 === STATELESS_MINER_READY: SUCCESS ===");
@@ -935,10 +939,19 @@ namespace LLP
                         );
                     }
                     
-                    /* Update context timestamp, height, and last template height */
-                    context = context.WithTimestamp(runtime::unifiedtimestamp())
-                                     .WithHeight(pBlock->nHeight)
-                                     .WithLastTemplateHeight(pBlock->nHeight);
+                    /* Update context timestamp, height, and last template channel height.
+                     * nLastTemplateChannelHeight uses the channel-specific height (not unified)
+                     * to ensure templates are only refreshed when the miner's channel advances. */
+                    {
+                        TAO::Ledger::BlockState stBest = TAO::Ledger::ChainState::tStateBest.load();
+                        TAO::Ledger::BlockState stChan = stBest;
+                        uint32_t nChHeight = 0;
+                        if(TAO::Ledger::GetLastState(stChan, context.nChannel))
+                            nChHeight = stChan.nChannelHeight;
+                        context = context.WithTimestamp(runtime::unifiedtimestamp())
+                                         .WithHeight(pBlock->nHeight)
+                                         .WithLastTemplateChannelHeight(nChHeight);
+                    }
                     
                     /* Update manager with new context after template served */
                     StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
@@ -2238,26 +2251,30 @@ namespace LLP
                  * 
                  * This compatibility behavior:
                  * 1. Sends NEW_ROUND first (already done above)
-                 * 2. Checks if miner's last known height differs from current height
+                 * 2. Checks if miner's CHANNEL height has changed (not unified height)
                  * 3. If changed: Auto-send BLOCK_DATA (like GET_BLOCK does)
                  * 4. If same: Skip template send (miner already has current template)
                  * 
+                 * IMPORTANT: We compare channel-specific heights, not unified heights.
+                 * A Hash block advancing unified height should NOT trigger a Prime template refresh.
+                 * Only when the miner's own channel advances do we need a new template.
+                 *
                  * This maintains backward compatibility with legacy mining software that relies
                  * on GET_ROUND polling to automatically deliver templates.
                  */
                 
-                bool fHeightChanged = (context.nLastTemplateHeight != nUnifiedHeight);
+                bool fChannelHeightChanged = (context.nLastTemplateChannelHeight != nChannelHeight);
                 
                 debug::log(2, "");
-                debug::log(2, "   🔍 GET_ROUND TEMPLATE AUTO-SEND CHECK:");
-                debug::log(2, "      Miner's last template height:  ", context.nLastTemplateHeight);
-                debug::log(2, "      Current height:                ", nUnifiedHeight);
-                debug::log(2, "      Height changed:                ", (fHeightChanged ? "YES" : "NO"));
+                debug::log(2, "   🔍 GET_ROUND TEMPLATE AUTO-SEND CHECK (channel-specific):");
+                debug::log(2, "      Miner's last template channel height:  ", context.nLastTemplateChannelHeight);
+                debug::log(2, "      Current channel height:                ", nChannelHeight, " (channel ", context.nChannel, ")");
+                debug::log(2, "      Channel height changed:                ", (fChannelHeightChanged ? "YES" : "NO"));
                 
-                if(fHeightChanged)
+                if(fChannelHeightChanged)
                 {
                     debug::log(2, "");
-                    debug::log(2, "   ✅ HEIGHT CHANGED - AUTO-SENDING TEMPLATE");
+                    debug::log(2, "   ✅ CHANNEL HEIGHT CHANGED - AUTO-SENDING TEMPLATE");
                     debug::log(2, "      This maintains compatibility with legacy miners");
                     debug::log(2, "      that expect GET_ROUND to automatically deliver templates.");
                     debug::log(2, "");
@@ -2307,7 +2324,7 @@ namespace LLP
                 else
                 {
                     debug::log(2, "");
-                    debug::log(2, "   ℹ️  HEIGHT UNCHANGED - NO TEMPLATE SENT");
+                    debug::log(2, "   ℹ️  CHANNEL HEIGHT UNCHANGED - NO TEMPLATE SENT");
                     debug::log(2, "      Miner should continue mining current template.");
                     debug::log(2, "      If miner needs new template, use GET_BLOCK explicitly.");
                 }
@@ -2315,9 +2332,9 @@ namespace LLP
                 debug::log(2, "════════════════════════════════════════════════════════════");
                 
                 /* Update context timestamp and height 
-                 * Note: Height is only updated if template was sent to prevent duplicate sends.
-                 * If no template was sent (height unchanged), we keep the old height so next
-                 * GET_ROUND at a new height will trigger template send.
+                 * Note: Channel height is only updated if template was sent to prevent duplicate sends.
+                 * If no template was sent (channel height unchanged), we keep the old height so next
+                 * GET_ROUND at a new channel height will trigger template send.
                  * 
                  * NOTE: We do NOT call CleanupStaleTemplates() here because:
                  * 1. It's already called when creating new templates (NEW_BLOCK handler)
@@ -2325,12 +2342,12 @@ namespace LLP
                  * 3. Calling cleanup on every GET_ROUND poll (every 5-10s) would be excessive
                  * 4. Template cleanup should be driven by template creation, not polling
                  */
-                if(fHeightChanged)
+                if(fChannelHeightChanged)
                 {
-                    /* Update last template height only if we sent a template */
+                    /* Update last template channel height only if we sent a template */
                     context = context.WithTimestamp(runtime::unifiedtimestamp())
                                      .WithHeight(nUnifiedHeight)
-                                     .WithLastTemplateHeight(nUnifiedHeight);
+                                     .WithLastTemplateChannelHeight(nChannelHeight);
                 }
                 else
                 {
@@ -2422,10 +2439,14 @@ namespace LLP
                  * miners need both the push notification AND the actual template. */
                 SendStatelessTemplate();
 
-                /* Update last template height to current blockchain height */
+                /* Update last template channel height after sending template */
                 {
                     TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
-                    context = context.WithLastTemplateHeight(stateBest.nHeight);
+                    TAO::Ledger::BlockState stateChannel = stateBest;
+                    uint32_t nChannelHeight = 0;
+                    if(TAO::Ledger::GetLastState(stateChannel, context.nChannel))
+                        nChannelHeight = stateChannel.nChannelHeight;
+                    context = context.WithLastTemplateChannelHeight(nChannelHeight);
                 }
                 
                 /* Persist session and lane state for cross-lane recovery */
