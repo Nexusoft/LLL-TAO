@@ -192,8 +192,8 @@ TEST_CASE("GET_ROUND Channel Height Change Detection", "[template_staleness][get
         REQUIRE(fChannelHeightChanged == false);
 
         /* Verify: if we had used unified height, it would have FALSELY triggered */
-        uint32_t nOldUnified = 6594321;
-        uint32_t nNewUnified = 6594322;
+        uint32_t nOldUnified = ChannelHeightConstants::UNIFIED_HEIGHT;
+        uint32_t nNewUnified = ChannelHeightConstants::UNIFIED_HEIGHT + 1;
         bool fUnifiedChanged = (nOldUnified != nNewUnified);
         REQUIRE(fUnifiedChanged == true);  // Unified DID change...
         REQUIRE(fChannelHeightChanged == false);  // ...but channel did NOT
@@ -239,21 +239,21 @@ TEST_CASE("Multiple Miners Independent Channel State", "[template_staleness][mul
 {
     SECTION("Different miners have independent channel height tracking")
     {
-        /* Prime miner at channel height 2325188 */
+        /* Prime miner at channel height from constants */
         MiningContext ctxPrime;
         ctxPrime = ctxPrime.WithChannel(1)
                            .WithSession(100)
-                           .WithLastTemplateChannelHeight(2325188);
+                           .WithLastTemplateChannelHeight(ChannelHeightConstants::PRIME_CHANNEL_HEIGHT);
 
-        /* Hash miner at channel height 4164999 (slow poller) */
+        /* Hash miner at channel height slightly behind current */
         MiningContext ctxHash;
         ctxHash = ctxHash.WithChannel(2)
                          .WithSession(200)
-                         .WithLastTemplateChannelHeight(4164999);
+                         .WithLastTemplateChannelHeight(ChannelHeightConstants::HASH_CHANNEL_HEIGHT - 1);
 
         /* New Hash block found */
-        uint32_t nNewPrimeHeight = 2325188;  // UNCHANGED
-        uint32_t nNewHashHeight = 4165000;   // Advanced
+        uint32_t nNewPrimeHeight = ChannelHeightConstants::PRIME_CHANNEL_HEIGHT;  // UNCHANGED
+        uint32_t nNewHashHeight = ChannelHeightConstants::HASH_CHANNEL_HEIGHT;    // Advanced
 
         /* Prime miner: channel unchanged - no auto-send */
         bool fPrimeChanged = (ctxPrime.nLastTemplateChannelHeight != nNewPrimeHeight);
@@ -267,10 +267,10 @@ TEST_CASE("Multiple Miners Independent Channel State", "[template_staleness][mul
         ctxHash = ctxHash.WithLastTemplateChannelHeight(nNewHashHeight);
 
         /* Hash miner now up to date */
-        REQUIRE(ctxHash.nLastTemplateChannelHeight == 4165000);
+        REQUIRE(ctxHash.nLastTemplateChannelHeight == ChannelHeightConstants::HASH_CHANNEL_HEIGHT);
 
         /* Prime miner still at same channel height (correctly) */
-        REQUIRE(ctxPrime.nLastTemplateChannelHeight == 2325188);
+        REQUIRE(ctxPrime.nLastTemplateChannelHeight == ChannelHeightConstants::PRIME_CHANNEL_HEIGHT);
     }
 }
 

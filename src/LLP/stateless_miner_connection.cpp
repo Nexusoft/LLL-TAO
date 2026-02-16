@@ -943,14 +943,14 @@ namespace LLP
                      * nLastTemplateChannelHeight uses the channel-specific height (not unified)
                      * to ensure templates are only refreshed when the miner's channel advances. */
                     {
-                        TAO::Ledger::BlockState stBest = TAO::Ledger::ChainState::tStateBest.load();
-                        TAO::Ledger::BlockState stChan = stBest;
-                        uint32_t nChHeight = 0;
-                        if(TAO::Ledger::GetLastState(stChan, context.nChannel))
-                            nChHeight = stChan.nChannelHeight;
+                        TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
+                        TAO::Ledger::BlockState stateChannel = stateBest;
+                        uint32_t nChannelHeight = 0;
+                        if(TAO::Ledger::GetLastState(stateChannel, context.nChannel))
+                            nChannelHeight = stateChannel.nChannelHeight;
                         context = context.WithTimestamp(runtime::unifiedtimestamp())
                                          .WithHeight(pBlock->nHeight)
-                                         .WithLastTemplateChannelHeight(nChHeight);
+                                         .WithLastTemplateChannelHeight(nChannelHeight);
                     }
                     
                     /* Update manager with new context after template served */
