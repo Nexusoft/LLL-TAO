@@ -2814,17 +2814,19 @@ namespace LLP
                 return nullptr;
             }
 
-            /* Template must target NEXT block in THIS channel */
-            if(pBlock->nChannelHeight != stateChannel.nChannelHeight + 1)
+            /* Template must target NEXT block in THIS channel.
+             * Note: pBlock->nHeight IS the channel height (set by CreateBlock/AddBlockData),
+             * not the unified height. Block has no nChannelHeight field; only BlockState does. */
+            if(pBlock->nHeight != stateChannel.nChannelHeight + 1)
             {
                 debug::error(FUNCTION, "Template stale: channel height mismatch");
-                debug::error(FUNCTION, "  Template nChannelHeight: ", pBlock->nChannelHeight);
-                debug::error(FUNCTION, "  Current channel height:  ", stateChannel.nChannelHeight);
+                debug::error(FUNCTION, "  Template nHeight (channel): ", pBlock->nHeight);
+                debug::error(FUNCTION, "  Current channel height:     ", stateChannel.nChannelHeight);
                 delete pBlock;
                 return nullptr;
             }
 
-            debug::log(0, "   Template validated at channel height ", pBlock->nChannelHeight);
+            debug::log(0, "   Template validated at channel height ", pBlock->nHeight);
         }
         
         /* PR #136: Use ChannelStateManager for fork-aware state management */
