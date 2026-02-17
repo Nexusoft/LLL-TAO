@@ -1145,10 +1145,16 @@ namespace TAO
                     
                     if (nBlockChannel == 1 || nBlockChannel == 2)
                     {
-                        /* Prime or Hash block - notify subscribed miners */
+                        /* Prime or Hash block - notify subscribed miners on both ports */
                         if (LLP::STATELESS_MINER_SERVER)
                         {
                             LLP::STATELESS_MINER_SERVER->NotifyChannelMiners(nBlockChannel);
+                        }
+
+                        /* Also notify legacy port miners (Server<Miner>) */
+                        if (LLP::MINING_SERVER)
+                        {
+                            LLP::MINING_SERVER->NotifyChannelMiners(nBlockChannel);
                         }
                     }
                     else if (nBlockChannel == 0)
