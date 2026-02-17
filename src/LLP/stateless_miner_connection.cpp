@@ -2745,6 +2745,25 @@ namespace LLP
         debug::log(0, "      Session ID: ", context.nSessionId);
         debug::log(0, "      Falcon authenticated: ", context.fAuthenticated ? "Yes" : "No");
         
+        /* Ensure wallet is unlocked for mining (matches legacy Miner::new_block behavior).
+         * CreateBlockForStatelessMining() requires Authentication::Unlocked(PinUnlock::MINING).
+         * Legacy miners auto-unlock; stateless miners must do the same. */
+        if(!TAO::API::Authentication::Unlocked(TAO::Ledger::PinUnlock::MINING))
+        {
+            try
+            {
+                SecureString strPIN;
+                RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
+                debug::log(0, FUNCTION, "Wallet auto-unlocked for mining");
+            }
+            catch(const std::exception& e)
+            {
+                debug::error(FUNCTION, "Mining unlock failed: ", e.what());
+                debug::error(FUNCTION, "Start node with -autologin=username:password or unlock mining manually");
+                return nullptr;
+            }
+        }
+
         /* Prime channel optimization */
         const uint32_t nBitMask = config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
         TAO::Ledger::TritiumBlock* pBlock = nullptr;
