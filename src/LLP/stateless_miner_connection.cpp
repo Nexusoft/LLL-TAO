@@ -2802,22 +2802,29 @@ namespace LLP
             pBlock = nullptr;
         }
         
-        /* ✅ ADD: AFTER block is created, verify height is still valid */
+        /* AFTER block is created, verify height is still valid using channel-specific height */
         if(pBlock)
         {
-            uint32_t nHeightNow = TAO::Ledger::ChainState::nBestHeight.load();
-            if(pBlock->nHeight != nHeightNow + 1)
+            /* Get channel-specific state (not unified) */
+            TAO::Ledger::BlockState stateChannel = TAO::Ledger::ChainState::tStateBest.load();
+            if(!TAO::Ledger::GetLastState(stateChannel, context.nChannel))
             {
-                debug::error(FUNCTION, "❌ Template became stale during creation!");
-                debug::error(FUNCTION, "   Created for height: ", pBlock->nHeight);
-                debug::error(FUNCTION, "   Blockchain now at: ", nHeightNow);
-                debug::error(FUNCTION, "   Template is INVALID - discarding");
+                debug::error(FUNCTION, "Failed to get channel state for channel ", context.nChannel);
                 delete pBlock;
                 return nullptr;
             }
-            
-            debug::log(0, "   ✓ Template validated at height ", pBlock->nHeight);
-            debug::log(0, "   Valid until height change");
+
+            /* Template must target NEXT block in THIS channel */
+            if(pBlock->nChannelHeight != stateChannel.nChannelHeight + 1)
+            {
+                debug::error(FUNCTION, "Template stale: channel height mismatch");
+                debug::error(FUNCTION, "  Template nChannelHeight: ", pBlock->nChannelHeight);
+                debug::error(FUNCTION, "  Current channel height:  ", stateChannel.nChannelHeight);
+                delete pBlock;
+                return nullptr;
+            }
+
+            debug::log(0, "   Template validated at channel height ", pBlock->nChannelHeight);
         }
         
         /* PR #136: Use ChannelStateManager for fork-aware state management */
