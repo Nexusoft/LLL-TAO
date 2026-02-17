@@ -1554,8 +1554,6 @@ namespace LLP
         /* Send immediate notification */
         SendChannelNotification();
 
-        debug::log(0, FUNCTION, "Miner subscribed to ", GetChannelName(nChannel), " notifications");
-
         return true;
     }
 
