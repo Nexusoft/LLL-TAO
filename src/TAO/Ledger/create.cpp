@@ -340,7 +340,16 @@ namespace TAO::Ledger
         /* Add remaining block data */
         block.hashPrevBlock = tStateBest.GetHash();
         block.nChannel      = nChannel;
-        block.nHeight       = tStateBest.nHeight + 1;
+
+        /* Use channel-specific height for the template.
+         * Unified height (tStateBest.nHeight) counts ALL channels combined, but miners
+         * need the next block number for THEIR channel for correct staleness detection. */
+        TAO::Ledger::BlockState stateChannel = tStateBest;
+        if(GetLastState(stateChannel, nChannel))
+            block.nHeight = stateChannel.nChannelHeight + 1;
+        else
+            block.nHeight = 1;
+
         block.nBits         = GetNextTargetRequired(tStateBest, nChannel, false);
         block.nNonce        = 1;
         block.nTime         = std::max(tStateBest.GetBlockTime() + 1, runtime::unifiedtimestamp());
