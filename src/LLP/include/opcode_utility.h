@@ -147,6 +147,8 @@ namespace OpcodeUtility
         static constexpr uint16_t MINER_READY           = Mirror(Opcodes::MINER_READY);           // 0xD0D8
         static constexpr uint16_t PRIME_BLOCK_AVAILABLE = Mirror(Opcodes::PRIME_BLOCK_AVAILABLE); // 0xD0D9
         static constexpr uint16_t HASH_BLOCK_AVAILABLE  = Mirror(Opcodes::HASH_BLOCK_AVAILABLE);  // 0xD0DA
+        static constexpr uint16_t PRIME_AVAILABLE       = PRIME_BLOCK_AVAILABLE;                   // Alias: 0xD0D9
+        static constexpr uint16_t HASH_AVAILABLE        = HASH_BLOCK_AVAILABLE;                    // Alias: 0xD0DA
         static constexpr uint16_t PING  = Mirror(Opcodes::PING);   // 0xD0FD
         static constexpr uint16_t CLOSE = Mirror(Opcodes::CLOSE);  // 0xD0FE
 

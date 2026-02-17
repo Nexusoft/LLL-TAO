@@ -379,6 +379,15 @@ namespace LLP
         /* 16-bit opcode constants reference OpcodeUtility::Stateless (opcode_utility.h) */
         static const uint16_t STATELESS_MINER_READY = OpcodeUtility::Stateless::MINER_READY;   // Mirror(216): Miner -> Node: Subscribe to template push
         static const uint16_t STATELESS_GET_BLOCK   = OpcodeUtility::Stateless::GET_BLOCK;   // Mirror(129): Node -> Miner: Template push (228 bytes)
+        static const uint16_t STATELESS_BLOCK_DATA      = OpcodeUtility::Stateless::BLOCK_DATA;
+        static const uint16_t STATELESS_SUBMIT_BLOCK    = OpcodeUtility::Stateless::SUBMIT_BLOCK;
+        static const uint16_t STATELESS_BLOCK_ACCEPTED  = OpcodeUtility::Stateless::BLOCK_ACCEPTED;
+        static const uint16_t STATELESS_BLOCK_REJECTED  = OpcodeUtility::Stateless::BLOCK_REJECTED;
+        static const uint16_t STATELESS_GET_ROUND       = OpcodeUtility::Stateless::GET_ROUND;
+        static const uint16_t STATELESS_PRIME_AVAILABLE = OpcodeUtility::Stateless::PRIME_AVAILABLE;
+        static const uint16_t STATELESS_HASH_AVAILABLE  = OpcodeUtility::Stateless::HASH_AVAILABLE;
+        static const uint16_t STATELESS_NEW_ROUND       = OpcodeUtility::Stateless::NEW_ROUND;
+        static const uint16_t STATELESS_OLD_ROUND       = OpcodeUtility::Stateless::OLD_ROUND;
 
     private:
 
