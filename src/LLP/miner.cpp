@@ -1450,7 +1450,7 @@ namespace LLP
     /* Stateless handler for GET_BLOCK - creates a block template and sends BLOCK_DATA */
     bool Miner::handle_get_block_stateless()
     {
-        debug::log(0, FUNCTION, "GET_BLOCK from ", GetAddress().ToStringIP());
+        debug::log(2, FUNCTION, "GET_BLOCK from ", GetAddress().ToStringIP());
 
         /* Check authentication for stateless miners */
         if(!fMinerAuthenticated)
@@ -1482,7 +1482,7 @@ namespace LLP
             /* Handle if the block failed to be created. */
             if(!pBlock)
             {
-                debug::error(FUNCTION, "Failed to create block template");
+                debug::log(2, FUNCTION, "Failed to create block.");
                 return true;
             }
 
@@ -1496,7 +1496,7 @@ namespace LLP
         /* Create and write the response packet. */
         respond(BLOCK_DATA, vData);
 
-        debug::log(0, FUNCTION, "Sent BLOCK_DATA (", vData.size(), " bytes)"
+        debug::log(2, FUNCTION, "Sent BLOCK_DATA (", vData.size(), " bytes)"
                    " channel=", pBlock->nChannel, " height=", pBlock->nHeight);
 
         return true;
@@ -1506,7 +1506,7 @@ namespace LLP
     /* Stateless handler for MINER_READY - subscribes to push notifications and sends template */
     bool Miner::handle_miner_ready_stateless()
     {
-        debug::log(0, FUNCTION, "MINER_READY from ", GetAddress().ToStringIP());
+        debug::log(2, FUNCTION, "MINER_READY from ", GetAddress().ToStringIP());
 
         /* Validate channel (1=Prime, 2=Hash only) */
         if(nChannel != 1 && nChannel != 2)
@@ -1529,7 +1529,7 @@ namespace LLP
         /* Send immediate notification */
         SendChannelNotification();
 
-        debug::log(0, FUNCTION, "Miner subscribed to ", GetChannelName(nChannel), " notifications");
+        debug::log(2, FUNCTION, "Miner subscribed to ", GetChannelName(nChannel), " notifications");
 
         return true;
     }
@@ -1538,8 +1538,6 @@ namespace LLP
     /* Stateless handler for SUBMIT_BLOCK - validates and processes a block submission */
     bool Miner::handle_submit_block_stateless(const Packet& PACKET)
     {
-        debug::log(0, FUNCTION, "SUBMIT_BLOCK from ", GetAddress().ToStringIP());
-
         /* Check authentication for stateless miners */
         if(!fMinerAuthenticated)
         {
