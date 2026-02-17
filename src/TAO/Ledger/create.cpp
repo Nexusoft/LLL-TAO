@@ -345,10 +345,12 @@ namespace TAO::Ledger
          * Unified height (tStateBest.nHeight) counts ALL channels combined, but miners
          * need the next block number for THEIR channel for correct staleness detection. */
         TAO::Ledger::BlockState stateChannel = tStateBest;
-        if(GetLastState(stateChannel, nChannel))
-            block.nHeight = stateChannel.nChannelHeight + 1;
-        else
-            block.nHeight = 1;
+        GetLastState(stateChannel, nChannel);
+        block.nHeight = stateChannel.nChannelHeight + 1;
+
+        debug::log(2, FUNCTION, "Creating block template for channel ", nChannel,
+                   " at channel height ", block.nHeight,
+                   " (unified height: ", tStateBest.nHeight, " - for reference)");
 
         block.nBits         = GetNextTargetRequired(tStateBest, nChannel, false);
         block.nNonce        = 1;
