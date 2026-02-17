@@ -448,6 +448,12 @@ namespace LLP
         bool                 fSubscribedToNotifications;  // Whether miner subscribed to push notifications
         uint32_t             nSubscribedChannel;         // Channel miner subscribed to (1=Prime, 2=Hash)
 
+        /* Per-connection template tracking (channel-specific, not unified).
+         * Tracks the channel height at which the last BLOCK_DATA was sent.
+         * Used by GET_ROUND auto-send to only send templates when the miner's
+         * OWN channel advances, preventing ~40% wasted work from cross-channel triggers. */
+        uint32_t             nLastTemplateChannelHeight;
+
     public:
 
         /** Default Constructor **/

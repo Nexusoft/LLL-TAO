@@ -99,6 +99,7 @@ namespace LLP
     , fRewardBound(false)
     , fSubscribedToNotifications(false)
     , nSubscribedChannel(0)
+    , nLastTemplateChannelHeight(0)
     {
     }
 
@@ -124,6 +125,7 @@ namespace LLP
     , fRewardBound(false)
     , fSubscribedToNotifications(false)
     , nSubscribedChannel(0)
+    , nLastTemplateChannelHeight(0)
     {
     }
 
@@ -149,6 +151,7 @@ namespace LLP
     , fRewardBound(false)
     , fSubscribedToNotifications(false)
     , nSubscribedChannel(0)
+    , nLastTemplateChannelHeight(0)
     {
     }
 
@@ -1496,6 +1499,16 @@ namespace LLP
         /* Create and write the response packet. */
         respond(BLOCK_DATA, vData);
 
+        /* Update last template channel height after sending template.
+         * Uses channel-specific height (not unified) to prevent false template
+         * refreshes when other channels mine blocks. */
+        {
+            TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
+            TAO::Ledger::BlockState stateChannel = stateBest;
+            if(TAO::Ledger::GetLastState(stateChannel, nChannel))
+                nLastTemplateChannelHeight = stateChannel.nChannelHeight;
+        }
+
         debug::log(2, FUNCTION, "Sent BLOCK_DATA (", vData.size(), " bytes)"
                    " channel=", pBlock->nChannel, " height=", pBlock->nHeight);
 
@@ -1843,12 +1856,25 @@ namespace LLP
 
         /* GET_ROUND COMPATIBILITY: AUTO-SEND TEMPLATE
          * Legacy miners using GET_ROUND polling expect to receive BLOCK_DATA automatically
-         * when the height changes, without needing to explicitly request GET_BLOCK. */
-        bool fHeightChanged = (nBestHeight.load() != nUnifiedHeight);
+         * when the height changes, without needing to explicitly request GET_BLOCK.
+         *
+         * CRITICAL: Use channel-specific height comparison (not unified height).
+         * Only send a new template when the miner's OWN channel advances.
+         * Using unified height would trigger unnecessary template sends when OTHER
+         * channels mine blocks, causing ~40% wasted mining work. */
+        uint32_t nCurrentChannelHeight = 0;
+        if(nChannel == 1)
+            nCurrentChannelHeight = nPrimeHeight;
+        else if(nChannel == 2)
+            nCurrentChannelHeight = nHashHeight;
 
-        if(fHeightChanged)
+        bool fChannelHeightChanged = (nLastTemplateChannelHeight != nCurrentChannelHeight);
+
+        if(fChannelHeightChanged)
         {
-            debug::log(2, FUNCTION, "Height changed - auto-sending template");
+            debug::log(2, FUNCTION, "Channel ", nChannel.load(), " advanced: ",
+                       nLastTemplateChannelHeight, " -> ", nCurrentChannelHeight,
+                       " - auto-sending template");
 
             TAO::Ledger::Block* pBlock = new_block();
 
@@ -1870,7 +1896,9 @@ namespace LLP
                                    pBlock->nChannel, " height=", pBlock->nHeight);
 
                         StatelessMinerManager::Get().IncrementTemplatesServed();
-                        nBestHeight.store(nUnifiedHeight);
+
+                        /* Update last template channel height only after successful send */
+                        nLastTemplateChannelHeight = nCurrentChannelHeight;
                     }
                 }
                 catch(const std::exception& e) {
