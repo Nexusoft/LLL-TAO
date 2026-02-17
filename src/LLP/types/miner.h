@@ -624,6 +624,59 @@ namespace LLP
          **/
         void SendChannelNotification();
 
+
+        /** handle_get_block_stateless
+         *
+         *  Stateless handler for GET_BLOCK - creates a block template and sends BLOCK_DATA.
+         *
+         *  @return True if no errors, false otherwise.
+         *
+         **/
+        bool handle_get_block_stateless();
+
+
+        /** handle_miner_ready_stateless
+         *
+         *  Stateless handler for MINER_READY - subscribes to push notifications and sends template.
+         *
+         *  @return True if no errors, false otherwise.
+         *
+         **/
+        bool handle_miner_ready_stateless();
+
+
+        /** handle_submit_block_stateless
+         *
+         *  Stateless handler for SUBMIT_BLOCK - validates and processes a block submission.
+         *
+         *  @param[in] PACKET The packet containing the block submission data.
+         *
+         *  @return True if no errors, false otherwise.
+         *
+         **/
+        bool handle_submit_block_stateless(const Packet& PACKET);
+
+
+        /** handle_get_round_stateless
+         *
+         *  Stateless handler for GET_ROUND - sends NEW_ROUND with height information.
+         *
+         *  @return True if no errors, false otherwise.
+         *
+         **/
+        bool handle_get_round_stateless();
+
+
+        /** respond_stateless
+         *
+         *  Sends a stateless (16-bit) protocol response packet.
+         *
+         *  @param[in] nOpcode The 16-bit stateless opcode (e.g., STATELESS_BLOCK_DATA).
+         *  @param[in] vData The payload data to send.
+         *
+         **/
+        void respond_stateless(uint16_t nOpcode, const std::vector<uint8_t>& vData = std::vector<uint8_t>());
+
     };
 }
 

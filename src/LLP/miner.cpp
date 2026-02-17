@@ -718,11 +718,13 @@ namespace LLP
                 {
                     if(result.strError.find("Unknown packet type") != std::string::npos)
                     {
-                        debug::error(FUNCTION, "Legacy lane received unimplemented opcode 0x",
-                                     std::hex, uint32_t(PACKET.HEADER), std::dec,
-                                     " (no cross-lane fallback)");
-                        this->Disconnect();
-                        return false;
+                        /* Mining operations (GET_BLOCK, SUBMIT_BLOCK, GET_ROUND, etc.) are
+                         * delegated by StatelessMiner to the connection layer.
+                         * Fall through to ProcessPacketStateless which handles these. */
+                        debug::log(2, FUNCTION, "StatelessMiner delegated opcode 0x",
+                                   std::hex, uint32_t(PACKET.HEADER), std::dec,
+                                   " to ProcessPacketStateless");
+                        return ProcessPacketStateless(PACKET);
                     }
                     
                     /* Processing error - log and disconnect */
@@ -884,37 +886,7 @@ namespace LLP
              */
             case MINER_READY:
             {
-                debug::log(2, FUNCTION, "════════════════════════════════════════════════════════════");
-                debug::log(2, FUNCTION, "MINER_READY received from ", GetAddress().ToStringIP());
-                
-                /* Validate channel (1=Prime, 2=Hash only) */
-                if(nChannel != 1 && nChannel != 2)
-                {
-                    debug::error(FUNCTION, "Invalid channel for MINER_READY: ", nChannel);
-                    debug::error(FUNCTION, "  Channel must be 1 (Prime) or 2 (Hash)");
-                    debug::error(FUNCTION, "  Miner must send SET_CHANNEL before MINER_READY");
-                    debug::log(2, FUNCTION, "════════════════════════════════════════════════════════════");
-                    Disconnect();
-                    return false;
-                }
-                
-                /* Update subscription state */
-                fSubscribedToNotifications = true;
-                nSubscribedChannel = nChannel;
-                
-                debug::log(2, FUNCTION, "Subscription activated:");
-                debug::log(2, FUNCTION, "  Channel: ", nChannel, " (", GetChannelName(nChannel), ")");
-                debug::log(2, FUNCTION, "  Address: ", GetAddress().ToStringIP());
-                debug::log(2, FUNCTION, "");
-                debug::log(2, FUNCTION, "Sending immediate notification...");
-                
-                /* Send immediate notification */
-                SendChannelNotification();
-                
-                debug::log(2, FUNCTION, "MINER_READY handler complete");
-                debug::log(2, FUNCTION, "════════════════════════════════════════════════════════════");
-                
-                return true;
+                return handle_miner_ready_stateless();
             }
 
 
@@ -950,231 +922,7 @@ namespace LLP
             /* Respond to a miner if it is a new round. */
             case GET_ROUND:
             {
-                /* Check authentication for stateless miners */
-                if(!fMinerAuthenticated)
-                {
-                    debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted GET_ROUND before authentication from ",
-                               GetAddress().ToStringIP(), " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
-                    std::vector<uint8_t> vFail(1, 0x00);
-                    respond(MINER_AUTH_RESULT, vFail);
-                    return debug::error(FUNCTION, "Authentication required for stateless miner commands");
-                }
-
-                debug::log(2, FUNCTION, "Processing GET_ROUND request from ", GetAddress().ToStringIP());
-                
-                /* Verify blockchain is ready */
-                TAO::Ledger::BlockState tStateBest = TAO::Ledger::ChainState::tStateBest.load();
-                
-                /* Check if blockchain is initialized (height == 0 means not yet initialized) */
-                if(tStateBest.nHeight == 0)
-                {
-                    debug::error(FUNCTION, "GET_ROUND: Blockchain not initialized from ", GetAddress().ToStringIP());
-                    debug::error(FUNCTION, "   Node is still starting up or syncing - cannot provide height information yet");
-                    /* Don't send empty response - just return and let miner retry */
-                    return true;
-                }
-                
-                /* Get unified height */
-                uint32_t nUnifiedHeight = tStateBest.nHeight;
-                debug::log(2, FUNCTION, "Unified height: ", nUnifiedHeight);
-                
-                /* Reuse a single BlockState for all GetLastState calls to reduce memory allocation.
-                 * Note: GetLastState modifies the state parameter, so we must reset it before each call. */
-                TAO::Ledger::BlockState stateChannel = tStateBest;
-                
-                /* Get Prime channel height (Channel 1) */
-                uint32_t nPrimeHeight = 0;
-                stateChannel = tStateBest;  // Reset - GetLastState modifies the state
-                if(TAO::Ledger::GetLastState(stateChannel, 1))
-                {
-                    nPrimeHeight = stateChannel.nChannelHeight;
-                    debug::log(2, FUNCTION, "Prime channel height: ", nPrimeHeight);
-                }
-                else
-                {
-                    debug::log(1, FUNCTION, "Could not get Prime channel height, using 0");
-                }
-                
-                /* Get Hash channel height (Channel 2) */
-                uint32_t nHashHeight = 0;
-                stateChannel = tStateBest;  // Reset - GetLastState modifies the state
-                if(TAO::Ledger::GetLastState(stateChannel, 2))
-                {
-                    nHashHeight = stateChannel.nChannelHeight;
-                    debug::log(2, FUNCTION, "Hash channel height: ", nHashHeight);
-                }
-                else
-                {
-                    debug::log(1, FUNCTION, "Could not get Hash channel height, using 0");
-                }
-                
-                /* Get Stake channel height (Channel 0) */
-                uint32_t nStakeHeight = 0;
-                stateChannel = tStateBest;  // Reset - GetLastState modifies the state
-                if(TAO::Ledger::GetLastState(stateChannel, 0))
-                {
-                    nStakeHeight = stateChannel.nChannelHeight;
-                    debug::log(2, FUNCTION, "Stake channel height: ", nStakeHeight);
-                }
-                else
-                {
-                    debug::log(1, FUNCTION, "Could not get Stake channel height, using 0");
-                }
-                
-                /* Build 16-byte response packet
-                 * Format: [Unified(4)][Prime(4)][Hash(4)][Stake(4)] = 16 bytes total */
-                std::vector<uint8_t> vResponse;
-                vResponse.reserve(16);  // Pre-allocate to avoid reallocation
-                
-                /* Convert each uint32_t to bytes and append */
-                std::vector<uint8_t> vUnified = convert::uint2bytes(nUnifiedHeight);
-                std::vector<uint8_t> vPrime = convert::uint2bytes(nPrimeHeight);
-                std::vector<uint8_t> vHash = convert::uint2bytes(nHashHeight);
-                std::vector<uint8_t> vStake = convert::uint2bytes(nStakeHeight);
-                
-                vResponse.insert(vResponse.end(), vUnified.begin(), vUnified.end());  // [0-3]   Unified
-                vResponse.insert(vResponse.end(), vPrime.begin(), vPrime.end());      // [4-7]   Prime
-                vResponse.insert(vResponse.end(), vHash.begin(), vHash.end());        // [8-11]  Hash  
-                vResponse.insert(vResponse.end(), vStake.begin(), vStake.end());      // [12-15] Stake
-                
-                /* Verify packet size - critical for protocol correctness */
-                if(vResponse.size() != 16)
-                {
-                    debug::error(FUNCTION, "GET_ROUND: Packet size mismatch!");
-                    debug::error(FUNCTION, "   Expected: 16 bytes");
-                    debug::error(FUNCTION, "   Got: ", vResponse.size(), " bytes");
-                    return true;  // Don't send malformed packet
-                }
-                
-                debug::log(2, FUNCTION, "Sending NEW_ROUND response (16 bytes):");
-                debug::log(2, FUNCTION, "   Unified:  ", nUnifiedHeight);
-                debug::log(2, FUNCTION, "   Prime:    ", nPrimeHeight);
-                debug::log(2, FUNCTION, "   Hash:     ", nHashHeight);
-                debug::log(2, FUNCTION, "   Stake:    ", nStakeHeight);
-                
-                /* Enhanced diagnostic logging for debugging flow issues */
-                debug::log(2, "════════════════════════════════════════════════════════════");
-                debug::log(2, "📤 LEGACY PORT (8323): SENDING NEW_ROUND RESPONSE");
-                debug::log(2, "════════════════════════════════════════════════════════════");
-                debug::log(2, "   Thread ID:      ", std::this_thread::get_id());
-                debug::log(2, "   To:             ", GetAddress().ToStringIP());
-                debug::log(2, "   Opcode:         NEW_ROUND (204/0xCC)");
-                debug::log(2, "   Response Data:");
-                debug::log(2, "      Unified Height:  ", nUnifiedHeight, " (0x", std::hex, nUnifiedHeight, std::dec, ")");
-                debug::log(2, "      Prime Height:    ", nPrimeHeight);
-                debug::log(2, "      Hash Height:     ", nHashHeight);
-                debug::log(2, "      Stake Height:    ", nStakeHeight);
-                debug::log(2, "   Packet Size:    16 bytes");
-                debug::log(2, "   Byte Order:     BIG-ENDIAN (network order)");
-                debug::log(2, "   Raw Bytes [0-3]: [", std::hex, std::setfill('0'),
-                           std::setw(2), static_cast<int>(vResponse[0]), " ",
-                           std::setw(2), static_cast<int>(vResponse[1]), " ",
-                           std::setw(2), static_cast<int>(vResponse[2]), " ",
-                           std::setw(2), static_cast<int>(vResponse[3]), "]", std::dec);
-                debug::log(2, "");
-                debug::log(2, "   ℹ️  LEGACY PROTOCOL:");
-                debug::log(2, "      This is the traditional GET_ROUND → NEW_ROUND flow.");
-                debug::log(2, "      Client should now decide whether to fetch new template");
-                debug::log(2, "      based on height changes in their mining channel.");
-                debug::log(2, "════════════════════════════════════════════════════════════");
-                
-                /* Send the response */
-                respond(NEW_ROUND, vResponse);
-                
-                /* ═════════════════════════════════════════════════════════════════════════ */
-                /* GET_ROUND COMPATIBILITY: AUTO-SEND TEMPLATE                              */
-                /* ═════════════════════════════════════════════════════════════════════════ */
-                
-                /* DESIGN RATIONALE:
-                 * Legacy miners using GET_ROUND polling expect to receive BLOCK_DATA automatically
-                 * when the height changes, without needing to explicitly request GET_BLOCK.
-                 * 
-                 * This compatibility behavior:
-                 * 1. Sends NEW_ROUND first (already done above)
-                 * 2. Checks if blockchain height has changed since last poll
-                 * 3. If changed: Auto-send BLOCK_DATA (like GET_BLOCK does)
-                 * 4. If same: Skip template send (miner already has current template)
-                 * 
-                 * This maintains backward compatibility with legacy mining software that relies
-                 * on GET_ROUND polling to automatically deliver templates.
-                 */
-                
-                /* Check if height has changed since last time 
-                 * Note: nBestHeight is updated by check_round() which is called periodically
-                 * We compare the miner's tracked height against the current blockchain height
-                 */
-                bool fHeightChanged = (nBestHeight.load() != nUnifiedHeight);
-                
-                debug::log(2, "");
-                debug::log(2, "   🔍 GET_ROUND TEMPLATE AUTO-SEND CHECK:");
-                debug::log(2, "      Miner's last height:  ", nBestHeight.load());
-                debug::log(2, "      Current height:       ", nUnifiedHeight);
-                debug::log(2, "      Height changed:       ", (fHeightChanged ? "YES" : "NO"));
-                
-                if(fHeightChanged)
-                {
-                    debug::log(2, "");
-                    debug::log(2, "   ✅ HEIGHT CHANGED - AUTO-SENDING TEMPLATE");
-                    debug::log(2, "      This maintains compatibility with legacy miners");
-                    debug::log(2, "      that expect GET_ROUND to automatically deliver templates.");
-                    debug::log(2, "");
-                    debug::log(2, "   📤 Creating new block template...");
-                    
-                    /* Create a new block template (same as stateless miner for consistency) 
-                     * Note: Channel validation already done at start of GET_ROUND handler,
-                     * so we can proceed directly to template creation. */
-                    TAO::Ledger::Block* pBlock = new_block();
-                    
-                    if(!pBlock)
-                    {
-                        debug::error(FUNCTION, "   ❌ GET_ROUND auto-send: new_block() returned nullptr");
-                        debug::error(FUNCTION, "      Template will not be sent - miner must use GET_BLOCK");
-                    }
-                    else
-                    {
-                        try {
-                            /* Serialize block template (216 bytes for Tritium) */
-                            std::vector<uint8_t> vBlockData = pBlock->Serialize();
-                            
-                            if(vBlockData.empty())
-                            {
-                                debug::error(FUNCTION, "   ❌ GET_ROUND auto-send: Serialization returned empty");
-                            }
-                            else
-                            {
-                                /* Send BLOCK_DATA packet */
-                                respond(BLOCK_DATA, vBlockData);
-                                
-                                debug::log(2, "   ✅ BLOCK_DATA AUTO-SENT!");
-                                debug::log(2, "      BLOCK_DATA: channel=", pBlock->nChannel, " height=", pBlock->nHeight);
-                                debug::log(2, "      Template size: ", vBlockData.size(), " bytes");
-                                debug::log(2, "      Merkle root:   ", pBlock->hashMerkleRoot.SubString());
-                                
-                                /* Update statistics (same as stateless miner for consistency) */
-                                StatelessMinerManager::Get().IncrementTemplatesServed();
-                                
-                                /* Update tracked height to prevent sending template on every GET_ROUND 
-                                 * until check_round() updates it. This ensures templates are only sent
-                                 * when height actually changes. Use .store() for explicit atomic operation. */
-                                nBestHeight.store(nUnifiedHeight);
-                            }
-                        }
-                        catch(const std::exception& e) {
-                            debug::error(FUNCTION, "   ❌ GET_ROUND auto-send exception: ", e.what());
-                        }
-                    }
-                }
-                else
-                {
-                    debug::log(2, "");
-                    debug::log(2, "   ℹ️  HEIGHT UNCHANGED - NO TEMPLATE SENT");
-                    debug::log(2, "      Miner should continue mining current template.");
-                    debug::log(2, "      If miner needs new template, use GET_BLOCK explicitly.");
-                }
-                
-                debug::log(2, "════════════════════════════════════════════════════════════");
-                
-                return true;
+                return handle_get_round_stateless();
             }
 
 
@@ -1242,286 +990,14 @@ namespace LLP
             /* Get a new block for the miner. */
             case GET_BLOCK:
             {
-                /* Check authentication for stateless miners */
-                if(!fMinerAuthenticated)
-                {
-                    debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted GET_BLOCK before authentication from ",
-                               GetAddress().ToStringIP(), " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
-                    std::vector<uint8_t> vFail(1, 0x00);
-                    respond(MINER_AUTH_RESULT, vFail);
-                    return debug::error(FUNCTION, "Authentication required for stateless miner commands");
-                }
-
-                /* Check if reward address is bound for stateless miners */
-                if(!fRewardBound)
-                {
-                    debug::error(FUNCTION, "GET_BLOCK: reward address not set - send MINER_SET_REWARD first");
-                    return debug::error(FUNCTION, "Reward address required for mining");
-                }
-
-                debug::log(2, FUNCTION, "GET_BLOCK request from ", GetAddress().ToStringIP());
-
-                TAO::Ledger::Block *pBlock = nullptr;
-
-                /* Prepare the data to serialize on request. */
-                std::vector<uint8_t> vData;
-                {
-                    LOCK(MUTEX);
-
-                    /* Create a new block */
-                    pBlock = new_block();
-
-                    /* Handle if the block failed to be created. */
-                    if(!pBlock)
-                    {
-                        debug::log(2, FUNCTION, "Failed to create block.");
-                        return true;
-                    }
-
-                    /* Store the new block in the memory map of recent blocks being worked on. */
-                    mapBlocks[pBlock->hashMerkleRoot] = pBlock;
-
-                    /* Serialize the block vData */
-                    vData = pBlock->Serialize();
-                }
-
-                /* Create and write the response packet. */
-                respond(BLOCK_DATA, vData);
-                
-                /* Log with channel height */
-                debug::log(2, FUNCTION, "BLOCK_DATA: channel=", pBlock->nChannel, 
-                           " height=", pBlock->nHeight);
-
-                return true;
+                return handle_get_block_stateless();
             }
 
 
             /* Submit a block using the merkle root as the key. */
             case SUBMIT_BLOCK:
             {
-                /* Check authentication for stateless miners */
-                if(!fMinerAuthenticated)
-                {
-                    debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted SUBMIT_BLOCK before authentication from ",
-                               GetAddress().ToStringIP(), " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
-                    std::vector<uint8_t> vFail(1, 0x00);
-                    respond(MINER_AUTH_RESULT, vFail);
-                    return debug::error(FUNCTION, "Authentication required for stateless miner commands");
-                }
-
-                debug::log(2, FUNCTION, "SUBMIT_BLOCK from ", GetAddress().ToStringIP(),
-                           " size=", PACKET.DATA.size());
-
-                /* Validate packet size using FalconConstants */
-                const size_t MIN_SIZE = FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE;
-                const size_t MAX_SIZE = FalconConstants::SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX;
-
-                if(PACKET.DATA.size() < MIN_SIZE)
-                {
-                    debug::log(0, FUNCTION, "SUBMIT_BLOCK packet too small: ", 
-                               PACKET.DATA.size(), " < ", MIN_SIZE);
-                    respond(BLOCK_REJECTED);
-                    return true;
-                }
-
-                if(PACKET.DATA.size() > MAX_SIZE)
-                {
-                    debug::log(0, FUNCTION, "SUBMIT_BLOCK packet too large: ",
-                               PACKET.DATA.size(), " > ", MAX_SIZE);
-                    respond(BLOCK_REJECTED);
-                    return true;
-                }
-
-                /* Log signature mode for diagnostics */
-                if(PACKET.DATA.size() > FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX)
-                {
-                    debug::log(2, FUNCTION, "SUBMIT_BLOCK: Dual-signature mode detected");
-                }
-                else if(PACKET.DATA.size() >= FalconConstants::SUBMIT_BLOCK_WRAPPER_MIN)
-                {
-                    debug::log(3, FUNCTION, "SUBMIT_BLOCK: Single-signature mode");
-                }
-                else
-                {
-                    debug::log(3, FUNCTION, "SUBMIT_BLOCK: Legacy format");
-                }
-
-                uint512_t hashMerkle;
-                uint64_t nonce = 0;
-                bool fParsed = false;
-                std::vector<uint8_t> vWorkData = PACKET.DATA;
-
-                /* Attempt to unwrap ChaCha20-encrypted payloads */
-                if(fEncryptionReady && !vChaChaKey.empty() &&
-                   PACKET.DATA.size() >= FalconConstants::SUBMIT_BLOCK_WRAPPER_MIN)
-                {
-                    std::vector<uint8_t> vDecrypted;
-                    if(LLC::DecryptPayloadChaCha20(PACKET.DATA, vChaChaKey, vDecrypted))
-                    {
-                        debug::log(2, FUNCTION, "SUBMIT_BLOCK: Unwrapping ChaCha20-encrypted submission");
-                        vWorkData = std::move(vDecrypted);
-
-                        if(vMinerPubKey.empty())
-                        {
-                            debug::error(FUNCTION, "SUBMIT_BLOCK unwrap failed: missing Falcon public key");
-                            respond(BLOCK_REJECTED);
-                            return true;
-                        }
-
-                        auto pWrapper = DisposableFalcon::Create();
-                        if(!pWrapper)
-                        {
-                            debug::error(FUNCTION, "SUBMIT_BLOCK unwrap failed: disposable Falcon wrapper unavailable");
-                            respond(BLOCK_REJECTED);
-                            return true;
-                        }
-
-                        std::vector<uint8_t> vUnwrapData = vWorkData;
-                        if(vWorkData.size() >= FalconConstants::SUBMIT_BLOCK_FORMAT_DETECTION_THRESHOLD)
-                        {
-                            auto BuildSignedSubmission = [&](size_t blockSize, size_t nonceOffset,
-                                                             std::vector<uint8_t>& vSigned) -> bool
-                            {
-                                if(vWorkData.size() < blockSize + FalconConstants::TIMESTAMP_SIZE +
-                                                     FalconConstants::LENGTH_FIELD_SIZE)
-                                    return false;
-
-                                if(vWorkData.size() < FalconConstants::FULL_BLOCK_MERKLE_OFFSET +
-                                                     FalconConstants::MERKLE_ROOT_SIZE ||
-                                   vWorkData.size() < nonceOffset + FalconConstants::NONCE_SIZE)
-                                    return false;
-
-                                size_t sigLenOffset = blockSize + FalconConstants::TIMESTAMP_SIZE;
-                                uint16_t sigLen = static_cast<uint16_t>(vWorkData[sigLenOffset]) |
-                                                  (static_cast<uint16_t>(vWorkData[sigLenOffset + 1]) << 8);
-
-                                size_t sigStart = sigLenOffset + FalconConstants::LENGTH_FIELD_SIZE;
-                                if(vWorkData.size() < sigStart + sigLen)
-                                    return false;
-
-                                uint64_t nonceValue = convert::bytes2uint64(std::vector<uint8_t>(
-                                    vWorkData.begin() + nonceOffset,
-                                    vWorkData.begin() + nonceOffset + FalconConstants::NONCE_SIZE));
-
-                                vSigned.clear();
-                                vSigned.reserve(FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE +
-                                                FalconConstants::TIMESTAMP_SIZE + FalconConstants::LENGTH_FIELD_SIZE +
-                                                sigLen);
-
-                                vSigned.insert(vSigned.end(),
-                                               vWorkData.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET,
-                                               vWorkData.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET +
-                                               FalconConstants::MERKLE_ROOT_SIZE);
-
-                                for(size_t i = 0; i < FalconConstants::NONCE_SIZE; ++i)
-                                {
-                                    vSigned.push_back(static_cast<uint8_t>((nonceValue >> (i * 8)) & 0xFF));
-                                }
-
-                                vSigned.insert(vSigned.end(), vWorkData.begin() + blockSize,
-                                               vWorkData.begin() + sigStart + sigLen);
-
-                                return true;
-                            };
-
-                            std::vector<uint8_t> vSigned;
-                            if(BuildSignedSubmission(FalconConstants::FULL_BLOCK_TRITIUM_MIN,
-                                                     FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET,
-                                                     vSigned) ||
-                               BuildSignedSubmission(FalconConstants::FULL_BLOCK_LEGACY_MIN,
-                                                     FalconConstants::FULL_BLOCK_LEGACY_NONCE_OFFSET,
-                                                     vSigned))
-                            {
-                                vUnwrapData = std::move(vSigned);
-                            }
-                            else
-                            {
-                                debug::error(FUNCTION, "SUBMIT_BLOCK unwrap failed: unable to reconstruct signed data");
-                                respond(BLOCK_REJECTED);
-                                return true;
-                            }
-                        }
-
-                        auto unwrapResult = pWrapper->UnwrapWorkSubmission(vUnwrapData, vMinerPubKey);
-                        if(!unwrapResult.fSuccess)
-                        {
-                            debug::error(FUNCTION, "SUBMIT_BLOCK unwrap failed: ", unwrapResult.strError);
-                            respond(BLOCK_REJECTED);
-                            return true;
-                        }
-
-                        hashMerkle = unwrapResult.submission.hashMerkleRoot;
-                        nonce = unwrapResult.submission.nNonce;
-                        fParsed = true;
-                    }
-                }
-
-                if(!fParsed)
-                {
-                    TAO::Ledger::ParseResult parseResult =
-                        TAO::Ledger::ParseStatelessWorkSubmission(PACKET.DATA);
-                    if(!parseResult.success)
-                    {
-                        debug::error(FUNCTION, "SUBMIT_BLOCK parse failed: ", parseResult.reason);
-                        respond(BLOCK_REJECTED);
-                        return true;
-                    }
-
-                    hashMerkle = parseResult.hashMerkle;
-                    nonce = parseResult.nonce;
-                }
-
-                debug::log(3, FUNCTION, "Block merkle root: ", hashMerkle.SubString(), " nonce: ", nonce);
-
-                LOCK(MUTEX);
-
-                /* Make sure the block was created by this mining server. */
-                if(!find_block(hashMerkle))
-                {
-                    debug::log(2, FUNCTION, "Block not found in map");
-                    respond(BLOCK_REJECTED);
-                    return true;
-                }
-
-                /* Make sure there is no inconsistencies in signing block. */
-                if(!sign_block(nonce, hashMerkle))
-                {
-                    respond(BLOCK_REJECTED);
-                    return true;
-                }
-
-                TAO::Ledger::TritiumBlock* pTritium =
-                    dynamic_cast<TAO::Ledger::TritiumBlock*>(mapBlocks[hashMerkle]);
-                if(!pTritium)
-                {
-                    debug::error(FUNCTION, "SUBMIT_BLOCK unexpected non-Tritium block for merkle ",
-                                 hashMerkle.SubString());
-                    respond(BLOCK_REJECTED);
-                    return true;
-                }
-
-                TAO::Ledger::BlockValidationResult validationResult =
-                    TAO::Ledger::ValidateMinedBlock(*pTritium);
-                if(!validationResult.valid)
-                {
-                    debug::error(FUNCTION, "SUBMIT_BLOCK rejected: ", validationResult.reason);
-                    respond(BLOCK_REJECTED);
-                    return true;
-                }
-
-                TAO::Ledger::BlockAcceptanceResult acceptanceResult =
-                    TAO::Ledger::AcceptMinedBlock(*pTritium);
-                if(!acceptanceResult.accepted)
-                {
-                    debug::error(FUNCTION, "SUBMIT_BLOCK rejected: ", acceptanceResult.reason);
-                    respond(BLOCK_REJECTED);
-                    return true;
-                }
-
-                debug::log(2, FUNCTION, "SUBMIT_BLOCK accepted merkle=", hashMerkle.SubString(),
-                           " channel=", acceptanceResult.nChannel, " height=", acceptanceResult.nHeight);
-                respond(BLOCK_ACCEPTED);
-                return true;
+                return handle_submit_block_stateless(PACKET);
             }
 
 
@@ -1968,6 +1444,473 @@ namespace LLP
                    " (unified=", stateBest.nHeight, 
                    ", channelHeight=", stateChannel.nChannelHeight,
                    ", diff=", std::hex, nDifficulty, std::dec, ")");
+    }
+
+
+    /* Stateless handler for GET_BLOCK - creates a block template and sends BLOCK_DATA */
+    bool Miner::handle_get_block_stateless()
+    {
+        debug::log(0, FUNCTION, "GET_BLOCK from ", GetAddress().ToStringIP());
+
+        /* Check authentication for stateless miners */
+        if(!fMinerAuthenticated)
+        {
+            debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted GET_BLOCK before authentication from ",
+                       GetAddress().ToStringIP());
+            std::vector<uint8_t> vFail(1, 0x00);
+            respond(MINER_AUTH_RESULT, vFail);
+            return debug::error(FUNCTION, "Authentication required for stateless miner commands");
+        }
+
+        /* Check if reward address is bound for stateless miners */
+        if(!fRewardBound)
+        {
+            debug::error(FUNCTION, "GET_BLOCK: reward address not set - send MINER_SET_REWARD first");
+            return debug::error(FUNCTION, "Reward address required for mining");
+        }
+
+        TAO::Ledger::Block *pBlock = nullptr;
+
+        /* Prepare the data to serialize on request. */
+        std::vector<uint8_t> vData;
+        {
+            LOCK(MUTEX);
+
+            /* Create a new block */
+            pBlock = new_block();
+
+            /* Handle if the block failed to be created. */
+            if(!pBlock)
+            {
+                debug::error(FUNCTION, "Failed to create block template");
+                return true;
+            }
+
+            /* Store the new block in the memory map of recent blocks being worked on. */
+            mapBlocks[pBlock->hashMerkleRoot] = pBlock;
+
+            /* Serialize the block vData */
+            vData = pBlock->Serialize();
+        }
+
+        /* Create and write the response packet. */
+        respond(BLOCK_DATA, vData);
+
+        debug::log(0, FUNCTION, "Sent BLOCK_DATA (", vData.size(), " bytes)"
+                   " channel=", pBlock->nChannel, " height=", pBlock->nHeight);
+
+        return true;
+    }
+
+
+    /* Stateless handler for MINER_READY - subscribes to push notifications and sends template */
+    bool Miner::handle_miner_ready_stateless()
+    {
+        debug::log(0, FUNCTION, "MINER_READY from ", GetAddress().ToStringIP());
+
+        /* Validate channel (1=Prime, 2=Hash only) */
+        if(nChannel != 1 && nChannel != 2)
+        {
+            debug::error(FUNCTION, "Invalid channel for MINER_READY: ", nChannel);
+            debug::error(FUNCTION, "  Channel must be 1 (Prime) or 2 (Hash)");
+            debug::error(FUNCTION, "  Miner must send SET_CHANNEL before MINER_READY");
+            Disconnect();
+            return false;
+        }
+
+        /* Update subscription state */
+        fSubscribedToNotifications = true;
+        nSubscribedChannel = nChannel;
+
+        debug::log(2, FUNCTION, "Subscription activated:");
+        debug::log(2, FUNCTION, "  Channel: ", nChannel, " (", GetChannelName(nChannel), ")");
+        debug::log(2, FUNCTION, "  Address: ", GetAddress().ToStringIP());
+
+        /* Send immediate notification */
+        SendChannelNotification();
+
+        debug::log(0, FUNCTION, "Miner subscribed to ", GetChannelName(nChannel), " notifications");
+
+        return true;
+    }
+
+
+    /* Stateless handler for SUBMIT_BLOCK - validates and processes a block submission */
+    bool Miner::handle_submit_block_stateless(const Packet& PACKET)
+    {
+        debug::log(0, FUNCTION, "SUBMIT_BLOCK from ", GetAddress().ToStringIP());
+
+        /* Check authentication for stateless miners */
+        if(!fMinerAuthenticated)
+        {
+            debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted SUBMIT_BLOCK before authentication from ",
+                       GetAddress().ToStringIP());
+            std::vector<uint8_t> vFail(1, 0x00);
+            respond(MINER_AUTH_RESULT, vFail);
+            return debug::error(FUNCTION, "Authentication required for stateless miner commands");
+        }
+
+        debug::log(2, FUNCTION, "SUBMIT_BLOCK from ", GetAddress().ToStringIP(),
+                   " size=", PACKET.DATA.size());
+
+        /* Validate packet size using FalconConstants */
+        const size_t MIN_SIZE = FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE;
+        const size_t MAX_SIZE = FalconConstants::SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX;
+
+        if(PACKET.DATA.size() < MIN_SIZE)
+        {
+            debug::log(0, FUNCTION, "SUBMIT_BLOCK packet too small: ",
+                       PACKET.DATA.size(), " < ", MIN_SIZE);
+            respond(BLOCK_REJECTED);
+            return true;
+        }
+
+        if(PACKET.DATA.size() > MAX_SIZE)
+        {
+            debug::log(0, FUNCTION, "SUBMIT_BLOCK packet too large: ",
+                       PACKET.DATA.size(), " > ", MAX_SIZE);
+            respond(BLOCK_REJECTED);
+            return true;
+        }
+
+        /* Log signature mode for diagnostics */
+        if(PACKET.DATA.size() > FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX)
+        {
+            debug::log(2, FUNCTION, "SUBMIT_BLOCK: Dual-signature mode detected");
+        }
+        else if(PACKET.DATA.size() >= FalconConstants::SUBMIT_BLOCK_WRAPPER_MIN)
+        {
+            debug::log(3, FUNCTION, "SUBMIT_BLOCK: Single-signature mode");
+        }
+        else
+        {
+            debug::log(3, FUNCTION, "SUBMIT_BLOCK: Legacy format");
+        }
+
+        uint512_t hashMerkle;
+        uint64_t nonce = 0;
+        bool fParsed = false;
+        std::vector<uint8_t> vWorkData = PACKET.DATA;
+
+        /* Attempt to unwrap ChaCha20-encrypted payloads */
+        if(fEncryptionReady && !vChaChaKey.empty() &&
+           PACKET.DATA.size() >= FalconConstants::SUBMIT_BLOCK_WRAPPER_MIN)
+        {
+            std::vector<uint8_t> vDecrypted;
+            if(LLC::DecryptPayloadChaCha20(PACKET.DATA, vChaChaKey, vDecrypted))
+            {
+                debug::log(2, FUNCTION, "SUBMIT_BLOCK: Unwrapping ChaCha20-encrypted submission");
+                vWorkData = std::move(vDecrypted);
+
+                if(vMinerPubKey.empty())
+                {
+                    debug::error(FUNCTION, "SUBMIT_BLOCK unwrap failed: missing Falcon public key");
+                    respond(BLOCK_REJECTED);
+                    return true;
+                }
+
+                auto pWrapper = DisposableFalcon::Create();
+                if(!pWrapper)
+                {
+                    debug::error(FUNCTION, "SUBMIT_BLOCK unwrap failed: disposable Falcon wrapper unavailable");
+                    respond(BLOCK_REJECTED);
+                    return true;
+                }
+
+                std::vector<uint8_t> vUnwrapData = vWorkData;
+                if(vWorkData.size() >= FalconConstants::SUBMIT_BLOCK_FORMAT_DETECTION_THRESHOLD)
+                {
+                    auto BuildSignedSubmission = [&](size_t blockSize, size_t nonceOffset,
+                                                     std::vector<uint8_t>& vSigned) -> bool
+                    {
+                        if(vWorkData.size() < blockSize + FalconConstants::TIMESTAMP_SIZE +
+                                             FalconConstants::LENGTH_FIELD_SIZE)
+                            return false;
+
+                        if(vWorkData.size() < FalconConstants::FULL_BLOCK_MERKLE_OFFSET +
+                                             FalconConstants::MERKLE_ROOT_SIZE ||
+                           vWorkData.size() < nonceOffset + FalconConstants::NONCE_SIZE)
+                            return false;
+
+                        size_t sigLenOffset = blockSize + FalconConstants::TIMESTAMP_SIZE;
+                        uint16_t sigLen = static_cast<uint16_t>(vWorkData[sigLenOffset]) |
+                                          (static_cast<uint16_t>(vWorkData[sigLenOffset + 1]) << 8);
+
+                        size_t sigStart = sigLenOffset + FalconConstants::LENGTH_FIELD_SIZE;
+                        if(vWorkData.size() < sigStart + sigLen)
+                            return false;
+
+                        uint64_t nonceValue = convert::bytes2uint64(std::vector<uint8_t>(
+                            vWorkData.begin() + nonceOffset,
+                            vWorkData.begin() + nonceOffset + FalconConstants::NONCE_SIZE));
+
+                        vSigned.clear();
+                        vSigned.reserve(FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE +
+                                        FalconConstants::TIMESTAMP_SIZE + FalconConstants::LENGTH_FIELD_SIZE +
+                                        sigLen);
+
+                        vSigned.insert(vSigned.end(),
+                                       vWorkData.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET,
+                                       vWorkData.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET +
+                                       FalconConstants::MERKLE_ROOT_SIZE);
+
+                        for(size_t i = 0; i < FalconConstants::NONCE_SIZE; ++i)
+                        {
+                            vSigned.push_back(static_cast<uint8_t>((nonceValue >> (i * 8)) & 0xFF));
+                        }
+
+                        vSigned.insert(vSigned.end(), vWorkData.begin() + blockSize,
+                                       vWorkData.begin() + sigStart + sigLen);
+
+                        return true;
+                    };
+
+                    std::vector<uint8_t> vSigned;
+                    if(BuildSignedSubmission(FalconConstants::FULL_BLOCK_TRITIUM_MIN,
+                                             FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET,
+                                             vSigned) ||
+                       BuildSignedSubmission(FalconConstants::FULL_BLOCK_LEGACY_MIN,
+                                             FalconConstants::FULL_BLOCK_LEGACY_NONCE_OFFSET,
+                                             vSigned))
+                    {
+                        vUnwrapData = std::move(vSigned);
+                    }
+                    else
+                    {
+                        debug::error(FUNCTION, "SUBMIT_BLOCK unwrap failed: unable to reconstruct signed data");
+                        respond(BLOCK_REJECTED);
+                        return true;
+                    }
+                }
+
+                auto unwrapResult = pWrapper->UnwrapWorkSubmission(vUnwrapData, vMinerPubKey);
+                if(!unwrapResult.fSuccess)
+                {
+                    debug::error(FUNCTION, "SUBMIT_BLOCK unwrap failed: ", unwrapResult.strError);
+                    respond(BLOCK_REJECTED);
+                    return true;
+                }
+
+                hashMerkle = unwrapResult.submission.hashMerkleRoot;
+                nonce = unwrapResult.submission.nNonce;
+                fParsed = true;
+            }
+        }
+
+        if(!fParsed)
+        {
+            TAO::Ledger::ParseResult parseResult =
+                TAO::Ledger::ParseStatelessWorkSubmission(PACKET.DATA);
+            if(!parseResult.success)
+            {
+                debug::error(FUNCTION, "SUBMIT_BLOCK parse failed: ", parseResult.reason);
+                respond(BLOCK_REJECTED);
+                return true;
+            }
+
+            hashMerkle = parseResult.hashMerkle;
+            nonce = parseResult.nonce;
+        }
+
+        debug::log(3, FUNCTION, "Block merkle root: ", hashMerkle.SubString(), " nonce: ", nonce);
+
+        LOCK(MUTEX);
+
+        /* Make sure the block was created by this mining server. */
+        if(!find_block(hashMerkle))
+        {
+            debug::log(2, FUNCTION, "Block not found in map");
+            respond(BLOCK_REJECTED);
+            return true;
+        }
+
+        /* Make sure there is no inconsistencies in signing block. */
+        if(!sign_block(nonce, hashMerkle))
+        {
+            respond(BLOCK_REJECTED);
+            return true;
+        }
+
+        TAO::Ledger::TritiumBlock* pTritium =
+            dynamic_cast<TAO::Ledger::TritiumBlock*>(mapBlocks[hashMerkle]);
+        if(!pTritium)
+        {
+            debug::error(FUNCTION, "SUBMIT_BLOCK unexpected non-Tritium block for merkle ",
+                         hashMerkle.SubString());
+            respond(BLOCK_REJECTED);
+            return true;
+        }
+
+        TAO::Ledger::BlockValidationResult validationResult =
+            TAO::Ledger::ValidateMinedBlock(*pTritium);
+        if(!validationResult.valid)
+        {
+            debug::error(FUNCTION, "SUBMIT_BLOCK rejected: ", validationResult.reason);
+            respond(BLOCK_REJECTED);
+            return true;
+        }
+
+        TAO::Ledger::BlockAcceptanceResult acceptanceResult =
+            TAO::Ledger::AcceptMinedBlock(*pTritium);
+        if(!acceptanceResult.accepted)
+        {
+            debug::error(FUNCTION, "SUBMIT_BLOCK rejected: ", acceptanceResult.reason);
+            respond(BLOCK_REJECTED);
+            return true;
+        }
+
+        debug::log(0, FUNCTION, "BLOCK_ACCEPTED merkle=", hashMerkle.SubString(),
+                   " channel=", acceptanceResult.nChannel, " height=", acceptanceResult.nHeight);
+        respond(BLOCK_ACCEPTED);
+        return true;
+    }
+
+
+    /* Stateless handler for GET_ROUND - sends NEW_ROUND with height information */
+    bool Miner::handle_get_round_stateless()
+    {
+        debug::log(2, FUNCTION, "GET_ROUND from ", GetAddress().ToStringIP());
+
+        /* Check authentication for stateless miners */
+        if(!fMinerAuthenticated)
+        {
+            debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted GET_ROUND before authentication from ",
+                       GetAddress().ToStringIP());
+            std::vector<uint8_t> vFail(1, 0x00);
+            respond(MINER_AUTH_RESULT, vFail);
+            return debug::error(FUNCTION, "Authentication required for stateless miner commands");
+        }
+
+        /* Verify blockchain is ready */
+        TAO::Ledger::BlockState tStateBest = TAO::Ledger::ChainState::tStateBest.load();
+
+        /* Check if blockchain is initialized (height == 0 means not yet initialized) */
+        if(tStateBest.nHeight == 0)
+        {
+            debug::error(FUNCTION, "GET_ROUND: Blockchain not initialized from ", GetAddress().ToStringIP());
+            return true;
+        }
+
+        /* Get unified height */
+        uint32_t nUnifiedHeight = tStateBest.nHeight;
+
+        /* Reuse a single BlockState for all GetLastState calls to reduce memory allocation. */
+        TAO::Ledger::BlockState stateChannel = tStateBest;
+
+        /* Get Prime channel height (Channel 1) */
+        uint32_t nPrimeHeight = 0;
+        stateChannel = tStateBest;
+        if(TAO::Ledger::GetLastState(stateChannel, 1))
+            nPrimeHeight = stateChannel.nChannelHeight;
+
+        /* Get Hash channel height (Channel 2) */
+        uint32_t nHashHeight = 0;
+        stateChannel = tStateBest;
+        if(TAO::Ledger::GetLastState(stateChannel, 2))
+            nHashHeight = stateChannel.nChannelHeight;
+
+        /* Get Stake channel height (Channel 0) */
+        uint32_t nStakeHeight = 0;
+        stateChannel = tStateBest;
+        if(TAO::Ledger::GetLastState(stateChannel, 0))
+            nStakeHeight = stateChannel.nChannelHeight;
+
+        /* Build 16-byte NEW_ROUND response
+         * Format: [Unified(4)][Prime(4)][Hash(4)][Stake(4)] = 16 bytes total */
+        std::vector<uint8_t> vResponse;
+        vResponse.reserve(16);
+
+        std::vector<uint8_t> vUnified = convert::uint2bytes(nUnifiedHeight);
+        std::vector<uint8_t> vPrime = convert::uint2bytes(nPrimeHeight);
+        std::vector<uint8_t> vHash = convert::uint2bytes(nHashHeight);
+        std::vector<uint8_t> vStake = convert::uint2bytes(nStakeHeight);
+
+        vResponse.insert(vResponse.end(), vUnified.begin(), vUnified.end());
+        vResponse.insert(vResponse.end(), vPrime.begin(), vPrime.end());
+        vResponse.insert(vResponse.end(), vHash.begin(), vHash.end());
+        vResponse.insert(vResponse.end(), vStake.begin(), vStake.end());
+
+        /* Verify packet size */
+        if(vResponse.size() != 16)
+        {
+            debug::error(FUNCTION, "GET_ROUND: Response size mismatch (", vResponse.size(), " != 16)");
+            return true;
+        }
+
+        debug::log(2, FUNCTION, "Sending NEW_ROUND (16 bytes): unified=", nUnifiedHeight,
+                   " prime=", nPrimeHeight, " hash=", nHashHeight, " stake=", nStakeHeight);
+
+        /* Send the NEW_ROUND response */
+        respond(NEW_ROUND, vResponse);
+
+        /* GET_ROUND COMPATIBILITY: AUTO-SEND TEMPLATE
+         * Legacy miners using GET_ROUND polling expect to receive BLOCK_DATA automatically
+         * when the height changes, without needing to explicitly request GET_BLOCK. */
+        bool fHeightChanged = (nBestHeight.load() != nUnifiedHeight);
+
+        if(fHeightChanged)
+        {
+            debug::log(2, FUNCTION, "Height changed - auto-sending template");
+
+            TAO::Ledger::Block* pBlock = new_block();
+
+            if(!pBlock)
+            {
+                debug::error(FUNCTION, "GET_ROUND auto-send: new_block() returned nullptr");
+            }
+            else
+            {
+                try {
+                    std::vector<uint8_t> vBlockData = pBlock->Serialize();
+
+                    if(!vBlockData.empty())
+                    {
+                        respond(BLOCK_DATA, vBlockData);
+
+                        debug::log(2, FUNCTION, "Auto-sent BLOCK_DATA (",
+                                   vBlockData.size(), " bytes) channel=",
+                                   pBlock->nChannel, " height=", pBlock->nHeight);
+
+                        StatelessMinerManager::Get().IncrementTemplatesServed();
+                        nBestHeight.store(nUnifiedHeight);
+                    }
+                }
+                catch(const std::exception& e) {
+                    debug::error(FUNCTION, "GET_ROUND auto-send exception: ", e.what());
+                }
+            }
+        }
+
+        return true;
+    }
+
+
+    /* Sends a stateless (16-bit) protocol response packet */
+    void Miner::respond_stateless(uint16_t nOpcode, const std::vector<uint8_t>& vData)
+    {
+        /* Build raw packet with 16-bit opcode (big-endian) and 4-byte length */
+        std::vector<uint8_t> vPacket;
+        vPacket.reserve(6 + vData.size());
+
+        /* Write 16-bit opcode (big-endian) */
+        vPacket.push_back((nOpcode >> 8) & 0xFF);
+        vPacket.push_back(nOpcode & 0xFF);
+
+        /* Write 4-byte length (big-endian) */
+        uint32_t nLength = static_cast<uint32_t>(vData.size());
+        vPacket.push_back((nLength >> 24) & 0xFF);
+        vPacket.push_back((nLength >> 16) & 0xFF);
+        vPacket.push_back((nLength >> 8) & 0xFF);
+        vPacket.push_back(nLength & 0xFF);
+
+        /* Append payload */
+        vPacket.insert(vPacket.end(), vData.begin(), vData.end());
+
+        /* Write raw bytes to connection */
+        Write(vPacket, vPacket.size());
+
+        debug::log(3, FUNCTION, "Stateless response: opcode=0x", std::hex, nOpcode,
+                   " length=", std::dec, nLength, " to ", GetAddress().ToStringIP());
     }
 
 }
