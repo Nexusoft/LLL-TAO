@@ -379,6 +379,15 @@ namespace LLP
         /* 16-bit opcode constants reference OpcodeUtility::Stateless (opcode_utility.h) */
         static const uint16_t STATELESS_MINER_READY = OpcodeUtility::Stateless::MINER_READY;   // Mirror(216): Miner -> Node: Subscribe to template push
         static const uint16_t STATELESS_GET_BLOCK   = OpcodeUtility::Stateless::GET_BLOCK;   // Mirror(129): Node -> Miner: Template push (228 bytes)
+        static const uint16_t STATELESS_BLOCK_DATA      = OpcodeUtility::Stateless::BLOCK_DATA;      // Node -> Miner: Block template payload
+        static const uint16_t STATELESS_SUBMIT_BLOCK    = OpcodeUtility::Stateless::SUBMIT_BLOCK;    // Miner -> Node: Submit solved block
+        static const uint16_t STATELESS_BLOCK_ACCEPTED  = OpcodeUtility::Stateless::BLOCK_ACCEPTED;  // Node -> Miner: Accepted result
+        static const uint16_t STATELESS_BLOCK_REJECTED  = OpcodeUtility::Stateless::BLOCK_REJECTED;  // Node -> Miner: Rejected result
+        static const uint16_t STATELESS_GET_ROUND       = OpcodeUtility::Stateless::GET_ROUND;       // Miner -> Node: Round status check
+        static const uint16_t STATELESS_PRIME_AVAILABLE = OpcodeUtility::Stateless::PRIME_AVAILABLE; // Node -> Miner: Prime template notification
+        static const uint16_t STATELESS_HASH_AVAILABLE  = OpcodeUtility::Stateless::HASH_AVAILABLE;  // Node -> Miner: Hash template notification
+        static const uint16_t STATELESS_NEW_ROUND       = OpcodeUtility::Stateless::NEW_ROUND;       // Node -> Miner: New round state
+        static const uint16_t STATELESS_OLD_ROUND       = OpcodeUtility::Stateless::OLD_ROUND;       // Node -> Miner: Existing round state
 
     private:
 
