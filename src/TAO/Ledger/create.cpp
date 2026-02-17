@@ -378,13 +378,33 @@ namespace TAO::Ledger
         const TAO::Ledger::BlockState tStateBest =
             ChainState::tStateBest.load();
 
-        /* Grab a copy of our expiration timestamp. */
-        const uint64_t nExpiration = config::GetArg("-blockrefresh", 60);
+        /* Event-driven cache invalidation: check each condition individually. */
+        bool fNeedsNewBlock = false;
 
-        /* Handle if the block is cached (if tStateBest or user change, cache is invalid). */
-        if((ChainState::hashBestChain.load() == tBlockCached.hashPrevBlock)
-        && (hashGenesis == tBlockCached.producer.hashGenesis)
-        && (runtime::unifiedtimestamp() < tBlockCached.producer.nTimestamp + nExpiration))
+        /* Primary check: Has the blockchain advanced? */
+        if(ChainState::hashBestChain.load() != tBlockCached.hashPrevBlock)
+        {
+            fNeedsNewBlock = true;
+            debug::log(2, FUNCTION, "Block cache invalidated by chain advance, regenerating...");
+        }
+
+        /* Secondary check: Has the user/genesis changed? */
+        if(hashGenesis != tBlockCached.producer.hashGenesis)
+        {
+            fNeedsNewBlock = true;
+            debug::log(2, FUNCTION, "Block cache invalidated (genesis/user change), regenerating...");
+        }
+
+        /* Tertiary check: Time-based safety timeout */
+        const uint64_t nExpiration = config::GetArg("-blockrefresh", 90);
+        if(runtime::unifiedtimestamp() >= tBlockCached.producer.nTimestamp + nExpiration)
+        {
+            fNeedsNewBlock = true;
+            debug::log(0, FUNCTION, "Block cache timed out after ", nExpiration, " seconds (safety net), regenerating...");
+        }
+
+        /* Reuse cached block if no invalidation condition triggered. */
+        if(!fNeedsNewBlock)
         {
             /* Set the block to cached block. */
             rBlockRet = tBlockCached;
@@ -447,9 +467,6 @@ namespace TAO::Ledger
         }
         else //block not cached, set up new block
         {
-            /* Give a message if cache is invalid by timestamp. */
-            if(runtime::unifiedtimestamp() < tBlockCached.producer.nTimestamp + nExpiration)
-                debug::log(0, FUNCTION, "Block cache has expired after ", nExpiration, " seconds, regenerating...");
 
             /* Must add transactions first, before creating producer, so producer is sequenced last if user has tx in block */
             AddTransactions(rBlockRet);
