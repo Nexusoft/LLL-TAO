@@ -557,6 +557,7 @@ namespace LLP
              *   - Rewards: 213, 214 (reward address binding)
              *   - Mining: 0, 1, 129, 200, 201 (block operations)
              *   - Info: 130 (height polling)
+             *   - Notifications: 216 (push notification subscription)
              */
             if(PACKET.HEADER == BLOCK_DATA ||             // 0   - node → miner: Block template
                PACKET.HEADER == SUBMIT_BLOCK ||           // 1   - miner → node: Submit solution
@@ -573,7 +574,8 @@ namespace LLP
                PACKET.HEADER == SESSION_START ||          // 211 - Session init
                PACKET.HEADER == SESSION_KEEPALIVE ||      // 212 - Session keepalive
                PACKET.HEADER == MINER_SET_REWARD ||       // 213 - miner → node: Set reward address
-               PACKET.HEADER == MINER_REWARD_RESULT)      // 214 - node → miner: Reward result
+               PACKET.HEADER == MINER_REWARD_RESULT ||    // 214 - node → miner: Reward result
+               PACKET.HEADER == MINER_READY)              // 216 - miner → node: Subscribe to push notifications
             {
                 /* Build MiningContext from current connection state */
                 std::string strAddress = GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort());
