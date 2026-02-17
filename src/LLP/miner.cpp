@@ -1418,6 +1418,20 @@ namespace LLP
     }
 
 
+    /* GetContext - Returns a MiningContext populated from the connection's subscription state */
+    MiningContext Miner::GetContext()
+    {
+        LOCK(MUTEX);
+
+        MiningContext ctx;
+        ctx.nChannel = nChannel;
+        ctx.fSubscribedToNotifications = fSubscribedToNotifications;
+        ctx.nSubscribedChannel = nSubscribedChannel;
+        ctx.strAddress = GetAddress().ToStringIP();
+        return ctx;
+    }
+
+
     /* SendChannelNotification - Send push notification to subscribed miner (legacy lane) */
     void Miner::SendChannelNotification()
     {
@@ -1519,7 +1533,7 @@ namespace LLP
     /* Stateless handler for MINER_READY - subscribes to push notifications and sends template */
     bool Miner::handle_miner_ready_stateless()
     {
-        debug::log(2, FUNCTION, "MINER_READY from ", GetAddress().ToStringIP());
+        debug::log(0, FUNCTION, "MINER_READY received from ", GetAddress().ToStringIP(), " (legacy port)");
 
         /* Validate channel (1=Prime, 2=Hash only) */
         if(nChannel != 1 && nChannel != 2)
@@ -1535,14 +1549,12 @@ namespace LLP
         fSubscribedToNotifications = true;
         nSubscribedChannel = nChannel;
 
-        debug::log(2, FUNCTION, "Subscription activated:");
-        debug::log(2, FUNCTION, "  Channel: ", nChannel, " (", GetChannelName(nChannel), ")");
-        debug::log(2, FUNCTION, "  Address: ", GetAddress().ToStringIP());
+        debug::log(0, FUNCTION, "Miner subscribed to channel ", nChannel, " (", GetChannelName(nChannel), ")");
 
         /* Send immediate notification */
         SendChannelNotification();
 
-        debug::log(2, FUNCTION, "Miner subscribed to ", GetChannelName(nChannel), " notifications");
+        debug::log(0, FUNCTION, "Miner subscribed to ", GetChannelName(nChannel), " notifications");
 
         return true;
     }

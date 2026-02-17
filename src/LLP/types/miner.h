@@ -16,6 +16,7 @@ ________________________________________________________________________________
 
 #include <LLP/templates/connection.h>
 #include <LLP/include/opcode_utility.h>
+#include <LLP/include/stateless_miner.h>
 #include <TAO/Ledger/types/block.h>
 #include <Legacy/types/coinbase.h>
 #include <atomic>
@@ -516,6 +517,30 @@ namespace LLP
         bool ProcessPacketStateless(const Packet& PACKET);
 
 
+        /** GetContext
+         *
+         *  Returns a MiningContext populated from the connection's subscription state.
+         *  Required by Server::NotifyChannelMiners() to check subscription and channel.
+         *
+         *  @return Copy of the current mining context.
+         *
+         **/
+        MiningContext GetContext();
+
+
+        /** SendChannelNotification
+         *
+         *  Send a channel-specific push notification to this miner.
+         *  Called when miner subscribes via MINER_READY (216/0xD8) and
+         *  from Server::NotifyChannelMiners() on block acceptance broadcast.
+         *
+         *  Uses 8-bit opcodes (217/218) for Legacy Tritium Protocol lane.
+         *  See also: PushNotificationBuilder for unified builder supporting both lanes.
+         *
+         **/
+        void SendChannelNotification();
+
+
     private:
 
         /** respond
@@ -617,18 +642,6 @@ namespace LLP
          *
          **/
         bool is_prime_mod(uint32_t nBitMask, TAO::Ledger::Block *pBlock);
-
-
-        /** SendChannelNotification
-         *
-         *  Send a channel-specific push notification to this miner.
-         *  Called when miner subscribes via MINER_READY (216/0xD8).
-         *
-         *  Uses 8-bit opcodes (217/218) for Legacy Tritium Protocol lane.
-         *  See also: PushNotificationBuilder for unified builder supporting both lanes.
-         *
-         **/
-        void SendChannelNotification();
 
 
         /** handle_get_block_stateless
