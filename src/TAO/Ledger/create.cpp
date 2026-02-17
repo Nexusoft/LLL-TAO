@@ -325,7 +325,7 @@ namespace TAO::Ledger
         /* Calculate the merkle root (stake minter must handle channel 0 after completing coinstake producer setup) */
         if(nChannel != 0)
         {
-            /* Add the transaction hashest. */
+            /* Add the transaction hashes. */
             std::vector<uint512_t> vHashes;
             for(const auto& tx : block.vtx)
                 vHashes.push_back(tx.second);
@@ -341,9 +341,33 @@ namespace TAO::Ledger
         block.hashPrevBlock = tStateBest.GetHash();
         block.nChannel      = nChannel;
 
-        /* Use channel-specific height for the template.
-         * Unified height (tStateBest.nHeight) counts ALL channels combined, but miners
-         * need the next block number for THEIR channel for correct staleness detection. */
+        /* CRITICAL: Use channel-specific height, NOT unified height!
+         *
+         * Nexus has 3 independent mining channels (Stake=0, Prime=1, Hash=2).
+         * Each channel maintains its own height counter (nChannelHeight) that advances
+         * independently as blocks are mined in that channel.
+         *
+         * The unified height (tStateBest.nHeight) is the TOTAL height across ALL channels
+         * combined (e.g., 6.5M blocks total across all channels).
+         *
+         * For mining templates, we MUST use channel-specific height because:
+         * 1. Miners track their channel's height, not unified height
+         * 2. Staleness detection compares template height vs channel height
+         * 3. Using unified height makes every template appear stale
+         *
+         * Example:
+         * - Unified height: 6,537,246 (all channels combined)
+         * - Prime channel height: 2,302,585 (Prime blocks only)
+         * - Hash channel height: 2,134,661 (Hash blocks only)
+         *
+         * A Prime miner needs the template to say "2,302,586" (next Prime block),
+         * NOT "6,537,247" (next unified block), otherwise it will reject as stale.
+         *
+         * Special case: Genesis block
+         * - Genesis has nHeight = 0 (global) but nChannelHeight = 1 (channel counter starts at 1)
+         * - First block in any channel has nChannelHeight = 2 (never 1!)
+         * - GetLastState handles this by returning genesis state when channel is empty
+         */
         TAO::Ledger::BlockState stateChannel = tStateBest;
         GetLastState(stateChannel, nChannel);
         block.nHeight = stateChannel.nChannelHeight + 1;
