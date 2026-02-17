@@ -453,7 +453,7 @@ namespace TAO::Ledger
             else if(ChainState::hashBestChain.load() != tBlockCached.hashPrevBlock)
                 debug::log(2, FUNCTION, "Block cache invalidated by chain advance, regenerating...");
             else
-                debug::log(2, FUNCTION, "Block cache invalidated, regenerating...");
+                debug::log(2, FUNCTION, "Block cache invalidated (genesis/user change), regenerating...");
 
             /* Must add transactions first, before creating producer, so producer is sequenced last if user has tx in block */
             AddTransactions(rBlockRet);
