@@ -390,8 +390,8 @@ namespace LLP
      *     - Rationale: Template is for NEXT block in channel (template_channel_height)
      *                  If blockchain already has that block, template is obsolete
      *  
-     *  2. SECONDARY CHECK: Age timeout (60 second safety net)
-     *     - Template is stale if older than 60 seconds
+     *  2. SECONDARY CHECK: Age timeout (90 second safety net)
+     *     - Template is stale if older than 90 seconds
      *     - Handles edge cases: reorgs, network partitions, clock skew
      *  
      *  EXAMPLE SCENARIOS:
@@ -418,14 +418,14 @@ namespace LLP
      *  
      *  Scenario D: Template is STALE - age timeout (safety net)
      *  ---------------------------------------------------------
-     *  Template: prime_channel=2165443, unified=6535198, age=65s
+     *  Template: prime_channel=2165443, unified=6535198, age=95s
      *  Blockchain: prime_channel=2165443 (no channel change)
-     *  Result: STALE ✅ (age exceeded 60s limit)
+     *  Result: STALE ✅ (age exceeded 90s limit)
      */
     bool TemplateMetadata::IsStale(uint64_t nNow) const
     {
         /* ═══════════════════════════════════════════════════════════════════════════ */
-        /* SECONDARY CHECK: Age-based timeout (60 second safety net)                   */
+        /* SECONDARY CHECK: Age-based timeout (90 second safety net)                   */
         /* ═══════════════════════════════════════════════════════════════════════════ */
         
         /* Get current time if not provided */
@@ -439,7 +439,7 @@ namespace LLP
         /* Calculate age in seconds */
         uint64_t nAge = nNow - nCreationTime;
 
-        /* Check age timeout - templates older than 60s are always stale */
+        /* Check age timeout - templates older than 90s are always stale */
         if(nAge > LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS)
             return true;  // STALE: Age exceeded safety timeout
         
@@ -490,7 +490,7 @@ namespace LLP
         /* ═══════════════════════════════════════════════════════════════════════════ */
         
         /* Template passes all checks:
-         * ✅ Age < 60 seconds
+         * ✅ Age < 90 seconds
          * ✅ Channel height matches (blockchain is at N-1, template mines N)
          * ✅ No other channel blocks invalidated this template
          */

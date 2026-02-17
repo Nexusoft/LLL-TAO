@@ -659,10 +659,10 @@ namespace FalconConstants
      *  Hard cutoff for template validity - templates older than this are discarded.
      *  Reasoning:
      *    - Nexus block time: ~50 seconds average
-     *    - Template should be valid for at least one full block interval
-     *    - 60 seconds provides safe margin before next block likely arrives
+     *    - Template should be valid for at least one full block interval plus margin
+     *    - 90 seconds provides safe margin without triggering unnecessary regeneration
      *  Prevents miners from working on very stale templates. */
-    static const uint64_t MAX_TEMPLATE_AGE_SECONDS = 60;
+    static const uint64_t MAX_TEMPLATE_AGE_SECONDS = 90;
 
 } // namespace FalconConstants
 } // namespace LLP

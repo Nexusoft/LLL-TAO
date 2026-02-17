@@ -98,7 +98,7 @@ namespace LLP
      *  
      *  SECONDARY CHECK: Age-based timeout (safety net)
      *  ------------------------------------------------
-     *  Templates older than 60 seconds are marked stale regardless of height, to handle edge
+     *  Templates older than 90 seconds are marked stale regardless of height, to handle edge
      *  cases like blockchain reorganizations, network partitions, or clock skew.
      *  
      *  NOT CHECKED: Unified height (would cause false positives)
@@ -138,7 +138,7 @@ namespace LLP
      *  Staleness Checking:
      *  -------------------
      *  1. IsStale() automatically checks channel height via GetLastState()
-     *  2. Also checks age timeout (60 second safety limit)
+     *  2. Also checks age timeout (90 second safety limit)
      *  3. Returns true only if channel advanced OR age exceeded
      *  
      *  Template Cleanup:
@@ -323,10 +323,10 @@ namespace LLP
          *    Blockchain: prime_channel=2165443 (no new Prime blocks yet)
          *    → Template is FRESH (correct - keep mining)
          *  
-         *  SECONDARY CHECK: Age timeout (60 second safety net)
+         *  SECONDARY CHECK: Age timeout (90 second safety net)
          *  ---------------------------------------------------
          *  Template is stale if:
-         *    current_time - creation_time > 60 seconds
+         *    current_time - creation_time > 90 seconds
          *  
          *  This catches edge cases like blockchain reorgs, network partitions, or clock skew.
          *  Acts as a safety timeout to prevent miners from working on very old templates.
@@ -370,7 +370,7 @@ namespace LLP
          *  Calculate how long this template has existed in seconds.
          *  
          *  Used for:
-         *  - Age-based staleness timeout (templates >60s are discarded)
+         *  - Age-based staleness timeout (templates >90s are discarded)
          *  - Logging and diagnostics
          *  - Performance monitoring
          *  

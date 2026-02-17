@@ -379,7 +379,7 @@ namespace TAO::Ledger
             ChainState::tStateBest.load();
 
         /* Grab a copy of our expiration timestamp. */
-        const uint64_t nExpiration = config::GetArg("-blockrefresh", 60);
+        const uint64_t nExpiration = config::GetArg("-blockrefresh", 90);
 
         /* Handle if the block is cached (if tStateBest or user change, cache is invalid). */
         if((ChainState::hashBestChain.load() == tBlockCached.hashPrevBlock)
@@ -447,9 +447,13 @@ namespace TAO::Ledger
         }
         else //block not cached, set up new block
         {
-            /* Give a message if cache is invalid by timestamp. */
-            if(runtime::unifiedtimestamp() < tBlockCached.producer.nTimestamp + nExpiration)
-                debug::log(0, FUNCTION, "Block cache has expired after ", nExpiration, " seconds, regenerating...");
+            /* Log a message indicating why the block cache was invalidated. */
+            if(runtime::unifiedtimestamp() >= tBlockCached.producer.nTimestamp + nExpiration)
+                debug::log(0, FUNCTION, "Block cache timed out after ", nExpiration, " seconds, regenerating...");
+            else if(ChainState::hashBestChain.load() != tBlockCached.hashPrevBlock)
+                debug::log(2, FUNCTION, "Block cache invalidated by chain advance, regenerating...");
+            else
+                debug::log(2, FUNCTION, "Block cache invalidated, regenerating...");
 
             /* Must add transactions first, before creating producer, so producer is sequenced last if user has tx in block */
             AddTransactions(rBlockRet);
