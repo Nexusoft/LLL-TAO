@@ -1628,6 +1628,138 @@ TEST_CASE("Stateless Opcode Conversion for 16-bit Lane", "[stateless_miner][opco
 }
 
 
+TEST_CASE("Native 16-bit Routing Path Tests", "[stateless_miner][opcodes][routing]")
+{
+    /* Test the native 16-bit routing path introduced by PR #259.
+     * Stateless lane receives opcodes natively as 16-bit, which are unmirrored
+     * before entering the switch statement that uses 8-bit case labels.
+     * This ensures proper routing without falling to default case. */
+    
+    SECTION("AUTH_INIT (0xD0CF) routes to ProcessMinerAuthInit")
+    {
+        MiningContext ctx;
+        
+        /* Build StatelessPacket with AUTH_INIT header (0xD0CF) */
+        StatelessPacket packet;
+        packet.HEADER = StatelessOpcodes::AUTH_INIT;  // 0xD0CF
+        
+        /* Build minimal AUTH_INIT payload: [2 bytes pubkey_len][pubkey][2 bytes id_len][id] */
+        std::vector<uint8_t> testPubKey(897, 0x42);  // Simulated Falcon-512 pubkey
+        uint16_t nPubKeyLen = static_cast<uint16_t>(testPubKey.size());
+        
+        packet.DATA.push_back(static_cast<uint8_t>(nPubKeyLen >> 8));
+        packet.DATA.push_back(static_cast<uint8_t>(nPubKeyLen & 0xFF));
+        packet.DATA.insert(packet.DATA.end(), testPubKey.begin(), testPubKey.end());
+        
+        std::string testMinerId = "test_miner";
+        uint16_t nMinerIdLen = static_cast<uint16_t>(testMinerId.size());
+        packet.DATA.push_back(static_cast<uint8_t>(nMinerIdLen >> 8));
+        packet.DATA.push_back(static_cast<uint8_t>(nMinerIdLen & 0xFF));
+        packet.DATA.insert(packet.DATA.end(), testMinerId.begin(), testMinerId.end());
+        
+        packet.LENGTH = packet.DATA.size();
+        
+        /* Process packet - should route to ProcessMinerAuthInit, not default case */
+        ProcessResult result = StatelessMiner::ProcessPacket(ctx, packet);
+        
+        /* Verify routing succeeded (not "Unknown packet type" error from default case) */
+        REQUIRE(result.fSuccess == true);
+        
+        /* Verify response is AUTH_CHALLENGE */
+        REQUIRE(!result.response.IsNull());
+        REQUIRE(StatelessOpcodes::Unmirror(result.response.HEADER) == 208);  // MINER_AUTH_CHALLENGE
+    }
+    
+    SECTION("SET_REWARD (0xD0D5) routes to ProcessSetReward")
+    {
+        MiningContext ctx;
+        
+        /* Build StatelessPacket with SET_REWARD header (0xD0D5) */
+        StatelessPacket packet;
+        packet.HEADER = StatelessOpcodes::SET_REWARD;  // 0xD0D5
+        
+        /* Build minimal SET_REWARD payload: 32-byte reward address hash */
+        std::vector<uint8_t> rewardAddress(32, 0xAB);
+        packet.DATA = rewardAddress;
+        packet.LENGTH = packet.DATA.size();
+        
+        /* Process packet - should route to ProcessSetReward, not default case */
+        ProcessResult result = StatelessMiner::ProcessPacket(ctx, packet);
+        
+        /* Verify it didn't hit the default case ("Unknown packet type") */
+        /* Note: ProcessSetReward may return success or specific error, but NOT "Unknown packet type" */
+        if (!result.fSuccess)
+        {
+            REQUIRE(result.strError != "Unknown packet type");
+        }
+    }
+    
+    SECTION("ProcessSetReward error response has HEADER == REWARD_RESULT (0xD0D6)")
+    {
+        MiningContext ctx;
+        
+        /* Build SET_REWARD packet with invalid payload (too short) to trigger error */
+        StatelessPacket packet;
+        packet.HEADER = StatelessOpcodes::SET_REWARD;  // 0xD0D5
+        packet.DATA = {0x01, 0x02};  // Invalid: too short (needs 32 bytes)
+        packet.LENGTH = packet.DATA.size();
+        
+        /* Process packet - should fail but return REWARD_RESULT response */
+        ProcessResult result = StatelessMiner::ProcessPacket(ctx, packet);
+        
+        /* Verify error response */
+        REQUIRE(result.fSuccess == false);
+        
+        /* Verify response header is REWARD_RESULT (0xD0D6), not 0x00D6 */
+        if (!result.response.IsNull())
+        {
+            uint16_t responseHeader = result.response.HEADER;
+            REQUIRE(responseHeader == StatelessOpcodes::REWARD_RESULT);  // 0xD0D6
+            REQUIRE(responseHeader == 0xD0D6);  // Explicit value check
+            REQUIRE(responseHeader != 0x00D6);  // Not legacy value
+        }
+    }
+    
+    SECTION("Legacy Packet with HEADER=207 mirrors and routes correctly via legacy overload")
+    {
+        MiningContext ctx;
+        
+        /* Build legacy Packet (8-bit) with MINER_AUTH_INIT (207) */
+        Packet legacyPacket(207);  // MINER_AUTH_INIT
+        
+        /* Build minimal AUTH_INIT payload */
+        std::vector<uint8_t> testPubKey(897, 0x55);
+        uint16_t nPubKeyLen = static_cast<uint16_t>(testPubKey.size());
+        
+        legacyPacket.DATA.push_back(static_cast<uint8_t>(nPubKeyLen >> 8));
+        legacyPacket.DATA.push_back(static_cast<uint8_t>(nPubKeyLen & 0xFF));
+        legacyPacket.DATA.insert(legacyPacket.DATA.end(), testPubKey.begin(), testPubKey.end());
+        
+        std::string testMinerId = "legacy_miner";
+        uint16_t nMinerIdLen = static_cast<uint16_t>(testMinerId.size());
+        legacyPacket.DATA.push_back(static_cast<uint8_t>(nMinerIdLen >> 8));
+        legacyPacket.DATA.push_back(static_cast<uint8_t>(nMinerIdLen & 0xFF));
+        legacyPacket.DATA.insert(legacyPacket.DATA.end(), testMinerId.begin(), testMinerId.end());
+        
+        legacyPacket.LENGTH = legacyPacket.DATA.size();
+        
+        /* Process via legacy overload - should Mirror to 16-bit, then route correctly */
+        ProcessResult result = StatelessMiner::ProcessPacket(ctx, legacyPacket);
+        
+        /* Verify routing succeeded (not "Unknown packet type" from default case) */
+        REQUIRE(result.fSuccess == true);
+        
+        /* Verify response is AUTH_CHALLENGE */
+        REQUIRE(!result.response.IsNull());
+        
+        /* Response should be 16-bit stateless opcode */
+        uint16_t responseHeader = result.response.HEADER;
+        REQUIRE(StatelessOpcodes::IsStateless(responseHeader) == true);
+        REQUIRE(StatelessOpcodes::Unmirror(responseHeader) == 208);  // MINER_AUTH_CHALLENGE
+    }
+}
+
+
 TEST_CASE("MiningContext Keepalive Tracking Fields", "[stateless_miner][keepalive]")
 {
     SECTION("Default constructor initializes keepalive tracking fields to zero")

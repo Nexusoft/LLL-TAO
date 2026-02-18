@@ -5,14 +5,23 @@
 ---
 
 ## A0) Quick Keywords (Auth/Session/Reward)
-- `MINER_AUTH_INIT`
+
+**Opcode Naming by Lane:**
+- **Legacy lane (port 8323):** Uses 8-bit opcodes with `MINER_` prefix from `OpcodeUtility::Opcodes` namespace.
+  - Examples: `MINER_AUTH_INIT`, `MINER_SET_REWARD`, `MINER_REWARD_RESULT`
+- **Stateless lane (port 9323):** Uses 16-bit opcodes WITHOUT `MINER_` prefix from `StatelessOpcodes` namespace (mirror-mapped from legacy).
+  - Examples: `AUTH_INIT` (0xD0CF), `SET_REWARD` (0xD0D5), `REWARD_RESULT` (0xD0D6)
+  - **Note:** In stateless context, use `SET_REWARD` and `REWARD_RESULT`, not `MINER_SET_REWARD` / `MINER_REWARD_RESULT`.
+
+**Keywords:**
+- `MINER_AUTH_INIT` (8-bit: 207) / `AUTH_INIT` (16-bit: 0xD0CF)
 - `MINER_AUTH_CHALLENGE`
 - `MINER_AUTH_RESPONSE`
 - `MINER_AUTH_RESULT`
 - `SESSION_START`
 - `SESSION_KEEPALIVE`
-- `MINER_SET_REWARD`
-- `MINER_REWARD_RESULT`
+- `MINER_SET_REWARD` (8-bit: 213) / `SET_REWARD` (16-bit: 0xD0D5)
+- `MINER_REWARD_RESULT` (8-bit: 214) / `REWARD_RESULT` (16-bit: 0xD0D6)
 - `MINER_READY`
 - `STATELESS_MINER_READY`
 - `DisposableFalcon`
