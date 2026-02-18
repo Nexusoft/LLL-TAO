@@ -563,11 +563,10 @@ namespace LLP
 
     /* Packet type definitions - must match miner.h and NexusMiner Phase 2 protocol
      * 
-     * NOTE: For case statements in ProcessPacket, use 8-bit opcodes from OpcodeUtility::Opcodes
-     * since incoming packets are unmirrored before routing. For constructing response packets,
-     * use 16-bit opcodes from StatelessOpcodes:: (alias to OpcodeUtility::Stateless::).
+     * NOTE: Strict lane separation - stateless lane uses native 16-bit opcodes throughout.
+     * All case statements and response packets use 16-bit opcodes from StatelessOpcodes::.
      */
-    using namespace OpcodeUtility::Opcodes;  // 8-bit opcodes for case statements
+    using namespace StatelessOpcodes;  // 16-bit opcodes for case statements and responses
 
 
     /* ProcessPacket overload for legacy 8-bit Packet type.
@@ -576,9 +575,10 @@ namespace LLP
         const MiningContext& context,
         const Packet& legacyPacket)
     {
-        /* Convert legacy 8-bit Packet to 16-bit StatelessPacket */
+        /* Convert legacy 8-bit Packet to 16-bit StatelessPacket.
+         * Mirror the opcode so the main ProcessPacket switch handles it with 16-bit cases. */
         StatelessPacket packet;
-        packet.HEADER = legacyPacket.HEADER;  // 8-bit to 16-bit (zero-extended)
+        packet.HEADER = OpcodeUtility::Stateless::Mirror(static_cast<uint8_t>(legacyPacket.HEADER));
         packet.LENGTH = legacyPacket.LENGTH;
         packet.DATA = legacyPacket.DATA;
 
@@ -611,31 +611,19 @@ namespace LLP
             DisposableFalcon::DebugLogPacket("ProcessPacket::incoming", packet.DATA, 5);
         }
 
-        /* Normalize 16-bit mirror-mapped opcodes to their 8-bit base values.
-         * Mirror-mapped opcodes are in the 0xD000-0xD0FF range (see stateless_opcodes.h).
-         * The low byte contains the original 8-bit opcode: 0xD0CF → 0xCF = 207.
-         * This allows the same switch statement to handle packets from both:
-         *   - Legacy lane (miner.cpp): header already 8-bit (207)
-         *   - Stateless lane (stateless_miner_connection.cpp): header is 16-bit (0xD0CF)
-         */
+        /* Keep native 16-bit format - strict lane separation, no conversion needed */
         uint16_t nRouteOpcode = packet.HEADER;
-        if(StatelessOpcodes::IsStateless(nRouteOpcode))
-        {
-            nRouteOpcode = StatelessOpcodes::Unmirror(nRouteOpcode);
-            debug::log(3, FUNCTION, "Unmirrored 16-bit opcode 0x", std::hex, packet.HEADER, 
-                      " → 8-bit ", std::dec, nRouteOpcode);
-        }
 
         /* Route based on packet type */
         /* Note: GET_BLOCK and SUBMIT_BLOCK are handled in StatelessMinerConnection */
         /* due to their need for stateful block management */
         switch(nRouteOpcode)
         {
-            case MINER_AUTH_INIT:
+            case AUTH_INIT:
                 debug::log(2, FUNCTION, "Routing to ProcessMinerAuthInit");
                 return ProcessMinerAuthInit(context, packet);
 
-            case MINER_AUTH_RESPONSE:
+            case AUTH_RESPONSE:
                 debug::log(2, FUNCTION, "Routing to ProcessFalconResponse");
                 return ProcessFalconResponse(context, packet);
 
@@ -651,11 +639,11 @@ namespace LLP
                 debug::log(3, FUNCTION, "Routing to ProcessSessionKeepalive");
                 return ProcessSessionKeepalive(context, packet);
 
-            case MINER_SET_REWARD:
+            case SET_REWARD:
                 debug::log(2, FUNCTION, "Routing to ProcessSetReward");
                 return ProcessSetReward(context, packet);
 
-            /* Legacy opcodes handled by connection layer (StatelessMinerConnection/ProcessPacketStateless).
+            /* Opcodes handled by connection layer (StatelessMinerConnection/ProcessPacketStateless).
              * Return "Unknown packet type" to trigger fallback without logging a warning. */
             case GET_BLOCK:
             case SUBMIT_BLOCK:
@@ -666,10 +654,10 @@ namespace LLP
             case BLOCK_ACCEPTED:
             case BLOCK_REJECTED:
             case CHANNEL_ACK:
-            case MINER_AUTH_CHALLENGE:
-            case MINER_AUTH_RESULT:
-            case MINER_REWARD_RESULT:
-                debug::log(3, FUNCTION, "Legacy opcode ", uint32_t(nRouteOpcode),
+            case AUTH_CHALLENGE:
+            case AUTH_RESULT:
+            case REWARD_RESULT:
+                debug::log(3, FUNCTION, "Opcode 0x", std::hex, uint32_t(nRouteOpcode), std::dec,
                            " handled by connection layer");
                 return ProcessResult::Error(context, "Unknown packet type");
 
@@ -1525,10 +1513,10 @@ namespace LLP
             std::vector<uint8_t> vErrorMsg = {0x00};  // Failure status
             std::vector<uint8_t> vEncryptedError = EncryptRewardResult(vErrorMsg, vChaChaKey);
             
-            StatelessPacket errorResponse(MINER_REWARD_RESULT);
+            StatelessPacket errorResponse(REWARD_RESULT);
             errorResponse.DATA = vEncryptedError;
             errorResponse.LENGTH = static_cast<uint32_t>(vEncryptedError.size());
-            
+
             /* Return success with error response - we want to send the encrypted error to miner */
             return ProcessResult::Success(context, errorResponse);
         }
@@ -1541,10 +1529,10 @@ namespace LLP
             std::vector<uint8_t> vErrorMsg = {0x00};
             std::vector<uint8_t> vEncryptedError = EncryptRewardResult(vErrorMsg, vChaChaKey);
             
-            StatelessPacket errorResponse(MINER_REWARD_RESULT);
+            StatelessPacket errorResponse(REWARD_RESULT);
             errorResponse.DATA = vEncryptedError;
             errorResponse.LENGTH = static_cast<uint32_t>(vEncryptedError.size());
-            
+
             /* Return success with error response */
             return ProcessResult::Success(context, errorResponse);
         }
@@ -1566,7 +1554,7 @@ namespace LLP
             std::vector<uint8_t> vErrorMsg = {0x00};
             std::vector<uint8_t> vEncryptedError = EncryptRewardResult(vErrorMsg, vChaChaKey);
             
-            StatelessPacket errorResponse(MINER_REWARD_RESULT);
+            StatelessPacket errorResponse(REWARD_RESULT);
             errorResponse.DATA = vEncryptedError;
             errorResponse.LENGTH = static_cast<uint32_t>(vEncryptedError.size());
             
