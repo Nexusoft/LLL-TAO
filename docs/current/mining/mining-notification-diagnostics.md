@@ -40,7 +40,7 @@ When the server sends a push notification:
 ════════════════════════════════════════════════════════════
    Opcode:         PRIME_BLOCK_AVAILABLE (NEW_PRIME_AVAILABLE)
    Opcode Value:   0xd9 (217)
-   To Address:     192.168.1.100:9325
+   To Address:     192.168.1.100:9323
    Channel:        1 (Prime)
    Payload:
       Unified Height:  6535196
@@ -68,7 +68,7 @@ When the server receives a GET_BLOCK request:
 ════════════════════════════════════════════════════════════
 📥 RECEIVED GET_BLOCK REQUEST
 ════════════════════════════════════════════════════════════
-   From:           192.168.1.100:9325
+   From:           192.168.1.100:9323
    Opcode:         GET_BLOCK (129/0x81)
    Context:
       Authenticated:  YES
@@ -101,7 +101,7 @@ When a subscribed miner sends GET_ROUND:
 ════════════════════════════════════════════════════════════
 📥 RECEIVED GET_ROUND REQUEST
 ════════════════════════════════════════════════════════════
-   From:           192.168.1.100:9325
+   From:           192.168.1.100:9323
    Opcode:         GET_ROUND (133/0x85)
    Context:
       Authenticated:  YES
@@ -135,7 +135,7 @@ When the server sends NEW_ROUND response:
 ════════════════════════════════════════════════════════════
 📤 SENDING NEW_ROUND RESPONSE
 ════════════════════════════════════════════════════════════
-   To:             192.168.1.100:9325
+   To:             192.168.1.100:9323
    Opcode:         NEW_ROUND (204/0xCC)
    Response Data:
       Unified Height:  6535196
