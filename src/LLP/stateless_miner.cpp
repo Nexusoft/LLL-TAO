@@ -662,7 +662,7 @@ namespace LLP
                 return ProcessResult::Error(context, "Unknown packet type");
 
             default:
-                debug::log(1, FUNCTION, "Unknown miner opcode: ", uint32_t(packet.HEADER));
+                debug::log(1, FUNCTION, "Unknown miner opcode: 0x", std::hex, uint32_t(packet.HEADER), std::dec);
                 return ProcessResult::Error(context, "Unknown packet type");
         }
     }
