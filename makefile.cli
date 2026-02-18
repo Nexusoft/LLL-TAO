@@ -304,6 +304,7 @@ ifdef UNIT_TESTS
 		   build/Tests_LLP_packet_data_payload.o \
 		   build/Tests_LLP_packet_round_response.o \
 		   build/Tests_LLP_push_notification_tests.o \
+		   build/Tests_LLP_stateless_miner.o \
 		   build/Tests_LLP_test_template_staleness.o \
 		   build/Tests_TAO_API_assets.o \
 		   build/Tests_TAO_API_finance.o \
