@@ -24,6 +24,8 @@ TEST_CASE("nexus.conf mining settings validation", "[config][mining]")
     
     SECTION("mining - valid boolean values")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "mining=1\n";
         out.close();
@@ -48,6 +50,8 @@ TEST_CASE("nexus.conf mining settings validation", "[config][mining]")
     
     SECTION("mining - disabled")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "mining=0\n";
         out.close();
@@ -68,6 +72,8 @@ TEST_CASE("nexus.conf mining settings validation", "[config][mining]")
     
     SECTION("miningport - valid port number")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "miningport=9323\n";
         out.close();
@@ -92,6 +98,7 @@ TEST_CASE("nexus.conf mining settings validation", "[config][mining]")
     SECTION("miningport - default value")
     {
         config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         config::fTestNet = false;
         
         uint16_t port = LLP::GetMiningPort();
@@ -100,6 +107,8 @@ TEST_CASE("nexus.conf mining settings validation", "[config][mining]")
     
     SECTION("miningport - custom port")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "miningport=19323\n";
         out.close();
@@ -120,6 +129,8 @@ TEST_CASE("nexus.conf mining settings validation", "[config][mining]")
     
     SECTION("legacyminingport - valid port number")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "legacyminingport=8323\n";
         out.close();
@@ -144,6 +155,7 @@ TEST_CASE("nexus.conf mining settings validation", "[config][mining]")
     SECTION("legacyminingport - default value")
     {
         config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         config::fTestNet = false;
         
         uint16_t port = LLP::GetLegacyMiningPort();
@@ -152,6 +164,8 @@ TEST_CASE("nexus.conf mining settings validation", "[config][mining]")
     
     SECTION("legacyminingport - disabled (0)")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "legacyminingport=0\n";
         out.close();
@@ -172,6 +186,8 @@ TEST_CASE("nexus.conf mining settings validation", "[config][mining]")
     
     SECTION("miningthreads - valid number")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "miningthreads=8\n";
         out.close();
@@ -192,6 +208,8 @@ TEST_CASE("nexus.conf mining settings validation", "[config][mining]")
     
     SECTION("miningtimeout - valid timeout value")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "miningtimeout=60\n";
         out.close();
@@ -217,6 +235,8 @@ TEST_CASE("nexus.conf authentication settings validation", "[config][auth]")
     
     SECTION("autologin - enabled")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "autologin=1\n";
         out.close();
@@ -237,6 +257,8 @@ TEST_CASE("nexus.conf authentication settings validation", "[config][auth]")
     
     SECTION("username - valid string")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "username=testuser\n";
         out.close();
@@ -257,6 +279,8 @@ TEST_CASE("nexus.conf authentication settings validation", "[config][auth]")
     
     SECTION("password - with special characters")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "password=P@ssw0rd!#$%\n";
         out.close();
@@ -277,6 +301,8 @@ TEST_CASE("nexus.conf authentication settings validation", "[config][auth]")
     
     SECTION("pin - numeric string")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "pin=1234\n";
         out.close();
@@ -297,6 +323,8 @@ TEST_CASE("nexus.conf authentication settings validation", "[config][auth]")
     
     SECTION("falcon - enabled")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "falcon=1\n";
         out.close();
@@ -317,6 +345,8 @@ TEST_CASE("nexus.conf authentication settings validation", "[config][auth]")
     
     SECTION("apiuser and apipassword")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "apiuser=api_admin\n";
         out << "apipassword=SecureAPIPass123!\n";
@@ -338,6 +368,8 @@ TEST_CASE("nexus.conf authentication settings validation", "[config][auth]")
     
     SECTION("rpcuser and rpcpassword")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "rpcuser=rpc_admin\n";
         out << "rpcpassword=SecureRPCPass456!\n";
@@ -364,6 +396,8 @@ TEST_CASE("nexus.conf network settings validation", "[config][network]")
     
     SECTION("listen - enabled")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "listen=1\n";
         out.close();
@@ -384,6 +418,8 @@ TEST_CASE("nexus.conf network settings validation", "[config][network]")
     
     SECTION("maxconnections - valid number")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "maxconnections=99\n";
         out.close();
@@ -404,6 +440,8 @@ TEST_CASE("nexus.conf network settings validation", "[config][network]")
     
     SECTION("llpallowip - single IP")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "llpallowip=127.0.0.1\n";
         out.close();
@@ -425,6 +463,8 @@ TEST_CASE("nexus.conf network settings validation", "[config][network]")
     
     SECTION("llpallowip - multiple IPs")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "llpallowip=127.0.0.1\n";
         out << "llpallowip=192.168.1.0/24\n";
@@ -449,6 +489,8 @@ TEST_CASE("nexus.conf network settings validation", "[config][network]")
     
     SECTION("port - custom P2P port")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "port=19888\n";
         out.close();
@@ -474,6 +516,8 @@ TEST_CASE("nexus.conf server settings validation", "[config][server]")
     
     SECTION("server - enabled")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "server=1\n";
         out.close();
@@ -494,6 +538,8 @@ TEST_CASE("nexus.conf server settings validation", "[config][server]")
     
     SECTION("daemon - enabled")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "daemon=1\n";
         out.close();
@@ -514,6 +560,8 @@ TEST_CASE("nexus.conf server settings validation", "[config][server]")
     
     SECTION("rpcport - custom port")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "rpcport=19336\n";
         out.close();
@@ -534,6 +582,8 @@ TEST_CASE("nexus.conf server settings validation", "[config][server]")
     
     SECTION("apiport - custom port")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "apiport=18080\n";
         out.close();
@@ -559,6 +609,8 @@ TEST_CASE("nexus.conf logging settings validation", "[config][logging]")
     
     SECTION("verbose - level 0")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "verbose=0\n";
         out.close();
@@ -579,6 +631,8 @@ TEST_CASE("nexus.conf logging settings validation", "[config][logging]")
     
     SECTION("verbose - level 3")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "verbose=3\n";
         out.close();
@@ -599,6 +653,8 @@ TEST_CASE("nexus.conf logging settings validation", "[config][logging]")
     
     SECTION("log - enabled")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "log=1\n";
         out.close();
@@ -624,6 +680,8 @@ TEST_CASE("nexus.conf performance settings validation", "[config][performance]")
     
     SECTION("dbcache - valid size in MB")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "dbcache=512\n";
         out.close();
@@ -644,6 +702,8 @@ TEST_CASE("nexus.conf performance settings validation", "[config][performance]")
     
     SECTION("threads - valid thread count")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "threads=8\n";
         out.close();
@@ -669,6 +729,8 @@ TEST_CASE("nexus.conf testnet settings validation", "[config][testnet]")
     
     SECTION("testnet - enabled")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "testnet=1\n";
         out.close();
@@ -690,6 +752,7 @@ TEST_CASE("nexus.conf testnet settings validation", "[config][testnet]")
     SECTION("testnet - ports remain the same for mining")
     {
         config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         config::fTestNet = true;
         
         // Mining ports should be the same on testnet
@@ -709,6 +772,8 @@ TEST_CASE("nexus.conf complete mining pool configuration", "[config][integration
     
     SECTION("Complete minimal mining pool config")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "# Autologin\n";
         out << "autologin=1\n";
@@ -777,6 +842,8 @@ TEST_CASE("nexus.conf error handling", "[config][errors]")
     
     SECTION("Invalid port - negative number")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "miningport=-1\n";
         out.close();
@@ -801,6 +868,8 @@ TEST_CASE("nexus.conf error handling", "[config][errors]")
     
     SECTION("Invalid port - too large")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "miningport=99999\n";
         out.close();
@@ -825,6 +894,8 @@ TEST_CASE("nexus.conf error handling", "[config][errors]")
     
     SECTION("Invalid boolean - non-numeric")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "mining=yes\n";
         out.close();
@@ -850,6 +921,8 @@ TEST_CASE("nexus.conf error handling", "[config][errors]")
     
     SECTION("Empty value")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "username=\n";
         out.close();
@@ -871,6 +944,8 @@ TEST_CASE("nexus.conf error handling", "[config][errors]")
     
     SECTION("Missing equals sign - invalid line")
     {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
         std::ofstream out(tempConfigPath);
         out << "invalidline\n";
         out << "validkey=validvalue\n";
