@@ -12,7 +12,7 @@ This guide helps diagnose and resolve common issues with the Nexus node mining s
 
 ```
 [Mining] Failed to start mining LLP server
-[Error] Port 9325 already in use
+[Error] Port 9323 already in use
 [Error] Unable to bind to port
 ```
 
@@ -22,8 +22,8 @@ This guide helps diagnose and resolve common issues with the Nexus node mining s
 
 ```bash
 # Check if port is in use
-netstat -tuln | grep 9325
-lsof -i :9325
+netstat -tuln | grep 9323
+lsof -i :9323
 
 # Check for zombie processes
 ps aux | grep nexus
@@ -46,8 +46,8 @@ Check `nexus.conf`:
 # Must be enabled
 mining=1
 
-# Verify port (optional, defaults to 9325 mainnet / 8323 testnet)
-miningport=9325
+# Verify port (optional, defaults to 9323 mainnet / 8323 testnet)
+miningport=9323
 ```
 
 #### 3. Check Firewall
@@ -55,15 +55,15 @@ miningport=9325
 ```bash
 # Ubuntu/Debian
 sudo ufw status
-sudo ufw allow 9325/tcp
+sudo ufw allow 9323/tcp
 
 # CentOS/RHEL
 sudo firewall-cmd --list-all
-sudo firewall-cmd --permanent --add-port=9325/tcp
+sudo firewall-cmd --permanent --add-port=9323/tcp
 sudo firewall-cmd --reload
 
 # Check iptables
-sudo iptables -L -n | grep 9325
+sudo iptables -L -n | grep 9323
 ```
 
 #### 4. Verify No Other Mining Servers Running
@@ -82,7 +82,7 @@ Ensure user has permission to bind to the port:
 
 ```bash
 # Low ports (<1024) need root or CAP_NET_BIND_SERVICE
-# Standard mining ports (9325, 8323) should work without root
+# Standard mining ports (9323, 8323) should work without root
 
 # If using low port, grant capability
 sudo setcap 'cap_net_bind_service=+ep' /path/to/nexus
@@ -141,13 +141,13 @@ From the miner machine:
 
 ```bash
 # Test TCP connection
-telnet <node_ip> 9325
+telnet <node_ip> 9323
 
 # Or use nc (netcat)
-nc -zv <node_ip> 9325
+nc -zv <node_ip> 9323
 
 # Or use nmap
-nmap -p 9325 <node_ip>
+nmap -p 9323 <node_ip>
 ```
 
 **If connection refused:**
@@ -217,10 +217,10 @@ On miner side:
 
 ```bash
 # Check miner command
-nexusminer --host=<node_ip> --port=9325
+nexusminer --host=<node_ip> --port=9323
 
 # Enable verbose logging
-nexusminer --host=<node_ip> --port=9325 --verbose=3
+nexusminer --host=<node_ip> --port=9323 --verbose=3
 ```
 
 ---
@@ -665,8 +665,8 @@ grep -v password ~/.Nexus/nexus.conf
 tail -100 ~/.Nexus/debug.log
 
 # Network connectivity
-netstat -tuln | grep 9325
-ss -tuln | grep 9325
+netstat -tuln | grep 9323
+ss -tuln | grep 9323
 ```
 
 ### 3. Check Community Resources

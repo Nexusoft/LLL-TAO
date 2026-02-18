@@ -53,25 +53,50 @@ The LLL-TAO node implements a secure, post-quantum Falcon handshake for miner au
 - Rewards tied to Tritium GenesisHash for stateful validation
 - Session-based authentication with automatic purging
 
-#### Configuration
+#### Quick Start: Node Pool Server `nexus.conf`
 
-Mining can be configured through the node's API or configuration file:
+The minimum required settings to run a Nexus node as a mining pool server (`~/.Nexus/nexus.conf`):
 
-```bash
-# Enable mining pool mode
--miningpool=1
+```conf
+# --- Autologin (required for unattended node operation) ---
+autologin=1
+username=YOUR_USERNAME
+password=YOUR_PASSWORD
+pin=YOUR_PIN
 
-# Set Falcon handshake timeout (default: 60 seconds)
--falconhandshake.timeout=60
+# --- API Authentication ---
+apiuser=YOUR_API_USERNAME
+apipassword=YOUR_STRONG_API_PASSWORD
 
-# Require encryption for all miners (default: false for localhost, true for remote)
--falconhandshake.requireencryption=1
+# --- Servers ---
+server=1
 
-# Set cache purge interval (default: 7 days)
--nodecache.purgetimeout=604800
+# --- Enable Mining (starts BOTH servers simultaneously) ---
+mining=1
+miningport=9323          # Stateless mining server  (PORT 9323)
+legacyminingport=8323    # Legacy mining server     (PORT 8323, auto-starts)
+
+# --- Network ---
+listen=1
+maxconnections=99
+llpallowip=127.0.0.1    # Localhost testing
+#llpallowip=0.0.0.0     # Public internet pool
+
+# --- Post-Quantum Authentication ---
+falcon=1
 ```
 
-For detailed mining setup instructions, see [Mining Documentation](docs/mining.md).
+> **Localhost Testing:** Use `llpallowip=127.0.0.1` — miners on the same machine connect to `127.0.0.1:9323`  
+> **Public Internet:** Switch to `llpallowip=0.0.0.0` — miners point to your public IP on port `9323`  
+> **Security:** `chmod 600 ~/.Nexus/nexus.conf` to protect your credentials
+
+The node runs **two mining servers simultaneously**:
+| Server | Port | Protocol | Miners |
+|--------|------|----------|--------|
+| Stateless | `9323` | 16-bit framing (Phase 2) | NexusMiner (stateless config) |
+| Legacy | `8323` | 8-bit framing (Phase 1) | Backward-compatible miners |
+
+For a complete reference see [nexus.conf Reference](docs/reference/nexus.conf.md).
 
 ## Developing
 
