@@ -487,6 +487,29 @@ TEST_CASE("nexus.conf network settings validation", "[config][network]")
         std::remove(tempConfigPath.c_str());
     }
     
+    SECTION("llpallowip - open to internet (public pool)")
+    {
+        config::mapArgs.clear();
+        config::mapMultiArgs.clear();
+        std::ofstream out(tempConfigPath);
+        out << "llpallowip=0.0.0.0\n";
+        out.close();
+        
+        config::mapArgs["-conf"] = tempConfigPath;
+        config::mapArgs["-datadir"] = "/tmp/";
+        
+        std::map<std::string, std::string> mapSettings;
+        std::map<std::string, std::vector<std::string>> mapMultiSettings;
+        
+        config::ReadConfigFile(mapSettings, mapMultiSettings);
+        
+        REQUIRE(mapMultiSettings.count("-llpallowip") > 0);
+        REQUIRE(mapMultiSettings["-llpallowip"].size() == 1);
+        REQUIRE(mapMultiSettings["-llpallowip"][0] == "0.0.0.0");
+        
+        std::remove(tempConfigPath.c_str());
+    }
+    
     SECTION("port - custom P2P port")
     {
         config::mapArgs.clear();
