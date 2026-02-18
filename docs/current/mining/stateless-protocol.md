@@ -71,7 +71,7 @@ if(config::GetBoolArg("-mining", false) && !config::fClient.load())
     CONFIG.SOCKET_TIMEOUT  = config::GetArg("-miningtimeout", 30);
     
     // Start mining LLP server
-    uint16_t nPort = LLP::GetMiningPort(); // 9325 mainnet, 8323 testnet
+    uint16_t nPort = LLP::GetMiningPort(); // 9323 mainnet and testnet
     MINING_SERVER = new LLP::Server<LLP::StatelessMinerConnection>(
         nPort, 
         CONFIG.MAX_THREADS,
@@ -94,7 +94,7 @@ if(config::GetBoolArg("-mining", false) && !config::fClient.load())
 ### Server Configuration
 
 Key configuration parameters:
-- **Port:** 9325 (mainnet) / 8323 (testnet)
+- **Port:** 9323 (mainnet and testnet)
 - **Threads:** 4-16 recommended (configurable via `-miningthreads`)
 - **Timeout:** 30 seconds default (configurable via `-miningtimeout`)
 - **DDOS Protection:** Optional (enable with `-miningddos=1`)

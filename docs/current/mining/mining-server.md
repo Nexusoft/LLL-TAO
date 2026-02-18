@@ -5,7 +5,7 @@
 The Nexus mining server implements the LLP (Lower Level Protocol) for stateless mining with Falcon-1024 authentication. This document describes the server architecture, connection handling, and internal components.
 
 **Component:** `LLP::Server<StatelessMinerConnection>`  
-**Port:** 9325 (mainnet), 8323 (testnet)  
+**Port:** 9323 (mainnet and testnet)  
 **Protocol:** Stateless Mining 1.0  
 **Version:** LLL-TAO 5.1.0+
 
@@ -454,7 +454,7 @@ minerallowkey=fedcba9876543210...
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `mining` | bool | `false` | Enable mining server |
-| `miningport` | int | `9325` | Mining server port |
+| `miningport` | int | `9323` | Mining server port |
 | `miningthreads` | int | CPU cores | Worker thread count |
 | `miningtimeout` | int | `30` | Socket timeout (seconds) |
 
@@ -485,7 +485,7 @@ minerallowkey=fedcba9876543210...
 
 **Startup:**
 ```
-[Mining] LLP Server started on port 9325
+[Mining] LLP Server started on port 9323
 [Mining] Authentication: MINER-DRIVEN (Falcon keys from miners)
 [Mining] Reward Routing: STATELESS (via MINER_SET_REWARD)
 ```

@@ -71,7 +71,7 @@ mining=1
 ### `miningport`
 
 **Type:** Integer  
-**Default:** `9325` (mainnet), `8323` (testnet)  
+**Default:** `9323` (mainnet and testnet)  
 **Description:** Port for the stateless mining protocol (LLP Mining Server)
 
 This is the port where miners connect to receive block templates and submit solutions. The protocol uses push notifications (GET_BLOCK/NEW_BLOCK) rather than polling.
@@ -79,14 +79,32 @@ This is the port where miners connect to receive block templates and submit solu
 **Example:**
 ```ini
 # Custom mining port
-miningport=9325
+miningport=9323
 ```
 
 **Related Ports:**
-- Mainnet mining: `9325`
-- Testnet mining: `8323`
+- Mainnet mining: `9323`
+- Testnet mining: `9323`
 
 **Security Note:** This port should be accessible to miners but protected by firewalls from untrusted sources. Consider using `llpallowip` to whitelist specific networks.
+
+---
+
+### `legacyminingport`
+
+**Type:** Integer  
+**Default:** `8323` (mainnet and testnet)  
+**Description:** Port for the legacy mining protocol (8-bit framing, backward-compatible)
+
+The legacy mining server starts automatically when `mining=1` unless explicitly disabled by setting this to `0`.
+
+To disable legacy mining: `legacyminingport=0`
+
+**Example:**
+```ini
+legacyminingport=8323    # Legacy mining (auto-starts with mining=1)
+# legacyminingport=0     # Disable legacy mining server
+```
 
 ---
 
@@ -296,7 +314,8 @@ testnet=1
 ```
 
 **Port Changes:**
-- Mining: 9325 → 8323
+- Mining: 9323 → 9323 (same port)
+- Legacy Mining: 8323 → 8323 (same port)
 - API: 8080 → 7080
 - RPC: 9336 → 8336
 - P2P: 9326 → 8326
@@ -353,6 +372,21 @@ llpallowip=10.0.0.50
 
 ---
 
+### `listen`
+
+**Type:** Integer (0 or 1)  
+**Default:** `0`  
+**Description:** Enable incoming P2P connections
+
+When enabled, the node accepts incoming connections from other peers. This is recommended for mining pool servers and full nodes that contribute to network health.
+
+**Example:**
+```ini
+listen=1
+```
+
+---
+
 ### `maxconnections`
 
 **Type:** Integer  
@@ -393,6 +427,80 @@ maxoutgoing=16
 ---
 
 ## Authentication & Security
+
+### `autologin`
+
+**Type:** Integer (0 or 1)  
+**Default:** `0`  
+**Description:** Enable automatic login for unattended node operation
+
+When enabled, the node automatically logs in using the credentials specified in `username`, `password`, and `pin`. This is required for mining nodes and pool servers that need to operate without manual intervention.
+
+**Example:**
+```ini
+autologin=1
+username=YOUR_USERNAME
+password=YOUR_PASSWORD
+pin=YOUR_PIN
+```
+
+**Security:** Ensure `nexus.conf` has restricted permissions (`chmod 600 ~/.Nexus/nexus.conf`) to protect credentials.
+
+---
+
+### `username`
+
+**Type:** String  
+**Default:** None  
+**Description:** Username for automatic login (used with `autologin=1`)
+
+**Example:**
+```ini
+username=myusername
+```
+
+---
+
+### `password`
+
+**Type:** String  
+**Default:** None  
+**Description:** Password for automatic login (used with `autologin=1`)
+
+**Example:**
+```ini
+password=mypassword
+```
+
+---
+
+### `pin`
+
+**Type:** String  
+**Default:** None  
+**Description:** PIN for automatic login (used with `autologin=1`)
+
+**Example:**
+```ini
+pin=1234
+```
+
+---
+
+### `falcon`
+
+**Type:** Integer (0 or 1)  
+**Default:** `0`  
+**Description:** Enable post-quantum Falcon-1024 authentication for mining
+
+When enabled, miners must use Falcon-1024 signatures for authentication, providing quantum-resistant security.
+
+**Example:**
+```ini
+falcon=1
+```
+
+---
 
 ### `rpcuser`
 
@@ -949,19 +1057,42 @@ llpwait=1
 # Node and miner on same machine
 #
 
-# Basic authentication
-rpcuser=miner
-rpcpassword=secure_password_123
+# Autologin (required for unattended operation)
+autologin=1
+username=miner
+password=secure_password_123
+pin=1234
+
+# API authentication
 apiuser=miner
 apipassword=secure_api_password_456
+
+# RPC authentication
+rpcuser=miner
+rpcpassword=secure_rpc_password_789
+
+# Enable servers
+server=1
 daemon=1
 
-# Enable mining server
+# Enable mining servers (both stateless and legacy)
 mining=1
-miningport=9325
+miningport=9323          # Stateless mining server
+legacyminingport=8323    # Legacy mining server
+
+# Network
+listen=1
+maxconnections=16
+
+# Mining allowed from localhost only
+llpallowip=127.0.0.1
+
+# Post-quantum authentication
+falcon=1
 
 # Optional: Extended logging for debugging
 verbose=2
+log=1
 
 # Performance tuning
 dbcache=512
@@ -978,16 +1109,26 @@ miningthreads=4
 # Accessible over the internet
 #
 
+# Autologin (required for unattended operation)
+autologin=1
+username=pool_operator
+password=ultra_secure_password_xyz
+pin=5678
+
 # Authentication
 rpcuser=pool_operator
-rpcpassword=ultra_secure_password_xyz
+rpcpassword=ultra_secure_rpc_password
 apiuser=pool_api
 apipassword=ultra_secure_api_password_abc
+
+# Enable servers
+server=1
 daemon=1
 
-# Mining server with security
+# Mining servers with security (both stateless and legacy)
 mining=1
-miningport=9325
+miningport=9323          # Stateless mining server
+legacyminingport=8323    # Legacy mining server
 miningssl=1
 miningsslrequired=1
 
@@ -1002,8 +1143,13 @@ miningrscore=50
 miningtimespan=60
 miningtimeout=30
 
-# Network restrictions
+# Network
+listen=1
+maxconnections=99
 llpallowip=0.0.0.0/0  # Allow all (use firewall for restrictions)
+
+# Post-quantum authentication
+falcon=1
 
 # Performance for many miners
 dbcache=2048
@@ -1036,16 +1182,34 @@ log=1
 # Testnet mode
 testnet=1
 
+# Autologin (required for unattended operation)
+autologin=1
+username=testuser
+password=testpass
+pin=9999
+
 # Authentication
 rpcuser=testuser
-rpcpassword=testpass
+rpcpassword=testpass_rpc
 apiuser=testapi
 apipassword=testapipass
+
+# Enable servers
+server=1
 daemon=1
 
-# Mining on testnet
+# Mining on testnet (both servers)
 mining=1
-# Port automatically becomes 8323 on testnet
+miningport=9323          # Stateless mining (same port on testnet)
+legacyminingport=8323    # Legacy mining (same port on testnet)
+
+# Network
+listen=1
+maxconnections=16
+llpallowip=127.0.0.1
+
+# Post-quantum authentication
+falcon=1
 
 # Verbose logging for testing
 verbose=3
@@ -1065,16 +1229,26 @@ dbcache=256
 # Maximum security and performance
 #
 
+# Autologin (required for unattended operation)
+autologin=1
+username=pool_admin
+password=complex_password_here
+pin=4321
+
 # Authentication
 rpcuser=pool_admin
-rpcpassword=complex_password_here
+rpcpassword=complex_rpc_password_here
 apiuser=pool_api
 apipassword=complex_api_password
+
+# Enable servers
+server=1
 daemon=1
 
-# Mining with SSL
+# Mining with SSL (both servers)
 mining=1
-miningport=9325
+miningport=9323          # Stateless mining server
+legacyminingport=8323    # Legacy mining server
 miningssl=1
 miningsslrequired=1
 
@@ -1093,15 +1267,20 @@ miningcscore=1
 miningrscore=50
 miningtimespan=60
 
+# Network
+listen=1
+maxconnections=99
+llpallowip=10.0.0.0/8
+llpallowip=192.168.0.0/16
+
+# Post-quantum authentication
+falcon=1
+
 # Maximum performance
 dbcache=4096
 miningthreads=32
 threads=16
 mempool.max=200000
-
-# Network
-llpallowip=10.0.0.0/8
-llpallowip=192.168.0.0/16
 
 # API with protection
 api=1
