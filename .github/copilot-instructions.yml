@@ -1,10 +1,10 @@
 build:
-  skip_tests: true
+  skip_tests: false
   compile_only: true
-  timeout_minutes: 10
+  timeout_minutes: 20
 
 validation:
   require_compilation: true
-  require_tests: false
+  require_tests: true
 
 dependencies:
