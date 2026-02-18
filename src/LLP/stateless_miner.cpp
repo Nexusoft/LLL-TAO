@@ -603,7 +603,7 @@ namespace LLP
     )
     {
         /* DEBUG: Log incoming packet details for Falcon handshake debugging */
-        debug::log(3, FUNCTION, "ProcessPacket: opcode=", packet.HEADER, " length=", packet.LENGTH);
+        debug::log(3, FUNCTION, "ProcessPacket: opcode=0x", std::hex, packet.HEADER, std::dec, " length=", packet.LENGTH);
 
         /* DEBUG: Log packet bytes when verbose >= 5 */
         if(config::nVerbose >= 5)
@@ -1181,6 +1181,8 @@ namespace LLP
             .WithKeyId(hashKeyID)
             .WithGenesis(hashGenesis)
             .WithTimestamp(runtime::unifiedtimestamp())
+            .WithSessionStart(runtime::unifiedtimestamp())   // Auto-start session at auth
+            .WithSessionTimeout(DEFAULT_SESSION_TIMEOUT)      // Set default timeout
             .WithNonce(std::vector<uint8_t>())  // Clear single-use nonce
             .WithFalconVersion(detectedVersion);  // Store detected Falcon version (PR #122)
             // Keep vMinerPubKey in context - it will be extracted and stored in mapSessionKeys
@@ -1211,6 +1213,8 @@ namespace LLP
         debug::log(0, FUNCTION, "   Key size:     ", newContext.vChaChaKey.size(), " bytes");
         debug::log(2, FUNCTION, "   ChaCha20 session key derived from genesis");
         debug::log(2, FUNCTION, "   Encryption is now ACTIVE for session ", nSessionId);
+        debug::log(2, FUNCTION, "Session auto-started at auth: nSessionStart=", newContext.nSessionStart,
+                   " timeout=", newContext.nSessionTimeout, "s");
         debug::log(0, FUNCTION, "");
 
         /* Build success response */
