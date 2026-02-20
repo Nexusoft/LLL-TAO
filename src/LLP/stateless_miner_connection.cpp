@@ -1192,7 +1192,7 @@ namespace LLP
                                 
                                 if(!fDecrypted)
                                 {
-                                    debug::log(0, FUNCTION, "ChaCha20 Decryption FAILED for SUBMIT_BLOCK");
+                                    debug::log(0, FUNCTION, "ChaCha20 decryption FAILED for SUBMIT_BLOCK");
                                     debug::log(0, FUNCTION, "  Session genesis (hex): ", context.hashGenesis.GetHex());
                                     debug::log(0, FUNCTION, "  Derived key fingerprint (first 8 bytes): ",
                                                HexStr(context.vChaChaKey.begin(),
