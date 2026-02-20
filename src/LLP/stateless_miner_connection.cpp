@@ -58,6 +58,7 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 #include <Util/include/convert.h>
+#include <Util/include/hex.h>
 
 #include <chrono>
 #include <limits>
@@ -1191,11 +1192,18 @@ namespace LLP
                                 
                                 if(!fDecrypted)
                                 {
-                                    debug::error(FUNCTION, "❌ ChaCha20 decryption FAILED");
-                                    debug::error(FUNCTION, "   Possible causes:");
-                                    debug::error(FUNCTION, "   - Corrupted ciphertext during transmission");
-                                    debug::error(FUNCTION, "   - Wrong decryption key (session key mismatch)");
-                                    debug::error(FUNCTION, "   - Authentication tag verification failed");
+                                    debug::log(0, FUNCTION, "ChaCha20 Decryption FAILED for SUBMIT_BLOCK");
+                                    debug::log(0, FUNCTION, "  Session genesis (hex): ", context.hashGenesis.GetHex());
+                                    debug::log(0, FUNCTION, "  Derived key fingerprint (first 8 bytes): ",
+                                               HexStr(context.vChaChaKey.begin(),
+                                                      context.vChaChaKey.begin() + std::min<size_t>(8, context.vChaChaKey.size())));
+                                    debug::log(0, FUNCTION, "  AAD used for decryption: '' (0 bytes, empty)");
+                                    debug::log(0, FUNCTION, "  Encrypted payload size received: ", PACKET.DATA.size(), " bytes");
+                                    if(PACKET.DATA.size() >= 12)
+                                    {
+                                        debug::log(0, FUNCTION, "  Nonce (first 12 bytes): ",
+                                                   HexStr(PACKET.DATA.begin(), PACKET.DATA.begin() + 12));
+                                    }
                                     
                                     StatelessPacket response(BLOCK_REJECTED);
                                     response.DATA.push_back(0x0B);  // Reason: ChaCha20 decryption failure
