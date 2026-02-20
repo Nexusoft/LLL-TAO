@@ -821,9 +821,17 @@ namespace LLP
             if(!LLC::DecryptChaCha20Poly1305(vCiphertext, vTag, vSessionKey, vNonce, vPubKey, vAAD))
             {
                 debug::log(0, FUNCTION, "ChaCha20 decryption FAILED - genesis mismatch?");
+                debug::log(0, FUNCTION, "  Session genesis (hex): ", hashGenesis.GetHex());
+                if(vSessionKey.size() >= 8)
+                    debug::log(0, FUNCTION, "  Derived key fingerprint (first 8 bytes): ",
+                               HexStr(vSessionKey.begin(), vSessionKey.begin() + 8));
                 return ProcessResult::Error(context, "ChaCha20 decryption failed");
             }
-            debug::log(0, FUNCTION, "✓ ChaCha20 unwrap SUCCESS");
+            debug::log(2, FUNCTION, "ChaCha20 decryption OK for MINER_AUTH_INIT");
+            debug::log(2, FUNCTION, "  Session genesis (hex): ", hashGenesis.GetHex());
+            if(vSessionKey.size() >= 8)
+                debug::log(2, FUNCTION, "  Derived key fingerprint (first 8 bytes): ",
+                           HexStr(vSessionKey.begin(), vSessionKey.begin() + 8));
         }
         else
         {

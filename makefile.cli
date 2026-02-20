@@ -306,6 +306,7 @@ ifdef UNIT_TESTS
 		   build/Tests_LLP_push_notification_tests.o \
 		   build/Tests_LLP_stateless_miner.o \
 		   build/Tests_LLP_test_template_staleness.o \
+		   build/Tests_LLP_test_stateless_miner_crypto.o \
 		   build/Tests_TAO_API_assets.o \
 		   build/Tests_TAO_API_finance.o \
 		   build/Tests_TAO_API_names.o \
