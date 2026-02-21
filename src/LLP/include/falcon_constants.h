@@ -658,11 +658,13 @@ namespace FalconConstants
     /** Maximum age of a mining template in seconds
      *  Hard cutoff for template validity - templates older than this are discarded.
      *  Reasoning:
-     *    - Nexus block time: ~50 seconds average
-     *    - Template should be valid for at least one full block interval plus margin
-     *    - 90 seconds provides safe margin without triggering unnecessary regeneration
+     *    - Nexus Prime channel can take several minutes per solution (5-7 chain primes)
+     *    - Template must remain valid long enough for miners to complete a solution
+     *    - 600 seconds (10 minutes) provides adequate margin for Prime channel mining
+     *    - Height-based staleness (IsStale()) is the primary freshness check;
+     *      this is a safety net for edge cases (reorgs, network partitions, clock skew)
      *  Prevents miners from working on very stale templates. */
-    static const uint64_t MAX_TEMPLATE_AGE_SECONDS = 90;
+    static const uint64_t MAX_TEMPLATE_AGE_SECONDS = 600;
 
 } // namespace FalconConstants
 } // namespace LLP

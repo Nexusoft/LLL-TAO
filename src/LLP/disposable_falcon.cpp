@@ -480,6 +480,61 @@ namespace DisposableFalcon
 
 
     /*******************************************************************************
+     * Free Verification Function (NODE-SIDE ONLY)
+     *******************************************************************************/
+
+    bool VerifyWorkSubmission(
+        const std::vector<uint8_t>& vData,
+        const std::vector<uint8_t>& vPubKey,
+        SignedWorkSubmission& result)
+    {
+        /* Deserialize the submission from decrypted payload */
+        SignedWorkSubmission submission;
+        if(!submission.Deserialize(vData))
+        {
+            debug::error(FUNCTION, "VerifyWorkSubmission: failed to deserialize");
+            return false;
+        }
+
+        /* Validate structure (timestamp range, non-zero merkle root, etc.) */
+        if(!submission.IsValid())
+        {
+            debug::error(FUNCTION, "VerifyWorkSubmission: invalid submission structure (bad timestamp?)");
+            return false;
+        }
+
+        /* Reject unsigned submissions */
+        if(!submission.fSigned || submission.vSignature.empty())
+        {
+            debug::error(FUNCTION, "VerifyWorkSubmission: submission is unsigned - rejected");
+            return false;
+        }
+
+        /* Load the miner's public key (stored from MINER_AUTH_INIT handshake) */
+        LLC::FLKey verifyKey;
+        if(!verifyKey.SetPubKey(vPubKey))
+        {
+            debug::error(FUNCTION, "VerifyWorkSubmission: failed to load miner pubkey");
+            return false;
+        }
+
+        /* Reconstruct the signed message bytes */
+        std::vector<uint8_t> vMessage = submission.GetMessageBytes();
+
+        /* Verify Disposable Falcon signature - pure stateless verification */
+        if(!verifyKey.Verify(vMessage, submission.vSignature))
+        {
+            debug::error(FUNCTION, "VerifyWorkSubmission: Disposable Falcon signature INVALID");
+            return false;
+        }
+
+        /* Signature verified - populate result (signature is now discarded by caller) */
+        result = submission;
+        return true;
+    }
+
+
+    /*******************************************************************************
      * Debug Logging Functions
      *******************************************************************************/
 

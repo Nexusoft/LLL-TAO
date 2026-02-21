@@ -242,6 +242,27 @@ namespace DisposableFalcon
     std::unique_ptr<IDisposableFalconWrapper> Create();
 
 
+    /** VerifyWorkSubmission
+     *
+     *  Stateless verification of a Disposable Falcon signed work submission.
+     *  Called by the NODE after ChaCha20 decryption of the SUBMIT_BLOCK packet.
+     *  Does NOT require a session key - uses the miner's auth pubkey only.
+     *  The Falcon signature is verified and then DISCARDED (not forwarded to network).
+     *
+     *  @param[in]  vData     Decrypted payload bytes: [merkle(64)][nonce(8)][timestamp(8)][sig_len(2)][signature]
+     *  @param[in]  vPubKey   Miner's Falcon-1024 public key stored from MINER_AUTH_INIT handshake
+     *  @param[out] result    Populated SignedWorkSubmission on success (merkle root + nonce extracted)
+     *
+     *  @return true if signature valid and result populated, false on any error
+     *
+     **/
+    bool VerifyWorkSubmission(
+        const std::vector<uint8_t>& vData,
+        const std::vector<uint8_t>& vPubKey,
+        SignedWorkSubmission& result
+    );
+
+
     /** DebugLogPacket
      *
      *  Log detailed packet information for debugging Falcon handshake issues.
