@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <unit/catch2/catch.hpp>
 
 #include <LLP/include/stateless_miner.h>
+#include <LLP/include/falcon_constants.h>
 #include <TAO/Ledger/types/tritium.h>
 
 #include <Util/include/runtime.h>
@@ -29,7 +30,7 @@ using namespace LLP;
  *  Key functionality tested:
  *  1. Channel height storage in TemplateMetadata
  *  2. Corrected staleness detection using channel-specific heights
- *  3. Age-based timeout (60 second safety net)
+ *  3. Age-based timeout (MAX_TEMPLATE_AGE_SECONDS safety net)
  *  4. Utility methods (GetAge, GetChannelName)
  *  5. Move semantics integration with std::map
  *  6. Default constructor behavior
@@ -106,7 +107,7 @@ TEST_CASE("TemplateMetadata Staleness Logic", "[template][staleness][pr134]")
      * - Code review of the implementation
      */
     
-    SECTION("Age timeout: templates older than 60 seconds are stale")
+    SECTION("Age timeout: templates older than MAX_TEMPLATE_AGE_SECONDS are stale")
     {
         /* Create a mock block */
         TAO::Ledger::TritiumBlock* pMockBlock = new TAO::Ledger::TritiumBlock();
@@ -114,18 +115,18 @@ TEST_CASE("TemplateMetadata Staleness Logic", "[template][staleness][pr134]")
         pMockBlock->nHeight = 100;
         pMockBlock->nChannel = 1;
         
-        /* Create metadata with creation time 70 seconds ago */
+        /* Create metadata with creation time past MAX_TEMPLATE_AGE_SECONDS */
         uint64_t nNow = runtime::unifiedtimestamp();
-        uint64_t nOldTime = nNow - 70;  // 70 seconds ago
+        uint64_t nOldTime = nNow - (LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS + 10);
         
         TemplateMetadata meta(pMockBlock, nOldTime, 100, 50, pMockBlock->hashMerkleRoot, 1);
         
-        /* Template should be stale due to age (>60 seconds) */
+        /* Template should be stale due to age (> MAX_TEMPLATE_AGE_SECONDS) */
         bool fStale = meta.IsStale(nNow);
         REQUIRE(fStale == true);  // Should be stale due to age
     }
     
-    SECTION("Age timeout: templates younger than 60 seconds may be fresh")
+    SECTION("Age timeout: templates younger than MAX_TEMPLATE_AGE_SECONDS may be fresh")
     {
         /* Create a mock block */
         TAO::Ledger::TritiumBlock* pMockBlock = new TAO::Ledger::TritiumBlock();
@@ -139,7 +140,7 @@ TEST_CASE("TemplateMetadata Staleness Logic", "[template][staleness][pr134]")
         
         TemplateMetadata meta(pMockBlock, nRecentTime, 100, 50, pMockBlock->hashMerkleRoot, 1);
         
-        /* Template age is <60 seconds, so age check passes
+        /* Template age is < MAX_TEMPLATE_AGE_SECONDS, so age check passes
          * Note: IsStale() will still check channel height via blockchain,
          * so we just verify the method is callable and returns a boolean */
         bool fStale = meta.IsStale(nNow);

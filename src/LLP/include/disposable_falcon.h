@@ -180,22 +180,6 @@ namespace DisposableFalcon
             uint64_t nNonce
         ) = 0;
 
-        /** UnwrapWorkSubmission
-         *
-         *  Verify and unwrap a signed work submission.
-         *  Validates the disposable Falcon signature and extracts work data.
-         *
-         *  @param[in] vData Serialized signed submission
-         *  @param[in] vPubKey Miner's Falcon public key (from auth handshake)
-         *
-         *  @return WrapperResult containing verified submission or error
-         *
-         **/
-        virtual WrapperResult UnwrapWorkSubmission(
-            const std::vector<uint8_t>& vData,
-            const std::vector<uint8_t>& vPubKey
-        ) = 0;
-
         /** GetSessionKeyId
          *
          *  Get the key ID of the current session's disposable key.
@@ -240,6 +224,27 @@ namespace DisposableFalcon
      *
      **/
     std::unique_ptr<IDisposableFalconWrapper> Create();
+
+
+    /** VerifyWorkSubmission
+     *
+     *  Stateless verification of a Disposable Falcon signed work submission.
+     *  Called by the NODE after ChaCha20 decryption of the SUBMIT_BLOCK packet.
+     *  Does NOT require a session key - uses the miner's auth pubkey only.
+     *  The Falcon signature is verified and then DISCARDED (not forwarded to network).
+     *
+     *  @param[in]  vData     Decrypted payload bytes: [merkle(64)][nonce(8)][timestamp(8)][sig_len(2)][signature]
+     *  @param[in]  vPubKey   Miner's Falcon-1024 public key stored from MINER_AUTH_INIT handshake
+     *  @param[out] result    Populated SignedWorkSubmission on success (merkle root + nonce extracted)
+     *
+     *  @return true if signature valid and result populated, false on any error
+     *
+     **/
+    bool VerifyWorkSubmission(
+        const std::vector<uint8_t>& vData,
+        const std::vector<uint8_t>& vPubKey,
+        SignedWorkSubmission& result
+    );
 
 
     /** DebugLogPacket

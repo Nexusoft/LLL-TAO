@@ -984,7 +984,7 @@ namespace LLP
                 if (!CheckRateLimit(SUBMIT_BLOCK)) {
                     // Rate limit exceeded - reject submission
                     debug::log(1, FUNCTION, "SUBMIT_BLOCK rate limited for ", GetAddress().ToStringIP());
-                    StatelessPacket response(BLOCK_REJECTED);
+                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
                     return true;  // Handled (rejected)
                 }
@@ -995,7 +995,7 @@ namespace LLP
                 if(!context.fAuthenticated)
                 {
                     debug::error(FUNCTION, "❌ Authentication required");
-                    StatelessPacket response(BLOCK_REJECTED);
+                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (AUTH) ===", ANSI_COLOR_RESET);
                     return true;
@@ -1005,7 +1005,7 @@ namespace LLP
                 if(context.nChannel == 0)
                 {
                     debug::error(FUNCTION, "❌ Channel not set");
-                    StatelessPacket response(BLOCK_REJECTED);
+                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (NO CHANNEL) ===", ANSI_COLOR_RESET);
                     return true;
@@ -1020,7 +1020,7 @@ namespace LLP
                     debug::error(FUNCTION, "   vChaChaKey size: ", context.vChaChaKey.size(), " (expected: 32)");
                     debug::error(FUNCTION, "   Legacy plaintext mining is no longer supported");
                     
-                    StatelessPacket response(BLOCK_REJECTED);
+                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     response.DATA.push_back(0x0C);  // Reason: Encryption required
                     response.LENGTH = 1;
                     respond(response);
@@ -1072,7 +1072,7 @@ namespace LLP
                 {
                     debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK packet too small: ", 
                                PACKET.DATA.size(), " < ", MIN_SIZE);
-                    StatelessPacket response(BLOCK_REJECTED);
+                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
                     return true;
                 }
@@ -1081,7 +1081,7 @@ namespace LLP
                 {
                     debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK packet too large: ",
                                PACKET.DATA.size(), " > ", MAX_SIZE);
-                    StatelessPacket response(BLOCK_REJECTED);
+                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
                     return true;
                 }
@@ -1089,7 +1089,6 @@ namespace LLP
                 uint512_t hashMerkle;
                 uint64_t nonce = 0;
                 bool fFalconVerified = false;
-                std::unique_ptr<LLP::DisposableFalcon::IDisposableFalconWrapper> pFalconWrapper;
 
                 /* Check for Falcon-signed format: [merkle][nonce][timestamp][sig_len][signature] */
                 /* Minimum for Falcon format: 64 + 8 + 8 + 2 = 82 bytes */
@@ -1097,30 +1096,6 @@ namespace LLP
 
                 if(PACKET.DATA.size() >= FALCON_MIN_SIZE)
                 {
-                    /* Create disposable Falcon wrapper for this submission */
-                    pFalconWrapper = LLP::DisposableFalcon::Create();
-                    if(!pFalconWrapper)
-                    {
-                        debug::error(FUNCTION, "❌ CRITICAL: Falcon wrapper not initialized");
-                        debug::error(FUNCTION, "   Cannot verify Falcon signatures - check constructor logs");
-                        debug::error(FUNCTION, "   Packet size suggests Falcon format but wrapper unavailable");
-                        debug::error(FUNCTION, "   This should not happen in production - investigate immediately");
-                        debug::error(FUNCTION, "");
-                        debug::error(FUNCTION, "   ⚠️  SECURITY WARNING: rejecting Falcon packet (wrapper unavailable)");
-                        debug::error(FUNCTION, "   ⚠️  In production, reject Falcon packets until wrapper is fixed");
-                        debug::error(FUNCTION, "   ⚠️  Consider blocking submissions until wrapper is fixed");
-
-                        StatelessPacket response(BLOCK_REJECTED);
-                        response.DATA.push_back(0xFF);  // Reason: Internal error
-                        response.LENGTH = 1;
-                        respond(response);
-
-                        pFalconWrapper.reset();
-                        return true;
-                    }
-                    else
-                    {
-                        debug::log(2, FUNCTION, "✓ Disposable Falcon wrapper created for SUBMIT_BLOCK");
                         /* Get session public key */
                         std::vector<uint8_t> vSessionPubKey;
                         {
@@ -1134,7 +1109,13 @@ namespace LLP
                         
                         debug::log(0, "🔐 FALCON SESSION KEY:");
                         debug::log(0, "   Found: ", !vSessionPubKey.empty() ? "YES" : "NO");
-                        debug::log(0, "   Size: ", vSessionPubKey.size(), " bytes (expected: 897)");
+                        debug::log(0, "   Size: ", vSessionPubKey.size(), " bytes (expected: ",
+                                   (context.nFalconVersion == LLC::FalconVersion::FALCON_1024)
+                                       ? FalconConstants::FALCON1024_PUBKEY_SIZE    // 1793
+                                       : FalconConstants::FALCON512_PUBKEY_SIZE,    // 897
+                                   " for ",
+                                   (context.nFalconVersion == LLC::FalconVersion::FALCON_1024) ? "Falcon-1024" : "Falcon-512",
+                                   ")");
                         if(!vSessionPubKey.empty() && vSessionPubKey.size() >= 16)
                         {
                             debug::log(0, "   First 16 bytes (hex): ");
@@ -1146,13 +1127,12 @@ namespace LLP
                             debug::error(FUNCTION, "❌ No Falcon pubkey stored for session");
                             debug::error(FUNCTION, "   Session may have expired or never authenticated properly");
                             
-                            StatelessPacket response(BLOCK_REJECTED);
+                            StatelessPacket response(STATELESS_BLOCK_REJECTED);
                             response.DATA.push_back(0x0D);  // Reason: No session key
                             response.LENGTH = 1;
                             respond(response);
                             
                             debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (No Falcon session key) ===", ANSI_COLOR_RESET);
-                            pFalconWrapper.reset();
                             return true;
                         }
                         else
@@ -1205,13 +1185,12 @@ namespace LLP
                                                    HexStr(PACKET.DATA.begin(), PACKET.DATA.begin() + 12));
                                     }
                                     
-                                    StatelessPacket response(BLOCK_REJECTED);
+                                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
                                     response.DATA.push_back(0x0B);  // Reason: ChaCha20 decryption failure
                                     response.LENGTH = 1;
                                     respond(response);
                                     
                                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (ChaCha20 decryption failed) ===", ANSI_COLOR_RESET);
-                                    pFalconWrapper.reset();
                                     return true;
                                 }
                                 
@@ -1279,9 +1258,8 @@ namespace LLP
                                 
                                 if(decryptedData.size() < MIN_METADATA_SIZE) {
                                     debug::error(FUNCTION, "❌ Decrypted payload too small (need at least ", MIN_METADATA_SIZE, " bytes)");
-                                    StatelessPacket response(BLOCK_REJECTED);
+                                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
                                     respond(response);
-                                    pFalconWrapper.reset();
                                     return true;
                                 }
                                 
@@ -1415,9 +1393,8 @@ namespace LLP
                                 {
                                     debug::error(FUNCTION, "❌ Could not determine block size from packet structure");
                                     debug::error(FUNCTION, "   Decrypted size: ", decryptedData.size(), " bytes");
-                                    StatelessPacket response(BLOCK_REJECTED);
+                                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
                                     respond(response);
-                                    pFalconWrapper.reset();
                                     return true;
                                 }
                                 
@@ -1439,9 +1416,8 @@ namespace LLP
                                     debug::error(FUNCTION, "❌ Internal error: Invalid size after detection");
                                     debug::error(FUNCTION, "   Expected at least: ", expectedMinSize, " Got: ", decryptedData.size());
                                     debug::error(FUNCTION, "   This should not happen - please report this bug");
-                                    StatelessPacket response(BLOCK_REJECTED);
+                                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
                                     respond(response);
-                                    pFalconWrapper.reset();
                                     return true;
                                 }
                                 
@@ -1474,9 +1450,8 @@ namespace LLP
                                 if(!verifyKey.SetPubKey(vSessionPubKey))
                                 {
                                     debug::error(FUNCTION, "❌ Failed to set public key for verification");
-                                    StatelessPacket response(BLOCK_REJECTED);
+                                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
                                     respond(response);
-                                    pFalconWrapper.reset();
                                     return true;
                                 }
                                 
@@ -1489,13 +1464,12 @@ namespace LLP
                                     debug::error(FUNCTION, "   - Message format mismatch");
                                     debug::error(FUNCTION, "   - Corrupted signature data");
                                     
-                                    StatelessPacket response(BLOCK_REJECTED);
+                                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
                                     response.DATA.push_back(0x0C);  // Reason: Signature verification failed
                                     response.LENGTH = 1;
                                     respond(response);
                                     
                                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Signature verification failed) ===", ANSI_COLOR_RESET);
-                                    pFalconWrapper.reset();
                                     return true;
                                 }
                                 
@@ -1553,13 +1527,12 @@ namespace LLP
                                             debug::error(FUNCTION, "❌ Physical Falcon signature verification FAILED");
                                             debug::error(FUNCTION, "   Key bonding requires same key for both signatures");
                                             
-                                            StatelessPacket response(BLOCK_REJECTED);
+                                            StatelessPacket response(STATELESS_BLOCK_REJECTED);
                                             response.DATA.push_back(REJECT_PHYSICAL_SIGNATURE_FAILED);
                                             response.LENGTH = 1;
                                             respond(response);
                                             
                                             debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Physical signature failed) ===", ANSI_COLOR_RESET);
-                                            pFalconWrapper.reset();
                                             return true;
                                         }
                                         
@@ -1567,9 +1540,8 @@ namespace LLP
                                         if(!context.fFalconVersionDetected)
                                         {
                                             debug::error(FUNCTION, "❌ No Falcon version detected for session");
-                                            StatelessPacket response(BLOCK_REJECTED);
+                                            StatelessPacket response(STATELESS_BLOCK_REJECTED);
                                             respond(response);
-                                            pFalconWrapper.reset();
                                             return true;
                                         }
                                         
@@ -1581,13 +1553,12 @@ namespace LLP
                                                        (context.nFalconVersion == LLC::FalconVersion::FALCON_512 ? "512" : "1024"), ")");
                                             debug::error(FUNCTION, "   Got: ", vchPhysicalSignature.size());
                                             
-                                            StatelessPacket response(BLOCK_REJECTED);
+                                            StatelessPacket response(STATELESS_BLOCK_REJECTED);
                                             response.DATA.push_back(REJECT_KEY_BONDING_VIOLATION);
                                             response.LENGTH = 1;
                                             respond(response);
                                             
                                             debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Key bonding violation) ===", ANSI_COLOR_RESET);
-                                            pFalconWrapper.reset();
                                             return true;
                                         }
                                         
@@ -1660,13 +1631,12 @@ namespace LLP
                                     debug::error(FUNCTION, "❌ Falcon signature timestamp too old (", nTimeDiff, "s skew)");
                                     debug::error(FUNCTION, "   This prevents replay attacks");
                                     
-                                    StatelessPacket response(BLOCK_REJECTED);
+                                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
                                     response.DATA.push_back(0x08);  // Reason: stale timestamp
                                     response.LENGTH = 1;
                                     respond(response);
                                     
                                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Stale Falcon signature) ===", ANSI_COLOR_RESET);
-                                    pFalconWrapper.reset();
                                     return true;
                                 }
                             }
@@ -1677,7 +1647,7 @@ namespace LLP
                                 if(!LLC::DecryptPayloadChaCha20(PACKET.DATA, context.vChaChaKey, decryptedData))
                                 {
                                     debug::error(FUNCTION, "❌ ChaCha20 decryption FAILED (legacy wrapper)");
-                                    StatelessPacket response(BLOCK_REJECTED);
+                                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
                                     response.DATA.push_back(0x0B);  // Reason: ChaCha20 decryption failure
                                     response.LENGTH = 1;
                                     respond(response);
@@ -1685,23 +1655,12 @@ namespace LLP
                                     return true;
                                 }
 
-                                auto falconWrapper = LLP::DisposableFalcon::Create();
-                                if(!falconWrapper)
+                                /* ✅ CORRECT: Pure verification — no wrapper creation, no keypair generation */
+                                LLP::DisposableFalcon::SignedWorkSubmission submission;
+                                if(!LLP::DisposableFalcon::VerifyWorkSubmission(decryptedData, vSessionPubKey, submission))
                                 {
-                                    debug::error(FUNCTION, "❌ Failed to create disposable Falcon wrapper");
-                                    StatelessPacket response(BLOCK_REJECTED);
-                                    response.DATA.push_back(0xFF);  // Reason: Internal error
-                                    response.LENGTH = 1;
-                                    respond(response);
-                                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Internal error) ===", ANSI_COLOR_RESET);
-                                    return true;
-                                }
-
-                                auto unwrapResult = falconWrapper->UnwrapWorkSubmission(decryptedData, vSessionPubKey);
-                                if(!unwrapResult.fSuccess || !unwrapResult.submission.fSigned)
-                                {
-                                    debug::error(FUNCTION, "❌ Falcon wrapper verification failed: ", unwrapResult.strError);
-                                    StatelessPacket response(BLOCK_REJECTED);
+                                    debug::error(FUNCTION, "❌ Disposable Falcon verification failed (legacy format)");
+                                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
                                     response.DATA.push_back(0x0C);  // Reason: Signature verification failed
                                     response.LENGTH = 1;
                                     respond(response);
@@ -1709,14 +1668,14 @@ namespace LLP
                                     return true;
                                 }
 
-                                hashMerkle = unwrapResult.submission.hashMerkleRoot;
-                                nonce = unwrapResult.submission.nNonce;
+                                /* Signature verified — it is now DISCARDED (not forwarded to network) */
+                                hashMerkle = submission.hashMerkleRoot;
+                                nonce = submission.nNonce;
                                 fFalconVerified = true;
 
-                                debug::log(2, FUNCTION, "✅ Disposable Falcon wrapper verified legacy submission");
+                                debug::log(2, FUNCTION, "✅ Disposable Falcon signature verified (legacy format)");
                             }
                         }
-                    }
                 }
                 else
                 {
@@ -1726,13 +1685,12 @@ namespace LLP
                     debug::error(FUNCTION, "   Got: ", PACKET.DATA.size(), " bytes");
                     debug::error(FUNCTION, "   Legacy plaintext mining is no longer supported");
                     
-                    StatelessPacket response(BLOCK_REJECTED);
+                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     response.DATA.push_back(0x0F);  // Reason: Packet too small
                     response.LENGTH = 1;
                     respond(response);
                     
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Packet too small) ===", ANSI_COLOR_RESET);
-                    pFalconWrapper.reset();
                     return true;
                 }
 
@@ -1745,13 +1703,12 @@ namespace LLP
                     debug::error(FUNCTION, "   fFalconVerified should always be true at this point");
                     debug::error(FUNCTION, "   This indicates a bug in the SUBMIT_BLOCK handler");
                     
-                    StatelessPacket response(BLOCK_REJECTED);
+                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     response.DATA.push_back(0xFF);  // Reason: Internal error
                     response.LENGTH = 1;
                     respond(response);
                     
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Internal error) ===", ANSI_COLOR_RESET);
-                    pFalconWrapper.reset();
                     return true;
                 }
 
@@ -1811,7 +1768,6 @@ namespace LLP
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Unknown template) ===", ANSI_COLOR_RESET);
-                    pFalconWrapper.reset();
                     return true;
                 }
                 
@@ -1825,7 +1781,6 @@ namespace LLP
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (template lookup failed) ===", ANSI_COLOR_RESET);
-                    pFalconWrapper.reset();
                     return true;
                 }
 
@@ -1836,7 +1791,6 @@ namespace LLP
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (sign_block failed) ===", ANSI_COLOR_RESET);
-                    pFalconWrapper.reset();
                     return true;
                 }
 
@@ -1848,7 +1802,6 @@ namespace LLP
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (invalid block type) ===", ANSI_COLOR_RESET);
-                    pFalconWrapper.reset();
                     return true;
                 }
 
@@ -1867,7 +1820,6 @@ namespace LLP
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (", validationResult.reason, ") ===", ANSI_COLOR_RESET);
-                    pFalconWrapper.reset();
                     return true;
                 }
 
@@ -1886,7 +1838,6 @@ namespace LLP
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (", acceptanceResult.reason, ") ===", ANSI_COLOR_RESET);
-                    pFalconWrapper.reset();
                     return true;
                 }
 
@@ -1937,8 +1888,7 @@ namespace LLP
                 
                 StatelessPacket response(STATELESS_BLOCK_ACCEPTED);
                 respond(response);
-                pFalconWrapper.reset();
-                debug::log(2, FUNCTION, "✓ Disposable Falcon wrapper discarded after SUBMIT_BLOCK");
+                debug::log(2, FUNCTION, "✓ Disposable Falcon signature discarded after SUBMIT_BLOCK");
 
                 /* Update context timestamp */
                 context = context.WithTimestamp(runtime::unifiedtimestamp());
