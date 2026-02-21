@@ -180,22 +180,6 @@ namespace DisposableFalcon
             uint64_t nNonce
         ) = 0;
 
-        /** UnwrapWorkSubmission
-         *
-         *  Verify and unwrap a signed work submission.
-         *  Validates the disposable Falcon signature and extracts work data.
-         *
-         *  @param[in] vData Serialized signed submission
-         *  @param[in] vPubKey Miner's Falcon public key (from auth handshake)
-         *
-         *  @return WrapperResult containing verified submission or error
-         *
-         **/
-        virtual WrapperResult UnwrapWorkSubmission(
-            const std::vector<uint8_t>& vData,
-            const std::vector<uint8_t>& vPubKey
-        ) = 0;
-
         /** GetSessionKeyId
          *
          *  Get the key ID of the current session's disposable key.

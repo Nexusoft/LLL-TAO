@@ -157,9 +157,9 @@ namespace DisposableFalcon
         }
         nOffset += 8;
 
-        // AFTER (Little-Endian - matches Serialize and NexusMiner)
-            uint16_t nSigLen = static_cast<uint16_t>(vData[nOffset]) |
-            (static_cast<uint16_t>(vData[nOffset + 1]) << 8);
+        /* Parse signature length (2 bytes, little-endian) */
+        uint16_t nSigLen = static_cast<uint16_t>(vData[nOffset]) |
+                           (static_cast<uint16_t>(vData[nOffset + 1]) << 8);
         nOffset += 2;
 
         /* Validate remaining data for signature */
@@ -361,72 +361,6 @@ namespace DisposableFalcon
         }
 
 
-        /* Unwrap and verify signed work submission */
-        WrapperResult UnwrapWorkSubmission(
-            const std::vector<uint8_t>& vData,
-            const std::vector<uint8_t>& vPubKey
-        ) override
-        {
-            /* Lock not needed for verification - stateless operation */
-
-            debug::log(3, FUNCTION, "Unwrapping work submission, data_len=", vData.size(),
-                       " pubkey_len=", vPubKey.size());
-
-            /* Debug log incoming packet */
-            DebugLogPacket("UnwrapWorkSubmission::input", vData, 3);
-
-            /* Deserialize the submission */
-            SignedWorkSubmission submission;
-            if(!submission.Deserialize(vData))
-            {
-                return WrapperResult::Failure("Failed to deserialize signed work submission");
-            }
-
-            /* Validate structure */
-            if(!submission.IsValid())
-            {
-                return WrapperResult::Failure("Invalid work submission structure");
-            }
-
-            /* If not signed, return the data without verification */
-            if(!submission.fSigned || submission.vSignature.empty())
-            {
-                debug::log(2, FUNCTION, "Work submission is not signed - proceeding without verification");
-                return WrapperResult::Success(submission);
-            }
-
-            /* Set up Falcon key for verification */
-            LLC::FLKey verifyKey;
-            if(!verifyKey.SetPubKey(vPubKey))
-            {
-                return WrapperResult::Failure("Failed to set public key for verification");
-            }
-
-            /* Get message bytes */
-            std::vector<uint8_t> vMessage = submission.GetMessageBytes();
-
-            /* Debug log verification data */
-            DebugLogPacket("UnwrapWorkSubmission::message", vMessage, 4);
-            DebugLogPacket("UnwrapWorkSubmission::signature", submission.vSignature, 4);
-
-            /* Verify disposable Falcon signature */
-            if(!verifyKey.Verify(vMessage, submission.vSignature))
-            {
-                debug::log(0, FUNCTION, "Disposable Falcon signature verification FAILED");
-                return WrapperResult::Failure("Signature verification failed");
-            }
-
-            /* Derive key ID from public key */
-            uint256_t verifiedKeyId = LLC::SK256(vPubKey);
-            submission.hashKeyID = verifiedKeyId;
-
-            debug::log(2, FUNCTION, "Work submission unwrapped and verified, keyId=",
-                       verifiedKeyId.SubString());
-
-            return WrapperResult::Success(submission, verifiedKeyId);
-        }
-
-
         /* Get session key ID */
         uint256_t GetSessionKeyId() const override
         {
@@ -529,6 +463,7 @@ namespace DisposableFalcon
         }
 
         /* Signature verified - populate result (signature is now discarded by caller) */
+        submission.hashKeyID = LLC::SK256(vPubKey);
         result = submission;
         return true;
     }
