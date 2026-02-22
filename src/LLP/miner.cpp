@@ -1622,101 +1622,34 @@ namespace LLP
             std::vector<uint8_t> vDecrypted;
             if(LLC::DecryptPayloadChaCha20(PACKET.DATA, vChaChaKey, vDecrypted))
             {
-                debug::log(2, FUNCTION, "SUBMIT_BLOCK: Unwrapping ChaCha20-encrypted submission");
+                debug::log(2, FUNCTION, "SUBMIT_BLOCK: ChaCha20 decryption succeeded");
                 vWorkData = std::move(vDecrypted);
 
                 if(vMinerPubKey.empty())
                 {
-                    debug::error(FUNCTION, "SUBMIT_BLOCK unwrap failed: missing Falcon public key");
+                    debug::error(FUNCTION, "SUBMIT_BLOCK verify failed: missing Falcon public key");
                     respond(BLOCK_REJECTED);
                     return true;
                 }
 
-                auto pWrapper = DisposableFalcon::Create();
-                if(!pWrapper)
+                /* Pure verification — no wrapper creation, no keypair generation.
+                 * The node VERIFIES the miner's Disposable Falcon signature using the public
+                 * key stored during MINER_AUTH_INIT, then DISCARDS it. The signature is never
+                 * forwarded to the Nexus P2P network. */
+                DisposableFalcon::SignedWorkSubmission submission;
+                if(!DisposableFalcon::VerifyWorkSubmission(vWorkData, vMinerPubKey, submission))
                 {
-                    debug::error(FUNCTION, "SUBMIT_BLOCK unwrap failed: disposable Falcon wrapper unavailable");
-                    respond(BLOCK_REJECTED);
+                    debug::error(FUNCTION, "SUBMIT_BLOCK verify failed: Disposable Falcon signature invalid");
+                    respond(BLOCK_REJECTED);  // 8-bit opcode — correct for legacy lane
                     return true;
                 }
 
-                std::vector<uint8_t> vUnwrapData = vWorkData;
-                if(vWorkData.size() >= FalconConstants::SUBMIT_BLOCK_FORMAT_DETECTION_THRESHOLD)
-                {
-                    auto BuildSignedSubmission = [&](size_t blockSize, size_t nonceOffset,
-                                                     std::vector<uint8_t>& vSigned) -> bool
-                    {
-                        if(vWorkData.size() < blockSize + FalconConstants::TIMESTAMP_SIZE +
-                                             FalconConstants::LENGTH_FIELD_SIZE)
-                            return false;
-
-                        if(vWorkData.size() < FalconConstants::FULL_BLOCK_MERKLE_OFFSET +
-                                             FalconConstants::MERKLE_ROOT_SIZE ||
-                           vWorkData.size() < nonceOffset + FalconConstants::NONCE_SIZE)
-                            return false;
-
-                        size_t sigLenOffset = blockSize + FalconConstants::TIMESTAMP_SIZE;
-                        uint16_t sigLen = static_cast<uint16_t>(vWorkData[sigLenOffset]) |
-                                          (static_cast<uint16_t>(vWorkData[sigLenOffset + 1]) << 8);
-
-                        size_t sigStart = sigLenOffset + FalconConstants::LENGTH_FIELD_SIZE;
-                        if(vWorkData.size() < sigStart + sigLen)
-                            return false;
-
-                        uint64_t nonceValue = convert::bytes2uint64(std::vector<uint8_t>(
-                            vWorkData.begin() + nonceOffset,
-                            vWorkData.begin() + nonceOffset + FalconConstants::NONCE_SIZE));
-
-                        vSigned.clear();
-                        vSigned.reserve(FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE +
-                                        FalconConstants::TIMESTAMP_SIZE + FalconConstants::LENGTH_FIELD_SIZE +
-                                        sigLen);
-
-                        vSigned.insert(vSigned.end(),
-                                       vWorkData.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET,
-                                       vWorkData.begin() + FalconConstants::FULL_BLOCK_MERKLE_OFFSET +
-                                       FalconConstants::MERKLE_ROOT_SIZE);
-
-                        for(size_t i = 0; i < FalconConstants::NONCE_SIZE; ++i)
-                        {
-                            vSigned.push_back(static_cast<uint8_t>((nonceValue >> (i * 8)) & 0xFF));
-                        }
-
-                        vSigned.insert(vSigned.end(), vWorkData.begin() + blockSize,
-                                       vWorkData.begin() + sigStart + sigLen);
-
-                        return true;
-                    };
-
-                    std::vector<uint8_t> vSigned;
-                    if(BuildSignedSubmission(FalconConstants::FULL_BLOCK_TRITIUM_MIN,
-                                             FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET,
-                                             vSigned) ||
-                       BuildSignedSubmission(FalconConstants::FULL_BLOCK_LEGACY_MIN,
-                                             FalconConstants::FULL_BLOCK_LEGACY_NONCE_OFFSET,
-                                             vSigned))
-                    {
-                        vUnwrapData = std::move(vSigned);
-                    }
-                    else
-                    {
-                        debug::error(FUNCTION, "SUBMIT_BLOCK unwrap failed: unable to reconstruct signed data");
-                        respond(BLOCK_REJECTED);
-                        return true;
-                    }
-                }
-
-                auto unwrapResult = pWrapper->UnwrapWorkSubmission(vUnwrapData, vMinerPubKey);
-                if(!unwrapResult.fSuccess)
-                {
-                    debug::error(FUNCTION, "SUBMIT_BLOCK unwrap failed: ", unwrapResult.strError);
-                    respond(BLOCK_REJECTED);
-                    return true;
-                }
-
-                hashMerkle = unwrapResult.submission.hashMerkleRoot;
-                nonce = unwrapResult.submission.nNonce;
+                /* Signature verified — extract merkle root and nonce */
+                hashMerkle = submission.hashMerkleRoot;
+                nonce = submission.nNonce;
                 fParsed = true;
+
+                debug::log(2, FUNCTION, "Disposable Falcon signature verified (legacy lane, Port 8323)");
             }
         }
 
