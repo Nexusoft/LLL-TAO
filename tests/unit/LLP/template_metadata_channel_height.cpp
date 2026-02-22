@@ -446,3 +446,97 @@ TEST_CASE("TemplateMetadata Integration with std::map", "[template][map][pr134]"
         REQUIRE(mapTemplates.find(hash) == mapTemplates.end());
     }
 }
+
+
+TEST_CASE("TemplateMetadata unified vs channel height semantics", "[template][semantics][height]")
+{
+    SECTION("nHeight stores unified height, nChannelHeight stores channel target (distinct values)")
+    {
+        /* In stateless mining, CreateBlockForStatelessMining sets pBlock->nHeight to
+         * stateChannel.nChannelHeight + 1 (channel target), NOT the unified blockchain height.
+         *
+         * Correct TemplateMetadata population:
+         *   nHeight       = unified_current (from ChainState::tStateBest.nHeight)
+         *   nChannelHeight = channel_target  (= stateChannel.nChannelHeight + 1 = pBlock->nHeight)
+         *
+         * These are semantically distinct values and must NOT be swapped. */
+
+        TAO::Ledger::TritiumBlock* pMockBlock = new TAO::Ledger::TritiumBlock();
+        pMockBlock->nVersion = 9;
+        pMockBlock->nChannel = 1;  // Prime channel
+
+        /* Simulate a real mining scenario where unified and channel heights differ:
+         *   unified_current = 6535200 (total blocks across all channels)
+         *   channel_current = 2165443 (last Prime block channel-height)
+         *   channel_target  = 2165444 (next Prime block = pBlock->nHeight) */
+        const uint32_t nUnifiedCurrent = 6535200;
+        const uint32_t nChannelCurrent = 2165443;
+        const uint32_t nChannelTarget  = nChannelCurrent + 1;  // = 2165444
+
+        /* CreateBlockForStatelessMining sets pBlock->nHeight to channel target */
+        pMockBlock->nHeight = nChannelTarget;
+
+        uint64_t nCreationTime = runtime::unifiedtimestamp();
+        uint512_t hashMerkleRoot;
+        hashMerkleRoot.SetHex("deadbeef01");
+
+        /* Correct construction: nHeight_ = unified_current, nChannelHeight_ = channel_target */
+        TemplateMetadata meta(pMockBlock, nCreationTime,
+                              nUnifiedCurrent,   /* nHeight_: unified blockchain height */
+                              nChannelTarget,    /* nChannelHeight_: channel target (= pBlock->nHeight) */
+                              hashMerkleRoot, 1);
+
+        /* nHeight must store unified height, NOT the block's nHeight (channel target) */
+        REQUIRE(meta.nHeight == nUnifiedCurrent);
+        REQUIRE(meta.nHeight != pMockBlock->nHeight);   // unified_current != channel_target
+
+        /* nChannelHeight must store channel target (equals pBlock->nHeight in stateless mining) */
+        REQUIRE(meta.nChannelHeight == nChannelTarget);
+        REQUIRE(meta.nChannelHeight == pMockBlock->nHeight);
+
+        /* Unified and channel heights are semantically distinct */
+        REQUIRE(meta.nHeight != meta.nChannelHeight);
+    }
+
+    SECTION("Passing pBlock->nHeight as nHeight_ would incorrectly store channel height as unified")
+    {
+        /* This section documents the OLD BUGGY behavior where pBlock->nHeight (channel target)
+         * was incorrectly passed as the unified height argument.  The correct code must pass
+         * info.nUnifiedHeight (ChainState best) instead. */
+
+        TAO::Ledger::TritiumBlock* pMockBlock = new TAO::Ledger::TritiumBlock();
+        pMockBlock->nVersion = 9;
+        pMockBlock->nChannel = 2;  // Hash channel
+
+        const uint32_t nUnifiedCurrent = 8000000;
+        const uint32_t nChannelTarget  = 3000001;  // Hash channel target
+
+        pMockBlock->nHeight = nChannelTarget;  // As set by CreateBlockForStatelessMining
+
+        uint512_t hash;
+        hash.SetHex("cafe");
+
+        /* CORRECT: pass nUnifiedCurrent as nHeight_ */
+        TemplateMetadata correct(pMockBlock, runtime::unifiedtimestamp(),
+                                 nUnifiedCurrent, nChannelTarget, hash, 2);
+        REQUIRE(correct.nHeight == nUnifiedCurrent);
+        REQUIRE(correct.nChannelHeight == nChannelTarget);
+
+        /* Create a fresh block for the "buggy" test to avoid double-free */
+        TAO::Ledger::TritiumBlock* pMockBlock2 = new TAO::Ledger::TritiumBlock();
+        pMockBlock2->nVersion = 9;
+        pMockBlock2->nChannel = 2;
+        pMockBlock2->nHeight = nChannelTarget;
+
+        uint512_t hash2;
+        hash2.SetHex("cafe2");
+
+        /* BUGGY: passing pBlock->nHeight (channel target) instead of nUnifiedCurrent */
+        TemplateMetadata buggy(pMockBlock2, runtime::unifiedtimestamp(),
+                               pMockBlock2->nHeight,  /* wrong: channel target, not unified */
+                               nChannelTarget, hash2, 2);
+        /* The bug: meta.nHeight stores channel target, not unified height */
+        REQUIRE(buggy.nHeight == nChannelTarget);   /* stored channel target erroneously */
+        REQUIRE(buggy.nHeight != nUnifiedCurrent);  /* lost the unified height information */
+    }
+}

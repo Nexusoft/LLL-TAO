@@ -950,7 +950,7 @@ namespace LLP
                         if(TAO::Ledger::GetLastState(stateChannel, context.nChannel))
                             nChannelHeight = stateChannel.nChannelHeight;
                         context = context.WithTimestamp(runtime::unifiedtimestamp())
-                                         .WithHeight(pBlock->nHeight)
+                                         .WithHeight(stateBest.nHeight)
                                          .WithLastTemplateChannelHeight(nChannelHeight);
                     }
                     
@@ -2841,19 +2841,19 @@ namespace LLP
         /* Create metadata with heights from manager (PR #136) */
         /* Use nNextChannelHeight because template is mining for NEXT block in channel */
         debug::log(0, "   Creating template metadata:");
-        debug::log(0, "      Unified height (current):  ", info.nUnifiedHeight);
-        debug::log(0, "      Unified height (template): ", pBlock->nHeight, " = ", info.nNextUnifiedHeight);
-        debug::log(0, "      Channel height (current):  ", info.nChannelHeight);
-        debug::log(0, "      Channel height (template): ", info.nNextChannelHeight, " ← CORRECT");
+        debug::log(0, "      unified_current (ChainState best):  ", info.nUnifiedHeight);
+        debug::log(0, "      unified_next    (best + 1):         ", info.nNextUnifiedHeight);
+        debug::log(0, "      channel_current (last in channel):  ", info.nChannelHeight);
+        debug::log(0, "      channel_target  (next in channel):  ", info.nNextChannelHeight, " = pBlock->nHeight=", pBlock->nHeight);
         
-        TemplateMetadata meta(pBlock, nCreationTime, pBlock->nHeight, info.nNextChannelHeight, 
+        TemplateMetadata meta(pBlock, nCreationTime, info.nUnifiedHeight, info.nNextChannelHeight, 
                              pBlock->hashMerkleRoot, context.nChannel);
         auto result = mapBlocks.emplace(pBlock->hashMerkleRoot, std::move(meta));
         
         debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Template stored in map with metadata", ANSI_COLOR_RESET);
         debug::log(0, "      Merkle root: ", pBlock->hashMerkleRoot.SubString());
-        debug::log(0, "      Unified height: ", pBlock->nHeight);
-        debug::log(0, "      Channel height: ", info.nNextChannelHeight, " (mining for next ", pChannelMgr->GetChannelName(), " block)");
+        debug::log(0, "      Unified height (current):  ", info.nUnifiedHeight);
+        debug::log(0, "      Channel height (target):   ", info.nNextChannelHeight, " (mining for next ", pChannelMgr->GetChannelName(), " block)");
         debug::log(0, "      Channel: ", pChannelMgr->GetChannelName());
         debug::log(0, "      Creation time: ", nCreationTime);
         debug::log(0, "      Templates in map: ", mapBlocks.size());
