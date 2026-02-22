@@ -162,6 +162,14 @@ namespace DisposableFalcon
                            (static_cast<uint16_t>(vData[nOffset + 1]) << 8);
         nOffset += 2;
 
+        /* Validate signature length is within the plausible range for any Falcon variant */
+        if(nSigLen < FalconConstants::FALCON_SIG_MIN || nSigLen > FalconConstants::FALCON_SIG_MAX_VALIDATION)
+        {
+            debug::error(FUNCTION, "Deserialize: sig_len ", nSigLen, " is outside valid Falcon range [",
+                         FalconConstants::FALCON_SIG_MIN, ", ", FalconConstants::FALCON_SIG_MAX_VALIDATION, "]");
+            return false;
+        }
+
         /* Validate remaining data for signature */
         if(vData.size() < nOffset + nSigLen)
         {
@@ -422,33 +430,71 @@ namespace DisposableFalcon
         const std::vector<uint8_t>& vPubKey,
         SignedWorkSubmission& result)
     {
-        /* Deserialize the submission from decrypted payload */
+        /* --- Step 1: Validate public key size before anything else --- */
+        if(!FalconConstants::is_valid_pubkey_size(vPubKey.size()))
+        {
+            debug::error(FUNCTION, "VerifyWorkSubmission: invalid pubkey size ",
+                         vPubKey.size(), " (expected 897 for Falcon-512 or 1793 for Falcon-1024)");
+            return false;
+        }
+
+        const int nFalconBits = FalconConstants::get_falcon_version_from_pubkey_size(vPubKey.size());
+        debug::log(2, FUNCTION, "VerifyWorkSubmission: Falcon-", nFalconBits,
+                   " pubkey detected (", vPubKey.size(), " bytes)");
+
+        /* --- Step 2: Deserialize the signed submission --- */
         SignedWorkSubmission submission;
         if(!submission.Deserialize(vData))
         {
-            debug::error(FUNCTION, "VerifyWorkSubmission: failed to deserialize");
+            debug::error(FUNCTION, "VerifyWorkSubmission: failed to deserialize (payload size=",
+                         vData.size(), ", Falcon-", nFalconBits, ")");
             return false;
         }
 
-        /* Validate structure (timestamp range, non-zero merkle root, etc.) */
+        /* --- Step 3: Structural validation --- */
         if(!submission.IsValid())
         {
-            debug::error(FUNCTION, "VerifyWorkSubmission: invalid submission structure (bad timestamp?)");
+            debug::error(FUNCTION, "VerifyWorkSubmission: invalid submission structure "
+                                   "(bad timestamp?) [Falcon-", nFalconBits, "]");
             return false;
         }
 
-        /* Reject unsigned submissions */
         if(!submission.fSigned || submission.vSignature.empty())
         {
             debug::error(FUNCTION, "VerifyWorkSubmission: submission is unsigned - rejected");
             return false;
         }
 
-        /* Load the miner's public key (stored from MINER_AUTH_INIT handshake) */
+        /* --- Step 4: Signature size sanity check --- */
+        if(!FalconConstants::is_valid_sig_size(submission.vSignature.size()))
+        {
+            debug::error(FUNCTION, "VerifyWorkSubmission: signature size ",
+                         submission.vSignature.size(), " is outside valid range [",
+                         FalconConstants::FALCON_SIG_MIN, ", ",
+                         FalconConstants::FALCON_SIG_MAX_VALIDATION, "] for Falcon-", nFalconBits);
+            return false;
+        }
+
+        /* Log a warning if sig size is unusual for detected variant (informational, not rejection) */
+        if(nFalconBits == 512 && submission.vSignature.size() > FalconConstants::FALCON512_SIG_ABSOLUTE_MAX)
+        {
+            debug::log(0, FUNCTION, "WARNING: Falcon-512 signature size ", submission.vSignature.size(),
+                       " exceeds Falcon-512 max (", FalconConstants::FALCON512_SIG_ABSOLUTE_MAX,
+                       ") — possible key/signature version mismatch? Proceeding with verification.");
+        }
+        if(nFalconBits == 1024 && submission.vSignature.size() < FalconConstants::FALCON1024_SIG_MIN)
+        {
+            debug::log(0, FUNCTION, "WARNING: Falcon-1024 signature size ", submission.vSignature.size(),
+                       " is below Falcon-1024 min (", FalconConstants::FALCON1024_SIG_MIN,
+                       ") — possible key/signature version mismatch? Proceeding with verification.");
+        }
+
+        /* --- Step 5: Load public key and verify --- */
         LLC::FLKey verifyKey;
         if(!verifyKey.SetPubKey(vPubKey))
         {
-            debug::error(FUNCTION, "VerifyWorkSubmission: failed to load miner pubkey");
+            debug::error(FUNCTION, "VerifyWorkSubmission: failed to load Falcon-", nFalconBits,
+                         " pubkey (size=", vPubKey.size(), ")");
             return false;
         }
 
@@ -458,11 +504,17 @@ namespace DisposableFalcon
         /* Verify Disposable Falcon signature - pure stateless verification */
         if(!verifyKey.Verify(vMessage, submission.vSignature))
         {
-            debug::error(FUNCTION, "VerifyWorkSubmission: Disposable Falcon signature INVALID");
+            debug::error(FUNCTION, "VerifyWorkSubmission: Disposable Falcon-", nFalconBits,
+                         " signature INVALID");
+            debug::error(FUNCTION, "  pubkey size:    ", vPubKey.size(), " bytes");
+            debug::error(FUNCTION, "  message size:   ", vMessage.size(), " bytes");
+            debug::error(FUNCTION, "  signature size: ", submission.vSignature.size(), " bytes");
+            debug::error(FUNCTION, "  merkle root:    ", submission.hashMerkleRoot.SubString());
             return false;
         }
 
-        /* Signature verified - populate result (signature is now discarded by caller) */
+        /* --- Step 6: Success --- */
+        debug::log(2, FUNCTION, "VerifyWorkSubmission: Falcon-", nFalconBits, " signature VALID");
         submission.hashKeyID = LLC::SK256(vPubKey);
         result = submission;
         return true;

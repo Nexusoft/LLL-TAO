@@ -148,6 +148,55 @@ namespace FalconConstants
     static const size_t FALCON_SIG_CT_MIN = FALCON512_SIG_CT_SIZE;  // 809 bytes (Falcon-512 CT)
 
     /***************************************************************************
+     * Public Key Size Helper Functions
+     **************************************************************************/
+
+    /** is_valid_pubkey_size
+     *
+     *  Returns true if the given size is a valid Falcon public key size
+     *  for either Falcon-512 (897 bytes) or Falcon-1024 (1793 bytes).
+     *
+     *  @param[in] nSize  Size of the public key in bytes
+     *  @return true if valid for any supported Falcon variant
+     *
+     **/
+    static inline bool is_valid_pubkey_size(size_t nSize)
+    {
+        return (nSize == FALCON512_PUBKEY_SIZE || nSize == FALCON1024_PUBKEY_SIZE);
+    }
+
+    /** get_falcon_version_from_pubkey_size
+     *
+     *  Infer the Falcon variant from a public key size.
+     *  Returns 512 for Falcon-512, 1024 for Falcon-1024, 0 if unknown.
+     *
+     *  @param[in] nSize  Size of the public key in bytes
+     *  @return 512, 1024, or 0 (unknown)
+     *
+     **/
+    static inline int get_falcon_version_from_pubkey_size(size_t nSize)
+    {
+        if(nSize == FALCON512_PUBKEY_SIZE)  return 512;
+        if(nSize == FALCON1024_PUBKEY_SIZE) return 1024;
+        return 0;
+    }
+
+    /** is_valid_sig_size
+     *
+     *  Returns true if the given size is within the valid range for a
+     *  Falcon signature (either variant).  Uses the version-agnostic
+     *  FALCON_SIG_MIN and FALCON_SIG_MAX_VALIDATION constants.
+     *
+     *  @param[in] nSize  Size of the signature in bytes
+     *  @return true if plausibly valid
+     *
+     **/
+    static inline bool is_valid_sig_size(size_t nSize)
+    {
+        return (nSize >= FALCON_SIG_MIN && nSize <= FALCON_SIG_MAX_VALIDATION);
+    }
+
+    /***************************************************************************
      * ChaCha20-Poly1305 AEAD Encryption Constants
      **************************************************************************/
     
