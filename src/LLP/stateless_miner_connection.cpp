@@ -2845,6 +2845,8 @@ namespace LLP
         debug::log(0, "      unified_next    (best + 1):         ", info.nNextUnifiedHeight);
         debug::log(0, "      channel_current (last in channel):  ", info.nChannelHeight);
         debug::log(0, "      channel_target  (next in channel):  ", info.nNextChannelHeight, " = pBlock->nHeight=", pBlock->nHeight);
+        debug::log(0, "      prev_hash       (template anchor):  ", pBlock->hashPrevBlock.SubString());
+        debug::log(0, "      best_hash       (current tip):      ", info.hashCurrentBlock.SubString());
         
         TemplateMetadata meta(pBlock, nCreationTime, info.nUnifiedHeight, info.nNextChannelHeight, 
                              pBlock->hashMerkleRoot, context.nChannel);
