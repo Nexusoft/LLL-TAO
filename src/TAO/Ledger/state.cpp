@@ -1146,24 +1146,27 @@ namespace TAO
                 {
                     uint32_t nBlockChannel = GetChannel();  // 0=Stake, 1=Prime, 2=Hash
 
-                    /* Compute per-channel state for diagnostic log */
-                    BlockState statePrime = *this;
-                    BlockState stateHash  = *this;
-                    uint32_t nPrimeBits = 0;
-                    uint32_t nHashBits  = 0;
-                    if (GetLastState(statePrime, 1))
-                        nPrimeBits = GetNextTargetRequired(*this, 1, false);
-                    if (GetLastState(stateHash, 2))
-                        nHashBits = GetNextTargetRequired(*this, 2, false);
+                    /* Diagnostic log: compute per-channel state only when verbosity warrants it
+                     * (GetLastState and GetNextTargetRequired can involve disk I/O) */
+                    if(config::nVerbose >= 2)
+                    {
+                        BlockState statePrime = *this;
+                        BlockState stateHash  = *this;
+                        uint32_t nPrimeBits = 0;
+                        uint32_t nHashBits  = 0;
+                        if(GetLastState(statePrime, 1))
+                            nPrimeBits = GetNextTargetRequired(statePrime, 1, false);
+                        if(GetLastState(stateHash, 2))
+                            nHashBits = GetNextTargetRequired(stateHash, 2, false);
 
-                    /* Log universal tip push event */
-                    debug::log(2, FUNCTION, "Universal tip push: best=", hash.SubString(),
-                               " unified=", nHeight,
-                               " | Prime ch=", statePrime.nChannelHeight,
-                               " nBits=0x", std::hex, nPrimeBits, std::dec,
-                               " | Hash ch=", stateHash.nChannelHeight,
-                               " nBits=0x", std::hex, nHashBits, std::dec,
-                               " (block_ch=", nBlockChannel, ")");
+                        debug::log(2, FUNCTION, "Universal tip push: best=", hash.SubString(),
+                                   " unified=", nHeight,
+                                   " | Prime ch=", statePrime.nChannelHeight,
+                                   " nBits=0x", std::hex, nPrimeBits, std::dec,
+                                   " | Hash ch=", stateHash.nChannelHeight,
+                                   " nBits=0x", std::hex, nHashBits, std::dec,
+                                   " (block_ch=", nBlockChannel, ")");
+                    }
 
                     /* Universal tip push: notify BOTH PoW channels on every unified tip advance */
                     for (uint32_t nNotifyChannel : {(uint32_t)CHANNEL::PRIME, (uint32_t)CHANNEL::HASH})
