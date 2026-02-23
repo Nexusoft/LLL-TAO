@@ -1133,8 +1133,11 @@ namespace TAO
                     Dispatch::Instance().PushRelay(ChainState::hashBestChain.load());
                 #endif
 
-                /* PUSH NOTIFICATIONS: Notify miners of channel-specific block */
-                /* Skip notifications during shutdown to prevent hang */
+                /* PUSH NOTIFICATIONS: Universal tip push to both PoW channels on every unified tip advance.
+                 * Any channel (0=Stake, 1=Prime, 2=Hash) can advance the unified best tip.  When this
+                 * happens, PoW templates anchored to the previous tip become stale.  Notify ALL Prime and
+                 * Hash subscribers so miners immediately fetch fresh templates regardless of which channel
+                 * produced the winning block. */
                 if (config::fShutdown.load())
                 {
                     debug::log(1, FUNCTION, "Shutdown requested; skipping miner notifications");
@@ -1142,25 +1145,34 @@ namespace TAO
                 else
                 {
                     uint32_t nBlockChannel = GetChannel();  // 0=Stake, 1=Prime, 2=Hash
-                    
-                    if (nBlockChannel == 1 || nBlockChannel == 2)
-                    {
-                        /* Prime or Hash block - notify subscribed miners on both ports */
-                        if (LLP::STATELESS_MINER_SERVER)
-                        {
-                            LLP::STATELESS_MINER_SERVER->NotifyChannelMiners(nBlockChannel);
-                        }
 
-                        /* Also notify legacy port miners (Server<Miner>) */
-                        if (LLP::MINING_SERVER)
-                        {
-                            LLP::MINING_SERVER->NotifyChannelMiners(nBlockChannel);
-                        }
-                    }
-                    else if (nBlockChannel == 0)
+                    /* Compute per-channel state for diagnostic log */
+                    BlockState statePrime = *this;
+                    BlockState stateHash  = *this;
+                    uint32_t nPrimeBits = 0;
+                    uint32_t nHashBits  = 0;
+                    if (GetLastState(statePrime, 1))
+                        nPrimeBits = GetNextTargetRequired(*this, 1, false);
+                    if (GetLastState(stateHash, 2))
+                        nHashBits = GetNextTargetRequired(*this, 2, false);
+
+                    /* Log universal tip push event */
+                    debug::log(2, FUNCTION, "Universal tip push: best=", hash.SubString(),
+                               " unified=", nHeight,
+                               " | Prime ch=", statePrime.nChannelHeight,
+                               " nBits=0x", std::hex, nPrimeBits, std::dec,
+                               " | Hash ch=", stateHash.nChannelHeight,
+                               " nBits=0x", std::hex, nHashBits, std::dec,
+                               " (block_ch=", nBlockChannel, ")");
+
+                    /* Universal tip push: notify BOTH PoW channels on every unified tip advance */
+                    for (uint32_t nNotifyChannel : {(uint32_t)CHANNEL::PRIME, (uint32_t)CHANNEL::HASH})
                     {
-                        /* Stake block - no stateless mining, no notification */
-                        debug::log(2, FUNCTION, "Stake block (no mining notification)");
+                        if (LLP::STATELESS_MINER_SERVER)
+                            LLP::STATELESS_MINER_SERVER->NotifyChannelMiners(nNotifyChannel);
+
+                        if (LLP::MINING_SERVER)
+                            LLP::MINING_SERVER->NotifyChannelMiners(nNotifyChannel);
                     }
                 }
 

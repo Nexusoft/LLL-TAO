@@ -393,3 +393,115 @@ TEST_CASE("PushNotificationBuilder - Protocol Compliance", "[push_notification][
         REQUIRE((hashNotif.HEADER & 0xFF) == 0xDA);
     }
 }
+
+TEST_CASE("PushNotificationBuilder - Universal Tip Push", "[push_notification][llp]")
+{
+    /* Tests the universal tip push scenario: when ANY channel (including Stake=0)
+     * advances the unified best tip, both Prime (1) and Hash (2) subscribers must
+     * receive channel-appropriate notifications sharing the same unified height. */
+
+    SECTION("Stake block advances tip - both PoW channels get same unified height")
+    {
+        /* Simulate a Stake block advancing the unified tip */
+        TAO::Ledger::BlockState stateBest;
+        stateBest.nHeight = 7000000;  // New unified height after stake block
+
+        /* Simulate Prime and Hash channel states (unchanged by stake block) */
+        TAO::Ledger::BlockState statePrime;
+        statePrime.nChannelHeight = 2300000;
+
+        TAO::Ledger::BlockState stateHash;
+        stateHash.nChannelHeight = 4500000;
+
+        uint32_t nPrimeBits = 0x03C00000;
+        uint32_t nHashBits  = 0x1D00FFFF;
+
+        /* Build notifications for both PoW channels (simulating universal tip push) */
+        LLP::Packet primeNotif = LLP::PushNotificationBuilder::BuildChannelNotification<LLP::Packet>(
+            1, LLP::ProtocolLane::LEGACY, stateBest, statePrime, nPrimeBits);
+
+        LLP::Packet hashNotif = LLP::PushNotificationBuilder::BuildChannelNotification<LLP::Packet>(
+            2, LLP::ProtocolLane::LEGACY, stateBest, stateHash, nHashBits);
+
+        /* Both notifications must carry the same unified height */
+        REQUIRE(primeNotif.DATA[0] == hashNotif.DATA[0]);
+        REQUIRE(primeNotif.DATA[1] == hashNotif.DATA[1]);
+        REQUIRE(primeNotif.DATA[2] == hashNotif.DATA[2]);
+        REQUIRE(primeNotif.DATA[3] == hashNotif.DATA[3]);
+
+        /* Decode and verify unified height */
+        uint32_t decodedHeight =
+            (static_cast<uint32_t>(primeNotif.DATA[0]) << 24) |
+            (static_cast<uint32_t>(primeNotif.DATA[1]) << 16) |
+            (static_cast<uint32_t>(primeNotif.DATA[2]) << 8)  |
+             static_cast<uint32_t>(primeNotif.DATA[3]);
+        REQUIRE(decodedHeight == 7000000);
+
+        /* Each channel carries its own channel-specific height */
+        uint32_t decodedPrimeCh =
+            (static_cast<uint32_t>(primeNotif.DATA[4]) << 24) |
+            (static_cast<uint32_t>(primeNotif.DATA[5]) << 16) |
+            (static_cast<uint32_t>(primeNotif.DATA[6]) << 8)  |
+             static_cast<uint32_t>(primeNotif.DATA[7]);
+        REQUIRE(decodedPrimeCh == 2300000);
+
+        uint32_t decodedHashCh =
+            (static_cast<uint32_t>(hashNotif.DATA[4]) << 24) |
+            (static_cast<uint32_t>(hashNotif.DATA[5]) << 16) |
+            (static_cast<uint32_t>(hashNotif.DATA[6]) << 8)  |
+             static_cast<uint32_t>(hashNotif.DATA[7]);
+        REQUIRE(decodedHashCh == 4500000);
+
+        /* Each channel carries its own difficulty */
+        uint32_t decodedPrimeBits =
+            (static_cast<uint32_t>(primeNotif.DATA[8])  << 24) |
+            (static_cast<uint32_t>(primeNotif.DATA[9])  << 16) |
+            (static_cast<uint32_t>(primeNotif.DATA[10]) << 8)  |
+             static_cast<uint32_t>(primeNotif.DATA[11]);
+        REQUIRE(decodedPrimeBits == nPrimeBits);
+
+        uint32_t decodedHashBits =
+            (static_cast<uint32_t>(hashNotif.DATA[8])  << 24) |
+            (static_cast<uint32_t>(hashNotif.DATA[9])  << 16) |
+            (static_cast<uint32_t>(hashNotif.DATA[10]) << 8)  |
+             static_cast<uint32_t>(hashNotif.DATA[11]);
+        REQUIRE(decodedHashBits == nHashBits);
+
+        /* Correct channel-specific opcodes */
+        REQUIRE(primeNotif.HEADER == 0xD9);  // PRIME_BLOCK_AVAILABLE
+        REQUIRE(hashNotif.HEADER  == 0xDA);  // HASH_BLOCK_AVAILABLE
+    }
+
+    SECTION("Universal tip push - stateless lane both channels")
+    {
+        TAO::Ledger::BlockState stateBest;
+        stateBest.nHeight = 5000000;
+
+        TAO::Ledger::BlockState statePrime;
+        statePrime.nChannelHeight = 1666666;
+
+        TAO::Ledger::BlockState stateHash;
+        stateHash.nChannelHeight = 3333333;
+
+        uint32_t nPrimeBits = 0x03C00000;
+        uint32_t nHashBits  = 0x1D00FFFF;
+
+        LLP::StatelessPacket primeNotif = LLP::PushNotificationBuilder::BuildChannelNotification<LLP::StatelessPacket>(
+            1, LLP::ProtocolLane::STATELESS, stateBest, statePrime, nPrimeBits);
+
+        LLP::StatelessPacket hashNotif = LLP::PushNotificationBuilder::BuildChannelNotification<LLP::StatelessPacket>(
+            2, LLP::ProtocolLane::STATELESS, stateBest, stateHash, nHashBits);
+
+        /* Both carry same unified height */
+        for (int i = 0; i < 4; ++i)
+            REQUIRE(primeNotif.DATA[i] == hashNotif.DATA[i]);
+
+        /* Correct 16-bit opcodes */
+        REQUIRE(primeNotif.HEADER == 0xD0D9);  // STATELESS PRIME_BLOCK_AVAILABLE
+        REQUIRE(hashNotif.HEADER  == 0xD0DA);  // STATELESS HASH_BLOCK_AVAILABLE
+
+        /* Protocol payload is exactly 12 bytes */
+        REQUIRE(primeNotif.LENGTH == 12);
+        REQUIRE(hashNotif.LENGTH  == 12);
+    }
+}
