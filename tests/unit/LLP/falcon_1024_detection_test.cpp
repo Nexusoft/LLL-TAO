@@ -77,17 +77,11 @@ TEST_CASE("Falcon-1024 Block Size Detection", "[falcon][falcon1024][detection]")
     
     SECTION("Calculate correct packet sizes for Falcon-1024")
     {
-        // Tritium block without physical signature (Falcon-1024)
-        // Format: [block(216)][timestamp(8)][siglen(2)][sig(1577)][physiglen(2)]
-        size_t expected = 216 + 8 + 2 + 1577 + 2;
-        REQUIRE(expected == 1805);
+        // Tritium block without physical signature (Falcon-1024) - simplified format
+        // Format: [block(216)][timestamp(8)][siglen(2)][sig(1577)]
+        size_t expected = 216 + 8 + 2 + 1577;
+        REQUIRE(expected == 1803);
         REQUIRE(expected == FalconConstants::SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_FALCON1024_MAX);
-        
-        // Tritium block WITH physical signature (Falcon-1024)
-        // Format: [block(216)][timestamp(8)][siglen(2)][sig(1577)][physiglen(2)][physical_sig(1577)]
-        size_t expectedDual = 216 + 8 + 2 + 1577 + 2 + 1577;
-        REQUIRE(expectedDual == 3382);
-        REQUIRE(expectedDual == FalconConstants::SUBMIT_BLOCK_FULL_DUAL_SIG_TRITIUM_FALCON1024_MAX);
     }
     
     SECTION("Version-agnostic aliases accept both Falcon-512 and Falcon-1024")
@@ -155,50 +149,6 @@ TEST_CASE("Falcon-1024 Fallback Detection", "[falcon][falcon1024][detection]")
         
         // Falcon-1024 signatures are less likely to cause false positives
         REQUIRE(commonSigSizes[0] > commonSigSizes[5] * 1.5);  // At least 1.5x larger
-    }
-}
-
-TEST_CASE("Falcon-1024 Physical Signature Overhead", "[falcon][falcon1024][overhead]")
-{
-    SECTION("Physical Falcon overhead constants are correct")
-    {
-        // Falcon-512 physical signature overhead
-        REQUIRE(FalconConstants::PHYSICAL_BLOCK_SIG_OVERHEAD == 811);
-        REQUIRE(FalconConstants::PHYSICAL_BLOCK_SIG_OVERHEAD == 2 + 809);
-        
-        // Falcon-1024 physical signature overhead
-        REQUIRE(FalconConstants::PHYSICAL_BLOCK_SIG_FALCON1024_OVERHEAD == 1579);
-        REQUIRE(FalconConstants::PHYSICAL_BLOCK_SIG_FALCON1024_OVERHEAD == 2 + 1577);
-        
-        // Version-agnostic alias uses Falcon-1024 (largest)
-        REQUIRE(FalconConstants::PHYSICAL_BLOCK_SIG_MAX_OVERHEAD == 1579);
-        REQUIRE(FalconConstants::PHYSICAL_BLOCK_SIG_MAX_OVERHEAD == FalconConstants::PHYSICAL_BLOCK_SIG_FALCON1024_OVERHEAD);
-    }
-    
-    SECTION("Dual signature overhead constants are correct")
-    {
-        // Falcon-512 dual signature overhead
-        // (2 + 809) + (2 + 809) = 1622 bytes
-        REQUIRE(FalconConstants::DUAL_SIG_OVERHEAD == 1622);
-        
-        // Falcon-1024 dual signature overhead
-        // (2 + 1577) + (2 + 1577) = 3158 bytes
-        REQUIRE(FalconConstants::DUAL_SIG_FALCON1024_OVERHEAD == 3158);
-        
-        // Version-agnostic alias uses Falcon-1024 (largest)
-        REQUIRE(FalconConstants::DUAL_SIG_MAX_OVERHEAD == 3158);
-        REQUIRE(FalconConstants::DUAL_SIG_MAX_OVERHEAD == FalconConstants::DUAL_SIG_FALCON1024_OVERHEAD);
-        
-        // With timestamp included
-        REQUIRE(FalconConstants::DUAL_SIG_MAX_TOTAL_OVERHEAD == 3166);
-        REQUIRE(FalconConstants::DUAL_SIG_MAX_TOTAL_OVERHEAD == 3158 + 8);
-    }
-    
-    SECTION("Minimum overhead alias uses Falcon-512")
-    {
-        // The minimum overhead alias should use Falcon-512 (smaller)
-        REQUIRE(FalconConstants::BLOCK_WITH_PHYSICAL_SIG_MIN_OVERHEAD_AGNOSTIC == 811);
-        REQUIRE(FalconConstants::BLOCK_WITH_PHYSICAL_SIG_MIN_OVERHEAD_AGNOSTIC == FalconConstants::PHYSICAL_BLOCK_SIG_OVERHEAD);
     }
 }
 

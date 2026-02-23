@@ -1578,7 +1578,7 @@ namespace LLP
 
         /* Validate packet size using FalconConstants */
         const size_t MIN_SIZE = FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE;
-        const size_t MAX_SIZE = FalconConstants::SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX;
+        const size_t MAX_SIZE = FalconConstants::SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX;
 
         if(PACKET.DATA.size() < MIN_SIZE)
         {

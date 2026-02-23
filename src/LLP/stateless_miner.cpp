@@ -85,8 +85,6 @@ namespace LLP
     , fEncryptionReady(false)
     , nFalconVersion(LLC::FalconVersion::FALCON_512)
     , fFalconVersionDetected(false)
-    , vchPhysicalSignature()
-    , fPhysicalFalconPresent(false)
     , fSubscribedToNotifications(false)
     , nSubscribedChannel(0)
     , nLastNotificationTime(0)
@@ -130,8 +128,6 @@ namespace LLP
     , fEncryptionReady(false)
     , nFalconVersion(LLC::FalconVersion::FALCON_512)
     , fFalconVersionDetected(false)
-    , vchPhysicalSignature()
-    , fPhysicalFalconPresent(false)
     , fSubscribedToNotifications(false)
     , nSubscribedChannel(0)
     , nLastNotificationTime(0)
@@ -274,14 +270,6 @@ namespace LLP
         MiningContext c = *this;
         c.nFalconVersion = version_;
         c.fFalconVersionDetected = true;
-        return c;
-    }
-
-    MiningContext MiningContext::WithPhysicalSignature(const std::vector<uint8_t>& vSig_) const
-    {
-        MiningContext c = *this;
-        c.vchPhysicalSignature = vSig_;
-        c.fPhysicalFalconPresent = !vSig_.empty();
         return c;
     }
 

@@ -254,16 +254,16 @@ namespace OpcodeUtility
         }
         else if(nOpcode == Opcodes::SUBMIT_BLOCK)
         {
-            /* SUBMIT_BLOCK: Full block (up to 2MB) + timestamp + signatures + encryption
-             * Maximum: 2,100,346 bytes (2MB block + Falcon-1024 dual signatures + encryption)
+            /* SUBMIT_BLOCK: Full block (up to 2MB) + timestamp + signature + encryption
+             * Maximum: SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX bytes
              */
-            if(packet.LENGTH > FalconConstants::SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX)
+            if(packet.LENGTH > FalconConstants::SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX)
             {
                 if(strReason)
                 {
                     std::ostringstream oss;
                     oss << "SUBMIT_BLOCK length " << packet.LENGTH 
-                        << " exceeds maximum " << FalconConstants::SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX;
+                        << " exceeds maximum " << FalconConstants::SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX;
                     *strReason = oss.str();
                 }
                 return false;

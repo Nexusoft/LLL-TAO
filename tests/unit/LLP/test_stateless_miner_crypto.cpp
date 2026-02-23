@@ -253,8 +253,8 @@ TEST_CASE("T08: SUBMIT_BLOCK decrypt AAD is empty", "[stateless_miner_crypto][aa
     hashGenesis.SetHex("8c2cf304e1bb28f03a88c2b5b412a120c58b9dbd40e0e0f38b9dc8ec94c6e2ac");
     std::vector<uint8_t> vKey = DeriveChaCha20Key(hashGenesis);
 
-    /* Simulate a SUBMIT_BLOCK payload (block + timestamp + sig_len + sig + physiglen) */
-    std::vector<uint8_t> vPayload(216 + 8 + 2 + 809 + 2, 0xEE);
+    /* Simulate a SUBMIT_BLOCK payload (block + timestamp + sig_len + sig) */
+    std::vector<uint8_t> vPayload(216 + 8 + 2 + 809, 0xEE);
 
     /* Encrypt with empty AAD (matching node behavior) */
     std::vector<uint8_t> vEmptyAAD;
@@ -304,12 +304,11 @@ TEST_CASE("T09: Cross-packet AAD rejection", "[stateless_miner_crypto][aad]")
  * ══════════════════════════════════════════════════════════════════════ */
 
 /* Helper: Build a SUBMIT_BLOCK plaintext payload.
- * Format: [block(blockSize)][timestamp(8LE)][sig_len(2LE)][signature(sigLen)][physiglen(2LE)][physical_sig(physSigLen)] */
+ * Format: [block(blockSize)][timestamp(8LE)][sig_len(2LE)][signature(sigLen)] */
 static std::vector<uint8_t> BuildSubmitBlockPayload(
     size_t blockSize,
     uint64_t nTimestamp,
-    uint16_t sigLen,
-    uint16_t physSigLen = 0
+    uint16_t sigLen
 )
 {
     std::vector<uint8_t> payload;
@@ -330,31 +329,23 @@ static std::vector<uint8_t> BuildSubmitBlockPayload(
     for(uint16_t i = 0; i < sigLen; ++i)
         payload.push_back(static_cast<uint8_t>(0xAA + (i & 0x0F)));
 
-    /* physiglen (2 bytes, little-endian) */
-    payload.push_back(static_cast<uint8_t>(physSigLen & 0xFF));
-    payload.push_back(static_cast<uint8_t>((physSigLen >> 8) & 0xFF));
-
-    /* Physical signature data */
-    for(uint16_t i = 0; i < physSigLen; ++i)
-        payload.push_back(static_cast<uint8_t>(0xBB + (i & 0x0F)));
-
     return payload;
 }
 
 
 TEST_CASE("T10: SUBMIT_BLOCK payload format encrypt/decrypt round-trip", "[stateless_miner_crypto][payload]")
 {
-    /* Format: [block(216)][timestamp(8LE)][sig_len(2LE)][falcon_ct_sig(809)][physiglen(2LE)] */
+    /* Format: [block(216)][timestamp(8LE)][sig_len(2LE)][falcon_ct_sig(809)] */
     uint256_t hashGenesis;
     hashGenesis.SetHex("8c2cf304e1bb28f03a88c2b5b412a120c58b9dbd40e0e0f38b9dc8ec94c6e2ac");
     std::vector<uint8_t> vKey = DeriveChaCha20Key(hashGenesis);
 
     uint64_t nTimestamp = 1700000000;
     uint16_t sigLen = 809;  /* Falcon-512 CT */
-    std::vector<uint8_t> payload = BuildSubmitBlockPayload(216, nTimestamp, sigLen, 0);
+    std::vector<uint8_t> payload = BuildSubmitBlockPayload(216, nTimestamp, sigLen);
 
-    /* Expected total size: 216 + 8 + 2 + 809 + 2 = 1037 */
-    REQUIRE(payload.size() == 1037);
+    /* Expected total size: 216 + 8 + 2 + 809 = 1035 */
+    REQUIRE(payload.size() == 1035);
 
     /* Encrypt and decrypt */
     std::vector<uint8_t> vEncrypted = LLC::EncryptPayloadChaCha20(payload, vKey);
@@ -388,7 +379,7 @@ TEST_CASE("T11: Falcon signature sizes in SUBMIT_BLOCK", "[stateless_miner_crypt
 
     SECTION("Falcon-1024 CT signature (1577 bytes) accepted")
     {
-        std::vector<uint8_t> payload = BuildSubmitBlockPayload(216, 1700000000, 1577, 0);
+        std::vector<uint8_t> payload = BuildSubmitBlockPayload(216, 1700000000, 1577);
         std::vector<uint8_t> vEncrypted = LLC::EncryptPayloadChaCha20(payload, vKey);
         std::vector<uint8_t> vDecrypted;
         REQUIRE(LLC::DecryptPayloadChaCha20(vEncrypted, vKey, vDecrypted));
@@ -402,7 +393,7 @@ TEST_CASE("T11: Falcon signature sizes in SUBMIT_BLOCK", "[stateless_miner_crypt
 
     SECTION("Falcon-512 CT signature (809 bytes) accepted")
     {
-        std::vector<uint8_t> payload = BuildSubmitBlockPayload(216, 1700000000, 809, 0);
+        std::vector<uint8_t> payload = BuildSubmitBlockPayload(216, 1700000000, 809);
         std::vector<uint8_t> vEncrypted = LLC::EncryptPayloadChaCha20(payload, vKey);
         std::vector<uint8_t> vDecrypted;
         REQUIRE(LLC::DecryptPayloadChaCha20(vEncrypted, vKey, vDecrypted));
@@ -457,43 +448,25 @@ TEST_CASE("T13: Block field size validation", "[stateless_miner_crypto][payload]
 }
 
 
-TEST_CASE("T14: Physical sig field (physiglen)", "[stateless_miner_crypto][payload]")
+TEST_CASE("T14: Simplified wire format (Physical Falcon removed)", "[stateless_miner_crypto][payload]")
 {
     uint256_t hashGenesis;
     hashGenesis.SetHex("8c2cf304e1bb28f03a88c2b5b412a120c58b9dbd40e0e0f38b9dc8ec94c6e2ac");
     std::vector<uint8_t> vKey = DeriveChaCha20Key(hashGenesis);
 
-    SECTION("physiglen == 0 accepted (no physical sig, most common case)")
+    SECTION("Simplified format: block + timestamp + sig_len + sig (no physiglen)")
     {
-        std::vector<uint8_t> payload = BuildSubmitBlockPayload(216, 1700000000, 809, 0);
-        std::vector<uint8_t> vEncrypted = LLC::EncryptPayloadChaCha20(payload, vKey);
-        std::vector<uint8_t> vDecrypted;
-        REQUIRE(LLC::DecryptPayloadChaCha20(vEncrypted, vKey, vDecrypted));
-
-        /* Read physiglen at offset: block(216) + timestamp(8) + siglen(2) + sig(809) = 1035 */
-        size_t physSigLenOffset = 216 + 8 + 2 + 809;
-        uint16_t physSigLen = static_cast<uint16_t>(vDecrypted[physSigLenOffset]) |
-                               (static_cast<uint16_t>(vDecrypted[physSigLenOffset + 1]) << 8);
-        REQUIRE(physSigLen == 0);
-    }
-
-    SECTION("physiglen == 809 accepted if followed by 809 bytes of sig")
-    {
-        std::vector<uint8_t> payload = BuildSubmitBlockPayload(216, 1700000000, 809, 809);
-        /* Expected: 216 + 8 + 2 + 809 + 2 + 809 = 1846 */
-        REQUIRE(payload.size() == 1846);
+        /* New format: [block(216)][timestamp(8)][sig_len(2)][sig(809)] = 1035 bytes */
+        std::vector<uint8_t> payload = BuildSubmitBlockPayload(216, 1700000000, 809);
+        REQUIRE(payload.size() == 1035);
 
         std::vector<uint8_t> vEncrypted = LLC::EncryptPayloadChaCha20(payload, vKey);
         std::vector<uint8_t> vDecrypted;
         REQUIRE(LLC::DecryptPayloadChaCha20(vEncrypted, vKey, vDecrypted));
-
-        size_t physSigLenOffset = 216 + 8 + 2 + 809;
-        uint16_t physSigLen = static_cast<uint16_t>(vDecrypted[physSigLenOffset]) |
-                               (static_cast<uint16_t>(vDecrypted[physSigLenOffset + 1]) << 8);
-        REQUIRE(physSigLen == 809);
+        REQUIRE(vDecrypted == payload);
     }
 
-    SECTION("physiglen > 1577 rejected")
+    SECTION("sig_len above valid range rejected")
     {
         uint16_t tooLarge = 1578;
         REQUIRE(tooLarge > LLP::FalconConstants::FALCON_SIG_ABSOLUTE_MAX);
@@ -530,12 +503,12 @@ TEST_CASE("T16: Both miners can submit blocks with shared genesis key", "[statel
     std::vector<uint8_t> vKey = DeriveChaCha20Key(hashGenesis);
 
     /* Miner A encrypts SUBMIT_BLOCK */
-    std::vector<uint8_t> payloadA = BuildSubmitBlockPayload(216, 1700000001, 809, 0);
+    std::vector<uint8_t> payloadA = BuildSubmitBlockPayload(216, 1700000001, 809);
     std::vector<uint8_t> encryptedA = LLC::EncryptPayloadChaCha20(payloadA, vKey);
     REQUIRE(!encryptedA.empty());
 
     /* Miner B encrypts SUBMIT_BLOCK */
-    std::vector<uint8_t> payloadB = BuildSubmitBlockPayload(216, 1700000002, 1577, 0);
+    std::vector<uint8_t> payloadB = BuildSubmitBlockPayload(216, 1700000002, 1577);
     std::vector<uint8_t> encryptedB = LLC::EncryptPayloadChaCha20(payloadB, vKey);
     REQUIRE(!encryptedB.empty());
 
@@ -557,7 +530,7 @@ TEST_CASE("T17: Random nonce ensures different ciphertexts for same plaintext", 
     std::vector<uint8_t> vKey = DeriveChaCha20Key(hashGenesis);
 
     /* Same plaintext encrypted twice */
-    std::vector<uint8_t> payload = BuildSubmitBlockPayload(216, 1700000000, 809, 0);
+    std::vector<uint8_t> payload = BuildSubmitBlockPayload(216, 1700000000, 809);
     std::vector<uint8_t> encryptedA = LLC::EncryptPayloadChaCha20(payload, vKey);
     std::vector<uint8_t> encryptedB = LLC::EncryptPayloadChaCha20(payload, vKey);
 
@@ -593,8 +566,8 @@ TEST_CASE("T18: Concurrent sessions — independent decryption", "[stateless_min
     REQUIRE(vKeyA == vKeyB);
 
     /* Each session encrypts different data */
-    std::vector<uint8_t> payloadA = BuildSubmitBlockPayload(216, 1700000001, 809, 0);
-    std::vector<uint8_t> payloadB = BuildSubmitBlockPayload(220, 1700000002, 1577, 0);
+    std::vector<uint8_t> payloadA = BuildSubmitBlockPayload(216, 1700000001, 809);
+    std::vector<uint8_t> payloadB = BuildSubmitBlockPayload(220, 1700000002, 1577);
 
     std::vector<uint8_t> encryptedA = LLC::EncryptPayloadChaCha20(payloadA, vKeyA);
     std::vector<uint8_t> encryptedB = LLC::EncryptPayloadChaCha20(payloadB, vKeyB);

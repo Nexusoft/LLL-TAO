@@ -151,24 +151,22 @@ TEST_CASE("SUBMIT_BLOCK Full Block Format Detection", "[submit_block]")
     
     SECTION("Constants are correctly defined")
     {
-        // Full block sizes
-        REQUIRE(FalconConstants::FULL_BLOCK_TRITIUM_SIZE == 216);
-        REQUIRE(FalconConstants::FULL_BLOCK_LEGACY_SIZE == 220);
+        // Full block sizes (max supported size = 2MB)
+        REQUIRE(FalconConstants::FULL_BLOCK_TRITIUM_SIZE == 2 * 1024 * 1024);
+        REQUIRE(FalconConstants::FULL_BLOCK_LEGACY_SIZE == 2 * 1024 * 1024);
         REQUIRE(FalconConstants::FULL_BLOCK_MERKLE_OFFSET == 132);
         REQUIRE(FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET == 200);
         REQUIRE(FalconConstants::FULL_BLOCK_LEGACY_NONCE_OFFSET == 204);
         
-        // Main wrapper constants (updated for full block format)
-        REQUIRE(FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX == 1035);  // Was 891
-        REQUIRE(FalconConstants::SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX == 1063);  // Was 919
+        // Main wrapper constants (updated for full block format, physical sig removed)
+        REQUIRE(FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX == 2098739);
+        REQUIRE(FalconConstants::SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX == 2098767);
         
-        // Main dual signature constants (updated for full block format)
-        REQUIRE(FalconConstants::SUBMIT_BLOCK_DUAL_SIG_MAX == 1850);  // Was 1,702
-        REQUIRE(FalconConstants::SUBMIT_BLOCK_DUAL_SIG_ENCRYPTED_MAX == 1878);  // Was 1,730
-        
-        // Detailed constants for Tritium/Legacy specific values
-        REQUIRE(FalconConstants::SUBMIT_BLOCK_FULL_DUAL_SIG_TRITIUM_ENCRYPTED_MAX == 1874);
-        REQUIRE(FalconConstants::SUBMIT_BLOCK_FULL_DUAL_SIG_LEGACY_ENCRYPTED_MAX == 1878);
+        // Detailed constants for Tritium/Legacy specific values (no physical sig)
+        REQUIRE(FalconConstants::SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_MAX == 1035);
+        REQUIRE(FalconConstants::SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_ENCRYPTED_MAX == 1063);
+        REQUIRE(FalconConstants::SUBMIT_BLOCK_FULL_LEGACY_WRAPPER_MAX == 1039);
+        REQUIRE(FalconConstants::SUBMIT_BLOCK_FULL_LEGACY_WRAPPER_ENCRYPTED_MAX == 1067);
         
         // Format detection
         REQUIRE(FalconConstants::SUBMIT_BLOCK_FORMAT_DETECTION_THRESHOLD == 200);

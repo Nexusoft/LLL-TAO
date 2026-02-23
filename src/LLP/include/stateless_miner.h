@@ -434,11 +434,9 @@ namespace LLP
         std::vector<uint8_t> vChaChaKey; // ChaCha20 session key derived from genesis
         bool fEncryptionReady;           // Whether ChaCha20 encryption is established
 
-        /* Falcon version tracking (PR #122: Falcon Protocol Integration) */
+        /* Falcon version tracking */
         LLC::FalconVersion nFalconVersion;      // Detected Falcon version (512 or 1024)
         bool fFalconVersionDetected;            // Whether version has been detected
-        std::vector<uint8_t> vchPhysicalSignature; // Optional Physical Falcon signature
-        bool fPhysicalFalconPresent;            // Whether Physical Falcon signature is present
 
         /* Push notification subscription state (PR #XXX: Push Notifications) */
         bool fSubscribedToNotifications;    // MINER_READY received
@@ -616,16 +614,6 @@ namespace LLP
          *
          **/
         MiningContext WithFalconVersion(LLC::FalconVersion version_) const;
-
-        /** WithPhysicalSignature
-         *
-         *  Returns a new context with Physical Falcon signature stored.
-         *  Used during SUBMIT_BLOCK when Physical Falcon signature is present.
-         *
-         *  @param[in] vSig_ The Physical Falcon signature bytes
-         *
-         **/
-        MiningContext WithPhysicalSignature(const std::vector<uint8_t>& vSig_) const;
 
         /** WithSubscription
          *
