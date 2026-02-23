@@ -35,9 +35,18 @@ Both protocol lanes use an identical 12-byte payload for push notifications:
 
 | Offset | Size | Field | Description |
 |--------|------|-------|-------------|
-| 0-3 | 4 bytes | `nUnifiedHeight` | Current blockchain height (all channels), big-endian |
-| 4-7 | 4 bytes | `nChannelHeight` | Channel-specific height, big-endian |
-| 8-11 | 4 bytes | `nBits` | Current difficulty for the channel, big-endian |
+| 0-3 | 4 bytes | `nUnifiedHeight` | Current unified chain height (all channels), big-endian. Used by miners to detect **tip movement** (`tip_moved`). This is informational — the authoritative anchor is `hashBestChain`, which is only present inside the block template (`hashPrevBlock`). |
+| 4-7 | 4 bytes | `nChannelHeight` | Current height of the notified channel, big-endian. Used by miners to detect **channel advancement** (`channel_advanced`). |
+| 8-11 | 4 bytes | `nBits` | Next difficulty target for the channel, big-endian. |
+
+> **Anchoring note:** `nUnifiedHeight` in the push payload is a convenience field for tip-movement
+> detection. Block validity is determined by `pBlock->hashPrevBlock` matching
+> `ChainState::hashBestChain` at the time of `Block::Accept()`, not by the height values alone.
+> Miners must refresh templates whenever the unified tip moves (`tip_moved`), even if their
+> channel height has not advanced (`channel_advanced` is false).
+>
+> See [Unified Tip and Channel Heights](../current/mining/unified-tip-and-channel-heights.md)
+> for the full semantics.
 
 The unified builder `PushNotificationBuilder::BuildChannelNotification<T>()` constructs this payload
 for both lanes using template specialization:
@@ -53,4 +62,5 @@ for both lanes using template specialization:
 - [Stateless Protocol (Node)](../current/mining/stateless-protocol.md) — Node implementation details
 - [Mining Server Architecture](../current/mining/mining-server.md) — Server components
 - [Push Notification Flow Diagram](../diagrams/push-notification-flow.md) — Sequence diagram
+- [Unified Tip and Channel Heights](../current/mining/unified-tip-and-channel-heights.md) — Canonical semantics reference
 - Source: `src/LLP/types/miner.h`, `src/LLP/include/push_notification.h`

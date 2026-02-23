@@ -8,6 +8,24 @@
 
 ---
 
+> ### ⚠️ Anchoring Warning — Read Before Using Any Code from This Document
+>
+> This document contains pseudocode that sets `block.nHeight = nUnifiedHeight + 1`.
+> **This is incorrect for the current protocol.**
+>
+> In the current Nexus stateless mining architecture:
+> - `pBlock->nHeight` in a PoW template is the **channel target height**
+>   (`stateChannel.nChannelHeight + 1`), **not** the unified height.
+> - `pBlock->hashPrevBlock` must equal `ChainState::hashBestChain` at the moment of block
+>   acceptance. This is the authoritative best-tip anchor.
+> - Miners must refresh templates on any **tip movement** (`tip_moved`) — i.e., whenever
+>   `hashBestChain` changes — even when the channel height has not advanced.
+>
+> See the canonical reference for correct semantics:
+> **[Unified Tip and Channel Heights](../current/mining/unified-tip-and-channel-heights.md)**
+
+---
+
 ## ⚠️ Migration Notice
 
 This protocol has been **superseded by the push notification-based Stateless Mining Protocol**. The polling-based GET_ROUND mechanism described here is no longer the recommended approach.
@@ -215,7 +233,9 @@ Data:   [
 
 **Miner creates block template:**
 ```cpp
-block.nHeight = 6537421;        // nUnifiedHeight + 1
+// ⚠️ See anchoring warning at top of this document.
+// pBlock->nHeight should be the channel target height, not nUnifiedHeight + 1.
+block.nHeight = 2302665;        // channel target height (nChannelHeight + 1) — NOT nUnifiedHeight + 1
 block.nChannelHeight = 2302665; // nChannelHeight + 1
 block.nBits = 0x1D00FFFF;       // nDifficulty
 block.nChannel = 1;             // Prime
@@ -293,7 +313,11 @@ if(response.HEADER == NEW_ROUND && response.LENGTH == 12)
     uint32_t nDifficulty = data[8] | (data[9] << 8) | (data[10] << 16) | (data[11] << 24);
     
     /* Create block template with correct heights */
-    block.nHeight = nUnifiedHeight + 1;        // Next unified block
+    // ⚠️ HISTORICAL NOTE: This code sets block.nHeight = nUnifiedHeight + 1.
+    // In the current stateless mining protocol, pBlock->nHeight must be the
+    // CHANNEL TARGET HEIGHT (nChannelHeight + 1), not the unified height.
+    // See docs/current/mining/unified-tip-and-channel-heights.md.
+    block.nHeight = nChannelHeight + 1;        // Channel target height (corrected from historical doc)
     block.nChannelHeight = nChannelHeight + 1; // Next channel block
     block.nBits = nDifficulty;                 // Target difficulty
 }
@@ -342,15 +366,16 @@ uint32_t nStakeHeight = data[12] | (data[13] << 8) | (data[14] << 16) | (data[15
 block.nChannelHeight = ???; // WRONG - causes FALSE OLD_ROUND
 ```
 
-**New Code (CORRECT):**
+**New Code (CORRECT for this historical protocol — see anchoring warning above):**
 ```cpp
 // Parse 12-byte response
 uint32_t nUnifiedHeight = data[0] | (data[1] << 8) | (data[2] << 16) | (data[3] << 24);
 uint32_t nChannelHeight = data[4] | (data[5] << 8) | (data[6] << 16) | (data[7] << 24);
 uint32_t nDifficulty = data[8] | (data[9] << 8) | (data[10] << 16) | (data[11] << 24);
 
-// Use channel-specific height directly
-block.nHeight = nUnifiedHeight + 1;        // ✓ CORRECT
+// Use channel-specific height for block.nHeight (current protocol requirement)
+// ⚠️ block.nHeight must be the channel target height, not nUnifiedHeight + 1.
+block.nHeight = nChannelHeight + 1;        // ✓ channel target height
 block.nChannelHeight = nChannelHeight + 1; // ✓ CORRECT
 block.nBits = nDifficulty;                 // ✓ CORRECT
 ```
