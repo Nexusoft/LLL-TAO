@@ -267,8 +267,13 @@ TAO::Ledger::TritiumBlock* CreateNewBlock(uint32_t nChannel,
     TAO::Ledger::TritiumBlock* pBlock = new TAO::Ledger::TritiumBlock();
     pBlock->nVersion = stateBest.nVersion;
     pBlock->nChannel = nChannel;
-    pBlock->hashPrevBlock = stateBest.GetHash();
-    pBlock->nHeight = stateBest.nHeight + 1;
+    pBlock->hashPrevBlock = stateBest.GetHash();  // MUST equal hashBestChain at acceptance
+
+    // Get channel-specific state for the channel target height
+    TAO::Ledger::BlockState stateChannel = stateBest;
+    TAO::Ledger::GetLastState(stateChannel, nChannel);
+    pBlock->nHeight = stateChannel.nChannelHeight + 1;  // channel target height, NOT unified height
+
     pBlock->nBits = GetNextWorkRequired(stateBest, nChannel);
     pBlock->nTime = runtime::unifiedtimestamp();
     pBlock->nNonce = 0; // Miner will fill this
@@ -461,49 +466,60 @@ void MiningServer::BroadcastNewBlock(uint32_t nChannel)
 }
 ```
 
-### Channel-Specific Height Tracking
+### Channel-Specific Height Tracking and Best-Tip Anchoring
 
-The protocol uses channel-specific heights to avoid false-positive staleness detection:
+The protocol uses two independent staleness axes. A template is stale for two distinct reasons:
+
+1. **`tip_moved`** — The unified best-chain tip advanced (any channel produced a block), so
+   `hashBestChain` changed. Any block submitted with the old `hashPrevBlock` will be rejected
+   by `Block::Accept()`.
+
+2. **`channel_advanced`** — A new block appeared in the miner's specific channel, so the
+   expected `nChannelHeight` target has changed.
+
+`channel_advanced` always implies `tip_moved`, but `tip_moved` does **not** imply
+`channel_advanced`. Miners must refresh templates on `tip_moved` even if their channel has
+not yet produced a new block.
 
 ```cpp
-// Calculate channel height for template
-uint32_t GetChannelHeight(uint32_t nChannel)
+// Calculate channel height for template (channel target height)
+uint32_t GetChannelTargetHeight(uint32_t nChannel)
 {
-    TAO::Ledger::BlockState* pState = 
-        TAO::Ledger::GetLastState(nChannel);
-    
-    return pState ? pState->nChannelHeight : 0;
+    TAO::Ledger::BlockState stateChannel = TAO::Ledger::ChainState::tStateBest.load();
+    TAO::Ledger::GetLastState(stateChannel, nChannel);
+    return stateChannel.nChannelHeight + 1;  // channel target, not unified height
 }
 
-// Template metadata includes channel height
+// Template metadata includes both axes for staleness detection
 struct TemplateMetadata
 {
     std::unique_ptr<TAO::Ledger::Block> pBlock;
     uint64_t nCreationTime;
-    uint32_t nHeight;           // Unified blockchain height
-    uint32_t nChannelHeight;    // Channel-specific height (PR #134)
-    uint512_t hashMerkleRoot;
+    uint32_t nChannelTarget;   // channel_target at template creation (pBlock->nHeight)
+    uint256_t hashPrev;        // hashBestChain at template creation (pBlock->hashPrevBlock)
     uint32_t nChannel;
-    
-    // Staleness check uses channel height
+
+    // Two-axis staleness check
     bool IsStale(uint64_t nNow = 0) const
     {
         if(nNow == 0)
             nNow = runtime::unifiedtimestamp();
-        
+
         // Age-based timeout (60 seconds)
         if(nNow - nCreationTime > 60)
             return true;
-        
-        // Channel-specific height check
-        TAO::Ledger::BlockState* pState = 
-            TAO::Ledger::GetLastState(nChannel);
-        
-        if(!pState)
-            return true; // Conservative: mark stale if can't determine
-        
-        // Template is stale if channel has advanced
-        return pState->nChannelHeight != (nChannelHeight - 1);
+
+        // Axis 1: tip_moved — authoritative anchoring check
+        if(TAO::Ledger::ChainState::hashBestChain.load() != hashPrev)
+            return true;  // tip_moved: hashPrevBlock no longer points to best tip
+
+        // Axis 2: channel_advanced — channel sequence check
+        TAO::Ledger::BlockState stateChannel = TAO::Ledger::ChainState::tStateBest.load();
+        TAO::Ledger::GetLastState(stateChannel, nChannel);
+        if(stateChannel.nChannelHeight + 1 != nChannelTarget)
+            return true;  // channel_advanced: channel height has moved
+
+        return false;
     }
 };
 ```
@@ -538,10 +554,10 @@ void StatelessMinerConnection::ProcessSubmitBlock(const Packet& packet)
         return;
     }
     
-    // 4. Check if block is based on current best chain
+    // 4. Check if block is based on current best chain (tip_moved check)
     if(block.hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load()) {
-        SendBlockRejected("Stale template");
-        RecordRejection("stale");
+        SendBlockRejected("Stale template: tip_moved");
+        RecordRejection("stale_tip");
         return;
     }
     
@@ -647,6 +663,7 @@ void StatelessMinerConnection::ProcessSubmitBlock(const Packet& packet)
 - [Mining Server Architecture](mining-server.md)
 - [Mining Lanes Cheat Sheet](mining-lanes-cheat-sheet.md)
 - [Protocol Lanes](../../protocol/mining-protocol.md)
+- [Unified Tip and Channel Heights](unified-tip-and-channel-heights.md) — Canonical semantics reference
 - [Push Notification Flow Diagram](../../diagrams/push-notification-flow.md)
 - [Opcodes Reference](../../reference/opcodes-reference.md)
 - [Configuration Reference](../../reference/nexus.conf.md)

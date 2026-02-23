@@ -32,16 +32,29 @@ sequenceDiagram
 Both Legacy Tritium Protocol and Stateless Tritium Protocol lanes use the same 12-byte payload format:
 
 ```
-┌───────────────────────────────────────────────────┐
-│            Push Notification Payload (12 bytes)    │
-├───────────┬───────────────┬───────────────────────┤
-│  Bytes    │  Field        │  Description          │
-├───────────┼───────────────┼───────────────────────┤
-│  [0-3]    │  nUnifiedHeight  │  Blockchain height │
-│  [4-7]    │  nChannelHeight  │  Channel height    │
-│  [8-11]   │  nBits           │  Difficulty        │
-└───────────┴───────────────┴───────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│                   Push Notification Payload (12 bytes)                    │
+├───────────┬──────────────────┬──────────────────────────────────────────┤
+│  Bytes    │  Field           │  Description                             │
+├───────────┼──────────────────┼──────────────────────────────────────────┤
+│  [0-3]    │  nUnifiedHeight  │  Unified chain height (all channels).    │
+│           │                  │  Used for tip-movement detection          │
+│           │                  │  (tip_moved). NOT the template nHeight.  │
+├───────────┼──────────────────┼──────────────────────────────────────────┤
+│  [4-7]    │  nChannelHeight  │  Current height of this channel.         │
+│           │                  │  Used for channel-advancement detection   │
+│           │                  │  (channel_advanced).                      │
+├───────────┼──────────────────┼──────────────────────────────────────────┤
+│  [8-11]   │  nBits           │  Next difficulty target for channel.     │
+└───────────┴──────────────────┴──────────────────────────────────────────┘
 ```
+
+> **Anchoring note:** `nUnifiedHeight` allows miners to detect a tip change without fetching a
+> new template. The authoritative best-tip anchor is `hashBestChain`, conveyed as
+> `pBlock->hashPrevBlock` inside the block template. Miners must refresh templates on any
+> `tip_moved` event (unified height change), even when the channel height has not advanced.
+>
+> See [Unified Tip and Channel Heights](../current/mining/unified-tip-and-channel-heights.md).
 
 ---
 
@@ -65,4 +78,5 @@ Formula: stateless_opcode = 0xD000 | legacy_opcode
 - [Mining Protocol Lanes](../protocol/mining-protocol.md)
 - [Opcodes Reference](../reference/opcodes-reference.md)
 - [Mining Lanes Cheat Sheet](../current/mining/mining-lanes-cheat-sheet.md)
+- [Unified Tip and Channel Heights](../current/mining/unified-tip-and-channel-heights.md)
 - Source: `src/LLP/include/push_notification.h`

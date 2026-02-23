@@ -1,5 +1,20 @@
 # Channel Height Discrepancy Documentation
 
+> **Note — Scope of this document:**
+> This document covers the **historical +3 block discrepancy** between the sum of per-channel
+> heights and the unified blockchain height. This is a diagnostic/verification concern for node
+> operators and is **separate from block-template anchoring rules**.
+>
+> For template anchoring, see:
+> **[Unified Tip and Channel Heights](../current/mining/unified-tip-and-channel-heights.md)**
+>
+> Key distinction:
+> - The `nUnifiedHeight` tolerance discussed here applies to the sum-of-channels cross-check
+>   used by forensic tooling. It does **not** relax the requirement that every submitted block
+>   must have `hashPrevBlock == hashBestChain`.
+> - A discrepancy within tolerance does not affect block acceptance; it is a diagnostic signal
+>   only.
+
 ## Background
 
 The Nexus blockchain has a known +3 block discrepancy between the sum of channel heights (Stake + Prime + Hash) and the unified blockchain height. This document explains the origin of this discrepancy, why it exists, and how the tolerance-based verification system handles it.

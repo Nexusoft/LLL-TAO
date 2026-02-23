@@ -66,6 +66,66 @@ Common mining issues with diagnostic steps and AI-assisted resolution prompts.
 
 **AI Prompt:** "What validation checks are performed when a SUBMIT_BLOCK is received?"
 
+---
+
+## Stale Template Troubleshooting: `stale_tip` vs `channel_advanced`
+
+A block template becomes stale for two independent reasons. Diagnosing which axis triggered
+the rejection helps avoid wasted mining effort.
+
+### `tip_moved` (stale_tip) — Unified best-chain tip advanced
+
+**What happened:** Any channel produced a new block, moving `hashBestChain`. The submitted
+block's `hashPrevBlock` no longer matches the live `hashBestChain`, so `Block::Accept()`
+rejects it.
+
+**Log signature (node):**
+```
+template stale: tip_moved prev=00ab...cd best=00ef...gh
+```
+
+**Diagnostic steps:**
+1. Check if the node received a new block from peers around the time of submission.
+2. Verify the miner is refreshing templates on every push notification (both channels).
+3. Confirm the miner does not cache templates between push events.
+
+**Fix:** Miner must discard any template as soon as a push notification arrives, request a
+new one via `GET_BLOCK`, and only mine on the latest template.
+
+---
+
+### `channel_advanced` — Channel height advanced
+
+**What happened:** A new block was accepted in the miner's specific channel, so the
+expected `nChannelHeight` target in the template is now stale.
+
+**Log signature (node):**
+```
+template stale: channel_advanced ch_target=2302665 ch_current=2302666
+```
+
+**Diagnostic steps:**
+1. Check if another miner found a block in the same channel simultaneously.
+2. Verify the miner is not holding onto templates beyond the current channel tip.
+
+**Fix:** Same as `tip_moved` — refresh template immediately on any push notification.
+
+---
+
+### Key distinction
+
+| Condition | `tip_moved` | `channel_advanced` |
+|---|---|---|
+| Another channel's block accepted | ✅ yes | ❌ no |
+| Same channel's block accepted | ✅ yes | ✅ yes |
+| Authoritative rejection reason | `hashPrevBlock` mismatch | `nChannelHeight` mismatch |
+
+`channel_advanced` always implies `tip_moved`. `tip_moved` alone (without `channel_advanced`)
+occurs when a different channel produces a block — e.g., a Hash block moves the unified tip
+without advancing the Prime channel height.
+
+**Reference:** [Unified Tip and Channel Heights](../../current/mining/unified-tip-and-channel-heights.md)
+
 ### Block Accepted but No Reward
 **Symptoms:** BLOCK_ACCEPTED but no balance change
 
@@ -125,3 +185,4 @@ Common mining issues with diagnostic steps and AI-assisted resolution prompts.
 - [Mining Flow Diagram](../../diagrams/architecture/mining-flow-complete.md)
 - [Falcon Auth Sequence](../../diagrams/protocols/falcon-auth-sequence.md)
 - [Mining Server Docs](../../current/mining/mining-server.md)
+- [Unified Tip and Channel Heights](../../current/mining/unified-tip-and-channel-heights.md)

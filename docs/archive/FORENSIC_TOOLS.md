@@ -1,5 +1,18 @@
 # Forensic Tools Documentation
 
+> **Note — Scope of this document:**
+> The forensic tools described here measure the **sum-of-channel-heights vs unified height**
+> discrepancy. This diagnostic is separate from block-template anchoring.
+>
+> - The `unified_height` field reported by these tools is the sum-based cross-check value.
+>   It is **not** the value placed inside block templates; `pBlock->nHeight` is the
+>   **channel target height** (`stateChannel.nChannelHeight + 1`).
+> - A discrepancy within tolerance (≤ 5 blocks) does not affect block acceptance. Block
+>   acceptance is gated on `hashPrevBlock == hashBestChain`, not on height arithmetic.
+>
+> For template anchoring semantics, see:
+> **[Unified Tip and Channel Heights](../current/mining/unified-tip-and-channel-heights.md)**
+
 ## Overview
 
 This document describes the comprehensive forensic analysis tools available in Nexus for blockchain health monitoring, fork analysis, and anomaly detection. These tools help operators diagnose channel height discrepancies, identify orphaned blocks, and assess blockchain integrity.

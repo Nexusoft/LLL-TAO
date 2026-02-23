@@ -251,8 +251,14 @@ TAO::Ledger::TritiumBlock* CreateNewBlock(uint32_t nChannel,
     TAO::Ledger::TritiumBlock* pBlock = new TAO::Ledger::TritiumBlock();
     pBlock->nVersion = stateBest.nVersion;
     pBlock->nChannel = nChannel;
-    pBlock->hashPrevBlock = stateBest.GetHash();
-    pBlock->nHeight = stateBest.nHeight + 1;
+    pBlock->hashPrevBlock = stateBest.GetHash();  // MUST equal hashBestChain at acceptance
+
+    // pBlock->nHeight is the channel target height, NOT the unified height.
+    // See docs/current/mining/unified-tip-and-channel-heights.md.
+    TAO::Ledger::BlockState stateChannel = stateBest;
+    TAO::Ledger::GetLastState(stateChannel, nChannel);
+    pBlock->nHeight = stateChannel.nChannelHeight + 1;  // channel target height
+
     pBlock->nBits = GetNextWorkRequired(stateBest, nChannel);
     pBlock->nTime = runtime::unifiedtimestamp();
     pBlock->hashProducer = hashReward;
