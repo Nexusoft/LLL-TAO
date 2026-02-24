@@ -2752,7 +2752,7 @@ namespace LLP
                 }
 
                 /* Check for failure limit on node. */
-                if(nConsecutiveFails >= 1000)
+                if(nConsecutiveFails >= 10000)
                 {
                     /* Switch to another available node. */
                     if(TAO::Ledger::ChainState::Synchronizing())
@@ -2884,7 +2884,7 @@ namespace LLP
                 }
 
                 /* Check for failure limit on node. */
-                if(nConsecutiveFails >= 1000)
+                if(nConsecutiveFails >= 10000)
                 {
                     /* Only drop the node when syncronizing the chain. */
                     if(TAO::Ledger::ChainState::Synchronizing())
