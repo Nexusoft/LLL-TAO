@@ -2672,7 +2672,7 @@ namespace LLP
             pBlock = nullptr;
         }
         
-        /* AFTER block is created, verify height is still valid using channel-specific height */
+        /* AFTER block is created, verify unified height is still valid (chain tip unchanged) */
         if(pBlock)
         {
             /* Get channel-specific state (not unified) */
@@ -2684,19 +2684,23 @@ namespace LLP
                 return nullptr;
             }
 
-            /* Template must target NEXT block in THIS channel.
-             * Note: pBlock->nHeight IS the channel height (set by CreateBlock/AddBlockData),
-             * not the unified height. Block has no nChannelHeight field; only BlockState does. */
-            if(pBlock->nHeight != stateChannel.nChannelHeight + 1)
+            /* pBlock->nHeight is the UNIFIED blockchain height (= tStateBest.nHeight + 1),
+             * set by CreateBlockForStatelessMining(). Verify it matches the current best
+             * chain unified height + 1. Channel-specific staleness is handled later by
+             * TemplateMetadata::IsStale() using stateChannel.nChannelHeight. */
+            const uint32_t nExpectedUnifiedHeight = TAO::Ledger::ChainState::nBestHeight.load() + 1;
+            if(pBlock->nHeight != nExpectedUnifiedHeight)
             {
-                debug::error(FUNCTION, "Template stale: channel height mismatch");
-                debug::error(FUNCTION, "  Template nHeight (channel): ", pBlock->nHeight);
-                debug::error(FUNCTION, "  Current channel height:     ", stateChannel.nChannelHeight);
+                debug::error(FUNCTION, "Template stale: unified height mismatch");
+                debug::error(FUNCTION, "  Template nHeight (unified): ", pBlock->nHeight);
+                debug::error(FUNCTION, "  Expected unified height:    ", nExpectedUnifiedHeight, " (chain tip + 1)");
+                debug::error(FUNCTION, "  Note: This can happen if a block was accepted between template creation and validation.");
                 delete pBlock;
                 return nullptr;
             }
 
-            debug::log(0, "   Template validated at channel height ", pBlock->nHeight);
+            debug::log(0, "   Template validated at unified height ", pBlock->nHeight, " (channel ", pBlock->nChannel, ")");
+            debug::log(0, "   Channel-specific height for staleness metadata: ", stateChannel.nChannelHeight + 1);
         }
         
         /* PR #136: Use ChannelStateManager for fork-aware state management */
