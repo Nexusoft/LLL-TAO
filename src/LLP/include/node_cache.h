@@ -32,10 +32,10 @@ namespace NodeCache
     /** DEFAULT_MAX_CACHE_SIZE
      *
      *  Maximum number of cached miner entries for DDOS protection.
-     *  Default: 500 entries
-     *
+     *  Default: 1000 entries Across 2 Mining Servers Stateless + Legacy 
+     *            
      **/
-    static constexpr size_t DEFAULT_MAX_CACHE_SIZE = 500;
+    static constexpr size_t DEFAULT_MAX_CACHE_SIZE = 1000;
 
     /** DEFAULT_KEEPALIVE_INTERVAL
      *
