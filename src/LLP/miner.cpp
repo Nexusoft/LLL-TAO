@@ -1462,6 +1462,23 @@ namespace LLP
     /* SendChannelNotification - Send push notification to subscribed miner (legacy lane) */
     void Miner::SendChannelNotification()
     {
+        /* Push throttle — drop if a template was sent less than
+         * TEMPLATE_PUSH_MIN_INTERVAL_MS ago (guards against fork-resolution bursts). */
+        {
+            LOCK(MUTEX);
+            auto now = std::chrono::steady_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                now - m_last_template_push_time).count();
+            if (m_last_template_push_time != std::chrono::steady_clock::time_point{} &&
+                elapsed < MiningConstants::TEMPLATE_PUSH_MIN_INTERVAL_MS)
+            {
+                debug::log(3, FUNCTION, "Push throttled — ", elapsed, "ms since last push (min ",
+                           MiningConstants::TEMPLATE_PUSH_MIN_INTERVAL_MS, "ms)");
+                return;
+            }
+            m_last_template_push_time = now;
+        }
+
         /* Get blockchain state */
         TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
         

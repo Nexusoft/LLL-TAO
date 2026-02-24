@@ -17,9 +17,12 @@ ________________________________________________________________________________
 #include <LLP/templates/connection.h>
 #include <LLP/include/opcode_utility.h>
 #include <LLP/include/stateless_miner.h>
+#include <LLP/include/auto_cooldown.h>
+#include <LLP/include/mining_constants.h>
 #include <TAO/Ledger/types/block.h>
 #include <Legacy/types/coinbase.h>
 #include <atomic>
+#include <chrono>
 
 //forward declarations
 namespace Legacy { class ReserveKey; }
@@ -466,6 +469,22 @@ namespace LLP
          * Used by GET_ROUND auto-send to only send templates when the miner's
          * OWN channel advances, preventing ~40% wasted work from cross-channel triggers. */
         uint32_t             nLastTemplateChannelHeight;
+
+        /** Timestamp of the last template push (SendChannelNotification).
+         *
+         *  Used by the push throttle guard to prevent flooding miners with
+         *  notifications during a fork-resolution burst (multiple SetBest()
+         *  events firing in < 100 ms).  Protected by MUTEX.
+         **/
+        std::chrono::steady_clock::time_point m_last_template_push_time;
+
+        /** Safety-net cooldown for GET_BLOCK fallback polling.
+         *
+         *  With the event-driven push model the miner should almost never poll.
+         *  This 200-second cooldown is a last-resort guard for lost connections.
+         *  Protected by MUTEX.
+         **/
+        AutoCoolDown m_get_block_cooldown{std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS)};
 
     public:
 

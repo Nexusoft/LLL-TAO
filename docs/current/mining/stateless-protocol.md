@@ -677,3 +677,55 @@ void StatelessMinerConnection::ProcessSubmitBlock(const Packet& packet)
 **LLL-TAO Version:** 5.1.0+  
 **PR Reference:** LLL-TAO PR #170  
 **Last Updated:** 2026-01-13
+
+---
+
+## Push Throttle and AutoCoolDown
+
+With PR #278 merged, every unified-tip advance triggers a template push to
+**both** PoW channels regardless of which channel mined the block.  Two
+mechanisms protect the network against push floods and miner polling abuse.
+
+### 2-Second Push Throttle (`TEMPLATE_PUSH_MIN_INTERVAL_MS`)
+
+`SendStatelessTemplate()` and `SendChannelNotification()` (both lanes) check
+`m_last_template_push_time` under the connection mutex before transmitting.
+If the elapsed time since the last send is less than 2 000 ms the push is
+silently dropped.
+
+**Rationale:**  During a fork-resolution burst the node can fire 5–10
+`SetBest()` events in < 100 ms.  Flooding a miner with 10 full 228-byte
+templates causes retransmission waste and re-parse churn.  The 2-second floor
+is below any real block-time floor, so the miner always gets a fresh template
+within 2 s of the tip stabilising.
+
+### 200-Second GET_BLOCK Safety-Net (`AutoCoolDown`, `GET_BLOCK_COOLDOWN_SECONDS`)
+
+`LLP::AutoCoolDown m_get_block_cooldown{std::chrono::seconds(200)}` is held
+per connection on both `StatelessMinerConnection` and `Miner`.  Because the
+node now pushes templates on every tip advance, miners should almost never
+need to poll with `GET_BLOCK`.  The 200-second cooldown is a **last-resort
+safety net** for lost connections:
+
+- Capped reconnect latency: 200 s instead of 300 s in the worst case.
+- Still well above the node's 10 s minimum between repeat requests (avoids
+  the hard DDOS ban).
+
+The old 300-second strategy was calibrated for polling miners.  With push now
+the norm, 200 s is the correct ceiling.
+
+### Class `LLP::AutoCoolDown`
+
+A new header-only helper defined in `src/LLP/include/auto_cooldown.h`.
+It replaces ad-hoc magic-number cooldown comments with a self-contained
+object:
+
+```cpp
+AutoCoolDown cd(std::chrono::seconds(200));
+if (!cd.Ready()) return;   // still cooling down
+cd.Reset();                // start new cooldown
+```
+
+**Cross-reference:** See [push-refresh-loop.md](push-refresh-loop.md) for
+the full five-diagram sequence showing how the throttle and cooldown interact
+with `BlockState::SetBest()`.
