@@ -679,7 +679,13 @@ namespace LLP
                 debug::log(0, "   Encryption ready: ", (context.fEncryptionReady ? "YES" : "NO"));
                 debug::log(0, "   ChaCha key size: ", context.vChaChaKey.size(), " bytes");
                 
-                /* Send immediate template push using STATELESS_GET_BLOCK (0xD081 = Mirror(129)) */
+                /* Send immediate template push using STATELESS_GET_BLOCK (0xD081 = Mirror(129))
+                 * Force-bypass the push throttle — miner explicitly re-subscribed and needs
+                 * fresh work immediately regardless of when the previous push was sent. */
+                {
+                    LOCK(MUTEX);
+                    m_force_next_push = true;
+                }
                 SendStatelessTemplate();
 
                 /* Update last template channel height after sending template */
@@ -1687,6 +1693,8 @@ namespace LLP
                            " hashPrevBlock=", pTritium->hashPrevBlock.SubString(),
                            " hashBestChain=", hashCurrentBest.SubString(),
                            " match=", (pTritium->hashPrevBlock == hashCurrentBest));
+                /* Full hashPrevBlock hex (MSB-first via GetHex()) for cross-verification with miner's GetBytes()[0..7] log. */
+                debug::log(2, FUNCTION, "[BLOCK SUBMIT] hashPrevBlock FULL (MSB-first): ", pTritium->hashPrevBlock.GetHex());
 
                 if(pTritium->hashPrevBlock != hashCurrentBest)
                 {
@@ -2301,7 +2309,13 @@ namespace LLP
                 debug::log(0, "   Encryption ready: ", (context.fEncryptionReady ? "YES" : "NO"));
                 debug::log(0, "   ChaCha key size: ", context.vChaChaKey.size(), " bytes");
                 
-                /* Send immediate notification with current state */
+                /* Send immediate notification with current state.
+                 * Force-bypass the push throttle — miner explicitly re-subscribed and needs
+                 * fresh work immediately regardless of when the previous push was sent. */
+                {
+                    LOCK(MUTEX);
+                    m_force_next_push = true;
+                }
                 SendChannelNotification();
                 
                 /* Auto-send template so miner can resume mining immediately.
@@ -2763,6 +2777,11 @@ namespace LLP
         debug::log(0, "      channel_target  (next in channel):  ", info.nNextChannelHeight, " = pBlock->nHeight=", pBlock->nHeight);
         debug::log(0, "      prev_hash       (template anchor):  ", pBlock->hashPrevBlock.SubString());
         debug::log(0, "      best_hash       (current tip):      ", info.hashCurrentBlock.SubString());
+        /* Full hashPrevBlock hex (MSB-first via GetHex()) for cross-verification with miner's GetBytes()[0..7] log. */
+        debug::log(2, FUNCTION, "hashPrevBlock FULL (MSB-first): ", pBlock->hashPrevBlock.GetHex());
+        debug::log(2, FUNCTION, "hashPrevBlock SubString (LSB, legacy display): ", pBlock->hashPrevBlock.SubString());
+        debug::log(2, FUNCTION, "hashBestChain SubString (current tip):         ", TAO::Ledger::ChainState::hashBestChain.load().SubString());
+        debug::log(2, FUNCTION, "hashPrevBlock == hashBestChain: ", (pBlock->hashPrevBlock == TAO::Ledger::ChainState::hashBestChain.load()));
         
         TemplateMetadata meta(pBlock, nCreationTime, info.nUnifiedHeight, info.nNextChannelHeight, 
                              pBlock->hashMerkleRoot, context.nChannel,
@@ -3675,15 +3694,21 @@ namespace LLP
             LOCK(MUTEX);
 
             /* Push throttle — drop if a template was sent less than
-             * TEMPLATE_PUSH_MIN_INTERVAL_MS ago (guards against fork-resolution bursts). */
+             * TEMPLATE_PUSH_MIN_INTERVAL_MS ago (guards against fork-resolution bursts).
+             * Re-subscription responses bypass via m_force_next_push. */
             auto now = std::chrono::steady_clock::now();
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                 now - m_last_template_push_time).count();
-            if (m_last_template_push_time != std::chrono::steady_clock::time_point{} &&
+            if (m_force_next_push)
+            {
+                /* Re-subscription bypass: miner explicitly requested fresh work. */
+                m_force_next_push = false;
+            }
+            else if (m_last_template_push_time != std::chrono::steady_clock::time_point{} &&
                 elapsed < MiningConstants::TEMPLATE_PUSH_MIN_INTERVAL_MS)
             {
-                debug::log(3, FUNCTION, "Push throttled — ", elapsed, "ms since last push (min ",
-                           MiningConstants::TEMPLATE_PUSH_MIN_INTERVAL_MS, "ms)");
+                debug::log(1, FUNCTION, "⏳ Push throttled — ", elapsed, "ms since last push (min ",
+                           MiningConstants::TEMPLATE_PUSH_MIN_INTERVAL_MS, "ms); miner must wait");
                 return;
             }
             m_last_template_push_time = now;
@@ -3795,15 +3820,21 @@ namespace LLP
             LOCK(MUTEX);
 
             /* Push throttle — drop if a template was sent less than
-             * TEMPLATE_PUSH_MIN_INTERVAL_MS ago (guards against fork-resolution bursts). */
+             * TEMPLATE_PUSH_MIN_INTERVAL_MS ago (guards against fork-resolution bursts).
+             * Re-subscription responses bypass via m_force_next_push. */
             auto now = std::chrono::steady_clock::now();
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                 now - m_last_template_push_time).count();
-            if (m_last_template_push_time != std::chrono::steady_clock::time_point{} &&
+            if (m_force_next_push)
+            {
+                /* Re-subscription bypass: miner explicitly requested fresh work. */
+                m_force_next_push = false;
+            }
+            else if (m_last_template_push_time != std::chrono::steady_clock::time_point{} &&
                 elapsed < MiningConstants::TEMPLATE_PUSH_MIN_INTERVAL_MS)
             {
-                debug::log(3, FUNCTION, "Push throttled — ", elapsed, "ms since last push (min ",
-                           MiningConstants::TEMPLATE_PUSH_MIN_INTERVAL_MS, "ms)");
+                debug::log(1, FUNCTION, "⏳ Push throttled — ", elapsed, "ms since last push (min ",
+                           MiningConstants::TEMPLATE_PUSH_MIN_INTERVAL_MS, "ms); miner must wait");
                 return;
             }
             m_last_template_push_time = now;

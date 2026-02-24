@@ -80,6 +80,13 @@ namespace LLP
          **/
         std::chrono::steady_clock::time_point m_last_template_push_time;
 
+        /** When true, the next call to SendChannelNotification() or SendStatelessTemplate()
+         *  bypasses the push throttle entirely.  Set by the STATELESS_MINER_READY and
+         *  MINER_READY handlers so that a re-subscribing miner always gets an immediate
+         *  fresh push regardless of when the previous push was sent.  Protected by MUTEX.
+         **/
+        bool m_force_next_push{false};
+
         /** Safety-net cooldown for GET_BLOCK fallback polling.
          *
          *  With the event-driven push model the miner should almost never poll.

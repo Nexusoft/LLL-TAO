@@ -686,18 +686,25 @@ With PR #278 merged, every unified-tip advance triggers a template push to
 **both** PoW channels regardless of which channel mined the block.  Two
 mechanisms protect the network against push floods and miner polling abuse.
 
-### 2-Second Push Throttle (`TEMPLATE_PUSH_MIN_INTERVAL_MS`)
+### 1-Second Push Throttle (`TEMPLATE_PUSH_MIN_INTERVAL_MS`)
 
 `SendStatelessTemplate()` and `SendChannelNotification()` (both lanes) check
 `m_last_template_push_time` under the connection mutex before transmitting.
-If the elapsed time since the last send is less than 2 000 ms the push is
-silently dropped.
+If the elapsed time since the last send is less than 1 000 ms the push is
+dropped (logged at level 1 so operators can observe throttle events).
+
+Re-subscription responses (from `STATELESS_MINER_READY` / `MINER_READY`
+handlers) bypass the throttle entirely via the `m_force_next_push` flag,
+ensuring a miner always gets fresh work immediately after re-subscribing
+regardless of when the previous push was sent.  This closes the doom-loop
+window where a miner could mine a stale template for up to 200 seconds.
 
 **Rationale:**  During a fork-resolution burst the node can fire 5–10
 `SetBest()` events in < 100 ms.  Flooding a miner with 10 full 228-byte
-templates causes retransmission waste and re-parse churn.  The 2-second floor
-is below any real block-time floor, so the miner always gets a fresh template
-within 2 s of the tip stabilising.
+templates causes retransmission waste and re-parse churn.  The 1-second floor
+is still well above any fork-resolution burst window (~100 ms) and below any
+real block-time floor, so miners always get a fresh template within 1 s of the
+tip stabilising.
 
 ### 200-Second GET_BLOCK Safety-Net (`AutoCoolDown`, `GET_BLOCK_COOLDOWN_SECONDS`)
 
