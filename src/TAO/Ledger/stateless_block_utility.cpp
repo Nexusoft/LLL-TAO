@@ -214,7 +214,6 @@ namespace TAO::Ledger
         BlockValidationResult result;
         result.nChannel = block.nChannel;
         result.nHeight = block.nHeight;
-        result.nChannelHeight = 0;  // Channel height not available from block; use BlockState after acceptance
         result.nUnifiedHeight = block.nHeight;  // block.nHeight is unified height (NexusMiner #169)
         result.hashBlock = block.hashMerkleRoot;
 
@@ -274,7 +273,6 @@ namespace TAO::Ledger
         BlockAcceptanceResult result;
         result.nChannel = block.nChannel;
         result.nHeight = block.nHeight;
-        result.nChannelHeight = 0;  // Channel height not available from block; use BlockState after acceptance
         result.nUnifiedHeight = block.nHeight;  // block.nHeight is unified height (NexusMiner #169)
         result.hashBlock = block.hashMerkleRoot;
 
@@ -326,7 +324,6 @@ namespace TAO::Ledger
         SubmitResult result;
         result.nChannel = block.nChannel;
         result.nHeight = block.nHeight;
-        result.nChannelHeight = 0;  // Channel height not available from block; use BlockState after acceptance
         result.nUnifiedHeight = block.nHeight;  // block.nHeight is unified height (NexusMiner #169)
         result.hashBlock = block.hashMerkleRoot;
 
