@@ -120,7 +120,7 @@ TEST_CASE("PushNotificationBuilder - Opcode Selection", "[push_notification][llp
 
 TEST_CASE("PushNotificationBuilder - Payload Construction", "[push_notification][llp]")
 {
-    SECTION("12-byte payload format - big-endian encoding")
+    SECTION("140-byte payload format - big-endian encoding")
     {
         TAO::Ledger::BlockState stateBest;
         stateBest.nHeight = 0x12345678;  // Unified height
@@ -135,8 +135,8 @@ TEST_CASE("PushNotificationBuilder - Payload Construction", "[push_notification]
             1, LLP::ProtocolLane::LEGACY, stateBest, stateChannel, nDifficulty);
         
         /* Verify payload size */
-        REQUIRE(notification.LENGTH == 12);
-        REQUIRE(notification.DATA.size() == 12);
+        REQUIRE(notification.LENGTH == 140);
+        REQUIRE(notification.DATA.size() == 140);
         
         /* Verify unified height (bytes 0-3, big-endian) */
         REQUIRE(notification.DATA[0] == 0x12);
@@ -175,8 +175,8 @@ TEST_CASE("PushNotificationBuilder - Payload Construction", "[push_notification]
             1, LLP::ProtocolLane::STATELESS, stateBest, stateChannel, nDifficulty);
         
         /* Verify both have same payload size */
-        REQUIRE(legacyNotification.LENGTH == 12);
-        REQUIRE(statelessNotification.LENGTH == 12);
+        REQUIRE(legacyNotification.LENGTH == 140);
+        REQUIRE(statelessNotification.LENGTH == 140);
         REQUIRE(legacyNotification.DATA.size() == statelessNotification.DATA.size());
         
         /* Verify payload bytes are identical */
@@ -200,9 +200,9 @@ TEST_CASE("PushNotificationBuilder - Payload Construction", "[push_notification]
         LLP::Packet notification = LLP::PushNotificationBuilder::BuildChannelNotification<LLP::Packet>(
             1, LLP::ProtocolLane::LEGACY, stateBest, stateChannel, nDifficulty);
         
-        /* Verify payload is all zeros */
-        REQUIRE(notification.LENGTH == 12);
-        for (size_t i = 0; i < 12; ++i)
+        /* Verify payload is all zeros (height=0, channelHeight=0, difficulty=0, hashBestChain=0) */
+        REQUIRE(notification.LENGTH == 140);
+        for (size_t i = 0; i < 140; ++i)
         {
             REQUIRE(notification.DATA[i] == 0x00);
         }
@@ -222,8 +222,9 @@ TEST_CASE("PushNotificationBuilder - Payload Construction", "[push_notification]
         LLP::Packet notification = LLP::PushNotificationBuilder::BuildChannelNotification<LLP::Packet>(
             2, LLP::ProtocolLane::LEGACY, stateBest, stateChannel, nDifficulty);
         
-        /* Verify payload is all 0xFF */
-        REQUIRE(notification.LENGTH == 12);
+        /* Verify header bytes (0-11) are all 0xFF.
+         * Note: bytes 12-139 (hashBestChain) default to 0 when not passed. */
+        REQUIRE(notification.LENGTH == 140);
         for (size_t i = 0; i < 12; ++i)
         {
             REQUIRE(notification.DATA[i] == 0xFF);
@@ -249,8 +250,8 @@ TEST_CASE("PushNotificationBuilder - Template Specialization", "[push_notificati
         
         /* Verify it's a valid Packet type */
         REQUIRE(notification.HEADER < 256);  // 8-bit range
-        REQUIRE(notification.LENGTH == 12);
-        REQUIRE(notification.DATA.size() == 12);
+        REQUIRE(notification.LENGTH == 140);
+        REQUIRE(notification.DATA.size() == 140);
     }
     
     SECTION("StatelessPacket type (16-bit)")
@@ -270,8 +271,8 @@ TEST_CASE("PushNotificationBuilder - Template Specialization", "[push_notificati
         /* Verify it's a valid StatelessPacket type */
         REQUIRE(notification.HEADER >= 0xD000);  // 16-bit stateless range
         REQUIRE(notification.HEADER <= 0xD0FF);
-        REQUIRE(notification.LENGTH == 12);
-        REQUIRE(notification.DATA.size() == 12);
+        REQUIRE(notification.LENGTH == 140);
+        REQUIRE(notification.DATA.size() == 140);
     }
 }
 
@@ -293,7 +294,7 @@ TEST_CASE("PushNotificationBuilder - Real-World Scenarios", "[push_notification]
         
         /* Verify basic structure */
         REQUIRE(notification.HEADER == 0xD9);  // Prime
-        REQUIRE(notification.LENGTH == 12);
+        REQUIRE(notification.LENGTH == 140);
         
         /* Verify height encoding */
         uint32_t decodedHeight = 
@@ -500,8 +501,8 @@ TEST_CASE("PushNotificationBuilder - Universal Tip Push", "[push_notification][l
         REQUIRE(primeNotif.HEADER == 0xD0D9);  // STATELESS PRIME_BLOCK_AVAILABLE
         REQUIRE(hashNotif.HEADER  == 0xD0DA);  // STATELESS HASH_BLOCK_AVAILABLE
 
-        /* Protocol payload is exactly 12 bytes */
-        REQUIRE(primeNotif.LENGTH == 12);
-        REQUIRE(hashNotif.LENGTH  == 12);
+        /* Protocol payload is 140 bytes (12 header + 128 hashBestChain) */
+        REQUIRE(primeNotif.LENGTH == 140);
+        REQUIRE(hashNotif.LENGTH  == 140);
     }
 }

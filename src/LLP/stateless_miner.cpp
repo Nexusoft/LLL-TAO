@@ -432,7 +432,21 @@ namespace LLP
             return true;  // STALE: Age exceeded safety timeout
         
         /* ═══════════════════════════════════════════════════════════════════════════ */
-        /* PRIMARY CHECK: Channel-specific height comparison (PR #134 FIX)             */
+        /* PRIMARY CHECK: Hash-based chain tip comparison (StakeMinter pattern)        */
+        /* ═══════════════════════════════════════════════════════════════════════════ */
+
+        /* hashBestChainAtCreation == pBlock->hashPrevBlock at creation time.
+         * If hashBestChain has advanced, the chain has moved (new block or reorg)
+         * and this template is stale — even at the same integer channel height.
+         * This mirrors StakeMinter line 674 and catches same-height reorgs. */
+        if(hashBestChainAtCreation != uint1024_t(0) &&
+           hashBestChainAtCreation != TAO::Ledger::ChainState::hashBestChain.load())
+        {
+            return true;  // STALE: hashBestChain advanced (new block or reorg)
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════════════ */
+        /* SECONDARY CHECK: Channel-specific height comparison (PR #134 FIX)           */
         /* ═══════════════════════════════════════════════════════════════════════════ */
         
         /* Get current blockchain state atomically */

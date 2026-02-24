@@ -404,6 +404,18 @@ namespace LLP
         std::map<uint512_t, TAO::Ledger::Block *> mapBlocks;
 
 
+        /** Parallel map: block merkle root → hashBestChain snapshot at template creation.
+         *
+         *  Populated alongside mapBlocks in handle_get_block_stateless().  Used in
+         *  check_best_height() to detect same-height reorgs (hashBestChain changes at
+         *  the same integer height) that nBestHeight cannot catch.
+         *
+         *  Lifecycle mirrors mapBlocks: cleared in clear_map(), entries added/removed
+         *  together with their mapBlocks counterparts.
+         */
+        std::map<uint512_t, uint1024_t> mapBlockHashes;
+
+
         /** The current best block. **/
         std::atomic<uint32_t> nBestHeight;
 

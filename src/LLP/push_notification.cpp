@@ -19,15 +19,16 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    /* BuildPayload - Build 12-byte notification payload (big-endian) */
+    /* BuildPayload - Build 140-byte notification payload (big-endian) */
     std::vector<uint8_t> PushNotificationBuilder::BuildPayload(
         uint32_t nUnifiedHeight,
         uint32_t nChannelHeight,
-        uint32_t nDifficulty)
+        uint32_t nDifficulty,
+        const uint1024_t& hashBestChain)
     {
         std::vector<uint8_t> vPayload;
-        vPayload.reserve(12);  // Pre-allocate to avoid reallocations
-        
+        vPayload.reserve(140);  // 12 bytes header + 128 bytes hash
+
         // Unified height [0-3] (big-endian)
         vPayload.push_back((nUnifiedHeight >> 24) & 0xFF);
         vPayload.push_back((nUnifiedHeight >> 16) & 0xFF);
@@ -45,6 +46,12 @@ namespace LLP
         vPayload.push_back((nDifficulty >> 16) & 0xFF);
         vPayload.push_back((nDifficulty >> 8) & 0xFF);
         vPayload.push_back((nDifficulty >> 0) & 0xFF);
+
+        // hashBestChain [12-139] (128 bytes, little-endian word order via GetBytes())
+        // Allows miner to compare its template's hashPrevBlock against this value
+        // for hash-based staleness detection (NexusMiner#170 pattern).
+        std::vector<uint8_t> vHashBytes = hashBestChain.GetBytes();
+        vPayload.insert(vPayload.end(), vHashBytes.begin(), vHashBytes.end());
         
         return vPayload;
     }
@@ -75,7 +82,8 @@ namespace LLP
         ProtocolLane lane,
         const TAO::Ledger::BlockState& stateBest,
         const TAO::Ledger::BlockState& stateChannel,
-        uint32_t nDifficulty)
+        uint32_t nDifficulty,
+        const uint1024_t& hashBestChain)
     {
         // Get 8-bit opcode (lane should be LEGACY)
         uint16_t nOpcode = GetNotificationOpcode(nChannel, lane);
@@ -84,11 +92,12 @@ namespace LLP
         Packet notification;
         notification.HEADER = static_cast<uint8_t>(nOpcode);
         
-        // Build 12-byte payload
+        // Build 140-byte payload (12 header + 128 hash)
         notification.DATA = BuildPayload(
             stateBest.nHeight,
             stateChannel.nChannelHeight,
-            nDifficulty
+            nDifficulty,
+            hashBestChain
         );
         
         notification.LENGTH = static_cast<uint32_t>(notification.DATA.size());
@@ -103,7 +112,8 @@ namespace LLP
         ProtocolLane lane,
         const TAO::Ledger::BlockState& stateBest,
         const TAO::Ledger::BlockState& stateChannel,
-        uint32_t nDifficulty)
+        uint32_t nDifficulty,
+        const uint1024_t& hashBestChain)
     {
         // Get 16-bit opcode (lane should be STATELESS)
         uint16_t nOpcode = GetNotificationOpcode(nChannel, lane);
@@ -111,11 +121,12 @@ namespace LLP
         // Create packet with 16-bit header
         StatelessPacket notification(nOpcode);
         
-        // Build 12-byte payload
+        // Build 140-byte payload (12 header + 128 hash)
         notification.DATA = BuildPayload(
             stateBest.nHeight,
             stateChannel.nChannelHeight,
-            nDifficulty
+            nDifficulty,
+            hashBestChain
         );
         
         notification.LENGTH = static_cast<uint32_t>(notification.DATA.size());

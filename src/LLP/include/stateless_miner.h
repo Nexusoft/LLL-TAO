@@ -185,6 +185,19 @@ namespace LLP
         /** Mining channel for this template (1=Prime, 2=Hash, 0=Stake) */
         uint32_t nChannel;
         
+        /** Best chain hash snapshot at template creation time.
+         *
+         *  Captures TAO::Ledger::ChainState::hashBestChain at the moment this template
+         *  was created.  Used as the PRIMARY staleness anchor in IsStale(): if the live
+         *  hashBestChain has advanced beyond this value the chain has moved (new block or
+         *  reorg) and the template must be discarded — even when the integer channel height
+         *  is unchanged (same-height reorg).
+         *
+         *  At creation time this equals pBlock->hashPrevBlock, matching the StakeMinter
+         *  pattern (stake_minter.cpp:674).
+         */
+        uint1024_t hashBestChainAtCreation;
+        
         /* ═══════════════════════════════════════════════════════════════════════════════ */
         /* PR #134: CHANNEL-SPECIFIC HEIGHT (CRITICAL FOR STALENESS DETECTION)             */
         /* ═══════════════════════════════════════════════════════════════════════════════ */
@@ -227,6 +240,7 @@ namespace LLP
             , nHeight(0)
             , hashMerkleRoot(0)
             , nChannel(0)
+            , hashBestChainAtCreation(0)
             , nChannelHeight(0)  // PR #134: Initialize channel height
         {
         }
@@ -243,15 +257,18 @@ namespace LLP
          *  @param nChannelHeight_ Channel-specific height at creation (PR #134)
          *  @param hashMerkleRoot_ Expected merkle root for validation
          *  @param nChannel_      Mining channel (1=Prime, 2=Hash)
+         *  @param hashBestChainAtCreation_ hashBestChain snapshot at template creation
          */
         TemplateMetadata(TAO::Ledger::Block* pBlock_, uint64_t nCreationTime_, 
                         uint32_t nHeight_, uint32_t nChannelHeight_,
-                        const uint512_t& hashMerkleRoot_, uint32_t nChannel_)
+                        const uint512_t& hashMerkleRoot_, uint32_t nChannel_,
+                        const uint1024_t& hashBestChainAtCreation_ = uint1024_t(0))
             : pBlock(pBlock_)  // unique_ptr takes ownership
             , nCreationTime(nCreationTime_)
             , nHeight(nHeight_)
             , hashMerkleRoot(hashMerkleRoot_)
             , nChannel(nChannel_)
+            , hashBestChainAtCreation(hashBestChainAtCreation_)
             , nChannelHeight(nChannelHeight_)  // PR #134: Store channel height
         {
         }
