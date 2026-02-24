@@ -28,6 +28,11 @@ ________________________________________________________________________________
  * (tStateBest.nHeight + 1), matching the NexusMiner #169/#170 contract and the
  * TritiumBlock::Accept() validation: statePrev.nHeight + 1 == nHeight.
  *
+ * Both AddBlockData() (legacy lane, create.cpp) and CreateBlockForStatelessMining()
+ * (stateless lane, stateless_block_utility.cpp) must use the same unified height.
+ * The 'Template height matches AddBlockData for both channels' section validates
+ * the shared invariant for both mining lanes.
+ *
  * Channel-specific height (nChannelHeight) is BlockState metadata computed during
  * SetBest() via GetLastState(). It is never serialized into the block template bytes.
  */
