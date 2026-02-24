@@ -191,6 +191,21 @@ namespace OpcodeUtility
     }
 
     //=========================================================================
+    // REJECTION REASON CODES
+    // 1-byte payload sent with BLOCK_REJECTED (0xD0C9) to distinguish rejection type.
+    // Decoded by the miner (solo.cpp) to track STALE vs invalid submissions.
+    //=========================================================================
+    enum class RejectionReason : uint8_t
+    {
+        STALE       = 1,  // hashPrevBlock != hashBestChain (Guard 2 mismatch)
+        INVALID_POW = 2,  // Proof of work failed validation
+        INVALID_SIG = 3,  // Falcon signature verification failed
+        DUPLICATE   = 4,  // Block already submitted
+        FORK        = 5,  // Block on an alternate chain
+    };
+
+
+    //=========================================================================
     // OPCODE CLASSIFICATION FUNCTIONS
     //=========================================================================
 

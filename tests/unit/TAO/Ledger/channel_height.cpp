@@ -182,6 +182,43 @@ TEST_CASE("Channel Height Tracking Tests", "[ledger]")
                  << " channel height: " << stateChannel.nChannelHeight);
         }
     }
+
+    SECTION("Stateless lane matches legacy AddBlockData nHeight")
+    {
+        /* Both the stateless lane (CreateBlockForStatelessMining) and the legacy lane
+         * (AddBlockData) assign block.nHeight = tStateBest.nHeight + 1 (unified).
+         * This test validates the shared invariant so both lanes produce identical heights.
+         */
+        BlockState tStateBest = ChainState::tStateBest.load();
+
+        TritiumBlock blockLegacy, blockStateless;
+        AddBlockData(tStateBest, 1, blockLegacy);
+
+        /* Simulate stateless lane: same unified height assignment */
+        blockStateless.nHeight = tStateBest.nHeight + 1;
+
+        /* Both lanes must produce identical unified nHeight */
+        REQUIRE(blockLegacy.nHeight == blockStateless.nHeight);
+        REQUIRE(blockLegacy.nHeight == tStateBest.nHeight + 1);
+    }
+
+    SECTION("hashPrevBlock guard: freshly created block passes Guard 2")
+    {
+        /* Guard 2 (pre-submit): block.hashPrevBlock == hashBestChain.
+         * A freshly created block should always pass because AddBlockData sets
+         * hashPrevBlock = tStateBest.GetHash() = hashBestChain at creation time.
+         */
+        BlockState tStateBest = ChainState::tStateBest.load();
+        TritiumBlock block;
+        AddBlockData(tStateBest, 1, block);
+
+        /* Guard 2: block.hashPrevBlock must equal hashBestChain */
+        uint1024_t hashBestChain = ChainState::hashBestChain.load();
+        bool guardPasses = (block.hashPrevBlock == hashBestChain);
+
+        /* Freshly created block should pass Guard 2 */
+        REQUIRE(guardPasses);
+    }
 }
 
 /**
