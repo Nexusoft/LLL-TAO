@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <cstdint>
 #include <vector>
+#include <LLC/types/uint1024.h>
 
 /* Forward declarations */
 namespace LLP { class Packet; class StatelessPacket; }
@@ -67,11 +68,11 @@ namespace LLP
      *  USAGE:
      *  Legacy lane:
      *    auto packet = PushNotificationBuilder::BuildChannelNotification<Packet>(
-     *        nChannel, ProtocolLane::LEGACY, stateBest, stateChannel, nDifficulty);
+     *        nChannel, ProtocolLane::LEGACY, stateBest, stateChannel, nDifficulty, hashBestChain);
      *
      *  Stateless lane:
      *    auto packet = PushNotificationBuilder::BuildChannelNotification<StatelessPacket>(
-     *        nChannel, ProtocolLane::STATELESS, stateBest, stateChannel, nDifficulty);
+     *        nChannel, ProtocolLane::STATELESS, stateBest, stateChannel, nDifficulty, hashBestChain);
      *
      **/
     class PushNotificationBuilder
@@ -89,13 +90,19 @@ namespace LLP
          *  @param[in] stateBest Current best block state
          *  @param[in] stateChannel Last block state for this channel
          *  @param[in] nDifficulty Current difficulty for this channel
+         *  @param[in] hashBestChain Current best-chain hash for hash-based staleness detection
          *
          *  @return Packet or StatelessPacket ready to send
          *
-         *  PAYLOAD FORMAT (12 bytes, big-endian):
-         *    [0-3]   uint32_t nUnifiedHeight   - Current blockchain height
-         *    [4-7]   uint32_t nChannelHeight   - Channel-specific height
-         *    [8-11]  uint32_t nDifficulty      - Current difficulty
+         *  PAYLOAD FORMAT (140 bytes, big-endian):
+         *    [0-3]     uint32_t  nUnifiedHeight   - Current blockchain height
+         *    [4-7]     uint32_t  nChannelHeight   - Channel-specific height
+         *    [8-11]    uint32_t  nDifficulty      - Current difficulty
+         *    [12-139]  uint1024_t hashBestChain   - Best-chain hash (128 bytes, little-endian)
+         *
+         *  The hashBestChain field (bytes 12-139) allows the miner to compare its current
+         *  template's hashPrevBlock against the node's current tip, enabling hash-based
+         *  staleness detection before submitting work (NexusMiner#170 pattern).
          *
          **/
         template<typename PacketType>
@@ -104,24 +111,27 @@ namespace LLP
             ProtocolLane lane,
             const TAO::Ledger::BlockState& stateBest,
             const TAO::Ledger::BlockState& stateChannel,
-            uint32_t nDifficulty);
+            uint32_t nDifficulty,
+            const uint1024_t& hashBestChain = uint1024_t(0));
 
     private:
         /** BuildPayload
          *
-         *  Build the 12-byte notification payload (big-endian).
+         *  Build the 140-byte notification payload (big-endian).
          *
          *  @param[in] nUnifiedHeight Current blockchain height
          *  @param[in] nChannelHeight Channel-specific height
          *  @param[in] nDifficulty Current difficulty
+         *  @param[in] hashBestChain Best-chain hash (128 bytes appended)
          *
-         *  @return 12-byte vector containing the payload
+         *  @return 140-byte vector containing the payload
          *
          **/
         static std::vector<uint8_t> BuildPayload(
             uint32_t nUnifiedHeight,
             uint32_t nChannelHeight,
-            uint32_t nDifficulty);
+            uint32_t nDifficulty,
+            const uint1024_t& hashBestChain = uint1024_t(0));
 
         /** GetNotificationOpcode
          *

@@ -1080,6 +1080,7 @@ namespace LLP
     bool Miner::check_best_height()
     {
         uint32_t nChainStateHeight = TAO::Ledger::ChainState::nBestHeight.load();
+        uint1024_t hashCurrentBest = TAO::Ledger::ChainState::hashBestChain.load();
 
         /* Introduced as part of Tritium upgrade. We can't rely on existing mining software to use the GET_ROUND to check that the
            the current round is still valid, so we additionally check the round whenever the height is checked.  If we find that it
@@ -1097,7 +1098,28 @@ namespace LLP
 
         /* Return early if the height doesn't change. */
         if(nBestHeight == nChainStateHeight)
-            return false;
+        {
+            /* Hash-based staleness check: detect same-height reorgs that nBestHeight misses.
+             * mapBlockHashes stores hashBestChain at the moment each template was created.
+             * If any stored snapshot differs from the current best, the chain has reorged. */
+            bool fHashChanged = false;
+            for(const auto& entry : mapBlockHashes)
+            {
+                if(entry.second != hashCurrentBest)
+                {
+                    fHashChanged = true;
+                    break;
+                }
+            }
+
+            if(!fHashChanged)
+                return false;
+
+            /* hashBestChain changed at the same height (reorg) — clear stale templates. */
+            clear_map();
+            debug::log(2, FUNCTION, "Mining map cleared: hashBestChain changed at height ", nChainStateHeight);
+            return true;
+        }
 
         /* Clear the map of blocks if a new block has been accepted. */
         clear_map();
@@ -1133,6 +1155,9 @@ namespace LLP
                 delete block.second;
         }
         mapBlocks.clear();
+
+        /* Clear the parallel hash-snapshot map. */
+        mapBlockHashes.clear();
 
         /* Reset the coinbase transaction. */
         tCoinbaseTx.SetNull();
@@ -1453,7 +1478,8 @@ namespace LLP
         
         /* Build notification using unified builder (8-bit opcodes for legacy lane) */
         Packet notification = PushNotificationBuilder::BuildChannelNotification<Packet>(
-            nSubscribedChannel, ProtocolLane::LEGACY, stateBest, stateChannel, nDifficulty);
+            nSubscribedChannel, ProtocolLane::LEGACY, stateBest, stateChannel, nDifficulty,
+            TAO::Ledger::ChainState::hashBestChain.load());
         
         /* Send to miner */
         respond(notification.HEADER, notification.DATA);
@@ -1507,6 +1533,10 @@ namespace LLP
 
             /* Store the new block in the memory map of recent blocks being worked on. */
             mapBlocks[pBlock->hashMerkleRoot] = pBlock;
+
+            /* Snapshot hashBestChain alongside the block for hash-based staleness detection.
+             * This catches same-height reorgs that nBestHeight cannot detect. */
+            mapBlockHashes[pBlock->hashMerkleRoot] = TAO::Ledger::ChainState::hashBestChain.load();
 
             /* Serialize the block vData */
             vData = pBlock->Serialize();

@@ -2732,7 +2732,8 @@ namespace LLP
         debug::log(0, "      best_hash       (current tip):      ", info.hashCurrentBlock.SubString());
         
         TemplateMetadata meta(pBlock, nCreationTime, info.nUnifiedHeight, info.nNextChannelHeight, 
-                             pBlock->hashMerkleRoot, context.nChannel);
+                             pBlock->hashMerkleRoot, context.nChannel,
+                             TAO::Ledger::ChainState::hashBestChain.load());
         auto result = mapBlocks.emplace(pBlock->hashMerkleRoot, std::move(meta));
         
         debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Template stored in map with metadata", ANSI_COLOR_RESET);
@@ -3671,7 +3672,8 @@ namespace LLP
         
         /* Build notification using unified builder */
         StatelessPacket notification = PushNotificationBuilder::BuildChannelNotification<StatelessPacket>(
-            nChannel, ProtocolLane::STATELESS, stateBest, stateChannel, nDifficulty);
+            nChannel, ProtocolLane::STATELESS, stateBest, stateChannel, nDifficulty,
+            TAO::Ledger::ChainState::hashBestChain.load());
         
         /* Log the notification details BEFORE sending for diagnostics */
         const std::string strOpcodeName = (nChannel == 1) ? 
