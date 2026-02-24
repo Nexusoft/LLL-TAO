@@ -1463,17 +1463,23 @@ namespace LLP
     void Miner::SendChannelNotification()
     {
         /* Push throttle — drop if a template was sent less than
-         * TEMPLATE_PUSH_MIN_INTERVAL_MS ago (guards against fork-resolution bursts). */
+         * TEMPLATE_PUSH_MIN_INTERVAL_MS ago (guards against fork-resolution bursts).
+         * Re-subscription responses bypass via m_force_next_push. */
         {
             LOCK(MUTEX);
             auto now = std::chrono::steady_clock::now();
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                 now - m_last_template_push_time).count();
-            if (m_last_template_push_time != std::chrono::steady_clock::time_point{} &&
+            if (m_force_next_push)
+            {
+                /* Re-subscription bypass: miner explicitly requested fresh work. */
+                m_force_next_push = false;
+            }
+            else if (m_last_template_push_time != std::chrono::steady_clock::time_point{} &&
                 elapsed < MiningConstants::TEMPLATE_PUSH_MIN_INTERVAL_MS)
             {
-                debug::log(3, FUNCTION, "Push throttled — ", elapsed, "ms since last push (min ",
-                           MiningConstants::TEMPLATE_PUSH_MIN_INTERVAL_MS, "ms)");
+                debug::log(1, FUNCTION, "⏳ Push throttled — ", elapsed, "ms since last push (min ",
+                           MiningConstants::TEMPLATE_PUSH_MIN_INTERVAL_MS, "ms); miner must wait");
                 return;
             }
             m_last_template_push_time = now;
@@ -1600,7 +1606,13 @@ namespace LLP
 
         debug::log(0, FUNCTION, "Miner subscribed to channel ", nChannel, " (", GetChannelName(nChannel), ")");
 
-        /* Send immediate notification */
+        /* Send immediate notification.
+         * Force-bypass the push throttle — miner explicitly re-subscribed and needs
+         * fresh work immediately regardless of when the previous push was sent. */
+        {
+            LOCK(MUTEX);
+            m_force_next_push = true;
+        }
         SendChannelNotification();
 
         return true;
@@ -1751,6 +1763,8 @@ namespace LLP
                    " hashPrevBlock=", pTritium->hashPrevBlock.SubString(),
                    " hashBestChain=", hashCurrentBest.SubString(),
                    " match=", (pTritium->hashPrevBlock == hashCurrentBest));
+        /* Full hashPrevBlock hex (MSB-first via GetHex()) for cross-verification with miner's GetBytes()[0..7] log. */
+        debug::log(2, FUNCTION, "[BLOCK SUBMIT] hashPrevBlock FULL (MSB-first): ", pTritium->hashPrevBlock.GetHex());
 
         /* Hash-based staleness guard — mirrors StakeMinter pattern.
          * hashPrevBlock is the PRIMARY staleness anchor baked into the template.

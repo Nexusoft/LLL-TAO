@@ -93,14 +93,21 @@ namespace MiningConstants
     // PUSH THROTTLE AND COOLDOWN CONFIGURATION
     //=========================================================================
 
-    /** Minimum interval between consecutive template pushes (2 seconds).
+    /** Minimum interval between consecutive unsolicited template pushes (1 second).
      *
      *  Guards SendStatelessTemplate() and SendChannelNotification() against
      *  flooding miners during a fork-resolution burst (multiple SetBest() events
-     *  firing in < 100 ms).  2 s is well below any real block-time floor, so
-     *  miners always get a fresh template within 2 s of tip stabilisation.
+     *  firing in < 100 ms).  1 s is still well above any fork-resolution burst
+     *  window (~100 ms) and below any real block-time floor, so miners always get
+     *  a fresh template within 1 s of tip stabilisation.
+     *
+     *  Reduced from 2 000 ms to 1 000 ms to close the doom-loop window: when a
+     *  miner re-subscribes (STATELESS_MINER_READY) and simultaneously has its
+     *  GET_BLOCK rate-limited, the node's push throttle was the last gate
+     *  preventing fresh work delivery.  Re-subscription responses bypass this
+     *  throttle entirely via the m_force_next_push flag.
      */
-    constexpr int64_t TEMPLATE_PUSH_MIN_INTERVAL_MS = 2000;
+    constexpr int64_t TEMPLATE_PUSH_MIN_INTERVAL_MS = 1000;
 
     /** Per-connection GET_BLOCK safety-net cooldown (200 seconds).
      *

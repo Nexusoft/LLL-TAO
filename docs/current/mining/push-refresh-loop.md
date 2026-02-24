@@ -13,7 +13,7 @@ With PR #278 merged, **every unified-tip advance** triggers
 channel mined the block.
 
 Templates are now **event-driven**.  The old 600-second age-out assumption is
-gone.  Every new block (any channel) triggers a fresh push, with a 2-second
+gone.  Every new block (any channel) triggers a fresh push, with a 1-second
 throttle guard to absorb fork-resolution bursts.
 
 ---
@@ -32,7 +32,7 @@ NotifyChannelMiners(HASH)  ─────────────────�
        │                                                                     │
        ▼                                                                     ▼
 StatelessMinerConnection::SendChannelNotification()     Miner::SendChannelNotification()
-       │   [pushThrottle < 2s? drop]                          [pushThrottle < 2s? drop]
+       │   [pushThrottle < 1s? drop]                          [pushThrottle < 1s? drop]
        ▼                                                                     │
 SendStatelessTemplate()  ───────────────────────────────────────────────────┘
        │
@@ -109,11 +109,29 @@ SetBest() fires (rapid fork-resolution burst: 5 events in 100 ms)
    ┌───┴───────────────────────────────────────────────────┐
    │ Event 1 (t=0 ms)    │ Event 2 (t=20 ms) │ Events 3-5 │
    │ m_last_push=⊘       │ elapsed=20 ms     │ elapsed<    │
-   │ → SEND template ✅   │ < 2000 ms         │  2000 ms   │
+   │ → SEND template ✅   │ < 1000 ms         │  1000 ms   │
    │                      │ → THROTTLED ⛔    │ → THROTTLED │
    └──────────────────────┴───────────────────┴─────────────┘
        │
-After 2000 ms settle time: next tip advance sends fresh template ✅
+After 1000 ms settle time: next tip advance sends fresh template ✅
+```
+
+---
+
+## Diagram 6 — Re-subscription Bypass (doom-loop prevention)
+
+```diagram
+STATELESS_MINER_READY received
+       │
+       ▼
+m_force_next_push = true   (set under MUTEX before SendChannelNotification / SendStatelessTemplate)
+       │
+       ▼
+SendChannelNotification() / SendStatelessTemplate()
+       │
+       ├─ m_force_next_push == true? YES ─→ m_force_next_push=false → SEND template ✅
+       │                                     (throttle bypassed — re-subscription response)
+       └─ m_force_next_push == false ─→ normal 1s throttle check applies
 ```
 
 ---
@@ -122,12 +140,12 @@ After 2000 ms settle time: next tip advance sends fresh template ✅
 
 | Constant | Value | File |
 |---|---|---|
-| `TEMPLATE_PUSH_MIN_INTERVAL_MS` | 2 000 ms | `src/LLP/include/mining_constants.h` |
+| `TEMPLATE_PUSH_MIN_INTERVAL_MS` | 1 000 ms | `src/LLP/include/mining_constants.h` |
 | `GET_BLOCK_COOLDOWN_SECONDS` | 200 s | `src/LLP/include/mining_constants.h` |
 
 | Class | Key members | File |
 |---|---|---|
-| `StatelessMinerConnection` | `m_last_template_push_time`, `m_get_block_cooldown` | `src/LLP/types/stateless_miner_connection.h` |
-| `Miner` | `m_last_template_push_time`, `m_get_block_cooldown` | `src/LLP/types/miner.h` |
+| `StatelessMinerConnection` | `m_last_template_push_time`, `m_force_next_push`, `m_get_block_cooldown` | `src/LLP/types/stateless_miner_connection.h` |
+| `Miner` | `m_last_template_push_time`, `m_force_next_push`, `m_get_block_cooldown` | `src/LLP/types/miner.h` |
 
 See also: [stateless-protocol.md](stateless-protocol.md) §Push Throttle and AutoCoolDown
