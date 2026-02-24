@@ -918,7 +918,8 @@ namespace LLP
                         );
                     }
                     
-                    /* Update context timestamp, height, and last template channel height.
+                    /* Update context timestamp, height, last template channel height, and
+                     * hashLastBlock snapshot (primary staleness anchor, StakeMinter pattern).
                      * nLastTemplateChannelHeight uses the channel-specific height (not unified)
                      * to ensure templates are only refreshed when the miner's channel advances. */
                     {
@@ -929,7 +930,8 @@ namespace LLP
                             nChannelHeight = stateChannel.nChannelHeight;
                         context = context.WithTimestamp(runtime::unifiedtimestamp())
                                          .WithHeight(stateBest.nHeight)
-                                         .WithLastTemplateChannelHeight(nChannelHeight);
+                                         .WithLastTemplateChannelHeight(nChannelHeight)
+                                         .WithHashLastBlock(TAO::Ledger::ChainState::hashBestChain.load());
                     }
                     
                     /* Update manager with new context after template served */

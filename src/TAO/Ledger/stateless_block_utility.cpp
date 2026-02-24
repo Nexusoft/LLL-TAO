@@ -127,39 +127,16 @@ namespace TAO::Ledger
             pBlock->hashPrevBlock = statePrev.GetHash();
             pBlock->nChannel = nChannel;
             
-            /* CRITICAL: Use channel-specific height, NOT unified height
-             * 
-             * For multi-channel mining:
-             * - Unified height = 6.5M (total across all channels)
-             * - Prime channel = 2.3M blocks
-             * - Hash channel = 2.1M blocks  
-             * - Stake channel = 2.1M blocks
-             * 
-             * The miner needs the CHANNEL height to:
-             * 1. Know which block they're mining (Prime block 2302585, not unified 6537246)
-             * 2. Compare with GET_ROUND response to detect staleness
-             * 3. Set proper hashPrevBlock for the channel
+            /* Use UNIFIED height for pBlock->nHeight — matches NexusMiner #169/#170 contract.
+             *
+             * TritiumBlock::Accept() validates: statePrev.nHeight + 1 == nHeight
+             * where statePrev is the block at hashPrevBlock (the unified best-chain tip).
+             * nChannelHeight is computed by BlockState::SetBest() and is metadata only.
              */
-            BlockState stateChannel = statePrev;
-            if(GetLastState(stateChannel, nChannel))
-            {
-                /* Template is for the NEXT block in this channel */
-                pBlock->nHeight = stateChannel.nChannelHeight + 1;
-                
-                debug::log(2, FUNCTION, "✓ Creating template for channel ", static_cast<uint32_t>(nChannel),
-                           " at channel height ", pBlock->nHeight);
-                debug::log(2, FUNCTION, "   (Unified height: ", statePrev.nHeight, " - for reference only)");
-            }
-            else
-            {
-                /* Channel doesn't exist yet - mining first block in this channel
-                 * GetLastState returns false and sets stateChannel to genesis (nChannelHeight = 1)
-                 * So first block in channel has nChannelHeight = 2 */
-                pBlock->nHeight = stateChannel.nChannelHeight + 1;
-                debug::log(2, FUNCTION, "Mining first block in channel ", static_cast<uint32_t>(nChannel),
-                           " at channel height ", pBlock->nHeight);
-                debug::log(2, FUNCTION, "   (Genesis has nChannelHeight = ", stateChannel.nChannelHeight, ")");
-            }
+            pBlock->nHeight = statePrev.nHeight + 1;
+
+            debug::log(2, FUNCTION, "✓ Creating template for channel ", static_cast<uint32_t>(nChannel),
+                       " at unified height ", pBlock->nHeight);
             
             /* Verify nChannel was set correctly */
             debug::log(2, FUNCTION, "✓ Block nChannel set to: ", pBlock->nChannel, 
@@ -182,9 +159,8 @@ namespace TAO::Ledger
             
             debug::log(2, FUNCTION, "Block initialized with chain state:");
             debug::log(2, FUNCTION, "  hashPrevBlock: ", pBlock->hashPrevBlock.SubString());
-            debug::log(2, FUNCTION, "  nHeight (channel): ", pBlock->nHeight, " ← This is what miner sees");
+            debug::log(2, FUNCTION, "  nHeight (unified): ", pBlock->nHeight);
             debug::log(2, FUNCTION, "  nChannel: ", pBlock->nChannel);
-            debug::log(2, FUNCTION, "  Unified height: ", statePrev.nHeight, " (reference only)");
             debug::log(2, FUNCTION, "  nBits: 0x", std::hex, pBlock->nBits, std::dec);
             debug::log(2, FUNCTION, "  nTime: ", pBlock->nTime);
             
@@ -217,12 +193,9 @@ namespace TAO::Ledger
                 return nullptr;
             }
             
-            /* Log with explicit channel/unified height distinction */
-            const uint32_t nChannelHeight = pBlock->nHeight;
-            const uint32_t nUnifiedHeight = statePrev.nHeight + 1;
-            
+            /* Log block creation result */
             debug::log(2, FUNCTION, "CreateBlock: channel ", pBlock->nChannel, 
-                       " height ", nChannelHeight, " (unified ", nUnifiedHeight, " - ref)");
+                       " unified height ", pBlock->nHeight);
             debug::log(2, FUNCTION, "  Note: PoW validation deferred until miner submits nonce");
             debug::log(2, FUNCTION, "  Reward address: ", hashRewardAddress.SubString());
             
@@ -241,12 +214,12 @@ namespace TAO::Ledger
         BlockValidationResult result;
         result.nChannel = block.nChannel;
         result.nHeight = block.nHeight;
-        result.nChannelHeight = block.nHeight;  // block.nHeight is channel height
-        result.nUnifiedHeight = ChainState::tStateBest.load().nHeight + 1;  // Reference
+        result.nChannelHeight = 0;  // Channel height not available from block; use BlockState after acceptance
+        result.nUnifiedHeight = block.nHeight;  // block.nHeight is unified height (NexusMiner #169)
         result.hashBlock = block.hashMerkleRoot;
 
         debug::log(2, FUNCTION, "Centralized validation for block ", block.hashMerkleRoot.SubString(),
-                   " channel=", block.nChannel, " height=", block.nHeight);
+                   " channel=", block.nChannel, " unified_height=", block.nHeight);
 
         if(config::fShutdown.load())
         {
@@ -301,12 +274,12 @@ namespace TAO::Ledger
         BlockAcceptanceResult result;
         result.nChannel = block.nChannel;
         result.nHeight = block.nHeight;
-        result.nChannelHeight = block.nHeight;  // block.nHeight is channel height
-        result.nUnifiedHeight = ChainState::tStateBest.load().nHeight + 1;  // Reference
+        result.nChannelHeight = 0;  // Channel height not available from block; use BlockState after acceptance
+        result.nUnifiedHeight = block.nHeight;  // block.nHeight is unified height (NexusMiner #169)
         result.hashBlock = block.hashMerkleRoot;
 
         debug::log(2, FUNCTION, "Centralized acceptance for block ", block.hashMerkleRoot.SubString(),
-                   " channel=", block.nChannel, " height=", block.nHeight);
+                   " channel=", block.nChannel, " unified_height=", block.nHeight);
 
         /* Unlock sigchain to process mined block. */
         try
@@ -353,8 +326,8 @@ namespace TAO::Ledger
         SubmitResult result;
         result.nChannel = block.nChannel;
         result.nHeight = block.nHeight;
-        result.nChannelHeight = block.nHeight;  // block.nHeight is channel height
-        result.nUnifiedHeight = ChainState::tStateBest.load().nHeight + 1;  // Reference
+        result.nChannelHeight = 0;  // Channel height not available from block; use BlockState after acceptance
+        result.nUnifiedHeight = block.nHeight;  // block.nHeight is unified height (NexusMiner #169)
         result.hashBlock = block.hashMerkleRoot;
 
         const BlockValidationResult validationResult = ValidateMinedBlock(block);

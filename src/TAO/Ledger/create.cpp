@@ -348,40 +348,24 @@ namespace TAO::Ledger
         block.hashPrevBlock = tStateBest.GetHash();
         block.nChannel      = nChannel;
 
-        /* CRITICAL: Use channel-specific height, NOT unified height!
+        /* Use UNIFIED height for block.nHeight — matches NexusMiner #169/#170 contract.
          *
-         * Nexus has 3 independent mining channels (Stake=0, Prime=1, Hash=2).
-         * Each channel maintains its own height counter (nChannelHeight) that advances
-         * independently as blocks are mined in that channel.
+         * TritiumBlock::Accept() validates: statePrev.nHeight + 1 == nHeight
+         * where statePrev is the block at hashPrevBlock (the unified best-chain tip).
+         * This means nHeight MUST equal the unified blockchain height of the new block,
+         * not the channel-specific height.
          *
-         * The unified height (tStateBest.nHeight) is the TOTAL height across ALL channels
-         * combined (e.g., 6.5M blocks total across all channels).
+         * Channel-specific height (nChannelHeight) is computed separately by BlockState
+         * during SetBest() via GetLastState() and stored in BlockState::nChannelHeight.
+         * It is metadata only — never serialized into the 216-byte block template bytes.
          *
-         * For mining templates, we MUST use channel-specific height because:
-         * 1. Miners track their channel's height, not unified height
-         * 2. Staleness detection compares template height vs channel height
-         * 3. Using unified height makes every template appear stale
-         *
-         * Example:
-         * - Unified height: 6,537,246 (all channels combined)
-         * - Prime channel height: 2,302,585 (Prime blocks only)
-         * - Hash channel height: 2,134,661 (Hash blocks only)
-         *
-         * A Prime miner needs the template to say "2,302,586" (next Prime block),
-         * NOT "6,537,247" (next unified block), otherwise it will reject as stale.
-         *
-         * Special case: Genesis block
-         * - Genesis has nHeight = 0 (global) but nChannelHeight = 1 (channel counter starts at 1)
-         * - First block in any channel has nChannelHeight = 2 (never 1!)
-         * - GetLastState handles this by returning genesis state when channel is empty
+         * NexusMiner #169: block.nHeight = tStateBest.nHeight + 1 (UNIFIED)
+         * NexusMiner #170: ValidateTemplate() compares nHeight vs nNodeUnified + 1
          */
-        TAO::Ledger::BlockState stateChannel = tStateBest;
-        GetLastState(stateChannel, nChannel);
-        block.nHeight = stateChannel.nChannelHeight + 1;
+        block.nHeight = tStateBest.nHeight + 1;
 
         debug::log(2, FUNCTION, "Creating block template for channel ", nChannel,
-                   " at channel height ", block.nHeight,
-                   " (unified height: ", tStateBest.nHeight, " - for reference)");
+                   " at unified height ", block.nHeight);
 
         block.nBits         = GetNextTargetRequired(tStateBest, nChannel, false);
         block.nNonce        = 1;

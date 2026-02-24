@@ -475,6 +475,24 @@ namespace LLP
          */
         uint32_t nLastTemplateChannelHeight;  // Channel height of last template sent to this miner
 
+        /** hashLastBlock: snapshot of ChainState::hashBestChain at template-creation time.
+         *
+         *  Captured when BLOCK_DATA is pushed to this miner (StakeMinter Guard 1 pattern).
+         *  Used as a session-level staleness anchor: if the live hashBestChain has advanced
+         *  beyond this value, the chain has moved (new block or reorg) and the miner should
+         *  request a new template.
+         *
+         *  This is a session-level complement to TemplateMetadata::hashBestChainAtCreation
+         *  (which is per-template).  Together they provide Guard 1 (continuous) and Guard 2
+         *  (pre-submit, via block.hashPrevBlock == hashBestChain) staleness detection,
+         *  mirroring stake_minter.cpp:534 and stake_minter.cpp:674 respectively.
+         *
+         *  nHeight (above) is for session diagnostic only — never copy to block.nHeight.
+         *  block.nHeight comes from the serialized 216-byte template (bytes[200-203]),
+         *  set by AddBlockData() to tStateBest.nHeight + 1 (UNIFIED, NexusMiner #169).
+         */
+        uint1024_t hashLastBlock;  // hashBestChain snapshot when last BLOCK_DATA was pushed
+
         /** Default Constructor **/
         MiningContext();
 
@@ -513,6 +531,15 @@ namespace LLP
          *
          **/
         MiningContext WithLastTemplateChannelHeight(uint32_t nLastTemplateChannelHeight_) const;
+
+        /** WithHashLastBlock
+         *
+         *  Returns a new context with updated hashLastBlock snapshot.
+         *  Must be called when BLOCK_DATA is pushed to this miner, capturing the current
+         *  ChainState::hashBestChain as the primary staleness anchor (StakeMinter pattern).
+         *
+         **/
+        MiningContext WithHashLastBlock(const uint1024_t& hashLastBlock_) const;
 
         /** WithTimestamp
          *
