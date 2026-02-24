@@ -2,6 +2,42 @@
 
 Diagram templates for PR descriptions and comprehensive Mermaid architecture diagrams.
 
+## 🎮 Interactive Training App
+
+**[index.html](index.html)** — Self-contained single-file interactive training application for Nexus mining staleness detection logic.
+
+- 12 step-by-step scenarios covering every staleness guard in both the **Stateless lane (port 9323)** and **Legacy lane (port 8323)**
+- Inline SVG flowcharts — no external images or CDN dependencies
+- Dark theme, keyboard navigation, real-time score tracking
+- Open directly in any browser — no server required
+
+### Keyboard shortcuts
+
+| Key | Action |
+|-----|--------|
+| `←` / `→` | Previous / next scenario |
+| `A` – `D` | Select answer option |
+| `R` | Restart quiz |
+
+### Scenario list
+
+| # | Title | Lane |
+|---|-------|------|
+| 1 | Fresh Template — All Checks Pass | Stateless |
+| 2 | Age Timeout — 600 s Safety Net | Stateless |
+| 3 | Invalid Timestamp — Zero nCreationTime | Stateless |
+| 4 | Zero Channel Height — Uninitialized Metadata | Stateless |
+| 5 | Channel Height Mismatch — Another Miner Found a Block | Stateless |
+| 6 | GetLastState Failure — Safe Stale | Stateless |
+| 7 | Legacy Lane — Height Change Detection | Legacy |
+| 8 | Legacy Lane — Same-Height Reorg Detection | Legacy |
+| 9 | Universal Tip Push — Any Channel Notifies All Miners | Both |
+| 10 | Push Notification Payload Format | Both |
+| 11 | Submission Guard — hashPrevBlock vs hashBestChain | Both |
+| 12 | Template Height Semantics — Channel vs Unified Height | Stateless |
+
+---
+
 ## ASCII Templates
 
 1. **[architecture-boxes.md](architecture-boxes.md)** - Component relationships (box diagrams)
