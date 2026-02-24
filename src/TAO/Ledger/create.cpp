@@ -338,6 +338,13 @@ namespace TAO::Ledger
         }
 
         /* Add remaining block data */
+        /* PRIMARY STALENESS ANCHOR: hashPrevBlock = hashBestChain at creation time.
+         * Both mining servers (Legacy port 8323 and Stateless port 9323) compare
+         * pBlock->hashPrevBlock against ChainState::hashBestChain at SUBMIT_BLOCK time.
+         * This catches reorgs at the same integer height that nBestHeight comparison misses.
+         * Both hashPrevBlock and nHeight are baked into the 216-byte serialized template
+         * and are immutable after this point. ProofHash() for Prime hashes nVersion→nBits
+         * which includes nHeight — never overwrite either field after serialization. */
         block.hashPrevBlock = tStateBest.GetHash();
         block.nChannel      = nChannel;
 
