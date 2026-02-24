@@ -3673,7 +3673,21 @@ namespace LLP
         uint32_t nChannel;
         {
             LOCK(MUTEX);
-            
+
+            /* Push throttle — drop if a template was sent less than
+             * TEMPLATE_PUSH_MIN_INTERVAL_MS ago (guards against fork-resolution bursts). */
+            auto now = std::chrono::steady_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                now - m_last_template_push_time).count();
+            if (m_last_template_push_time != std::chrono::steady_clock::time_point{} &&
+                elapsed < MiningConstants::TEMPLATE_PUSH_MIN_INTERVAL_MS)
+            {
+                debug::log(3, FUNCTION, "Push throttled — ", elapsed, "ms since last push (min ",
+                           MiningConstants::TEMPLATE_PUSH_MIN_INTERVAL_MS, "ms)");
+                return;
+            }
+            m_last_template_push_time = now;
+
             /* Validate subscription state */
             if (!context.fSubscribedToNotifications)
                 return;
@@ -3779,7 +3793,21 @@ namespace LLP
         uint32_t nChannel;
         {
             LOCK(MUTEX);
-            
+
+            /* Push throttle — drop if a template was sent less than
+             * TEMPLATE_PUSH_MIN_INTERVAL_MS ago (guards against fork-resolution bursts). */
+            auto now = std::chrono::steady_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                now - m_last_template_push_time).count();
+            if (m_last_template_push_time != std::chrono::steady_clock::time_point{} &&
+                elapsed < MiningConstants::TEMPLATE_PUSH_MIN_INTERVAL_MS)
+            {
+                debug::log(3, FUNCTION, "Push throttled — ", elapsed, "ms since last push (min ",
+                           MiningConstants::TEMPLATE_PUSH_MIN_INTERVAL_MS, "ms)");
+                return;
+            }
+            m_last_template_push_time = now;
+
             /* Validate channel (1=Prime, 2=Hash only) */
             if (context.nChannel != 1 && context.nChannel != 2)
             {

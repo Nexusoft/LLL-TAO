@@ -90,6 +90,29 @@ namespace MiningConstants
     constexpr uint8_t STATELESS_MINING_OPCODE_MAX = 218;
     
     //=========================================================================
+    // PUSH THROTTLE AND COOLDOWN CONFIGURATION
+    //=========================================================================
+
+    /** Minimum interval between consecutive template pushes (2 seconds).
+     *
+     *  Guards SendStatelessTemplate() and SendChannelNotification() against
+     *  flooding miners during a fork-resolution burst (multiple SetBest() events
+     *  firing in < 100 ms).  2 s is well below any real block-time floor, so
+     *  miners always get a fresh template within 2 s of tip stabilisation.
+     */
+    constexpr int64_t TEMPLATE_PUSH_MIN_INTERVAL_MS = 2000;
+
+    /** Per-connection GET_BLOCK safety-net cooldown (200 seconds).
+     *
+     *  Used by AutoCoolDown m_get_block_cooldown on each miner connection.
+     *  Now that the node pushes templates on every tip advance, miners should
+     *  almost never need to poll.  200 s caps reconnect latency in the worst
+     *  case (lost connection) while staying well above the node's 10 s hard
+     *  minimum between repeat requests.
+     */
+    constexpr uint32_t GET_BLOCK_COOLDOWN_SECONDS = 200;
+
+    //=========================================================================
     // DIFFICULTY CACHING
     //=========================================================================
     

@@ -18,8 +18,11 @@ ________________________________________________________________________________
 #include <LLP/templates/stateless_connection.h>
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/channel_state_manager.h>
+#include <LLP/include/auto_cooldown.h>
+#include <LLP/include/mining_constants.h>
 #include <TAO/Ledger/types/block.h>
 #include <atomic>
+#include <chrono>
 #include <mutex>
 #include <map>
 #include <memory>
@@ -68,6 +71,24 @@ namespace LLP
         /** Channel state managers for fork-aware mining (PR #136) **/
         std::unique_ptr<PrimeStateManager> m_pPrimeState;
         std::unique_ptr<HashStateManager> m_pHashState;
+
+        /** Timestamp of the last template push (SendStatelessTemplate / SendChannelNotification).
+         *
+         *  Used by the push throttle guard to prevent flooding miners with full
+         *  228-byte templates during a fork-resolution burst (multiple SetBest()
+         *  events firing in < 100 ms).  Protected by MUTEX.
+         **/
+        std::chrono::steady_clock::time_point m_last_template_push_time;
+
+        /** Safety-net cooldown for GET_BLOCK fallback polling.
+         *
+         *  With the event-driven push model the miner should almost never poll.
+         *  This 200-second cooldown is a last-resort guard: once the miner
+         *  sends a GET_BLOCK, the node resets this object so the miner cannot
+         *  hammer the node faster than once per 200 s if pushes somehow fail.
+         *  Protected by MUTEX.
+         **/
+        AutoCoolDown m_get_block_cooldown{std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS)};
 
         // ═══════════════════════════════════════════════════════════════════════
         // AUTOMATED RATE LIMITING (Layer 2 Protection)
