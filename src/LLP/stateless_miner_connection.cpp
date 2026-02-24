@@ -1681,10 +1681,21 @@ namespace LLP
                 /* Hash-based staleness guard — mirrors StakeMinter pattern.
                  * hashPrevBlock is the PRIMARY staleness anchor baked into the 216-byte template.
                  * This catches reorgs at the same integer height that nBestHeight misses. */
-                if(pTritium->hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
+                const uint1024_t hashCurrentBest = TAO::Ledger::ChainState::hashBestChain.load();
+                debug::log(2, FUNCTION, "[BLOCK SUBMIT] nHeight=", pTritium->nHeight, " (unified)",
+                           " channel=", pTritium->nChannel,
+                           " hashPrevBlock=", pTritium->hashPrevBlock.SubString(),
+                           " hashBestChain=", hashCurrentBest.SubString(),
+                           " match=", (pTritium->hashPrevBlock == hashCurrentBest));
+
+                if(pTritium->hashPrevBlock != hashCurrentBest)
                 {
-                    debug::log(0, FUNCTION, "SUBMIT_BLOCK rejected: stale block (hashPrevBlock mismatch)");
+                    debug::log(0, FUNCTION, "SUBMIT_BLOCK rejected STALE — hashPrevBlock=",
+                               pTritium->hashPrevBlock.SubString(),
+                               " != hashBestChain=", hashCurrentBest.SubString());
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                    response.DATA.push_back(static_cast<uint8_t>(OpcodeUtility::RejectionReason::STALE));
+                    response.LENGTH = static_cast<uint32_t>(response.DATA.size());
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Stale block) ===", ANSI_COLOR_RESET);
                     return true;
@@ -1754,8 +1765,10 @@ namespace LLP
 
                 /* Generate an Accepted response. */
                 debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✅ Block accepted by network!", ANSI_COLOR_RESET);
-                debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK result=accepted merkle=", hashMerkle.SubString(),
-                           " channel=", acceptanceResult.nChannel, " height=", acceptanceResult.nHeight);
+                debug::log(0, FUNCTION, "BLOCK ACCEPTED — unified nHeight=", pTritium->nHeight,
+                           " channel=", pTritium->nChannel,
+                           " hashMerkleRoot=", pTritium->hashMerkleRoot.SubString(),
+                           " hashPrevBlock (validated == hashBestChain)=", pTritium->hashPrevBlock.SubString());
                 
                 /* Log signature configuration (PR #122) */
                 LogFalconSignatureInfo(context);

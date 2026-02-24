@@ -1727,13 +1727,23 @@ namespace LLP
             return true;
         }
 
+        /* Diagnostic log — cross-reference with miner's [SUBMIT AUDIT] log. */
+        const uint1024_t hashCurrentBest = TAO::Ledger::ChainState::hashBestChain.load();
+        debug::log(2, FUNCTION, "[BLOCK SUBMIT] nHeight=", pTritium->nHeight, " (unified)",
+                   " channel=", pTritium->nChannel,
+                   " hashPrevBlock=", pTritium->hashPrevBlock.SubString(),
+                   " hashBestChain=", hashCurrentBest.SubString(),
+                   " match=", (pTritium->hashPrevBlock == hashCurrentBest));
+
         /* Hash-based staleness guard — mirrors StakeMinter pattern.
          * hashPrevBlock is the PRIMARY staleness anchor baked into the template.
          * This catches reorgs at the same integer height that nBestHeight misses. */
-        if(pTritium->hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
+        if(pTritium->hashPrevBlock != hashCurrentBest)
         {
-            debug::log(0, FUNCTION, "SUBMIT_BLOCK rejected: stale block (hashPrevBlock mismatch)");
-            respond(BLOCK_REJECTED);
+            debug::log(0, FUNCTION, "SUBMIT_BLOCK rejected STALE — hashPrevBlock=",
+                       pTritium->hashPrevBlock.SubString(),
+                       " != hashBestChain=", hashCurrentBest.SubString());
+            respond(ORPHAN_BLOCK);
             return true;
         }
 
@@ -1755,8 +1765,10 @@ namespace LLP
             return true;
         }
 
-        debug::log(0, FUNCTION, "BLOCK_ACCEPTED merkle=", hashMerkle.SubString(),
-                   " channel=", acceptanceResult.nChannel, " height=", acceptanceResult.nHeight);
+        debug::log(0, FUNCTION, "BLOCK ACCEPTED — unified nHeight=", pTritium->nHeight,
+                   " channel=", pTritium->nChannel,
+                   " hashPrevBlock=", pTritium->hashPrevBlock.SubString(),
+                   " merkle=", hashMerkle.SubString());
         respond(BLOCK_ACCEPTED);
         return true;
     }

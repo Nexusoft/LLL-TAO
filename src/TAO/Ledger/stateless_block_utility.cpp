@@ -327,6 +327,10 @@ namespace TAO::Ledger
         result.nUnifiedHeight = block.nHeight;  // block.nHeight is unified height (NexusMiner #169)
         result.hashBlock = block.hashMerkleRoot;
 
+        debug::log(0, FUNCTION, "[BLOCK SUBMIT] nHeight=", block.nHeight, " (unified)",
+                   " channel=", block.nChannel,
+                   " hashPrevBlock=", block.hashPrevBlock.SubString());
+
         const BlockValidationResult validationResult = ValidateMinedBlock(block);
         if(!validationResult.valid)
         {
