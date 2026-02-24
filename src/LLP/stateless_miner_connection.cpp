@@ -1676,6 +1676,18 @@ namespace LLP
                     return true;
                 }
 
+                /* Hash-based staleness guard — mirrors StakeMinter pattern.
+                 * hashPrevBlock is the PRIMARY staleness anchor baked into the 216-byte template.
+                 * This catches reorgs at the same integer height that nBestHeight misses. */
+                if(pTritium->hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
+                {
+                    debug::log(0, FUNCTION, "SUBMIT_BLOCK rejected: stale block (hashPrevBlock mismatch)");
+                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                    respond(response);
+                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Stale block) ===", ANSI_COLOR_RESET);
+                    return true;
+                }
+
                 TAO::Ledger::BlockValidationResult validationResult =
                     TAO::Ledger::ValidateMinedBlock(*pTritium);
                 if(!validationResult.valid)
