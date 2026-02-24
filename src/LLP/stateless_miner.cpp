@@ -90,6 +90,7 @@ namespace LLP
     , nLastNotificationTime(0)
     , nNotificationsSent(0)
     , nLastTemplateChannelHeight(0)
+    , hashLastBlock(0)
     {
     }
 
@@ -133,6 +134,7 @@ namespace LLP
     , nLastNotificationTime(0)
     , nNotificationsSent(0)
     , nLastTemplateChannelHeight(0)
+    , hashLastBlock(0)
     {
     }
 
@@ -155,6 +157,13 @@ namespace LLP
     {
         MiningContext c = *this;
         c.nLastTemplateChannelHeight = nLastTemplateChannelHeight_;
+        return c;
+    }
+
+    MiningContext MiningContext::WithHashLastBlock(const uint1024_t& hashLastBlock_) const
+    {
+        MiningContext c = *this;
+        c.hashLastBlock = hashLastBlock_;
         return c;
     }
 

@@ -37,7 +37,6 @@ namespace TAO
             std::string reason;
             uint32_t nChannel = 0;
             uint32_t nHeight = 0;
-            uint32_t nChannelHeight = 0;  // Explicit channel height
             uint32_t nUnifiedHeight = 0;  // Unified blockchain height (reference)
             uint512_t hashBlock = 0; // Merkle root (submission key).
         };
@@ -54,7 +53,6 @@ namespace TAO
             std::string reason;
             uint32_t nChannel = 0;
             uint32_t nHeight = 0;
-            uint32_t nChannelHeight = 0;  // Explicit channel height
             uint32_t nUnifiedHeight = 0;  // Unified blockchain height (reference)
             uint512_t hashBlock = 0; // Merkle root (submission key).
         };
@@ -71,7 +69,6 @@ namespace TAO
             std::string reason;
             uint32_t nChannel = 0;
             uint32_t nHeight = 0;
-            uint32_t nChannelHeight = 0;  // Explicit channel height
             uint32_t nUnifiedHeight = 0;  // Unified blockchain height (reference)
             uint512_t hashBlock = 0; // Merkle root (submission key).
             uint8_t status = 0;

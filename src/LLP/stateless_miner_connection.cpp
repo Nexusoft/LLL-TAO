@@ -918,7 +918,8 @@ namespace LLP
                         );
                     }
                     
-                    /* Update context timestamp, height, and last template channel height.
+                    /* Update context timestamp, height, last template channel height, and
+                     * hashLastBlock snapshot (primary staleness anchor, StakeMinter pattern).
                      * nLastTemplateChannelHeight uses the channel-specific height (not unified)
                      * to ensure templates are only refreshed when the miner's channel advances. */
                     {
@@ -929,7 +930,8 @@ namespace LLP
                             nChannelHeight = stateChannel.nChannelHeight;
                         context = context.WithTimestamp(runtime::unifiedtimestamp())
                                          .WithHeight(stateBest.nHeight)
-                                         .WithLastTemplateChannelHeight(nChannelHeight);
+                                         .WithLastTemplateChannelHeight(nChannelHeight)
+                                         .WithHashLastBlock(TAO::Ledger::ChainState::hashBestChain.load());
                     }
                     
                     /* Update manager with new context after template served */
@@ -1940,6 +1942,15 @@ namespace LLP
                     return true;  // Don't send response
                 }
                 
+                /* Guard 1 — mirror StakeMinter:534 pattern.
+                 * Snapshot hashBestChain at GET_ROUND time and compare against
+                 * context.hashLastBlock (captured when BLOCK_DATA was last pushed).
+                 * This catches same-height reorgs that fChannelHeightChanged misses.
+                 * Skip the check if no template has been pushed yet (hashLastBlock == 0). */
+                const uint1024_t hashCurrentBest = TAO::Ledger::ChainState::hashBestChain.load();
+                const bool fHashChanged = (context.hashLastBlock != uint1024_t(0) &&
+                                           context.hashLastBlock != hashCurrentBest);
+                
                 uint32_t nUnifiedHeight = stateBest.nHeight;
                 debug::log(3, FUNCTION, "GET_ROUND: Unified height: ", nUnifiedHeight);
                 
@@ -2104,18 +2115,30 @@ namespace LLP
                  * on GET_ROUND polling to automatically deliver templates.
                  */
                 
+                /* Template staleness check: Guard 1 (StakeMinter pattern).
+                 * fChannelHeightChanged catches normal block advances.
+                 * fHashChanged catches same-height reorgs (hash advances without integer change).
+                 * Either condition means the miner's current template is stale. */
                 bool fChannelHeightChanged = (context.nLastTemplateChannelHeight != nChannelHeight);
+                bool fTemplateStale = fChannelHeightChanged || fHashChanged;
                 
                 debug::log(2, "");
-                debug::log(2, "   🔍 GET_ROUND TEMPLATE AUTO-SEND CHECK (channel-specific):");
+                debug::log(2, "   🔍 GET_ROUND GUARD-1 CHECK (StakeMinter pattern):");
                 debug::log(2, "      Miner's last template channel height:  ", context.nLastTemplateChannelHeight);
                 debug::log(2, "      Current channel height:                ", nChannelHeight, " (channel ", context.nChannel, ")");
                 debug::log(2, "      Channel height changed:                ", (fChannelHeightChanged ? "YES" : "NO"));
+                debug::log(2, "      hashLastBlock:   ", context.hashLastBlock.SubString());
+                debug::log(2, "      hashCurrentBest: ", hashCurrentBest.SubString());
+                debug::log(2, "      Hash changed (reorg):                  ", (fHashChanged ? "YES" : "NO"));
+                debug::log(2, "      Template stale:                        ", (fTemplateStale ? "YES" : "NO"));
                 
-                if(fChannelHeightChanged)
+                if(fTemplateStale)
                 {
                     debug::log(2, "");
-                    debug::log(2, "   ✅ CHANNEL HEIGHT CHANGED - AUTO-SENDING TEMPLATE");
+                    if(fHashChanged)
+                        debug::log(2, "   ✅ REORG DETECTED (hashBestChain changed) - AUTO-SENDING TEMPLATE");
+                    else
+                        debug::log(2, "   ✅ CHANNEL HEIGHT CHANGED - AUTO-SENDING TEMPLATE");
                     debug::log(2, "      This maintains compatibility with legacy miners");
                     debug::log(2, "      that expect GET_ROUND to automatically deliver templates.");
                     debug::log(2, "");
@@ -2165,34 +2188,27 @@ namespace LLP
                 else
                 {
                     debug::log(2, "");
-                    debug::log(2, "   ℹ️  CHANNEL HEIGHT UNCHANGED - NO TEMPLATE SENT");
+                    debug::log(2, "   ℹ️  TEMPLATE NOT STALE - NO TEMPLATE SENT");
                     debug::log(2, "      Miner should continue mining current template.");
                     debug::log(2, "      If miner needs new template, use GET_BLOCK explicitly.");
                 }
                 
                 debug::log(2, "════════════════════════════════════════════════════════════");
                 
-                /* Update context timestamp and height 
-                 * Note: Channel height is only updated if template was sent to prevent duplicate sends.
-                 * If no template was sent (channel height unchanged), we keep the old height so next
-                 * GET_ROUND at a new channel height will trigger template send.
-                 * 
-                 * NOTE: We do NOT call CleanupStaleTemplates() here because:
-                 * 1. It's already called when creating new templates (NEW_BLOCK handler)
-                 * 2. Templates have age-based automatic expiration via TemplateMetadata::IsStale()
-                 * 3. Calling cleanup on every GET_ROUND poll (every 5-10s) would be excessive
-                 * 4. Template cleanup should be driven by template creation, not polling
-                 */
-                if(fChannelHeightChanged)
+                /* Update context timestamp, height, and staleness anchors.
+                 * Only update channel height / hashLastBlock if a new template was sent
+                 * (prevents duplicate sends on the next GET_ROUND poll). */
+                if(fTemplateStale)
                 {
-                    /* Update last template channel height only if we sent a template */
+                    /* Template was (or was attempted to be) sent — advance both anchors */
                     context = context.WithTimestamp(runtime::unifiedtimestamp())
                                      .WithHeight(nUnifiedHeight)
-                                     .WithLastTemplateChannelHeight(nChannelHeight);
+                                     .WithLastTemplateChannelHeight(nChannelHeight)
+                                     .WithHashLastBlock(hashCurrentBest);
                 }
                 else
                 {
-                    /* Update only timestamp, keep existing height */
+                    /* Update only timestamp, keep existing staleness anchors */
                     context = context.WithTimestamp(runtime::unifiedtimestamp());
                 }
                 StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
