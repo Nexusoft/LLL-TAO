@@ -21,6 +21,7 @@ ________________________________________________________________________________
 #include <LLP/include/stateless_manager.h>
 #include <LLP/include/session_recovery.h>
 #include <LLP/include/stateless_opcodes.h>
+#include <LLP/include/keepalive_v2.h>
 
 #include <LLD/include/global.h>
 
@@ -33,6 +34,7 @@ ________________________________________________________________________________
 #include <LLC/hash/SK.h>
 
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/retarget.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
@@ -91,6 +93,8 @@ namespace LLP
     , nNotificationsSent(0)
     , nLastTemplateChannelHeight(0)
     , hashLastBlock(0)
+    , nMinerPrevblockSuffix(0)
+    , fKeepaliveV2(false)
     {
     }
 
@@ -135,6 +139,8 @@ namespace LLP
     , nNotificationsSent(0)
     , nLastTemplateChannelHeight(0)
     , hashLastBlock(0)
+    , nMinerPrevblockSuffix(0)
+    , fKeepaliveV2(false)
     {
     }
 
@@ -255,6 +261,21 @@ namespace LLP
     {
         MiningContext c = *this;
         c.nLastKeepaliveTime = nLastKeepaliveTime_;
+        return c;
+    }
+
+    MiningContext MiningContext::WithMinerPrevblockSuffix(uint32_t nSuffix_) const
+    {
+        MiningContext c = *this;
+        c.nMinerPrevblockSuffix = nSuffix_;
+        c.fKeepaliveV2 = true;
+        return c;
+    }
+
+    MiningContext MiningContext::WithKeepaliveV2(bool fV2_) const
+    {
+        MiningContext c = *this;
+        c.fKeepaliveV2 = fV2_;
         return c;
     }
 
@@ -1423,7 +1444,12 @@ namespace LLP
             return ProcessResult::Error(context, "Session expired");
         }
 
-        /* Update timestamp and increment keepalive counters */
+        /* Parse keepalive payload: detect v1 (len==4) or v2 (len==8) */
+        uint32_t nPayloadSession = 0;
+        uint32_t nPrevblockSuffix = 0;
+        bool fIsV2 = KeepaliveV2::ParsePayload(packet.DATA, nPayloadSession, nPrevblockSuffix);
+
+        /* Update timestamp, keepalive counters, and v2 fields if applicable */
         uint32_t nNewKeepaliveCount = context.nKeepaliveCount + 1;
         uint32_t nNewKeepaliveSent = context.nKeepaliveSent + 1;
         MiningContext newContext = context
@@ -1432,29 +1458,108 @@ namespace LLP
             .WithKeepaliveSent(nNewKeepaliveSent)
             .WithLastKeepaliveTime(nNow);
 
+        if(fIsV2)
+            newContext = newContext.WithMinerPrevblockSuffix(nPrevblockSuffix);
+
         /* Log at different verbosity levels based on keepalive frequency */
         uint32_t nLogLevel = (nNewKeepaliveCount % 10 == 0) ? 2 : 3;
-        debug::log(nLogLevel, FUNCTION, "SESSION_KEEPALIVE from sessionId=", context.nSessionId,
-                   " keepalive_rx=", nNewKeepaliveCount,
-                   " keepalive_tx=", nNewKeepaliveSent,
-                   " session_duration=", newContext.GetSessionDuration(nNow), "s");
+        if(fIsV2)
+        {
+            debug::log(nLogLevel, FUNCTION, "SESSION_KEEPALIVE v2 from sessionId=", context.nSessionId,
+                       " keepalive_rx=", nNewKeepaliveCount,
+                       " keepalive_tx=", nNewKeepaliveSent,
+                       " prevblock_suffix=0x", std::hex, nPrevblockSuffix, std::dec,
+                       " session_duration=", newContext.GetSessionDuration(nNow), "s");
+        }
+        else
+        {
+            debug::log(nLogLevel, FUNCTION, "SESSION_KEEPALIVE from sessionId=", context.nSessionId,
+                       " keepalive_rx=", nNewKeepaliveCount,
+                       " keepalive_tx=", nNewKeepaliveSent,
+                       " session_duration=", newContext.GetSessionDuration(nNow), "s");
+        }
 
-        /* Build keepalive response with session status */
-        /* Response format: [status (1)][remaining_timeout (4)] */
+        /* Build keepalive response.
+         * v2 reply (28 bytes): BESTCURRENT telemetry if miner sent v2 this packet, or
+         *   if the session was previously negotiated to v2.
+         * v1 reply (5 bytes): [status(1)][remaining_timeout(4)] for legacy miners. */
         StatelessPacket response(StatelessOpcodes::SESSION_KEEPALIVE);
-        response.DATA.push_back(0x01); // Success/active
 
-        /* Calculate remaining time before timeout */
-        uint64_t nElapsed = nNow - context.nTimestamp;
-        uint64_t nRemaining = (nElapsed < context.nSessionTimeout)
-                            ? (context.nSessionTimeout - nElapsed)
-                            : 0;
+        bool fSendV2 = (fIsV2 || newContext.fKeepaliveV2);
+        if(fSendV2)
+        {
+            /* Gather current chain state for BESTCURRENT telemetry */
+            TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
+            uint32_t nUnifiedHeight = stateBest.nHeight;
 
-        /* Add remaining timeout (4 bytes, little-endian) */
-        response.DATA.push_back(static_cast<uint8_t>(nRemaining & 0xFF));
-        response.DATA.push_back(static_cast<uint8_t>((nRemaining >> 8) & 0xFF));
-        response.DATA.push_back(static_cast<uint8_t>((nRemaining >> 16) & 0xFF));
-        response.DATA.push_back(static_cast<uint8_t>((nRemaining >> 24) & 0xFF));
+            TAO::Ledger::BlockState stateChannel = stateBest;
+            uint32_t nPrimeHeight = 0;
+            if(TAO::Ledger::GetLastState(stateChannel, 1))
+                nPrimeHeight = stateChannel.nChannelHeight;
+
+            stateChannel = stateBest;
+            uint32_t nHashHeight = 0;
+            if(TAO::Ledger::GetLastState(stateChannel, 2))
+                nHashHeight = stateChannel.nChannelHeight;
+
+            stateChannel = stateBest;
+            uint32_t nStakeHeight = 0;
+            if(TAO::Ledger::GetLastState(stateChannel, 0))
+                nStakeHeight = stateChannel.nChannelHeight;
+
+            /* Use the miner's subscribed channel for nBits; fall back to mining channel */
+            uint32_t nBitsChannel = (newContext.nSubscribedChannel != 0)
+                                  ? newContext.nSubscribedChannel
+                                  : newContext.nChannel;
+            if(nBitsChannel == 0) nBitsChannel = 1; /* default to Prime */
+            uint32_t nBits = TAO::Ledger::GetNextTargetRequired(stateBest, nBitsChannel, false);
+
+            uint1024_t hashBestChain = TAO::Ledger::ChainState::hashBestChain.load();
+
+            std::vector<uint8_t> vV2 = KeepaliveV2::BuildBestCurrentResponse(
+                newContext.nSessionId,
+                nUnifiedHeight,
+                nPrimeHeight,
+                nHashHeight,
+                nStakeHeight,
+                nBits,
+                hashBestChain);
+
+            response.DATA = vV2;
+
+            std::vector<uint8_t> vHashBytes = hashBestChain.GetBytes();
+            std::string strHashPrefix = "";
+            for(int i = 0; i < 4 && i < static_cast<int>(vHashBytes.size()); ++i)
+            {
+                char buf[3];
+                std::snprintf(buf, sizeof(buf), "%02x", vHashBytes[i]);
+                strHashPrefix += buf;
+            }
+
+            debug::log(nLogLevel, FUNCTION, "SESSION_KEEPALIVE v2 BESTCURRENT reply: sessionId=",
+                       newContext.nSessionId,
+                       " unified=", nUnifiedHeight,
+                       " prime=", nPrimeHeight,
+                       " hash=", nHashHeight,
+                       " stake=", nStakeHeight,
+                       " nBits=0x", std::hex, nBits, std::dec,
+                       " hashPrefix=", strHashPrefix);
+        }
+        else
+        {
+            /* v1 reply: [status(1)][remaining_timeout(4)] */
+            response.DATA.push_back(0x01); // Success/active
+
+            uint64_t nElapsed = nNow - context.nTimestamp;
+            uint64_t nRemaining = (nElapsed < context.nSessionTimeout)
+                                ? (context.nSessionTimeout - nElapsed)
+                                : 0;
+
+            response.DATA.push_back(static_cast<uint8_t>(nRemaining & 0xFF));
+            response.DATA.push_back(static_cast<uint8_t>((nRemaining >> 8) & 0xFF));
+            response.DATA.push_back(static_cast<uint8_t>((nRemaining >> 16) & 0xFF));
+            response.DATA.push_back(static_cast<uint8_t>((nRemaining >> 24) & 0xFF));
+        }
 
         response.LENGTH = static_cast<uint32_t>(response.DATA.size());
 
