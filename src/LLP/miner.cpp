@@ -1507,6 +1507,8 @@ namespace LLP
         /* Send to miner */
         respond(notification.HEADER, notification.DATA);
         
+        debug::log(0, FUNCTION, "[BLOCK CREATE] hashPrevBlock = ", TAO::Ledger::ChainState::hashBestChain.load().SubString(),
+                   " (template anchor embedded in push notification, unified height ", stateBest.nHeight + 1, ")");
         debug::log(2, FUNCTION, "Sent ", GetChannelName(nSubscribedChannel), 
                    " notification to ", GetAddress().ToStringIP(),
                    " (unified=", stateBest.nHeight, 
@@ -1587,6 +1589,9 @@ namespace LLP
                 nLastTemplateChannelHeight = stateChannel.nChannelHeight;
         }
 
+        debug::log(0, FUNCTION, "[BLOCK CREATE] hashPrevBlock = ", pBlock->hashPrevBlock.SubString(),
+                   " (template anchor baked in, unified height ", pBlock->nHeight, ")");
+        debug::log(2, FUNCTION, "[BLOCK CREATE] hashPrevBlock FULL (MSB-first): ", pBlock->hashPrevBlock.GetHex());
         debug::log(2, FUNCTION, "Sent BLOCK_DATA (", vData.size(), " bytes)"
                    " channel=", pBlock->nChannel, " height=", pBlock->nHeight);
 

@@ -785,6 +785,9 @@ namespace LLP
                 debug::log(0, "      Height: ", pBlock->nHeight);
                 debug::log(0, "      Channel: ", pBlock->nChannel);
                 debug::log(0, "      Merkle root: ", pBlock->hashMerkleRoot.SubString());
+                debug::log(0, "[BLOCK CREATE] hashPrevBlock = ", pBlock->hashPrevBlock.SubString(),
+                           " (template anchor baked in, unified height ", pBlock->nHeight, ")");
+                debug::log(2, FUNCTION, "[BLOCK CREATE] hashPrevBlock FULL (MSB-first): ", pBlock->hashPrevBlock.GetHex());
                 
                 /* Note: Block is already stored in mapBlocks by new_block() */
                 
@@ -3776,6 +3779,8 @@ namespace LLP
         debug::log(2, "      Difficulty (calc):  ", std::fixed, std::setprecision(6), 
                    TAO::Ledger::GetDifficulty(nDifficulty, nChannel));
         debug::log(2, "   Packet Size:    ", notification.LENGTH, " bytes");
+        debug::log(0, FUNCTION, "[BLOCK CREATE] hashPrevBlock = ", TAO::Ledger::ChainState::hashBestChain.load().SubString(),
+                   " (template anchor embedded in push notification, unified height ", stateBest.nHeight + 1, ")");
         debug::log(2, "");
         debug::log(2, "   ⚠️  EXPECTED CLIENT ACTION:");
         debug::log(2, "      Client should respond with GET_BLOCK (129/0x81)");
@@ -3944,6 +3949,9 @@ namespace LLP
                    TAO::Ledger::GetDifficulty(nDifficulty, nChannel));
         debug::log(2, "      Block Hash:      ", pBlock->GetHash().SubString());
         debug::log(2, "      Merkle Root:     ", pBlock->hashMerkleRoot.SubString());
+        debug::log(0, FUNCTION, "[BLOCK CREATE] hashPrevBlock = ", pBlock->hashPrevBlock.SubString(),
+                   " (template anchor baked in, unified height ", pBlock->nHeight, ")");
+        debug::log(2, FUNCTION, "[BLOCK CREATE] hashPrevBlock FULL (MSB-first): ", pBlock->hashPrevBlock.GetHex());
         debug::log(2, "   Total Size:     ", notification.DATA.size(), " bytes (", 
                    METADATA_SIZE, " meta + ", TRITIUM_BLOCK_SIZE, " template)");
         debug::log(2, "");
