@@ -409,47 +409,48 @@ namespace LLP
     }
 
 
-    /*  Broadcast channel-specific notification to subscribed miners. */
+    /*  Broadcast channel-specific notification to subscribed miners on this lane. */
     template <class ProtocolType>
-    void Server<ProtocolType>::NotifyChannelMiners(uint32_t nChannel)
+    uint32_t Server<ProtocolType>::NotifyChannelMiners(uint32_t nChannel)
     {
-        /* This is a specialized method for StatelessMinerConnection.
-         * For other protocol types, this is a no-op. */
-        
         /* Use compile-time check to only execute for protocols that support mining notifications */
         if constexpr (has_mining_notifications_v<ProtocolType>)
         {
+            /* Determine lane name at compile time for clear per-lane logging */
+            constexpr const char* strLane =
+                std::is_same_v<ProtocolType, StatelessMinerConnection> ? "Stateless" : "Legacy";
+
             /* Early exit if shutdown is in progress */
             if (config::fShutdown.load())
             {
-                debug::log(1, FUNCTION, "Shutdown in progress; skipping NotifyChannelMiners");
-                return;
+                debug::log(1, FUNCTION, "[", strLane, "] Shutdown in progress; skipping NotifyChannelMiners");
+                return 0;
             }
             
             /* Validate channel */
             if (nChannel != 1 && nChannel != 2)
             {
-                debug::error(FUNCTION, "Invalid channel: ", nChannel);
-                return;
+                debug::error(FUNCTION, "[", strLane, "] Invalid channel: ", nChannel);
+                return 0;
             }
             
-            std::string strChannelName = (nChannel == 1) ? "Prime" : "Hash";
-            debug::log(1, FUNCTION, "Broadcasting ", strChannelName, " block notification");
+            const std::string strChannelName = (nChannel == 1) ? "Prime" : "Hash";
+            debug::log(1, FUNCTION, "[", strLane, "][", strChannelName, "] Broadcasting block notification");
             
             /* Get all connections */
             std::vector<std::shared_ptr<ProtocolType>> vConnections = GetConnections();
             
             if (vConnections.empty())
             {
-                debug::log(2, FUNCTION, "No active miners");
-                return;
+                debug::log(1, FUNCTION, "[", strLane, "][", strChannelName, "] No active miners (0 notified)");
+                return 0;
             }
             
             uint32_t nNotified = 0;
             uint32_t nSkippedWrongChannel = 0;
             uint32_t nSkippedUnsubscribed = 0;
             
-            /* SERVER-SIDE FILTERING: Only notify matching channel */
+            /* SERVER-SIDE FILTERING: Only notify miners subscribed to the matching channel */
             for (auto pConnection : vConnections)
             {
                 /* CRITICAL: Skip null connections WITHOUT any counting */
@@ -457,15 +458,14 @@ namespace LLP
                     continue;
                 
                 /* Verify connection is still active before processing
-                 * Prevents ghost connection counting from stale disconnected connections
-                 * that would otherwise be counted in subscription/channel filter logic below */
+                 * Prevents ghost connection counting from stale disconnected connections */
                 if (!pConnection->Connected())
                     continue;
                 
                 /* Check for shutdown during iteration to exit quickly if needed */
                 if (config::fShutdown.load())
                 {
-                    debug::log(1, FUNCTION, "Shutdown detected during iteration; stopping notifications");
+                    debug::log(1, FUNCTION, "[", strLane, "] Shutdown detected during iteration; stopping");
                     break;
                 }
                 
@@ -476,33 +476,33 @@ namespace LLP
                 if (!context.fSubscribedToNotifications)
                 {
                     nSkippedUnsubscribed++;
-                    continue;  // Legacy miner using GET_ROUND
+                    continue;  // Miner using GET_ROUND polling instead of push notifications
                 }
                 
-                /* CRITICAL: Channel filter (50% traffic reduction) */
+                /* Channel filter: only notify miners subscribed to this specific channel */
                 if (context.nSubscribedChannel != nChannel)
                 {
                     nSkippedWrongChannel++;
-                    continue;  // Wrong channel, skip
+                    continue;  // Wrong channel; skip to avoid duplicate notifications
                 }
                 
-                /* Send notification */
+                /* Send notification — exactly once per miner per event per lane */
                 pConnection->SendChannelNotification();
                 nNotified++;
             }
             
-            /* Log statistics */
-            debug::log(0, FUNCTION, "Notified ", nNotified, " ", strChannelName, " miners");
-            if (nSkippedWrongChannel > 0)
-            {
-                debug::log(1, FUNCTION, "  Skipped ", nSkippedWrongChannel, " (wrong channel)");
-            }
-            if (nSkippedUnsubscribed > 0)
-            {
-                debug::log(1, FUNCTION, "  Skipped ", nSkippedUnsubscribed, " (legacy polling)");
-            }
+            /* Log per-lane per-channel result for deduplication verification */
+            debug::log(0, FUNCTION, "[PUSH][", strLane, "][", strChannelName, "] Notified ", nNotified,
+                       " miners (skipped: ", nSkippedWrongChannel, " wrong-channel, ",
+                       nSkippedUnsubscribed, " polling)");
+
+            return nNotified;
         }
-        /* else: no-op for protocol types that don't support mining notifications */
+        else
+        {
+            /* No-op for protocol types that don't support mining notifications */
+            return 0;
+        }
     }
 
 
