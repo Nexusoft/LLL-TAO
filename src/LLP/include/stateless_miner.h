@@ -493,6 +493,13 @@ namespace LLP
          */
         uint1024_t hashLastBlock;  // hashBestChain snapshot when last BLOCK_DATA was pushed
 
+        /* KEEPALIVE v2 telemetry fields.
+         * Populated when the miner sends a v2 keepalive (len == 8).
+         * nMinerPrevblockSuffix: last 4 bytes of miner's current template hashPrevBlock (0 if none).
+         * fKeepaliveV2: true once the miner has sent at least one v2 keepalive (len == 8). */
+        uint32_t nMinerPrevblockSuffix;  // Miner's reported prevblock suffix (bytes [4..7] of v2 payload)
+        bool     fKeepaliveV2;           // Whether this session negotiated keepalive v2
+
         /** Default Constructor **/
         MiningContext();
 
@@ -631,6 +638,26 @@ namespace LLP
          *
          **/
         MiningContext WithLastKeepaliveTime(uint64_t nLastKeepaliveTime_) const;
+
+        /** WithMinerPrevblockSuffix
+         *
+         *  Returns a new context with updated miner prevblock suffix (from keepalive v2).
+         *  Also sets fKeepaliveV2 to true to mark this session as v2-capable.
+         *
+         *  @param[in] nSuffix_ Last 4 bytes of miner's current template hashPrevBlock
+         *
+         **/
+        MiningContext WithMinerPrevblockSuffix(uint32_t nSuffix_) const;
+
+        /** WithKeepaliveV2
+         *
+         *  Returns a new context with updated keepalive v2 flag.
+         *  Use WithMinerPrevblockSuffix() to set both the suffix and the flag together.
+         *
+         *  @param[in] fV2_ Whether this session has negotiated keepalive v2
+         *
+         **/
+        MiningContext WithKeepaliveV2(bool fV2_) const;
 
         /** WithRewardAddress
          *

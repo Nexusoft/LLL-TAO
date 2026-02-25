@@ -305,6 +305,7 @@ ifdef UNIT_TESTS
 		   build/Tests_LLP_packet_round_response.o \
 		   build/Tests_LLP_push_notification_tests.o \
 		   build/Tests_LLP_push_throttle_test.o \
+		   build/Tests_LLP_keepalive_v2_tests.o \
 		   build/Tests_LLP_stateless_miner.o \
 		   build/Tests_LLP_test_template_staleness.o \
 		   build/Tests_LLP_template_metadata_channel_height.o \
