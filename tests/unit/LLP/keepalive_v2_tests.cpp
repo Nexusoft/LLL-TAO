@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/keepalive_v2.h>
 
+#include <array>
 #include <cstdint>
 #include <vector>
 
@@ -23,6 +24,7 @@ ________________________________________________________________________________
  *
  * Covers:
  *   - ParsePayload: v1 (len==4) and v2 (len==8), edge cases
+ *   - ParsePayload: v2 suffix returned as raw bytes (no endian conversion)
  *   - BuildBestCurrentResponse: correct size (28 bytes), field positions, endianness
  */
 
@@ -30,55 +32,66 @@ TEST_CASE("KeepaliveV2::ParsePayload", "[keepalive_v2][llp]")
 {
     using namespace LLP::KeepaliveV2;
 
-    SECTION("v1 payload (len==4) returns false and zero suffix")
+    SECTION("v1 payload (len==4) returns false and zero suffix bytes")
     {
         std::vector<uint8_t> data = { 0x01, 0x02, 0x03, 0x04 };
 
         uint32_t nSessionId = 0xFFFFFFFF;
-        uint32_t nSuffix    = 0xFFFFFFFF;
+        std::array<uint8_t, 4> suffixBytes = {0xFF, 0xFF, 0xFF, 0xFF};
 
-        bool fIsV2 = ParsePayload(data, nSessionId, nSuffix);
+        bool fIsV2 = ParsePayload(data, nSessionId, suffixBytes);
 
         REQUIRE(fIsV2 == false);
         /* session_id = 0x04030201 (little-endian) */
         REQUIRE(nSessionId == 0x04030201u);
-        REQUIRE(nSuffix == 0u);
+        /* suffix bytes must all be zeroed for v1 */
+        REQUIRE(suffixBytes[0] == 0u);
+        REQUIRE(suffixBytes[1] == 0u);
+        REQUIRE(suffixBytes[2] == 0u);
+        REQUIRE(suffixBytes[3] == 0u);
     }
 
-    SECTION("v2 payload (len==8) returns true and correct suffix")
+    SECTION("v2 payload (len==8) returns true and raw suffix bytes as-sent")
     {
         /* session_id  = 0xDEADBEEF (LE: EF BE AD DE)
-         * suffix      = 0x12345678 (LE: 78 56 34 12) */
+         * suffix bytes as-sent: 78 56 34 12 */
         std::vector<uint8_t> data = {
             0xEF, 0xBE, 0xAD, 0xDE,   /* session_id LE */
-            0x78, 0x56, 0x34, 0x12    /* prevblock_suffix LE */
+            0x78, 0x56, 0x34, 0x12    /* prevblock_suffix raw bytes */
         };
 
         uint32_t nSessionId = 0;
-        uint32_t nSuffix    = 0;
+        std::array<uint8_t, 4> suffixBytes = {};
 
-        bool fIsV2 = ParsePayload(data, nSessionId, nSuffix);
+        bool fIsV2 = ParsePayload(data, nSessionId, suffixBytes);
 
         REQUIRE(fIsV2 == true);
         REQUIRE(nSessionId == 0xDEADBEEFu);
-        REQUIRE(nSuffix    == 0x12345678u);
+        /* Bytes returned exactly as-sent (no endian conversion) */
+        REQUIRE(suffixBytes[0] == 0x78u);
+        REQUIRE(suffixBytes[1] == 0x56u);
+        REQUIRE(suffixBytes[2] == 0x34u);
+        REQUIRE(suffixBytes[3] == 0x12u);
     }
 
     SECTION("v2 payload with zero suffix (no template)")
     {
         std::vector<uint8_t> data = {
             0x01, 0x00, 0x00, 0x00,   /* session_id = 1 */
-            0x00, 0x00, 0x00, 0x00    /* suffix = 0 */
+            0x00, 0x00, 0x00, 0x00    /* suffix = all zeros */
         };
 
         uint32_t nSessionId = 0;
-        uint32_t nSuffix    = 0xFFFFFFFF;
+        std::array<uint8_t, 4> suffixBytes = {0xFF, 0xFF, 0xFF, 0xFF};
 
-        bool fIsV2 = ParsePayload(data, nSessionId, nSuffix);
+        bool fIsV2 = ParsePayload(data, nSessionId, suffixBytes);
 
         REQUIRE(fIsV2 == true);
         REQUIRE(nSessionId == 1u);
-        REQUIRE(nSuffix    == 0u);
+        REQUIRE(suffixBytes[0] == 0u);
+        REQUIRE(suffixBytes[1] == 0u);
+        REQUIRE(suffixBytes[2] == 0u);
+        REQUIRE(suffixBytes[3] == 0u);
     }
 
     SECTION("Payload shorter than 4 bytes returns false")
@@ -86,13 +99,16 @@ TEST_CASE("KeepaliveV2::ParsePayload", "[keepalive_v2][llp]")
         std::vector<uint8_t> data = { 0x01, 0x02, 0x03 };
 
         uint32_t nSessionId = 0xAA;
-        uint32_t nSuffix    = 0xBB;
+        std::array<uint8_t, 4> suffixBytes = {0xBB, 0xBB, 0xBB, 0xBB};
 
-        bool fIsV2 = ParsePayload(data, nSessionId, nSuffix);
+        bool fIsV2 = ParsePayload(data, nSessionId, suffixBytes);
 
         REQUIRE(fIsV2 == false);
-        /* nSuffix must be zeroed even on short input */
-        REQUIRE(nSuffix == 0u);
+        /* suffix bytes must be zeroed even on short input */
+        REQUIRE(suffixBytes[0] == 0u);
+        REQUIRE(suffixBytes[1] == 0u);
+        REQUIRE(suffixBytes[2] == 0u);
+        REQUIRE(suffixBytes[3] == 0u);
     }
 
     SECTION("Empty payload returns false")
@@ -100,12 +116,15 @@ TEST_CASE("KeepaliveV2::ParsePayload", "[keepalive_v2][llp]")
         std::vector<uint8_t> data;
 
         uint32_t nSessionId = 0xAA;
-        uint32_t nSuffix    = 0xBB;
+        std::array<uint8_t, 4> suffixBytes = {0xBB, 0xBB, 0xBB, 0xBB};
 
-        bool fIsV2 = ParsePayload(data, nSessionId, nSuffix);
+        bool fIsV2 = ParsePayload(data, nSessionId, suffixBytes);
 
         REQUIRE(fIsV2 == false);
-        REQUIRE(nSuffix == 0u);
+        REQUIRE(suffixBytes[0] == 0u);
+        REQUIRE(suffixBytes[1] == 0u);
+        REQUIRE(suffixBytes[2] == 0u);
+        REQUIRE(suffixBytes[3] == 0u);
     }
 
     SECTION("Payload exactly 5..7 bytes treated as v1 (no suffix)")
@@ -113,14 +132,38 @@ TEST_CASE("KeepaliveV2::ParsePayload", "[keepalive_v2][llp]")
         std::vector<uint8_t> data = { 0x04, 0x03, 0x02, 0x01, 0xFF, 0xEE, 0xDD };
 
         uint32_t nSessionId = 0;
-        uint32_t nSuffix    = 0xFFFFFFFF;
+        std::array<uint8_t, 4> suffixBytes = {0xFF, 0xFF, 0xFF, 0xFF};
 
-        bool fIsV2 = ParsePayload(data, nSessionId, nSuffix);
+        bool fIsV2 = ParsePayload(data, nSessionId, suffixBytes);
 
         REQUIRE(fIsV2 == false);
         REQUIRE(nSessionId == 0x01020304u);
-        /* suffix must be zero because we did not have 8 bytes */
-        REQUIRE(nSuffix == 0u);
+        /* suffix bytes must be zero because we did not have 8 bytes */
+        REQUIRE(suffixBytes[0] == 0u);
+        REQUIRE(suffixBytes[1] == 0u);
+        REQUIRE(suffixBytes[2] == 0u);
+        REQUIRE(suffixBytes[3] == 0u);
+    }
+
+    SECTION("v2 suffix bytes preserve wire-order (no endian swap)")
+    {
+        /* Bytes [4..7] on the wire: AA BB CC DD
+         * Expected: suffixBytes[0]=AA, [1]=BB, [2]=CC, [3]=DD */
+        std::vector<uint8_t> data = {
+            0x01, 0x00, 0x00, 0x00,  /* session_id = 1 */
+            0xAA, 0xBB, 0xCC, 0xDD   /* suffix bytes in wire order */
+        };
+
+        uint32_t nSessionId = 0;
+        std::array<uint8_t, 4> suffixBytes = {};
+
+        bool fIsV2 = ParsePayload(data, nSessionId, suffixBytes);
+
+        REQUIRE(fIsV2 == true);
+        REQUIRE(suffixBytes[0] == 0xAAu);
+        REQUIRE(suffixBytes[1] == 0xBBu);
+        REQUIRE(suffixBytes[2] == 0xCCu);
+        REQUIRE(suffixBytes[3] == 0xDDu);
     }
 }
 
@@ -293,17 +336,20 @@ TEST_CASE("KeepaliveV2 - backward compatibility", "[keepalive_v2][llp]")
 {
     using namespace LLP::KeepaliveV2;
 
-    SECTION("v1 keepalive leaves suffix at 0 (does not write into miner prevblock slot)")
+    SECTION("v1 keepalive zeros all suffix bytes (does not write into miner prevblock slot)")
     {
         std::vector<uint8_t> data = { 0xAA, 0xBB, 0xCC, 0xDD };
 
         uint32_t nSessionId = 0;
-        uint32_t nSuffix    = 0x12345678u;  /* pre-loaded with garbage */
+        std::array<uint8_t, 4> suffixBytes = {0x12, 0x34, 0x56, 0x78};  /* pre-loaded with garbage */
 
-        bool fIsV2 = ParsePayload(data, nSessionId, nSuffix);
+        bool fIsV2 = ParsePayload(data, nSessionId, suffixBytes);
 
         REQUIRE(fIsV2 == false);
-        REQUIRE(nSuffix == 0u);  /* MUST be zeroed */
+        REQUIRE(suffixBytes[0] == 0u);  /* MUST be zeroed */
+        REQUIRE(suffixBytes[1] == 0u);
+        REQUIRE(suffixBytes[2] == 0u);
+        REQUIRE(suffixBytes[3] == 0u);
     }
 
     SECTION("v2 keepalive with zero suffix is valid (miner has no template yet)")
@@ -314,11 +360,14 @@ TEST_CASE("KeepaliveV2 - backward compatibility", "[keepalive_v2][llp]")
         };
 
         uint32_t nSessionId = 0;
-        uint32_t nSuffix    = 0xDEAD;
+        std::array<uint8_t, 4> suffixBytes = {0xDE, 0xAD, 0x00, 0x00};
 
-        bool fIsV2 = ParsePayload(data, nSessionId, nSuffix);
+        bool fIsV2 = ParsePayload(data, nSessionId, suffixBytes);
 
         REQUIRE(fIsV2 == true);
-        REQUIRE(nSuffix == 0u);
+        REQUIRE(suffixBytes[0] == 0u);
+        REQUIRE(suffixBytes[1] == 0u);
+        REQUIRE(suffixBytes[2] == 0u);
+        REQUIRE(suffixBytes[3] == 0u);
     }
 }
