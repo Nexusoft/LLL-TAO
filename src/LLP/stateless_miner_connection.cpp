@@ -761,15 +761,23 @@ namespace LLP
                 
                 /* Create a new block */
                 TAO::Ledger::Block* pBlock = new_block();
-                
+
                 /* Handle if the block failed to be created. */
                 if(!pBlock)
                 {
-                    debug::error("   ❌ new_block() returned nullptr");
+                    /* Chain may have advanced during template creation — retry once with fresh chain state */
+                    debug::log(2, FUNCTION, "new_block() returned nullptr — retrying once (chain may have advanced mid-creation)");
+                    pBlock = new_block();
+                }
+
+                if(!pBlock)
+                {
+                    /* Only send 0-payload if retry also failed (genuine failure, not a timing race) */
+                    debug::error("   ❌ new_block() failed after retry — sending empty BLOCK_DATA");
                     StatelessPacket response(StatelessOpcodes::BLOCK_DATA);
                     response.LENGTH = 0;
                     respond(response);
-                    debug::log(2, "📥 === GET_BLOCK: FAILED (NO BLOCK) ===");
+                    debug::log(2, "📥 === GET_BLOCK: FAILED (NO BLOCK AFTER RETRY) ===");
                     return true;
                 }
                 
@@ -3875,7 +3883,12 @@ namespace LLP
         TAO::Ledger::Block* pBlock = new_block();
         if (!pBlock)
         {
-            debug::error(FUNCTION, "Failed to create block template");
+            debug::log(2, FUNCTION, "new_block() returned nullptr in push path — retrying once");
+            pBlock = new_block();
+        }
+        if (!pBlock)
+        {
+            debug::error(FUNCTION, "Failed to create block template after retry");
             debug::log(2, "════════════════════════════════════════════════════════════");
             return;
         }

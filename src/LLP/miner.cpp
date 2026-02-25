@@ -1547,10 +1547,19 @@ namespace LLP
             /* Create a new block */
             pBlock = new_block();
 
-            /* Handle if the block failed to be created. */
+            /* Handle if the block failed to be created — retry once in case chain advanced mid-creation */
             if(!pBlock)
             {
-                debug::log(2, FUNCTION, "Failed to create block.");
+                debug::log(2, FUNCTION, "new_block() returned nullptr — retrying once (chain may have advanced mid-creation)");
+                pBlock = new_block();
+            }
+
+            if(!pBlock)
+            {
+                debug::log(2, FUNCTION, "Failed to create block after retry.");
+                /* Send empty BLOCK_DATA to unblock miner rather than leaving it waiting */
+                std::vector<uint8_t> vEmpty;
+                respond(BLOCK_DATA, vEmpty);
                 return true;
             }
 
