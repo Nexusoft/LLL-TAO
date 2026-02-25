@@ -241,19 +241,22 @@ namespace LLP
 
         /** NotifyChannelMiners
          *
-         *  Broadcast channel-specific notification to subscribed miners.
-         *  Called from BlockState::SetBest() when a Prime or Hash block is validated.
+         *  Broadcast channel-specific notification to subscribed miners on this server lane.
+         *  Called from BroadcastChannelNotification() (state.cpp) for each lane separately.
          *
-         *  This method performs server-side filtering to ensure only miners subscribed
-         *  to the specific channel receive notifications, reducing network traffic by 50%.
+         *  Server-side filtering ensures only miners subscribed to the specific channel
+         *  receive notifications.  Logs include channel, lane, and miner count for
+         *  de-duplication verification.
          *
-         *  @param[in] nChannel Channel that advanced (1=Prime, 2=Hash)
+         *  @param[in] nChannel   Channel that advanced (1=Prime, 2=Hash)
          *
-         *  @note This method is only meaningful for StatelessMinerConnection server.
-         *        For other protocol types, it will be a no-op (compile but do nothing).
+         *  @return Number of miners that were notified on this lane.
+         *
+         *  @note This method is only meaningful for StatelessMinerConnection and Miner servers.
+         *        For other protocol types, it will be a no-op that returns 0.
          *
          **/
-        void NotifyChannelMiners(uint32_t nChannel);
+        uint32_t NotifyChannelMiners(uint32_t nChannel);
 
 
         /** GetConnectionCount

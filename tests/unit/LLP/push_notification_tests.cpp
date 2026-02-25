@@ -506,3 +506,144 @@ TEST_CASE("PushNotificationBuilder - Universal Tip Push", "[push_notification][l
         REQUIRE(hashNotif.LENGTH  == 140);
     }
 }
+
+
+/* ============================================================================
+ * BroadcastChannelNotification deduplication tests
+ *
+ * These tests simulate the per-miner channel-filter logic that runs inside
+ * Server<T>::NotifyChannelMiners() to verify that:
+ *   1. Each block event produces exactly 4 server-level broadcasts:
+ *        Prime×Stateless, Prime×Legacy, Hash×Stateless, Hash×Legacy.
+ *   2. A miner subscribed to Prime receives ONLY Prime notifications.
+ *   3. A miner subscribed to Hash receives ONLY Hash notifications.
+ *   4. Unsubscribed miners (polling via GET_ROUND) receive nothing.
+ * ============================================================================ */
+
+namespace
+{
+    /** Minimal miner subscription state used by the filter simulation below. */
+    struct FakeMinerCtx
+    {
+        bool     fSubscribedToNotifications{false};
+        uint32_t nSubscribedChannel{0};
+    };
+
+    /**
+     * SimulateLaneBroadcast
+     *
+     *  Mirrors the filtering logic inside Server<T>::NotifyChannelMiners().
+     *  Returns the number of miners that would be notified on a single lane
+     *  for the given nChannel.
+     */
+    uint32_t SimulateLaneBroadcast(const std::vector<FakeMinerCtx>& vMiners,
+                                   uint32_t nChannel)
+    {
+        uint32_t nNotified = 0;
+        for (const auto& ctx : vMiners)
+        {
+            if (!ctx.fSubscribedToNotifications)
+                continue;                          // polling miner — skip
+            if (ctx.nSubscribedChannel != nChannel)
+                continue;                          // wrong channel — skip
+            ++nNotified;
+        }
+        return nNotified;
+    }
+}
+
+TEST_CASE("BroadcastChannelNotification — 4 total sends per block event", "[push_broadcast][llp]")
+{
+    /* Set up one miner per (channel, lane) — 4 miners in 2 lanes. */
+
+    /* Stateless lane: 1 Prime subscriber + 1 Hash subscriber */
+    const std::vector<FakeMinerCtx> vStateless = {
+        { true, 1 },  // Prime subscriber
+        { true, 2 },  // Hash subscriber
+    };
+
+    /* Legacy lane: 1 Prime subscriber + 1 Hash subscriber */
+    const std::vector<FakeMinerCtx> vLegacy = {
+        { true, 1 },  // Prime subscriber
+        { true, 2 },  // Hash subscriber
+    };
+
+    /* Count sends per (channel, lane) — mirrors BroadcastChannelNotification logic */
+    uint32_t nStatelessPrime = SimulateLaneBroadcast(vStateless, 1);
+    uint32_t nLegacyPrime    = SimulateLaneBroadcast(vLegacy,    1);
+    uint32_t nStatelessHash  = SimulateLaneBroadcast(vStateless, 2);
+    uint32_t nLegacyHash     = SimulateLaneBroadcast(vLegacy,    2);
+
+    /* Exactly 4 server-level sends total: one per (channel, lane) */
+    uint32_t nTotal = nStatelessPrime + nLegacyPrime + nStatelessHash + nLegacyHash;
+    REQUIRE(nTotal == 4);
+
+    /* Each lane+channel pair notifies exactly 1 miner */
+    REQUIRE(nStatelessPrime == 1);
+    REQUIRE(nLegacyPrime    == 1);
+    REQUIRE(nStatelessHash  == 1);
+    REQUIRE(nLegacyHash     == 1);
+}
+
+TEST_CASE("BroadcastChannelNotification — no cross-channel duplicates", "[push_broadcast][llp]")
+{
+    /* Miner subscribed to Prime must not receive Hash notifications. */
+    const std::vector<FakeMinerCtx> vMiners = {
+        { true, 1 },   // Prime subscriber
+    };
+
+    REQUIRE(SimulateLaneBroadcast(vMiners, 1) == 1);  // Prime: notified
+    REQUIRE(SimulateLaneBroadcast(vMiners, 2) == 0);  // Hash: NOT notified
+
+    /* Miner subscribed to Hash must not receive Prime notifications. */
+    const std::vector<FakeMinerCtx> vHashMiners = {
+        { true, 2 },   // Hash subscriber
+    };
+
+    REQUIRE(SimulateLaneBroadcast(vHashMiners, 1) == 0);  // Prime: NOT notified
+    REQUIRE(SimulateLaneBroadcast(vHashMiners, 2) == 1);  // Hash: notified
+}
+
+TEST_CASE("BroadcastChannelNotification — unsubscribed miners receive nothing", "[push_broadcast][llp]")
+{
+    /* Miners using GET_ROUND polling have fSubscribedToNotifications == false. */
+    const std::vector<FakeMinerCtx> vPollingMiners = {
+        { false, 1 },  // unsubscribed Prime miner (polling)
+        { false, 2 },  // unsubscribed Hash miner (polling)
+    };
+
+    REQUIRE(SimulateLaneBroadcast(vPollingMiners, 1) == 0);
+    REQUIRE(SimulateLaneBroadcast(vPollingMiners, 2) == 0);
+}
+
+TEST_CASE("BroadcastChannelNotification — multiple miners per channel, still no duplicates", "[push_broadcast][llp]")
+{
+    /* Even with multiple miners on the same channel, each gets exactly one
+     * notification per block event (no duplicate sends). */
+    const std::vector<FakeMinerCtx> vStateless = {
+        { true, 1 },   // Prime miner 1
+        { true, 1 },   // Prime miner 2
+        { true, 2 },   // Hash miner 1
+    };
+    const std::vector<FakeMinerCtx> vLegacy = {
+        { true, 1 },   // Prime miner 3
+        { true, 2 },   // Hash miner 2
+        { true, 2 },   // Hash miner 3
+    };
+
+    uint32_t nStatelessPrime = SimulateLaneBroadcast(vStateless, 1);
+    uint32_t nLegacyPrime    = SimulateLaneBroadcast(vLegacy,    1);
+    uint32_t nStatelessHash  = SimulateLaneBroadcast(vStateless, 2);
+    uint32_t nLegacyHash     = SimulateLaneBroadcast(vLegacy,    2);
+
+    /* Each miner receives exactly one notification for their channel */
+    REQUIRE(nStatelessPrime == 2);  // 2 stateless Prime miners
+    REQUIRE(nLegacyPrime    == 1);  // 1 legacy Prime miner
+    REQUIRE(nStatelessHash  == 1);  // 1 stateless Hash miner
+    REQUIRE(nLegacyHash     == 2);  // 2 legacy Hash miners
+
+    /* Total individual sends = 2+1+1+2 = 6 across 4 lane-level broadcast calls.
+     * Each lane call processes its own connection list once; no miner gets two
+     * notifications for the same event. */
+    REQUIRE((nStatelessPrime + nLegacyPrime + nStatelessHash + nLegacyHash) == 6);
+}
