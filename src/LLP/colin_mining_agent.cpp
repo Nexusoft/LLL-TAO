@@ -309,10 +309,12 @@ namespace LLP
             m_global.hash_pushes  = 0;
         }
 
-        /* Timestamp */
+        /* Timestamp — use localtime_r for thread safety on POSIX */
         std::time_t now_t = std::time(nullptr);
         char tbuf[32] = {};
-        std::strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M:%S", std::localtime(&now_t));
+        struct tm tm_buf = {};
+        ::localtime_r(&now_t, &tm_buf);
+        std::strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M:%S", &tm_buf);
 
         /* Border strings */
         const std::string top    = "╔" + std::string(BOX_WIDTH - 2, '═') + "╗";
