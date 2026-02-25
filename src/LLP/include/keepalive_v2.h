@@ -16,6 +16,7 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <array>
 #include <cstdint>
 #include <vector>
 
@@ -37,8 +38,10 @@ namespace LLP
      *    [4..7] miner_prevblock_suffix (little-endian uint32; last 4 bytes of template
      *                                   hashPrevBlock, or 0 if no template)
      *
-     *  v1 Node → Client (len == 4):
-     *    [0..3] session expiry seconds (little-endian uint32)
+     *  v1 Node → Client:
+     *    Legacy lane   (len == 4): [0..3] session expiry seconds (little-endian uint32)
+     *    Stateless lane (len == 5): [0] status byte (0x01 = active) +
+     *                               [1..4] remaining_timeout (little-endian uint32)
      *
      *  v2 Node → Client BESTCURRENT (len == 28):
      *    [0..3]   session_id          (little-endian uint32, same as v1)
@@ -57,10 +60,9 @@ namespace LLP
          *
          *  Parse a keepalive payload to extract session_id and (for v2) miner_prevblock_suffix.
          *
-         *  @param[in]  data               Raw payload bytes
-         *  @param[out] nSessionId         Session ID (bytes [0..3], little-endian)
-         *  @param[out] nPrevblockSuffix   Miner prevblock suffix (bytes [4..7], little-endian;
-         *                                 set to 0 if payload is v1 / too short)
+         *  @param[in]  data                   Raw payload bytes
+         *  @param[out] nSessionId             Session ID (bytes [0..3], little-endian)
+         *  @param[out] prevblockSuffixBytes   Raw bytes [4..7] as-sent (zeroed if payload is v1)
          *
          *  @return true if the payload is v2 (len >= 8), false if v1 (len >= 4 but < 8)
          *          Callers should reject if data.size() < 4.
@@ -69,9 +71,9 @@ namespace LLP
         inline bool ParsePayload(
             const std::vector<uint8_t>& data,
             uint32_t& nSessionId,
-            uint32_t& nPrevblockSuffix)
+            std::array<uint8_t, 4>& prevblockSuffixBytes)
         {
-            nPrevblockSuffix = 0;
+            prevblockSuffixBytes = {};
 
             if(data.size() < 4)
                 return false;
@@ -85,12 +87,11 @@ namespace LLP
 
             if(data.size() >= 8)
             {
-                /* v2: parse miner_prevblock_suffix (little-endian) */
-                nPrevblockSuffix =
-                    static_cast<uint32_t>(data[4])        |
-                    (static_cast<uint32_t>(data[5]) << 8)  |
-                    (static_cast<uint32_t>(data[6]) << 16) |
-                    (static_cast<uint32_t>(data[7]) << 24);
+                /* v2: copy miner_prevblock_suffix as raw bytes (no endian conversion) */
+                prevblockSuffixBytes[0] = data[4];
+                prevblockSuffixBytes[1] = data[5];
+                prevblockSuffixBytes[2] = data[6];
+                prevblockSuffixBytes[3] = data[7];
                 return true;
             }
 

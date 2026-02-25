@@ -21,6 +21,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/block.h>
 #include <LLC/include/flkey.h>
 
+#include <array>
 #include <string>
 #include <cstdint>
 #include <vector>
@@ -495,9 +496,9 @@ namespace LLP
 
         /* KEEPALIVE v2 telemetry fields.
          * Populated when the miner sends a v2 keepalive (len == 8).
-         * nMinerPrevblockSuffix: last 4 bytes of miner's current template hashPrevBlock (0 if none).
+         * nMinerPrevblockSuffix: raw bytes [4..7] of v2 payload (prevblock suffix as-sent).
          * fKeepaliveV2: true once the miner has sent at least one v2 keepalive (len == 8). */
-        uint32_t nMinerPrevblockSuffix;  // Miner's reported prevblock suffix (bytes [4..7] of v2 payload)
+        std::array<uint8_t, 4> nMinerPrevblockSuffix;  // Miner's reported prevblock suffix (raw bytes [4..7])
         bool     fKeepaliveV2;           // Whether this session negotiated keepalive v2
 
         /** Default Constructor **/
@@ -644,10 +645,10 @@ namespace LLP
          *  Returns a new context with updated miner prevblock suffix (from keepalive v2).
          *  Also sets fKeepaliveV2 to true to mark this session as v2-capable.
          *
-         *  @param[in] nSuffix_ Last 4 bytes of miner's current template hashPrevBlock
+         *  @param[in] suffixBytes_ Raw bytes [4..7] of the v2 keepalive payload
          *
          **/
-        MiningContext WithMinerPrevblockSuffix(uint32_t nSuffix_) const;
+        MiningContext WithMinerPrevblockSuffix(const std::array<uint8_t, 4>& suffixBytes_) const;
 
         /** WithKeepaliveV2
          *

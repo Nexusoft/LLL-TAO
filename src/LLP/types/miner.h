@@ -472,9 +472,9 @@ namespace LLP
 
         /* KEEPALIVE v2 telemetry fields.
          * fKeepaliveV2: true once the miner sent a v2 keepalive (len==8) on this connection.
-         * nMinerPrevblockSuffix: last reported prevblock suffix (bytes [4..7] of v2 payload). */
-        bool                 fKeepaliveV2;
-        uint32_t             nMinerPrevblockSuffix;
+         * nMinerPrevblockSuffix: raw bytes [4..7] of v2 payload (prevblock suffix as-sent). */
+        bool                           fKeepaliveV2;
+        std::array<uint8_t, 4>         nMinerPrevblockSuffix;
 
         /** Timestamp of the last template push (SendChannelNotification).
          *

@@ -102,7 +102,7 @@ namespace LLP
     , nSubscribedChannel(0)
     , nLastTemplateChannelHeight(0)
     , fKeepaliveV2(false)
-    , nMinerPrevblockSuffix(0)
+    , nMinerPrevblockSuffix({})
     {
     }
 
@@ -130,7 +130,7 @@ namespace LLP
     , nSubscribedChannel(0)
     , nLastTemplateChannelHeight(0)
     , fKeepaliveV2(false)
-    , nMinerPrevblockSuffix(0)
+    , nMinerPrevblockSuffix({})
     {
     }
 
@@ -158,7 +158,7 @@ namespace LLP
     , nSubscribedChannel(0)
     , nLastTemplateChannelHeight(0)
     , fKeepaliveV2(false)
-    , nMinerPrevblockSuffix(0)
+    , nMinerPrevblockSuffix({})
     {
     }
 
@@ -475,12 +475,12 @@ namespace LLP
 
                 /* Parse keepalive payload: detect v1 (len==4) or v2 (len==8) */
                 uint32_t nKeepaliveSession = 0;
-                uint32_t nPrevblockSuffix = 0;
+                std::array<uint8_t, 4> prevblockSuffixBytes = {};
                 bool fIsV2 = false;
 
                 if(PACKET.DATA.size() >= 4)
                 {
-                    fIsV2 = KeepaliveV2::ParsePayload(PACKET.DATA, nKeepaliveSession, nPrevblockSuffix);
+                    fIsV2 = KeepaliveV2::ParsePayload(PACKET.DATA, nKeepaliveSession, prevblockSuffixBytes);
                 }
                 else if(nSessionId != 0)
                 {
@@ -497,9 +497,12 @@ namespace LLP
                 if(fIsV2)
                 {
                     fKeepaliveV2 = true;
-                    nMinerPrevblockSuffix = nPrevblockSuffix;
-                    debug::log(2, FUNCTION, "SESSION_KEEPALIVE v2: prevblock_suffix=0x",
-                               std::hex, nPrevblockSuffix, std::dec);
+                    nMinerPrevblockSuffix = prevblockSuffixBytes;
+                    char suffixHex[9];
+                    std::snprintf(suffixHex, sizeof(suffixHex), "%02x%02x%02x%02x",
+                                  prevblockSuffixBytes[0], prevblockSuffixBytes[1],
+                                  prevblockSuffixBytes[2], prevblockSuffixBytes[3]);
+                    debug::log(2, FUNCTION, "SESSION_KEEPALIVE v2: prevblock_suffix=", suffixHex);
                 }
 
                 debug::log(2, FUNCTION, "Session ID: 0x", std::hex, nKeepaliveSession, std::dec);
@@ -567,12 +570,14 @@ namespace LLP
                     if(TAO::Ledger::GetLastState(stateChannel, 0))
                         nStakeHeight = stateChannel.nChannelHeight;
 
-                    /* Use the miner's subscribed channel for nBits */
+                    /* Use the miner's subscribed channel for nBits; fall back to mining channel.
+                     * Uses GetNextTargetRequired (authoritative ledger calculation) instead of
+                     * cached difficulty, matching the stateless lane for consistency. */
                     uint32_t nBitsChannel = (nSubscribedChannel != 0)
                                           ? nSubscribedChannel
                                           : nChannel.load();
-                    if(nBitsChannel == 0) nBitsChannel = 1;
-                    uint32_t nBits = LLP::StatelessMinerConnection::GetCachedDifficulty(nBitsChannel);
+                    if(nBitsChannel == 0) nBitsChannel = 1; /* default to Prime */
+                    uint32_t nBits = TAO::Ledger::GetNextTargetRequired(stateBest, nBitsChannel, false);
 
                     uint1024_t hashBestChain = TAO::Ledger::ChainState::hashBestChain.load();
 

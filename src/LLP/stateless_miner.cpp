@@ -93,7 +93,7 @@ namespace LLP
     , nNotificationsSent(0)
     , nLastTemplateChannelHeight(0)
     , hashLastBlock(0)
-    , nMinerPrevblockSuffix(0)
+    , nMinerPrevblockSuffix({})
     , fKeepaliveV2(false)
     {
     }
@@ -139,7 +139,7 @@ namespace LLP
     , nNotificationsSent(0)
     , nLastTemplateChannelHeight(0)
     , hashLastBlock(0)
-    , nMinerPrevblockSuffix(0)
+    , nMinerPrevblockSuffix({})
     , fKeepaliveV2(false)
     {
     }
@@ -264,10 +264,10 @@ namespace LLP
         return c;
     }
 
-    MiningContext MiningContext::WithMinerPrevblockSuffix(uint32_t nSuffix_) const
+    MiningContext MiningContext::WithMinerPrevblockSuffix(const std::array<uint8_t, 4>& suffixBytes_) const
     {
         MiningContext c = *this;
-        c.nMinerPrevblockSuffix = nSuffix_;
+        c.nMinerPrevblockSuffix = suffixBytes_;
         c.fKeepaliveV2 = true;
         return c;
     }
@@ -1446,8 +1446,8 @@ namespace LLP
 
         /* Parse keepalive payload: detect v1 (len==4) or v2 (len==8) */
         uint32_t nPayloadSession = 0;
-        uint32_t nPrevblockSuffix = 0;
-        bool fIsV2 = KeepaliveV2::ParsePayload(packet.DATA, nPayloadSession, nPrevblockSuffix);
+        std::array<uint8_t, 4> prevblockSuffixBytes = {};
+        bool fIsV2 = KeepaliveV2::ParsePayload(packet.DATA, nPayloadSession, prevblockSuffixBytes);
 
         /* Update timestamp, keepalive counters, and v2 fields if applicable */
         uint32_t nNewKeepaliveCount = context.nKeepaliveCount + 1;
@@ -1459,16 +1459,20 @@ namespace LLP
             .WithLastKeepaliveTime(nNow);
 
         if(fIsV2)
-            newContext = newContext.WithMinerPrevblockSuffix(nPrevblockSuffix);
+            newContext = newContext.WithMinerPrevblockSuffix(prevblockSuffixBytes);
 
         /* Log at different verbosity levels based on keepalive frequency */
         uint32_t nLogLevel = (nNewKeepaliveCount % 10 == 0) ? 2 : 3;
         if(fIsV2)
         {
+            char suffixHex[9];
+            std::snprintf(suffixHex, sizeof(suffixHex), "%02x%02x%02x%02x",
+                          prevblockSuffixBytes[0], prevblockSuffixBytes[1],
+                          prevblockSuffixBytes[2], prevblockSuffixBytes[3]);
             debug::log(nLogLevel, FUNCTION, "SESSION_KEEPALIVE v2 from sessionId=", context.nSessionId,
                        " keepalive_rx=", nNewKeepaliveCount,
                        " keepalive_tx=", nNewKeepaliveSent,
-                       " prevblock_suffix=0x", std::hex, nPrevblockSuffix, std::dec,
+                       " prevblock_suffix=", suffixHex,
                        " session_duration=", newContext.GetSessionDuration(nNow), "s");
         }
         else
