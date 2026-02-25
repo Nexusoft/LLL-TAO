@@ -60,6 +60,8 @@ ________________________________________________________________________________
 #include <Util/include/convert.h>
 #include <Util/include/hex.h>
 
+#include <LLP/include/colin_mining_agent.h>
+
 #include <chrono>
 #include <limits>
 #include <algorithm>
@@ -1720,12 +1722,42 @@ namespace LLP
                     return true;
                 }
 
+                /* ── SIM Link deduplication check ────────────────────────────────
+                 *  Shared dedup cache (via ColinMiningAgent) detects when the same
+                 *  solution is submitted on both the stateless lane (this handler,
+                 *  port 9323) and the legacy lane (miner.cpp, port 8323).
+                 */
+                if(ColinMiningAgent::Get().check_and_record_submission(
+                        pTritium->nHeight, nonce, hashMerkle.GetHex()))
+                {
+                    debug::log(0, FUNCTION, "SUBMIT_BLOCK: Duplicate submission detected "
+                               "(height=", pTritium->nHeight, " nonce=", nonce,
+                               ") — second connection submission ignored (SIM Link dedup)");
+                    if(context.hashGenesis != 0)
+                    {
+                        ColinMiningAgent::Get().on_block_submitted(
+                            context.hashGenesis.SubString(8), pTritium->nChannel,
+                            false, "DUPLICATE_SUBMISSION");
+                    }
+                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                    respond(response);
+                    return true;
+                }
+
                 TAO::Ledger::BlockValidationResult validationResult =
                     TAO::Ledger::ValidateMinedBlock(*pTritium);
                 if(!validationResult.valid)
                 {
                     debug::error(FUNCTION, "❌ ValidateMinedBlock failed: ", validationResult.reason);
                     
+                    /* Notify Colin agent on rejection */
+                    if(context.hashGenesis != 0)
+                    {
+                        ColinMiningAgent::Get().on_block_submitted(
+                            context.hashGenesis.SubString(8), pTritium->nChannel,
+                            false, validationResult.reason);
+                    }
+
                     /* Notify local pool if enabled */
                     if(PoolDiscovery::IsLocalPoolEnabled() && context.hashGenesis != 0)
                     {
@@ -1744,6 +1776,14 @@ namespace LLP
                 {
                     debug::error(FUNCTION, "❌ AcceptMinedBlock failed: ", acceptanceResult.reason);
 
+                    /* Notify Colin agent on rejection */
+                    if(context.hashGenesis != 0)
+                    {
+                        ColinMiningAgent::Get().on_block_submitted(
+                            context.hashGenesis.SubString(8), pTritium->nChannel,
+                            false, acceptanceResult.reason);
+                    }
+
                     /* Notify local pool if enabled */
                     if(PoolDiscovery::IsLocalPoolEnabled() && context.hashGenesis != 0)
                     {
@@ -1758,6 +1798,13 @@ namespace LLP
 
                 /* Block accepted - track in manager */
                 StatelessMinerManager::Get().IncrementBlocksAccepted();
+
+                /* Notify Colin agent: block accepted */
+                if(context.hashGenesis != 0)
+                {
+                    ColinMiningAgent::Get().on_block_submitted(
+                        context.hashGenesis.SubString(8), pTritium->nChannel, true, "");
+                }
 
                 /* Notify local pool if enabled */
                 if(PoolDiscovery::IsLocalPoolEnabled() && context.hashGenesis != 0)

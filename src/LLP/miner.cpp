@@ -67,6 +67,8 @@ ________________________________________________________________________________
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
 
+#include <LLP/include/colin_mining_agent.h>
+
 #include <cstring>
 
 
@@ -414,6 +416,12 @@ namespace LLP
                         break;
                 }
                 debug::log(0, FUNCTION, "[", strCategory, "] Disconnecting ", GetAddress().ToStringIP(), " (", strReason, ")");
+
+                /* Notify Colin agent on disconnect (only if genesis was known) */
+                if(hashGenesis != 0)
+                {
+                    ColinMiningAgent::Get().on_miner_disconnected(hashGenesis.SubString(8));
+                }
                 return;
             }
         }
@@ -708,6 +716,7 @@ namespace LLP
                     this->Reset();
                     
                     /* Update connection state from result context */
+                    const bool fWasAuthenticated = fMinerAuthenticated;
                     nChannel = result.context.nChannel;
                     nBestHeight = result.context.nHeight;
                     fMinerAuthenticated = result.context.fAuthenticated;
@@ -777,6 +786,15 @@ namespace LLP
 
                     /* Update StatelessMinerManager with COMPLETE context including encryption state */
                     StatelessMinerManager::Get().UpdateMiner(updatedContext.strAddress, updatedContext, 0);
+
+                    /* Notify Colin agent when genesis is authenticated for the first time */
+                    if(!fWasAuthenticated && fMinerAuthenticated && hashGenesis != 0)
+                    {
+                        ColinMiningAgent::Get().on_miner_connected(
+                            hashGenesis.SubString(8),
+                            GetAddress().ToStringIP()
+                        );
+                    }
 
                     /* Send response if present */
                     if(!result.response.IsNull())
@@ -1242,6 +1260,11 @@ namespace LLP
         /* Clear the parallel hash-snapshot map. */
         mapBlockHashes.clear();
 
+        /* Clear the cross-connection SUBMIT_BLOCK deduplication cache on new round.
+         * Same block solutions submitted on both SIM Link lanes after the round
+         * ends would be expired anyway, but clearing eagerly avoids false positives. */
+        ColinMiningAgent::Get().clear_dedup_cache();
+
         /* Reset the coinbase transaction. */
         tCoinbaseTx.SetNull();
 
@@ -1597,6 +1620,10 @@ namespace LLP
                    " (unified=", stateBest.nHeight, 
                    ", channelHeight=", stateChannel.nChannelHeight,
                    ", diff=", std::hex, nDifficulty, std::dec, ")");
+
+        /* Notify Colin agent: template pushed via push notification */
+        if(hashGenesis != 0)
+            ColinMiningAgent::Get().on_template_pushed(nSubscribedChannel, stateBest.nHeight + 1);
     }
 
 
@@ -1677,6 +1704,13 @@ namespace LLP
         debug::log(2, FUNCTION, "[BLOCK CREATE] hashPrevBlock FULL (MSB-first): ", pBlock->hashPrevBlock.GetHex());
         debug::log(2, FUNCTION, "Sent BLOCK_DATA (", vData.size(), " bytes)"
                    " channel=", pBlock->nChannel, " height=", pBlock->nHeight);
+
+        /* Notify Colin agent: template pushed via GET_BLOCK */
+        if(hashGenesis != 0)
+        {
+            ColinMiningAgent::Get().on_get_block_received(hashGenesis.SubString(8), false);
+            ColinMiningAgent::Get().on_template_pushed(pBlock->nChannel, pBlock->nHeight);
+        }
 
         return true;
     }
@@ -1875,11 +1909,41 @@ namespace LLP
             return true;
         }
 
+        /* ── SIM Link deduplication check ─────────────────────────────────────
+         *  When a miner runs two simultaneous connections (NexusMiner SIM Link:
+         *  one on legacy port 8323, one on stateless port 9323) both lanes may
+         *  submit the same solution within milliseconds of each other.  Deduplicate
+         *  by caching a hash of (nHeight, nNonce, hashMerkleRoot) for 10 seconds.
+         *  Only the first submission is forwarded to ValidateMinedBlock / AcceptMinedBlock.
+         *  The second is silently rejected with BLOCK_REJECTED.
+         */
+        if(ColinMiningAgent::Get().check_and_record_submission(
+                pTritium->nHeight, nonce, hashMerkle.GetHex()))
+        {
+            debug::log(0, FUNCTION, "SUBMIT_BLOCK: Duplicate submission detected "
+                       "(height=", pTritium->nHeight, " nonce=", nonce,
+                       ") — second connection submission ignored (SIM Link dedup)");
+            if(hashGenesis != 0)
+            {
+                ColinMiningAgent::Get().on_block_submitted(
+                    hashGenesis.SubString(8), pTritium->nChannel,
+                    false, "DUPLICATE_SUBMISSION");
+            }
+            respond(BLOCK_REJECTED);
+            return true;
+        }
+
         TAO::Ledger::BlockValidationResult validationResult =
             TAO::Ledger::ValidateMinedBlock(*pTritium);
         if(!validationResult.valid)
         {
             debug::error(FUNCTION, "SUBMIT_BLOCK rejected: ", validationResult.reason);
+            if(hashGenesis != 0)
+            {
+                ColinMiningAgent::Get().on_block_submitted(
+                    hashGenesis.SubString(8), pTritium->nChannel,
+                    false, validationResult.reason);
+            }
             respond(BLOCK_REJECTED);
             return true;
         }
@@ -1889,6 +1953,12 @@ namespace LLP
         if(!acceptanceResult.accepted)
         {
             debug::error(FUNCTION, "SUBMIT_BLOCK rejected: ", acceptanceResult.reason);
+            if(hashGenesis != 0)
+            {
+                ColinMiningAgent::Get().on_block_submitted(
+                    hashGenesis.SubString(8), pTritium->nChannel,
+                    false, acceptanceResult.reason);
+            }
             respond(BLOCK_REJECTED);
             return true;
         }
@@ -1897,6 +1967,11 @@ namespace LLP
                    " channel=", pTritium->nChannel,
                    " hashPrevBlock=", pTritium->hashPrevBlock.SubString(),
                    " merkle=", hashMerkle.SubString());
+        if(hashGenesis != 0)
+        {
+            ColinMiningAgent::Get().on_block_submitted(
+                hashGenesis.SubString(8), pTritium->nChannel, true, "");
+        }
         respond(BLOCK_ACCEPTED);
         return true;
     }

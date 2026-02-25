@@ -47,8 +47,14 @@ namespace MiningConstants
     #else
         /* Production Build - Strict rate limits for network security */
         
-        /** Minimum interval between GET_BLOCK requests (6 seconds) */
-        constexpr uint32_t GET_BLOCK_MIN_INTERVAL_MS = 6000;
+        /** Minimum interval between GET_BLOCK requests (2 seconds).
+         *
+         *  Tuned for NexusMiner SIM Link architecture: miner polls at 2500ms
+         *  interval, giving a 500ms node-side safety margin.  The existing
+         *  300-second ban for repeat violators (AUTOCOOLDOWN_DURATION_SECONDS)
+         *  is intentionally preserved.
+         */
+        constexpr uint32_t GET_BLOCK_MIN_INTERVAL_MS = 2000;
         
         /** Throttled interval for GET_BLOCK when rate limited (10 seconds) */
         constexpr uint32_t GET_BLOCK_THROTTLE_INTERVAL_MS = 10000;
