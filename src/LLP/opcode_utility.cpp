@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/opcode_utility.h>
 #include <LLP/packets/packet.h>
+#include <LLP/packets/stateless_packet.h>
 #include <LLP/include/falcon_constants.h>
 
 #include <Util/include/debug.h>
@@ -382,7 +383,13 @@ namespace OpcodeUtility
 
     std::string GetOpcodeName16(uint16_t nOpcode)
     {
-        /* Check if it's a stateless opcode */
+        /* Un-mirrored stateless-only opcodes — check before IsStateless() */
+        if(nOpcode == Stateless::KEEPALIVE_V2)      return "KEEPALIVE_V2";
+        if(nOpcode == Stateless::KEEPALIVE_V2_ACK)  return "KEEPALIVE_V2_ACK";
+        if(nOpcode == Stateless::PING_DIAG)         return "PING_DIAG";
+        if(nOpcode == Stateless::PONG_DIAG)         return "PONG_DIAG";
+
+        /* Check if it's a mirrored stateless opcode */
         if(Stateless::IsStateless(nOpcode))
         {
             /* Convert to legacy opcode and get name, then prefix with STATELESS_ */
@@ -433,9 +440,92 @@ namespace OpcodeUtility
         if(nOpcode == Opcodes::PRIME_BLOCK_AVAILABLE || nOpcode == Opcodes::HASH_BLOCK_AVAILABLE)
             return true;
         
+        /* NOTE: Legacy PING (0xFD = 253) is header-only — no payload.
+         * The stateless PING_DIAG (0xD0E0) is data-bearing but is
+         * handled by HasDataPayload16(), not this function. */
+        
         /* All other opcodes are header-only */
         return false;
     }
+
+
+    bool HasDataPayload16(uint16_t nOpcode)
+    {
+        /* Un-mirrored stateless-only data-bearing opcodes */
+        if(nOpcode == Stateless::KEEPALIVE_V2)      return true;  // 0xD100: 8B
+        if(nOpcode == Stateless::KEEPALIVE_V2_ACK)  return true;  // 0xD101: 8B
+        if(nOpcode == Stateless::PING_DIAG)         return true;  // 0xD0E0: 64B
+        if(nOpcode == Stateless::PONG_DIAG)         return true;  // 0xD0E1: 64B
+
+        /* For mirrored opcodes, unmirror and delegate to HasDataPayload(uint8_t) */
+        if(Stateless::IsStateless(nOpcode))
+            return HasDataPayload(Stateless::Unmirror(nOpcode));
+
+        return false;
+    }
+
+
+    bool IsUnmirroredStatelessOpcode(uint16_t nOpcode)
+    {
+        switch(nOpcode)
+        {
+            case Stateless::KEEPALIVE_V2:      // 0xD100
+            case Stateless::KEEPALIVE_V2_ACK:  // 0xD101
+            case Stateless::PING_DIAG:         // 0xD0E0
+            case Stateless::PONG_DIAG:         // 0xD0E1
+                return true;
+            default:
+                return false;
+        }
+    }
+
+
+    uint32_t GetExpectedPayloadSize16(uint16_t nOpcode)
+    {
+        switch(nOpcode)
+        {
+            case Stateless::KEEPALIVE_V2:      return 8;   // sequence(4) + timestamp(4)
+            case Stateless::KEEPALIVE_V2_ACK:  return 8;   // echo of above
+            case Stateless::PING_DIAG:         return 64;  // PingFrame
+            case Stateless::PONG_DIAG:         return 64;  // PongFrame
+            default:                           return 0;   // variable or header-only
+        }
+    }
+
+
+    bool ValidatePacketLength(const StatelessPacket& packet, std::string* strReason)
+    {
+        /* Check against maximum packet length */
+        if(packet.LENGTH > MAX_ANY_PACKET_LENGTH)
+        {
+            if(strReason)
+            {
+                std::ostringstream oss;
+                oss << "Packet length " << packet.LENGTH << " exceeds maximum "
+                    << MAX_ANY_PACKET_LENGTH << " bytes";
+                *strReason = oss.str();
+            }
+            return false;
+        }
+
+        /* Fixed-size payload enforcement for un-mirrored stateless opcodes */
+        uint32_t nExpected = GetExpectedPayloadSize16(packet.HEADER);
+        if(nExpected > 0 && packet.LENGTH != nExpected)
+        {
+            if(strReason)
+            {
+                std::ostringstream oss;
+                oss << "Fixed-payload opcode 0x" << std::hex << packet.HEADER
+                    << " requires exactly " << std::dec << nExpected
+                    << " bytes, got " << packet.LENGTH;
+                *strReason = oss.str();
+            }
+            return false;
+        }
+
+        return true;
+    }
+
 
 } // namespace OpcodeUtility
 } // namespace LLP
