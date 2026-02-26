@@ -453,7 +453,7 @@ namespace OpcodeUtility
     {
         /* Un-mirrored stateless-only data-bearing opcodes */
         if(nOpcode == Stateless::KEEPALIVE_V2)      return true;  // 0xD100: 8B
-        if(nOpcode == Stateless::KEEPALIVE_V2_ACK)  return true;  // 0xD101: 8B
+        if(nOpcode == Stateless::KEEPALIVE_V2_ACK)  return true;  // 0xD101: 28B
         if(nOpcode == Stateless::PING_DIAG)         return true;  // 0xD0E0: 64B
         if(nOpcode == Stateless::PONG_DIAG)         return true;  // 0xD0E1: 64B
 
