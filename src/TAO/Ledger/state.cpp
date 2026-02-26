@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 #include <LLP/include/inv.h>
 #include <LLP/include/channel_state_manager.h>
+#include <LLP/include/miner_push_dispatcher.h>
 
 #include <Legacy/types/legacy.h>
 #include <Legacy/wallet/wallet.h>
@@ -1144,8 +1145,6 @@ namespace TAO
                 }
                 else
                 {
-                    uint32_t nBlockChannel = GetChannel();  // 0=Stake, 1=Prime, 2=Hash
-
                     /* Diagnostic log: compute per-channel state only when verbosity warrants it
                      * (GetLastState and GetNextTargetRequired can involve disk I/O) */
                     if(config::nVerbose >= 2)
@@ -1165,18 +1164,12 @@ namespace TAO
                                    " nBits=0x", std::hex, nPrimeBits, std::dec,
                                    " | Hash ch=", stateHash.nChannelHeight,
                                    " nBits=0x", std::hex, nHashBits, std::dec,
-                                   " (block_ch=", nBlockChannel, ")");
+                                   " (block_ch=", GetChannel(), ")");
                     }
 
-                    /* Universal tip push: notify BOTH PoW channels on every unified tip advance */
-                    for (uint32_t nNotifyChannel : {(uint32_t)CHANNEL::PRIME, (uint32_t)CHANNEL::HASH})
-                    {
-                        if (LLP::STATELESS_MINER_SERVER)
-                            LLP::STATELESS_MINER_SERVER->NotifyChannelMiners(nNotifyChannel);
-
-                        if (LLP::MINING_SERVER)
-                            LLP::MINING_SERVER->NotifyChannelMiners(nNotifyChannel);
-                    }
+                    /* Single canonical dispatch: Prime+Hash × Stateless+Legacy = 4 sends.
+                     * MinerPushDispatcher handles dedup so accidental re-entry is harmless. */
+                    LLP::MinerPushDispatcher::DispatchPushEvent(nHeight, hash);
                 }
 
                 /* Verify unified height consistency using existing ChannelStateManager infrastructure */
