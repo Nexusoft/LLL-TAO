@@ -417,16 +417,16 @@ TEST_CASE("KeepaliveV2::KeepAliveV2AckFrame::Serialize", "[keepalive_v2][llp]")
 {
     using namespace LLP::KeepaliveV2;
 
-    SECTION("Serialize produces exactly 28 bytes")
+    SECTION("Serialize produces exactly 32 bytes")
     {
         KeepAliveV2AckFrame ack;
         std::vector<uint8_t> v = ack.Serialize();
-        REQUIRE(v.size() == 28u);
+        REQUIRE(v.size() == 32u);
     }
 
-    SECTION("PAYLOAD_SIZE constant is 28")
+    SECTION("PAYLOAD_SIZE constant is 32")
     {
-        REQUIRE(KeepAliveV2AckFrame::PAYLOAD_SIZE == 28u);
+        REQUIRE(KeepAliveV2AckFrame::PAYLOAD_SIZE == 32u);
     }
 
     SECTION("sequence encoded big-endian at bytes [0-3]")
@@ -495,15 +495,26 @@ TEST_CASE("KeepaliveV2::KeepAliveV2AckFrame::Serialize", "[keepalive_v2][llp]")
         REQUIRE(v[23] == 150u);
     }
 
-    SECTION("fork_score encoded big-endian at bytes [24-27]")
+    SECTION("stake_height encoded big-endian at bytes [24-27]")
+    {
+        KeepAliveV2AckFrame ack;
+        ack.stake_height = 0xAABBCCDDu;
+        std::vector<uint8_t> v = ack.Serialize();
+        REQUIRE(v[24] == 0xAAu);
+        REQUIRE(v[25] == 0xBBu);
+        REQUIRE(v[26] == 0xCCu);
+        REQUIRE(v[27] == 0xDDu);
+    }
+
+    SECTION("fork_score encoded big-endian at bytes [28-31]")
     {
         KeepAliveV2AckFrame ack;
         ack.fork_score = 0x00000000u;  /* 0 = healthy */
         std::vector<uint8_t> v = ack.Serialize();
-        REQUIRE(v[24] == 0x00u);
-        REQUIRE(v[25] == 0x00u);
-        REQUIRE(v[26] == 0x00u);
-        REQUIRE(v[27] == 0x00u);
+        REQUIRE(v[28] == 0x00u);
+        REQUIRE(v[29] == 0x00u);
+        REQUIRE(v[30] == 0x00u);
+        REQUIRE(v[31] == 0x00u);
     }
 
     SECTION("All fields together - full round-trip sanity check")
@@ -515,10 +526,11 @@ TEST_CASE("KeepaliveV2::KeepAliveV2AckFrame::Serialize", "[keepalive_v2][llp]")
         ack.hash_tip_lo32      = 0xCAFEBABEu;
         ack.prime_height       = 500u;
         ack.hash_height        = 600u;
+        ack.stake_height       = 999u;
         ack.fork_score         = 0u;
 
         std::vector<uint8_t> v = ack.Serialize();
-        REQUIRE(v.size() == 28u);
+        REQUIRE(v.size() == 32u);
 
         /* sequence BE */
         REQUIRE(v[0] == 0x00u); REQUIRE(v[1] == 0x00u);
@@ -544,8 +556,12 @@ TEST_CASE("KeepaliveV2::KeepAliveV2AckFrame::Serialize", "[keepalive_v2][llp]")
         REQUIRE(v[20] == 0x00u); REQUIRE(v[21] == 0x00u);
         REQUIRE(v[22] == 0x02u); REQUIRE(v[23] == 0x58u);
 
-        /* fork_score = 0 */
+        /* stake_height = 999 = 0x000003E7 BE */
         REQUIRE(v[24] == 0x00u); REQUIRE(v[25] == 0x00u);
-        REQUIRE(v[26] == 0x00u); REQUIRE(v[27] == 0x00u);
+        REQUIRE(v[26] == 0x03u); REQUIRE(v[27] == 0xE7u);
+
+        /* fork_score = 0 */
+        REQUIRE(v[28] == 0x00u); REQUIRE(v[29] == 0x00u);
+        REQUIRE(v[30] == 0x00u); REQUIRE(v[31] == 0x00u);
     }
 }

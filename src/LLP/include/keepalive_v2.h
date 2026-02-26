@@ -83,7 +83,7 @@ namespace LLP
         };
 
 
-        /** KeepAliveV2AckFrame — 28-byte frame built by Node and sent to Miner (KEEPALIVE_V2_ACK)
+        /** KeepAliveV2AckFrame — 32-byte frame built by Node and sent to Miner (KEEPALIVE_V2_ACK)
          *
          *  Wire format (big-endian):
          *    [0-3]   uint32_t  sequence            Echo of miner's sequence
@@ -92,7 +92,8 @@ namespace LLP
          *    [12-15] uint32_t  hash_tip_lo32       Low 32 bits of node's hashBestChain
          *    [16-19] uint32_t  prime_height        Node's Prime channel height
          *    [20-23] uint32_t  hash_height         Node's Hash channel height
-         *    [24-27] uint32_t  fork_score          0 = healthy, >0 = latent fork divergence
+         *    [24-27] uint32_t  stake_height        Node's Stake channel height
+         *    [28-31] uint32_t  fork_score          0 = healthy, >0 = latent fork divergence
          **/
         struct KeepAliveV2AckFrame
         {
@@ -102,14 +103,15 @@ namespace LLP
             uint32_t hash_tip_lo32{0};
             uint32_t prime_height{0};
             uint32_t hash_height{0};
+            uint32_t stake_height{0};
             uint32_t fork_score{0};
 
-            static constexpr uint32_t PAYLOAD_SIZE = 28;
+            static constexpr uint32_t PAYLOAD_SIZE = 32;
 
             std::vector<uint8_t> Serialize() const
             {
                 std::vector<uint8_t> v;
-                v.reserve(28);
+                v.reserve(32);
                 auto p32 = [&](uint32_t x) {
                     v.push_back((x >> 24) & 0xFF);
                     v.push_back((x >> 16) & 0xFF);
@@ -122,6 +124,7 @@ namespace LLP
                 p32(hash_tip_lo32);
                 p32(prime_height);
                 p32(hash_height);
+                p32(stake_height);
                 p32(fork_score);
                 return v;
             }

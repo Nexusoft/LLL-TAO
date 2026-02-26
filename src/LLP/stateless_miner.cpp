@@ -1607,6 +1607,11 @@ namespace LLP
         if(TAO::Ledger::GetLastState(stateChannel, 2))
             nHashHeight = stateChannel.nChannelHeight;
 
+        stateChannel = stateBest;
+        uint32_t nStakeHeight = 0;
+        if(TAO::Ledger::GetLastState(stateChannel, 3))
+            nStakeHeight = stateChannel.nChannelHeight;
+
         uint1024_t hashBestChain = TAO::Ledger::ChainState::hashBestChain.load();
         uint32_t nHashTipLo32 = static_cast<uint32_t>(hashBestChain.Get64(0) & 0xFFFFFFFF);
 
@@ -1614,7 +1619,7 @@ namespace LLP
          * checked by Miner::IsForkDetected() as (hash_tip_lo32 != myHashPrevBlock_lo32 || fork_score > 0) */
         uint32_t nForkScore = (frame.hashPrevBlock_lo32 != 0 && frame.hashPrevBlock_lo32 != nHashTipLo32) ? 1u : 0u;
 
-        /* Build 28-byte ACK */
+        /* Build 32-byte ACK */
         KeepaliveV2::KeepAliveV2AckFrame ack;
         ack.sequence           = frame.sequence;
         ack.hashPrevBlock_lo32 = frame.hashPrevBlock_lo32;
@@ -1622,12 +1627,14 @@ namespace LLP
         ack.hash_tip_lo32      = nHashTipLo32;
         ack.prime_height       = nPrimeHeight;
         ack.hash_height        = nHashHeight;
+        ack.stake_height       = nStakeHeight;
         ack.fork_score         = nForkScore;
 
         debug::log(3, FUNCTION, "KEEPALIVE_V2 seq=", frame.sequence,
                    " unified=", nUnifiedHeight,
                    " prime=", nPrimeHeight,
                    " hash=", nHashHeight,
+                   " stake=", nStakeHeight,
                    " hash_tip_lo32=0x", std::hex, nHashTipLo32,
                    " fork_score=", std::dec, nForkScore);
 
