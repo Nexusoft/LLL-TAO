@@ -556,7 +556,7 @@ namespace LLP
                 debug::log(2, FUNCTION, "  New expiry: ", (nNow + nExpirySeconds), " (",
                            (nExpirySeconds / SECONDS_PER_DAY), "d)");
 
-                /* Build response: v2 BESTCURRENT (28 bytes) if negotiated, else v1 (4 bytes) */
+                /* Build response: unified 32-byte if negotiated, else v1 (4 bytes) */
                 if(fKeepaliveV2 || sessionContext.fKeepaliveV2)
                 {
                     /* Gather current chain state */
@@ -578,42 +578,25 @@ namespace LLP
                     if(TAO::Ledger::GetLastState(stateChannel, 0))
                         nStakeHeight = stateChannel.nChannelHeight;
 
-                    /* Use the miner's subscribed channel for nBits; fall back to mining channel.
-                     * Uses GetNextTargetRequired (authoritative ledger calculation) instead of
-                     * cached difficulty, matching the stateless lane for consistency. */
-                    uint32_t nBitsChannel = (nSubscribedChannel != 0)
-                                          ? nSubscribedChannel
-                                          : nChannel.load();
-                    if(nBitsChannel == 0) nBitsChannel = 1; /* default to Prime */
-                    uint32_t nBits = TAO::Ledger::GetNextTargetRequired(stateBest, nBitsChannel, false);
-
                     uint1024_t hashBestChain = TAO::Ledger::ChainState::hashBestChain.load();
+                    uint32_t nHashTipLo32 = static_cast<uint32_t>(hashBestChain.Get64(0) & 0xFFFFFFFF);
 
-                    std::vector<uint8_t> vV2 = KeepaliveV2::BuildBestCurrentResponse(
+                    std::vector<uint8_t> vV2 = KeepaliveV2::BuildUnifiedResponse(
                         nKeepaliveSession,
+                        0u,                // hashPrevBlock_lo32: legacy path has no miner canary echo — use 0
                         nUnifiedHeight,
+                        nHashTipLo32,
                         nPrimeHeight,
                         nHashHeight,
                         nStakeHeight,
-                        nBits,
-                        hashBestChain);
+                        0u);               // fork_score: legacy path does not compute fork score — use 0
 
-                    std::vector<uint8_t> vHashBytes = hashBestChain.GetBytes();
-                    std::string strHashPrefix = "";
-                    for(int i = 0; i < 4 && i < static_cast<int>(vHashBytes.size()); ++i)
-                    {
-                        char buf[3];
-                        std::snprintf(buf, sizeof(buf), "%02x", vHashBytes[i]);
-                        strHashPrefix += buf;
-                    }
-
-                    debug::log(2, FUNCTION, "Sent SESSION_KEEPALIVE v2 BESTCURRENT (28 bytes):",
+                    debug::log(2, FUNCTION, "Sent SESSION_KEEPALIVE unified reply (32 bytes):",
                                " unified=", nUnifiedHeight,
                                " prime=", nPrimeHeight,
                                " hash=", nHashHeight,
                                " stake=", nStakeHeight,
-                               " nBits=0x", std::hex, nBits, std::dec,
-                               " hashPrefix=", strHashPrefix);
+                               " hash_tip_lo32=0x", std::hex, nHashTipLo32, std::dec);
 
                     respond(SESSION_KEEPALIVE, vV2);
                 }

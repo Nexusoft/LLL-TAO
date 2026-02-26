@@ -25,7 +25,7 @@ ________________________________________________________________________________
  * Covers:
  *   - ParsePayload: v1 (len==4) and v2 (len==8), edge cases
  *   - ParsePayload: v2 suffix returned as raw bytes (no endian conversion)
- *   - BuildBestCurrentResponse: correct size (28 bytes), field positions, endianness
+ *   - BuildUnifiedResponse: correct size (32 bytes), field positions, endianness
  */
 
 TEST_CASE("KeepaliveV2::ParsePayload", "[keepalive_v2][llp]")
@@ -168,166 +168,128 @@ TEST_CASE("KeepaliveV2::ParsePayload", "[keepalive_v2][llp]")
 }
 
 
-TEST_CASE("KeepaliveV2::BuildBestCurrentResponse", "[keepalive_v2][llp]")
+TEST_CASE("KeepaliveV2::BuildUnifiedResponse", "[keepalive_v2][llp]")
 {
     using namespace LLP::KeepaliveV2;
 
-    SECTION("Response is exactly 28 bytes")
+    SECTION("Response is exactly 32 bytes")
     {
-        uint1024_t hash;
-        std::vector<uint8_t> v = BuildBestCurrentResponse(1, 2, 3, 4, 5, 6, hash);
-        REQUIRE(v.size() == 28u);
+        auto v = BuildUnifiedResponse(1, 0, 100, 0xCAFEBABEu, 10, 20, 30, 0);
+        REQUIRE(v.size() == 32u);
     }
 
-    SECTION("session_id encoded little-endian at bytes [0..3]")
+    SECTION("session_id encoded little-endian at bytes [0-3]")
     {
         /* session_id = 0xDEADBEEF
          * Expected LE bytes: EF BE AD DE */
-        uint32_t nSessionId = 0xDEADBEEFu;
-        uint1024_t hash;
-        std::vector<uint8_t> v = BuildBestCurrentResponse(nSessionId, 0, 0, 0, 0, 0, hash);
-
+        auto v = BuildUnifiedResponse(0xDEADBEEFu, 0, 0, 0, 0, 0, 0, 0);
         REQUIRE(v[0] == 0xEFu);
         REQUIRE(v[1] == 0xBEu);
         REQUIRE(v[2] == 0xADu);
         REQUIRE(v[3] == 0xDEu);
     }
 
-    SECTION("unified_height encoded big-endian at bytes [4..7]")
+    SECTION("hashPrevBlock_lo32 big-endian at bytes [4-7]")
+    {
+        auto v = BuildUnifiedResponse(0, 0x12345678u, 0, 0, 0, 0, 0, 0);
+        REQUIRE(v[4] == 0x12u);
+        REQUIRE(v[5] == 0x34u);
+        REQUIRE(v[6] == 0x56u);
+        REQUIRE(v[7] == 0x78u);
+    }
+
+    SECTION("unified_height encoded big-endian at bytes [8-11]")
     {
         /* unified_height = 0x01020304 → BE bytes: 01 02 03 04 */
-        uint32_t nUnifiedHeight = 0x01020304u;
-        uint1024_t hash;
-        std::vector<uint8_t> v = BuildBestCurrentResponse(0, nUnifiedHeight, 0, 0, 0, 0, hash);
-
-        REQUIRE(v[4] == 0x01u);
-        REQUIRE(v[5] == 0x02u);
-        REQUIRE(v[6] == 0x03u);
-        REQUIRE(v[7] == 0x04u);
+        auto v = BuildUnifiedResponse(0, 0, 0x01020304u, 0, 0, 0, 0, 0);
+        REQUIRE(v[8]  == 0x01u);
+        REQUIRE(v[9]  == 0x02u);
+        REQUIRE(v[10] == 0x03u);
+        REQUIRE(v[11] == 0x04u);
     }
 
-    SECTION("prime_height encoded big-endian at bytes [8..11]")
+    SECTION("hash_tip_lo32 encoded big-endian at bytes [12-15]")
     {
-        uint32_t nPrimeHeight = 0xAABBCCDDu;
-        uint1024_t hash;
-        std::vector<uint8_t> v = BuildBestCurrentResponse(0, 0, nPrimeHeight, 0, 0, 0, hash);
-
-        REQUIRE(v[8]  == 0xAAu);
-        REQUIRE(v[9]  == 0xBBu);
-        REQUIRE(v[10] == 0xCCu);
-        REQUIRE(v[11] == 0xDDu);
+        auto v = BuildUnifiedResponse(0, 0, 0, 0xAABBCCDDu, 0, 0, 0, 0);
+        REQUIRE(v[12] == 0xAAu);
+        REQUIRE(v[13] == 0xBBu);
+        REQUIRE(v[14] == 0xCCu);
+        REQUIRE(v[15] == 0xDDu);
     }
 
-    SECTION("hash_height encoded big-endian at bytes [12..15]")
+    SECTION("prime_height encoded big-endian at bytes [16-19]")
     {
-        uint32_t nHashHeight = 0x11223344u;
-        uint1024_t hash;
-        std::vector<uint8_t> v = BuildBestCurrentResponse(0, 0, 0, nHashHeight, 0, 0, hash);
-
-        REQUIRE(v[12] == 0x11u);
-        REQUIRE(v[13] == 0x22u);
-        REQUIRE(v[14] == 0x33u);
-        REQUIRE(v[15] == 0x44u);
+        auto v = BuildUnifiedResponse(0, 0, 0, 0, 0xAABBCCDDu, 0, 0, 0);
+        REQUIRE(v[16] == 0xAAu);
+        REQUIRE(v[17] == 0xBBu);
+        REQUIRE(v[18] == 0xCCu);
+        REQUIRE(v[19] == 0xDDu);
     }
 
-    SECTION("stake_height encoded big-endian at bytes [16..19]")
+    SECTION("hash_height encoded big-endian at bytes [20-23]")
     {
-        uint32_t nStakeHeight = 0xFEDCBA98u;
-        uint1024_t hash;
-        std::vector<uint8_t> v = BuildBestCurrentResponse(0, 0, 0, 0, nStakeHeight, 0, hash);
-
-        REQUIRE(v[16] == 0xFEu);
-        REQUIRE(v[17] == 0xDCu);
-        REQUIRE(v[18] == 0xBAu);
-        REQUIRE(v[19] == 0x98u);
+        auto v = BuildUnifiedResponse(0, 0, 0, 0, 0, 0x11223344u, 0, 0);
+        REQUIRE(v[20] == 0x11u);
+        REQUIRE(v[21] == 0x22u);
+        REQUIRE(v[22] == 0x33u);
+        REQUIRE(v[23] == 0x44u);
     }
 
-    SECTION("nBits encoded big-endian at bytes [20..23]")
+    SECTION("stake_height encoded big-endian at bytes [24-27]")
     {
-        uint32_t nBits = 0x1D00FFFFu;
-        uint1024_t hash;
-        std::vector<uint8_t> v = BuildBestCurrentResponse(0, 0, 0, 0, 0, nBits, hash);
-
-        REQUIRE(v[20] == 0x1Du);
-        REQUIRE(v[21] == 0x00u);
-        REQUIRE(v[22] == 0xFFu);
-        REQUIRE(v[23] == 0xFFu);
+        auto v = BuildUnifiedResponse(0, 0, 0, 0, 0, 0, 0xFEDCBA98u, 0);
+        REQUIRE(v[24] == 0xFEu);
+        REQUIRE(v[25] == 0xDCu);
+        REQUIRE(v[26] == 0xBAu);
+        REQUIRE(v[27] == 0x98u);
     }
 
-    SECTION("hashBestChain_prefix occupies bytes [24..27] (first 4 bytes of GetBytes())")
+    SECTION("fork_score encoded big-endian at bytes [28-31]")
     {
-        /* Construct a uint1024_t where the first 4 bytes of GetBytes() are known.
-         * GetBytes() returns the internal limb storage in little-endian word order.
-         * The simplest way is to set the lowest-order limb to a known value. */
-        uint1024_t hash(0u);
-
-        /* Set to a known 32-bit value so the first limb has predictable bytes */
-        hash.SetHex("AABBCCDD");  /* lowest limb = 0x0000...AABBCCDD */
-
-        std::vector<uint8_t> v = BuildBestCurrentResponse(0, 0, 0, 0, 0, 0, hash);
-
-        /* GetBytes() returns LE bytes of the internal representation.
-         * For a value 0xAABBCCDD the first 4 bytes should be DD CC BB AA (LE). */
-        std::vector<uint8_t> vHashBytes = hash.GetBytes();
-        REQUIRE(vHashBytes.size() >= 4u);
-
-        REQUIRE(v[24] == vHashBytes[0]);
-        REQUIRE(v[25] == vHashBytes[1]);
-        REQUIRE(v[26] == vHashBytes[2]);
-        REQUIRE(v[27] == vHashBytes[3]);
+        auto v = BuildUnifiedResponse(0, 0, 0, 0, 0, 0, 0, 0x1D00FFFFu);
+        REQUIRE(v[28] == 0x1Du);
+        REQUIRE(v[29] == 0x00u);
+        REQUIRE(v[30] == 0xFFu);
+        REQUIRE(v[31] == 0xFFu);
     }
 
-    SECTION("All fields together - full round-trip sanity check")
+    SECTION("legacy path: hashPrevBlock_lo32=0, fork_score=0")
     {
-        uint32_t nSessionId     = 0x00000042u;
-        uint32_t nUnifiedHeight = 100u;
-        uint32_t nPrimeHeight   = 200u;
-        uint32_t nHashHeight    = 300u;
-        uint32_t nStakeHeight   = 400u;
-        uint32_t nBits          = 0x1D00FFFFu;
-        uint1024_t hash(0u);
+        /* Verify legacy path passes zeros for fields not available on legacy path */
+        auto v = BuildUnifiedResponse(1, 0u, 6000000u, 0xCAFEBABEu, 450u, 800u, 999u, 0u);
+        REQUIRE(v.size() == 32u);
+        /* hashPrevBlock_lo32 = 0 */
+        REQUIRE(v[4] == 0x00u); REQUIRE(v[5] == 0x00u);
+        REQUIRE(v[6] == 0x00u); REQUIRE(v[7] == 0x00u);
+        /* fork_score = 0 */
+        REQUIRE(v[28] == 0x00u); REQUIRE(v[29] == 0x00u);
+        REQUIRE(v[30] == 0x00u); REQUIRE(v[31] == 0x00u);
+    }
 
-        std::vector<uint8_t> v = BuildBestCurrentResponse(
-            nSessionId, nUnifiedHeight, nPrimeHeight,
-            nHashHeight, nStakeHeight, nBits, hash);
-
-        REQUIRE(v.size() == 28u);
-
+    SECTION("full round-trip all fields")
+    {
+        auto v = BuildUnifiedResponse(
+            0x00000001u,   // session_id
+            0xDEADBEEFu,   // hashPrevBlock_lo32
+            6000000u,      // unified_height
+            0xCAFEBABEu,   // hash_tip_lo32
+            450u,          // prime_height
+            800u,          // hash_height
+            999u,          // stake_height
+            7u);           // fork_score
+        REQUIRE(v.size() == 32u);
         /* session_id LE */
-        REQUIRE(v[0] == 0x42u);
-        REQUIRE(v[1] == 0x00u);
-        REQUIRE(v[2] == 0x00u);
-        REQUIRE(v[3] == 0x00u);
-
-        /* unified_height BE */
-        REQUIRE(v[4] == 0x00u);
-        REQUIRE(v[5] == 0x00u);
-        REQUIRE(v[6] == 0x00u);
-        REQUIRE(v[7] == 100u);
-
-        /* prime_height BE */
-        REQUIRE(v[8]  == 0x00u);
-        REQUIRE(v[9]  == 0x00u);
-        REQUIRE(v[10] == 0x00u);
-        REQUIRE(v[11] == 200u);
-
-        /* hash_height BE */
-        REQUIRE(v[12] == 0x00u);
-        REQUIRE(v[13] == 0x00u);
-        REQUIRE(v[14] == 0x01u);   /* 300 = 0x0000012C */
-        REQUIRE(v[15] == 0x2Cu);
-
-        /* stake_height BE */
-        REQUIRE(v[16] == 0x00u);
-        REQUIRE(v[17] == 0x00u);
-        REQUIRE(v[18] == 0x01u);   /* 400 = 0x00000190 */
-        REQUIRE(v[19] == 0x90u);
-
-        /* nBits BE */
-        REQUIRE(v[20] == 0x1Du);
-        REQUIRE(v[21] == 0x00u);
-        REQUIRE(v[22] == 0xFFu);
-        REQUIRE(v[23] == 0xFFu);
+        REQUIRE(v[0] == 0x01u); REQUIRE(v[1] == 0x00u);
+        REQUIRE(v[2] == 0x00u); REQUIRE(v[3] == 0x00u);
+        /* hashPrevBlock_lo32 BE: DE AD BE EF */
+        REQUIRE(v[4] == 0xDEu); REQUIRE(v[5] == 0xADu);
+        REQUIRE(v[6] == 0xBEu); REQUIRE(v[7] == 0xEFu);
+        /* stake_height = 999 = 0x000003E7 at [24-27] */
+        REQUIRE(v[24] == 0x00u); REQUIRE(v[25] == 0x00u);
+        REQUIRE(v[26] == 0x03u); REQUIRE(v[27] == 0xE7u);
+        /* fork_score = 7 at [28-31] */
+        REQUIRE(v[28] == 0x00u); REQUIRE(v[29] == 0x00u);
+        REQUIRE(v[30] == 0x00u); REQUIRE(v[31] == 0x07u);
     }
 }
 
@@ -429,15 +391,16 @@ TEST_CASE("KeepaliveV2::KeepAliveV2AckFrame::Serialize", "[keepalive_v2][llp]")
         REQUIRE(KeepAliveV2AckFrame::PAYLOAD_SIZE == 32u);
     }
 
-    SECTION("sequence encoded big-endian at bytes [0-3]")
+    SECTION("session_id encoded little-endian at bytes [0-3]")
     {
         KeepAliveV2AckFrame ack;
-        ack.sequence = 0xDEADBEEFu;
+        ack.session_id = 0xDEADBEEFu;
         std::vector<uint8_t> v = ack.Serialize();
-        REQUIRE(v[0] == 0xDEu);
-        REQUIRE(v[1] == 0xADu);
-        REQUIRE(v[2] == 0xBEu);
-        REQUIRE(v[3] == 0xEFu);
+        // LE: EF BE AD DE
+        REQUIRE(v[0] == 0xEFu);
+        REQUIRE(v[1] == 0xBEu);
+        REQUIRE(v[2] == 0xADu);
+        REQUIRE(v[3] == 0xDEu);
     }
 
     SECTION("hashPrevBlock_lo32 encoded big-endian at bytes [4-7]")
@@ -520,7 +483,7 @@ TEST_CASE("KeepaliveV2::KeepAliveV2AckFrame::Serialize", "[keepalive_v2][llp]")
     SECTION("All fields together - full round-trip sanity check")
     {
         KeepAliveV2AckFrame ack;
-        ack.sequence           = 0x00000001u;
+        ack.session_id         = 0x00000001u;
         ack.hashPrevBlock_lo32 = 0xDEADBEEFu;
         ack.unified_height     = 1000u;
         ack.hash_tip_lo32      = 0xCAFEBABEu;
@@ -532,9 +495,9 @@ TEST_CASE("KeepaliveV2::KeepAliveV2AckFrame::Serialize", "[keepalive_v2][llp]")
         std::vector<uint8_t> v = ack.Serialize();
         REQUIRE(v.size() == 32u);
 
-        /* sequence BE */
-        REQUIRE(v[0] == 0x00u); REQUIRE(v[1] == 0x00u);
-        REQUIRE(v[2] == 0x00u); REQUIRE(v[3] == 0x01u);
+        /* session_id LE: 01 00 00 00 */
+        REQUIRE(v[0] == 0x01u); REQUIRE(v[1] == 0x00u);
+        REQUIRE(v[2] == 0x00u); REQUIRE(v[3] == 0x00u);
 
         /* hashPrevBlock_lo32 BE */
         REQUIRE(v[4] == 0xDEu); REQUIRE(v[5] == 0xADu);
