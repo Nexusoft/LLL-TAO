@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/colin_mining_agent.h>
 
+#include <TAO/Ledger/include/chainstate.h>
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
@@ -335,6 +336,31 @@ namespace LLP
         pr.miner_queue_depth   = queue_depth;
         pr.miner_health_flags  = mflags;
         pr.pong_received       = true;
+
+        /* Update rolling RTT history */
+        it->second.rtt_history.push_back(rtt_us);
+        if(it->second.rtt_history.size() > RTT_HISTORY_SIZE)
+            it->second.rtt_history.pop_front();
+
+        /* React to miner health flags — log under lock since we have the miner id */
+        const std::string& display_id = it->second.remote_endpoint.empty()
+            ? genesis_prefix : it->second.remote_endpoint;
+
+        if(mflags & PongRecord::MFLAG_HASH_RATE_ZERO)
+            debug::log(0, FUNCTION, "[Colin] Miner ", display_id,
+                       " reports ZERO hash rate \xe2\x80\x94 worker stalled");
+        if(mflags & PongRecord::MFLAG_TEMP_CRITICAL)
+            debug::log(0, FUNCTION, "[Colin] Miner ", display_id,
+                       " CRITICAL TEMPERATURE: ", format_temp(temp_cdeg), " \xe2\x86\x90 CRITICAL");
+        if(mflags & PongRecord::MFLAG_QUEUE_OVERFLOW)
+            debug::log(0, FUNCTION, "[Colin] Miner ", display_id,
+                       " queue overflow \xe2\x80\x94 depth: ", queue_depth);
+        if(mflags & PongRecord::MFLAG_THREAD_ZERO)
+            debug::log(0, FUNCTION, "[Colin] Miner ", display_id,
+                       " reports zero active threads");
+        if(mflags & PongRecord::MFLAG_LOW_ACCEPT_RATE)
+            debug::log(0, FUNCTION, "[Colin] Miner ", display_id,
+                       " low accept rate flagged");
     }
 
 
@@ -408,6 +434,8 @@ namespace LLP
 
         /* Build node-side health flags */
         uint8_t hf = 0;
+        if(TAO::Ledger::ChainState::Synchronizing())
+            hf |= PingFrame::FLAG_NODE_SYNCING;
         if(stats.connection_count > 1)
             hf |= PingFrame::FLAG_SIM_LINK_ACTIVE;
         if(stats.get_block_rate_limited > 0)
@@ -424,6 +452,15 @@ namespace LLP
             hf |= PingFrame::FLAG_FIRST_CONNECT;
 
         f.health_flags = hf;
+
+        /* Self-validate: log node-side template drought if reporting zero pushes */
+        if(f.prime_pushes_30s == 0)
+            debug::log(0, FUNCTION, "[Colin] Node-side PRIME template drought "
+                       "\xe2\x80\x94 zero pushes in 30s window");
+        if(f.hash_pushes_30s == 0)
+            debug::log(0, FUNCTION, "[Colin] Node-side HASH template drought "
+                       "\xe2\x80\x94 zero pushes in 30s window");
+
         return f;
     }
 
@@ -456,15 +493,51 @@ namespace LLP
         std::string out = "\xE2\x9A\xA0 ";
         bool first = true;
         auto add = [&](const char* s){ if(!first) out += " | "; out += s; first = false; };
-        if(flags & PongRecord::MFLAG_OVERHEATING)          add("OVERHEATING");
-        if(flags & PongRecord::MFLAG_LOW_MEMORY)           add("LOW_MEMORY");
-        if(flags & PongRecord::MFLAG_QUEUE_FULL)           add("QUEUE_FULL");
-        if(flags & PongRecord::MFLAG_HASH_RATE_DROP)       add("HASH_RATE_DROP");
-        if(flags & PongRecord::MFLAG_STALE_WORK)           add("STALE_WORK");
-        if(flags & PongRecord::MFLAG_RECONNECT_RECOVERY)   add("RECONNECT");
-        if(flags & PongRecord::MFLAG_WORK_REJECTED_LOCAL)  add("REJECTED_LOCAL");
-        if(flags & PongRecord::MFLAG_IDLE)                 add("IDLE");
+        if(flags & PongRecord::MFLAG_HASH_RATE_ZERO)   add("HASH_RATE_ZERO");
+        if(flags & PongRecord::MFLAG_TEMP_CRITICAL)    add("TEMP_CRITICAL");
+        if(flags & PongRecord::MFLAG_QUEUE_OVERFLOW)   add("QUEUE_OVERFLOW");
+        if(flags & PongRecord::MFLAG_THREAD_ZERO)      add("THREAD_ZERO");
+        if(flags & PongRecord::MFLAG_HIGH_STALE_RATE)  add("HIGH_STALE_RATE");
+        if(flags & PongRecord::MFLAG_LOW_ACCEPT_RATE)  add("LOW_ACCEPT_RATE");
+        if(flags & PongRecord::MFLAG_RECONNECT_WINDOW) add("RECONNECT_WINDOW");
+        if(flags & PongRecord::MFLAG_FIRST_PONG)       add("FIRST_PONG");
         return out;
+    }
+
+
+    std::string ColinMiningAgent::format_rtt_trend(const std::deque<uint64_t>& history)
+    {
+        if(history.size() < 2)
+            return "";  // Insufficient data — caller should omit trend display
+
+        /* Average the first half vs. second half to smooth noise */
+        size_t mid = history.size() / 2;
+        double avg_old = 0.0, avg_new = 0.0;
+        for(size_t i = 0; i < mid; ++i)
+            avg_old += static_cast<double>(history[i]);
+        avg_old /= static_cast<double>(mid);
+        for(size_t i = mid; i < history.size(); ++i)
+            avg_new += static_cast<double>(history[i]);
+        avg_new /= static_cast<double>(history.size() - mid);
+
+        double delta_us = avg_new - avg_old;
+        constexpr double STABLE_THRESHOLD_US = 500.0; // ±0.5ms = stable
+
+        if(std::abs(delta_us) < STABLE_THRESHOLD_US)
+            return "\xe2\x94\x80 stable";
+
+        std::ostringstream oss;
+        if(delta_us < 0)
+        {
+            oss << "\xe2\x96\xbc " << format_rtt(static_cast<uint64_t>(std::abs(delta_us)))
+                << " improving";
+        }
+        else
+        {
+            oss << "\xe2\x96\xb2 +" << format_rtt(static_cast<uint64_t>(delta_us))
+                << " degrading";
+        }
+        return oss.str();
     }
 
 
@@ -551,32 +624,59 @@ namespace LLP
 
             /* ── Colin PING Diagnostics ──────────────────────────────── */
             {
-                debug::log(0, BoxLine("  \xE2\x94\x80 PING DIAGNOSTICS \xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80"));
+                debug::log(0, BoxLine("  \xE2\x94\x80 COLIN DIAGNOSTICS (Miner: "
+                    + (s.remote_endpoint.empty() ? s.genesis_prefix : s.remote_endpoint)
+                    + ") \xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80"));
 
                 if(s.last_pong.pong_received)
                 {
-                    int64_t rtt_delta = static_cast<int64_t>(s.last_pong.rtt_us)
-                                      - static_cast<int64_t>(s.last_pong.rtt_prev_us);
-                    std::string trend = (rtt_delta <= 0)
-                        ? ("\xE2\x96\xBC " + format_rtt(static_cast<uint64_t>(std::abs(rtt_delta))))
-                        : ("\xE2\x96\xB2 +" + format_rtt(static_cast<uint64_t>(rtt_delta)));
-
+                    /* RTT with rolling-history trend */
+                    std::string trend = format_rtt_trend(s.rtt_history);
+                    std::string trend_part = trend.empty() ? "" : ("  (" + trend + ")");
                     debug::log(0, BoxLine("  PING #" + std::to_string(s.last_pong.sequence)
                         + "   RTT: " + format_rtt(s.last_pong.rtt_us)
-                        + "   Trend: " + trend));
+                        + trend_part));
 
-                    debug::log(0, BoxLine("  HashRate: "
+                    /* Submission stats with rejection percentage */
+                    std::string rej_pct_str;
+                    if(s.blocks_submitted > 0)
+                    {
+                        uint32_t pct = static_cast<uint32_t>(
+                            (static_cast<uint64_t>(s.blocks_rejected) * 100) / s.blocks_submitted);
+                        rej_pct_str = " (" + std::to_string(pct) + "%)";
+                    }
+                    debug::log(0, BoxLine("  Submissions: "
+                        + std::to_string(s.blocks_submitted) + " sent / "
+                        + std::to_string(s.blocks_accepted) + " accepted / "
+                        + std::to_string(s.blocks_rejected) + " rejected" + rej_pct_str));
+
+                    /* Miner health with critical temperature annotation */
+                    std::string health_str = format_miner_health(s.last_pong.miner_health_flags);
+                    std::string flags_hex;
+                    {
+                        std::ostringstream fss;
+                        fss << "0x" << std::hex << std::setw(2) << std::setfill('0')
+                            << static_cast<unsigned>(s.last_pong.miner_health_flags);
+                        flags_hex = fss.str();
+                    }
+                    debug::log(0, BoxLine("  Miner Health: " + health_str
+                        + "  (flags: " + flags_hex + ")"));
+
+                    /* Per-miner hardware telemetry */
+                    std::string temp_str = format_temp(s.last_pong.miner_temp_cdeg);
+                    if(s.last_pong.miner_health_flags & PongRecord::MFLAG_TEMP_CRITICAL)
+                        temp_str += " \xe2\x86\x90 CRITICAL";
+                    debug::log(0, BoxLine("    HashRate: "
                         + std::to_string(s.last_pong.miner_hash_rate) + " kH/s"
-                        + "  Temp: " + format_temp(s.last_pong.miner_temp_cdeg)
-                        + "  Threads: " + std::to_string(s.last_pong.miner_threads)
+                        + "  Temp: " + temp_str));
+                    debug::log(0, BoxLine("    Threads: "
+                        + std::to_string(s.last_pong.miner_threads)
                         + "  Queue: " + std::to_string(s.last_pong.miner_queue_depth)));
-
-                    debug::log(0, BoxLine("  Miner Health: "
-                        + format_miner_health(s.last_pong.miner_health_flags)));
                 }
                 else
                 {
-                    debug::log(0, BoxLine("  PING: awaiting first PONG response"));
+                    debug::log(0, BoxLine("  PING #" + std::to_string(s.ping_sequence)
+                        + "  (awaiting first PONG response...)"));
                 }
             }
 

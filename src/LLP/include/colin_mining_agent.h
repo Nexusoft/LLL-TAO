@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <atomic>
 #include <cassert>
 #include <chrono>
+#include <deque>
 #include <map>
 #include <mutex>
 #include <string>
@@ -123,14 +124,14 @@ namespace LLP
      *    [44-63] uint8_t  padding[20]         Zero-fill
      *
      *  miner_health_flags bits:
-     *    7  OVERHEATING
-     *    6  LOW_MEMORY
-     *    5  QUEUE_FULL
-     *    4  HASH_RATE_DROP  (>20% drop since last ping)
-     *    3  STALE_WORK_DETECTED
-     *    2  RECONNECT_RECOVERY
-     *    1  WORK_REJECTED_LOCAL
-     *    0  IDLE
+     *    7  HASH_RATE_ZERO     worker stalled (zero hash rate)
+     *    6  TEMP_CRITICAL      temperature > 85°C
+     *    5  QUEUE_OVERFLOW     work queue depth exceeded threshold
+     *    4  THREAD_ZERO        no active mining threads
+     *    3  HIGH_STALE_RATE    stale rate > 10%
+     *    2  LOW_ACCEPT_RATE    accept rate < 80%
+     *    1  RECONNECT_WINDOW   reconnected within last 60s
+     *    0  FIRST_PONG         first PONG of this session
      **/
     struct PongRecord
     {
@@ -145,14 +146,14 @@ namespace LLP
         bool     pong_received{false};
 
         /* miner_health_flags bit constants */
-        static constexpr uint8_t MFLAG_OVERHEATING        = 0x80;
-        static constexpr uint8_t MFLAG_LOW_MEMORY         = 0x40;
-        static constexpr uint8_t MFLAG_QUEUE_FULL         = 0x20;
-        static constexpr uint8_t MFLAG_HASH_RATE_DROP     = 0x10;
-        static constexpr uint8_t MFLAG_STALE_WORK         = 0x08;
-        static constexpr uint8_t MFLAG_RECONNECT_RECOVERY = 0x04;
-        static constexpr uint8_t MFLAG_WORK_REJECTED_LOCAL= 0x02;
-        static constexpr uint8_t MFLAG_IDLE               = 0x01;
+        static constexpr uint8_t MFLAG_HASH_RATE_ZERO    = 0x80; // worker stalled
+        static constexpr uint8_t MFLAG_TEMP_CRITICAL      = 0x40; // temp > 85°C
+        static constexpr uint8_t MFLAG_QUEUE_OVERFLOW     = 0x20; // queue depth > threshold
+        static constexpr uint8_t MFLAG_THREAD_ZERO        = 0x10; // no active threads
+        static constexpr uint8_t MFLAG_HIGH_STALE_RATE    = 0x08; // stale > 10%
+        static constexpr uint8_t MFLAG_LOW_ACCEPT_RATE    = 0x04; // accept < 80%
+        static constexpr uint8_t MFLAG_RECONNECT_WINDOW   = 0x02; // reconnected in last 60s
+        static constexpr uint8_t MFLAG_FIRST_PONG         = 0x01; // first PONG this session
     };
 
 
@@ -331,6 +332,7 @@ namespace LLP
             std::chrono::steady_clock::time_point last_submit;
             uint32_t    ping_sequence{0};   // Monotonic ping counter for this miner
             PongRecord  last_pong;          // Latest pong data (updated async)
+            std::deque<uint64_t> rtt_history; // Rolling RTT history (last RTT_HISTORY_SIZE samples, µs)
         };
 
         /** Global push statistics (across all miners) **/
@@ -376,6 +378,17 @@ namespace LLP
 
         /** format_miner_health — expand miner_health_flags to a status string **/
         static std::string format_miner_health(uint8_t flags);
+
+        /** format_rtt_trend — compute RTT trend from rolling history
+         *
+         *  Returns a string like "▼ -0.3ms improving", "▲ +1.2ms degrading", or "─ stable".
+         *  Returns empty string if history has fewer than 2 samples.
+         *
+         **/
+        static std::string format_rtt_trend(const std::deque<uint64_t>& history);
+
+        /** Number of RTT samples retained per miner for trend computation **/
+        static constexpr size_t RTT_HISTORY_SIZE = 5;
 
         std::mutex                          m_mutex;
         std::map<std::string, MinerStats>   m_miners;     // keyed by genesis_prefix
