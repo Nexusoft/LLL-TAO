@@ -729,7 +729,7 @@ namespace LLP
                     // Request rejected - violation already recorded
                     // Send empty response to indicate rate limited
                     debug::log(1, FUNCTION, "GET_BLOCK rate limited for ", GetAddress().ToStringIP());
-                    StatelessPacket response(StatelessOpcodes::BLOCK_DATA);
+                    StatelessPacket response(OpcodeUtility::Stateless::BLOCK_DATA);
                     response.LENGTH = 0;
                     respond(response);
                     return true;  // Handled (rejected)
@@ -779,7 +779,7 @@ namespace LLP
                 {
                     /* Only send 0-payload if retry also failed (genuine failure, not a timing race) */
                     debug::error("   ❌ new_block() failed after retry — sending empty BLOCK_DATA");
-                    StatelessPacket response(StatelessOpcodes::BLOCK_DATA);
+                    StatelessPacket response(OpcodeUtility::Stateless::BLOCK_DATA);
                     response.LENGTH = 0;
                     respond(response);
                     debug::log(2, "📥 === GET_BLOCK: FAILED (NO BLOCK AFTER RETRY) ===");
@@ -811,7 +811,7 @@ namespace LLP
                     if(vData.empty())
                     {
                         debug::error("   ❌ Serialization returned empty vector!");
-                        StatelessPacket response(StatelessOpcodes::BLOCK_DATA);
+                        StatelessPacket response(OpcodeUtility::Stateless::BLOCK_DATA);
                         response.LENGTH = 0;
                         respond(response);
                         debug::log(2, "📥 === GET_BLOCK: FAILED (EMPTY SERIALIZATION) ===");
@@ -881,7 +881,7 @@ namespace LLP
                             debug::error(FUNCTION, "   Expected: ", pBlock->nChannel);
                             debug::error(FUNCTION, "   Got: ", nChannelFromSerialized);
                             
-                            StatelessPacket response(StatelessOpcodes::BLOCK_DATA);
+                            StatelessPacket response(OpcodeUtility::Stateless::BLOCK_DATA);
                             response.LENGTH = 0;
                             respond(response);
                             debug::log(2, "📥 === GET_BLOCK: FAILED (CHANNEL MISMATCH) ===");
@@ -895,7 +895,7 @@ namespace LLP
                             debug::error(FUNCTION, "   Expected: ", pBlock->nHeight);
                             debug::error(FUNCTION, "   Got: ", nHeightFromSerialized);
                             
-                            StatelessPacket response(StatelessOpcodes::BLOCK_DATA);
+                            StatelessPacket response(OpcodeUtility::Stateless::BLOCK_DATA);
                             response.LENGTH = 0;
                             respond(response);
                             debug::log(2, "📥 === GET_BLOCK: FAILED (HEIGHT MISMATCH) ===");
@@ -936,7 +936,7 @@ namespace LLP
                     vPayload.insert(vPayload.end(), vData.begin(), vData.end());
 
                     /* Create response packet */
-                    StatelessPacket response(StatelessOpcodes::BLOCK_DATA);
+                    StatelessPacket response(OpcodeUtility::Stateless::BLOCK_DATA);
                     response.DATA   = vPayload;
                     response.LENGTH = static_cast<uint32_t>(vPayload.size());
 
@@ -999,7 +999,7 @@ namespace LLP
                     debug::error("   ❌ Serialization exception: ", e.what());
                     debug::log(2, "📥 === GET_BLOCK: EXCEPTION ===");
                     
-                    StatelessPacket response(StatelessOpcodes::BLOCK_DATA);
+                    StatelessPacket response(OpcodeUtility::Stateless::BLOCK_DATA);
                     response.LENGTH = 0;
                     respond(response);
                     
@@ -2298,7 +2298,7 @@ namespace LLP
                                 vPayload.insert(vPayload.end(), vBlockData.begin(), vBlockData.end());
 
                                 /* Send BLOCK_DATA packet */
-                                StatelessPacket blockPacket(StatelessOpcodes::BLOCK_DATA);
+                                StatelessPacket blockPacket(OpcodeUtility::Stateless::BLOCK_DATA);
                                 blockPacket.DATA   = vPayload;
                                 blockPacket.LENGTH = static_cast<uint32_t>(vPayload.size());
                                 respond(blockPacket);
@@ -2480,83 +2480,7 @@ namespace LLP
                 return true;
             }
 
-            /* KEEPALIVE_V2 (0xD100) — 8-byte payload: [sequence(4)][hashPrevBlock_lo32(4)]
-             * Replies with KEEPALIVE_V2_ACK (0xD101) — 28-byte chain state telemetry. */
-            if(PACKET.HEADER == OpcodeUtility::Stateless::KEEPALIVE_V2)
-            {
-                if(!context.fAuthenticated)
-                {
-                    debug::log(0, FUNCTION, "KEEPALIVE_V2 rejected: not authenticated from ",
-                               GetAddress().ToStringIP());
-                    return true;
-                }
-
-                uint32_t nSequence = 0;
-                uint32_t nMinerPrevHashLo = 0;
-                if(PACKET.DATA.size() >= 8)
-                {
-                    nSequence        = (uint32_t(PACKET.DATA[0]) << 24) | (uint32_t(PACKET.DATA[1]) << 16)
-                                     | (uint32_t(PACKET.DATA[2]) <<  8) |  uint32_t(PACKET.DATA[3]);
-                    nMinerPrevHashLo = (uint32_t(PACKET.DATA[4]) << 24) | (uint32_t(PACKET.DATA[5]) << 16)
-                                     | (uint32_t(PACKET.DATA[6]) <<  8) |  uint32_t(PACKET.DATA[7]);
-                }
-
-                /* Refresh session timeout */
-                uint64_t nNow = runtime::unifiedtimestamp();
-                context = context.WithTimestamp(nNow).WithKeepaliveCount(context.nKeepaliveCount + 1);
-                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context,
-                    StatelessMinerManager::Get().GetMinerLane(context.strAddress).value_or(0));
-
-                /* Build KEEPALIVE_V2_ACK (0xD101) — 28-byte payload */
-                uint32_t nUnifiedHeight = static_cast<uint32_t>(TAO::Ledger::ChainState::nBestHeight.load());
-                uint1024_t hashBest     = TAO::Ledger::ChainState::hashBestChain.load();
-                std::vector<uint8_t> hashBytes = hashBest.GetBytes();
-                uint32_t nHashTipLo32 = 0;
-                if(hashBytes.size() >= 4)
-                    nHashTipLo32 = (uint32_t(hashBytes[0]) << 24) | (uint32_t(hashBytes[1]) << 16)
-                                 | (uint32_t(hashBytes[2]) <<  8) |  uint32_t(hashBytes[3]);
-
-                uint32_t nPrimeHeight = 0, nHashHeight = 0;
-                {
-                    TAO::Ledger::BlockState stPrime = TAO::Ledger::ChainState::tStateBest.load();
-                    TAO::Ledger::BlockState stHash  = TAO::Ledger::ChainState::tStateBest.load();
-                    if(TAO::Ledger::GetLastState(stPrime, 1)) nPrimeHeight = stPrime.nChannelHeight;
-                    if(TAO::Ledger::GetLastState(stHash,  2)) nHashHeight  = stHash.nChannelHeight;
-                }
-
-                /* fork_score: non-zero if miner's prevHash lo32 differs from our tip */
-                uint32_t nForkScore = (nMinerPrevHashLo != nHashTipLo32 && nMinerPrevHashLo != 0) ? 1 : 0;
-
-                std::vector<uint8_t> vAck;
-                vAck.reserve(28);
-                vAck.push_back((nSequence        >> 24) & 0xFF); vAck.push_back((nSequence        >> 16) & 0xFF);
-                vAck.push_back((nSequence        >>  8) & 0xFF); vAck.push_back((nSequence             ) & 0xFF);
-                vAck.push_back((nMinerPrevHashLo  >> 24) & 0xFF); vAck.push_back((nMinerPrevHashLo  >> 16) & 0xFF);
-                vAck.push_back((nMinerPrevHashLo  >>  8) & 0xFF); vAck.push_back((nMinerPrevHashLo       ) & 0xFF);
-                vAck.push_back((nUnifiedHeight   >> 24) & 0xFF); vAck.push_back((nUnifiedHeight   >> 16) & 0xFF);
-                vAck.push_back((nUnifiedHeight   >>  8) & 0xFF); vAck.push_back((nUnifiedHeight        ) & 0xFF);
-                vAck.push_back((nHashTipLo32     >> 24) & 0xFF); vAck.push_back((nHashTipLo32     >> 16) & 0xFF);
-                vAck.push_back((nHashTipLo32     >>  8) & 0xFF); vAck.push_back((nHashTipLo32          ) & 0xFF);
-                vAck.push_back((nPrimeHeight     >> 24) & 0xFF); vAck.push_back((nPrimeHeight     >> 16) & 0xFF);
-                vAck.push_back((nPrimeHeight     >>  8) & 0xFF); vAck.push_back((nPrimeHeight          ) & 0xFF);
-                vAck.push_back((nHashHeight      >> 24) & 0xFF); vAck.push_back((nHashHeight      >> 16) & 0xFF);
-                vAck.push_back((nHashHeight      >>  8) & 0xFF); vAck.push_back((nHashHeight           ) & 0xFF);
-                vAck.push_back((nForkScore       >> 24) & 0xFF); vAck.push_back((nForkScore       >> 16) & 0xFF);
-                vAck.push_back((nForkScore       >>  8) & 0xFF); vAck.push_back((nForkScore            ) & 0xFF);
-
-                StatelessPacket ack(OpcodeUtility::Stateless::KEEPALIVE_V2_ACK);
-                ack.DATA   = vAck;
-                ack.LENGTH = static_cast<uint32_t>(vAck.size());
-                respond(ack);
-
-                debug::log(2, FUNCTION, "KEEPALIVE_V2 ACK: seq=", nSequence,
-                           " unified=", nUnifiedHeight,
-                           " prime=", nPrimeHeight, " hash=", nHashHeight,
-                           " fork_score=", nForkScore);
-                return true;
-            }
-
-            /* For all other packets, route through StatelessMiner processor */
+            /* For all other packets (including KEEPALIVE_V2), route through StatelessMiner processor */
             ProcessResult result = StatelessMiner::ProcessPacket(context, PACKET);
 
             /* Update context if successful */

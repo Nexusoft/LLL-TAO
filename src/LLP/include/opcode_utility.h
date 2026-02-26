@@ -115,6 +115,11 @@ namespace OpcodeUtility
         }
 
         /* All mirror-mapped constants */
+        /** BLOCK_DATA (0xD000): node→miner block template payload.
+         *  Sent as the response to an explicit GET_BLOCK request, and as a recovery
+         *  fallback when a GET_ROUND detects a changed best block (auto-send path).
+         *  Distinct from GET_BLOCK (0xD081) which is the push-notification opcode
+         *  used by SendStatelessTemplate() to proactively deliver new templates. */
         static constexpr uint16_t BLOCK_DATA     = Mirror(Opcodes::BLOCK_DATA);       // 0xD000
         static constexpr uint16_t SUBMIT_BLOCK   = Mirror(Opcodes::SUBMIT_BLOCK);     // 0xD001
         static constexpr uint16_t BLOCK_HEIGHT   = Mirror(Opcodes::BLOCK_HEIGHT);     // 0xD002
@@ -125,6 +130,11 @@ namespace OpcodeUtility
         static constexpr uint16_t ORPHAN_BLOCK   = Mirror(Opcodes::ORPHAN_BLOCK);     // 0xD007
         static constexpr uint16_t CHECK_BLOCK    = Mirror(Opcodes::CHECK_BLOCK);      // 0xD040
         static constexpr uint16_t SUBSCRIBE      = Mirror(Opcodes::SUBSCRIBE);        // 0xD041
+        /** GET_BLOCK (0xD081): push-notification opcode used by SendStatelessTemplate().
+         *  Carries 12-byte metadata (heights + nBits) followed by the 216-byte block template.
+         *  Sent proactively to subscribed miners when a new block template is available.
+         *  Not to be confused with BLOCK_DATA (0xD000) which is the response to an
+         *  explicit GET_BLOCK request or the recovery auto-send fallback. */
         static constexpr uint16_t GET_BLOCK      = Mirror(Opcodes::GET_BLOCK);        // 0xD081
         static constexpr uint16_t GET_HEIGHT     = Mirror(Opcodes::GET_HEIGHT);       // 0xD082
         static constexpr uint16_t GET_REWARD     = Mirror(Opcodes::GET_REWARD);       // 0xD083
