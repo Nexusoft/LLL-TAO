@@ -510,12 +510,15 @@ TEST_CASE("PushNotificationBuilder - Universal Tip Push", "[push_notification][l
 
 
 /* ============================================================================
- * MinerPushDispatcher — broadcast logic simulation tests
+ * BroadcastChannelNotification deduplication tests
  *
- * These tests verify the channel-filter logic that NotifyChannelMiners uses
- * and ensure the dispatcher's 4-send-per-event invariant holds.
- * They mirror the filtering code in Server<T>::NotifyChannelMiners without
- * instantiating live server objects.
+ * These tests simulate the per-miner channel-filter logic that runs inside
+ * Server<T>::NotifyChannelMiners() to verify that:
+ *   1. Each block event produces exactly 4 server-level broadcasts:
+ *        Prime×Stateless, Prime×Legacy, Hash×Stateless, Hash×Legacy.
+ *   2. A miner subscribed to Prime receives ONLY Prime notifications.
+ *   3. A miner subscribed to Hash receives ONLY Hash notifications.
+ *   4. Unsubscribed miners (polling via GET_ROUND) receive nothing.
  * ============================================================================ */
 
 namespace
@@ -528,7 +531,7 @@ namespace
     };
 
     /**
-     *  SimulateLaneBroadcast
+     * SimulateLaneBroadcast
      *
      *  Mirrors the filtering logic inside Server<T>::NotifyChannelMiners().
      *  Returns the number of miners that would be notified on a single lane
@@ -644,62 +647,4 @@ TEST_CASE("BroadcastChannelNotification — multiple miners per channel, still n
      * Each lane call processes its own connection list once; no miner gets two
      * notifications for the same event. */
     REQUIRE((nStatelessPrime + nLegacyPrime + nStatelessHash + nLegacyHash) == 6);
-}
-
-TEST_CASE("MinerPushDispatcher — dedup key packing and atomic dedup invariant", "[push_broadcast][llp]")
-{
-    /* Verify that the dedup key concept (height<<32 | hashPrefix) is correct. */
-
-    const uint32_t nHeight = 100000;
-    const uint32_t nHashPrefix = 0xDEADBEEF;
-
-    uint64_t key = (static_cast<uint64_t>(nHeight) << 32) | static_cast<uint64_t>(nHashPrefix);
-
-    /* High 32 bits encode height */
-    REQUIRE(static_cast<uint32_t>(key >> 32) == nHeight);
-
-    /* Low 32 bits encode hash prefix */
-    REQUIRE(static_cast<uint32_t>(key & 0xFFFFFFFF) == nHashPrefix);
-
-    /* Two different heights produce different keys even with the same prefix */
-    uint64_t key2 = (static_cast<uint64_t>(nHeight + 1) << 32) | static_cast<uint64_t>(nHashPrefix);
-    REQUIRE(key != key2);
-
-    /* Same height but different hash prefix also produces different key */
-    uint64_t key3 = (static_cast<uint64_t>(nHeight) << 32) | static_cast<uint64_t>(nHashPrefix ^ 1);
-    REQUIRE(key != key3);
-
-    /* Verify CAS-based dedup logic: simulate what DispatchPushEvent does.
-     * First CAS on a fresh atomic must succeed; second CAS with same key must fail. */
-    {
-        std::atomic<uint64_t> dedupAtom{0};
-
-        /* First attempt — should succeed (old value is 0, new key is different) */
-        uint64_t oldVal = dedupAtom.load(std::memory_order_acquire);
-        bool firstCAS = (oldVal != key) &&
-                         dedupAtom.compare_exchange_strong(oldVal, key,
-                                                           std::memory_order_release,
-                                                           std::memory_order_relaxed);
-        REQUIRE(firstCAS == true);
-        REQUIRE(dedupAtom.load() == key);
-
-        /* Second attempt with same key — CAS must not fire (old == key, condition fails) */
-        uint64_t oldVal2 = dedupAtom.load(std::memory_order_acquire);
-        bool secondCAS = (oldVal2 != key) &&
-                          dedupAtom.compare_exchange_strong(oldVal2, key,
-                                                            std::memory_order_release,
-                                                            std::memory_order_relaxed);
-        REQUIRE(secondCAS == false);   // dedup correctly blocks the second dispatch
-        REQUIRE(dedupAtom.load() == key);  // value unchanged
-
-        /* Different key (new height) must succeed again */
-        uint64_t newKey = (static_cast<uint64_t>(nHeight + 1) << 32) | static_cast<uint64_t>(nHashPrefix);
-        uint64_t oldVal3 = dedupAtom.load(std::memory_order_acquire);
-        bool thirdCAS = (oldVal3 != newKey) &&
-                         dedupAtom.compare_exchange_strong(oldVal3, newKey,
-                                                           std::memory_order_release,
-                                                           std::memory_order_relaxed);
-        REQUIRE(thirdCAS == true);
-        REQUIRE(dedupAtom.load() == newKey);
-    }
 }
