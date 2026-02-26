@@ -491,7 +491,7 @@ namespace LLP
                 nNotified++;
             }
             
-            /* Per-lane summary log: channel, lane, counts */
+            /* Log per-lane, per-channel result for deduplication verification */
             debug::log(0, FUNCTION, "[PUSH][", strLane, "][", strChannelName, "] Notified ", nNotified,
                        " miners (skipped: ", nSkippedWrongChannel, " wrong-channel, ",
                        nSkippedUnsubscribed, " polling)");

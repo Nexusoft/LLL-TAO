@@ -242,7 +242,7 @@ namespace LLP
         /** NotifyChannelMiners
          *
          *  Broadcast channel-specific notification to subscribed miners on this lane.
-         *  Called from MinerPushDispatcher::DispatchPushEvent() for each (channel, lane) pair.
+         *  Called from BroadcastChannelNotification() in BlockState::SetBest().
          *
          *  Server-side filtering ensures only miners subscribed to the given channel receive
          *  the notification. Each miner receives exactly one send per event per lane.

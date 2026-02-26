@@ -520,11 +520,11 @@ TEST_CASE("PushNotificationBuilder - Universal Tip Push", "[push_notification][l
 
 namespace
 {
-    /* Minimal miner descriptor used to simulate per-lane connection lists. */
+    /** Minimal miner subscription state used by the filter simulation below. */
     struct FakeMinerCtx
     {
-        bool     fSubscribedToNotifications;
-        uint32_t nSubscribedChannel;   /* 1=Prime, 2=Hash */
+        bool     fSubscribedToNotifications{false};
+        uint32_t nSubscribedChannel{0};
     };
 
     /**
