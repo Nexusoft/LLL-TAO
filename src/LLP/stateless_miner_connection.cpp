@@ -579,8 +579,11 @@ namespace LLP
             }
 
             /* Strict stateless lane enforcement (port 9323):
-             * reject anything outside 0xD000-0xD0FF with no endian/lane fallback. */
-            if(!StatelessOpcodes::IsStateless(PACKET.HEADER))
+             * reject anything outside 0xD000-0xD0FF with no endian/lane fallback.
+             * Exception: un-mirrored opcodes (KEEPALIVE_V2 0xD100, KEEPALIVE_V2_ACK 0xD101)
+             * are handled explicitly above before this check. */
+            if(!StatelessOpcodes::IsStateless(PACKET.HEADER) &&
+               !OpcodeUtility::IsUnmirroredStatelessOpcode(PACKET.HEADER))
             {
                 debug::error(FUNCTION, "Invalid stateless opcode: 0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
                 debug::error(FUNCTION, "  Stateless opcodes must be in range 0xD000-0xD0FF");
@@ -902,16 +905,49 @@ namespace LLP
                         debug::log(0, "   ✅ Serialization verified: nChannel and nHeight preserved correctly");
                     }
                     
+                    /* Build 12-byte metadata prefix required by NexusMiner wire protocol:
+                     *   [0-3]   nUnifiedHeight  (big-endian)
+                     *   [4-7]   nChannelHeight  (big-endian)
+                     *   [8-11]  nBits           (big-endian)
+                     * Followed by the 216-byte serialized block = 228 bytes total. */
+                    uint32_t nUnifiedHeight = static_cast<uint32_t>(TAO::Ledger::ChainState::nBestHeight.load());
+                    uint32_t nChannelHeightMeta = 0;
+                    {
+                        TAO::Ledger::BlockState stateChannelMeta = TAO::Ledger::ChainState::tStateBest.load();
+                        if(TAO::Ledger::GetLastState(stateChannelMeta, pBlock->nChannel))
+                            nChannelHeightMeta = stateChannelMeta.nChannelHeight;
+                    }
+                    uint32_t nBitsMeta = pBlock->nBits;
+
+                    std::vector<uint8_t> vPayload;
+                    vPayload.reserve(12 + vData.size());
+                    vPayload.push_back((nUnifiedHeight     >> 24) & 0xFF);
+                    vPayload.push_back((nUnifiedHeight     >> 16) & 0xFF);
+                    vPayload.push_back((nUnifiedHeight     >>  8) & 0xFF);
+                    vPayload.push_back((nUnifiedHeight          ) & 0xFF);
+                    vPayload.push_back((nChannelHeightMeta >> 24) & 0xFF);
+                    vPayload.push_back((nChannelHeightMeta >> 16) & 0xFF);
+                    vPayload.push_back((nChannelHeightMeta >>  8) & 0xFF);
+                    vPayload.push_back((nChannelHeightMeta      ) & 0xFF);
+                    vPayload.push_back((nBitsMeta          >> 24) & 0xFF);
+                    vPayload.push_back((nBitsMeta          >> 16) & 0xFF);
+                    vPayload.push_back((nBitsMeta          >>  8) & 0xFF);
+                    vPayload.push_back((nBitsMeta               ) & 0xFF);
+                    vPayload.insert(vPayload.end(), vData.begin(), vData.end());
+
                     /* Create response packet */
                     StatelessPacket response(StatelessOpcodes::BLOCK_DATA);
-                    response.DATA = vData;
-                    response.LENGTH = static_cast<uint32_t>(vData.size());  // ⭐ CRITICAL FIX!
-                    
+                    response.DATA   = vPayload;
+                    response.LENGTH = static_cast<uint32_t>(vPayload.size());
+
                     debug::log(0, "   📤 Sending BLOCK_DATA...");
                     debug::log(0, "      Packet header: ", (uint32_t)response.HEADER);
                     debug::log(0, "      Packet LENGTH field: ", response.LENGTH);
                     debug::log(0, "      Packet DATA size: ", response.DATA.size());
-                    
+                    debug::log(0, "      [nUnifiedHeight=", nUnifiedHeight,
+                               " nChannelHeight=", nChannelHeightMeta,
+                               " nBits=", nBitsMeta, "]");
+
                     /* Send the response */
                     respond(response);
                     
@@ -2243,18 +2279,39 @@ namespace LLP
                             }
                             else
                             {
+                                /* Build 12-byte metadata prefix + 216-byte block = 228 bytes */
+                                uint32_t nBitsVal = pBlock->nBits;
+                                std::vector<uint8_t> vPayload;
+                                vPayload.reserve(12 + vBlockData.size());
+                                vPayload.push_back((nUnifiedHeight >> 24) & 0xFF);
+                                vPayload.push_back((nUnifiedHeight >> 16) & 0xFF);
+                                vPayload.push_back((nUnifiedHeight >>  8) & 0xFF);
+                                vPayload.push_back((nUnifiedHeight      ) & 0xFF);
+                                vPayload.push_back((nChannelHeight >> 24) & 0xFF);
+                                vPayload.push_back((nChannelHeight >> 16) & 0xFF);
+                                vPayload.push_back((nChannelHeight >>  8) & 0xFF);
+                                vPayload.push_back((nChannelHeight      ) & 0xFF);
+                                vPayload.push_back((nBitsVal       >> 24) & 0xFF);
+                                vPayload.push_back((nBitsVal       >> 16) & 0xFF);
+                                vPayload.push_back((nBitsVal       >>  8) & 0xFF);
+                                vPayload.push_back((nBitsVal            ) & 0xFF);
+                                vPayload.insert(vPayload.end(), vBlockData.begin(), vBlockData.end());
+
                                 /* Send BLOCK_DATA packet */
                                 StatelessPacket blockPacket(StatelessOpcodes::BLOCK_DATA);
-                                blockPacket.DATA = vBlockData;
-                                blockPacket.LENGTH = static_cast<uint32_t>(vBlockData.size());
+                                blockPacket.DATA   = vPayload;
+                                blockPacket.LENGTH = static_cast<uint32_t>(vPayload.size());
                                 respond(blockPacket);
-                                
+
                                 debug::log(2, "   ✅ BLOCK_DATA AUTO-SENT!");
-                                debug::log(2, "      Template size:    ", vBlockData.size(), " bytes");
+                                debug::log(2, "      Template size:    ", vPayload.size(), " bytes");
                                 debug::log(2, "      Block height:     ", pBlock->nHeight);
                                 debug::log(2, "      Block channel:    ", pBlock->nChannel);
                                 debug::log(2, "      Merkle root:      ", pBlock->hashMerkleRoot.SubString());
-                                
+                                debug::log(2, "      [nUnifiedHeight=", nUnifiedHeight,
+                                           " nChannelHeight=", nChannelHeight,
+                                           " nBits=", nBitsVal, "]");
+
                                 /* Update statistics */
                                 StatelessMinerManager::Get().IncrementTemplatesServed();
                             }
@@ -2420,6 +2477,82 @@ namespace LLP
                         context.hashGenesis != 0 ? context.hashGenesis.SubString(8) : "",
                         PACKET.DATA);
                 }
+                return true;
+            }
+
+            /* KEEPALIVE_V2 (0xD100) — 8-byte payload: [sequence(4)][hashPrevBlock_lo32(4)]
+             * Replies with KEEPALIVE_V2_ACK (0xD101) — 28-byte chain state telemetry. */
+            if(PACKET.HEADER == OpcodeUtility::Stateless::KEEPALIVE_V2)
+            {
+                if(!context.fAuthenticated)
+                {
+                    debug::log(0, FUNCTION, "KEEPALIVE_V2 rejected: not authenticated from ",
+                               GetAddress().ToStringIP());
+                    return true;
+                }
+
+                uint32_t nSequence = 0;
+                uint32_t nMinerPrevHashLo = 0;
+                if(PACKET.DATA.size() >= 8)
+                {
+                    nSequence        = (uint32_t(PACKET.DATA[0]) << 24) | (uint32_t(PACKET.DATA[1]) << 16)
+                                     | (uint32_t(PACKET.DATA[2]) <<  8) |  uint32_t(PACKET.DATA[3]);
+                    nMinerPrevHashLo = (uint32_t(PACKET.DATA[4]) << 24) | (uint32_t(PACKET.DATA[5]) << 16)
+                                     | (uint32_t(PACKET.DATA[6]) <<  8) |  uint32_t(PACKET.DATA[7]);
+                }
+
+                /* Refresh session timeout */
+                uint64_t nNow = runtime::unifiedtimestamp();
+                context = context.WithTimestamp(nNow).WithKeepaliveCount(context.nKeepaliveCount + 1);
+                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context,
+                    StatelessMinerManager::Get().GetMinerLane(context.strAddress).value_or(0));
+
+                /* Build KEEPALIVE_V2_ACK (0xD101) — 28-byte payload */
+                uint32_t nUnifiedHeight = static_cast<uint32_t>(TAO::Ledger::ChainState::nBestHeight.load());
+                uint1024_t hashBest     = TAO::Ledger::ChainState::hashBestChain.load();
+                std::vector<uint8_t> hashBytes = hashBest.GetBytes();
+                uint32_t nHashTipLo32 = 0;
+                if(hashBytes.size() >= 4)
+                    nHashTipLo32 = (uint32_t(hashBytes[0]) << 24) | (uint32_t(hashBytes[1]) << 16)
+                                 | (uint32_t(hashBytes[2]) <<  8) |  uint32_t(hashBytes[3]);
+
+                uint32_t nPrimeHeight = 0, nHashHeight = 0;
+                {
+                    TAO::Ledger::BlockState stPrime = TAO::Ledger::ChainState::tStateBest.load();
+                    TAO::Ledger::BlockState stHash  = TAO::Ledger::ChainState::tStateBest.load();
+                    if(TAO::Ledger::GetLastState(stPrime, 1)) nPrimeHeight = stPrime.nChannelHeight;
+                    if(TAO::Ledger::GetLastState(stHash,  2)) nHashHeight  = stHash.nChannelHeight;
+                }
+
+                /* fork_score: non-zero if miner's prevHash lo32 differs from our tip */
+                uint32_t nForkScore = (nMinerPrevHashLo != nHashTipLo32 && nMinerPrevHashLo != 0) ? 1 : 0;
+
+                std::vector<uint8_t> vAck;
+                vAck.reserve(28);
+                vAck.push_back((nSequence        >> 24) & 0xFF); vAck.push_back((nSequence        >> 16) & 0xFF);
+                vAck.push_back((nSequence        >>  8) & 0xFF); vAck.push_back((nSequence             ) & 0xFF);
+                vAck.push_back((nMinerPrevHashLo  >> 24) & 0xFF); vAck.push_back((nMinerPrevHashLo  >> 16) & 0xFF);
+                vAck.push_back((nMinerPrevHashLo  >>  8) & 0xFF); vAck.push_back((nMinerPrevHashLo       ) & 0xFF);
+                vAck.push_back((nUnifiedHeight   >> 24) & 0xFF); vAck.push_back((nUnifiedHeight   >> 16) & 0xFF);
+                vAck.push_back((nUnifiedHeight   >>  8) & 0xFF); vAck.push_back((nUnifiedHeight        ) & 0xFF);
+                vAck.push_back((nHashTipLo32     >> 24) & 0xFF); vAck.push_back((nHashTipLo32     >> 16) & 0xFF);
+                vAck.push_back((nHashTipLo32     >>  8) & 0xFF); vAck.push_back((nHashTipLo32          ) & 0xFF);
+                vAck.push_back((nPrimeHeight     >> 24) & 0xFF); vAck.push_back((nPrimeHeight     >> 16) & 0xFF);
+                vAck.push_back((nPrimeHeight     >>  8) & 0xFF); vAck.push_back((nPrimeHeight          ) & 0xFF);
+                vAck.push_back((nHashHeight      >> 24) & 0xFF); vAck.push_back((nHashHeight      >> 16) & 0xFF);
+                vAck.push_back((nHashHeight      >>  8) & 0xFF); vAck.push_back((nHashHeight           ) & 0xFF);
+                vAck.push_back((nForkScore       >> 24) & 0xFF); vAck.push_back((nForkScore       >> 16) & 0xFF);
+                vAck.push_back((nForkScore       >>  8) & 0xFF); vAck.push_back((nForkScore            ) & 0xFF);
+
+                StatelessPacket ack(OpcodeUtility::Stateless::KEEPALIVE_V2_ACK);
+                ack.DATA   = vAck;
+                ack.LENGTH = static_cast<uint32_t>(vAck.size());
+                respond(ack);
+
+                debug::log(2, FUNCTION, "KEEPALIVE_V2 ACK: seq=", nSequence,
+                           " unified=", nUnifiedHeight,
+                           " prime=", nPrimeHeight, " hash=", nHashHeight,
+                           " fork_score=", nForkScore);
                 return true;
             }
 

@@ -1699,8 +1699,38 @@ namespace LLP
             vData = pBlock->Serialize();
         }
 
-        /* Create and write the response packet. */
-        respond(BLOCK_DATA, vData);
+        /* Build 12-byte metadata prefix + 216-byte block = 228 bytes total.
+         * NexusMiner wire protocol requires:
+         *   [0-3]   nUnifiedHeight  (big-endian)
+         *   [4-7]   nChannelHeight  (big-endian)
+         *   [8-11]  nBits           (big-endian)
+         *   [12-227] Block::Serialize() (216 bytes) */
+        uint32_t nUnifiedHeight = static_cast<uint32_t>(TAO::Ledger::ChainState::nBestHeight.load());
+        uint32_t nChannelHeightMeta = 0;
+        {
+            TAO::Ledger::BlockState stateChannelMeta = TAO::Ledger::ChainState::tStateBest.load();
+            if(TAO::Ledger::GetLastState(stateChannelMeta, pBlock->nChannel))
+                nChannelHeightMeta = stateChannelMeta.nChannelHeight;
+        }
+
+        std::vector<uint8_t> vPayload;
+        vPayload.reserve(12 + vData.size());
+        vPayload.push_back((nUnifiedHeight     >> 24) & 0xFF);
+        vPayload.push_back((nUnifiedHeight     >> 16) & 0xFF);
+        vPayload.push_back((nUnifiedHeight     >>  8) & 0xFF);
+        vPayload.push_back((nUnifiedHeight          ) & 0xFF);
+        vPayload.push_back((nChannelHeightMeta >> 24) & 0xFF);
+        vPayload.push_back((nChannelHeightMeta >> 16) & 0xFF);
+        vPayload.push_back((nChannelHeightMeta >>  8) & 0xFF);
+        vPayload.push_back((nChannelHeightMeta      ) & 0xFF);
+        vPayload.push_back((pBlock->nBits      >> 24) & 0xFF);
+        vPayload.push_back((pBlock->nBits      >> 16) & 0xFF);
+        vPayload.push_back((pBlock->nBits      >>  8) & 0xFF);
+        vPayload.push_back((pBlock->nBits           ) & 0xFF);
+        vPayload.insert(vPayload.end(), vData.begin(), vData.end());
+
+        /* Create and write the response packet using 16-bit stateless framing. */
+        respond_stateless(OpcodeUtility::Stateless::BLOCK_DATA, vPayload);
 
         /* Update last template channel height after sending template.
          * Uses channel-specific height (not unified) to prevent false template
@@ -1715,8 +1745,10 @@ namespace LLP
         debug::log(0, FUNCTION, "[BLOCK CREATE] hashPrevBlock = ", pBlock->hashPrevBlock.SubString(),
                    " (template anchor baked in, unified height ", pBlock->nHeight, ")");
         debug::log(2, FUNCTION, "[BLOCK CREATE] hashPrevBlock FULL (MSB-first): ", pBlock->hashPrevBlock.GetHex());
-        debug::log(2, FUNCTION, "Sent BLOCK_DATA (", vData.size(), " bytes)"
-                   " channel=", pBlock->nChannel, " height=", pBlock->nHeight);
+        debug::log(2, FUNCTION, "Sent BLOCK_DATA (", vPayload.size(), " bytes)"
+                   " channel=", pBlock->nChannel, " height=", pBlock->nHeight,
+                   " [nUnifiedHeight=", nUnifiedHeight, " nChannelHeight=", nChannelHeightMeta,
+                   " nBits=", pBlock->nBits, "]");
 
         /* Notify Colin agent: template pushed via GET_BLOCK */
         if(hashGenesis != 0)
@@ -2102,11 +2134,33 @@ namespace LLP
 
                     if(!vBlockData.empty())
                     {
-                        respond(BLOCK_DATA, vBlockData);
+                        /* Build 12-byte metadata prefix + 216-byte block = 228 bytes */
+                        uint32_t nUnifiedHeightRound = static_cast<uint32_t>(TAO::Ledger::ChainState::nBestHeight.load());
+                        uint32_t nBitsVal = pBlock->nBits;
+                        std::vector<uint8_t> vPayload;
+                        vPayload.reserve(12 + vBlockData.size());
+                        vPayload.push_back((nUnifiedHeightRound  >> 24) & 0xFF);
+                        vPayload.push_back((nUnifiedHeightRound  >> 16) & 0xFF);
+                        vPayload.push_back((nUnifiedHeightRound  >>  8) & 0xFF);
+                        vPayload.push_back((nUnifiedHeightRound       ) & 0xFF);
+                        vPayload.push_back((nCurrentChannelHeight >> 24) & 0xFF);
+                        vPayload.push_back((nCurrentChannelHeight >> 16) & 0xFF);
+                        vPayload.push_back((nCurrentChannelHeight >>  8) & 0xFF);
+                        vPayload.push_back((nCurrentChannelHeight      ) & 0xFF);
+                        vPayload.push_back((nBitsVal             >> 24) & 0xFF);
+                        vPayload.push_back((nBitsVal             >> 16) & 0xFF);
+                        vPayload.push_back((nBitsVal             >>  8) & 0xFF);
+                        vPayload.push_back((nBitsVal                  ) & 0xFF);
+                        vPayload.insert(vPayload.end(), vBlockData.begin(), vBlockData.end());
+
+                        respond_stateless(OpcodeUtility::Stateless::BLOCK_DATA, vPayload);
 
                         debug::log(2, FUNCTION, "Auto-sent BLOCK_DATA (",
-                                   vBlockData.size(), " bytes) channel=",
-                                   pBlock->nChannel, " height=", pBlock->nHeight);
+                                   vPayload.size(), " bytes) channel=",
+                                   pBlock->nChannel, " height=", pBlock->nHeight,
+                                   " [nUnifiedHeight=", nUnifiedHeightRound,
+                                   " nChannelHeight=", nCurrentChannelHeight,
+                                   " nBits=", nBitsVal, "]");
 
                         StatelessMinerManager::Get().IncrementTemplatesServed();
 
