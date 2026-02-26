@@ -39,8 +39,9 @@ namespace LLP
      *     recorded atomically after the first dispatch.  Any re-entry with the
      *     same key (e.g. accidental double call from SetBest) is silently dropped.
      *
-     *  3. LOGGING: one line per (channel, lane) so operators can verify the
-     *     exact send count at verbosity 0.
+     *  3. LOGGING: at verbosity 0, emit one line per (channel, lane) plus a
+     *     per-channel summary line so operators can verify both individual
+     *     sends and overall counts.
      *
      *  USAGE (state.cpp)
      *  =================
