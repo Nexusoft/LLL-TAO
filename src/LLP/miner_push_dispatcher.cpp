@@ -71,22 +71,11 @@ namespace LLP
         if (config::fShutdown.load())
             return;
 
-        /* Extract the first 4 bytes of hashBestChain as a uint32_t for dedup.
-         * GetBytes() on a uint1024_t always returns exactly 128 bytes (little-endian). */
-        const std::vector<uint8_t> vHashBytes = hashBestChain.GetBytes();
-        uint32_t hashPrefix4 = 0;
-        if (vHashBytes.size() == 128)
-        {
-            hashPrefix4 = (static_cast<uint32_t>(vHashBytes[3]) << 24)
-                        | (static_cast<uint32_t>(vHashBytes[2]) << 16)
-                        | (static_cast<uint32_t>(vHashBytes[1]) <<  8)
-                        |  static_cast<uint32_t>(vHashBytes[0]);
-        }
-        else
-        {
-            debug::error(FUNCTION, "Unexpected hashBestChain byte count: ", vHashBytes.size(),
-                         " (expected 128); dedup prefix will be 0");
-        }
+        /* Derive 32-bit dedup prefix from the first 64-bit limb of hashBestChain.
+         * uint1024_t stores bytes little-endian, so the low 32 bits of Get64(0)
+         * correspond to the first 4 bytes previously obtained via GetBytes(). */
+        const uint32_t hashPrefix4 =
+            static_cast<uint32_t>(hashBestChain.Get64(0) & 0xffffffffULL);
 
         const uint64_t nNewKey = make_dedup_key(nHeight, hashPrefix4);
 
