@@ -20,13 +20,25 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 
 /* Forward declarations */
-namespace LLP { class Packet; class StatelessPacket; }
+namespace LLP { class Packet; class StatelessPacket; struct PingFrame; }
 namespace TAO { namespace Ledger { class BlockState; } }
 
 namespace LLP
 {
     /** Protocol constants for mining **/
     static constexpr size_t TRITIUM_BLOCK_SIZE = 216;  // Serialized Tritium block template size
+
+    /** Colin PING/PONG diagnostic opcode constants **/
+    namespace ColinDiagOpcodes
+    {
+        /* Stateless lane (16-bit) */
+        static constexpr uint16_t PING_DIAG_STATELESS = 0xD0E0;
+        static constexpr uint16_t PONG_DIAG_STATELESS = 0xD0E1;
+
+        /* Legacy lane (8-bit, stored as uint16_t for uniformity) */
+        static constexpr uint16_t PING_DIAG_LEGACY    = 0x00E0;
+        static constexpr uint16_t PONG_DIAG_LEGACY    = 0x00E1;
+    }
 
     /** ProtocolLane
      *
@@ -113,6 +125,20 @@ namespace LLP
             const TAO::Ledger::BlockState& stateChannel,
             uint32_t nDifficulty,
             const uint1024_t& hashBestChain = uint1024_t(0));
+
+        /** BuildPingDiagPacket
+         *
+         *  Serialize a PingFrame into a lane-appropriate packet for wire transmission.
+         *
+         *  @tparam PacketType  Packet (legacy) or StatelessPacket (stateless)
+         *  @param[in] frame    Fully populated PingFrame
+         *  @param[in] lane     Protocol lane
+         *
+         *  @return PacketType with opcode set and DATA = frame.Serialize()
+         *
+         **/
+        template<typename PacketType>
+        static PacketType BuildPingDiagPacket(const PingFrame& frame, ProtocolLane lane);
 
     private:
         /** BuildPayload

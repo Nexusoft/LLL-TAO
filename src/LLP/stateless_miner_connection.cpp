@@ -2410,6 +2410,19 @@ namespace LLP
                 return true;
             }
 
+            /* PONG_DIAG — 64-byte diagnostic pong from miner */
+            if(PACKET.HEADER == ColinDiagOpcodes::PONG_DIAG_STATELESS)
+            {
+                if(PACKET.DATA.size() >= 64)
+                {
+                    /* Forward pong payload to Colin Agent for RTT computation and reporting */
+                    ColinMiningAgent::Get().on_pong_received(
+                        context.hashGenesis != 0 ? context.hashGenesis.SubString(8) : "",
+                        PACKET.DATA);
+                }
+                return true;
+            }
+
             /* For all other packets, route through StatelessMiner processor */
             ProcessResult result = StatelessMiner::ProcessPacket(context, PACKET);
 
