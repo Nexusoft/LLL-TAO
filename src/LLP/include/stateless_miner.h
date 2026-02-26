@@ -501,6 +501,11 @@ namespace LLP
         std::array<uint8_t, 4> nMinerPrevblockSuffix;  // Miner's reported prevblock suffix (raw bytes [4..7])
         bool     fKeepaliveV2;           // Whether this session negotiated keepalive v2
 
+        /* Channel heights from the last KEEPALIVE_V2 cycle.
+         * Persisted in context so stake height survives across keepalive cycles
+         * without requiring a ChainState re-query on every round. */
+        uint32_t nStakeHeight;           ///< Stake channel height from last KEEPALIVE_V2 cycle
+
         /** Default Constructor **/
         MiningContext();
 
@@ -659,6 +664,17 @@ namespace LLP
          *
          **/
         MiningContext WithKeepaliveV2(bool fV2_) const;
+
+        /** WithStakeHeight
+         *
+         *  Returns a new context with updated stake channel height.
+         *  Called after each KEEPALIVE_V2 cycle to persist nStakeHeight
+         *  across keepalive cycles without re-querying ChainState.
+         *
+         *  @param[in] h The Stake channel height from the last KEEPALIVE_V2 ACK
+         *
+         **/
+        MiningContext WithStakeHeight(uint32_t h) const;
 
         /** WithRewardAddress
          *

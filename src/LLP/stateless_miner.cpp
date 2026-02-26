@@ -95,6 +95,7 @@ namespace LLP
     , hashLastBlock(0)
     , nMinerPrevblockSuffix({})
     , fKeepaliveV2(false)
+    , nStakeHeight(0)
     {
     }
 
@@ -141,6 +142,7 @@ namespace LLP
     , hashLastBlock(0)
     , nMinerPrevblockSuffix({})
     , fKeepaliveV2(false)
+    , nStakeHeight(0)
     {
     }
 
@@ -276,6 +278,13 @@ namespace LLP
     {
         MiningContext c = *this;
         c.fKeepaliveV2 = fV2_;
+        return c;
+    }
+
+    MiningContext MiningContext::WithStakeHeight(uint32_t h) const
+    {
+        MiningContext c = *this;
+        c.nStakeHeight = h;
         return c;
     }
 
@@ -1646,7 +1655,8 @@ namespace LLP
         uint64_t nNow = runtime::unifiedtimestamp();
         MiningContext newContext = context
             .WithTimestamp(nNow)
-            .WithKeepaliveCount(context.nKeepaliveCount + 1);
+            .WithKeepaliveCount(context.nKeepaliveCount + 1)
+            .WithStakeHeight(nStakeHeight);
 
         return ProcessResult::Success(newContext, response);
     }

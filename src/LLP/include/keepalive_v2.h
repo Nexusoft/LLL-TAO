@@ -52,6 +52,16 @@ namespace LLP
      *    [20..23] nBits               (big-endian uint32; channel-appropriate difficulty)
      *    [24..27] hashBestChain_prefix (first 4 bytes of node hashBestChain via GetBytes())
      *
+     *  v2 Node → Client KEEPALIVE_V2_ACK (stateless, opcode 0xD101, len == 32):
+     *    [0..3]   sequence            (big-endian uint32; echo of miner sequence)
+     *    [4..7]   hashPrevBlock_lo32  (big-endian uint32; echo of miner prevHash canary)
+     *    [8..11]  unified_height      (big-endian uint32; node's unified block height)
+     *    [12..15] hash_tip_lo32       (big-endian uint32; low 32 bits of node hashBestChain)
+     *    [16..19] prime_height        (big-endian uint32; node's Prime channel height)
+     *    [20..23] hash_height         (big-endian uint32; node's Hash channel height)
+     *    [24..27] stake_height        (big-endian uint32; node's Stake channel height)
+     *    [28..31] fork_score          (big-endian uint32; 0 = healthy, >0 = latent fork divergence)
+     *
      **/
     namespace KeepaliveV2
     {
@@ -129,6 +139,17 @@ namespace LLP
                 return v;
             }
         };
+
+
+        /* IMPORTANT: BuildBestCurrentResponse() is for the LEGACY SESSION_KEEPALIVE path only
+         * (miner port 8323, opcode SESSION_KEEPALIVE). It produces a 28-byte payload.
+         * Do NOT use it to build KEEPALIVE_V2_ACK (stateless, opcode 0xD101) responses.
+         * The stateless ACK uses KeepAliveV2AckFrame::Serialize() which produces 32 bytes
+         * with a different layout including fork_score.
+         *
+         * This static_assert catches compile-time confusion between the two formats. */
+        static_assert(KeepAliveV2AckFrame::PAYLOAD_SIZE != 28,
+            "KeepAliveV2AckFrame must not be confused with BuildBestCurrentResponse (28-byte legacy format)");
 
 
         /** ParsePayload
