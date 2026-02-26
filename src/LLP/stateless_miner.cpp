@@ -1581,6 +1581,10 @@ namespace LLP
         const StatelessPacket& packet
     )
     {
+        /* Require authentication before accepting KEEPALIVE_V2 */
+        if(!context.fAuthenticated)
+            return ProcessResult::Error(context, "KEEPALIVE_V2: not authenticated");
+
         /* Parse the 8-byte KeepAliveV2Frame */
         KeepaliveV2::KeepAliveV2Frame frame;
         if(!frame.Parse(packet.DATA))
@@ -1606,6 +1610,10 @@ namespace LLP
         uint1024_t hashBestChain = TAO::Ledger::ChainState::hashBestChain.load();
         uint32_t nHashTipLo32 = static_cast<uint32_t>(hashBestChain.Get64(0) & 0xFFFFFFFF);
 
+        /* fork_score: non-zero when miner's prevHash lo32 differs from node tip —
+         * checked by Miner::IsForkDetected() as (hash_tip_lo32 != myHashPrevBlock_lo32 || fork_score > 0) */
+        uint32_t nForkScore = (frame.hashPrevBlock_lo32 != 0 && frame.hashPrevBlock_lo32 != nHashTipLo32) ? 1u : 0u;
+
         /* Build 28-byte ACK */
         KeepaliveV2::KeepAliveV2AckFrame ack;
         ack.sequence           = frame.sequence;
@@ -1614,19 +1622,26 @@ namespace LLP
         ack.hash_tip_lo32      = nHashTipLo32;
         ack.prime_height       = nPrimeHeight;
         ack.hash_height        = nHashHeight;
-        ack.fork_score         = 0;  /* Latent Fork Detection Manager not yet implemented */
+        ack.fork_score         = nForkScore;
 
         debug::log(3, FUNCTION, "KEEPALIVE_V2 seq=", frame.sequence,
                    " unified=", nUnifiedHeight,
                    " prime=", nPrimeHeight,
                    " hash=", nHashHeight,
-                   " hash_tip_lo32=0x", std::hex, nHashTipLo32, std::dec);
+                   " hash_tip_lo32=0x", std::hex, nHashTipLo32,
+                   " fork_score=", std::dec, nForkScore);
 
         StatelessPacket response(StatelessOpcodes::KEEPALIVE_V2_ACK);
         response.DATA   = ack.Serialize();
         response.LENGTH = static_cast<uint32_t>(response.DATA.size());
 
-        return ProcessResult::Success(context, response);
+        /* Update context: refresh timestamp and increment keepalive counter */
+        uint64_t nNow = runtime::unifiedtimestamp();
+        MiningContext newContext = context
+            .WithTimestamp(nNow)
+            .WithKeepaliveCount(context.nKeepaliveCount + 1);
+
+        return ProcessResult::Success(newContext, response);
     }
 
 
