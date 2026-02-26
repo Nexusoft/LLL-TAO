@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/include/push_notification.h>
+#include <LLP/include/colin_mining_agent.h>
 #include <LLP/packets/packet.h>
 #include <LLP/packets/stateless_packet.h>
 #include <LLP/include/opcode_utility.h>
@@ -132,6 +133,31 @@ namespace LLP
         notification.LENGTH = static_cast<uint32_t>(notification.DATA.size());
         
         return notification;
+    }
+
+    /* Template specialization for 8-bit Packet (legacy lane) */
+    template<>
+    Packet PushNotificationBuilder::BuildPingDiagPacket<Packet>(
+        const PingFrame& frame, ProtocolLane lane)
+    {
+        (void)lane;
+        Packet pkt;
+        pkt.HEADER = static_cast<uint8_t>(ColinDiagOpcodes::PING_DIAG_LEGACY & 0xFF);
+        pkt.DATA   = frame.Serialize();
+        pkt.LENGTH = static_cast<uint32_t>(pkt.DATA.size());
+        return pkt;
+    }
+
+    /* Template specialization for 16-bit StatelessPacket (stateless lane) */
+    template<>
+    StatelessPacket PushNotificationBuilder::BuildPingDiagPacket<StatelessPacket>(
+        const PingFrame& frame, ProtocolLane lane)
+    {
+        (void)lane;
+        StatelessPacket pkt(ColinDiagOpcodes::PING_DIAG_STATELESS);
+        pkt.DATA   = frame.Serialize();
+        pkt.LENGTH = static_cast<uint32_t>(pkt.DATA.size());
+        return pkt;
     }
 
 } // namespace LLP

@@ -18,6 +18,8 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 
 #include <algorithm>
+#include <cassert>
+#include <cmath>
 #include <functional>
 #include <iomanip>
 #include <sstream>
@@ -65,6 +67,50 @@ namespace LLP
             return std::string("║  ") + text + std::string(pad - 2, ' ') + std::string("║");
         }
     } // anonymous namespace
+
+
+    /* ── PingFrame implementation ────────────────────────────────────────── */
+
+    std::vector<uint8_t> PingFrame::Serialize() const
+    {
+        std::vector<uint8_t> v;
+        v.reserve(64);
+
+        auto push16 = [&](uint16_t x){
+            v.push_back((x >> 8) & 0xFF);
+            v.push_back( x       & 0xFF);
+        };
+        auto push32 = [&](uint32_t x){
+            v.push_back((x >> 24) & 0xFF);
+            v.push_back((x >> 16) & 0xFF);
+            v.push_back((x >>  8) & 0xFF);
+            v.push_back( x        & 0xFF);
+        };
+        auto push64 = [&](uint64_t x){
+            push32(static_cast<uint32_t>(x >> 32));
+            push32(static_cast<uint32_t>(x & 0xFFFFFFFF));
+        };
+
+        push16(opcode);
+        push16(version);
+        push32(sequence);
+        push64(timestamp_send_us);
+        push32(unified_height);
+        push32(channel_height);
+        push32(prime_pushes_30s);
+        push32(hash_pushes_30s);
+        push32(blocks_submitted);
+        push32(blocks_accepted);
+        push32(blocks_rejected);
+        push32(get_block_count);
+        v.push_back(health_flags);
+        v.push_back(channel_id);
+        push16(reserved);
+        for(int i = 0; i < 12; ++i) v.push_back(0x00);  // padding
+
+        assert(v.size() == 64);
+        return v;
+    }
 
 
     /* ── Singleton ───────────────────────────────────────────────────────── */
@@ -236,6 +282,62 @@ namespace LLP
     }
 
 
+    void ColinMiningAgent::on_pong_received(const std::string& genesis_prefix,
+                                             const std::vector<uint8_t>& payload)
+    {
+        if(payload.size() < 64)
+            return;  // Malformed — silently discard
+
+        /* Parse echoed sequence from bytes [4-7] */
+        uint32_t seq = (static_cast<uint32_t>(payload[4]) << 24)
+                     | (static_cast<uint32_t>(payload[5]) << 16)
+                     | (static_cast<uint32_t>(payload[6]) <<  8)
+                     |  static_cast<uint32_t>(payload[7]);
+
+        /* Parse echoed send timestamp from bytes [8-15] */
+        uint64_t ts_send = 0;
+        for(int i = 0; i < 8; ++i)
+            ts_send = (ts_send << 8) | payload[8 + i];
+
+        /* Compute RTT: now_us - ts_send */
+        using namespace std::chrono;
+        uint64_t now_us = static_cast<uint64_t>(
+            duration_cast<microseconds>(
+                system_clock::now().time_since_epoch()).count());
+        uint64_t rtt_us = (now_us > ts_send) ? (now_us - ts_send) : 0;
+
+        /* Parse miner fields from bytes [24-40] */
+        auto rd32 = [&](int off) -> uint32_t {
+            return (static_cast<uint32_t>(payload[off])   << 24)
+                 | (static_cast<uint32_t>(payload[off+1]) << 16)
+                 | (static_cast<uint32_t>(payload[off+2]) <<  8)
+                 |  static_cast<uint32_t>(payload[off+3]);
+        };
+
+        uint32_t hash_rate   = rd32(24);
+        uint32_t temp_cdeg   = rd32(28);
+        uint32_t threads     = rd32(32);
+        uint32_t queue_depth = rd32(36);
+        uint8_t  mflags      = payload[40];
+
+        std::lock_guard<std::mutex> lock(m_mutex);
+        auto it = m_miners.find(genesis_prefix);
+        if(it == m_miners.end())
+            return;
+
+        PongRecord& pr = it->second.last_pong;
+        pr.rtt_prev_us         = pr.rtt_us;
+        pr.rtt_us              = rtt_us;
+        pr.sequence            = seq;
+        pr.miner_hash_rate     = hash_rate;
+        pr.miner_temp_cdeg     = temp_cdeg;
+        pr.miner_threads       = threads;
+        pr.miner_queue_depth   = queue_depth;
+        pr.miner_health_flags  = mflags;
+        pr.pong_received       = true;
+    }
+
+
     bool ColinMiningAgent::check_and_record_submission(uint32_t nHeight, uint64_t nNonce,
                                                         const std::string& merkleHex)
     {
@@ -277,6 +379,95 @@ namespace LLP
 
     /* ── Private implementation ──────────────────────────────────────────── */
 
+    PingFrame ColinMiningAgent::build_ping_frame(const MinerStats& stats,
+                                                  const GlobalStats& global,
+                                                  uint32_t u_height,
+                                                  uint32_t c_height,
+                                                  uint8_t  channel_id) const
+    {
+        using namespace std::chrono;
+        uint64_t now_us = static_cast<uint64_t>(
+            duration_cast<microseconds>(
+                system_clock::now().time_since_epoch()).count());
+
+        PingFrame f;
+        /* Use stateless opcode by default; connection layer may override for legacy */
+        f.opcode             = 0xD0E0;
+        f.version            = 0x0001;
+        f.sequence           = stats.ping_sequence;
+        f.timestamp_send_us  = now_us;
+        f.unified_height     = u_height;
+        f.channel_height     = c_height;
+        f.prime_pushes_30s   = global.prime_pushes;
+        f.hash_pushes_30s    = global.hash_pushes;
+        f.blocks_submitted   = stats.blocks_submitted;
+        f.blocks_accepted    = stats.blocks_accepted;
+        f.blocks_rejected    = stats.blocks_rejected;
+        f.get_block_count    = stats.get_block_count;
+        f.channel_id         = channel_id;
+
+        /* Build node-side health flags */
+        uint8_t hf = 0;
+        if(stats.connection_count > 1)
+            hf |= PingFrame::FLAG_SIM_LINK_ACTIVE;
+        if(stats.get_block_rate_limited > 0)
+            hf |= PingFrame::FLAG_RATE_LIMITED;
+        if(stats.blocks_submitted > 0)
+        {
+            uint32_t rej_pct = static_cast<uint32_t>(
+                (static_cast<uint64_t>(stats.blocks_rejected) * 100) / stats.blocks_submitted);
+            if(rej_pct > 20)
+                hf |= PingFrame::FLAG_HIGH_REJECT_RATE;
+        }
+        if(stats.connection_count == 1 &&
+           duration_cast<seconds>(steady_clock::now() - stats.connected_at).count() < 120)
+            hf |= PingFrame::FLAG_FIRST_CONNECT;
+
+        f.health_flags = hf;
+        return f;
+    }
+
+
+    std::string ColinMiningAgent::format_rtt(uint64_t rtt_us)
+    {
+        std::ostringstream oss;
+        if(rtt_us < 1000)
+            oss << rtt_us << "\xC2\xB5s";
+        else
+            oss << std::fixed << std::setprecision(1)
+                << (static_cast<double>(rtt_us) / 1000.0) << "ms";
+        return oss.str();
+    }
+
+
+    std::string ColinMiningAgent::format_temp(uint32_t cdeg)
+    {
+        if(cdeg == 0) return "n/a";
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(1)
+            << (static_cast<double>(cdeg) / 10.0) << "\xC2\xB0" "C";
+        return oss.str();
+    }
+
+
+    std::string ColinMiningAgent::format_miner_health(uint8_t flags)
+    {
+        if(flags == 0) return "\xE2\x9C\x93 OK";
+        std::string out = "\xE2\x9A\xA0 ";
+        bool first = true;
+        auto add = [&](const char* s){ if(!first) out += " | "; out += s; first = false; };
+        if(flags & PongRecord::MFLAG_OVERHEATING)          add("OVERHEATING");
+        if(flags & PongRecord::MFLAG_LOW_MEMORY)           add("LOW_MEMORY");
+        if(flags & PongRecord::MFLAG_QUEUE_FULL)           add("QUEUE_FULL");
+        if(flags & PongRecord::MFLAG_HASH_RATE_DROP)       add("HASH_RATE_DROP");
+        if(flags & PongRecord::MFLAG_STALE_WORK)           add("STALE_WORK");
+        if(flags & PongRecord::MFLAG_RECONNECT_RECOVERY)   add("RECONNECT");
+        if(flags & PongRecord::MFLAG_WORK_REJECTED_LOCAL)  add("REJECTED_LOCAL");
+        if(flags & PongRecord::MFLAG_IDLE)                 add("IDLE");
+        return out;
+    }
+
+
     void ColinMiningAgent::run_report()
     {
         while(!m_stop.load())
@@ -301,6 +492,11 @@ namespace LLP
 
         {
             std::lock_guard<std::mutex> lock(m_mutex);
+
+            /* Bump ping sequence for each miner before snapshot */
+            for(auto& kv : m_miners)
+                kv.second.ping_sequence++;
+
             miners_copy = m_miners;
             global_copy = m_global;
 
@@ -352,6 +548,37 @@ namespace LLP
                                   + std::to_string(s.get_block_count)
                                   + " requests  Rate-limited: "
                                   + std::to_string(s.get_block_rate_limited)));
+
+            /* ── Colin PING Diagnostics ──────────────────────────────── */
+            {
+                debug::log(0, BoxLine("  \xE2\x94\x80 PING DIAGNOSTICS \xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80"));
+
+                if(s.last_pong.pong_received)
+                {
+                    int64_t rtt_delta = static_cast<int64_t>(s.last_pong.rtt_us)
+                                      - static_cast<int64_t>(s.last_pong.rtt_prev_us);
+                    std::string trend = (rtt_delta <= 0)
+                        ? ("\xE2\x96\xBC " + format_rtt(static_cast<uint64_t>(std::abs(rtt_delta))))
+                        : ("\xE2\x96\xB2 +" + format_rtt(static_cast<uint64_t>(rtt_delta)));
+
+                    debug::log(0, BoxLine("  PING #" + std::to_string(s.last_pong.sequence)
+                        + "   RTT: " + format_rtt(s.last_pong.rtt_us)
+                        + "   Trend: " + trend));
+
+                    debug::log(0, BoxLine("  HashRate: "
+                        + std::to_string(s.last_pong.miner_hash_rate) + " kH/s"
+                        + "  Temp: " + format_temp(s.last_pong.miner_temp_cdeg)
+                        + "  Threads: " + std::to_string(s.last_pong.miner_threads)
+                        + "  Queue: " + std::to_string(s.last_pong.miner_queue_depth)));
+
+                    debug::log(0, BoxLine("  Miner Health: "
+                        + format_miner_health(s.last_pong.miner_health_flags)));
+                }
+                else
+                {
+                    debug::log(0, BoxLine("  PING: awaiting first PONG response"));
+                }
+            }
 
             if(!s.last_rejection_reason.empty())
             {

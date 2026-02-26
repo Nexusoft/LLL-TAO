@@ -16,16 +16,145 @@ ________________________________________________________________________________
 #define NEXUS_LLP_INCLUDE_COLIN_MINING_AGENT_H
 
 #include <atomic>
+#include <cassert>
 #include <chrono>
 #include <map>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <unordered_map>
+#include <vector>
 #include <cstdint>
 
 namespace LLP
 {
+
+    /** PingFrame
+     *
+     *  64-byte cache-line-aligned diagnostic PING payload sent by the node
+     *  to each active miner during every Colin Agent emit_report() cycle.
+     *
+     *  Wire format: big-endian. Both lanes supported:
+     *    LEGACY    opcode: 0xE0 (8-bit)
+     *    STATELESS opcode: 0xD0E0 (16-bit)
+     *
+     *  LAYOUT (64 bytes):
+     *    [0-1]   uint16_t opcode              0xD0E0 stateless / 0xE0 legacy
+     *    [2-3]   uint16_t version             0x0001
+     *    [4-7]   uint32_t sequence            Monotonic per-miner counter
+     *    [8-15]  uint64_t timestamp_send_us   Node send time (µs since epoch)
+     *    [16-19] uint32_t unified_height      Chain height at send time
+     *    [20-23] uint32_t channel_height      Channel-specific height at send time
+     *    [24-27] uint32_t prime_pushes_30s    Prime pushes in last ~30s window
+     *    [28-31] uint32_t hash_pushes_30s     Hash pushes in last ~30s window
+     *    [32-35] uint32_t blocks_submitted    Miner submissions this interval
+     *    [36-39] uint32_t blocks_accepted     Miner accepted this interval
+     *    [40-43] uint32_t blocks_rejected     Miner rejected this interval
+     *    [44-47] uint32_t get_block_count     GET_BLOCK requests this interval
+     *    [48]    uint8_t  health_flags        Node-side health bit field
+     *    [49]    uint8_t  channel_id          0x01=PRIME 0x02=HASH
+     *    [50-51] uint16_t reserved            0x0000
+     *    [52-63] uint8_t  padding[12]         Zero-fill
+     *
+     *  health_flags bits:
+     *    7  STALE_TEMPLATE_DETECTED
+     *    6  RATE_LIMITED
+     *    5  SIM_LINK_ACTIVE
+     *    4  DEDUP_HIT
+     *    3  CHANNEL_MISMATCH
+     *    2  HIGH_REJECTION_RATE  (rejected > 20%)
+     *    1  FIRST_CONNECT
+     *    0  NODE_SYNCING
+     **/
+    struct alignas(64) PingFrame
+    {
+        uint16_t opcode{0};
+        uint16_t version{0x0001};
+        uint32_t sequence{0};
+        uint64_t timestamp_send_us{0};
+        uint32_t unified_height{0};
+        uint32_t channel_height{0};
+        uint32_t prime_pushes_30s{0};
+        uint32_t hash_pushes_30s{0};
+        uint32_t blocks_submitted{0};
+        uint32_t blocks_accepted{0};
+        uint32_t blocks_rejected{0};
+        uint32_t get_block_count{0};
+        uint8_t  health_flags{0};
+        uint8_t  channel_id{0};
+        uint16_t reserved{0};
+        uint8_t  padding[12]{};
+
+        /* health_flags bit constants */
+        static constexpr uint8_t FLAG_STALE_TEMPLATE    = 0x80;
+        static constexpr uint8_t FLAG_RATE_LIMITED       = 0x40;
+        static constexpr uint8_t FLAG_SIM_LINK_ACTIVE    = 0x20;
+        static constexpr uint8_t FLAG_DEDUP_HIT          = 0x10;
+        static constexpr uint8_t FLAG_CHANNEL_MISMATCH   = 0x08;
+        static constexpr uint8_t FLAG_HIGH_REJECT_RATE   = 0x04;
+        static constexpr uint8_t FLAG_FIRST_CONNECT      = 0x02;
+        static constexpr uint8_t FLAG_NODE_SYNCING       = 0x01;
+
+        /** Serialize to 64-byte big-endian wire vector **/
+        std::vector<uint8_t> Serialize() const;
+    };
+    static_assert(sizeof(PingFrame) == 64, "PingFrame must be exactly 64 bytes");
+
+
+    /** PongRecord
+     *
+     *  Stores the most recently received PongFrame data for a miner session.
+     *  Populated asynchronously when PONG_DIAG (0xD0E1 / 0xE1) arrives.
+     *  Read by emit_report() at the next Colin cycle.
+     *
+     *  PongFrame wire layout (64 bytes, big-endian):
+     *    [0-1]   uint16_t opcode              0xD0E1 stateless / 0xE1 legacy
+     *    [2-3]   uint16_t version             Echo of PingFrame version
+     *    [4-7]   uint32_t sequence            Echo of PingFrame sequence
+     *    [8-15]  uint64_t timestamp_send_us   Echo of PingFrame timestamp_send_us
+     *    [16-23] uint64_t timestamp_recv_us   Miner receive time (µs since epoch)
+     *    [24-27] uint32_t miner_hash_rate     kH/s (or chains/s for Prime)
+     *    [28-31] uint32_t miner_temp_cdeg     Temperature * 10 in Celsius (optional, 0=unknown)
+     *    [32-35] uint32_t miner_threads       Active mining thread count
+     *    [36-39] uint32_t miner_queue_depth   Internal work queue depth
+     *    [40]    uint8_t  miner_health_flags  Miner-side health bit field
+     *    [41]    uint8_t  echo_channel_id     Echo of PingFrame channel_id
+     *    [42-43] uint16_t reserved            0x0000
+     *    [44-63] uint8_t  padding[20]         Zero-fill
+     *
+     *  miner_health_flags bits:
+     *    7  OVERHEATING
+     *    6  LOW_MEMORY
+     *    5  QUEUE_FULL
+     *    4  HASH_RATE_DROP  (>20% drop since last ping)
+     *    3  STALE_WORK_DETECTED
+     *    2  RECONNECT_RECOVERY
+     *    1  WORK_REJECTED_LOCAL
+     *    0  IDLE
+     **/
+    struct PongRecord
+    {
+        uint32_t sequence{0};
+        uint64_t rtt_us{0};          // Computed: now_us - timestamp_send_us on pong receive
+        uint64_t rtt_prev_us{0};     // Previous cycle RTT for trend
+        uint32_t miner_hash_rate{0};
+        uint32_t miner_temp_cdeg{0};
+        uint32_t miner_threads{0};
+        uint32_t miner_queue_depth{0};
+        uint8_t  miner_health_flags{0};
+        bool     pong_received{false};
+
+        /* miner_health_flags bit constants */
+        static constexpr uint8_t MFLAG_OVERHEATING        = 0x80;
+        static constexpr uint8_t MFLAG_LOW_MEMORY         = 0x40;
+        static constexpr uint8_t MFLAG_QUEUE_FULL         = 0x20;
+        static constexpr uint8_t MFLAG_HASH_RATE_DROP     = 0x10;
+        static constexpr uint8_t MFLAG_STALE_WORK         = 0x08;
+        static constexpr uint8_t MFLAG_RECONNECT_RECOVERY = 0x04;
+        static constexpr uint8_t MFLAG_WORK_REJECTED_LOCAL= 0x02;
+        static constexpr uint8_t MFLAG_IDLE               = 0x01;
+    };
+
 
     /** ColinMiningAgent
      *
@@ -128,6 +257,19 @@ namespace LLP
         void on_get_block_received(const std::string& genesis_prefix, bool rate_limited);
 
 
+        /** on_pong_received
+         *
+         *  Called by stateless_miner_connection when a PONG_DIAG frame arrives.
+         *  Parses the 64-byte PongFrame payload, computes RTT, stores in MinerStats.
+         *
+         *  @param[in] genesis_prefix  First 8 hex chars of miner genesis
+         *  @param[in] payload         Raw 64-byte PongFrame wire data
+         *
+         **/
+        void on_pong_received(const std::string& genesis_prefix,
+                              const std::vector<uint8_t>& payload);
+
+
         /** check_and_record_submission
          *
          *  Thread-safe deduplication check for SUBMIT_BLOCK across connections.
@@ -173,14 +315,6 @@ namespace LLP
         ColinMiningAgent& operator=(const ColinMiningAgent&) = delete;
 
 
-        /** run_report — thread entry point **/
-        void run_report();
-
-
-        /** emit_report — formats and logs the diagnostic report **/
-        void emit_report();
-
-
         /** Per-miner statistics **/
         struct MinerStats
         {
@@ -195,6 +329,8 @@ namespace LLP
             uint32_t get_block_rate_limited{0};
             std::chrono::steady_clock::time_point connected_at;
             std::chrono::steady_clock::time_point last_submit;
+            uint32_t    ping_sequence{0};   // Monotonic ping counter for this miner
+            PongRecord  last_pong;          // Latest pong data (updated async)
         };
 
         /** Global push statistics (across all miners) **/
@@ -203,6 +339,43 @@ namespace LLP
             uint32_t prime_pushes{0};
             uint32_t hash_pushes{0};
         };
+
+
+        /** run_report — thread entry point **/
+        void run_report();
+
+
+        /** emit_report — formats and logs the diagnostic report **/
+        void emit_report();
+
+
+        /** build_ping_frame
+         *
+         *  Builds a PingFrame for a given miner using the current MinerStats snapshot.
+         *
+         *  @param[in] stats        Snapshot of per-miner stats
+         *  @param[in] global       Snapshot of global push stats
+         *  @param[in] u_height     Unified chain height
+         *  @param[in] c_height     Channel-specific height
+         *  @param[in] channel_id   0x01=PRIME, 0x02=HASH
+         *
+         *  @return Populated PingFrame ready for serialization
+         *
+         **/
+        PingFrame build_ping_frame(const MinerStats& stats,
+                                   const GlobalStats& global,
+                                   uint32_t u_height,
+                                   uint32_t c_height,
+                                   uint8_t  channel_id) const;
+
+        /** format_rtt — format microsecond RTT as human string (e.g. "4.2ms") **/
+        static std::string format_rtt(uint64_t rtt_us);
+
+        /** format_temp — format cdeg temperature (e.g. "68.3°C" or "n/a") **/
+        static std::string format_temp(uint32_t cdeg);
+
+        /** format_miner_health — expand miner_health_flags to a status string **/
+        static std::string format_miner_health(uint8_t flags);
 
         std::mutex                          m_mutex;
         std::map<std::string, MinerStats>   m_miners;     // keyed by genesis_prefix

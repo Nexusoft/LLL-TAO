@@ -1147,6 +1147,14 @@ namespace LLP
                 return true;
             }
 
+            /* PONG_DIAG (legacy lane) — echo back to Colin Agent */
+            case static_cast<uint8_t>(ColinDiagOpcodes::PONG_DIAG_LEGACY & 0xFF):
+            {
+                if(PACKET.DATA.size() >= 64 && hashGenesis != 0)
+                    ColinMiningAgent::Get().on_pong_received(hashGenesis.SubString(8), PACKET.DATA);
+                return true;
+            }
+
             /* Fallback for unknown commands - log and return error */
             default:
                 debug::log(0, FUNCTION, "MinerLLP: COMMAND NOT FOUND (stateless) header=0x", std::hex, 
