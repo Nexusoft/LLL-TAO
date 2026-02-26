@@ -1803,6 +1803,33 @@ TEST_CASE("MiningContext Keepalive Tracking Fields", "[stateless_miner][keepaliv
         REQUIRE(updated.nLastKeepaliveTime == 999);
         REQUIRE(updated.nTimestamp == 1000);
     }
+
+    SECTION("WithStakeHeight creates new context with updated stake height")
+    {
+        MiningContext ctx;
+        REQUIRE(ctx.nStakeHeight == 0u);
+
+        MiningContext updated = ctx.WithStakeHeight(777u);
+
+        REQUIRE(ctx.nStakeHeight == 0u);       /* Original unchanged */
+        REQUIRE(updated.nStakeHeight == 777u); /* New context updated */
+    }
+
+    SECTION("WithStakeHeight chains correctly with other With* methods")
+    {
+        MiningContext ctx;
+        MiningContext updated = ctx
+            .WithKeepaliveCount(5)
+            .WithStakeHeight(999u)
+            .WithTimestamp(12345);
+
+        REQUIRE(updated.nKeepaliveCount == 5);
+        REQUIRE(updated.nStakeHeight == 999u);
+        REQUIRE(updated.nTimestamp == 12345);
+        /* Originals unchanged */
+        REQUIRE(ctx.nStakeHeight == 0u);
+        REQUIRE(ctx.nKeepaliveCount == 0);
+    }
 }
 
 
