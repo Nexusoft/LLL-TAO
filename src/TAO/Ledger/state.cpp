@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 #include <LLP/include/inv.h>
 #include <LLP/include/channel_state_manager.h>
+#include <LLP/include/miner_push_dispatcher.h>
 
 #include <Legacy/types/legacy.h>
 #include <Legacy/wallet/wallet.h>
@@ -1144,8 +1145,6 @@ namespace TAO
                 }
                 else
                 {
-                    uint32_t nBlockChannel = GetChannel();  // 0=Stake, 1=Prime, 2=Hash
-
                     /* Diagnostic log: compute per-channel state only when verbosity warrants it
                      * (GetLastState and GetNextTargetRequired can involve disk I/O) */
                     if(config::nVerbose >= 2)
@@ -1165,7 +1164,7 @@ namespace TAO
                                    " nBits=0x", std::hex, nPrimeBits, std::dec,
                                    " | Hash ch=", stateHash.nChannelHeight,
                                    " nBits=0x", std::hex, nHashBits, std::dec,
-                                   " (block_ch=", nBlockChannel, ")");
+                                   " (block_ch=", GetChannel(), ")");
                     }
 
                     /* BroadcastChannelNotification — unified pathway that sends to BOTH lanes.

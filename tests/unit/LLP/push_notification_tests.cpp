@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <unit/catch2/catch.hpp>
 
 #include <LLP/include/push_notification.h>
+#include <LLP/include/miner_push_dispatcher.h>
 #include <LLP/packets/packet.h>
 #include <LLP/packets/stateless_packet.h>
 #include <LLP/include/opcode_utility.h>
