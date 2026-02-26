@@ -1505,7 +1505,7 @@ namespace LLP
         bool fSendV2 = (fIsV2 || newContext.fKeepaliveV2);
         if(fSendV2)
         {
-            /* Gather current chain state for BESTCURRENT telemetry */
+            /* Gather current chain state for unified 32-byte reply */
             TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
             uint32_t nUnifiedHeight = stateBest.nHeight;
 
@@ -1524,43 +1524,28 @@ namespace LLP
             if(TAO::Ledger::GetLastState(stateChannel, 0))
                 nStakeHeight = stateChannel.nChannelHeight;
 
-            /* Use the miner's subscribed channel for nBits; fall back to mining channel */
-            uint32_t nBitsChannel = (newContext.nSubscribedChannel != 0)
-                                  ? newContext.nSubscribedChannel
-                                  : newContext.nChannel;
-            if(nBitsChannel == 0) nBitsChannel = 1; /* default to Prime */
-            uint32_t nBits = TAO::Ledger::GetNextTargetRequired(stateBest, nBitsChannel, false);
-
             uint1024_t hashBestChain = TAO::Ledger::ChainState::hashBestChain.load();
+            uint32_t nHashTipLo32 = static_cast<uint32_t>(hashBestChain.Get64(0) & 0xFFFFFFFF);
 
-            std::vector<uint8_t> vV2 = KeepaliveV2::BuildBestCurrentResponse(
+            std::vector<uint8_t> vV2 = KeepaliveV2::BuildUnifiedResponse(
                 newContext.nSessionId,
+                0u,                // hashPrevBlock_lo32: legacy path has no miner canary echo — use 0
                 nUnifiedHeight,
+                nHashTipLo32,
                 nPrimeHeight,
                 nHashHeight,
                 nStakeHeight,
-                nBits,
-                hashBestChain);
+                0u);               // fork_score: legacy path does not compute fork score — use 0
 
             response.DATA = vV2;
 
-            std::vector<uint8_t> vHashBytes = hashBestChain.GetBytes();
-            std::string strHashPrefix = "";
-            for(int i = 0; i < 4 && i < static_cast<int>(vHashBytes.size()); ++i)
-            {
-                char buf[3];
-                std::snprintf(buf, sizeof(buf), "%02x", vHashBytes[i]);
-                strHashPrefix += buf;
-            }
-
-            debug::log(nLogLevel, FUNCTION, "SESSION_KEEPALIVE v2 BESTCURRENT reply: sessionId=",
+            debug::log(nLogLevel, FUNCTION, "SESSION_KEEPALIVE unified reply (32 bytes): sessionId=",
                        newContext.nSessionId,
                        " unified=", nUnifiedHeight,
                        " prime=", nPrimeHeight,
                        " hash=", nHashHeight,
                        " stake=", nStakeHeight,
-                       " nBits=0x", std::hex, nBits, std::dec,
-                       " hashPrefix=", strHashPrefix);
+                       " hash_tip_lo32=0x", std::hex, nHashTipLo32, std::dec);
         }
         else
         {
@@ -1618,7 +1603,7 @@ namespace LLP
 
         stateChannel = stateBest;
         uint32_t nStakeHeight = 0;
-        if(TAO::Ledger::GetLastState(stateChannel, 3))
+        if(TAO::Ledger::GetLastState(stateChannel, 0))
             nStakeHeight = stateChannel.nChannelHeight;
 
         uint1024_t hashBestChain = TAO::Ledger::ChainState::hashBestChain.load();
@@ -1628,16 +1613,16 @@ namespace LLP
          * checked by Miner::IsForkDetected() as (hash_tip_lo32 != myHashPrevBlock_lo32 || fork_score > 0) */
         uint32_t nForkScore = (frame.hashPrevBlock_lo32 != 0 && frame.hashPrevBlock_lo32 != nHashTipLo32) ? 1u : 0u;
 
-        /* Build 32-byte ACK */
-        KeepaliveV2::KeepAliveV2AckFrame ack;
-        ack.sequence           = frame.sequence;
-        ack.hashPrevBlock_lo32 = frame.hashPrevBlock_lo32;
-        ack.unified_height     = nUnifiedHeight;
-        ack.hash_tip_lo32      = nHashTipLo32;
-        ack.prime_height       = nPrimeHeight;
-        ack.hash_height        = nHashHeight;
-        ack.stake_height       = nStakeHeight;
-        ack.fork_score         = nForkScore;
+        /* Build 32-byte unified ACK */
+        std::vector<uint8_t> vAck = KeepaliveV2::BuildUnifiedResponse(
+            context.nSessionId,        // session_id — authoritative session identifier
+            frame.hashPrevBlock_lo32,  // echo miner's fork canary
+            nUnifiedHeight,
+            nHashTipLo32,
+            nPrimeHeight,
+            nHashHeight,
+            nStakeHeight,
+            nForkScore);
 
         debug::log(3, FUNCTION, "KEEPALIVE_V2 seq=", frame.sequence,
                    " unified=", nUnifiedHeight,
@@ -1648,7 +1633,7 @@ namespace LLP
                    " fork_score=", std::dec, nForkScore);
 
         StatelessPacket response(StatelessOpcodes::KEEPALIVE_V2_ACK);
-        response.DATA   = ack.Serialize();
+        response.DATA   = vAck;
         response.LENGTH = static_cast<uint32_t>(response.DATA.size());
 
         /* Update context: refresh timestamp and increment keepalive counter */

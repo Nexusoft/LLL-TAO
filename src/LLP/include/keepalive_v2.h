@@ -14,8 +14,6 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_INCLUDE_KEEPALIVE_V2_H
 #define NEXUS_LLP_INCLUDE_KEEPALIVE_V2_H
 
-#include <LLC/types/uint1024.h>
-
 #include <array>
 #include <cstdint>
 #include <vector>
@@ -43,24 +41,18 @@ namespace LLP
      *    Stateless lane (len == 5): [0] status byte (0x01 = active) +
      *                               [1..4] remaining_timeout (little-endian uint32)
      *
-     *  v2 Node → Client BESTCURRENT (len == 28):
-     *    [0..3]   session_id          (little-endian uint32, same as v1)
-     *    [4..7]   unified_height      (big-endian uint32)
-     *    [8..11]  prime_height        (big-endian uint32)
-     *    [12..15] hash_height         (big-endian uint32)
-     *    [16..19] stake_height        (big-endian uint32)
-     *    [20..23] nBits               (big-endian uint32; channel-appropriate difficulty)
-     *    [24..27] hashBestChain_prefix (first 4 bytes of node hashBestChain via GetBytes())
+     *  v2 Node → Client UNIFIED (len == 32):
+     *    Used on BOTH ports — SESSION_KEEPALIVE (port 8323) and KEEPALIVE_V2_ACK (port 9323, 0xD101).
+     *    [0..3]   session_id          (little-endian uint32; session validation)
+     *    [4..7]   hashPrevBlock_lo32  (big-endian uint32; echo of miner's fork canary, 0 on legacy path)
+     *    [8..11]  unified_height      (big-endian uint32)
+     *    [12..15] hash_tip_lo32       (big-endian uint32; lo32 of node hashBestChain, fork cross-check)
+     *    [16..19] prime_height        (big-endian uint32)
+     *    [20..23] hash_height         (big-endian uint32)
+     *    [24..27] stake_height        (big-endian uint32)
+     *    [28..31] fork_score          (big-endian uint32; 0=healthy, >0=divergence magnitude)
      *
-     *  v2 Node → Client KEEPALIVE_V2_ACK (stateless, opcode 0xD101, len == 32):
-     *    [0..3]   sequence            (big-endian uint32; echo of miner sequence)
-     *    [4..7]   hashPrevBlock_lo32  (big-endian uint32; echo of miner prevHash canary)
-     *    [8..11]  unified_height      (big-endian uint32; node's unified block height)
-     *    [12..15] hash_tip_lo32       (big-endian uint32; low 32 bits of node hashBestChain)
-     *    [16..19] prime_height        (big-endian uint32; node's Prime channel height)
-     *    [20..23] hash_height         (big-endian uint32; node's Hash channel height)
-     *    [24..27] stake_height        (big-endian uint32; node's Stake channel height)
-     *    [28..31] fork_score          (big-endian uint32; 0 = healthy, >0 = latent fork divergence)
+     *  nBits is NOT included — miner obtains difficulty from the 12-byte GET_BLOCK response.
      *
      **/
     namespace KeepaliveV2
@@ -93,28 +85,35 @@ namespace LLP
         };
 
 
-        /** KeepAliveV2AckFrame — 32-byte frame built by Node and sent to Miner (KEEPALIVE_V2_ACK)
+        /** KeepAliveV2AckFrame — 32-byte unified keepalive response (both SESSION_KEEPALIVE and KEEPALIVE_V2_ACK)
          *
-         *  Wire format (big-endian):
-         *    [0-3]   uint32_t  sequence            Echo of miner's sequence
-         *    [4-7]   uint32_t  hashPrevBlock_lo32  Echo of miner's prevHash canary (from request)
-         *    [8-11]  uint32_t  unified_height      Node's unified block height
-         *    [12-15] uint32_t  hash_tip_lo32       Low 32 bits of node's hashBestChain
-         *    [16-19] uint32_t  prime_height        Node's Prime channel height
-         *    [20-23] uint32_t  hash_height         Node's Hash channel height
-         *    [24-27] uint32_t  stake_height        Node's Stake channel height
-         *    [28-31] uint32_t  fork_score          0 = healthy, >0 = latent fork divergence
+         *  Wire format:
+         *    [0-3]   uint32_t  session_id          little-endian — session validation
+         *    [4-7]   uint32_t  hashPrevBlock_lo32  big-endian — echo of miner's fork canary
+         *    [8-11]  uint32_t  unified_height      big-endian
+         *    [12-15] uint32_t  hash_tip_lo32       big-endian — lo32 of node hashBestChain
+         *    [16-19] uint32_t  prime_height        big-endian
+         *    [20-23] uint32_t  hash_height         big-endian
+         *    [24-27] uint32_t  stake_height        big-endian
+         *    [28-31] uint32_t  fork_score          big-endian — 0=healthy, >0=divergence
+         *
+         *  Used on BOTH ports:
+         *    - Legacy SESSION_KEEPALIVE response (port 8323)   replaces BuildBestCurrentResponse()
+         *    - Stateless KEEPALIVE_V2_ACK (port 9323, 0xD101) replaces the old sequence-based format
+         *
+         *  nBits is NOT included — miner obtains difficulty from the 12-byte GET_BLOCK response.
+         *  hashBestChain_prefix is NOT included — hash_tip_lo32 serves the fork-canary role.
          **/
         struct KeepAliveV2AckFrame
         {
-            uint32_t sequence{0};
-            uint32_t hashPrevBlock_lo32{0};
-            uint32_t unified_height{0};
-            uint32_t hash_tip_lo32{0};
-            uint32_t prime_height{0};
-            uint32_t hash_height{0};
-            uint32_t stake_height{0};
-            uint32_t fork_score{0};
+            uint32_t session_id{0};         // [0-3]  LE — session validation
+            uint32_t hashPrevBlock_lo32{0}; // [4-7]  BE — echo of miner's fork canary
+            uint32_t unified_height{0};     // [8-11] BE
+            uint32_t hash_tip_lo32{0};      // [12-15] BE — lo32 of node hashBestChain
+            uint32_t prime_height{0};       // [16-19] BE
+            uint32_t hash_height{0};        // [20-23] BE
+            uint32_t stake_height{0};       // [24-27] BE
+            uint32_t fork_score{0};         // [28-31] BE
 
             static constexpr uint32_t PAYLOAD_SIZE = 32;
 
@@ -122,34 +121,69 @@ namespace LLP
             {
                 std::vector<uint8_t> v;
                 v.reserve(32);
-                auto p32 = [&](uint32_t x) {
+
+                // session_id: little-endian (matches legacy SESSION_KEEPALIVE encoding)
+                v.push_back(static_cast<uint8_t>( session_id        & 0xFF));
+                v.push_back(static_cast<uint8_t>((session_id >>  8) & 0xFF));
+                v.push_back(static_cast<uint8_t>((session_id >> 16) & 0xFF));
+                v.push_back(static_cast<uint8_t>((session_id >> 24) & 0xFF));
+
+                // remaining fields: big-endian
+                auto p32be = [&](uint32_t x) {
                     v.push_back((x >> 24) & 0xFF);
                     v.push_back((x >> 16) & 0xFF);
                     v.push_back((x >>  8) & 0xFF);
                     v.push_back( x        & 0xFF);
                 };
-                p32(sequence);
-                p32(hashPrevBlock_lo32);
-                p32(unified_height);
-                p32(hash_tip_lo32);
-                p32(prime_height);
-                p32(hash_height);
-                p32(stake_height);
-                p32(fork_score);
+                p32be(hashPrevBlock_lo32);
+                p32be(unified_height);
+                p32be(hash_tip_lo32);
+                p32be(prime_height);
+                p32be(hash_height);
+                p32be(stake_height);
+                p32be(fork_score);
                 return v;
             }
         };
 
 
-        /* IMPORTANT: BuildBestCurrentResponse() is for the LEGACY SESSION_KEEPALIVE path only
-         * (miner port 8323, opcode SESSION_KEEPALIVE). It produces a 28-byte payload.
-         * Do NOT use it to build KEEPALIVE_V2_ACK (stateless, opcode 0xD101) responses.
-         * The stateless ACK uses KeepAliveV2AckFrame::Serialize() which produces 32 bytes
-         * with a different layout including fork_score.
+        /** BuildUnifiedResponse
          *
-         * This static_assert catches compile-time confusion between the two formats. */
-        static_assert(KeepAliveV2AckFrame::PAYLOAD_SIZE != 28,
-            "KeepAliveV2AckFrame must not be confused with BuildBestCurrentResponse (28-byte legacy format)");
+         *  Build the 32-byte unified keepalive response used on both legacy and stateless paths.
+         *  Replaces BuildBestCurrentResponse() which is now deleted.
+         *
+         *  @param[in] nSessionId      Session identifier (little-endian in wire format)
+         *  @param[in] nHashPrevLo32   Lo32 of miner's hashPrevBlock echo (from request, 0 if legacy path)
+         *  @param[in] nUnifiedHeight  Current unified best-chain height
+         *  @param[in] nHashTipLo32    Lo32 of node's current hashBestChain
+         *  @param[in] nPrimeHeight    Current Prime channel height
+         *  @param[in] nHashHeight     Current Hash channel height
+         *  @param[in] nStakeHeight    Current Stake channel height
+         *  @param[in] nForkScore      Fork divergence score (0=healthy; use 0 on legacy path)
+         *
+         *  @return 32-byte serialized payload
+         **/
+        inline std::vector<uint8_t> BuildUnifiedResponse(
+            uint32_t nSessionId,
+            uint32_t nHashPrevLo32,
+            uint32_t nUnifiedHeight,
+            uint32_t nHashTipLo32,
+            uint32_t nPrimeHeight,
+            uint32_t nHashHeight,
+            uint32_t nStakeHeight,
+            uint32_t nForkScore)
+        {
+            KeepAliveV2AckFrame frame;
+            frame.session_id         = nSessionId;
+            frame.hashPrevBlock_lo32 = nHashPrevLo32;
+            frame.unified_height     = nUnifiedHeight;
+            frame.hash_tip_lo32      = nHashTipLo32;
+            frame.prime_height       = nPrimeHeight;
+            frame.hash_height        = nHashHeight;
+            frame.stake_height       = nStakeHeight;
+            frame.fork_score         = nForkScore;
+            return frame.Serialize();
+        }
 
 
         /** ParsePayload
@@ -192,87 +226,6 @@ namespace LLP
             }
 
             return false; /* v1 */
-        }
-
-
-        /** BuildBestCurrentResponse
-         *
-         *  Build a 28-byte BESTCURRENT keepalive v2 response payload.
-         *
-         *  Layout:
-         *    [0..3]   session_id          (little-endian uint32)
-         *    [4..7]   unified_height      (big-endian uint32)
-         *    [8..11]  prime_height        (big-endian uint32)
-         *    [12..15] hash_height         (big-endian uint32)
-         *    [16..19] stake_height        (big-endian uint32)
-         *    [20..23] nBits               (big-endian uint32)
-         *    [24..27] hashBestChain_prefix (first 4 bytes of hashBestChain.GetBytes())
-         *
-         *  @param[in] nSessionId      Session identifier
-         *  @param[in] nUnifiedHeight  Current unified best-chain height
-         *  @param[in] nPrimeHeight    Current Prime channel height
-         *  @param[in] nHashHeight     Current Hash channel height
-         *  @param[in] nStakeHeight    Current Stake channel height
-         *  @param[in] nBits           Difficulty bits for the miner's channel
-         *  @param[in] hashBestChain   Node's current best-chain hash (first 4 bytes used)
-         *
-         *  @return 28-byte payload vector
-         *
-         **/
-        inline std::vector<uint8_t> BuildBestCurrentResponse(
-            uint32_t nSessionId,
-            uint32_t nUnifiedHeight,
-            uint32_t nPrimeHeight,
-            uint32_t nHashHeight,
-            uint32_t nStakeHeight,
-            uint32_t nBits,
-            const uint1024_t& hashBestChain)
-        {
-            std::vector<uint8_t> v;
-            v.reserve(28);
-
-            /* [0..3] session_id (little-endian) */
-            v.push_back(static_cast<uint8_t>(nSessionId & 0xFF));
-            v.push_back(static_cast<uint8_t>((nSessionId >> 8) & 0xFF));
-            v.push_back(static_cast<uint8_t>((nSessionId >> 16) & 0xFF));
-            v.push_back(static_cast<uint8_t>((nSessionId >> 24) & 0xFF));
-
-            /* [4..7] unified_height (big-endian) */
-            v.push_back(static_cast<uint8_t>((nUnifiedHeight >> 24) & 0xFF));
-            v.push_back(static_cast<uint8_t>((nUnifiedHeight >> 16) & 0xFF));
-            v.push_back(static_cast<uint8_t>((nUnifiedHeight >> 8) & 0xFF));
-            v.push_back(static_cast<uint8_t>(nUnifiedHeight & 0xFF));
-
-            /* [8..11] prime_height (big-endian) */
-            v.push_back(static_cast<uint8_t>((nPrimeHeight >> 24) & 0xFF));
-            v.push_back(static_cast<uint8_t>((nPrimeHeight >> 16) & 0xFF));
-            v.push_back(static_cast<uint8_t>((nPrimeHeight >> 8) & 0xFF));
-            v.push_back(static_cast<uint8_t>(nPrimeHeight & 0xFF));
-
-            /* [12..15] hash_height (big-endian) */
-            v.push_back(static_cast<uint8_t>((nHashHeight >> 24) & 0xFF));
-            v.push_back(static_cast<uint8_t>((nHashHeight >> 16) & 0xFF));
-            v.push_back(static_cast<uint8_t>((nHashHeight >> 8) & 0xFF));
-            v.push_back(static_cast<uint8_t>(nHashHeight & 0xFF));
-
-            /* [16..19] stake_height (big-endian) */
-            v.push_back(static_cast<uint8_t>((nStakeHeight >> 24) & 0xFF));
-            v.push_back(static_cast<uint8_t>((nStakeHeight >> 16) & 0xFF));
-            v.push_back(static_cast<uint8_t>((nStakeHeight >> 8) & 0xFF));
-            v.push_back(static_cast<uint8_t>(nStakeHeight & 0xFF));
-
-            /* [20..23] nBits (big-endian) */
-            v.push_back(static_cast<uint8_t>((nBits >> 24) & 0xFF));
-            v.push_back(static_cast<uint8_t>((nBits >> 16) & 0xFF));
-            v.push_back(static_cast<uint8_t>((nBits >> 8) & 0xFF));
-            v.push_back(static_cast<uint8_t>(nBits & 0xFF));
-
-            /* [24..27] hashBestChain_prefix: first 4 bytes of GetBytes() */
-            std::vector<uint8_t> vHashBytes = hashBestChain.GetBytes();
-            for(int i = 0; i < 4; ++i)
-                v.push_back((i < static_cast<int>(vHashBytes.size())) ? vHashBytes[i] : 0x00);
-
-            return v;
         }
 
     } /* namespace KeepaliveV2 */

@@ -453,7 +453,7 @@ namespace OpcodeUtility
     {
         /* Un-mirrored stateless-only data-bearing opcodes */
         if(nOpcode == Stateless::KEEPALIVE_V2)      return true;  // 0xD100: 8B
-        if(nOpcode == Stateless::KEEPALIVE_V2_ACK)  return true;  // 0xD101: 28B
+        if(nOpcode == Stateless::KEEPALIVE_V2_ACK)  return true;  // 0xD101: 32B
         if(nOpcode == Stateless::PING_DIAG)         return true;  // 0xD0E0: 64B
         if(nOpcode == Stateless::PONG_DIAG)         return true;  // 0xD0E1: 64B
 
@@ -485,7 +485,7 @@ namespace OpcodeUtility
         switch(nOpcode)
         {
             case Stateless::KEEPALIVE_V2:      return 8;   // sequence(4) + hashPrevBlock_lo32(4), miner→node
-            case Stateless::KEEPALIVE_V2_ACK:  return 28;  // 7×uint32_t chain state telemetry, node→miner
+            case Stateless::KEEPALIVE_V2_ACK:  return 32;  // 8×uint32_t unified chain state, node→miner
             case Stateless::PING_DIAG:         return 64;  // PingFrame
             case Stateless::PONG_DIAG:         return 64;  // PongFrame
             default:                           return 0;   // variable or header-only

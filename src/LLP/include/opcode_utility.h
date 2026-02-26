@@ -216,7 +216,7 @@ namespace OpcodeUtility
          *    [0-3]  uint32_t  sequence            Monotonic keepalive sequence number
          *    [4-7]  uint32_t  hashPrevBlock_lo32  Low 32 bits of miner's current prevHash (fork canary)
          *
-         *  The node responds with a 28-byte KEEPALIVE_V2_ACK (0xD101).
+         *  The node responds with a 32-byte KEEPALIVE_V2_ACK (0xD101).
          *  Miner must send KEEPALIVE_V2 at least every session_timeout seconds
          *  to prevent the stateless server from closing the authenticated session.
          *
@@ -228,15 +228,19 @@ namespace OpcodeUtility
          *
          *  Node response to KEEPALIVE_V2. Carries chain state telemetry for
          *  the miner's fork detection and height management systems.
+         *  Also used for the legacy SESSION_KEEPALIVE v2 response (port 8323).
          *
-         *  PAYLOAD (28 bytes, big-endian):
-         *    [0-3]   uint32_t  sequence            Echo of miner's sequence
-         *    [4-7]   uint32_t  hashPrevBlock_lo32  Echo of miner's prevHash canary (from request)
-         *    [8-11]  uint32_t  unified_height      Node's unified block height
-         *    [12-15] uint32_t  hash_tip_lo32       Low 32 bits of node's hashBestChain
-         *    [16-19] uint32_t  prime_height        Node's Prime channel height
-         *    [20-23] uint32_t  hash_height         Node's Hash channel height
-         *    [24-27] uint32_t  fork_score          0 = healthy, >0 = latent fork divergence
+         *  PAYLOAD (32 bytes):
+         *    [0-3]   uint32_t  session_id          little-endian — session validation
+         *    [4-7]   uint32_t  hashPrevBlock_lo32  big-endian — echo of miner's prevHash canary (0 on legacy path)
+         *    [8-11]  uint32_t  unified_height      big-endian — node's unified block height
+         *    [12-15] uint32_t  hash_tip_lo32       big-endian — low 32 bits of node's hashBestChain
+         *    [16-19] uint32_t  prime_height        big-endian — node's Prime channel height
+         *    [20-23] uint32_t  hash_height         big-endian — node's Hash channel height
+         *    [24-27] uint32_t  stake_height        big-endian — node's Stake channel height
+         *    [28-31] uint32_t  fork_score          big-endian — 0=healthy, >0=divergence magnitude
+         *
+         *  nBits is NOT included — miner obtains difficulty from the 12-byte GET_BLOCK response.
          **/
         static constexpr uint16_t KEEPALIVE_V2_ACK = 0xD101;   // DATA-bearing, stateless-only
 
@@ -427,7 +431,7 @@ namespace OpcodeUtility
      *  Covers both mirrored opcodes (0xD0xx) and un-mirrored stateless-only
      *  opcodes (0xD1xx). Un-mirrored data-bearing opcodes:
      *    - KEEPALIVE_V2     (0xD100): 8-byte payload
-     *    - KEEPALIVE_V2_ACK (0xD101): 28-byte payload
+     *    - KEEPALIVE_V2_ACK (0xD101): 32-byte payload
      *    - PING_DIAG        (0xD0E0): 64-byte PingFrame
      *    - PONG_DIAG        (0xD0E1): 64-byte PongFrame
      *
@@ -463,7 +467,7 @@ namespace OpcodeUtility
      *
      *  Fixed-size opcodes:
      *    - KEEPALIVE_V2     (0xD100): 8 bytes
-     *    - KEEPALIVE_V2_ACK (0xD101): 28 bytes
+     *    - KEEPALIVE_V2_ACK (0xD101): 32 bytes
      *    - PING_DIAG        (0xD0E0): 64 bytes
      *    - PONG_DIAG        (0xD0E1): 64 bytes
      *
@@ -494,7 +498,7 @@ namespace OpcodeUtility
      *  Validates that a stateless packet's length is within acceptable bounds.
      *  Enforces exact payload sizes for fixed-length un-mirrored stateless opcodes:
      *    - KEEPALIVE_V2: exactly 8 bytes
-     *    - KEEPALIVE_V2_ACK: exactly 28 bytes
+     *    - KEEPALIVE_V2_ACK: exactly 32 bytes
      *    - PING_DIAG / PONG_DIAG: exactly 64 bytes
      *
      *  @param[in] packet The stateless packet to validate
