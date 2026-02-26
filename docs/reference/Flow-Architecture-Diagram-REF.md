@@ -4,14 +4,12 @@
 
 This document provides comprehensive flow diagrams for the Nexus node's stateless mining protocol. These diagrams illustrate the complete lifecycle from miner connection to block acceptance.
 
-**Document Version:** 1.0  
-**Last Updated:** 2026-01-13
+**Document Version:** 2.0 — Unified keepalive format  
+**Last Updated:** 2026-02-26
 
 ---
 
 ## Complete Protocol Flow
-
-### Full Mining Session Lifecycle
 
 ```mermaid
 sequenceDiagram
@@ -433,6 +431,7 @@ flowchart TD
 - [Mining Server Architecture](../current/mining/mining-server.md)
 - [Opcodes Reference](opcodes-reference.md)
 - [Configuration Reference](nexus.conf.md)
+- [Unified Keepalive Protocol](../current/keepalive-unified-protocol.md) — complete unified keepalive reference with diagrams
 
 **Miner Perspective:**
 - [NexusMiner Flow Diagrams](https://github.com/Nexusoft/NexusMiner/blob/main/docs/reference/Flow-Architecture-Diagram-REF.md)
@@ -440,12 +439,17 @@ flowchart TD
 
 ---
 
+## Keepalive Flow — Unified (PR #301)
+
+Both SESSION_KEEPALIVE and KEEPALIVE_V2_ACK now produce identical 32-byte responses.
+See: `docs/current/keepalive-unified-protocol.md` for the complete unified protocol reference with diagrams.
+
+---
+
 ## Version Information
 
-**Document Version:** 1.0  
-**Protocol Version:** Stateless Mining 1.0  
-**LLL-TAO Version:** 5.1.0+  
-**Last Updated:** 2026-01-13
+**Document Version:** 2.0 — Unified keepalive format  
+**Last Updated:** 2026-02-26
 
 ---
 

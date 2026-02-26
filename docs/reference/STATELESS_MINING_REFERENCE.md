@@ -7,6 +7,10 @@
 
 ---
 
+**Document Version:** 2.0 — Unified keepalive format (PR #299–302, #214–216)  
+**Last Updated:** 2026-02-26  
+**Breaking Changes:** BuildBestCurrentResponse() deleted; KeepAliveV2AckFrame field `sequence` renamed to `session_id`
+
 ## Table of Contents
 
 1. [Architecture Overview](#1-architecture-overview)
@@ -282,6 +286,7 @@ These are the **new classes** introduced in our stateless mining work. They live
 | `WithPhysicalSignature(bytes)` | Store physical Falcon signature |
 | `WithSubscription(channel)` | Subscribe to push notifications |
 | `WithNotificationSent(t)` | Update notification counters |
+| `WithStakeHeight(n)` | Persist stake channel height across keepalive cycles |
 
 **Query methods:**
 
@@ -680,24 +685,40 @@ auto pkt = PushNotificationBuilder::BuildChannelNotification<StatelessPacket>(
 
 ## 8. Protocol Lanes: Legacy vs Stateless
 
-```
-Port 8323 — LEGACY LANE (8-bit opcodes)
-  BaseConnection<Packet>
-    └── MinerConnection (legacy)
-         └── Uses StatelessMiner for auth only
-         └── 8-bit opcodes: 0xD0–0xDF range
+Both lanes now share a **single unified 32-byte keepalive response format** (PR #301).
 
-Port 9323 — STATELESS LANE (16-bit opcodes)  ← OUR WORK
-  BaseConnection<StatelessPacket>
-    └── StatelessConnection
-         └── StatelessMinerConnection
-              └── Uses StatelessMiner for ALL processing
-              └── 16-bit opcodes: 0xD000–0xDFFF range
+### Port Assignment
 
-PushNotificationBuilder bridges both:
-  BuildChannelNotification<Packet>()        → Legacy lane
-  BuildChannelNotification<StatelessPacket>() → Stateless lane
+| Port | Lane | Packet Type | Auth |
+|------|------|-------------|------|
+| 9323 | Stateless (primary) | `StatelessPacket` (16-bit opcodes) | Falcon + session |
+| 8323 | Legacy (secondary) | `Packet` (8-bit opcodes) | Session only |
+
+### Unified Keepalive Wire Format (both ports)
+
 ```
+[0-3]   session_id          LE uint32  — session validation (was: sequence on stateless, session_id on legacy)
+[4-7]   hashPrevBlock_lo32  BE uint32  — echo of miner's fork canary (0 on legacy path)
+[8-11]  unified_height      BE uint32
+[12-15] hash_tip_lo32       BE uint32  — lo32 of node hashBestChain (fork cross-check)
+[16-19] prime_height        BE uint32
+[20-23] hash_height         BE uint32
+[24-27] stake_height        BE uint32  ← THE MISSING PIECE — now tracked on miner side
+[28-31] fork_score          BE uint32  — 0=healthy, >0=latent fork divergence (0 on legacy path)
+```
+
+### What Was Deleted
+
+| Deleted | Replaced By |
+|---------|-------------|
+| `BuildBestCurrentResponse()` — 28-byte legacy builder | `BuildUnifiedResponse()` — 32-byte, both ports |
+| `sequence` field in stateless ACK | `session_id` (LE, consistent with legacy) |
+| `nBits` in keepalive response | Miner reads nBits from 12-byte GET_BLOCK response |
+| `hashBestChain_prefix` (4 raw bytes) | `hash_tip_lo32` (lo32, fork canary) |
+| `OnKeepaliveAck()` + `OnLegacyKeepalive()` on miner | `OnKeepaliveResponse()` — single unified method |
+| `KeepaliveTelemetryStore` / `KeepaliveTelemetrySnapshot` | `HeightTracker::Snapshot` |
+| `keepalive_telemetry.hpp` | Deleted |
+| `static_assert(PAYLOAD_SIZE != 28, ...)` | No longer needed (BuildBestCurrentResponse gone) |
 
 ---
 

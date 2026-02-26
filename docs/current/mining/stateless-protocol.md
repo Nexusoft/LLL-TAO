@@ -207,27 +207,23 @@ void CleanupExpiredSessions()
 }
 ```
 
-### Keepalive Handling
+### Keepalive Handling (Unified — PR #301)
 
-Miners can extend session lifetime by sending periodic keepalive packets:
+Both `SESSION_KEEPALIVE` (port 8323) and `KEEPALIVE_V2_ACK` (port 9323) now send the same 32-byte response via `BuildUnifiedResponse()`.
 
-```cpp
-void StatelessMinerConnection::ProcessSessionKeepalive(const Packet& packet)
-{
-    std::lock_guard<std::mutex> lock(SessionCacheMutex);
-    
-    if(!SessionCache.count(nSessionId)) {
-        return; // Invalid session - no response
-    }
-    
-    MiningContext& ctx = SessionCache[nSessionId];
-    ctx.nTimestamp = runtime::unifiedtimestamp();
-    ctx.nKeepaliveCount++;
-    
-    // Send acknowledgment
-    SendPacket(Packet(Opcodes::StatelessMining::SESSION_KEEPALIVE, {0x01}));
-}
-```
+**Legacy path** (`ProcessSessionKeepalive()`):
+- `hashPrevBlock_lo32 = 0` (no miner canary echo — legacy miner does not send one)
+- `fork_score = 0` (not computed on legacy path)
+- All four heights populated from `ChainState`
+
+**Stateless path** (`ProcessKeepaliveV2()`):
+- `hashPrevBlock_lo32` = echo of miner's canary from 8-byte `KEEPALIVE_V2` request
+- `fork_score` = 1 if `hashPrevBlock_lo32 != hash_tip_lo32`, else 0
+- All four heights populated from `ChainState`
+
+**Key insight:** `nBits` is NOT included in the keepalive response. The miner reads difficulty from the 228-byte template push (via `CreateBlockForStatelessMining()`) and from the 12-byte `GET_BLOCK` / `GET_ROUND` response.
+
+**stake_height** at bytes [24-27] is the field that was previously missing on the stateless path, causing `HeightTracker::stake_height` to always remain 0 on stateless miners. This is now fixed.
 
 ### Session Cleanup on Disconnect
 
