@@ -484,8 +484,8 @@ namespace OpcodeUtility
     {
         switch(nOpcode)
         {
-            case Stateless::KEEPALIVE_V2:      return 8;   // sequence(4) + timestamp(4)
-            case Stateless::KEEPALIVE_V2_ACK:  return 8;   // echo of above
+            case Stateless::KEEPALIVE_V2:      return 8;   // sequence(4) + hashPrevBlock_lo32(4), miner→node
+            case Stateless::KEEPALIVE_V2_ACK:  return 28;  // 7×uint32_t chain state telemetry, node→miner
             case Stateless::PING_DIAG:         return 64;  // PingFrame
             case Stateless::PONG_DIAG:         return 64;  // PongFrame
             default:                           return 0;   // variable or header-only

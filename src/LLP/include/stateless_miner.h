@@ -917,6 +917,24 @@ namespace LLP
             const StatelessPacket& packet
         );
 
+        /** ProcessKeepaliveV2
+         *
+         *  Process KEEPALIVE_V2 (0xD100) packet from miner.
+         *  Parses the 8-byte KeepAliveV2Frame, populates a 28-byte
+         *  KeepAliveV2AckFrame from live chain state, and sends it
+         *  as KEEPALIVE_V2_ACK (0xD101).
+         *
+         *  @param[in] context Current miner state
+         *  @param[in] packet KEEPALIVE_V2 packet (8-byte payload)
+         *
+         *  @return ProcessResult with KEEPALIVE_V2_ACK response
+         *
+         **/
+        static ProcessResult ProcessKeepaliveV2(
+            const MiningContext& context,
+            const StatelessPacket& packet
+        );
+
         /** ProcessSessionKeepalive
          *
          *  Phase 2: Process session keepalive.

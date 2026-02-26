@@ -671,6 +671,10 @@ namespace LLP
                 debug::log(3, FUNCTION, "Routing to ProcessSessionKeepalive");
                 return ProcessSessionKeepalive(context, packet);
 
+            case KEEPALIVE_V2:
+                debug::log(3, FUNCTION, "Routing to ProcessKeepaliveV2");
+                return ProcessKeepaliveV2(context, packet);
+
             case SET_REWARD:
                 debug::log(2, FUNCTION, "Routing to ProcessSetReward");
                 return ProcessSetReward(context, packet);
@@ -1568,6 +1572,61 @@ namespace LLP
         response.LENGTH = static_cast<uint32_t>(response.DATA.size());
 
         return ProcessResult::Success(newContext, response);
+    }
+
+
+    /* Process KEEPALIVE_V2 (0xD100) — stateless-only keepalive with chain state ACK */
+    ProcessResult StatelessMiner::ProcessKeepaliveV2(
+        const MiningContext& context,
+        const StatelessPacket& packet
+    )
+    {
+        /* Parse the 8-byte KeepAliveV2Frame */
+        KeepaliveV2::KeepAliveV2Frame frame;
+        if(!frame.Parse(packet.DATA))
+        {
+            debug::log(1, FUNCTION, "KEEPALIVE_V2: payload too short (", packet.DATA.size(), " bytes, need 8)");
+            return ProcessResult::Error(context, "KEEPALIVE_V2: invalid payload");
+        }
+
+        /* Gather live chain state */
+        TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
+        uint32_t nUnifiedHeight = stateBest.nHeight;
+
+        TAO::Ledger::BlockState stateChannel = stateBest;
+        uint32_t nPrimeHeight = 0;
+        if(TAO::Ledger::GetLastState(stateChannel, 1))
+            nPrimeHeight = stateChannel.nChannelHeight;
+
+        stateChannel = stateBest;
+        uint32_t nHashHeight = 0;
+        if(TAO::Ledger::GetLastState(stateChannel, 2))
+            nHashHeight = stateChannel.nChannelHeight;
+
+        uint1024_t hashBestChain = TAO::Ledger::ChainState::hashBestChain.load();
+        uint32_t nHashTipLo32 = static_cast<uint32_t>(hashBestChain.Get64(0) & 0xFFFFFFFF);
+
+        /* Build 28-byte ACK */
+        KeepaliveV2::KeepAliveV2AckFrame ack;
+        ack.sequence           = frame.sequence;
+        ack.hashPrevBlock_lo32 = frame.hashPrevBlock_lo32;
+        ack.unified_height     = nUnifiedHeight;
+        ack.hash_tip_lo32      = nHashTipLo32;
+        ack.prime_height       = nPrimeHeight;
+        ack.hash_height        = nHashHeight;
+        ack.fork_score         = 0;  /* Latent Fork Detection Manager not yet implemented */
+
+        debug::log(3, FUNCTION, "KEEPALIVE_V2 seq=", frame.sequence,
+                   " unified=", nUnifiedHeight,
+                   " prime=", nPrimeHeight,
+                   " hash=", nHashHeight,
+                   " hash_tip_lo32=0x", std::hex, nHashTipLo32, std::dec);
+
+        StatelessPacket response(StatelessOpcodes::KEEPALIVE_V2_ACK);
+        response.DATA   = ack.Serialize();
+        response.LENGTH = static_cast<uint32_t>(response.DATA.size());
+
+        return ProcessResult::Success(context, response);
     }
 
 

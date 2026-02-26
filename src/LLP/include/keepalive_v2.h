@@ -56,6 +56,78 @@ namespace LLP
     namespace KeepaliveV2
     {
 
+        /** KeepAliveV2Frame — 8-byte frame parsed from Miner → Node request (KEEPALIVE_V2)
+         *
+         *  Wire format (big-endian):
+         *    [0-3]  uint32_t  sequence            Monotonic miner keepalive counter
+         *    [4-7]  uint32_t  hashPrevBlock_lo32  Low 32 bits of miner's current prevHash (fork canary)
+         **/
+        struct KeepAliveV2Frame
+        {
+            uint32_t sequence{0};
+            uint32_t hashPrevBlock_lo32{0};
+
+            static constexpr uint32_t PAYLOAD_SIZE = 8;
+
+            bool Parse(const std::vector<uint8_t>& data)
+            {
+                if(data.size() < 8) return false;
+                auto r32 = [&](int o) -> uint32_t {
+                    return (uint32_t(data[o  ]) << 24) | (uint32_t(data[o+1]) << 16)
+                          |(uint32_t(data[o+2]) <<  8) |  uint32_t(data[o+3]);
+                };
+                sequence           = r32(0);
+                hashPrevBlock_lo32 = r32(4);
+                return true;
+            }
+        };
+
+
+        /** KeepAliveV2AckFrame — 28-byte frame built by Node and sent to Miner (KEEPALIVE_V2_ACK)
+         *
+         *  Wire format (big-endian):
+         *    [0-3]   uint32_t  sequence            Echo of miner's sequence
+         *    [4-7]   uint32_t  hashPrevBlock_lo32  Echo of miner's prevHash canary (from request)
+         *    [8-11]  uint32_t  unified_height      Node's unified block height
+         *    [12-15] uint32_t  hash_tip_lo32       Low 32 bits of node's hashBestChain
+         *    [16-19] uint32_t  prime_height        Node's Prime channel height
+         *    [20-23] uint32_t  hash_height         Node's Hash channel height
+         *    [24-27] uint32_t  fork_score          0 = healthy, >0 = latent fork divergence
+         **/
+        struct KeepAliveV2AckFrame
+        {
+            uint32_t sequence{0};
+            uint32_t hashPrevBlock_lo32{0};
+            uint32_t unified_height{0};
+            uint32_t hash_tip_lo32{0};
+            uint32_t prime_height{0};
+            uint32_t hash_height{0};
+            uint32_t fork_score{0};
+
+            static constexpr uint32_t PAYLOAD_SIZE = 28;
+
+            std::vector<uint8_t> Serialize() const
+            {
+                std::vector<uint8_t> v;
+                v.reserve(28);
+                auto p32 = [&](uint32_t x) {
+                    v.push_back((x >> 24) & 0xFF);
+                    v.push_back((x >> 16) & 0xFF);
+                    v.push_back((x >>  8) & 0xFF);
+                    v.push_back( x        & 0xFF);
+                };
+                p32(sequence);
+                p32(hashPrevBlock_lo32);
+                p32(unified_height);
+                p32(hash_tip_lo32);
+                p32(prime_height);
+                p32(hash_height);
+                p32(fork_score);
+                return v;
+            }
+        };
+
+
         /** ParsePayload
          *
          *  Parse a keepalive payload to extract session_id and (for v2) miner_prevblock_suffix.
