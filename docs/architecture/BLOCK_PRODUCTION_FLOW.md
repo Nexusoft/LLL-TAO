@@ -314,52 +314,66 @@ block.hashMerkleRoot (ch0) ← ProcessBlock() after nReward known
 MINING CHANNEL TEMPLATE FLOW (Prime=1, Hash=2, Private=3)
 Contrast with Stake (Channel 0) above
 
-CreateBlock(user, pin, nChannel, rBlockRet, ...)
-[create.cpp:377]
+CreateBlockForStatelessMining(nChannel, nExtraNonce, hashRewardAddress)
+[stateless_block_utility.cpp]
      │
-     ├─ CACHE CHECK
-     │   if(hashBestChain == tBlockCached.hashPrevBlock
-     │      && hashGenesis == cached.producer.hashGenesis
-     │      && !timeout):
-     │        rBlockRet = tBlockCached  ← REUSE
-     │        AddTransactions(rBlockRet)
-     │        UpdateProducerTimestamp()
-     │        Sign producer
-     │        Rebuild hashMerkleRoot  ← always rebuilt on cache hit
-     │        goto RETURN
+     ├─ STATELESS TEMPLATE CACHE CHECK (per-channel)
+     │   tStatelessCache[nChannel]
+     │   if(fValid
+     │      && hashBestChainAtCreation == hashBestChain.load()
+     │      && age < blockrefresh timeout (90s)):
+     │        Clone cached TritiumBlock  ← REUSE
+     │        pCached->nNonce = 1
+     │        pCached->UpdateTime()
+     │        return pCached  ← fast path (~<1ms)
      │
-     └─ NEW BLOCK (cache miss)
+     └─ CACHE MISS → CreateBlock(user, pin, nChannel, rBlockRet, ...)
+          [create.cpp:377]
           │
-          ├─ AddTransactions(rBlockRet)
+          ├─ CACHE CHECK (local node wallet cache — tBlockCache[nChannel])
+          │   if(hashBestChain == tBlockCached.hashPrevBlock
+          │      && hashGenesis == cached.producer.hashGenesis
+          │      && !timeout):
+          │        rBlockRet = tBlockCached  ← REUSE
+          │        AddTransactions(rBlockRet)
+          │        UpdateProducerTimestamp()
+          │        Sign producer
+          │        Rebuild hashMerkleRoot  ← always rebuilt on cache hit
+          │        goto RETURN
           │
-          ├─ CreateProducer(user, pin, rProducer, ...)
-          │   [create.cpp:544]
-          │   nChannel==1 or 2:
-          │     rProducer[0] << OP::COINBASE
-          │                  << hashRewardRecipient   (dynamic or static)
-          │                  << nCredit
-          │                  << nExtraNonce
-          │     + Ambassador/Developer payouts at intervals
-          │   nChannel==3 (Private):
-          │     rProducer[0] << OP::AUTHORIZE
-          │                  << rProducer.hashPrevTx
-          │                  << rProducer.hashGenesis
-          │
-          ├─ UpdateProducerTimestamp(rProducer)
-          ├─ Sign producer
-          │
-          ├─ AddBlockData(tStateBest, nChannel, rBlockRet)
-          │   ┌──────────────────────────────────────────┐
-          │   │ hashPrevBlock = tStateBest.GetHash()     │ ← anchored
-          │   │ nChannel      = nChannel (1, 2, or 3)   │
-          │   │ nHeight       = tStateBest.nHeight + 1  │ ← UNIFIED
-          │   │ nBits         = target for this channel │
-          │   │ nNonce        = 1                       │
-          │   │ nTime         = max(prev+1, now)        │
-          │   │ hashMerkleRoot = BUILT HERE  ✓          │ ← key diff!
-          │   └──────────────────────────────────────────┘
-          │
-          └─ Store to tBlockCache[nChannel]
+          └─ NEW BLOCK (cache miss)
+               │
+               ├─ AddTransactions(rBlockRet)
+               │
+               ├─ CreateProducer(user, pin, rProducer, ...)
+               │   [create.cpp:544]
+               │   nChannel==1 or 2:
+               │     rProducer[0] << OP::COINBASE
+               │                  << hashRewardRecipient   (dynamic or static)
+               │                  << nCredit
+               │                  << nExtraNonce
+               │     + Ambassador/Developer payouts at intervals
+               │   nChannel==3 (Private):
+               │     rProducer[0] << OP::AUTHORIZE
+               │                  << rProducer.hashPrevTx
+               │                  << rProducer.hashGenesis
+               │
+               ├─ UpdateProducerTimestamp(rProducer)
+               ├─ Sign producer
+               │
+               ├─ AddBlockData(tStateBest, nChannel, rBlockRet)
+               │   ┌──────────────────────────────────────────┐
+               │   │ hashPrevBlock = tStateBest.GetHash()     │ ← anchored
+               │   │ nChannel      = nChannel (1, 2, or 3)   │
+               │   │ nHeight       = tStateBest.nHeight + 1  │ ← UNIFIED
+               │   │ nBits         = target for this channel │
+               │   │ nNonce        = 1                       │
+               │   │ nTime         = max(prev+1, now)        │
+               │   │ hashMerkleRoot = BUILT HERE  ✓          │ ← key diff!
+               │   └──────────────────────────────────────────┘
+               │
+               └─ Store to tBlockCache[nChannel]
+                    + Store to tStatelessCache[nChannel]
 
      ▼
 RETURN rBlockRet

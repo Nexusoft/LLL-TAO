@@ -758,3 +758,61 @@ if (!cd.Ready()) return;   // still within 2-second floor
 **Cross-reference:** See [push-refresh-loop.md](push-refresh-loop.md) for
 the full five-diagram sequence showing how the throttle and cooldown interact
 with `BlockState::SetBest()`.
+
+---
+
+## Stateless Template Cache
+
+### Overview
+
+`CreateBlockForStatelessMining()` in `src/TAO/Ledger/stateless_block_utility.cpp`
+maintains a **per-channel template cache** that eliminates redundant `CreateBlock()`
+calls when multiple GET_BLOCK requests arrive for the same chain height.
+
+### Cache Structure
+
+```cpp
+// Anonymous namespace in stateless_block_utility.cpp
+struct StatelessTemplateEntry
+{
+    TritiumBlock block;                // The cached template
+    uint1024_t hashBestChainAtCreation; // hashBestChain when created
+    uint64_t nCreationTimestamp;        // unifiedtimestamp() at creation
+    bool fValid;                        // Has this entry been populated?
+};
+
+std::mutex STATELESS_CACHE_MUTEX;
+StatelessTemplateEntry tStatelessCache[3]; // [1]=Prime, [2]=Hash
+```
+
+### Invalidation Policy
+
+The cache is invalidated (on next access) **only** when:
+
+1. `hashBestChain` has changed — the chain advanced or a reorg occurred
+2. Template age exceeds `-blockrefresh` timeout (default **90 seconds**)
+
+The cache is **not** invalidated on genesis/user change because all stateless
+miners share the same node wallet credentials, so the producer transaction is
+identical for all miners on the same channel.
+
+### Behaviour
+
+| Request | Result | Cost |
+|---------|--------|------|
+| First GET_BLOCK for channel N at height H | CACHE MISS → full `CreateBlock()` (~1.3 s) | High |
+| Subsequent GET_BLOCKs for channel N at height H | CACHE HIT → clone + return | Negligible |
+| GET_BLOCK after chain advances to H+1 | CACHE MISS → fresh block created | High |
+| GET_BLOCK for other channel | Separate cache slot → independent | varies |
+
+### Protocol Lanes
+
+Both the Stateless lane (port 9323, `StatelessMinerConnection`) and the Legacy
+lane (port 8323, `Miner`) call `CreateBlockForStatelessMining()` and
+automatically benefit from the cache. No changes are required in either caller.
+
+### Thread Safety
+
+`STATELESS_CACHE_MUTEX` protects the cache array. The mutex is held only
+briefly (for the cache check or the cache store), **not** during the expensive
+`CreateBlock()` call itself.
