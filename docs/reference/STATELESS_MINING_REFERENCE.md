@@ -750,6 +750,10 @@ Both lanes now share a **single unified 32-byte keepalive response format** (PR 
 | `StatelessConnection::ReadPacket()` | `src/LLP/stateless_connection.cpp` | 16-bit frame parser |
 | `StatelessPacket` | `src/LLP/packets/stateless_packet.h` | Wire packet structure |
 | `PushNotificationBuilder::BuildChannelNotification()` | `src/LLP/include/push_notification.h` | Build new-block push packet |
+| `KeepaliveV2::BuildUnifiedResponse()` | `src/LLP/include/keepalive_v2.h` | Build 32-byte unified keepalive reply (both ports; replaces deleted `BuildBestCurrentResponse()`) |
+| `KeepaliveV2::ParsePayload()` | `src/LLP/include/keepalive_v2.h` | Parse 4-byte (v1) or 8-byte (v2) keepalive request; extract session_id and miner prevhash canary |
+| `StatelessMiner::ProcessKeepaliveV2()` | `src/LLP/stateless_miner.cpp` | Handle KEEPALIVE_V2 (0xD100) on stateless lane; echo miner canary; compute fork_score |
+| `StatelessMiner::ProcessSessionKeepalive()` | `src/LLP/stateless_miner.cpp` | Handle SESSION_KEEPALIVE (0xD4) on stateless lane; use 0 for canary/fork_score |
 | **UPSTREAM** | | |
 | `TAO::Ledger::BlockState` | `src/TAO/Ledger/types/state.h` | Full persisted block state |
 | `TAO::Ledger::BlockState::nChannelHeight` | `src/TAO/Ledger/types/state.h` | Per-channel block count |

@@ -207,13 +207,33 @@ void CleanupExpiredSessions()
 }
 ```
 
-### Keepalive Handling (Unified — PR #301)
+### Keepalive Handling (Unified 32-Byte Format — PR #301)
 
-Both `SESSION_KEEPALIVE` (port 8323) and `KEEPALIVE_V2_ACK` (port 9323) now send the same 32-byte response via `BuildUnifiedResponse()`.
+Both `SESSION_KEEPALIVE` (port 8323) and `KEEPALIVE_V2_ACK` (port 9323) now use the same keepalive request/response format via `BuildUnifiedResponse()`.
+
+**Miner → Node request (8 bytes):**
+```
+[0..3]  session_id           (uint32 little-endian)
+[4..7]  hashPrevBlock_lo32   (uint32 big-endian; miner's fork canary, 0 if no template yet)
+```
+
+**Node → Miner reply (32 bytes) — BOTH ports:**
+```
+[0..3]   session_id          (uint32 little-endian; session validation)
+[4..7]   hashPrevBlock_lo32  (uint32 big-endian; echo of miner canary, 0 on legacy path)
+[8..11]  unified_height      (uint32 big-endian)
+[12..15] hash_tip_lo32       (uint32 big-endian; lo32 of node hashBestChain, fork cross-check)
+[16..19] prime_height        (uint32 big-endian)
+[20..23] hash_height         (uint32 big-endian)
+[24..27] stake_height        (uint32 big-endian)   ← stake tracking on BOTH ports
+[28..31] fork_score          (uint32 big-endian; 0=healthy, >0=divergence; 0 on legacy path)
+```
+
+Miner parses reply via `KeepAliveV2AckFrame` → `HeightTracker::OnKeepaliveResponse()`.
 
 **Legacy path** (`ProcessSessionKeepalive()`):
-- `hashPrevBlock_lo32 = 0` (no miner canary echo — legacy miner does not send one)
-- `fork_score = 0` (not computed on legacy path)
+- `hashPrevBlock_lo32 = 0` (miner canary parsed for observability but not echoed on legacy path)
+- `fork_score = 0` (fork divergence not computed on legacy path)
 - All four heights populated from `ChainState`
 
 **Stateless path** (`ProcessKeepaliveV2()`):
