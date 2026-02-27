@@ -31,12 +31,11 @@ namespace MiningConstants
         
         /** Minimum interval between GET_BLOCK requests.
          *
-         *  Set to 0 (disabled): the per-minute cap (MAX_GET_BLOCK_PER_MINUTE = 10)
-         *  is sufficient for spam prevention.  The 2-second floor was removed
-         *  because it broke SIM Link recovery — a reconnecting miner legitimately
-         *  needs GET_BLOCK within < 2 s of completing Falcon auth.
+         *  2-second minimum interval between GET_BLOCK requests.
+         *  Matches GET_BLOCK_COOLDOWN_SECONDS. Both mechanisms enforce the same
+         *  2-second floor — no lockout, no doom loop.
          */
-        constexpr uint32_t GET_BLOCK_MIN_INTERVAL_MS = 0;
+        constexpr uint32_t GET_BLOCK_MIN_INTERVAL_MS = 2000;
         
         /** Throttled interval for GET_BLOCK when rate limited (4 seconds) */
         constexpr uint32_t GET_BLOCK_THROTTLE_INTERVAL_MS = 4000;
@@ -55,12 +54,11 @@ namespace MiningConstants
         
         /** Minimum interval between GET_BLOCK requests.
          *
-         *  Set to 0 (disabled): the per-minute cap (MAX_GET_BLOCK_PER_MINUTE = 10)
-         *  is sufficient for spam prevention.  The 2-second floor was removed
-         *  because it broke SIM Link recovery — a reconnecting miner legitimately
-         *  needs GET_BLOCK within < 2 s of completing Falcon auth.
+         *  2-second minimum interval between GET_BLOCK requests.
+         *  Matches GET_BLOCK_COOLDOWN_SECONDS. Both mechanisms enforce the same
+         *  2-second floor — no lockout, no doom loop.
          */
-        constexpr uint32_t GET_BLOCK_MIN_INTERVAL_MS = 0;
+        constexpr uint32_t GET_BLOCK_MIN_INTERVAL_MS = 2000;
         
         /** Throttled interval for GET_BLOCK when rate limited (10 seconds) */
         constexpr uint32_t GET_BLOCK_THROTTLE_INTERVAL_MS = 10000;
