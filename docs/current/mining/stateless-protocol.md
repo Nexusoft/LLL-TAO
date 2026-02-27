@@ -761,58 +761,28 @@ with `BlockState::SetBest()`.
 
 ---
 
-## Stateless Template Cache
+## Stateless Template Cache (Removed)
 
-### Overview
+The per-channel stateless template cache (`StatelessTemplateEntry` /
+`tStatelessCache`) that previously existed in `src/TAO/Ledger/stateless_block_utility.cpp`
+has been **removed** due to a TOCTOU (time-of-check-time-of-use) race condition.
 
-`CreateBlockForStatelessMining()` in `src/TAO/Ledger/stateless_block_utility.cpp`
-maintains a **per-channel template cache** that eliminates redundant `CreateBlock()`
-calls when multiple GET_BLOCK requests arrive for the same chain height.
+### Why It Was Removed
 
-### Cache Structure
+The cache checked `hashBestChain` atomically and then returned a cloned
+`TritiumBlock`. However, the caller then validated the returned block's
+`nHeight` against `ChainState::nBestHeight.load() + 1`. Between the cache
+check and the height validation, a new block could be accepted — causing
+`hashBestChain` to match (cache hit) but `nBestHeight` to have already
+incremented (validation failure).
 
-```cpp
-// Anonymous namespace in stateless_block_utility.cpp
-struct StatelessTemplateEntry
-{
-    TritiumBlock block;                // The cached template
-    uint1024_t hashBestChainAtCreation; // hashBestChain when created
-    uint64_t nCreationTimestamp;        // unifiedtimestamp() at creation
-    bool fValid;                        // Has this entry been populated?
-};
+This produced a repeating "Template stale: unified height mismatch" error
+that triggered a retry doom loop on every GET_BLOCK and push notification.
 
-std::mutex STATELESS_CACHE_MUTEX;
-StatelessTemplateEntry tStatelessCache[3]; // [1]=Prime, [2]=Hash
-```
+### Current Behaviour
 
-### Invalidation Policy
-
-The cache is invalidated (on next access) **only** when:
-
-1. `hashBestChain` has changed — the chain advanced or a reorg occurred
-2. Template age exceeds `-blockrefresh` timeout (default **90 seconds**)
-
-The cache is **not** invalidated on genesis/user change because all stateless
-miners share the same node wallet credentials, so the producer transaction is
-identical for all miners on the same channel.
-
-### Behaviour
-
-| Request | Result | Cost |
-|---------|--------|------|
-| First GET_BLOCK for channel N at height H | CACHE MISS → full `CreateBlock()` (~1.3 s) | High |
-| Subsequent GET_BLOCKs for channel N at height H | CACHE HIT → clone + return | Negligible |
-| GET_BLOCK after chain advances to H+1 | CACHE MISS → fresh block created | High |
-| GET_BLOCK for other channel | Separate cache slot → independent | varies |
-
-### Protocol Lanes
-
-Both the Stateless lane (port 9323, `StatelessMinerConnection`) and the Legacy
-lane (port 8323, `Miner`) call `CreateBlockForStatelessMining()` and
-automatically benefit from the cache. No changes are required in either caller.
-
-### Thread Safety
-
-`STATELESS_CACHE_MUTEX` protects the cache array. The mutex is held only
-briefly (for the cache check or the cache store), **not** during the expensive
-`CreateBlock()` call itself.
+Every call to `CreateBlockForStatelessMining()` now produces a **fresh block**
+directly from the current chain tip via `CreateBlock()`. There is no
+intermediate cache. The existing `tBlockCache` inside `CreateBlock()` itself
+(in `src/TAO/Ledger/create.cpp`) remains unchanged and provides its own
+single-call caching with correct invalidation logic.

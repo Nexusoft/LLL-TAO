@@ -317,17 +317,10 @@ Contrast with Stake (Channel 0) above
 CreateBlockForStatelessMining(nChannel, nExtraNonce, hashRewardAddress)
 [stateless_block_utility.cpp]
      │
-     ├─ STATELESS TEMPLATE CACHE CHECK (per-channel)
-     │   tStatelessCache[nChannel]
-     │   if(fValid
-     │      && hashBestChainAtCreation == hashBestChain.load()
-     │      && age < blockrefresh timeout (90s)):
-     │        Clone cached TritiumBlock  ← REUSE
-     │        pCached->nNonce = 1
-     │        pCached->UpdateTime()
-     │        return pCached  ← fast path (~<1ms)
+     │  (No stateless template cache — removed due to TOCTOU race condition.
+     │   Every call produces a fresh block from the current chain tip.)
      │
-     └─ CACHE MISS → CreateBlock(user, pin, nChannel, rBlockRet, ...)
+     └─ CreateBlock(user, pin, nChannel, rBlockRet, ...)
           [create.cpp:377]
           │
           ├─ CACHE CHECK (local node wallet cache — tBlockCache[nChannel])
@@ -373,7 +366,6 @@ CreateBlockForStatelessMining(nChannel, nExtraNonce, hashRewardAddress)
                │   └──────────────────────────────────────────┘
                │
                └─ Store to tBlockCache[nChannel]
-                    + Store to tStatelessCache[nChannel]
 
      ▼
 RETURN rBlockRet

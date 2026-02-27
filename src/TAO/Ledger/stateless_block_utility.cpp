@@ -31,35 +31,6 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 #include <sstream>
-#include <mutex>
-
-namespace
-{
-    /** Per-channel stateless template cache.
-     *
-     *  Keyed by channel (1=Prime, 2=Hash). Stores the most recently created
-     *  TritiumBlock for each channel. Invalidated ONLY when:
-     *    1. hashBestChain has changed (chain advanced or reorg)
-     *    2. Template age exceeds blockrefresh timeout (default 90s)
-     *
-     *  NOT invalidated on genesis/user change — all stateless miners share
-     *  the same node wallet credentials, so the producer is identical.
-     *
-     *  Both protocol lanes (Stateless:9323 and Legacy:8323) serve from this
-     *  cache via CreateBlockForStatelessMining().
-     */
-    struct StatelessTemplateEntry
-    {
-        TAO::Ledger::TritiumBlock block;         /* The cached template */
-        uint1024_t hashBestChainAtCreation{0};   /* hashBestChain when created */
-        uint64_t nCreationTimestamp{0};           /* unifiedtimestamp() at creation */
-        bool fValid{false};                       /* Has this entry been populated? */
-    };
-
-    /* Cache indexed by channel: [1]=Prime, [2]=Hash. Index 0 unused. */
-    std::mutex STATELESS_CACHE_MUTEX;
-    StatelessTemplateEntry tStatelessCache[3];
-}
 
 /* Global TAO namespace. */
 namespace TAO::Ledger
@@ -101,46 +72,6 @@ namespace TAO::Ledger
             return nullptr;
         }
 
-        /* ═══════════════════════════════════════════════════════════════
-         * STATELESS TEMPLATE CACHE — serves both Stateless and Legacy lanes
-         * ═══════════════════════════════════════════════════════════════
-         * Check the per-channel cache before performing the expensive
-         * CreateBlock() call. Invalidated only on chain advance or timeout.
-         */
-        {
-            std::lock_guard<std::mutex> lock(STATELESS_CACHE_MUTEX);
-            StatelessTemplateEntry& entry = tStatelessCache[nChannel];
-
-            const uint1024_t hashCurrentBest = ChainState::hashBestChain.load();
-            const uint64_t nNow = runtime::unifiedtimestamp();
-            const int64_t nRefreshArg = config::GetArg("-blockrefresh", 90);
-            const uint64_t nExpiration = (nRefreshArg > 0) ? static_cast<uint64_t>(nRefreshArg) : 90;
-
-            if(entry.fValid
-                && entry.hashBestChainAtCreation == hashCurrentBest
-                && (nNow - entry.nCreationTimestamp) < nExpiration)
-            {
-                /* CACHE HIT — clone the cached block */
-                TritiumBlock* pCached = new TritiumBlock(entry.block);
-
-                /* Update nonce and time for this specific request */
-                pCached->nNonce = 1;
-                pCached->UpdateTime();
-
-                debug::log(2, FUNCTION, "CACHE HIT: Serving cached ",
-                           (nChannel == 1 ? "Prime" : "Hash"),
-                           " template (height=", pCached->nHeight,
-                           ", age=", (nNow - entry.nCreationTimestamp), "s)");
-
-                return pCached;
-            }
-
-            debug::log(2, FUNCTION, "CACHE MISS for channel ", nChannel,
-                       " (valid=", entry.fValid,
-                       ", chainMatch=", (entry.hashBestChainAtCreation == hashCurrentBest),
-                       ", age=", entry.fValid ? (nNow - entry.nCreationTimestamp) : 0, "s)");
-        }
-
         debug::log(1, FUNCTION, "Creating wallet-signed block (Nexus consensus requirement)");
         
         try {
@@ -154,13 +85,13 @@ namespace TAO::Ledger
             const BlockState statePrev = ChainState::tStateBest.load();
             const uint32_t nChainHeight = ChainState::nBestHeight.load();
             
-            /* ✅ ADD: Diagnostic logging */
-            debug::log(0, FUNCTION, "=== CHAIN STATE DIAGNOSTIC ===");
-            debug::log(0, FUNCTION, "  ChainState::nBestHeight: ", nChainHeight);
-            debug::log(0, FUNCTION, "  statePrev.nHeight: ", statePrev.nHeight);
-            debug::log(0, FUNCTION, "  statePrev.GetHash(): ", statePrev.GetHash().SubString());
-            debug::log(0, FUNCTION, "  Synchronizing: ", ChainState::Synchronizing() ? "YES" : "NO");
-            debug::log(0, FUNCTION, "  Template will be for height: ", statePrev.nHeight + 1);
+            /* Diagnostic logging */
+            debug::log(2, FUNCTION, "=== CHAIN STATE DIAGNOSTIC ===");
+            debug::log(2, FUNCTION, "  ChainState::nBestHeight: ", nChainHeight);
+            debug::log(2, FUNCTION, "  statePrev.nHeight: ", statePrev.nHeight);
+            debug::log(2, FUNCTION, "  statePrev.GetHash(): ", statePrev.GetHash().SubString());
+            debug::log(2, FUNCTION, "  Synchronizing: ", ChainState::Synchronizing() ? "YES" : "NO");
+            debug::log(2, FUNCTION, "  Template will be for height: ", statePrev.nHeight + 1);
             
             /* Verify chain state is valid before proceeding */
             if(!statePrev || statePrev.GetHash() == 0)
@@ -177,61 +108,7 @@ namespace TAO::Ledger
                 return nullptr;
             }
             
-            /* ✅ ADD: Validate consistency */
-            if(statePrev.nHeight != nChainHeight)
-            {
-                debug::error(FUNCTION, "❌ Chain state inconsistency detected!");
-                debug::error(FUNCTION, "   statePrev.nHeight: ", statePrev.nHeight);
-                debug::error(FUNCTION, "   nBestHeight: ", nChainHeight);
-                debug::error(FUNCTION, "   This indicates a race condition or chain state corruption");
-                return nullptr;
-            }
-            
             TritiumBlock* pBlock = new TritiumBlock();
-            
-            /* Initialize block with proper chain context BEFORE CreateBlock()
-             * This ensures CreateBlock() has the correct context to populate the producer transaction.
-             * Without this, the block would have default-initialized values (zeros), causing validation failures.
-             * This matches the flow in normal nodes: AddBlockData() sets these fields. */
-            pBlock->hashPrevBlock = statePrev.GetHash();
-            pBlock->nChannel = nChannel;
-            
-            /* Use UNIFIED height for pBlock->nHeight — matches NexusMiner #169/#170 contract.
-             *
-             * TritiumBlock::Accept() validates: statePrev.nHeight + 1 == nHeight
-             * where statePrev is the block at hashPrevBlock (the unified best-chain tip).
-             * nChannelHeight is computed by BlockState::SetBest() and is metadata only.
-             */
-            pBlock->nHeight = statePrev.nHeight + 1;
-
-            debug::log(2, FUNCTION, "✓ Creating template for channel ", static_cast<uint32_t>(nChannel),
-                       " at unified height ", pBlock->nHeight);
-            
-            /* Verify nChannel was set correctly */
-            debug::log(2, FUNCTION, "✓ Block nChannel set to: ", pBlock->nChannel, 
-                       " (", (nChannel == 1 ? "Prime" : nChannel == 2 ? "Hash" : "INVALID"), ")");
-            
-            if(pBlock->nChannel == 0)
-            {
-                debug::error(FUNCTION, "❌ CRITICAL: nChannel is 0 after assignment!");
-                debug::error(FUNCTION, "   Input nChannel parameter: ", nChannel);
-                debug::error(FUNCTION, "   This should never happen - investigate immediately");
-                delete pBlock;
-                return nullptr;
-            }
-            
-            pBlock->nBits = GetNextTargetRequired(statePrev, nChannel, false);
-            pBlock->nTime = std::max(
-                statePrev.GetBlockTime() + 1, 
-                runtime::unifiedtimestamp()
-            );
-            
-            debug::log(2, FUNCTION, "Block initialized with chain state:");
-            debug::log(2, FUNCTION, "  hashPrevBlock: ", pBlock->hashPrevBlock.SubString());
-            debug::log(2, FUNCTION, "  nHeight (unified): ", pBlock->nHeight);
-            debug::log(2, FUNCTION, "  nChannel: ", pBlock->nChannel);
-            debug::log(2, FUNCTION, "  nBits: 0x", std::hex, pBlock->nBits, std::dec);
-            debug::log(2, FUNCTION, "  nTime: ", pBlock->nTime);
             
             // CreateBlock() handles wallet signing per consensus requirements
             bool success = CreateBlock(
@@ -267,21 +144,6 @@ namespace TAO::Ledger
                        " unified height ", pBlock->nHeight);
             debug::log(2, FUNCTION, "  Note: PoW validation deferred until miner submits nonce");
             debug::log(2, FUNCTION, "  Reward address: ", hashRewardAddress.SubString());
-
-            /* Store in stateless template cache for subsequent requests */
-            {
-                std::lock_guard<std::mutex> lock(STATELESS_CACHE_MUTEX);
-                StatelessTemplateEntry& entry = tStatelessCache[nChannel];
-                entry.block = *pBlock;
-                entry.hashBestChainAtCreation = ChainState::hashBestChain.load();
-                entry.nCreationTimestamp = runtime::unifiedtimestamp();
-                entry.fValid = true;
-
-                debug::log(0, FUNCTION, "CACHED ",
-                           (nChannel == 1 ? "Prime" : "Hash"),
-                           " template (height=", pBlock->nHeight,
-                           ", hashPrevBlock=", pBlock->hashPrevBlock.SubString(), ")");
-            }
 
             return pBlock;
         }
