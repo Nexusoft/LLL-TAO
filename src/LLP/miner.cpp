@@ -1776,12 +1776,6 @@ namespace LLP
             ColinMiningAgent::Get().on_template_pushed(pBlock->nChannel, pBlock->nHeight);
         }
 
-        /* Reset cooldown after successfully serving the request */
-        {
-            LOCK(MUTEX);
-            m_get_block_cooldown.Reset();
-        }
-
         return true;
     }
 
@@ -1815,8 +1809,8 @@ namespace LLP
             LOCK(MUTEX);
             m_force_next_push = true;
             // Reassign (not Reset()) — we want Ready() to return true immediately
-            // so the recovery GET_BLOCK is served without waiting 30 s.
-            // Reset() would START a new 30-second cooldown; reassignment
+            // so the recovery GET_BLOCK is served without waiting 2 s.
+            // Reset() would START a new 2-second cooldown; reassignment
             // restores the "never triggered" state where Ready() returns true.
             m_get_block_cooldown = AutoCoolDown(std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS));
         }

@@ -121,24 +121,24 @@ namespace MiningConstants
      */
     constexpr int64_t TEMPLATE_PUSH_MIN_INTERVAL_MS = 1000;
 
-    /** Per-connection GET_BLOCK safety-net cooldown (30 seconds).
+    /** Per-connection GET_BLOCK minimum interval (2 seconds).
      *
      *  Used by AutoCoolDown m_get_block_cooldown on each miner connection.
-     *  With the push-driven architecture, miners rarely need to poll.
-     *  30 s provides adequate protection against polling abuse while
-     *  allowing recovery within one 60-second recovery window — if a
-     *  miner detects a stale template and sends GET_BLOCK + MINER_READY,
-     *  the cooldown will have expired before the next recovery attempt.
-     *  MINER_READY also explicitly resets this cooldown so recovery
-     *  GET_BLOCKs are always served immediately after re-subscription.
+     *  This is a simple 2-second rate-limit floor — NOT a lockout window.
+     *  The cooldown is NOT reset after serving a GET_BLOCK, so miners can
+     *  retry every 2 seconds during recovery from Emergency/Degraded mode.
+     *  The per-minute cap (MAX_GET_BLOCK_PER_MINUTE) provides the primary
+     *  spam protection; this floor just prevents rapid-fire polling abuse.
+     *  MINER_READY resets it for an immediate first GET_BLOCK after
+     *  re-subscription.
      */
-    constexpr uint32_t GET_BLOCK_COOLDOWN_SECONDS = 30;
+    constexpr uint32_t GET_BLOCK_COOLDOWN_SECONDS = 2;
 
     /** Localhost connections skip AutoCoolDown in production.
      *
      *  A local miner cannot be a DDOS vector; the per-minute cap
      *  (MAX_GET_BLOCK_PER_MINUTE) provides sufficient rate control.
-     *  Remote miners are still protected by the 30-second cooldown.
+     *  Remote miners are still protected by the 2-second rate-limit floor.
      */
     constexpr bool DISABLE_LOCALHOST_AUTOCOOLDOWN = true;
 

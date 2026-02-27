@@ -173,7 +173,7 @@ TEST_CASE("AutoCooldownManager Security Properties", "[auto_cooldown][security]"
  *   2. The per-minute cap (20/min) is the spam guard; a miner that fires 21
  *      requests inside a 60-second window triggers RecordViolation.
  *      Increased from 10/min to give recovery sufficient retries.
- *   3. GET_BLOCK_COOLDOWN_SECONDS == 30 so recovery fits in one 60s window.
+ *   3. GET_BLOCK_COOLDOWN_SECONDS == 2 so miners can retry every 2 seconds during recovery.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 TEST_CASE("GET_BLOCK rate-limit constants", "[rate_limit][mining_constants]")

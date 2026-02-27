@@ -722,25 +722,26 @@ is still well above any fork-resolution burst window (~100 ms) and below any
 real block-time floor, so miners always get a fresh template within 1 s of the
 tip stabilising.
 
-### 30-Second GET_BLOCK Safety-Net (`AutoCoolDown`, `GET_BLOCK_COOLDOWN_SECONDS`)
+### 2-Second GET_BLOCK Rate-Limit Floor (`AutoCoolDown`, `GET_BLOCK_COOLDOWN_SECONDS`)
 
-`LLP::AutoCoolDown m_get_block_cooldown{std::chrono::seconds(30)}` is held
-per connection on both `StatelessMinerConnection` and `Miner`.  Because the
-node now pushes templates on every tip advance, miners should almost never
-need to poll with `GET_BLOCK`.  The 30-second cooldown is a **last-resort
-safety net** for lost connections:
+`LLP::AutoCoolDown m_get_block_cooldown{std::chrono::seconds(2)}` is held
+per connection on both `StatelessMinerConnection` and `Miner`.  This is a
+simple 2-second rate-limit floor — **not** a lockout window:
 
-- Allows recovery within one 60-second recovery window: if a miner sends
-  GET_BLOCK + MINER_READY after detecting a stale template, the cooldown
-  will have expired before the next recovery attempt.
-- `MINER_READY` explicitly resets this cooldown so recovery GET_BLOCKs
-  are always served immediately after re-subscription.
+- The cooldown is **not** reset after successfully serving GET_BLOCK, so
+  miners can retry every 2 seconds during recovery from Emergency/Degraded
+  mode without being permanently locked out.
+- `MINER_READY` explicitly resets this cooldown so the first recovery
+  GET_BLOCK is served immediately after re-subscription.
 - Localhost connections bypass AutoCoolDown entirely (they cannot be a
   DDOS vector); the per-minute cap (20 GET_BLOCKs/min) provides control.
-- The per-minute cap (20 GET_BLOCKs/min) still prevents genuine spam.
+- The per-minute cap (20 GET_BLOCKs/min) provides the primary spam
+  protection; the 2-second floor prevents rapid-fire polling abuse.
 
-The old 200-second strategy was calibrated for the polling era.  With push
-now the norm, 30 s is the correct ceiling and fits within one recovery window.
+The old 30-second strategy caused an unrecoverable doom loop during
+Emergency/Degraded recovery: serving one GET_BLOCK would restart the 30s
+window, blocking all subsequent recovery retries and leaving the miner
+permanently stuck.
 
 ### Class `LLP::AutoCoolDown`
 
@@ -749,9 +750,9 @@ It replaces ad-hoc magic-number cooldown comments with a self-contained
 object:
 
 ```cpp
-AutoCoolDown cd(std::chrono::seconds(30));
-if (!cd.Ready()) return;   // still cooling down
-cd.Reset();                // start new cooldown
+AutoCoolDown cd(std::chrono::seconds(2));
+if (!cd.Ready()) return;   // still within 2-second floor
+// (do NOT call cd.Reset() after serving — let it expire naturally)
 ```
 
 **Cross-reference:** See [push-refresh-loop.md](push-refresh-loop.md) for

@@ -1010,9 +1010,6 @@ namespace LLP
                     /* Update manager with new context after template served */
                     StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
                     StatelessMinerManager::Get().IncrementTemplatesServed();
-
-                    /* Reset cooldown after successfully serving the request */
-                    m_get_block_cooldown.Reset();
                     
                     return true;
                 }
@@ -2453,8 +2450,8 @@ namespace LLP
                     LOCK(MUTEX);
                     m_force_next_push = true;
                     // Reassign (not Reset()) — we want Ready() to return true immediately
-                    // so the recovery GET_BLOCK is served without waiting 30 s.
-                    // Reset() would START a new 30-second cooldown; reassignment
+                    // so the recovery GET_BLOCK is served without waiting 2 s.
+                    // Reset() would START a new 2-second cooldown; reassignment
                     // restores the "never triggered" state where Ready() returns true.
                     m_get_block_cooldown = AutoCoolDown(std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS));
                 }
