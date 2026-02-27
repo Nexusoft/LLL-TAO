@@ -731,8 +731,7 @@ need to poll with `GET_BLOCK`.  The 200-second cooldown is a **last-resort
 safety net** for lost connections:
 
 - Capped reconnect latency: 200 s instead of 300 s in the worst case.
-- Still well above the node's 10 s minimum between repeat requests (avoids
-  the hard DDOS ban).
+- The per-minute cap (10 GET_BLOCKs/min) still prevents genuine spam.
 
 The old 300-second strategy was calibrated for polling miners.  With push now
 the norm, 200 s is the correct ceiling.

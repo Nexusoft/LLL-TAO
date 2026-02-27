@@ -29,8 +29,14 @@ namespace MiningConstants
     #ifdef ENABLE_DEBUG
         /* Development/Debug Build - Relaxed rate limits for testing */
         
-        /** Minimum interval between GET_BLOCK requests (2 seconds) */
-        constexpr uint32_t GET_BLOCK_MIN_INTERVAL_MS = 2000;
+        /** Minimum interval between GET_BLOCK requests.
+         *
+         *  Set to 0 (disabled): the per-minute cap (MAX_GET_BLOCK_PER_MINUTE = 10)
+         *  is sufficient for spam prevention.  The 2-second floor was removed
+         *  because it broke SIM Link recovery — a reconnecting miner legitimately
+         *  needs GET_BLOCK within < 2 s of completing Falcon auth.
+         */
+        constexpr uint32_t GET_BLOCK_MIN_INTERVAL_MS = 0;
         
         /** Throttled interval for GET_BLOCK when rate limited (4 seconds) */
         constexpr uint32_t GET_BLOCK_THROTTLE_INTERVAL_MS = 4000;
@@ -47,14 +53,14 @@ namespace MiningConstants
     #else
         /* Production Build - Strict rate limits for network security */
         
-        /** Minimum interval between GET_BLOCK requests (2 seconds).
+        /** Minimum interval between GET_BLOCK requests.
          *
-         *  Tuned for NexusMiner SIM Link architecture: miner polls at 2500ms
-         *  interval, giving a 500ms node-side safety margin.  The existing
-         *  300-second ban for repeat violators (AUTOCOOLDOWN_DURATION_SECONDS)
-         *  is intentionally preserved.
+         *  Set to 0 (disabled): the per-minute cap (MAX_GET_BLOCK_PER_MINUTE = 10)
+         *  is sufficient for spam prevention.  The 2-second floor was removed
+         *  because it broke SIM Link recovery — a reconnecting miner legitimately
+         *  needs GET_BLOCK within < 2 s of completing Falcon auth.
          */
-        constexpr uint32_t GET_BLOCK_MIN_INTERVAL_MS = 2000;
+        constexpr uint32_t GET_BLOCK_MIN_INTERVAL_MS = 0;
         
         /** Throttled interval for GET_BLOCK when rate limited (10 seconds) */
         constexpr uint32_t GET_BLOCK_THROTTLE_INTERVAL_MS = 10000;

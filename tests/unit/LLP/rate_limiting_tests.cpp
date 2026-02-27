@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/auto_cooldown_manager.h>
 #include <LLP/include/base_address.h>
+#include <LLP/include/mining_constants.h>
 #include <Util/include/runtime.h>
 
 #include <thread>
@@ -156,5 +157,45 @@ TEST_CASE("AutoCooldownManager Security Properties", "[auto_cooldown][security]"
         
         // Should auto-expire
         REQUIRE_FALSE(AutoCooldownManager::Get().IsInCooldown(addr));
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * GET_BLOCK rate-limit constant tests
+ *
+ * CheckRateLimit() is a private method of StatelessMinerConnection, so we
+ * verify the constants that govern its behaviour rather than the method itself.
+ *
+ * Key invariants after the SIM Link fix (PR removing the 2-second floor):
+ *   1. GET_BLOCK_MIN_INTERVAL_MS == 0   → the per-request minimum is disabled;
+ *      a reconnecting miner can fire GET_BLOCK immediately after Falcon auth
+ *      without accruing a violation.
+ *   2. The per-minute cap (10/min) remains the sole spam guard; a miner that
+ *      fires 11 requests inside a 60-second window still triggers RecordViolation.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+TEST_CASE("GET_BLOCK rate-limit constants", "[rate_limit][mining_constants]")
+{
+    using namespace LLP::MiningConstants;
+
+    SECTION("GET_BLOCK_MIN_INTERVAL_MS is 0 (floor removed for SIM Link recovery)")
+    {
+        /* The 2-second per-request minimum was removed because it broke SIM Link
+         * recovery: a reconnecting miner legitimately fires GET_BLOCK within
+         * ~400–800 ms of completing Falcon auth.  The per-minute cap is the
+         * only spam guard now. */
+        REQUIRE(GET_BLOCK_MIN_INTERVAL_MS == 0u);
+    }
+
+    SECTION("GET_BLOCK requests with short intervals are allowed (no per-request floor)")
+    {
+        /* Reconnecting miners legitimately fire GET_BLOCK within ~600 ms of
+         * completing Falcon auth.  With GET_BLOCK_MIN_INTERVAL_MS == 0, the
+         * per-request floor is disabled so any non-zero interval is accepted.
+         * Only the per-minute cap (MAX_GET_BLOCK_PER_MINUTE) can reject requests. */
+        constexpr uint32_t reconnect_interval_ms = 600u;
+        bool blocked_by_floor = (GET_BLOCK_MIN_INTERVAL_MS > 0 &&
+                                 reconnect_interval_ms < GET_BLOCK_MIN_INTERVAL_MS);
+        REQUIRE_FALSE(blocked_by_floor);
     }
 }
