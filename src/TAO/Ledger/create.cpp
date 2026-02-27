@@ -378,8 +378,13 @@ namespace TAO::Ledger
         const uint32_t nChannel, TAO::Ledger::TritiumBlock &rBlockRet, const uint64_t nExtraNonce, Legacy::Coinbase *pCoinbaseRecipients,
         const uint256_t& hashDynamicGenesis)
     {
-        /* Get the session - use dynamic genesis if provided, otherwise use user genesis */
-        const uint256_t hashGenesis = (hashDynamicGenesis != 0) ? hashDynamicGenesis : user->Genesis();
+        /* Cache key: always the signing wallet's genesis (node operator sigchain).
+         * hashDynamicGenesis (miner reward address) flows separately to CreateProducer()
+         * for coinbase routing — it is NOT part of the block structure the cache represents.
+         * Using hashDynamicGenesis here caused the secondary invalidation check to fire on
+         * every call (producer.hashGenesis is always node wallet genesis, never matches
+         * a miner register address), forcing full 1.3s block rebuild on every GET_BLOCK. */
+        const uint256_t hashGenesis = user->Genesis();
 
         /* Only allow prime, hash, and private channels. */
         if(nChannel < 1 || nChannel > 3)
