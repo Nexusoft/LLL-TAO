@@ -429,7 +429,7 @@ namespace LLP
         uint32_t nChannel;           // Mining channel (1=Prime, 2=Hash)
         /* Session-level unified blockchain height tracking ONLY.
          * Never copy to block.nHeight — that comes from the 216-byte template (bytes[200-203]).
-         * block.nHeight is set by CreateBlock() to stateChannel.nChannelHeight + 1. */
+         * block.nHeight is set by AddBlockData() to tStateBest.nHeight + 1 (UNIFIED). */
         uint32_t nHeight;            // Current blockchain height (session tracking only)
         uint64_t nTimestamp;         // Last activity timestamp
         std::string strAddress;      // Miner's network address
