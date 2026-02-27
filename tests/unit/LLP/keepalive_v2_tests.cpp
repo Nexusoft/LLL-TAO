@@ -335,6 +335,71 @@ TEST_CASE("KeepaliveV2 - backward compatibility", "[keepalive_v2][llp]")
 }
 
 
+TEST_CASE("KeepaliveV2 legacy path request-parsing", "[keepalive_v2][llp]")
+{
+    using namespace LLP::KeepaliveV2;
+
+    SECTION("4-byte (v1) request: ParsePayload returns false, no out-of-bounds access")
+    {
+        /* Old miners send only session_id (4 bytes); legacy path must handle gracefully */
+        std::vector<uint8_t> data = { 0x01, 0x00, 0x00, 0x00 };   /* session_id = 1 (LE) */
+
+        uint32_t nSessionId = 0;
+        std::array<uint8_t, 4> suffixBytes = {0xFF, 0xFF, 0xFF, 0xFF};
+
+        bool fIsV2 = ParsePayload(data, nSessionId, suffixBytes);
+
+        REQUIRE(fIsV2 == false);
+        REQUIRE(nSessionId == 1u);
+        /* suffix bytes zeroed — no out-of-bounds read from 4-byte payload */
+        REQUIRE(suffixBytes[0] == 0u);
+        REQUIRE(suffixBytes[1] == 0u);
+        REQUIRE(suffixBytes[2] == 0u);
+        REQUIRE(suffixBytes[3] == 0u);
+    }
+
+    SECTION("8-byte (v2) request: nMinerPrevHashLo32 derived as BE uint32 from raw suffix bytes")
+    {
+        /* v2 miners send session_id (LE) + hashPrevBlock_lo32 (BE on wire).
+         * Legacy path parses the value for observability but replies with 0u. */
+        std::vector<uint8_t> data = {
+            0x05, 0x00, 0x00, 0x00,   /* session_id = 5 (LE) */
+            0xDE, 0xAD, 0xBE, 0xEF    /* hashPrevBlock_lo32 = 0xDEADBEEF (BE on wire) */
+        };
+
+        uint32_t nSessionId = 0;
+        std::array<uint8_t, 4> suffixBytes = {};
+
+        bool fIsV2 = ParsePayload(data, nSessionId, suffixBytes);
+
+        REQUIRE(fIsV2 == true);
+        REQUIRE(nSessionId == 5u);
+
+        /* Derive nMinerPrevHashLo32 as big-endian uint32 from raw bytes — matches miner.cpp logic */
+        uint32_t nMinerPrevHashLo32 =
+            (uint32_t(suffixBytes[0]) << 24) |
+            (uint32_t(suffixBytes[1]) << 16) |
+            (uint32_t(suffixBytes[2]) <<  8) |
+             uint32_t(suffixBytes[3]);
+
+        REQUIRE(nMinerPrevHashLo32 == 0xDEADBEEFu);
+
+        /* Legacy path replies with 0u for hashPrevBlock_lo32 and fork_score */
+        auto vReply = BuildUnifiedResponse(nSessionId, 0u, 6000000u, 0xCAFEBABEu, 100u, 200u, 999u, 0u);
+        REQUIRE(vReply.size() == 32u);
+        /* hashPrevBlock_lo32 field [4..7] = 0 on legacy path */
+        REQUIRE(vReply[4] == 0x00u); REQUIRE(vReply[5] == 0x00u);
+        REQUIRE(vReply[6] == 0x00u); REQUIRE(vReply[7] == 0x00u);
+        /* fork_score field [28..31] = 0 on legacy path */
+        REQUIRE(vReply[28] == 0x00u); REQUIRE(vReply[29] == 0x00u);
+        REQUIRE(vReply[30] == 0x00u); REQUIRE(vReply[31] == 0x00u);
+        /* stake_height = 999 = 0x000003E7 at [24..27] big-endian */
+        REQUIRE(vReply[24] == 0x00u); REQUIRE(vReply[25] == 0x00u);
+        REQUIRE(vReply[26] == 0x03u); REQUIRE(vReply[27] == 0xE7u);
+    }
+}
+
+
 TEST_CASE("KeepaliveV2::KeepAliveV2Frame::Parse", "[keepalive_v2][llp]")
 {
     using namespace LLP::KeepaliveV2;

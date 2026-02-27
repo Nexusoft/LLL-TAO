@@ -441,8 +441,48 @@ flowchart TD
 
 ## Keepalive Flow — Unified (PR #301)
 
-Both SESSION_KEEPALIVE and KEEPALIVE_V2_ACK now produce identical 32-byte responses.
-See: `docs/current/keepalive-unified-protocol.md` for the complete unified protocol reference with diagrams.
+Both `SESSION_KEEPALIVE` (port 8323) and `KEEPALIVE_V2` / `KEEPALIVE_V2_ACK` (port 9323) converge on `BuildUnifiedResponse()` and return identical 32-byte replies with `stake_height` at bytes [24-27].
+
+```mermaid
+flowchart TD
+    MinerLegacy["Miner (legacy, port 8323)"]
+    MinerStateless["Miner (stateless, port 9323)"]
+
+    MinerLegacy -->|"SESSION_KEEPALIVE 0xD4\n8-byte payload\n[session_id LE][hashPrevBlock_lo32 BE]"| LegacyHandler
+    MinerStateless -->|"KEEPALIVE_V2 0xD100\n8-byte payload\n[sequence BE][hashPrevBlock_lo32 BE]"| StatelessHandler
+
+    subgraph LegacyLane["Legacy Lane (miner.cpp)"]
+        LegacyHandler["ParsePayload()\nextract session_id + prevhash canary\n(logged at debug level 3)"]
+        LegacyBuild["BuildUnifiedResponse(\n  session_id,\n  hashPrevBlock_lo32=0,  ← legacy: canary not echoed\n  unified_height,\n  hash_tip_lo32,\n  prime_height,\n  hash_height,\n  stake_height,\n  fork_score=0)          ← legacy: not computed"]
+        LegacyHandler --> LegacyBuild
+    end
+
+    subgraph StatelessLane["Stateless Lane (stateless_miner.cpp)"]
+        StatelessHandler["KeepAliveV2Frame::Parse()\nextract sequence + hashPrevBlock_lo32"]
+        StatelessBuild["BuildUnifiedResponse(\n  session_id,\n  hashPrevBlock_lo32,  ← echoed from miner request\n  unified_height,\n  hash_tip_lo32,\n  prime_height,\n  hash_height,\n  stake_height,\n  fork_score)          ← computed: 1 if fork divergence"]
+        StatelessHandler --> StatelessBuild
+    end
+
+    LegacyBuild -->|"SESSION_KEEPALIVE reply\n32-byte unified response"| MinerLegacy
+    StatelessBuild -->|"KEEPALIVE_V2_ACK 0xD101\n32-byte unified response"| MinerStateless
+
+    style LegacyLane fill:#e8f4f8,stroke:#2196F3
+    style StatelessLane fill:#e8f8e8,stroke:#4CAF50
+```
+
+**Wire format (32-byte reply — identical on both ports):**
+```
+[0..3]   session_id          (uint32 little-endian)
+[4..7]   hashPrevBlock_lo32  (uint32 big-endian; 0 on legacy path)
+[8..11]  unified_height      (uint32 big-endian)
+[12..15] hash_tip_lo32       (uint32 big-endian; lo32 of node hashBestChain)
+[16..19] prime_height        (uint32 big-endian)
+[20..23] hash_height         (uint32 big-endian)
+[24..27] stake_height        (uint32 big-endian; tracked on BOTH ports)
+[28..31] fork_score          (uint32 big-endian; 0 on legacy path)
+```
+
+See: `docs/current/keepalive-unified-protocol.md` for the complete unified protocol reference.
 
 ---
 

@@ -511,6 +511,17 @@ namespace LLP
                                   prevblockSuffixBytes[0], prevblockSuffixBytes[1],
                                   prevblockSuffixBytes[2], prevblockSuffixBytes[3]);
                     debug::log(2, FUNCTION, "SESSION_KEEPALIVE v2: prevblock_suffix=", suffixHex);
+
+                    /* Derive hashPrevBlock_lo32 as big-endian uint32 for observability and future extensibility.
+                     * The legacy reply still uses 0u for this field — see BuildUnifiedResponse call below. */
+                    uint32_t nMinerPrevHashLo32 =
+                        (uint32_t(prevblockSuffixBytes[0]) << 24) |
+                        (uint32_t(prevblockSuffixBytes[1]) << 16) |
+                        (uint32_t(prevblockSuffixBytes[2]) <<  8) |
+                         uint32_t(prevblockSuffixBytes[3]);
+                    debug::log(3, FUNCTION, "SESSION_KEEPALIVE v2 request:"
+                               " session=0x", std::hex, nKeepaliveSession,
+                               " miner_prevhash_lo32=0x", nMinerPrevHashLo32, std::dec);
                 }
 
                 debug::log(2, FUNCTION, "Session ID: 0x", std::hex, nKeepaliveSession, std::dec);
@@ -583,13 +594,13 @@ namespace LLP
 
                     std::vector<uint8_t> vV2 = KeepaliveV2::BuildUnifiedResponse(
                         nKeepaliveSession,
-                        0u,                // hashPrevBlock_lo32: legacy path has no miner canary echo — use 0
+                        0u,                // hashPrevBlock_lo32: legacy path does not echo miner canary (parsed above for observability only)
                         nUnifiedHeight,
                         nHashTipLo32,
                         nPrimeHeight,
                         nHashHeight,
                         nStakeHeight,
-                        0u);               // fork_score: legacy path does not compute fork score — use 0
+                        0u);               // fork_score: legacy path does not compute fork divergence — use 0
 
                     debug::log(2, FUNCTION, "Sent SESSION_KEEPALIVE unified reply (32 bytes):",
                                " unified=", nUnifiedHeight,
