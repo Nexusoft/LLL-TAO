@@ -692,6 +692,7 @@ namespace LLP
                     m_force_next_push = true;
                 }
                 SendStatelessTemplate();
+                debug::log(0, FUNCTION, "✓ Recovery template delivered via STATELESS_MINER_READY push — miner should resume mining");
 
                 /* Update last template channel height after sending template */
                 {
@@ -2456,11 +2457,21 @@ namespace LLP
                     m_get_block_cooldown = AutoCoolDown(std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS));
                 }
                 SendChannelNotification();
-                
+
+                /* Re-arm the bypass flag: SendChannelNotification() consumed m_force_next_push
+                 * and updated m_last_template_push_time.  Without re-arming, SendStatelessTemplate()
+                 * would see elapsed ~0 ms and be throttled, leaving the miner without a full
+                 * template and keeping its recovery epoch alive. */
+                {
+                    LOCK(MUTEX);
+                    m_force_next_push = true;
+                }
+
                 /* Auto-send template so miner can resume mining immediately.
                  * This is critical for MINER_READY recovery from degraded mode -
                  * miners need both the push notification AND the actual template. */
                 SendStatelessTemplate();
+                debug::log(0, FUNCTION, "✓ Recovery template delivered via MINER_READY push — miner should resume mining");
 
                 /* Update last template channel height after sending template */
                 {
