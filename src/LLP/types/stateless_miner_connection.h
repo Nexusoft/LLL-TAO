@@ -120,7 +120,6 @@ namespace LLP
             
             // Minimum intervals (from mining_constants.h - DEBUG vs PRODUCTION)
             static constexpr uint32_t MIN_GET_ROUND_INTERVAL_MS = 5000;   // 5 seconds
-            // MIN_GET_BLOCK_INTERVAL_MS: See MiningConstants::GET_BLOCK_MIN_INTERVAL_MS
             static constexpr uint32_t MIN_SUBMIT_BLOCK_INTERVAL_MS = 1000; // 1 second (lenient)
             
             // Violation thresholds

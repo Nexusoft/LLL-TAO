@@ -3651,20 +3651,6 @@ namespace LLP
                 }
                 #endif
                 
-                // Check minimum interval
-                auto intervalMs = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    now - m_rateLimit.tLastGetBlock).count();
-                
-                if (m_rateLimit.tLastGetBlock.time_since_epoch().count() > 0 && 
-                    intervalMs < MiningConstants::GET_BLOCK_MIN_INTERVAL_MS) 
-                {
-                    std::string reason = "GET_BLOCK interval too short: " + 
-                        std::to_string(intervalMs) + "ms < " + 
-                        std::to_string(MiningConstants::GET_BLOCK_MIN_INTERVAL_MS) + "ms minimum";
-                    RecordViolation(reason);
-                    return false;
-                }
-                
                 // Check per-minute limit
                 if (m_rateLimit.nGetBlockCount >= RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE) {
                     std::string reason = "GET_BLOCK limit exceeded: " + 
