@@ -2935,13 +2935,16 @@ namespace LLP
         debug::log(2, FUNCTION, "hashBestChain SubString (current tip):         ", TAO::Ledger::ChainState::hashBestChain.load().SubString());
         debug::log(2, FUNCTION, "hashPrevBlock == hashBestChain: ", (pBlock->hashPrevBlock == TAO::Ledger::ChainState::hashBestChain.load()));
         
+        /* Capture the merkle root key before the move — pBlock may be invalid after emplace */
+        const uint512_t hashMerkleKey = pBlock->hashMerkleRoot;
+
         TemplateMetadata meta(pBlock, nCreationTime, info.nUnifiedHeight, info.nNextChannelHeight, 
-                             pBlock->hashMerkleRoot, context.nChannel,
+                             hashMerkleKey, context.nChannel,
                              TAO::Ledger::ChainState::hashBestChain.load());
-        auto result = mapBlocks.emplace(pBlock->hashMerkleRoot, std::move(meta));
+        auto result = mapBlocks.emplace(hashMerkleKey, std::move(meta));
         
         debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Template stored in map with metadata", ANSI_COLOR_RESET);
-        debug::log(0, "      Merkle root: ", pBlock->hashMerkleRoot.SubString());
+        debug::log(0, "      Merkle root: ", hashMerkleKey.SubString());
         debug::log(0, "      Unified height (current):  ", info.nUnifiedHeight);
         debug::log(0, "      Channel height (target):   ", info.nNextChannelHeight, " (mining for next ", pChannelMgr->GetChannelName(), " block)");
         debug::log(0, "      Channel: ", pChannelMgr->GetChannelName());
@@ -2962,9 +2965,23 @@ namespace LLP
                 debug::log(0, "   ✓ Verified: Template has correct nChannelHeight=", info.nNextChannelHeight);
             }
         }
-        
+        else
+        {
+            /* Duplicate key: another caller already stored a template for this merkle root.
+             * The newly created block (in meta) may have been destroyed by the failed emplace.
+             * Use the map key (result.first->first) to log — do NOT dereference pBlock here.
+             * Return the existing map entry's pointer which remains valid. */
+            debug::log(1, FUNCTION, "⚠ Duplicate merkle root — returning existing map entry for ", result.first->first.SubString());
+        }
+
+        /* Return the stable pointer owned by the map entry, not the pre-move raw pointer.
+         * If emplace succeeded, result.first->second.pBlock.get() == pBlock (same object).
+         * If emplace failed (duplicate key), pBlock would be destroyed at end of scope;
+         * result.first->second.pBlock.get() points to the existing valid template instead. */
+        TAO::Ledger::Block* pStableBlock = result.first->second.pBlock.get();
+
         debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "=== NEW_BLOCK: Complete ===", ANSI_COLOR_RESET);
-        return pBlock;
+        return pStableBlock;
     }
 
 
