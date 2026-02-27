@@ -59,11 +59,6 @@ namespace TAO::Ledger
     /* Create a new block object from the chain.*/
     static memory::atomic<TAO::Ledger::TritiumBlock> tBlockCache[4];
 
-    /* Per-channel height at the time the corresponding tBlockCache entry was built.
-     * Used as a quaternary cache-invalidation check to catch fork-resolution reorgs
-     * where hashBestChain resolves back to the same value but channel heights shifted. */
-    static std::atomic<uint32_t> nCachedChannelHeight[4] = {};
-
 
     /* Create a new transaction object from signature chain. */
     bool CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::Credentials>& pCredentials, const SecureString& pin,
@@ -434,23 +429,6 @@ namespace TAO::Ledger
             debug::log(0, FUNCTION, "Block cache timed out after ", nExpiration, " seconds (safety net), regenerating...");
         }
 
-        /* Quaternary check: Has the channel height changed?
-         * Catches fork-resolution reorgs where hashBestChain resolves back to the same value
-         * but the channel-specific height shifted (Doom Loop scenario, 2026-02-27). */
-        {
-            TAO::Ledger::BlockState stateChannelCheck = tStateBest;
-            if(GetLastState(stateChannelCheck, nChannel))
-            {
-                const uint32_t nCurrentChannelHeight = stateChannelCheck.nChannelHeight;
-                if(nCurrentChannelHeight != nCachedChannelHeight[nChannel].load())
-                {
-                    fNeedsNewBlock = true;
-                    debug::log(2, FUNCTION, "Block cache invalidated by channel height change (", nChannel, "): ",
-                               nCachedChannelHeight[nChannel].load(), " -> ", nCurrentChannelHeight, ", regenerating...");
-                }
-            }
-        }
-
         /* Reuse cached block if no invalidation condition triggered. */
         if(!fNeedsNewBlock)
         {
@@ -540,13 +518,6 @@ namespace TAO::Ledger
 
             /* Store the cached block. */
             tBlockCache[nChannel].store(rBlockRet);
-
-            /* Record the channel height at time of caching for quaternary invalidation check. */
-            {
-                TAO::Ledger::BlockState stateChannel = tStateBest;
-                if(GetLastState(stateChannel, nChannel))
-                    nCachedChannelHeight[nChannel].store(stateChannel.nChannelHeight);
-            }
         }
 
         /* Update the time for the newly created block. */
