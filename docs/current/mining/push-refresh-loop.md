@@ -65,7 +65,7 @@ Miner GET_BLOCK request path
 
 ---
 
-## Diagram 3 — AutoCoolDown (200 s) Safety Net
+## Diagram 3 — AutoCoolDown (30 s) Safety Net
 
 ```diagram
 Solution found → pre-submission staleness pass → SUBMIT_BLOCK
@@ -73,7 +73,7 @@ Solution found → pre-submission staleness pass → SUBMIT_BLOCK
   BLOCK_REJECTED (STALE)? ────────── YES ──────────────────────────────┐
        │                                                                 │
        NO                                              m_get_block_cooldown.Reset()
-       │                                               200 s must elapse before
+       │                                               30 s must elapse before
        ▼                                               next retry GET_BLOCK
 BLOCK_ACCEPTED → request new template via push (node sends 0xD081 automatically)
 ```
@@ -92,7 +92,7 @@ New block push arrives (0xD081 / notification)
        │
        └─ hashPrevBlock same?      NO  ─→ keep mining (tip unchanged, safe to continue)
 
-Fallback (if no push within 200 s):
+Fallback (if no push within 30 s):
        │
        ▼
 AutoCoolDown.Ready()?  YES ─→ send GET_BLOCK → receive fresh template
@@ -142,7 +142,7 @@ SendChannelNotification() / SendStatelessTemplate()
 | Constant | Value | File |
 |---|---|---|
 | `TEMPLATE_PUSH_MIN_INTERVAL_MS` | 1 000 ms | `src/LLP/include/mining_constants.h` |
-| `GET_BLOCK_COOLDOWN_SECONDS` | 200 s | `src/LLP/include/mining_constants.h` |
+| `GET_BLOCK_COOLDOWN_SECONDS` | 30 s | `src/LLP/include/mining_constants.h` |
 
 | Class | Key members | File |
 |---|---|---|

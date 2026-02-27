@@ -1661,6 +1661,26 @@ namespace LLP
             return debug::error(FUNCTION, "Reward address required for mining");
         }
 
+        /* Check AutoCoolDown FIRST — don't count as violation if cooldown blocks it */
+        {
+            bool fLocalhostBypass = false;
+            if(MiningConstants::DISABLE_LOCALHOST_AUTOCOOLDOWN)
+            {
+                std::string strIP = GetAddress().ToStringIP();
+                if(strIP == "127.0.0.1" || strIP == "::1")
+                    fLocalhostBypass = true;
+            }
+            LOCK(MUTEX);
+            if(!fLocalhostBypass && !m_get_block_cooldown.Ready())
+            {
+                debug::log(1, FUNCTION, "GET_BLOCK cooldown active for ", GetAddress().ToStringIP(),
+                    " (", m_get_block_cooldown.Remaining().count(), "ms remaining) — not counting as violation");
+                std::vector<uint8_t> vEmpty;
+                respond(BLOCK_DATA, vEmpty);
+                return true;  // Handled (cooldown blocked, no violation)
+            }
+        }
+
         TAO::Ledger::Block *pBlock = nullptr;
 
         /* Prepare the data to serialize on request. */
@@ -1756,6 +1776,12 @@ namespace LLP
             ColinMiningAgent::Get().on_template_pushed(pBlock->nChannel, pBlock->nHeight);
         }
 
+        /* Reset cooldown after successfully serving the request */
+        {
+            LOCK(MUTEX);
+            m_get_block_cooldown.Reset();
+        }
+
         return true;
     }
 
@@ -1783,10 +1809,16 @@ namespace LLP
 
         /* Send immediate notification.
          * Force-bypass the push throttle — miner explicitly re-subscribed and needs
-         * fresh work immediately regardless of when the previous push was sent. */
+         * fresh work immediately regardless of when the previous push was sent.
+         * Also reset the AutoCoolDown so the recovery GET_BLOCK is served immediately. */
         {
             LOCK(MUTEX);
             m_force_next_push = true;
+            // Reassign (not Reset()) — we want Ready() to return true immediately
+            // so the recovery GET_BLOCK is served without waiting 30 s.
+            // Reset() would START a new 30-second cooldown; reassignment
+            // restores the "never triggered" state where Ready() returns true.
+            m_get_block_cooldown = AutoCoolDown(std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS));
         }
         SendChannelNotification();
 

@@ -494,7 +494,9 @@ namespace LLP
         /** Safety-net cooldown for GET_BLOCK fallback polling.
          *
          *  With the event-driven push model the miner should almost never poll.
-         *  This 200-second cooldown is a last-resort guard for lost connections.
+         *  This 30-second cooldown is a last-resort guard for lost connections.
+         *  MINER_READY resets this to "ready" so recovery GET_BLOCKs are
+         *  always served immediately after re-subscription.
          *  Protected by MUTEX.
          **/
         AutoCoolDown m_get_block_cooldown{std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS)};

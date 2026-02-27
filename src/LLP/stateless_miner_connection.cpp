@@ -724,7 +724,25 @@ namespace LLP
             /* Handle GET_BLOCK - requires authentication and channel */
             if(PACKET.HEADER == GET_BLOCK)
             {
-                // AUTOMATED RATE LIMIT CHECK
+                // Check AutoCoolDown FIRST — don't count as violation if cooldown blocks it
+                bool fLocalhostBypass = false;
+                if(MiningConstants::DISABLE_LOCALHOST_AUTOCOOLDOWN)
+                {
+                    std::string strIP = GetAddress().ToStringIP();
+                    if(strIP == "127.0.0.1" || strIP == "::1")
+                        fLocalhostBypass = true;
+                }
+                if(!fLocalhostBypass && !m_get_block_cooldown.Ready())
+                {
+                    debug::log(1, FUNCTION, "GET_BLOCK cooldown active for ", GetAddress().ToStringIP(),
+                        " (", m_get_block_cooldown.Remaining().count(), "ms remaining) — not counting as violation");
+                    StatelessPacket response(OpcodeUtility::Stateless::BLOCK_DATA);
+                    response.LENGTH = 0;
+                    respond(response);
+                    return true;  // Handled (cooldown blocked, no violation)
+                }
+
+                // AUTOMATED RATE LIMIT CHECK (only reached if cooldown allows)
                 if (!CheckRateLimit(GET_BLOCK)) {
                     // Request rejected - violation already recorded
                     // Send empty response to indicate rate limited
@@ -992,6 +1010,9 @@ namespace LLP
                     /* Update manager with new context after template served */
                     StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
                     StatelessMinerManager::Get().IncrementTemplatesServed();
+
+                    /* Reset cooldown after successfully serving the request */
+                    m_get_block_cooldown.Reset();
                     
                     return true;
                 }
@@ -2426,10 +2447,16 @@ namespace LLP
                 
                 /* Send immediate notification with current state.
                  * Force-bypass the push throttle — miner explicitly re-subscribed and needs
-                 * fresh work immediately regardless of when the previous push was sent. */
+                 * fresh work immediately regardless of when the previous push was sent.
+                 * Also reset the AutoCoolDown so the recovery GET_BLOCK is served immediately. */
                 {
                     LOCK(MUTEX);
                     m_force_next_push = true;
+                    // Reassign (not Reset()) — we want Ready() to return true immediately
+                    // so the recovery GET_BLOCK is served without waiting 30 s.
+                    // Reset() would START a new 30-second cooldown; reassignment
+                    // restores the "never triggered" state where Ready() returns true.
+                    m_get_block_cooldown = AutoCoolDown(std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS));
                 }
                 SendChannelNotification();
                 

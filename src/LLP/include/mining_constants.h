@@ -121,15 +121,26 @@ namespace MiningConstants
      */
     constexpr int64_t TEMPLATE_PUSH_MIN_INTERVAL_MS = 1000;
 
-    /** Per-connection GET_BLOCK safety-net cooldown (200 seconds).
+    /** Per-connection GET_BLOCK safety-net cooldown (30 seconds).
      *
      *  Used by AutoCoolDown m_get_block_cooldown on each miner connection.
-     *  Now that the node pushes templates on every tip advance, miners should
-     *  almost never need to poll.  200 s caps reconnect latency in the worst
-     *  case (lost connection) while staying well above the node's 10 s hard
-     *  minimum between repeat requests.
+     *  With the push-driven architecture, miners rarely need to poll.
+     *  30 s provides adequate protection against polling abuse while
+     *  allowing recovery within one 60-second recovery window — if a
+     *  miner detects a stale template and sends GET_BLOCK + MINER_READY,
+     *  the cooldown will have expired before the next recovery attempt.
+     *  MINER_READY also explicitly resets this cooldown so recovery
+     *  GET_BLOCKs are always served immediately after re-subscription.
      */
-    constexpr uint32_t GET_BLOCK_COOLDOWN_SECONDS = 200;
+    constexpr uint32_t GET_BLOCK_COOLDOWN_SECONDS = 30;
+
+    /** Localhost connections skip AutoCoolDown in production.
+     *
+     *  A local miner cannot be a DDOS vector; the per-minute cap
+     *  (MAX_GET_BLOCK_PER_MINUTE) provides sufficient rate control.
+     *  Remote miners are still protected by the 30-second cooldown.
+     */
+    constexpr bool DISABLE_LOCALHOST_AUTOCOOLDOWN = true;
 
     //=========================================================================
     // DIFFICULTY CACHING
