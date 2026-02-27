@@ -90,9 +90,11 @@ namespace LLP
         /** Safety-net cooldown for GET_BLOCK fallback polling.
          *
          *  With the event-driven push model the miner should almost never poll.
-         *  This 200-second cooldown is a last-resort guard: once the miner
+         *  This 30-second cooldown is a last-resort guard: once the miner
          *  sends a GET_BLOCK, the node resets this object so the miner cannot
-         *  hammer the node faster than once per 200 s if pushes somehow fail.
+         *  hammer the node faster than once per 30 s if pushes somehow fail.
+         *  MINER_READY resets this to "ready" so recovery GET_BLOCKs are
+         *  always served immediately after re-subscription.
          *  Protected by MUTEX.
          **/
         AutoCoolDown m_get_block_cooldown{std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS)};
@@ -114,7 +116,7 @@ namespace LLP
         struct RateLimitConfig {
             // Request limits per minute
             static constexpr uint32_t MAX_GET_ROUND_PER_MINUTE = 12;
-            static constexpr uint32_t MAX_GET_BLOCK_PER_MINUTE = 10;
+            static constexpr uint32_t MAX_GET_BLOCK_PER_MINUTE = 20;  // was 10; recovery needs headroom
             static constexpr uint32_t MAX_SUBMIT_BLOCK_PER_MINUTE = 60;  // Lenient for solutions!
             static constexpr uint32_t MAX_SET_CHANNEL_PER_MINUTE = 5;
             

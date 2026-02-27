@@ -722,19 +722,25 @@ is still well above any fork-resolution burst window (~100 ms) and below any
 real block-time floor, so miners always get a fresh template within 1 s of the
 tip stabilising.
 
-### 200-Second GET_BLOCK Safety-Net (`AutoCoolDown`, `GET_BLOCK_COOLDOWN_SECONDS`)
+### 30-Second GET_BLOCK Safety-Net (`AutoCoolDown`, `GET_BLOCK_COOLDOWN_SECONDS`)
 
-`LLP::AutoCoolDown m_get_block_cooldown{std::chrono::seconds(200)}` is held
+`LLP::AutoCoolDown m_get_block_cooldown{std::chrono::seconds(30)}` is held
 per connection on both `StatelessMinerConnection` and `Miner`.  Because the
 node now pushes templates on every tip advance, miners should almost never
-need to poll with `GET_BLOCK`.  The 200-second cooldown is a **last-resort
+need to poll with `GET_BLOCK`.  The 30-second cooldown is a **last-resort
 safety net** for lost connections:
 
-- Capped reconnect latency: 200 s instead of 300 s in the worst case.
-- The per-minute cap (10 GET_BLOCKs/min) still prevents genuine spam.
+- Allows recovery within one 60-second recovery window: if a miner sends
+  GET_BLOCK + MINER_READY after detecting a stale template, the cooldown
+  will have expired before the next recovery attempt.
+- `MINER_READY` explicitly resets this cooldown so recovery GET_BLOCKs
+  are always served immediately after re-subscription.
+- Localhost connections bypass AutoCoolDown entirely (they cannot be a
+  DDOS vector); the per-minute cap (20 GET_BLOCKs/min) provides control.
+- The per-minute cap (20 GET_BLOCKs/min) still prevents genuine spam.
 
-The old 300-second strategy was calibrated for polling miners.  With push now
-the norm, 200 s is the correct ceiling.
+The old 200-second strategy was calibrated for the polling era.  With push
+now the norm, 30 s is the correct ceiling and fits within one recovery window.
 
 ### Class `LLP::AutoCoolDown`
 
@@ -743,7 +749,7 @@ It replaces ad-hoc magic-number cooldown comments with a self-contained
 object:
 
 ```cpp
-AutoCoolDown cd(std::chrono::seconds(200));
+AutoCoolDown cd(std::chrono::seconds(30));
 if (!cd.Ready()) return;   // still cooling down
 cd.Reset();                // start new cooldown
 ```

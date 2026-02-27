@@ -170,8 +170,10 @@ TEST_CASE("AutoCooldownManager Security Properties", "[auto_cooldown][security]"
  *   1. GET_BLOCK_MIN_INTERVAL_MS == 0   → the per-request minimum is disabled;
  *      a reconnecting miner can fire GET_BLOCK immediately after Falcon auth
  *      without accruing a violation.
- *   2. The per-minute cap (10/min) remains the sole spam guard; a miner that
- *      fires 11 requests inside a 60-second window still triggers RecordViolation.
+ *   2. The per-minute cap (20/min) is the spam guard; a miner that fires 21
+ *      requests inside a 60-second window triggers RecordViolation.
+ *      Increased from 10/min to give recovery sufficient retries.
+ *   3. GET_BLOCK_COOLDOWN_SECONDS == 30 so recovery fits in one 60s window.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 TEST_CASE("GET_BLOCK rate-limit constants", "[rate_limit][mining_constants]")
