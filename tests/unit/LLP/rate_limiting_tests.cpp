@@ -166,10 +166,10 @@ TEST_CASE("AutoCooldownManager Security Properties", "[auto_cooldown][security]"
  * CheckRateLimit() is a private method of StatelessMinerConnection, so we
  * verify the constants that govern its behaviour rather than the method itself.
  *
- * Key invariants after the SIM Link fix (PR removing the 2-second floor):
- *   1. GET_BLOCK_MIN_INTERVAL_MS == 0   → the per-request minimum is disabled;
- *      a reconnecting miner can fire GET_BLOCK immediately after Falcon auth
- *      without accruing a violation.
+ * Key invariants after the doom-loop fix:
+ *   1. GET_BLOCK_MIN_INTERVAL_MS == 2000 → the per-request minimum is a
+ *      2-second floor matching GET_BLOCK_COOLDOWN_SECONDS; both mechanisms
+ *      enforce the same floor with no lockout and no doom loop.
  *   2. The per-minute cap (20/min) is the spam guard; a miner that fires 21
  *      requests inside a 60-second window triggers RecordViolation.
  *      Increased from 10/min to give recovery sufficient retries.
@@ -180,24 +180,30 @@ TEST_CASE("GET_BLOCK rate-limit constants", "[rate_limit][mining_constants]")
 {
     using namespace LLP::MiningConstants;
 
-    SECTION("GET_BLOCK_MIN_INTERVAL_MS is 0 (floor removed for SIM Link recovery)")
+    SECTION("GET_BLOCK_MIN_INTERVAL_MS is 2000")
     {
-        /* The 2-second per-request minimum was removed because it broke SIM Link
-         * recovery: a reconnecting miner legitimately fires GET_BLOCK within
-         * ~400–800 ms of completing Falcon auth.  The per-minute cap is the
-         * only spam guard now. */
-        REQUIRE(GET_BLOCK_MIN_INTERVAL_MS == 0u);
+        /* The 2-second per-request minimum matches GET_BLOCK_COOLDOWN_SECONDS.
+         * Both mechanisms enforce the same 2-second floor — no lockout, no doom
+         * loop. The AutoCoolDown is NOT Reset() after serving GET_BLOCK, so
+         * miners can retry every 2 seconds during recovery. */
+        REQUIRE(GET_BLOCK_MIN_INTERVAL_MS == 2000u);
     }
 
-    SECTION("GET_BLOCK requests with short intervals are allowed (no per-request floor)")
+    SECTION("GET_BLOCK requests with short intervals are blocked by the 2-second floor")
     {
-        /* Reconnecting miners legitimately fire GET_BLOCK within ~600 ms of
-         * completing Falcon auth.  With GET_BLOCK_MIN_INTERVAL_MS == 0, the
-         * per-request floor is disabled so any non-zero interval is accepted.
-         * Only the per-minute cap (MAX_GET_BLOCK_PER_MINUTE) can reject requests. */
+        /* Reconnecting miners that fire GET_BLOCK within ~600 ms of completing
+         * Falcon auth will be blocked by the 2-second floor.  The floor prevents
+         * rapid-fire polling abuse; MINER_READY resets the AutoCoolDown so the
+         * first recovery GET_BLOCK is served immediately. */
         constexpr uint32_t reconnect_interval_ms = 600u;
         bool blocked_by_floor = (GET_BLOCK_MIN_INTERVAL_MS > 0 &&
                                  reconnect_interval_ms < GET_BLOCK_MIN_INTERVAL_MS);
-        REQUIRE_FALSE(blocked_by_floor);
+        REQUIRE(blocked_by_floor);
+    }
+
+    SECTION("GET_BLOCK_COOLDOWN_SECONDS matches GET_BLOCK_MIN_INTERVAL_MS")
+    {
+        /* Both mechanisms enforce the same 2-second floor. */
+        REQUIRE(GET_BLOCK_COOLDOWN_SECONDS == 2u);
     }
 }
