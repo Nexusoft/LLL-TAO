@@ -1527,15 +1527,25 @@ namespace LLP
             uint1024_t hashBestChain = TAO::Ledger::ChainState::hashBestChain.load();
             uint32_t nHashTipLo32 = static_cast<uint32_t>(hashBestChain.Get64(0) & 0xFFFFFFFF);
 
+            uint32_t nMinerPrevHashLo32 = 0u;
+            if(fIsV2)
+                nMinerPrevHashLo32 =
+                    (uint32_t(prevblockSuffixBytes[0]) << 24) |
+                    (uint32_t(prevblockSuffixBytes[1]) << 16) |
+                    (uint32_t(prevblockSuffixBytes[2]) <<  8) |
+                     uint32_t(prevblockSuffixBytes[3]);
+
+            uint32_t nForkScore = (nMinerPrevHashLo32 != 0 && nMinerPrevHashLo32 != nHashTipLo32) ? 1u : 0u;
+
             std::vector<uint8_t> vV2 = KeepaliveV2::BuildUnifiedResponse(
                 newContext.nSessionId,
-                0u,                // hashPrevBlock_lo32: legacy path has no miner canary echo — use 0
+                nMinerPrevHashLo32,    // echo miner's fork canary (0 if v1 miner)
                 nUnifiedHeight,
                 nHashTipLo32,
                 nPrimeHeight,
                 nHashHeight,
                 nStakeHeight,
-                0u);               // fork_score: legacy path does not compute fork score — use 0
+                nForkScore);           // computed canary (0 if v1 miner, 0 if hashes match)
 
             response.DATA = vV2;
 
@@ -1545,7 +1555,9 @@ namespace LLP
                        " prime=", nPrimeHeight,
                        " hash=", nHashHeight,
                        " stake=", nStakeHeight,
-                       " hash_tip_lo32=0x", std::hex, nHashTipLo32, std::dec);
+                       " hash_tip_lo32=0x", std::hex, nHashTipLo32,
+                       " miner_prevhash_lo32=0x", nMinerPrevHashLo32,
+                       " fork_score=", std::dec, nForkScore);
         }
         else
         {

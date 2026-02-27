@@ -698,13 +698,13 @@ Both lanes now share a **single unified 32-byte keepalive response format** (PR 
 
 ```
 [0-3]   session_id          LE uint32  — session validation (was: sequence on stateless, session_id on legacy)
-[4-7]   hashPrevBlock_lo32  BE uint32  — echo of miner's fork canary (0 on legacy path)
+[4-7]   hashPrevBlock_lo32  BE uint32  — echo of miner's fork canary (0 if v1 miner)
 [8-11]  unified_height      BE uint32
 [12-15] hash_tip_lo32       BE uint32  — lo32 of node hashBestChain (fork cross-check)
 [16-19] prime_height        BE uint32
 [20-23] hash_height         BE uint32
 [24-27] stake_height        BE uint32  ← THE MISSING PIECE — now tracked on miner side
-[28-31] fork_score          BE uint32  — 0=healthy, >0=latent fork divergence (0 on legacy path)
+[28-31] fork_score          BE uint32  — 0=healthy, >0=latent fork divergence (0 if v1 miner)
 ```
 
 ### What Was Deleted
@@ -753,7 +753,7 @@ Both lanes now share a **single unified 32-byte keepalive response format** (PR 
 | `KeepaliveV2::BuildUnifiedResponse()` | `src/LLP/include/keepalive_v2.h` | Build 32-byte unified keepalive reply (both ports; replaces deleted `BuildBestCurrentResponse()`) |
 | `KeepaliveV2::ParsePayload()` | `src/LLP/include/keepalive_v2.h` | Parse 4-byte (v1) or 8-byte (v2) keepalive request; extract session_id and miner prevhash canary |
 | `StatelessMiner::ProcessKeepaliveV2()` | `src/LLP/stateless_miner.cpp` | Handle KEEPALIVE_V2 (0xD100) on stateless lane; echo miner canary; compute fork_score |
-| `StatelessMiner::ProcessSessionKeepalive()` | `src/LLP/stateless_miner.cpp` | Handle SESSION_KEEPALIVE (0xD4) on stateless lane; use 0 for canary/fork_score |
+| `StatelessMiner::ProcessSessionKeepalive()` | `src/LLP/stateless_miner.cpp` | Handle SESSION_KEEPALIVE (0xD4) on stateless lane; echo miner canary and compute fork_score (mirrors stateless path) |
 | **UPSTREAM** | | |
 | `TAO::Ledger::BlockState` | `src/TAO/Ledger/types/state.h` | Full persisted block state |
 | `TAO::Ledger::BlockState::nChannelHeight` | `src/TAO/Ledger/types/state.h` | Per-channel block count |

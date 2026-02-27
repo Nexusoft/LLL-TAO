@@ -501,6 +501,9 @@ namespace LLP
                     return true;
                 }
 
+                /* Derive hashPrevBlock_lo32 from suffix bytes (0 if v1 miner) */
+                uint32_t nMinerPrevHashLo32 = 0u;
+
                 /* Update connection-level v2 negotiation state */
                 if(fIsV2)
                 {
@@ -512,9 +515,7 @@ namespace LLP
                                   prevblockSuffixBytes[2], prevblockSuffixBytes[3]);
                     debug::log(2, FUNCTION, "SESSION_KEEPALIVE v2: prevblock_suffix=", suffixHex);
 
-                    /* Derive hashPrevBlock_lo32 as big-endian uint32 for observability and future extensibility.
-                     * The legacy reply still uses 0u for this field — see BuildUnifiedResponse call below. */
-                    uint32_t nMinerPrevHashLo32 =
+                    nMinerPrevHashLo32 =
                         (uint32_t(prevblockSuffixBytes[0]) << 24) |
                         (uint32_t(prevblockSuffixBytes[1]) << 16) |
                         (uint32_t(prevblockSuffixBytes[2]) <<  8) |
@@ -592,22 +593,26 @@ namespace LLP
                     uint1024_t hashBestChain = TAO::Ledger::ChainState::hashBestChain.load();
                     uint32_t nHashTipLo32 = static_cast<uint32_t>(hashBestChain.Get64(0) & 0xFFFFFFFF);
 
+                    uint32_t nForkScore = (nMinerPrevHashLo32 != 0 && nMinerPrevHashLo32 != nHashTipLo32) ? 1u : 0u;
+
                     std::vector<uint8_t> vV2 = KeepaliveV2::BuildUnifiedResponse(
                         nKeepaliveSession,
-                        0u,                // hashPrevBlock_lo32: legacy path does not echo miner canary (parsed above for observability only)
+                        nMinerPrevHashLo32,   // echo miner's fork canary (0 if v1 miner)
                         nUnifiedHeight,
                         nHashTipLo32,
                         nPrimeHeight,
                         nHashHeight,
                         nStakeHeight,
-                        0u);               // fork_score: legacy path does not compute fork divergence — use 0
+                        nForkScore);          // computed canary (0 if v1 miner, 0 if hashes match)
 
                     debug::log(2, FUNCTION, "Sent SESSION_KEEPALIVE unified reply (32 bytes):",
                                " unified=", nUnifiedHeight,
                                " prime=", nPrimeHeight,
                                " hash=", nHashHeight,
                                " stake=", nStakeHeight,
-                               " hash_tip_lo32=0x", std::hex, nHashTipLo32, std::dec);
+                               " hash_tip_lo32=0x", std::hex, nHashTipLo32,
+                               " miner_prevhash_lo32=0x", nMinerPrevHashLo32,
+                               " fork_score=", std::dec, nForkScore);
 
                     respond(SESSION_KEEPALIVE, vV2);
                 }
