@@ -31,6 +31,35 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 #include <sstream>
+#include <mutex>
+
+namespace
+{
+    /** Per-channel stateless template cache.
+     *
+     *  Keyed by channel (1=Prime, 2=Hash). Stores the most recently created
+     *  TritiumBlock for each channel. Invalidated ONLY when:
+     *    1. hashBestChain has changed (chain advanced or reorg)
+     *    2. Template age exceeds blockrefresh timeout (default 90s)
+     *
+     *  NOT invalidated on genesis/user change — all stateless miners share
+     *  the same node wallet credentials, so the producer is identical.
+     *
+     *  Both protocol lanes (Stateless:9323 and Legacy:8323) serve from this
+     *  cache via CreateBlockForStatelessMining().
+     */
+    struct StatelessTemplateEntry
+    {
+        TAO::Ledger::TritiumBlock block;         /* The cached template */
+        uint1024_t hashBestChainAtCreation{0};   /* hashBestChain when created */
+        uint64_t nCreationTimestamp{0};           /* unifiedtimestamp() at creation */
+        bool fValid{false};                       /* Has this entry been populated? */
+    };
+
+    /* Cache indexed by channel: [1]=Prime, [2]=Hash. Index 0 unused. */
+    std::mutex STATELESS_CACHE_MUTEX;
+    StatelessTemplateEntry tStatelessCache[3];
+}
 
 /* Global TAO namespace. */
 namespace TAO::Ledger
@@ -71,7 +100,47 @@ namespace TAO::Ledger
             debug::error(FUNCTION, "Falcon authentication is for miner sessions, NOT block signing");
             return nullptr;
         }
-        
+
+        /* ═══════════════════════════════════════════════════════════════
+         * STATELESS TEMPLATE CACHE — serves both Stateless and Legacy lanes
+         * ═══════════════════════════════════════════════════════════════
+         * Check the per-channel cache before performing the expensive
+         * CreateBlock() call. Invalidated only on chain advance or timeout.
+         */
+        {
+            std::lock_guard<std::mutex> lock(STATELESS_CACHE_MUTEX);
+            StatelessTemplateEntry& entry = tStatelessCache[nChannel];
+
+            const uint1024_t hashCurrentBest = ChainState::hashBestChain.load();
+            const uint64_t nNow = runtime::unifiedtimestamp();
+            const int64_t nRefreshArg = config::GetArg("-blockrefresh", 90);
+            const uint64_t nExpiration = (nRefreshArg > 0) ? static_cast<uint64_t>(nRefreshArg) : 90;
+
+            if(entry.fValid
+                && entry.hashBestChainAtCreation == hashCurrentBest
+                && (nNow - entry.nCreationTimestamp) < nExpiration)
+            {
+                /* CACHE HIT — clone the cached block */
+                TritiumBlock* pCached = new TritiumBlock(entry.block);
+
+                /* Update nonce and time for this specific request */
+                pCached->nNonce = 1;
+                pCached->UpdateTime();
+
+                debug::log(2, FUNCTION, "CACHE HIT: Serving cached ",
+                           (nChannel == 1 ? "Prime" : "Hash"),
+                           " template (height=", pCached->nHeight,
+                           ", age=", (nNow - entry.nCreationTimestamp), "s)");
+
+                return pCached;
+            }
+
+            debug::log(2, FUNCTION, "CACHE MISS for channel ", nChannel,
+                       " (valid=", entry.fValid,
+                       ", chainMatch=", (entry.hashBestChainAtCreation == hashCurrentBest),
+                       ", age=", entry.fValid ? (nNow - entry.nCreationTimestamp) : 0, "s)");
+        }
+
         debug::log(1, FUNCTION, "Creating wallet-signed block (Nexus consensus requirement)");
         
         try {
@@ -198,7 +267,22 @@ namespace TAO::Ledger
                        " unified height ", pBlock->nHeight);
             debug::log(2, FUNCTION, "  Note: PoW validation deferred until miner submits nonce");
             debug::log(2, FUNCTION, "  Reward address: ", hashRewardAddress.SubString());
-            
+
+            /* Store in stateless template cache for subsequent requests */
+            {
+                std::lock_guard<std::mutex> lock(STATELESS_CACHE_MUTEX);
+                StatelessTemplateEntry& entry = tStatelessCache[nChannel];
+                entry.block = *pBlock;
+                entry.hashBestChainAtCreation = ChainState::hashBestChain.load();
+                entry.nCreationTimestamp = runtime::unifiedtimestamp();
+                entry.fValid = true;
+
+                debug::log(0, FUNCTION, "CACHED ",
+                           (nChannel == 1 ? "Prime" : "Hash"),
+                           " template (height=", pBlock->nHeight,
+                           ", hashPrevBlock=", pBlock->hashPrevBlock.SubString(), ")");
+            }
+
             return pBlock;
         }
         catch (const std::exception& e) {
