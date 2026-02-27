@@ -615,6 +615,18 @@ namespace LLP
                                " fork_score=", std::dec, nForkScore);
 
                     respond(SESSION_KEEPALIVE, vV2);
+
+                    /* Notify Colin agent with keepalive telemetry (observability hook) */
+                    if(hashGenesis != 0)
+                    {
+                        ColinMiningAgent::Get().on_keepalive_ack(
+                            hashGenesis.SubString(8),
+                            nUnifiedHeight,
+                            nPrimeHeight,
+                            nHashHeight,
+                            nStakeHeight,
+                            nForkScore);
+                    }
                 }
                 else
                 {

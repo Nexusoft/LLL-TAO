@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <LLP/include/session_recovery.h>
 #include <LLP/include/stateless_opcodes.h>
 #include <LLP/include/keepalive_v2.h>
+#include <LLP/include/colin_mining_agent.h>
 
 #include <LLD/include/global.h>
 
@@ -1647,6 +1648,20 @@ namespace LLP
         StatelessPacket response(StatelessOpcodes::KEEPALIVE_V2_ACK);
         response.DATA   = vAck;
         response.LENGTH = static_cast<uint32_t>(response.DATA.size());
+
+        /* Notify Colin agent with keepalive telemetry */
+        {
+            std::string genesis_prefix = context.hashGenesis != uint256_t(0)
+                ? context.hashGenesis.SubString(8)
+                : std::string{};
+            ColinMiningAgent::Get().on_keepalive_ack(
+                genesis_prefix,
+                nUnifiedHeight,
+                nPrimeHeight,
+                nHashHeight,
+                nStakeHeight,
+                nForkScore);
+        }
 
         /* Update context: refresh timestamp and increment keepalive counter */
         uint64_t nNow = runtime::unifiedtimestamp();

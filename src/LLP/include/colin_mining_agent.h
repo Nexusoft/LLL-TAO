@@ -258,6 +258,30 @@ namespace LLP
         void on_get_block_received(const std::string& genesis_prefix, bool rate_limited);
 
 
+        /** on_keepalive_ack
+         *
+         *  Called by miner.cpp (SESSION_KEEPALIVE reply) and stateless_miner.cpp
+         *  (KEEPALIVE_V2_ACK reply) immediately after BuildUnifiedResponse() is sent.
+         *
+         *  Stores the unified chain-state snapshot for the connected miner so that
+         *  Colin's periodic report can display live heights and fork canary status.
+         *
+         *  @param[in] genesis_prefix  First 8 hex chars of miner genesis (or empty string on legacy path before genesis is known)
+         *  @param[in] unified_height  Node unified height echoed in the reply
+         *  @param[in] prime_height    Node Prime channel height echoed in the reply
+         *  @param[in] hash_height     Node Hash channel height echoed in the reply
+         *  @param[in] stake_height    Node Stake channel height echoed in the reply
+         *  @param[in] fork_score      Fork divergence score (0=healthy)
+         *
+         **/
+        void on_keepalive_ack(const std::string& genesis_prefix,
+                              uint32_t unified_height,
+                              uint32_t prime_height,
+                              uint32_t hash_height,
+                              uint32_t stake_height,
+                              uint32_t fork_score);
+
+
         /** on_pong_received
          *
          *  Called by stateless_miner_connection when a PONG_DIAG frame arrives.
@@ -333,6 +357,16 @@ namespace LLP
             uint32_t    ping_sequence{0};   // Monotonic ping counter for this miner
             PongRecord  last_pong;          // Latest pong data (updated async)
             std::deque<uint64_t> rtt_history; // Rolling RTT history (last RTT_HISTORY_SIZE samples, µs)
+
+            // Keepalive ACK telemetry (populated by on_keepalive_ack)
+            uint32_t keepalive_ack_count{0};
+            uint32_t last_unified_height{0};
+            uint32_t last_prime_height{0};
+            uint32_t last_hash_height{0};
+            uint32_t last_stake_height{0};
+            uint32_t last_fork_score{0};
+            uint32_t peak_fork_score{0};
+            std::chrono::steady_clock::time_point last_keepalive_ack_at{};
         };
 
         /** Global push statistics (across all miners) **/

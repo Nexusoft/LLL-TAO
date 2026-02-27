@@ -157,7 +157,7 @@ namespace OpcodeUtility
      *
      *  Maximum sizes are based on protocol specifications:
      *  - SET_CHANNEL: 4 bytes (supports both 1-byte and legacy 4-byte LE format)
-     *  - SESSION_KEEPALIVE: 8 bytes (4-byte session ID + optional padding)
+     *  - SESSION_KEEPALIVE: 8 bytes (4-byte session_id LE + 4-byte hashPrevBlock_lo32 BE fork canary)
      *  - SESSION_START: 8 bytes (optional timeout value + padding)
      *  - MINER_AUTH_CHALLENGE: 40 bytes (length field + 32-byte nonce + padding)
      *  - MINER_AUTH_RESULT: 10 bytes (status + session ID + error code + padding)
@@ -175,7 +175,7 @@ namespace OpcodeUtility
         if(nOpcode == Opcodes::SET_CHANNEL)
             return 4;  /* 1-byte or 4-byte LE format */
         if(nOpcode == Opcodes::SESSION_KEEPALIVE)
-            return 8;  /* 4-byte session ID + padding */
+            return 8;  /* 4-byte session_id LE + 4-byte hashPrevBlock_lo32 BE (fork canary) */
         if(nOpcode == Opcodes::SESSION_START)
             return 8;  /* optional timeout + padding */
         if(nOpcode == Opcodes::MINER_AUTH_CHALLENGE)
@@ -299,6 +299,16 @@ namespace OpcodeUtility
                 *strReason = oss.str();
             }
             return false;
+        }
+
+        /* Cross-check: log v1 vs v2 payload size for SESSION_KEEPALIVE (observability) */
+        if(nOpcode == Opcodes::SESSION_KEEPALIVE)
+        {
+            bool fIsV2Payload = (packet.LENGTH == 8);
+            debug::log(4, FUNCTION,
+                       fIsV2Payload ? "\xe2\x9c\x85" : "\xe2\x9d\x8c",
+                       " SESSION_KEEPALIVE payload=", packet.LENGTH,
+                       "B (", fIsV2Payload ? "v2: session_id+hashPrevBlock_lo32" : "v1: session_id only", ")");
         }
         
         return true;

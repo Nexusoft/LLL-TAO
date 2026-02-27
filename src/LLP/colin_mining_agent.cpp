@@ -283,6 +283,29 @@ namespace LLP
     }
 
 
+    void ColinMiningAgent::on_keepalive_ack(const std::string& genesis_prefix,
+                                             uint32_t unified_height,
+                                             uint32_t prime_height,
+                                             uint32_t hash_height,
+                                             uint32_t stake_height,
+                                             uint32_t fork_score)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+
+        auto& stats = m_miners[genesis_prefix];
+        stats.genesis_prefix         = genesis_prefix;
+        stats.keepalive_ack_count++;
+        stats.last_unified_height    = unified_height;
+        stats.last_prime_height      = prime_height;
+        stats.last_hash_height       = hash_height;
+        stats.last_stake_height      = stake_height;
+        stats.last_fork_score        = fork_score;
+        if(fork_score > stats.peak_fork_score)
+            stats.peak_fork_score    = fork_score;
+        stats.last_keepalive_ack_at  = std::chrono::steady_clock::now();
+    }
+
+
     void ColinMiningAgent::on_pong_received(const std::string& genesis_prefix,
                                              const std::vector<uint8_t>& payload)
     {
