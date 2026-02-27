@@ -361,7 +361,7 @@ TEST_CASE("KeepaliveV2 legacy path request-parsing", "[keepalive_v2][llp]")
     SECTION("8-byte (v2) request: nMinerPrevHashLo32 derived as BE uint32 from raw suffix bytes")
     {
         /* v2 miners send session_id (LE) + hashPrevBlock_lo32 (BE on wire).
-         * Legacy path parses the value for observability but replies with 0u. */
+         * Both legacy and stateless paths now echo this value and compute fork_score. */
         std::vector<uint8_t> data = {
             0x05, 0x00, 0x00, 0x00,   /* session_id = 5 (LE) */
             0xDE, 0xAD, 0xBE, 0xEF    /* hashPrevBlock_lo32 = 0xDEADBEEF (BE on wire) */
@@ -384,18 +384,58 @@ TEST_CASE("KeepaliveV2 legacy path request-parsing", "[keepalive_v2][llp]")
 
         REQUIRE(nMinerPrevHashLo32 == 0xDEADBEEFu);
 
-        /* Legacy path replies with 0u for hashPrevBlock_lo32 and fork_score */
-        auto vReply = BuildUnifiedResponse(nSessionId, 0u, 6000000u, 0xCAFEBABEu, 100u, 200u, 999u, 0u);
+        /* Both lanes echo hashPrevBlock_lo32 and compute fork_score */
+        uint32_t nHashTipLo32 = 0xCAFEBABEu;
+        uint32_t nForkScore = (nMinerPrevHashLo32 != 0 && nMinerPrevHashLo32 != nHashTipLo32) ? 1u : 0u;
+        auto vReply = BuildUnifiedResponse(nSessionId, nMinerPrevHashLo32, 6000000u, nHashTipLo32, 100u, 200u, 999u, nForkScore);
         REQUIRE(vReply.size() == 32u);
-        /* hashPrevBlock_lo32 field [4..7] = 0 on legacy path */
-        REQUIRE(vReply[4] == 0x00u); REQUIRE(vReply[5] == 0x00u);
-        REQUIRE(vReply[6] == 0x00u); REQUIRE(vReply[7] == 0x00u);
-        /* fork_score field [28..31] = 0 on legacy path */
+        /* hashPrevBlock_lo32 field [4..7] = 0xDEADBEEF echoed */
+        REQUIRE(vReply[4] == 0xDEu); REQUIRE(vReply[5] == 0xADu);
+        REQUIRE(vReply[6] == 0xBEu); REQUIRE(vReply[7] == 0xEFu);
+        /* fork_score field [28..31] = 1 (miner prevhash != node tip) */
         REQUIRE(vReply[28] == 0x00u); REQUIRE(vReply[29] == 0x00u);
-        REQUIRE(vReply[30] == 0x00u); REQUIRE(vReply[31] == 0x00u);
+        REQUIRE(vReply[30] == 0x00u); REQUIRE(vReply[31] == 0x01u);
         /* stake_height = 999 = 0x000003E7 at [24..27] big-endian */
         REQUIRE(vReply[24] == 0x00u); REQUIRE(vReply[25] == 0x00u);
         REQUIRE(vReply[26] == 0x03u); REQUIRE(vReply[27] == 0xE7u);
+    }
+
+    SECTION("legacy path: fork_score=1 when miner prevhash != node tip")
+    {
+        /* Simulate: miner's prevhash_lo32 = 0xDEADBEEF, node's hashBestChain lo32 = 0xCAFEBABE */
+        uint32_t nMinerPrevHashLo32 = 0xDEADBEEFu;
+        uint32_t nHashTipLo32       = 0xCAFEBABEu;
+        uint32_t nForkScore = (nMinerPrevHashLo32 != 0 && nMinerPrevHashLo32 != nHashTipLo32) ? 1u : 0u;
+
+        auto v = BuildUnifiedResponse(1u, nMinerPrevHashLo32, 6000u, nHashTipLo32, 450u, 800u, 999u, nForkScore);
+        REQUIRE(v.size() == 32u);
+        /* hashPrevBlock_lo32 echoed at [4..7] big-endian */
+        REQUIRE(v[4] == 0xDEu); REQUIRE(v[5] == 0xADu);
+        REQUIRE(v[6] == 0xBEu); REQUIRE(v[7] == 0xEFu);
+        /* fork_score = 1 at [28..31] big-endian */
+        REQUIRE(v[28] == 0x00u); REQUIRE(v[29] == 0x00u);
+        REQUIRE(v[30] == 0x00u); REQUIRE(v[31] == 0x01u);
+    }
+
+    SECTION("legacy path: fork_score=0 when miner prevhash matches node tip")
+    {
+        uint32_t nMinerPrevHashLo32 = 0xCAFEBABEu;
+        uint32_t nHashTipLo32       = 0xCAFEBABEu;
+        uint32_t nForkScore = (nMinerPrevHashLo32 != 0 && nMinerPrevHashLo32 != nHashTipLo32) ? 1u : 0u;
+
+        auto v = BuildUnifiedResponse(1u, nMinerPrevHashLo32, 6000u, nHashTipLo32, 450u, 800u, 999u, nForkScore);
+        REQUIRE(nForkScore == 0u);
+        REQUIRE(v[28] == 0x00u); REQUIRE(v[29] == 0x00u);
+        REQUIRE(v[30] == 0x00u); REQUIRE(v[31] == 0x00u);
+    }
+
+    SECTION("legacy path: fork_score=0 when miner prevhash is 0 (v1 miner)")
+    {
+        uint32_t nMinerPrevHashLo32 = 0u;  /* v1 miner sends no canary */
+        uint32_t nHashTipLo32       = 0xCAFEBABEu;
+        uint32_t nForkScore = (nMinerPrevHashLo32 != 0 && nMinerPrevHashLo32 != nHashTipLo32) ? 1u : 0u;
+
+        REQUIRE(nForkScore == 0u);  /* v1 miners never trigger fork alert */
     }
 }
 

@@ -453,7 +453,7 @@ flowchart TD
 
     subgraph LegacyLane["Legacy Lane (miner.cpp)"]
         LegacyHandler["ParsePayload()\nextract session_id + prevhash canary\n(logged at debug level 3)"]
-        LegacyBuild["BuildUnifiedResponse(\n  session_id,\n  hashPrevBlock_lo32=0,  ← legacy: canary not echoed\n  unified_height,\n  hash_tip_lo32,\n  prime_height,\n  hash_height,\n  stake_height,\n  fork_score=0)          ← legacy: not computed"]
+        LegacyBuild["BuildUnifiedResponse(\n  session_id,\n  hashPrevBlock_lo32=echoed,  ← echo miner canary (0 if v1)\n  unified_height,\n  hash_tip_lo32,\n  prime_height,\n  hash_height,\n  stake_height,\n  fork_score=computed)       ← 1 if divergence, 0 if v1/match"]
         LegacyHandler --> LegacyBuild
     end
 
@@ -473,13 +473,13 @@ flowchart TD
 **Wire format (32-byte reply — identical on both ports):**
 ```
 [0..3]   session_id          (uint32 little-endian)
-[4..7]   hashPrevBlock_lo32  (uint32 big-endian; 0 on legacy path)
+[4..7]   hashPrevBlock_lo32  (uint32 big-endian; echoed from miner request, 0 if v1 miner)
 [8..11]  unified_height      (uint32 big-endian)
 [12..15] hash_tip_lo32       (uint32 big-endian; lo32 of node hashBestChain)
 [16..19] prime_height        (uint32 big-endian)
 [20..23] hash_height         (uint32 big-endian)
 [24..27] stake_height        (uint32 big-endian; tracked on BOTH ports)
-[28..31] fork_score          (uint32 big-endian; 0 on legacy path)
+[28..31] fork_score          (uint32 big-endian; 0=healthy, 1=divergence; 0 if v1 miner or hashes match)
 ```
 
 See: `docs/current/keepalive-unified-protocol.md` for the complete unified protocol reference.

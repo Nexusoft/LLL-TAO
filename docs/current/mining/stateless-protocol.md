@@ -220,20 +220,20 @@ Both `SESSION_KEEPALIVE` (port 8323) and `KEEPALIVE_V2_ACK` (port 9323) now use 
 **Node → Miner reply (32 bytes) — BOTH ports:**
 ```
 [0..3]   session_id          (uint32 little-endian; session validation)
-[4..7]   hashPrevBlock_lo32  (uint32 big-endian; echo of miner canary, 0 on legacy path)
+[4..7]   hashPrevBlock_lo32  (uint32 big-endian; echo of miner canary, 0 if v1 miner)
 [8..11]  unified_height      (uint32 big-endian)
 [12..15] hash_tip_lo32       (uint32 big-endian; lo32 of node hashBestChain, fork cross-check)
 [16..19] prime_height        (uint32 big-endian)
 [20..23] hash_height         (uint32 big-endian)
 [24..27] stake_height        (uint32 big-endian)   ← stake tracking on BOTH ports
-[28..31] fork_score          (uint32 big-endian; 0=healthy, >0=divergence; 0 on legacy path)
+[28..31] fork_score          (uint32 big-endian; 0=healthy, >0=divergence)
 ```
 
 Miner parses reply via `KeepAliveV2AckFrame` → `HeightTracker::OnKeepaliveResponse()`.
 
-**Legacy path** (`ProcessSessionKeepalive()`):
-- `hashPrevBlock_lo32 = 0` (miner canary parsed for observability but not echoed on legacy path)
-- `fork_score = 0` (fork divergence not computed on legacy path)
+**Legacy path** (`ProcessSessionKeepalive()` in `miner.cpp` and `stateless_miner.cpp`):
+- `hashPrevBlock_lo32` = echoed from miner's v2 keepalive request (0 if v1 miner)
+- `fork_score` = 1 if miner's prevhash differs from node tip (0 if v1 miner or hashes match)
 - All four heights populated from `ChainState`
 
 **Stateless path** (`ProcessKeepaliveV2()`):
