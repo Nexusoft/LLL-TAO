@@ -27,29 +27,7 @@ namespace MiningConstants
     //=========================================================================
     
     #ifdef ENABLE_DEBUG
-        /* Development/Debug Build - Relaxed rate limits for testing */
-        
-        /** Minimum interval between GET_BLOCK requests.
-         *
-         *  2-second minimum interval between GET_BLOCK requests.
-         *  Matches GET_BLOCK_COOLDOWN_SECONDS. Both mechanisms enforce the same
-         *  2-second floor — no lockout, no doom loop.
-         */
-        constexpr uint32_t GET_BLOCK_MIN_INTERVAL_MS = 2000;
-        
-        /** Throttled interval for GET_BLOCK when rate limited (4 seconds) */
-        constexpr uint32_t GET_BLOCK_THROTTLE_INTERVAL_MS = 4000;
-        
-        /** Number of rate limit violations before temporary ban (20 strikes) */
-        constexpr uint32_t RATE_LIMIT_STRIKE_THRESHOLD = 20;
-        
-        /** Auto-cooldown duration in seconds (1 minute) */
-        constexpr uint32_t AUTOCOOLDOWN_DURATION_SECONDS = 60;
-        
-        /** Disable rate limiting for localhost connections in debug mode */
-        constexpr bool DISABLE_LOCALHOST_RATE_LIMITING = true;
-        
-    #else
+
         /* Production Build - Strict rate limits for network security */
         
         /** Minimum interval between GET_BLOCK requests.
@@ -60,11 +38,11 @@ namespace MiningConstants
          */
         constexpr uint32_t GET_BLOCK_MIN_INTERVAL_MS = 2000;
         
-        /** Throttled interval for GET_BLOCK when rate limited (10 seconds) */
-        constexpr uint32_t GET_BLOCK_THROTTLE_INTERVAL_MS = 10000;
+        /** Throttled interval for GET_BLOCK when rate limited (2 seconds) */
+        constexpr uint32_t GET_BLOCK_THROTTLE_INTERVAL_MS = 2000;
         
-        /** Number of rate limit violations before temporary ban (10 strikes) */
-        constexpr uint32_t RATE_LIMIT_STRIKE_THRESHOLD = 10;
+        /** Number of rate limit violations before temporary ban (15 strikes) */
+        constexpr uint32_t RATE_LIMIT_STRIKE_THRESHOLD = 15;
         
         /** Auto-cooldown duration in seconds (5 minutes) */
         constexpr uint32_t AUTOCOOLDOWN_DURATION_SECONDS = 300;
