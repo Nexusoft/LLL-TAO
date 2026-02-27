@@ -28,6 +28,22 @@ namespace MiningConstants
     
     #ifdef ENABLE_DEBUG
 
+        constexpr uint32_t GET_BLOCK_MIN_INTERVAL_MS = 2000;
+
+        /** Throttled interval for GET_BLOCK when rate limited (2 seconds) */
+        constexpr uint32_t GET_BLOCK_THROTTLE_INTERVAL_MS = 2000;
+
+        /** Number of rate limit violations before temporary ban (15 strikes) */
+        constexpr uint32_t RATE_LIMIT_STRIKE_THRESHOLD = 15;
+
+        /** Auto-cooldown duration in seconds (5 minute) */
+        constexpr uint32_t AUTOCOOLDOWN_DURATION_SECONDS = 300;
+
+        /** Disable rate limiting for localhost connections in debug mode */
+        constexpr bool DISABLE_LOCALHOST_RATE_LIMITING = false;
+
+    #else
+
         /* Production Build - Strict rate limits for network security */
         
         /** Minimum interval between GET_BLOCK requests.
