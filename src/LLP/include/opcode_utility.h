@@ -84,6 +84,10 @@ namespace OpcodeUtility
         static constexpr uint8_t NEW_PRIME_AVAILABLE = 217;  // Alias for PRIME_BLOCK_AVAILABLE
         static constexpr uint8_t NEW_HASH_AVAILABLE  = 218;  // Alias for HASH_BLOCK_AVAILABLE
 
+        /* Session status query packets (219-220) - paired with SESSION_KEEPALIVE group */
+        static constexpr uint8_t SESSION_STATUS     = 219; // 8-byte payload: session_id + status_flags
+        static constexpr uint8_t SESSION_STATUS_ACK = 220; // 16-byte payload: session health response
+
         /* Generic packets */
         static constexpr uint8_t PING  = 253;
         static constexpr uint8_t CLOSE = 254;
@@ -160,6 +164,11 @@ namespace OpcodeUtility
         static constexpr uint16_t HASH_BLOCK_AVAILABLE  = Mirror(Opcodes::HASH_BLOCK_AVAILABLE);  // 0xD0DA
         static constexpr uint16_t PRIME_AVAILABLE       = PRIME_BLOCK_AVAILABLE;                   // Alias: 0xD0D9
         static constexpr uint16_t HASH_AVAILABLE        = HASH_BLOCK_AVAILABLE;                    // Alias: 0xD0DA
+        static constexpr uint16_t SESSION_STATUS        = Mirror(Opcodes::SESSION_STATUS);         // 0xD0DB
+        static constexpr uint16_t SESSION_STATUS_ACK    = Mirror(Opcodes::SESSION_STATUS_ACK);     // 0xD0DC
+        /* Backward compat aliases */
+        static constexpr uint16_t STATELESS_SESSION_STATUS     = SESSION_STATUS;
+        static constexpr uint16_t STATELESS_SESSION_STATUS_ACK = SESSION_STATUS_ACK;
         static constexpr uint16_t PING  = Mirror(Opcodes::PING);   // 0xD0FD
         static constexpr uint16_t CLOSE = Mirror(Opcodes::CLOSE);  // 0xD0FE
 
@@ -290,7 +299,7 @@ namespace OpcodeUtility
 
     /** Opcode range constants for stateless mining protocol
      *  
-     *  The stateless miner port uses a dedicated opcode range 0xCF-0xDA (207-218)
+     *  The stateless miner port uses a dedicated opcode range 0xCF-0xDC (207-220)
      *  for mining-specific operations. These opcodes are NOT available on legacy
      *  mining ports and are part of the stateless authentication protocol.
      **/
@@ -298,8 +307,8 @@ namespace OpcodeUtility
     /** First stateless mining opcode (MINER_AUTH_INIT = 207 / 0xCF) */
     static constexpr uint8_t STATELESS_OPCODE_FIRST = 207;
     
-    /** Last stateless mining opcode (HASH_BLOCK_AVAILABLE = 218 / 0xDA) */
-    static constexpr uint8_t STATELESS_OPCODE_LAST = 218;
+    /** Last stateless mining opcode (SESSION_STATUS_ACK = 220 / 0xDC) */
+    static constexpr uint8_t STATELESS_OPCODE_LAST = 220;
     
     /** Authentication opcode range (207-212)
      *  MINER_AUTH_INIT      = 207 (0xCF)

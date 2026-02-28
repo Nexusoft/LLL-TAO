@@ -26,6 +26,7 @@ ________________________________________________________________________________
 #include <LLP/include/opcode_utility.h>
 #include <LLP/include/push_notification.h>
 #include <LLP/include/mining_constants.h>
+#include <LLP/include/session_status.h>
 #include <LLP/templates/events.h>
 
 #include <TAO/Ledger/include/create.h>
@@ -2499,6 +2500,51 @@ namespace LLP
                 StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
                 
                 debug::log(2, "📥 === MINER_READY: SUCCESS ===");
+                return true;
+            }
+
+            /* SESSION_STATUS (0xD0DB) — miner queries session/lane health on stateless port */
+            if(PACKET.HEADER == OpcodeUtility::Stateless::SESSION_STATUS)
+            {
+                debug::log(2, FUNCTION, "SESSION_STATUS received from ", GetAddress().ToStringIP());
+
+                SessionStatus::SessionStatusRequest req;
+                if(!req.Parse(PACKET.DATA))
+                {
+                    debug::error(FUNCTION, "SESSION_STATUS: malformed payload (size=", PACKET.DATA.size(), ")");
+                    StatelessPacket errResponse(OpcodeUtility::Stateless::SESSION_STATUS_ACK);
+                    auto vAck = SessionStatus::BuildAckPayload(0u, 0u, 0u, 0u);
+                    errResponse.DATA = vAck;
+                    errResponse.LENGTH = static_cast<uint32_t>(vAck.size());
+                    respond(errResponse);
+                    return true;
+                }
+
+                /* Validate session ID matches this connection's context */
+                if(req.session_id != context.nSessionId)
+                {
+                    debug::error(FUNCTION, "SESSION_STATUS: session_id mismatch (got=0x", std::hex,
+                                 req.session_id, " expected=0x", context.nSessionId, std::dec, ")");
+                    auto vAck = SessionStatus::BuildAckPayload(req.session_id, 0u, 0u, req.status_flags);
+                    StatelessPacket mismatchResponse(OpcodeUtility::Stateless::SESSION_STATUS_ACK);
+                    mismatchResponse.DATA = vAck;
+                    mismatchResponse.LENGTH = static_cast<uint32_t>(vAck.size());
+                    respond(mismatchResponse);
+                    return true;
+                }
+
+                /* Build lane health flags — stateless lane: we are ON it + authenticated */
+                uint32_t nLaneHealth = 0;
+                nLaneHealth |= SessionStatus::LANE_PRIMARY_ALIVE;  // stateless lane alive
+                nLaneHealth |= SessionStatus::LANE_AUTHENTICATED;  // session verified
+
+                auto vAck = SessionStatus::BuildAckPayload(req.session_id, nLaneHealth, 0u, req.status_flags);
+                StatelessPacket ackResponse(OpcodeUtility::Stateless::SESSION_STATUS_ACK);
+                ackResponse.DATA = vAck;
+                ackResponse.LENGTH = static_cast<uint32_t>(vAck.size());
+                respond(ackResponse);
+
+                debug::log(2, FUNCTION, "SESSION_STATUS_ACK sent: lane_health=0x", std::hex, nLaneHealth, std::dec);
                 return true;
             }
 
