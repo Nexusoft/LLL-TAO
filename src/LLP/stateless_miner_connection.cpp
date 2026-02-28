@@ -2776,6 +2776,38 @@ namespace LLP
     /** Create a new block */
     TAO::Ledger::Block* StatelessMinerConnection::new_block()
     {
+        {
+            std::unique_lock<std::mutex> lock(TEMPLATE_CREATE_MUTEX);
+            if(m_template_create_in_flight)
+            {
+                debug::log(2, FUNCTION, "Template creation already in-flight for session ", context.nSessionId,
+                           "; waiting for existing result");
+                TEMPLATE_CREATE_CV.wait(lock, [this](){ return !m_template_create_in_flight; });
+                return m_last_created_template;
+            }
+
+            m_template_create_in_flight = true;
+            m_last_created_template = nullptr;
+        }
+
+        auto finalize_template_creation = [this](TAO::Ledger::Block* pResult)
+        {
+            std::lock_guard<std::mutex> lock(TEMPLATE_CREATE_MUTEX);
+            m_last_created_template = pResult;
+            m_template_create_in_flight = false;
+            TEMPLATE_CREATE_CV.notify_all();
+        };
+
+        struct TemplateCreationScope
+        {
+            decltype(finalize_template_creation)& finalize;
+            TAO::Ledger::Block* result{nullptr};
+            ~TemplateCreationScope()
+            {
+                finalize(result);
+            }
+        } scope{finalize_template_creation};
+
         /* Early exit if shutdown is in progress */
         if (config::fShutdown.load())
         {
@@ -3005,6 +3037,7 @@ namespace LLP
          * If emplace failed (duplicate key), pBlock would be destroyed at end of scope;
          * result.first->second.pBlock.get() points to the existing valid template instead. */
         TAO::Ledger::Block* pStableBlock = result.first->second.pBlock.get();
+        scope.result = pStableBlock;
 
         debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "=== NEW_BLOCK: Complete ===", ANSI_COLOR_RESET);
         return pStableBlock;
@@ -3499,33 +3532,45 @@ namespace LLP
     {
         uint32_t nRemoved = 0;
         uint64_t nNow = runtime::unifiedtimestamp();
+        static constexpr uint32_t TEMPLATE_RETENTION_BLOCKS = 2;
+        std::map<uint32_t, std::pair<uint64_t, uint512_t>> latestByChannel;
         
         debug::log(2, FUNCTION, "🧹 Cleaning stale templates...");
         debug::log(2, FUNCTION, "   Current height: ", nCurrentHeight);
         debug::log(2, FUNCTION, "   Templates before cleanup: ", mapBlocks.size());
+
+        for(const auto& entry : mapBlocks)
+        {
+            const TemplateMetadata& meta = entry.second;
+            auto itLatest = latestByChannel.find(meta.nChannel);
+            if(itLatest == latestByChannel.end() || meta.nCreationTime > itLatest->second.first)
+                latestByChannel[meta.nChannel] = std::make_pair(meta.nCreationTime, entry.first);
+        }
         
         for(auto it = mapBlocks.begin(); it != mapBlocks.end(); )
         {
             const TemplateMetadata& meta = it->second;
+            const auto itLatest = latestByChannel.find(meta.nChannel);
+            const bool fKeepLatest = (itLatest != latestByChannel.end() && itLatest->second.second == it->first);
             
-            /* Check age-based staleness */
-            if(meta.IsStale(nNow))
+            /* Keep at least one hot template per channel to avoid full cold regeneration bursts. */
+            if(fKeepLatest)
             {
-                uint64_t nAge = nNow - meta.nCreationTime;
-                debug::log(2, FUNCTION, "   ❌ Removing template (age: ", nAge, "s)");
-                debug::log(2, FUNCTION, "      Merkle: ", it->first.SubString());
-                it = mapBlocks.erase(it);  // unique_ptr automatically deletes pBlock
-                ++nRemoved;
+                ++it;
                 continue;
             }
-            
-            /* PR #134: Check staleness using IsStale() (checks both age and channel height) */
-            if(meta.IsStale())
+
+            const bool fTooOldByBlocks = (nCurrentHeight > meta.nHeight + TEMPLATE_RETENTION_BLOCKS);
+            const bool fTooOldByTime = (meta.GetAge(nNow) > LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS);
+
+            if(fTooOldByBlocks || fTooOldByTime)
             {
-                debug::log(2, FUNCTION, "   ❌ Removing stale template");
-                debug::log(2, FUNCTION, "      Unified height: ", meta.nHeight, " (current: ", nCurrentHeight, ")");
+                uint64_t nAge = nNow - meta.nCreationTime;
+                debug::log(2, FUNCTION, "   ❌ Removing stale template (retention window)");
+                debug::log(2, FUNCTION, "      Unified height: ", meta.nHeight, " (current: ", nCurrentHeight,
+                           ", keep <= ", TEMPLATE_RETENTION_BLOCKS, " blocks old)");
                 debug::log(2, FUNCTION, "      Channel height: ", meta.nChannelHeight, " (", meta.GetChannelName(), ")");
-                debug::log(2, FUNCTION, "      Age: ", meta.GetAge(), "s");
+                debug::log(2, FUNCTION, "      Age: ", nAge, "s");
                 debug::log(2, FUNCTION, "      Merkle: ", it->first.SubString());
                 it = mapBlocks.erase(it);  // unique_ptr automatically deletes pBlock
                 ++nRemoved;

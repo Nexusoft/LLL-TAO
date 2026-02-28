@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/block.h>
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <mutex>
 #include <map>
 #include <memory>
@@ -71,6 +72,13 @@ namespace LLP
         /** Channel state managers for fork-aware mining (PR #136) **/
         std::unique_ptr<PrimeStateManager> m_pPrimeState;
         std::unique_ptr<HashStateManager> m_pHashState;
+
+        /** Per-session in-flight template guard for CreateBlockForStatelessMining().
+         *  Concurrent requests wait and reuse the just-created template pointer. */
+        std::mutex TEMPLATE_CREATE_MUTEX;
+        std::condition_variable TEMPLATE_CREATE_CV;
+        bool m_template_create_in_flight{false};
+        TAO::Ledger::Block* m_last_created_template{nullptr};
 
         /** Timestamp of the last template push (SendStatelessTemplate / SendChannelNotification).
          *
