@@ -2806,7 +2806,7 @@ namespace LLP
             {
                 finalize(result);
             }
-        } scope{finalize_template_creation};
+        } creationScope{finalize_template_creation};
 
         /* Early exit if shutdown is in progress */
         if (config::fShutdown.load())
@@ -3037,7 +3037,7 @@ namespace LLP
          * If emplace failed (duplicate key), pBlock would be destroyed at end of scope;
          * result.first->second.pBlock.get() points to the existing valid template instead. */
         TAO::Ledger::Block* pStableBlock = result.first->second.pBlock.get();
-        scope.result = pStableBlock;
+        creationScope.result = pStableBlock;
 
         debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "=== NEW_BLOCK: Complete ===", ANSI_COLOR_RESET);
         return pStableBlock;
@@ -3532,6 +3532,8 @@ namespace LLP
     {
         uint32_t nRemoved = 0;
         uint64_t nNow = runtime::unifiedtimestamp();
+        /* Keep a short warm window (2 blocks) to survive brief bursts/reorgs without
+         * dropping to zero templates, while still pruning old entries quickly. */
         static constexpr uint32_t TEMPLATE_RETENTION_BLOCKS = 2;
         std::map<uint32_t, std::pair<uint64_t, uint512_t>> latestByChannel;
         
@@ -3560,7 +3562,9 @@ namespace LLP
                 continue;
             }
 
-            const bool fTooOldByBlocks = (nCurrentHeight > meta.nHeight + TEMPLATE_RETENTION_BLOCKS);
+            const bool fTooOldByBlocks =
+                (nCurrentHeight >= meta.nHeight) &&
+                ((nCurrentHeight - meta.nHeight) > TEMPLATE_RETENTION_BLOCKS);
             const bool fTooOldByTime = (meta.GetAge(nNow) > LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS);
 
             if(fTooOldByBlocks || fTooOldByTime)
