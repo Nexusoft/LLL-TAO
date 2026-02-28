@@ -28,6 +28,12 @@ namespace MiningConstants
     
     #ifdef ENABLE_DEBUG
 
+        /** Minimum interval between GET_BLOCK requests.
+         *
+         *  2-second minimum interval between GET_BLOCK requests.
+         *  Matches GET_BLOCK_COOLDOWN_SECONDS. Both mechanisms enforce the same
+         *  2-second floor — no lockout, no doom loop.
+         */
         constexpr uint32_t GET_BLOCK_MIN_INTERVAL_MS = 2000;
 
         /** Throttled interval for GET_BLOCK when rate limited (2 seconds) */
@@ -114,6 +120,9 @@ namespace MiningConstants
     constexpr int64_t TEMPLATE_PUSH_MIN_INTERVAL_MS = 1000;
 
     /** Per-connection GET_BLOCK minimum interval (2 seconds).
+     *
+     *  Defined outside the #ifdef ENABLE_DEBUG block so it applies to
+     *  BOTH debug and production builds.
      *
      *  Used by AutoCoolDown m_get_block_cooldown on each miner connection.
      *  This is a simple 2-second rate-limit floor — NOT a lockout window.

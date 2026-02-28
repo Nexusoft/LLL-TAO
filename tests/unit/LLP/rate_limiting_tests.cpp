@@ -206,4 +206,19 @@ TEST_CASE("GET_BLOCK rate-limit constants", "[rate_limit][mining_constants]")
         /* Both mechanisms enforce the same 2-second floor. */
         REQUIRE(GET_BLOCK_COOLDOWN_SECONDS == 2u);
     }
+
+    SECTION("GET_BLOCK_THROTTLE_INTERVAL_MS is 2000")
+    {
+        /* The throttled interval for GET_BLOCK when rate limited must be 2000 ms.
+         * This value must be identical in both debug and production builds so
+         * that rate-limited miners are never locked out for more than 2 seconds. */
+        REQUIRE(GET_BLOCK_THROTTLE_INTERVAL_MS == 2000u);
+    }
+
+    SECTION("RATE_LIMIT_STRIKE_THRESHOLD is 15")
+    {
+        /* 15 strikes are required before a temporary ban is applied.
+         * Both debug and production builds must agree on this threshold. */
+        REQUIRE(RATE_LIMIT_STRIKE_THRESHOLD == 15u);
+    }
 }
