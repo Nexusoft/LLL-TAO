@@ -57,6 +57,9 @@ namespace OpcodeUtility
             
             /* Channel management */
             case Opcodes::SET_CHANNEL:    // 3
+
+            /* Session status query (miner can send on either lane) */
+            case Opcodes::SESSION_STATUS: // 219
             
             /* Generic */
             case Opcodes::PING:           // 253
@@ -109,6 +112,10 @@ namespace OpcodeUtility
             case Opcodes::MINER_READY:             return "MINER_READY";
             case Opcodes::PRIME_BLOCK_AVAILABLE:   return "PRIME_BLOCK_AVAILABLE / NEW_PRIME_AVAILABLE";
             case Opcodes::HASH_BLOCK_AVAILABLE:    return "HASH_BLOCK_AVAILABLE / NEW_HASH_AVAILABLE";
+
+            /* Session status query packets */
+            case Opcodes::SESSION_STATUS:          return "SESSION_STATUS";
+            case Opcodes::SESSION_STATUS_ACK:      return "SESSION_STATUS_ACK";
             
             /* Generic packets */
             case Opcodes::PING:                    return "PING";
@@ -182,6 +189,12 @@ namespace OpcodeUtility
             return 40; /* nonce length field + 32-byte nonce + padding */
         if(nOpcode == Opcodes::MINER_AUTH_RESULT)
             return 10; /* status byte + session ID + error code + padding */
+        
+        /* Session status query packets: fixed payload sizes */
+        if(nOpcode == Opcodes::SESSION_STATUS)
+            return 8;  /* session_id (4 LE) + status_flags (4 BE) */
+        if(nOpcode == Opcodes::SESSION_STATUS_ACK)
+            return 16; /* session_id (4 LE) + lane_health (4 BE) + uptime (4 BE) + echo (4 BE) */
         
         return -1; /* No fixed maximum */
     }
@@ -450,6 +463,10 @@ namespace OpcodeUtility
         if(nOpcode == Opcodes::PRIME_BLOCK_AVAILABLE || nOpcode == Opcodes::HASH_BLOCK_AVAILABLE)
             return true;
         
+        /* Session status query packets (219-220) carry payload */
+        if(nOpcode == Opcodes::SESSION_STATUS || nOpcode == Opcodes::SESSION_STATUS_ACK)
+            return true;
+        
         /* NOTE: Legacy PING (0xFD = 253) is header-only — no payload.
          * The stateless PING_DIAG (0xD0E0) is data-bearing but is
          * handled by HasDataPayload16(), not this function. */
@@ -494,11 +511,13 @@ namespace OpcodeUtility
     {
         switch(nOpcode)
         {
-            case Stateless::KEEPALIVE_V2:      return 8;   // sequence(4) + hashPrevBlock_lo32(4), miner→node
-            case Stateless::KEEPALIVE_V2_ACK:  return 32;  // 8×uint32_t unified chain state, node→miner
-            case Stateless::PING_DIAG:         return 64;  // PingFrame
-            case Stateless::PONG_DIAG:         return 64;  // PongFrame
-            default:                           return 0;   // variable or header-only
+            case Stateless::KEEPALIVE_V2:        return 8;   // sequence(4) + hashPrevBlock_lo32(4), miner→node
+            case Stateless::KEEPALIVE_V2_ACK:    return 32;  // 8×uint32_t unified chain state, node→miner
+            case Stateless::PING_DIAG:           return 64;  // PingFrame
+            case Stateless::PONG_DIAG:           return 64;  // PongFrame
+            case Stateless::SESSION_STATUS:      return 8;   // session_id(4 LE) + status_flags(4 BE)
+            case Stateless::SESSION_STATUS_ACK:  return 16;  // session_id(4 LE) + lane_health(4 BE) + uptime(4 BE) + echo(4 BE)
+            default:                             return 0;   // variable or header-only
         }
     }
 

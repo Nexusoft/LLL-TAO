@@ -754,6 +754,11 @@ Both lanes now share a **single unified 32-byte keepalive response format** (PR 
 | `KeepaliveV2::ParsePayload()` | `src/LLP/include/keepalive_v2.h` | Parse 4-byte (v1) or 8-byte (v2) keepalive request; extract session_id and miner prevhash canary |
 | `StatelessMiner::ProcessKeepaliveV2()` | `src/LLP/stateless_miner.cpp` | Handle KEEPALIVE_V2 (0xD100) on stateless lane; echo miner canary; compute fork_score |
 | `StatelessMiner::ProcessSessionKeepalive()` | `src/LLP/stateless_miner.cpp` | Handle SESSION_KEEPALIVE (0xD4) on stateless lane; echo miner canary and compute fork_score (mirrors stateless path) |
+| `SessionStatus::SessionStatusRequest` | `src/LLP/include/session_status.h` | 8-byte miner→node session health query payload |
+| `SessionStatus::SessionStatusAck` | `src/LLP/include/session_status.h` | 16-byte node→miner session health response payload |
+| `SessionStatus::BuildAckPayload()` | `src/LLP/include/session_status.h` | Convenience wrapper to build SESSION_STATUS_ACK wire bytes |
+| `SessionStatus::LANE_PRIMARY_ALIVE` … `LANE_AUTHENTICATED` | `src/LLP/include/session_status.h` | Lane health flag bits for ACK [4-7] |
+| `SessionStatus::MINER_DEGRADED` … `MINER_SECONDARY_UP` | `src/LLP/include/session_status.h` | Miner status flag bits for REQUEST [4-7] / ACK [12-15] |
 | **UPSTREAM** | | |
 | `TAO::Ledger::BlockState` | `src/TAO/Ledger/types/state.h` | Full persisted block state |
 | `TAO::Ledger::BlockState::nChannelHeight` | `src/TAO/Ledger/types/state.h` | Per-channel block count |

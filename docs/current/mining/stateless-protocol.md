@@ -245,6 +245,43 @@ Miner parses reply via `KeepAliveV2AckFrame` → `HeightTracker::OnKeepaliveResp
 
 **stake_height** at bytes [24-27] is the field that was previously missing on the stateless path, causing `HeightTracker::stake_height` to always remain 0 on stateless miners. This is now fixed.
 
+### Session Status Query (Opcodes 219-220)
+
+The `SESSION_STATUS` / `SESSION_STATUS_ACK` pair gives miners a dedicated channel for querying node session and lane health without conflating it with the keepalive heartbeat.
+
+| Opcode | Stateless | Name | Direction | Payload | Notes |
+|--------|-----------|------|-----------|---------|-------|
+| 219 (0xDB) | 0xD0DB | SESSION_STATUS | miner→node | 8 bytes | Session + lane health query |
+| 220 (0xDC) | 0xD0DC | SESSION_STATUS_ACK | node→miner | 16 bytes | Lane health + uptime response |
+
+**Miner → Node request (8 bytes, `SESSION_STATUS`):**
+```
+[0..3]  session_id    (uint32 little-endian)
+[4..7]  status_flags  (uint32 big-endian; MINER_* flags)
+```
+
+**Node → Miner reply (16 bytes, `SESSION_STATUS_ACK`):**
+```
+[0..3]   session_id         (uint32 little-endian)
+[4..7]   lane_health_flags  (uint32 big-endian; LANE_* flags)
+[8..11]  uptime_seconds     (uint32 big-endian; node uptime)
+[12..15] status_echo_flags  (uint32 big-endian; echo of request status_flags)
+```
+
+**Lane health flags** (`lane_health_flags` in ACK `[4-7]`):
+- bit 0: primary (stateless) lane alive
+- bit 1: secondary (legacy) lane alive
+- bit 2: both lanes active (SIM Link mode)
+- bit 3: session authenticated
+
+**Status flags** (miner → node `[4-7]`, echo'd back at `[12-15]`):
+- bit 0: miner degraded mode active
+- bit 1: miner has active template
+- bit 2: miner workers running
+- bit 3: secondary lane connected
+
+See `src/LLP/include/session_status.h` for `SessionStatusRequest`, `SessionStatusAck`, `BuildAckPayload()`, and all flag constants.
+
 ### Session Cleanup on Disconnect
 
 When a miner disconnects, the session is preserved in cache until timeout:

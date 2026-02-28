@@ -37,4 +37,12 @@ TEST_CASE("LLP strict lane opcode mapping", "[llp][lane_enforcement]")
         REQUIRE(Stateless::IsStateless(Opcodes::MINER_AUTH_CHALLENGE) == false);
         REQUIRE(Stateless::IsStateless(Stateless::AUTH_CHALLENGE) == true);
     }
+
+    SECTION("SESSION_STATUS opcodes are mirror-mapped on stateless lane")
+    {
+        REQUIRE(Stateless::SESSION_STATUS     == 0xD0DB);
+        REQUIRE(Stateless::SESSION_STATUS_ACK == 0xD0DC);
+        REQUIRE(Stateless::STATELESS_SESSION_STATUS     == 0xD0DB);
+        REQUIRE(Stateless::STATELESS_SESSION_STATUS_ACK == 0xD0DC);
+    }
 }

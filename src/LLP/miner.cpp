@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <LLP/include/session_recovery.h>
 #include <LLP/include/push_notification.h>
 #include <LLP/include/keepalive_v2.h>
+#include <LLP/include/session_status.h>
 #include <LLP/types/miner.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
@@ -643,6 +644,41 @@ namespace LLP
 
                 debug::log(2, FUNCTION, "════════════════════════════════════");
 
+                return true;
+            }
+
+            /* Handle SESSION_STATUS (219 / 0xDB) — miner queries lane health on legacy port */
+            if(PACKET.HEADER == OpcodeUtility::Opcodes::SESSION_STATUS)
+            {
+                debug::log(2, FUNCTION, "SESSION_STATUS received from ", GetAddress().ToStringIP());
+
+                SessionStatus::SessionStatusRequest req;
+                if(!req.Parse(PACKET.DATA))
+                {
+                    debug::error(FUNCTION, "SESSION_STATUS: malformed payload (size=", PACKET.DATA.size(), ")");
+                    return true;
+                }
+
+                /* Validate session */
+                auto optContext = StatelessMinerManager::Get().GetMinerContextBySessionID(req.session_id);
+                if(!optContext.has_value())
+                {
+                    debug::error(FUNCTION, "SESSION_STATUS: unknown session_id=0x", std::hex, req.session_id, std::dec);
+                    /* Respond with zero flags — miner knows session is invalid */
+                    auto vAck = SessionStatus::BuildAckPayload(req.session_id, 0u, 0u, req.status_flags);
+                    respond(OpcodeUtility::Opcodes::SESSION_STATUS_ACK, vAck);
+                    return true;
+                }
+
+                /* Build lane health flags */
+                uint32_t nLaneHealth = 0;
+                nLaneHealth |= SessionStatus::LANE_SECONDARY_ALIVE;   // legacy lane: we are ON it
+                nLaneHealth |= SessionStatus::LANE_AUTHENTICATED;     // session validated above
+
+                auto vAck = SessionStatus::BuildAckPayload(req.session_id, nLaneHealth, 0u, req.status_flags);
+                respond(OpcodeUtility::Opcodes::SESSION_STATUS_ACK, vAck);
+
+                debug::log(2, FUNCTION, "SESSION_STATUS_ACK sent: lane_health=0x", std::hex, nLaneHealth, std::dec);
                 return true;
             }
 
