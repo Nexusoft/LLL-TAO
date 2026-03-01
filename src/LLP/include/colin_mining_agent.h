@@ -389,7 +389,7 @@ namespace LLP
 
             // Canonical snapshot diagnostics (populated by on_canonical_snap_updated)
             uint64_t last_canonical_snap_age_ms{0};  ///< Age of canonical_snap in ms (0=unknown)
-            bool     last_canonical_snap_stale{false};///< True when snap.is_canonically_stale()
+            bool     last_canonical_snap_stale{false}; ///< True when snap.is_canonically_stale()
         };
 
         /** Global push statistics (across all miners) **/

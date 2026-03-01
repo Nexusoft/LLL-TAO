@@ -728,7 +728,7 @@ namespace LLP
             if(!s.last_rejection_reason.empty() || s.last_canonical_snap_stale)
             {
                 debug::log(0, sep);
-                debug::log(0, BoxLine(std::string("  WARNINGS:")));
+                debug::log(0, BoxLine(std::string("  DIAGNOSTICS & WARNINGS:")));
                 if(!s.last_rejection_reason.empty())
                     debug::log(0, BoxLine("  * Last rejection: " + s.last_rejection_reason));
                 if(s.last_canonical_snap_stale)
