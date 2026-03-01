@@ -1759,7 +1759,14 @@ namespace LLP
                 {
                     const CanonicalChainState& snap = context.canonical_snap;
 
-                    if(snap.is_canonically_stale())
+                    const bool fSnapStale = snap.is_canonically_stale();
+                    const uint64_t nSnapAgeMs = snap.is_initialized()
+                        ? static_cast<uint64_t>(
+                            std::chrono::duration_cast<std::chrono::milliseconds>(
+                                std::chrono::steady_clock::now() - snap.canonical_received_at).count())
+                        : 0;
+
+                    if(fSnapStale)
                     {
                         debug::warning(FUNCTION, "SUBMIT_BLOCK pre-check: canonical snapshot stale (>30s) — proceeding with caution");
                     }
@@ -1772,6 +1779,14 @@ namespace LLP
                         debug::warning(FUNCTION, "SUBMIT_BLOCK height mismatch: template height=", nTemplateHeight,
                                        " canonical=", snap.canonical_unified_height,
                                        " — may be stale template");
+                    }
+
+                    /* Notify Colin so the periodic report reflects staleness at submission time,
+                     * not just at template-issue time. */
+                    if(context.hashGenesis != 0)
+                    {
+                        ColinMiningAgent::Get().on_canonical_snap_updated(
+                            context.hashGenesis.SubString(8), nSnapAgeMs, fSnapStale);
                     }
                 }
 
