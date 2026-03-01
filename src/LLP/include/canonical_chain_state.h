@@ -180,7 +180,7 @@ namespace LLP
             snap.canonical_unified_height   = stateBest.nHeight;
             snap.canonical_channel_height   = stateChannel.nChannelHeight;
             snap.canonical_difficulty_nbits = nDifficulty;
-            snap.canonical_channel_target   = stateChannel.nChannelHeight;
+            snap.canonical_channel_target   = stateChannel.nBits;
             snap.canonical_hash_prev_block  = stateBest.GetHash();
             snap.canonical_received_at      = std::chrono::steady_clock::now();
             return snap;
