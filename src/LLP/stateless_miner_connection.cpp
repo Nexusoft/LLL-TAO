@@ -1163,6 +1163,9 @@ namespace LLP
                 uint512_t hashMerkle;
                 uint64_t nonce = 0;
                 bool fFalconVerified = false;
+                uint32_t nHeightFromBlock  = 0;   // Populated from full-block-body path (offset 200)
+                uint32_t nChannelFromBlock = 0;   // Populated from full-block-body path (offset 196)
+                bool fHeightFromBlock = false;    // True when nHeightFromBlock was decoded from the block body
 
                 /* Check for Falcon-signed format: [merkle][nonce][timestamp][sig_len][signature] */
                 /* Minimum for Falcon format: 64 + 8 + 8 + 2 = 82 bytes */
@@ -1565,6 +1568,20 @@ namespace LLP
                                 hashMerkle = hashMerkleFromBlock;
                                 nonce = nonceFromBlock;
                                 fFalconVerified = true;
+
+                                /* Extract nHeight (offset 200) and nChannel (offset 196) from the
+                                 * authenticated block body for use in the canonical pre-check gate.
+                                 * Tritium layout: [0-3]=nVersion [4-131]=hashPrevBlock
+                                 *                 [132-195]=hashMerkleRoot [196-199]=nChannel
+                                 *                 [200-203]=nHeight [204-207]=nBits [208-215]=nNonce */
+                                if(decryptedData.size() >= 204)
+                                {
+                                    nChannelFromBlock = convert::bytes2uint(decryptedData, 196);
+                                    nHeightFromBlock  = convert::bytes2uint(decryptedData, 200);
+                                    fHeightFromBlock  = true;
+                                    debug::log(2, FUNCTION, "Full-block decode: nChannel=", nChannelFromBlock,
+                                               " nHeight=", nHeightFromBlock, " (miner-submitted, Falcon-authenticated)");
+                                }
                                 
                                 /* Check timestamp freshness (replay protection) */
                                 /* NOTE: FALCON_TIMESTAMP_TOLERANCE_SECONDS is defined locally here
@@ -1771,12 +1788,18 @@ namespace LLP
                         debug::warning(FUNCTION, "SUBMIT_BLOCK pre-check: canonical snapshot stale (>30s) — proceeding with caution");
                     }
 
-                    /* Compare template height against canonical unified height (WARN only). */
+                    /* Compare template height against canonical unified height (WARN only).
+                     * Prefer the Falcon-authenticated miner-submitted height (nHeightFromBlock)
+                     * when available (full-block-body decode path); fall back to the stored
+                     * template height for the legacy wrapper path. */
                     const uint32_t nTemplateHeight = it->second.pBlock ? it->second.pBlock->nHeight : 0;
-                    if(nTemplateHeight > 0 && snap.canonical_unified_height > 0 &&
-                       nTemplateHeight != snap.canonical_unified_height)
+                    const uint32_t nCompareHeight  = fHeightFromBlock ? nHeightFromBlock : nTemplateHeight;
+                    if(nCompareHeight > 0 && snap.canonical_unified_height > 0 &&
+                       nCompareHeight != snap.canonical_unified_height)
                     {
-                        debug::warning(FUNCTION, "SUBMIT_BLOCK height mismatch: template height=", nTemplateHeight,
+                        debug::warning(FUNCTION, "SUBMIT_BLOCK height mismatch: ",
+                                       fHeightFromBlock ? "submitted" : "template",
+                                       " height=", nCompareHeight,
                                        " canonical=", snap.canonical_unified_height,
                                        " — may be stale template");
                     }
