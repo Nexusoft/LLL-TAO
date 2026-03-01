@@ -148,6 +148,43 @@ namespace LLP
             return static_cast<int32_t>(stateBest.nHeight)
                  - static_cast<int32_t>(canonical_unified_height);
         }
+
+
+        /* ═══════════════════════════════════════════════════════════════════ */
+        /* FACTORY METHODS                                                    */
+        /* ═══════════════════════════════════════════════════════════════════ */
+
+        /** from_chain_state
+         *
+         *  Factory: build a snapshot from a BlockState and channel state.
+         *
+         *  Captures all six fields in a single call so that
+         *  SendStatelessTemplate() and the GET_BLOCK handler can
+         *  construct a CanonicalChainState without duplicating the
+         *  field-by-field assignment pattern.
+         *
+         *  @param[in] stateBest     Atomic snapshot of ChainState::tStateBest
+         *  @param[in] stateChannel  Channel-specific state (via GetLastState)
+         *  @param[in] nDifficulty   Compact difficulty target (nBits)
+         *
+         *  @return Fully-populated CanonicalChainState with
+         *          canonical_received_at set to now().
+         *
+         **/
+        static CanonicalChainState from_chain_state(
+            const TAO::Ledger::BlockState& stateBest,
+            const TAO::Ledger::BlockState& stateChannel,
+            uint32_t nDifficulty)
+        {
+            CanonicalChainState snap;
+            snap.canonical_unified_height   = stateBest.nHeight;
+            snap.canonical_channel_height   = stateChannel.nChannelHeight;
+            snap.canonical_difficulty_nbits = nDifficulty;
+            snap.canonical_channel_target   = stateChannel.nChannelHeight;
+            snap.canonical_hash_prev_block  = stateBest.GetHash();
+            snap.canonical_received_at      = std::chrono::steady_clock::now();
+            return snap;
+        }
     };
 
 } // namespace LLP
