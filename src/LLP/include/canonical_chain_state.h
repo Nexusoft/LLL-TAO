@@ -90,7 +90,8 @@ namespace LLP
          *  Returns true if this snapshot has been populated with real data.
          *
          *  A default-constructed CanonicalChainState has canonical_unified_height == 0,
-         *  which is never a valid chain height in production (genesis is height 1+).
+         *  which corresponds to the genesis block and is never a valid tip height
+         *  once the chain has advanced past genesis.
          *
          *  @return true if the snapshot contains meaningful chain data.
          *
