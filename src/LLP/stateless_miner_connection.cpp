@@ -62,6 +62,7 @@ ________________________________________________________________________________
 #include <Util/include/hex.h>
 
 #include <LLP/include/colin_mining_agent.h>
+#include <LLP/include/canonical_chain_state.h>
 
 #include <chrono>
 #include <limits>
@@ -938,6 +939,21 @@ namespace LLP
                             nChannelHeightMeta = stateChannelMeta.nChannelHeight;
                     }
                     uint32_t nBitsMeta = pBlock->nBits;
+
+                    /* Build canonical chain state snapshot for GET_BLOCK response (PR #316) */
+                    {
+                        TAO::Ledger::BlockState stateGetBlock = TAO::Ledger::ChainState::tStateBest.load();
+                        TAO::Ledger::BlockState stateGetBlockCh = stateGetBlock;
+                        if(TAO::Ledger::GetLastState(stateGetBlockCh, pBlock->nChannel))
+                        {
+                            CanonicalChainState canonicalSnap = CanonicalChainState::from_chain_state(
+                                stateGetBlock, stateGetBlockCh, nBitsMeta);
+                            debug::log(2, FUNCTION, "GET_BLOCK canonical snapshot: unified=",
+                                       canonicalSnap.canonical_unified_height,
+                                       " channel=", canonicalSnap.canonical_channel_height,
+                                       " drift=", canonicalSnap.height_drift_from_canonical());
+                        }
+                    }
 
                     std::vector<uint8_t> vPayload;
                     vPayload.reserve(12 + vData.size());
@@ -4102,6 +4118,15 @@ namespace LLP
         
         /* Get difficulty */
         uint32_t nDifficulty = TAO::Ledger::GetNextTargetRequired(stateBest, nChannel);
+        
+        /* Build canonical chain state snapshot for template serving (PR #316) */
+        CanonicalChainState canonicalSnap = CanonicalChainState::from_chain_state(
+            stateBest, stateChannel, nDifficulty);
+        
+        debug::log(2, FUNCTION, "Canonical snapshot: unified=", canonicalSnap.canonical_unified_height,
+                   " channel=", canonicalSnap.canonical_channel_height,
+                   " nBits=0x", std::hex, canonicalSnap.canonical_difficulty_nbits, std::dec,
+                   " stale=", canonicalSnap.is_canonically_stale() ? "yes" : "no");
         
         /* Create new block template - note: new_block() stores in mapBlocks, so we don't own the pointer */
         TAO::Ledger::Block* pBlock = new_block();
