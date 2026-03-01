@@ -940,7 +940,7 @@ namespace LLP
                     }
                     uint32_t nBitsMeta = pBlock->nBits;
 
-                    /* Build canonical chain state snapshot for GET_BLOCK response (PR #316) */
+                    /* Build canonical chain state snapshot for GET_BLOCK response and store in context. */
                     {
                         TAO::Ledger::BlockState stateGetBlock = TAO::Ledger::ChainState::tStateBest.load();
                         TAO::Ledger::BlockState stateGetBlockCh = stateGetBlock;
@@ -952,6 +952,9 @@ namespace LLP
                                        canonicalSnap.canonical_unified_height,
                                        " channel=", canonicalSnap.canonical_channel_height,
                                        " drift=", canonicalSnap.height_drift_from_canonical());
+                            /* Store snapshot in context so SUBMIT_BLOCK pre-check gate can read it. */
+                            LOCK(MUTEX);
+                            context = context.WithCanonicalSnap(canonicalSnap);
                         }
                     }
 
@@ -1160,6 +1163,9 @@ namespace LLP
                 uint512_t hashMerkle;
                 uint64_t nonce = 0;
                 bool fFalconVerified = false;
+                uint32_t nHeightFromBlock  = 0;   // Populated from full-block-body path (offset 200)
+                uint32_t nChannelFromBlock = 0;   // Populated from full-block-body path (offset 196)
+                bool fHeightFromBlock = false;    // True when nHeightFromBlock was decoded from the block body
 
                 /* Check for Falcon-signed format: [merkle][nonce][timestamp][sig_len][signature] */
                 /* Minimum for Falcon format: 64 + 8 + 8 + 2 = 82 bytes */
@@ -1562,6 +1568,20 @@ namespace LLP
                                 hashMerkle = hashMerkleFromBlock;
                                 nonce = nonceFromBlock;
                                 fFalconVerified = true;
+
+                                /* Extract nHeight (offset 200) and nChannel (offset 196) from the
+                                 * authenticated block body for use in the canonical pre-check gate.
+                                 * Tritium layout: [0-3]=nVersion [4-131]=hashPrevBlock
+                                 *                 [132-195]=hashMerkleRoot [196-199]=nChannel
+                                 *                 [200-203]=nHeight [204-207]=nBits [208-215]=nNonce */
+                                if(decryptedData.size() >= 204)
+                                {
+                                    nChannelFromBlock = convert::bytes2uint(decryptedData, 196);
+                                    nHeightFromBlock  = convert::bytes2uint(decryptedData, 200);
+                                    fHeightFromBlock  = true;
+                                    debug::log(2, FUNCTION, "Full-block decode: nChannel=", nChannelFromBlock,
+                                               " nHeight=", nHeightFromBlock, " (miner-submitted, Falcon-authenticated)");
+                                }
                                 
                                 /* Check timestamp freshness (replay protection) */
                                 /* NOTE: FALCON_TIMESTAMP_TOLERANCE_SECONDS is defined locally here
@@ -1746,6 +1766,51 @@ namespace LLP
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (template lookup failed) ===", ANSI_COLOR_RESET);
                     return true;
+                }
+
+                /* ── Canonical pre-check gate (WARN-ONLY) ───────────────────────────
+                 *  Use the snapshot captured at GET_BLOCK / push time (MiningContext).
+                 *  Node's validate_block() + ledger remain the final authority on
+                 *  acceptance; these checks only emit diagnostic warnings.
+                 */
+                {
+                    const CanonicalChainState& snap = context.canonical_snap;
+
+                    const bool fSnapStale = snap.is_canonically_stale();
+                    const uint64_t nSnapAgeMs = snap.is_initialized()
+                        ? static_cast<uint64_t>(
+                            std::chrono::duration_cast<std::chrono::milliseconds>(
+                                std::chrono::steady_clock::now() - snap.canonical_received_at).count())
+                        : 0;
+
+                    if(fSnapStale)
+                    {
+                        debug::warning(FUNCTION, "SUBMIT_BLOCK pre-check: canonical snapshot stale (>30s) — proceeding with caution");
+                    }
+
+                    /* Compare template height against canonical unified height (WARN only).
+                     * Prefer the Falcon-authenticated miner-submitted height (nHeightFromBlock)
+                     * when available (full-block-body decode path); fall back to the stored
+                     * template height for the legacy wrapper path. */
+                    const uint32_t nTemplateHeight = it->second.pBlock ? it->second.pBlock->nHeight : 0;
+                    const uint32_t nCompareHeight  = fHeightFromBlock ? nHeightFromBlock : nTemplateHeight;
+                    if(nCompareHeight > 0 && snap.canonical_unified_height > 0 &&
+                       nCompareHeight != snap.canonical_unified_height)
+                    {
+                        debug::warning(FUNCTION, "SUBMIT_BLOCK height mismatch: ",
+                                       fHeightFromBlock ? "submitted" : "template",
+                                       " height=", nCompareHeight,
+                                       " canonical=", snap.canonical_unified_height,
+                                       " — may be stale template");
+                    }
+
+                    /* Notify Colin so the periodic report reflects staleness at submission time,
+                     * not just at template-issue time. */
+                    if(context.hashGenesis != 0)
+                    {
+                        ColinMiningAgent::Get().on_canonical_snap_updated(
+                            context.hashGenesis.SubString(8), nSnapAgeMs, fSnapStale);
+                    }
                 }
 
                 /* Make sure there is no inconsistencies in signing block. */
@@ -4207,11 +4272,12 @@ namespace LLP
         /* Send to miner */
         respond(notification);
         
-        /* Update statistics */
+        /* Update statistics and store canonical snapshot in context. */
         uint64_t nNotificationTimestamp = runtime::unifiedtimestamp();
         {
             LOCK(MUTEX);
-            context = context.WithNotificationSent(nNotificationTimestamp);
+            context = context.WithNotificationSent(nNotificationTimestamp)
+                             .WithCanonicalSnap(canonicalSnap);
         }
         
         debug::log(2, FUNCTION, "Sent stateless template (0xD081) to ", GetAddress().ToStringIP(),

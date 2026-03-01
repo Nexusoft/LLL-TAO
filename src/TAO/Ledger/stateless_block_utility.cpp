@@ -28,6 +28,7 @@ ________________________________________________________________________________
 #include <LLP/include/disposable_falcon.h>
 
 #include <Util/include/args.h>
+#include <Util/include/convert.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 #include <sstream>
@@ -317,6 +318,23 @@ namespace TAO::Ledger
                 result.nonce = submission.nNonce;
                 result.timestamp = submission.nTimestamp;
                 result.success = true;
+
+                /* Opportunistically extract nUnifiedHeight from the block body when the
+                 * payload is large enough to contain a full Tritium block header (>= 204 bytes
+                 * covers offsets [0-203]).  We validate nChannel (must be 1 or 2) at offset
+                 * 196 to discriminate full-block-body payloads from compact-format submissions
+                 * that happen to be >= 204 bytes.  Channel 0 (Proof-of-Stake) is intentionally
+                 * excluded because stateless mining only supports Prime (1) and Hash (2).
+                 * nHeight lives at offset 200 (big-endian uint32_t). */
+                if(vData.size() >= 204)
+                {
+                    const uint32_t nCh = convert::bytes2uint(vData, 196);
+                    if(nCh == 1 || nCh == 2)
+                    {
+                        result.nUnifiedHeight = convert::bytes2uint(vData, 200);
+                    }
+                }
+
                 return result;
             }
         }

@@ -295,6 +295,25 @@ namespace LLP
                               const std::vector<uint8_t>& payload);
 
 
+        /** on_canonical_snap_updated
+         *
+         *  Called by GET_BLOCK handler and SendStatelessTemplate() after a
+         *  CanonicalChainState snapshot is captured and stored in MiningContext.
+         *
+         *  Records the snapshot's age (time since canonical_received_at) and
+         *  staleness flag in MinerStats.  The periodic Colin report emits a
+         *  [WARN] for any miner whose latest snapshot is stale.
+         *
+         *  @param[in] genesis_prefix  First 8 hex chars of miner genesis
+         *  @param[in] snap_age_ms     Age of the snapshot in milliseconds
+         *  @param[in] is_stale        True if snapshot.is_canonically_stale()
+         *
+         **/
+        void on_canonical_snap_updated(const std::string& genesis_prefix,
+                                       uint64_t snap_age_ms,
+                                       bool is_stale);
+
+
         /** check_and_record_submission
          *
          *  Thread-safe deduplication check for SUBMIT_BLOCK across connections.
@@ -367,6 +386,10 @@ namespace LLP
             uint32_t last_fork_score{0};
             uint32_t peak_fork_score{0};
             std::chrono::steady_clock::time_point last_keepalive_ack_at{};
+
+            // Canonical snapshot diagnostics (populated by on_canonical_snap_updated)
+            uint64_t last_canonical_snap_age_ms{0};  ///< Age of canonical_snap in ms (0=unknown)
+            bool     last_canonical_snap_stale{false}; ///< True when snap.is_canonically_stale()
         };
 
         /** Global push statistics (across all miners) **/
