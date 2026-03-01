@@ -940,7 +940,7 @@ namespace LLP
                     }
                     uint32_t nBitsMeta = pBlock->nBits;
 
-                    /* Build canonical chain state snapshot for GET_BLOCK response (PR #316) */
+                    /* Build canonical chain state snapshot for GET_BLOCK response and store in context. */
                     {
                         TAO::Ledger::BlockState stateGetBlock = TAO::Ledger::ChainState::tStateBest.load();
                         TAO::Ledger::BlockState stateGetBlockCh = stateGetBlock;
@@ -952,6 +952,9 @@ namespace LLP
                                        canonicalSnap.canonical_unified_height,
                                        " channel=", canonicalSnap.canonical_channel_height,
                                        " drift=", canonicalSnap.height_drift_from_canonical());
+                            /* Store snapshot in context so SUBMIT_BLOCK pre-check gate can read it. */
+                            LOCK(MUTEX);
+                            context = context.WithCanonicalSnap(canonicalSnap);
                         }
                     }
 
@@ -1746,6 +1749,30 @@ namespace LLP
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (template lookup failed) ===", ANSI_COLOR_RESET);
                     return true;
+                }
+
+                /* ── Canonical pre-check gate (WARN-ONLY) ───────────────────────────
+                 *  Use the snapshot captured at GET_BLOCK / push time (MiningContext).
+                 *  Node's validate_block() + ledger remain the final authority on
+                 *  acceptance; these checks only emit diagnostic warnings.
+                 */
+                {
+                    const CanonicalChainState& snap = context.canonical_snap;
+
+                    if(snap.is_canonically_stale())
+                    {
+                        debug::warning(FUNCTION, "SUBMIT_BLOCK pre-check: canonical snapshot stale (>30s) — proceeding with caution");
+                    }
+
+                    /* Compare template height against canonical unified height (WARN only). */
+                    const uint32_t nTemplateHeight = it->second.pBlock ? it->second.pBlock->nHeight : 0;
+                    if(nTemplateHeight > 0 && snap.canonical_unified_height > 0 &&
+                       nTemplateHeight != snap.canonical_unified_height)
+                    {
+                        debug::warning(FUNCTION, "SUBMIT_BLOCK height mismatch: template height=", nTemplateHeight,
+                                       " canonical=", snap.canonical_unified_height,
+                                       " — may be stale template");
+                    }
                 }
 
                 /* Make sure there is no inconsistencies in signing block. */
@@ -4207,11 +4234,12 @@ namespace LLP
         /* Send to miner */
         respond(notification);
         
-        /* Update statistics */
+        /* Update statistics and store canonical snapshot in context. */
         uint64_t nNotificationTimestamp = runtime::unifiedtimestamp();
         {
             LOCK(MUTEX);
-            context = context.WithNotificationSent(nNotificationTimestamp);
+            context = context.WithNotificationSent(nNotificationTimestamp)
+                             .WithCanonicalSnap(canonicalSnap);
         }
         
         debug::log(2, FUNCTION, "Sent stateless template (0xD081) to ", GetAddress().ToStringIP(),

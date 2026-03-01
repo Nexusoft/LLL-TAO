@@ -23,9 +23,10 @@ The struct lives in `LLP::` alongside `TemplateMetadata`, `HeightInfo`, and
 
 | Consumer | How it uses the snapshot |
 |---|---|
-| **SendStatelessTemplate()** | Captures chain state at push time; logs staleness and drift diagnostics |
-| **GET_BLOCK handler** | Captures chain state when building the 12-byte metadata prefix; detects drift |
-| **Colin Mining Agent** | Can embed the snapshot in PingFrame diagnostics to report chain freshness |
+| **SendStatelessTemplate()** | Captures chain state at push time; stores in `MiningContext`; logs staleness and drift diagnostics |
+| **GET_BLOCK handler** | Captures chain state when building the 12-byte metadata prefix; stores in `MiningContext` |
+| **SUBMIT_BLOCK pre-check gate** | Reads `context.canonical_snap` to cross-check template height and staleness (WARN-ONLY) |
+| **Colin Mining Agent** | Reports `last_canonical_snap_age_ms` and emits `[WARN]` when snap is stale for active sessions |
 | **Template validation** | `is_canonically_stale()` rejects snapshots older than 30 s |
 | **Fork detection** | `height_drift_from_canonical()` reveals positive drift (advance) or negative drift (reorg) |
 
@@ -105,6 +106,7 @@ Sets `canonical_received_at` to `steady_clock::now()`.
     pBlock = new_block()                  ← template creation
     notification = 12-byte meta + 216-byte block
     respond(notification)                 ← push to miner
+    context = context.WithCanonicalSnap(canonicalSnap)  ← STORED
 ```
 
 ### GET_BLOCK handler — Pull Path
@@ -117,9 +119,96 @@ Sets `canonical_received_at` to `steady_clock::now()`.
     ┌──────────────────────────────────┐
     │ canonicalSnap = from_chain_state │  ← SNAPSHOT CAPTURED
     └──────────────────────────────────┘
+    context = context.WithCanonicalSnap(canonicalSnap)  ← STORED
     vPayload = 12-byte meta + vData       ← response built
     respond(BLOCK_DATA, vPayload)         ← reply to miner
 ```
+
+---
+
+## SUBMIT_BLOCK Pre-Check Gate
+
+After ChaCha20 decryption and Disposable Falcon signature verification,
+the SUBMIT_BLOCK handler performs a **canonical pre-check** using the
+snapshot stored at GET_BLOCK / push time.
+
+```
+SUBMIT_BLOCK received
+    │
+    ├─ ChaCha20 decrypt
+    │
+    ├─ DisposableFalcon::VerifyWorkSubmission()  ← identity + integrity gate
+    │
+    ├─ find_block(hashMerkle)                    ← template must exist in mapBlocks
+    │
+    ├─ ── Canonical pre-check gate (WARN-ONLY) ──────────────────────────────
+    │   context.canonical_snap.is_canonically_stale() → WARN if true
+    │   template.nHeight != snap.canonical_unified_height → WARN if mismatch
+    │   (node's validate_block() is the final authority — no rejection here)
+    │
+    ├─ sign_block(nNonce, hashMerkle)
+    │
+    ├─ ValidateMinedBlock(*pTritium)             ← node ledger is authoritative
+    │
+    └─ BLOCK_ACCEPTED / BLOCK_REJECTED
+```
+
+### Three-Tier Authority Model
+
+1. **Canonical snapshot** (`context.canonical_snap`) — captures the chain state
+   at the moment the template was issued.  Used for WARN-ONLY cross-checks:
+   - Snapshot age > 30 s → miner may be working on an old template
+   - Template height ≠ snapshot unified height → template may be from a different round
+
+2. **DisposableFalcon signature** — proves miner identity and submission
+   integrity.  The signature is verified and then **discarded** (never forwarded
+   to the P2P network).  Failure → hard rejection.
+
+3. **`validate_block()` + ledger** — node is the final authority on acceptance.
+   A block that passes the canonical pre-check may still be rejected by
+   `validate_block()` if e.g. difficulty is wrong or a conflicting block arrived.
+
+### Code Example (SUBMIT_BLOCK handler)
+
+```cpp
+const CanonicalChainState& snap = context.canonical_snap;
+
+if (snap.is_canonically_stale())
+{
+    debug::warning(FUNCTION, "SUBMIT_BLOCK pre-check: canonical snapshot stale (>30s) — proceeding with caution");
+}
+
+const uint32_t nTemplateHeight = it->second.pBlock ? it->second.pBlock->nHeight : 0;
+if (nTemplateHeight > 0 && snap.canonical_unified_height > 0 &&
+    nTemplateHeight != snap.canonical_unified_height)
+{
+    debug::warning(FUNCTION, "SUBMIT_BLOCK height mismatch: template height=", nTemplateHeight,
+                   " canonical=", snap.canonical_unified_height,
+                   " — may be stale template");
+}
+```
+
+---
+
+## MiningContext Integration
+
+`CanonicalChainState` is stored directly in `LLP::MiningContext` as the
+`canonical_snap` field.  This allows the SUBMIT_BLOCK handler to read the
+snapshot that was active when the template was issued — without re-reading
+chain state (which would reflect the *current* tip, not the tip the template
+was built on).
+
+```cpp
+// In GET_BLOCK handler / SendStatelessTemplate():
+context = context.WithCanonicalSnap(canonicalSnap);
+
+// In SUBMIT_BLOCK handler:
+const CanonicalChainState& snap = context.canonical_snap;
+```
+
+A default-constructed `MiningContext` has `canonical_snap.is_initialized() == false`,
+which causes the pre-check gate to run in warn-only mode until the first template
+is issued.
 
 ---
 
@@ -130,7 +219,7 @@ CanonicalChainState         TemplateMetadata           HeightInfo
 ────────────────────        ─────────────────          ───────────
 Node chain snapshot         Per-template snapshot      Per-channel view
   at push/GET time            at creation time            from ChannelStateManager
-                                                         
+                                                          
 ┌─ unified_height           ┌─ nHeight (unified)       ┌─ nUnifiedHeight
 ├─ channel_height           ├─ nChannelHeight          ├─ nChannelHeight
 ├─ difficulty_nbits         ├─ hashBestChainAtCreation ├─ nNextUnifiedHeight
@@ -152,6 +241,9 @@ a snapshot across threads must protect it externally, just as
 
 The `from_chain_state()` factory takes already-loaded `BlockState` objects
 (atomic loads happen before the call).
+
+In `stateless_miner_connection.cpp`, `WithCanonicalSnap()` is called inside
+`LOCK(MUTEX)` to ensure thread-safe context updates.
 
 ---
 

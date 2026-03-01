@@ -87,6 +87,8 @@ namespace TAO
             uint512_t hashMerkle = 0;
             uint64_t nonce = 0;
             uint64_t timestamp = 0; // Set when Falcon wrapper includes timestamp; legacy payloads remain 0.
+            uint32_t nUnifiedHeight = 0; ///< Canonical unified height from the block payload (0 if absent)
+            uint32_t nChannelHeight = 0; ///< Channel height from the block payload (0 if absent)
         };
 
 

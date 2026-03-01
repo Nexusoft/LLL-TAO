@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <LLP/packets/stateless_packet.h>
 #include <LLP/packets/packet.h>
+#include <LLP/include/canonical_chain_state.h>
 #include <LLC/types/uint1024.h>
 #include <TAO/Ledger/types/block.h>
 #include <LLC/include/flkey.h>
@@ -506,6 +507,17 @@ namespace LLP
          * without requiring a ChainState re-query on every round. */
         uint32_t nStakeHeight;           ///< Stake channel height from last KEEPALIVE_V2 cycle
 
+        /** Canonical chain state snapshot captured at the last GET_BLOCK or push event.
+         *
+         *  Populated by the GET_BLOCK handler and SendStatelessTemplate() immediately
+         *  after new_block() succeeds.  Read by handle_submit_block_stateless() to
+         *  perform the canonical pre-check gate without a fresh chain read.
+         *
+         *  A default-constructed (all-zero) snap is_initialized() == false, meaning
+         *  the pre-check gate runs in warn-only mode until the first template is issued.
+         */
+        CanonicalChainState canonical_snap;  ///< Snapshot captured at last GET_BLOCK or push
+
         /** Default Constructor **/
         MiningContext();
 
@@ -725,6 +737,19 @@ namespace LLP
          *
          **/
         MiningContext WithNotificationSent(uint64_t nTime_) const;
+
+        /** WithCanonicalSnap
+         *
+         *  Returns a new context with updated canonical chain state snapshot.
+         *  Called by the GET_BLOCK handler and SendStatelessTemplate() after
+         *  building the template, so that the SUBMIT_BLOCK handler can cross-
+         *  check the submitted block against the snapshot without re-reading
+         *  chain state.
+         *
+         *  @param[in] snap The CanonicalChainState captured at template-issue time
+         *
+         **/
+        MiningContext WithCanonicalSnap(const CanonicalChainState& snap) const;
 
         /** GetPayoutAddress
          *

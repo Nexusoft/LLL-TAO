@@ -331,6 +331,13 @@ namespace LLP
         return c;
     }
 
+    MiningContext MiningContext::WithCanonicalSnap(const CanonicalChainState& snap) const
+    {
+        MiningContext c = *this;
+        c.canonical_snap = snap;
+        return c;
+    }
+
     uint256_t MiningContext::GetPayoutAddress() const
     {
         /* Priority 1: Use explicit reward address if bound via MINER_SET_REWARD */

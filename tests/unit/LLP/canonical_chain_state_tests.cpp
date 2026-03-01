@@ -544,3 +544,120 @@ TEST_CASE("CanonicalChainState Edge Cases", "[canonical_chain_state][edge]")
         REQUIRE(state.is_canonically_stale() == true);
     }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* 9. MiningContext canonical_snap INTEGRATION                            */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
+#include <LLP/include/stateless_miner.h>
+#include <TAO/Ledger/include/stateless_block_utility.h>
+
+TEST_CASE("MiningContext canonical_snap field", "[canonical_chain_state][mining_context]")
+{
+    SECTION("Default MiningContext has uninitialized canonical_snap")
+    {
+        LLP::MiningContext ctx;
+        REQUIRE(ctx.canonical_snap.is_initialized() == false);
+        REQUIRE(ctx.canonical_snap.is_canonically_stale() == true);
+    }
+
+    SECTION("WithCanonicalSnap stores a fresh snapshot")
+    {
+        LLP::MiningContext ctx;
+
+        TAO::Ledger::BlockState stateBest;
+        stateBest.nHeight = 6537500;
+        TAO::Ledger::BlockState stateChannel;
+        stateChannel.nChannelHeight = 2302700;
+
+        CanonicalChainState snap = CanonicalChainState::from_chain_state(
+            stateBest, stateChannel, 0x1d00ffff);
+
+        LLP::MiningContext ctx2 = ctx.WithCanonicalSnap(snap);
+
+        REQUIRE(ctx2.canonical_snap.is_initialized() == true);
+        REQUIRE(ctx2.canonical_snap.is_canonically_stale() == false);
+        REQUIRE(ctx2.canonical_snap.canonical_unified_height == 6537500);
+        REQUIRE(ctx2.canonical_snap.canonical_channel_height == 2302700);
+        REQUIRE(ctx2.canonical_snap.canonical_difficulty_nbits == 0x1d00ffff);
+    }
+
+    SECTION("WithCanonicalSnap does not mutate the original context")
+    {
+        LLP::MiningContext ctx;
+        REQUIRE(ctx.canonical_snap.is_initialized() == false);
+
+        TAO::Ledger::BlockState stateBest;
+        stateBest.nHeight = 100;
+        TAO::Ledger::BlockState stateChannel;
+        CanonicalChainState snap = CanonicalChainState::from_chain_state(
+            stateBest, stateChannel, 0);
+
+        LLP::MiningContext ctx2 = ctx.WithCanonicalSnap(snap);
+
+        /* Original must remain untouched */
+        REQUIRE(ctx.canonical_snap.is_initialized() == false);
+        /* Updated copy must have the snap */
+        REQUIRE(ctx2.canonical_snap.is_initialized() == true);
+    }
+
+    SECTION("Stale snap from epoch is detected correctly")
+    {
+        LLP::MiningContext ctx;
+
+        CanonicalChainState snap;
+        snap.canonical_unified_height = 500;
+        /* canonical_received_at remains epoch → stale */
+
+        LLP::MiningContext ctx2 = ctx.WithCanonicalSnap(snap);
+
+        REQUIRE(ctx2.canonical_snap.is_initialized() == true);
+        REQUIRE(ctx2.canonical_snap.is_canonically_stale() == true);
+    }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* 10. ParseResult canonical fields                                        */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
+TEST_CASE("ParseResult canonical fields", "[canonical_chain_state][parse_result]")
+{
+    SECTION("ParseResult default values are zero")
+    {
+        TAO::Ledger::ParseResult result;
+        REQUIRE(result.nUnifiedHeight == 0);
+        REQUIRE(result.nChannelHeight == 0);
+    }
+
+    SECTION("ParseResult nUnifiedHeight can be set and read")
+    {
+        TAO::Ledger::ParseResult result;
+        result.nUnifiedHeight = 6537500;
+        REQUIRE(result.nUnifiedHeight == 6537500);
+    }
+
+    SECTION("ParseResult nChannelHeight can be set and read")
+    {
+        TAO::Ledger::ParseResult result;
+        result.nChannelHeight = 2302700;
+        REQUIRE(result.nChannelHeight == 2302700);
+    }
+
+    SECTION("ParseResult fields are independent of other fields")
+    {
+        TAO::Ledger::ParseResult result;
+        result.success        = true;
+        result.hashMerkle     = 0;
+        result.nonce          = 12345;
+        result.timestamp      = 99999;
+        result.nUnifiedHeight = 6000000;
+        result.nChannelHeight = 2000000;
+
+        REQUIRE(result.success        == true);
+        REQUIRE(result.nonce          == 12345);
+        REQUIRE(result.nUnifiedHeight == 6000000);
+        REQUIRE(result.nChannelHeight == 2000000);
+    }
+}

@@ -387,6 +387,28 @@ namespace LLP
     }
 
 
+    void ColinMiningAgent::on_canonical_snap_updated(const std::string& genesis_prefix,
+                                                     uint64_t snap_age_ms,
+                                                     bool is_stale)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        auto it = m_miners.find(genesis_prefix);
+        if(it == m_miners.end())
+            return;
+
+        it->second.last_canonical_snap_age_ms = snap_age_ms;
+        it->second.last_canonical_snap_stale  = is_stale;
+
+        if(is_stale)
+        {
+            const std::string& display_id = it->second.remote_endpoint.empty()
+                ? genesis_prefix : it->second.remote_endpoint;
+            debug::warning(FUNCTION, "[Colin] Miner ", display_id,
+                           " canonical snapshot stale (", snap_age_ms, " ms) — template may be outdated");
+        }
+    }
+
+
     bool ColinMiningAgent::check_and_record_submission(uint32_t nHeight, uint64_t nNonce,
                                                         const std::string& merkleHex)
     {
@@ -703,11 +725,15 @@ namespace LLP
                 }
             }
 
-            if(!s.last_rejection_reason.empty())
+            if(!s.last_rejection_reason.empty() || s.last_canonical_snap_stale)
             {
                 debug::log(0, sep);
                 debug::log(0, BoxLine(std::string("  WARNINGS:")));
-                debug::log(0, BoxLine("  * Last rejection: " + s.last_rejection_reason));
+                if(!s.last_rejection_reason.empty())
+                    debug::log(0, BoxLine("  * Last rejection: " + s.last_rejection_reason));
+                if(s.last_canonical_snap_stale)
+                    debug::log(0, BoxLine("  * [WARN] Canonical snapshot stale ("
+                        + std::to_string(s.last_canonical_snap_age_ms) + " ms) — miner may hold outdated template"));
             }
 
             debug::log(0, sep);
