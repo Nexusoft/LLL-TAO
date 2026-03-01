@@ -940,7 +940,9 @@ namespace LLP
                     }
                     uint32_t nBitsMeta = pBlock->nBits;
 
-                    /* Build canonical chain state snapshot for GET_BLOCK response and store in context. */
+                    /* Build canonical chain state snapshot for GET_BLOCK response and store in context.
+                     * NOTE: We already hold LOCK(MUTEX) from line 725 — do NOT re-acquire it here
+                     * (std::mutex is non-recursive; a nested LOCK would deadlock). */
                     {
                         TAO::Ledger::BlockState stateGetBlock = TAO::Ledger::ChainState::tStateBest.load();
                         TAO::Ledger::BlockState stateGetBlockCh = stateGetBlock;
@@ -953,7 +955,6 @@ namespace LLP
                                        " channel=", canonicalSnap.canonical_channel_height,
                                        " drift=", canonicalSnap.height_drift_from_canonical());
                             /* Store snapshot in context so SUBMIT_BLOCK pre-check gate can read it. */
-                            LOCK(MUTEX);
                             context = context.WithCanonicalSnap(canonicalSnap);
                         }
                     }
@@ -1578,7 +1579,7 @@ namespace LLP
                                 {
                                     nChannelFromBlock = convert::bytes2uint(decryptedData, 196);
                                     nHeightFromBlock  = convert::bytes2uint(decryptedData, 200);
-                                    fHeightFromBlock  = true;
+                                    fHeightFromBlock  = (nChannelFromBlock == 1 || nChannelFromBlock == 2) && nHeightFromBlock > 0;
                                     debug::log(2, FUNCTION, "Full-block decode: nChannel=", nChannelFromBlock,
                                                " nHeight=", nHeightFromBlock, " (miner-submitted, Falcon-authenticated)");
                                 }
@@ -4110,6 +4111,17 @@ namespace LLP
                    " (unified=", stateBest.nHeight, 
                    ", channelHeight=", nChannelHeight,
                    ", diff=", std::hex, nDifficulty, std::dec, ")");
+
+        /* Also deliver a full template so the miner can start mining immediately
+         * without needing a GET_BLOCK round-trip (same pattern as MINER_READY).
+         * Re-arm the throttle bypass since SendChannelNotification just updated
+         * m_last_template_push_time which would otherwise cause SendStatelessTemplate
+         * to be throttled. */
+        {
+            LOCK(MUTEX);
+            m_force_next_push = true;
+        }
+        SendStatelessTemplate();
     }
 
 
