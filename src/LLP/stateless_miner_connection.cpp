@@ -1574,8 +1574,12 @@ namespace LLP
                                  * authenticated block body for use in the canonical pre-check gate.
                                  * Tritium layout: [0-3]=nVersion [4-131]=hashPrevBlock
                                  *                 [132-195]=hashMerkleRoot [196-199]=nChannel
-                                 *                 [200-203]=nHeight [204-207]=nBits [208-215]=nNonce */
-                                if(decryptedData.size() >= 204)
+                                 *                 [200-203]=nHeight [204-207]=nBits [208-215]=nNonce
+                                 *
+                                 * Use blockSize (the authenticated block body length) rather than
+                                 * decryptedData.size() which also includes [timestamp][sig_len][signature]
+                                 * and could satisfy the bound even when the block body is too short. */
+                                if(blockSize >= 204)
                                 {
                                     nChannelFromBlock = convert::bytes2uint(decryptedData, 196);
                                     nHeightFromBlock  = convert::bytes2uint(decryptedData, 200);
@@ -2858,11 +2862,29 @@ namespace LLP
     /** Create a new block */
     TAO::Ledger::Block* StatelessMinerConnection::new_block()
     {
+        /* Snapshot context fields under MUTEX so that new_block() never races
+         * with ProcessPacket() writers when called from the notification thread. */
+        uint32_t nChannel_snap;
+        uint32_t nSessionId_snap;
+        bool     fAuthenticated_snap;
+        bool     fRewardBound_snap;
+        uint256_t hashRewardAddress_snap;
+        uint256_t hashGenesis_snap;
+        {
+            LOCK(MUTEX);
+            nChannel_snap         = context.nChannel;
+            nSessionId_snap       = context.nSessionId;
+            fAuthenticated_snap   = context.fAuthenticated;
+            fRewardBound_snap     = context.fRewardBound;
+            hashRewardAddress_snap = context.hashRewardAddress;
+            hashGenesis_snap      = context.hashGenesis;
+        }
+
         {
             std::unique_lock<std::mutex> lock(TEMPLATE_CREATE_MUTEX);
             if(m_template_create_in_flight)
             {
-                debug::log(2, FUNCTION, "Template creation already in-flight for session ", context.nSessionId,
+                debug::log(2, FUNCTION, "Template creation already in-flight for session ", nSessionId_snap,
                            "; waiting for existing result");
                 TEMPLATE_CREATE_CV.wait(lock, [this](){ return !m_template_create_in_flight; });
                 return m_last_created_template;
@@ -2900,24 +2922,24 @@ namespace LLP
         debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "=== NEW_BLOCK: Request from ", GetAddress().ToStringIP(), " ===", ANSI_COLOR_RESET);
         
         /* Validate channel is set BEFORE creating template */
-        if(context.nChannel == 0)
+        if(nChannel_snap == 0)
         {
             debug::error(FUNCTION, "❌ Cannot create template: nChannel not set");
             debug::error(FUNCTION, "   Required: Miner must send SET_CHANNEL before GET_BLOCK");
-            debug::error(FUNCTION, "   Current context.nChannel: ", context.nChannel);
+            debug::error(FUNCTION, "   Current context.nChannel: ", nChannel_snap);
             return nullptr;
         }
         
         /* Validate channel value is valid (1=Prime, 2=Hash) */
-        if(context.nChannel != 1 && context.nChannel != 2)
+        if(nChannel_snap != 1 && nChannel_snap != 2)
         {
-            debug::error(FUNCTION, "❌ Invalid channel: ", context.nChannel);
+            debug::error(FUNCTION, "❌ Invalid channel: ", nChannel_snap);
             debug::error(FUNCTION, "   Valid channels: 1 (Prime), 2 (Hash)");
             return nullptr;
         }
         
-        debug::log(0, "   Channel validated: ", context.nChannel, 
-                   " (", (context.nChannel == 1 ? "Prime" : "Hash"), ")");
+        debug::log(0, "   Channel validated: ", nChannel_snap, 
+                   " (", (nChannel_snap == 1 ? "Prime" : "Hash"), ")");
         
         /* Get CURRENT blockchain height FIRST */
         uint32_t nCurrentHeight = TAO::Ledger::ChainState::nBestHeight.load();
@@ -2933,12 +2955,12 @@ namespace LLP
         debug::log(0, "   Determining reward address...");
         uint256_t hashReward = 0;
         
-        if(context.fRewardBound && context.hashRewardAddress != 0) {
-            hashReward = context.hashRewardAddress;
+        if(fRewardBound_snap && hashRewardAddress_snap != 0) {
+            hashReward = hashRewardAddress_snap;
             debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "      Using bound reward address: ", hashReward.SubString(), ANSI_COLOR_RESET);
         }
-        else if(context.hashGenesis != 0) {
-            hashReward = context.hashGenesis;
+        else if(hashGenesis_snap != 0) {
+            hashReward = hashGenesis_snap;
             debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "      Using genesis hash: ", hashReward.SubString(), ANSI_COLOR_RESET);
         }
         else {
@@ -2948,9 +2970,9 @@ namespace LLP
         }
         
         debug::log(0, "   Block parameters:");
-        debug::log(0, "      Channel: ", context.nChannel);
-        debug::log(0, "      Session ID: ", context.nSessionId);
-        debug::log(0, "      Falcon authenticated: ", context.fAuthenticated ? "Yes" : "No");
+        debug::log(0, "      Channel: ", nChannel_snap);
+        debug::log(0, "      Session ID: ", nSessionId_snap);
+        debug::log(0, "      Falcon authenticated: ", fAuthenticated_snap ? "Yes" : "No");
         
         /* Ensure wallet is unlocked for mining (matches legacy Miner::new_block behavior).
          * CreateBlockForStatelessMining() requires Authentication::Unlocked(PinUnlock::MINING).
@@ -2990,7 +3012,7 @@ namespace LLP
             const uint32_t extraNonce =
                 nBlockIterator.fetch_add(1, std::memory_order_relaxed) + 1;
             pBlock = TAO::Ledger::CreateBlockForStatelessMining(
-                context.nChannel,
+                nChannel_snap,
                 extraNonce,
                 hashReward
             );
@@ -3013,10 +3035,10 @@ namespace LLP
         uint64_t nCreationTime = runtime::unifiedtimestamp();
         
         /* Get channel manager for this channel */
-        ChannelStateManager* pChannelMgr = GetChannelManager(context.nChannel);
+        ChannelStateManager* pChannelMgr = GetChannelManager(nChannel_snap);
         if(!pChannelMgr)
         {
-            debug::error(FUNCTION, "Failed to get channel manager for channel ", context.nChannel);
+            debug::error(FUNCTION, "Failed to get channel manager for channel ", nChannel_snap);
             delete pBlock;
             return nullptr;
         }
@@ -3079,7 +3101,7 @@ namespace LLP
         const uint512_t hashMerkleKey = pBlock->hashMerkleRoot;
 
         TemplateMetadata meta(pBlock, nCreationTime, info.nUnifiedHeight, info.nNextChannelHeight, 
-                             hashMerkleKey, context.nChannel,
+                             hashMerkleKey, nChannel_snap,
                              TAO::Ledger::ChainState::hashBestChain.load());
         auto result = mapBlocks.emplace(hashMerkleKey, std::move(meta));
         
@@ -4100,14 +4122,16 @@ namespace LLP
         uint64_t nNotificationTimestamp = runtime::unifiedtimestamp();
         
         /* Update statistics (thread-safe) */
+        uint32_t nSessionId_snap;
         {
             LOCK(MUTEX);
             context = context.WithNotificationSent(nNotificationTimestamp);
+            nSessionId_snap = context.nSessionId;
         }  // MUTEX automatically unlocked here
         
         debug::log(2, FUNCTION, "Sent ", GetChannelName(nChannel), 
                    " notification to ", GetAddress().ToStringIP(),
-                   " session=", context.nSessionId,
+                   " session=", nSessionId_snap,
                    " (unified=", stateBest.nHeight, 
                    ", channelHeight=", nChannelHeight,
                    ", diff=", std::hex, nDifficulty, std::dec, ")");
@@ -4286,14 +4310,16 @@ namespace LLP
         
         /* Update statistics and store canonical snapshot in context. */
         uint64_t nNotificationTimestamp = runtime::unifiedtimestamp();
+        uint32_t nSessionId_snap;
         {
             LOCK(MUTEX);
             context = context.WithNotificationSent(nNotificationTimestamp)
                              .WithCanonicalSnap(canonicalSnap);
+            nSessionId_snap = context.nSessionId;
         }
         
         debug::log(2, FUNCTION, "Sent stateless template (0xD081) to ", GetAddress().ToStringIP(),
-                   " session=", context.nSessionId,
+                   " session=", nSessionId_snap,
                    " (unified=", stateBest.nHeight, 
                    ", channel=", nChannelHeight,
                    ", diff=", std::hex, nDifficulty, std::dec, ")");
