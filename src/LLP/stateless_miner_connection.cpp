@@ -2913,7 +2913,47 @@ namespace LLP
                 }
                 else
                 {
-                    return m_last_created_template;
+                    /* FIX #332: Validate cached template is not stale before returning it.
+                     *
+                     * PROBLEM: If the chain advanced while we waited for template creation,
+                     * m_last_created_template may point to a template that's 4+ blocks old.
+                     * This caused the "channel_height=2333128, channel_target=2333132 gap" bug
+                     * where nodes served stale templates that were immediately rejected.
+                     *
+                     * ROOT CAUSE: After the GET_BLOCK deadlock fix (PR #331), if new_block()
+                     * was called while holding MUTEX and hung, the node cached a stale template.
+                     * Concurrent callers then received this stale template without staleness
+                     * revalidation.
+                     *
+                     * SOLUTION: Look up the template metadata in mapBlocks and call IsStale()
+                     * before returning the cached pointer. If stale, fall through to create
+                     * a fresh template.
+                     */
+                    const uint512_t hashMerkleKey = m_last_created_template->hashMerkleRoot;
+                    if(mapBlocks.count(hashMerkleKey))
+                    {
+                        const TemplateMetadata& meta = mapBlocks[hashMerkleKey];
+                        if(meta.IsStale())
+                        {
+                            debug::log(1, FUNCTION, "Cached template is STALE — creating fresh template");
+                            debug::log(1, FUNCTION, "   Cached merkle: ", hashMerkleKey.SubString());
+                            debug::log(1, FUNCTION, "   Cached channel height: ", meta.nChannelHeight);
+                            debug::log(1, FUNCTION, "   Cached age: ",
+                                      (runtime::unifiedtimestamp() - meta.nCreationTime), "s");
+                            /* Fall through to create a fresh template below */
+                        }
+                        else
+                        {
+                            debug::log(2, FUNCTION, "Cached template is still fresh — returning it");
+                            return m_last_created_template;
+                        }
+                    }
+                    else
+                    {
+                        /* Template was removed from mapBlocks (e.g., cleanup) — create fresh */
+                        debug::log(1, FUNCTION, "Cached template no longer in mapBlocks — creating fresh");
+                        /* Fall through to create a fresh template below */
+                    }
                 }
             }
 
