@@ -783,8 +783,13 @@ namespace LLP
                 }
                 
                 debug::log(0, "   ✅ Validation passed");
+
+                /* CRITICAL: Release MUTEX before new_block() — new_block() acquires MUTEX internally.
+                 * std::mutex is non-recursive; holding lk and calling new_block() causes a deadlock. */
+                lk.unlock();
+
                 debug::log(0, "   Calling new_block()...");
-                
+
                 /* Create a new block */
                 TAO::Ledger::Block* pBlock = new_block();
 
@@ -795,6 +800,9 @@ namespace LLP
                     debug::log(2, FUNCTION, "new_block() returned nullptr — retrying once (chain may have advanced mid-creation)");
                     pBlock = new_block();
                 }
+
+                /* Re-acquire MUTEX for respond() and context mutations */
+                lk.lock();
 
                 if(!pBlock)
                 {
@@ -941,8 +949,8 @@ namespace LLP
                     uint32_t nBitsMeta = pBlock->nBits;
 
                     /* Build canonical chain state snapshot for GET_BLOCK response and store in context.
-                     * NOTE: We already hold LOCK(MUTEX) from line 725 — do NOT re-acquire it here
-                     * (std::mutex is non-recursive; a nested LOCK would deadlock). */
+                     * NOTE: MUTEX re-acquired via lk.lock() after new_block() returned — safe to
+                     * mutate context here. */
                     {
                         TAO::Ledger::BlockState stateGetBlock = TAO::Ledger::ChainState::tStateBest.load();
                         TAO::Ledger::BlockState stateGetBlockCh = stateGetBlock;
@@ -2894,7 +2902,19 @@ namespace LLP
                     debug::log(1, FUNCTION, "Shutdown detected while waiting for template creation");
                     return nullptr;
                 }
-                return m_last_created_template;
+
+                /* If the waited-for template returned nullptr, retry once instead of propagating the failure.
+                 * This prevents miners from receiving empty BLOCK_DATA when template creation fails transiently
+                 * (e.g., during chain reorganization). */
+                if(m_last_created_template == nullptr)
+                {
+                    debug::log(1, FUNCTION, "Waited template creation returned nullptr — retrying once");
+                    /* Fall through to create our own template below */
+                }
+                else
+                {
+                    return m_last_created_template;
+                }
             }
 
             m_template_create_in_flight = true;
