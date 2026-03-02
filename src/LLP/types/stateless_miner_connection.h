@@ -247,6 +247,16 @@ namespace LLP
          *
          **/
         void SendStatelessTemplate();
+
+        /** SendNodeShutdown
+         *
+         *  Send a NODE_SHUTDOWN (0xD0FF) packet to notify the miner of graceful shutdown.
+         *  The miner should stop its workers cleanly and wait before reconnecting.
+         *
+         *  @param[in] nReasonCode  Shutdown reason: 1=GRACEFUL, 2=MAINTENANCE
+         *
+         **/
+        void SendNodeShutdown(uint32_t nReasonCode = 1);
         
         // ═══════════════════════════════════════════════════════════════════════
         // DIFFICULTY CACHING (Performance Optimization)

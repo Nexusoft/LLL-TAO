@@ -681,7 +681,7 @@ namespace LLP
                 StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
                 
                 debug::log(0, FUNCTION, "✓ Miner subscribed to ", 
-                          (context.nChannel == 1 ? "Prime" : "Hash"), " notifications (stateless protocol)");
+                          context.strChannelName, " notifications (stateless protocol)");
                 debug::log(0, "   Updated StatelessMinerManager with complete context");
                 debug::log(0, "   Encryption ready: ", (context.fEncryptionReady ? "YES" : "NO"));
                 debug::log(0, "   ChaCha key size: ", context.vChaChaKey.size(), " bytes");
@@ -1989,7 +1989,7 @@ namespace LLP
                     TAO::Ledger::Block *pBlock = it->second.pBlock.get();
                     debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   🎉 Block ", pBlock->nHeight, " accepted by Nexus network", ANSI_COLOR_RESET);
                     debug::log(0, "   Miner: ", GetAddress().ToStringIP());
-                    debug::log(0, "   Channel: ", pBlock->nChannel, " (", (pBlock->nChannel == 1 ? "Prime" : "Hash"), ")");
+                    debug::log(0, "   Channel: ", pBlock->nChannel, " (", MiningContext::ChannelName(pBlock->nChannel), ")");
                 }
                 
                 StatelessPacket response(STATELESS_BLOCK_ACCEPTED);
@@ -2526,7 +2526,7 @@ namespace LLP
                 }
                 
                 debug::log(0, FUNCTION, "✓ Miner subscribed to ", 
-                          (context.nChannel == 1 ? "Prime" : "Hash"), " notifications");
+                          context.strChannelName, " notifications");
                 debug::log(0, "   Encryption ready: ", (context.fEncryptionReady ? "YES" : "NO"));
                 debug::log(0, "   ChaCha key size: ", context.vChaChaKey.size(), " bytes");
                 
@@ -2939,7 +2939,7 @@ namespace LLP
         }
         
         debug::log(0, "   Channel validated: ", nChannel_snap, 
-                   " (", (nChannel_snap == 1 ? "Prime" : "Hash"), ")");
+                   " (", MiningContext::ChannelName(nChannel_snap), ")");
         
         /* Get CURRENT blockchain height FIRST */
         uint32_t nCurrentHeight = TAO::Ledger::ChainState::nBestHeight.load();
@@ -3748,7 +3748,7 @@ namespace LLP
                 debug::log(2, "   Context:");
                 debug::log(2, "      Authenticated:  ", (context.fAuthenticated ? "YES" : "NO"));
                 debug::log(2, "      Channel:        ", context.nChannel, " (", 
-                          (context.nChannel == 1 ? "Prime" : context.nChannel == 2 ? "Hash" : "Unknown"), ")");
+                          context.strChannelName, ")");
                 debug::log(2, "      Subscribed:     ", (context.fSubscribedToNotifications ? "YES" : "NO"));
                 
                 // Determine if this is legacy polling or fallback from failed notifications
@@ -3819,7 +3819,7 @@ namespace LLP
                 debug::log(2, "   Context:");
                 debug::log(2, "      Authenticated:  ", (context.fAuthenticated ? "YES" : "NO"));
                 debug::log(2, "      Channel:        ", context.nChannel, " (", 
-                          (context.nChannel == 1 ? "Prime" : context.nChannel == 2 ? "Hash" : "Unknown"), ")");
+                          context.strChannelName, ")");
                 debug::log(2, "      Subscribed:     ", (context.fSubscribedToNotifications ? "YES" : "NO"));
                 
                 // Check if this is likely in response to a notification
@@ -4323,6 +4323,23 @@ namespace LLP
                    " (unified=", stateBest.nHeight, 
                    ", channel=", nChannelHeight,
                    ", diff=", std::hex, nDifficulty, std::dec, ")");
+    }
+
+
+    /* SendNodeShutdown - Notify miner of graceful node shutdown via NODE_SHUTDOWN (0xD0FF) */
+    void StatelessMinerConnection::SendNodeShutdown(uint32_t nReasonCode)
+    {
+        /* Build NODE_SHUTDOWN packet: 4-byte reason code, big-endian */
+        StatelessPacket packet(OpcodeUtility::Stateless::NODE_SHUTDOWN);
+        packet.DATA.push_back(static_cast<uint8_t>((nReasonCode >> 24) & 0xFF));
+        packet.DATA.push_back(static_cast<uint8_t>((nReasonCode >> 16) & 0xFF));
+        packet.DATA.push_back(static_cast<uint8_t>((nReasonCode >>  8) & 0xFF));
+        packet.DATA.push_back(static_cast<uint8_t>((nReasonCode >>  0) & 0xFF));
+        packet.LENGTH = 4;
+
+        debug::log(1, FUNCTION, "Sending NODE_SHUTDOWN (0xD0FF) to ", GetAddress().ToStringIP(),
+                   " reason=", nReasonCode);
+        WritePacket(packet);
     }
 
 } // namespace LLP

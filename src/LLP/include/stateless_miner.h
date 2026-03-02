@@ -518,6 +518,13 @@ namespace LLP
          */
         CanonicalChainState canonical_snap;  ///< Snapshot captured at last GET_BLOCK or push
 
+        /** Human-readable channel name for logging and diagnostics.
+         *  Initialized by the constructors and kept in sync with nChannel by WithChannel().
+         *  Also updated explicitly by WithChannelName() when needed.
+         *  Values: "Prime" (nChannel=1), "Hash" (nChannel=2), "Unknown(N)" for others.
+         *  This is the single source of truth — never compute inline ternaries elsewhere. */
+        std::string strChannelName;  // "Prime" | "Hash" | "Unknown(N)"
+
         /** Default Constructor **/
         MiningContext();
 
@@ -540,6 +547,29 @@ namespace LLP
          *
          **/
         MiningContext WithChannel(uint32_t nChannel_) const;
+
+        /** ChannelName
+         *
+         *  Returns the human-readable name for a mining channel integer.
+         *  1 → "Prime", 2 → "Hash", otherwise "Unknown(N)".
+         *  Use as the single source of truth — avoid inline ternaries.
+         *
+         *  @param[in] nChannel_ Mining channel integer
+         *  @return Human-readable channel name string
+         *
+         **/
+        static std::string ChannelName(uint32_t nChannel_);
+
+        /** WithChannelName
+         *
+         *  Returns a new context with strChannelName derived from nChannel.
+         *  Must be called whenever nChannel changes (e.g. in ProcessSetChannel).
+         *
+         *  @param[in] nChannel_ Mining channel integer
+         *  @return New context with strChannelName set
+         *
+         **/
+        MiningContext WithChannelName(uint32_t nChannel_) const;
 
         /** WithHeight
          *

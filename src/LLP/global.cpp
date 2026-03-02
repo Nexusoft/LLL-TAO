@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <LLP/include/mining_config.h>
 #include <LLP/include/network.h>
 #include <LLP/include/falcon_auth.h>
+#include <LLP/include/colin_mining_agent.h>
 
 #include <TAO/API/include/global.h>
 
@@ -446,10 +447,67 @@ namespace LLP
     }
 
 
+    /*  Gracefully disconnect all connected miners before server teardown. */
+    static void GracefulDisconnectAllMiners()
+    {
+        /* Milliseconds to wait after sending NODE_SHUTDOWN before closing the socket.
+         * This gives the kernel's TCP send buffer time to flush the packet. */
+        static constexpr uint32_t MINER_SHUTDOWN_FLUSH_MS = 20;
+
+        debug::log(0, FUNCTION, "Sending graceful disconnect to all connected miners...");
+
+        uint32_t nStatelessDisconnected = 0;
+        uint32_t nLegacyDisconnected    = 0;
+
+        /* Emit final Colin diagnostic report before breaking connections */
+        ColinMiningAgent::Get().on_node_shutdown();
+
+        /* --- Stateless miners (port 9323) --- */
+        if(STATELESS_MINER_SERVER)
+        {
+            auto vConns = STATELESS_MINER_SERVER->GetConnections();
+            for(auto& pConn : vConns)
+            {
+                if(!pConn || !pConn->Connected())
+                    continue;
+
+                /* Send NODE_SHUTDOWN (0xD0FF) reason=SHUTDOWN_GRACEFUL(1) */
+                pConn->SendNodeShutdown(1);
+
+                /* Brief flush window before hard disconnect */
+                runtime::sleep(MINER_SHUTDOWN_FLUSH_MS);
+                pConn->Disconnect();
+                ++nStatelessDisconnected;
+            }
+        }
+
+        /* --- Legacy miners (port 8323) --- */
+        if(MINING_SERVER)
+        {
+            auto vConns = MINING_SERVER->GetConnections();
+            for(auto& pConn : vConns)
+            {
+                if(!pConn || !pConn->Connected())
+                    continue;
+
+                pConn->Disconnect();
+                ++nLegacyDisconnected;
+            }
+        }
+
+        debug::log(0, FUNCTION, "Graceful disconnect complete: ",
+                   nStatelessDisconnected, " stateless + ",
+                   nLegacyDisconnected, " legacy miners disconnected");
+    }
+
+
     /*  Shutdown the LLP. */
     void Shutdown()
     {
         debug::log(0, FUNCTION, "Shutting down LLP");
+
+        /* Gracefully notify and disconnect all miners BEFORE server teardown. */
+        GracefulDisconnectAllMiners();
 
         /* Shutdown Falcon Auth. */
         FalconAuth::Shutdown();
