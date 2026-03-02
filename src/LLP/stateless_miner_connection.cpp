@@ -4142,17 +4142,6 @@ namespace LLP
                    " (unified=", stateBest.nHeight, 
                    ", channelHeight=", nChannelHeight,
                    ", diff=", std::hex, nDifficulty, std::dec, ")");
-
-        /* Also deliver a full template so the miner can start mining immediately
-         * without needing a GET_BLOCK round-trip (same pattern as MINER_READY).
-         * Re-arm the throttle bypass since SendChannelNotification just updated
-         * m_last_template_push_time which would otherwise cause SendStatelessTemplate
-         * to be throttled. */
-        {
-            LOCK(MUTEX);
-            m_force_next_push = true;
-        }
-        SendStatelessTemplate();
     }
 
 
