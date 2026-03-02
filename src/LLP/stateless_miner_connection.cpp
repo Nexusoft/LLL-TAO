@@ -3015,8 +3015,13 @@ namespace LLP
         debug::log(0, "   Current blockchain height: ", nCurrentHeight);
         debug::log(0, "   Template will target height: ", nCurrentHeight + 1);
         
-        /* Cleanup old templates using the new dedicated method */
-        CleanupStaleTemplates(nCurrentHeight);
+        /* Cleanup old templates using the new dedicated method.
+         * Lock ordering: MUTEX protects all mapBlocks reads/writes;
+         * TEMPLATE_CREATE_MUTEX (inner) is never held when MUTEX is acquired here. */
+        {
+            std::lock_guard<std::mutex> map_lk(MUTEX);
+            CleanupStaleTemplates(nCurrentHeight);
+        }
         
         /* Determine reward - same priority as miner.cpp */
         debug::log(0, "   Determining reward address...");
@@ -3126,8 +3131,12 @@ namespace LLP
             debug::warning(FUNCTION, "   Blocks rolled back: ", pChannelMgr->GetBlocksRolledBack());
             debug::warning(FUNCTION, "   Clearing stale templates...");
             
-            /* Clear templates first, then clear fork flag */
-            clear_map();
+            /* Clear templates first, then clear fork flag.
+             * Lock ordering: MUTEX protects all mapBlocks writes in clear_map(). */
+            {
+                std::lock_guard<std::mutex> map_lk(MUTEX);
+                clear_map();
+            }
             
             /* Clear fork flag after successful cleanup */
             pChannelMgr->ClearForkFlag();
@@ -3170,44 +3179,50 @@ namespace LLP
         TemplateMetadata meta(pBlock, nCreationTime, info.nUnifiedHeight, info.nNextChannelHeight, 
                              hashMerkleKey, nChannel_snap,
                              TAO::Ledger::ChainState::hashBestChain.load());
-        auto result = mapBlocks.emplace(hashMerkleKey, std::move(meta));
-        
-        debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Template stored in map with metadata", ANSI_COLOR_RESET);
-        debug::log(0, "      Merkle root: ", hashMerkleKey.SubString());
-        debug::log(0, "      Unified height (current):  ", info.nUnifiedHeight);
-        debug::log(0, "      Channel height (target):   ", info.nNextChannelHeight, " (mining for next ", pChannelMgr->GetChannelName(), " block)");
-        debug::log(0, "      Channel: ", pChannelMgr->GetChannelName());
-        debug::log(0, "      Creation time: ", nCreationTime);
-        debug::log(0, "      Templates in map: ", mapBlocks.size());
-        
-        /* ✅ ADD: Verify stored value matches what we intended */
-        if(result.second)  // Successfully inserted
+        TAO::Ledger::Block* pStableBlock = nullptr;
         {
-            if(result.first->second.nChannelHeight != info.nNextChannelHeight)
+            /* Lock ordering: MUTEX protects all mapBlocks writes (and reads in ProcessPacket handlers).
+             * TEMPLATE_CREATE_MUTEX is never held when this lock is acquired. */
+            std::lock_guard<std::mutex> map_lk(MUTEX);
+            auto result = mapBlocks.emplace(hashMerkleKey, std::move(meta));
+
+            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Template stored in map with metadata", ANSI_COLOR_RESET);
+            debug::log(0, "      Merkle root: ", hashMerkleKey.SubString());
+            debug::log(0, "      Unified height (current):  ", info.nUnifiedHeight);
+            debug::log(0, "      Channel height (target):   ", info.nNextChannelHeight, " (mining for next ", pChannelMgr->GetChannelName(), " block)");
+            debug::log(0, "      Channel: ", pChannelMgr->GetChannelName());
+            debug::log(0, "      Creation time: ", nCreationTime);
+            debug::log(0, "      Templates in map: ", mapBlocks.size());
+
+            /* ✅ ADD: Verify stored value matches what we intended */
+            if(result.second)  // Successfully inserted
             {
-                debug::error(FUNCTION, "❌ CRITICAL: Template stored with wrong nChannelHeight!");
-                debug::error(FUNCTION, "   Expected: ", info.nNextChannelHeight);
-                debug::error(FUNCTION, "   Got: ", result.first->second.nChannelHeight);
+                if(result.first->second.nChannelHeight != info.nNextChannelHeight)
+                {
+                    debug::error(FUNCTION, "❌ CRITICAL: Template stored with wrong nChannelHeight!");
+                    debug::error(FUNCTION, "   Expected: ", info.nNextChannelHeight);
+                    debug::error(FUNCTION, "   Got: ", result.first->second.nChannelHeight);
+                }
+                else
+                {
+                    debug::log(0, "   ✓ Verified: Template has correct nChannelHeight=", info.nNextChannelHeight);
+                }
             }
             else
             {
-                debug::log(0, "   ✓ Verified: Template has correct nChannelHeight=", info.nNextChannelHeight);
+                /* Duplicate key: another caller already stored a template for this merkle root.
+                 * The newly created block (in meta) may have been destroyed by the failed emplace.
+                 * Use the map key (result.first->first) to log — do NOT dereference pBlock here.
+                 * Return the existing map entry's pointer which remains valid. */
+                debug::log(1, FUNCTION, "⚠ Duplicate merkle root — returning existing map entry for ", result.first->first.SubString());
             }
-        }
-        else
-        {
-            /* Duplicate key: another caller already stored a template for this merkle root.
-             * The newly created block (in meta) may have been destroyed by the failed emplace.
-             * Use the map key (result.first->first) to log — do NOT dereference pBlock here.
-             * Return the existing map entry's pointer which remains valid. */
-            debug::log(1, FUNCTION, "⚠ Duplicate merkle root — returning existing map entry for ", result.first->first.SubString());
-        }
 
-        /* Return the stable pointer owned by the map entry, not the pre-move raw pointer.
-         * If emplace succeeded, result.first->second.pBlock.get() == pBlock (same object).
-         * If emplace failed (duplicate key), pBlock would be destroyed at end of scope;
-         * result.first->second.pBlock.get() points to the existing valid template instead. */
-        TAO::Ledger::Block* pStableBlock = result.first->second.pBlock.get();
+            /* Return the stable pointer owned by the map entry, not the pre-move raw pointer.
+             * If emplace succeeded, result.first->second.pBlock.get() == pBlock (same object).
+             * If emplace failed (duplicate key), pBlock would be destroyed at end of scope;
+             * result.first->second.pBlock.get() points to the existing valid template instead. */
+            pStableBlock = result.first->second.pBlock.get();
+        }
         creationScope.result = pStableBlock;
 
         debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "=== NEW_BLOCK: Complete ===", ANSI_COLOR_RESET);
