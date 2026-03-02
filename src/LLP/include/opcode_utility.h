@@ -172,6 +172,22 @@ namespace OpcodeUtility
         static constexpr uint16_t PING  = Mirror(Opcodes::PING);   // 0xD0FD
         static constexpr uint16_t CLOSE = Mirror(Opcodes::CLOSE);  // 0xD0FE
 
+        /** NODE_SHUTDOWN (0xD0FF)
+         *
+         *  Node → Miner: Graceful shutdown notice.
+         *  Sent to all connected stateless miners before the node shuts down,
+         *  giving them an opportunity to stop workers cleanly.
+         *
+         *  PAYLOAD (4 bytes, big-endian):
+         *    [0-3] uint32_t reason_code
+         *      0x00000001 = SHUTDOWN_GRACEFUL    (planned node shutdown)
+         *      0x00000002 = SHUTDOWN_MAINTENANCE (maintenance restart)
+         *
+         *  NOT available on legacy port 8323.
+         *  Stateless-only. NOT mirrored from a legacy opcode.
+         **/
+        static constexpr uint16_t NODE_SHUTDOWN = 0xD0FF;          // DATA-bearing, stateless-only
+
         /* Backward compatibility aliases with STATELESS_ prefix */
         static constexpr uint16_t STATELESS_BLOCK_DATA     = BLOCK_DATA;
         static constexpr uint16_t STATELESS_SUBMIT_BLOCK   = SUBMIT_BLOCK;

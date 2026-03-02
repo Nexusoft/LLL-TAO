@@ -97,6 +97,7 @@ namespace LLP
     , nMinerPrevblockSuffix({})
     , fKeepaliveV2(false)
     , nStakeHeight(0)
+    , strChannelName("Unknown")
     {
     }
 
@@ -144,6 +145,7 @@ namespace LLP
     , nMinerPrevblockSuffix({})
     , fKeepaliveV2(false)
     , nStakeHeight(0)
+    , strChannelName(MiningContext::ChannelName(nChannel_))
     {
     }
 
@@ -152,6 +154,25 @@ namespace LLP
     {
         MiningContext c = *this;
         c.nChannel = nChannel_;
+        c.strChannelName = ChannelName(nChannel_);
+        return c;
+    }
+
+    /* static */
+    std::string MiningContext::ChannelName(uint32_t nChannel_)
+    {
+        switch(nChannel_)
+        {
+            case 1: return "Prime";
+            case 2: return "Hash";
+            default: return "Unknown(" + std::to_string(nChannel_) + ")";
+        }
+    }
+
+    MiningContext MiningContext::WithChannelName(uint32_t nChannel_) const
+    {
+        MiningContext c = *this;
+        c.strChannelName = ChannelName(nChannel_);
         return c;
     }
 
@@ -1428,6 +1449,7 @@ namespace LLP
         /* Update context */
         MiningContext newContext = context
             .WithChannel(nChannel)
+            .WithChannelName(nChannel)
             .WithTimestamp(runtime::unifiedtimestamp());
 
         /* Build acknowledgment response with channel number */

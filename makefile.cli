@@ -308,6 +308,7 @@ ifdef UNIT_TESTS
 		   build/Tests_LLP_keepalive_v2_tests.o \
 		   build/Tests_LLP_rate_limiting_tests.o \
 		   build/Tests_LLP_stateless_miner.o \
+		   build/Tests_LLP_graceful_shutdown_tests.o \
 		   build/Tests_LLP_test_template_staleness.o \
 		   build/Tests_LLP_template_metadata_channel_height.o \
 		   build/Tests_LLP_test_stateless_miner_crypto.o \

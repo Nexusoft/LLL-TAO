@@ -187,6 +187,13 @@ namespace LLP
     }
 
 
+    void ColinMiningAgent::on_node_shutdown()
+    {
+        debug::log(0, FUNCTION, "Node shutdown — emitting final Colin report before miner disconnect");
+        emit_report();
+    }
+
+
     void ColinMiningAgent::on_block_submitted(const std::string& genesis_prefix,
                                               uint32_t channel,
                                               bool accepted,

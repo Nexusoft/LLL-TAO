@@ -199,6 +199,17 @@ namespace LLP
         void stop();
 
 
+        /** on_node_shutdown
+         *
+         *  Called just before the node disconnects all miners during LLP::Shutdown().
+         *  Emits a final diagnostic report so the last Colin snapshot (connected miners,
+         *  last template, submission stats) is captured in debug.log before connection
+         *  objects are destroyed.
+         *
+         **/
+        void on_node_shutdown();
+
+
         /** on_block_submitted
          *
          *  Called by mining LLP handlers when a block submission is processed.
