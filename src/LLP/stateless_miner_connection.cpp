@@ -2886,7 +2886,14 @@ namespace LLP
             {
                 debug::log(2, FUNCTION, "Template creation already in-flight for session ", nSessionId_snap,
                            "; waiting for existing result");
-                TEMPLATE_CREATE_CV.wait(lock, [this](){ return !m_template_create_in_flight; });
+                while(m_template_create_in_flight && !config::fShutdown.load())
+                    TEMPLATE_CREATE_CV.wait_for(lock, std::chrono::milliseconds(500));
+
+                if(config::fShutdown.load())
+                {
+                    debug::log(1, FUNCTION, "Shutdown detected while waiting for template creation");
+                    return nullptr;
+                }
                 return m_last_created_template;
             }
 
