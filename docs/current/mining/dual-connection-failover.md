@@ -310,3 +310,39 @@ max_retry_count=3
 - [Colin Mining Agent](./mining-notification-diagnostics.md)
 - [SIM Link Architecture](./stateless-protocol.md)
 - [Session Status Protocol](./session-status.md)
+- [Failover Re-Authentication Flow](./failover-reauth-flow.md)
+
+---
+
+## Node-Side Failover Re-Authentication
+
+> **Important:** When a miner switches to a failover node, the failover node has
+> **no prior session** for that miner. The miner must perform a **full fresh Falcon
+> authentication handshake**. The `DualConnectionManager` (above) tracks lane
+> health from the miner's perspective; the node observes the failover via the
+> `FailoverConnectionTracker` singleton and reports it in the Colin session state.
+>
+> See [failover-reauth-flow.md](./failover-reauth-flow.md) for the complete
+> protocol description including the correct re-authentication sequence and how the
+> Colin report's **Miner Session State** section shows `fresh_auth=true` for
+> failover sessions.
+
+### Protocol Summary
+
+```
+Miner → Failover Node: TCP connect (no session ID)
+  Node: RecoverSessionByAddress() → nullopt
+  Node: FailoverConnectionTracker::RecordConnection(IP)
+
+Miner → Node: MINER_AUTH_INIT (full pubkey)
+Node → Miner: MINER_AUTH_CHALLENGE (nonce)
+
+Miner → Node: MINER_AUTH_RESPONSE (Falcon signature)
+  Node: ProcessFalconResponse() → derives new nSessionId from pubkey hash
+  Node: ChannelStateManager::NotifyFailoverConnection() [if failover detected]
+
+Node → Miner: MINER_AUTH_RESULT (success + new nSessionId)
+Miner → Node: STATELESS_MINER_READY (subscribe to templates)
+  [Mining resumes on failover node]
+```
+

@@ -40,6 +40,7 @@ namespace LLP
     , strAddress()
     , nReconnectCount(0)
     , fAuthenticated(false)
+    , fFreshAuth(false)
     , nLastLane(0)
     , hashChaCha20Key(0)
     , nChaCha20Nonce(0)
@@ -61,6 +62,7 @@ namespace LLP
     , strAddress(context.strAddress)
     , nReconnectCount(0)
     , fAuthenticated(context.fAuthenticated)
+    , fFreshAuth(false)
     , nLastLane(0)
     , hashChaCha20Key(0)
     , nChaCha20Nonce(0)
@@ -148,6 +150,25 @@ namespace LLP
         debug::log(2, FUNCTION, "Saved session for keyID=", context.hashKeyID.SubString(),
                    " sessionId=", context.nSessionId, " address=", context.strAddress);
 
+        return true;
+    }
+
+
+    /** MarkFreshAuth **/
+    bool SessionRecoveryManager::MarkFreshAuth(const uint256_t& hashKeyID)
+    {
+        auto optData = mapSessionsByKey.Get(hashKeyID);
+        if(!optData.has_value())
+        {
+            debug::log(2, FUNCTION, "No session found for keyID=", hashKeyID.SubString());
+            return false;
+        }
+
+        SessionRecoveryData data = optData.value();
+        data.fFreshAuth = true;
+        mapSessionsByKey.Update(hashKeyID, data);
+
+        debug::log(2, FUNCTION, "Marked session as fresh auth for keyID=", hashKeyID.SubString());
         return true;
     }
 

@@ -63,6 +63,8 @@ ________________________________________________________________________________
 
 #include <LLP/include/colin_mining_agent.h>
 #include <LLP/include/canonical_chain_state.h>
+#include <LLP/include/failover_connection_tracker.h>
+#include <LLP/include/channel_state_manager.h>
 
 #include <chrono>
 #include <limits>
@@ -467,6 +469,21 @@ namespace LLP
                     uint256_t(0),  // hashKeyID
                     uint256_t(0)   // hashGenesis
                 );
+
+                /* Attempt session recovery by IP address.
+                 * If recovery fails for a non-localhost IP, this is a potential failover
+                 * connection — the miner may have switched to this node after its primary
+                 * node dropped.  We record it via FailoverConnectionTracker so that after
+                 * the subsequent fresh Falcon handshake completes we can notify
+                 * ChannelStateManager and update the Colin report. */
+                MiningContext recoveredContext;
+                bool fRecovered = SessionRecoveryManager::Get().RecoverSessionByAddress(strAddr, recoveredContext);
+                if(!fRecovered && strAddr != "127.0.0.1" && strAddr != "::1")
+                {
+                    FailoverConnectionTracker::Get().RecordConnection(strAddr);
+                    debug::log(0, FUNCTION, "No prior session for ", strAddr,
+                               " — recording as potential failover connection");
+                }
 
                 /* Register with StatelessMinerManager for tracking */
                 StatelessMinerManager::Get().UpdateMiner(strAddr, context, 1);
@@ -2751,6 +2768,19 @@ namespace LLP
                 {
                     debug::log(0, FUNCTION, "Session registered: address=", context.strAddress,
                                " sessionId=", context.nSessionId, " keyID=", context.hashKeyID.SubString());
+
+                    /* Notify ChannelStateManager if this was a failover authentication.
+                     * FailoverConnectionTracker::IsFailover() returns true when the CONNECT
+                     * event found no recoverable session for this IP, indicating the miner
+                     * has failed over to this node and performed a full fresh handshake. */
+                    if(FailoverConnectionTracker::Get().IsFailover(context.strAddress))
+                    {
+                        ChannelStateManager::NotifyFailoverConnection(context.hashKeyID, context.strAddress);
+                        /* Mark session as fresh auth so Colin report can show fresh_auth=true */
+                        SessionRecoveryManager::Get().MarkFreshAuth(context.hashKeyID);
+                        /* Clear the pending failover flag now that auth has completed */
+                        FailoverConnectionTracker::Get().ClearConnection(context.strAddress);
+                    }
                 }
                 
                 /* Send response if present */
