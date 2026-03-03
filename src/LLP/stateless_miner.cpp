@@ -1535,7 +1535,10 @@ namespace LLP
         bool fSendV2 = (fIsV2 || newContext.fKeepaliveV2);
         if(fSendV2)
         {
-            /* Gather current chain state for unified 32-byte reply */
+            /* Gather current chain state for unified 32-byte reply.
+             * CRITICAL: Use stateBest.GetHash() instead of loading hashBestChain separately
+             * to prevent race conditions where heights come from block N but hash from block N+1.
+             * This ensures hash_tip_lo32 matches the unified height being reported. */
             TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
             uint32_t nUnifiedHeight = stateBest.nHeight;
 
@@ -1554,7 +1557,8 @@ namespace LLP
             if(TAO::Ledger::GetLastState(stateChannel, 0))
                 nStakeHeight = stateChannel.nChannelHeight;
 
-            uint1024_t hashBestChain = TAO::Ledger::ChainState::hashBestChain.load();
+            /* Extract hash from the same atomic snapshot to ensure consistency */
+            uint1024_t hashBestChain = stateBest.GetHash();
             uint32_t nHashTipLo32 = static_cast<uint32_t>(hashBestChain.Get64(0) & 0xFFFFFFFF);
 
             uint32_t nMinerPrevHashLo32 = 0u;
@@ -1629,7 +1633,10 @@ namespace LLP
             return ProcessResult::Error(context, "KEEPALIVE_V2: invalid payload");
         }
 
-        /* Gather live chain state */
+        /* Gather live chain state.
+         * CRITICAL: Use stateBest.GetHash() instead of loading hashBestChain separately
+         * to prevent race conditions where heights come from block N but hash from block N+1.
+         * This ensures hash_tip_lo32 matches the unified height being reported. */
         TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
         uint32_t nUnifiedHeight = stateBest.nHeight;
 
@@ -1648,7 +1655,8 @@ namespace LLP
         if(TAO::Ledger::GetLastState(stateChannel, 0))
             nStakeHeight = stateChannel.nChannelHeight;
 
-        uint1024_t hashBestChain = TAO::Ledger::ChainState::hashBestChain.load();
+        /* Extract hash from the same atomic snapshot to ensure consistency */
+        uint1024_t hashBestChain = stateBest.GetHash();
         uint32_t nHashTipLo32 = static_cast<uint32_t>(hashBestChain.Get64(0) & 0xFFFFFFFF);
 
         /* fork_score: non-zero when miner's prevHash lo32 differs from node tip —
