@@ -308,6 +308,7 @@ ifdef UNIT_TESTS
 		   build/Tests_LLP_keepalive_v2_tests.o \
 		   build/Tests_LLP_rate_limiting_tests.o \
 		   build/Tests_LLP_stateless_miner.o \
+		   build/Tests_LLP_dual_connection_manager_tests.o \
 		   build/Tests_LLP_graceful_shutdown_tests.o \
 		   build/Tests_LLP_test_template_staleness.o \
 		   build/Tests_LLP_template_metadata_channel_height.o \
@@ -465,7 +466,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_opcode_utility.o \
 		build/LLP_push_notification.o \
 		build/LLP_colin_mining_agent.o \
-		build/LLP_dual_connection_manager.o \
 		build/LLP_failover_connection_tracker.o \
 		build/LLP_miner_push_dispatcher.o \
 		build/API_commands_assets_initialize.o \
