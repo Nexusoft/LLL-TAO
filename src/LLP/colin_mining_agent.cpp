@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/include/colin_mining_agent.h>
+#include <LLP/include/dual_connection_manager.h>
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <Util/include/args.h>
@@ -648,6 +649,52 @@ namespace LLP
 
         debug::log(0, BoxLine(std::string("CONNECTED MINERS: ")
                               + std::to_string(miners_copy.size())));
+        debug::log(0, sep);
+
+        /* ── Node Connection Status (DualConnectionManager) ────────────── */
+        {
+            DualConnectionManager& dcm = DualConnectionManager::Get();
+            std::string active_ep = dcm.get_active_endpoint();
+            std::string secondary_ep = dcm.get_secondary_endpoint();
+            bool using_failover = dcm.is_using_failover();
+            bool stateless_alive = dcm.is_stateless_lane_alive();
+            bool legacy_alive = dcm.is_legacy_lane_alive();
+            bool sim_link_active = dcm.is_sim_link_active();
+            uint32_t fail_count = dcm.get_primary_fail_count();
+
+            debug::log(0, BoxLine("NODE CONNECTION STATUS:"));
+            if(!active_ep.empty())
+            {
+                debug::log(0, BoxLine(std::string("  Active Node: ") + active_ep
+                                      + (using_failover ? " [FAILOVER]" : " [PRIMARY]")));
+                if(!secondary_ep.empty())
+                {
+                    debug::log(0, BoxLine(std::string("  SIM Link Secondary: ") + secondary_ep));
+                }
+            }
+            else
+            {
+                debug::log(0, BoxLine("  Active Node: NOT CONFIGURED"));
+            }
+
+            std::string lane_status = "  Lane Status: ";
+            if(sim_link_active)
+                lane_status += "STATELESS(9323)=ALIVE, LEGACY(8323)=ALIVE [SIM LINK ACTIVE]";
+            else if(stateless_alive && !legacy_alive)
+                lane_status += "STATELESS(9323)=ALIVE, LEGACY(8323)=DEAD";
+            else if(!stateless_alive && legacy_alive)
+                lane_status += "STATELESS(9323)=DEAD, LEGACY(8323)=ALIVE [DEGRADED MODE]";
+            else
+                lane_status += "STATELESS(9323)=DEAD, LEGACY(8323)=DEAD [OFFLINE]";
+
+            debug::log(0, BoxLine(lane_status));
+
+            if(fail_count > 0)
+            {
+                debug::log(0, BoxLine(std::string("  Fail Count: ") + std::to_string(fail_count)
+                                      + " consecutive failures"));
+            }
+        }
         debug::log(0, sep);
 
         for(const auto& kv : miners_copy)
