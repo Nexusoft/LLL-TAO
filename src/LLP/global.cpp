@@ -286,7 +286,11 @@ namespace LLP
                 CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-miningrscore"), 50);
                 CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-miningtimespan"), 60);
                 CONFIG.MANAGER_SLEEP   = 0; //this is disabled
-                CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-miningtimeout"), 120);
+                /* Increased from 120s to 300s for stateless push-notification protocol.
+                 * Prime blocks can take 2-5+ minutes to find, and the miner doesn't send
+                 * data back during mining (only after finding a block). The node pushes
+                 * templates to the miner, so read-idle silence is expected and normal. */
+                CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-miningtimeout"), 300);
 
                 /* Create the Phase 2 stateless miner server instance. */
                 STATELESS_MINER_SERVER = new Server<StatelessMinerConnection>(CONFIG);
