@@ -3752,10 +3752,27 @@ namespace LLP
          * dropping to zero templates, while still pruning old entries quickly. */
         static constexpr uint32_t TEMPLATE_RETENTION_BLOCKS = 2;
         std::map<uint32_t, std::pair<uint64_t, uint512_t>> latestByChannel;
-        
+
         debug::log(2, FUNCTION, "🧹 Cleaning stale templates...");
         debug::log(2, FUNCTION, "   Current height: ", nCurrentHeight);
         debug::log(2, FUNCTION, "   Templates before cleanup: ", mapBlocks.size());
+
+        /* Get current blockchain state to determine current channel heights */
+        TAO::Ledger::BlockState stateCurrent = TAO::Ledger::ChainState::tStateBest.load();
+
+        /* Cache current channel heights for each channel (0=Stake, 1=Prime, 2=Hash) */
+        std::map<uint32_t, uint32_t> currentChannelHeights;
+        for(uint32_t nChannel = 0; nChannel <= 2; ++nChannel)
+        {
+            TAO::Ledger::BlockState stateChannel = stateCurrent;
+            if(TAO::Ledger::GetLastState(stateChannel, nChannel))
+            {
+                currentChannelHeights[nChannel] = stateChannel.nChannelHeight;
+                debug::log(2, FUNCTION, "   Current ",
+                          (nChannel == 0 ? "Stake" : nChannel == 1 ? "Prime" : "Hash"),
+                          " channel height: ", stateChannel.nChannelHeight);
+            }
+        }
 
         for(const auto& entry : mapBlocks)
         {
@@ -3764,13 +3781,13 @@ namespace LLP
             if(itLatest == latestByChannel.end() || meta.nCreationTime > itLatest->second.first)
                 latestByChannel[meta.nChannel] = std::make_pair(meta.nCreationTime, entry.first);
         }
-        
+
         for(auto it = mapBlocks.begin(); it != mapBlocks.end(); )
         {
             const TemplateMetadata& meta = it->second;
             const auto itLatest = latestByChannel.find(meta.nChannel);
             const bool fKeepLatest = (itLatest != latestByChannel.end() && itLatest->second.second == it->first);
-            
+
             /* Keep at least one hot template per channel to avoid full cold regeneration bursts. */
             if(fKeepLatest)
             {
@@ -3778,28 +3795,57 @@ namespace LLP
                 continue;
             }
 
-            const bool fTooOldByBlocks =
-                (nCurrentHeight >= meta.nHeight) &&
-                ((nCurrentHeight - meta.nHeight) > TEMPLATE_RETENTION_BLOCKS);
+            /* Check staleness by CHANNEL HEIGHT, not unified height.
+             * Template with nChannelHeight=N targets mining block N for that channel.
+             * If blockchain's channel is now at height >= N, the template is stale.
+             * Keep templates within TEMPLATE_RETENTION_BLOCKS of the current channel height. */
+            bool fTooOldByBlocks = false;
+            auto itCurrentHeight = currentChannelHeights.find(meta.nChannel);
+            if(itCurrentHeight != currentChannelHeights.end())
+            {
+                uint32_t nCurrentChannelHeight = itCurrentHeight->second;
+                /* Template targets nChannelHeight (next block in channel).
+                 * If current channel is at nCurrentChannelHeight, and template targets
+                 * nChannelHeight, template is stale if:
+                 * nCurrentChannelHeight >= nChannelHeight + TEMPLATE_RETENTION_BLOCKS */
+                if(nCurrentChannelHeight >= meta.nChannelHeight &&
+                   (nCurrentChannelHeight - meta.nChannelHeight) >= TEMPLATE_RETENTION_BLOCKS)
+                {
+                    fTooOldByBlocks = true;
+                }
+            }
+
             const bool fTooOldByTime = (meta.GetAge(nNow) > LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS);
 
             if(fTooOldByBlocks || fTooOldByTime)
             {
                 uint64_t nAge = nNow - meta.nCreationTime;
                 debug::log(2, FUNCTION, "   ❌ Removing stale template (retention window)");
-                debug::log(2, FUNCTION, "      Unified height: ", meta.nHeight, " (current: ", nCurrentHeight,
-                           ", keep <= ", TEMPLATE_RETENTION_BLOCKS, " blocks old)");
-                debug::log(2, FUNCTION, "      Channel height: ", meta.nChannelHeight, " (", meta.GetChannelName(), ")");
+                debug::log(2, FUNCTION, "      Unified height: ", meta.nHeight, " (current: ", nCurrentHeight, ")");
+
+                auto itCurrent = currentChannelHeights.find(meta.nChannel);
+                if(itCurrent != currentChannelHeights.end())
+                {
+                    debug::log(2, FUNCTION, "      Channel height: ", meta.nChannelHeight,
+                              " (current: ", itCurrent->second, ", ", meta.GetChannelName(),
+                              ", keep <= ", TEMPLATE_RETENTION_BLOCKS, " blocks old)");
+                }
+                else
+                {
+                    debug::log(2, FUNCTION, "      Channel height: ", meta.nChannelHeight,
+                              " (", meta.GetChannelName(), ")");
+                }
+
                 debug::log(2, FUNCTION, "      Age: ", nAge, "s");
                 debug::log(2, FUNCTION, "      Merkle: ", it->first.SubString());
                 it = mapBlocks.erase(it);  // unique_ptr automatically deletes pBlock
                 ++nRemoved;
                 continue;
             }
-            
+
             ++it;
         }
-        
+
         debug::log(2, FUNCTION, "   ✅ Cleanup complete: ", nRemoved, " templates removed");
         debug::log(2, FUNCTION, "   Templates after cleanup: ", mapBlocks.size());
     }
