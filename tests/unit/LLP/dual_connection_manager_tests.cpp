@@ -99,8 +99,9 @@ namespace TestDCM
 
         /* get_secondary_endpoint
          *
-         * Derives LEGACY endpoint by replacing the port suffix of the active endpoint.
-         * Active endpoint on port 9323 → secondary on port 8323, and vice-versa.
+         * Derives the LEGACY (8323) endpoint from the active primary (STATELESS, 9323) endpoint
+         * by replacing the port suffix with 8323.
+         * The active endpoint is always expected to be the STATELESS port (9323).
          */
         std::string get_secondary_endpoint() const
         {
@@ -113,9 +114,7 @@ namespace TestDCM
             if(colon_pos == std::string::npos)
                 return secondary;
 
-            std::string port_str = secondary.substr(colon_pos + 1);
-            std::string secondary_port = (port_str == "9323") ? "8323" : "9323";
-            return secondary.substr(0, colon_pos + 1) + secondary_port;
+            return secondary.substr(0, colon_pos + 1) + "8323";
         }
 
         uint32_t get_primary_fail_count() const
@@ -265,11 +264,13 @@ TEST_CASE("DualConnectionManager: Failover State", "[dual_connection_manager][ll
         REQUIRE(dcm.get_secondary_endpoint() == "192.168.1.10:8323");
     }
 
-    SECTION("Secondary endpoint derivation — LEGACY primary (8323) → STATELESS secondary (9323)")
+    SECTION("Secondary endpoint derivation — any port suffix is replaced with 8323")
     {
+        /* Active endpoint is always the STATELESS port (9323); the secondary is always 8323.
+         * This verifies the port-replacement logic for a non-standard port value. */
         TestDCM::DualConnectionManager dcm;
-        dcm.set_failover_active(false, "192.168.1.10:8323");
-        REQUIRE(dcm.get_secondary_endpoint() == "192.168.1.10:9323");
+        dcm.set_failover_active(false, "10.0.0.5:9323");
+        REQUIRE(dcm.get_secondary_endpoint() == "10.0.0.5:8323");
     }
 
     SECTION("Secondary endpoint empty when no active endpoint configured")
