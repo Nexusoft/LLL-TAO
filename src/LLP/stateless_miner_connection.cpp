@@ -572,6 +572,9 @@ namespace LLP
     {
         try
         {
+            /* Reset connection activity timer to prevent idle disconnection on any packet processing */
+            this->Reset();
+
             /* Get the incoming packet. */
             StatelessPacket PACKET = this->INCOMING;
             /* Log entry */
@@ -4271,10 +4274,15 @@ namespace LLP
         debug::log(2, "      If client times out or doesn't receive this,");
         debug::log(2, "      client may fall back to polling GET_ROUND (133/0x85).");
         debug::log(2, "════════════════════════════════════════════════════════════");
-        
+
         /* Send to miner */
         respond(notification);
-        
+
+        /* Reset connection activity timer — the miner is alive and receiving push notifications.
+         * Without this, the node would disconnect active miners during long Prime searches (~2-5 min)
+         * because the push-notification protocol means miners don't send data back until they find a block. */
+        this->Reset();
+
         /* Capture timestamp for accurate timing measurements
          * Using same timestamp both for updating context and for client timing calculations */
         uint64_t nNotificationTimestamp = runtime::unifiedtimestamp();
