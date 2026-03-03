@@ -44,6 +44,7 @@ namespace LLP
         std::string strAddress;                 // Original connection address
         uint32_t nReconnectCount;               // Number of reconnection attempts
         bool fAuthenticated;                    // Authentication status
+        bool fFreshAuth;                        // true = new auth on this node; false = session recovered
         uint8_t nLastLane;                      // Last known lane (0=Legacy, 1=Stateless)
         uint256_t hashChaCha20Key;              // ChaCha20 session key hash
         uint64_t nChaCha20Nonce;                // ChaCha20 nonce counter
@@ -119,6 +120,21 @@ namespace LLP
          *
          **/
         bool SaveSession(const MiningContext& context);
+
+        /** MarkFreshAuth
+         *
+         *  Mark a saved session as having been authenticated fresh on this node
+         *  (i.e., a full Falcon handshake, not a session recovery).
+         *
+         *  Called after a successful failover authentication to tag the session
+         *  so that the Colin mining agent report can show `fresh_auth=true`.
+         *
+         *  @param[in] hashKeyID Falcon key identifier of the session to update
+         *
+         *  @return true if session was found and updated
+         *
+         **/
+        bool MarkFreshAuth(const uint256_t& hashKeyID);
 
         /** RecoverSession
          *

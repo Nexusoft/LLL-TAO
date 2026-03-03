@@ -785,4 +785,27 @@ namespace LLP
     {
     }
 
+
+    /* Static failover connection counter — definition */
+    std::atomic<uint32_t> ChannelStateManager::m_nFailoverConnections{0};
+
+
+    /* Static: NotifyFailoverConnection */
+    void ChannelStateManager::NotifyFailoverConnection(const uint256_t& hashKeyID, const std::string& strAddr)
+    {
+        uint32_t nCount = m_nFailoverConnections.fetch_add(1, std::memory_order_relaxed) + 1;
+
+        debug::log(0, FUNCTION, "Failover authentication confirmed:");
+        debug::log(0, "   addr=", strAddr);
+        debug::log(0, "   keyID=", hashKeyID.SubString());
+        debug::log(0, "   total failover auths since boot: ", nCount);
+    }
+
+
+    /* Static: GetFailoverCount */
+    uint32_t ChannelStateManager::GetFailoverCount()
+    {
+        return m_nFailoverConnections.load(std::memory_order_relaxed);
+    }
+
 } // namespace LLP

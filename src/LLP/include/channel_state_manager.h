@@ -288,6 +288,9 @@ namespace LLP
          *
          **/
         static constexpr uint32_t HISTORICAL_FORK_TOLERANCE = 5;
+
+        /** Global failover connection counter — incremented by NotifyFailoverConnection() **/
+        static std::atomic<uint32_t> m_nFailoverConnections;
         
         /** Fork detected flag - set when height regression detected **/
         std::atomic<bool> m_fForkDetected;
@@ -666,10 +669,36 @@ namespace LLP
         static ForensicForkInfo AnalyzeChannelHeightDiscrepancy();
         
         
+        /** NotifyFailoverConnection
+         *
+         *  Record that a miner performed a fresh Falcon authentication on this node
+         *  following a failover from another node.
+         *
+         *  Increments an internal failover connection counter and logs the event.
+         *  Called by StatelessMinerConnection after successful MINER_AUTH_RESPONSE
+         *  when FailoverConnectionTracker::IsFailover() is true for the miner's IP.
+         *
+         *  @param[in] hashKeyID  Falcon key identifier of the authenticated miner
+         *  @param[in] strAddr    IP address of the miner
+         *
+         **/
+        static void NotifyFailoverConnection(const uint256_t& hashKeyID, const std::string& strAddr);
+
+
+        /** GetFailoverCount
+         *
+         *  Get the total number of failover authentications recorded since process start.
+         *
+         *  @return Failover connection counter value
+         *
+         **/
+        static uint32_t GetFailoverCount();
+
+
         /** GetChannelHeightStatistics
          *
          *  Get channel height statistics in JSON format.
-         *  
+         *
          *  Returns a JSON string containing:
          *  - Individual channel heights (Stake, Prime, Hash)
          *  - Unified blockchain height
