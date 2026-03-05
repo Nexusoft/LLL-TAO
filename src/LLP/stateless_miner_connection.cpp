@@ -65,6 +65,7 @@ ________________________________________________________________________________
 #include <LLP/include/canonical_chain_state.h>
 #include <LLP/include/failover_connection_tracker.h>
 #include <LLP/include/channel_state_manager.h>
+#include <LLP/include/node_session_registry.h>
 
 #include <chrono>
 #include <limits>
@@ -2749,6 +2750,41 @@ namespace LLP
                         debug::warning(FUNCTION, "⚠ Authentication succeeded but genesis hash is 0");
                         debug::warning(FUNCTION, "   ChaCha20 encryption will NOT be available");
                         debug::warning(FUNCTION, "   This may indicate incomplete Falcon authentication");
+                    }
+                }
+
+                /* Register session in NodeSessionRegistry for cross-port session identity.
+                 * This is the node-side outer wrapper that mirrors NodeSession on the miner side.
+                 * One Falcon identity (hashKeyID) maps to one canonical nSessionId across both ports. */
+                if(PACKET.HEADER == MINER_AUTH_RESPONSE && context.fAuthenticated && context.hashKeyID != 0)
+                {
+                    auto [canonicalSessionId, isNew] = NodeSessionRegistry::Get().RegisterOrRefresh(
+                        context.hashKeyID,
+                        context.hashGenesis,
+                        context,
+                        ProtocolLane::STATELESS
+                    );
+
+                    /* CRITICAL: If the registry returned a different nSessionId than what we derived,
+                     * it means this miner has already authenticated on the other port.
+                     * We MUST use the canonical ID to prevent session_id=0 bugs on reconnection. */
+                    if(canonicalSessionId != context.nSessionId)
+                    {
+                        debug::log(0, FUNCTION, "⚠ Cross-port session recovery: Overriding derived sessionId ",
+                                   context.nSessionId, " → ", canonicalSessionId,
+                                   " (already registered on other port)");
+                        context = context.WithSession(canonicalSessionId);
+                    }
+
+                    if(isNew)
+                    {
+                        debug::log(0, FUNCTION, "✓ Registered NEW session in NodeSessionRegistry: sessionId=",
+                                   canonicalSessionId, " keyID=", context.hashKeyID.SubString());
+                    }
+                    else
+                    {
+                        debug::log(0, FUNCTION, "✓ Refreshed EXISTING session in NodeSessionRegistry: sessionId=",
+                                   canonicalSessionId, " keyID=", context.hashKeyID.SubString());
                     }
                 }
 

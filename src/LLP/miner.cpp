@@ -69,6 +69,7 @@ ________________________________________________________________________________
 #include <Util/include/hex.h>
 
 #include <LLP/include/colin_mining_agent.h>
+#include <LLP/include/node_session_registry.h>
 
 #include <cstring>
 
@@ -818,6 +819,42 @@ namespace LLP
                             updatedContext = updatedContext.WithSessionStart(nNow);
 
                         updatedContext = updatedContext.WithSessionTimeout(nExpirySeconds);
+                    }
+
+                    /* Register session in NodeSessionRegistry for cross-port session identity.
+                     * This is the node-side outer wrapper that mirrors NodeSession on the miner side.
+                     * One Falcon identity (hashKeyID) maps to one canonical nSessionId across both ports. */
+                    if(updatedContext.fAuthenticated && updatedContext.hashKeyID != 0)
+                    {
+                        auto [canonicalSessionId, isNew] = NodeSessionRegistry::Get().RegisterOrRefresh(
+                            updatedContext.hashKeyID,
+                            updatedContext.hashGenesis,
+                            updatedContext,
+                            ProtocolLane::LEGACY
+                        );
+
+                        /* CRITICAL: If the registry returned a different nSessionId than what we derived,
+                         * it means this miner has already authenticated on the other port.
+                         * We MUST use the canonical ID to prevent session_id=0 bugs on reconnection. */
+                        if(canonicalSessionId != updatedContext.nSessionId)
+                        {
+                            debug::log(0, FUNCTION, "⚠ Cross-port session recovery: Overriding derived sessionId ",
+                                       updatedContext.nSessionId, " → ", canonicalSessionId,
+                                       " (already registered on other port)");
+                            updatedContext = updatedContext.WithSession(canonicalSessionId);
+                            nSessionId = canonicalSessionId;  // Update connection field too
+                        }
+
+                        if(isNew)
+                        {
+                            debug::log(0, FUNCTION, "✓ Registered NEW session in NodeSessionRegistry: sessionId=",
+                                       canonicalSessionId, " keyID=", updatedContext.hashKeyID.SubString());
+                        }
+                        else
+                        {
+                            debug::log(0, FUNCTION, "✓ Refreshed EXISTING session in NodeSessionRegistry: sessionId=",
+                                       canonicalSessionId, " keyID=", updatedContext.hashKeyID.SubString());
+                        }
                     }
 
                     /* Persist session and lane state for cross-lane recovery */
