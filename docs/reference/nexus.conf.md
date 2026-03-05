@@ -277,20 +277,67 @@ miningtimespan=60
 
 ### `miningtimeout`
 
-**Type:** Integer  
-**Default:** `30`  
-**Description:** Socket timeout (in seconds) for mining connections
+**Type:** Integer
+**Default:** Depends on lane (300s for stateless, 120s for legacy)
+**Description:** Socket timeout (in seconds) for mining connections (applies to both lanes)
 
-Idle mining connections will be closed after this duration.
+Idle mining connections will be closed after this duration. This setting affects both the stateless (port 9323) and legacy (port 8323) mining lanes.
+
+**Note:** For per-lane control, use `miningstatelesstimeout` and `mininglegacytimeout` instead.
 
 **Example:**
 ```ini
-miningtimeout=30
+miningtimeout=180
 ```
 
 **Recommendations:**
-- Increase for miners with poor connectivity
+- Use lane-specific settings for optimal performance
+- Stateless lane needs longer timeout for Prime mining (2-5+ minutes)
+- Legacy lane can use shorter timeout for polling protocol
+
+---
+
+### `miningstatelesstimeout`
+
+**Type:** Integer
+**Default:** `300`
+**Description:** Socket timeout (in seconds) for stateless mining lane (port 9323)
+
+Controls timeout specifically for the stateless mining protocol. Takes priority over the generic `miningtimeout` setting.
+
+The stateless lane uses a push notification protocol where miners may be silent for several minutes while searching for Prime blocks. The default 300-second timeout accommodates this behavior.
+
+**Example:**
+```ini
+miningstatelesstimeout=300
+```
+
+**Recommendations:**
+- Keep at 300s or higher for Prime mining
+- Increase if miners frequently disconnect during Prime block searches
+- This setting overrides `miningtimeout` for the stateless lane
+
+---
+
+### `mininglegacytimeout`
+
+**Type:** Integer
+**Default:** `120`
+**Description:** Socket timeout (in seconds) for legacy mining lane (port 8323)
+
+Controls timeout specifically for the legacy mining protocol. Takes priority over the generic `miningtimeout` setting.
+
+The legacy lane uses a polling protocol where miners actively request work every 5-10 seconds. The default 120-second timeout is appropriate for this active communication pattern.
+
+**Example:**
+```ini
+mininglegacytimeout=120
+```
+
+**Recommendations:**
+- Keep at 120s or lower for polling protocol
 - Decrease to free up resources faster
+- This setting overrides `miningtimeout` for the legacy lane
 
 ---
 

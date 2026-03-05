@@ -31,6 +31,7 @@ namespace LLP
      *  (port 8323) mining lanes share identical configuration except for:
      *  1. Port number (GetMiningPort() vs GetLegacyMiningPort())
      *  2. Default socket timeout (300s for stateless push, 120s for legacy polling)
+     *  3. Per-lane timeout configuration (-miningstatelesstimeout / -mininglegacytimeout)
      *
      *  ARCHITECTURAL BENEFITS:
      *  =======================
@@ -105,8 +106,9 @@ namespace LLP
      *  @see LLP::GetLegacyMiningPort() for legacy lane port resolution
      *
      **/
-    struct MiningServerFactory
+    class MiningServerFactory
     {
+    public:
         /** Lane
          *
          *  Mining protocol lane identifier.
@@ -147,7 +149,9 @@ namespace LLP
          *  -------------------------
          *  All configuration parameters respect command-line arguments:
          *  - -miningthreads: Worker thread count (default: 4)
-         *  - -miningtimeout: Override default timeout per lane
+         *  - -miningstatelesstimeout: Override stateless lane timeout (default: 300s)
+         *  - -mininglegacytimeout: Override legacy lane timeout (default: 120s)
+         *  - -miningtimeout: Override timeout for both lanes (deprecated, use lane-specific)
          *  - -miningddos: Enable DDOS protection (default: false)
          *  - -miningssl: Enable SSL (default: false, not yet implemented)
          *  - -miningsslrequired: Require SSL for all connections
@@ -217,8 +221,26 @@ namespace LLP
             CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-miningtimespan"), 60);
             CONFIG.MANAGER_SLEEP   = 0;  // Connection manager disabled
 
-            /* Lane-specific socket timeout (respects command-line override) */
-            CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-miningtimeout"), nDefaultTimeout);
+            /* Lane-specific socket timeout with priority:
+             * 1. Lane-specific argument (-miningstatelesstimeout or -mininglegacytimeout)
+             * 2. Generic argument (-miningtimeout) for backward compatibility
+             * 3. Lane-specific default (300s for stateless, 120s for legacy) */
+            if (lane == Lane::STATELESS)
+            {
+                /* Check for stateless-specific timeout first */
+                if (config::HasArg(std::string("-miningstatelesstimeout")))
+                    CONFIG.SOCKET_TIMEOUT = config::GetArg(std::string("-miningstatelesstimeout"), nDefaultTimeout);
+                else
+                    CONFIG.SOCKET_TIMEOUT = config::GetArg(std::string("-miningtimeout"), nDefaultTimeout);
+            }
+            else
+            {
+                /* Check for legacy-specific timeout first */
+                if (config::HasArg(std::string("-mininglegacytimeout")))
+                    CONFIG.SOCKET_TIMEOUT = config::GetArg(std::string("-mininglegacytimeout"), nDefaultTimeout);
+                else
+                    CONFIG.SOCKET_TIMEOUT = config::GetArg(std::string("-miningtimeout"), nDefaultTimeout);
+            }
 
             return CONFIG;
         }
