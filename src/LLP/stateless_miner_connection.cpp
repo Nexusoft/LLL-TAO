@@ -2815,9 +2815,50 @@ namespace LLP
                     else
                     {
                         /* Send as-is - already 16-bit opcodes from StatelessMiner */
-                        debug::log(3, FUNCTION, "Sending response with opcode 0x", 
+                        debug::log(3, FUNCTION, "Sending response with opcode 0x",
                                   std::hex, result.response.HEADER, std::dec);
                         respond(result.response);
+                    }
+
+                    /* After successful authentication, automatically send SESSION_START
+                     * to advertise the node's session timeout configuration to the miner.
+                     * This allows modern miners to auto-calculate keepalive intervals. */
+                    if(PACKET.HEADER == MINER_AUTH_RESPONSE && context.fAuthenticated)
+                    {
+                        debug::log(0, FUNCTION, "Sending SESSION_START after successful authentication");
+
+                        /* Build SESSION_START packet with session parameters */
+                        StatelessPacket sessionStart(StatelessOpcodes::SESSION_START);
+                        sessionStart.DATA.push_back(0x01); // Success
+
+                        /* Add session ID (4 bytes, little-endian) */
+                        uint32_t nSessionId = context.nSessionId;
+                        sessionStart.DATA.push_back(static_cast<uint8_t>(nSessionId & 0xFF));
+                        sessionStart.DATA.push_back(static_cast<uint8_t>((nSessionId >> 8) & 0xFF));
+                        sessionStart.DATA.push_back(static_cast<uint8_t>((nSessionId >> 16) & 0xFF));
+                        sessionStart.DATA.push_back(static_cast<uint8_t>((nSessionId >> 24) & 0xFF));
+
+                        /* Add timeout (4 bytes, little-endian) */
+                        uint64_t nTimeout = context.nSessionTimeout;
+                        sessionStart.DATA.push_back(static_cast<uint8_t>(nTimeout & 0xFF));
+                        sessionStart.DATA.push_back(static_cast<uint8_t>((nTimeout >> 8) & 0xFF));
+                        sessionStart.DATA.push_back(static_cast<uint8_t>((nTimeout >> 16) & 0xFF));
+                        sessionStart.DATA.push_back(static_cast<uint8_t>((nTimeout >> 24) & 0xFF));
+
+                        /* Add genesis hash if bound (32 bytes) */
+                        if(context.hashGenesis != 0)
+                        {
+                            std::vector<uint8_t> vGenesis = context.hashGenesis.GetBytes();
+                            sessionStart.DATA.insert(sessionStart.DATA.end(), vGenesis.begin(), vGenesis.end());
+                        }
+
+                        sessionStart.LENGTH = static_cast<uint32_t>(sessionStart.DATA.size());
+
+                        debug::log(0, FUNCTION, "SESSION_START: sessionId=", nSessionId,
+                                  " timeout=", nTimeout, "s genesis=",
+                                  (context.hashGenesis != 0 ? context.hashGenesis.SubString() : "NOT SET"));
+
+                        respond(sessionStart);
                     }
                 }
             }
