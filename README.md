@@ -20,6 +20,8 @@ We use Make to build our project to multiple platforms. Please read out build do
 
 [iPhone OS / Android OS](docs/build-mobile.md)
 
+[RISC-V](docs/riscv-build-guide.md) - Native and cross-compilation for RV64GC/RV64GCV platforms
+
 ## Mining
 
 Nexus supports both private solo mining and decentralized public mining pools using the enhanced Falcon Handshake protocol.
