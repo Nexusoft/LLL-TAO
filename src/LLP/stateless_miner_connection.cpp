@@ -2823,7 +2823,7 @@ namespace LLP
                     /* After successful authentication, automatically send SESSION_START
                      * to advertise the node's session timeout configuration to the miner.
                      * This allows modern miners to auto-calculate keepalive intervals. */
-                    if(PACKET.HEADER == MINER_AUTH_RESPONSE && context.fAuthenticated)
+                    if(PACKET.HEADER == MINER_AUTH_RESPONSE && result.fSuccess && context.fAuthenticated)
                     {
                         debug::log(0, FUNCTION, "Sending SESSION_START after successful authentication");
 
@@ -2838,8 +2838,11 @@ namespace LLP
                         sessionStart.DATA.push_back(static_cast<uint8_t>((nSessionId >> 16) & 0xFF));
                         sessionStart.DATA.push_back(static_cast<uint8_t>((nSessionId >> 24) & 0xFF));
 
-                        /* Add timeout (4 bytes, little-endian) */
-                        uint64_t nTimeout = context.nSessionTimeout;
+                        /* Add timeout (4 bytes, little-endian)
+                         * Cast to uint32_t to avoid silent truncation if nSessionTimeout > 0xFFFFFFFF.
+                         * NexusMiner parser expects 4 bytes LE. Session timeouts realistically fit in 32 bits
+                         * (max ~136 years if in seconds, or ~49 days if in milliseconds). */
+                        uint32_t nTimeout = static_cast<uint32_t>(context.nSessionTimeout);
                         sessionStart.DATA.push_back(static_cast<uint8_t>(nTimeout & 0xFF));
                         sessionStart.DATA.push_back(static_cast<uint8_t>((nTimeout >> 8) & 0xFF));
                         sessionStart.DATA.push_back(static_cast<uint8_t>((nTimeout >> 16) & 0xFF));
