@@ -1621,6 +1621,7 @@ namespace LLP
         ctx.fSubscribedToNotifications = fSubscribedToNotifications;
         ctx.nSubscribedChannel = nSubscribedChannel;
         ctx.strAddress = GetAddress().ToStringIP();
+        ctx.nProtocolLane = ProtocolLane::LEGACY;  // Legacy Miner uses 8-bit opcodes
         return ctx;
     }
 

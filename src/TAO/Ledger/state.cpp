@@ -1167,38 +1167,19 @@ namespace TAO
                                    " (block_ch=", GetChannel(), ")");
                     }
 
-                    /* BroadcastChannelNotification — unified pathway that sends to BOTH lanes.
-                     * Each call below produces exactly 2 lane sends (Stateless + Legacy) for
-                     * the given channel.  Two calls × 2 lanes = 4 total notifications per event:
+                    /* MinerPushDispatcher — canonical unified pathway for all miner push notifications.
+                     * Broadcasts to BOTH lanes (Stateless + Legacy) for BOTH channels (Prime + Hash).
+                     * Includes deduplication to prevent double-sends from accidental re-entry.
+                     * Produces exactly 4 lane-level sends per push event:
                      *   1. Prime → Stateless lane
                      *   2. Prime → Legacy lane
                      *   3. Hash  → Stateless lane
-                     *   4. Hash  → Legacy lane                                               */
-                    auto BroadcastChannelNotification = [&](uint32_t nNotifyChannel)
-                    {
-                        const std::string strCh = (nNotifyChannel == 1) ? "Prime" : "Hash";
-                        debug::log(0, FUNCTION, "[PUSH][", strCh, "] Broadcasting to both lanes"
-                                   " | block=", hash.SubString(), " height=", nHeight);
-
-                        uint32_t nStateless = 0;
-                        uint32_t nLegacy    = 0;
-
-                        if (LLP::STATELESS_MINER_SERVER)
-                            nStateless = LLP::STATELESS_MINER_SERVER->NotifyChannelMiners(nNotifyChannel);
-
-                        if (LLP::MINING_SERVER)
-                            nLegacy = LLP::MINING_SERVER->NotifyChannelMiners(nNotifyChannel);
-
-                        debug::log(0, FUNCTION, "[PUSH][", strCh, "] Done"
-                                   " | Stateless=", nStateless, " Legacy=", nLegacy,
-                                   " | no duplicates (one send per miner per lane)");
-                    };
-
-                    /* Send to Prime channel miners (both lanes) */
-                    BroadcastChannelNotification((uint32_t)CHANNEL::PRIME);
-
-                    /* Send to Hash channel miners (both lanes) */
-                    BroadcastChannelNotification((uint32_t)CHANNEL::HASH);
+                     *   4. Hash  → Legacy lane
+                     *
+                     * Phase 3 Refactor: Replaces inline BroadcastChannelNotification lambda with
+                     * canonical MinerPushDispatcher::DispatchPushEvent() for maintainability and
+                     * unified broadcasting logic across the codebase. */
+                    LLP::MinerPushDispatcher::DispatchPushEvent(nHeight, hash);
                 }
 
                 /* Verify unified height consistency using existing ChannelStateManager infrastructure */

@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLP/packets/stateless_packet.h>
 #include <LLP/packets/packet.h>
 #include <LLP/include/canonical_chain_state.h>
+#include <LLP/include/push_notification.h>
 #include <LLC/types/uint1024.h>
 #include <TAO/Ledger/types/block.h>
 #include <LLC/include/flkey.h>
@@ -460,6 +461,11 @@ namespace LLP
         LLC::FalconVersion nFalconVersion;      // Detected Falcon version (512 or 1024)
         bool fFalconVersionDetected;            // Whether version has been detected
 
+        /* Protocol lane identification (Phase 3: Unified Mining Server Configuration)
+         * Tracks which protocol lane (LEGACY=8323 or STATELESS=9323) this miner is using.
+         * Enables unified utility functions across both connection types. */
+        ProtocolLane nProtocolLane;             // LEGACY (8-bit opcodes) or STATELESS (16-bit opcodes)
+
         /* Push notification subscription state (PR #XXX: Push Notifications) */
         bool fSubscribedToNotifications;    // MINER_READY received
         uint32_t nSubscribedChannel;        // Which channel subscribed to (1=Prime, 2=Hash)
@@ -747,6 +753,27 @@ namespace LLP
          *
          **/
         MiningContext WithFalconVersion(LLC::FalconVersion version_) const;
+
+        /** WithProtocolLane
+         *
+         *  Phase 3: Returns a new context with updated protocol lane identifier.
+         *  Called during connection initialization to track whether this miner is using
+         *  the LEGACY (8-bit opcodes, port 8323) or STATELESS (16-bit opcodes, port 9323) lane.
+         *  Enables unified utility functions across both connection types.
+         *
+         *  @param[in] lane_ The protocol lane (LEGACY or STATELESS)
+         *
+         **/
+        MiningContext WithProtocolLane(ProtocolLane lane_) const;
+
+        /** IsStateless
+         *
+         *  Phase 3: Helper method to check if this context represents a stateless miner.
+         *
+         *  @return true if nProtocolLane == STATELESS, false otherwise
+         *
+         **/
+        bool IsStateless() const;
 
         /** WithSubscription
          *
