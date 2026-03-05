@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/global.h>
 #include <LLP/include/mining_config.h>
+#include <LLP/include/mining_server_factory.h>
 #include <LLP/include/network.h>
 #include <LLP/include/falcon_auth.h>
 #include <LLP/include/colin_mining_agent.h>
@@ -269,28 +270,9 @@ namespace LLP
             }
             else
             {
-                /* Generate our config object for stateless miner LLP server. */
-                LLP::Config CONFIG     = LLP::Config(GetMiningPort());
-                CONFIG.ENABLE_LISTEN   = true;
-                CONFIG.ENABLE_METERS   = false;
-                CONFIG.ENABLE_DDOS     = config::GetBoolArg(std::string("-miningddos"), false);
-                CONFIG.ENABLE_MANAGER  = false;
-                CONFIG.ENABLE_SSL      = config::GetBoolArg(std::string("-miningssl"), false);
-                CONFIG.ENABLE_REMOTE   = true;
-                CONFIG.REQUIRE_SSL     = config::GetBoolArg(std::string("-miningsslrequired"), false);
-                CONFIG.PORT_SSL        = 0;
-                CONFIG.MAX_INCOMING    = 128;
-                CONFIG.MAX_CONNECTIONS = 128;
-                CONFIG.MAX_THREADS     = config::GetArg(std::string("-miningthreads"), 4);
-                CONFIG.DDOS_CSCORE     = config::GetArg(std::string("-miningcscore"), 1);
-                CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-miningrscore"), 50);
-                CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-miningtimespan"), 60);
-                CONFIG.MANAGER_SLEEP   = 0; //this is disabled
-                /* Increased from 120s to 300s for stateless push-notification protocol.
-                 * Prime blocks can take 2-5+ minutes to find, and the miner doesn't send
-                 * data back during mining (only after finding a block). The node pushes
-                 * templates to the miner, so read-idle silence is expected and normal. */
-                CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-miningtimeout"), 300);
+                /* Generate unified config via MiningServerFactory for stateless lane */
+                LLP::Config CONFIG = MiningServerFactory::BuildConfig(
+                    MiningServerFactory::Lane::STATELESS);
 
                 /* Create the Phase 2 stateless miner server instance. */
                 STATELESS_MINER_SERVER = new Server<StatelessMinerConnection>(CONFIG);
@@ -302,31 +284,16 @@ namespace LLP
         /* MINING_SERVER instance - Legacy hybrid stateful/stateless miner (optional) */
         /* This can be enabled on a different port if needed for backward compatibility */
         /* With -mining=1, legacy server now starts by default unless explicitly disabled */
-        if(config::GetBoolArg(std::string("-mining"), false) && 
+        if(config::GetBoolArg(std::string("-mining"), false) &&
            !config::fClient.load())
         {
             /* Check if legacy mining port is explicitly disabled (set to 0) */
             uint16_t nLegacyPort = GetLegacyMiningPort();
             if(nLegacyPort != 0)
             {
-                /* Generate our config object for legacy miner LLP server. */
-                LLP::Config LEGACY_CONFIG     = LLP::Config(nLegacyPort);
-                LEGACY_CONFIG.ENABLE_LISTEN   = true;
-                LEGACY_CONFIG.ENABLE_METERS   = false;
-                LEGACY_CONFIG.ENABLE_DDOS     = config::GetBoolArg(std::string("-miningddos"), false);
-                LEGACY_CONFIG.ENABLE_MANAGER  = false;
-                LEGACY_CONFIG.ENABLE_SSL      = config::GetBoolArg(std::string("-miningssl"), false);
-                LEGACY_CONFIG.ENABLE_REMOTE   = true;
-                LEGACY_CONFIG.REQUIRE_SSL     = config::GetBoolArg(std::string("-miningsslrequired"), false);
-                LEGACY_CONFIG.PORT_SSL        = 0;
-                LEGACY_CONFIG.MAX_INCOMING    = 128;
-                LEGACY_CONFIG.MAX_CONNECTIONS = 128;
-                LEGACY_CONFIG.MAX_THREADS     = config::GetArg(std::string("-miningthreads"), 4);
-                LEGACY_CONFIG.DDOS_CSCORE     = config::GetArg(std::string("-miningcscore"), 1);
-                LEGACY_CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-miningrscore"), 50);
-                LEGACY_CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-miningtimespan"), 60);
-                LEGACY_CONFIG.MANAGER_SLEEP   = 0; //this is disabled
-                LEGACY_CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-miningtimeout"), 120);
+                /* Generate unified config via MiningServerFactory for legacy lane */
+                LLP::Config LEGACY_CONFIG = MiningServerFactory::BuildConfig(
+                    MiningServerFactory::Lane::LEGACY);
 
                 /* Create the legacy miner server instance. */
                 MINING_SERVER = new Server<Miner>(LEGACY_CONFIG);
