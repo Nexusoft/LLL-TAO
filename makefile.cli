@@ -484,6 +484,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_session_recovery.o \
 		build/LLP_node_sync.o \
 		build/LLP_node_cache.o \
+		build/LLP_node_session_registry.o \
 		build/LLP_falcon_handshake.o \
 		build/LLP_falcon_verify.o \
 		build/LLP_opcode_utility.o \
