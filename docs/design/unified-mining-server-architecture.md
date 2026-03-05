@@ -142,8 +142,14 @@ Both lanes use **identical** settings for:
 All configuration parameters respect command-line arguments:
 
 ```bash
-# Override timeout for both lanes
+# Override timeout for both lanes (backward compatible)
 nexus -miningtimeout=180
+
+# Per-lane timeout control (recommended)
+nexus -miningstatelesstimeout=300 -mininglegacytimeout=60
+
+# Lane-specific takes priority over generic
+nexus -miningtimeout=180 -miningstatelesstimeout=400
 
 # Enable DDoS protection
 nexus -miningddos=1
@@ -157,6 +163,15 @@ nexus -miningport=9999 -legacyminingport=8888
 # Disable legacy lane
 nexus -legacyminingport=0
 ```
+
+**Timeout Configuration Priority:**
+1. Lane-specific argument (`-miningstatelesstimeout` or `-mininglegacytimeout`)
+2. Generic argument (`-miningtimeout`) for backward compatibility
+3. Lane-specific default (300s for stateless, 120s for legacy)
+
+**Problem Solved:** Prior to per-lane timeout support, setting `-miningtimeout=60` would clobber the stateless lane's protective 300s timeout, breaking Prime mining. Now users can:
+- Use `-miningstatelesstimeout=300 -mininglegacytimeout=60` for optimal per-lane control
+- Or keep `-miningtimeout=60` but add `-miningstatelesstimeout=300` to protect the stateless lane
 
 ## Lane-Specific Behaviors
 
