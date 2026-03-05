@@ -88,6 +88,7 @@ namespace LLP
     , fEncryptionReady(false)
     , nFalconVersion(LLC::FalconVersion::FALCON_512)
     , fFalconVersionDetected(false)
+    , nProtocolLane(ProtocolLane::LEGACY)  // Default to LEGACY lane
     , fSubscribedToNotifications(false)
     , nSubscribedChannel(0)
     , nLastNotificationTime(0)
@@ -136,6 +137,7 @@ namespace LLP
     , fEncryptionReady(false)
     , nFalconVersion(LLC::FalconVersion::FALCON_512)
     , fFalconVersionDetected(false)
+    , nProtocolLane(ProtocolLane::LEGACY)  // Default to LEGACY lane
     , fSubscribedToNotifications(false)
     , nSubscribedChannel(0)
     , nLastNotificationTime(0)
@@ -332,6 +334,18 @@ namespace LLP
         c.nFalconVersion = version_;
         c.fFalconVersionDetected = true;
         return c;
+    }
+
+    MiningContext MiningContext::WithProtocolLane(ProtocolLane lane_) const
+    {
+        MiningContext c = *this;
+        c.nProtocolLane = lane_;
+        return c;
+    }
+
+    bool MiningContext::IsStateless() const
+    {
+        return nProtocolLane == ProtocolLane::STATELESS;
     }
 
     MiningContext MiningContext::WithSubscription(uint32_t nChannel_) const

@@ -448,13 +448,13 @@ namespace LLP
 
                 /* Initialize context with connection info */
                 LOCK(MUTEX);
-                
+
                 /* Create initial context with connection address for auth */
                 std::string strAddr = GetAddress().ToStringIP();
                 context = MiningContext()
                     .WithTimestamp(runtime::unifiedtimestamp())
                     .WithAuth(false); // Not authenticated yet
-                
+
                 /* Store address in context - needed for building auth message */
                 /* Note: MiningContext doesn't have WithAddress method, so we need to */
                 /* construct a new context with the address field set */
@@ -469,6 +469,9 @@ namespace LLP
                     uint256_t(0),  // hashKeyID
                     uint256_t(0)   // hashGenesis
                 );
+
+                /* Set protocol lane to STATELESS (16-bit opcodes, port 9323) */
+                context = context.WithProtocolLane(ProtocolLane::STATELESS);
 
                 /* Attempt session recovery by IP address.
                  * If recovery fails for a non-localhost IP, this is a potential failover
