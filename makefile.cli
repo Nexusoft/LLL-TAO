@@ -33,7 +33,7 @@ ifeq (${STATIC}, 1)
 	endif
 endif
 
-#Configure for x86(32BIT)/x64(64BIT) and ARM32/64
+#Configure for x86(32BIT)/x64(64BIT), ARM32/64, and RISC-V
 ifndef 32BIT
 	override 32BIT= 0
 
@@ -49,6 +49,19 @@ else ifeq (${ARM64}, 1)
 else ifeq (${ARM32}, 1)
         BUILD_ARCH=arm
 	CXXFLAGS+= -march=native -mtune=native
+
+else ifeq (${RISCV64}, 1)
+        BUILD_ARCH=riscv64
+        # RV64GC baseline: General-purpose registers + Compressed instructions
+        # -march=rv64gc includes: RV64I (base), M (multiply), A (atomic), F/D (float/double), C (compressed)
+        # For hardware crypto acceleration (Zbkb/Zbkc), OpenSSL auto-detects at runtime
+        CXXFLAGS+= -march=rv64gc -mtune=rocket
+        # Optional: Enable RISC-V Vector extension (RVV) if RISCV_VECTOR=1
+        ifdef RISCV_VECTOR
+                CXXFLAGS+= -march=rv64gcv
+                DEFS+= -DRISCV_VECTOR
+        endif
+
 else
 	BUILD_ARCH=x64
 	CXXFLAGS+= -m64
@@ -73,8 +86,11 @@ ifndef OPENSSL_LIB_PATH
 		#Arch Linux Fix
 		ifeq ($(shell uname -r | grep -o ....$), ARCH)
 			OPENSSL_LIB_PATH= /usr/lib/openssl-1.0
+		else ifeq (${RISCV64}, 1)
+			# RISC-V 64-bit library path (Debian/Ubuntu convention)
+			OPENSSL_LIB_PATH= /usr/lib/riscv64-linux-gnu
 		else
-		OPENSSL_LIB_PATH= /usr/lib/x86_64-linux-gnu
+			OPENSSL_LIB_PATH= /usr/lib/x86_64-linux-gnu
 		endif
 	endif
 endif
@@ -96,6 +112,7 @@ ifndef OPENSSL_INCLUDE_PATH
 		ifeq ($(shell uname -r | grep -o ....$), ARCH)
 			OPENSSL_INCLUDE_PATH= /usr/include/openssl-1.0
 		else
+			# OpenSSL headers are typically in standard /usr/include/openssl for all architectures
 			OPENSSL_INCLUDE_PATH= /usr/include/openssl
 		endif
 	endif
@@ -110,7 +127,12 @@ ifndef NO_WALLET
 			BDB_LIB_PATH= /usr/local/opt/db/lib
 		endif
 		ifeq ($(detected_OS),Linux)
-			BDB_LIB_PATH= /usr/lib/x86_64-linux-gnu
+			ifeq (${RISCV64}, 1)
+				# RISC-V 64-bit library path
+				BDB_LIB_PATH= /usr/lib/riscv64-linux-gnu
+			else
+				BDB_LIB_PATH= /usr/lib/x86_64-linux-gnu
+			endif
 		endif
 	endif
 	ifndef BDB_INCLUDE_PATH
