@@ -1498,7 +1498,30 @@ namespace LLP
         {
             debug::log(0, FUNCTION, "SESSION_KEEPALIVE rejected - session expired for sessionId=",
                        context.nSessionId, " last_activity=", context.nTimestamp);
-            return ProcessResult::Error(context, "Session expired");
+
+            /* Send SESSION_EXPIRED notification to miner instead of silent disconnect.
+             * This allows the miner to know it needs to re-authenticate rather than
+             * seeing a bare TCP disconnect error. */
+            StatelessPacket expiredResponse(StatelessOpcodes::SESSION_EXPIRED);
+
+            /* Build 5-byte payload: session_id (4 bytes LE) + reason (1 byte) */
+            uint32_t nSessionId = context.nSessionId;
+            expiredResponse.DATA.push_back(static_cast<uint8_t>(nSessionId & 0xFF));
+            expiredResponse.DATA.push_back(static_cast<uint8_t>((nSessionId >> 8) & 0xFF));
+            expiredResponse.DATA.push_back(static_cast<uint8_t>((nSessionId >> 16) & 0xFF));
+            expiredResponse.DATA.push_back(static_cast<uint8_t>((nSessionId >> 24) & 0xFF));
+
+            /* Reason code: 0x01 = EXPIRED_INACTIVITY (no keepalive within timeout) */
+            expiredResponse.DATA.push_back(0x01);
+
+            expiredResponse.LENGTH = 5;
+
+            debug::log(0, FUNCTION, "Sending SESSION_EXPIRED notification to miner (sessionId=",
+                       context.nSessionId, ", reason=INACTIVITY)");
+
+            /* Return success with SESSION_EXPIRED response to allow graceful handling.
+             * The connection stays open to allow re-authentication on same TCP connection. */
+            return ProcessResult::Success(context, expiredResponse);
         }
 
         /* Parse keepalive payload: detect v1 (len==4) or v2 (len==8) */
@@ -1638,6 +1661,34 @@ namespace LLP
         /* Require authentication before accepting KEEPALIVE_V2 */
         if(!context.fAuthenticated)
             return ProcessResult::Error(context, "KEEPALIVE_V2: not authenticated");
+
+        /* Check if session has expired */
+        uint64_t nNow = runtime::unifiedtimestamp();
+        if(context.IsSessionExpired(nNow))
+        {
+            debug::log(0, FUNCTION, "KEEPALIVE_V2 rejected - session expired for sessionId=",
+                       context.nSessionId, " last_activity=", context.nTimestamp);
+
+            /* Send SESSION_EXPIRED notification to miner instead of silent disconnect */
+            StatelessPacket expiredResponse(StatelessOpcodes::SESSION_EXPIRED);
+
+            /* Build 5-byte payload: session_id (4 bytes LE) + reason (1 byte) */
+            uint32_t nSessionId = context.nSessionId;
+            expiredResponse.DATA.push_back(static_cast<uint8_t>(nSessionId & 0xFF));
+            expiredResponse.DATA.push_back(static_cast<uint8_t>((nSessionId >> 8) & 0xFF));
+            expiredResponse.DATA.push_back(static_cast<uint8_t>((nSessionId >> 16) & 0xFF));
+            expiredResponse.DATA.push_back(static_cast<uint8_t>((nSessionId >> 24) & 0xFF));
+
+            /* Reason code: 0x01 = EXPIRED_INACTIVITY */
+            expiredResponse.DATA.push_back(0x01);
+
+            expiredResponse.LENGTH = 5;
+
+            debug::log(0, FUNCTION, "Sending SESSION_EXPIRED notification to miner (sessionId=",
+                       context.nSessionId, ", reason=INACTIVITY)");
+
+            return ProcessResult::Success(context, expiredResponse);
+        }
 
         /* Parse the 8-byte KeepAliveV2Frame */
         KeepaliveV2::KeepAliveV2Frame frame;

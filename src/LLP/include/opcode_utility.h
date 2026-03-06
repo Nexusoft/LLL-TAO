@@ -88,6 +88,9 @@ namespace OpcodeUtility
         static constexpr uint8_t SESSION_STATUS     = 219; // 8-byte payload: session_id + status_flags
         static constexpr uint8_t SESSION_STATUS_ACK = 220; // 16-byte payload: session health response
 
+        /* Session management packets (221) */
+        static constexpr uint8_t SESSION_EXPIRED    = 221; // 5-byte payload: session_id (4) + reason (1)
+
         /* Generic packets */
         static constexpr uint8_t PING  = 253;
         static constexpr uint8_t CLOSE = 254;
@@ -166,9 +169,11 @@ namespace OpcodeUtility
         static constexpr uint16_t HASH_AVAILABLE        = HASH_BLOCK_AVAILABLE;                    // Alias: 0xD0DA
         static constexpr uint16_t SESSION_STATUS        = Mirror(Opcodes::SESSION_STATUS);         // 0xD0DB
         static constexpr uint16_t SESSION_STATUS_ACK    = Mirror(Opcodes::SESSION_STATUS_ACK);     // 0xD0DC
+        static constexpr uint16_t SESSION_EXPIRED       = Mirror(Opcodes::SESSION_EXPIRED);        // 0xD0DD
         /* Backward compat aliases */
         static constexpr uint16_t STATELESS_SESSION_STATUS     = SESSION_STATUS;
         static constexpr uint16_t STATELESS_SESSION_STATUS_ACK = SESSION_STATUS_ACK;
+        static constexpr uint16_t STATELESS_SESSION_EXPIRED    = SESSION_EXPIRED;
         static constexpr uint16_t PING  = Mirror(Opcodes::PING);   // 0xD0FD
         static constexpr uint16_t CLOSE = Mirror(Opcodes::CLOSE);  // 0xD0FE
 
