@@ -15,12 +15,14 @@ ________________________________________________________________________________
 
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/stateless_manager.h>
+#include <LLP/include/stateless_opcodes.h>
 #include <LLP/include/keepalive_v2.h>
 #include <helpers/test_fixtures.h>
 
 #include <Util/include/runtime.h>
 
 using namespace LLP;
+using namespace LLP::StatelessOpcodes;
 using namespace TestFixtures;
 
 
@@ -99,7 +101,7 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
         REQUIRE(ctx.IsSessionExpired(now) == true);
 
         /* Step 2: Miner sends keepalive, node detects expiration */
-        StatelessPacket keepalivePacket(StatelessOpcodes::SESSION_KEEPALIVE);
+        StatelessPacket keepalivePacket(SESSION_KEEPALIVE);
         keepalivePacket.DATA.push_back(static_cast<uint8_t>(sessionId & 0xFF));
         keepalivePacket.DATA.push_back(static_cast<uint8_t>((sessionId >> 8) & 0xFF));
         keepalivePacket.DATA.push_back(static_cast<uint8_t>((sessionId >> 16) & 0xFF));
@@ -110,7 +112,7 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
 
         /* Verify SESSION_EXPIRED response */
         REQUIRE(expiredResult.fSuccess == true);  // Connection stays open!
-        REQUIRE(expiredResult.response.HEADER == StatelessOpcodes::SESSION_EXPIRED);
+        REQUIRE(expiredResult.response.HEADER == SESSION_EXPIRED);
         REQUIRE(expiredResult.response.LENGTH == 5);
 
         /* Verify payload: session_id (4 bytes LE) + reason (1 byte) */
@@ -141,7 +143,7 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
 
         /* Step 4: Mining can resume on same connection */
         /* Send keepalive on new session */
-        StatelessPacket newKeepalive(StatelessOpcodes::SESSION_KEEPALIVE);
+        StatelessPacket newKeepalive(SESSION_KEEPALIVE);
         newKeepalive.DATA.push_back(static_cast<uint8_t>(newSessionId & 0xFF));
         newKeepalive.DATA.push_back(static_cast<uint8_t>((newSessionId >> 8) & 0xFF));
         newKeepalive.DATA.push_back(static_cast<uint8_t>((newSessionId >> 16) & 0xFF));
@@ -152,7 +154,7 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
 
         /* Should process normally (no SESSION_EXPIRED) */
         REQUIRE(resumeResult.fSuccess == true);
-        REQUIRE(resumeResult.response.HEADER == StatelessOpcodes::SESSION_KEEPALIVE_RESPONSE);
+        REQUIRE(resumeResult.response.HEADER == SESSION_KEEPALIVE_RESPONSE);
 
         /* Verify session preserved through update */
         MiningContext updated = reauthCtx.WithKeepaliveCount(reauthCtx.nKeepaliveCount + 1);
@@ -179,7 +181,7 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
         REQUIRE(expiredCtx.IsSessionExpired(now) == true);
 
         /* Build KEEPALIVE_V2 packet (8 bytes: sequence + prevblock_lo32) */
-        StatelessPacket v2Packet(StatelessOpcodes::KEEPALIVE_V2);
+        StatelessPacket v2Packet(KEEPALIVE_V2);
         uint32_t sequence = 100;
         uint32_t prevHashLo32 = 0xDEADBEEF;
 
@@ -202,7 +204,7 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
 
         /* Verify SESSION_EXPIRED response */
         REQUIRE(result.fSuccess == true);
-        REQUIRE(result.response.HEADER == StatelessOpcodes::SESSION_EXPIRED);
+        REQUIRE(result.response.HEADER == SESSION_EXPIRED);
         REQUIRE(result.response.LENGTH == 5);
 
         uint32_t respSessionId = static_cast<uint32_t>(result.response.DATA[0]) |
@@ -233,12 +235,12 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
         REQUIRE(ctx.IsSessionExpired(now) == true);
 
         /* Send keepalive, get SESSION_EXPIRED */
-        StatelessPacket keepalive(StatelessOpcodes::SESSION_KEEPALIVE);
+        StatelessPacket keepalive(SESSION_KEEPALIVE);
         keepalive.DATA.resize(4, 0);
         keepalive.LENGTH = 4;
 
         ProcessResult result = StatelessMiner::ProcessSessionKeepalive(ctx, keepalive);
-        REQUIRE(result.response.HEADER == StatelessOpcodes::SESSION_EXPIRED);
+        REQUIRE(result.response.HEADER == SESSION_EXPIRED);
 
         /* After reauth, channel and height state can be preserved */
         /* In real implementation, StatelessMinerManager would maintain this */
@@ -285,7 +287,7 @@ TEST_CASE("Integration: BLOCK_REJECTED:FORK with Miner Recovery", "[integration]
         REQUIRE(minerPrevHashLo32 != nodeTipLo32);  // Fork condition
 
         /* Build KEEPALIVE_V2 packet from miner */
-        StatelessPacket v2Packet(StatelessOpcodes::KEEPALIVE_V2);
+        StatelessPacket v2Packet(KEEPALIVE_V2);
         uint32_t sequence = 1;
 
         /* Sequence (4 bytes BE) */

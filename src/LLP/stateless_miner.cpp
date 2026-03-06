@@ -1766,7 +1766,7 @@ namespace LLP
         }
 
         /* Update context: refresh timestamp and increment keepalive counter */
-        uint64_t nNow = runtime::unifiedtimestamp();
+        nNow = runtime::unifiedtimestamp();
         MiningContext newContext = context
             .WithTimestamp(nNow)
             .WithKeepaliveCount(context.nKeepaliveCount + 1)
