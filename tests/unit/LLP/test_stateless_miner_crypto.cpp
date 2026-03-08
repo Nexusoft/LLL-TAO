@@ -16,17 +16,22 @@ ________________________________________________________________________________
 #include <LLC/include/mining_session_keys.h>
 #include <LLC/include/chacha20_helpers.h>
 #include <LLC/include/encrypt.h>
+#include <LLC/include/flkey.h>
 #include <LLC/include/random.h>
 #include <LLC/types/uint1024.h>
 #include <LLC/hash/SK.h>
 
 #include <LLP/include/falcon_constants.h>
 
+#include <TAO/Ledger/include/stateless_block_utility.h>
+
+#include <Util/include/convert.h>
 #include <Util/include/hex.h>
 #include <Util/include/debug.h>
 
 #include <openssl/sha.h>
 
+#include <algorithm>
 #include <cstring>
 
 using namespace LLC;
@@ -333,6 +338,92 @@ static std::vector<uint8_t> BuildSubmitBlockPayload(
 }
 
 
+/* Helper fixture for shared SUBMIT_BLOCK parser tests.
+ * It bundles a signed full-block payload with the Falcon pubkey and the
+ * expected decoded fields used by the parser/verifier assertions below. */
+struct FalconFullBlockFixture
+{
+    std::vector<uint8_t> payload;
+    std::vector<uint8_t> pubkey;
+    std::vector<uint8_t> offsets;
+    uint512_t hashMerkle;
+    uint64_t nonce = 0;
+    uint64_t timestamp = 0;
+};
+
+
+static std::vector<uint8_t> BuildTritiumBlockBody(
+    uint32_t nChannel,
+    const uint512_t& hashMerkle,
+    uint64_t nonce)
+{
+    std::vector<uint8_t> block(LLP::FalconConstants::FULL_BLOCK_TRITIUM_MIN, 0x00);
+
+    std::vector<uint8_t> merkleBytes = hashMerkle.GetBytes();
+    std::copy(
+        merkleBytes.begin(),
+        merkleBytes.end(),
+        block.begin() + LLP::FalconConstants::FULL_BLOCK_MERKLE_OFFSET);
+
+    std::vector<uint8_t> channelBytes = convert::uint2bytes(nChannel);
+    std::copy(
+        channelBytes.begin(),
+        channelBytes.end(),
+        block.begin() + LLP::FalconConstants::FULL_BLOCK_TRITIUM_CHANNEL_OFFSET);
+
+    for(size_t i = 0; i < LLP::FalconConstants::NONCE_SIZE; ++i)
+        block[LLP::FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET + i] =
+            static_cast<uint8_t>((nonce >> (8 * i)) & 0xff);
+
+    return block;
+}
+
+
+static FalconFullBlockFixture BuildFalconFullBlockFixture(
+    uint32_t nChannel,
+    const std::vector<uint8_t>& offsets,
+    uint64_t timestamp,
+    LLC::FalconVersion version)
+{
+    FalconFullBlockFixture fixture;
+    fixture.offsets = offsets;
+    fixture.timestamp = timestamp;
+    fixture.nonce = 0x0102030405060708ULL;
+
+    std::vector<uint8_t> merkleBytes(LLP::FalconConstants::MERKLE_ROOT_SIZE);
+    for(size_t i = 0; i < merkleBytes.size(); ++i)
+        merkleBytes[i] = static_cast<uint8_t>(0xA0 + (i & 0x0F));
+    fixture.hashMerkle.SetBytes(merkleBytes);
+
+    std::vector<uint8_t> blockBytes = BuildTritiumBlockBody(nChannel, fixture.hashMerkle, fixture.nonce);
+    blockBytes.insert(blockBytes.end(), offsets.begin(), offsets.end());
+
+    std::vector<uint8_t> message = blockBytes;
+    for(size_t i = 0; i < LLP::FalconConstants::TIMESTAMP_SIZE; ++i)
+        message.push_back(static_cast<uint8_t>((timestamp >> (8 * i)) & 0xff));
+
+    LLC::FLKey key;
+    key.MakeNewKey(version);
+    fixture.pubkey = key.GetPubKey();
+    REQUIRE(!fixture.pubkey.empty());
+
+    std::vector<uint8_t> signature;
+    REQUIRE(key.Sign(message, signature));
+    REQUIRE(!signature.empty());
+
+    fixture.payload = blockBytes;
+    for(size_t i = 0; i < LLP::FalconConstants::TIMESTAMP_SIZE; ++i)
+        fixture.payload.push_back(static_cast<uint8_t>((timestamp >> (8 * i)) & 0xff));
+
+    const uint16_t sigLen = static_cast<uint16_t>(signature.size());
+    fixture.payload.push_back(static_cast<uint8_t>(sigLen & 0xff));
+    fixture.payload.push_back(static_cast<uint8_t>((sigLen >> 8) & 0xff));
+    fixture.payload.insert(fixture.payload.end(), signature.begin(), signature.end());
+
+    return fixture;
+}
+
+
 TEST_CASE("T10: SUBMIT_BLOCK payload format encrypt/decrypt round-trip", "[stateless_miner_crypto][payload]")
 {
     /* Format: [block(216)][timestamp(8LE)][sig_len(2LE)][falcon_ct_sig(809)] */
@@ -470,6 +561,113 @@ TEST_CASE("T14: Simplified wire format (Physical Falcon removed)", "[stateless_m
     {
         uint16_t tooLarge = 1578;
         REQUIRE(tooLarge > LLP::FalconConstants::FALCON_SIG_ABSOLUTE_MAX);
+    }
+}
+
+
+TEST_CASE("T22: Shared Falcon full-block parser handles Hash and Prime payloads", "[stateless_miner_crypto][payload][submit_block]")
+{
+    SECTION("Hash Falcon-1024 payload stays fixed-size")
+    {
+        FalconFullBlockFixture fixture = BuildFalconFullBlockFixture(2, {}, 1700000000, LLC::FalconVersion::FALCON_1024);
+
+        REQUIRE(fixture.payload.size() == 1803);
+        REQUIRE(LLC::EncryptPayloadChaCha20(fixture.payload, std::vector<uint8_t>(32, 0x11)).size() == 1831);
+
+        auto result = TAO::Ledger::ParseFalconWrappedSubmitBlock(fixture.payload);
+        REQUIRE(result.success);
+        REQUIRE(result.nChannel == 2);
+        REQUIRE(result.vBlockBody.size() == 216);
+        REQUIRE(result.vOffsets.empty());
+        REQUIRE(result.hashMerkle == fixture.hashMerkle);
+        REQUIRE(result.nonce == fixture.nonce);
+        REQUIRE(result.timestamp == fixture.timestamp);
+        REQUIRE(result.nSignatureLength == result.vSignature.size());
+    }
+
+    SECTION("Prime Falcon-1024 payload accepts appended offsets")
+    {
+        std::vector<uint8_t> offsets = {2, 4, 6, 8, 10, 12, 14, 16, 18, 20};
+        FalconFullBlockFixture fixture = BuildFalconFullBlockFixture(1, offsets, 1700000000, LLC::FalconVersion::FALCON_1024);
+
+        REQUIRE(fixture.payload.size() == 1813);
+        REQUIRE(LLC::EncryptPayloadChaCha20(fixture.payload, std::vector<uint8_t>(32, 0x22)).size() == 1841);
+
+        auto result = TAO::Ledger::ParseFalconWrappedSubmitBlock(fixture.payload);
+        REQUIRE(result.success);
+        REQUIRE(result.nChannel == 1);
+        REQUIRE(result.vBlockBody.size() == 216);
+        REQUIRE(result.vOffsets == offsets);
+        REQUIRE(result.hashMerkle == fixture.hashMerkle);
+        REQUIRE(result.nonce == fixture.nonce);
+        REQUIRE(result.timestamp == fixture.timestamp);
+        REQUIRE(result.nSignatureLength == result.vSignature.size());
+    }
+}
+
+
+TEST_CASE("T23: Shared Falcon full-block verifier is lane-agnostic", "[stateless_miner_crypto][payload][submit_block]")
+{
+    auto verifyForLane = [](const FalconFullBlockFixture& fixture)
+    {
+        TAO::Ledger::FalconWrappedSubmitBlockParseResult result;
+        REQUIRE(TAO::Ledger::VerifyFalconWrappedSubmitBlock(fixture.payload, fixture.pubkey, result));
+        return result;
+    };
+
+    SECTION("legacy lane using shared parser accepts Prime offsets")
+    {
+        FalconFullBlockFixture fixture = BuildFalconFullBlockFixture(
+            1, {1, 3, 5, 7, 9}, 1700000011, LLC::FalconVersion::FALCON_1024);
+
+        auto result = verifyForLane(fixture);
+        REQUIRE(result.nChannel == 1);
+        REQUIRE(result.vOffsets == fixture.offsets);
+    }
+
+    SECTION("stateless lane using shared parser accepts Hash fixed-size payload")
+    {
+        FalconFullBlockFixture fixture = BuildFalconFullBlockFixture(
+            2, {}, 1700000012, LLC::FalconVersion::FALCON_1024);
+
+        auto result = verifyForLane(fixture);
+        REQUIRE(result.nChannel == 2);
+        REQUIRE(result.vOffsets.empty());
+    }
+}
+
+
+TEST_CASE("T24: Shared Falcon full-block parser rejects malformed channel payloads", "[stateless_miner_crypto][payload][submit_block]")
+{
+    SECTION("Hash submission with extra bytes before trailer must fail")
+    {
+        FalconFullBlockFixture fixture = BuildFalconFullBlockFixture(
+            2, {0x99, 0x98}, 1700000020, LLC::FalconVersion::FALCON_1024);
+
+        auto result = TAO::Ledger::ParseFalconWrappedSubmitBlock(fixture.payload);
+        REQUIRE_FALSE(result.success);
+    }
+
+    SECTION("Malformed signature length must fail")
+    {
+        FalconFullBlockFixture fixture = BuildFalconFullBlockFixture(
+            1, {0x01, 0x02, 0x03}, 1700000021, LLC::FalconVersion::FALCON_1024);
+
+        auto parsed = TAO::Ledger::ParseFalconWrappedSubmitBlock(fixture.payload);
+        REQUIRE(parsed.success);
+
+        const size_t sigLenOffset = parsed.vBlockBytes.size() + LLP::FalconConstants::TIMESTAMP_SIZE;
+        fixture.payload[sigLenOffset] ^= 0x01;
+
+        TAO::Ledger::FalconWrappedSubmitBlockParseResult result;
+        REQUIRE_FALSE(TAO::Ledger::VerifyFalconWrappedSubmitBlock(fixture.payload, fixture.pubkey, result));
+    }
+
+    SECTION("Payload shorter than minimal trailer requirements must fail")
+    {
+        std::vector<uint8_t> payload(LLP::FalconConstants::FULL_BLOCK_TRITIUM_MIN + LLP::FalconConstants::TIMESTAMP_SIZE + 1, 0x00);
+        auto result = TAO::Ledger::ParseFalconWrappedSubmitBlock(payload);
+        REQUIRE_FALSE(result.success);
     }
 }
 

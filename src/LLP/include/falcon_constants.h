@@ -260,6 +260,12 @@ namespace FalconConstants
     /** Merkle root offset in full block
      *  Located after: nVersion(4) + hashPrevBlock(128) = 132 bytes */
     static const size_t FULL_BLOCK_MERKLE_OFFSET = 132;
+
+    /** Channel offset in serialized Tritium full-block bodies. */
+    static const size_t FULL_BLOCK_TRITIUM_CHANNEL_OFFSET = 196;
+
+    /** Height offset in serialized Tritium full-block bodies. */
+    static const size_t FULL_BLOCK_TRITIUM_HEIGHT_OFFSET = 200;
     
     /** Nonce offset in Tritium full block
      *  Confirmed via diagnostic data at offset 200 */
@@ -337,14 +343,31 @@ namespace FalconConstants
      * signature scenarios in the full block format.
      **************************************************************************/
 
-    /** Tritium wrapper signature (Falcon-512) - localhost
+    /** Hash-channel Tritium wrapper signature (Falcon-512) - localhost
      *  Format: [block(216)][timestamp(8)][siglen(2)][sig(809)]
      *  Calculation: 216 + 8 + 2 + 809 = 1035 bytes */
-    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_MAX = 1035;
+    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_HASH_WRAPPER_MAX = 1035;
 
-    /** Tritium wrapper signature (Falcon-512) - encrypted
+    /** Hash-channel Tritium wrapper signature (Falcon-512) - encrypted
      *  1035 + 28 = 1063 bytes */
-    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_ENCRYPTED_MAX = 1063;
+    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_HASH_WRAPPER_ENCRYPTED_MAX = 1063;
+
+    /** Deprecated compatibility alias for the fixed-size Hash / zero-offset Tritium wrapper.
+     *  New code should prefer the explicit HASH constant names above. */
+    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_MAX = SUBMIT_BLOCK_FULL_TRITIUM_HASH_WRAPPER_MAX;
+
+    /** Deprecated compatibility alias for the fixed-size encrypted Hash / zero-offset Tritium wrapper.
+     *  New code should prefer the explicit HASH constant names above. */
+    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_ENCRYPTED_MAX = SUBMIT_BLOCK_FULL_TRITIUM_HASH_WRAPPER_ENCRYPTED_MAX;
+
+    /** Prime-channel Tritium wrapper signature (Falcon-512) - localhost
+     *  Format: [block(216)][vOffsets(N)][timestamp(8)][siglen(2)][sig(809)]
+     *  Minimum is the Hash-channel size; additional Prime offsets add N bytes. */
+    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_PRIME_WRAPPER_MIN = SUBMIT_BLOCK_FULL_TRITIUM_HASH_WRAPPER_MAX;
+
+    /** Prime-channel Tritium wrapper signature (Falcon-512) - encrypted
+     *  Minimum is the encrypted Hash-channel size; additional Prime offsets add N bytes. */
+    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_PRIME_WRAPPER_ENCRYPTED_MIN = SUBMIT_BLOCK_FULL_TRITIUM_HASH_WRAPPER_ENCRYPTED_MAX;
 
     /** Legacy wrapper signature (Falcon-512) - localhost
      *  Format: [block(220)][timestamp(8)][siglen(2)][sig(809)]
@@ -362,14 +385,31 @@ namespace FalconConstants
      * Falcon-1024 uses 1577-byte signatures vs Falcon-512's 809 bytes.
      **************************************************************************/
 
-    /** Tritium wrapper signature (Falcon-1024) - localhost
+    /** Hash-channel Tritium wrapper signature (Falcon-1024) - localhost
      *  Format: [block(216)][timestamp(8)][siglen(2)][sig(1577)]
      *  Calculation: 216 + 8 + 2 + 1577 = 1803 bytes */
-    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_FALCON1024_MAX = 1803;
+    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_HASH_WRAPPER_FALCON1024_MAX = 1803;
 
-    /** Tritium wrapper signature (Falcon-1024) - encrypted
+    /** Hash-channel Tritium wrapper signature (Falcon-1024) - encrypted
      *  Add ChaCha20 overhead: 1803 + 28 = 1831 bytes */
-    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_FALCON1024_ENCRYPTED_MAX = 1831;
+    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_HASH_WRAPPER_FALCON1024_ENCRYPTED_MAX = 1831;
+
+    /** Deprecated compatibility alias for the fixed-size Hash / zero-offset Tritium Falcon-1024 wrapper.
+     *  New code should prefer the explicit HASH constant names above. */
+    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_FALCON1024_MAX = SUBMIT_BLOCK_FULL_TRITIUM_HASH_WRAPPER_FALCON1024_MAX;
+
+    /** Deprecated compatibility alias for the fixed-size encrypted Hash / zero-offset Tritium Falcon-1024 wrapper.
+     *  New code should prefer the explicit HASH constant names above. */
+    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_FALCON1024_ENCRYPTED_MAX = SUBMIT_BLOCK_FULL_TRITIUM_HASH_WRAPPER_FALCON1024_ENCRYPTED_MAX;
+
+    /** Prime-channel Tritium wrapper signature (Falcon-1024) - localhost
+     *  Format: [block(216)][vOffsets(N)][timestamp(8)][siglen(2)][sig(1577)]
+     *  Minimum is the Hash-channel size; additional Prime offsets add N bytes. */
+    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_PRIME_WRAPPER_FALCON1024_MIN = SUBMIT_BLOCK_FULL_TRITIUM_HASH_WRAPPER_FALCON1024_MAX;
+
+    /** Prime-channel Tritium wrapper signature (Falcon-1024) - encrypted
+     *  Minimum is the encrypted Hash-channel size; additional Prime offsets add N bytes. */
+    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_PRIME_WRAPPER_FALCON1024_ENCRYPTED_MIN = SUBMIT_BLOCK_FULL_TRITIUM_HASH_WRAPPER_FALCON1024_ENCRYPTED_MAX;
 
     /** Legacy wrapper signature (Falcon-1024) - localhost
      *  Format: [block(220)][timestamp(8)][siglen(2)][sig(1577)]

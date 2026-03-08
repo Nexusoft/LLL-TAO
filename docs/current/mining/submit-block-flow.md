@@ -137,9 +137,16 @@ still at the correct height) should **not** be rejected by the pre-check.
 ```
 [ChaCha20 ciphertext]
     └── decrypted ──►
-        Full-block format:  [216-byte block][timestamp 8B LE][sig_len 2B LE][Falcon signature]
-        Legacy format:      [merkle 64B][nonce 8B LE][timestamp 8B LE][sig_len 2B LE][Falcon signature]
+        Full-block format (Hash channel):  [216-byte block][timestamp 8B LE][sig_len 2B LE][Falcon signature]
+        Full-block format (Prime channel): [216-byte block][vOffsets N bytes][timestamp 8B LE][sig_len 2B LE][Falcon signature]
+        Compact legacy wrapper:            [merkle 64B][nonce 8B LE][timestamp 8B LE][sig_len 2B LE][Falcon signature]
 ```
+
+The Falcon-wrapped full-block payload grammar is shared by both mining lanes. Only the
+outer packet framing differs:
+
+- Legacy lane: 1-byte opcode header
+- Stateless lane: 2-byte opcode header
 
 ### BLOCK_ACCEPTED / BLOCK_REJECTED (Node → Miner)
 

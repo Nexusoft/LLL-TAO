@@ -92,6 +92,34 @@ namespace TAO
         };
 
 
+        /** FalconWrappedSubmitBlockParseResult
+         *
+         *  Result of parsing a Falcon-wrapped full-block SUBMIT_BLOCK payload.
+         *
+         *  Payload grammar is channel-aware and shared across both legacy and
+         *  stateless mining lanes:
+         *
+         *  Hash:  [block(216)][timestamp(8 LE)][sig_len(2 LE)][signature]
+         *  Prime: [block(216)][vOffsets(N)][timestamp(8 LE)][sig_len(2 LE)][signature]
+         *
+         **/
+        struct FalconWrappedSubmitBlockParseResult
+        {
+            bool success = false;
+            std::string reason;
+            std::vector<uint8_t> vBlockBytes;
+            std::vector<uint8_t> vBlockBody;
+            std::vector<uint8_t> vOffsets;
+            std::vector<uint8_t> vSignature;
+            uint512_t hashMerkle = 0;
+            uint64_t nonce = 0;
+            uint64_t timestamp = 0;
+            uint16_t nSignatureLength = 0;
+            uint32_t nChannel = 0;
+            uint32_t nUnifiedHeight = 0;
+        };
+
+
         /** CreateBlockForStatelessMining
          *
          *  Create wallet-signed block for stateless mining.
@@ -159,6 +187,40 @@ namespace TAO
          *
          **/
         ParseResult ParseStatelessWorkSubmission(const std::vector<uint8_t>& vData);
+
+
+        /** ParseFalconWrappedSubmitBlock
+         *
+         *  Tail-parse a decrypted Falcon-wrapped full-block SUBMIT_BLOCK payload.
+         *  The first 216 bytes are always the serialized Tritium block body. Any
+         *  bytes between that 216-byte body and the Falcon trailer are treated as
+         *  Prime offsets when nChannel == 1.
+         *
+         *  @param[in] vPayload Decrypted full-block payload
+         *
+         *  @return Structured parse result with block body, offsets, timestamp,
+         *          signature length, and signature bytes
+         *
+         **/
+        FalconWrappedSubmitBlockParseResult ParseFalconWrappedSubmitBlock(const std::vector<uint8_t>& vPayload);
+
+
+        /** VerifyFalconWrappedSubmitBlock
+         *
+         *  Parse and verify a decrypted Falcon-wrapped full-block SUBMIT_BLOCK
+         *  payload against the provided Falcon public key.
+         *
+         *  @param[in]  vPayload Decrypted full-block payload
+         *  @param[in]  vPubKey  Session or miner Falcon public key
+         *  @param[out] result   Populated parsed result on success
+         *
+         *  @return true if the payload parses and the Falcon signature verifies
+         *
+         **/
+        bool VerifyFalconWrappedSubmitBlock(
+            const std::vector<uint8_t>& vPayload,
+            const std::vector<uint8_t>& vPubKey,
+            FalconWrappedSubmitBlockParseResult& result);
 
 
         /** SubmitMinedBlockForStatelessMining

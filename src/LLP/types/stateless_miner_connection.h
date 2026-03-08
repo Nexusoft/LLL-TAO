@@ -326,7 +326,7 @@ namespace LLP
          *  @return True if block is valid, false otherwise.
          *
          **/
-        bool sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot);
+        bool sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot, const std::vector<uint8_t>& vOffsets = {});
 
         /** validate_block
          *

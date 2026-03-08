@@ -665,11 +665,13 @@ namespace LLP
          *
          *  @param[in] nNonce The nonce secret for the block proof.
          *  @param[in] hashMerkleRoot The root hash of the merkle tree.
+         *  @param[in] vOffsets Miner-submitted Prime Cunningham chain offsets.
+         *                     Hash submissions should pass an empty vector.
          *
          *  @return Returns true if block is valid, false otherwise.
          *
          **/
-        bool sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot);
+        bool sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot, const std::vector<uint8_t>& vOffsets = {});
 
 
         /** is_locked
