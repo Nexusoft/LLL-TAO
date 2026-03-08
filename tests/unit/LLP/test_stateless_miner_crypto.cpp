@@ -922,7 +922,7 @@ TEST_CASE("T26: Hash channel with non-empty vOffsets is cleared", "[stateless_mi
 
 TEST_CASE("T27: nUnifiedHeight out-of-range is rejected", "[stateless_miner_crypto][submit_block][height]")
 {
-    static constexpr uint32_t MAX_PLAUSIBLE_BLOCK_HEIGHT = 100'000'000u;  // ~100 M blocks
+    static constexpr uint32_t MAX_PLAUSIBLE_BLOCK_HEIGHT = 2'000'000'000u;  // ~2 B blocks
 
     auto evalHeightFromBlock = [&](uint32_t nChannelFromBlock, uint32_t nHeightFromBlock) -> bool
     {
@@ -967,9 +967,6 @@ TEST_CASE("T28: Tail-anchor uniqueness: only one candidate per valid payload", "
     int nCandidates = 0;
     for(size_t nSigLenOffset = nMinSigLenOffset; nSigLenOffset <= nMaxSigLenOffset; ++nSigLenOffset)
     {
-        if(nSigLenOffset < LLP::FalconConstants::TIMESTAMP_SIZE)
-            continue;
-
         /* Replicate the tail-anchor constraint from BuildFalconWrappedSubmitBlockCandidate() */
         const uint16_t nSignatureLength =
             static_cast<uint16_t>(fixture.payload[nSigLenOffset]) |

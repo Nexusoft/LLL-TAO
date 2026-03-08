@@ -457,8 +457,8 @@ namespace TAO::Ledger
          * BuildFalconWrappedSubmitBlockCandidate() — requiring that
          *   nSignatureOffset + nSignatureLength == vPayload.size()
          * — means at most ONE nSigLenOffset value can produce a structurally valid
-         * candidate for a given payload.  FLKey::Verify() is therefore called at
-         * most once per call to VerifyFalconWrappedSubmitBlock(). */
+         * candidate for a given payload.  BuildFalconWrappedSubmitBlockCandidate()
+         * therefore returns true for at most one candidate per call to ParseFalconWrappedSubmitBlock(). */
         for(size_t nSigLenOffset = nMinSigLenOffset; nSigLenOffset <= nMaxSigLenOffset; ++nSigLenOffset)
         {
             FalconWrappedSubmitBlockParseResult candidate;

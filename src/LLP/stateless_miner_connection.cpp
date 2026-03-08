@@ -1380,8 +1380,10 @@ namespace LLP
                                 fFalconVerified = true;
                                 nChannelFromBlock = fullBlockSubmission.nChannel;
                                 nHeightFromBlock = fullBlockSubmission.nUnifiedHeight;
-                                /* Sanity-bound: reject heights implausibly far above current chain tip */
-                                static constexpr uint32_t MAX_PLAUSIBLE_BLOCK_HEIGHT = 100'000'000u;  // ~100 M blocks
+                                /* Sanity-bound: reject heights implausibly far above any realistic chain.
+                                 * 2,000,000,000 is far beyond any conceivable Tritium chain height while
+                                 * still blocking the dangerous UINT32_MAX adversarial value. */
+                                static constexpr uint32_t MAX_PLAUSIBLE_BLOCK_HEIGHT = 2'000'000'000u;  // ~2 B blocks
                                 fHeightFromBlock = (nChannelFromBlock == 1 || nChannelFromBlock == 2)
                                                 && nHeightFromBlock > 0
                                                 && nHeightFromBlock < MAX_PLAUSIBLE_BLOCK_HEIGHT;
