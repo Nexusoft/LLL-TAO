@@ -36,6 +36,78 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::Ledger
 {
+    namespace
+    {
+        uint64_t ReadUint64LE(const std::vector<uint8_t>& vData, const size_t nOffset)
+        {
+            uint64_t nValue = 0;
+            for(size_t i = 0; i < LLP::FalconConstants::TIMESTAMP_SIZE; ++i)
+                nValue |= static_cast<uint64_t>(vData[nOffset + i]) << (8 * i);
+
+            return nValue;
+        }
+
+
+        bool BuildFalconWrappedSubmitBlockCandidate(
+            const std::vector<uint8_t>& vPayload,
+            const size_t nSigLenOffset,
+            FalconWrappedSubmitBlockParseResult& result)
+        {
+            if(nSigLenOffset < LLP::FalconConstants::TIMESTAMP_SIZE)
+                return false;
+
+            const uint16_t nSignatureLength =
+                static_cast<uint16_t>(vPayload[nSigLenOffset]) |
+                (static_cast<uint16_t>(vPayload[nSigLenOffset + 1]) << 8);
+
+            if(nSignatureLength < LLP::FalconConstants::FALCON_SIG_MIN ||
+               nSignatureLength > LLP::FalconConstants::FALCON_SIG_MAX_VALIDATION)
+            {
+                return false;
+            }
+
+            const size_t nSignatureOffset = nSigLenOffset + LLP::FalconConstants::LENGTH_FIELD_SIZE;
+            if(nSignatureOffset + nSignatureLength != vPayload.size())
+                return false;
+
+            const size_t nTimestampOffset = nSigLenOffset - LLP::FalconConstants::TIMESTAMP_SIZE;
+            const size_t nBlockBytesSize = nTimestampOffset;
+            if(nBlockBytesSize < LLP::FalconConstants::FULL_BLOCK_TRITIUM_MIN)
+                return false;
+
+            const std::vector<uint8_t> vBlockBytes(vPayload.begin(), vPayload.begin() + nBlockBytesSize);
+            const std::vector<uint8_t> vBlockBody(
+                vBlockBytes.begin(),
+                vBlockBytes.begin() + LLP::FalconConstants::FULL_BLOCK_TRITIUM_MIN);
+
+            const uint32_t nChannel = convert::bytes2uint(vBlockBody, 196);
+            if(nChannel != 1 && nChannel != 2)
+                return false;
+
+            if(nChannel == 2 && nBlockBytesSize != LLP::FalconConstants::FULL_BLOCK_TRITIUM_MIN)
+                return false;
+
+            result.success = true;
+            result.vBlockBytes = vBlockBytes;
+            result.vBlockBody = vBlockBody;
+            result.vOffsets.assign(
+                vBlockBytes.begin() + LLP::FalconConstants::FULL_BLOCK_TRITIUM_MIN,
+                vBlockBytes.end());
+            result.vSignature.assign(vPayload.begin() + nSignatureOffset, vPayload.end());
+            result.hashMerkle.SetBytes(std::vector<uint8_t>(
+                vBlockBody.begin() + LLP::FalconConstants::FULL_BLOCK_MERKLE_OFFSET,
+                vBlockBody.begin() + LLP::FalconConstants::FULL_BLOCK_MERKLE_OFFSET +
+                    LLP::FalconConstants::MERKLE_ROOT_SIZE));
+            result.nonce = ReadUint64LE(vBlockBody, LLP::FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET);
+            result.timestamp = ReadUint64LE(vPayload, nTimestampOffset);
+            result.nSignatureLength = nSignatureLength;
+            result.nChannel = nChannel;
+            result.nUnifiedHeight = convert::bytes2uint(vBlockBody, 200);
+            return true;
+        }
+    }
+
+
     /* Create wallet-signed block for stateless mining */
     TritiumBlock* CreateBlockForStatelessMining(
         const uint32_t nChannel,
@@ -353,6 +425,76 @@ namespace TAO::Ledger
 
         result.success = true;
         return result;
+    }
+
+
+    FalconWrappedSubmitBlockParseResult ParseFalconWrappedSubmitBlock(const std::vector<uint8_t>& vPayload)
+    {
+        FalconWrappedSubmitBlockParseResult result;
+
+        const size_t nMinimumPayloadSize =
+            LLP::FalconConstants::FULL_BLOCK_TRITIUM_MIN +
+            LLP::FalconConstants::TIMESTAMP_SIZE +
+            LLP::FalconConstants::LENGTH_FIELD_SIZE +
+            LLP::FalconConstants::FALCON_SIG_MIN;
+
+        if(vPayload.size() < nMinimumPayloadSize)
+        {
+            result.reason = "payload shorter than minimum Falcon full-block wrapper";
+            return result;
+        }
+
+        const size_t nMinSigLenOffset =
+            LLP::FalconConstants::FULL_BLOCK_TRITIUM_MIN + LLP::FalconConstants::TIMESTAMP_SIZE;
+        const size_t nMaxSigLenOffset = vPayload.size() - LLP::FalconConstants::LENGTH_FIELD_SIZE;
+
+        for(size_t nSigLenOffset = nMinSigLenOffset; nSigLenOffset <= nMaxSigLenOffset; ++nSigLenOffset)
+        {
+            FalconWrappedSubmitBlockParseResult candidate;
+            if(BuildFalconWrappedSubmitBlockCandidate(vPayload, nSigLenOffset, candidate))
+                return candidate;
+        }
+
+        result.reason = "unable to locate Falcon trailer in full-block payload";
+        return result;
+    }
+
+
+    bool VerifyFalconWrappedSubmitBlock(
+        const std::vector<uint8_t>& vPayload,
+        const std::vector<uint8_t>& vPubKey,
+        FalconWrappedSubmitBlockParseResult& result)
+    {
+        result = FalconWrappedSubmitBlockParseResult();
+
+        LLC::FLKey verifyKey;
+        if(!verifyKey.SetPubKey(vPubKey))
+            return false;
+
+        const size_t nMinSigLenOffset =
+            LLP::FalconConstants::FULL_BLOCK_TRITIUM_MIN + LLP::FalconConstants::TIMESTAMP_SIZE;
+        if(vPayload.size() < nMinSigLenOffset + LLP::FalconConstants::LENGTH_FIELD_SIZE + LLP::FalconConstants::FALCON_SIG_MIN)
+            return false;
+
+        const size_t nMaxSigLenOffset = vPayload.size() - LLP::FalconConstants::LENGTH_FIELD_SIZE;
+        for(size_t nSigLenOffset = nMinSigLenOffset; nSigLenOffset <= nMaxSigLenOffset; ++nSigLenOffset)
+        {
+            FalconWrappedSubmitBlockParseResult candidate;
+            if(!BuildFalconWrappedSubmitBlockCandidate(vPayload, nSigLenOffset, candidate))
+                continue;
+
+            std::vector<uint8_t> vMessage = candidate.vBlockBytes;
+            for(size_t i = 0; i < LLP::FalconConstants::TIMESTAMP_SIZE; ++i)
+                vMessage.push_back(static_cast<uint8_t>((candidate.timestamp >> (8 * i)) & 0xff));
+
+            if(verifyKey.Verify(vMessage, candidate.vSignature))
+            {
+                result = std::move(candidate);
+                return true;
+            }
+        }
+
+        return false;
     }
 
 }

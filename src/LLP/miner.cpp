@@ -1457,7 +1457,7 @@ namespace LLP
 
 
     /*  signs the block. */
-    bool Miner::sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot)
+    bool Miner::sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot, const std::vector<uint8_t>& vOffsets)
     {
         TAO::Ledger::Block *pBaseBlock = mapBlocks[hashMerkleRoot];
 
@@ -1492,8 +1492,14 @@ namespace LLP
             /* Update the block's timestamp. */
             pBlock->UpdateTime();
 
-            /* Calculate prime offsets before signing. */
-            TAO::Ledger::GetOffsets(pBlock->GetPrime(), pBlock->vOffsets);
+            if(pBlock->nChannel == TAO::Ledger::CHANNEL::PRIME)
+            {
+                pBlock->vOffsets = vOffsets;
+                if(pBlock->vOffsets.empty())
+                    TAO::Ledger::GetOffsets(pBlock->GetPrime(), pBlock->vOffsets);
+            }
+            else
+                pBlock->vOffsets.clear();
 
             /* Unlock sigchain to create new block. */
             SecureString strPIN;
@@ -1960,6 +1966,7 @@ namespace LLP
         uint64_t nonce = 0;
         bool fParsed = false;
         std::vector<uint8_t> vWorkData = PACKET.DATA;
+        std::vector<uint8_t> vPrimeOffsets;
 
         /* Attempt to unwrap ChaCha20-encrypted payloads */
         if(fEncryptionReady && !vChaChaKey.empty() &&
@@ -1978,24 +1985,39 @@ namespace LLP
                     return true;
                 }
 
-                /* Pure verification — no wrapper creation, no keypair generation.
-                 * The node VERIFIES the miner's Disposable Falcon signature using the public
-                 * key stored during MINER_AUTH_INIT, then DISCARDS it. The signature is never
-                 * forwarded to the Nexus P2P network. */
-                DisposableFalcon::SignedWorkSubmission submission;
-                if(!DisposableFalcon::VerifyWorkSubmission(vWorkData, vMinerPubKey, submission))
+                TAO::Ledger::FalconWrappedSubmitBlockParseResult fullBlockSubmission;
+                if(TAO::Ledger::VerifyFalconWrappedSubmitBlock(vWorkData, vMinerPubKey, fullBlockSubmission))
                 {
-                    debug::error(FUNCTION, "SUBMIT_BLOCK verify failed: Disposable Falcon signature invalid");
-                    respond(BLOCK_REJECTED);  // 8-bit opcode — correct for legacy lane
-                    return true;
+                    hashMerkle = fullBlockSubmission.hashMerkle;
+                    nonce = fullBlockSubmission.nonce;
+                    vPrimeOffsets = fullBlockSubmission.vOffsets;
+                    fParsed = true;
+
+                    debug::log(2, FUNCTION, "Disposable Falcon signature verified (legacy lane, shared full-block parser, channel=",
+                               fullBlockSubmission.nChannel, ", offsets=", fullBlockSubmission.vOffsets.size(), ")");
                 }
+                else
+                {
+                    /* Pure verification — no wrapper creation, no keypair generation.
+                     * The node VERIFIES the miner's Disposable Falcon signature using the public
+                     * key stored during MINER_AUTH_INIT, then DISCARDS it. The signature is never
+                     * forwarded to the Nexus P2P network. */
+                    DisposableFalcon::SignedWorkSubmission submission;
+                    if(!DisposableFalcon::VerifyWorkSubmission(vWorkData, vMinerPubKey, submission))
+                    {
+                        debug::error(FUNCTION, "SUBMIT_BLOCK verify failed: Disposable Falcon signature invalid");
+                        respond(BLOCK_REJECTED);  // 8-bit opcode — correct for legacy lane
+                        return true;
+                    }
 
-                /* Signature verified — extract merkle root and nonce */
-                hashMerkle = submission.hashMerkleRoot;
-                nonce = submission.nNonce;
-                fParsed = true;
+                    /* Signature verified — extract merkle root and nonce */
+                    hashMerkle = submission.hashMerkleRoot;
+                    nonce = submission.nNonce;
+                    vPrimeOffsets.clear();
+                    fParsed = true;
 
-                debug::log(2, FUNCTION, "Disposable Falcon signature verified (legacy lane, Port 8323)");
+                    debug::log(2, FUNCTION, "Disposable Falcon signature verified (legacy lane compact wrapper, Port 8323)");
+                }
             }
         }
 
@@ -2027,7 +2049,7 @@ namespace LLP
         }
 
         /* Make sure there is no inconsistencies in signing block. */
-        if(!sign_block(nonce, hashMerkle))
+        if(!sign_block(nonce, hashMerkle, vPrimeOffsets))
         {
             respond(BLOCK_REJECTED);
             return true;
