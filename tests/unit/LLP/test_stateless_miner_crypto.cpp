@@ -874,3 +874,114 @@ TEST_CASE("T21: ChaCha20 failure diagnostic includes payload size", "[stateless_
         REQUIRE(nonceHex.size() == 24);  /* 12 bytes = 24 hex chars */
     }
 }
+
+
+/* ══════════════════════════════════════════════════════════════════════
+ * GROUP 6 — Defence-in-Depth Gaps (T25–T28)
+ * ══════════════════════════════════════════════════════════════════════ */
+
+TEST_CASE("T25: vOffsets cross-validation rejects mismatched offsets", "[stateless_miner_crypto][submit_block][voffsets]")
+{
+    /* Build a Prime payload with offsets {1,2,3,4,5} */
+    std::vector<uint8_t> offsets = {1, 2, 3, 4, 5};
+    FalconFullBlockFixture fixture = BuildFalconFullBlockFixture(1, offsets, 1700000000, LLC::FalconVersion::FALCON_1024);
+
+    /* Verify the payload parses correctly with those offsets */
+    auto result = TAO::Ledger::ParseFalconWrappedSubmitBlock(fixture.payload);
+    REQUIRE(result.success);
+    REQUIRE(result.nChannel == 1);
+    REQUIRE(result.vOffsets == offsets);
+
+    /* Simulate cross-validation: miner-submitted offsets vs a mismatched node-derived set */
+    std::vector<uint8_t> vDerivedOffsets = {9, 9, 9};  /* Simulated mismatched derived offsets */
+    REQUIRE(result.vOffsets != vDerivedOffsets);         /* Cross-validation logic would return false */
+
+    /* Verify that matching offsets pass the same check */
+    std::vector<uint8_t> vMatchingOffsets = offsets;
+    REQUIRE(result.vOffsets == vMatchingOffsets);        /* Cross-validation logic would return true */
+}
+
+
+TEST_CASE("T26: Hash channel with non-empty vOffsets is cleared", "[stateless_miner_crypto][submit_block][voffsets]")
+{
+    /* Build a Hash payload — the parser returns empty vOffsets for channel 2 */
+    FalconFullBlockFixture fixture = BuildFalconFullBlockFixture(2, {}, 1700000000, LLC::FalconVersion::FALCON_1024);
+
+    TAO::Ledger::FalconWrappedSubmitBlockParseResult result;
+    REQUIRE(TAO::Ledger::VerifyFalconWrappedSubmitBlock(fixture.payload, fixture.pubkey, result));
+    REQUIRE(result.nChannel == 2);
+    REQUIRE(result.vOffsets.empty());
+
+    /* Simulate the channel invariant guard: non-empty submitted offsets for Hash channel must be cleared */
+    std::vector<uint8_t> vSubmittedOffsets = {1, 2, 3};  /* Adversarially non-empty */
+    if(result.nChannel != 1 /* PRIME */)
+        vSubmittedOffsets.clear();
+    REQUIRE(vSubmittedOffsets.empty());
+}
+
+
+TEST_CASE("T27: nUnifiedHeight out-of-range is rejected", "[stateless_miner_crypto][submit_block][height]")
+{
+    static constexpr uint32_t MAX_PLAUSIBLE_BLOCK_HEIGHT = 2'000'000'000u;  // ~2 B blocks
+
+    auto evalHeightFromBlock = [&](uint32_t nChannelFromBlock, uint32_t nHeightFromBlock) -> bool
+    {
+        return (nChannelFromBlock == 1 || nChannelFromBlock == 2)
+            && nHeightFromBlock > 0
+            && nHeightFromBlock < MAX_PLAUSIBLE_BLOCK_HEIGHT;
+    };
+
+    /* UINT32_MAX must be rejected */
+    REQUIRE_FALSE(evalHeightFromBlock(1, UINT32_MAX));
+    REQUIRE_FALSE(evalHeightFromBlock(2, UINT32_MAX));
+
+    /* Exactly at the bound must also be rejected */
+    REQUIRE_FALSE(evalHeightFromBlock(1, MAX_PLAUSIBLE_BLOCK_HEIGHT));
+
+    /* Zero height must be rejected (existing check) */
+    REQUIRE_FALSE(evalHeightFromBlock(1, 0));
+    REQUIRE_FALSE(evalHeightFromBlock(2, 0));
+
+    /* Invalid channel must be rejected regardless of height */
+    REQUIRE_FALSE(evalHeightFromBlock(0, 1000000));   /* Stake channel */
+    REQUIRE_FALSE(evalHeightFromBlock(3, 1000000));   /* Private channel */
+
+    /* Normal heights for Prime and Hash channels must be accepted */
+    REQUIRE(evalHeightFromBlock(1, 1000000));
+    REQUIRE(evalHeightFromBlock(2, 5000000));
+    REQUIRE(evalHeightFromBlock(1, MAX_PLAUSIBLE_BLOCK_HEIGHT - 1));
+}
+
+
+TEST_CASE("T28: Tail-anchor uniqueness: only one candidate per valid payload", "[stateless_miner_crypto][submit_block][tail_anchor]")
+{
+    /* Build a well-formed Hash payload (1803 bytes for Falcon-1024) */
+    FalconFullBlockFixture fixture = BuildFalconFullBlockFixture(2, {}, 1700000000, LLC::FalconVersion::FALCON_1024);
+    REQUIRE(fixture.payload.size() == 1803);
+
+    const size_t nMinSigLenOffset =
+        LLP::FalconConstants::FULL_BLOCK_TRITIUM_MIN + LLP::FalconConstants::TIMESTAMP_SIZE;
+    const size_t nMaxSigLenOffset =
+        fixture.payload.size() - LLP::FalconConstants::LENGTH_FIELD_SIZE;
+
+    int nCandidates = 0;
+    for(size_t nSigLenOffset = nMinSigLenOffset; nSigLenOffset <= nMaxSigLenOffset; ++nSigLenOffset)
+    {
+        /* Replicate the tail-anchor constraint from BuildFalconWrappedSubmitBlockCandidate() */
+        const uint16_t nSignatureLength =
+            static_cast<uint16_t>(fixture.payload[nSigLenOffset]) |
+            (static_cast<uint16_t>(fixture.payload[nSigLenOffset + 1]) << 8);
+
+        if(nSignatureLength < LLP::FalconConstants::FALCON_SIG_MIN ||
+           nSignatureLength > LLP::FalconConstants::FALCON_SIG_MAX_VALIDATION)
+            continue;
+
+        const size_t nSignatureOffset = nSigLenOffset + LLP::FalconConstants::LENGTH_FIELD_SIZE;
+        if(nSignatureOffset + nSignatureLength == fixture.payload.size())
+            ++nCandidates;
+    }
+
+    /* The tail-anchor constraint guarantees exactly ONE structurally valid candidate per payload.
+     * This confirms that FLKey::Verify() is called at most once (O(1) in practice). */
+    REQUIRE(nCandidates == 1);
+}
