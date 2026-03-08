@@ -665,6 +665,8 @@ namespace LLP
          *
          *  @param[in] nNonce The nonce secret for the block proof.
          *  @param[in] hashMerkleRoot The root hash of the merkle tree.
+         *  @param[in] vOffsets Miner-submitted Prime Cunningham chain offsets.
+         *                     Hash submissions should pass an empty vector.
          *
          *  @return Returns true if block is valid, false otherwise.
          *

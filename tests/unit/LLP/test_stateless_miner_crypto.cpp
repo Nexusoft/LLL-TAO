@@ -338,6 +338,9 @@ static std::vector<uint8_t> BuildSubmitBlockPayload(
 }
 
 
+/* Helper fixture for shared SUBMIT_BLOCK parser tests.
+ * It bundles a signed full-block payload with the Falcon pubkey and the
+ * expected decoded fields used by the parser/verifier assertions below. */
 struct FalconFullBlockFixture
 {
     std::vector<uint8_t> payload;
@@ -363,7 +366,10 @@ static std::vector<uint8_t> BuildTritiumBlockBody(
         block.begin() + LLP::FalconConstants::FULL_BLOCK_MERKLE_OFFSET);
 
     std::vector<uint8_t> channelBytes = convert::uint2bytes(nChannel);
-    std::copy(channelBytes.begin(), channelBytes.end(), block.begin() + 196);
+    std::copy(
+        channelBytes.begin(),
+        channelBytes.end(),
+        block.begin() + LLP::FalconConstants::FULL_BLOCK_TRITIUM_CHANNEL_OFFSET);
 
     for(size_t i = 0; i < LLP::FalconConstants::NONCE_SIZE; ++i)
         block[LLP::FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET + i] =
@@ -602,7 +608,7 @@ TEST_CASE("T22: Shared Falcon full-block parser handles Hash and Prime payloads"
 
 TEST_CASE("T23: Shared Falcon full-block verifier is lane-agnostic", "[stateless_miner_crypto][payload][submit_block]")
 {
-    auto verifyForLane = [](const char* /*lane*/, const FalconFullBlockFixture& fixture)
+    auto verifyForLane = [](const FalconFullBlockFixture& fixture)
     {
         TAO::Ledger::FalconWrappedSubmitBlockParseResult result;
         REQUIRE(TAO::Ledger::VerifyFalconWrappedSubmitBlock(fixture.payload, fixture.pubkey, result));
@@ -614,7 +620,7 @@ TEST_CASE("T23: Shared Falcon full-block verifier is lane-agnostic", "[stateless
         FalconFullBlockFixture fixture = BuildFalconFullBlockFixture(
             1, {1, 3, 5, 7, 9}, 1700000011, LLC::FalconVersion::FALCON_1024);
 
-        auto result = verifyForLane("legacy", fixture);
+        auto result = verifyForLane(fixture);
         REQUIRE(result.nChannel == 1);
         REQUIRE(result.vOffsets == fixture.offsets);
     }
@@ -624,7 +630,7 @@ TEST_CASE("T23: Shared Falcon full-block verifier is lane-agnostic", "[stateless
         FalconFullBlockFixture fixture = BuildFalconFullBlockFixture(
             2, {}, 1700000012, LLC::FalconVersion::FALCON_1024);
 
-        auto result = verifyForLane("stateless", fixture);
+        auto result = verifyForLane(fixture);
         REQUIRE(result.nChannel == 2);
         REQUIRE(result.vOffsets.empty());
     }

@@ -1365,7 +1365,7 @@ namespace LLP
                                 debug::log(0, "   Signature length: ", fullBlockSubmission.nSignatureLength, " bytes");
                                 debug::log(0, "   Total packet size: ", decryptedData.size(), " bytes");
                                 debug::log(0, "   Channel: ", fullBlockSubmission.nChannel);
-                                debug::log(0, "   Prime offsets: ", fullBlockSubmission.vOffsets.size(), " bytes");
+                                debug::log(0, "   Prime offsets: ", fullBlockSubmission.vOffsets.size(), " elements");
                                 debug::log(0, "   Timestamp: ", fullBlockSubmission.timestamp);
                                 debug::log(0, "   Merkle: ", fullBlockSubmission.hashMerkle.SubString());
                                 debug::log(0, "   Nonce: 0x", std::hex, fullBlockSubmission.nonce, std::dec);
@@ -3226,6 +3226,9 @@ namespace LLP
                 /* Calculate hashPrime (same calculation miner did) */
                 uint1024_t hashPrime = pBlock->GetPrime();
                 pBlock->vOffsets = vOffsets;
+                /* Preserve miner-submitted Prime offsets when present, but retain
+                 * the legacy local-derivation fallback for compact wrappers and
+                 * zero-offset Prime submissions. */
                 if(pBlock->vOffsets.empty())
                     TAO::Ledger::GetOffsets(hashPrime, pBlock->vOffsets);
                 

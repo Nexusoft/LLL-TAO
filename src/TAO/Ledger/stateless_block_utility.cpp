@@ -40,8 +40,11 @@ namespace TAO::Ledger
     {
         uint64_t ReadUint64LE(const std::vector<uint8_t>& vData, const size_t nOffset)
         {
+            if(nOffset + sizeof(uint64_t) > vData.size())
+                return 0;
+
             uint64_t nValue = 0;
-            for(size_t i = 0; i < LLP::FalconConstants::TIMESTAMP_SIZE; ++i)
+            for(size_t i = 0; i < sizeof(uint64_t); ++i)
                 nValue |= static_cast<uint64_t>(vData[nOffset + i]) << (8 * i);
 
             return nValue;
@@ -80,7 +83,8 @@ namespace TAO::Ledger
                 vBlockBytes.begin(),
                 vBlockBytes.begin() + LLP::FalconConstants::FULL_BLOCK_TRITIUM_MIN);
 
-            const uint32_t nChannel = convert::bytes2uint(vBlockBody, 196);
+            const uint32_t nChannel = convert::bytes2uint(
+                vBlockBody, LLP::FalconConstants::FULL_BLOCK_TRITIUM_CHANNEL_OFFSET);
             if(nChannel != 1 && nChannel != 2)
                 return false;
 
@@ -102,7 +106,8 @@ namespace TAO::Ledger
             result.timestamp = ReadUint64LE(vPayload, nTimestampOffset);
             result.nSignatureLength = nSignatureLength;
             result.nChannel = nChannel;
-            result.nUnifiedHeight = convert::bytes2uint(vBlockBody, 200);
+            result.nUnifiedHeight = convert::bytes2uint(
+                vBlockBody, LLP::FalconConstants::FULL_BLOCK_TRITIUM_HEIGHT_OFFSET);
             return true;
         }
     }

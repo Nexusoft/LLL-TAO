@@ -1495,6 +1495,9 @@ namespace LLP
             if(pBlock->nChannel == TAO::Ledger::CHANNEL::PRIME)
             {
                 pBlock->vOffsets = vOffsets;
+                /* Preserve miner-submitted Prime offsets when present, but retain
+                 * the legacy local-derivation fallback for compact wrappers and
+                 * zero-offset Prime submissions. */
                 if(pBlock->vOffsets.empty())
                     TAO::Ledger::GetOffsets(pBlock->GetPrime(), pBlock->vOffsets);
             }
