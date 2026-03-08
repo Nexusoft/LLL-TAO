@@ -1380,7 +1380,11 @@ namespace LLP
                                 fFalconVerified = true;
                                 nChannelFromBlock = fullBlockSubmission.nChannel;
                                 nHeightFromBlock = fullBlockSubmission.nUnifiedHeight;
-                                fHeightFromBlock = (nChannelFromBlock == 1 || nChannelFromBlock == 2) && nHeightFromBlock > 0;
+                                /* Sanity-bound: reject heights implausibly far above current chain tip */
+                                static constexpr uint32_t MAX_PLAUSIBLE_BLOCK_HEIGHT = 100'000'000u;  // ~100 M blocks
+                                fHeightFromBlock = (nChannelFromBlock == 1 || nChannelFromBlock == 2)
+                                                && nHeightFromBlock > 0
+                                                && nHeightFromBlock < MAX_PLAUSIBLE_BLOCK_HEIGHT;
                                 const uint64_t nTimestamp = fullBlockSubmission.timestamp;
                                 
                                 /* Check timestamp freshness (replay protection) */
@@ -3215,6 +3219,10 @@ namespace LLP
             pBlock->UpdateTime();
             debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Timestamp updated", ANSI_COLOR_RESET);
 
+            /* Enforce channel invariant before any diagnostic branch */
+            if(pBlock->nChannel != TAO::Ledger::CHANNEL::PRIME)
+                pBlock->vOffsets.clear();
+
             /* ============================================================
              * TRAINING WHEELS MODE: Comprehensive Diagnostic Logging
              * ============================================================ */
@@ -3226,6 +3234,21 @@ namespace LLP
                 /* Calculate hashPrime (same calculation miner did) */
                 uint1024_t hashPrime = pBlock->GetPrime();
                 pBlock->vOffsets = vOffsets;
+                /* Cross-validate miner-submitted Prime offsets against node-derived offsets.
+                 * The Falcon signature already covers vOffsets, but this defence-in-depth
+                 * check catches any divergence between the miner and the node's prime derivation. */
+                if(!pBlock->vOffsets.empty())
+                {
+                    std::vector<uint8_t> vDerivedOffsets;
+                    TAO::Ledger::GetOffsets(hashPrime, vDerivedOffsets);
+                    if(vDerivedOffsets != pBlock->vOffsets)
+                    {
+                        debug::error(FUNCTION, "Prime vOffsets mismatch: miner-submitted (", pBlock->vOffsets.size(),
+                                     " bytes) != node-derived (", vDerivedOffsets.size(), " bytes) — BLOCK_REJECTED");
+                        return false;
+                    }
+                    debug::log(2, FUNCTION, "Prime vOffsets cross-validated OK (", pBlock->vOffsets.size(), " bytes)");
+                }
                 /* Preserve miner-submitted Prime offsets when present, but retain
                  * the legacy local-derivation fallback for compact wrappers and
                  * zero-offset Prime submissions. */

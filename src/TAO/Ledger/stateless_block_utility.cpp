@@ -453,6 +453,12 @@ namespace TAO::Ledger
             LLP::FalconConstants::FULL_BLOCK_TRITIUM_MIN + LLP::FalconConstants::TIMESTAMP_SIZE;
         const size_t nMaxSigLenOffset = vPayload.size() - LLP::FalconConstants::LENGTH_FIELD_SIZE;
 
+        /* Scan for the Falcon trailer position.  The tail-anchor constraint in
+         * BuildFalconWrappedSubmitBlockCandidate() — requiring that
+         *   nSignatureOffset + nSignatureLength == vPayload.size()
+         * — means at most ONE nSigLenOffset value can produce a structurally valid
+         * candidate for a given payload.  FLKey::Verify() is therefore called at
+         * most once per call to VerifyFalconWrappedSubmitBlock(). */
         for(size_t nSigLenOffset = nMinSigLenOffset; nSigLenOffset <= nMaxSigLenOffset; ++nSigLenOffset)
         {
             FalconWrappedSubmitBlockParseResult candidate;
@@ -482,6 +488,12 @@ namespace TAO::Ledger
             return false;
 
         const size_t nMaxSigLenOffset = vPayload.size() - LLP::FalconConstants::LENGTH_FIELD_SIZE;
+        /* Scan for the Falcon trailer position.  The tail-anchor constraint in
+         * BuildFalconWrappedSubmitBlockCandidate() — requiring that
+         *   nSignatureOffset + nSignatureLength == vPayload.size()
+         * — means at most ONE nSigLenOffset value can produce a structurally valid
+         * candidate for a given payload.  FLKey::Verify() is therefore called at
+         * most once per call to VerifyFalconWrappedSubmitBlock(). */
         for(size_t nSigLenOffset = nMinSigLenOffset; nSigLenOffset <= nMaxSigLenOffset; ++nSigLenOffset)
         {
             FalconWrappedSubmitBlockParseResult candidate;
