@@ -253,8 +253,8 @@ These are the **new classes** introduced in our stateless mining work. They live
 | Category | Fields |
 |----------|--------|
 | Channel/Height | `nChannel`, `nHeight`, `nLastTemplateChannelHeight` |
-| Authentication | `fAuthenticated`, `hashKeyID`, `hashGenesis`, `vAuthNonce`, `vMinerPubKey` |
-| Session | `nSessionId`, `nSessionStart`, `nSessionTimeout`, `nKeepaliveCount`, `nKeepaliveSent`, `nLastKeepaliveTime` |
+| Authentication | `fAuthenticated`, `hashKeyID`, `hashGenesis`, `vAuthNonce`, `vMinerPubKey`, `vDisposablePubKey`, `hashDisposableKeyID` |
+| Session | `nSessionId`, `nSessionStart`, `nSessionTimeout`, `nReconnectCount`, `nKeepaliveCount`, `nKeepaliveSent`, `nLastKeepaliveTime` |
 | Reward | `hashRewardAddress`, `fRewardBound` |
 | Encryption | `vChaChaKey`, `fEncryptionReady` |
 | Falcon | `nFalconVersion`, `fFalconVersionDetected`, `vchPhysicalSignature`, `fPhysicalFalconPresent` |
@@ -275,8 +275,10 @@ These are the **new classes** introduced in our stateless mining work. They live
 | `WithUserName(str)` | Set username for trust-based addressing |
 | `WithNonce(bytes)` | Set auth challenge nonce |
 | `WithPubKey(bytes)` | Store miner's Falcon public key |
+| `WithDisposableKey(bytes, hash)` | Store disposable Falcon session key state |
 | `WithSessionStart(t)` | Record session start timestamp |
 | `WithSessionTimeout(t)` | Set inactivity timeout |
+| `WithReconnectCount(n)` | Carry authoritative recovery reconnect metadata |
 | `WithKeepaliveCount(n)` | Increment keepalive received counter |
 | `WithKeepaliveSent(n)` | Increment keepalive sent counter |
 | `WithLastKeepaliveTime(t)` | Record last keepalive exchange time |

@@ -85,8 +85,11 @@ namespace LLP
     , strUserName("")
     , vAuthNonce()
     , vMinerPubKey()
+    , vDisposablePubKey()
+    , hashDisposableKeyID(0)
     , nSessionStart(0)
     , nSessionTimeout(DEFAULT_SESSION_TIMEOUT)
+    , nReconnectCount(0)
     , nKeepaliveCount(0)
     , nKeepaliveSent(0)
     , nLastKeepaliveTime(0)
@@ -134,8 +137,11 @@ namespace LLP
     , strUserName("")
     , vAuthNonce()
     , vMinerPubKey()
+    , vDisposablePubKey()
+    , hashDisposableKeyID(0)
     , nSessionStart(0)
     , nSessionTimeout(DEFAULT_SESSION_TIMEOUT)
+    , nReconnectCount(0)
     , nKeepaliveCount(0)
     , nKeepaliveSent(0)
     , nLastKeepaliveTime(0)
@@ -263,6 +269,18 @@ namespace LLP
         return c;
     }
 
+    MiningContext MiningContext::WithDisposableKey(
+        const std::vector<uint8_t>& vPubKey_,
+        const uint256_t& hashDisposableKeyID_) const
+    {
+        MiningContext c = *this;
+        c.vDisposablePubKey = vPubKey_;
+        c.hashDisposableKeyID = (!vPubKey_.empty() && hashDisposableKeyID_ == 0)
+            ? LLC::SK256(vPubKey_)
+            : hashDisposableKeyID_;
+        return c;
+    }
+
     MiningContext MiningContext::WithSessionStart(uint64_t nSessionStart_) const
     {
         MiningContext c = *this;
@@ -274,6 +292,13 @@ namespace LLP
     {
         MiningContext c = *this;
         c.nSessionTimeout = nSessionTimeout_;
+        return c;
+    }
+
+    MiningContext MiningContext::WithReconnectCount(uint32_t nReconnectCount_) const
+    {
+        MiningContext c = *this;
+        c.nReconnectCount = nReconnectCount_;
         return c;
     }
 
