@@ -280,6 +280,31 @@ TEST_CASE("SessionRecoveryManager Basic Tests", "[session_recovery]")
         REQUIRE(data.nProtocolLane == ProtocolLane::STATELESS);
     }
 
+    SECTION("MergeContext preserves authenticated recovery state across partial refreshes")
+    {
+        uint256_t testKeyId;
+        testKeyId.SetHex("6767676767676767676767676767676767676767676767676767676767676767");
+
+        SessionRecoveryData data = SessionRecoveryData(
+            MiningContext()
+                .WithSession(12121)
+                .WithKeyId(testKeyId)
+                .WithAuth(true)
+        );
+
+        data.MergeContext(
+            MiningContext()
+                .WithSession(23232)
+                .WithKeyId(testKeyId)
+                .WithAuth(false)
+                .WithChannel(2)
+        );
+
+        REQUIRE(data.nSessionId == 23232);
+        REQUIRE(data.nChannel == 2);
+        REQUIRE(data.fAuthenticated == true);
+    }
+
     SECTION("SaveDisposableKey and UpdateLane preserve merge-managed recovery state")
     {
         uint256_t testKeyId;
