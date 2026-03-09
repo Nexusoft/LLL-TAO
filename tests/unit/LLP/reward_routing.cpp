@@ -73,6 +73,17 @@ TEST_CASE("Reward Address Binding Tests", "[reward_routing]")
         REQUIRE(ctx.GetPayoutAddress() == testReward);
         REQUIRE(ctx.fRewardBound == true);
     }
+
+    SECTION("RewardBindingHex returns full 64-character reward hash when bound")
+    {
+        uint256_t testReward = GetTestReward();
+
+        MiningContext ctx = MiningContext().WithRewardAddress(testReward);
+
+        REQUIRE(ctx.RewardBindingHex() == std::string(TEST_REWARD_HEX));
+        REQUIRE(ctx.RewardBindingHex().size() == 64);
+        REQUIRE(ctx.RewardBindingSource() == "current session reward binding");
+    }
     
     SECTION("GetPayoutAddress returns zero when neither reward nor genesis set")
     {
@@ -97,8 +108,20 @@ TEST_CASE("Reward Address Binding Tests", "[reward_routing]")
         
         /* GetPayoutAddress should fall back to genesis */
         REQUIRE(ctx.GetPayoutAddress() == testGenesis);
+        REQUIRE(ctx.GenesisHex() == std::string(TEST_GENESIS_HEX));
+        REQUIRE(ctx.RewardBindingHex() == std::string(TEST_GENESIS_HEX));
+        REQUIRE(ctx.RewardBindingSource() == "session genesis fallback");
         REQUIRE(ctx.fRewardBound == false);
         REQUIRE(ctx.hashGenesis == testGenesis);
+    }
+
+    SECTION("RewardBindingHex reports not set when neither reward nor genesis is configured")
+    {
+        MiningContext ctx;
+
+        REQUIRE(ctx.RewardBindingHex() == "NOT SET");
+        REQUIRE(ctx.GenesisHex() == "NOT SET");
+        REQUIRE(ctx.RewardBindingSource() == "not configured");
     }
     
     SECTION("Genesis is separate from reward address")

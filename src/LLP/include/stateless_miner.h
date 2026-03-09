@@ -22,7 +22,9 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 #include <TAO/Ledger/types/block.h>
 #include <LLC/include/flkey.h>
+#include <Util/include/hex.h>
 
+#include <algorithm>
 #include <array>
 #include <string>
 #include <cstdint>
@@ -34,6 +36,33 @@ namespace TAO { namespace Ledger { class Block; class TritiumBlock; } }
 
 namespace LLP
 {
+    namespace Diagnostics
+    {
+        inline std::string FullHexOrUnset(const uint256_t& value)
+        {
+            return value != 0 ? value.GetHex() : std::string("NOT SET");
+        }
+
+        inline std::string KeyFingerprint(const std::vector<uint8_t>& vKey)
+        {
+            if(vKey.empty())
+                return "NOT AVAILABLE";
+
+            const size_t nPrefix = std::min<size_t>(8, vKey.size());
+            return HexStr(vKey.begin(), vKey.begin() + nPrefix);
+        }
+
+        inline const char* YesNo(const bool fValue)
+        {
+            return fValue ? "YES" : "NO";
+        }
+
+        inline const char* PassFail(const bool fValue)
+        {
+            return fValue ? "PASS" : "FAIL";
+        }
+    }
+
     /** TemplateMetadata
      * 
      *  Tracks metadata about mining templates for enhanced multi-channel staleness detection.
@@ -816,8 +845,38 @@ namespace LLP
          *
          *  @return Reward address, genesis hash, or 0 for username resolution
          *
-         **/
+        **/
         uint256_t GetPayoutAddress() const;
+
+        /** RewardBindingHex
+         *
+         *  Returns the currently effective reward identity as a full 64-character
+         *  internal hex value, or "NOT SET" when no payout identity is available.
+         *
+         *  @return Full payout identity hex for diagnostics
+         *
+         **/
+        std::string RewardBindingHex() const;
+
+        /** RewardBindingSource
+         *
+         *  Returns a semantic label describing where the active reward identity
+         *  comes from for the current session.
+         *
+         *  @return Human-readable reward identity source label
+         *
+         **/
+        std::string RewardBindingSource() const;
+
+        /** GenesisHex
+         *
+         *  Returns the authenticated session genesis as a full 64-character hex
+         *  value, or "NOT SET" when no genesis has been established.
+         *
+         *  @return Full genesis hex for diagnostics
+         *
+         **/
+        std::string GenesisHex() const;
 
         /** HasValidPayout
          *

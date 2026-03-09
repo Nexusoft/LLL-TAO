@@ -76,6 +76,13 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    namespace
+    {
+        using Diagnostics::FullHexOrUnset;
+        using Diagnostics::KeyFingerprint;
+        using Diagnostics::YesNo;
+    }
+
     /* The last height that the notifications processor was run at.  This is used to ensure that events are only processed once
         across all threads when the height changes */
     std::atomic<uint32_t> Miner::nLastNotificationsHeight(0);
@@ -2040,6 +2047,28 @@ namespace LLP
 
                     debug::log(2, FUNCTION, "Disposable Falcon signature verified (legacy lane compact wrapper, Port 8323)");
                 }
+            }
+            else
+            {
+                const auto optRecovery = SessionRecoveryManager::Get().RecoverSessionByAddress(GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort()));
+                const bool fRecoveryGenesisMatches = optRecovery.has_value() &&
+                    optRecovery->hashGenesis == hashGenesis;
+
+                debug::warning(FUNCTION, "SUBMIT_BLOCK: ChaCha20 decryption failed before plaintext fallback");
+                debug::log(0, FUNCTION, "SUBMIT_BLOCK SESSION DIAGNOSTIC");
+                debug::log(0, FUNCTION, "- session id: ", nSessionId);
+                debug::log(0, FUNCTION, "- authenticated: ", YesNo(fMinerAuthenticated));
+                debug::log(0, FUNCTION, "- connection address: ", GetAddress().ToStringIP(), ":", GetAddress().GetPort());
+                debug::log(0, FUNCTION, "- bound reward hash: ", FullHexOrUnset(hashRewardAddress));
+                debug::log(0, FUNCTION, "- bound reward source: ",
+                           (fRewardBound && hashRewardAddress != 0) ? "current legacy connection reward binding" : "not configured");
+                debug::log(0, FUNCTION, "- session genesis used for KDF: ", FullHexOrUnset(hashGenesis));
+                debug::log(0, FUNCTION, "- derived key fingerprint: ", KeyFingerprint(vChaChaKey));
+                debug::log(0, FUNCTION, "- session recovery state available: ", YesNo(optRecovery.has_value()));
+                debug::log(0, FUNCTION, "- recovered session genesis: ",
+                           optRecovery.has_value() ? FullHexOrUnset(optRecovery->hashGenesis) : "NOT AVAILABLE");
+                debug::log(0, FUNCTION, "- recovered session genesis matches live context: ", YesNo(fRecoveryGenesisMatches));
+                debug::log(0, FUNCTION, "- consistency result: FAIL");
             }
         }
 
