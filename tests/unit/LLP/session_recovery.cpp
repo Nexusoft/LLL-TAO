@@ -52,7 +52,10 @@ TEST_CASE("SessionRecoveryData Basic Tests", "[session_recovery]")
             .WithSession(12345)
             .WithKeyId(testKeyId)
             .WithGenesis(testGenesis)
-            .WithAuth(true);
+            .WithAuth(true)
+            .WithRewardAddress(testGenesis)
+            .WithChaChaKey(std::vector<uint8_t>(32, 0x5a))
+            .WithProtocolLane(ProtocolLane::STATELESS);
         
         SessionRecoveryData data(ctx);
         
@@ -61,6 +64,11 @@ TEST_CASE("SessionRecoveryData Basic Tests", "[session_recovery]")
         REQUIRE(data.hashGenesis == testGenesis);
         REQUIRE(data.nChannel == 1);
         REQUIRE(data.fAuthenticated == true);
+        REQUIRE(data.hashRewardAddress == testGenesis);
+        REQUIRE(data.fRewardBound == true);
+        REQUIRE(data.vChaCha20Key == std::vector<uint8_t>(32, 0x5a));
+        REQUIRE(data.fEncryptionReady == true);
+        REQUIRE(data.nProtocolLane == ProtocolLane::STATELESS);
     }
     
     SECTION("ToContext restores MiningContext")
@@ -73,6 +81,13 @@ TEST_CASE("SessionRecoveryData Basic Tests", "[session_recovery]")
             .WithSession(99999)
             .WithKeyId(testKeyId)
             .WithAuth(true);
+
+        uint256_t reward;
+        reward.SetHex("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+        original = original
+            .WithRewardAddress(reward)
+            .WithChaChaKey(std::vector<uint8_t>(32, 0x3c))
+            .WithProtocolLane(ProtocolLane::STATELESS);
         
         SessionRecoveryData data(original);
         MiningContext restored = data.ToContext();
@@ -81,6 +96,11 @@ TEST_CASE("SessionRecoveryData Basic Tests", "[session_recovery]")
         REQUIRE(restored.nSessionId == 99999);
         REQUIRE(restored.hashKeyID == testKeyId);
         REQUIRE(restored.fAuthenticated == true);
+        REQUIRE(restored.hashRewardAddress == reward);
+        REQUIRE(restored.fRewardBound == true);
+        REQUIRE(restored.vChaChaKey == std::vector<uint8_t>(32, 0x3c));
+        REQUIRE(restored.fEncryptionReady == true);
+        REQUIRE(restored.nProtocolLane == ProtocolLane::STATELESS);
     }
     
     SECTION("IsExpired returns true for old sessions")
@@ -133,10 +153,16 @@ TEST_CASE("SessionRecoveryManager Basic Tests", "[session_recovery]")
         uint256_t testKeyId;
         testKeyId.SetHex("4444444444444444444444444444444444444444444444444444444444444444");
 
+        uint256_t reward;
+        reward.SetHex("cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc");
+
         MiningContext ctx = MiningContext()
             .WithSession(55555)
             .WithKeyId(testKeyId)
-            .WithAuth(true);
+            .WithAuth(true)
+            .WithRewardAddress(reward)
+            .WithChaChaKey(std::vector<uint8_t>(32, 0x7f))
+            .WithProtocolLane(ProtocolLane::STATELESS);
 
         manager.SaveSession(ctx);
 
@@ -160,6 +186,54 @@ TEST_CASE("SessionRecoveryManager Basic Tests", "[session_recovery]")
         REQUIRE(manager.RestoreDisposableKey(testKeyId, restoredPubKey, restoredDisposableId) == true);
         REQUIRE(restoredPubKey == disposablePubKey);
         REQUIRE(restoredDisposableId == disposableKeyId);
+
+        MiningContext recovered;
+        REQUIRE(manager.RecoverSession(testKeyId, recovered) == true);
+        REQUIRE(recovered.hashRewardAddress == reward);
+        REQUIRE(recovered.fRewardBound == true);
+        REQUIRE(recovered.vChaChaKey == chachaKey.GetBytes());
+        REQUIRE(recovered.fEncryptionReady == true);
+        REQUIRE(recovered.nProtocolLane == ProtocolLane::STATELESS);
+
+        manager.RemoveSession(testKeyId);
+    }
+
+    SECTION("SaveSession preserves authoritative reward and crypto state across partial refreshes")
+    {
+        uint256_t testKeyId;
+        testKeyId.SetHex("5555555555555555555555555555555555555555555555555555555555555555");
+
+        uint256_t reward;
+        reward.SetHex("dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd");
+
+        MiningContext fullContext = MiningContext()
+            .WithSession(66666)
+            .WithKeyId(testKeyId)
+            .WithGenesis(reward)
+            .WithAuth(true)
+            .WithRewardAddress(reward)
+            .WithChaChaKey(std::vector<uint8_t>(32, 0x44))
+            .WithProtocolLane(ProtocolLane::STATELESS);
+
+        REQUIRE(manager.SaveSession(fullContext) == true);
+
+        MiningContext partialRefresh = MiningContext()
+            .WithSession(77777)
+            .WithKeyId(testKeyId)
+            .WithGenesis(reward)
+            .WithAuth(true)
+            .WithChannel(2);
+
+        REQUIRE(manager.SaveSession(partialRefresh) == true);
+
+        MiningContext recovered;
+        REQUIRE(manager.RecoverSession(testKeyId, recovered) == true);
+        REQUIRE(recovered.nSessionId == 77777);
+        REQUIRE(recovered.nChannel == 2);
+        REQUIRE(recovered.hashRewardAddress == reward);
+        REQUIRE(recovered.fRewardBound == true);
+        REQUIRE(recovered.vChaChaKey == std::vector<uint8_t>(32, 0x44));
+        REQUIRE(recovered.fEncryptionReady == true);
 
         manager.RemoveSession(testKeyId);
     }

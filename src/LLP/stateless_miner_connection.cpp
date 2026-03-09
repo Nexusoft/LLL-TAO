@@ -660,30 +660,26 @@ namespace LLP
                 auto optExisting = SessionRecoveryManager::Get().RecoverSessionByAddress(GetAddress().ToStringIP());
                 if(optExisting.has_value())
                 {
-                    uint256_t hashRecoveredKey(0);
-                    uint64_t nRecoveredNonce = 0;
-                    if(SessionRecoveryManager::Get().RestoreChaCha20State(optExisting->hashKeyID, hashRecoveredKey, nRecoveredNonce)
-                       && hashRecoveredKey != 0)
-                    {
-                        context = context.WithChaChaKey(hashRecoveredKey.GetBytes());
-                    }
+                    if(optExisting->fRewardBound && optExisting->hashRewardAddress != 0)
+                        context = context.WithRewardAddress(optExisting->hashRewardAddress);
 
-                    std::vector<uint8_t> vRecoveredPubKey;
-                    uint256_t hashDisposableKeyID(0);
-                    if(SessionRecoveryManager::Get().RestoreDisposableKey(optExisting->hashKeyID, vRecoveredPubKey, hashDisposableKeyID)
-                       && !vRecoveredPubKey.empty())
+                    if(optExisting->fEncryptionReady && !optExisting->vChaCha20Key.empty())
+                        context = context.WithChaChaKey(optExisting->vChaCha20Key);
+
+                    if(!optExisting->vDisposablePubKey.empty())
                     {
                         std::lock_guard<std::mutex> lock(SESSION_MUTEX);
                         if(optExisting->nSessionId != 0)
-                            mapSessionKeys[optExisting->nSessionId] = vRecoveredPubKey;
+                            mapSessionKeys[optExisting->nSessionId] = optExisting->vDisposablePubKey;
                     }
 
                     debug::log(0, FUNCTION, "Session recovered from lane switch");
                     debug::log(0, FUNCTION, "  session state source: SessionRecoveryManager::RecoverSessionByAddress");
                     debug::log(0, FUNCTION, "  recovered falcon key id: ", FullHexOrUnset(optExisting->hashKeyID));
                     debug::log(0, FUNCTION, "  recovered session genesis: ", FullHexOrUnset(optExisting->hashGenesis));
-                    debug::log(0, FUNCTION, "  recovered ChaCha20 key hash: ", FullHexOrUnset(hashRecoveredKey));
-                    debug::log(0, FUNCTION, "  recovered disposable Falcon key present: ", YesNo(!vRecoveredPubKey.empty()));
+                    debug::log(0, FUNCTION, "  recovered reward hash: ", FullHexOrUnset(optExisting->hashRewardAddress));
+                    debug::log(0, FUNCTION, "  recovered ChaCha20 key hash: ", FullHexOrUnset(optExisting->hashChaCha20Key));
+                    debug::log(0, FUNCTION, "  recovered disposable Falcon key present: ", YesNo(!optExisting->vDisposablePubKey.empty()));
                 }
                 
                 /* Subscribe to notifications (same logic as 8-bit MINER_READY) */
@@ -2334,30 +2330,26 @@ namespace LLP
                 auto optExisting = SessionRecoveryManager::Get().RecoverSessionByAddress(GetAddress().ToStringIP());
                 if(optExisting.has_value())
                 {
-                    uint256_t hashRecoveredKey(0);
-                    uint64_t nRecoveredNonce = 0;
-                    if(SessionRecoveryManager::Get().RestoreChaCha20State(optExisting->hashKeyID, hashRecoveredKey, nRecoveredNonce)
-                       && hashRecoveredKey != 0)
-                    {
-                        context = context.WithChaChaKey(hashRecoveredKey.GetBytes());
-                    }
+                    if(optExisting->fRewardBound && optExisting->hashRewardAddress != 0)
+                        context = context.WithRewardAddress(optExisting->hashRewardAddress);
 
-                    std::vector<uint8_t> vRecoveredPubKey;
-                    uint256_t hashDisposableKeyID(0);
-                    if(SessionRecoveryManager::Get().RestoreDisposableKey(optExisting->hashKeyID, vRecoveredPubKey, hashDisposableKeyID)
-                       && !vRecoveredPubKey.empty())
+                    if(optExisting->fEncryptionReady && !optExisting->vChaCha20Key.empty())
+                        context = context.WithChaChaKey(optExisting->vChaCha20Key);
+
+                    if(!optExisting->vDisposablePubKey.empty())
                     {
                         std::lock_guard<std::mutex> lock(SESSION_MUTEX);
                         if(optExisting->nSessionId != 0)
-                            mapSessionKeys[optExisting->nSessionId] = vRecoveredPubKey;
+                            mapSessionKeys[optExisting->nSessionId] = optExisting->vDisposablePubKey;
                     }
 
                     debug::log(0, FUNCTION, "Session recovered from lane switch");
                     debug::log(0, FUNCTION, "  session state source: SessionRecoveryManager::RecoverSessionByAddress");
                     debug::log(0, FUNCTION, "  recovered falcon key id: ", FullHexOrUnset(optExisting->hashKeyID));
                     debug::log(0, FUNCTION, "  recovered session genesis: ", FullHexOrUnset(optExisting->hashGenesis));
-                    debug::log(0, FUNCTION, "  recovered ChaCha20 key hash: ", FullHexOrUnset(hashRecoveredKey));
-                    debug::log(0, FUNCTION, "  recovered disposable Falcon key present: ", YesNo(!vRecoveredPubKey.empty()));
+                    debug::log(0, FUNCTION, "  recovered reward hash: ", FullHexOrUnset(optExisting->hashRewardAddress));
+                    debug::log(0, FUNCTION, "  recovered ChaCha20 key hash: ", FullHexOrUnset(optExisting->hashChaCha20Key));
+                    debug::log(0, FUNCTION, "  recovered disposable Falcon key present: ", YesNo(!optExisting->vDisposablePubKey.empty()));
                 }
                 
                 /* Subscribe to notifications */
