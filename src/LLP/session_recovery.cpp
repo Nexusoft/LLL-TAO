@@ -90,7 +90,8 @@ namespace LLP
 
         nChannel = context.nChannel;
         nLastActivity = context.nTimestamp;
-        fAuthenticated = context.fAuthenticated;
+        if(context.fAuthenticated)
+            fAuthenticated = true;
         nProtocolLane = context.nProtocolLane;
         nLastLane = static_cast<uint8_t>(context.nProtocolLane);
 
