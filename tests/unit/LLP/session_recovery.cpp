@@ -218,7 +218,7 @@ TEST_CASE("SessionRecoveryManager Basic Tests", "[session_recovery]")
         REQUIRE(manager.SaveSession(fullContext) == true);
 
         MiningContext partialRefresh = MiningContext()
-            .WithSession(66666)
+            .WithSession(77777)
             .WithKeyId(testKeyId)
             .WithGenesis(reward)
             .WithAuth(true)
@@ -228,6 +228,8 @@ TEST_CASE("SessionRecoveryManager Basic Tests", "[session_recovery]")
 
         MiningContext recovered;
         REQUIRE(manager.RecoverSession(testKeyId, recovered) == true);
+        REQUIRE(recovered.nSessionId == 77777);
+        REQUIRE(recovered.nChannel == 2);
         REQUIRE(recovered.hashRewardAddress == reward);
         REQUIRE(recovered.fRewardBound == true);
         REQUIRE(recovered.vChaChaKey == std::vector<uint8_t>(32, 0x44));

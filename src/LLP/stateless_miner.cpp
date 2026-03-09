@@ -1991,7 +1991,11 @@ namespace LLP
         /* Bind reward address to context using dedicated field */
         MiningContext newContext = context.WithRewardAddress(hashReward);
 
-        if(!newContext.fEncryptionReady && !vChaChaKey.empty())
+        /* The MINER_SET_REWARD packet already proved the live session can decrypt with the
+         * session-derived ChaCha20 key. Persist that same key into the authoritative
+         * recovery container so a later lane switch keeps reward binding and
+         * decryption state attached to the same miner session. */
+        if(!vChaChaKey.empty())
             newContext = newContext.WithChaChaKey(vChaChaKey);
 
         /* Update the context in StatelessMinerManager to persist the change */

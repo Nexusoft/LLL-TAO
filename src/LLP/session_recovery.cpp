@@ -60,6 +60,8 @@ namespace LLP
     MinerSessionContainer::MinerSessionContainer(const MiningContext& context)
     : MinerSessionContainer()
     {
+        /* nCreated is initialization-time metadata for the authoritative container.
+         * It is set here exactly once; MergeContext() updates only live session fields. */
         nCreated = runtime::unifiedtimestamp();
         MergeContext(context);
     }
@@ -100,6 +102,8 @@ namespace LLP
             hashRewardAddress = context.hashRewardAddress;
             fRewardBound = true;
         }
+        /* MergeContext never clears reward binding: the protocol only supports binding
+         * a reward identity, not an explicit unbind/reset operation. */
 
         if(context.fEncryptionReady && !context.vChaChaKey.empty())
         {
@@ -183,12 +187,11 @@ namespace LLP
             return false;
         }
 
-        auto optExisting = mapSessionsByKey.Get(context.hashKeyID);
+        auto optExistingSession = mapSessionsByKey.Get(context.hashKeyID);
         SessionRecoveryData data;
-
-        if(optExisting.has_value())
+        if(optExistingSession.has_value())
         {
-            data = optExisting.value();
+            data = optExistingSession.value();
             data.MergeContext(context);
         }
         else
@@ -387,6 +390,8 @@ namespace LLP
 
         SessionRecoveryData data = optData.value();
         data.hashChaCha20Key = hashKey;
+        /* vChaCha20Key is the authoritative recovery copy for lane-switch restore.
+         * hashChaCha20Key is kept as the legacy diagnostic/compatibility mirror. */
         data.vChaCha20Key = hashKey.GetBytes();
         data.fEncryptionReady = (hashKey != 0);
         data.nChaCha20Nonce = nNonce;
@@ -411,6 +416,25 @@ namespace LLP
             return false;
 
         const SessionRecoveryData& data = optData.value();
+        /* Prefer the authoritative byte container. Fall back to the legacy hash mirror
+         * for older cached sessions that predate containerized ChaCha20 persistence. */
+        if(!data.vChaCha20Key.empty() && data.hashChaCha20Key == 0)
+        {
+            debug::warning(FUNCTION, "ChaCha20 recovery container missing mirrored hash for keyID=",
+                           hashKeyID.SubString());
+        }
+        else if(!data.vChaCha20Key.empty() && data.hashChaCha20Key != 0)
+        {
+            const uint256_t hashKeyFromBytes(data.vChaCha20Key);
+            if(hashKeyFromBytes != data.hashChaCha20Key)
+            {
+                debug::warning(FUNCTION, "ChaCha20 recovery container mismatch for keyID=",
+                               hashKeyID.SubString(), " authoritative_bytes=",
+                               hashKeyFromBytes.SubString(), " mirrored_hash=",
+                               data.hashChaCha20Key.SubString());
+            }
+        }
+
         if(!data.vChaCha20Key.empty())
             hashKey = uint256_t(data.vChaCha20Key);
         else

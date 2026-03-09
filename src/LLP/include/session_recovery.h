@@ -51,9 +51,13 @@ namespace LLP
         ProtocolLane nProtocolLane;             // Canonical protocol lane for this session
         uint256_t hashRewardAddress;            // Bound reward payout identity
         bool fRewardBound;                      // Whether reward binding is present
-        std::vector<uint8_t> vChaCha20Key;      // ChaCha20 session key bytes
+        std::vector<uint8_t> vChaCha20Key;      // Canonical ChaCha20 session key bytes
         bool fEncryptionReady;                  // Whether ChaCha20 is ready for use
-        uint256_t hashChaCha20Key;              // ChaCha20 session key hash
+        uint256_t hashChaCha20Key;              // Diagnostic/compatibility mirror of vChaCha20Key
+                                                // Invariant: when vChaCha20Key is populated,
+                                                // hashChaCha20Key mirrors uint256_t(vChaCha20Key).
+                                                // When vChaCha20Key is empty, hashChaCha20Key may
+                                                // still hold legacy cached state for fallback restore.
         uint64_t nChaCha20Nonce;                // ChaCha20 nonce counter
         std::vector<uint8_t> vDisposablePubKey; // Disposable Falcon session public key
         uint256_t hashDisposableKeyID;          // Disposable Falcon session key ID
