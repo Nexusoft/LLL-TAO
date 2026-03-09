@@ -1991,6 +1991,9 @@ namespace LLP
         /* Bind reward address to context using dedicated field */
         MiningContext newContext = context.WithRewardAddress(hashReward);
 
+        if(!newContext.fEncryptionReady && !vChaChaKey.empty())
+            newContext = newContext.WithChaChaKey(vChaChaKey);
+
         /* Update the context in StatelessMinerManager to persist the change */
         StatelessMinerManager::Get().UpdateMiner(context.strAddress, newContext, 0);
 

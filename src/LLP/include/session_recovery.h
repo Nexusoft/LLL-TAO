@@ -26,14 +26,16 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    /** SessionRecoveryData
+    /** MinerSessionContainer
      *
-     *  Stores session state for recovery after connectivity drops.
-     *  Allows miners to reconnect without full re-initialization.
+     *  Authoritative per-miner session container for recovery after connectivity drops.
+     *  Binds authentication, session identity, reward binding, ChaCha20 state,
+     *  and lane-switch state into one recoverable record.
      *
      **/
-    struct SessionRecoveryData
+    struct MinerSessionContainer
     {
+        std::string miner_id;                   // Stable miner identity for diagnostics
         uint32_t nSessionId;                    // Session identifier
         uint256_t hashKeyID;                    // Falcon key identifier
         uint256_t hashGenesis;                  // Tritium genesis hash
@@ -46,16 +48,30 @@ namespace LLP
         bool fAuthenticated;                    // Authentication status
         bool fFreshAuth;                        // true = new auth on this node; false = session recovered
         uint8_t nLastLane;                      // Last known lane (0=Legacy, 1=Stateless)
+        ProtocolLane nProtocolLane;             // Canonical protocol lane for this session
+        uint256_t hashRewardAddress;            // Bound reward payout identity
+        bool fRewardBound;                      // Whether reward binding is present
+        std::vector<uint8_t> vChaCha20Key;      // ChaCha20 session key bytes
+        bool fEncryptionReady;                  // Whether ChaCha20 is ready for use
         uint256_t hashChaCha20Key;              // ChaCha20 session key hash
         uint64_t nChaCha20Nonce;                // ChaCha20 nonce counter
         std::vector<uint8_t> vDisposablePubKey; // Disposable Falcon session public key
         uint256_t hashDisposableKeyID;          // Disposable Falcon session key ID
 
         /** Default Constructor **/
-        SessionRecoveryData();
+        MinerSessionContainer();
 
         /** Constructor from MiningContext **/
-        explicit SessionRecoveryData(const MiningContext& context);
+        explicit MinerSessionContainer(const MiningContext& context);
+
+        /** MergeContext
+         *
+         *  Merge live connection state into this authoritative container.
+         *  Preserves already-captured reward/crypto state when the live context
+         *  doesn't currently carry it.
+         *
+         **/
+        void MergeContext(const MiningContext& context);
 
         /** ToContext
          *
@@ -84,6 +100,8 @@ namespace LLP
          **/
         void UpdateActivity();
     };
+
+    using SessionRecoveryData = MinerSessionContainer;
 
 
     /** SessionRecoveryManager

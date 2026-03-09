@@ -29,8 +29,9 @@ namespace LLP
      **************************************************************************/
 
     /** Default Constructor **/
-    SessionRecoveryData::SessionRecoveryData()
-    : nSessionId(0)
+    MinerSessionContainer::MinerSessionContainer()
+    : miner_id()
+    , nSessionId(0)
     , hashKeyID(0)
     , hashGenesis(0)
     , nChannel(0)
@@ -42,6 +43,11 @@ namespace LLP
     , fAuthenticated(false)
     , fFreshAuth(false)
     , nLastLane(0)
+    , nProtocolLane(ProtocolLane::LEGACY)
+    , hashRewardAddress(0)
+    , fRewardBound(false)
+    , vChaCha20Key()
+    , fEncryptionReady(false)
     , hashChaCha20Key(0)
     , nChaCha20Nonce(0)
     , vDisposablePubKey()
@@ -51,31 +57,63 @@ namespace LLP
 
 
     /** Constructor from MiningContext **/
-    SessionRecoveryData::SessionRecoveryData(const MiningContext& context)
-    : nSessionId(context.nSessionId)
-    , hashKeyID(context.hashKeyID)
-    , hashGenesis(context.hashGenesis)
-    , nChannel(context.nChannel)
-    , nLastActivity(context.nTimestamp)
-    , nCreated(runtime::unifiedtimestamp())
-    , vPubKey(context.vMinerPubKey)
-    , strAddress(context.strAddress)
-    , nReconnectCount(0)
-    , fAuthenticated(context.fAuthenticated)
-    , fFreshAuth(false)
-    , nLastLane(0)
-    , hashChaCha20Key(0)
-    , nChaCha20Nonce(0)
-    , vDisposablePubKey()
-    , hashDisposableKeyID(0)
+    MinerSessionContainer::MinerSessionContainer(const MiningContext& context)
+    : MinerSessionContainer()
     {
+        nCreated = runtime::unifiedtimestamp();
+        MergeContext(context);
+    }
+
+
+    /** MergeContext **/
+    void MinerSessionContainer::MergeContext(const MiningContext& context)
+    {
+        if(!context.strAddress.empty())
+        {
+            strAddress = context.strAddress;
+            miner_id = context.strAddress;
+        }
+
+        if(context.hashKeyID != 0)
+        {
+            hashKeyID = context.hashKeyID;
+            miner_id = context.hashKeyID.GetHex();
+        }
+
+        if(context.hashGenesis != 0)
+            hashGenesis = context.hashGenesis;
+
+        if(context.nSessionId != 0)
+            nSessionId = context.nSessionId;
+
+        nChannel = context.nChannel;
+        nLastActivity = context.nTimestamp;
+        fAuthenticated = context.fAuthenticated;
+        nProtocolLane = context.nProtocolLane;
+        nLastLane = static_cast<uint8_t>(context.nProtocolLane);
+
+        if(!context.vMinerPubKey.empty())
+            vPubKey = context.vMinerPubKey;
+
+        if(context.fRewardBound && context.hashRewardAddress != 0)
+        {
+            hashRewardAddress = context.hashRewardAddress;
+            fRewardBound = true;
+        }
+
+        if(context.fEncryptionReady && !context.vChaChaKey.empty())
+        {
+            vChaCha20Key = context.vChaChaKey;
+            fEncryptionReady = true;
+            hashChaCha20Key = uint256_t(context.vChaChaKey);
+        }
     }
 
 
     /** ToContext **/
-    MiningContext SessionRecoveryData::ToContext() const
+    MiningContext MinerSessionContainer::ToContext() const
     {
-        return MiningContext(
+        MiningContext context = MiningContext(
             nChannel,
             0,  /* nHeight - will be updated on reconnect */
             runtime::unifiedtimestamp(),
@@ -85,12 +123,21 @@ namespace LLP
             nSessionId,
             hashKeyID,
             hashGenesis
-        ).WithPubKey(vPubKey);
+        ).WithPubKey(vPubKey)
+         .WithProtocolLane(nProtocolLane);
+
+        if(fRewardBound && hashRewardAddress != 0)
+            context = context.WithRewardAddress(hashRewardAddress);
+
+        if(fEncryptionReady && !vChaCha20Key.empty())
+            context = context.WithChaChaKey(vChaCha20Key);
+
+        return context;
     }
 
 
     /** IsExpired **/
-    bool SessionRecoveryData::IsExpired(uint64_t nTimeoutSec) const
+    bool MinerSessionContainer::IsExpired(uint64_t nTimeoutSec) const
     {
         uint64_t nNow = runtime::unifiedtimestamp();
         return (nNow - nLastActivity) > nTimeoutSec;
@@ -98,7 +145,7 @@ namespace LLP
 
 
     /** UpdateActivity **/
-    void SessionRecoveryData::UpdateActivity()
+    void MinerSessionContainer::UpdateActivity()
     {
         nLastActivity = runtime::unifiedtimestamp();
     }
@@ -136,7 +183,18 @@ namespace LLP
             return false;
         }
 
-        SessionRecoveryData data(context);
+        auto optExisting = mapSessionsByKey.Get(context.hashKeyID);
+        SessionRecoveryData data;
+
+        if(optExisting.has_value())
+        {
+            data = optExisting.value();
+            data.MergeContext(context);
+        }
+        else
+        {
+            data = SessionRecoveryData(context);
+        }
 
         /* Store by key ID */
         mapSessionsByKey.InsertOrUpdate(context.hashKeyID, data);
@@ -152,7 +210,12 @@ namespace LLP
         debug::log(2, FUNCTION, "  session_id=", context.nSessionId);
         debug::log(2, FUNCTION, "  session_genesis=", context.GenesisHex());
         debug::log(2, FUNCTION, "  session_address=", context.strAddress);
-        debug::log(2, FUNCTION, "  reward_binding_persisted_in_recovery_cache=NO (reward hash remains in live session context only)");
+        debug::log(2, FUNCTION, "  reward_binding_persisted_in_recovery_cache=",
+                   (data.fRewardBound && data.hashRewardAddress != 0) ? "YES" : "NO");
+        debug::log(2, FUNCTION, "  recovered_reward_hash=", Diagnostics::FullHexOrUnset(data.hashRewardAddress));
+        debug::log(2, FUNCTION, "  chacha20_context_persisted_in_recovery_cache=",
+                   (data.fEncryptionReady && !data.vChaCha20Key.empty()) ? "YES" : "NO");
+        debug::log(2, FUNCTION, "  recovered_chacha20_key_hash=", Diagnostics::FullHexOrUnset(data.hashChaCha20Key));
 
         return true;
     }
@@ -220,7 +283,10 @@ namespace LLP
         debug::log(0, FUNCTION, "  restored_session_genesis=", context.GenesisHex());
         debug::log(0, FUNCTION, "  reconnect_count=", data.nReconnectCount);
         debug::log(0, FUNCTION, "  fresh_auth_flag=", (data.fFreshAuth ? "YES" : "NO"));
-        debug::log(0, FUNCTION, "  reward_binding_restored_from_recovery_cache=NO (reward hash is not persisted here)");
+        debug::log(0, FUNCTION, "  reward_binding_restored_from_recovery_cache=",
+                   (data.fRewardBound && data.hashRewardAddress != 0) ? "YES" : "NO");
+        debug::log(0, FUNCTION, "  restored_reward_hash=", Diagnostics::FullHexOrUnset(data.hashRewardAddress));
+        debug::log(0, FUNCTION, "  restored_chacha20_key_hash=", Diagnostics::FullHexOrUnset(data.hashChaCha20Key));
 
         return true;
     }
@@ -298,9 +364,7 @@ namespace LLP
             return false;
 
         SessionRecoveryData data = optData.value();
-        data.nChannel = context.nChannel;
-        data.nLastActivity = context.nTimestamp;
-        data.fAuthenticated = context.fAuthenticated;
+        data.MergeContext(context);
 
         mapSessionsByKey.Update(context.hashKeyID, data);
         return true;
@@ -323,6 +387,8 @@ namespace LLP
 
         SessionRecoveryData data = optData.value();
         data.hashChaCha20Key = hashKey;
+        data.vChaCha20Key = hashKey.GetBytes();
+        data.fEncryptionReady = (hashKey != 0);
         data.nChaCha20Nonce = nNonce;
         mapSessionsByKey.Update(hashKeyID, data);
 
@@ -344,9 +410,14 @@ namespace LLP
         if(!optData.has_value())
             return false;
 
-        hashKey = optData.value().hashChaCha20Key;
-        nNonce = optData.value().nChaCha20Nonce;
-        return hashKey != 0;
+        const SessionRecoveryData& data = optData.value();
+        if(!data.vChaCha20Key.empty())
+            hashKey = uint256_t(data.vChaCha20Key);
+        else
+            hashKey = data.hashChaCha20Key;
+
+        nNonce = data.nChaCha20Nonce;
+        return data.fEncryptionReady && hashKey != 0;
     }
 
 
@@ -408,6 +479,7 @@ namespace LLP
 
         SessionRecoveryData data = optData.value();
         data.nLastLane = nNewLane;
+        data.nProtocolLane = (nNewLane == 0 ? ProtocolLane::LEGACY : ProtocolLane::STATELESS);
         mapSessionsByKey.Update(hashKeyID, data);
         return true;
     }
