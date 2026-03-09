@@ -94,8 +94,24 @@ namespace LLP
         nProtocolLane = context.nProtocolLane;
         nLastLane = static_cast<uint8_t>(context.nProtocolLane);
 
+        /* nReconnectCount is authoritative recovery metadata owned by the container.
+         * Live SaveSession/UpdateSession refreshes often come from fresh connection snapshots
+         * whose default MiningContext carries nReconnectCount=0. Preserve the existing counter
+         * unless the caller explicitly supplies a recovered value to carry forward. */
+        if(context.nReconnectCount != 0 || nReconnectCount == 0)
+            nReconnectCount = context.nReconnectCount;
+
         if(!context.vMinerPubKey.empty())
             vPubKey = context.vMinerPubKey;
+
+        if(!context.vDisposablePubKey.empty() || context.hashDisposableKeyID != 0)
+        {
+            if(!context.vDisposablePubKey.empty())
+                vDisposablePubKey = context.vDisposablePubKey;
+
+            if(context.hashDisposableKeyID != 0)
+                hashDisposableKeyID = context.hashDisposableKeyID;
+        }
 
         if(context.fRewardBound && context.hashRewardAddress != 0)
         {
@@ -128,6 +144,8 @@ namespace LLP
             hashKeyID,
             hashGenesis
         ).WithPubKey(vPubKey)
+         .WithDisposableKey(vDisposablePubKey, hashDisposableKeyID)
+         .WithReconnectCount(nReconnectCount)
          .WithProtocolLane(nProtocolLane);
 
         if(fRewardBound && hashRewardAddress != 0)
@@ -460,8 +478,11 @@ namespace LLP
             return false;
 
         SessionRecoveryData data = optData.value();
-        data.vDisposablePubKey = vPubKey;
-        data.hashDisposableKeyID = hashDisposableKeyID;
+        data.MergeContext(
+            data.ToContext()
+                .WithTimestamp(data.nLastActivity)
+                .WithDisposableKey(vPubKey, hashDisposableKeyID)
+        );
         mapSessionsByKey.Update(hashKeyID, data);
 
         return true;
@@ -502,8 +523,11 @@ namespace LLP
             return false;
 
         SessionRecoveryData data = optData.value();
-        data.nLastLane = nNewLane;
-        data.nProtocolLane = (nNewLane == 0 ? ProtocolLane::LEGACY : ProtocolLane::STATELESS);
+        data.MergeContext(
+            data.ToContext()
+                .WithTimestamp(data.nLastActivity)
+                .WithProtocolLane(nNewLane == 0 ? ProtocolLane::LEGACY : ProtocolLane::STATELESS)
+        );
         mapSessionsByKey.Update(hashKeyID, data);
         return true;
     }

@@ -53,6 +53,8 @@ TEST_CASE("SessionRecoveryData Basic Tests", "[session_recovery]")
             .WithKeyId(testKeyId)
             .WithGenesis(testGenesis)
             .WithAuth(true)
+            .WithDisposableKey(std::vector<uint8_t>{0xaa, 0xbb, 0xcc})
+            .WithReconnectCount(3)
             .WithRewardAddress(testGenesis)
             .WithChaChaKey(std::vector<uint8_t>(32, 0x5a))
             .WithProtocolLane(ProtocolLane::STATELESS);
@@ -64,6 +66,9 @@ TEST_CASE("SessionRecoveryData Basic Tests", "[session_recovery]")
         REQUIRE(data.hashGenesis == testGenesis);
         REQUIRE(data.nChannel == 1);
         REQUIRE(data.fAuthenticated == true);
+        REQUIRE(data.vDisposablePubKey == std::vector<uint8_t>({0xaa, 0xbb, 0xcc}));
+        REQUIRE(data.hashDisposableKeyID != uint256_t(0));
+        REQUIRE(data.nReconnectCount == 3);
         REQUIRE(data.hashRewardAddress == testGenesis);
         REQUIRE(data.fRewardBound == true);
         REQUIRE(data.vChaCha20Key == std::vector<uint8_t>(32, 0x5a));
@@ -85,6 +90,8 @@ TEST_CASE("SessionRecoveryData Basic Tests", "[session_recovery]")
         uint256_t reward;
         reward.SetHex("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
         original = original
+            .WithDisposableKey(std::vector<uint8_t>{0x10, 0x20, 0x30})
+            .WithReconnectCount(4)
             .WithRewardAddress(reward)
             .WithChaChaKey(std::vector<uint8_t>(32, 0x3c))
             .WithProtocolLane(ProtocolLane::STATELESS);
@@ -96,6 +103,9 @@ TEST_CASE("SessionRecoveryData Basic Tests", "[session_recovery]")
         REQUIRE(restored.nSessionId == 99999);
         REQUIRE(restored.hashKeyID == testKeyId);
         REQUIRE(restored.fAuthenticated == true);
+        REQUIRE(restored.vDisposablePubKey == std::vector<uint8_t>({0x10, 0x20, 0x30}));
+        REQUIRE(restored.hashDisposableKeyID != uint256_t(0));
+        REQUIRE(restored.nReconnectCount == 4);
         REQUIRE(restored.hashRewardAddress == reward);
         REQUIRE(restored.fRewardBound == true);
         REQUIRE(restored.vChaChaKey == std::vector<uint8_t>(32, 0x3c));
@@ -191,6 +201,8 @@ TEST_CASE("SessionRecoveryManager Basic Tests", "[session_recovery]")
         REQUIRE(manager.RecoverSession(testKeyId, recovered) == true);
         REQUIRE(recovered.hashRewardAddress == reward);
         REQUIRE(recovered.fRewardBound == true);
+        REQUIRE(recovered.vDisposablePubKey == disposablePubKey);
+        REQUIRE(recovered.hashDisposableKeyID == disposableKeyId);
         REQUIRE(recovered.vChaChaKey == chachaKey.GetBytes());
         REQUIRE(recovered.fEncryptionReady == true);
         REQUIRE(recovered.nProtocolLane == ProtocolLane::STATELESS);
@@ -234,6 +246,69 @@ TEST_CASE("SessionRecoveryManager Basic Tests", "[session_recovery]")
         REQUIRE(recovered.fRewardBound == true);
         REQUIRE(recovered.vChaChaKey == std::vector<uint8_t>(32, 0x44));
         REQUIRE(recovered.fEncryptionReady == true);
+
+        manager.RemoveSession(testKeyId);
+    }
+
+    SECTION("MergeContext keeps reconnect metadata unless explicitly refreshed")
+    {
+        uint256_t testKeyId;
+        testKeyId.SetHex("6666666666666666666666666666666666666666666666666666666666666666");
+
+        SessionRecoveryData data = SessionRecoveryData(
+            MiningContext()
+                .WithSession(88888)
+                .WithKeyId(testKeyId)
+                .WithAuth(true)
+                .WithReconnectCount(5)
+                .WithDisposableKey(std::vector<uint8_t>{0x0a, 0x0b, 0x0c})
+                .WithProtocolLane(ProtocolLane::STATELESS)
+        );
+
+        data.MergeContext(
+            MiningContext()
+                .WithSession(99999)
+                .WithKeyId(testKeyId)
+                .WithAuth(true)
+                .WithChannel(2)
+                .WithProtocolLane(ProtocolLane::STATELESS)
+        );
+
+        REQUIRE(data.nSessionId == 99999);
+        REQUIRE(data.nReconnectCount == 5);
+        REQUIRE(data.vDisposablePubKey == std::vector<uint8_t>({0x0a, 0x0b, 0x0c}));
+        REQUIRE(data.nProtocolLane == ProtocolLane::STATELESS);
+    }
+
+    SECTION("SaveDisposableKey and UpdateLane preserve merge-managed recovery state")
+    {
+        uint256_t testKeyId;
+        testKeyId.SetHex("7777777777777777777777777777777777777777777777777777777777777777");
+
+        MiningContext ctx = MiningContext()
+            .WithSession(123123)
+            .WithKeyId(testKeyId)
+            .WithAuth(true)
+            .WithReconnectCount(2)
+            .WithProtocolLane(ProtocolLane::STATELESS);
+        ctx.strAddress = "127.0.0.1";
+
+        REQUIRE(manager.SaveSession(ctx) == true);
+
+        std::vector<uint8_t> disposablePubKey = {0x21, 0x22, 0x23};
+        uint256_t disposableKeyId;
+        disposableKeyId.SetHex("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
+
+        REQUIRE(manager.SaveDisposableKey(testKeyId, disposablePubKey, disposableKeyId) == true);
+        REQUIRE(manager.UpdateLane(testKeyId, 0) == true);
+
+        auto optRecovered = manager.RecoverSessionByAddress("127.0.0.1");
+        REQUIRE(optRecovered.has_value());
+        REQUIRE(optRecovered->vDisposablePubKey == disposablePubKey);
+        REQUIRE(optRecovered->hashDisposableKeyID == disposableKeyId);
+        REQUIRE(optRecovered->nReconnectCount == 2);
+        REQUIRE(optRecovered->nProtocolLane == ProtocolLane::LEGACY);
+        REQUIRE(optRecovered->nLastLane == 0);
 
         manager.RemoveSession(testKeyId);
     }
