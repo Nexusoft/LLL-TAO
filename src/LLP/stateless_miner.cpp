@@ -53,29 +53,10 @@ namespace LLP
 {
     namespace
     {
-        std::string FullHexOrUnset(const uint256_t& value)
-        {
-            return value != 0 ? value.GetHex() : std::string("NOT SET");
-        }
-
-        std::string KeyFingerprint(const std::vector<uint8_t>& vKey)
-        {
-            if(vKey.empty())
-                return "NOT AVAILABLE";
-
-            const size_t nPrefix = std::min<size_t>(8, vKey.size());
-            return HexStr(vKey.begin(), vKey.begin() + nPrefix);
-        }
-
-        const char* YesNo(const bool fValue)
-        {
-            return fValue ? "YES" : "NO";
-        }
-
-        const char* PassFail(const bool fValue)
-        {
-            return fValue ? "PASS" : "FAIL";
-        }
+        using Diagnostics::FullHexOrUnset;
+        using Diagnostics::KeyFingerprint;
+        using Diagnostics::YesNo;
+        using Diagnostics::PassFail;
     }
 
     /* Default session timeout in seconds for mining sessions.
@@ -1956,8 +1937,8 @@ namespace LLP
 
         debug::log(0, FUNCTION, "Received decoded reward register/account hash: ", hashReward.GetHex());
 
-        const bool fExistingRewardMatches = !context.fRewardBound ||
-            context.hashRewardAddress == 0 ||
+        const bool fExistingRewardPresent = context.fRewardBound && context.hashRewardAddress != 0;
+        const bool fExistingRewardMatches = !fExistingRewardPresent ||
             context.hashRewardAddress == hashReward;
         const bool fRewardEqualsGenesis = (context.hashGenesis != 0 && hashReward == context.hashGenesis);
 
@@ -1972,7 +1953,8 @@ namespace LLP
         debug::log(0, FUNCTION, "- recovered session genesis: ",
                    fRecoveredSessionState ? FullHexOrUnset(optRecoveredSession->hashGenesis) : "NOT AVAILABLE");
         debug::log(0, FUNCTION, "- recovered session genesis matches live context: ", YesNo(fRecoveryGenesisMatches));
-        debug::log(0, FUNCTION, "- reward hash == bound reward hash: ", YesNo(fExistingRewardMatches));
+        debug::log(0, FUNCTION, "- reward hash == bound reward hash: ",
+                   fExistingRewardPresent ? YesNo(fExistingRewardMatches) : "NOT PREVIOUSLY BOUND");
         debug::log(0, FUNCTION, "- decoded reward hash == session genesis: ", YesNo(fRewardEqualsGenesis));
         debug::log(0, FUNCTION, "- source of decoded reward hash: MINER_SET_REWARD decrypted payload");
 
@@ -2029,7 +2011,8 @@ namespace LLP
         debug::log(1, FUNCTION, "  Session genesis: ", context.GenesisHex());
         debug::log(1, FUNCTION, "  Bound reward hash: ", hashReward.GetHex());
         debug::log(1, FUNCTION, "  Bound reward source: MINER_SET_REWARD decrypted payload");
-        debug::log(1, FUNCTION, "  Reward hash == prior bound reward hash: ", YesNo(fExistingRewardMatches));
+        debug::log(1, FUNCTION, "  Reward hash == prior bound reward hash: ",
+                   fExistingRewardPresent ? YesNo(fExistingRewardMatches) : "NOT PREVIOUSLY BOUND");
         debug::log(1, FUNCTION, "  Session recovery state available: ", YesNo(fRecoveredSessionState));
         debug::log(2, FUNCTION, "  ChaCha20 ready: ", YesNo(!vChaChaKey.empty()),
                    " fingerprint=", KeyFingerprint(vChaChaKey));

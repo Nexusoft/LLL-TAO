@@ -77,29 +77,10 @@ namespace LLP
 {
     namespace
     {
-        std::string FullHexOrUnset(const uint256_t& value)
-        {
-            return value != 0 ? value.GetHex() : std::string("NOT SET");
-        }
-
-        std::string KeyFingerprint(const std::vector<uint8_t>& vKey)
-        {
-            if(vKey.empty())
-                return "NOT AVAILABLE";
-
-            const size_t nPrefix = std::min<size_t>(8, vKey.size());
-            return HexStr(vKey.begin(), vKey.begin() + nPrefix);
-        }
-
-        const char* YesNo(const bool fValue)
-        {
-            return fValue ? "YES" : "NO";
-        }
-
-        const char* PassFail(const bool fValue)
-        {
-            return fValue ? "PASS" : "FAIL";
-        }
+        using Diagnostics::FullHexOrUnset;
+        using Diagnostics::KeyFingerprint;
+        using Diagnostics::YesNo;
+        using Diagnostics::PassFail;
     }
 
     /* Import opcode constants for stateless mining protocol */
@@ -1327,7 +1308,7 @@ namespace LLP
                                     debug::log(0, FUNCTION, "- connection address: ", GetAddress().ToStringIP());
                                     debug::log(0, FUNCTION, "- bound reward hash: ", FullHexOrUnset(context.hashRewardAddress));
                                     debug::log(0, FUNCTION, "- bound reward source: ", context.RewardBindingSource());
-                                    debug::log(0, FUNCTION, "- submitted/decrypted reward hash: NOT AVAILABLE (SUBMIT_BLOCK payload does not carry standalone reward hash here)");
+                                    debug::log(0, FUNCTION, "- submitted reward hash: NOT AVAILABLE (decryption failed before any standalone reward hash could be observed)");
                                     debug::log(0, FUNCTION, "- session genesis used for KDF: ", context.GenesisHex());
                                     debug::log(0, FUNCTION, "- derived key fingerprint: ", KeyFingerprint(context.vChaChaKey));
                                     debug::log(0, FUNCTION, "- session recovery state available: ", YesNo(optRecovery.has_value()));
@@ -3003,7 +2984,7 @@ namespace LLP
         }
 
         debug::log(0, FUNCTION, "REWARD BINDING DIAGNOSTIC");
-        debug::log(0, FUNCTION, "- miner reward string: NOT AVAILABLE on node template path");
+        debug::log(0, FUNCTION, "- miner reward string: NOT AVAILABLE (node does not receive miner reward string during template creation)");
         debug::log(0, FUNCTION, "- decoded reward register/account hash: ", fRewardBound_snap ? hashRewardAddress_snap.GetHex() : "NOT AVAILABLE");
         debug::log(0, FUNCTION, "- bound reward hash from cache/session: ", FullHexOrUnset(hashRewardAddress_snap));
         debug::log(0, FUNCTION, "- bound reward source: ", strRewardSource);

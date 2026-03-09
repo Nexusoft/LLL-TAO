@@ -71,7 +71,6 @@ ________________________________________________________________________________
 #include <LLP/include/colin_mining_agent.h>
 #include <LLP/include/node_session_registry.h>
 
-#include <algorithm>
 #include <cstring>
 
 
@@ -79,24 +78,9 @@ namespace LLP
 {
     namespace
     {
-        std::string FullHexOrUnset(const uint256_t& value)
-        {
-            return value != 0 ? value.GetHex() : std::string("NOT SET");
-        }
-
-        std::string KeyFingerprint(const std::vector<uint8_t>& vKey)
-        {
-            if(vKey.empty())
-                return "NOT AVAILABLE";
-
-            const size_t nPrefix = std::min<size_t>(8, vKey.size());
-            return HexStr(vKey.begin(), vKey.begin() + nPrefix);
-        }
-
-        const char* YesNo(const bool fValue)
-        {
-            return fValue ? "YES" : "NO";
-        }
+        using Diagnostics::FullHexOrUnset;
+        using Diagnostics::KeyFingerprint;
+        using Diagnostics::YesNo;
     }
 
     /* The last height that the notifications processor was run at.  This is used to ensure that events are only processed once
