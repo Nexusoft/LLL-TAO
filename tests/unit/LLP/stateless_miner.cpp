@@ -156,7 +156,7 @@ TEST_CASE("MiningContext Immutability Tests", "[stateless_miner]")
         
         MiningContext ctx = MiningContext()
             .WithGenesis(testGenesis);
-        
+
         REQUIRE(ctx.GetPayoutAddress() == testGenesis);
     }
 
@@ -1868,4 +1868,3 @@ TEST_CASE("Legacy Opcode Recognition in ProcessPacket", "[stateless_miner][opcod
         }
     }
 }
-

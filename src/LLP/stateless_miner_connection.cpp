@@ -75,6 +75,33 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    namespace
+    {
+        std::string FullHexOrUnset(const uint256_t& value)
+        {
+            return value != 0 ? value.GetHex() : std::string("NOT SET");
+        }
+
+        std::string KeyFingerprint(const std::vector<uint8_t>& vKey)
+        {
+            if(vKey.empty())
+                return "NOT AVAILABLE";
+
+            const size_t nPrefix = std::min<size_t>(8, vKey.size());
+            return HexStr(vKey.begin(), vKey.begin() + nPrefix);
+        }
+
+        const char* YesNo(const bool fValue)
+        {
+            return fValue ? "YES" : "NO";
+        }
+
+        const char* PassFail(const bool fValue)
+        {
+            return fValue ? "PASS" : "FAIL";
+        }
+    }
+
     /* Import opcode constants for stateless mining protocol */
     static constexpr uint16_t MINER_AUTH_INIT = OpcodeUtility::Stateless::AUTH_INIT;
     static constexpr uint16_t MINER_AUTH_CHALLENGE = OpcodeUtility::Stateless::AUTH_CHALLENGE;
@@ -671,6 +698,11 @@ namespace LLP
                     }
 
                     debug::log(0, FUNCTION, "Session recovered from lane switch");
+                    debug::log(0, FUNCTION, "  session state source: SessionRecoveryManager::RecoverSessionByAddress");
+                    debug::log(0, FUNCTION, "  recovered falcon key id: ", FullHexOrUnset(optExisting->hashKeyID));
+                    debug::log(0, FUNCTION, "  recovered session genesis: ", FullHexOrUnset(optExisting->hashGenesis));
+                    debug::log(0, FUNCTION, "  recovered ChaCha20 key hash: ", FullHexOrUnset(hashRecoveredKey));
+                    debug::log(0, FUNCTION, "  recovered disposable Falcon key present: ", YesNo(!vRecoveredPubKey.empty()));
                 }
                 
                 /* Subscribe to notifications (same logic as 8-bit MINER_READY) */
@@ -685,7 +717,8 @@ namespace LLP
                     context = context.WithChaChaKey(LLC::MiningSessionKeys::DeriveChaCha20Key(context.hashGenesis));
                     
                     debug::log(0, FUNCTION, "✓ Derived ChaCha20 key on MINER_READY");
-                    debug::log(0, "   Genesis: ", context.hashGenesis.SubString());
+                    debug::log(0, "   Session genesis used for KDF: ", context.GenesisHex());
+                    debug::log(0, "   Derived key fingerprint: ", KeyFingerprint(context.vChaChaKey));
                     debug::log(0, "   Encryption ready: YES");
                 }
                 
@@ -1166,7 +1199,7 @@ namespace LLP
                 debug::log(2, FUNCTION, "SUBMIT_BLOCK from ", GetAddress().ToStringIP(),
                            " channel=", context.nChannel, " sessionId=", context.nSessionId,
                            " size=", PACKET.DATA.size(),
-                           " rewardAddress=", context.hashRewardAddress.ToString().substr(0, 16), "...");
+                           " bound_reward_hash=", FullHexOrUnset(context.hashRewardAddress));
 
                 /* Validate packet size using FalconConstants */
                 /* Minimum: merkle(64) + nonce(8) = 72 bytes (legacy format) */
@@ -1283,18 +1316,32 @@ namespace LLP
                                 
                                 if(!fDecrypted)
                                 {
+                                    const auto optRecovery = SessionRecoveryManager::Get().RecoverSessionByAddress(GetAddress().ToStringIP());
+                                    const bool fRecoveryGenesisMatches = optRecovery.has_value() &&
+                                        optRecovery->hashGenesis == context.hashGenesis;
+
                                     debug::log(0, FUNCTION, "ChaCha20 decryption FAILED for SUBMIT_BLOCK");
-                                    debug::log(0, FUNCTION, "  Session genesis (hex): ", context.hashGenesis.GetHex());
-                                    debug::log(0, FUNCTION, "  Derived key fingerprint (first 8 bytes): ",
-                                               HexStr(context.vChaChaKey.begin(),
-                                                      context.vChaChaKey.begin() + std::min<size_t>(8, context.vChaChaKey.size())));
-                                    debug::log(0, FUNCTION, "  AAD used for decryption: '' (0 bytes, empty)");
-                                    debug::log(0, FUNCTION, "  Encrypted payload size received: ", PACKET.DATA.size(), " bytes");
+                                    debug::log(0, FUNCTION, "SUBMIT_BLOCK SESSION DIAGNOSTIC");
+                                    debug::log(0, FUNCTION, "- session id: ", context.nSessionId);
+                                    debug::log(0, FUNCTION, "- authenticated: ", YesNo(context.fAuthenticated));
+                                    debug::log(0, FUNCTION, "- connection address: ", GetAddress().ToStringIP());
+                                    debug::log(0, FUNCTION, "- bound reward hash: ", FullHexOrUnset(context.hashRewardAddress));
+                                    debug::log(0, FUNCTION, "- bound reward source: ", context.RewardBindingSource());
+                                    debug::log(0, FUNCTION, "- submitted/decrypted reward hash: NOT AVAILABLE (SUBMIT_BLOCK payload does not carry standalone reward hash here)");
+                                    debug::log(0, FUNCTION, "- session genesis used for KDF: ", context.GenesisHex());
+                                    debug::log(0, FUNCTION, "- derived key fingerprint: ", KeyFingerprint(context.vChaChaKey));
+                                    debug::log(0, FUNCTION, "- session recovery state available: ", YesNo(optRecovery.has_value()));
+                                    debug::log(0, FUNCTION, "- recovered session genesis: ",
+                                               optRecovery.has_value() ? FullHexOrUnset(optRecovery->hashGenesis) : "NOT AVAILABLE");
+                                    debug::log(0, FUNCTION, "- recovered session genesis matches live context: ", YesNo(fRecoveryGenesisMatches));
+                                    debug::log(0, FUNCTION, "- AAD used for decryption: '' (0 bytes, empty)");
+                                    debug::log(0, FUNCTION, "- encrypted payload size received: ", PACKET.DATA.size(), " bytes");
                                     if(PACKET.DATA.size() >= 12)
                                     {
-                                        debug::log(0, FUNCTION, "  Nonce (first 12 bytes): ",
+                                        debug::log(0, FUNCTION, "- nonce (first 12 bytes): ",
                                                    HexStr(PACKET.DATA.begin(), PACKET.DATA.begin() + 12));
                                     }
+                                    debug::log(0, FUNCTION, "- consistency result: FAIL");
                                     
                                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                                     response.DATA.push_back(0x0B);  // Reason: ChaCha20 decryption failure
@@ -1436,7 +1483,23 @@ namespace LLP
                                 std::vector<uint8_t> decryptedData;
                                 if(!LLC::DecryptPayloadChaCha20(PACKET.DATA, context.vChaChaKey, decryptedData))
                                 {
+                                    const auto optRecovery = SessionRecoveryManager::Get().RecoverSessionByAddress(GetAddress().ToStringIP());
+                                    const bool fRecoveryGenesisMatches = optRecovery.has_value() &&
+                                        optRecovery->hashGenesis == context.hashGenesis;
                                     debug::error(FUNCTION, "❌ ChaCha20 decryption FAILED (legacy wrapper)");
+                                    debug::log(0, FUNCTION, "SUBMIT_BLOCK SESSION DIAGNOSTIC");
+                                    debug::log(0, FUNCTION, "- session id: ", context.nSessionId);
+                                    debug::log(0, FUNCTION, "- authenticated: ", YesNo(context.fAuthenticated));
+                                    debug::log(0, FUNCTION, "- connection address: ", GetAddress().ToStringIP());
+                                    debug::log(0, FUNCTION, "- bound reward hash: ", FullHexOrUnset(context.hashRewardAddress));
+                                    debug::log(0, FUNCTION, "- bound reward source: ", context.RewardBindingSource());
+                                    debug::log(0, FUNCTION, "- session genesis used for KDF: ", context.GenesisHex());
+                                    debug::log(0, FUNCTION, "- derived key fingerprint: ", KeyFingerprint(context.vChaChaKey));
+                                    debug::log(0, FUNCTION, "- session recovery state available: ", YesNo(optRecovery.has_value()));
+                                    debug::log(0, FUNCTION, "- recovered session genesis: ",
+                                               optRecovery.has_value() ? FullHexOrUnset(optRecovery->hashGenesis) : "NOT AVAILABLE");
+                                    debug::log(0, FUNCTION, "- recovered session genesis matches live context: ", YesNo(fRecoveryGenesisMatches));
+                                    debug::log(0, FUNCTION, "- consistency result: FAIL");
                                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                                     response.DATA.push_back(0x0B);  // Reason: ChaCha20 decryption failure
                                     response.LENGTH = 1;
@@ -2309,6 +2372,11 @@ namespace LLP
                     }
 
                     debug::log(0, FUNCTION, "Session recovered from lane switch");
+                    debug::log(0, FUNCTION, "  session state source: SessionRecoveryManager::RecoverSessionByAddress");
+                    debug::log(0, FUNCTION, "  recovered falcon key id: ", FullHexOrUnset(optExisting->hashKeyID));
+                    debug::log(0, FUNCTION, "  recovered session genesis: ", FullHexOrUnset(optExisting->hashGenesis));
+                    debug::log(0, FUNCTION, "  recovered ChaCha20 key hash: ", FullHexOrUnset(hashRecoveredKey));
+                    debug::log(0, FUNCTION, "  recovered disposable Falcon key present: ", YesNo(!vRecoveredPubKey.empty()));
                 }
                 
                 /* Subscribe to notifications */
@@ -2323,7 +2391,8 @@ namespace LLP
                     context = context.WithChaChaKey(LLC::MiningSessionKeys::DeriveChaCha20Key(context.hashGenesis));
                     
                     debug::log(0, FUNCTION, "✓ Derived ChaCha20 key on MINER_READY (8-bit)");
-                    debug::log(0, "   Genesis: ", context.hashGenesis.SubString());
+                    debug::log(0, "   Session genesis used for KDF: ", context.GenesisHex());
+                    debug::log(0, "   Derived key fingerprint: ", KeyFingerprint(context.vChaChaKey));
                     debug::log(0, "   Encryption ready: YES");
                 }
                 
@@ -2512,7 +2581,8 @@ namespace LLP
                         
                         debug::log(0, FUNCTION, "✓ Derived ChaCha20 key from genesis for session 0x",
                                   std::hex, context.nSessionId, std::dec);
-                        debug::log(0, "   Genesis: ", context.hashGenesis.SubString());
+                        debug::log(0, "   Session genesis used for KDF: ", context.GenesisHex());
+                        debug::log(0, "   Derived key fingerprint: ", KeyFingerprint(context.vChaChaKey));
                         debug::log(0, "   Encryption ready: YES");
                     }
                     else if(context.hashGenesis == 0)
@@ -2549,12 +2619,12 @@ namespace LLP
                     if(isNew)
                     {
                         debug::log(0, FUNCTION, "✓ Registered NEW session in NodeSessionRegistry: sessionId=",
-                                   canonicalSessionId, " keyID=", context.hashKeyID.SubString());
+                                   canonicalSessionId, " falcon_key_id=", FullHexOrUnset(context.hashKeyID));
                     }
                     else
                     {
                         debug::log(0, FUNCTION, "✓ Refreshed EXISTING session in NodeSessionRegistry: sessionId=",
-                                   canonicalSessionId, " keyID=", context.hashKeyID.SubString());
+                                   canonicalSessionId, " falcon_key_id=", FullHexOrUnset(context.hashKeyID));
                     }
                 }
 
@@ -2579,7 +2649,7 @@ namespace LLP
                 if(PACKET.HEADER == MINER_AUTH_RESPONSE && context.fAuthenticated)
                 {
                     debug::log(0, FUNCTION, "Session registered: address=", context.strAddress,
-                               " sessionId=", context.nSessionId, " keyID=", context.hashKeyID.SubString());
+                               " sessionId=", context.nSessionId, " falcon_key_id=", FullHexOrUnset(context.hashKeyID));
 
                     /* Notify ChannelStateManager if this was a failover authentication.
                      * FailoverConnectionTracker::IsFailover() returns true when the CONNECT
@@ -2667,8 +2737,7 @@ namespace LLP
                         sessionStart.LENGTH = static_cast<uint32_t>(sessionStart.DATA.size());
 
                         debug::log(0, FUNCTION, "SESSION_START: sessionId=", nSessionId,
-                                  " timeout=", nTimeout, "s genesis=",
-                                  (context.hashGenesis != 0 ? context.hashGenesis.SubString() : "NOT SET"));
+                                  " timeout=", nTimeout, "s session_genesis=", context.GenesisHex());
 
                         respond(sessionStart);
                     }
@@ -2910,21 +2979,50 @@ namespace LLP
         }
         
         /* Determine reward - same priority as miner.cpp */
-        debug::log(0, "   Determining reward address...");
+        debug::log(0, "   Determining reward identity for block rewards...");
         uint256_t hashReward = 0;
+        std::string strRewardSource = "not configured";
+        const auto optRecovery = SessionRecoveryManager::Get().RecoverSessionByAddress(context.strAddress);
+        const bool fRecoveryGenesisMatches = optRecovery.has_value() &&
+            optRecovery->hashGenesis == hashGenesis_snap;
         
         if(fRewardBound_snap && hashRewardAddress_snap != 0) {
             hashReward = hashRewardAddress_snap;
-            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "      Using bound reward address: ", hashReward.SubString(), ANSI_COLOR_RESET);
+            strRewardSource = "current connection context bound reward hash";
+            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "      Using bound reward hash: ", hashReward.GetHex(), ANSI_COLOR_RESET);
         }
         else if(hashGenesis_snap != 0) {
             hashReward = hashGenesis_snap;
-            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "      Using genesis hash: ", hashReward.SubString(), ANSI_COLOR_RESET);
+            strRewardSource = "current connection context session genesis fallback";
+            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "      Using session genesis fallback hash: ", hashReward.GetHex(), ANSI_COLOR_RESET);
         }
         else {
             debug::error(FUNCTION, "No reward address available");
             debug::log(0, ANSI_COLOR_BRIGHT_RED, "   FAILED: No reward address", ANSI_COLOR_RESET);
             return nullptr;
+        }
+
+        debug::log(0, FUNCTION, "REWARD BINDING DIAGNOSTIC");
+        debug::log(0, FUNCTION, "- miner reward string: NOT AVAILABLE on node template path");
+        debug::log(0, FUNCTION, "- decoded reward register/account hash: ", fRewardBound_snap ? hashRewardAddress_snap.GetHex() : "NOT AVAILABLE");
+        debug::log(0, FUNCTION, "- bound reward hash from cache/session: ", FullHexOrUnset(hashRewardAddress_snap));
+        debug::log(0, FUNCTION, "- bound reward source: ", strRewardSource);
+        debug::log(0, FUNCTION, "- session genesis used for ChaCha20 KDF: ", FullHexOrUnset(hashGenesis_snap));
+        debug::log(0, FUNCTION, "- session recovery state available: ", YesNo(optRecovery.has_value()));
+        debug::log(0, FUNCTION, "- recovered session genesis: ",
+                   optRecovery.has_value() ? FullHexOrUnset(optRecovery->hashGenesis) : "NOT AVAILABLE");
+        debug::log(0, FUNCTION, "- recovered session genesis matches current context: ", YesNo(fRecoveryGenesisMatches));
+        debug::log(0, FUNCTION, "- reward hash == bound reward hash: ",
+                   YesNo(!fRewardBound_snap || hashReward == hashRewardAddress_snap));
+        debug::log(0, FUNCTION, "- consistency result: ",
+                   PassFail((!optRecovery.has_value() || fRecoveryGenesisMatches) &&
+                            (!fRewardBound_snap || hashReward == hashRewardAddress_snap)));
+
+        if(optRecovery.has_value() && !fRecoveryGenesisMatches)
+        {
+            debug::warning(FUNCTION, "SESSION RECOVERY GENESIS MISMATCH during template creation: recovered_genesis=",
+                           FullHexOrUnset(optRecovery->hashGenesis),
+                           " current_context_genesis=", FullHexOrUnset(hashGenesis_snap));
         }
         
         debug::log(0, "   Block parameters:");

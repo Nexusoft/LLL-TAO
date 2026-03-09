@@ -147,8 +147,12 @@ namespace LLP
             mapAddressToKey.InsertOrUpdate(context.strAddress, context.hashKeyID);
         }
 
-        debug::log(2, FUNCTION, "Saved session for keyID=", context.hashKeyID.SubString(),
-                   " sessionId=", context.nSessionId, " address=", context.strAddress);
+        debug::log(2, FUNCTION, "SESSION RECOVERY SAVE");
+        debug::log(2, FUNCTION, "  falcon_key_id=", context.hashKeyID.GetHex());
+        debug::log(2, FUNCTION, "  session_id=", context.nSessionId);
+        debug::log(2, FUNCTION, "  session_genesis=", context.GenesisHex());
+        debug::log(2, FUNCTION, "  session_address=", context.strAddress);
+        debug::log(2, FUNCTION, "  reward_binding_persisted_in_recovery_cache=NO (reward hash remains in live session context only)");
 
         return true;
     }
@@ -168,7 +172,7 @@ namespace LLP
         data.fFreshAuth = true;
         mapSessionsByKey.Update(hashKeyID, data);
 
-        debug::log(2, FUNCTION, "Marked session as fresh auth for keyID=", hashKeyID.SubString());
+        debug::log(2, FUNCTION, "Marked session as fresh auth for keyID=", hashKeyID.GetHex());
         return true;
     }
 
@@ -210,8 +214,13 @@ namespace LLP
         /* Restore context */
         context = data.ToContext();
 
-        debug::log(0, FUNCTION, "Recovered session for keyID=", hashKeyID.SubString(),
-                   " sessionId=", context.nSessionId, " reconnect #", data.nReconnectCount);
+        debug::log(0, FUNCTION, "SESSION RECOVERY RESTORE");
+        debug::log(0, FUNCTION, "  falcon_key_id=", hashKeyID.GetHex());
+        debug::log(0, FUNCTION, "  restored_session_id=", context.nSessionId);
+        debug::log(0, FUNCTION, "  restored_session_genesis=", context.GenesisHex());
+        debug::log(0, FUNCTION, "  reconnect_count=", data.nReconnectCount);
+        debug::log(0, FUNCTION, "  fresh_auth_flag=", (data.fFreshAuth ? "YES" : "NO"));
+        debug::log(0, FUNCTION, "  reward_binding_restored_from_recovery_cache=NO (reward hash is not persisted here)");
 
         return true;
     }

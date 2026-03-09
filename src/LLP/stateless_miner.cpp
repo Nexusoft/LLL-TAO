@@ -51,6 +51,33 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    namespace
+    {
+        std::string FullHexOrUnset(const uint256_t& value)
+        {
+            return value != 0 ? value.GetHex() : std::string("NOT SET");
+        }
+
+        std::string KeyFingerprint(const std::vector<uint8_t>& vKey)
+        {
+            if(vKey.empty())
+                return "NOT AVAILABLE";
+
+            const size_t nPrefix = std::min<size_t>(8, vKey.size());
+            return HexStr(vKey.begin(), vKey.begin() + nPrefix);
+        }
+
+        const char* YesNo(const bool fValue)
+        {
+            return fValue ? "YES" : "NO";
+        }
+
+        const char* PassFail(const bool fValue)
+        {
+            return fValue ? "PASS" : "FAIL";
+        }
+    }
+
     /* Default session timeout in seconds for mining sessions.
      * This is the inactivity timeout - sessions expire if no keepalive
      * is received within this window. Set to 1 hour to prevent premature
@@ -400,6 +427,33 @@ namespace LLP
         debug::error(FUNCTION, "GetPayoutAddress: No valid payout address!");
         debug::error(FUNCTION, "  Neither reward address nor genesis hash is set");
         return uint256_t(0);
+    }
+
+    std::string MiningContext::RewardBindingHex() const
+    {
+        if(fRewardBound && hashRewardAddress != 0)
+            return FullHexOrUnset(hashRewardAddress);
+
+        if(hashGenesis != 0)
+            return FullHexOrUnset(hashGenesis);
+
+        return "NOT SET";
+    }
+
+    std::string MiningContext::RewardBindingSource() const
+    {
+        if(fRewardBound && hashRewardAddress != 0)
+            return "current session reward binding";
+
+        if(hashGenesis != 0)
+            return "session genesis fallback";
+
+        return "not configured";
+    }
+
+    std::string MiningContext::GenesisHex() const
+    {
+        return FullHexOrUnset(hashGenesis);
     }
 
     bool MiningContext::HasValidPayout() const
@@ -986,9 +1040,9 @@ namespace LLP
         std::vector<uint8_t> vAuthNonce = LLC::GetRand256().GetBytes();
 
         /* Log summary */
-        debug::log(0, FUNCTION, "MINER_AUTH_INIT: genesis=", hashGenesis.SubString(),
-                   " miner=", strMinerId, " pubkey=", vPubKey.size(), 
-                   fWrapped ? " (unwrapped)" : "");
+        debug::log(0, FUNCTION, "MINER_AUTH_INIT: genesis_hash=", FullHexOrUnset(hashGenesis),
+                    " miner=", strMinerId, " pubkey=", vPubKey.size(), 
+                    fWrapped ? " (unwrapped)" : "");
 
         /* Validate genesis binding if FalconAuth is available
          * Genesis validation is CRITICAL for reward routing.
@@ -1005,8 +1059,8 @@ namespace LLP
             {
                 if(boundGenesis.value() != hashGenesis)
                 {
-                    debug::log(0, FUNCTION, "MINER_AUTH_INIT: genesis mismatch! claimed=", 
-                               hashGenesis.SubString(), " bound=", boundGenesis.value().SubString());
+                    debug::log(0, FUNCTION, "MINER_AUTH_INIT: genesis mismatch! claimed_hash=", 
+                               FullHexOrUnset(hashGenesis), " bound_genesis_hash=", FullHexOrUnset(boundGenesis.value()));
                     return ProcessResult::Error(context, "Genesis mismatch with bound Falcon key");
                 }
                 debug::log(2, FUNCTION, "MINER_AUTH_INIT: genesis binding verified");
@@ -1014,7 +1068,7 @@ namespace LLP
             else
             {
                 /* No existing binding - this is a new key */
-                debug::log(0, FUNCTION, "MINER_AUTH_INIT: new key, genesis=", hashGenesis.SubString());
+                debug::log(0, FUNCTION, "MINER_AUTH_INIT: new key, genesis_hash=", FullHexOrUnset(hashGenesis));
             }
         }
 
@@ -1198,8 +1252,8 @@ namespace LLP
                 hashGenesis = boundGenesis.value();
         }
 
-        debug::log(0, FUNCTION, "MINER_AUTH success: keyID=", hashKeyID.SubString(),
-                   " genesis=", hashGenesis.SubString(), " sessionId=", nSessionId);
+        debug::log(0, FUNCTION, "MINER_AUTH success: falcon_key_id=", FullHexOrUnset(hashKeyID),
+                   " session_genesis=", FullHexOrUnset(hashGenesis), " sessionId=", nSessionId);
 
         /* Authentication succeeded - now resolve reward routing */
         uint256_t hashGenesisFinal = hashGenesis;
@@ -1256,10 +1310,10 @@ namespace LLP
         debug::log(0, FUNCTION, "╔═══════════════════════════════════════════════════════════╗");
         debug::log(0, FUNCTION, "║         MINER AUTHENTICATION SUCCESSFUL                   ║");
         debug::log(0, FUNCTION, "╠═══════════════════════════════════════════════════════════╣");
-        debug::log(0, FUNCTION, "║ Key ID:       ", hashKeyID.SubString());
+        debug::log(0, FUNCTION, "║ Falcon Key ID:", FullHexOrUnset(hashKeyID));
         debug::log(0, FUNCTION, "║ Session ID:   ", nSessionId);
         debug::log(0, FUNCTION, "║ Falcon Ver:   ", (detectedVersion == LLC::FalconVersion::FALCON_512 ? "Falcon-512" : "Falcon-1024"));
-        debug::log(0, FUNCTION, "║ Genesis:      ", hashGenesisFinal.SubString(), " (ChaCha20)");
+        debug::log(0, FUNCTION, "║ Genesis Hash: ", FullHexOrUnset(hashGenesisFinal), " (ChaCha20)");
         debug::log(0, FUNCTION, "║ ChaCha20:     Ready for encryption");
         debug::log(0, FUNCTION, "║ Reward Addr:  (awaiting MINER_SET_REWARD)");
         debug::log(0, FUNCTION, "║ From:         ", context.strAddress);
@@ -1381,18 +1435,21 @@ namespace LLP
         debug::log(0, FUNCTION, "╠═══════════════════════════════════════════════════════════╣");
         debug::log(0, FUNCTION, "║ Session ID:    ", context.nSessionId);
         debug::log(0, FUNCTION, "║ Timeout:       ", nRequestedTimeout, " seconds");
-        debug::log(0, FUNCTION, "║ Genesis:       ", context.hashGenesis != 0 ? context.hashGenesis.SubString() : "NOT SET");
+        debug::log(0, FUNCTION, "║ Genesis Hash:  ", context.GenesisHex());
         debug::log(0, FUNCTION, "║ Miner:         ", context.strAddress);
         debug::log(0, FUNCTION, "╚═══════════════════════════════════════════════════════════╝");
 
         /* Log reward routing status */
         if(context.fRewardBound && context.hashRewardAddress != 0)
         {
-            debug::log(0, FUNCTION, "REWARDS → Bound Address: ", context.hashRewardAddress.ToString().substr(0, 16), "...");
+            debug::log(0, FUNCTION, "REWARDS → Bound reward hash (full): ", context.hashRewardAddress.GetHex());
+            debug::log(0, FUNCTION, "REWARDS → Reward source: ", context.RewardBindingSource());
         }
         else if(context.hashGenesis != 0)
         {
-            debug::log(0, FUNCTION, "REWARDS → Genesis authenticated (waiting for MINER_SET_REWARD)");
+            debug::log(0, FUNCTION, "REWARDS → Session genesis fallback hash: ", context.GenesisHex());
+            debug::log(0, FUNCTION, "REWARDS → Reward source: ", context.RewardBindingSource(),
+                       " (waiting for MINER_SET_REWARD)");
         }
         else
         {
@@ -1839,12 +1896,28 @@ namespace LLP
 
         /* Derive ChaCha20 session key from genesis */
         std::vector<uint8_t> vChaChaKey = LLC::MiningSessionKeys::DeriveChaCha20Key(context.hashGenesis);
+        const auto optRecoveredSession = SessionRecoveryManager::Get().RecoverSessionByAddress(context.strAddress);
+        const bool fRecoveredSessionState = optRecoveredSession.has_value();
+        const bool fRecoveryGenesisMatches = fRecoveredSessionState &&
+            optRecoveredSession->hashGenesis == context.hashGenesis;
 
         /* Decrypt the payload */
         std::vector<uint8_t> vDecrypted;
         if(!DecryptRewardPayload(packet.DATA, vChaChaKey, vDecrypted))
         {
             debug::error(FUNCTION, "Failed to decrypt reward address payload");
+            debug::log(0, FUNCTION, "REWARD BINDING DIAGNOSTIC");
+            debug::log(0, FUNCTION, "- miner reward string: NOT AVAILABLE (packet carries encrypted 32-byte hash only)");
+            debug::log(0, FUNCTION, "- decoded reward register/account hash: NOT AVAILABLE (decryption failed)");
+            debug::log(0, FUNCTION, "- bound reward hash from current session: ", FullHexOrUnset(context.hashRewardAddress));
+            debug::log(0, FUNCTION, "- bound reward source: ", context.RewardBindingSource());
+            debug::log(0, FUNCTION, "- session genesis used for ChaCha20 KDF: ", context.GenesisHex());
+            debug::log(0, FUNCTION, "- derived ChaCha20 key fingerprint: ", KeyFingerprint(vChaChaKey));
+            debug::log(0, FUNCTION, "- session recovery state available: ", YesNo(fRecoveredSessionState));
+            debug::log(0, FUNCTION, "- recovered session genesis: ",
+                       fRecoveredSessionState ? FullHexOrUnset(optRecoveredSession->hashGenesis) : "NOT AVAILABLE");
+            debug::log(0, FUNCTION, "- recovered session genesis matches live context: ", YesNo(fRecoveryGenesisMatches));
+            debug::log(0, FUNCTION, "- consistency result: FAIL");
             
             /* Build encrypted error response */
             std::vector<uint8_t> vErrorMsg = {0x00};  // Failure status
@@ -1881,7 +1954,41 @@ namespace LLP
         uint256_t hashReward;
         std::memcpy(hashReward.begin(), vDecrypted.data(), 32);
 
-        debug::log(0, FUNCTION, "Received reward address: ", hashReward.ToString());
+        debug::log(0, FUNCTION, "Received decoded reward register/account hash: ", hashReward.GetHex());
+
+        const bool fExistingRewardMatches = !context.fRewardBound ||
+            context.hashRewardAddress == 0 ||
+            context.hashRewardAddress == hashReward;
+        const bool fRewardEqualsGenesis = (context.hashGenesis != 0 && hashReward == context.hashGenesis);
+
+        debug::log(0, FUNCTION, "REWARD BINDING DIAGNOSTIC");
+        debug::log(0, FUNCTION, "- miner reward string: NOT AVAILABLE (packet carries encrypted 32-byte hash only)");
+        debug::log(0, FUNCTION, "- decoded reward register/account hash: ", hashReward.GetHex());
+        debug::log(0, FUNCTION, "- bound reward hash from current session: ", FullHexOrUnset(context.hashRewardAddress));
+        debug::log(0, FUNCTION, "- bound reward source: ", context.RewardBindingSource());
+        debug::log(0, FUNCTION, "- session genesis used for ChaCha20 KDF: ", context.GenesisHex());
+        debug::log(0, FUNCTION, "- derived ChaCha20 key fingerprint: ", KeyFingerprint(vChaChaKey));
+        debug::log(0, FUNCTION, "- session recovery state available: ", YesNo(fRecoveredSessionState));
+        debug::log(0, FUNCTION, "- recovered session genesis: ",
+                   fRecoveredSessionState ? FullHexOrUnset(optRecoveredSession->hashGenesis) : "NOT AVAILABLE");
+        debug::log(0, FUNCTION, "- recovered session genesis matches live context: ", YesNo(fRecoveryGenesisMatches));
+        debug::log(0, FUNCTION, "- reward hash == bound reward hash: ", YesNo(fExistingRewardMatches));
+        debug::log(0, FUNCTION, "- decoded reward hash == session genesis: ", YesNo(fRewardEqualsGenesis));
+        debug::log(0, FUNCTION, "- source of decoded reward hash: MINER_SET_REWARD decrypted payload");
+
+        if(!fExistingRewardMatches)
+        {
+            debug::warning(FUNCTION, "REWARD BINDING MISMATCH: existing bound reward hash=",
+                           FullHexOrUnset(context.hashRewardAddress),
+                           " differs from decoded reward hash=", hashReward.GetHex());
+        }
+
+        if(fRecoveredSessionState && !fRecoveryGenesisMatches)
+        {
+            debug::warning(FUNCTION, "SESSION RECOVERY GENESIS MISMATCH: recovered session genesis=",
+                           FullHexOrUnset(optRecoveredSession->hashGenesis),
+                           " differs from live session genesis=", context.GenesisHex());
+        }
 
         /* Validate the reward address */
         if(!ValidateRewardAddress(hashReward))
@@ -1917,11 +2024,16 @@ namespace LLP
         }
 
         /* Log successful binding */
-        debug::log(0, FUNCTION, "✓ Reward address bound: ", hashReward.ToString());
+        debug::log(0, FUNCTION, "✓ Reward binding stored: decoded reward register/account hash=", hashReward.GetHex());
         debug::log(1, FUNCTION, "Session updated:");
-        debug::log(1, FUNCTION, "  Auth genesis: ", context.hashGenesis.SubString());
-        debug::log(1, FUNCTION, "  Reward address: ", hashReward.ToString());
-        debug::log(2, FUNCTION, "  ChaCha20: ready");
+        debug::log(1, FUNCTION, "  Session genesis: ", context.GenesisHex());
+        debug::log(1, FUNCTION, "  Bound reward hash: ", hashReward.GetHex());
+        debug::log(1, FUNCTION, "  Bound reward source: MINER_SET_REWARD decrypted payload");
+        debug::log(1, FUNCTION, "  Reward hash == prior bound reward hash: ", YesNo(fExistingRewardMatches));
+        debug::log(1, FUNCTION, "  Session recovery state available: ", YesNo(fRecoveredSessionState));
+        debug::log(2, FUNCTION, "  ChaCha20 ready: ", YesNo(!vChaChaKey.empty()),
+                   " fingerprint=", KeyFingerprint(vChaChaKey));
+        debug::log(1, FUNCTION, "  Consistency result: ", PassFail(fExistingRewardMatches && (!fRecoveredSessionState || fRecoveryGenesisMatches)));
 
         /* Build success response (encrypted) */
         std::vector<uint8_t> vSuccessMsg = {0x01};  // Success status

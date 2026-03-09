@@ -816,8 +816,38 @@ namespace LLP
          *
          *  @return Reward address, genesis hash, or 0 for username resolution
          *
-         **/
+        **/
         uint256_t GetPayoutAddress() const;
+
+        /** RewardBindingHex
+         *
+         *  Returns the currently effective reward identity as a full 64-character
+         *  internal hex value, or "NOT SET" when no payout identity is available.
+         *
+         *  @return Full payout identity hex for diagnostics
+         *
+         **/
+        std::string RewardBindingHex() const;
+
+        /** RewardBindingSource
+         *
+         *  Returns a semantic label describing where the active reward identity
+         *  comes from for the current session.
+         *
+         *  @return Human-readable reward identity source label
+         *
+         **/
+        std::string RewardBindingSource() const;
+
+        /** GenesisHex
+         *
+         *  Returns the authenticated session genesis as a full 64-character hex
+         *  value, or "NOT SET" when no genesis has been established.
+         *
+         *  @return Full genesis hex for diagnostics
+         *
+         **/
+        std::string GenesisHex() const;
 
         /** HasValidPayout
          *
