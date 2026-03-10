@@ -554,6 +554,58 @@ TEST_CASE("SessionRecoveryManager Basic Tests", "[session_recovery]")
 
         manager.RemoveSession(testKeyId);
     }
+
+    SECTION("RecoverSessionByIdentity increments reconnect count on key-based recovery")
+    {
+        uint256_t testKeyId;
+        testKeyId.SetHex("dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd");
+
+        MiningContext ctx = MiningContext()
+            .WithChannel(1)
+            .WithSession(404040)
+            .WithKeyId(testKeyId)
+            .WithAuth(true)
+            .WithTimestamp(runtime::unifiedtimestamp());
+        ctx.strAddress = "172.16.10.10";
+
+        REQUIRE(manager.SaveSession(ctx) == true);
+
+        const auto firstRecovery = manager.RecoverSessionByIdentity(testKeyId, "172.16.10.10");
+        REQUIRE(firstRecovery.has_value());
+        REQUIRE(firstRecovery->nReconnectCount == 1);
+
+        const auto secondRecovery = manager.RecoverSessionByIdentity(testKeyId, "172.16.10.10");
+        REQUIRE(secondRecovery.has_value());
+        REQUIRE(secondRecovery->nReconnectCount == 2);
+
+        manager.RemoveSession(testKeyId);
+    }
+
+    SECTION("RecoverSessionByIdentity enforces reconnect limit")
+    {
+        uint256_t testKeyId;
+        testKeyId.SetHex("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
+
+        const uint32_t originalMaxReconnects = manager.GetMaxReconnects();
+        manager.SetMaxReconnects(2);
+
+        MiningContext ctx = MiningContext()
+            .WithChannel(1)
+            .WithSession(505050)
+            .WithKeyId(testKeyId)
+            .WithAuth(true)
+            .WithTimestamp(runtime::unifiedtimestamp());
+        ctx.strAddress = "172.16.11.11";
+
+        REQUIRE(manager.SaveSession(ctx) == true);
+
+        REQUIRE(manager.RecoverSessionByIdentity(testKeyId, "172.16.11.11").has_value());
+        REQUIRE(manager.RecoverSessionByIdentity(testKeyId, "172.16.11.11").has_value());
+        REQUIRE_FALSE(manager.RecoverSessionByIdentity(testKeyId, "172.16.11.11").has_value());
+
+        manager.SetMaxReconnects(originalMaxReconnects);
+        manager.RemoveSession(testKeyId);
+    }
 }
 
 

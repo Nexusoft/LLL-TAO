@@ -220,7 +220,8 @@ namespace LLP
          *
          *  Attempt to recover a session by canonical Falcon identity first,
          *  falling back to network address only when no key ID is available or
-         *  when the key-based lookup has no recoverable session.
+         *  when the key-based lookup has no recoverable session. Successful
+         *  recovery consumes a reconnect slot just like RecoverSession().
          *
          *  @param[in] hashKeyID Falcon key identifier
          *  @param[in] strAddress Network address hint
