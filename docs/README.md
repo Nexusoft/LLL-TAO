@@ -23,6 +23,23 @@ Welcome to the comprehensive Nexus LLL-TAO node documentation. This documentatio
 - **[Mining Notification Diagnostics](current/mining/mining-notification-diagnostics.md)** - Push notification debugging
 - **[Troubleshooting](current/troubleshooting/mining-server-issues.md)** - Fix common issues
 
+### 🏗️ Node Architecture & Refactor Roadmap
+
+- **[Node Architecture Index](current/node/index.md)** - Per-session container model overview
+- **[Session Container Architecture](current/node/session-container-architecture.md)** - Authoritative container, indexes, invariants
+- **[Recovery Merge Model](current/node/recovery-merge-model.md)** - Reconnect, identity-first recovery, merge rules
+- **[Roadmap & Upgrade Path](current/node/roadmap-upgrade-path.md)** - 15 remaining refactor items with priorities
+- **[Test Strategy](current/node/test-strategy.md)** - First-block harness, multi-miner collision, preflight tests
+- **[Upgrade-Path Diagrams (15 diagrams)](diagrams/upgrade-path/README.md)** - ASCII thick-box architecture diagrams
+
+### 🔵 RISC-V Support
+
+- **[RISC-V Node Overview](current/node/riscv/index.md)** - Build targets and portability guarantees
+- **[Endianness & Serialisation](current/node/riscv/endianness-serialization.md)** - Byte-order invariants across architectures
+- **[Atomic Operations & Locking](current/node/riscv/atomic-locking.md)** - RVWMO memory model and lock patterns
+- **[RISC-V Diagnostics & Testing](current/node/riscv/diagnostics.md)** - Self-tests and cross-compile CI guide
+- **[RISC-V Design (top-level)](riscv-design.md)** - Executive summary and design principles
+
 ### 🔐 Security & Authentication
 
 - **[Falcon Verification](current/authentication/falcon-verification.md)** - Post-quantum auth
@@ -53,8 +70,25 @@ docs/
 │   ├── architecture-boxes.md
 │   ├── flow-chart.md
 │   ├── state-machine.md
-│   └── data-pipeline.md
-│   └── push-notification-flow.md
+│   ├── data-pipeline.md
+│   ├── push-notification-flow.md
+│   └── upgrade-path/              # 15 upgrade-path refactor diagrams
+│       ├── README.md              # Diagrams index
+│       ├── 01-shared-session-binding.md
+│       ├── 02-canonical-validate-consistency.md
+│       ├── 03-stronger-state-machines.md
+│       ├── 04-live-container-vs-recovery-snapshot.md
+│       ├── 05-identity-first-recovery-keys.md
+│       ├── 06-scoped-update-guard.md
+│       ├── 07-reward-address-semantics.md
+│       ├── 08-multi-miner-collision-tests.md
+│       ├── 09-canonical-crypto-context.md
+│       ├── 10-first-mined-block-acceptance.md
+│       ├── 11-session-conflict-resolver.md
+│       ├── 12-fast-vs-full-validation.md
+│       ├── 13-per-session-event-journal.md
+│       ├── 14-packet-ingress-preflight.md
+│       └── 15-strong-semantic-id-types.md
 ├── protocol/                   # Protocol specifications
 │   └── mining-protocol.md      # Legacy vs Stateless Tritium Protocol lanes
 ├── current/                    # Active node features
@@ -62,7 +96,18 @@ docs/
 │   ├── authentication/         # Falcon verification & sessions
 │   ├── api/                    # RPC and API documentation
 │   ├── security/               # Node security features
-│   └── troubleshooting/        # Problem solving guides
+│   ├── troubleshooting/        # Problem solving guides
+│   └── node/                   # Node architecture & refactor roadmap
+│       ├── index.md             # Node section landing page
+│       ├── session-container-architecture.md
+│       ├── recovery-merge-model.md
+│       ├── roadmap-upgrade-path.md
+│       ├── test-strategy.md
+│       └── riscv/              # RISC-V deployment guide
+│           ├── index.md
+│           ├── endianness-serialization.md
+│           ├── atomic-locking.md
+│           └── diagnostics.md
 │
 ├── archive/                    # Historical documentation
 │   ├── migration-guides/       # Legacy protocol migration
