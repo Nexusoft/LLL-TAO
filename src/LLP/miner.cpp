@@ -683,7 +683,8 @@ namespace LLP
                 nLaneHealth |= SessionStatus::LANE_SECONDARY_ALIVE;   // legacy lane: we are ON it
                 nLaneHealth |= SessionStatus::LANE_AUTHENTICATED;     // session validated above
 
-                auto vAck = SessionStatus::BuildAckPayload(req.session_id, nLaneHealth, 0u, req.status_flags);
+                const uint32_t nUptime = static_cast<uint32_t>(optContext->GetSessionDuration(runtime::unifiedtimestamp()));
+                auto vAck = SessionStatus::BuildAckPayload(req.session_id, nLaneHealth, nUptime, req.status_flags);
                 respond(OpcodeUtility::Opcodes::SESSION_STATUS_ACK, vAck);
 
                 debug::log(2, FUNCTION, "SESSION_STATUS_ACK sent: lane_health=0x", std::hex, nLaneHealth, std::dec);
