@@ -254,9 +254,11 @@ namespace LLP
 
         auto optExistingSession = mapSessionsByKey.Get(context.hashKeyID);
         SessionRecoveryData data;
+        std::string strPreviousAddress;
         if(optExistingSession.has_value())
         {
             data = optExistingSession.value();
+            strPreviousAddress = data.strAddress;
             data.MergeContext(context);
         }
         else
@@ -270,6 +272,9 @@ namespace LLP
         /* Store address mapping if available */
         if(!context.strAddress.empty())
         {
+            if(!strPreviousAddress.empty() && strPreviousAddress != context.strAddress)
+                mapAddressToKey.Erase(strPreviousAddress);
+
             mapAddressToKey.InsertOrUpdate(context.strAddress, context.hashKeyID);
         }
 
@@ -326,7 +331,7 @@ namespace LLP
         if(data.IsExpired(nSessionTimeout.load()))
         {
             debug::log(2, FUNCTION, "Session expired for keyID=", hashKeyID.SubString());
-            mapSessionsByKey.Erase(hashKeyID);
+            RemoveSession(hashKeyID);
             return false;
         }
 
@@ -334,7 +339,7 @@ namespace LLP
         if(data.nReconnectCount >= nMaxReconnects.load())
         {
             debug::log(0, FUNCTION, "Session exceeded max reconnects for keyID=", hashKeyID.SubString());
-            mapSessionsByKey.Erase(hashKeyID);
+            RemoveSession(hashKeyID);
             return false;
         }
 
@@ -397,7 +402,7 @@ namespace LLP
         if(data.IsExpired(nSessionTimeout.load()))
         {
             debug::log(2, FUNCTION, "Session expired for keyID=", optKeyID.value().SubString());
-            mapSessionsByKey.Erase(optKeyID.value());
+            RemoveSession(optKeyID.value());
             return std::nullopt;
         }
 
@@ -411,13 +416,26 @@ namespace LLP
         const std::string& strAddress
     )
     {
+        auto fetchAuthoritativeRecoveryData = [this](const uint256_t& keyID, const MiningContext& context)
+            -> std::optional<SessionRecoveryData>
+        {
+            /* RecoverSession() materializes a MiningContext for the caller, but some
+             * recovery metadata (e.g. fFreshAuth and cached crypto mirrors) lives only
+             * in the authoritative container stored in mapSessionsByKey. Prefer the
+             * updated container snapshot after recovery and fall back to the restored
+             * context only if a concurrent removal raced the lookup. */
+            auto optUpdated = mapSessionsByKey.Get(keyID);
+            if(optUpdated.has_value())
+                return optUpdated.value();
+
+            return SessionRecoveryData(context);
+        };
+
         if(hashKeyID != 0)
         {
             MiningContext context;
             if(RecoverSession(hashKeyID, context))
-            {
-                return SessionRecoveryData(context);
-            }
+                return fetchAuthoritativeRecoveryData(hashKeyID, context);
 
             debug::log(3, FUNCTION, "No recoverable session for keyID=", hashKeyID.SubString(),
                        " falling back to address hint");
@@ -426,11 +444,15 @@ namespace LLP
         if(strAddress.empty())
             return std::nullopt;
 
-        MiningContext context;
-        if(!RecoverSessionByAddress(strAddress, context))
+        auto optKeyID = mapAddressToKey.Get(strAddress);
+        if(!optKeyID.has_value())
             return std::nullopt;
 
-        return SessionRecoveryData(context);
+        MiningContext context;
+        if(!RecoverSession(optKeyID.value(), context))
+            return std::nullopt;
+
+        return fetchAuthoritativeRecoveryData(optKeyID.value(), context);
     }
 
 
@@ -463,9 +485,19 @@ namespace LLP
             return false;
 
         SessionRecoveryData data = optData.value();
+        const std::string strPreviousAddress = data.strAddress;
         data.MergeContext(context);
 
         mapSessionsByKey.Update(context.hashKeyID, data);
+
+        if(!context.strAddress.empty())
+        {
+            if(!strPreviousAddress.empty() && strPreviousAddress != context.strAddress)
+                mapAddressToKey.Erase(strPreviousAddress);
+
+            mapAddressToKey.InsertOrUpdate(context.strAddress, context.hashKeyID);
+        }
+
         return true;
     }
 
