@@ -21,6 +21,8 @@ ________________________________________________________________________________
 
 #include <unit/catch2/catch.hpp>
 
+#include <cstring>
+
 using namespace LLP;
 
 TEST_CASE("NodeSessionRegistry - Basic Registration", "[llp]")
@@ -410,6 +412,58 @@ TEST_CASE("NodeSessionRegistry - Shared binding and consistency helpers", "[llp]
     REQUIRE(crypto.fEncryptionReady == true);
     REQUIRE(crypto.HasUsableKey() == true);
     REQUIRE(crypto.strKeyFingerprint == "4c4c4c4c4c4c4c4c");
+}
+
+TEST_CASE("NodeSessionRegistry - Entry binding overrides context identity fields", "[llp]")
+{
+    constexpr uint32_t nContextSessionId = 99999;
+    constexpr uint32_t nEntrySessionId = 55555;
+    const uint256_t hashKeyID = LLC::GetRand256();
+    const uint256_t hashGenesis = LLC::GetRand256();
+    const uint256_t hashReward = LLC::GetRand256();
+
+    MiningContext mismatchedContext = MiningContext()
+        .WithSession(nContextSessionId)
+        .WithKeyId(LLC::GetRand256())
+        .WithGenesis(LLC::GetRand256())
+        .WithAuth(true)
+        .WithPubKey(std::vector<uint8_t>{0xde, 0xad, 0xbe, 0xef, 0x10, 0x20, 0x30, 0x40})
+        .WithRewardAddress(hashReward)
+        .WithProtocolLane(ProtocolLane::STATELESS);
+
+    NodeSessionEntry entry(
+        nEntrySessionId,
+        hashKeyID,
+        hashGenesis,
+        true,
+        false,
+        runtime::unifiedtimestamp(),
+        mismatchedContext
+    );
+
+    const SessionBinding binding = entry.GetSessionBinding();
+
+    REQUIRE(binding.nSessionId == nEntrySessionId);
+    REQUIRE(binding.hashKeyID == hashKeyID);
+    REQUIRE(binding.hashGenesis == hashGenesis);
+    REQUIRE(binding.hashRewardAddress == hashReward);
+    REQUIRE(binding.nProtocolLane == ProtocolLane::STATELESS);
+    REQUIRE(binding.strKeyFingerprint == "deadbeef10203040");
+    REQUIRE(entry.ValidateConsistency() == SessionConsistencyResult::SessionIdMismatch);
+}
+
+TEST_CASE("NodeSessionRegistry - SessionConsistencyResultString covers enum mapping", "[llp]")
+{
+    REQUIRE(std::strcmp(SessionConsistencyResultString(SessionConsistencyResult::Ok), "Ok") == 0);
+    REQUIRE(std::strcmp(SessionConsistencyResultString(SessionConsistencyResult::MissingSessionId), "MissingSessionId") == 0);
+    REQUIRE(std::strcmp(SessionConsistencyResultString(SessionConsistencyResult::MissingGenesis), "MissingGenesis") == 0);
+    REQUIRE(std::strcmp(SessionConsistencyResultString(SessionConsistencyResult::MissingFalconKey), "MissingFalconKey") == 0);
+    REQUIRE(std::strcmp(SessionConsistencyResultString(SessionConsistencyResult::RewardBoundMissingHash), "RewardBoundMissingHash") == 0);
+    REQUIRE(std::strcmp(SessionConsistencyResultString(SessionConsistencyResult::EncryptionReadyMissingKey), "EncryptionReadyMissingKey") == 0);
+    REQUIRE(std::strcmp(SessionConsistencyResultString(SessionConsistencyResult::SessionIdMismatch), "SessionIdMismatch") == 0);
+    REQUIRE(std::strcmp(SessionConsistencyResultString(SessionConsistencyResult::GenesisMismatch), "GenesisMismatch") == 0);
+    REQUIRE(std::strcmp(SessionConsistencyResultString(SessionConsistencyResult::FalconKeyMismatch), "FalconKeyMismatch") == 0);
+    REQUIRE(std::strcmp(SessionConsistencyResultString(static_cast<SessionConsistencyResult>(255)), "Unknown") == 0);
 }
 
 TEST_CASE("NodeSessionRegistry - ValidateConsistency catches identity mismatch", "[llp]")

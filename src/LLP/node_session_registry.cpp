@@ -88,9 +88,9 @@ namespace LLP
     SessionBinding NodeSessionEntry::GetSessionBinding() const
     {
         SessionBinding binding = context.GetSessionBinding();
-        binding.nSessionId = nSessionId;
-        binding.hashGenesis = hashGenesis;
-        binding.hashKeyID = hashKeyID;
+        binding.nSessionId = nSessionId;   // Entry-level fields are authoritative; override context values for node-side comparisons.
+        binding.hashGenesis = hashGenesis; // Entry-level fields are authoritative; override context values for node-side comparisons.
+        binding.hashKeyID = hashKeyID;     // Entry-level fields are authoritative; override context values for node-side comparisons.
         return binding;
     }
 
