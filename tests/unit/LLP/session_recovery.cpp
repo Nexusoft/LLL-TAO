@@ -131,6 +131,15 @@ TEST_CASE("SessionRecoveryData Basic Tests", "[session_recovery]")
         cryptoBroken.fEncryptionReady = true;
         REQUIRE(cryptoBroken.ValidateConsistency() == SessionConsistencyResult::EncryptionReadyMissingKey);
     }
+
+    SECTION("Diagnostics key fingerprint returns stable hex prefixes")
+    {
+        REQUIRE(Diagnostics::KeyFingerprint(std::vector<uint8_t>()) == "NOT AVAILABLE");
+        REQUIRE(Diagnostics::KeyFingerprint(std::vector<uint8_t>{0x01, 0x23, 0x45}) == "012345");
+        REQUIRE(Diagnostics::KeyFingerprint(
+            std::vector<uint8_t>{0xde, 0xad, 0xbe, 0xef, 0x00, 0x11, 0x22, 0x33, 0x44}) ==
+            "deadbeef00112233");
+    }
     
     SECTION("ToContext restores MiningContext")
     {

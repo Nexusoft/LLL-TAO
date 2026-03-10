@@ -104,9 +104,9 @@ namespace LLP
                 return "GenesisMismatch";
             case SessionConsistencyResult::FalconKeyMismatch:
                 return "FalconKeyMismatch";
+            default:
+                return "Unknown";
         }
-
-        return "Unknown";
     }
 
     /** SessionBinding

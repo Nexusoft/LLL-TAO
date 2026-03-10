@@ -434,6 +434,42 @@ TEST_CASE("NodeSessionRegistry - ValidateConsistency catches identity mismatch",
     );
 
     REQUIRE(entry.ValidateConsistency() == SessionConsistencyResult::SessionIdMismatch);
+
+    MiningContext genesisMismatchContext = MiningContext()
+        .WithSession(12345)
+        .WithKeyId(hashKeyID)
+        .WithGenesis(LLC::GetRand256())
+        .WithAuth(true);
+
+    NodeSessionEntry genesisMismatchEntry(
+        12345,
+        hashKeyID,
+        hashGenesis,
+        true,
+        false,
+        runtime::unifiedtimestamp(),
+        genesisMismatchContext
+    );
+
+    REQUIRE(genesisMismatchEntry.ValidateConsistency() == SessionConsistencyResult::GenesisMismatch);
+
+    MiningContext keyMismatchContext = MiningContext()
+        .WithSession(12345)
+        .WithKeyId(LLC::GetRand256())
+        .WithGenesis(hashGenesis)
+        .WithAuth(true);
+
+    NodeSessionEntry keyMismatchEntry(
+        12345,
+        hashKeyID,
+        hashGenesis,
+        true,
+        false,
+        runtime::unifiedtimestamp(),
+        keyMismatchContext
+    );
+
+    REQUIRE(keyMismatchEntry.ValidateConsistency() == SessionConsistencyResult::FalconKeyMismatch);
 }
 
 TEST_CASE("NodeSessionRegistry - Concurrent Access", "[llp]")
