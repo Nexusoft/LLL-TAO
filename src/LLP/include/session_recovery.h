@@ -234,6 +234,21 @@ namespace LLP
             const std::string& strAddress
         );
 
+        /** RecoverSessionByIdentity
+         *
+         *  Attempt to recover a session using the live node-side context as the
+         *  conflict-resolution anchor. Falcon identity remains authoritative,
+         *  address hints are only used when they do not contradict that
+         *  identity, and live reward/crypto state wins over conflicting
+         *  recovered state while missing fields may still be restored.
+         *
+         *  @param[in] context Live node-side session snapshot
+         *
+         *  @return Optional recovery data if found and accepted
+         *
+         **/
+        std::optional<SessionRecoveryData> RecoverSessionByIdentity(const MiningContext& context);
+
         /** RemoveSession
          *
          *  Remove a session from recovery storage.
@@ -363,6 +378,14 @@ namespace LLP
     private:
         /** Private constructor for singleton **/
         SessionRecoveryManager();
+
+        /** PreviewRecoverableSession
+         *
+         *  Inspect a saved session without consuming a reconnect slot.
+         *  Expired or over-limit sessions are cleaned up eagerly.
+         *
+         **/
+        std::optional<SessionRecoveryData> PreviewRecoverableSession(const uint256_t& hashKeyID);
 
         /** Session storage by key ID **/
         util::ConcurrentHashMap<uint256_t, SessionRecoveryData> mapSessionsByKey;

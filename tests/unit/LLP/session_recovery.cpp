@@ -727,6 +727,197 @@ TEST_CASE("SessionRecoveryManager Basic Tests", "[session_recovery]")
         manager.SetMaxReconnects(originalMaxReconnects);
         manager.RemoveSession(testKeyId);
     }
+
+    SECTION("RecoverSessionByIdentity resolves same Falcon identity with recovered canonical session id")
+    {
+        uint256_t testKeyId;
+        testKeyId.SetHex("1212121212121212121212121212121212121212121212121212121212121212");
+
+        uint256_t testGenesis;
+        testGenesis.SetHex("3434343434343434343434343434343434343434343434343434343434343434");
+
+        MiningContext recovered = MiningContext()
+            .WithChannel(1)
+            .WithSession(606060)
+            .WithKeyId(testKeyId)
+            .WithGenesis(testGenesis)
+            .WithAuth(true)
+            .WithTimestamp(runtime::unifiedtimestamp());
+        recovered.strAddress = "172.16.12.12";
+
+        REQUIRE(manager.SaveSession(recovered) == true);
+
+        MiningContext live = MiningContext()
+            .WithChannel(1)
+            .WithSession(909090)
+            .WithKeyId(testKeyId)
+            .WithGenesis(testGenesis)
+            .WithAuth(true);
+        live.strAddress = "172.16.12.12";
+
+        const auto optRecovered = manager.RecoverSessionByIdentity(live);
+
+        REQUIRE(optRecovered.has_value());
+        REQUIRE(optRecovered->hashKeyID == testKeyId);
+        REQUIRE(optRecovered->hashGenesis == testGenesis);
+        REQUIRE(optRecovered->nSessionId == 606060);
+
+        manager.RemoveSession(testKeyId);
+    }
+
+    SECTION("RecoverSessionByIdentity rejects address fallback that resolves to different Falcon identity")
+    {
+        uint256_t liveKeyId;
+        liveKeyId.SetHex("1313131313131313131313131313131313131313131313131313131313131313");
+
+        uint256_t recoveredKeyId;
+        recoveredKeyId.SetHex("1414141414141414141414141414141414141414141414141414141414141414");
+
+        MiningContext recovered = MiningContext()
+            .WithChannel(2)
+            .WithSession(707070)
+            .WithKeyId(recoveredKeyId)
+            .WithGenesis(uint256_t(414141))
+            .WithAuth(true)
+            .WithTimestamp(runtime::unifiedtimestamp());
+        recovered.strAddress = "172.16.13.13";
+
+        REQUIRE(manager.SaveSession(recovered) == true);
+
+        MiningContext live = MiningContext()
+            .WithChannel(2)
+            .WithKeyId(liveKeyId)
+            .WithGenesis(uint256_t(515151))
+            .WithAuth(true);
+        live.strAddress = "172.16.13.13";
+
+        REQUIRE_FALSE(manager.RecoverSessionByIdentity(live).has_value());
+
+        manager.RemoveSession(recoveredKeyId);
+    }
+
+    SECTION("RecoverSessionByIdentity preserves live reward binding when recovered reward disagrees")
+    {
+        uint256_t testKeyId;
+        testKeyId.SetHex("1515151515151515151515151515151515151515151515151515151515151515");
+
+        uint256_t testGenesis;
+        testGenesis.SetHex("1616161616161616161616161616161616161616161616161616161616161616");
+
+        uint256_t recoveredReward;
+        recoveredReward.SetHex("1717171717171717171717171717171717171717171717171717171717171717");
+
+        uint256_t liveReward;
+        liveReward.SetHex("1818181818181818181818181818181818181818181818181818181818181818");
+
+        MiningContext recovered = MiningContext()
+            .WithChannel(1)
+            .WithSession(808080)
+            .WithKeyId(testKeyId)
+            .WithGenesis(testGenesis)
+            .WithAuth(true)
+            .WithRewardAddress(recoveredReward)
+            .WithTimestamp(runtime::unifiedtimestamp());
+        recovered.strAddress = "172.16.14.14";
+
+        REQUIRE(manager.SaveSession(recovered) == true);
+
+        MiningContext live = MiningContext()
+            .WithChannel(1)
+            .WithSession(818181)
+            .WithKeyId(testKeyId)
+            .WithGenesis(testGenesis)
+            .WithAuth(true)
+            .WithRewardAddress(liveReward);
+        live.strAddress = "172.16.14.14";
+
+        const auto optRecovered = manager.RecoverSessionByIdentity(live);
+
+        REQUIRE(optRecovered.has_value());
+        REQUIRE(optRecovered->nSessionId == 808080);
+        REQUIRE(optRecovered->fRewardBound == true);
+        REQUIRE(optRecovered->hashRewardAddress == liveReward);
+
+        manager.RemoveSession(testKeyId);
+    }
+
+    SECTION("RecoverSessionByIdentity preserves live crypto snapshot when recovered snapshot disagrees")
+    {
+        uint256_t testKeyId;
+        testKeyId.SetHex("1919191919191919191919191919191919191919191919191919191919191919");
+
+        uint256_t testGenesis;
+        testGenesis.SetHex("1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a");
+
+        MiningContext recovered = MiningContext()
+            .WithChannel(2)
+            .WithSession(828282)
+            .WithKeyId(testKeyId)
+            .WithGenesis(testGenesis)
+            .WithAuth(true)
+            .WithChaChaKey(std::vector<uint8_t>(32, 0x41))
+            .WithDisposableKey(std::vector<uint8_t>{0x01, 0x02, 0x03})
+            .WithTimestamp(runtime::unifiedtimestamp());
+        recovered.strAddress = "172.16.15.15";
+
+        REQUIRE(manager.SaveSession(recovered) == true);
+
+        MiningContext live = MiningContext()
+            .WithChannel(2)
+            .WithSession(838383)
+            .WithKeyId(testKeyId)
+            .WithGenesis(testGenesis)
+            .WithAuth(true)
+            .WithChaChaKey(std::vector<uint8_t>(32, 0x52))
+            .WithDisposableKey(std::vector<uint8_t>{0x0a, 0x0b, 0x0c});
+        live.strAddress = "172.16.15.15";
+
+        const auto optRecovered = manager.RecoverSessionByIdentity(live);
+
+        REQUIRE(optRecovered.has_value());
+        REQUIRE(optRecovered->nSessionId == 828282);
+        REQUIRE(optRecovered->fEncryptionReady == true);
+        REQUIRE(optRecovered->vChaCha20Key == std::vector<uint8_t>(32, 0x52));
+        REQUIRE(optRecovered->hashChaCha20Key == uint256_t(std::vector<uint8_t>(32, 0x52)));
+        REQUIRE(optRecovered->vDisposablePubKey == std::vector<uint8_t>({0x0a, 0x0b, 0x0c}));
+
+        manager.RemoveSession(testKeyId);
+    }
+
+    SECTION("RecoverSessionByIdentity rejects recovered snapshot when live genesis disagrees")
+    {
+        uint256_t testKeyId;
+        testKeyId.SetHex("1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b");
+
+        uint256_t recoveredGenesis;
+        recoveredGenesis.SetHex("1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c");
+
+        uint256_t liveGenesis;
+        liveGenesis.SetHex("1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d");
+
+        MiningContext recovered = MiningContext()
+            .WithChannel(1)
+            .WithSession(848484)
+            .WithKeyId(testKeyId)
+            .WithGenesis(recoveredGenesis)
+            .WithAuth(true)
+            .WithTimestamp(runtime::unifiedtimestamp());
+        recovered.strAddress = "172.16.16.16";
+
+        REQUIRE(manager.SaveSession(recovered) == true);
+
+        MiningContext live = MiningContext()
+            .WithChannel(1)
+            .WithSession(858585)
+            .WithKeyId(testKeyId)
+            .WithGenesis(liveGenesis)
+            .WithAuth(true);
+        live.strAddress = "172.16.16.16";
+
+        REQUIRE_FALSE(manager.RecoverSessionByIdentity(live).has_value());
+
+        manager.RemoveSession(testKeyId);
+    }
 }
 
 
