@@ -29,12 +29,12 @@ namespace LLP
             return data.fRewardBound && data.hashRewardAddress != 0;
         }
 
-        bool HasChaChaState(const MiningContext& context)
+        bool HasChaCha20KeyState(const MiningContext& context)
         {
             return context.fEncryptionReady && !context.vChaChaKey.empty();
         }
 
-        bool HasChaChaState(const SessionRecoveryData& data)
+        bool HasChaCha20KeyState(const SessionRecoveryData& data)
         {
             return data.fEncryptionReady && !data.vChaCha20Key.empty();
         }
@@ -92,12 +92,13 @@ namespace LLP
                 resolved.fRewardBound = true;
             }
 
-            if(HasChaChaState(liveContext))
+            if(HasChaCha20KeyState(liveContext))
             {
-                if(HasChaChaState(recovered) && liveContext.vChaChaKey != recovered.vChaCha20Key)
+                if(HasChaCha20KeyState(recovered) && liveContext.vChaChaKey != recovered.vChaCha20Key)
                 {
                     debug::warning(FUNCTION, "RECOVERY CONFLICT: live session and recovered snapshot disagree on "
-                                   "ChaCha20 state. Preserving live encryption context.");
+                                   "ChaCha20 state for keyID=", liveContext.hashKeyID.SubString(),
+                                   ". Preserving live encryption context.");
                 }
 
                 resolved.vChaCha20Key = liveContext.vChaChaKey;
@@ -110,7 +111,8 @@ namespace LLP
                 if(!recovered.vDisposablePubKey.empty() && liveContext.vDisposablePubKey != recovered.vDisposablePubKey)
                 {
                     debug::warning(FUNCTION, "RECOVERY CONFLICT: live session and recovered snapshot disagree on "
-                                   "disposable Falcon key. Preserving live key material.");
+                                   "disposable Falcon key for keyID=", liveContext.hashKeyID.SubString(),
+                                   ". Preserving live key material.");
                 }
 
                 resolved.vDisposablePubKey = liveContext.vDisposablePubKey;
@@ -529,6 +531,7 @@ namespace LLP
             if(optPreview.has_value())
             {
                 bool fAccepted = false;
+                /* Validate conflicts against the authoritative snapshot before consuming a reconnect slot. */
                 ResolveRecoveredSnapshot(liveContext, optPreview.value(), false, fAccepted);
                 if(!fAccepted)
                     return std::nullopt;
@@ -554,6 +557,7 @@ namespace LLP
             return std::nullopt;
 
         bool fAccepted = false;
+        /* Validate conflicts against the authoritative snapshot before consuming a reconnect slot. */
         ResolveRecoveredSnapshot(liveContext, optPreview.value(), true, fAccepted);
         if(!fAccepted)
             return std::nullopt;
