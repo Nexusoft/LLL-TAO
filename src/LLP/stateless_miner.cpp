@@ -406,6 +406,52 @@ namespace LLP
         return c;
     }
 
+    SessionBinding MiningContext::GetSessionBinding() const
+    {
+        SessionBinding binding;
+        binding.nSessionId = nSessionId;
+        binding.hashGenesis = hashGenesis;
+        binding.hashKeyID = hashKeyID;
+        binding.hashRewardAddress = hashRewardAddress;
+        binding.nProtocolLane = nProtocolLane;
+        binding.strKeyFingerprint = Diagnostics::KeyFingerprint(vMinerPubKey);
+        binding.fRewardBound = fRewardBound;
+        return binding;
+    }
+
+    CryptoContext MiningContext::GetCryptoContext() const
+    {
+        CryptoContext crypto;
+        crypto.vChaCha20Key = vChaChaKey;
+        crypto.strKeyFingerprint = Diagnostics::KeyFingerprint(vChaChaKey);
+        crypto.nSessionId = nSessionId;
+        crypto.hashGenesis = hashGenesis;
+        crypto.hashKeyID = hashKeyID;
+        crypto.nProtocolLane = nProtocolLane;
+        crypto.fEncryptionReady = fEncryptionReady;
+        return crypto;
+    }
+
+    SessionConsistencyResult MiningContext::ValidateConsistency() const
+    {
+        if(fAuthenticated && nSessionId == 0)
+            return SessionConsistencyResult::MissingSessionId;
+
+        if(fAuthenticated && hashGenesis == 0)
+            return SessionConsistencyResult::MissingGenesis;
+
+        if(fAuthenticated && hashKeyID == 0)
+            return SessionConsistencyResult::MissingFalconKey;
+
+        if(fRewardBound && hashRewardAddress == 0)
+            return SessionConsistencyResult::RewardBoundMissingHash;
+
+        if(fEncryptionReady && vChaChaKey.empty())
+            return SessionConsistencyResult::EncryptionReadyMissingKey;
+
+        return SessionConsistencyResult::Ok;
+    }
+
     uint256_t MiningContext::GetPayoutAddress() const
     {
         /* Priority 1: Use explicit reward address if bound via MINER_SET_REWARD */

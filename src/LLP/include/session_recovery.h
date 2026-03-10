@@ -77,6 +77,29 @@ namespace LLP
          **/
         void MergeContext(const MiningContext& context);
 
+        /** GetSessionBinding
+         *
+         *  Returns the canonical identity/binding snapshot for diagnostics and
+         *  merge-time comparisons.
+         *
+         **/
+        SessionBinding GetSessionBinding() const;
+
+        /** GetCryptoContext
+         *
+         *  Returns the canonical encrypted-session snapshot for diagnostics and
+         *  submit/decrypt comparisons.
+         *
+         **/
+        CryptoContext GetCryptoContext() const;
+
+        /** ValidateConsistency
+         *
+         *  Canonical recovery-container invariant validation.
+         *
+         **/
+        SessionConsistencyResult ValidateConsistency() const;
+
         /** ToContext
          *
          *  Restore a MiningContext from recovery data.

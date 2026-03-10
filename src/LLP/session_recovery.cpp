@@ -158,6 +158,52 @@ namespace LLP
         return context;
     }
 
+    SessionBinding MinerSessionContainer::GetSessionBinding() const
+    {
+        SessionBinding binding;
+        binding.nSessionId = nSessionId;
+        binding.hashGenesis = hashGenesis;
+        binding.hashKeyID = hashKeyID;
+        binding.hashRewardAddress = hashRewardAddress;
+        binding.nProtocolLane = nProtocolLane;
+        binding.strKeyFingerprint = Diagnostics::KeyFingerprint(vPubKey);
+        binding.fRewardBound = fRewardBound;
+        return binding;
+    }
+
+    CryptoContext MinerSessionContainer::GetCryptoContext() const
+    {
+        CryptoContext crypto;
+        crypto.vChaCha20Key = vChaCha20Key;
+        crypto.strKeyFingerprint = Diagnostics::KeyFingerprint(vChaCha20Key);
+        crypto.nSessionId = nSessionId;
+        crypto.hashGenesis = hashGenesis;
+        crypto.hashKeyID = hashKeyID;
+        crypto.nProtocolLane = nProtocolLane;
+        crypto.fEncryptionReady = fEncryptionReady;
+        return crypto;
+    }
+
+    SessionConsistencyResult MinerSessionContainer::ValidateConsistency() const
+    {
+        if(fAuthenticated && nSessionId == 0)
+            return SessionConsistencyResult::MissingSessionId;
+
+        if(fAuthenticated && hashGenesis == 0)
+            return SessionConsistencyResult::MissingGenesis;
+
+        if(fAuthenticated && hashKeyID == 0)
+            return SessionConsistencyResult::MissingFalconKey;
+
+        if(fRewardBound && hashRewardAddress == 0)
+            return SessionConsistencyResult::RewardBoundMissingHash;
+
+        if(fEncryptionReady && vChaCha20Key.empty())
+            return SessionConsistencyResult::EncryptionReadyMissingKey;
+
+        return SessionConsistencyResult::Ok;
+    }
+
 
     /** IsExpired **/
     bool MinerSessionContainer::IsExpired(uint64_t nTimeoutSec) const
@@ -238,6 +284,7 @@ namespace LLP
         debug::log(2, FUNCTION, "  chacha20_context_persisted_in_recovery_cache=",
                    (data.fEncryptionReady && !data.vChaCha20Key.empty()) ? "YES" : "NO");
         debug::log(2, FUNCTION, "  recovered_chacha20_key_hash=", Diagnostics::FullHexOrUnset(data.hashChaCha20Key));
+        debug::log(2, FUNCTION, "  session_consistency=", SessionConsistencyResultString(data.ValidateConsistency()));
 
         return true;
     }
@@ -309,6 +356,7 @@ namespace LLP
                    (data.fRewardBound && data.hashRewardAddress != 0) ? "YES" : "NO");
         debug::log(0, FUNCTION, "  restored_reward_hash=", Diagnostics::FullHexOrUnset(data.hashRewardAddress));
         debug::log(0, FUNCTION, "  restored_chacha20_key_hash=", Diagnostics::FullHexOrUnset(data.hashChaCha20Key));
+        debug::log(0, FUNCTION, "  session_consistency=", SessionConsistencyResultString(data.ValidateConsistency()));
 
         return true;
     }

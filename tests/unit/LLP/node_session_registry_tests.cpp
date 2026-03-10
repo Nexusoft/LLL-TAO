@@ -367,6 +367,111 @@ TEST_CASE("NodeSessionRegistry - Entry IsExpired", "[llp]")
     REQUIRE(entry.IsExpired(0, nNow + 1) == true);
 }
 
+TEST_CASE("NodeSessionRegistry - Shared binding and consistency helpers", "[llp]")
+{
+    uint256_t hashKeyID = LLC::GetRand256();
+    uint256_t hashGenesis = LLC::GetRand256();
+    uint256_t hashReward = LLC::GetRand256();
+
+    MiningContext context = MiningContext()
+        .WithSession(55555)
+        .WithKeyId(hashKeyID)
+        .WithGenesis(hashGenesis)
+        .WithAuth(true)
+        .WithPubKey(std::vector<uint8_t>{0xaa, 0xbb, 0xcc, 0xdd, 0x10, 0x20, 0x30, 0x40})
+        .WithRewardAddress(hashReward)
+        .WithChaChaKey(std::vector<uint8_t>(32, 0x4c))
+        .WithProtocolLane(ProtocolLane::STATELESS);
+
+    NodeSessionEntry entry(
+        55555,
+        hashKeyID,
+        hashGenesis,
+        true,
+        false,
+        runtime::unifiedtimestamp(),
+        context
+    );
+
+    const SessionBinding binding = entry.GetSessionBinding();
+    const CryptoContext crypto = entry.GetCryptoContext();
+
+    REQUIRE(binding.nSessionId == 55555);
+    REQUIRE(binding.hashKeyID == hashKeyID);
+    REQUIRE(binding.hashGenesis == hashGenesis);
+    REQUIRE(binding.hashRewardAddress == hashReward);
+    REQUIRE(binding.nProtocolLane == ProtocolLane::STATELESS);
+    REQUIRE(binding.strKeyFingerprint == "aabbccdd10203040");
+    REQUIRE(entry.ValidateConsistency() == SessionConsistencyResult::Ok);
+
+    REQUIRE(crypto.nSessionId == 55555);
+    REQUIRE(crypto.hashKeyID == hashKeyID);
+    REQUIRE(crypto.hashGenesis == hashGenesis);
+    REQUIRE(crypto.fEncryptionReady == true);
+    REQUIRE(crypto.HasUsableKey() == true);
+    REQUIRE(crypto.strKeyFingerprint == "4c4c4c4c4c4c4c4c");
+}
+
+TEST_CASE("NodeSessionRegistry - ValidateConsistency catches identity mismatch", "[llp]")
+{
+    uint256_t hashKeyID = LLC::GetRand256();
+    uint256_t hashGenesis = LLC::GetRand256();
+
+    MiningContext mismatchedContext = MiningContext()
+        .WithSession(99999)
+        .WithKeyId(hashKeyID)
+        .WithGenesis(hashGenesis)
+        .WithAuth(true);
+
+    NodeSessionEntry entry(
+        12345,
+        hashKeyID,
+        hashGenesis,
+        true,
+        false,
+        runtime::unifiedtimestamp(),
+        mismatchedContext
+    );
+
+    REQUIRE(entry.ValidateConsistency() == SessionConsistencyResult::SessionIdMismatch);
+
+    MiningContext genesisMismatchContext = MiningContext()
+        .WithSession(12345)
+        .WithKeyId(hashKeyID)
+        .WithGenesis(LLC::GetRand256())
+        .WithAuth(true);
+
+    NodeSessionEntry genesisMismatchEntry(
+        12345,
+        hashKeyID,
+        hashGenesis,
+        true,
+        false,
+        runtime::unifiedtimestamp(),
+        genesisMismatchContext
+    );
+
+    REQUIRE(genesisMismatchEntry.ValidateConsistency() == SessionConsistencyResult::GenesisMismatch);
+
+    MiningContext keyMismatchContext = MiningContext()
+        .WithSession(12345)
+        .WithKeyId(LLC::GetRand256())
+        .WithGenesis(hashGenesis)
+        .WithAuth(true);
+
+    NodeSessionEntry keyMismatchEntry(
+        12345,
+        hashKeyID,
+        hashGenesis,
+        true,
+        false,
+        runtime::unifiedtimestamp(),
+        keyMismatchContext
+    );
+
+    REQUIRE(keyMismatchEntry.ValidateConsistency() == SessionConsistencyResult::FalconKeyMismatch);
+}
+
 TEST_CASE("NodeSessionRegistry - Concurrent Access", "[llp]")
 {
     /* Clear registry for clean test */

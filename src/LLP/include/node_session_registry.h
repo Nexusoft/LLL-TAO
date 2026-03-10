@@ -127,6 +127,30 @@ namespace LLP
          **/
         NodeSessionEntry WithContext(const MiningContext& context_) const;
 
+        /** GetSessionBinding
+         *
+         *  Returns the canonical identity snapshot for node-side comparisons and
+         *  diagnostics.
+         *
+         **/
+        SessionBinding GetSessionBinding() const;
+
+        /** GetCryptoContext
+         *
+         *  Returns the canonical crypto snapshot derived from the node-side
+         *  canonical context.
+         *
+         **/
+        CryptoContext GetCryptoContext() const;
+
+        /** ValidateConsistency
+         *
+         *  Canonical node-side consistency validation, including checks that the
+         *  cached context still matches the authoritative registry identity.
+         *
+         **/
+        SessionConsistencyResult ValidateConsistency() const;
+
         /** AnyPortLive
          *
          *  Check if any port is currently connected.
