@@ -1,6 +1,7 @@
 /* Tests for SESSION_STATUS (219) and SESSION_STATUS_ACK (220) wire format */
 #include <unit/catch2/catch.hpp>
 #include <LLP/include/session_status.h>
+#include <LLP/include/stateless_miner.h>
 #include <LLP/include/opcode_utility.h>
 
 using namespace LLP;
@@ -88,6 +89,26 @@ TEST_CASE("SessionStatusAck carries authoritative node session_id separately fro
     REQUIRE(ack.Parse(v));
     REQUIRE(ack.session_id == nNodeSessionId);
     REQUIRE(ack.status_echo_flags == nMinerFlags);
+}
+
+TEST_CASE("SessionStatusAck can carry uptime derived from MiningContext", "[llp][session_status]")
+{
+    constexpr uint64_t nSessionStart = 1'000u;
+    constexpr uint64_t nNow = 1'123u;
+
+    const MiningContext context = MiningContext()
+        .WithSession(0x10203040u)
+        .WithSessionStart(nSessionStart);
+
+    const uint32_t nUptime = static_cast<uint32_t>(context.GetSessionDuration(nNow));
+    auto v = SessionStatus::BuildAckPayload(context.nSessionId,
+                                            SessionStatus::LANE_PRIMARY_ALIVE | SessionStatus::LANE_AUTHENTICATED,
+                                            nUptime,
+                                            SessionStatus::MINER_WORKERS_ACTIVE);
+
+    SessionStatus::SessionStatusAck ack;
+    REQUIRE(ack.Parse(v));
+    REQUIRE(ack.uptime_seconds == 123u);
 }
 
 TEST_CASE("SessionStatusRequest parse rejects short buffers", "[llp][session_status]")

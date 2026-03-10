@@ -2476,7 +2476,8 @@ namespace LLP
                 nLaneHealth |= SessionStatus::LANE_PRIMARY_ALIVE;  // stateless lane alive
                 nLaneHealth |= SessionStatus::LANE_AUTHENTICATED;  // session verified
 
-                auto vAck = SessionStatus::BuildAckPayload(req.session_id, nLaneHealth, 0u, req.status_flags);
+                const uint32_t nUptime = static_cast<uint32_t>(context.GetSessionDuration(runtime::unifiedtimestamp()));
+                auto vAck = SessionStatus::BuildAckPayload(req.session_id, nLaneHealth, nUptime, req.status_flags);
                 StatelessPacket ackResponse(OpcodeUtility::Stateless::SESSION_STATUS_ACK);
                 ackResponse.DATA = vAck;
                 ackResponse.LENGTH = static_cast<uint32_t>(vAck.size());
