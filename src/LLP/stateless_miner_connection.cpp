@@ -657,7 +657,10 @@ namespace LLP
                 }
 
                 /* Attempt lane-switch recovery based on address */
-                auto optExisting = SessionRecoveryManager::Get().RecoverSessionByAddress(GetAddress().ToStringIP());
+                auto optExisting = SessionRecoveryManager::Get().RecoverSessionByIdentity(
+                    context.hashKeyID,
+                    GetAddress().ToStringIP()
+                );
                 if(optExisting.has_value())
                 {
                     if(optExisting->fRewardBound && optExisting->hashRewardAddress != 0)
@@ -674,7 +677,7 @@ namespace LLP
                     }
 
                     debug::log(0, FUNCTION, "Session recovered from lane switch");
-                    debug::log(0, FUNCTION, "  session state source: SessionRecoveryManager::RecoverSessionByAddress");
+                    debug::log(0, FUNCTION, "  session state source: SessionRecoveryManager::RecoverSessionByIdentity");
                     debug::log(0, FUNCTION, "  recovered falcon key id: ", FullHexOrUnset(optExisting->hashKeyID));
                     debug::log(0, FUNCTION, "  recovered session genesis: ", FullHexOrUnset(optExisting->hashGenesis));
                     debug::log(0, FUNCTION, "  recovered reward hash: ", FullHexOrUnset(optExisting->hashRewardAddress));
@@ -1293,7 +1296,10 @@ namespace LLP
                                 
                                 if(!fDecrypted)
                                 {
-                                    const auto optRecovery = SessionRecoveryManager::Get().RecoverSessionByAddress(GetAddress().ToStringIP());
+                                    const auto optRecovery = SessionRecoveryManager::Get().RecoverSessionByIdentity(
+                                        context.hashKeyID,
+                                        GetAddress().ToStringIP()
+                                    );
                                     const bool fRecoveryGenesisMatches = optRecovery.has_value() &&
                                         optRecovery->hashGenesis == context.hashGenesis;
 
@@ -1460,7 +1466,10 @@ namespace LLP
                                 std::vector<uint8_t> decryptedData;
                                 if(!LLC::DecryptPayloadChaCha20(PACKET.DATA, context.vChaChaKey, decryptedData))
                                 {
-                                    const auto optRecovery = SessionRecoveryManager::Get().RecoverSessionByAddress(GetAddress().ToStringIP());
+                                    const auto optRecovery = SessionRecoveryManager::Get().RecoverSessionByIdentity(
+                                        context.hashKeyID,
+                                        GetAddress().ToStringIP()
+                                    );
                                     const bool fRecoveryGenesisMatches = optRecovery.has_value() &&
                                         optRecovery->hashGenesis == context.hashGenesis;
                                     debug::error(FUNCTION, "❌ ChaCha20 decryption FAILED (legacy wrapper)");
@@ -2327,7 +2336,10 @@ namespace LLP
                 }
 
                 /* Attempt lane-switch recovery based on address */
-                auto optExisting = SessionRecoveryManager::Get().RecoverSessionByAddress(GetAddress().ToStringIP());
+                auto optExisting = SessionRecoveryManager::Get().RecoverSessionByIdentity(
+                    context.hashKeyID,
+                    GetAddress().ToStringIP()
+                );
                 if(optExisting.has_value())
                 {
                     if(optExisting->fRewardBound && optExisting->hashRewardAddress != 0)
@@ -2344,7 +2356,7 @@ namespace LLP
                     }
 
                     debug::log(0, FUNCTION, "Session recovered from lane switch");
-                    debug::log(0, FUNCTION, "  session state source: SessionRecoveryManager::RecoverSessionByAddress");
+                    debug::log(0, FUNCTION, "  session state source: SessionRecoveryManager::RecoverSessionByIdentity");
                     debug::log(0, FUNCTION, "  recovered falcon key id: ", FullHexOrUnset(optExisting->hashKeyID));
                     debug::log(0, FUNCTION, "  recovered session genesis: ", FullHexOrUnset(optExisting->hashGenesis));
                     debug::log(0, FUNCTION, "  recovered reward hash: ", FullHexOrUnset(optExisting->hashRewardAddress));
@@ -2955,7 +2967,10 @@ namespace LLP
         debug::log(0, "   Determining reward identity for block rewards...");
         uint256_t hashReward = 0;
         std::string strRewardSource = "not configured";
-        const auto optRecovery = SessionRecoveryManager::Get().RecoverSessionByAddress(context.strAddress);
+        const auto optRecovery = SessionRecoveryManager::Get().RecoverSessionByIdentity(
+            context.hashKeyID,
+            context.strAddress
+        );
         const bool fRecoveryGenesisMatches = optRecovery.has_value() &&
             optRecovery->hashGenesis == hashGenesis_snap;
         

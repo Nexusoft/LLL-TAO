@@ -1948,7 +1948,10 @@ namespace LLP
 
         /* Derive ChaCha20 session key from genesis */
         std::vector<uint8_t> vChaChaKey = LLC::MiningSessionKeys::DeriveChaCha20Key(context.hashGenesis);
-        const auto optRecoveredSession = SessionRecoveryManager::Get().RecoverSessionByAddress(context.strAddress);
+        const auto optRecoveredSession = SessionRecoveryManager::Get().RecoverSessionByIdentity(
+            context.hashKeyID,
+            context.strAddress
+        );
         const bool fRecoveredSessionState = optRecoveredSession.has_value();
         const bool fRecoveryGenesisMatches = fRecoveredSessionState &&
             optRecoveredSession->hashGenesis == context.hashGenesis;

@@ -2050,7 +2050,11 @@ namespace LLP
             }
             else
             {
-                const auto optRecovery = SessionRecoveryManager::Get().RecoverSessionByAddress(GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort()));
+                const uint256_t hashSessionKeyID = !vMinerPubKey.empty() ? LLC::SK256(vMinerPubKey) : uint256_t(0);
+                const auto optRecovery = SessionRecoveryManager::Get().RecoverSessionByIdentity(
+                    hashSessionKeyID,
+                    GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort())
+                );
                 const bool fRecoveryGenesisMatches = optRecovery.has_value() &&
                     optRecovery->hashGenesis == hashGenesis;
 
