@@ -70,6 +70,11 @@ namespace LLP
             "GenesisMismatch",
             "FalconKeyMismatch"
         };
+
+        static_assert(
+            (static_cast<size_t>(SessionConsistencyResult::FalconKeyMismatch) + 1)
+                == (sizeof(SESSION_CONSISTENCY_RESULT_STRINGS) / sizeof(SESSION_CONSISTENCY_RESULT_STRINGS[0])),
+            "SessionConsistencyResult string table must stay aligned with enum ordering");
     }
 
     /* Default session timeout in seconds for mining sessions.
