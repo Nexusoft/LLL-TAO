@@ -412,6 +412,43 @@ TEST_CASE("NodeSessionRegistry - Shared binding and consistency helpers", "[llp]
     REQUIRE(crypto.strKeyFingerprint == "4c4c4c4c4c4c4c4c");
 }
 
+TEST_CASE("NodeSessionRegistry - Entry binding overrides context identity fields", "[llp]")
+{
+    const uint256_t hashKeyID = LLC::GetRand256();
+    const uint256_t hashGenesis = LLC::GetRand256();
+    const uint256_t hashReward = LLC::GetRand256();
+
+    MiningContext mismatchedContext = MiningContext()
+        .WithSession(99999)
+        .WithKeyId(LLC::GetRand256())
+        .WithGenesis(LLC::GetRand256())
+        .WithAuth(true)
+        .WithPubKey(std::vector<uint8_t>{0xde, 0xad, 0xbe, 0xef, 0x10, 0x20, 0x30, 0x40})
+        .WithRewardAddress(hashReward)
+        .WithProtocolLane(ProtocolLane::STATELESS);
+
+    NodeSessionEntry entry(
+        55555,
+        hashKeyID,
+        hashGenesis,
+        true,
+        false,
+        runtime::unifiedtimestamp(),
+        mismatchedContext
+    );
+
+    const SessionBinding binding = entry.GetSessionBinding();
+
+    REQUIRE(binding.nSessionId == 55555);
+    REQUIRE(binding.hashKeyID == hashKeyID);
+    REQUIRE(binding.hashGenesis == hashGenesis);
+    REQUIRE(binding.hashRewardAddress == hashReward);
+    REQUIRE(binding.nProtocolLane == ProtocolLane::STATELESS);
+    REQUIRE(binding.strKeyFingerprint == "deadbeef10203040");
+    REQUIRE(SessionConsistencyResultString(entry.ValidateConsistency()) == std::string("SessionIdMismatch"));
+    REQUIRE(SessionConsistencyResultString(static_cast<SessionConsistencyResult>(255)) == std::string("Unknown"));
+}
+
 TEST_CASE("NodeSessionRegistry - ValidateConsistency catches identity mismatch", "[llp]")
 {
     uint256_t hashKeyID = LLC::GetRand256();

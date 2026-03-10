@@ -57,6 +57,19 @@ namespace LLP
         using Diagnostics::KeyFingerprint;
         using Diagnostics::YesNo;
         using Diagnostics::PassFail;
+
+        static const char* const SESSION_CONSISTENCY_RESULT_STRINGS[] =
+        {
+            "Ok",
+            "MissingSessionId",
+            "MissingGenesis",
+            "MissingFalconKey",
+            "RewardBoundMissingHash",
+            "EncryptionReadyMissingKey",
+            "SessionIdMismatch",
+            "GenesisMismatch",
+            "FalconKeyMismatch"
+        };
     }
 
     /* Default session timeout in seconds for mining sessions.
@@ -70,6 +83,17 @@ namespace LLP
      * These provide domain separation between different packet types */
     static const std::vector<uint8_t> AAD_REWARD_ADDRESS{'R','E','W','A','R','D','_','A','D','D','R','E','S','S'};
     static const std::vector<uint8_t> AAD_REWARD_RESULT{'R','E','W','A','R','D','_','R','E','S','U','L','T'};
+
+    const char* SessionConsistencyResultString(const SessionConsistencyResult result)
+    {
+        const auto nIndex = static_cast<size_t>(result);
+        const auto nCount = sizeof(SESSION_CONSISTENCY_RESULT_STRINGS) / sizeof(SESSION_CONSISTENCY_RESULT_STRINGS[0]);
+
+        if(nIndex < nCount)
+            return SESSION_CONSISTENCY_RESULT_STRINGS[nIndex];
+
+        return "Unknown";
+    }
 
     /* Default constructor */
     MiningContext::MiningContext()

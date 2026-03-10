@@ -82,32 +82,7 @@ namespace LLP
         FalconKeyMismatch
     };
 
-    inline const char* SessionConsistencyResultString(const SessionConsistencyResult result)
-    {
-        switch(result)
-        {
-            case SessionConsistencyResult::Ok:
-                return "Ok";
-            case SessionConsistencyResult::MissingSessionId:
-                return "MissingSessionId";
-            case SessionConsistencyResult::MissingGenesis:
-                return "MissingGenesis";
-            case SessionConsistencyResult::MissingFalconKey:
-                return "MissingFalconKey";
-            case SessionConsistencyResult::RewardBoundMissingHash:
-                return "RewardBoundMissingHash";
-            case SessionConsistencyResult::EncryptionReadyMissingKey:
-                return "EncryptionReadyMissingKey";
-            case SessionConsistencyResult::SessionIdMismatch:
-                return "SessionIdMismatch";
-            case SessionConsistencyResult::GenesisMismatch:
-                return "GenesisMismatch";
-            case SessionConsistencyResult::FalconKeyMismatch:
-                return "FalconKeyMismatch";
-            default:
-                return "Unknown";
-        }
-    }
+    const char* SessionConsistencyResultString(const SessionConsistencyResult result);
 
     /** SessionBinding
      *
