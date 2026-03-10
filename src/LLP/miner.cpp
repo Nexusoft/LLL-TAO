@@ -2050,7 +2050,10 @@ namespace LLP
             }
             else
             {
-                const auto optRecovery = SessionRecoveryManager::Get().RecoverSessionByAddress(GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort()));
+                const auto optRecovery = SessionRecoveryManager::Get().RecoverSessionByIdentity(
+                    hashKeyID,
+                    GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort())
+                );
                 const bool fRecoveryGenesisMatches = optRecovery.has_value() &&
                     optRecovery->hashGenesis == hashGenesis;
 

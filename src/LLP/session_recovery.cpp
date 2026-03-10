@@ -405,6 +405,42 @@ namespace LLP
     }
 
 
+    /** RecoverSessionByIdentity **/
+    std::optional<SessionRecoveryData> SessionRecoveryManager::RecoverSessionByIdentity(
+        const uint256_t& hashKeyID,
+        const std::string& strAddress
+    )
+    {
+        if(hashKeyID != 0)
+        {
+            auto optData = mapSessionsByKey.Get(hashKeyID);
+            if(optData.has_value())
+            {
+                SessionRecoveryData data = optData.value();
+                if(data.IsExpired(nSessionTimeout.load()))
+                {
+                    debug::log(2, FUNCTION, "Session expired for keyID=", hashKeyID.SubString());
+                    mapSessionsByKey.Erase(hashKeyID);
+                }
+                else
+                {
+                    return data;
+                }
+            }
+            else
+            {
+                debug::log(3, FUNCTION, "No recoverable session for keyID=", hashKeyID.SubString(),
+                           " falling back to address hint");
+            }
+        }
+
+        if(strAddress.empty())
+            return std::nullopt;
+
+        return RecoverSessionByAddress(strAddress);
+    }
+
+
     /** RemoveSession **/
     bool SessionRecoveryManager::RemoveSession(const uint256_t& hashKeyID)
     {

@@ -490,6 +490,70 @@ TEST_CASE("SessionRecoveryManager Basic Tests", "[session_recovery]")
         /* Restore original */
         manager.SetMaxReconnects(originalMax);
     }
+
+    SECTION("RecoverSessionByIdentity prefers falcon key over reused address mapping")
+    {
+        uint256_t keyA;
+        keyA.SetHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+
+        uint256_t keyB;
+        keyB.SetHex("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+
+        MiningContext ctxA = MiningContext()
+            .WithChannel(1)
+            .WithSession(101010)
+            .WithKeyId(keyA)
+            .WithGenesis(uint256_t(111))
+            .WithAuth(true)
+            .WithTimestamp(runtime::unifiedtimestamp());
+        ctxA.strAddress = "172.16.1.25";
+
+        MiningContext ctxB = MiningContext()
+            .WithChannel(2)
+            .WithSession(202020)
+            .WithKeyId(keyB)
+            .WithGenesis(uint256_t(222))
+            .WithAuth(true)
+            .WithTimestamp(runtime::unifiedtimestamp());
+        ctxB.strAddress = "172.16.1.25";
+
+        REQUIRE(manager.SaveSession(ctxA) == true);
+        REQUIRE(manager.SaveSession(ctxB) == true);
+
+        const auto optRecovered = manager.RecoverSessionByIdentity(keyA, "172.16.1.25");
+
+        REQUIRE(optRecovered.has_value());
+        REQUIRE(optRecovered->hashKeyID == keyA);
+        REQUIRE(optRecovered->nSessionId == 101010);
+        REQUIRE(optRecovered->hashGenesis == uint256_t(111));
+
+        manager.RemoveSession(keyA);
+        manager.RemoveSession(keyB);
+    }
+
+    SECTION("RecoverSessionByIdentity falls back to address when key is unavailable")
+    {
+        uint256_t testKeyId;
+        testKeyId.SetHex("cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc");
+
+        MiningContext ctx = MiningContext()
+            .WithChannel(1)
+            .WithSession(303030)
+            .WithKeyId(testKeyId)
+            .WithAuth(true)
+            .WithTimestamp(runtime::unifiedtimestamp());
+        ctx.strAddress = "172.16.9.9";
+
+        REQUIRE(manager.SaveSession(ctx) == true);
+
+        const auto optRecovered = manager.RecoverSessionByIdentity(uint256_t(0), "172.16.9.9");
+
+        REQUIRE(optRecovered.has_value());
+        REQUIRE(optRecovered->hashKeyID == testKeyId);
+        REQUIRE(optRecovered->nSessionId == 303030);
+
+        manager.RemoveSession(testKeyId);
+    }
 }
 
 
