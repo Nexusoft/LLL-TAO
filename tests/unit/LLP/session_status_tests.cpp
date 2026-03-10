@@ -76,6 +76,20 @@ TEST_CASE("SessionStatusAck serializes and parses correctly", "[llp][session_sta
     REQUIRE(ack.status_echo_flags == echo);
 }
 
+TEST_CASE("SessionStatusAck carries authoritative node session_id separately from echoed miner flags", "[llp][session_status]")
+{
+    constexpr uint32_t nNodeSessionId = 0x12345678u;
+    constexpr uint32_t nMinerFlags = SessionStatus::MINER_DEGRADED | SessionStatus::MINER_HAS_TEMPLATE;
+
+    auto v = SessionStatus::BuildAckPayload(nNodeSessionId, 0u, 0u, nMinerFlags);
+    REQUIRE(v.size() == SessionStatus::ACK_PAYLOAD_SIZE);
+
+    SessionStatus::SessionStatusAck ack;
+    REQUIRE(ack.Parse(v));
+    REQUIRE(ack.session_id == nNodeSessionId);
+    REQUIRE(ack.status_echo_flags == nMinerFlags);
+}
+
 TEST_CASE("SessionStatusRequest parse rejects short buffers", "[llp][session_status]")
 {
     SessionStatus::SessionStatusRequest req;

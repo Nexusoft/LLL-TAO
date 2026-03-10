@@ -2467,7 +2467,7 @@ namespace LLP
                 {
                     debug::error(FUNCTION, "SESSION_STATUS: session_id mismatch (got=0x", std::hex,
                                  req.session_id, " expected=0x", context.nSessionId, std::dec, ")");
-                    auto vAck = SessionStatus::BuildAckPayload(req.session_id, 0u, 0u, req.status_flags);
+                    auto vAck = SessionStatus::BuildAckPayload(context.nSessionId, 0u, 0u, req.status_flags);
                     StatelessPacket mismatchResponse(OpcodeUtility::Stateless::SESSION_STATUS_ACK);
                     mismatchResponse.DATA = vAck;
                     mismatchResponse.LENGTH = static_cast<uint32_t>(vAck.size());
