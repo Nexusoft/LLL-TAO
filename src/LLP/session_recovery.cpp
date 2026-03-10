@@ -413,31 +413,24 @@ namespace LLP
     {
         if(hashKeyID != 0)
         {
-            auto optData = mapSessionsByKey.Get(hashKeyID);
-            if(optData.has_value())
+            MiningContext context;
+            if(RecoverSession(hashKeyID, context))
             {
-                SessionRecoveryData data = optData.value();
-                if(data.IsExpired(nSessionTimeout.load()))
-                {
-                    debug::log(2, FUNCTION, "Session expired for keyID=", hashKeyID.SubString());
-                    mapSessionsByKey.Erase(hashKeyID);
-                }
-                else
-                {
-                    return data;
-                }
+                return SessionRecoveryData(context);
             }
-            else
-            {
-                debug::log(3, FUNCTION, "No recoverable session for keyID=", hashKeyID.SubString(),
-                           " falling back to address hint");
-            }
+
+            debug::log(3, FUNCTION, "No recoverable session for keyID=", hashKeyID.SubString(),
+                       " falling back to address hint");
         }
 
         if(strAddress.empty())
             return std::nullopt;
 
-        return RecoverSessionByAddress(strAddress);
+        MiningContext context;
+        if(!RecoverSessionByAddress(strAddress, context))
+            return std::nullopt;
+
+        return SessionRecoveryData(context);
     }
 
 
