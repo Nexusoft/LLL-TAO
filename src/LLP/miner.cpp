@@ -2050,8 +2050,9 @@ namespace LLP
             }
             else
             {
+                const uint256_t hashSessionKeyID = !vMinerPubKey.empty() ? LLC::SK256(vMinerPubKey) : uint256_t(0);
                 const auto optRecovery = SessionRecoveryManager::Get().RecoverSessionByIdentity(
-                    hashKeyID,
+                    hashSessionKeyID,
                     GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort())
                 );
                 const bool fRecoveryGenesisMatches = optRecovery.has_value() &&
