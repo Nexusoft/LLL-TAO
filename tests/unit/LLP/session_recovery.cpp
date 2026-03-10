@@ -491,6 +491,127 @@ TEST_CASE("SessionRecoveryManager Basic Tests", "[session_recovery]")
         manager.SetMaxReconnects(originalMax);
     }
 
+    SECTION("MarkFreshAuth returns false for unknown session")
+    {
+        uint256_t missingKey;
+        missingKey.SetHex("f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1");
+
+        REQUIRE(manager.MarkFreshAuth(missingKey) == false);
+    }
+
+    SECTION("RecoverSessionByIdentity preserves fresh auth metadata on key-based recovery")
+    {
+        uint256_t testKeyId;
+        testKeyId.SetHex("abababababababababababababababababababababababababababababababab");
+
+        MiningContext ctx = MiningContext()
+            .WithChannel(1)
+            .WithSession(606060)
+            .WithKeyId(testKeyId)
+            .WithGenesis(uint256_t(606))
+            .WithAuth(true)
+            .WithTimestamp(runtime::unifiedtimestamp());
+        ctx.strAddress = "172.16.12.12";
+
+        REQUIRE(manager.SaveSession(ctx) == true);
+        REQUIRE(manager.MarkFreshAuth(testKeyId) == true);
+
+        const auto optRecovered = manager.RecoverSessionByIdentity(testKeyId, "172.16.12.12");
+
+        REQUIRE(optRecovered.has_value());
+        REQUIRE(optRecovered->hashKeyID == testKeyId);
+        REQUIRE(optRecovered->nSessionId == 606060);
+        REQUIRE(optRecovered->fFreshAuth == true);
+        REQUIRE(optRecovered->nReconnectCount == 1);
+
+        manager.RemoveSession(testKeyId);
+    }
+
+    SECTION("RecoverSessionByIdentity preserves fresh auth metadata on address fallback")
+    {
+        uint256_t testKeyId;
+        testKeyId.SetHex("acacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacac");
+
+        MiningContext ctx = MiningContext()
+            .WithChannel(2)
+            .WithSession(707070)
+            .WithKeyId(testKeyId)
+            .WithGenesis(uint256_t(707))
+            .WithAuth(true)
+            .WithTimestamp(runtime::unifiedtimestamp());
+        ctx.strAddress = "172.16.13.13";
+
+        REQUIRE(manager.SaveSession(ctx) == true);
+        REQUIRE(manager.MarkFreshAuth(testKeyId) == true);
+
+        const auto optRecovered = manager.RecoverSessionByIdentity(uint256_t(0), "172.16.13.13");
+
+        REQUIRE(optRecovered.has_value());
+        REQUIRE(optRecovered->hashKeyID == testKeyId);
+        REQUIRE(optRecovered->nSessionId == 707070);
+        REQUIRE(optRecovered->fFreshAuth == true);
+        REQUIRE(optRecovered->nReconnectCount == 1);
+
+        manager.RemoveSession(testKeyId);
+    }
+
+    SECTION("SaveSession updates address mapping when the miner address changes")
+    {
+        uint256_t testKeyId;
+        testKeyId.SetHex("adadadadadadadadadadadadadadadadadadadadadadadadadadadadadadadad");
+
+        MiningContext original = MiningContext()
+            .WithSession(808080)
+            .WithKeyId(testKeyId)
+            .WithAuth(true)
+            .WithTimestamp(runtime::unifiedtimestamp());
+        original.strAddress = "10.20.30.40";
+
+        MiningContext moved = original.WithTimestamp(runtime::unifiedtimestamp());
+        moved.strAddress = "10.20.30.41";
+
+        REQUIRE(manager.SaveSession(original) == true);
+        REQUIRE(manager.SaveSession(moved) == true);
+
+        REQUIRE_FALSE(manager.RecoverSessionByAddress("10.20.30.40").has_value());
+
+        const auto optRecovered = manager.RecoverSessionByAddress("10.20.30.41");
+        REQUIRE(optRecovered.has_value());
+        REQUIRE(optRecovered->hashKeyID == testKeyId);
+        REQUIRE(optRecovered->strAddress == "10.20.30.41");
+
+        manager.RemoveSession(testKeyId);
+    }
+
+    SECTION("UpdateSession updates address mapping when the miner address changes")
+    {
+        uint256_t testKeyId;
+        testKeyId.SetHex("aeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeae");
+
+        MiningContext original = MiningContext()
+            .WithSession(909090)
+            .WithKeyId(testKeyId)
+            .WithAuth(true)
+            .WithTimestamp(runtime::unifiedtimestamp());
+        original.strAddress = "10.20.31.40";
+
+        MiningContext moved = original.WithChannel(2).WithTimestamp(runtime::unifiedtimestamp());
+        moved.strAddress = "10.20.31.41";
+
+        REQUIRE(manager.SaveSession(original) == true);
+        REQUIRE(manager.UpdateSession(moved) == true);
+
+        REQUIRE_FALSE(manager.RecoverSessionByAddress("10.20.31.40").has_value());
+
+        const auto optRecovered = manager.RecoverSessionByAddress("10.20.31.41");
+        REQUIRE(optRecovered.has_value());
+        REQUIRE(optRecovered->hashKeyID == testKeyId);
+        REQUIRE(optRecovered->strAddress == "10.20.31.41");
+        REQUIRE(optRecovered->nChannel == 2);
+
+        manager.RemoveSession(testKeyId);
+    }
+
     SECTION("RecoverSessionByIdentity prefers falcon key over reused address mapping")
     {
         uint256_t keyA;
