@@ -91,12 +91,12 @@ namespace SessionStatus
     //=========================================================================
     struct SessionStatusAck
     {
-        uint32_t session_id{0};         // bytes [0-3]  little-endian
+        uint32_t session_id{0};         // bytes [0-3]  little-endian, authoritative node session_id
         uint32_t lane_health_flags{0};  // bytes [4-7]  big-endian: LANE_* flags
         uint32_t uptime_seconds{0};     // bytes [8-11] big-endian: node uptime
         uint32_t status_echo_flags{0};  // bytes [12-15] big-endian: echo of request flags
 
-        /** Build ACK from request + node state */
+        /** Build ACK from node session state + echoed miner status flags */
         static SessionStatusAck Build(uint32_t session_id_,
                                       uint32_t lane_health,
                                       uint32_t uptime_secs,
