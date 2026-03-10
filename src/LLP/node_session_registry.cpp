@@ -85,6 +85,51 @@ namespace LLP
         return entry;
     }
 
+    SessionBinding NodeSessionEntry::GetSessionBinding() const
+    {
+        SessionBinding binding = context.GetSessionBinding();
+        binding.nSessionId = nSessionId;
+        binding.hashGenesis = hashGenesis;
+        binding.hashKeyID = hashKeyID;
+        return binding;
+    }
+
+    CryptoContext NodeSessionEntry::GetCryptoContext() const
+    {
+        CryptoContext crypto = context.GetCryptoContext();
+        crypto.nSessionId = nSessionId;
+        crypto.hashGenesis = hashGenesis;
+        crypto.hashKeyID = hashKeyID;
+        return crypto;
+    }
+
+    SessionConsistencyResult NodeSessionEntry::ValidateConsistency() const
+    {
+        if(nSessionId == 0)
+            return SessionConsistencyResult::MissingSessionId;
+
+        if(hashGenesis == 0)
+            return SessionConsistencyResult::MissingGenesis;
+
+        if(hashKeyID == 0)
+            return SessionConsistencyResult::MissingFalconKey;
+
+        const SessionConsistencyResult contextConsistency = context.ValidateConsistency();
+        if(contextConsistency != SessionConsistencyResult::Ok)
+            return contextConsistency;
+
+        if(context.nSessionId != 0 && context.nSessionId != nSessionId)
+            return SessionConsistencyResult::SessionIdMismatch;
+
+        if(context.hashGenesis != 0 && context.hashGenesis != hashGenesis)
+            return SessionConsistencyResult::GenesisMismatch;
+
+        if(context.hashKeyID != 0 && context.hashKeyID != hashKeyID)
+            return SessionConsistencyResult::FalconKeyMismatch;
+
+        return SessionConsistencyResult::Ok;
+    }
+
     /** AnyPortLive **/
     bool NodeSessionEntry::AnyPortLive() const
     {
@@ -158,7 +203,8 @@ namespace LLP
 
             debug::log(3, FUNCTION, "Refreshed session ", nSessionId,
                        " for key ", hashKeyID.SubString(),
-                       " lane=", (lane == ProtocolLane::STATELESS ? "STATELESS" : "LEGACY"));
+                       " lane=", (lane == ProtocolLane::STATELESS ? "STATELESS" : "LEGACY"),
+                       " consistency=", SessionConsistencyResultString(entry.ValidateConsistency()));
 
             return {nSessionId, false};  // Not new
         }
@@ -181,7 +227,8 @@ namespace LLP
         debug::log(2, FUNCTION, "Registered new session ", nSessionId,
                    " for key ", hashKeyID.SubString(),
                    " lane=", (lane == ProtocolLane::STATELESS ? "STATELESS" : "LEGACY"),
-                   " genesis=", hashGenesis.SubString());
+                   " genesis=", hashGenesis.SubString(),
+                   " consistency=", SessionConsistencyResultString(entry.ValidateConsistency()));
 
         return {nSessionId, true};  // New session
     }
@@ -214,7 +261,8 @@ namespace LLP
         m_mapByKey.InsertOrUpdate(hashKeyID, entry);
 
         debug::log(3, FUNCTION, "Updated context for session ", entry.nSessionId,
-                   " key=", hashKeyID.SubString());
+                   " key=", hashKeyID.SubString(),
+                   " consistency=", SessionConsistencyResultString(entry.ValidateConsistency()));
 
         return true;
     }

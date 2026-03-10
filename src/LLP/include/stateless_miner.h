@@ -63,6 +63,96 @@ namespace LLP
         }
     }
 
+    /** SessionConsistencyResult
+     *
+     *  Canonical session/container consistency check result shared across mining
+     *  context, recovery, and node session registry code.
+     *
+     **/
+    enum class SessionConsistencyResult : uint8_t
+    {
+        Ok = 0,
+        MissingSessionId,
+        MissingGenesis,
+        MissingFalconKey,
+        RewardBoundMissingHash,
+        EncryptionReadyMissingKey,
+        SessionIdMismatch,
+        GenesisMismatch,
+        FalconKeyMismatch
+    };
+
+    inline const char* SessionConsistencyResultString(const SessionConsistencyResult result)
+    {
+        switch(result)
+        {
+            case SessionConsistencyResult::Ok:
+                return "Ok";
+            case SessionConsistencyResult::MissingSessionId:
+                return "MissingSessionId";
+            case SessionConsistencyResult::MissingGenesis:
+                return "MissingGenesis";
+            case SessionConsistencyResult::MissingFalconKey:
+                return "MissingFalconKey";
+            case SessionConsistencyResult::RewardBoundMissingHash:
+                return "RewardBoundMissingHash";
+            case SessionConsistencyResult::EncryptionReadyMissingKey:
+                return "EncryptionReadyMissingKey";
+            case SessionConsistencyResult::SessionIdMismatch:
+                return "SessionIdMismatch";
+            case SessionConsistencyResult::GenesisMismatch:
+                return "GenesisMismatch";
+            case SessionConsistencyResult::FalconKeyMismatch:
+                return "FalconKeyMismatch";
+        }
+
+        return "Unknown";
+    }
+
+    /** SessionBinding
+     *
+     *  Shared immutable-style identity snapshot for comparing/logging mining
+     *  session identity and reward binding state across components.
+     *
+     **/
+    struct SessionBinding
+    {
+        uint32_t nSessionId = 0;
+        uint256_t hashGenesis = 0;
+        uint256_t hashKeyID = 0;
+        uint256_t hashRewardAddress = 0;
+        ProtocolLane nProtocolLane = ProtocolLane::LEGACY;
+        std::string strKeyFingerprint;
+        bool fRewardBound = false;
+
+        bool HasRewardBinding() const
+        {
+            return fRewardBound && hashRewardAddress != 0;
+        }
+    };
+
+    /** CryptoContext
+     *
+     *  Canonical encrypted-session snapshot so callers do not need to manually
+     *  reassemble session ID, genesis, lane, and key material.
+     *
+     **/
+    struct CryptoContext
+    {
+        std::vector<uint8_t> vChaCha20Key;
+        std::string strKeyFingerprint;
+        uint32_t nSessionId = 0;
+        uint256_t hashGenesis = 0;
+        uint256_t hashKeyID = 0;
+        ProtocolLane nProtocolLane = ProtocolLane::LEGACY;
+        bool fEncryptionReady = false;
+
+        bool HasUsableKey() const
+        {
+            return fEncryptionReady && !vChaCha20Key.empty();
+        }
+    };
+
     /** TemplateMetadata
      * 
      *  Tracks metadata about mining templates for enhanced multi-channel staleness detection.
@@ -856,6 +946,29 @@ namespace LLP
          *
          **/
         MiningContext WithCanonicalSnap(const CanonicalChainState& snap) const;
+
+        /** GetSessionBinding
+         *
+         *  Returns the canonical session identity snapshot used for comparison
+         *  and diagnostics across miner/node session codepaths.
+         *
+         **/
+        SessionBinding GetSessionBinding() const;
+
+        /** GetCryptoContext
+         *
+         *  Returns the canonical encrypted-session snapshot used for ChaCha20
+         *  validation and diagnostics.
+         *
+         **/
+        CryptoContext GetCryptoContext() const;
+
+        /** ValidateConsistency
+         *
+         *  Canonical validation for session/auth/reward/crypto invariants.
+         *
+         **/
+        SessionConsistencyResult ValidateConsistency() const;
 
         /** GetPayoutAddress
          *

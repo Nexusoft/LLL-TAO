@@ -75,6 +75,62 @@ TEST_CASE("SessionRecoveryData Basic Tests", "[session_recovery]")
         REQUIRE(data.fEncryptionReady == true);
         REQUIRE(data.nProtocolLane == ProtocolLane::STATELESS);
     }
+
+    SECTION("Shared session binding and crypto context expose canonical recovery state")
+    {
+        uint256_t testKeyId;
+        testKeyId.SetHex("111122223333444455556666777788889999aaaabbbbccccddddeeeeffff0000");
+
+        uint256_t testGenesis;
+        testGenesis.SetHex("1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef");
+
+        uint256_t reward;
+        reward.SetHex("fedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321");
+
+        MiningContext ctx = MiningContext()
+            .WithSession(424242)
+            .WithKeyId(testKeyId)
+            .WithGenesis(testGenesis)
+            .WithAuth(true)
+            .WithPubKey(std::vector<uint8_t>{0xde, 0xad, 0xbe, 0xef, 0x01, 0x02, 0x03, 0x04})
+            .WithRewardAddress(reward)
+            .WithChaChaKey(std::vector<uint8_t>(32, 0x9a))
+            .WithProtocolLane(ProtocolLane::STATELESS);
+
+        SessionRecoveryData data(ctx);
+        const SessionBinding binding = data.GetSessionBinding();
+        const CryptoContext crypto = data.GetCryptoContext();
+
+        REQUIRE(binding.nSessionId == 424242);
+        REQUIRE(binding.hashKeyID == testKeyId);
+        REQUIRE(binding.hashGenesis == testGenesis);
+        REQUIRE(binding.hashRewardAddress == reward);
+        REQUIRE(binding.fRewardBound == true);
+        REQUIRE(binding.HasRewardBinding() == true);
+        REQUIRE(binding.nProtocolLane == ProtocolLane::STATELESS);
+        REQUIRE(binding.strKeyFingerprint == "deadbeef01020304");
+
+        REQUIRE(crypto.nSessionId == 424242);
+        REQUIRE(crypto.hashKeyID == testKeyId);
+        REQUIRE(crypto.hashGenesis == testGenesis);
+        REQUIRE(crypto.fEncryptionReady == true);
+        REQUIRE(crypto.HasUsableKey() == true);
+        REQUIRE(crypto.vChaCha20Key == std::vector<uint8_t>(32, 0x9a));
+        REQUIRE(crypto.strKeyFingerprint == "9a9a9a9a9a9a9a9a");
+
+        REQUIRE(data.ValidateConsistency() == SessionConsistencyResult::Ok);
+    }
+
+    SECTION("ValidateConsistency reports missing reward hash and crypto key invariants")
+    {
+        SessionRecoveryData rewardBroken;
+        rewardBroken.fRewardBound = true;
+        REQUIRE(rewardBroken.ValidateConsistency() == SessionConsistencyResult::RewardBoundMissingHash);
+
+        SessionRecoveryData cryptoBroken;
+        cryptoBroken.fEncryptionReady = true;
+        REQUIRE(cryptoBroken.ValidateConsistency() == SessionConsistencyResult::EncryptionReadyMissingKey);
+    }
     
     SECTION("ToContext restores MiningContext")
     {
