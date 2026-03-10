@@ -416,17 +416,26 @@ namespace LLP
         const std::string& strAddress
     )
     {
+        auto fetchAuthoritativeRecoveryData = [this](const uint256_t& keyID, const MiningContext& context)
+            -> std::optional<SessionRecoveryData>
+        {
+            /* RecoverSession() materializes a MiningContext for the caller, but some
+             * recovery metadata (e.g. fFreshAuth and cached crypto mirrors) lives only
+             * in the authoritative container stored in mapSessionsByKey. Prefer the
+             * updated container snapshot after recovery and fall back to the restored
+             * context only if a concurrent removal raced the lookup. */
+            auto optUpdated = mapSessionsByKey.Get(keyID);
+            if(optUpdated.has_value())
+                return optUpdated.value();
+
+            return SessionRecoveryData(context);
+        };
+
         if(hashKeyID != 0)
         {
             MiningContext context;
             if(RecoverSession(hashKeyID, context))
-            {
-                auto optUpdated = mapSessionsByKey.Get(hashKeyID);
-                if(optUpdated.has_value())
-                    return optUpdated.value();
-
-                return SessionRecoveryData(context);
-            }
+                return fetchAuthoritativeRecoveryData(hashKeyID, context);
 
             debug::log(3, FUNCTION, "No recoverable session for keyID=", hashKeyID.SubString(),
                        " falling back to address hint");
@@ -443,11 +452,7 @@ namespace LLP
         if(!RecoverSession(optKeyID.value(), context))
             return std::nullopt;
 
-        auto optUpdated = mapSessionsByKey.Get(optKeyID.value());
-        if(optUpdated.has_value())
-            return optUpdated.value();
-
-        return SessionRecoveryData(context);
+        return fetchAuthoritativeRecoveryData(optKeyID.value(), context);
     }
 
 

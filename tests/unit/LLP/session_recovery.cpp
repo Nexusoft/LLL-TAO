@@ -499,7 +499,7 @@ TEST_CASE("SessionRecoveryManager Basic Tests", "[session_recovery]")
         REQUIRE(manager.MarkFreshAuth(missingKey) == false);
     }
 
-    SECTION("RecoverSessionByIdentity preserves fresh auth metadata on key-based recovery")
+    SECTION("RecoverSessionByIdentity preserves fresh auth on key recovery")
     {
         uint256_t testKeyId;
         testKeyId.SetHex("abababababababababababababababababababababababababababababababab");
@@ -527,7 +527,7 @@ TEST_CASE("SessionRecoveryManager Basic Tests", "[session_recovery]")
         manager.RemoveSession(testKeyId);
     }
 
-    SECTION("RecoverSessionByIdentity preserves fresh auth metadata on address fallback")
+    SECTION("RecoverSessionByIdentity preserves fresh auth on address fallback")
     {
         uint256_t testKeyId;
         testKeyId.SetHex("acacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacac");
