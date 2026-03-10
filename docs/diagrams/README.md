@@ -65,6 +65,30 @@ Diagram templates for PR descriptions and comprehensive Mermaid architecture dia
 14. **[ai-collaboration/learning-pathways.md](ai-collaboration/learning-pathways.md)** - How to use AI to master this codebase
 15. **[ai-collaboration/cheat-sheets/common-tasks.md](ai-collaboration/cheat-sheets/common-tasks.md)** - AI prompts for frequent operations
 
+## Upgrade-Path Diagrams (Refactor Series)
+
+15 thick-box ASCII upgrade-path diagrams for the stateless mining node C++ refactor series.  Screenshot-friendly, suitable for PNG conversion.
+
+**[upgrade-path/README.md](upgrade-path/README.md)** — Index of all 15 diagrams
+
+| # | Title | File |
+|---|---|---|
+| 1 | Shared `SessionBinding` Value Object | [01](upgrade-path/01-shared-session-binding.md) |
+| 2 | Canonical `ValidateConsistency` Method | [02](upgrade-path/02-canonical-validate-consistency.md) |
+| 3 | Stronger State Machines / Enums | [03](upgrade-path/03-stronger-state-machines.md) |
+| 4 | Live Container vs Recovery Snapshot | [04](upgrade-path/04-live-container-vs-recovery-snapshot.md) |
+| 5 | Identity-First Recovery Keys | [05](upgrade-path/05-identity-first-recovery-keys.md) |
+| 6 | Scoped Update Guard / Staged Merge | [06](upgrade-path/06-scoped-update-guard.md) |
+| 7 | Reward Address Semantics | [07](upgrade-path/07-reward-address-semantics.md) |
+| 8 | Multi-Miner Collision Tests | [08](upgrade-path/08-multi-miner-collision-tests.md) |
+| 9 | Canonical `CryptoContext` Accessor | [09](upgrade-path/09-canonical-crypto-context.md) |
+| 10 | First-Mined-Block Acceptance Harness | [10](upgrade-path/10-first-mined-block-acceptance.md) |
+| 11 | `SessionConflictResolver` | [11](upgrade-path/11-session-conflict-resolver.md) |
+| 12 | Fast vs Full Validation Modes | [12](upgrade-path/12-fast-vs-full-validation.md) |
+| 13 | Per-Session Event Journal / Ring Buffer | [13](upgrade-path/13-per-session-event-journal.md) |
+| 14 | Packet-Ingress Preflight Gate | [14](upgrade-path/14-packet-ingress-preflight.md) |
+| 15 | Strong Semantic ID Wrapper Types | [15](upgrade-path/15-strong-semantic-id-types.md) |
+
 ## Why Use Diagrams?
 
 - **Character efficient:** 50-200 chars vs 500-1,000+ for code examples
