@@ -421,9 +421,10 @@ namespace LLP
     /*  Gracefully disconnect all connected miners before server teardown. */
     static void GracefulDisconnectAllMiners()
     {
-        /* Milliseconds to wait after sending NODE_SHUTDOWN before closing the socket.
-         * This gives the kernel's TCP send buffer time to flush the packet. */
-        static constexpr uint32_t MINER_SHUTDOWN_FLUSH_MS = 20;
+        /* Milliseconds to wait after sending all NODE_SHUTDOWN packets before
+         * beginning hard disconnects. One shared flush window is sufficient —
+         * per-connection sleep was causing O(N×20ms) stalls on shutdown. */
+        static constexpr uint32_t MINER_SHUTDOWN_FLUSH_MS = 30;
 
         debug::log(0, FUNCTION, "Sending graceful disconnect to all connected miners...");
 
@@ -433,26 +434,40 @@ namespace LLP
         /* Emit final Colin diagnostic report before breaking connections */
         ColinMiningAgent::Get().on_node_shutdown();
 
-        /* --- Stateless miners (port 9323) --- */
+        /* ── Phase 1: Send NODE_SHUTDOWN to all stateless miners ─────────── */
         if(STATELESS_MINER_SERVER)
         {
             auto vConns = STATELESS_MINER_SERVER->GetConnections();
+
+            /* Send NODE_SHUTDOWN (0xD0FF) reason=SHUTDOWN_GRACEFUL(1) to all
+             * connected miners before disconnecting any of them. This gives
+             * each miner the maximum time to handle the notification. */
             for(auto& pConn : vConns)
             {
                 if(!pConn || !pConn->Connected())
                     continue;
-
-                /* Send NODE_SHUTDOWN (0xD0FF) reason=SHUTDOWN_GRACEFUL(1) */
                 pConn->SendNodeShutdown(1);
+            }
 
-                /* Brief flush window before hard disconnect */
-                runtime::sleep(MINER_SHUTDOWN_FLUSH_MS);
+            /* Single shared flush window — gives the kernel TCP send buffers
+             * time to transmit the NODE_SHUTDOWN packets to all miners. */
+            runtime::sleep(MINER_SHUTDOWN_FLUSH_MS);
+
+            /* ── Phase 2: Hard-disconnect all stateless miners ───────────── */
+            for(auto& pConn : vConns)
+            {
+                if(!pConn || !pConn->Connected())
+                    continue;
                 pConn->Disconnect();
                 ++nStatelessDisconnected;
             }
+
+            /* Wake all DataThreads immediately so they detect the closed
+             * sockets without waiting for the next 100ms poll() timeout. */
+            STATELESS_MINER_SERVER->NotifyEvent();
         }
 
-        /* --- Legacy miners (port 8323) --- */
+        /* ── Legacy miners ───────────────────────────────────────────────── */
         if(MINING_SERVER)
         {
             auto vConns = MINING_SERVER->GetConnections();
@@ -460,10 +475,12 @@ namespace LLP
             {
                 if(!pConn || !pConn->Connected())
                     continue;
-
                 pConn->Disconnect();
                 ++nLegacyDisconnected;
             }
+
+            /* Wake legacy DataThreads as well. */
+            MINING_SERVER->NotifyEvent();
         }
 
         debug::log(0, FUNCTION, "Graceful disconnect complete: ",

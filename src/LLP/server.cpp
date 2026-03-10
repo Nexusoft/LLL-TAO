@@ -216,7 +216,41 @@ namespace LLP
     Server<ProtocolType>::~Server()
     {
         debug::log(1, FUNCTION, "Shutting down ", Name(), " server - waiting for threads...");
-        
+
+        /* ── Pre-close all connection sockets BEFORE joining threads ──────────
+         * Closing the socket fd causes the kernel to return POLLHUP/POLLERR on
+         * the next poll() call inside DataThread::Thread(). This means the data
+         * thread exits its connection-processing loop immediately (rather than
+         * waiting up to 100ms for the poll timeout), sees fDestruct/fShutdown,
+         * and returns — allowing DataThread::~DataThread() join to succeed fast.
+         *
+         * Without this, with N active miner connections, shutdown could take
+         * up to N × 100ms just for poll() to naturally time out per thread.
+         */
+        for(uint16_t nIndex = 0; nIndex < CONFIG.MAX_THREADS; ++nIndex)
+        {
+            if(!THREADS_DATA[nIndex])
+                continue;
+
+            const uint32_t nSize = static_cast<uint32_t>(THREADS_DATA[nIndex]->CONNECTIONS->size());
+            for(uint32_t nConn = 0; nConn < nSize; ++nConn)
+            {
+                try
+                {
+                    std::shared_ptr<ProtocolType> conn = THREADS_DATA[nIndex]->CONNECTIONS->at(nConn);
+                    if(conn && conn->Connected())
+                        conn->Disconnect();  /* closes fd, unblocks poll() */
+                }
+                catch(...) {}
+            }
+
+            /* Wake the data thread's condition so it sees fDestruct/fShutdown
+             * immediately after the socket close, without waiting for spurious
+             * wakeup or the next poll() timeout. */
+            THREADS_DATA[nIndex]->CONDITION.notify_all();
+            THREADS_DATA[nIndex]->FLUSH_CONDITION.notify_all();
+        }
+
         /* Wait for address manager. */
         debug::log(1, FUNCTION, "  Joining address manager thread...");
         if(THREAD_MANAGER.joinable())
@@ -233,23 +267,19 @@ namespace LLP
         debug::log(1, FUNCTION, "  Joining ", THREAD_LISTEN.size(), " listening threads...");
         for(auto& THREAD : THREAD_LISTEN)
         {
-            /* Wait on listening threads. */
             if(THREAD.joinable())
                 THREAD.join();
         }
         debug::log(1, FUNCTION, "  Listening threads joined");
 
-
         /* Check all registered upnp threads. */
         debug::log(1, FUNCTION, "  Joining ", THREAD_UPNP.size(), " UPNP threads...");
         for(auto& THREAD : THREAD_UPNP)
         {
-            /* Wait on listening threads. */
             if(THREAD.joinable())
                 THREAD.join();
         }
         debug::log(1, FUNCTION, "  UPNP threads joined");
-
 
         /* Delete the data threads. */
         debug::log(1, FUNCTION, "  Deleting ", CONFIG.MAX_THREADS, " data threads...");
@@ -265,7 +295,6 @@ namespace LLP
         debug::log(1, FUNCTION, "  Deleting DDOS entries...");
         for(auto it = DDOS_MAP->begin(); it != DDOS_MAP->end(); ++it)
         {
-            /* Delete each DDOS entry if they are not set to nullptr. */
             if(it->second)
                 delete it->second;
         }
@@ -279,7 +308,7 @@ namespace LLP
             pAddressManager = nullptr;
             debug::log(1, FUNCTION, "  Address manager deleted");
         }
-        
+
         debug::log(1, FUNCTION, Name(), " server shutdown complete");
     }
 

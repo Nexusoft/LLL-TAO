@@ -16,6 +16,8 @@ ________________________________________________________________________________
 #include <LLP/templates/static.h>
 #include <LLP/templates/socket.h>
 
+#include <chrono>
+
 #include <LLP/types/tritium.h>
 #include <LLP/types/time.h>
 #include <LLP/types/apinode.h>
@@ -61,24 +63,72 @@ namespace LLP
     DataThread<ProtocolType>::~DataThread()
     {
         debug::log(2, FUNCTION, "Shutting down data thread ", ID);
-        
+
         fDestruct = true;
         CONDITION.notify_all();
-
-        /* Wait for all data threads. */
-        debug::log(2, FUNCTION, "  Joining DATA_THREAD for thread ", ID);
-        if(DATA_THREAD.joinable())
-            DATA_THREAD.join();
-        debug::log(2, FUNCTION, "  DATA_THREAD joined for thread ", ID);
-
         FLUSH_CONDITION.notify_all();
 
-        /* Wait for any threads still flushing buffers. */
-        debug::log(2, FUNCTION, "  Joining FLUSH_THREAD for thread ", ID);
-        if(FLUSH_THREAD.joinable())
-            FLUSH_THREAD.join();
-        debug::log(2, FUNCTION, "  FLUSH_THREAD joined for thread ", ID);
-        
+        /* ── Timeout-guarded join ─────────────────────────────────────────────
+         * Use a timed join instead of a blocking join() to prevent infinite
+         * stall when a connected miner's socket is stuck in OS-level cleanup
+         * (TCP TIME_WAIT). poll() has a 100ms timeout per iteration, but with
+         * multiple connections and slow kernel teardown, join() can block for
+         * seconds or indefinitely.
+         *
+         * If the thread does not exit within SHUTDOWN_JOIN_TIMEOUT_MS, we
+         * detach it and let the OS clean up on process exit. The hard-exit
+         * watchdog in signals.cpp provides the final safety net.
+         */
+        constexpr uint32_t SHUTDOWN_JOIN_TIMEOUT_MS = 500;
+
+        auto join_with_timeout = [&](std::thread& t, const char* name)
+        {
+            if(!t.joinable())
+                return;
+
+            /* Move the thread handle and joined flag into shared_ptrs so the
+             * waiter thread holds shared ownership — no dangling references if
+             * join_with_timeout returns before the waiter finishes. */
+            auto sp_thread = std::make_shared<std::thread>(std::move(t));
+            auto sp_joined = std::make_shared<std::atomic<bool>>(false);
+
+            /* Spawn a waiter thread to perform the actual join. */
+            std::thread waiter([sp_thread, sp_joined]()
+            {
+                if(sp_thread->joinable())
+                    sp_thread->join();
+                sp_joined->store(true);
+            });
+
+            /* Poll until joined or deadline reached. */
+            const auto deadline = std::chrono::steady_clock::now() +
+                                  std::chrono::milliseconds(SHUTDOWN_JOIN_TIMEOUT_MS);
+
+            while(!sp_joined->load() && std::chrono::steady_clock::now() < deadline)
+                runtime::sleep(10);
+
+            if(sp_joined->load())
+            {
+                waiter.join();
+                debug::log(2, FUNCTION, "  ", name, " joined cleanly for thread ", ID);
+            }
+            else
+            {
+                /* Thread did not exit in time — detach the waiter and let it
+                 * run to completion independently. The shared_ptrs keep the
+                 * thread handle and flag alive until the waiter exits.
+                 * The hard-exit watchdog in signals.cpp will force-terminate
+                 * the process if graceful shutdown does not complete within
+                 * 8 seconds. */
+                debug::error(FUNCTION, "  ", name, " (thread ", ID, ") did not exit within ",
+                             SHUTDOWN_JOIN_TIMEOUT_MS, "ms — detaching (watchdog will force exit)");
+                waiter.detach();
+            }
+        };
+
+        join_with_timeout(DATA_THREAD,  "DATA_THREAD");
+        join_with_timeout(FLUSH_THREAD, "FLUSH_THREAD");
+
         debug::log(2, FUNCTION, "Data thread ", ID, " shutdown complete");
     }
 
