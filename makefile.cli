@@ -319,6 +319,7 @@ ifdef UNIT_TESTS
 		   build/Tests_Legacy_utxo.o \
 		   build/Tests_Legacy_mempool.o \
 		   build/Tests_LLC_aes.o \
+		   build/Tests_LLC_falcon_qtv_parity_test.o \
 		   build/Tests_LLP_base_address.o \
 		   build/Tests_LLP_falcon_endianness.o \
 		   build/Tests_LLP_falcon_1024_detection_test.o \
