@@ -43,6 +43,7 @@ Julia is documented here as a companion environment for:
 | **[Tests](tests/README.md)** | Kernel correctness, cross-language parity, and performance regression gates |
 | **[Diagrams](diagrams/README.md)** | Screenshot-friendly architecture and workflow diagrams |
 | **[Crypto Experiments](crypto/crypto-scope-and-boundaries.md)** | Boundaries for safe cryptographic prototyping |
+| **[Falcon Quantum Tunnel Vector](crypto/falcon-quantum-tunnel-vector.md)** | 4-bucket Falcon-1024 swap-vector research primitive and deterministic Julia fixtures |
 | **[References](references/official-julia-references.md)** | Official Julia material and external references |
 
 ---

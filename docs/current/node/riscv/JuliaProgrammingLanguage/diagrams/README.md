@@ -15,5 +15,6 @@
 | 6 | [06-packagecompiler-library-build-flow.txt](06-packagecompiler-library-build-flow.txt) | Library packaging flow |
 | 7 | [07-julia-testing-and-parity-gates.txt](07-julia-testing-and-parity-gates.txt) | Correctness and parity gates |
 | 8 | [08-riscv-kernel-experiment-feedback-loop.txt](08-riscv-kernel-experiment-feedback-loop.txt) | RISC-V experiment feedback loop |
+| 9 | [09-falcon-quantum-tunnel-vector.txt](09-falcon-quantum-tunnel-vector.txt) | Falcon-1024 bucket partitioning and swap-vector model |
 
 These plain-text diagrams are intended to be screenshot-friendly and easy to evolve during review.

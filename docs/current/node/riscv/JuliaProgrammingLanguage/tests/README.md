@@ -8,6 +8,7 @@
 - [Kernel Correctness Tests](kernel-correctness-tests.md)
 - [Cross-Language Parity Tests](cross-language-parity-tests.md)
 - [Performance Regression Tests](performance-regression-tests.md)
+- [Falcon QTV Deterministic Tests](falcon_qtv_tests.jl)
 
 ## Test Philosophy
 
