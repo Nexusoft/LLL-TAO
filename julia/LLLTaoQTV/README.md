@@ -22,6 +22,7 @@ the QTV key-management primitive described in PR #376. It:
 - Detects RISC-V CPU features at load time and activates optimized dispatch
   paths when the V vector extension is present
 - Generates C++ parity fixtures for cross-language round-trip validation
+- Exposes a small research-only hook surface for fixture replay and parity checks
 
 ---
 
@@ -128,6 +129,59 @@ julia --sysimage LLLTaoQTV.so --project=. -e 'using LLLTaoQTV'
 
 ---
 
+## Julia Hook Surface
+
+For local `PackageCompiler.create_library(...)` experiments, keep the exported
+ABI surface small and deterministic:
+
+- `qtv_run_fixture(case_id)` — replay a deterministic research fixture and
+  validate local QTV invariants
+- `qtv_compare_parity(case_id)` — replay the same fixture and compare it against
+  the recorded C++ parity expectations, returning an explicit mismatch status if
+  the fixture output diverges
+- `qtv_fixture_case(case_id)` — return the deterministic fixture metadata that
+  defines the hook contract
+
+The package now also defines `Base.@ccallable` exports for
+`qtv_run_fixture(::Cint)` and `qtv_compare_parity(::Cint)` so a future local
+library build can expose those entry points without routing any production node
+traffic through Julia.
+
+Status codes are explicit:
+
+- `QTV_HOOK_STATUS_OK` (`0`)
+- `QTV_HOOK_STATUS_ERROR` (`1`)
+- `QTV_HOOK_STATUS_INVALID_CASE` (`2`)
+- `QTV_HOOK_STATUS_PARITY_MISMATCH` (`3`)
+
+Supported deterministic cases:
+
+- `QTV_HOOK_CASE_BASELINE` (`0`) — baseline fixture replay with no swaps
+- `QTV_HOOK_CASE_PARITY` (`1`) — parity replay matching
+  `tests/unit/LLC/falcon_qtv_parity_test.cpp`
+
+---
+
+## C++ Hook Boundary
+
+The matching C++ boundary is intentionally isolated in:
+
+- `src/LLC/include/qtv_julia_bridge.h`
+- `src/LLC/include/qtv_engine.h`
+
+These headers define a narrow adapter + backend surface:
+
+- `QTVJuliaBridge` — function-pointer adapter for `run_fixture` and
+  `compare_parity`
+- `IQTVEngine` — swap-engine interface for fixture/parity execution
+- `CppQTVEngine`, `JuliaQTVEngine`, `NullQTVEngine` — explicit backends for
+  native, Julia-backed, and disabled research modes
+
+This keeps Julia interop out of the production mining and networking paths while
+still providing a clean swap point for tests, benchmarks, and research builds.
+
+---
+
 ## C++ Parity Fixture Workflow
 
 Generate a parity fixture from Julia and embed it in a C++ test:
@@ -143,8 +197,9 @@ fixture = make_parity_fixture(pk, seed, [2, 3, 4])   # explicit swap sequence
 print_cpp_fixture(stdout, fixture)
 ```
 
-Copy the printed constants into a new test file under `src/LLP/tests/` and use
-them to validate that the C++ QTV re-implementation produces identical results.
+Copy the printed constants into a new test file under `tests/unit/LLC/` (for
+example alongside `tests/unit/LLC/falcon_qtv_parity_test.cpp`) and use them to
+validate that the C++ QTV re-implementation produces identical results.
 
 ---
 
@@ -164,7 +219,8 @@ julia/LLLTaoQTV/
 │   ├── bucket.jl         ← FalconBucket, partition_privkey, verify_bucket_tags
 │   ├── encoding.jl       ← derive_keystream, encode_bucket, decode_working_vector
 │   ├── qtv.jl            ← QuantumTunnelVector, build_qtv, swap engine
-│   └── parity.jl         ← fixture_privkey, make_parity_fixture, print_cpp_fixture
+│   ├── parity.jl         ← fixture_privkey, make_parity_fixture, print_cpp_fixture
+│   └── hooks.jl          ← C-callable hook cases, fixture replay, parity checks
 └── test/
     ├── runtests.jl       ← @testset orchestrator
     ├── test_constants.jl
@@ -172,7 +228,8 @@ julia/LLLTaoQTV/
     ├── test_bucket.jl
     ├── test_encoding.jl
     ├── test_qtv.jl
-    └── test_parity.jl
+    ├── test_parity.jl
+    └── test_hooks.jl
 ```
 
 ---

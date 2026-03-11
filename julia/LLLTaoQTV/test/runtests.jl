@@ -8,4 +8,5 @@ using LLLTaoQTV
     include("test_encoding.jl")
     include("test_qtv.jl")
     include("test_parity.jl")
+    include("test_hooks.jl")
 end

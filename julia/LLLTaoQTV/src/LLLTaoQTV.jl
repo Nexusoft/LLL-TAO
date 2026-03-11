@@ -23,6 +23,7 @@ include("bucket.jl")
 include("encoding.jl")
 include("qtv.jl")
 include("parity.jl")
+include("hooks.jl")
 
 function __init__()
     global RISCV = detect_riscv_capabilities()
@@ -40,8 +41,11 @@ export FALCON1024_PRIVKEY_BYTES, FALCON1024_PUBKEY_BYTES, FALCON1024_SIG_BYTES,
        build_qtv, active_bucket, active_bucket_id,
        swap_active_bucket!, run_swap_rounds!, reconstruct_payload, swap_log_summary,
        encode_bucket, decode_working_vector, derive_keystream,
-       xor_bytes_riscv, aligned_allocate, dispatch_xor, dispatch_sha512_chain,
-       sha512_chain_riscv,
-       fixture_privkey, make_parity_fixture, print_cpp_fixture
+        xor_bytes_riscv, aligned_allocate, dispatch_xor, dispatch_sha512_chain,
+        sha512_chain_riscv,
+        fixture_privkey, make_parity_fixture, print_cpp_fixture,
+        QTV_HOOK_STATUS_OK, QTV_HOOK_STATUS_ERROR, QTV_HOOK_STATUS_INVALID_CASE,
+        QTV_HOOK_STATUS_PARITY_MISMATCH, QTV_HOOK_CASE_BASELINE, QTV_HOOK_CASE_PARITY,
+        qtv_fixture_case, qtv_run_fixture, qtv_compare_parity
 
 end # module LLLTaoQTV
