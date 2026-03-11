@@ -4,7 +4,9 @@ include(joinpath(@__DIR__, "..", "crypto", "falcon_quantum_tunnel_vector.jl"))
 using .FalconQuantumTunnelVector
 
 const FIXED_SEED = 0x0000000000001024
-const FIXTURE_PRIVKEY = UInt8[UInt8(mod((index * 73) + 19, 256)) for index in 0:(FALCON1024_PRIVATE_KEY_SIZE - 1)]
+const FIXTURE_MULTIPLIER = 73
+const FIXTURE_OFFSET = 19
+const FIXTURE_PRIVKEY = UInt8[UInt8(mod((index * FIXTURE_MULTIPLIER) + FIXTURE_OFFSET, 256)) for index in 0:(FALCON1024_PRIVATE_KEY_SIZE - 1)]
 
 @testset "Falcon Quantum Tunnel Vector" begin
     @testset "partitioning and round-trip" begin

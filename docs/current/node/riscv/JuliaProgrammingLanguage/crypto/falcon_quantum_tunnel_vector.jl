@@ -21,6 +21,7 @@ export BUCKET_COUNT,
 const BUCKET_COUNT = 4
 const FALCON1024_PUBLIC_KEY_SIZE = 1793
 const FALCON1024_PRIVATE_KEY_SIZE = 2305
+const DEFAULT_SEED = 0x1024
 const DOMAIN_TAG = collect(codeunits("FalconQTV"))
 
 struct FalconBucket
@@ -50,7 +51,7 @@ mutable struct QuantumTunnelVector
     rng::MersenneTwister
 end
 
-function u64le(value::Integer)
+function encode_uint64_little_endian(value::Integer)
     value >= 0 || throw(ArgumentError("value must be non-negative"))
 
     bytes = Vector{UInt8}(undef, 8)
@@ -88,12 +89,12 @@ function derive_keystream(length_bytes::Integer, seed::UInt64, epoch::Integer, b
     epoch >= 0 || throw(ArgumentError("epoch must be non-negative"))
     bucket_id > 0 || throw(ArgumentError("bucket id must be positive"))
 
-    state = sha512(vcat(DOMAIN_TAG, u64le(seed), u64le(epoch), u64le(bucket_id), collect(codeunits(tag))))
+    state = sha512(vcat(DOMAIN_TAG, encode_uint64_little_endian(seed), encode_uint64_little_endian(epoch), encode_uint64_little_endian(bucket_id), collect(codeunits(tag))))
     stream = UInt8[]
     counter = 0
 
     while length(stream) < length_bytes
-        state = sha512(vcat(state, u64le(counter)))
+        state = sha512(vcat(state, encode_uint64_little_endian(counter)))
         append!(stream, state)
         counter += 1
     end
@@ -120,7 +121,7 @@ function refresh_working_vector!(qtv::QuantumTunnelVector)
     return qtv
 end
 
-function build_qtv(privkey::AbstractVector{UInt8}; seed::Integer = 0x1024, epoch::Integer = 0)
+function build_qtv(privkey::AbstractVector{UInt8}; seed::Integer = DEFAULT_SEED, epoch::Integer = 0)
     length(privkey) == FALCON1024_PRIVATE_KEY_SIZE || throw(ArgumentError("Falcon-1024 private key payload must be 2305 bytes"))
     seed >= 0 || throw(ArgumentError("seed must be non-negative"))
     epoch >= 0 || throw(ArgumentError("epoch must be non-negative"))
