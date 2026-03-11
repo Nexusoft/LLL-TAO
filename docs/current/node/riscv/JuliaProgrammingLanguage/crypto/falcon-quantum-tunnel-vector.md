@@ -160,6 +160,12 @@ Current local baseline for the fixed 28-byte message above:
 | Julia 1.12.5 | `julia docs/current/node/riscv/JuliaProgrammingLanguage/tests/falcon_qtv_tests.jl` + a 200,000-iteration `encode_laser_tunnel` loop | ~8,357 ns / call |
 | C++17 (`-O3`, OpenSSL SHA-512) | local replay of the same fixture logic | ~3,067 ns / call |
 
+Measurement notes:
+
+- both runtimes used the same fixed 28-byte message and the same 200,000-iteration loop
+- Julia timing used `@elapsed`; the C++ timing used `std::chrono::steady_clock`
+- local hardware snapshot: `x86_64`, 4 visible cores, `AMD EPYC 7763 64-Core Processor`
+
 These timings are reference notes only. They are intentionally non-normative and should be re-measured whenever the tunnel algorithm, compiler flags, or payload size changes.
 
 ---

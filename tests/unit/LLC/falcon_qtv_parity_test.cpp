@@ -177,22 +177,23 @@ namespace
         const std::size_t base = privkey.size() / BUCKET_COUNT;
         const std::size_t remainder = privkey.size() % BUCKET_COUNT;
 
-        std::size_t start_offset = 0;
+        std::size_t slice_start = 0;
 
         for(std::size_t bucket_index = 0; bucket_index < BUCKET_COUNT; ++bucket_index)
         {
             const std::size_t bucket_length = base + (bucket_index < remainder ? 1 : 0);
-            const std::size_t stop_offset = start_offset + bucket_length;
+            const std::size_t slice_stop_exclusive = slice_start + bucket_length;
 
             Bucket bucket;
             bucket.id = static_cast<int>(bucket_index + 1);
-            bucket.start_offset = start_offset + 1;
-            bucket.stop_offset = stop_offset;
-            bucket.payload.assign(privkey.begin() + start_offset, privkey.begin() + stop_offset);
+            /* Mirror Julia's 1-based inclusive offset metadata while keeping C++ slices 0-based. */
+            bucket.start_offset = slice_start + 1;
+            bucket.stop_offset = slice_stop_exclusive;
+            bucket.payload.assign(privkey.begin() + slice_start, privkey.begin() + slice_stop_exclusive);
             bucket.tag = HexEncode(Sha512(bucket.payload));
 
             buckets.push_back(std::move(bucket));
-            start_offset = stop_offset;
+            slice_start = slice_stop_exclusive;
         }
 
         return buckets;
@@ -232,6 +233,7 @@ namespace
 TEST_CASE("Falcon QTV parity fixture matches Julia bucket partitioning", "[falcon][qtv][parity]")
 {
     const auto qtv = BuildFixtureQtv();
+    const auto privkey = BuildFixturePrivkey();
 
     REQUIRE(qtv.buckets.size() == BUCKET_COUNT);
     REQUIRE(qtv.buckets[0].start_offset == 1);
@@ -243,6 +245,19 @@ TEST_CASE("Falcon QTV parity fixture matches Julia bucket partitioning", "[falco
     REQUIRE(qtv.buckets[3].start_offset == 1730);
     REQUIRE(qtv.buckets[3].stop_offset == 2305);
     REQUIRE(qtv.permutation == FIXTURE_INITIAL_PERMUTATION);
+
+    std::size_t covered_bytes = 0;
+    for(std::size_t index = 0; index < qtv.buckets.size(); ++index)
+    {
+        const auto& bucket = qtv.buckets[index];
+        REQUIRE((bucket.stop_offset - bucket.start_offset + 1) == bucket.payload.size());
+        covered_bytes += bucket.payload.size();
+
+        if(index + 1 < qtv.buckets.size())
+            REQUIRE(bucket.stop_offset + 1 == qtv.buckets[index + 1].start_offset);
+    }
+
+    REQUIRE(covered_bytes == privkey.size());
 }
 
 TEST_CASE("Falcon QTV parity fixture reproduces Julia digest and encoded tunnel", "[falcon][qtv][parity]")

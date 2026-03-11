@@ -255,8 +255,6 @@ function swap_log_manifest(qtv::QuantumTunnelVector)
 end
 
 function deterministic_laser_fixture(privkey::AbstractVector{UInt8}, message::AbstractVector{UInt8}; seed::Integer = DEFAULT_SEED, n_swaps::Integer = 0, epoch::Integer = 0)
-    n_swaps >= 0 || throw(ArgumentError("n_swaps must be non-negative"))
-
     qtv = build_qtv(privkey; seed = seed, epoch = epoch)
     initial_permutation = copy(qtv.permutation)
 
