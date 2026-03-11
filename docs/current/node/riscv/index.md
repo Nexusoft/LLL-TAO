@@ -2,7 +2,7 @@
 
 **Section:** Node Architecture → RISC-V  
 **Version:** LLL-TAO 5.1.0+  
-**Last Updated:** 2026-03-10
+**Last Updated:** 2026-03-11
 
 ---
 
@@ -19,6 +19,7 @@ This section documents RISC-V-specific considerations for building, running, and
 | **[Endianness & Serialisation](endianness-serialization.md)** | Byte-order invariants; how packet fields are laid out |
 | **[Atomic Operations & Locking](atomic-locking.md)** | Memory model differences on RISC-V; mutex / atomic best practices |
 | **[Diagnostics & Testing Notes](diagnostics.md)** | How to verify correct operation on RISC-V hardware |
+| **[🟣 Julia Programming Language](JuliaProgrammingLanguage/README.md)** | Research lab for Julia tooling, interop, tests, diagrams, and local binaries |
 
 ---
 
@@ -110,6 +111,7 @@ See [docs/riscv-build-guide.md](../../../riscv-build-guide.md) for RISC-V-specif
 - [Endianness & Serialisation](endianness-serialization.md)
 - [Atomic Operations & Locking](atomic-locking.md)
 - [Diagnostics & Testing Notes](diagnostics.md)
+- [🟣 Julia Programming Language](JuliaProgrammingLanguage/README.md)
 - [RISC-V Design (top-level)](../../../riscv-design.md)
 - [RISC-V Build Guide](../../../riscv-build-guide.md)
 - [Node Architecture Index](../index.md)
