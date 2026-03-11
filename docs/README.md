@@ -3,7 +3,7 @@
 Welcome to the comprehensive Nexus LLL-TAO node documentation. This documentation covers all aspects of running and operating a Nexus node, with a focus on the stateless mining protocol.
 
 **Version:** LLL-TAO 5.1.0+  
-**Last Updated:** 2026-02-18
+**Last Updated:** 2026-03-11
 
 ---
 
@@ -38,6 +38,7 @@ Welcome to the comprehensive Nexus LLL-TAO node documentation. This documentatio
 - **[Endianness & Serialisation](current/node/riscv/endianness-serialization.md)** - Byte-order invariants across architectures
 - **[Atomic Operations & Locking](current/node/riscv/atomic-locking.md)** - RVWMO memory model and lock patterns
 - **[RISC-V Diagnostics & Testing](current/node/riscv/diagnostics.md)** - Self-tests and cross-compile CI guide
+- **[🟣 Julia Programming Language Lab](current/node/riscv/JuliaProgrammingLanguage/README.md)** - Research tooling, interop, tests, and local Julia binary planning
 - **[RISC-V Design (top-level)](riscv-design.md)** - Executive summary and design principles
 
 ### 🔐 Security & Authentication
@@ -107,7 +108,18 @@ docs/
 │           ├── index.md
 │           ├── endianness-serialization.md
 │           ├── atomic-locking.md
-│           └── diagnostics.md
+│           ├── diagnostics.md
+│           └── JuliaProgrammingLanguage/
+│               ├── README.md
+│               ├── roadmap/
+│               ├── glossary/
+│               ├── history/
+│               ├── cpp-sim-link/
+│               ├── local-toolchain/
+│               ├── tests/
+│               ├── diagrams/
+│               ├── crypto/
+│               └── references/
 │
 ├── archive/                    # Historical documentation
 │   ├── migration-guides/       # Legacy protocol migration
