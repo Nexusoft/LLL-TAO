@@ -11,7 +11,7 @@
 
 ## Review Gates
 
-Each optimisation idea should be tracked with:
+Each optimization idea should be tracked with:
 
 1. a Julia reference implementation,
 2. a parity fixture against C++, and

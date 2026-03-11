@@ -25,7 +25,7 @@ Julia is documented here as a companion environment for:
 
 - Julia is a **research and prototyping environment first**.
 - C++ remains the **production miner and runtime**.
-- No Julia-derived optimisation is trusted without Julia tests, C++ parity tests, and reproducible benchmark evidence.
+- No Julia-derived optimization is trusted without Julia tests, C++ parity tests, and reproducible benchmark evidence.
 - Local binary and toolchain workflows must be documented and reproducible.
 - Embedding Julia is optional and must be justified before adoption.
 
@@ -35,7 +35,7 @@ Julia is documented here as a companion environment for:
 
 | Section | Purpose |
 |---|---|
-| **[Roadmap](roadmap/README.md)** | Delivery phases, C++ research sequencing, remaining optimisation plan |
+| **[Roadmap](roadmap/README.md)** | Delivery phases, C++ research sequencing, remaining optimization plan |
 | **[Glossary](glossary/README.md)** | Shared Julia and Julia/C++ terminology |
 | **[History](history/README.md)** | Context on Julia language evolution and scientific-computing relevance |
 | **[Julia ↔ C++ SIM-LINK](cpp-sim-link/README.md)** | Interop models, embedding, calling conventions, offline kernel workflow |
