@@ -22,6 +22,7 @@ namespace QTV
     constexpr int HOOK_STATUS_OK          = 0;
     constexpr int HOOK_STATUS_UNAVAILABLE = -1;
 
+    /** Function-pointer hook taking a deterministic fixture case_id and returning a status code. **/
     using HookFunction = int (*)(int);
 
     class QTVJuliaBridge
@@ -35,7 +36,17 @@ namespace QTV
 
         bool available() const noexcept
         {
-            return run_fixture_ != nullptr || compare_parity_ != nullptr;
+            return has_run_fixture() && has_compare_parity();
+        }
+
+        bool has_run_fixture() const noexcept
+        {
+            return run_fixture_ != nullptr;
+        }
+
+        bool has_compare_parity() const noexcept
+        {
+            return compare_parity_ != nullptr;
         }
 
         int run_fixture(int case_id) const noexcept

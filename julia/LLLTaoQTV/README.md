@@ -197,8 +197,9 @@ fixture = make_parity_fixture(pk, seed, [2, 3, 4])   # explicit swap sequence
 print_cpp_fixture(stdout, fixture)
 ```
 
-Copy the printed constants into a new test file under `tests/unit/LLC/` and use
-them to validate that the C++ QTV re-implementation produces identical results.
+Copy the printed constants into a new test file under `tests/unit/LLC/` (for
+example alongside `tests/unit/LLC/falcon_qtv_parity_test.cpp`) and use them to
+validate that the C++ QTV re-implementation produces identical results.
 
 ---
 

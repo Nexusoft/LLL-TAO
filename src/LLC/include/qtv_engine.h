@@ -25,13 +25,19 @@ namespace QTV
     {
     public:
         virtual ~IQTVEngine() = default;
-        virtual bool RunFixture(int caseId) = 0;
-        virtual bool CompareParity(int caseId) = 0;
+        virtual bool Available() const noexcept = 0;
+        virtual bool RunFixture(int case_id) = 0;
+        virtual bool CompareParity(int case_id) = 0;
     };
 
     class NullQTVEngine final : public IQTVEngine
     {
     public:
+        bool Available() const noexcept override
+        {
+            return false;
+        }
+
         bool RunFixture(int) override
         {
             return false;
@@ -51,19 +57,19 @@ namespace QTV
         {
         }
 
-        bool Available() const noexcept
+        bool Available() const noexcept override
         {
             return bridge_.available();
         }
 
-        bool RunFixture(int caseId) override
+        bool RunFixture(int case_id) override
         {
-            return bridge_.run_fixture(caseId) == HOOK_STATUS_OK;
+            return bridge_.run_fixture(case_id) == HOOK_STATUS_OK;
         }
 
-        bool CompareParity(int caseId) override
+        bool CompareParity(int case_id) override
         {
-            return bridge_.compare_parity(caseId) == HOOK_STATUS_OK;
+            return bridge_.compare_parity(case_id) == HOOK_STATUS_OK;
         }
 
     private:
@@ -81,19 +87,19 @@ namespace QTV
         {
         }
 
-        bool Available() const noexcept
+        bool Available() const noexcept override
         {
-            return run_fixture_ != nullptr || compare_parity_ != nullptr;
+            return run_fixture_ != nullptr && compare_parity_ != nullptr;
         }
 
-        bool RunFixture(int caseId) override
+        bool RunFixture(int case_id) override
         {
-            return run_fixture_ != nullptr && run_fixture_(caseId);
+            return run_fixture_ != nullptr && run_fixture_(case_id);
         }
 
-        bool CompareParity(int caseId) override
+        bool CompareParity(int case_id) override
         {
-            return compare_parity_ != nullptr && compare_parity_(caseId);
+            return compare_parity_ != nullptr && compare_parity_(case_id);
         }
 
     private:

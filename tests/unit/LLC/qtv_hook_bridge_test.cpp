@@ -17,14 +17,14 @@ ________________________________________________________________________________
 
 namespace
 {
-    int SuccessStatus(const int caseId)
+    int SuccessStatus(const int case_id)
     {
-        return caseId == 1 ? LLC::QTV::HOOK_STATUS_OK : 9;
+        return case_id == 1 ? LLC::QTV::HOOK_STATUS_OK : 9;
     }
 
-    bool SuccessBool(const int caseId)
+    bool SuccessBool(const int case_id)
     {
-        return caseId == 1;
+        return case_id == 1;
     }
 }
 
@@ -32,11 +32,22 @@ TEST_CASE("QTVJuliaBridge reports availability and status", "[qtv][hooks][bridge
 {
     LLC::QTV::QTVJuliaBridge unavailable;
     REQUIRE_FALSE(unavailable.available());
+    REQUIRE_FALSE(unavailable.has_run_fixture());
+    REQUIRE_FALSE(unavailable.has_compare_parity());
     REQUIRE(unavailable.run_fixture(1) == LLC::QTV::HOOK_STATUS_UNAVAILABLE);
     REQUIRE(unavailable.compare_parity(1) == LLC::QTV::HOOK_STATUS_UNAVAILABLE);
 
+    LLC::QTV::QTVJuliaBridge partial(&SuccessStatus, nullptr);
+    REQUIRE_FALSE(partial.available());
+    REQUIRE(partial.has_run_fixture());
+    REQUIRE_FALSE(partial.has_compare_parity());
+    REQUIRE(partial.run_fixture(1) == LLC::QTV::HOOK_STATUS_OK);
+    REQUIRE(partial.compare_parity(1) == LLC::QTV::HOOK_STATUS_UNAVAILABLE);
+
     LLC::QTV::QTVJuliaBridge bridge(&SuccessStatus, &SuccessStatus);
     REQUIRE(bridge.available());
+    REQUIRE(bridge.has_run_fixture());
+    REQUIRE(bridge.has_compare_parity());
     REQUIRE(bridge.run_fixture(1) == LLC::QTV::HOOK_STATUS_OK);
     REQUIRE(bridge.compare_parity(0) != LLC::QTV::HOOK_STATUS_OK);
 }
@@ -44,6 +55,7 @@ TEST_CASE("QTVJuliaBridge reports availability and status", "[qtv][hooks][bridge
 TEST_CASE("QTV engine backends isolate hook behavior", "[qtv][hooks][engine]")
 {
     LLC::QTV::NullQTVEngine nullEngine;
+    REQUIRE_FALSE(nullEngine.Available());
     REQUIRE_FALSE(nullEngine.RunFixture(1));
     REQUIRE_FALSE(nullEngine.CompareParity(1));
 

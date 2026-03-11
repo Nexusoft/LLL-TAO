@@ -30,9 +30,7 @@ function qtv_fixture_case(case_id::Integer) :: NamedTuple
         swap_sequence             = [2, 2, 2, 3, 4, 2],
         benchmark_message         = collect(codeunits("laser quantum vector handoff")),
         expected_final_permutation = [4, 2, 1, 3],
-        expected_working_vector_digest =
-            "16697c4aedac647ba9dc76a7db751fcec2593a723e8af280c16645856a148577" *
-            "a38c8b71c0d8b56b76bfa9da45d22c2c752d9fbf40382d3b08a5a56f4b206b5b",
+        expected_working_vector_digest = "16697c4aedac647ba9dc76a7db751fcec2593a723e8af280c16645856a148577a38c8b71c0d8b56b76bfa9da45d22c2c752d9fbf40382d3b08a5a56f4b206b5b",
     )
 
     throw(ArgumentError("unknown QTV hook fixture case_id: $case_id"))
@@ -93,27 +91,34 @@ function qtv_compare_parity(case_id::Integer) :: Cint
 
     try
         qtv = _build_hook_qtv(fixture)
-
-        if fixture.expected_final_permutation !== nothing &&
-           qtv.permutation != fixture.expected_final_permutation
-            return QTV_HOOK_STATUS_PARITY_MISMATCH
-        end
-
-        if fixture.expected_working_vector_digest !== nothing &&
-           bytes2hex(SHA.sha512(qtv.working_vector)) != fixture.expected_working_vector_digest
-            return QTV_HOOK_STATUS_PARITY_MISMATCH
-        end
-
-        return QTV_HOOK_STATUS_OK
+        return _qtv_compare_parity(qtv, fixture)
     catch
         return QTV_HOOK_STATUS_ERROR
     end
 end
 
+function _qtv_compare_parity(qtv::QuantumTunnelVector, fixture::NamedTuple) :: Cint
+    if fixture.expected_final_permutation !== nothing &&
+       qtv.permutation != fixture.expected_final_permutation
+        return QTV_HOOK_STATUS_PARITY_MISMATCH
+    end
+
+    if fixture.expected_working_vector_digest !== nothing
+        digest = bytes2hex(SHA.sha512(qtv.working_vector))
+        if digest != fixture.expected_working_vector_digest
+            return QTV_HOOK_STATUS_PARITY_MISMATCH
+        end
+    end
+
+    return QTV_HOOK_STATUS_OK
+end
+
+_ccallable_status(hook::Function, case_id::Cint) :: Cint = hook(Int(case_id))
+
 Base.@ccallable function qtv_run_fixture(case_id::Cint) :: Cint
-    return qtv_run_fixture(Int(case_id))
+    return _ccallable_status(qtv_run_fixture, case_id)
 end
 
 Base.@ccallable function qtv_compare_parity(case_id::Cint) :: Cint
-    return qtv_compare_parity(Int(case_id))
+    return _ccallable_status(qtv_compare_parity, case_id)
 end
