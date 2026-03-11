@@ -13,10 +13,17 @@ export BUCKET_COUNT,
        active_bucket_id,
        bucket_manifest,
        build_qtv,
+       decode_laser_tunnel,
        decode_working_vector,
+       deterministic_laser_fixture,
+       encode_laser_tunnel,
+       random_swap_sequence!,
        reconstruct_payload,
        run_swap_rounds!,
-       swap_active_bucket!
+       swap_active_bucket!,
+       swap_log_manifest,
+       verify_bucket_integrity,
+       working_vector_digest
 
 const BUCKET_COUNT = 4
 const FALCON1024_PUBLIC_KEY_SIZE = 1793
@@ -113,6 +120,23 @@ function encode_bucket(bucket::FalconBucket, seed::UInt64, epoch::Integer)
     return xor_bytes(bucket.payload, keystream)
 end
 
+function derive_laser_keystream(length_bytes::Integer, qtv::QuantumTunnelVector)
+    length_bytes >= 0 || throw(ArgumentError("keystream length must be non-negative"))
+
+    state = sha512(qtv.working_vector)
+    stream = UInt8[]
+    counter = 0
+
+    while length(stream) < length_bytes
+        state = sha512(vcat(state, qtv.working_vector, encode_uint64_little_endian(counter)))
+        append!(stream, state)
+        counter += 1
+    end
+
+    resize!(stream, Int(length_bytes))
+    return stream
+end
+
 active_bucket_id(qtv::QuantumTunnelVector) = qtv.permutation[qtv.active_slot]
 active_bucket(qtv::QuantumTunnelVector) = qtv.buckets[active_bucket_id(qtv)]
 
@@ -142,9 +166,24 @@ function build_qtv(privkey::AbstractVector{UInt8}; seed::Integer = DEFAULT_SEED,
     return qtv
 end
 
+function verify_bucket_integrity(qtv::QuantumTunnelVector)
+    return all(bucket.tag == bucket_tag(bucket.payload) for bucket in qtv.buckets)
+end
+
+function working_vector_digest(qtv::QuantumTunnelVector)
+    return bytes2hex(sha512(qtv.working_vector))
+end
+
 function decode_working_vector(qtv::QuantumTunnelVector)
     return xor_bytes(qtv.working_vector, derive_keystream(length(qtv.working_vector), qtv.seed, qtv.epoch, active_bucket_id(qtv), active_bucket(qtv).tag))
 end
+
+function encode_laser_tunnel(payload::AbstractVector{UInt8}, qtv::QuantumTunnelVector)
+    keystream = derive_laser_keystream(length(payload), qtv)
+    return xor_bytes(payload, keystream)
+end
+
+decode_laser_tunnel(payload::AbstractVector{UInt8}, qtv::QuantumTunnelVector) = encode_laser_tunnel(payload, qtv)
 
 function swap_active_bucket!(qtv::QuantumTunnelVector; target_slot::Union{Nothing, Int} = nothing)
     if isnothing(target_slot)
@@ -177,6 +216,8 @@ function run_swap_rounds!(qtv::QuantumTunnelVector, rounds::Integer)
     return qtv
 end
 
+random_swap_sequence!(qtv::QuantumTunnelVector, rounds::Integer) = run_swap_rounds!(qtv, rounds)
+
 function reconstruct_payload(qtv::QuantumTunnelVector)
     ordered_buckets = sort(qtv.buckets; by = bucket -> bucket.start_offset)
     payload = UInt8[]
@@ -199,6 +240,40 @@ function bucket_manifest(qtv::QuantumTunnelVector)
             tag = bucket.tag,
         ) for bucket in qtv.buckets
     ]
+end
+
+function swap_log_manifest(qtv::QuantumTunnelVector)
+    return [
+        (
+            epoch = event.epoch,
+            from_bucket = event.from_bucket,
+            to_bucket = event.to_bucket,
+            slot = event.slot,
+            permutation = collect(event.permutation),
+        ) for event in qtv.swap_log
+    ]
+end
+
+function deterministic_laser_fixture(privkey::AbstractVector{UInt8}, message::AbstractVector{UInt8}; seed::Integer = DEFAULT_SEED, n_swaps::Integer = 0, epoch::Integer = 0)
+    qtv = build_qtv(privkey; seed = seed, epoch = epoch)
+    initial_permutation = copy(qtv.permutation)
+
+    random_swap_sequence!(qtv, n_swaps)
+
+    encoded = encode_laser_tunnel(message, qtv)
+
+    return (
+        seed = UInt64(seed),
+        epoch = qtv.epoch,
+        n_swaps = Int(n_swaps),
+        initial_permutation = initial_permutation,
+        final_permutation = copy(qtv.permutation),
+        encoded = encoded,
+        encoded_hex = bytes2hex(encoded),
+        swap_log = swap_log_manifest(qtv),
+        working_vector_digest = working_vector_digest(qtv),
+        working_vector_hex = bytes2hex(qtv.working_vector),
+    )
 end
 
 end
