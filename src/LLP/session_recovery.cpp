@@ -450,6 +450,24 @@ namespace LLP
     }
 
 
+    /** PeekSession **/
+    std::optional<SessionRecoveryData> SessionRecoveryManager::PeekSession(const uint256_t& hashKeyID) const
+    {
+        auto optData = mapSessionsByKey.Get(hashKeyID);
+        if(!optData.has_value())
+            return std::nullopt;
+
+        const SessionRecoveryData& data = optData.value();
+        /* Return nullopt for expired or over-limit sessions without mutating state */
+        if(data.IsExpired(nSessionTimeout.load()))
+            return std::nullopt;
+        if(data.nReconnectCount >= nMaxReconnects.load())
+            return std::nullopt;
+
+        return data;
+    }
+
+
     /** RecoverSession **/
     bool SessionRecoveryManager::RecoverSession(const uint256_t& hashKeyID, MiningContext& context)
     {

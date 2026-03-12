@@ -319,6 +319,22 @@ namespace LLP
          **/
         bool HasSession(const uint256_t& hashKeyID) const;
 
+        /** PeekSession
+         *
+         *  Read-only inspection of a saved session WITHOUT consuming a reconnect slot.
+         *  Safe to call from diagnostic/reporting code on any cadence.
+         *
+         *  Unlike RecoverSession() and RecoverSessionByIdentity(), this method never
+         *  increments nReconnectCount, never calls RemoveSession(), and never mutates
+         *  any session state — it is purely observational.
+         *
+         *  @param[in] hashKeyID  Falcon key identifier to look up
+         *
+         *  @return Optional SessionRecoveryData if session exists and is not expired/over-limit
+         *
+         **/
+        std::optional<SessionRecoveryData> PeekSession(const uint256_t& hashKeyID) const;
+
         /** CleanupExpired
          *
          *  Remove expired sessions from storage.

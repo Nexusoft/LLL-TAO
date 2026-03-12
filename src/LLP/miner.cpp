@@ -688,6 +688,23 @@ namespace LLP
                 respond(OpcodeUtility::Opcodes::SESSION_STATUS_ACK, vAck);
 
                 debug::log(2, FUNCTION, "SESSION_STATUS_ACK sent: lane_health=0x", std::hex, nLaneHealth, std::dec);
+
+                /* If miner reports degraded, force-push a fresh notification immediately.
+                 * This mirrors the two-step re-arm pattern used in handle_miner_ready_stateless()
+                 * and the stateless port's SESSION_STATUS handler. */
+                if((req.status_flags & SessionStatus::MINER_DEGRADED) &&
+                    fSubscribedToNotifications && (nSubscribedChannel == 1 || nSubscribedChannel == 2))
+                {
+                    debug::log(0, FUNCTION, "⚠️ Miner reports DEGRADED — forcing recovery push via legacy SESSION_STATUS");
+                    {
+                        LOCK(MUTEX);
+                        m_force_next_push = true;
+                        m_get_block_cooldown = AutoCoolDown(std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS));
+                    }
+                    SendChannelNotification();
+                    debug::log(0, FUNCTION, "✓ Degraded-recovery notification pushed on legacy lane");
+                }
+
                 return true;
             }
 

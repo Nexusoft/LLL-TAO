@@ -670,10 +670,7 @@ namespace LLP
                     /* Check fFreshAuth flag from SessionRecoveryData (set by MarkFreshAuth()
                      * after a confirmed failover Falcon handshake on this node). */
                     bool fFreshAuth = false;
-                    auto optSession = SessionRecoveryManager::Get().RecoverSessionByIdentity(
-                        ctx.hashKeyID,
-                        ctx.strAddress
-                    );
+                    auto optSession = SessionRecoveryManager::Get().PeekSession(ctx.hashKeyID);
                     if(optSession.has_value())
                         fFreshAuth = optSession->fFreshAuth;
 
