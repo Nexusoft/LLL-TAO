@@ -700,6 +700,19 @@ namespace LLP
                     debug::log(0, "   Encryption ready: YES");
                 }
                 
+                /* Update last template channel height and persist session BEFORE sending
+                 * the template (write-ahead pattern): even if the connection drops after
+                 * SaveSession but before the template arrives, the recovered session already
+                 * carries the correct channel height, preventing stale-height throttling. */
+                {
+                    TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
+                    TAO::Ledger::BlockState stateChannel = stateBest;
+                    uint32_t nChannelHeight = 0;
+                    if(TAO::Ledger::GetLastState(stateChannel, context.nChannel))
+                        nChannelHeight = stateChannel.nChannelHeight;
+                    context = context.WithLastTemplateChannelHeight(nChannelHeight);
+                }
+
                 /* Persist session and lane state for cross-lane recovery */
                 if(context.fAuthenticated && context.hashKeyID != 0)
                 {
@@ -730,16 +743,6 @@ namespace LLP
                 }
                 SendStatelessTemplate();
                 debug::log(0, FUNCTION, "✓ Recovery template delivered via STATELESS_MINER_READY push — miner should resume mining");
-
-                /* Update last template channel height after sending template */
-                {
-                    TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
-                    TAO::Ledger::BlockState stateChannel = stateBest;
-                    uint32_t nChannelHeight = 0;
-                    if(TAO::Ledger::GetLastState(stateChannel, context.nChannel))
-                        nChannelHeight = stateChannel.nChannelHeight;
-                    context = context.WithLastTemplateChannelHeight(nChannelHeight);
-                }
 
                 debug::log(2, "📥 === STATELESS_MINER_READY: SUCCESS ===");
                 return true;
@@ -2406,13 +2409,10 @@ namespace LLP
                     m_force_next_push = true;
                 }
 
-                /* Auto-send template so miner can resume mining immediately.
-                 * This is critical for MINER_READY recovery from degraded mode -
-                 * miners need both the push notification AND the actual template. */
-                SendStatelessTemplate();
-                debug::log(0, FUNCTION, "✓ Recovery template delivered via MINER_READY push — miner should resume mining");
-
-                /* Update last template channel height after sending template */
+                /* Update last template channel height and persist session BEFORE sending
+                 * the template (write-ahead pattern): even if the connection drops after
+                 * SaveSession but before the template arrives, the recovered session already
+                 * carries the correct channel height, preventing stale-height throttling. */
                 {
                     TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
                     TAO::Ledger::BlockState stateChannel = stateBest;
@@ -2421,7 +2421,7 @@ namespace LLP
                         nChannelHeight = stateChannel.nChannelHeight;
                     context = context.WithLastTemplateChannelHeight(nChannelHeight);
                 }
-                
+
                 /* Persist session and lane state for cross-lane recovery */
                 if(context.fAuthenticated && context.hashKeyID != 0)
                 {
@@ -2433,6 +2433,12 @@ namespace LLP
                         SessionRecoveryManager::Get().SaveChaCha20State(context.hashKeyID, hashKey, 0);
                     }
                 }
+
+                /* Auto-send template so miner can resume mining immediately.
+                 * This is critical for MINER_READY recovery from degraded mode -
+                 * miners need both the push notification AND the actual template. */
+                SendStatelessTemplate();
+                debug::log(0, FUNCTION, "✓ Recovery template delivered via MINER_READY push — miner should resume mining");
 
                 /* Update manager with COMPLETE context including encryption state */
                 StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
@@ -2484,6 +2490,34 @@ namespace LLP
                 respond(ackResponse);
 
                 debug::log(2, FUNCTION, "SESSION_STATUS_ACK sent: lane_health=0x", std::hex, nLaneHealth, std::dec);
+
+                /* If miner reports degraded, force-push a fresh template immediately.
+                 * Two-step re-arm required: SendChannelNotification() consumes m_force_next_push
+                 * and updates m_last_template_push_time, so without re-arming, SendStatelessTemplate()
+                 * would see elapsed ~0 ms and be throttled. See MINER_READY handler for the same
+                 * two-step pattern which is proven to work. */
+                if((req.status_flags & SessionStatus::MINER_DEGRADED) &&
+                    context.fAuthenticated && (context.nChannel == 1 || context.nChannel == 2))
+                {
+                    debug::log(0, FUNCTION, "⚠️ Miner reports DEGRADED — forcing recovery template push via SESSION_STATUS");
+                    {
+                        LOCK(MUTEX);
+                        m_force_next_push = true;
+                        /* Reset cooldown so any pending GET_BLOCK from the miner is served
+                         * immediately rather than being held for GET_BLOCK_COOLDOWN_SECONDS.
+                         * Uses reassignment (not Reset()) to restore "never triggered" state
+                         * where Ready() returns true immediately. */
+                        m_get_block_cooldown = AutoCoolDown(std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS));
+                    }
+                    SendChannelNotification();
+                    {
+                        LOCK(MUTEX);
+                        m_force_next_push = true;  // re-arm: SendChannelNotification() consumed the flag
+                    }
+                    SendStatelessTemplate();
+                    debug::log(0, FUNCTION, "✓ Degraded-recovery template pushed — miner should exit DEGRADED");
+                }
+
                 return true;
             }
 
@@ -4283,7 +4317,17 @@ namespace LLP
 
             /* Push throttle — drop if a template was sent less than
              * TEMPLATE_PUSH_MIN_INTERVAL_MS ago (guards against fork-resolution bursts).
-             * Re-subscription responses bypass via m_force_next_push. */
+             * Re-subscription responses bypass via m_force_next_push.
+             *
+             * IMPORTANT — two-step re-arm when calling SendChannelNotification() then
+             * SendStatelessTemplate() in sequence (e.g. MINER_READY and SESSION_STATUS
+             * degraded-recovery handlers):
+             *   1. Set m_force_next_push = true
+             *   2. Call SendChannelNotification()   ← consumes flag, updates m_last_template_push_time
+             *   3. Set m_force_next_push = true     ← re-arm: without this, elapsed ~0 ms here → throttled
+             *   4. Call SendStatelessTemplate()
+             * Omitting step 3 causes the template to be dropped silently, leaving the miner
+             * in degraded mode with no work. */
             auto now = std::chrono::steady_clock::now();
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                 now - m_last_template_push_time).count();

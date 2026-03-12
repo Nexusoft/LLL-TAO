@@ -142,3 +142,85 @@ TEST_CASE("Miner status flags combine correctly", "[llp][session_status]")
                    | SessionStatus::MINER_SECONDARY_UP;
     REQUIRE(flags == 0x0F);
 }
+
+TEST_CASE("SESSION_STATUS with MINER_DEGRADED is detected in request flags", "[llp][session_status][degraded]")
+{
+    SECTION("MINER_DEGRADED bit is isolated correctly")
+    {
+        /* Verify MINER_DEGRADED is distinct and non-zero as required by the protocol */
+        REQUIRE(SessionStatus::MINER_DEGRADED != 0u);
+        /* It must not overlap with any other defined miner flag */
+        REQUIRE((SessionStatus::MINER_DEGRADED & SessionStatus::MINER_HAS_TEMPLATE) == 0);
+        REQUIRE((SessionStatus::MINER_DEGRADED & SessionStatus::MINER_WORKERS_ACTIVE) == 0);
+        REQUIRE((SessionStatus::MINER_DEGRADED & SessionStatus::MINER_SECONDARY_UP) == 0);
+    }
+
+    SECTION("MINER_DEGRADED flag is detected in combined status_flags")
+    {
+        /* Miner in degraded mode with active workers */
+        uint32_t status_flags = SessionStatus::MINER_DEGRADED | SessionStatus::MINER_WORKERS_ACTIVE;
+        REQUIRE((status_flags & SessionStatus::MINER_DEGRADED) != 0);
+    }
+
+    SECTION("MINER_DEGRADED flag is absent when miner is healthy")
+    {
+        /* Healthy miner: has template and workers, not degraded */
+        uint32_t status_flags = SessionStatus::MINER_HAS_TEMPLATE | SessionStatus::MINER_WORKERS_ACTIVE;
+        REQUIRE((status_flags & SessionStatus::MINER_DEGRADED) == 0);
+    }
+
+    SECTION("SESSION_STATUS ACK echoes MINER_DEGRADED flag back to miner")
+    {
+        constexpr uint32_t nSessionId = 0xABCD1234u;
+        constexpr uint32_t nLaneHealth = SessionStatus::LANE_PRIMARY_ALIVE | SessionStatus::LANE_AUTHENTICATED;
+        constexpr uint32_t nUptime = 42u;
+        /* Miner sends degraded + has template */
+        constexpr uint32_t nMinerFlags = SessionStatus::MINER_DEGRADED | SessionStatus::MINER_HAS_TEMPLATE;
+
+        auto v = SessionStatus::BuildAckPayload(nSessionId, nLaneHealth, nUptime, nMinerFlags);
+        SessionStatus::SessionStatusAck ack;
+        REQUIRE(ack.Parse(v));
+
+        /* The ACK must echo back all miner-provided flags including MINER_DEGRADED */
+        REQUIRE((ack.status_echo_flags & SessionStatus::MINER_DEGRADED) != 0);
+        REQUIRE((ack.status_echo_flags & SessionStatus::MINER_HAS_TEMPLATE) != 0);
+    }
+
+    SECTION("Recovery push condition: authenticated channel 1 with MINER_DEGRADED")
+    {
+        /* Verify the guard logic used in the SESSION_STATUS degraded-recovery path:
+         * (req.status_flags & MINER_DEGRADED) && fAuthenticated && (nChannel == 1 || 2) */
+        uint32_t status_flags = SessionStatus::MINER_DEGRADED;
+        bool fAuthenticated = true;
+        uint32_t nChannel = 1;
+
+        bool should_recover = (status_flags & SessionStatus::MINER_DEGRADED) &&
+                              fAuthenticated &&
+                              (nChannel == 1 || nChannel == 2);
+        REQUIRE(should_recover == true);
+    }
+
+    SECTION("Recovery push condition: unauthenticated miner does NOT trigger push")
+    {
+        uint32_t status_flags = SessionStatus::MINER_DEGRADED;
+        bool fAuthenticated = false;
+        uint32_t nChannel = 1;
+
+        bool should_recover = (status_flags & SessionStatus::MINER_DEGRADED) &&
+                              fAuthenticated &&
+                              (nChannel == 1 || nChannel == 2);
+        REQUIRE(should_recover == false);
+    }
+
+    SECTION("Recovery push condition: Stake channel (0) does NOT trigger push")
+    {
+        uint32_t status_flags = SessionStatus::MINER_DEGRADED;
+        bool fAuthenticated = true;
+        uint32_t nChannel = 0;  // Proof-of-Stake — not mineable via this path
+
+        bool should_recover = (status_flags & SessionStatus::MINER_DEGRADED) &&
+                              fAuthenticated &&
+                              (nChannel == 1 || nChannel == 2);
+        REQUIRE(should_recover == false);
+    }
+}

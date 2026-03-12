@@ -921,6 +921,167 @@ TEST_CASE("SessionRecoveryManager Basic Tests", "[session_recovery]")
 }
 
 
+TEST_CASE("PeekSession Tests", "[llp][session_recovery][peek]")
+{
+    SessionRecoveryManager& manager = SessionRecoveryManager::Get();
+
+    SECTION("PeekSession returns data for a valid saved session")
+    {
+        uint256_t keyId;
+        keyId.SetHex("aa00000000000000000000000000000000000000000000000000000000000001");
+
+        MiningContext ctx = MiningContext()
+            .WithChannel(1)
+            .WithSession(111111)
+            .WithKeyId(keyId)
+            .WithAuth(true)
+            .WithTimestamp(runtime::unifiedtimestamp());
+        ctx.strAddress = "10.0.0.1";
+
+        REQUIRE(manager.SaveSession(ctx) == true);
+
+        const auto opt = manager.PeekSession(keyId);
+        REQUIRE(opt.has_value());
+        REQUIRE(opt->hashKeyID == keyId);
+        REQUIRE(opt->nSessionId == 111111);
+
+        manager.RemoveSession(keyId);
+    }
+
+    SECTION("PeekSession does not increment nReconnectCount")
+    {
+        uint256_t keyId;
+        keyId.SetHex("aa00000000000000000000000000000000000000000000000000000000000002");
+
+        MiningContext ctx = MiningContext()
+            .WithChannel(2)
+            .WithSession(222222)
+            .WithKeyId(keyId)
+            .WithAuth(true)
+            .WithTimestamp(runtime::unifiedtimestamp());
+        ctx.strAddress = "10.0.0.2";
+
+        REQUIRE(manager.SaveSession(ctx) == true);
+
+        /* Call PeekSession many times — reconnect count must stay at zero */
+        for(int i = 0; i < 100; ++i)
+        {
+            const auto opt = manager.PeekSession(keyId);
+            REQUIRE(opt.has_value());
+            REQUIRE(opt->nReconnectCount == 0);
+        }
+
+        manager.RemoveSession(keyId);
+    }
+
+    SECTION("PeekSession leaves session accessible after max-reconnect peek calls")
+    {
+        uint256_t keyId;
+        keyId.SetHex("aa00000000000000000000000000000000000000000000000000000000000003");
+
+        const uint32_t originalMax = manager.GetMaxReconnects();
+        manager.SetMaxReconnects(3);
+
+        MiningContext ctx = MiningContext()
+            .WithChannel(1)
+            .WithSession(333333)
+            .WithKeyId(keyId)
+            .WithAuth(true)
+            .WithTimestamp(runtime::unifiedtimestamp());
+        ctx.strAddress = "10.0.0.3";
+
+        REQUIRE(manager.SaveSession(ctx) == true);
+
+        /* Peek 3 times (== max) — session must still be retrievable */
+        for(int i = 0; i < 3; ++i)
+            REQUIRE(manager.PeekSession(keyId).has_value());
+
+        /* Actual recover must still succeed */
+        MiningContext recovered;
+        REQUIRE(manager.RecoverSession(keyId, recovered) == true);
+
+        manager.SetMaxReconnects(originalMax);
+        manager.RemoveSession(keyId);
+    }
+
+    SECTION("PeekSession exhausts after RecoverSession hits the reconnect limit (contrast)")
+    {
+        uint256_t keyId;
+        keyId.SetHex("aa00000000000000000000000000000000000000000000000000000000000004");
+
+        const uint32_t originalMax = manager.GetMaxReconnects();
+        manager.SetMaxReconnects(2);
+
+        MiningContext ctx = MiningContext()
+            .WithChannel(2)
+            .WithSession(444444)
+            .WithKeyId(keyId)
+            .WithAuth(true)
+            .WithTimestamp(runtime::unifiedtimestamp());
+        ctx.strAddress = "10.0.0.4";
+
+        REQUIRE(manager.SaveSession(ctx) == true);
+
+        /* Exhaust reconnect slots via RecoverSession */
+        MiningContext tmp;
+        REQUIRE(manager.RecoverSession(keyId, tmp) == true);   // count = 1
+        REQUIRE(manager.RecoverSession(keyId, tmp) == true);   // count = 2
+
+        /* Now PeekSession must return nullopt (limit reached) */
+        REQUIRE_FALSE(manager.PeekSession(keyId).has_value());
+
+        manager.SetMaxReconnects(originalMax);
+        /* Session was cleaned up internally once the reconnect limit was exceeded */
+    }
+
+    SECTION("PeekSession returns nullopt for unknown key")
+    {
+        uint256_t unknownKey;
+        unknownKey.SetHex("bb00000000000000000000000000000000000000000000000000000000000001");
+
+        REQUIRE_FALSE(manager.PeekSession(unknownKey).has_value());
+    }
+}
+
+
+TEST_CASE("ColinAgent emit_report does not exhaust reconnect slots", "[llp][colin][regression]")
+{
+    SessionRecoveryManager& manager = SessionRecoveryManager::Get();
+
+    uint256_t keyId;
+    keyId.SetHex("cc00000000000000000000000000000000000000000000000000000000000001");
+
+    const uint32_t originalMax = manager.GetMaxReconnects();
+    manager.SetMaxReconnects(10);  // DEFAULT_MAX_RECONNECTS
+
+    MiningContext ctx = MiningContext()
+        .WithChannel(1)
+        .WithSession(999999)
+        .WithKeyId(keyId)
+        .WithAuth(true)
+        .WithTimestamp(runtime::unifiedtimestamp());
+    ctx.strAddress = "10.1.0.1";
+
+    REQUIRE(manager.SaveSession(ctx) == true);
+
+    /* Simulate 10 ColinAgent emit_report() cycles using PeekSession (the fixed path).
+     * This must NOT exhaust reconnect slots. */
+    for(int i = 0; i < 10; ++i)
+    {
+        const auto opt = manager.PeekSession(keyId);
+        REQUIRE(opt.has_value());
+    }
+
+    /* After 10 diagnostic report cycles the session must still be recoverable */
+    MiningContext recovered;
+    REQUIRE(manager.RecoverSession(keyId, recovered) == true);
+    REQUIRE(recovered.nSessionId == 999999);
+
+    manager.SetMaxReconnects(originalMax);
+    manager.RemoveSession(keyId);
+}
+
+
 TEST_CASE("Uint256Hash Tests", "[session_recovery]")
 {
     SECTION("Same values produce same hash")
