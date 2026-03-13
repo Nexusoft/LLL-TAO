@@ -224,3 +224,146 @@ TEST_CASE("SESSION_STATUS with MINER_DEGRADED is detected in request flags", "[l
         REQUIRE(should_recover == false);
     }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * R-02: ValidateConsistency gate — tests for the security boundaries added
+ * at MINER_SET_REWARD and SUBMIT_BLOCK handlers.
+ * ───────────────────────────────────────────────────────────────────────────*/
+
+TEST_CASE("ValidateConsistency rejects structurally inconsistent contexts", "[llp][session_status][consistency]")
+{
+    SECTION("Authenticated context missing session ID is detected")
+    {
+        MiningContext ctx = MiningContext()
+            .WithAuth(true)
+            .WithSession(0);       // zero session ID — inconsistent
+
+        const SessionConsistencyResult result = ctx.ValidateConsistency();
+        REQUIRE(result == SessionConsistencyResult::MissingSessionId);
+        REQUIRE(result != SessionConsistencyResult::Ok);
+    }
+
+    SECTION("Authenticated context missing genesis hash is detected")
+    {
+        MiningContext ctx = MiningContext()
+            .WithAuth(true)
+            .WithSession(12345);
+        /* hashGenesis defaults to 0 */
+
+        const SessionConsistencyResult result = ctx.ValidateConsistency();
+        REQUIRE(result == SessionConsistencyResult::MissingGenesis);
+    }
+
+    SECTION("Authenticated context missing Falcon key ID is detected")
+    {
+        uint256_t genesis;
+        genesis.SetHex("aabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccdd");
+
+        MiningContext ctx = MiningContext()
+            .WithAuth(true)
+            .WithSession(12345)
+            .WithGenesis(genesis);
+        /* hashKeyID defaults to 0 */
+
+        const SessionConsistencyResult result = ctx.ValidateConsistency();
+        REQUIRE(result == SessionConsistencyResult::MissingFalconKey);
+    }
+
+    SECTION("Reward-bound context with zero reward address is detected")
+    {
+        uint256_t genesis;
+        genesis.SetHex("aabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccdd");
+        uint256_t keyID;
+        keyID.SetHex("1122334411223344112233441122334411223344112233441122334411223344");
+
+        MiningContext ctx = MiningContext()
+            .WithAuth(true)
+            .WithSession(12345)
+            .WithGenesis(genesis)
+            .WithKeyId(keyID)
+            .WithRewardAddress(uint256_t(0));   // bound but zero hash — inconsistent
+
+        const SessionConsistencyResult result = ctx.ValidateConsistency();
+        REQUIRE(result == SessionConsistencyResult::RewardBoundMissingHash);
+    }
+
+    SECTION("Fully valid authenticated context passes consistency check")
+    {
+        uint256_t genesis;
+        genesis.SetHex("aabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccdd");
+        uint256_t keyID;
+        keyID.SetHex("1122334411223344112233441122334411223344112233441122334411223344");
+
+        MiningContext ctx = MiningContext()
+            .WithAuth(true)
+            .WithSession(12345)
+            .WithGenesis(genesis)
+            .WithKeyId(keyID);
+
+        const SessionConsistencyResult result = ctx.ValidateConsistency();
+        REQUIRE(result == SessionConsistencyResult::Ok);
+    }
+
+    SECTION("Unauthenticated context always passes (no invariants apply)")
+    {
+        /* Unauthenticated context with all zero fields should be OK */
+        MiningContext ctx = MiningContext();
+        REQUIRE(ctx.ValidateConsistency() == SessionConsistencyResult::Ok);
+    }
+}
+
+TEST_CASE("ValidateConsistency gate: SUBMIT_BLOCK rejected on inconsistent session", "[llp][session_status][consistency]")
+{
+    /* This test verifies the boolean gate logic used in the SUBMIT_BLOCK handlers:
+     * if(consistency != SessionConsistencyResult::Ok) → reject with BLOCK_REJECTED.
+     * The actual network send is exercised in integration tests; here we confirm the
+     * decision logic is correct for all relevant inconsistency variants. */
+
+    struct GateScenario
+    {
+        const char* description;
+        MiningContext ctx;
+        bool expectRejected;
+    };
+
+    uint256_t genesis;
+    genesis.SetHex("deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef");
+    uint256_t keyID;
+    keyID.SetHex("cafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebabe");
+
+    /* Build one good and one bad context for comparison */
+    MiningContext goodCtx = MiningContext()
+        .WithAuth(true)
+        .WithSession(99)
+        .WithGenesis(genesis)
+        .WithKeyId(keyID);
+
+    MiningContext noSessionCtx = MiningContext()
+        .WithAuth(true)
+        .WithSession(0)
+        .WithGenesis(genesis)
+        .WithKeyId(keyID);
+
+    SECTION("Good context passes the gate")
+    {
+        const bool rejected = (goodCtx.ValidateConsistency() != SessionConsistencyResult::Ok);
+        REQUIRE(rejected == false);
+    }
+
+    SECTION("Zero session ID triggers rejection at SUBMIT_BLOCK gate")
+    {
+        const bool rejected = (noSessionCtx.ValidateConsistency() != SessionConsistencyResult::Ok);
+        REQUIRE(rejected == true);
+    }
+
+    SECTION("SessionConsistencyResultString is non-empty for every non-OK result")
+    {
+        /* Ensure the string table is populated so log messages are meaningful */
+        REQUIRE(std::string(SessionConsistencyResultString(SessionConsistencyResult::MissingSessionId)).size() > 0);
+        REQUIRE(std::string(SessionConsistencyResultString(SessionConsistencyResult::MissingGenesis)).size() > 0);
+        REQUIRE(std::string(SessionConsistencyResultString(SessionConsistencyResult::MissingFalconKey)).size() > 0);
+        REQUIRE(std::string(SessionConsistencyResultString(SessionConsistencyResult::RewardBoundMissingHash)).size() > 0);
+        REQUIRE(std::string(SessionConsistencyResultString(SessionConsistencyResult::EncryptionReadyMissingKey)).size() > 0);
+        REQUIRE(std::string(SessionConsistencyResultString(SessionConsistencyResult::Ok)).size() > 0);
+    }
+}

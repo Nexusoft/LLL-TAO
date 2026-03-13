@@ -1150,6 +1150,21 @@ namespace LLP
                     return true;
                 }
 
+                /* R-02: Session consistency gate — reject any structurally inconsistent session
+                 * before attempting key-material access or block validation.
+                 * Mirrors the gate in MINER_AUTH and the recovery merge path. */
+                {
+                    const SessionConsistencyResult consistency = context.ValidateConsistency();
+                    if(consistency != SessionConsistencyResult::Ok)
+                    {
+                        debug::log(0, FUNCTION, "Session consistency violation at SUBMIT_BLOCK: ",
+                                   SessionConsistencyResultString(consistency));
+                        StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                        respond(response);
+                        return true;
+                    }
+                }
+
                 /* Training Wheels Diagnostic Mode */
                 debug::log(2, "════════════════════════════════════════════════════════");
                 debug::log(0, "🚀 SUBMIT_BLOCK DIAGNOSTIC (Training Wheels Mode)");
