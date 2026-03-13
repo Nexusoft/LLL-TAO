@@ -453,6 +453,9 @@ namespace LLP
     /** PeekSession **/
     std::optional<SessionRecoveryData> SessionRecoveryManager::PeekSession(const uint256_t& hashKeyID) const
     {
+        /* PeekSession — diagnostic read-only access.
+         * Unlike RecoverSession(), this NEVER mutates nReconnectCount or session state.
+         * Safe for high-frequency callers (ColinAgent, diagnostics, monitoring). */
         auto optData = mapSessionsByKey.Get(hashKeyID);
         if(!optData.has_value())
             return std::nullopt;

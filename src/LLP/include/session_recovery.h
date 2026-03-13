@@ -328,6 +328,10 @@ namespace LLP
          *  increments nReconnectCount, never calls RemoveSession(), and never mutates
          *  any session state — it is purely observational.
          *
+         *  IMPORTANT: This method NEVER increments nReconnectCount and NEVER calls
+         *  RemoveSession(). It is safe to call from any diagnostic code on any cadence.
+         *  Use RecoverSession() when you intend to actually consume a reconnect slot.
+         *
          *  @param[in] hashKeyID  Falcon key identifier to look up
          *
          *  @return Optional SessionRecoveryData if session exists and is not expired/over-limit

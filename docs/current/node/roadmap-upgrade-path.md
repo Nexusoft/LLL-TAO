@@ -21,6 +21,7 @@ Each item corresponds to one or more [upgrade-path diagrams](../../diagrams/upgr
 | #361 | Containerise stateless miner session recovery state | Authoritative per-session container; reward binding persisted in recovery cache |
 | #362 | Node session registry: multi-index lookup | `NodeSessionRegistry` with session-ID and Falcon-key-ID indexes |
 | #363 | ValidateConsistency & reconnect accounting | `ValidateConsistency()` method; structured reconnect log lines |
+| #375 | Fix DEGRADED MODE never recovers: SESSION_STATUS proactive push + PeekSession | DEGRADED MODE now exits within 1 SESSION_STATUS cycle; ColinAgent no longer exhausts reconnect slots |
 
 ---
 
