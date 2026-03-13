@@ -21,6 +21,7 @@ Welcome to the comprehensive Nexus LLL-TAO node documentation. This documentatio
 - **[Mining Server Architecture](current/mining/mining-server.md)** - Server design
 - **[Mining Lanes Cheat Sheet](current/mining/mining-lanes-cheat-sheet.md)** - Legacy vs stateless entrypoints
 - **[Mining Notification Diagnostics](current/mining/mining-notification-diagnostics.md)** - Push notification debugging
+- **[Degraded Mode Recovery](current/mining/degraded-mode-recovery.md)** — Technical error report and protocol diagrams for DEGRADED MODE fix (PR #375)
 - **[Troubleshooting](current/troubleshooting/mining-server-issues.md)** - Fix common issues
 
 ### 🏗️ Node Architecture & Refactor Roadmap
@@ -40,6 +41,11 @@ Welcome to the comprehensive Nexus LLL-TAO node documentation. This documentatio
 - **[RISC-V Diagnostics & Testing](current/node/riscv/diagnostics.md)** - Self-tests and cross-compile CI guide
 - **[🟣 Julia Programming Language Lab](current/node/riscv/JuliaProgrammingLanguage/README.md)** - Research tooling, interop, tests, and local Julia binary planning
 - **[RISC-V Design (top-level)](riscv-design.md)** - Executive summary and design principles
+
+### 🧪 Testing
+
+- **[LLP Test Playground Guide](current/testing/LLP-test-playground-guide.md)** - Developer guide for the stateless mining test suite
+- **[LLP Comprehensive Test Summary](current/testing/LLP-comprehensive-test-summary.md)** - Full summary of 590+ assertions across all LLP test suites
 
 ### 🔐 Security & Authentication
 
@@ -164,6 +170,13 @@ Complete node-side implementation of the stateless mining protocol introduced in
 Historical PR summaries, verification reports, and implementation notes now live under:
 - `docs/archive/pr-summaries/`
 - `docs/archive/`
+
+Key archive documents:
+- **[Implementation Complete](archive/IMPLEMENTATION_COMPLETE.md)** - Stateless miner implementation sign-off
+- **[Implementation Summary](archive/IMPLEMENTATION_SUMMARY.md)** - Stateless miner implementation overview
+- **[Push Notification Protocol](archive/PUSH_NOTIFICATION_PROTOCOL.md)** - Push notification protocol design
+- **[Stateless Miner LLP](archive/STATELESS_MINER_LLP.md)** - Stateless miner LLP layer documentation
+- **[PR #375 — Degraded Mode Recovery](archive/pr-summaries/PR-375-degraded-mode-recovery.md)** - Root-cause fix for DEGRADED MODE never recovering
 
 ---
 

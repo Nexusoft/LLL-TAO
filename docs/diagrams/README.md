@@ -52,6 +52,11 @@ Diagram templates for PR descriptions and comprehensive Mermaid architecture dia
 7. **[architecture/consensus-validation-flow.md](architecture/consensus-validation-flow.md)** - Block validation pipeline
 8. **[architecture/ledger-state-machine.md](architecture/ledger-state-machine.md)** - TAO register state transitions
 9. **[architecture/trust-network-topology.md](architecture/trust-network-topology.md)** - Peer reputation system
+10. **[architecture/riscv-mining-protocol-diagrams.md](architecture/riscv-mining-protocol-diagrams.md)** - RISC-V mining protocol architecture diagrams
+
+## Mining Diagrams
+
+11. **[mining/degraded-mode-recovery-flow.md](mining/degraded-mode-recovery-flow.md)** - DEGRADED MODE protocol flows A–E (PR #375)
 
 ## Protocol Diagrams
 

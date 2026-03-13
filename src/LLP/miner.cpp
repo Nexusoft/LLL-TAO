@@ -689,9 +689,12 @@ namespace LLP
 
                 debug::log(2, FUNCTION, "SESSION_STATUS_ACK sent: lane_health=0x", std::hex, nLaneHealth, std::dec);
 
-                /* If miner reports degraded, force-push a fresh notification immediately.
-                 * This mirrors the two-step re-arm pattern used in handle_miner_ready_stateless()
-                 * and the stateless port's SESSION_STATUS handler. */
+                /* TWO-STEP RE-ARM INVARIANT (PR #375):
+                 * SendChannelNotification() consumes m_force_next_push (sets it false)
+                 * AND resets m_last_template_push_time to "now". Without re-arming
+                 * m_force_next_push before any follow-up template send, the push is
+                 * throttled (elapsed ~0 ms). See stateless SESSION_STATUS handler and
+                 * handle_miner_ready_stateless() for the canonical two-step pattern. */
                 if((req.status_flags & SessionStatus::MINER_DEGRADED) &&
                     fSubscribedToNotifications && (nSubscribedChannel == 1 || nSubscribedChannel == 2))
                 {

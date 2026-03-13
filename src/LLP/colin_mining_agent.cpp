@@ -667,6 +667,10 @@ namespace LLP
             {
                 for(const auto& ctx : vMiners)
                 {
+                    /* Use PeekSession (read-only) — NOT RecoverSessionByIdentity (consuming).
+                     * Calling the consuming variant here would exhaust DEFAULT_MAX_RECONNECTS (10)
+                     * in 10 report cycles, silently evicting the session and blocking real recovery.
+                     * Bug documented in PR #375 Technical Error Report. */
                     /* Check fFreshAuth flag from SessionRecoveryData (set by MarkFreshAuth()
                      * after a confirmed failover Falcon handshake on this node). */
                     bool fFreshAuth = false;

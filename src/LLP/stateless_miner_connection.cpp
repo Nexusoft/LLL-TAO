@@ -2491,11 +2491,13 @@ namespace LLP
 
                 debug::log(2, FUNCTION, "SESSION_STATUS_ACK sent: lane_health=0x", std::hex, nLaneHealth, std::dec);
 
-                /* If miner reports degraded, force-push a fresh template immediately.
-                 * Two-step re-arm required: SendChannelNotification() consumes m_force_next_push
-                 * and updates m_last_template_push_time, so without re-arming, SendStatelessTemplate()
-                 * would see elapsed ~0 ms and be throttled. See MINER_READY handler for the same
-                 * two-step pattern which is proven to work. */
+                /* TWO-STEP RE-ARM INVARIANT (PR #375):
+                 * SendChannelNotification() consumes m_force_next_push (sets it false)
+                 * AND resets m_last_template_push_time to "now". Without re-arming
+                 * m_force_next_push before SendStatelessTemplate(), elapsed = ~0 ms
+                 * and the template push is throttled (TEMPLATE_PUSH_MIN_INTERVAL_MS).
+                 * Always: set → SendChannelNotification → re-set → SendStatelessTemplate.
+                 * See: MINER_READY handler for the canonical pattern. */
                 if((req.status_flags & SessionStatus::MINER_DEGRADED) &&
                     context.fAuthenticated && (context.nChannel == 1 || context.nChannel == 2))
                 {
