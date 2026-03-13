@@ -2010,6 +2010,24 @@ namespace LLP
             return ProcessResult::Error(context, "Genesis not established");
         }
 
+        /* R-02: Session consistency gate — reject before any key-material access.
+         * Only applicable on the stateless lane where context.hashKeyID is populated;
+         * legacy-lane contexts are constructed with hashKeyID=0 by design (the real
+         * hashKeyID lives in StatelessMinerManager, not in the constructed context). */
+        if(context.hashKeyID != 0)
+        {
+            const SessionConsistencyResult consistency = context.ValidateConsistency();
+            if(consistency != SessionConsistencyResult::Ok)
+            {
+                debug::log(0, FUNCTION, "Session consistency violation at MINER_SET_REWARD: ",
+                           SessionConsistencyResultString(consistency));
+                StatelessPacket authFailed(StatelessOpcodes::AUTH_RESULT);
+                authFailed.DATA.push_back(0x00);  // failure
+                authFailed.LENGTH = 1;
+                return ProcessResult::Success(context, authFailed);
+            }
+        }
+
         /* Derive ChaCha20 session key from genesis */
         std::vector<uint8_t> vChaChaKey = LLC::MiningSessionKeys::DeriveChaCha20Key(context.hashGenesis);
         const auto optRecoveredSession = SessionRecoveryManager::Get().RecoverSessionByIdentity(

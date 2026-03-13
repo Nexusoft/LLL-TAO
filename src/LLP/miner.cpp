@@ -1943,6 +1943,30 @@ namespace LLP
 
         debug::log(0, FUNCTION, "Miner subscribed to channel ", nChannel, " (", GetChannelName(nChannel), ")");
 
+        /* Write-ahead: update and persist the session BEFORE sending the push notification.
+         * If the connection drops after SendChannelNotification but before the session is saved,
+         * the recovery cache would hold a stale channel height.  Persisting first ensures the
+         * recovered session reflects the correct channel height on reconnect. */
+        {
+            const std::string strLookupAddr = GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort());
+            auto optCtx = StatelessMinerManager::Get().GetMinerContext(strLookupAddr);
+            if(optCtx.has_value() && optCtx->fAuthenticated && optCtx->hashKeyID != 0)
+            {
+                MiningContext updatedCtx = optCtx.value();
+
+                /* Record the current channel height so recovery can avoid stale-height throttling */
+                TAO::Ledger::BlockState stateChannel = TAO::Ledger::ChainState::tStateBest.load();
+                uint32_t nChannelHeight = 0;
+                if(TAO::Ledger::GetLastState(stateChannel, nChannel))
+                    nChannelHeight = stateChannel.nChannelHeight;
+                updatedCtx = updatedCtx.WithLastTemplateChannelHeight(nChannelHeight);
+
+                SessionRecoveryManager::Get().SaveSession(updatedCtx);
+                debug::log(2, FUNCTION, "Session saved (write-ahead) before push notification: channelHeight=",
+                           nChannelHeight, " keyID=", updatedCtx.hashKeyID.SubString());
+            }
+        }
+
         /* Send immediate notification.
          * Force-bypass the push throttle — miner explicitly re-subscribed and needs
          * fresh work immediately regardless of when the previous push was sent.
@@ -1973,6 +1997,26 @@ namespace LLP
             std::vector<uint8_t> vFail(1, 0x00);
             respond(MINER_AUTH_RESULT, vFail);
             return debug::error(FUNCTION, "Authentication required for stateless miner commands");
+        }
+
+        /* R-02: Session consistency gate — validate the authoritative session context
+         * persisted in StatelessMinerManager before proceeding with block processing.
+         * The live connection context has hashKeyID=0 for legacy-lane miners; the
+         * StatelessMinerManager carries the full context populated during auth. */
+        {
+            const std::string strLookupAddr = GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort());
+            const auto optCtx = StatelessMinerManager::Get().GetMinerContext(strLookupAddr);
+            if(optCtx.has_value())
+            {
+                const SessionConsistencyResult consistency = optCtx->ValidateConsistency();
+                if(consistency != SessionConsistencyResult::Ok)
+                {
+                    debug::log(0, FUNCTION, "Session consistency violation at SUBMIT_BLOCK (legacy): ",
+                               SessionConsistencyResultString(consistency));
+                    respond(BLOCK_REJECTED);
+                    return true;
+                }
+            }
         }
 
         debug::log(2, FUNCTION, "SUBMIT_BLOCK from ", GetAddress().ToStringIP(),
