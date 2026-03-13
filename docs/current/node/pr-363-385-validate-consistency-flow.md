@@ -331,7 +331,7 @@
   ║  🟢  AFTER PR #385 — Write-Ahead Fixed                             ║
   ╠══════════════════════════════════════════════════════════════════════╣
   ║                                                                      ║
-  ║  handle_miner_ready_stateless()                                      ║
+  ║  handle_miner_ready_stateless()  [src/LLP/miner.cpp]                ║
   ║  {                                                                   ║
   ║      // 1. Lookup authoritative context from StatelessMinerManager   ║
   ║      auto optCtx = StatelessMinerManager::Get()                      ║
@@ -340,24 +340,67 @@
   ║         && optCtx->hashKeyID != 0)                                  ║
   ║      {                                                               ║
   ║          MiningContext updatedCtx = optCtx.value();                  ║
-  ║          // 2. Stamp current chain channel height                    ║
+  ║                                                                      ║
+  ║          // 2. ⛓️  Blockchain call: read BestChain tip atomically    ║
+  ║          //    Step A — load the current best block from the chain   ║
+  ║          TAO::Ledger::BlockState stateChannel =                      ║
+  ║              TAO::Ledger::ChainState::tStateBest.load();             ║
+  ║          //    tStateBest is a memory::atomic<BlockState> updated    ║
+  ║          //    every time a new block is accepted.  .load() is an    ║
+  ║          //    O(1) lock-free read of the tip.                       ║
+  ║          //                                                          ║
+  ║          //    Step B — walk backward to the channel-specific tip    ║
+  ║          uint32_t nChannelHeight = 0;                                ║
+  ║          if(TAO::Ledger::GetLastState(stateChannel, nChannel))       ║
+  ║              nChannelHeight = stateChannel.nChannelHeight;           ║
+  ║          //    GetLastState() iterates backward through the chain    ║
+  ║          //    (≤1440 blocks) until it finds a block whose           ║
+  ║          //    GetChannel() == nChannel (1=Prime, 2=Hash).           ║
+  ║          //    Returns: stateChannel.nChannelHeight — the sequential ║
+  ║          //    block count for that specific mining channel.          ║
+  ║          //                                                          ║
+  ║          //    Example (channel 1 = Prime):                          ║
+  ║          //      tStateBest  → unified height 500,000              ║
+  ║          //      GetLastState → walks back to last Prime block       ║
+  ║          //      stateChannel.nChannelHeight → e.g. 125,342         ║
+  ║          //      (Prime blocks are ~25% of all blocks)               ║
+  ║                                                                      ║
+  ║          // 3. Stamp the channel height so recovery avoids stale    ║
+  ║          //    height throttling on reconnect                        ║
   ║          updatedCtx = updatedCtx                                     ║
   ║              .WithLastTemplateChannelHeight(nChannelHeight);         ║
-  ║          // 3. ✅ SaveSession BEFORE notification                    ║
+  ║          // 4. ✅ SaveSession BEFORE notification                    ║
   ║          SessionRecoveryManager::Get().SaveSession(updatedCtx);      ║
   ║      }                                                               ║
-  ║      // 4. NOW send notification (safe: cache is up to date)         ║
+  ║      // 5. NOW send notification (safe: cache is up to date)         ║
   ║      SendChannelNotification();                                       ║
   ║  }                                                                   ║
+  ║                                                                      ║
+  ║  Blockchain call chain (PR #385 addition):                           ║
+  ║  ──────────────────────────────────────────────────────────────────  ║
+  ║  ChainState::tStateBest.load()   ← atomic read, O(1), lock-free     ║
+  ║          │                                                           ║
+  ║          ▼  BlockState (unified chain tip)                           ║
+  ║  GetLastState(stateChannel, nChannel)  ← walk-back, O(1) avg        ║
+  ║          │  (src/TAO/Ledger/state.cpp)                               ║
+  ║          ▼                                                           ║
+  ║  stateChannel.nChannelHeight          ← channel-specific block cnt  ║
+  ║          │                                                           ║
+  ║          ▼                                                           ║
+  ║  WithLastTemplateChannelHeight(nChannelHeight)  ← stamped on ctx    ║
+  ║          │                                                           ║
+  ║          ▼                                                           ║
+  ║  SaveSession(updatedCtx)              ← persisted BEFORE push 🔒    ║
   ║                                                                      ║
   ║  Timeline:                                                           ║
   ║  ──────────────────────────────────────────────────────────────────  ║
   ║  t₀  MINER_READY received                                           ║
-  ║  t₁  SaveSession(fresh channelHeight) ← write-ahead ✅              ║
-  ║  t₂  SendChannelNotification() → miner gets template push            ║
-  ║  t₃  💥 TCP DROP HERE (after save)                                   ║
-  ║  t₄  Recovery cache: FRESH channelHeight ✅                          ║
-  ║  t₅  Miner reconnects → template push served immediately 📤          ║
+  ║  t₁  ChainState::tStateBest.load() + GetLastState() → channelHeight ║
+  ║  t₂  SaveSession(fresh channelHeight) ← write-ahead ✅              ║
+  ║  t₃  SendChannelNotification() → miner gets template push            ║
+  ║  t₄  💥 TCP DROP HERE (after save)                                   ║
+  ║  t₅  Recovery cache: FRESH channelHeight ✅                          ║
+  ║  t₆  Miner reconnects → template push served immediately 📤          ║
   ╚══════════════════════════════════════════════════════════════════════╝
 ```
 
