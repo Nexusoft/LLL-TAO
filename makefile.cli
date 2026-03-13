@@ -339,6 +339,8 @@ ifdef UNIT_TESTS
 		   build/Tests_LLP_template_metadata_channel_height.o \
 		   build/Tests_LLP_test_cleanup_stale_templates.o \
 		   build/Tests_LLP_test_stateless_miner_crypto.o \
+		   build/Tests_LLP_node_integration_hardening.o \
+		   build/Tests_LLP_session_management_comprehensive.o \
 		   build/Tests_TAO_API_assets.o \
 		   build/Tests_TAO_API_finance.o \
 		   build/Tests_TAO_API_names.o \
@@ -1662,7 +1664,7 @@ build/Tests_LLD_%.o: tests/unit/LLD/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/Tests_LLP_%.o: tests/unit/LLP/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	$(CXX) -c $(CXXFLAGS) -I$(CURDIR)/tests/unit/LLP -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \

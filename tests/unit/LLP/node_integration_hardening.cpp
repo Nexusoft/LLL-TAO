@@ -100,17 +100,24 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
         /* Verify session is expired */
         REQUIRE(ctx.IsSessionExpired(now) == true);
 
-        /* Step 2: Miner sends keepalive, node detects expiration */
+        /* Step 2: Miner sends keepalive on a zero-session-ID context.
+         * When nSessionId == 0 (no session ID assigned) and the session has expired,
+         * the node sends SESSION_EXPIRED so the miner knows to re-authenticate.
+         * An authenticated miner with nSessionId != 0 would instead get its session
+         * EXTENDED (see session_management_comprehensive.cpp for that scenario). */
+        MiningContext ctxNoSessionId = ctx.WithSession(0);
+
         StatelessPacket keepalivePacket(SESSION_KEEPALIVE);
-        keepalivePacket.DATA.push_back(static_cast<uint8_t>(sessionId & 0xFF));
-        keepalivePacket.DATA.push_back(static_cast<uint8_t>((sessionId >> 8) & 0xFF));
-        keepalivePacket.DATA.push_back(static_cast<uint8_t>((sessionId >> 16) & 0xFF));
-        keepalivePacket.DATA.push_back(static_cast<uint8_t>((sessionId >> 24) & 0xFF));
+        uint32_t zeroSessionId = 0;
+        keepalivePacket.DATA.push_back(static_cast<uint8_t>(zeroSessionId & 0xFF));
+        keepalivePacket.DATA.push_back(static_cast<uint8_t>((zeroSessionId >> 8) & 0xFF));
+        keepalivePacket.DATA.push_back(static_cast<uint8_t>((zeroSessionId >> 16) & 0xFF));
+        keepalivePacket.DATA.push_back(static_cast<uint8_t>((zeroSessionId >> 24) & 0xFF));
         keepalivePacket.LENGTH = 4;
 
-        ProcessResult expiredResult = StatelessMiner::ProcessSessionKeepalive(ctx, keepalivePacket);
+        ProcessResult expiredResult = StatelessMiner::ProcessSessionKeepalive(ctxNoSessionId, keepalivePacket);
 
-        /* Verify SESSION_EXPIRED response */
+        /* Verify SESSION_EXPIRED response — zero session ID triggers the expired path */
         REQUIRE(expiredResult.fSuccess == true);  // Connection stays open!
         REQUIRE(expiredResult.response.HEADER == SESSION_EXPIRED);
         REQUIRE(expiredResult.response.LENGTH == 5);
@@ -120,7 +127,7 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
                                 (static_cast<uint32_t>(expiredResult.response.DATA[1]) << 8) |
                                 (static_cast<uint32_t>(expiredResult.response.DATA[2]) << 16) |
                                 (static_cast<uint32_t>(expiredResult.response.DATA[3]) << 24);
-        REQUIRE(respSessionId == sessionId);
+        REQUIRE(respSessionId == zeroSessionId);
         REQUIRE(expiredResult.response.DATA[4] == 0x01);  // EXPIRED_INACTIVITY
 
         /* Step 3: Miner receives SESSION_EXPIRED and performs in-band reauth */
@@ -154,7 +161,7 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
 
         /* Should process normally (no SESSION_EXPIRED) */
         REQUIRE(resumeResult.fSuccess == true);
-        REQUIRE(resumeResult.response.HEADER == SESSION_KEEPALIVE_RESPONSE);
+        REQUIRE(resumeResult.response.HEADER == SESSION_KEEPALIVE);
 
         /* Verify session preserved through update */
         MiningContext updated = reauthCtx.WithKeepaliveCount(reauthCtx.nKeepaliveCount + 1);
@@ -162,20 +169,23 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
         REQUIRE(updated.nKeepaliveCount == 1);
     }
 
-    SECTION("V2 Protocol: SESSION_EXPIRED with prevhash in keepalive")
+    SECTION("V2 Protocol: SESSION_EXPIRED with prevhash in keepalive (zero session ID)")
     {
-        /* Test SESSION_EXPIRED flow with KEEPALIVE_V2 (8-byte payload) */
+        /* Test SESSION_EXPIRED flow with KEEPALIVE_V2 (8-byte payload).
+         * When nSessionId == 0 (no session ID assigned) and the session has expired,
+         * the node sends SESSION_EXPIRED even for V2 keepalive.
+         * An authenticated miner with nSessionId != 0 would instead get its session
+         * EXTENDED via a KEEPALIVE_V2_ACK response. */
 
         uint64_t now = runtime::unifiedtimestamp();
         uint64_t oldTime = now - 400;
-        uint32_t sessionId = 99999;
 
-        /* Create expired session */
+        /* Create expired session with zero session ID — triggers SESSION_EXPIRED path */
         MiningContext expiredCtx = MiningContext()
             .WithSessionStart(oldTime)
             .WithTimestamp(oldTime)
             .WithSessionTimeout(300)
-            .WithSession(sessionId)
+            .WithSession(0)        // Zero session ID → SESSION_EXPIRED (not extended)
             .WithAuth(true);
 
         REQUIRE(expiredCtx.IsSessionExpired(now) == true);
@@ -199,10 +209,10 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
 
         v2Packet.LENGTH = 8;
 
-        /* Process V2 keepalive on expired session */
+        /* Process V2 keepalive on expired session with zero session ID */
         ProcessResult result = StatelessMiner::ProcessKeepaliveV2(expiredCtx, v2Packet);
 
-        /* Verify SESSION_EXPIRED response */
+        /* Verify SESSION_EXPIRED response — zero session ID path */
         REQUIRE(result.fSuccess == true);
         REQUIRE(result.response.HEADER == SESSION_EXPIRED);
         REQUIRE(result.response.LENGTH == 5);
@@ -211,14 +221,18 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
                                 (static_cast<uint32_t>(result.response.DATA[1]) << 8) |
                                 (static_cast<uint32_t>(result.response.DATA[2]) << 16) |
                                 (static_cast<uint32_t>(result.response.DATA[3]) << 24);
-        REQUIRE(respSessionId == sessionId);
+        REQUIRE(respSessionId == 0);
         REQUIRE(result.response.DATA[4] == 0x01);  // EXPIRED_INACTIVITY
     }
 
-    SECTION("Connection state preserved across session expiration")
+    SECTION("Connection state preserved across session extension (degraded recovery)")
     {
         /* Verify that connection-level state (channel, height, etc.)
-         * is preserved when session expires, allowing quick reauth */
+         * is preserved when an authenticated expired session is extended.
+         *
+         * With the R4 fix, a miner in DEGRADED MODE that missed its timeout window
+         * but is still sending keepalives will have its session EXTENDED rather than
+         * expired. Channel and height survive the extension without requiring reauth. */
 
         uint64_t now = runtime::unifiedtimestamp();
         uint64_t oldTime = now - 400;
@@ -234,26 +248,25 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
 
         REQUIRE(ctx.IsSessionExpired(now) == true);
 
-        /* Send keepalive, get SESSION_EXPIRED */
+        /* Send keepalive — authenticated session with valid ID is EXTENDED, not expired */
         StatelessPacket keepalive(SESSION_KEEPALIVE);
         keepalive.DATA.resize(4, 0);
         keepalive.LENGTH = 4;
 
         ProcessResult result = StatelessMiner::ProcessSessionKeepalive(ctx, keepalive);
-        REQUIRE(result.response.HEADER == SESSION_EXPIRED);
 
-        /* After reauth, channel and height state can be preserved */
-        /* In real implementation, StatelessMinerManager would maintain this */
-        MiningContext reauthCtx = ctx
-            .WithSessionStart(runtime::unifiedtimestamp())
-            .WithTimestamp(runtime::unifiedtimestamp())
-            .WithSession(54321);  // New session ID
+        /* Session extension: node returns SESSION_KEEPALIVE (not SESSION_EXPIRED) */
+        REQUIRE(result.fSuccess == true);
+        REQUIRE(result.response.HEADER == SESSION_KEEPALIVE);
 
-        /* Connection state preserved */
-        REQUIRE(reauthCtx.nChannel == 1);
-        REQUIRE(reauthCtx.nHeight == 500000);
-        REQUIRE(reauthCtx.nSessionId == 54321);
-        REQUIRE(reauthCtx.IsSessionExpired() == false);
+        /* After extension: session is no longer expired */
+        REQUIRE(result.context.IsSessionExpired(now) == false);
+
+        /* Channel and height are preserved through extension (no reauth needed) */
+        REQUIRE(result.context.nChannel == 1);
+        REQUIRE(result.context.nHeight == 500000);
+        REQUIRE(result.context.nSessionId == 12345);  // Same session ID
+        REQUIRE(result.context.fAuthenticated == true);
     }
 }
 
