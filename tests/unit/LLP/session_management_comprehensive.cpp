@@ -15,11 +15,14 @@ ________________________________________________________________________________
 
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/stateless_manager.h>
+#include <LLP/include/stateless_opcodes.h>
+#include <LLP/include/keepalive_v2.h>
 #include <helpers/test_fixtures.h>
 
 #include <Util/include/runtime.h>
 
 using namespace LLP;
+using namespace LLP::StatelessOpcodes;
 using namespace TestFixtures;
 
 
@@ -638,19 +641,21 @@ TEST_CASE("Session: SESSION_EXPIRED Opcode and Graceful Eviction", "[session][ex
         REQUIRE(result.context.nKeepaliveCount == ctx.nKeepaliveCount + 1);
     }
 
-    SECTION("ProcessSessionKeepalive sends SESSION_EXPIRED for unauthenticated expired session")
+    SECTION("ProcessSessionKeepalive sends SESSION_EXPIRED for expired session with no session ID")
     {
         uint64_t now = runtime::unifiedtimestamp();
         uint64_t oldTime = now - 400;
 
-        /* Create expired session context — NOT authenticated.
-         * For unauthenticated sessions, SESSION_EXPIRED is still sent. */
+        /* Create expired session context — authenticated but with no session ID (nSessionId == 0).
+         * When nSessionId == 0 and the session is expired, SESSION_EXPIRED is sent even though
+         * the miner is authenticated. This differs from the extension path which requires
+         * both fAuthenticated == true AND nSessionId != 0. */
         MiningContext ctx = MiningContext()
             .WithSessionStart(oldTime)
             .WithTimestamp(oldTime)
             .WithSessionTimeout(300)
-            .WithSession(0)       // No session ID
-            .WithAuth(false);     // Not authenticated
+            .WithSession(0)       // No session ID — triggers SESSION_EXPIRED
+            .WithAuth(true);      // Authenticated (required to reach expiry check)
 
         REQUIRE(ctx.IsSessionExpired(now) == true);
 
@@ -663,7 +668,7 @@ TEST_CASE("Session: SESSION_EXPIRED Opcode and Graceful Eviction", "[session][ex
         /* Should return Success (keeps connection open) */
         REQUIRE(result.fSuccess == true);
 
-        /* Response should be SESSION_EXPIRED for unauthenticated/no-session case */
+        /* Response should be SESSION_EXPIRED for zero-session-id case */
         REQUIRE(result.response.HEADER == StatelessOpcodes::SESSION_EXPIRED);
 
         /* Verify reason code (byte 4) */

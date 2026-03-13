@@ -241,9 +241,7 @@ namespace TestFixtures
         return CreateRewardBoundContext(authGenesis, rewardAddr)
             .WithChannel(nChannel)
             .WithHeight(100000)
-            .WithProtocolVersion(1)
             .WithSession(12345)
-            .WithEncryptionReady(true)
             .WithChaChaKey(CreateTestChaChaKey());
     }
     
@@ -306,7 +304,6 @@ namespace TestFixtures
         MiningContextBuilder& WithEncryption()
         {
             context = context
-                .WithEncryptionReady(true)
                 .WithChaChaKey(CreateTestChaChaKey());
             return *this;
         }
