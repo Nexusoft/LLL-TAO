@@ -331,6 +331,7 @@ ifdef UNIT_TESTS
 		   build/Tests_LLP_keepalive_v2_tests.o \
 		   build/Tests_LLP_rate_limiting_tests.o \
 		   build/Tests_LLP_session_recovery.o \
+		   build/Tests_LLP_session_status_tests.o \
 		   build/Tests_LLP_stateless_miner.o \
 		   build/Tests_LLP_dual_connection_manager_tests.o \
 		   build/Tests_LLP_graceful_shutdown_tests.o \
