@@ -594,12 +594,14 @@ TEST_CASE("Session: Complete Lifecycle", "[session][lifecycle]")
 
 TEST_CASE("Session: SESSION_EXPIRED Opcode and Graceful Eviction", "[session][expired-opcode]")
 {
-    SECTION("ProcessSessionKeepalive sends SESSION_EXPIRED on expired session")
+    SECTION("ProcessSessionKeepalive extends session for authenticated expired miner (degraded recovery)")
     {
         uint64_t now = runtime::unifiedtimestamp();
         uint64_t oldTime = now - 400;  // 400 seconds ago
 
-        /* Create expired session context */
+        /* Create expired session context — authenticated, valid session ID.
+         * This simulates a miner in DEGRADED MODE that missed keepalives for longer
+         * than the session timeout but is still alive and sending keepalives. */
         MiningContext ctx = MiningContext()
             .WithSessionStart(oldTime)
             .WithTimestamp(oldTime)  // Last activity 400s ago
@@ -619,37 +621,62 @@ TEST_CASE("Session: SESSION_EXPIRED Opcode and Graceful Eviction", "[session][ex
         keepalivePacket.DATA.push_back(static_cast<uint8_t>((sessionId >> 24) & 0xFF));
         keepalivePacket.LENGTH = 4;
 
-        /* Process keepalive on expired session */
+        /* Process keepalive on expired but authenticated session */
         ProcessResult result = StatelessMiner::ProcessSessionKeepalive(ctx, keepalivePacket);
 
-        /* Should return Success (not Error) to keep connection open */
+        /* Should return Success (not Error) */
         REQUIRE(result.fSuccess == true);
 
-        /* Response should be SESSION_EXPIRED opcode */
-        REQUIRE(result.response.HEADER == StatelessOpcodes::SESSION_EXPIRED);
+        /* Response should be a keepalive ACK (SESSION_KEEPALIVE), NOT SESSION_EXPIRED —
+         * the session is extended rather than forcing a reconnect */
+        REQUIRE(result.response.HEADER == StatelessOpcodes::SESSION_KEEPALIVE);
 
-        /* Response should have 5-byte payload */
-        REQUIRE(result.response.LENGTH == 5);
-        REQUIRE(result.response.DATA.size() == 5);
+        /* Resulting context timestamp should be refreshed (session no longer expired) */
+        REQUIRE(result.context.IsSessionExpired(now) == false);
 
-        /* Verify session_id in response (first 4 bytes, LE) */
-        uint32_t respSessionId = static_cast<uint32_t>(result.response.DATA[0]) |
-                                (static_cast<uint32_t>(result.response.DATA[1]) << 8) |
-                                (static_cast<uint32_t>(result.response.DATA[2]) << 16) |
-                                (static_cast<uint32_t>(result.response.DATA[3]) << 24);
-        REQUIRE(respSessionId == 12345);
-
-        /* Verify reason code (byte 4) */
-        uint8_t reasonCode = result.response.DATA[4];
-        REQUIRE(reasonCode == 0x01);  // EXPIRED_INACTIVITY
+        /* Keepalive counter should have been incremented */
+        REQUIRE(result.context.nKeepaliveCount == ctx.nKeepaliveCount + 1);
     }
 
-    SECTION("ProcessKeepaliveV2 sends SESSION_EXPIRED on expired session")
+    SECTION("ProcessSessionKeepalive sends SESSION_EXPIRED for unauthenticated expired session")
     {
         uint64_t now = runtime::unifiedtimestamp();
         uint64_t oldTime = now - 400;
 
-        /* Create expired session context */
+        /* Create expired session context — NOT authenticated.
+         * For unauthenticated sessions, SESSION_EXPIRED is still sent. */
+        MiningContext ctx = MiningContext()
+            .WithSessionStart(oldTime)
+            .WithTimestamp(oldTime)
+            .WithSessionTimeout(300)
+            .WithSession(0)       // No session ID
+            .WithAuth(false);     // Not authenticated
+
+        REQUIRE(ctx.IsSessionExpired(now) == true);
+
+        StatelessPacket keepalivePacket(StatelessOpcodes::SESSION_KEEPALIVE);
+        keepalivePacket.DATA.resize(4, 0);
+        keepalivePacket.LENGTH = 4;
+
+        ProcessResult result = StatelessMiner::ProcessSessionKeepalive(ctx, keepalivePacket);
+
+        /* Should return Success (keeps connection open) */
+        REQUIRE(result.fSuccess == true);
+
+        /* Response should be SESSION_EXPIRED for unauthenticated/no-session case */
+        REQUIRE(result.response.HEADER == StatelessOpcodes::SESSION_EXPIRED);
+
+        /* Verify reason code (byte 4) */
+        REQUIRE(result.response.DATA.size() == 5);
+        REQUIRE(result.response.DATA[4] == 0x01);  // EXPIRED_INACTIVITY
+    }
+
+    SECTION("ProcessKeepaliveV2 extends session for authenticated expired miner")
+    {
+        uint64_t now = runtime::unifiedtimestamp();
+        uint64_t oldTime = now - 400;
+
+        /* Create expired session context — authenticated, valid session ID */
         MiningContext ctx = MiningContext()
             .WithSessionStart(oldTime)
             .WithTimestamp(oldTime)
@@ -678,22 +705,42 @@ TEST_CASE("Session: SESSION_EXPIRED Opcode and Graceful Eviction", "[session][ex
 
         v2Packet.LENGTH = 8;
 
-        /* Process KEEPALIVE_V2 on expired session */
+        /* Process KEEPALIVE_V2 on expired but authenticated session */
         ProcessResult result = StatelessMiner::ProcessKeepaliveV2(ctx, v2Packet);
 
-        /* Should return Success to keep connection open */
+        /* Should return Success */
         REQUIRE(result.fSuccess == true);
 
-        /* Response should be SESSION_EXPIRED opcode */
-        REQUIRE(result.response.HEADER == StatelessOpcodes::SESSION_EXPIRED);
+        /* Response should be a KEEPALIVE_V2_ACK (0xD101), NOT SESSION_EXPIRED — session is extended */
+        REQUIRE(result.response.HEADER == StatelessOpcodes::KEEPALIVE_V2_ACK);
+    }
 
-        /* Verify 5-byte payload with correct session_id */
-        REQUIRE(result.response.LENGTH == 5);
-        uint32_t respSessionId = static_cast<uint32_t>(result.response.DATA[0]) |
-                                (static_cast<uint32_t>(result.response.DATA[1]) << 8) |
-                                (static_cast<uint32_t>(result.response.DATA[2]) << 16) |
-                                (static_cast<uint32_t>(result.response.DATA[3]) << 24);
-        REQUIRE(respSessionId == 54321);
+    SECTION("ProcessKeepaliveV2 sends SESSION_EXPIRED for expired session with no session ID")
+    {
+        uint64_t now = runtime::unifiedtimestamp();
+        uint64_t oldTime = now - 400;
+
+        /* Create expired session context — authenticated but no session ID */
+        MiningContext ctx = MiningContext()
+            .WithSessionStart(oldTime)
+            .WithTimestamp(oldTime)
+            .WithSessionTimeout(300)
+            .WithSession(0)     // No session ID — SESSION_EXPIRED path
+            .WithAuth(true);
+
+        REQUIRE(ctx.IsSessionExpired(now) == true);
+
+        StatelessPacket v2Packet(StatelessOpcodes::KEEPALIVE_V2);
+        v2Packet.DATA.resize(8, 0);
+        v2Packet.LENGTH = 8;
+
+        ProcessResult result = StatelessMiner::ProcessKeepaliveV2(ctx, v2Packet);
+
+        /* Should return Success (keeps connection open) */
+        REQUIRE(result.fSuccess == true);
+
+        /* Response should be SESSION_EXPIRED for zero-session-id case */
+        REQUIRE(result.response.HEADER == StatelessOpcodes::SESSION_EXPIRED);
         REQUIRE(result.response.DATA[4] == 0x01);  // EXPIRED_INACTIVITY
     }
 
@@ -719,9 +766,10 @@ TEST_CASE("Session: SESSION_EXPIRED Opcode and Graceful Eviction", "[session][ex
         REQUIRE(expired.IsSessionExpired(now) == true);
     }
 
-    SECTION("Connection stays open for re-auth after SESSION_EXPIRED")
+    SECTION("Connection stays open after session extension (degraded recovery)")
     {
-        /* This test verifies that returning Success (not Error) keeps connection alive */
+        /* This test verifies that authenticated miners with valid session IDs get
+         * session extension rather than SESSION_EXPIRED, keeping the connection alive. */
 
         uint64_t now = runtime::unifiedtimestamp();
         uint64_t oldTime = now - 400;
@@ -740,8 +788,12 @@ TEST_CASE("Session: SESSION_EXPIRED Opcode and Graceful Eviction", "[session][ex
         ProcessResult result = StatelessMiner::ProcessSessionKeepalive(expired, keepalive);
 
         /* Key behavior: fSuccess=true means connection stays open */
-        /* Miner can now send MINER_AUTH_INIT to re-authenticate */
         REQUIRE(result.fSuccess == true);
-        REQUIRE(result.response.HEADER == StatelessOpcodes::SESSION_EXPIRED);
+
+        /* Authenticated session with valid ID is EXTENDED, not expired */
+        REQUIRE(result.response.HEADER == StatelessOpcodes::SESSION_KEEPALIVE);
+
+        /* After extension, session is no longer expired */
+        REQUIRE(result.context.IsSessionExpired(now) == false);
     }
 }

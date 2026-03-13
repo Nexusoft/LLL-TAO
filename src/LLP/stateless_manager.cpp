@@ -29,8 +29,14 @@ ________________________________________________________________________________
 namespace LLP
 {
     /* Grace period for keepalive check in smart timeout logic.
-     * Sessions with a keepalive exchange within this window are not considered idle. */
-    static const uint64_t KEEPALIVE_GRACE_PERIOD_SEC = 120;
+     * Sessions with a keepalive exchange within this window are not considered idle.
+     *
+     * This value is intentionally aligned with the miner's maximum degraded recovery
+     * window: DEGRADED_MODE_HARD_LIMIT_SECONDS (300s) + 2 keepalive intervals (2×60s = 120s).
+     * A miner in DEGRADED MODE sends keepalives every ~60s but may stop sending new
+     * MINER_READY for up to 300s while running its escape ladder. Evicting the session
+     * during that window would cause Stateless=0 on the next BroadcastChannel event. */
+    static const uint64_t KEEPALIVE_GRACE_PERIOD_SEC = 420;
 
     /* Get singleton instance */
     StatelessMinerManager& StatelessMinerManager::Get()
@@ -304,9 +310,12 @@ namespace LLP
 
             /* Smart timeout: Only disconnect if truly idle.
              * All conditions must be met:
-             * 1. No activity for timeout period
-             * 2. No keepalives received (counter is 0)
-             * 3. No recent keepalive exchange (within last 2 minutes) */
+             * 1. No activity (nTimestamp) for timeout period — nTimestamp is updated by
+             *    keepalives, ensuring miners in DEGRADED MODE are not evicted while alive
+             * 2. No keepalives ever received (counter is 0) — miners that have sent any
+             *    keepalive will not be evicted by this path
+             * 3. No recent keepalive exchange within KEEPALIVE_GRACE_PERIOD_SEC — aligned
+             *    with DEGRADED_MODE_HARD_LIMIT (300s) + 2 keepalive intervals (120s) */
             bool bTrulyIdle =
                 (nTimeSinceActivity > nTimeoutSec) &&
                 (ctx.nKeepaliveCount == 0) &&
