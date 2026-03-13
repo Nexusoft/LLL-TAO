@@ -7,17 +7,19 @@ When the node shuts down (Ctrl+C / SIGTERM), connected miners receive an explici
 stop their workers cleanly and observe a reconnect backoff instead of spinning in a
 rapid reconnect loop.
 
+Both **stateless** (port 9323) and **legacy** (port 8323) miners receive the same
+`NODE_SHUTDOWN (0xD0FF)` packet via a single unified shutdown sequence.
+
 ---
 
 ## Node-Initiated Shutdown Sequence
 
 1. `LLP::Shutdown()` calls `GracefulDisconnectAllMiners()` **first**, before any server teardown.
 2. `ColinMiningAgent::on_node_shutdown()` emits the final diagnostic report so the last Colin snapshot (connected miners, last template, submission stats) is captured in `debug.log`.
-3. Each connected stateless miner receives `NODE_SHUTDOWN (0xD0FF)` with a 4-byte reason code.
-4. A 20 ms flush window per miner allows the packet to be delivered before the socket closes.
-5. `Disconnect()` closes the TCP socket for each miner.
-6. Legacy miners (port 8323) receive a bare `Disconnect()` (no shutdown packet — legacy protocol has no equivalent opcode).
-7. `FalconAuth::Shutdown()` and then the miner servers (`STATELESS_MINER_SERVER`, `MINING_SERVER`) shut down cleanly.
+3. **Phase 1** — Every connected miner on **both** lanes receives `NODE_SHUTDOWN (0xD0FF)` with a 4-byte reason code.
+4. **Phase 2** — A single shared flush window (30 ms) gives the kernel TCP send buffers time to transmit the packets.
+5. **Phase 3** — `Disconnect()` closes the TCP socket for each miner and DataThreads are woken.
+6. `FalconAuth::Shutdown()` and then the miner servers (`STATELESS_MINER_SERVER`, `MINING_SERVER`) shut down cleanly.
 
 **Debug log order (expected):**
 
@@ -91,5 +93,7 @@ debug::log(0, "Channel: ", MiningContext::ChannelName(pBlock->nChannel));
 | `src/LLP/stateless_miner_connection.cpp` | Implemented `SendNodeShutdown()`; replaced inline channel ternaries with `context.strChannelName` |
 | `src/LLP/include/colin_mining_agent.h` | Declared `on_node_shutdown()` |
 | `src/LLP/colin_mining_agent.cpp` | Implemented `on_node_shutdown()` |
-| `src/LLP/global.cpp` | Added `GracefulDisconnectAllMiners()` static function; call it at start of `LLP::Shutdown()` |
+| `src/LLP/global.cpp` | `GracefulDisconnectAllMiners()` sends NODE_SHUTDOWN to both stateless and legacy lanes in one unified sequence |
+| `src/LLP/types/miner.h` | Declared `SendNodeShutdown(uint32_t)` on the legacy `Miner` class |
+| `src/LLP/miner.cpp` | Implemented `Miner::SendNodeShutdown()` via `respond_stateless()` |
 | `tests/unit/LLP/graceful_shutdown_tests.cpp` | New unit tests |
