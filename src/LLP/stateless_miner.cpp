@@ -2011,9 +2011,8 @@ namespace LLP
         }
 
         /* R-02: Session consistency gate — reject before any key-material access.
-         * Only applicable on the stateless lane where context.hashKeyID is populated;
-         * legacy-lane contexts are constructed with hashKeyID=0 by design (the real
-         * hashKeyID lives in StatelessMinerManager, not in the constructed context). */
+         * Skip on legacy-lane contexts where hashKeyID is intentionally 0; the live
+         * hashKeyID for legacy miners is stored in StatelessMinerManager, not here. */
         if(context.hashKeyID != 0)
         {
             const SessionConsistencyResult consistency = context.ValidateConsistency();

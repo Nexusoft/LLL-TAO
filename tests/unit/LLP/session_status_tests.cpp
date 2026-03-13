@@ -329,7 +329,7 @@ TEST_CASE("ValidateConsistency gate: SUBMIT_BLOCK rejected on inconsistent sessi
     uint256_t genesis;
     genesis.SetHex("deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef");
     uint256_t keyID;
-    keyID.SetHex("cafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebabe");  // 64 hex chars
+    keyID.SetHex("cafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebabe");
 
     /* Build one good and one bad context for comparison */
     MiningContext goodCtx = MiningContext()
