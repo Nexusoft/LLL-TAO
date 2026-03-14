@@ -561,6 +561,46 @@ namespace TAO::Ledger
     }
 
 
+    /* Build a canonical solved Hash (channel 2) candidate from the immutable stored template. */
+    TritiumBlock BuildSolvedHashCandidateFromTemplate(
+        const TritiumBlock& tmpl,
+        const uint64_t nNonce)
+    {
+        /* Copy all consensus-critical fields from the original template.
+         * This preserves: nVersion, hashPrevBlock, hashMerkleRoot, nChannel,
+         * nHeight, nBits, nTime, producer, ssSystem, vtx.
+         *
+         * nTime is deliberately preserved from the template rather than refreshed:
+         * - For Hash (channel 2): ProofHash = SK1024(nVersion..nNonce) does NOT
+         *   include nTime.  The miner's solved proof is independent of nTime, so
+         *   preserving nTime avoids mutating anchor fields after template issuance
+         *   without any proof-correctness benefit.
+         * Callers that require a fresh timestamp for network propagation may call
+         * UpdateTime() on the returned candidate separately. */
+        TritiumBlock solved = tmpl;
+
+        /* Apply the miner-submitted nonce. */
+        solved.nNonce = nNonce;
+
+        /* Hash channel invariant: vOffsets must always be empty.
+         * Clear unconditionally even if the template carried residual Prime offset
+         * bytes from a prior channel switch or serialisation artefact. */
+        solved.vOffsets.clear();
+
+        /* Clear the block signature.  SignatureHash() covers nNonce; any prior
+         * signature produced for the template (nNonce=1) is no longer valid after
+         * the miner's nonce is applied.  Caller must invoke
+         * FinalizeWalletSignatureForSolvedBlock() before submitting to
+         * ValidateMinedBlock() / AcceptMinedBlock(). */
+        solved.vchBlockSig.clear();
+
+        debug::log(2, FUNCTION, "Built solved Hash candidate from template: channel=", solved.nChannel,
+                   " height=", solved.nHeight, " nNonce=0x", std::hex, nNonce, std::dec);
+
+        return solved;
+    }
+
+
     /* Structurally validate miner-submitted Prime vOffsets without the broken
      * GetOffsets(GetPrime()) equivalence check. */
     bool VerifySubmittedPrimeOffsets(
