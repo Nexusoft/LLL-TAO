@@ -54,6 +54,21 @@ namespace LLP
      *        MiningServerFactory::Lane::LEGACY);
      *    MINING_SERVER = new Server<Miner>(LEGACY_CONFIG);
      *
+     *  USAGE (SSL-enabled):
+     *  ====================
+     *  When -miningssl=1 is set, BuildConfig() automatically wires PORT_SSL.
+     *  BuildSSLConfig() can be used for explicit SSL-only server construction:
+     *
+     *    // Stateless SSL lane (port 9325)
+     *    LLP::Config cfg = MiningServerFactory::BuildSSLConfig(
+     *        MiningServerFactory::Lane::STATELESS);
+     *    STATELESS_MINER_SERVER = new Server<StatelessMinerConnection>(cfg);
+     *
+     *    // Legacy SSL lane (port 8325) — guaranteed clean reconnect
+     *    LLP::Config legacy_cfg = MiningServerFactory::BuildSSLConfig(
+     *        MiningServerFactory::Lane::LEGACY);
+     *    MINING_SERVER = new Server<Miner>(legacy_cfg);
+     *
      *  LANE DIFFERENCES:
      *  =================
      *  Stateless Lane (Port 9323):
@@ -78,7 +93,8 @@ namespace LLP
      *  - ENABLE_SSL: configurable via -miningssl
      *  - ENABLE_REMOTE: true (allow remote connections)
      *  - REQUIRE_SSL: configurable via -miningsslrequired
-     *  - PORT_SSL: 0 (SSL not yet implemented)
+     *  - PORT_SSL: GetMiningSSLPort() for STATELESS (default 9325), GetLegacyMiningSSLPort() for LEGACY (default 8325)
+     *              Set to 0 when -miningssl is not enabled (no port stolen).
      *  - MAX_INCOMING: 128 connections
      *  - MAX_CONNECTIONS: 128 total
      *  - MAX_THREADS: configurable via -miningthreads (default 4)
@@ -153,8 +169,10 @@ namespace LLP
          *  - -mininglegacytimeout: Override legacy lane timeout (default: 120s)
          *  - -miningtimeout: Override timeout for both lanes (deprecated, use lane-specific)
          *  - -miningddos: Enable DDOS protection (default: false)
-         *  - -miningssl: Enable SSL (default: false, not yet implemented)
+         *  - -miningssl: Enable SSL (default: false)
          *  - -miningsslrequired: Require SSL for all connections
+         *  - -miningstatelesssslport: Override stateless SSL port (default: 9325)
+         *  - -mininglegacysslport: Override legacy SSL port (default: 8325)
          *  - -miningcscore: DDOS connection score threshold (default: 1)
          *  - -miningrscore: DDOS request score threshold (default: 50)
          *  - -miningtimespan: DDOS timespan in seconds (default: 60)
@@ -212,7 +230,9 @@ namespace LLP
             CONFIG.ENABLE_SSL      = config::GetBoolArg(std::string("-miningssl"), false);
             CONFIG.ENABLE_REMOTE   = true;
             CONFIG.REQUIRE_SSL     = config::GetBoolArg(std::string("-miningsslrequired"), false);
-            CONFIG.PORT_SSL        = 0;  // SSL not yet implemented
+            CONFIG.PORT_SSL        = CONFIG.ENABLE_SSL ?
+                ((lane == Lane::STATELESS) ? GetMiningSSLPort() : GetLegacyMiningSSLPort()) :
+                0;
             CONFIG.MAX_INCOMING    = 128;
             CONFIG.MAX_CONNECTIONS = 128;
             CONFIG.MAX_THREADS     = config::GetArg(std::string("-miningthreads"), 4);
@@ -243,6 +263,45 @@ namespace LLP
             }
 
             return CONFIG;
+        }
+
+
+        /** BuildSSLConfig
+         *
+         *  Build a mining server configuration for the specified lane with SSL explicitly enabled.
+         *
+         *  This is a convenience wrapper around BuildConfig() that forces ENABLE_SSL=true
+         *  and sets the appropriate SSL port, regardless of the -miningssl command-line flag.
+         *  Use this when the caller has already determined that SSL should be active (e.g.,
+         *  when -miningssl=1 is set and you want explicit, self-documenting call sites).
+         *
+         *  Port Assignment:
+         *  ----------------
+         *  STATELESS: PORT_SSL = GetMiningSSLPort()       (default 9325, override -miningstatelesssslport)
+         *  LEGACY:    PORT_SSL = GetLegacyMiningSSLPort() (default 8325, override -mininglegacysslport)
+         *
+         *  REQUIRE_SSL behavior:
+         *  ---------------------
+         *  Still reads -miningsslrequired from config. Set REQUIRE_SSL=true in nexus.conf
+         *  to suppress the plaintext listener entirely (remote-facing public pools).
+         *
+         *  @param[in] lane    The mining protocol lane (STATELESS or LEGACY)
+         *
+         *  @return LLP::Config with ENABLE_SSL=true and PORT_SSL wired to the lane-specific port.
+         *
+         **/
+        static LLP::Config BuildSSLConfig(Lane lane)
+        {
+            LLP::Config cfg = BuildConfig(lane);
+
+            /* Force SSL enabled regardless of -miningssl flag */
+            cfg.ENABLE_SSL = true;
+
+            /* Wire the correct SSL port for this lane */
+            cfg.PORT_SSL = (lane == Lane::STATELESS) ?
+                GetMiningSSLPort() : GetLegacyMiningSSLPort();
+
+            return cfg;
         }
     };
 

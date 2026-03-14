@@ -108,6 +108,7 @@ MINING_SERVER = new Server<Miner>(LEGACY_CONFIG);
 | Aspect | Stateless Lane | Legacy Lane |
 |--------|---------------|-------------|
 | **Port** | 9323 (configurable via `-miningport`) | 8323 (configurable via `-legacyminingport`) |
+| **SSL Port** | 9325 (configurable via `-miningstatelesssslport`) | 8325 (configurable via `-mininglegacysslport`) |
 | **Protocol** | 16-bit stateless framing | 8-bit legacy framing |
 | **Communication** | Push notifications (event-driven) | GET_BLOCK polling (request-driven) |
 | **Timeout** | 300s (accommodates long Prime searches) | 120s (traditional polling interval) |
@@ -125,10 +126,10 @@ Both lanes use **identical** settings for:
 | `ENABLE_METERS` | `false` | No bandwidth metering |
 | `ENABLE_DDOS` | Configurable (`-miningddos`) | DDoS protection |
 | `ENABLE_MANAGER` | `false` | No connection manager |
-| `ENABLE_SSL` | Configurable (`-miningssl`) | SSL support (not yet implemented) |
+| `ENABLE_SSL` | Configurable (`-miningssl`) | SSL support |
 | `ENABLE_REMOTE` | `true` | Allow remote connections |
 | `REQUIRE_SSL` | Configurable (`-miningsslrequired`) | SSL requirement |
-| `PORT_SSL` | `0` | SSL port (not yet implemented) |
+| `PORT_SSL` | `GetMiningSSLPort()` / `GetLegacyMiningSSLPort()` when SSL enabled, `0` otherwise | SSL port (9325 stateless, 8325 legacy) |
 | `MAX_INCOMING` | `128` | Maximum incoming connections |
 | `MAX_CONNECTIONS` | `128` | Total connection limit |
 | `MAX_THREADS` | `4` (configurable via `-miningthreads`) | Worker thread pool size |
@@ -172,6 +173,37 @@ nexus -legacyminingport=0
 **Problem Solved:** Prior to per-lane timeout support, setting `-miningtimeout=60` would clobber the stateless lane's protective 300s timeout, breaking Prime mining. Now users can:
 - Use `-miningstatelesstimeout=300 -mininglegacytimeout=60` for optimal per-lane control
 - Or keep `-miningtimeout=60` but add `-miningstatelesstimeout=300` to protect the stateless lane
+
+## Port Allocation
+
+| Port | Transport  | Server    | Purpose                                        |
+|------|------------|-----------|------------------------------------------------|
+| 9323 | Plaintext  | Stateless | Local miners, legacy clients                   |
+| 9325 | TLS        | Stateless | Remote miners PRIMARY lane                     |
+| 8323 | Plaintext  | Legacy    | Local miners, SIM-Link local                   |
+| 8325 | TLS        | Legacy    | Remote miners SECONDARY lane (clean reconnect) |
+
+Note: Port 9326 is `MAINNET_P2P_PORT` and must not be used for mining.
+
+## SSL Configuration
+
+Config flags (nexus.conf or command-line):
+
+```
+-miningssl=1                      Enable SSL listeners on both mining lanes
+-miningsslrequired=1              Suppress plaintext listener (remote-facing pools)
+-miningstatelesssslport=<port>    Override stateless SSL port (default: 9325)
+-mininglegacysslport=<port>       Override legacy SSL port (default: 8325)
+```
+
+When `-miningssl=1` is set, `BuildConfig()` automatically wires `PORT_SSL` to the
+lane-appropriate port. `BuildSSLConfig()` can be used for explicit SSL-only server
+construction regardless of the `-miningssl` flag.
+
+The legacy SSL lane (8325) is the "guaranteed clean reconnect" lane: every miner
+connecting to this TLS port receives a brand-new protocol instance with zero ghost
+state from any prior session. This eliminates the silent ChaCha20 key-mismatch
+failure observed when reconnecting on the same plaintext port after a drop.
 
 ## Lane-Specific Behaviors
 

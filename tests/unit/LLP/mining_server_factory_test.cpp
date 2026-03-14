@@ -249,3 +249,95 @@ TEST_CASE("MiningServerFactory struct vs class idiomatic style", "[miner][config
         REQUIRE(cfg.SOCKET_TIMEOUT > 0);
     }
 }
+
+TEST_CASE("MiningServerFactory SSL port wiring", "[llp][mining][ssl]")
+{
+    /* Save original config state to restore after tests */
+    std::map<std::string, std::string> mapOriginalArgs = config::mapArgs;
+    std::map<std::string, std::vector<std::string>> mapOriginalMultiArgs = config::mapMultiArgs;
+
+    SECTION("BuildConfig STATELESS with SSL disabled: PORT_SSL must be 0")
+    {
+        config::mapArgs["-miningssl"] = "0";
+        LLP::Config cfg = LLP::MiningServerFactory::BuildConfig(
+            LLP::MiningServerFactory::Lane::STATELESS);
+        REQUIRE(cfg.PORT_SSL == 0);
+        REQUIRE(cfg.ENABLE_SSL == false);
+    }
+
+    SECTION("BuildConfig STATELESS with SSL enabled: PORT_SSL must be 9325")
+    {
+        config::mapArgs["-miningssl"] = "1";
+        config::mapArgs.erase("-miningstatelesssslport");
+        LLP::Config cfg = LLP::MiningServerFactory::BuildConfig(
+            LLP::MiningServerFactory::Lane::STATELESS);
+        REQUIRE(cfg.PORT_SSL == 9325);
+        REQUIRE(cfg.ENABLE_SSL == true);
+        config::mapArgs.erase("-miningssl");
+    }
+
+    SECTION("BuildConfig LEGACY with SSL enabled: PORT_SSL must be 8325")
+    {
+        config::mapArgs["-miningssl"] = "1";
+        config::mapArgs.erase("-mininglegacysslport");
+        LLP::Config cfg = LLP::MiningServerFactory::BuildConfig(
+            LLP::MiningServerFactory::Lane::LEGACY);
+        REQUIRE(cfg.PORT_SSL == 8325);
+        REQUIRE(cfg.ENABLE_SSL == true);
+        config::mapArgs.erase("-miningssl");
+    }
+
+    SECTION("BuildSSLConfig STATELESS: PORT_SSL is 9325 regardless of -miningssl flag")
+    {
+        config::mapArgs.erase("-miningssl");  // flag NOT set
+        LLP::Config cfg = LLP::MiningServerFactory::BuildSSLConfig(
+            LLP::MiningServerFactory::Lane::STATELESS);
+        REQUIRE(cfg.PORT_SSL == 9325);
+        REQUIRE(cfg.ENABLE_SSL == true);
+    }
+
+    SECTION("BuildSSLConfig LEGACY: PORT_SSL is 8325 regardless of -miningssl flag")
+    {
+        config::mapArgs.erase("-miningssl");  // flag NOT set
+        LLP::Config cfg = LLP::MiningServerFactory::BuildSSLConfig(
+            LLP::MiningServerFactory::Lane::LEGACY);
+        REQUIRE(cfg.PORT_SSL == 8325);
+        REQUIRE(cfg.ENABLE_SSL == true);
+    }
+
+    SECTION("GetMiningSSLPort override via -miningstatelesssslport")
+    {
+        config::mapArgs["-miningstatelesssslport"] = "19325";
+        REQUIRE(LLP::GetMiningSSLPort() == 19325);
+        config::mapArgs.erase("-miningstatelesssslport");
+    }
+
+    SECTION("GetLegacyMiningSSLPort override via -mininglegacysslport")
+    {
+        config::mapArgs["-mininglegacysslport"] = "18325";
+        REQUIRE(LLP::GetLegacyMiningSSLPort() == 18325);
+        config::mapArgs.erase("-mininglegacysslport");
+    }
+
+    SECTION("PORT_SSL and PORT_BASE must not collide")
+    {
+        config::mapArgs["-miningssl"] = "1";
+        config::mapArgs.erase("-miningstatelesssslport");
+        config::mapArgs.erase("-mininglegacysslport");
+        LLP::Config stateless = LLP::MiningServerFactory::BuildConfig(
+            LLP::MiningServerFactory::Lane::STATELESS);
+        LLP::Config legacy = LLP::MiningServerFactory::BuildConfig(
+            LLP::MiningServerFactory::Lane::LEGACY);
+
+        REQUIRE(stateless.PORT_BASE != stateless.PORT_SSL);  // 9323 != 9325
+        REQUIRE(legacy.PORT_BASE != legacy.PORT_SSL);        // 8323 != 8325
+        REQUIRE(stateless.PORT_SSL != legacy.PORT_SSL);      // 9325 != 8325
+        REQUIRE(stateless.PORT_BASE != legacy.PORT_BASE);    // 9323 != 8323
+
+        config::mapArgs.erase("-miningssl");
+    }
+
+    /* Restore original config state */
+    config::mapArgs = mapOriginalArgs;
+    config::mapMultiArgs = mapOriginalMultiArgs;
+}
