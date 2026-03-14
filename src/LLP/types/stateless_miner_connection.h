@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #define NEXUS_LLP_TYPES_STATELESS_MINER_CONNECTION_H
 
 #include <LLP/templates/stateless_connection.h>
+#include <LLP/include/graceful_shutdown.h>
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/channel_state_manager.h>
 #include <LLP/include/auto_cooldown.h>
@@ -168,6 +169,9 @@ namespace LLP
         
         RateLimitState m_rateLimit;
 
+        /** Track whether NODE_SHUTDOWN was already sent on this connection. **/
+        GracefulShutdown::NotificationState m_nodeShutdownNotification;
+
     public:
         /** Default Constructor **/
         StatelessMinerConnection();
@@ -256,7 +260,13 @@ namespace LLP
          *  @param[in] nReasonCode  Shutdown reason: 1=GRACEFUL, 2=MAINTENANCE
          *
          **/
-        void SendNodeShutdown(uint32_t nReasonCode = 1);
+        void SendNodeShutdown(uint32_t nReasonCode = GracefulShutdown::REASON_GRACEFUL);
+
+        /** Check whether NODE_SHUTDOWN was already attempted on this connection. **/
+        bool NodeShutdownSent() const
+        {
+            return m_nodeShutdownNotification.Sent();
+        }
         
         // ═══════════════════════════════════════════════════════════════════════
         // DIFFICULTY CACHING (Performance Optimization)

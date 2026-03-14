@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 
 #include <LLP/include/global.h>
+#include <LLP/include/graceful_shutdown.h>
 #include <LLP/include/mining_config.h>
 #include <LLP/include/mining_server_factory.h>
 #include <LLP/include/network.h>
@@ -429,18 +430,14 @@ namespace LLP
      */
     static void GracefulDisconnectAllMiners()
     {
-        /* Milliseconds to wait after sending all NODE_SHUTDOWN packets before
-         * beginning hard disconnects. One shared flush window is sufficient —
-         * per-connection sleep was causing O(N×20ms) stalls on shutdown. */
-        static constexpr uint32_t MINER_SHUTDOWN_FLUSH_MS = 30;
-
         debug::log(0, FUNCTION, "Sending graceful disconnect to all connected miners...");
 
+        uint32_t nStatelessNotifyAttempts = 0;
+        uint32_t nLegacyNotifyAttempts    = 0;
+        uint32_t nStatelessNotified       = 0;
+        uint32_t nLegacyNotified          = 0;
         uint32_t nStatelessDisconnected = 0;
         uint32_t nLegacyDisconnected    = 0;
-
-        /* Emit final Colin diagnostic report before breaking connections */
-        ColinMiningAgent::Get().on_node_shutdown();
 
         /* ── Phase 1: Send NODE_SHUTDOWN to ALL miners (both lanes) ──────── */
 
@@ -452,8 +449,29 @@ namespace LLP
             {
                 if(!pConn || !pConn->Connected())
                     continue;
-                pConn->SendNodeShutdown(1);
+
+                ++nStatelessNotifyAttempts;
+
+                try
+                {
+                    pConn->SendNodeShutdown(GracefulShutdown::REASON_GRACEFUL);
+
+                    if(pConn->NodeShutdownSent())
+                        ++nStatelessNotified;
+                }
+                catch(const std::exception& e)
+                {
+                    debug::error(FUNCTION, "Failed to send NODE_SHUTDOWN to stateless miner ",
+                                 pConn->GetAddress().ToStringIP(), ": ", e.what());
+                }
+                catch(...)
+                {
+                    debug::error(FUNCTION, "Failed to send NODE_SHUTDOWN to stateless miner ",
+                                 pConn->GetAddress().ToStringIP(), ": unknown exception");
+                }
             }
+
+            STATELESS_MINER_SERVER->NotifyEvent();
         }
 
         /* Legacy lane (port 8323) */
@@ -464,12 +482,37 @@ namespace LLP
             {
                 if(!pConn || !pConn->Connected())
                     continue;
-                pConn->SendNodeShutdown(1);
+
+                ++nLegacyNotifyAttempts;
+
+                try
+                {
+                    pConn->SendNodeShutdown(GracefulShutdown::REASON_GRACEFUL);
+
+                    if(pConn->NodeShutdownSent())
+                        ++nLegacyNotified;
+                }
+                catch(const std::exception& e)
+                {
+                    debug::error(FUNCTION, "Failed to send NODE_SHUTDOWN to legacy miner ",
+                                 pConn->GetAddress().ToStringIP(), ": ", e.what());
+                }
+                catch(...)
+                {
+                    debug::error(FUNCTION, "Failed to send NODE_SHUTDOWN to legacy miner ",
+                                 pConn->GetAddress().ToStringIP(), ": unknown exception");
+                }
             }
+
+            MINING_SERVER->NotifyEvent();
         }
 
         /* ── Phase 2: Single shared flush window ─────────────────────────── */
-        runtime::sleep(MINER_SHUTDOWN_FLUSH_MS);
+        debug::log(0, FUNCTION, "NODE_SHUTDOWN queued for ",
+                   nStatelessNotified, "/", nStatelessNotifyAttempts, " stateless and ",
+                   nLegacyNotified, "/", nLegacyNotifyAttempts, " legacy miners; waiting ",
+                   GracefulShutdown::MINER_SHUTDOWN_FLUSH_MS, " ms for egress before disconnect");
+        runtime::sleep(GracefulShutdown::MINER_SHUTDOWN_FLUSH_MS);
 
         /* ── Phase 3: Hard-disconnect all miners and wake DataThreads ────── */
         if(STATELESS_MINER_SERVER)
@@ -479,6 +522,14 @@ namespace LLP
             {
                 if(!pConn || !pConn->Connected())
                     continue;
+
+                debug::log(1, FUNCTION, "Disconnecting stateless miner ",
+                           pConn->GetAddress().ToStringIP(), " after graceful shutdown wait");
+
+                if(!pConn->NodeShutdownSent())
+                    debug::warning(FUNCTION, "Disconnecting stateless miner without prior NODE_SHUTDOWN state: ",
+                                   pConn->GetAddress().ToStringIP());
+
                 pConn->Disconnect();
                 ++nStatelessDisconnected;
             }
@@ -493,6 +544,14 @@ namespace LLP
             {
                 if(!pConn || !pConn->Connected())
                     continue;
+
+                debug::log(1, FUNCTION, "Disconnecting legacy miner ",
+                           pConn->GetAddress().ToStringIP(), " after graceful shutdown wait");
+
+                if(!pConn->NodeShutdownSent())
+                    debug::warning(FUNCTION, "Disconnecting legacy miner without prior NODE_SHUTDOWN state: ",
+                                   pConn->GetAddress().ToStringIP());
+
                 pConn->Disconnect();
                 ++nLegacyDisconnected;
             }
@@ -503,6 +562,19 @@ namespace LLP
         debug::log(0, FUNCTION, "Graceful disconnect complete: ",
                    nStatelessDisconnected, " stateless + ",
                    nLegacyDisconnected, " legacy miners disconnected");
+
+        try
+        {
+            ColinMiningAgent::Get().on_node_shutdown();
+        }
+        catch(const std::exception& e)
+        {
+            debug::error(FUNCTION, "Colin shutdown report failed after miner disconnect: ", e.what());
+        }
+        catch(...)
+        {
+            debug::error(FUNCTION, "Colin shutdown report failed after miner disconnect: unknown exception");
+        }
     }
 
 
@@ -512,7 +584,18 @@ namespace LLP
         debug::log(0, FUNCTION, "Shutting down LLP");
 
         /* Gracefully notify and disconnect all miners BEFORE server teardown. */
-        GracefulDisconnectAllMiners();
+        try
+        {
+            GracefulDisconnectAllMiners();
+        }
+        catch(const std::exception& e)
+        {
+            debug::error(FUNCTION, "Graceful miner shutdown phase failed: ", e.what());
+        }
+        catch(...)
+        {
+            debug::error(FUNCTION, "Graceful miner shutdown phase failed: unknown exception");
+        }
 
         /* Shutdown Falcon Auth. */
         FalconAuth::Shutdown();

@@ -15,18 +15,20 @@ Both **stateless** (port 9323) and **legacy** (port 8323) miners receive the sam
 ## Node-Initiated Shutdown Sequence
 
 1. `LLP::Shutdown()` calls `GracefulDisconnectAllMiners()` **first**, before any server teardown.
-2. `ColinMiningAgent::on_node_shutdown()` emits the final diagnostic report so the last Colin snapshot (connected miners, last template, submission stats) is captured in `debug.log`.
-3. **Phase 1** — Every connected miner on **both** lanes receives `NODE_SHUTDOWN (0xD0FF)` with a 4-byte reason code.
-4. **Phase 2** — A single shared flush window (30 ms) gives the kernel TCP send buffers time to transmit the packets.
-5. **Phase 3** — `Disconnect()` closes the TCP socket for each miner and DataThreads are woken.
-6. `FalconAuth::Shutdown()` and then the miner servers (`STATELESS_MINER_SERVER`, `MINING_SERVER`) shut down cleanly.
+2. **Phase 1** — Every connected miner on **both** lanes receives `NODE_SHUTDOWN (0xD0FF)` with a 4-byte reason code.
+3. The mining DataThreads are woken so any buffered shutdown packets can flush immediately.
+4. **Phase 2** — A single shared flush window (250 ms) gives the kernel TCP send buffers time to transmit the packets before hard close.
+5. **Phase 3** — `Disconnect()` closes the TCP socket for each miner and DataThreads are woken again for teardown.
+6. `ColinMiningAgent::on_node_shutdown()` runs after the miner disconnect phase, and any exception is logged without aborting shutdown.
+7. `FalconAuth::Shutdown()` and then the miner servers (`STATELESS_MINER_SERVER`, `MINING_SERVER`) shut down cleanly.
 
 **Debug log order (expected):**
 
 ```
 GracefulDisconnectAllMiners: Sending graceful disconnect to all connected miners...
-[Colin shutdown report ...]
+GracefulDisconnectAllMiners: NODE_SHUTDOWN queued for N/M stateless and X/Y legacy miners; waiting 250 ms for egress before disconnect
 GracefulDisconnectAllMiners: Graceful disconnect complete: N stateless + M legacy miners disconnected
+[Colin shutdown report ...]
 Shutting down LLP
 ```
 
@@ -87,6 +89,7 @@ debug::log(0, "Channel: ", MiningContext::ChannelName(pBlock->nChannel));
 | File | Change |
 |------|--------|
 | `src/LLP/include/opcode_utility.h` | Added `NODE_SHUTDOWN = 0xD0FF` to `Stateless` namespace |
+| `src/LLP/include/graceful_shutdown.h` | Shared shutdown reason / flush timing constants and per-connection notification state |
 | `src/LLP/include/stateless_miner.h` | Added `strChannelName` field, `ChannelName()` static, `WithChannelName()` builder to `MiningContext` |
 | `src/LLP/stateless_miner.cpp` | Initialized `strChannelName` in both constructors; implemented `ChannelName()` and `WithChannelName()`; updated `ProcessSetChannel()` |
 | `src/LLP/types/stateless_miner_connection.h` | Declared `SendNodeShutdown(uint32_t)` |

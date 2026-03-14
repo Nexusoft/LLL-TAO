@@ -2446,6 +2446,13 @@ namespace LLP
     /* SendNodeShutdown - Notify legacy miner of graceful node shutdown via NODE_SHUTDOWN (0xD0FF) */
     void Miner::SendNodeShutdown(uint32_t nReasonCode)
     {
+        if(!m_nodeShutdownNotification.MarkSent())
+        {
+            debug::log(1, FUNCTION, "NODE_SHUTDOWN already sent to legacy miner ",
+                       GetAddress().ToStringIP(), " - skipping duplicate");
+            return;
+        }
+
         /* Build 4-byte reason code payload (big-endian) */
         std::vector<uint8_t> vData;
         vData.push_back(static_cast<uint8_t>((nReasonCode >> 24) & 0xFF));
@@ -2457,6 +2464,9 @@ namespace LLP
                    GetAddress().ToStringIP(), " reason=", nReasonCode);
 
         respond_stateless(OpcodeUtility::Stateless::NODE_SHUTDOWN, vData);
+
+        debug::log(1, FUNCTION, "Queued NODE_SHUTDOWN for legacy miner ", GetAddress().ToStringIP(),
+                   " buffered=", Buffered(), " bytes");
     }
 
 }
