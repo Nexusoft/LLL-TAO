@@ -279,6 +279,14 @@ namespace LLP
                 STATELESS_MINER_SERVER = new Server<StatelessMinerConnection>(CONFIG);
 
                 debug::log(0, FUNCTION, "Phase 2 Stateless Miner LLP server started on port ", GetMiningPort());
+
+                if(config::GetBoolArg(std::string("-miningssl"), false))
+                {
+                    if(config::GetBoolArg(std::string("-miningsslrequired"), false))
+                        debug::log(0, FUNCTION, "Stateless Miner SSL listener on port ", GetMiningSSLPort(), " (plaintext suppressed)");
+                    else
+                        debug::log(0, FUNCTION, "Stateless Miner SSL listener on port ", GetMiningSSLPort(), " (plaintext also open on port ", GetMiningPort(), ")");
+                }
             }
         }
 
@@ -300,6 +308,14 @@ namespace LLP
                 MINING_SERVER = new Server<Miner>(LEGACY_CONFIG);
 
                 debug::log(0, FUNCTION, "Legacy Mining LLP server started on port ", nLegacyPort);
+
+                if(config::GetBoolArg(std::string("-miningssl"), false))
+                {
+                    if(config::GetBoolArg(std::string("-miningsslrequired"), false))
+                        debug::log(0, FUNCTION, "Legacy Miner SSL listener on port ", GetLegacyMiningSSLPort(), " (plaintext suppressed)");
+                    else
+                        debug::log(0, FUNCTION, "Legacy Miner SSL listener on port ", GetLegacyMiningSSLPort(), " (plaintext also open on port ", nLegacyPort, ")");
+                }
             }
             else
             {
