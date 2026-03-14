@@ -1527,24 +1527,26 @@ namespace LLP
             if(pBlock->nChannel == TAO::Ledger::CHANNEL::PRIME)
             {
                 pBlock->vOffsets = vOffsets;
-                /* Cross-validate miner-submitted Prime offsets against node-derived offsets.
-                 * The Falcon signature already covers vOffsets, but this defence-in-depth
-                 * check catches any divergence between the miner and the node's prime derivation. */
-                if(!pBlock->vOffsets.empty())
+
+                /* Structural validation of miner-submitted Prime offsets.
+                 * The prior GetOffsets(GetPrime()) equivalence check was broken: it
+                 * returned empty offsets whenever GetPrime() was not itself prime,
+                 * causing false rejections for otherwise valid Prime submissions.
+                 * VerifySubmittedPrimeOffsets() performs lightweight structural checks
+                 * only; the authoritative proof-of-work gate is VerifyWork() in Check().
+                 *
+                 * The empty check guards the legacy-fallback path below: when the miner
+                 * does not submit vOffsets (compact wrapper), we fall through to GetOffsets()
+                 * rather than rejecting. Only non-empty submissions are validated here. */
+                if(!pBlock->vOffsets.empty() &&
+                   !TAO::Ledger::VerifySubmittedPrimeOffsets(*pBlock, pBlock->vOffsets))
                 {
-                    std::vector<uint8_t> vDerivedOffsets;
-                    TAO::Ledger::GetOffsets(pBlock->GetPrime(), vDerivedOffsets);
-                    if(vDerivedOffsets != pBlock->vOffsets)
-                    {
-                        debug::error(FUNCTION, "Prime vOffsets mismatch: miner-submitted (", pBlock->vOffsets.size(),
-                                     " bytes) != node-derived (", vDerivedOffsets.size(), " bytes) — BLOCK_REJECTED");
-                        return false;
-                    }
-                    debug::log(2, FUNCTION, "Prime vOffsets cross-validated OK (", pBlock->vOffsets.size(), " bytes)");
+                    return debug::error(FUNCTION, "Prime vOffsets structural validation failed");
                 }
-                /* Preserve miner-submitted Prime offsets when present, but retain
-                 * the legacy local-derivation fallback for compact wrappers and
-                 * zero-offset Prime submissions. */
+
+                /* Legacy fallback: derive offsets locally when the miner did not submit
+                 * them (compact wrapper path).  This preserves backwards compatibility
+                 * with older miners that do not include vOffsets in the payload. */
                 if(pBlock->vOffsets.empty())
                     TAO::Ledger::GetOffsets(pBlock->GetPrime(), pBlock->vOffsets);
             }

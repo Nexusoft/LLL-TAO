@@ -3350,12 +3350,26 @@ namespace LLP
             debug::log(0, "   Miner's nonce: 0x", std::hex, nNonce, std::dec);
             debug::log(0, "   Block height: ", pBlock->nHeight);
             debug::log(0, "   Block channel: ", pBlock->nChannel);
-            
-            /* Update the block's timestamp. */
-            pBlock->UpdateTime();
-            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Timestamp updated", ANSI_COLOR_RESET);
 
-            /* Enforce channel invariant before any diagnostic branch */
+            /* For Prime channel: preserve the template's nTime (do not call UpdateTime).
+             *   ProofHash for Prime = SK1024(nVersion..nBits), which excludes nTime.
+             *   The miner's solved proof is independent of nTime; mutating nTime after
+             *   template issuance would violate the "immutable anchor field" invariant
+             *   without providing any benefit to proof correctness.
+             * For non-Prime channels (Hash in the stateless miner context): UpdateTime()
+             *   is traditional and safe since Hash ProofHash = SK1024(nVersion..nNonce)
+             *   also excludes nTime. */
+            if(pBlock->nChannel != TAO::Ledger::CHANNEL::PRIME)
+            {
+                pBlock->UpdateTime();
+                debug::log(2, FUNCTION, "Timestamp updated for non-Prime channel (", pBlock->nChannel, ")");
+            }
+            else
+            {
+                debug::log(2, FUNCTION, "Prime channel: preserving template nTime (no UpdateTime)");
+            }
+
+            /* Enforce channel invariant: only Prime blocks carry vOffsets. */
             if(pBlock->nChannel != TAO::Ledger::CHANNEL::PRIME)
                 pBlock->vOffsets.clear();
 
@@ -3370,24 +3384,26 @@ namespace LLP
                 /* Calculate hashPrime (same calculation miner did) */
                 uint1024_t hashPrime = pBlock->GetPrime();
                 pBlock->vOffsets = vOffsets;
-                /* Cross-validate miner-submitted Prime offsets against node-derived offsets.
-                 * The Falcon signature already covers vOffsets, but this defence-in-depth
-                 * check catches any divergence between the miner and the node's prime derivation. */
-                if(!pBlock->vOffsets.empty())
+
+                /* Structural validation of miner-submitted Prime offsets.
+                 * The prior GetOffsets(GetPrime()) equivalence check has been removed:
+                 * it returned empty vOffsets whenever GetPrime() was not itself prime,
+                 * producing false rejections for valid Prime submissions.
+                 * VerifySubmittedPrimeOffsets() does lightweight structural checks;
+                 * the authoritative PoW gate remains VerifyWork() inside Check().
+                 *
+                 * The empty check guards the legacy-fallback path below: when the miner
+                 * does not submit vOffsets (compact wrapper), we fall through to GetOffsets()
+                 * rather than rejecting. Only non-empty submissions are validated here. */
+                if(!pBlock->vOffsets.empty() &&
+                   !TAO::Ledger::VerifySubmittedPrimeOffsets(*pBlock, pBlock->vOffsets))
                 {
-                    std::vector<uint8_t> vDerivedOffsets;
-                    TAO::Ledger::GetOffsets(hashPrime, vDerivedOffsets);
-                    if(vDerivedOffsets != pBlock->vOffsets)
-                    {
-                        debug::error(FUNCTION, "Prime vOffsets mismatch: miner-submitted (", pBlock->vOffsets.size(),
-                                     " bytes) != node-derived (", vDerivedOffsets.size(), " bytes) — BLOCK_REJECTED");
-                        return false;
-                    }
-                    debug::log(2, FUNCTION, "Prime vOffsets cross-validated OK (", pBlock->vOffsets.size(), " bytes)");
+                    debug::error(FUNCTION, "Prime vOffsets structural validation failed — BLOCK_REJECTED");
+                    return false;
                 }
-                /* Preserve miner-submitted Prime offsets when present, but retain
-                 * the legacy local-derivation fallback for compact wrappers and
-                 * zero-offset Prime submissions. */
+
+                /* Legacy fallback: derive offsets locally when the miner did not submit
+                 * them (compact wrapper path).  Backwards-compatible with older miners. */
                 if(pBlock->vOffsets.empty())
                     TAO::Ledger::GetOffsets(hashPrime, pBlock->vOffsets);
                 
@@ -3538,6 +3554,24 @@ namespace LLP
             debug::log(0, "");
             debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Block prepared for validation", ANSI_COLOR_RESET);
             debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "📝 === SIGN_BLOCK: Complete ===", ANSI_COLOR_RESET);
+
+            /* Generate the canonical block signature.
+             * SignatureHash() covers nNonce and vOffsets; the template's prior
+             * signature (produced at template creation with nNonce=1, vOffsets=empty)
+             * is no longer valid after the miner's nNonce and vOffsets are applied.
+             * FinalizeWalletSignatureForSolvedBlock() re-signs the block so that
+             * TritiumBlock::Check() → VerifySignature() passes in ValidateMinedBlock().
+             *
+             * Architecture note: the Falcon signature authenticates the stateless session
+             * transport (miner identity + payload integrity).  The wallet signature
+             * (vchBlockSig) is the consensus-visible proof of authorised block production,
+             * verifiable by any network peer without Stateless Node. */
+            if(!TAO::Ledger::FinalizeWalletSignatureForSolvedBlock(*pBlock))
+            {
+                debug::error(FUNCTION, "FinalizeWalletSignatureForSolvedBlock failed — BLOCK_REJECTED");
+                return false;
+            }
+            debug::log(2, FUNCTION, "Wallet signature applied to solved block");
             
             return true;
         }

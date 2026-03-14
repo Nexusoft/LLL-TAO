@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/prime.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/timelocks.h>
@@ -26,6 +27,9 @@ ________________________________________________________________________________
 #include <LLP/include/version.h>
 #include <LLP/include/falcon_constants.h>
 #include <LLP/include/disposable_falcon.h>
+
+#include <LLC/include/flkey.h>
+#include <LLC/include/eckey.h>
 
 #include <Util/include/args.h>
 #include <Util/include/convert.h>
@@ -512,6 +516,167 @@ namespace TAO::Ledger
         }
 
         return false;
+    }
+
+
+    /* Build a canonical solved Prime candidate from the immutable stored template. */
+    TritiumBlock BuildSolvedPrimeCandidateFromTemplate(
+        const TritiumBlock& tmpl,
+        const uint64_t nNonce,
+        const std::vector<uint8_t>& vOffsets)
+    {
+        /* Copy all consensus-critical fields from the original template.
+         * This preserves: nVersion, hashPrevBlock, hashMerkleRoot, nChannel,
+         * nHeight, nBits, nTime, producer, ssSystem, vtx, and hashMerkleRoot.
+         *
+         * nTime is deliberately preserved from the template rather than refreshed:
+         * - For Prime: ProofHash = SK1024(nVersion..nBits) does NOT include nTime,
+         *   so the miner's solved proof is independent of nTime.
+         * - For Hash:  ProofHash = SK1024(nVersion..nNonce) also excludes nTime.
+         * Preserving nTime avoids mutating template anchor fields after issuance.
+         * Callers that require a fresh timestamp must call UpdateTime() separately. */
+        TritiumBlock solved = tmpl;
+
+        /* Apply the miner-submitted nonce. */
+        solved.nNonce = nNonce;
+
+        /* Apply miner-submitted Prime offsets for the Prime channel.
+         * Clear offsets for all other channels (consensus invariant). */
+        if(solved.nChannel == CHANNEL::PRIME)
+            solved.vOffsets = vOffsets;
+        else
+            solved.vOffsets.clear();
+
+        /* Clear the block signature.  SignatureHash() covers nNonce and vOffsets,
+         * so any signature produced for the template (nNonce=1, vOffsets=empty)
+         * is no longer valid.  Caller must invoke FinalizeWalletSignatureForSolvedBlock()
+         * before submitting to ValidateMinedBlock() / AcceptMinedBlock(). */
+        solved.vchBlockSig.clear();
+
+        debug::log(2, FUNCTION, "Built solved candidate from template: channel=", solved.nChannel,
+                   " height=", solved.nHeight, " nNonce=0x", std::hex, nNonce, std::dec,
+                   " vOffsets.size()=", solved.vOffsets.size());
+
+        return solved;
+    }
+
+
+    /* Structurally validate miner-submitted Prime vOffsets without the broken
+     * GetOffsets(GetPrime()) equivalence check. */
+    bool VerifySubmittedPrimeOffsets(
+        const TritiumBlock& solvedBlock,
+        const std::vector<uint8_t>& vOffsets)
+    {
+        /* Prime blocks must carry non-empty offsets (enforced by Check()). */
+        if(vOffsets.empty())
+            return debug::error(FUNCTION, "Prime block requires non-empty vOffsets");
+
+        /* Minimum structure: at least 1 chain-offset byte + 4 fractional bytes. */
+        if(vOffsets.size() < 5)
+            return debug::error(FUNCTION, "vOffsets too short: ", vOffsets.size(),
+                                " bytes (minimum 5: ≥1 chain offset + 4 fractional)");
+
+        /* Chain-offset bytes are all bytes except the last 4 (fractional difficulty).
+         * Each chain-offset encodes the gap to the next prime in the Cunningham chain;
+         * the maximum valid gap is 12 (hardcoded in GetOffsets / GetPrimeDifficulty). */
+        const size_t nChainOffsets = vOffsets.size() - 4;
+        for(size_t i = 0; i < nChainOffsets; ++i)
+        {
+            if(vOffsets[i] > 12)
+                return debug::error(FUNCTION, "invalid Prime offset[", i, "]=",
+                                    static_cast<int>(vOffsets[i]),
+                                    " (maximum chain gap is 12)");
+        }
+
+        /* NOTE: We intentionally do NOT call GetOffsets(GetPrime()) and compare
+         * the result against the miner-submitted vOffsets.  That approach was
+         * broken: GetOffsets() returns an empty vector whenever PrimeCheck() fails
+         * on the raw GetPrime() value, producing false rejections for valid chains
+         * where the node cannot re-derive the starting prime independently.
+         *
+         * The authoritative proof-of-work validation is performed by VerifyWork()
+         * (called from TritiumBlock::Check()), which evaluates
+         *   GetPrimeBits(GetPrime(), vOffsets, !Synchronizing()) >= nBits
+         * That gate remains the canonical acceptance criterion. */
+
+        debug::log(2, FUNCTION, "Prime vOffsets structurally valid: ",
+                   vOffsets.size(), " bytes, ", nChainOffsets, " chain offset(s)");
+        return true;
+    }
+
+
+    /* Generate the canonical block signature for a solved TritiumBlock. */
+    bool FinalizeWalletSignatureForSolvedBlock(TritiumBlock& block)
+    {
+        /* Unlock the mining sigchain to obtain the signing credentials.
+         * Authentication::Unlock fetches the mining PIN for the unlocked session;
+         * strPIN is populated by the call.
+         * RECURSIVE is used here because this function may be called from within
+         * the already-held authentication lock; the recursive variant allows
+         * re-entry without deadlock. */
+        SecureString strPIN;
+        try
+        {
+            RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
+        }
+        catch(const std::exception& e)
+        {
+            return debug::error(FUNCTION, "Unable to unlock mining credentials: ", e.what());
+        }
+
+        /* Retrieve the default session credentials. */
+        const auto& pCredentials =
+            TAO::API::Authentication::Credentials(uint256_t(TAO::API::Authentication::SESSION::DEFAULT));
+
+        if(!pCredentials)
+            return debug::error(FUNCTION, "Null credentials — mining session not active");
+
+        /* Derive the signing key for the producer's sequence position. */
+        const std::vector<uint8_t> vBytes =
+            pCredentials->Generate(block.producer.nSequence, strPIN).GetBytes();
+        const LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
+
+        /* Sign the block using the key type recorded in the producer transaction. */
+        switch(block.producer.nKeyType)
+        {
+            case TAO::Ledger::SIGNATURE::FALCON:
+            {
+                LLC::FLKey key;
+                if(!key.SetSecret(vchSecret))
+                    return debug::error(FUNCTION, "FLKey::SetSecret failed for block ",
+                                        block.hashMerkleRoot.SubString());
+
+                if(!block.GenerateSignature(key))
+                    return debug::error(FUNCTION, "GenerateSignature (Falcon) failed for block ",
+                                        block.hashMerkleRoot.SubString());
+
+                break;
+            }
+
+            case TAO::Ledger::SIGNATURE::BRAINPOOL:
+            {
+                LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+                if(!key.SetSecret(vchSecret, true))
+                    return debug::error(FUNCTION, "ECKey::SetSecret failed for block ",
+                                        block.hashMerkleRoot.SubString());
+
+                if(!block.GenerateSignature(key))
+                    return debug::error(FUNCTION, "GenerateSignature (Brainpool) failed for block ",
+                                        block.hashMerkleRoot.SubString());
+
+                break;
+            }
+
+            default:
+                return debug::error(FUNCTION, "Unknown producer key type: ",
+                                    static_cast<int>(block.producer.nKeyType));
+        }
+
+        debug::log(2, FUNCTION, "Wallet signature generated for block ",
+                   block.hashMerkleRoot.SubString(),
+                   " channel=", block.nChannel,
+                   " height=", block.nHeight);
+        return true;
     }
 
 }
