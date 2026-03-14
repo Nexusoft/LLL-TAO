@@ -808,9 +808,11 @@ Node: Template lookup by hashMerkleRoot
 Node: IsStale() pre-screen → reject stale as STALE (not repair)
         ↓
 Node: sign_block(nNonce, hashMerkle, vOffsets)
-  For Prime channel:
-    - Set nNonce (do NOT call UpdateTime — nTime preserved from template)
-    - Set vOffsets from miner payload
+  For Prime channel (BuildSolvedPrimeCandidateFromTemplate):
+    - Copy all consensus-critical template fields unchanged
+    - Apply nNonce (do NOT call UpdateTime — nTime preserved from template)
+    - Apply vOffsets from miner payload
+    - Clear vchBlockSig
     - VerifySubmittedPrimeOffsets() — structural check (no broken equivalence)
     - FinalizeWalletSignatureForSolvedBlock() — re-sign with new nNonce/vOffsets
         ↓
@@ -820,6 +822,58 @@ Node: ValidateMinedBlock() → Check() → VerifyWork() + VerifySignature()
         ↓
 Node: AcceptMinedBlock() → Process() → relay canonical TritiumBlock
 ```
+
+### Updated Hash (channel 2) Submit Flow (This PR)
+
+```
+Miner → SUBMIT_BLOCK packet
+        ↓
+Node: ChaCha20 decrypt + Falcon signature verify
+        ↓
+Node: Template lookup by hashMerkleRoot
+        ↓
+Node: IsStale() pre-screen → reject stale as STALE (not repair)
+        ↓
+Node: sign_block(nNonce, hashMerkle, {})
+  For Hash channel (BuildSolvedHashCandidateFromTemplate):
+    - Copy all consensus-critical template fields unchanged
+    - Apply nNonce (nTime preserved — ProofHash for Hash excludes nTime)
+    - Clear vOffsets (Hash channel invariant — no Cunningham chain)
+    - Clear vchBlockSig
+    - FinalizeWalletSignatureForSolvedBlock() — re-sign with new nNonce
+        ↓
+Node: hashPrevBlock vs hashBestChain stale gate → reject if stale
+        ↓
+Node: ValidateMinedBlock() → Check() → VerifyWork() + VerifySignature()
+        ↓
+Node: AcceptMinedBlock() → Process() → relay canonical TritiumBlock
+```
+
+### Shared vs Channel-Specific Finalization
+
+Both Prime and Hash channels use the same `FinalizeWalletSignatureForSolvedBlock()`
+function for the wallet-signing step.  Channel-specific behaviour (vOffsets handling,
+proof-anchor immutability) is encapsulated in the solved-candidate builder:
+
+| Step | Prime (channel 1) | Hash (channel 2) |
+|------|-------------------|-----------------|
+| Solved candidate builder | `BuildSolvedPrimeCandidateFromTemplate` | `BuildSolvedHashCandidateFromTemplate` |
+| nTime | preserved from template | preserved from template |
+| vOffsets | applied from miner payload | always cleared |
+| vchBlockSig | cleared → must re-sign | cleared → must re-sign |
+| Wallet signing | `FinalizeWalletSignatureForSolvedBlock` | `FinalizeWalletSignatureForSolvedBlock` |
+| Proof-of-work validation | `VerifyWork()` (Prime bits) | `VerifyWork()` (Hash target) |
+
+### PR Completion Summary
+
+- **PR #392** completed Prime / channel 1: introduced `BuildSolvedPrimeCandidateFromTemplate`,
+  `VerifySubmittedPrimeOffsets`, `FinalizeWalletSignatureForSolvedBlock`, and fixed the
+  missing wallet re-signing bug in the stateless lane.
+
+- **This PR** completes Hash / channel 2: introduces `BuildSolvedHashCandidateFromTemplate`
+  and refactors both `miner.cpp` and `stateless_miner_connection.cpp` sign_block paths to
+  use the shared helpers, achieving symmetric solved-candidate construction across all
+  mining channels.
 
 ---
 

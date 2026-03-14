@@ -1517,16 +1517,28 @@ namespace LLP
         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(pBaseBlock);
         if(pBlock)
         {
-            /* Update the block's timestamp. */
-            pBlock->UpdateTime();
-
-            /* Enforce channel invariant before any diagnostic branch */
-            if(pBlock->nChannel != TAO::Ledger::CHANNEL::PRIME)
-                pBlock->vOffsets.clear();
-
+            /* Build a canonical solved candidate from the immutable template.
+             *
+             * For Prime (channel 1):
+             *   - Copy all consensus-critical template fields unchanged.
+             *   - Apply miner-submitted nNonce and vOffsets.
+             *   - Preserve nTime (ProofHash for Prime excludes nTime).
+             *   - Clear vchBlockSig so FinalizeWalletSignatureForSolvedBlock re-signs.
+             *
+             * For Hash (channel 2):
+             *   - Copy all consensus-critical template fields unchanged.
+             *   - Apply miner-submitted nNonce.
+             *   - Clear vOffsets (Hash channel invariant — no Cunningham chain).
+             *   - Preserve nTime (ProofHash for Hash also excludes nTime).
+             *   - Clear vchBlockSig so FinalizeWalletSignatureForSolvedBlock re-signs.
+             *
+             * The UpdateTime() call previously made here for all channels is removed
+             * for both Prime and Hash: neither ProofHash computation includes nTime,
+             * so mutating nTime after template issuance has no proof-correctness
+             * benefit and can violate the "immutable anchor field" invariant. */
             if(pBlock->nChannel == TAO::Ledger::CHANNEL::PRIME)
             {
-                pBlock->vOffsets = vOffsets;
+                *pBlock = TAO::Ledger::BuildSolvedPrimeCandidateFromTemplate(*pBlock, nNonce, vOffsets);
 
                 /* Structural validation of miner-submitted Prime offsets.
                  * The prior GetOffsets(GetPrime()) equivalence check was broken: it
@@ -1550,61 +1562,30 @@ namespace LLP
                 if(pBlock->vOffsets.empty())
                     TAO::Ledger::GetOffsets(pBlock->GetPrime(), pBlock->vOffsets);
             }
-            else
-                pBlock->vOffsets.clear();
-
-            /* Unlock sigchain to create new block. */
-            SecureString strPIN;
-            RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
-
-            /* Get an instance of our credentials. */
-            const auto& pCredentials =
-                TAO::API::Authentication::Credentials(uint256_t(TAO::API::Authentication::SESSION::DEFAULT));
-
-            /* Generate a new sigchain key for signing. */
-            std::vector<uint8_t> vBytes = pCredentials->Generate(pBlock->producer.nSequence, strPIN).GetBytes();
-            LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
-
-            /* Switch based on signature type. */
-            switch(pBlock->producer.nKeyType)
+            else if(pBlock->nChannel == TAO::Ledger::CHANNEL::HASH)
             {
-                /* Support for the FALCON signature scheeme. */
-                case TAO::Ledger::SIGNATURE::FALCON:
-                {
-                    /* Create the FL Key object. */
-                    LLC::FLKey key;
-
-                    /* Set the secret parameter. */
-                    if(!key.SetSecret(vchSecret))
-                        return debug::error(FUNCTION, "FLKey::SetSecret failed for ", hashMerkleRoot.SubString());
-
-                    /* Generate the signature. */
-                    if(!pBlock->GenerateSignature(key))
-                        return debug::error(FUNCTION, "GenerateSignature failed for Tritium Block ", hashMerkleRoot.SubString());
-
-                    break;
-                }
-
-                /* Support for the BRAINPOOL signature scheme. */
-                case TAO::Ledger::SIGNATURE::BRAINPOOL:
-                {
-                    /* Create EC Key object. */
-                    LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-
-                    /* Set the secret parameter. */
-                    if(!key.SetSecret(vchSecret, true))
-                        return debug::error(FUNCTION, "ECKey::SetSecret failed for ", hashMerkleRoot.SubString());
-
-                    /* Generate the signature. */
-                    if(!pBlock->GenerateSignature(key))
-                        return debug::error(FUNCTION, "GenerateSignature failed for Tritium Block ", hashMerkleRoot.SubString());
-
-                    break;
-                }
-
-                default:
-                    return debug::error(FUNCTION, "Unknown signature type");
+                *pBlock = TAO::Ledger::BuildSolvedHashCandidateFromTemplate(*pBlock, nNonce);
             }
+            else
+            {
+                /* Unknown channel — apply nNonce and clear offsets as a safe fallback. */
+                pBlock->nNonce = nNonce;
+                pBlock->vOffsets.clear();
+                pBlock->vchBlockSig.clear();
+            }
+
+            /* Generate the canonical block signature using the shared wallet-signature
+             * utility.  FinalizeWalletSignatureForSolvedBlock() unlocks the mining
+             * sigchain and signs SignatureHash() with the producer key (Falcon or
+             * Brainpool), supporting both key types.
+             *
+             * This replaces the prior inline credential unlock + switch/case that was
+             * duplicated here.  The shared function is the canonical signing path for
+             * both the legacy miner lane and the stateless lane, ensuring consistent
+             * behaviour across channels. */
+            if(!TAO::Ledger::FinalizeWalletSignatureForSolvedBlock(*pBlock))
+                return debug::error(FUNCTION, "FinalizeWalletSignatureForSolvedBlock failed for ",
+                                    hashMerkleRoot.SubString());
 
             return true;
         }

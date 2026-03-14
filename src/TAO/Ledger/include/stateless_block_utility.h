@@ -269,6 +269,48 @@ namespace TAO
             const std::vector<uint8_t>& vOffsets);
 
 
+        /** BuildSolvedHashCandidateFromTemplate
+         *
+         *  Build a canonical solved Hash (channel 2) block candidate from the
+         *  immutable stored template.  This is the Hash-channel counterpart to
+         *  BuildSolvedPrimeCandidateFromTemplate and provides symmetric
+         *  solved-candidate construction for channel 2.
+         *
+         *  All consensus-critical fields (nVersion, hashPrevBlock, hashMerkleRoot,
+         *  nChannel, nHeight, nBits, nTime, producer, ssSystem, vtx) are copied
+         *  verbatim from the template.
+         *
+         *  nTime is preserved from the template (not refreshed) because:
+         *  - For Hash (channel 2): ProofHash = SK1024(nVersion..nNonce), which does
+         *    NOT include nTime.  Preserving nTime avoids mutating anchor fields after
+         *    template issuance without any proof-correctness benefit.
+         *  Callers that require a fresh timestamp for network propagation may call
+         *  UpdateTime() on the returned candidate after receiving it.
+         *
+         *  Hash-channel invariant: vOffsets is always cleared on the returned
+         *  candidate, even if the incoming template or caller-supplied data carries
+         *  residual Prime offset bytes.  Only Prime channel blocks carry vOffsets.
+         *
+         *  The returned block's vchBlockSig is cleared because SignatureHash()
+         *  covers nNonce; the template's prior signature (created with nNonce=1) is
+         *  invalidated by applying the miner's nonce.  Call
+         *  FinalizeWalletSignatureForSolvedBlock() to re-sign before submitting to
+         *  ValidateMinedBlock() / AcceptMinedBlock().
+         *
+         *  This function does NOT mutate the original template.
+         *
+         *  @param[in] tmpl   The original wallet-signed Hash-channel template block
+         *  @param[in] nNonce The miner-submitted solved nonce
+         *
+         *  @return A copy of the template with nNonce applied, vOffsets cleared,
+         *          and vchBlockSig cleared
+         *
+         **/
+        TritiumBlock BuildSolvedHashCandidateFromTemplate(
+            const TritiumBlock& tmpl,
+            uint64_t nNonce);
+
+
         /** VerifySubmittedPrimeOffsets
          *
          *  Structurally validate miner-submitted Prime vOffsets without relying on

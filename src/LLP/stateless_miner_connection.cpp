@@ -3328,19 +3328,13 @@ namespace LLP
             return false;
         }
         
-        /* ✅ Template is valid - proceed with update */
+        /* ✅ Template is valid - proceed with solved-candidate construction */
         TAO::Ledger::Block* pBaseBlock = meta.pBlock.get();
         if(!pBaseBlock)
         {
             debug::error(FUNCTION, "❌ Template has null block pointer!");
             return false;
         }
-        
-        pBaseBlock->nNonce = nNonce;
-        
-        debug::log(0, "   ✅ Template updated successfully");
-        debug::log(0, "      Height: ", meta.nHeight);
-        debug::log(0, "      Age: ", runtime::unifiedtimestamp() - meta.nCreationTime, "s");
 
         /* If the block dynamically casts to a tritium block, validate the tritium block. */
         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(pBaseBlock);
@@ -3351,39 +3345,27 @@ namespace LLP
             debug::log(0, "   Block height: ", pBlock->nHeight);
             debug::log(0, "   Block channel: ", pBlock->nChannel);
 
-            /* For Prime channel: preserve the template's nTime (do not call UpdateTime).
-             *   ProofHash for Prime = SK1024(nVersion..nBits), which excludes nTime.
-             *   The miner's solved proof is independent of nTime; mutating nTime after
-             *   template issuance would violate the "immutable anchor field" invariant
-             *   without providing any benefit to proof correctness.
-             * For non-Prime channels (Hash in the stateless miner context): UpdateTime()
-             *   is traditional and safe since Hash ProofHash = SK1024(nVersion..nNonce)
-             *   also excludes nTime. */
-            if(pBlock->nChannel != TAO::Ledger::CHANNEL::PRIME)
+            /* Build a canonical solved candidate from the immutable template.
+             *
+             * For Prime (channel 1): use BuildSolvedPrimeCandidateFromTemplate which:
+             *   - copies all consensus-critical fields from the original template
+             *   - applies the miner's nNonce and vOffsets
+             *   - preserves nTime (ProofHash for Prime excludes nTime)
+             *   - clears vchBlockSig so FinalizeWalletSignatureForSolvedBlock can re-sign
+             *
+             * For Hash (channel 2): use BuildSolvedHashCandidateFromTemplate which:
+             *   - copies all consensus-critical fields from the original template
+             *   - applies the miner's nNonce
+             *   - clears vOffsets (Hash channel invariant — no Cunningham chain)
+             *   - preserves nTime (ProofHash for Hash also excludes nTime)
+             *   - clears vchBlockSig so FinalizeWalletSignatureForSolvedBlock can re-sign
+             *
+             * Both helpers do NOT mutate the original template.  The solved candidate
+             * is written back into the template slot so downstream validate_block() /
+             * AcceptMinedBlock() operate on the fully-prepared signed block. */
+            if(pBlock->nChannel == TAO::Ledger::CHANNEL::PRIME)
             {
-                pBlock->UpdateTime();
-                debug::log(2, FUNCTION, "Timestamp updated for non-Prime channel (", pBlock->nChannel, ")");
-            }
-            else
-            {
-                debug::log(2, FUNCTION, "Prime channel: preserving template nTime (no UpdateTime)");
-            }
-
-            /* Enforce channel invariant: only Prime blocks carry vOffsets. */
-            if(pBlock->nChannel != TAO::Ledger::CHANNEL::PRIME)
-                pBlock->vOffsets.clear();
-
-            /* ============================================================
-             * TRAINING WHEELS MODE: Comprehensive Diagnostic Logging
-             * ============================================================ */
-            
-            if(pBlock->nChannel == 1)  // Prime channel
-            {
-                debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "🔬 === PRIME CHANNEL DIAGNOSTIC (Training Wheels Mode) ===", ANSI_COLOR_RESET);
-                
-                /* Calculate hashPrime (same calculation miner did) */
-                uint1024_t hashPrime = pBlock->GetPrime();
-                pBlock->vOffsets = vOffsets;
+                *pBlock = TAO::Ledger::BuildSolvedPrimeCandidateFromTemplate(*pBlock, nNonce, vOffsets);
 
                 /* Structural validation of miner-submitted Prime offsets.
                  * The prior GetOffsets(GetPrime()) equivalence check has been removed:
@@ -3405,22 +3387,56 @@ namespace LLP
                 /* Legacy fallback: derive offsets locally when the miner did not submit
                  * them (compact wrapper path).  Backwards-compatible with older miners. */
                 if(pBlock->vOffsets.empty())
-                    TAO::Ledger::GetOffsets(hashPrime, pBlock->vOffsets);
-                
+                    TAO::Ledger::GetOffsets(pBlock->GetPrime(), pBlock->vOffsets);
+
+                debug::log(2, FUNCTION, "Prime channel: solved candidate built (nTime preserved, vOffsets applied)");
+            }
+            else if(pBlock->nChannel == TAO::Ledger::CHANNEL::HASH)
+            {
+                *pBlock = TAO::Ledger::BuildSolvedHashCandidateFromTemplate(*pBlock, nNonce);
+                debug::log(2, FUNCTION, "Hash channel: solved candidate built (nTime preserved, vOffsets cleared)");
+            }
+            else
+            {
+                /* Unknown channel — apply nNonce directly and clear offsets as a safe fallback. */
+                pBlock->nNonce = nNonce;
+                pBlock->vOffsets.clear();
+                pBlock->vchBlockSig.clear();
+                debug::log(2, FUNCTION, "Unknown channel (", pBlock->nChannel, "): applied nNonce directly");
+            }
+
+            debug::log(0, "   ✅ Solved candidate ready");
+            debug::log(0, "      Height: ", meta.nHeight);
+            debug::log(0, "      Age: ", runtime::unifiedtimestamp() - meta.nCreationTime, "s");
+
+            /* ============================================================
+             * TRAINING WHEELS MODE: Comprehensive Diagnostic Logging
+             * ============================================================ */
+
+            if(pBlock->nChannel == 1)  // Prime channel
+            {
+                debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "🔬 === PRIME CHANNEL DIAGNOSTIC (Training Wheels Mode) ===", ANSI_COLOR_RESET);
+
+                /* hashPrime for diagnostic display.
+                 * NOTE: vOffsets and verification were already handled by
+                 * BuildSolvedPrimeCandidateFromTemplate + VerifySubmittedPrimeOffsets
+                 * above.  This block is diagnostic-only. */
+                uint1024_t hashPrime = pBlock->GetPrime();
+
                 debug::log(0, "📊 PRIME BASE CALCULATION:");
                 debug::log(0, "   ProofHash() = ", pBlock->ProofHash().ToString().substr(0, 64), "...");
                 debug::log(0, "   nNonce      = 0x", std::hex, pBlock->nNonce, std::dec);
                 debug::log(0, "   hashPrime   = ProofHash() + nNonce");
                 debug::log(0, "   hashPrime   = ", hashPrime.ToString().substr(0, 64), "...");
                 debug::log(0, "   (Full 1024-bit value shown in hex above)");
-                
+
                 /* Test if base is prime using node's PrimeCheck */
                 debug::log(0, "");
                 debug::log(0, "🧪 PRIME VALIDATION TEST:");
                 debug::log(0, "   Calling TAO::Ledger::PrimeCheck(hashPrime)...");
-                
+
                 bool isPrimeBase = TAO::Ledger::PrimeCheck(hashPrime);
-                
+
                 if(isPrimeBase)
                 {
                     debug::log(0, "   Result: ", ANSI_COLOR_BRIGHT_GREEN, "✅ BASE IS PRIME", ANSI_COLOR_RESET);
@@ -3434,11 +3450,10 @@ namespace LLP
                     debug::log(0, "      - Different hashPrime calculation (endianness? encoding?)");
                     debug::log(0, "      - Nonce corruption during transmission");
                 }
-                
-                /* Use miner-submitted Cunningham chain offsets */
+
+                /* Display Cunningham chain offsets (already validated above). */
                 debug::log(0, "");
                 debug::log(0, "🔗 CUNNINGHAM CHAIN OFFSETS:");
-                debug::log(0, "   Using miner-submitted offsets from Falcon payload when present");
                 debug::log(0, "   vOffsets.size() = ", pBlock->vOffsets.size());
                 
                 if(!pBlock->vOffsets.empty())
@@ -3489,12 +3504,13 @@ namespace LLP
             }
             else if(pBlock->nChannel == 2)  // Hash channel
             {
-                pBlock->vOffsets.clear();
+                /* vOffsets was already cleared by BuildSolvedHashCandidateFromTemplate above.
+                 * This diagnostic block logs the proof-of-work state for debugging. */
                 debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "🔬 === HASH CHANNEL DIAGNOSTIC (Training Wheels Mode) ===", ANSI_COLOR_RESET);
-                
+
                 /* Calculate proof hash */
                 uint1024_t hashProof = pBlock->ProofHash();
-                
+
                 debug::log(0, "📊 HASH PROOF CALCULATION:");
                 debug::log(0, "   ProofHash() = SK1024(block_header)");
                 debug::log(0, "   hashProof   = ", hashProof.ToString().substr(0, 64), "...");
@@ -3539,15 +3555,13 @@ namespace LLP
                     debug::log(0, "   ⚠️  Hash is too high (difficulty not met)");
                 }
                 
-                /* Ensure no prime offsets for hash channel */
+                /* Confirm vOffsets invariant (should already be empty from BuildSolvedHashCandidateFromTemplate). */
                 if(!pBlock->vOffsets.empty())
                 {
-                    debug::log(0, "");
-                    debug::log(0, "   ⚠️  WARNING: Hash channel has ", pBlock->vOffsets.size(), " offsets (should be empty)");
-                    debug::log(0, "   Clearing invalid offsets...");
+                    debug::error(FUNCTION, "Hash channel vOffsets not empty after BuildSolvedHashCandidateFromTemplate — clearing (invariant violation)");
                     pBlock->vOffsets.clear();
                 }
-                
+
                 debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "🔬 === END HASH DIAGNOSTIC ===", ANSI_COLOR_RESET);
             }
             
