@@ -746,6 +746,20 @@ namespace LLP
          **/
         void respond_stateless(uint16_t nOpcode, const std::vector<uint8_t>& vData = std::vector<uint8_t>());
 
+
+    public:
+
+        /** SendNodeShutdown
+         *
+         *  Send a NODE_SHUTDOWN (0xD0FF) packet to notify the miner of graceful shutdown.
+         *  Uses the same wire format as the stateless lane so both legacy and
+         *  stateless miners receive an identical shutdown notification.
+         *
+         *  @param[in] nReasonCode  Shutdown reason: 1=GRACEFUL, 2=MAINTENANCE
+         *
+         **/
+        void SendNodeShutdown(uint32_t nReasonCode = 1);
+
     };
 }
 
