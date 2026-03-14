@@ -4551,6 +4551,13 @@ namespace LLP
     /* SendNodeShutdown - Notify miner of graceful node shutdown via NODE_SHUTDOWN (0xD0FF) */
     void StatelessMinerConnection::SendNodeShutdown(uint32_t nReasonCode)
     {
+        if(!m_nodeShutdownNotification.MarkSent())
+        {
+            debug::log(1, FUNCTION, "NODE_SHUTDOWN already sent to ", GetAddress().ToStringIP(),
+                       " - skipping duplicate");
+            return;
+        }
+
         /* Build NODE_SHUTDOWN packet: 4-byte reason code, big-endian */
         StatelessPacket packet(OpcodeUtility::Stateless::NODE_SHUTDOWN);
         packet.DATA.push_back(static_cast<uint8_t>((nReasonCode >> 24) & 0xFF));
@@ -4562,6 +4569,8 @@ namespace LLP
         debug::log(1, FUNCTION, "Sending NODE_SHUTDOWN (0xD0FF) to ", GetAddress().ToStringIP(),
                    " reason=", nReasonCode);
         WritePacket(packet);
+        debug::log(1, FUNCTION, "Queued NODE_SHUTDOWN for ", GetAddress().ToStringIP(),
+                   " buffered=", Buffered(), " bytes");
     }
 
 } // namespace LLP

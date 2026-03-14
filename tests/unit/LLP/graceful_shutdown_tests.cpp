@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <unit/catch2/catch.hpp>
 
+#include <LLP/include/graceful_shutdown.h>
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/opcode_utility.h>
 
@@ -104,4 +105,20 @@ TEST_CASE("GracefulDisconnectAllMiners with null servers does not crash", "[grac
     /* This is a compile-time-accessible check: the Stateless namespace must
      * contain NODE_SHUTDOWN and be in the valid stateless opcode range. */
     REQUIRE(OpcodeUtility::Stateless::IsStateless(OpcodeUtility::Stateless::NODE_SHUTDOWN));
+}
+
+TEST_CASE("Graceful shutdown notification state is idempotent", "[graceful_shutdown]")
+{
+    GracefulShutdown::NotificationState state;
+
+    REQUIRE_FALSE(state.Sent());
+    REQUIRE(state.MarkSent());
+    REQUIRE(state.Sent());
+    REQUIRE_FALSE(state.MarkSent());
+}
+
+TEST_CASE("Graceful shutdown flush window remains bounded", "[graceful_shutdown]")
+{
+    REQUIRE(GracefulShutdown::MINER_SHUTDOWN_FLUSH_MS >= 150);
+    REQUIRE(GracefulShutdown::MINER_SHUTDOWN_FLUSH_MS <= 500);
 }

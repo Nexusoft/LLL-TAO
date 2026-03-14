@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #define NEXUS_LLP_TYPES_MINER_H
 
 #include <LLP/templates/connection.h>
+#include <LLP/include/graceful_shutdown.h>
 #include <LLP/include/opcode_utility.h>
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/auto_cooldown.h>
@@ -747,6 +748,10 @@ namespace LLP
         void respond_stateless(uint16_t nOpcode, const std::vector<uint8_t>& vData = std::vector<uint8_t>());
 
 
+        /** Track whether NODE_SHUTDOWN was already sent on this connection. **/
+        GracefulShutdown::NotificationState m_nodeShutdownNotification;
+
+
     public:
 
         /** SendNodeShutdown
@@ -758,7 +763,14 @@ namespace LLP
          *  @param[in] nReasonCode  Shutdown reason: 1=GRACEFUL, 2=MAINTENANCE
          *
          **/
-        void SendNodeShutdown(uint32_t nReasonCode = 1);
+        void SendNodeShutdown(uint32_t nReasonCode = GracefulShutdown::REASON_GRACEFUL);
+
+
+        /** Check whether NODE_SHUTDOWN was already attempted on this connection. **/
+        bool NodeShutdownSent() const
+        {
+            return m_nodeShutdownNotification.Sent();
+        }
 
     };
 }
