@@ -151,18 +151,21 @@ TEST_CASE("SUBMIT_BLOCK Full Block Format Detection", "[submit_block]")
     
     SECTION("Constants are correctly defined")
     {
-        // Full block sizes (max supported size = 2MB)
-        REQUIRE(FalconConstants::FULL_BLOCK_TRITIUM_SIZE == 2 * 1024 * 1024);
-        REQUIRE(FalconConstants::FULL_BLOCK_LEGACY_SIZE == 2 * 1024 * 1024);
+        // Full block header sizes (block headers only; miners do NOT submit transactions)
+        REQUIRE(FalconConstants::FULL_BLOCK_TRITIUM_SIZE == 216);
+        REQUIRE(FalconConstants::FULL_BLOCK_LEGACY_SIZE == 220);
         REQUIRE(FalconConstants::FULL_BLOCK_MERKLE_OFFSET == 132);
         REQUIRE(FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET == 200);
         REQUIRE(FalconConstants::FULL_BLOCK_LEGACY_NONCE_OFFSET == 204);
         
-        // Main wrapper constants (updated for full block format, physical sig removed)
-        REQUIRE(FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX == 2098739);
-        REQUIRE(FalconConstants::SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX == 2098767);
+        // Main wrapper constants:
+        // SUBMIT_BLOCK_WRAPPER_MAX = legacy_header(220) + prime_offsets(256)
+        //   + timestamp(8) + siglen(2) + Falcon-1024 sig(1577) = 2063 bytes
+        REQUIRE(FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX == 2063);
+        // SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX = 2063 + ChaCha20 overhead(28) = 2091 bytes
+        REQUIRE(FalconConstants::SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX == 2091);
         
-        // Detailed constants for Tritium/Legacy specific values (no physical sig)
+        // Detailed constants for Tritium/Legacy specific values (Falcon-512, no prime offsets)
         REQUIRE(FalconConstants::SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_MAX == 1035);
         REQUIRE(FalconConstants::SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_ENCRYPTED_MAX == 1063);
         REQUIRE(FalconConstants::SUBMIT_BLOCK_FULL_LEGACY_WRAPPER_MAX == 1039);

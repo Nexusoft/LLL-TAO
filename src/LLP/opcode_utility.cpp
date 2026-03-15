@@ -268,7 +268,8 @@ namespace OpcodeUtility
         }
         else if(nOpcode == Opcodes::SUBMIT_BLOCK)
         {
-            /* SUBMIT_BLOCK: Full block (up to 2MB) + timestamp + signature + encryption
+            /* SUBMIT_BLOCK: block header + prime offsets + timestamp + signature + optional encryption
+             * Miners submit block headers only; the node holds all transactions.
              * Maximum: SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX bytes
              */
             if(packet.LENGTH > FalconConstants::SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX)

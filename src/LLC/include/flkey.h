@@ -155,10 +155,10 @@ namespace LLC
          *
          *  Create a new key from the Falcon random PRNG seeds
          *
-         *  @param[in] ver Falcon version (512 or 1024). Default: Falcon-512
+         *  @param[in] ver Falcon version (512 or 1024). Default: Falcon-1024
          *
          **/
-        void MakeNewKey(FalconVersion ver = FalconVersion::FALCON_512);
+        void MakeNewKey(FalconVersion ver = FalconVersion::FALCON_1024);
 
 
         /** SetPrivKey
