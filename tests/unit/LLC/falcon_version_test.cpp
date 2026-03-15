@@ -46,13 +46,13 @@ TEST_CASE("Falcon Version Support - Key Generation", "[falcon][version]")
         REQUIRE(key.GetPrivKey().size() == FalconSizes::FALCON1024_PRIVATE_KEY_SIZE);
     }
 
-    SECTION("Default key generation is Falcon-1024")
+    SECTION("Default key generation is Falcon-512")
     {
         FLKey key;
-        key.MakeNewKey();  // No parameter - should default to Falcon-1024
+        key.MakeNewKey();  // No parameter - should default to Falcon-512
 
         REQUIRE(key.IsValid());
-        REQUIRE(key.GetVersion() == FalconVersion::FALCON_1024);
+        REQUIRE(key.GetVersion() == FalconVersion::FALCON_512);
     }
 }
 
@@ -239,8 +239,8 @@ TEST_CASE("Falcon Version Support - Clear and Reset", "[falcon][version]")
         REQUIRE_FALSE(key.IsValid());
         REQUIRE(key.GetPubKey().empty());
         REQUIRE(key.GetPrivKey().empty());
-        // After clear, version should reset to default (Falcon-1024)
-        REQUIRE(key.GetVersion() == FalconVersion::FALCON_1024);
+        // After clear, version should reset to default
+        REQUIRE(key.GetVersion() == FalconVersion::FALCON_512);
     }
 
     SECTION("Reset clears all key data")

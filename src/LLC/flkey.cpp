@@ -27,7 +27,7 @@ namespace LLC
     , vchPrivKey  ( )
     , fSet        (false)
     , ctx         ( )
-    , nVersion    (FalconVersion::FALCON_1024)
+    , nVersion    (FalconVersion::FALCON_512)
     {
 
     }
@@ -99,7 +99,7 @@ namespace LLC
         vchPrivKey.clear();
 
         fSet = false;
-        nVersion = FalconVersion::FALCON_1024;
+        nVersion = FalconVersion::FALCON_512;
     }
 
 
