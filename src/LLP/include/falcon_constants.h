@@ -224,35 +224,32 @@ namespace FalconConstants
     static const size_t GENESIS_HASH_SIZE = 32;
 
     /***************************************************************************
-     * Full Block Sizes (NexusMiner PR #65/#66 Full Block Format)
+     * Full Block Sizes (NexusMiner Full Block Format)
      * 
-     * Note: These values are based on diagnostic data from actual miner submissions.
-     * The offsets below were confirmed through real-world testing of NexusMiner
-     * PR #65 and PR #66 which send full serialized blocks instead of compact merkle roots.
-     * 
-     * UPDATED: Now supports blocks with transactions (up to 2MB)
-     * Previous values were for empty blocks only (216 bytes for Tritium, 220 for Legacy)
-     * Current values support maximum network block size with transactions (2MB)
+     * Note: In the stateless mining protocol, miners submit block HEADERS only.
+     * Transactions are managed exclusively by the node and are never sent by
+     * the miner to the node.  The "full block" here refers to the serialized
+     * block header fields (nVersion, hashPrevBlock, hashMerkleRoot, channel,
+     * height, bits, nNonce) without any transaction data.
+     *
+     * Previous values were for empty blocks only (216 bytes for Tritium, 220
+     * for Legacy).  The 2MB figure that appeared in earlier comments was an
+     * incorrect beta assumption that has been removed.
      **************************************************************************/
     
-    /** Full Tritium block size (without signature or timestamp)
-     *  UPDATED: Now supports blocks with transactions (up to 2MB)
-     *  Previous: 216 bytes (empty Tritium block)
-     *  Current: 2MB (maximum network block size with transactions)
-     *  
-     *  NOTE: Block size varies:
-     *  - Empty block (coinbase only): 216 bytes
-     *  - Block with transactions: up to 2MB */
-    static const size_t FULL_BLOCK_TRITIUM_SIZE = 2 * 1024 * 1024;  // Was: 216
+    /** Full Tritium block header size (serialized, without transactions)
+     *  Fields: nVersion(4) + hashPrevBlock(128) + hashMerkleRoot(64) +
+     *          nChannel(4) + nHeight(4) + nBits(4) + nNonce(8) = 216 bytes */
+    static const size_t FULL_BLOCK_TRITIUM_SIZE = 216;
     
     /** Minimum Tritium block size (empty block, coinbase only) */
     static const size_t FULL_BLOCK_TRITIUM_MIN = 216;
     
-    /** Full Legacy block size (without signature or timestamp)
-     *  UPDATED: Now supports blocks with transactions (up to 2MB)
-     *  Previous: 220 bytes (empty Legacy block)
-     *  Current: 2MB (maximum network block size with transactions) */
-    static const size_t FULL_BLOCK_LEGACY_SIZE = 2 * 1024 * 1024;  // Was: 220
+    /** Full Legacy block header size (serialized, without transactions)
+     *  Fields: nVersion(4) + hashPrevBlock(128) + hashMerkleRoot(64) +
+     *          nTime(4) + nBits(4) + nNonce(4) + nChannel(4) + nHeight(4) +
+     *          nNonce64(8) = 220 bytes */
+    static const size_t FULL_BLOCK_LEGACY_SIZE = 220;
     
     /** Minimum Legacy block size (empty block, coinbase only) */
     static const size_t FULL_BLOCK_LEGACY_MIN = 220;
@@ -298,42 +295,42 @@ namespace FalconConstants
     static const size_t SUBMIT_BLOCK_MESSAGE_SIZE = 80;  // 64 + 8 + 8
 
     /***************************************************************************
-     * Submit Block Wrapper Sizes (Serialized Transmission) - CT=809
+     * Submit Block Wrapper Sizes (Serialized Transmission)
      * 
-     * UPDATED for full block format (NexusMiner PR #65/#66)
+     * In the stateless mining protocol, miners submit block HEADERS only.
+     * The node holds all transactions; the miner never sends them.
+     * The packet format is:
+     *   [block_header(var)] [prime_offsets(var)] [timestamp(8)] [siglen(2)] [signature(var)]
      **************************************************************************/
     
     /** Minimum Submit Block wrapper size (without signature)
      *  merkle(64) + nonce(8) + timestamp(8) + sig_len(2) = 82 bytes */
     static const size_t SUBMIT_BLOCK_WRAPPER_MIN = 82;
+
+    /** Maximum prime offsets budget for Submit Block packets.
+     *  Prime-channel miners include a vOffsets array (Cunningham chain offsets).
+     *  Typical chains carry 5-20 bytes; 256 bytes provides ample safety margin. */
+    static const size_t SUBMIT_BLOCK_PRIME_OFFSETS_MAX = 256;
     
-    /** Submit Block wrapper - LOCALHOST (no encryption)
-     *  
-     *  Old value (merkle format): 891 bytes
-     *    merkle(64) + nonce(8) + timestamp(8) + sig_len(2) + sig(809) = 891
-     *  
-     *  Previous value (full block format): 1,035 bytes
-     *    block(216) + timestamp(8) + sig_len(2) + sig(809) = 1,035
-     *  
-     *  UPDATED: Now supports 2MB blocks with transactions AND Falcon-1024
-     *  Format: [block(2MB max)][timestamp(8)][sig_len(2)][signature(1577 max)]
-     *  Calculation: 2,097,152 + 8 + 2 + 1577 = 2,098,739 bytes (Falcon-1024)
-     */
-    static const size_t SUBMIT_BLOCK_WRAPPER_MAX = 2098739;
+    /** Submit Block wrapper maximum (no encryption)
+     *  Format: [block_header(max=220)] [prime_offsets(max=256)] [timestamp(8)] [siglen(2)] [sig(max=1577)]
+     *  Note: Miners submit block HEADERS only; transactions are NOT included.
+     *  Max: FULL_BLOCK_LEGACY_SIZE(220) + SUBMIT_BLOCK_PRIME_OFFSETS_MAX(256)
+     *       + TIMESTAMP_SIZE(8) + LENGTH_FIELD_SIZE(2) + FALCON1024_SIG_ABSOLUTE_MAX(1577) = 2063 bytes */
+    static const size_t SUBMIT_BLOCK_WRAPPER_MAX =
+        FULL_BLOCK_LEGACY_SIZE +          // 220 bytes (max block header, no transactions)
+        SUBMIT_BLOCK_PRIME_OFFSETS_MAX +   // 256 bytes (generous prime offsets budget)
+        TIMESTAMP_SIZE +                   // 8 bytes
+        LENGTH_FIELD_SIZE +                // 2 bytes
+        FALCON1024_SIG_ABSOLUTE_MAX;       // 1577 bytes (Falcon-1024 CT, default)
+    // = 2063 bytes
     
-    /** Submit Block wrapper - PUBLIC MINER (with ChaCha20 encryption)
-     *  
-     *  Old value (merkle format): 919 bytes
-     *    nonce(12) + encrypted_payload(891) + auth_tag(16) = 919
-     *  
-     *  Previous value (full block format): 1,063 bytes
-     *    nonce(12) + encrypted_payload(1,035) + auth_tag(16) = 1,063
-     *  
-     *  UPDATED: Now supports 2MB blocks with transactions AND Falcon-1024
+    /** Submit Block wrapper maximum (with ChaCha20-Poly1305 encryption)
      *  Adds ChaCha20-Poly1305 overhead: nonce(12) + auth_tag(16) = 28 bytes
-     *  Calculation: 2,098,739 + 28 = 2,098,767 bytes
-     */
-    static const size_t SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX = 2098767;
+     *  2063 + 28 = 2091 bytes */
+    static const size_t SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX =
+        SUBMIT_BLOCK_WRAPPER_MAX + CHACHA20_OVERHEAD;
+    // = 2091 bytes
 
 
     /***************************************************************************

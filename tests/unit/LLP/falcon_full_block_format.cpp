@@ -86,7 +86,7 @@ TEST_CASE("Falcon Full Block Format Reconstruction", "[falcon_full_block]")
         for(size_t i = 0; i < sigLen; ++i)
             fullBlockPacket.push_back(0xAA);
         
-        REQUIRE(fullBlockPacket.size() == FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX);
+        REQUIRE(fullBlockPacket.size() == FalconConstants::SUBMIT_BLOCK_FULL_TRITIUM_HASH_WRAPPER_MAX);
         
         /* Now reconstruct the format that UnwrapWorkSubmission expects */
         /* Extract merkle root (64 bytes at offset FalconConstants::FULL_BLOCK_MERKLE_OFFSET) */
@@ -148,14 +148,17 @@ TEST_CASE("Falcon Full Block Format Reconstruction", "[falcon_full_block]")
     
     SECTION("Verify format constants")
     {
-        /* Full block format packet size */
+        /* Full Tritium block header size (without transactions) */
         size_t fullBlockSize = FalconConstants::FULL_BLOCK_TRITIUM_SIZE;
         size_t timestampSize = FalconConstants::TIMESTAMP_SIZE;
         size_t sigLenSize = FalconConstants::LENGTH_FIELD_SIZE;
         size_t sigSize = FalconConstants::FALCON512_SIG_CT_SIZE;
         size_t totalPacketSize = fullBlockSize + timestampSize + sigLenSize + sigSize;
         
-        REQUIRE(totalPacketSize == FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX);
+        /* Tritium Hash-channel packet with Falcon-512 signature = 1035 bytes */
+        REQUIRE(totalPacketSize == FalconConstants::SUBMIT_BLOCK_FULL_TRITIUM_HASH_WRAPPER_MAX);
+        /* All valid submission packets must not exceed the protocol maximum */
+        REQUIRE(totalPacketSize <= FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX);
         
         /* Reconstructed signed data format size */
         size_t merkleSize = FalconConstants::MERKLE_ROOT_SIZE;

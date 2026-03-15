@@ -199,8 +199,8 @@ inline bool GetPhysicalSigner() {
 - **Auto-detection** prevents configuration errors
 
 ### Backward Compatibility
-- ✅ Zero changes to existing Falcon-512 code paths
-- ✅ Default behavior unchanged (Falcon-512)
+- ✅ Falcon-512 code paths remain fully supported
+- ✅ Default is now Falcon-1024 (the production-grade quantum-resistant variant)
 - ✅ Stealth mode allows both versions to coexist
 - ✅ No network fork required
 - ✅ Existing keys and miners continue working
@@ -208,7 +208,7 @@ inline bool GetPhysicalSigner() {
 ### Performance
 - **Falcon-512:** <1ms signing, 809-byte signatures (CT, unchanged)
 - **Falcon-1024:** <1.5ms signing, 1577-byte signatures (CT)
-- **Network overhead:** 768 bytes per block ≈ 0.038% of 2MB
+- **Network overhead:** 768 bytes per block (Falcon-1024 vs Falcon-512 delta)
 - **Yearly bandwidth increase:** +280 MB/year per Falcon-1024 miner
 - **Overall impact:** <0.1% (negligible)
 

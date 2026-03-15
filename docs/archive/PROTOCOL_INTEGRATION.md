@@ -93,7 +93,7 @@ struct MiningContext {
 **Notes:**
 - Physical signature is **OPTIONAL**
 - Both signatures must use the **SAME** Falcon version (key bonding)
-- Block size can vary from 216 bytes (empty) to 2MB (with transactions)
+- Block size can vary from 216 bytes (empty) to 220 bytes (Legacy); miners submit block headers only and do not include transaction data
 
 ---
 

@@ -226,10 +226,14 @@ namespace FalconConstants
     /** Maximum authentication encrypted size */
     constexpr size_t MAX_AUTH_ENCRYPTED_SIZE = MAX_AUTH_PLAINTEXT_SIZE + CHACHA20_AUTH_TAG_SIZE;
 
-    /** Maximum submit block plaintext size (2MB block) */
+    /** Maximum submit block plaintext size
+     *  Block headers (not full blocks with transactions) are submitted by miners.
+     *  220 (max header) + 256 (prime offsets budget) + 8 (nonce) + 8 (timestamp)
+     *  + 2 (sig_len) + 1577 (Falcon-1024 CT sig) = 2071 bytes */
     constexpr size_t MAX_SUBMIT_BLOCK_PLAINTEXT_SIZE = 
-        (2 * 1024 * 1024) +  // Max block size
-        8 +  // nonce
+        220 +  // Max block header size (no transactions; Legacy=220, Tritium=216)
+        256 +  // Prime offsets budget (generous; typical chains are 5-20 bytes)
+        8 +    // nonce (legacy compact format field)
         TIMESTAMP_SIZE + 
         LENGTH_FIELD_SIZE +
         Falcon1024::SIGNATURE_CT_SIZE;
