@@ -37,7 +37,7 @@ namespace LLP
         UNAUTHENTICATED     = 3,
         TEMPLATE_NOT_READY  = 4,
         INTERNAL_RETRY      = 5,
-        NO_TEMPLATE_READY   = TEMPLATE_NOT_READY /* Backward-compatible alias. */
+        NO_TEMPLATE_READY   = TEMPLATE_NOT_READY /* Backward-compatible alias (DEPRECATED, remove after 2026-06-30). */
     };
 
     inline const char* GetBlockPolicyReasonCode(GetBlockPolicyReason eReason)
@@ -68,10 +68,12 @@ namespace LLP
      *   byte[1]  GetBlockPolicyReason
      *   byte[2]  reserved
      *   byte[3]  reserved
-     *   byte[4]  retry_after_ms (big-endian)
+     *   byte[4]  retry_after_ms (big-endian/network byte order)
      *   byte[5]  retry_after_ms
      *   byte[6]  retry_after_ms
      *   byte[7]  retry_after_ms
+     *
+     * Non-retryable reasons force retry_after_ms to 0.
      */
     inline std::vector<uint8_t> BuildGetBlockControlPayload(GetBlockPolicyReason eReason, uint32_t nRetryAfterMs)
     {

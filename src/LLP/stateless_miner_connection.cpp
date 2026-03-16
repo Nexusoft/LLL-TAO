@@ -3990,6 +3990,7 @@ namespace LLP
             assert(!vPayload.empty() && "Authenticated GET_BLOCK cannot serialize empty BLOCK_DATA payload");
             if(vPayload.empty())
             {
+                debug::error(FUNCTION, "Authenticated GET_BLOCK produced empty BLOCK_DATA payload; converting to INTERNAL_RETRY control response");
                 SendGetBlockControlResponse(GetBlockPolicyReason::INTERNAL_RETRY,
                     MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS, true);
                 return;
