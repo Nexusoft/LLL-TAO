@@ -50,6 +50,7 @@ ________________________________________________________________________________
 #include <LLC/include/flkey.h>
 #include <LLC/include/eckey.h>
 #include <LLC/include/chacha20_helpers.h>
+#include <LLC/include/chacha20_evp_manager.h>
 #include <LLC/include/mining_session_keys.h>
 #include <LLC/include/falcon_constants_v2.h>
 #include <LLC/types/bignum.h>
@@ -180,6 +181,9 @@ namespace LLP
     /** Default Destructor **/
     StatelessMinerConnection::~StatelessMinerConnection()
     {
+        if(context.nSessionId != 0)
+            LLC::ChaCha20EvpManager::Instance().TeardownSession(context.nSessionId);
+
         /* Clear session keys */
         {
             std::lock_guard<std::mutex> lock(SESSION_MUTEX);
@@ -572,6 +576,9 @@ namespace LLP
                     LOCK(MUTEX);
                     StatelessMinerManager::Get().RemoveMiner(context.strAddress);
                 }
+
+                if(context.nSessionId != 0)
+                    LLC::ChaCha20EvpManager::Instance().TeardownSession(context.nSessionId);
 
                 return;
             }
@@ -1304,9 +1311,10 @@ namespace LLP
                                  * the entire SUBMIT_BLOCK packet is encrypted as-is without domain separation.
                                  * Unlike MINER_SET_REWARD which uses AAD for context binding, SUBMIT_BLOCK
                                  * encrypts the complete payload for transport-layer confidentiality. */
-                                bool fDecrypted = LLC::DecryptPayloadChaCha20(
-                                    PACKET.DATA,
+                                bool fDecrypted = LLC::ChaCha20EvpManager::Instance().DecryptPacket(
+                                    context.nSessionId,
                                     context.vChaChaKey,
+                                    PACKET.DATA,
                                     decryptedData
                                 );
                                 
@@ -1480,7 +1488,11 @@ namespace LLP
                             {
                                 /* Fallback: legacy Falcon wrapper [merkle][nonce][timestamp][sig_len][signature] */
                                 std::vector<uint8_t> decryptedData;
-                                if(!LLC::DecryptPayloadChaCha20(PACKET.DATA, context.vChaChaKey, decryptedData))
+                                if(!LLC::ChaCha20EvpManager::Instance().DecryptPacket(
+                                    context.nSessionId,
+                                    context.vChaChaKey,
+                                    PACKET.DATA,
+                                    decryptedData))
                                 {
                                     const auto optRecovery = SessionRecoveryManager::Get().RecoverSessionByIdentity(
                                         context.hashKeyID,
@@ -2602,6 +2614,7 @@ namespace LLP
                     }
                 }
                 
+                const uint32_t nPrevSessionId = context.nSessionId;
                 context = result.context;
 
                 /* Derive ChaCha20 key from genesis using unified helper (same as legacy miner) */
@@ -2670,6 +2683,19 @@ namespace LLP
                     {
                         uint256_t hashKey(context.vChaChaKey);
                         SessionRecoveryManager::Get().SaveChaCha20State(context.hashKeyID, hashKey, 0);
+                    }
+                }
+
+                if(GetNodeCryptoMode() == NodeCryptoMode::EVP && context.fEncryptionReady && !context.vChaChaKey.empty())
+                {
+                    if(nPrevSessionId != 0 && nPrevSessionId != context.nSessionId)
+                    {
+                        LLC::ChaCha20EvpManager::Instance().TeardownSession(nPrevSessionId);
+                        LLC::ChaCha20EvpManager::Instance().RotateSession(context.nSessionId, context.vChaChaKey);
+                    }
+                    else
+                    {
+                        LLC::ChaCha20EvpManager::Instance().InitSession(context.nSessionId, context.vChaChaKey);
                     }
                 }
 

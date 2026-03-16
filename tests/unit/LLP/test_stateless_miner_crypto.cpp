@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <LLC/include/mining_session_keys.h>
 #include <LLC/include/chacha20_helpers.h>
+#include <LLC/include/chacha20_evp_manager.h>
 #include <LLC/include/encrypt.h>
 #include <LLC/include/flkey.h>
 #include <LLC/include/random.h>
@@ -26,6 +27,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/stateless_block_utility.h>
 
 #include <Util/include/convert.h>
+#include <Util/include/config.h>
 #include <Util/include/hex.h>
 #include <Util/include/debug.h>
 
@@ -984,4 +986,95 @@ TEST_CASE("T28: Tail-anchor uniqueness: only one candidate per valid payload", "
     /* The tail-anchor constraint guarantees exactly ONE structurally valid candidate per payload.
      * This confirms that FLKey::Verify() is called at most once (O(1) in practice). */
     REQUIRE(nCandidates == 1);
+}
+
+
+TEST_CASE("T29: Node crypto_mode=legacy preserves current encrypt/decrypt interop", "[stateless_miner_crypto][crypto_mode][legacy]")
+{
+    const auto mapOriginalArgs = config::mapArgs;
+    config::mapArgs["-crypto_mode"] = "legacy";
+
+    std::vector<uint8_t> vKey(32, 0x44);
+    std::vector<uint8_t> vPayload{'l','e','g','a','c','y'};
+    std::vector<uint8_t> vEncrypted;
+    std::vector<uint8_t> vDecrypted;
+
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(1001, vKey, vPayload, vEncrypted));
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(1001, vKey, vEncrypted, vDecrypted));
+    REQUIRE(vDecrypted == vPayload);
+
+    LLC::ChaCha20EvpManager::Instance().TeardownSession(1001);
+    config::mapArgs = mapOriginalArgs;
+}
+
+
+TEST_CASE("T30: Node crypto_mode=evp send/recv succeeds", "[stateless_miner_crypto][crypto_mode][evp]")
+{
+    const auto mapOriginalArgs = config::mapArgs;
+    config::mapArgs["-crypto_mode"] = "evp";
+
+    std::vector<uint8_t> vKey(32, 0x55);
+    std::vector<uint8_t> vPayload{'e','v','p','-','o','k'};
+    std::vector<uint8_t> vEncrypted;
+    std::vector<uint8_t> vDecrypted;
+
+    LLC::ChaCha20EvpManager::Instance().InitSession(1002, vKey);
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(1002, vKey, vPayload, vEncrypted));
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(1002, vKey, vEncrypted, vDecrypted));
+    REQUIRE(vDecrypted == vPayload);
+
+    LLC::ChaCha20EvpManager::Instance().TeardownSession(1002);
+    config::mapArgs = mapOriginalArgs;
+}
+
+
+TEST_CASE("T31: Node crypto_mode=evp rejects duplicate nonce replay", "[stateless_miner_crypto][crypto_mode][evp][replay]")
+{
+    const auto mapOriginalArgs = config::mapArgs;
+    config::mapArgs["-crypto_mode"] = "evp";
+
+    std::vector<uint8_t> vKey(32, 0x66);
+    std::vector<uint8_t> vPayload{'r','e','p','l','a','y'};
+    std::vector<uint8_t> vEncrypted;
+    std::vector<uint8_t> vDecrypted1;
+    std::vector<uint8_t> vDecrypted2;
+
+    LLC::ChaCha20EvpManager::Instance().InitSession(1003, vKey);
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(1003, vKey, vPayload, vEncrypted));
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(1003, vKey, vEncrypted, vDecrypted1));
+    REQUIRE_FALSE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(1003, vKey, vEncrypted, vDecrypted2));
+
+    LLC::ChaCha20EvpManager::Instance().TeardownSession(1003);
+    config::mapArgs = mapOriginalArgs;
+}
+
+
+TEST_CASE("T32: Node crypto_mode=evp session rotate isolates epochs safely", "[stateless_miner_crypto][crypto_mode][evp][rotate]")
+{
+    const auto mapOriginalArgs = config::mapArgs;
+    config::mapArgs["-crypto_mode"] = "evp";
+
+    const uint32_t nSessionId = 1004;
+    std::vector<uint8_t> vKeyEpoch1(32, 0x77);
+    std::vector<uint8_t> vKeyEpoch2(32, 0x88);
+    std::vector<uint8_t> vEncryptedEpoch1;
+    std::vector<uint8_t> vEncryptedEpoch2;
+    std::vector<uint8_t> vPlainEpoch1{'e','p','o','c','h','1'};
+    std::vector<uint8_t> vPlainEpoch2{'e','p','o','c','h','2'};
+    std::vector<uint8_t> vDecrypted;
+
+    LLC::ChaCha20EvpManager::Instance().InitSession(nSessionId, vKeyEpoch1);
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(nSessionId, vKeyEpoch1, vPlainEpoch1, vEncryptedEpoch1));
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(nSessionId, vKeyEpoch1, vEncryptedEpoch1, vDecrypted));
+    REQUIRE(vDecrypted == vPlainEpoch1);
+
+    LLC::ChaCha20EvpManager::Instance().RotateSession(nSessionId, vKeyEpoch2);
+    REQUIRE_FALSE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(nSessionId, vKeyEpoch2, vEncryptedEpoch1, vDecrypted));
+
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(nSessionId, vKeyEpoch2, vPlainEpoch2, vEncryptedEpoch2));
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(nSessionId, vKeyEpoch2, vEncryptedEpoch2, vDecrypted));
+    REQUIRE(vDecrypted == vPlainEpoch2);
+
+    LLC::ChaCha20EvpManager::Instance().TeardownSession(nSessionId);
+    config::mapArgs = mapOriginalArgs;
 }
