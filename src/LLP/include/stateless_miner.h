@@ -1258,7 +1258,6 @@ namespace LLP
          *
          **/
         static bool DecryptRewardPayload(
-            uint32_t nSessionId,
             const std::vector<uint8_t>& vEncrypted,
             const std::vector<uint8_t>& vKey,
             std::vector<uint8_t>& vPlaintext
@@ -1275,7 +1274,6 @@ namespace LLP
          *
          **/
         static std::vector<uint8_t> EncryptRewardResult(
-            uint32_t nSessionId,
             const std::vector<uint8_t>& vPlaintext,
             const std::vector<uint8_t>& vKey
         );
