@@ -2071,7 +2071,12 @@ namespace LLP
            PACKET.DATA.size() >= MIN_SIZE)
         {
             std::vector<uint8_t> vDecrypted;
-            if(LLC::ChaCha20EvpManager::Instance().DecryptPacket(nSessionId, vChaChaKey, PACKET.DATA, vDecrypted))
+            if(LLC::ChaCha20EvpManager::Instance().DecryptPacket(
+                    nSessionId,
+                    static_cast<uint16_t>(PACKET.HEADER),
+                    vChaChaKey,
+                    PACKET.DATA,
+                    vDecrypted))
             {
                 debug::log(2, FUNCTION, "SUBMIT_BLOCK: ChaCha20 decryption succeeded");
                 vWorkData = std::move(vDecrypted);

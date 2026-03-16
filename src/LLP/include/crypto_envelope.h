@@ -20,10 +20,12 @@ ________________________________________________________________________________
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <vector>
 
 namespace LLP
 {
     static constexpr size_t SESSION_ID_BYTES = sizeof(uint32_t);
+    /* Session ID is serialized in little-endian byte order on wire (v1). */
     static constexpr size_t NONCE_BYTES = 12;
     static constexpr size_t AEAD_TAG_BYTES = 16;
     static constexpr size_t WIRE_VERSION_BYTES = 1;
@@ -33,6 +35,8 @@ namespace LLP
     /* Envelope flags byte for future capabilities negotiation (compression/options bits). */
     static constexpr uint8_t ENVELOPE_FLAGS_DEFAULT   = 0x00;
     static constexpr size_t LEGACY_STALE_FRAME_LIMIT_BYTES = (2u * 1024u * 1024u);
+    static constexpr size_t AAD_MESSAGE_TYPE_BYTES = sizeof(uint16_t);
+    static constexpr size_t AAD_PAYLOAD_LENGTH_BYTES = sizeof(uint32_t);
 
     enum class CryptoPhase : uint8_t
     {
@@ -74,6 +78,30 @@ namespace LLP
             return 0;
 
         return nMaxPlaintextBytes + EncryptedOverheadBytes(mode);
+    }
+
+    inline std::vector<uint8_t> BuildAadV1(
+        const uint32_t nSessionId,
+        const uint16_t nMessageType,
+        const uint32_t nPayloadLength,
+        const std::vector<uint8_t>& vContext = std::vector<uint8_t>())
+    {
+        std::vector<uint8_t> vAAD;
+        vAAD.reserve(WIRE_VERSION_BYTES + SESSION_ID_BYTES + AAD_MESSAGE_TYPE_BYTES + AAD_PAYLOAD_LENGTH_BYTES + vContext.size());
+
+        vAAD.push_back(ENVELOPE_WIRE_VERSION_V1);
+        vAAD.push_back(static_cast<uint8_t>(nSessionId & 0xFF));
+        vAAD.push_back(static_cast<uint8_t>((nSessionId >> 8) & 0xFF));
+        vAAD.push_back(static_cast<uint8_t>((nSessionId >> 16) & 0xFF));
+        vAAD.push_back(static_cast<uint8_t>((nSessionId >> 24) & 0xFF));
+        vAAD.push_back(static_cast<uint8_t>(nMessageType & 0xFF));
+        vAAD.push_back(static_cast<uint8_t>((nMessageType >> 8) & 0xFF));
+        vAAD.push_back(static_cast<uint8_t>(nPayloadLength & 0xFF));
+        vAAD.push_back(static_cast<uint8_t>((nPayloadLength >> 8) & 0xFF));
+        vAAD.push_back(static_cast<uint8_t>((nPayloadLength >> 16) & 0xFF));
+        vAAD.push_back(static_cast<uint8_t>((nPayloadLength >> 24) & 0xFF));
+        vAAD.insert(vAAD.end(), vContext.begin(), vContext.end());
+        return vAAD;
     }
 }
 

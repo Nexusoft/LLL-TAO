@@ -1327,13 +1327,11 @@ namespace LLP
                                 debug::log(0, "🔓 CHACHA20 DECRYPTION:");
                                 debug::log(0, "   Encrypted payload size: ", PACKET.DATA.size(), " bytes");
                                 
-                                /* Decrypt using ChaCha20-Poly1305 helper
-                                 * Note: No AAD (Additional Authenticated Data) is used here because
-                                 * the entire SUBMIT_BLOCK packet is encrypted as-is without domain separation.
-                                 * Unlike MINER_SET_REWARD which uses AAD for context binding, SUBMIT_BLOCK
-                                 * encrypts the complete payload for transport-layer confidentiality. */
+                                /* Decrypt using ChaCha20-Poly1305 with v1 contract AAD
+                                 * (protocol_version + session_id + message_type + payload_length). */
                                 bool fDecrypted = LLC::ChaCha20EvpManager::Instance().DecryptPacket(
                                     context.nSessionId,
+                                    PACKET.HEADER,
                                     context.vChaChaKey,
                                     PACKET.DATA,
                                     decryptedData
@@ -1362,7 +1360,7 @@ namespace LLP
                                     debug::log(0, FUNCTION, "- recovered session genesis: ",
                                                optRecovery.has_value() ? FullHexOrUnset(optRecovery->hashGenesis) : "NOT AVAILABLE");
                                     debug::log(0, FUNCTION, "- recovered session genesis matches live context: ", YesNo(fRecoveryGenesisMatches));
-                                    debug::log(0, FUNCTION, "- AAD used for decryption: '' (0 bytes, empty)");
+                                    debug::log(0, FUNCTION, "- AAD used for decryption: wire_v1+sid+msg_type+payload_length");
                                     debug::log(0, FUNCTION, "- encrypted payload size received: ", PACKET.DATA.size(), " bytes");
                                     if(PACKET.DATA.size() >= 12)
                                     {
@@ -1511,6 +1509,7 @@ namespace LLP
                                 std::vector<uint8_t> decryptedData;
                                 if(!LLC::ChaCha20EvpManager::Instance().DecryptPacket(
                                     context.nSessionId,
+                                    PACKET.HEADER,
                                     context.vChaChaKey,
                                     PACKET.DATA,
                                     decryptedData))

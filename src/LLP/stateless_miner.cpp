@@ -1968,7 +1968,7 @@ namespace LLP
     )
     {
         return LLC::ChaCha20EvpManager::Instance().DecryptPacket(
-            nSessionId, vKey, vEncrypted, vPlaintext, AAD_REWARD_ADDRESS
+            nSessionId, static_cast<uint16_t>(SET_REWARD), vKey, vEncrypted, vPlaintext, AAD_REWARD_ADDRESS
         );
     }
 
@@ -1982,7 +1982,7 @@ namespace LLP
     {
         std::vector<uint8_t> vEncrypted;
         if(!LLC::ChaCha20EvpManager::Instance().EncryptPacket(
-            nSessionId, vKey, vPlaintext, vEncrypted, AAD_REWARD_RESULT))
+            nSessionId, static_cast<uint16_t>(REWARD_RESULT), vKey, vPlaintext, vEncrypted, AAD_REWARD_RESULT))
         {
             return std::vector<uint8_t>();
         }

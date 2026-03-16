@@ -992,6 +992,7 @@ TEST_CASE("T28: Tail-anchor uniqueness: only one candidate per valid payload", "
 
 TEST_CASE("T29: Node crypto_mode=legacy preserves current encrypt/decrypt interop", "[stateless_miner_crypto][crypto_mode][legacy]")
 {
+    static constexpr uint16_t TEST_MESSAGE_TYPE = 0xD0D4;
     const auto mapOriginalArgs = config::mapArgs;
     config::mapArgs["-crypto_mode"] = "legacy";
 
@@ -1000,8 +1001,8 @@ TEST_CASE("T29: Node crypto_mode=legacy preserves current encrypt/decrypt intero
     std::vector<uint8_t> vEncrypted;
     std::vector<uint8_t> vDecrypted;
 
-    REQUIRE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(1001, vKey, vPayload, vEncrypted));
-    REQUIRE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(1001, vKey, vEncrypted, vDecrypted));
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(1001, TEST_MESSAGE_TYPE, vKey, vPayload, vEncrypted));
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(1001, TEST_MESSAGE_TYPE, vKey, vEncrypted, vDecrypted));
     REQUIRE(vDecrypted == vPayload);
     REQUIRE(LLC::DecryptPayloadChaCha20(vEncrypted, vKey, vDecrypted));
     REQUIRE(vDecrypted == vPayload);
@@ -1013,6 +1014,7 @@ TEST_CASE("T29: Node crypto_mode=legacy preserves current encrypt/decrypt intero
 
 TEST_CASE("T30: Node crypto_mode=evp send/recv succeeds", "[stateless_miner_crypto][crypto_mode][evp]")
 {
+    static constexpr uint16_t TEST_MESSAGE_TYPE = 0xD0D4;
     const auto mapOriginalArgs = config::mapArgs;
     config::mapArgs["-crypto_mode"] = "evp";
 
@@ -1022,8 +1024,8 @@ TEST_CASE("T30: Node crypto_mode=evp send/recv succeeds", "[stateless_miner_cryp
     std::vector<uint8_t> vDecrypted;
 
     LLC::ChaCha20EvpManager::Instance().InitSession(1002, vKey);
-    REQUIRE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(1002, vKey, vPayload, vEncrypted));
-    REQUIRE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(1002, vKey, vEncrypted, vDecrypted));
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(1002, TEST_MESSAGE_TYPE, vKey, vPayload, vEncrypted));
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(1002, TEST_MESSAGE_TYPE, vKey, vEncrypted, vDecrypted));
     REQUIRE(vDecrypted == vPayload);
 
     LLC::ChaCha20EvpManager::Instance().TeardownSession(1002);
@@ -1033,6 +1035,7 @@ TEST_CASE("T30: Node crypto_mode=evp send/recv succeeds", "[stateless_miner_cryp
 
 TEST_CASE("T31: Node crypto_mode=evp rejects duplicate nonce replay", "[stateless_miner_crypto][crypto_mode][evp][replay]")
 {
+    static constexpr uint16_t TEST_MESSAGE_TYPE = 0xD0D4;
     const auto mapOriginalArgs = config::mapArgs;
     config::mapArgs["-crypto_mode"] = "evp";
 
@@ -1043,9 +1046,9 @@ TEST_CASE("T31: Node crypto_mode=evp rejects duplicate nonce replay", "[stateles
     std::vector<uint8_t> vDecrypted2;
 
     LLC::ChaCha20EvpManager::Instance().InitSession(1003, vKey);
-    REQUIRE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(1003, vKey, vPayload, vEncrypted));
-    REQUIRE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(1003, vKey, vEncrypted, vDecrypted1));
-    REQUIRE_FALSE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(1003, vKey, vEncrypted, vDecrypted2));
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(1003, TEST_MESSAGE_TYPE, vKey, vPayload, vEncrypted));
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(1003, TEST_MESSAGE_TYPE, vKey, vEncrypted, vDecrypted1));
+    REQUIRE_FALSE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(1003, TEST_MESSAGE_TYPE, vKey, vEncrypted, vDecrypted2));
 
     LLC::ChaCha20EvpManager::Instance().TeardownSession(1003);
     config::mapArgs = mapOriginalArgs;
@@ -1054,6 +1057,7 @@ TEST_CASE("T31: Node crypto_mode=evp rejects duplicate nonce replay", "[stateles
 
 TEST_CASE("T32: Node crypto_mode=evp session rotate isolates epochs safely", "[stateless_miner_crypto][crypto_mode][evp][rotate]")
 {
+    static constexpr uint16_t TEST_MESSAGE_TYPE = 0xD0D4;
     const auto mapOriginalArgs = config::mapArgs;
     config::mapArgs["-crypto_mode"] = "evp";
 
@@ -1067,15 +1071,15 @@ TEST_CASE("T32: Node crypto_mode=evp session rotate isolates epochs safely", "[s
     std::vector<uint8_t> vDecrypted;
 
     LLC::ChaCha20EvpManager::Instance().InitSession(nSessionId, vKeyEpoch1);
-    REQUIRE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(nSessionId, vKeyEpoch1, vPlainEpoch1, vEncryptedEpoch1));
-    REQUIRE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(nSessionId, vKeyEpoch1, vEncryptedEpoch1, vDecrypted));
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(nSessionId, TEST_MESSAGE_TYPE, vKeyEpoch1, vPlainEpoch1, vEncryptedEpoch1));
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(nSessionId, TEST_MESSAGE_TYPE, vKeyEpoch1, vEncryptedEpoch1, vDecrypted));
     REQUIRE(vDecrypted == vPlainEpoch1);
 
     LLC::ChaCha20EvpManager::Instance().RotateSession(nSessionId, vKeyEpoch2);
-    REQUIRE_FALSE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(nSessionId, vKeyEpoch2, vEncryptedEpoch1, vDecrypted));
+    REQUIRE_FALSE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(nSessionId, TEST_MESSAGE_TYPE, vKeyEpoch2, vEncryptedEpoch1, vDecrypted));
 
-    REQUIRE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(nSessionId, vKeyEpoch2, vPlainEpoch2, vEncryptedEpoch2));
-    REQUIRE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(nSessionId, vKeyEpoch2, vEncryptedEpoch2, vDecrypted));
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(nSessionId, TEST_MESSAGE_TYPE, vKeyEpoch2, vPlainEpoch2, vEncryptedEpoch2));
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(nSessionId, TEST_MESSAGE_TYPE, vKeyEpoch2, vEncryptedEpoch2, vDecrypted));
     REQUIRE(vDecrypted == vPlainEpoch2);
 
     LLC::ChaCha20EvpManager::Instance().TeardownSession(nSessionId);
@@ -1085,6 +1089,7 @@ TEST_CASE("T32: Node crypto_mode=evp session rotate isolates epochs safely", "[s
 
 TEST_CASE("T33: EVP envelope rejects SessionID mismatch", "[stateless_miner_crypto][crypto_mode][evp][sid]")
 {
+    static constexpr uint16_t TEST_MESSAGE_TYPE = 0xD0D4;
     const auto mapOriginalArgs = config::mapArgs;
     config::mapArgs["-crypto_mode"] = "evp";
 
@@ -1094,9 +1099,9 @@ TEST_CASE("T33: EVP envelope rejects SessionID mismatch", "[stateless_miner_cryp
     std::vector<uint8_t> vDecrypted;
 
     LLC::ChaCha20EvpManager::Instance().InitSession(2001, vKey);
-    REQUIRE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(2001, vKey, vPayload, vEncrypted));
-    REQUIRE_FALSE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(2002, vKey, vEncrypted, vDecrypted));
-    REQUIRE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(2001, vKey, vEncrypted, vDecrypted));
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(2001, TEST_MESSAGE_TYPE, vKey, vPayload, vEncrypted));
+    REQUIRE_FALSE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(2002, TEST_MESSAGE_TYPE, vKey, vEncrypted, vDecrypted));
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(2001, TEST_MESSAGE_TYPE, vKey, vEncrypted, vDecrypted));
     REQUIRE(vDecrypted == vPayload);
 
     LLC::ChaCha20EvpManager::Instance().TeardownSession(2001);
@@ -1107,6 +1112,7 @@ TEST_CASE("T33: EVP envelope rejects SessionID mismatch", "[stateless_miner_cryp
 
 TEST_CASE("T34: Pre-auth cleartext allowed and post-auth EVP requires session-bound frames", "[stateless_miner_crypto][crypto_mode][evp][phase]")
 {
+    static constexpr uint16_t TEST_MESSAGE_TYPE = 0xD0D4;
     const auto mapOriginalArgs = config::mapArgs;
     config::mapArgs["-crypto_mode"] = "evp";
 
@@ -1121,14 +1127,14 @@ TEST_CASE("T34: Pre-auth cleartext allowed and post-auth EVP requires session-bo
 
     /* Post-auth EVP path requires session-bound envelope (sid != 0, envelope fields present) */
     std::vector<uint8_t> vBadEncrypted;
-    REQUIRE_FALSE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(0, vKey, vPayload, vBadEncrypted));
-    REQUIRE_FALSE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(0, vKey, vLegacyEncrypted, vLegacyDecrypted));
+    REQUIRE_FALSE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(0, TEST_MESSAGE_TYPE, vKey, vPayload, vBadEncrypted));
+    REQUIRE_FALSE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(0, TEST_MESSAGE_TYPE, vKey, vLegacyEncrypted, vLegacyDecrypted));
 
     std::vector<uint8_t> vEvpEncrypted;
     LLC::ChaCha20EvpManager::Instance().InitSession(2003, vKey);
-    REQUIRE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(2003, vKey, vPayload, vEvpEncrypted));
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(2003, TEST_MESSAGE_TYPE, vKey, vPayload, vEvpEncrypted));
     REQUIRE(vEvpEncrypted.size() >= LLP::MinEncryptedFrameBytes(LLP::NodeCryptoMode::EVP));
-    REQUIRE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(2003, vKey, vEvpEncrypted, vLegacyDecrypted));
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(2003, TEST_MESSAGE_TYPE, vKey, vEvpEncrypted, vLegacyDecrypted));
     REQUIRE(vLegacyDecrypted == vPayload);
 
     LLC::ChaCha20EvpManager::Instance().TeardownSession(2003);
@@ -1158,4 +1164,52 @@ TEST_CASE("T36: Regression guard - stale 2MB assumptions are not used for EVP su
     REQUIRE(nMaxEvpFrame != LLP::LEGACY_STALE_FRAME_LIMIT_BYTES);
     REQUIRE(nMaxEvpFrame < LLP::LEGACY_STALE_FRAME_LIMIT_BYTES);
     REQUIRE(nMaxEvpFrame < 8192);
+}
+
+
+TEST_CASE("T37: EVP AAD v1 binds protocol/session/message/length", "[stateless_miner_crypto][crypto_mode][evp][aad]")
+{
+    static constexpr uint16_t TEST_MESSAGE_TYPE = 0xD0D4;
+    const auto mapOriginalArgs = config::mapArgs;
+    config::mapArgs["-crypto_mode"] = "evp";
+
+    std::vector<uint8_t> vKey(32, 0xBC);
+    std::vector<uint8_t> vPayload{'a','a','d','-','b','i','n','d'};
+    std::vector<uint8_t> vEncrypted;
+    std::vector<uint8_t> vDecrypted;
+
+    LLC::ChaCha20EvpManager::Instance().InitSession(3001, vKey);
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(3001, TEST_MESSAGE_TYPE, vKey, vPayload, vEncrypted));
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(3001, TEST_MESSAGE_TYPE, vKey, vEncrypted, vDecrypted));
+    REQUIRE(vDecrypted == vPayload);
+    REQUIRE_FALSE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(3001, static_cast<uint16_t>(TEST_MESSAGE_TYPE + 1), vKey, vEncrypted, vDecrypted));
+
+    LLC::ChaCha20EvpManager::Instance().TeardownSession(3001);
+    config::mapArgs = mapOriginalArgs;
+}
+
+
+TEST_CASE("T38: EVP nonce rewind is rejected per session direction", "[stateless_miner_crypto][crypto_mode][evp][nonce]")
+{
+    static constexpr uint16_t TEST_MESSAGE_TYPE = 0xD0D4;
+    const auto mapOriginalArgs = config::mapArgs;
+    config::mapArgs["-crypto_mode"] = "evp";
+
+    std::vector<uint8_t> vKey(32, 0xCD);
+    std::vector<uint8_t> vPayload1{'n','1'};
+    std::vector<uint8_t> vPayload2{'n','2'};
+    std::vector<uint8_t> vEncrypted1;
+    std::vector<uint8_t> vEncrypted2;
+    std::vector<uint8_t> vDecrypted;
+
+    LLC::ChaCha20EvpManager::Instance().InitSession(3002, vKey);
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(3002, TEST_MESSAGE_TYPE, vKey, vPayload1, vEncrypted1));
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(3002, TEST_MESSAGE_TYPE, vKey, vPayload2, vEncrypted2));
+
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(3002, TEST_MESSAGE_TYPE, vKey, vEncrypted2, vDecrypted));
+    REQUIRE(vDecrypted == vPayload2);
+    REQUIRE_FALSE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(3002, TEST_MESSAGE_TYPE, vKey, vEncrypted1, vDecrypted));
+
+    LLC::ChaCha20EvpManager::Instance().TeardownSession(3002);
+    config::mapArgs = mapOriginalArgs;
 }

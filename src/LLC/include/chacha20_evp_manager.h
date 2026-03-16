@@ -21,6 +21,7 @@ ________________________________________________________________________________
 #include <LLP/include/node_crypto_mode_selector.h>
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <cstring>
 #include <deque>
@@ -47,8 +48,10 @@ namespace LLC
             SessionState& state = mapSessions[nSessionId];
             Zeroize(state.vSessionKey);
             state.vSessionKey = vSessionKey;
-            state.setSeenNonces.clear();
-            state.deqNonceOrder.clear();
+            state.nTxNonce = 0;
+            state.nRxEpoch = 0;
+            state.nRxCounter = 0;
+            state.fHasRxNonce = false;
         }
 
         void RotateSession(const uint32_t nSessionId, const std::vector<uint8_t>& vSessionKey)
@@ -57,9 +60,11 @@ namespace LLC
             SessionState& state = mapSessions[nSessionId];
             Zeroize(state.vSessionKey);
             state.vSessionKey = vSessionKey;
-            state.setSeenNonces.clear();
-            state.deqNonceOrder.clear();
             ++state.nEpoch;
+            state.nTxNonce = 0;
+            state.nRxEpoch = 0;
+            state.nRxCounter = 0;
+            state.fHasRxNonce = false;
         }
 
         void TeardownSession(const uint32_t nSessionId)
@@ -70,13 +75,12 @@ namespace LLC
                 return;
 
             Zeroize(it->second.vSessionKey);
-            it->second.setSeenNonces.clear();
-            it->second.deqNonceOrder.clear();
             mapSessions.erase(it);
         }
 
         bool EncryptPacket(
             const uint32_t nSessionId,
+            const uint16_t nMessageType,
             const std::vector<uint8_t>& vSessionKey,
             const std::vector<uint8_t>& vPlaintext,
             std::vector<uint8_t>& vEncrypted,
@@ -96,19 +100,24 @@ namespace LLC
                 return false;
             }
 
-            std::vector<uint8_t> vNonce(LLP::NONCE_BYTES);
-            uint64_t nRand1 = LLC::GetRand();
-            uint64_t nRand2 = LLC::GetRand();
-            std::memcpy(&vNonce[0], &nRand1, 8);
-            std::memcpy(&vNonce[8], &nRand2, 4);
+            if(nMessageType == 0)
+                return false;
+
+            std::vector<uint8_t> vNonce = NextOutboundNonce(nSessionId);
 
             const std::vector<uint8_t> vKey = ResolveSessionKey(nSessionId, vSessionKey);
             if(vKey.size() != 32 || vPlaintext.empty())
                 return false;
 
+            const std::vector<uint8_t> vEffectiveAAD = LLP::BuildAadV1(
+                nSessionId,
+                nMessageType,
+                static_cast<uint32_t>(vPlaintext.size()),
+                vAAD);
+
             std::vector<uint8_t> vCiphertext;
             std::vector<uint8_t> vTag;
-            if(!LLC::EncryptChaCha20Poly1305(vPlaintext, vKey, vNonce, vCiphertext, vTag, vAAD))
+            if(!LLC::EncryptChaCha20Poly1305(vPlaintext, vKey, vNonce, vCiphertext, vTag, vEffectiveAAD))
                 return false;
 
             static_assert(LLP::SESSION_ID_BYTES == sizeof(uint32_t), "Session ID wire size must remain 4 bytes");
@@ -128,6 +137,7 @@ namespace LLC
 
         bool DecryptPacket(
             const uint32_t nSessionId,
+            const uint16_t nMessageType,
             const std::vector<uint8_t>& vSessionKey,
             const std::vector<uint8_t>& vEncrypted,
             std::vector<uint8_t>& vPlaintext,
@@ -143,6 +153,9 @@ namespace LLC
                              " sid=", nSessionId, " mode=evp");
                 return false;
             }
+
+            if(nMessageType == 0)
+                return false;
 
             const size_t nMinBytes = LLP::MinEncryptedFrameBytes(LLP::NodeCryptoMode::EVP);
             if(vEncrypted.size() < nMinBytes)
@@ -181,9 +194,8 @@ namespace LLC
             const size_t nNonceOffset = LLP::WIRE_VERSION_BYTES + LLP::CRYPTO_FLAGS_BYTES + LLP::SESSION_ID_BYTES;
             const size_t nCiphertextOffset = nNonceOffset + LLP::NONCE_BYTES;
             const size_t nTagOffset = vEncrypted.size() - LLP::AEAD_TAG_BYTES;
-
-            const std::string strNonce(reinterpret_cast<const char*>(vEncrypted.data() + nNonceOffset), LLP::NONCE_BYTES);
-            if(!TrackInboundNonce(nSessionId, strNonce))
+            const std::array<uint8_t, LLP::NONCE_BYTES> nonceBytes = ReadNonce(vEncrypted.data() + nNonceOffset);
+            if(!TrackInboundNonce(nSessionId, nonceBytes))
                 return false;
 
             const std::vector<uint8_t> vKey = ResolveSessionKey(nSessionId, vSessionKey);
@@ -193,10 +205,15 @@ namespace LLC
             std::vector<uint8_t> vNonce(vEncrypted.begin() + nNonceOffset, vEncrypted.begin() + nCiphertextOffset);
             std::vector<uint8_t> vTag(vEncrypted.begin() + nTagOffset, vEncrypted.end());
             std::vector<uint8_t> vCiphertext(vEncrypted.begin() + nCiphertextOffset, vEncrypted.begin() + nTagOffset);
+            const std::vector<uint8_t> vEffectiveAAD = LLP::BuildAadV1(
+                nSessionId,
+                nMessageType,
+                static_cast<uint32_t>(vCiphertext.size()),
+                vAAD);
 
-            if(!LLC::DecryptChaCha20Poly1305(vCiphertext, vTag, vKey, vNonce, vPlaintext, vAAD))
+            if(!LLC::DecryptChaCha20Poly1305(vCiphertext, vTag, vKey, vNonce, vPlaintext, vEffectiveAAD))
             {
-                ForgetInboundNonce(nSessionId, strNonce);
+                ForgetInboundNonce(nSessionId, nonceBytes);
                 return false;
             }
 
@@ -207,12 +224,12 @@ namespace LLC
         struct SessionState
         {
             std::vector<uint8_t> vSessionKey;
-            std::unordered_set<std::string> setSeenNonces;
-            std::deque<std::string> deqNonceOrder;
             uint64_t nEpoch = 0;
+            uint64_t nTxNonce = 0;
+            uint32_t nRxEpoch = 0;
+            uint64_t nRxCounter = 0;
+            bool fHasRxNonce = false;
         };
-
-        static constexpr size_t MAX_TRACKED_NONCES = 4096;
 
         mutable std::mutex MUTEX;
         std::unordered_map<uint32_t, SessionState> mapSessions;
@@ -240,6 +257,58 @@ namespace LLC
                 (static_cast<uint32_t>(pData[3]) << 24);
         }
 
+        static void SerializeUint32LE(std::vector<uint8_t>& vOut, const uint32_t nValue)
+        {
+            vOut.push_back(static_cast<uint8_t>(nValue & 0xFF));
+            vOut.push_back(static_cast<uint8_t>((nValue >> 8) & 0xFF));
+            vOut.push_back(static_cast<uint8_t>((nValue >> 16) & 0xFF));
+            vOut.push_back(static_cast<uint8_t>((nValue >> 24) & 0xFF));
+        }
+
+        static void SerializeUint64LE(std::vector<uint8_t>& vOut, const uint64_t nValue)
+        {
+            for(uint32_t i = 0; i < 8; ++i)
+                vOut.push_back(static_cast<uint8_t>((nValue >> (i * 8)) & 0xFF));
+        }
+
+        static uint64_t DeserializeUint64LE(const uint8_t* pData)
+        {
+            uint64_t nValue = 0;
+            for(uint32_t i = 0; i < 8; ++i)
+                nValue |= (static_cast<uint64_t>(pData[i]) << (i * 8));
+            return nValue;
+        }
+
+        static std::array<uint8_t, LLP::NONCE_BYTES> ReadNonce(const uint8_t* pData)
+        {
+            std::array<uint8_t, LLP::NONCE_BYTES> nonce{};
+            std::memcpy(nonce.data(), pData, LLP::NONCE_BYTES);
+            return nonce;
+        }
+
+        static uint32_t NonceEpoch(const std::array<uint8_t, LLP::NONCE_BYTES>& nonce)
+        {
+            return DeserializeUint32LE(nonce.data());
+        }
+
+        static uint64_t NonceCounter(const std::array<uint8_t, LLP::NONCE_BYTES>& nonce)
+        {
+            return DeserializeUint64LE(nonce.data() + sizeof(uint32_t));
+        }
+
+        std::vector<uint8_t> NextOutboundNonce(const uint32_t nSessionId)
+        {
+            std::lock_guard<std::mutex> lock(MUTEX);
+            SessionState& state = mapSessions[nSessionId];
+            ++state.nTxNonce;
+
+            std::vector<uint8_t> vNonce;
+            vNonce.reserve(LLP::NONCE_BYTES);
+            SerializeUint32LE(vNonce, static_cast<uint32_t>(state.nEpoch & 0xFFFFFFFFu));
+            SerializeUint64LE(vNonce, state.nTxNonce);
+            return vNonce;
+        }
+
         std::vector<uint8_t> ResolveSessionKey(const uint32_t nSessionId, const std::vector<uint8_t>& vSessionKey)
         {
             std::lock_guard<std::mutex> lock(MUTEX);
@@ -259,35 +328,31 @@ namespace LLC
             return it->second.vSessionKey;
         }
 
-        bool TrackInboundNonce(const uint32_t nSessionId, const std::string& strNonce)
+        bool TrackInboundNonce(const uint32_t nSessionId, const std::array<uint8_t, LLP::NONCE_BYTES>& nonce)
         {
             std::lock_guard<std::mutex> lock(MUTEX);
             SessionState& state = mapSessions[nSessionId];
+            const uint32_t nEpoch = NonceEpoch(nonce);
+            const uint64_t nCounter = NonceCounter(nonce);
 
-            if(state.setSeenNonces.find(strNonce) != state.setSeenNonces.end())
-                return false;
-
-            state.setSeenNonces.insert(strNonce);
-            state.deqNonceOrder.push_back(strNonce);
-
-            while(state.deqNonceOrder.size() > MAX_TRACKED_NONCES)
+            if(state.fHasRxNonce)
             {
-                const std::string& oldest = state.deqNonceOrder.front();
-                state.setSeenNonces.erase(oldest);
-                state.deqNonceOrder.pop_front();
+                if(nEpoch < state.nRxEpoch || (nEpoch == state.nRxEpoch && nCounter <= state.nRxCounter))
+                    return false;
             }
 
+            state.nRxEpoch = nEpoch;
+            state.nRxCounter = nCounter;
+            state.fHasRxNonce = true;
             return true;
         }
 
-        void ForgetInboundNonce(const uint32_t nSessionId, const std::string& strNonce)
+        void ForgetInboundNonce(const uint32_t nSessionId, const std::array<uint8_t, LLP::NONCE_BYTES>&)
         {
             std::lock_guard<std::mutex> lock(MUTEX);
             auto it = mapSessions.find(nSessionId);
             if(it == mapSessions.end())
                 return;
-
-            it->second.setSeenNonces.erase(strNonce);
         }
     };
 }
