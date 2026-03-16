@@ -168,6 +168,12 @@ without advancing the Prime channel height.
 # Mining pool mode
 -miningpool=1
 
+# Node transport crypto mode (default: legacy)
+# legacy = current behavior (interop-safe)
+# evp    = centralized EVP session manager with nonce replay rejection
+# tls    = reserved for TLS transport rollout (currently behaves as legacy wire path)
+-crypto_mode=legacy
+
 # Falcon handshake timeout (seconds)
 -falconhandshake.timeout=60
 
@@ -177,6 +183,14 @@ without advancing the Prime channel height.
 # Cache purge interval (seconds, default: 7 days)
 -nodecache.purgetimeout=604800
 ```
+
+### Compatibility Matrix (Operator Guidance)
+
+| Node `-crypto_mode` | Legacy miner | EVP-capable miner |
+|---|---|---|
+| `legacy` (default) | ✅ Supported (unchanged behavior) | ✅ Supported (legacy wire compatibility) |
+| `evp` | ✅ Supported (same ChaCha20 payload structure: `nonce + ciphertext + tag`; node EVP lifecycle + nonce replay guard active) | ✅ Supported |
+| `tls` | ✅ Supported (currently legacy-equivalent path) | ✅ Supported (currently legacy-equivalent path) |
 
 ---
 

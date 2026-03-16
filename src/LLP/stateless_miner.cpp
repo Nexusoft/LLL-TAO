@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <LLP/include/stateless_opcodes.h>
 #include <LLP/include/keepalive_v2.h>
 #include <LLP/include/colin_mining_agent.h>
+#include <LLP/include/node_crypto_mode_selector.h>
 
 #include <LLD/include/global.h>
 
@@ -31,6 +32,7 @@ ________________________________________________________________________________
 #include <LLC/include/falcon_constants_v2.h>
 #include <LLC/include/encrypt.h>
 #include <LLC/include/chacha20_helpers.h>
+#include <LLC/include/chacha20_evp_manager.h>
 #include <LLC/include/mining_session_keys.h>
 #include <LLC/hash/SK.h>
 
@@ -1422,6 +1424,14 @@ namespace LLP
          * This MUST be set after successful authentication for SUBMIT_BLOCK to work */
         std::vector<uint8_t> vChaChaKey = LLC::MiningSessionKeys::DeriveChaCha20Key(hashGenesisFinal);
         newContext = newContext.WithChaChaKey(vChaChaKey);
+
+        if(GetNodeCryptoMode() == NodeCryptoMode::EVP)
+        {
+            if(context.nSessionId != 0 && context.nSessionId != nSessionId)
+                LLC::ChaCha20EvpManager::Instance().RotateSession(nSessionId, vChaChaKey);
+            else
+                LLC::ChaCha20EvpManager::Instance().InitSession(nSessionId, vChaChaKey);
+        }
         
         /* Validate encryption context was set correctly */
         if(!newContext.fEncryptionReady || newContext.vChaChaKey.empty() || newContext.vChaChaKey.size() != 32)
@@ -1951,24 +1961,33 @@ namespace LLP
 
     /* Decrypts reward address payload using ChaCha20-Poly1305 */
     bool StatelessMiner::DecryptRewardPayload(
+        uint32_t nSessionId,
         const std::vector<uint8_t>& vEncrypted,
         const std::vector<uint8_t>& vKey,
         std::vector<uint8_t>& vPlaintext
     )
     {
-        /* Use LLC helper with domain-specific AAD for AEAD authentication */
-        return LLC::DecryptPayloadChaCha20(vEncrypted, vKey, vPlaintext, AAD_REWARD_ADDRESS);
+        return LLC::ChaCha20EvpManager::Instance().DecryptPacket(
+            nSessionId, static_cast<uint16_t>(SET_REWARD), vKey, vEncrypted, vPlaintext, AAD_REWARD_ADDRESS
+        );
     }
 
 
     /* Encrypts reward result response using ChaCha20-Poly1305 */
     std::vector<uint8_t> StatelessMiner::EncryptRewardResult(
+        uint32_t nSessionId,
         const std::vector<uint8_t>& vPlaintext,
         const std::vector<uint8_t>& vKey
     )
     {
-        /* Use LLC helper with domain-specific AAD for AEAD authentication */
-        return LLC::EncryptPayloadChaCha20(vPlaintext, vKey, AAD_REWARD_RESULT);
+        std::vector<uint8_t> vEncrypted;
+        if(!LLC::ChaCha20EvpManager::Instance().EncryptPacket(
+            nSessionId, static_cast<uint16_t>(REWARD_RESULT), vKey, vPlaintext, vEncrypted, AAD_REWARD_RESULT))
+        {
+            return std::vector<uint8_t>();
+        }
+
+        return vEncrypted;
     }
 
 
@@ -2039,7 +2058,7 @@ namespace LLP
 
         /* Decrypt the payload */
         std::vector<uint8_t> vDecrypted;
-        if(!DecryptRewardPayload(packet.DATA, vChaChaKey, vDecrypted))
+        if(!DecryptRewardPayload(context.nSessionId, packet.DATA, vChaChaKey, vDecrypted))
         {
             debug::error(FUNCTION, "Failed to decrypt reward address payload");
             debug::log(0, FUNCTION, "REWARD BINDING DIAGNOSTIC");
@@ -2057,7 +2076,7 @@ namespace LLP
             
             /* Build encrypted error response */
             std::vector<uint8_t> vErrorMsg = {0x00};  // Failure status
-            std::vector<uint8_t> vEncryptedError = EncryptRewardResult(vErrorMsg, vChaChaKey);
+            std::vector<uint8_t> vEncryptedError = EncryptRewardResult(context.nSessionId, vErrorMsg, vChaChaKey);
             
             StatelessPacket errorResponse(REWARD_RESULT);
             errorResponse.DATA = vEncryptedError;
@@ -2073,7 +2092,7 @@ namespace LLP
             debug::error(FUNCTION, "Invalid reward address payload size: ", vDecrypted.size(), " (expected 32)");
             
             std::vector<uint8_t> vErrorMsg = {0x00};
-            std::vector<uint8_t> vEncryptedError = EncryptRewardResult(vErrorMsg, vChaChaKey);
+            std::vector<uint8_t> vEncryptedError = EncryptRewardResult(context.nSessionId, vErrorMsg, vChaChaKey);
             
             StatelessPacket errorResponse(REWARD_RESULT);
             errorResponse.DATA = vEncryptedError;
@@ -2133,7 +2152,7 @@ namespace LLP
             debug::error(FUNCTION, "Invalid reward address");
             
             std::vector<uint8_t> vErrorMsg = {0x00};
-            std::vector<uint8_t> vEncryptedError = EncryptRewardResult(vErrorMsg, vChaChaKey);
+            std::vector<uint8_t> vEncryptedError = EncryptRewardResult(context.nSessionId, vErrorMsg, vChaChaKey);
             
             StatelessPacket errorResponse(REWARD_RESULT);
             errorResponse.DATA = vEncryptedError;
@@ -2182,7 +2201,7 @@ namespace LLP
 
         /* Build success response (encrypted) */
         std::vector<uint8_t> vSuccessMsg = {0x01};  // Success status
-        std::vector<uint8_t> vEncryptedSuccess = EncryptRewardResult(vSuccessMsg, vChaChaKey);
+        std::vector<uint8_t> vEncryptedSuccess = EncryptRewardResult(context.nSessionId, vSuccessMsg, vChaChaKey);
         
         StatelessPacket response(StatelessOpcodes::REWARD_RESULT);
         response.DATA = vEncryptedSuccess;
