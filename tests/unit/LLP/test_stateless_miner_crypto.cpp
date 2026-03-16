@@ -1399,6 +1399,10 @@ TEST_CASE("T45: 0xD0D6 reward-result EVP short frame rejects with FRAME_TOO_SHOR
 
     REQUIRE_FALSE(LLP::StatelessMiner::DecryptRewardResult(TEST_SESSION_ID, vShortFrame, vKey, vDecrypted, &nReason));
     REQUIRE(nReason == LLP::RewardResultEvpReason::FRAME_TOO_SHORT);
+
+    std::vector<uint8_t> vTinyFrame(5, 0x00);
+    REQUIRE_FALSE(LLP::StatelessMiner::DecryptRewardResult(TEST_SESSION_ID, vTinyFrame, vKey, vDecrypted, &nReason));
+    REQUIRE(nReason == LLP::RewardResultEvpReason::FRAME_TOO_SHORT);
     REQUIRE(LLP::SessionKeyLifecycle::SessionGeneration(TEST_SESSION_ID) == nGenerationBefore);
 
     LLP::SessionKeyLifecycle::TeardownSession(TEST_SESSION_ID);
@@ -1424,7 +1428,8 @@ TEST_CASE("T46: 0xD0D6 reward-result EVP flags mismatch rejects explicitly with 
     const uint64_t nGenerationBefore = LLP::SessionKeyLifecycle::SessionGeneration(TEST_SESSION_ID);
     REQUIRE(LLP::PacketCryptoService::Encode(TEST_SESSION_ID, TEST_MESSAGE_TYPE, vKey, vPayload, vEncrypted, vAAD));
     REQUIRE(vEncrypted.size() >= LLP::MinEncryptedFrameBytes(LLP::NodeCryptoMode::EVP));
-    vEncrypted[1] = 0x01; // Non-default flags byte must be rejected for 0xD0D6 EVP frame.
+    static constexpr uint8_t NON_DEFAULT_EVP_FLAG = 0x01;
+    vEncrypted[1] = NON_DEFAULT_EVP_FLAG; // ENVELOPE_FLAGS_DEFAULT is 0x00; force mismatch.
 
     REQUIRE_FALSE(LLP::StatelessMiner::DecryptRewardResult(TEST_SESSION_ID, vEncrypted, vKey, vDecrypted, &nReason));
     REQUIRE(nReason == LLP::RewardResultEvpReason::FLAGS_MISMATCH);
