@@ -872,8 +872,7 @@ namespace LLP
 
                 debug::log(0, "   Calling new_block()...");
 
-                /* Track GET_BLOCK response latency for observability.
-                 * Bounded deadline: if new_block() exceeds 500ms, return explicit status. */
+                /* Track GET_BLOCK response latency for observability. */
                 const auto tGetBlockStart = std::chrono::steady_clock::now();
 
                 /* Create a new block */
@@ -892,18 +891,31 @@ namespace LLP
                     tGetBlockEnd - tGetBlockStart).count();
                 debug::log(2, FUNCTION, "metric get_block_response_latency_ms=", nGetBlockLatencyMs);
 
+                /* Bounded deadline: if template build exceeded 500ms and failed,
+                 * return TEMPLATE_REBUILD_IN_PROGRESS so caller retries quickly. */
+                constexpr int64_t GET_BLOCK_DEADLINE_MS = 500;
+
                 /* Re-acquire MUTEX for respond() and context mutations */
                 lk.lock();
 
                 if(!pBlock)
                 {
                     debug::error("   ❌ new_block() failed after retry");
-                    SendGetBlockControlResponse(GetBlockPolicyReason::INTERNAL_RETRY, MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS, true);
-                    debug::log(2, "📥 === GET_BLOCK: FAILED (NO BLOCK AFTER RETRY) ===");
+                    /* Use TEMPLATE_REBUILD_IN_PROGRESS when deadline exceeded,
+                     * INTERNAL_RETRY otherwise. */
+                    const GetBlockPolicyReason eFailReason =
+                        (nGetBlockLatencyMs >= GET_BLOCK_DEADLINE_MS)
+                            ? GetBlockPolicyReason::TEMPLATE_REBUILD_IN_PROGRESS
+                            : GetBlockPolicyReason::INTERNAL_RETRY;
+                    SendGetBlockControlResponse(eFailReason, MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS, true);
+                    debug::log(2, "📥 === GET_BLOCK: FAILED (NO BLOCK AFTER RETRY, latency=",
+                               nGetBlockLatencyMs, "ms reason=", GetBlockPolicyReasonCode(eFailReason), ") ===");
                     return true;
                 }
                 
                 debug::log(0, "   ✅ Block created successfully");
+                if(nGetBlockLatencyMs >= GET_BLOCK_DEADLINE_MS)
+                    debug::warning(FUNCTION, "GET_BLOCK new_block() latency ", nGetBlockLatencyMs, "ms exceeded ", GET_BLOCK_DEADLINE_MS, "ms deadline (block created but slow)");
                 debug::log(0, "      Height: ", pBlock->nHeight);
                 debug::log(0, "      Channel: ", pBlock->nChannel);
                 debug::log(0, "      Merkle root: ", pBlock->hashMerkleRoot.SubString());
