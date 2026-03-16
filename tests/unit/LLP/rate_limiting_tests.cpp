@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <LLP/include/base_address.h>
 #include <LLP/include/get_block_policy.h>
 #include <LLP/include/mining_constants.h>
+#include <Util/include/args.h>
 #include <Util/include/runtime.h>
 
 #include <thread>
@@ -284,5 +285,37 @@ TEST_CASE("GET_BLOCK policy reason codes are explicit", "[rate_limit][get_block]
     REQUIRE(std::string(LLP::GetBlockPolicyReasonCode(LLP::GetBlockPolicyReason::RATE_LIMIT_EXCEEDED)) == "RATE_LIMIT_EXCEEDED");
     REQUIRE(std::string(LLP::GetBlockPolicyReasonCode(LLP::GetBlockPolicyReason::SESSION_INVALID)) == "SESSION_INVALID");
     REQUIRE(std::string(LLP::GetBlockPolicyReasonCode(LLP::GetBlockPolicyReason::UNAUTHENTICATED)) == "UNAUTHENTICATED");
-    REQUIRE(std::string(LLP::GetBlockPolicyReasonCode(LLP::GetBlockPolicyReason::NO_TEMPLATE_READY)) == "NO_TEMPLATE_READY");
+    REQUIRE(std::string(LLP::GetBlockPolicyReasonCode(LLP::GetBlockPolicyReason::TEMPLATE_NOT_READY)) == "TEMPLATE_NOT_READY");
+    REQUIRE(std::string(LLP::GetBlockPolicyReasonCode(LLP::GetBlockPolicyReason::INTERNAL_RETRY)) == "INTERNAL_RETRY");
+}
+
+TEST_CASE("GET_BLOCK control payload is explicit and machine-readable", "[rate_limit][get_block][control]")
+{
+    SECTION("retryable reason includes retry_after_ms")
+    {
+        const auto payload = LLP::BuildGetBlockControlPayload(LLP::GetBlockPolicyReason::RATE_LIMIT_EXCEEDED, 2000u);
+        REQUIRE(payload.size() == 8u);
+        REQUIRE(payload[0] == LLP::GET_BLOCK_CONTROL_PAYLOAD_VERSION);
+        REQUIRE(payload[1] == static_cast<uint8_t>(LLP::GetBlockPolicyReason::RATE_LIMIT_EXCEEDED));
+        REQUIRE(payload[4] == 0x00);
+        REQUIRE(payload[5] == 0x00);
+        REQUIRE(payload[6] == 0x07);
+        REQUIRE(payload[7] == 0xD0);
+    }
+
+    SECTION("non-retryable reasons force retry_after_ms to zero")
+    {
+        const auto payload = LLP::BuildGetBlockControlPayload(LLP::GetBlockPolicyReason::UNAUTHENTICATED, 9999u);
+        REQUIRE(payload.size() == 8u);
+        REQUIRE(payload[1] == static_cast<uint8_t>(LLP::GetBlockPolicyReason::UNAUTHENTICATED));
+        REQUIRE(payload[4] == 0x00);
+        REQUIRE(payload[5] == 0x00);
+        REQUIRE(payload[6] == 0x00);
+        REQUIRE(payload[7] == 0x00);
+    }
+}
+
+TEST_CASE("Legacy empty BLOCK_DATA compatibility flag defaults off", "[rate_limit][get_block][legacy]")
+{
+    REQUIRE(config::GetBoolArg("-allow_legacy_empty_block_data", false) == false);
 }

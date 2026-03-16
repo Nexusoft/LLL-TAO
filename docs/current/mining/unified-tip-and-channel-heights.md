@@ -150,6 +150,7 @@ Offset  Size  Field            Meaning
 
 - The payload does **not** include `hashBestChain`. Miners must fetch a new template to obtain `hashPrevBlock`, which is the authoritative anchor.
 - The payload does **not** guarantee the new template is already available; there may be a small propagation delay between the push and `GET_BLOCK` being served.
+- Authenticated `GET_BLOCK` handling no longer uses ambiguous empty `BLOCK_DATA`; when no template can be served, the node sends an explicit control outcome with reason/retry guidance.
 
 ### Recommended miner response to a push notification
 

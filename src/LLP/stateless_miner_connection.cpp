@@ -75,6 +75,7 @@ ________________________________________________________________________________
 #include <algorithm>
 #include <iomanip>
 #include <thread>
+#include <cassert>
 
 namespace LLP
 {
@@ -87,29 +88,38 @@ namespace LLP
 
         std::atomic<uint64_t> g_get_block_requests_total{0};
         std::atomic<uint64_t> g_get_block_rate_limited_total{0};
-        std::atomic<uint64_t> g_get_block_template_served_total{0};
-        std::atomic<uint64_t> g_get_block_empty_rate_limit_total{0};
-        std::atomic<uint64_t> g_get_block_empty_session_invalid_total{0};
-        std::atomic<uint64_t> g_get_block_empty_unauthenticated_total{0};
-        std::atomic<uint64_t> g_get_block_empty_no_template_total{0};
+        std::atomic<uint64_t> g_get_block_blockdata_sent_total{0};
+        std::atomic<uint64_t> g_get_block_control_rate_limit_total{0};
+        std::atomic<uint64_t> g_get_block_control_session_invalid_total{0};
+        std::atomic<uint64_t> g_get_block_control_unauthenticated_total{0};
+        std::atomic<uint64_t> g_get_block_control_template_not_ready_total{0};
+        std::atomic<uint64_t> g_get_block_control_internal_retry_total{0};
+        std::atomic<uint64_t> g_get_block_legacy_empty_attempt_blocked_total{0};
 
-        uint64_t IncrementEmptyCounter(const GetBlockPolicyReason eReason)
+        uint64_t IncrementControlCounter(const GetBlockPolicyReason eReason)
         {
             switch(eReason)
             {
                 case GetBlockPolicyReason::RATE_LIMIT_EXCEEDED:
-                    return ++g_get_block_empty_rate_limit_total;
+                    return ++g_get_block_control_rate_limit_total;
                 case GetBlockPolicyReason::SESSION_INVALID:
-                    return ++g_get_block_empty_session_invalid_total;
+                    return ++g_get_block_control_session_invalid_total;
                 case GetBlockPolicyReason::UNAUTHENTICATED:
-                    return ++g_get_block_empty_unauthenticated_total;
-                case GetBlockPolicyReason::NO_TEMPLATE_READY:
-                    return ++g_get_block_empty_no_template_total;
+                    return ++g_get_block_control_unauthenticated_total;
+                case GetBlockPolicyReason::TEMPLATE_NOT_READY:
+                    return ++g_get_block_control_template_not_ready_total;
+                case GetBlockPolicyReason::INTERNAL_RETRY:
+                    return ++g_get_block_control_internal_retry_total;
                 case GetBlockPolicyReason::NONE:
                     return 0;
                 default:
                     return 0;
             }
+        }
+
+        bool AllowLegacyEmptyBlockData()
+        {
+            return config::GetBoolArg("-allow_legacy_empty_block_data", false);
         }
     }
 
@@ -822,18 +832,14 @@ namespace LLP
                 const uint64_t nNow = runtime::unifiedtimestamp();
                 if(context.nSessionId == 0 || context.IsSessionExpired(nNow))
                 {
-                    SendGetBlockPolicyEmpty(GetBlockPolicyReason::SESSION_INVALID, 0);
+                    SendGetBlockControlResponse(GetBlockPolicyReason::SESSION_INVALID, 0, false);
                     return true;
                 }
                 
                 /* Check authentication */
                 if(!context.fAuthenticated)
                 {
-                    debug::error("   ❌ Authentication required (reason=", GetBlockPolicyReasonCode(GetBlockPolicyReason::UNAUTHENTICATED), ")");
-                    StatelessPacket response(MINER_AUTH_RESULT);
-                    response.DATA.push_back(0x00);  // Failure
-                    response.LENGTH = 1;
-                    respond(response);
+                    SendGetBlockControlResponse(GetBlockPolicyReason::UNAUTHENTICATED, 0, false);
                     debug::log(2, "📥 === GET_BLOCK: REJECTED (AUTH) ===");
                     return true;
                 }
@@ -844,7 +850,7 @@ namespace LLP
                 {
                     const uint64_t nRateLimited = ++g_get_block_rate_limited_total;
                     debug::log(1, FUNCTION, "metric get_block_rate_limited_total=", nRateLimited);
-                    SendGetBlockPolicyEmpty(GetBlockPolicyReason::RATE_LIMIT_EXCEEDED, nRetryAfterMs);
+                    SendGetBlockControlResponse(GetBlockPolicyReason::RATE_LIMIT_EXCEEDED, nRetryAfterMs, true);
                     return true;
                 }
                 
@@ -880,9 +886,8 @@ namespace LLP
 
                 if(!pBlock)
                 {
-                    /* Only send 0-payload if retry also failed (genuine failure, not a timing race) */
-                    debug::error("   ❌ new_block() failed after retry — sending empty BLOCK_DATA");
-                    SendGetBlockPolicyEmpty(GetBlockPolicyReason::NO_TEMPLATE_READY, MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS);
+                    debug::error("   ❌ new_block() failed after retry");
+                    SendGetBlockControlResponse(GetBlockPolicyReason::INTERNAL_RETRY, MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS, true);
                     debug::log(2, "📥 === GET_BLOCK: FAILED (NO BLOCK AFTER RETRY) ===");
                     return true;
                 }
@@ -912,7 +917,7 @@ namespace LLP
                     if(vData.empty())
                     {
                         debug::error("   ❌ Serialization returned empty vector!");
-                        SendGetBlockPolicyEmpty(GetBlockPolicyReason::NO_TEMPLATE_READY, MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS);
+                        SendGetBlockControlResponse(GetBlockPolicyReason::TEMPLATE_NOT_READY, MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS, true);
                         debug::log(2, "📥 === GET_BLOCK: FAILED (EMPTY SERIALIZATION) ===");
                         return true;
                     }
@@ -980,7 +985,7 @@ namespace LLP
                             debug::error(FUNCTION, "   Expected: ", pBlock->nChannel);
                             debug::error(FUNCTION, "   Got: ", nChannelFromSerialized);
 
-                            SendGetBlockPolicyEmpty(GetBlockPolicyReason::NO_TEMPLATE_READY, MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS);
+                            SendGetBlockControlResponse(GetBlockPolicyReason::TEMPLATE_NOT_READY, MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS, true);
                             debug::log(2, "📥 === GET_BLOCK: FAILED (CHANNEL MISMATCH) ===");
                             return true;
                         }
@@ -992,7 +997,7 @@ namespace LLP
                             debug::error(FUNCTION, "   Expected: ", pBlock->nHeight);
                             debug::error(FUNCTION, "   Got: ", nHeightFromSerialized);
 
-                            SendGetBlockPolicyEmpty(GetBlockPolicyReason::NO_TEMPLATE_READY, MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS);
+                            SendGetBlockControlResponse(GetBlockPolicyReason::TEMPLATE_NOT_READY, MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS, true);
                             debug::log(2, "📥 === GET_BLOCK: FAILED (HEIGHT MISMATCH) ===");
                             return true;
                         }
@@ -1049,23 +1054,15 @@ namespace LLP
                     vPayload.push_back((nBitsMeta               ) & 0xFF);
                     vPayload.insert(vPayload.end(), vData.begin(), vData.end());
 
-                    /* Create response packet */
-                    StatelessPacket response(OpcodeUtility::Stateless::BLOCK_DATA);
-                    response.DATA   = vPayload;
-                    response.LENGTH = static_cast<uint32_t>(vPayload.size());
-
                     debug::log(0, "   📤 Sending BLOCK_DATA...");
-                    debug::log(0, "      Packet header: ", (uint32_t)response.HEADER);
-                    debug::log(0, "      Packet LENGTH field: ", response.LENGTH);
-                    debug::log(0, "      Packet DATA size: ", response.DATA.size());
+                    debug::log(0, "      Packet header: ", static_cast<uint32_t>(OpcodeUtility::Stateless::BLOCK_DATA));
+                    debug::log(0, "      Packet LENGTH field: ", vPayload.size());
+                    debug::log(0, "      Packet DATA size: ", vPayload.size());
                     debug::log(0, "      [nUnifiedHeight=", nUnifiedHeight,
                                " nChannelHeight=", nChannelHeightMeta,
                                " nBits=", nBitsMeta, "]");
 
-                    /* Send the response */
-                    respond(response);
-                    const uint64_t nTemplatesServed = ++g_get_block_template_served_total;
-                    debug::log(2, FUNCTION, "metric get_block_template_served_total=", nTemplatesServed);
+                    SendGetBlockDataResponse(vPayload, true);
                     
                     debug::log(0, "   ✅ Packet sent!");
                     debug::log(2, "📥 === GET_BLOCK: SUCCESS ===");
@@ -1115,7 +1112,7 @@ namespace LLP
                     debug::error("   ❌ Serialization exception: ", e.what());
                     debug::log(2, "📥 === GET_BLOCK: EXCEPTION ===");
 
-                    SendGetBlockPolicyEmpty(GetBlockPolicyReason::NO_TEMPLATE_READY, MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS);
+                    SendGetBlockControlResponse(GetBlockPolicyReason::INTERNAL_RETRY, MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS, true);
                     return true;
                 }
             }
@@ -3986,19 +3983,87 @@ namespace LLP
                GetAddress().ToStringIP();
     }
 
-    void StatelessMinerConnection::SendGetBlockPolicyEmpty(GetBlockPolicyReason eReason, uint32_t nRetryAfterMs)
+    void StatelessMinerConnection::SendGetBlockDataResponse(const std::vector<uint8_t>& vPayload, bool fAuthenticatedPath)
     {
+        if(fAuthenticatedPath)
+        {
+            assert(!vPayload.empty() && "Authenticated GET_BLOCK cannot serialize empty BLOCK_DATA payload");
+            if(vPayload.empty())
+            {
+                SendGetBlockControlResponse(GetBlockPolicyReason::INTERNAL_RETRY,
+                    MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS, true);
+                return;
+            }
+        }
+
         StatelessPacket response(OpcodeUtility::Stateless::BLOCK_DATA);
-        response.LENGTH = 0; // legacy-safe empty shape
+        response.DATA = vPayload;
+        response.LENGTH = static_cast<uint32_t>(vPayload.size());
         respond(response);
 
-        const uint64_t nReasonCount = IncrementEmptyCounter(eReason);
+        const uint64_t nSent = ++g_get_block_blockdata_sent_total;
+        debug::log(2, FUNCTION, "metric get_block_blockdata_sent_total=", nSent);
+    }
+
+    void StatelessMinerConnection::SendGetBlockControlResponse(GetBlockPolicyReason eReason, uint32_t nRetryAfterMs, bool fAuthenticatedPath)
+    {
+        const bool fLegacyEligible = fAuthenticatedPath && IsGetBlockRetryable(eReason);
+        const bool fAllowLegacyEmpty = fLegacyEligible && AllowLegacyEmptyBlockData();
+
+        if(fLegacyEligible && !fAllowLegacyEmpty)
+        {
+            const uint64_t nBlocked = ++g_get_block_legacy_empty_attempt_blocked_total;
+            debug::log(1, FUNCTION, "metric get_block_legacy_empty_attempt_blocked_total=", nBlocked);
+        }
+
+        if(fAllowLegacyEmpty)
+        {
+            StatelessPacket response(OpcodeUtility::Stateless::BLOCK_DATA);
+            response.LENGTH = 0;
+            respond(response);
+
+            debug::warning(FUNCTION,
+                "GET_BLOCK legacy empty BLOCK_DATA enabled via -allow_legacy_empty_block_data=true "
+                "[DEPRECATED: removal target 2026-06-30, follow-up PR pending] reason=",
+                GetBlockPolicyReasonCode(eReason),
+                " retry_after_ms=", nRetryAfterMs);
+            return;
+        }
+
+        StatelessPacket response(OpcodeUtility::Stateless::BLOCK_REJECTED);
+        response.DATA = BuildGetBlockControlPayload(eReason, nRetryAfterMs);
+        response.LENGTH = static_cast<uint32_t>(response.DATA.size());
+
+        if(eReason == GetBlockPolicyReason::UNAUTHENTICATED)
+        {
+            response.HEADER = OpcodeUtility::Stateless::AUTH_RESULT;
+            response.DATA = std::vector<uint8_t>{0x00};
+            response.LENGTH = 1;
+        }
+        else if(eReason == GetBlockPolicyReason::SESSION_INVALID)
+        {
+            response.HEADER = OpcodeUtility::Stateless::SESSION_EXPIRED;
+            response.DATA = std::vector<uint8_t>{
+                static_cast<uint8_t>((context.nSessionId >> 24) & 0xFF),
+                static_cast<uint8_t>((context.nSessionId >> 16) & 0xFF),
+                static_cast<uint8_t>((context.nSessionId >> 8) & 0xFF),
+                static_cast<uint8_t>(context.nSessionId & 0xFF),
+                static_cast<uint8_t>(eReason)
+            };
+            response.LENGTH = static_cast<uint32_t>(response.DATA.size());
+        }
+
+        respond(response);
+
+        const uint64_t nReasonCount = IncrementControlCounter(eReason);
         debug::log(1, FUNCTION,
-            "GET_BLOCK policy empty response reason=", GetBlockPolicyReasonCode(eReason),
+            "get_block_outcome=control reason=", GetBlockPolicyReasonCode(eReason),
             " retry_after_ms=", nRetryAfterMs,
-            " [legacy-shape=empty BLOCK_DATA]");
+            " auth=", (context.fAuthenticated ? 1 : 0),
+            " session_id=", context.nSessionId,
+            " peer=", GetAddress().ToStringIP());
         debug::log(1, FUNCTION,
-            "metric get_block_empty_total{reason=", GetBlockPolicyReasonCode(eReason),
+            "metric get_block_control_response_total{reason=", GetBlockPolicyReasonCode(eReason),
             "}=", nReasonCount);
     }
 

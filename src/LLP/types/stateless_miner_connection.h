@@ -29,6 +29,7 @@ ________________________________________________________________________________
 #include <mutex>
 #include <map>
 #include <memory>
+#include <vector>
 
 namespace LLP
 {
@@ -433,8 +434,11 @@ namespace LLP
         /** Build per-session/lane limiter key for GET_BLOCK rolling policy. **/
         std::string GetBlockRateKey() const;
 
-        /** Send legacy-safe empty BLOCK_DATA with explicit reason/retry logs. **/
-        void SendGetBlockPolicyEmpty(GetBlockPolicyReason eReason, uint32_t nRetryAfterMs);
+        /** Send explicit machine-readable control response for non-success GET_BLOCK outcomes. **/
+        void SendGetBlockControlResponse(GetBlockPolicyReason eReason, uint32_t nRetryAfterMs, bool fAuthenticatedPath);
+
+        /** Send BLOCK_DATA and enforce authenticated-path non-empty payload invariant. **/
+        void SendGetBlockDataResponse(const std::vector<uint8_t>& vPayload, bool fAuthenticatedPath);
         
         /** IsThrottled
          *

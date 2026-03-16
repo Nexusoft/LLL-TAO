@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <LLP/include/packet_crypto_service.h>
 #include <LLP/include/node_cache.h>
 #include <LLP/include/session_recovery.h>
+#include <LLP/include/get_block_policy.h>
 #include <LLP/include/push_notification.h>
 #include <LLP/include/keepalive_v2.h>
 #include <LLP/include/session_status.h>
@@ -1800,10 +1801,10 @@ namespace LLP
             LOCK(MUTEX);
             if(!fLocalhostBypass && !m_get_block_cooldown.Ready())
             {
+                const uint32_t nRetryAfterMs = static_cast<uint32_t>(m_get_block_cooldown.Remaining().count());
                 debug::log(1, FUNCTION, "GET_BLOCK cooldown active for ", GetAddress().ToStringIP(),
-                    " (", m_get_block_cooldown.Remaining().count(), "ms remaining) — not counting as violation");
-                std::vector<uint8_t> vEmpty;
-                respond(BLOCK_DATA, vEmpty);
+                    " (", nRetryAfterMs, "ms remaining) — not counting as violation");
+                respond(BLOCK_REJECTED, BuildGetBlockControlPayload(GetBlockPolicyReason::RATE_LIMIT_EXCEEDED, nRetryAfterMs));
                 return true;  // Handled (cooldown blocked, no violation)
             }
         }
@@ -1828,9 +1829,9 @@ namespace LLP
             if(!pBlock)
             {
                 debug::log(2, FUNCTION, "Failed to create block after retry.");
-                /* Send empty BLOCK_DATA to unblock miner rather than leaving it waiting */
-                std::vector<uint8_t> vEmpty;
-                respond(BLOCK_DATA, vEmpty);
+                respond(BLOCK_REJECTED,
+                    BuildGetBlockControlPayload(GetBlockPolicyReason::INTERNAL_RETRY,
+                    MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS));
                 return true;
             }
 
