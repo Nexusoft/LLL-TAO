@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <LLC/hash/SK.h>
 
 #include <LLP/include/falcon_constants.h>
+#include <LLP/include/crypto_envelope.h>
 
 #include <TAO/Ledger/include/stateless_block_utility.h>
 
@@ -1079,4 +1080,82 @@ TEST_CASE("T32: Node crypto_mode=evp session rotate isolates epochs safely", "[s
 
     LLC::ChaCha20EvpManager::Instance().TeardownSession(nSessionId);
     config::mapArgs = mapOriginalArgs;
+}
+
+
+TEST_CASE("T33: EVP envelope rejects SessionID mismatch", "[stateless_miner_crypto][crypto_mode][evp][sid]")
+{
+    const auto mapOriginalArgs = config::mapArgs;
+    config::mapArgs["-crypto_mode"] = "evp";
+
+    std::vector<uint8_t> vKey(32, 0x99);
+    std::vector<uint8_t> vPayload{'s','i','d','-','b','i','n','d'};
+    std::vector<uint8_t> vEncrypted;
+    std::vector<uint8_t> vDecrypted;
+
+    LLC::ChaCha20EvpManager::Instance().InitSession(2001, vKey);
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(2001, vKey, vPayload, vEncrypted));
+    REQUIRE_FALSE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(2002, vKey, vEncrypted, vDecrypted));
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(2001, vKey, vEncrypted, vDecrypted));
+    REQUIRE(vDecrypted == vPayload);
+
+    LLC::ChaCha20EvpManager::Instance().TeardownSession(2001);
+    LLC::ChaCha20EvpManager::Instance().TeardownSession(2002);
+    config::mapArgs = mapOriginalArgs;
+}
+
+
+TEST_CASE("T34: Pre-auth cleartext allowed and post-auth EVP requires session-bound frames", "[stateless_miner_crypto][crypto_mode][evp][phase]")
+{
+    const auto mapOriginalArgs = config::mapArgs;
+    config::mapArgs["-crypto_mode"] = "evp";
+
+    std::vector<uint8_t> vKey(32, 0xAB);
+    std::vector<uint8_t> vPayload{'p','h','a','s','e'};
+    std::vector<uint8_t> vLegacyEncrypted = LLC::EncryptPayloadChaCha20(vPayload, vKey);
+    std::vector<uint8_t> vLegacyDecrypted;
+
+    /* Pre-auth cleartext/legacy-compatible path remains available */
+    REQUIRE(LLC::DecryptPayloadChaCha20(vLegacyEncrypted, vKey, vLegacyDecrypted));
+    REQUIRE(vLegacyDecrypted == vPayload);
+
+    /* Post-auth EVP path requires session-bound envelope (sid != 0, envelope fields present) */
+    std::vector<uint8_t> vBadEncrypted;
+    REQUIRE_FALSE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(0, vKey, vPayload, vBadEncrypted));
+    REQUIRE_FALSE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(0, vKey, vLegacyEncrypted, vLegacyDecrypted));
+
+    std::vector<uint8_t> vEvpEncrypted;
+    LLC::ChaCha20EvpManager::Instance().InitSession(2003, vKey);
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(2003, vKey, vPayload, vEvpEncrypted));
+    REQUIRE(vEvpEncrypted.size() >= LLP::MinEncryptedFrameBytes(LLP::NodeCryptoMode::EVP));
+    REQUIRE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(2003, vKey, vEvpEncrypted, vLegacyDecrypted));
+    REQUIRE(vLegacyDecrypted == vPayload);
+
+    LLC::ChaCha20EvpManager::Instance().TeardownSession(2003);
+    config::mapArgs = mapOriginalArgs;
+}
+
+
+TEST_CASE("T35: Envelope constants and formulas remain centralized and consistent", "[stateless_miner_crypto][crypto_mode][envelope]")
+{
+    REQUIRE(LLP::SESSION_ID_BYTES == sizeof(uint32_t));
+    REQUIRE(LLP::NONCE_BYTES == 12);
+    REQUIRE(LLP::AEAD_TAG_BYTES == 16);
+    REQUIRE(LLP::WIRE_VERSION_BYTES == 1);
+    REQUIRE(LLP::CRYPTO_FLAGS_BYTES == 1);
+
+    REQUIRE(LLP::EncryptedOverheadBytes(LLP::NodeCryptoMode::LEGACY) == 28);
+    REQUIRE(LLP::EncryptedOverheadBytes(LLP::NodeCryptoMode::EVP) == 34);
+    REQUIRE(LLP::MinEncryptedFrameBytes(LLP::NodeCryptoMode::EVP) == 34);
+    REQUIRE(LLP::MaxEncryptedPayloadBytes(LLP::NodeCryptoMode::EVP, LLP::FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX)
+            == LLP::FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX + 34);
+}
+
+
+TEST_CASE("T36: Regression guard - stale 2MB assumptions are not used for EVP submit envelope", "[stateless_miner_crypto][crypto_mode][regression]")
+{
+    const size_t nMaxEvpFrame = LLP::MaxEncryptedPayloadBytes(LLP::NodeCryptoMode::EVP, LLP::FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX);
+    REQUIRE(nMaxEvpFrame != LLP::LEGACY_STALE_FRAME_LIMIT_BYTES);
+    REQUIRE(nMaxEvpFrame < LLP::LEGACY_STALE_FRAME_LIMIT_BYTES);
+    REQUIRE(nMaxEvpFrame < 8192);
 }

@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLP/include/falcon_constants.h>
 #include <LLP/include/falcon_auth.h>
 #include <LLP/include/falcon_verify.h>
+#include <LLP/include/crypto_envelope.h>
 #include <LLP/include/disposable_falcon.h>
 #include <LLP/include/session_recovery.h>
 #include <LLP/include/auto_cooldown_manager.h>
@@ -83,6 +84,9 @@ namespace LLP
         using Diagnostics::YesNo;
         using Diagnostics::PassFail;
     }
+
+    static_assert(MaxEncryptedPayloadBytes(NodeCryptoMode::EVP, FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX) < LEGACY_STALE_FRAME_LIMIT_BYTES,
+                  "SUBMIT_BLOCK EVP max must remain below legacy 2MB assumptions to keep parser bounds and compatibility checks sane");
 
     /* Import opcode constants for stateless mining protocol */
     static constexpr uint16_t MINER_AUTH_INIT = OpcodeUtility::Stateless::AUTH_INIT;
@@ -1204,17 +1208,33 @@ namespace LLP
                            " size=", PACKET.DATA.size(),
                            " bound_reward_hash=", FullHexOrUnset(context.hashRewardAddress));
 
-                /* Validate packet size using FalconConstants */
-                /* Minimum: merkle(64) + nonce(8) = 72 bytes (legacy format) */
-                const size_t MIN_SIZE = FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE;
-                
-                /* Maximum: full block with ChaCha20 encryption = SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX */
-                const size_t MAX_SIZE = FalconConstants::SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX;
+                const NodeCryptoMode mode = GetNodeCryptoMode();
+                const CryptoPhase phase = ResolveCryptoPhase(context.fAuthenticated, context.nSessionId);
+                debug::log(2, FUNCTION, "SUBMIT_BLOCK crypto phase=", CryptoPhaseString(phase),
+                           " mode=", NodeCryptoModeString(mode),
+                           " sid=", context.nSessionId);
+
+                if(mode == NodeCryptoMode::EVP && phase != CryptoPhase::PHASE_SESSION_BOUND)
+                {
+                    debug::error(FUNCTION, "SUBMIT_BLOCK rejected: mode=evp requires ", CryptoPhaseString(CryptoPhase::PHASE_SESSION_BOUND),
+                                 " current=", CryptoPhaseString(phase), " sid=", context.nSessionId);
+                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                    respond(response);
+                    return true;
+                }
+
+                const size_t MIN_SIZE = (mode == NodeCryptoMode::EVP)
+                    ? MinEncryptedFrameBytes(mode)
+                    : (FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE);
+                const size_t MAX_SIZE = (mode == NodeCryptoMode::EVP)
+                    ? MaxEncryptedPayloadBytes(mode, FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX)
+                    : FalconConstants::SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX;
 
                 if(PACKET.DATA.size() < MIN_SIZE)
                 {
-                    debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK packet too small: ", 
-                               PACKET.DATA.size(), " < ", MIN_SIZE);
+                    debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK packet too small: mode=",
+                               NodeCryptoModeString(mode),
+                               " frame=", PACKET.DATA.size(), " expected_min=", MIN_SIZE, " sid=", context.nSessionId);
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
                     return true;
@@ -1222,8 +1242,9 @@ namespace LLP
 
                 if(PACKET.DATA.size() > MAX_SIZE)
                 {
-                    debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK packet too large: ",
-                               PACKET.DATA.size(), " > ", MAX_SIZE);
+                    debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK packet too large: mode=",
+                               NodeCryptoModeString(mode),
+                               " frame=", PACKET.DATA.size(), " expected_max=", MAX_SIZE, " sid=", context.nSessionId);
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
                     return true;

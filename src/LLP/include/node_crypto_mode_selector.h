@@ -50,6 +50,11 @@ namespace LLP
     {
         return ParseNodeCryptoMode(config::GetArg("-crypto_mode", std::string("legacy")));
     }
+
+    constexpr const char* NodeCryptoModeString(const NodeCryptoMode mode)
+    {
+        return mode == NodeCryptoMode::EVP ? "evp" : (mode == NodeCryptoMode::TLS ? "tls" : "legacy");
+    }
 }
 
 #endif
