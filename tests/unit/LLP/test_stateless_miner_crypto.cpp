@@ -24,6 +24,8 @@ ________________________________________________________________________________
 
 #include <LLP/include/falcon_constants.h>
 #include <LLP/include/crypto_envelope.h>
+#include <LLP/include/packet_crypto_service.h>
+#include <LLP/include/session_key_lifecycle.h>
 
 #include <TAO/Ledger/include/stateless_block_utility.h>
 
@@ -1211,5 +1213,136 @@ TEST_CASE("T38: EVP nonce rewind is rejected per session direction", "[stateless
     REQUIRE_FALSE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(3002, TEST_MESSAGE_TYPE, vKey, vEncrypted1, vDecrypted));
 
     LLC::ChaCha20EvpManager::Instance().TeardownSession(3002);
+    config::mapArgs = mapOriginalArgs;
+}
+
+
+TEST_CASE("T39: PacketCryptoService rejects tampered auth tag and records auth failure", "[stateless_miner_crypto][crypto_mode][evp][tamper]")
+{
+    static constexpr uint16_t TEST_MESSAGE_TYPE = 0xD0D4;
+    const auto mapOriginalArgs = config::mapArgs;
+    config::mapArgs["-crypto_mode"] = "evp";
+
+    std::vector<uint8_t> vKey(32, 0xDE);
+    std::vector<uint8_t> vPayload{'t','a','m','p','e','r'};
+    std::vector<uint8_t> vEncrypted;
+    std::vector<uint8_t> vDecrypted;
+
+    LLP::PacketCryptoService::ResetMetrics();
+    LLP::SessionKeyLifecycle::EstablishSession(3003, vKey);
+
+    REQUIRE(LLP::PacketCryptoService::Encode(3003, TEST_MESSAGE_TYPE, vKey, vPayload, vEncrypted));
+    REQUIRE(vEncrypted.size() >= LLP::MinEncryptedFrameBytes(LLP::NodeCryptoMode::EVP));
+    static constexpr uint8_t AUTH_TAG_TAMPER_BIT = 0x01;
+    vEncrypted.back() ^= AUTH_TAG_TAMPER_BIT;
+
+    REQUIRE_FALSE(LLP::PacketCryptoService::Decode(3003, TEST_MESSAGE_TYPE, vKey, vEncrypted, vDecrypted));
+    const LLP::PacketCryptoService::MetricsSnapshot metrics = LLP::PacketCryptoService::Metrics();
+    REQUIRE(metrics.nDecryptAuthFail >= 1);
+
+    LLP::SessionKeyLifecycle::TeardownSession(3003);
+    config::mapArgs = mapOriginalArgs;
+}
+
+
+TEST_CASE("T40: Session rotation drops stale epoch frames and records stale-session metric", "[stateless_miner_crypto][crypto_mode][evp][stale]")
+{
+    static constexpr uint16_t TEST_MESSAGE_TYPE = 0xD0D4;
+    const auto mapOriginalArgs = config::mapArgs;
+    config::mapArgs["-crypto_mode"] = "evp";
+
+    const uint32_t nSessionId = 3004;
+    std::vector<uint8_t> vKeyEpoch1(32, 0xA1);
+    std::vector<uint8_t> vKeyEpoch2(32, 0xA2);
+    std::vector<uint8_t> vPayload{'e','p','o','c','h'};
+    std::vector<uint8_t> vEncryptedEpoch1;
+    std::vector<uint8_t> vDecrypted;
+
+    LLP::PacketCryptoService::ResetMetrics();
+    LLP::SessionKeyLifecycle::EstablishSession(nSessionId, vKeyEpoch1);
+    REQUIRE(LLP::PacketCryptoService::Encode(nSessionId, TEST_MESSAGE_TYPE, vKeyEpoch1, vPayload, vEncryptedEpoch1));
+    REQUIRE(LLP::SessionKeyLifecycle::SessionGeneration(nSessionId) == 0);
+
+    LLP::SessionKeyLifecycle::RotateSession(nSessionId, vKeyEpoch2);
+    REQUIRE(LLP::SessionKeyLifecycle::SessionGeneration(nSessionId) == 1);
+    REQUIRE_FALSE(LLP::PacketCryptoService::Decode(nSessionId, TEST_MESSAGE_TYPE, vKeyEpoch2, vEncryptedEpoch1, vDecrypted));
+
+    const LLP::PacketCryptoService::MetricsSnapshot metrics = LLP::PacketCryptoService::Metrics();
+    REQUIRE(metrics.nStaleSessionDrop >= 1);
+
+    LLP::SessionKeyLifecycle::TeardownSession(nSessionId);
+    config::mapArgs = mapOriginalArgs;
+}
+
+
+TEST_CASE("T41: PacketCryptoService rejects nonce rewind and records nonce violation", "[stateless_miner_crypto][crypto_mode][evp][nonce][service]")
+{
+    static constexpr uint16_t TEST_MESSAGE_TYPE = 0xD0D4;
+    const auto mapOriginalArgs = config::mapArgs;
+    config::mapArgs["-crypto_mode"] = "evp";
+
+    std::vector<uint8_t> vKey(32, 0xA3);
+    std::vector<uint8_t> vPayload1{'n','1'};
+    std::vector<uint8_t> vPayload2{'n','2'};
+    std::vector<uint8_t> vEncrypted1;
+    std::vector<uint8_t> vEncrypted2;
+    std::vector<uint8_t> vDecrypted;
+
+    LLP::PacketCryptoService::ResetMetrics();
+    LLP::SessionKeyLifecycle::EstablishSession(3005, vKey);
+    REQUIRE(LLP::PacketCryptoService::Encode(3005, TEST_MESSAGE_TYPE, vKey, vPayload1, vEncrypted1));
+    REQUIRE(LLP::PacketCryptoService::Encode(3005, TEST_MESSAGE_TYPE, vKey, vPayload2, vEncrypted2));
+
+    REQUIRE(LLP::PacketCryptoService::Decode(3005, TEST_MESSAGE_TYPE, vKey, vEncrypted2, vDecrypted));
+    REQUIRE_FALSE(LLP::PacketCryptoService::Decode(3005, TEST_MESSAGE_TYPE, vKey, vEncrypted1, vDecrypted));
+
+    const LLP::PacketCryptoService::MetricsSnapshot metrics = LLP::PacketCryptoService::Metrics();
+    REQUIRE(metrics.nNonceReject >= 1);
+
+    LLP::SessionKeyLifecycle::TeardownSession(3005);
+    config::mapArgs = mapOriginalArgs;
+}
+
+
+TEST_CASE("T42: PacketCryptoService rejects malformed EVP frame safely", "[stateless_miner_crypto][crypto_mode][evp][malformed]")
+{
+    static constexpr uint16_t TEST_MESSAGE_TYPE = 0xD0D4;
+    const auto mapOriginalArgs = config::mapArgs;
+    config::mapArgs["-crypto_mode"] = "evp";
+
+    std::vector<uint8_t> vKey(32, 0xA4);
+    std::vector<uint8_t> vPayload{'m','a','l'};
+    std::vector<uint8_t> vEncrypted;
+    std::vector<uint8_t> vDecrypted;
+
+    LLP::SessionKeyLifecycle::EstablishSession(3006, vKey);
+    REQUIRE(LLP::PacketCryptoService::Encode(3006, TEST_MESSAGE_TYPE, vKey, vPayload, vEncrypted));
+    REQUIRE(vEncrypted.size() >= LLP::MinEncryptedFrameBytes(LLP::NodeCryptoMode::EVP));
+
+    std::vector<uint8_t> vMalformed(vEncrypted.begin(), vEncrypted.end() - 1);
+    REQUIRE_FALSE(LLP::PacketCryptoService::Decode(3006, TEST_MESSAGE_TYPE, vKey, vMalformed, vDecrypted));
+
+    LLP::SessionKeyLifecycle::TeardownSession(3006);
+    config::mapArgs = mapOriginalArgs;
+}
+
+
+TEST_CASE("T43: PacketCryptoService legacy interop remains miner-compatible", "[stateless_miner_crypto][crypto_mode][legacy][interop]")
+{
+    static constexpr uint16_t TEST_MESSAGE_TYPE = 0xD0D4;
+    const auto mapOriginalArgs = config::mapArgs;
+    config::mapArgs["-crypto_mode"] = "legacy";
+
+    std::vector<uint8_t> vKey(32, 0xA5);
+    std::vector<uint8_t> vPayload{'l','e','g','a','c','y','-','o','k'};
+    std::vector<uint8_t> vEncrypted;
+    std::vector<uint8_t> vDecrypted;
+
+    REQUIRE(LLP::PacketCryptoService::Encode(3007, TEST_MESSAGE_TYPE, vKey, vPayload, vEncrypted));
+    REQUIRE(LLP::PacketCryptoService::Decode(3007, TEST_MESSAGE_TYPE, vKey, vEncrypted, vDecrypted));
+    REQUIRE(vDecrypted == vPayload);
+    REQUIRE(LLC::DecryptPayloadChaCha20(vEncrypted, vKey, vDecrypted));
+    REQUIRE(vDecrypted == vPayload);
+
     config::mapArgs = mapOriginalArgs;
 }
