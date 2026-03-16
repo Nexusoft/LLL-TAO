@@ -113,3 +113,4 @@ flowchart LR
 - [Learning Pathways](../diagrams/ai-collaboration/learning-pathways.md)
 - [AI-Assisted Onboarding](../onboarding/ai-assisted-onboarding.md)
 - [Common Tasks Cheat Sheet](../diagrams/ai-collaboration/cheat-sheets/common-tasks.md)
+- [Computing Paradigms: Quantum vs Neural vs Classical](./computing-paradigms.md)
