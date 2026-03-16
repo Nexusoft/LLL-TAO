@@ -225,13 +225,14 @@ TEST_CASE("GET_BLOCK rate-limit constants", "[rate_limit][mining_constants]")
 
 TEST_CASE("GET_BLOCK rolling limiter policy behavior", "[rate_limit][get_block][rolling]")
 {
-    LLP::GetBlockRollingLimiter limiter(25, std::chrono::seconds(60));
+    constexpr int MAX_REQUESTS = static_cast<int>(LLP::GET_BLOCK_ROLLING_LIMIT_PER_MINUTE);
+    LLP::GetBlockRollingLimiter limiter(MAX_REQUESTS, LLP::GET_BLOCK_ROLLING_WINDOW);
     const std::string key = "session=1|lane=1|ip=127.0.0.1";
     const auto t0 = LLP::GetBlockRollingLimiter::clock::now();
 
-    SECTION("<=25/min allows requests for valid session key")
+    SECTION("up to 25/min allows requests for valid session key")
     {
-        for(int i = 0; i < 25; ++i)
+        for(int i = 0; i < MAX_REQUESTS; ++i)
         {
             uint32_t retryAfterMs = 0;
             std::size_t inWindow = 0;
@@ -243,7 +244,7 @@ TEST_CASE("GET_BLOCK rolling limiter policy behavior", "[rate_limit][get_block][
 
     SECTION("26th request in same rolling 60s is rate limited with retry hint")
     {
-        for(int i = 0; i < 25; ++i)
+        for(int i = 0; i < MAX_REQUESTS; ++i)
         {
             uint32_t retryAfterMs = 0;
             std::size_t inWindow = 0;
@@ -254,12 +255,12 @@ TEST_CASE("GET_BLOCK rolling limiter policy behavior", "[rate_limit][get_block][
         std::size_t inWindow = 0;
         REQUIRE_FALSE(limiter.Allow(key, t0 + std::chrono::seconds(10), retryAfterMs, inWindow));
         REQUIRE(retryAfterMs > 0u);
-        REQUIRE(inWindow == 25u);
+        REQUIRE(inWindow == static_cast<std::size_t>(MAX_REQUESTS));
     }
 
     SECTION("Limiter recovers after rolling window advances")
     {
-        for(int i = 0; i < 25; ++i)
+        for(int i = 0; i < MAX_REQUESTS; ++i)
         {
             uint32_t retryAfterMs = 0;
             std::size_t inWindow = 0;

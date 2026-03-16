@@ -104,6 +104,8 @@ namespace LLP
                     return ++g_get_block_empty_unauthenticated_total;
                 case GetBlockPolicyReason::NO_TEMPLATE_READY:
                     return ++g_get_block_empty_no_template_total;
+                case GetBlockPolicyReason::NONE:
+                    return 0;
                 default:
                     return 0;
             }
@@ -169,7 +171,7 @@ namespace LLP
     , SESSION_MUTEX()
     , m_pPrimeState(std::make_unique<PrimeStateManager>())
     , m_pHashState(std::make_unique<HashStateManager>())
-    , m_getBlockRollingLimiter(RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE, std::chrono::seconds(60))
+    , m_getBlockRollingLimiter(RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE, GET_BLOCK_ROLLING_WINDOW)
     {
         /* Log channel manager initialization */
         debug::log(2, FUNCTION, "✓ Channel state managers initialized (Prime + Hash)");
@@ -186,7 +188,7 @@ namespace LLP
     , SESSION_MUTEX()
     , m_pPrimeState(std::make_unique<PrimeStateManager>())
     , m_pHashState(std::make_unique<HashStateManager>())
-    , m_getBlockRollingLimiter(RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE, std::chrono::seconds(60))
+    , m_getBlockRollingLimiter(RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE, GET_BLOCK_ROLLING_WINDOW)
     {
         /* Log channel manager initialization */
         debug::log(2, FUNCTION, "✓ Channel state managers initialized (Prime + Hash)");
@@ -203,7 +205,7 @@ namespace LLP
     , SESSION_MUTEX()
     , m_pPrimeState(std::make_unique<PrimeStateManager>())
     , m_pHashState(std::make_unique<HashStateManager>())
-    , m_getBlockRollingLimiter(RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE, std::chrono::seconds(60))
+    , m_getBlockRollingLimiter(RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE, GET_BLOCK_ROLLING_WINDOW)
     {
         /* Log channel manager initialization */
         debug::log(2, FUNCTION, "✓ Channel state managers initialized (Prime + Hash)");
@@ -804,6 +806,8 @@ namespace LLP
             /* Handle GET_BLOCK - requires authentication and channel */
             if(PACKET.HEADER == GET_BLOCK)
             {
+                /* Count every received GET_BLOCK attempt (including rejected/invalid) to
+                 * keep get_block_requests_total aligned with inbound request volume. */
                 const uint64_t nRequestsTotal = ++g_get_block_requests_total;
                 debug::log(2, FUNCTION, "metric get_block_requests_total=", nRequestsTotal);
                 
@@ -824,8 +828,7 @@ namespace LLP
                 /* Check authentication */
                 if(!context.fAuthenticated)
                 {
-                    debug::warning(FUNCTION, "GET_BLOCK rejected reason=", GetBlockPolicyReasonCode(GetBlockPolicyReason::UNAUTHENTICATED));
-                    debug::error("   ❌ Authentication required");
+                    debug::error("   ❌ Authentication required (reason=", GetBlockPolicyReasonCode(GetBlockPolicyReason::UNAUTHENTICATED), ")");
                     StatelessPacket response(MINER_AUTH_RESULT);
                     response.DATA.push_back(0x00);  // Failure
                     response.LENGTH = 1;
@@ -4191,7 +4194,6 @@ namespace LLP
                     return false;
                 }
                 
-                m_rateLimit.nGetBlockCount = static_cast<uint32_t>(nCurrentInWindow);
                 m_rateLimit.tLastGetBlock = now;
                 debug::log(3, FUNCTION, "GET_BLOCK rolling snapshot key=", strRateKey,
                     " count=", nCurrentInWindow, "/", RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE);

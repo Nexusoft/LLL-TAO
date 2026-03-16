@@ -126,7 +126,7 @@ namespace LLP
         struct RateLimitConfig {
             // Request limits per minute
             static constexpr uint32_t MAX_GET_ROUND_PER_MINUTE = 12;
-            static constexpr uint32_t MAX_GET_BLOCK_PER_MINUTE = 25;
+            static constexpr uint32_t MAX_GET_BLOCK_PER_MINUTE = static_cast<uint32_t>(GET_BLOCK_ROLLING_LIMIT_PER_MINUTE);
             static constexpr uint32_t MAX_SUBMIT_BLOCK_PER_MINUTE = 60;  // Lenient for solutions!
             static constexpr uint32_t MAX_SET_CHANNEL_PER_MINUTE = 5;
             

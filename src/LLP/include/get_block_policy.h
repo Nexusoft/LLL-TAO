@@ -25,6 +25,9 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    constexpr std::size_t GET_BLOCK_ROLLING_LIMIT_PER_MINUTE = 25;
+    constexpr std::chrono::seconds GET_BLOCK_ROLLING_WINDOW = std::chrono::seconds(60);
+
     enum class GetBlockPolicyReason : uint8_t
     {
         NONE                = 0,
@@ -56,8 +59,8 @@ namespace LLP
         using clock = std::chrono::steady_clock;
 
         explicit GetBlockRollingLimiter(
-            std::size_t nMaxRequests = 25,
-            std::chrono::seconds nWindow = std::chrono::seconds(60))
+            std::size_t nMaxRequests = GET_BLOCK_ROLLING_LIMIT_PER_MINUTE,
+            std::chrono::seconds nWindow = GET_BLOCK_ROLLING_WINDOW)
         : m_nMaxRequests(nMaxRequests)
         , m_nWindow(nWindow)
         {
@@ -70,8 +73,9 @@ namespace LLP
             auto& dqRequests = mapRequests[strKey];
             Prune(dqRequests, now, m_nWindow);
 
-            nCurrentInWindow = dqRequests.size();
-            if(dqRequests.size() >= m_nMaxRequests)
+            const std::size_t nCurrentSize = dqRequests.size();
+            nCurrentInWindow = nCurrentSize;
+            if(nCurrentSize >= m_nMaxRequests)
             {
                 const auto tRetryAt = dqRequests.front() + m_nWindow;
                 if(tRetryAt > now)
@@ -93,6 +97,7 @@ namespace LLP
             return true;
         }
 
+        /** Return current request count in the rolling window for a key. **/
         std::size_t Snapshot(const std::string& strKey, const clock::time_point& now)
         {
             std::lock_guard<std::mutex> lock(MUTEX);
