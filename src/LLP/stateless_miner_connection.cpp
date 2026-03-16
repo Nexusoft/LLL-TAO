@@ -24,8 +24,10 @@ ________________________________________________________________________________
 #include <LLP/include/session_recovery.h>
 #include <LLP/include/auto_cooldown_manager.h>
 #include <LLP/include/pool_discovery.h>
+#include <LLP/include/packet_crypto_service.h>
 #include <LLP/include/opcode_utility.h>
 #include <LLP/include/push_notification.h>
+#include <LLP/include/session_key_lifecycle.h>
 #include <LLP/include/mining_constants.h>
 #include <LLP/include/session_status.h>
 #include <LLP/templates/events.h>
@@ -51,7 +53,6 @@ ________________________________________________________________________________
 #include <LLC/include/flkey.h>
 #include <LLC/include/eckey.h>
 #include <LLC/include/chacha20_helpers.h>
-#include <LLC/include/chacha20_evp_manager.h>
 #include <LLC/include/mining_session_keys.h>
 #include <LLC/include/falcon_constants_v2.h>
 #include <LLC/types/bignum.h>
@@ -186,7 +187,7 @@ namespace LLP
     StatelessMinerConnection::~StatelessMinerConnection()
     {
         if(context.nSessionId != 0)
-            LLC::ChaCha20EvpManager::Instance().TeardownSession(context.nSessionId);
+            SessionKeyLifecycle::TeardownSession(context.nSessionId);
 
         /* Clear session keys */
         {
@@ -582,7 +583,7 @@ namespace LLP
                 }
 
                 if(context.nSessionId != 0)
-                    LLC::ChaCha20EvpManager::Instance().TeardownSession(context.nSessionId);
+                    SessionKeyLifecycle::TeardownSession(context.nSessionId);
 
                 return;
             }
@@ -1329,7 +1330,7 @@ namespace LLP
                                 
                                 /* Decrypt using ChaCha20-Poly1305 with v1 contract AAD
                                  * (protocol_version + session_id + message_type + payload_length). */
-                                bool fDecrypted = LLC::ChaCha20EvpManager::Instance().DecryptPacket(
+                                bool fDecrypted = PacketCryptoService::Decode(
                                     context.nSessionId,
                                     PACKET.HEADER,
                                     context.vChaChaKey,
@@ -1507,7 +1508,7 @@ namespace LLP
                             {
                                 /* Fallback: legacy Falcon wrapper [merkle][nonce][timestamp][sig_len][signature] */
                                 std::vector<uint8_t> decryptedData;
-                                if(!LLC::ChaCha20EvpManager::Instance().DecryptPacket(
+                                if(!PacketCryptoService::Decode(
                                     context.nSessionId,
                                     PACKET.HEADER,
                                     context.vChaChaKey,
@@ -2712,12 +2713,12 @@ namespace LLP
                     {
                         /* Session ID changed (cross-port canonicalization or auth refresh):
                          * teardown old session ID state first, then rotate/seed the active ID. */
-                        LLC::ChaCha20EvpManager::Instance().TeardownSession(nPrevSessionId);
-                        LLC::ChaCha20EvpManager::Instance().RotateSession(context.nSessionId, context.vChaChaKey);
+                        SessionKeyLifecycle::TeardownSession(nPrevSessionId);
+                        SessionKeyLifecycle::RotateSession(context.nSessionId, context.vChaChaKey);
                     }
                     else
                     {
-                        LLC::ChaCha20EvpManager::Instance().InitSession(context.nSessionId, context.vChaChaKey);
+                        SessionKeyLifecycle::EstablishSession(context.nSessionId, context.vChaChaKey);
                     }
                 }
 

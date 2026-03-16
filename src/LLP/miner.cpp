@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLP/include/disposable_falcon.h>
 #include <LLP/include/crypto_envelope.h>
 #include <LLP/include/opcode_utility.h>
+#include <LLP/include/packet_crypto_service.h>
 #include <LLP/include/node_cache.h>
 #include <LLP/include/session_recovery.h>
 #include <LLP/include/push_notification.h>
@@ -58,7 +59,6 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 #include <LLC/include/encrypt.h>
 #include <LLC/include/chacha20_helpers.h>
-#include <LLC/include/chacha20_evp_manager.h>
 #include <LLC/include/mining_session_keys.h>
 #include <LLC/hash/SK.h>
 
@@ -2071,7 +2071,7 @@ namespace LLP
            PACKET.DATA.size() >= MIN_SIZE)
         {
             std::vector<uint8_t> vDecrypted;
-            if(LLC::ChaCha20EvpManager::Instance().DecryptPacket(
+            if(PacketCryptoService::Decode(
                     nSessionId,
                     static_cast<uint16_t>(PACKET.HEADER),
                     vChaChaKey,

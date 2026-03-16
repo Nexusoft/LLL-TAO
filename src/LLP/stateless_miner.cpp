@@ -24,6 +24,8 @@ ________________________________________________________________________________
 #include <LLP/include/keepalive_v2.h>
 #include <LLP/include/colin_mining_agent.h>
 #include <LLP/include/node_crypto_mode_selector.h>
+#include <LLP/include/packet_crypto_service.h>
+#include <LLP/include/session_key_lifecycle.h>
 
 #include <LLD/include/global.h>
 
@@ -32,7 +34,6 @@ ________________________________________________________________________________
 #include <LLC/include/falcon_constants_v2.h>
 #include <LLC/include/encrypt.h>
 #include <LLC/include/chacha20_helpers.h>
-#include <LLC/include/chacha20_evp_manager.h>
 #include <LLC/include/mining_session_keys.h>
 #include <LLC/hash/SK.h>
 
@@ -1428,9 +1429,9 @@ namespace LLP
         if(GetNodeCryptoMode() == NodeCryptoMode::EVP)
         {
             if(context.nSessionId != 0 && context.nSessionId != nSessionId)
-                LLC::ChaCha20EvpManager::Instance().RotateSession(nSessionId, vChaChaKey);
+                SessionKeyLifecycle::RotateSession(nSessionId, vChaChaKey);
             else
-                LLC::ChaCha20EvpManager::Instance().InitSession(nSessionId, vChaChaKey);
+                SessionKeyLifecycle::EstablishSession(nSessionId, vChaChaKey);
         }
         
         /* Validate encryption context was set correctly */
@@ -1967,7 +1968,7 @@ namespace LLP
         std::vector<uint8_t>& vPlaintext
     )
     {
-        return LLC::ChaCha20EvpManager::Instance().DecryptPacket(
+        return PacketCryptoService::Decode(
             nSessionId, static_cast<uint16_t>(SET_REWARD), vKey, vEncrypted, vPlaintext, AAD_REWARD_ADDRESS
         );
     }
@@ -1981,7 +1982,7 @@ namespace LLP
     )
     {
         std::vector<uint8_t> vEncrypted;
-        if(!LLC::ChaCha20EvpManager::Instance().EncryptPacket(
+        if(!PacketCryptoService::Encode(
             nSessionId, static_cast<uint16_t>(REWARD_RESULT), vKey, vPlaintext, vEncrypted, AAD_REWARD_RESULT))
         {
             return std::vector<uint8_t>();

@@ -22,6 +22,7 @@ ________________________________________________________________________________
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cstdint>
 #include <cstring>
 #include <deque>
@@ -36,6 +37,15 @@ namespace LLC
     class ChaCha20EvpManager
     {
     public:
+        struct MetricsSnapshot
+        {
+            uint64_t nEncryptOk = 0;
+            uint64_t nDecryptOk = 0;
+            uint64_t nDecryptAuthFail = 0;
+            uint64_t nNonceReject = 0;
+            uint64_t nStaleSessionDrop = 0;
+        };
+
         static ChaCha20EvpManager& Instance()
         {
             static ChaCha20EvpManager instance;
@@ -48,10 +58,12 @@ namespace LLC
             SessionState& state = mapSessions[nSessionId];
             Zeroize(state.vSessionKey);
             state.vSessionKey = vSessionKey;
+            state.nEpoch = 0;
             state.nTxNonce = 0;
             state.nRxEpoch = 0;
             state.nRxCounter = 0;
             state.fHasRxNonce = false;
+            debug::log(2, FUNCTION, "session_bound sid=", nSessionId, " gen=", state.nEpoch, " mode=", LLP::NodeCryptoModeString(CurrentMode()));
         }
 
         void RotateSession(const uint32_t nSessionId, const std::vector<uint8_t>& vSessionKey)
@@ -65,6 +77,7 @@ namespace LLC
             state.nRxEpoch = 0;
             state.nRxCounter = 0;
             state.fHasRxNonce = false;
+            debug::log(2, FUNCTION, "rekey_done sid=", nSessionId, " gen=", state.nEpoch, " mode=", LLP::NodeCryptoModeString(CurrentMode()));
         }
 
         void TeardownSession(const uint32_t nSessionId)
@@ -75,7 +88,38 @@ namespace LLC
                 return;
 
             Zeroize(it->second.vSessionKey);
+            debug::log(2, FUNCTION, "session_teardown sid=", nSessionId, " gen=", it->second.nEpoch, " mode=", LLP::NodeCryptoModeString(CurrentMode()));
             mapSessions.erase(it);
+        }
+
+        uint64_t SessionGeneration(const uint32_t nSessionId) const
+        {
+            std::lock_guard<std::mutex> lock(MUTEX);
+            auto it = mapSessions.find(nSessionId);
+            if(it == mapSessions.end())
+                return 0;
+
+            return it->second.nEpoch;
+        }
+
+        MetricsSnapshot GetMetricsSnapshot() const
+        {
+            MetricsSnapshot snapshot;
+            snapshot.nEncryptOk = nEncryptOk.load(std::memory_order_relaxed);
+            snapshot.nDecryptOk = nDecryptOk.load(std::memory_order_relaxed);
+            snapshot.nDecryptAuthFail = nDecryptAuthFail.load(std::memory_order_relaxed);
+            snapshot.nNonceReject = nNonceReject.load(std::memory_order_relaxed);
+            snapshot.nStaleSessionDrop = nStaleSessionDrop.load(std::memory_order_relaxed);
+            return snapshot;
+        }
+
+        void ResetMetrics()
+        {
+            nEncryptOk.store(0, std::memory_order_relaxed);
+            nDecryptOk.store(0, std::memory_order_relaxed);
+            nDecryptAuthFail.store(0, std::memory_order_relaxed);
+            nNonceReject.store(0, std::memory_order_relaxed);
+            nStaleSessionDrop.store(0, std::memory_order_relaxed);
         }
 
         bool EncryptPacket(
@@ -132,6 +176,7 @@ namespace LLC
             vEncrypted.insert(vEncrypted.end(), vNonce.begin(), vNonce.end());
             vEncrypted.insert(vEncrypted.end(), vCiphertext.begin(), vCiphertext.end());
             vEncrypted.insert(vEncrypted.end(), vTag.begin(), vTag.end());
+            nEncryptOk.fetch_add(1, std::memory_order_relaxed);
             return true;
         }
 
@@ -195,8 +240,21 @@ namespace LLC
             const size_t nCiphertextOffset = nNonceOffset + LLP::NONCE_BYTES;
             const size_t nTagOffset = vEncrypted.size() - LLP::AEAD_TAG_BYTES;
             const std::array<uint8_t, LLP::NONCE_BYTES> nonceBytes = ReadNonce(vEncrypted.data() + nNonceOffset);
-            if(!TrackInboundNonce(nSessionId, nonceBytes))
+            const uint32_t nFrameEpoch = NonceEpoch(nonceBytes);
+            if(!ValidateInboundEpoch(nSessionId, nFrameEpoch))
+            {
+                nStaleSessionDrop.fetch_add(1, std::memory_order_relaxed);
+                debug::error(FUNCTION, "EVP stale_session_drop: sid=", nSessionId, " frame_gen=", nFrameEpoch,
+                             " active_gen=", SessionGeneration(nSessionId), " mode=evp");
                 return false;
+            }
+
+            if(!TrackInboundNonce(nSessionId, nonceBytes))
+            {
+                nNonceReject.fetch_add(1, std::memory_order_relaxed);
+                debug::error(FUNCTION, "EVP nonce_reject: sid=", nSessionId, " gen=", SessionGeneration(nSessionId), " mode=evp");
+                return false;
+            }
 
             const std::vector<uint8_t> vKey = ResolveSessionKey(nSessionId, vSessionKey);
             if(vKey.size() != 32)
@@ -214,9 +272,11 @@ namespace LLC
             if(!LLC::DecryptChaCha20Poly1305(vCiphertext, vTag, vKey, vNonce, vPlaintext, vEffectiveAAD))
             {
                 ForgetInboundNonce(nSessionId, nonceBytes);
+                nDecryptAuthFail.fetch_add(1, std::memory_order_relaxed);
                 return false;
             }
 
+            nDecryptOk.fetch_add(1, std::memory_order_relaxed);
             return true;
         }
 
@@ -233,6 +293,11 @@ namespace LLC
 
         mutable std::mutex MUTEX;
         std::unordered_map<uint32_t, SessionState> mapSessions;
+        std::atomic<uint64_t> nEncryptOk{0};
+        std::atomic<uint64_t> nDecryptOk{0};
+        std::atomic<uint64_t> nDecryptAuthFail{0};
+        std::atomic<uint64_t> nNonceReject{0};
+        std::atomic<uint64_t> nStaleSessionDrop{0};
 
         ChaCha20EvpManager() = default;
 
@@ -345,6 +410,14 @@ namespace LLC
             state.nRxCounter = nCounter;
             state.fHasRxNonce = true;
             return true;
+        }
+
+        bool ValidateInboundEpoch(const uint32_t nSessionId, const uint32_t nFrameEpoch)
+        {
+            std::lock_guard<std::mutex> lock(MUTEX);
+            SessionState& state = mapSessions[nSessionId];
+            const uint32_t nActiveEpoch = static_cast<uint32_t>(state.nEpoch & 0xFFFFFFFFu);
+            return nFrameEpoch == nActiveEpoch;
         }
 
         void ForgetInboundNonce(const uint32_t nSessionId, const std::array<uint8_t, LLP::NONCE_BYTES>&)
