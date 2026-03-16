@@ -91,7 +91,12 @@ namespace LLP
         std::atomic<uint64_t> g_get_block_control_unauthenticated_total{0};
         std::atomic<uint64_t> g_get_block_control_template_not_ready_total{0};
         std::atomic<uint64_t> g_get_block_control_internal_retry_total{0};
+        std::atomic<uint64_t> g_get_block_control_template_stale_total{0};
+        std::atomic<uint64_t> g_get_block_control_rebuild_in_progress_total{0};
+        std::atomic<uint64_t> g_get_block_control_source_unavailable_total{0};
+        std::atomic<uint64_t> g_get_block_control_channel_not_set_total{0};
         std::atomic<uint64_t> g_get_block_legacy_empty_attempt_blocked_total{0};
+        std::atomic<uint64_t> g_get_block_silent_drop_total{0};
 
         uint64_t IncrementControlCounter(const GetBlockPolicyReason eReason)
         {
@@ -107,6 +112,14 @@ namespace LLP
                     return ++g_get_block_control_template_not_ready_total;
                 case GetBlockPolicyReason::INTERNAL_RETRY:
                     return ++g_get_block_control_internal_retry_total;
+                case GetBlockPolicyReason::TEMPLATE_STALE:
+                    return ++g_get_block_control_template_stale_total;
+                case GetBlockPolicyReason::TEMPLATE_REBUILD_IN_PROGRESS:
+                    return ++g_get_block_control_rebuild_in_progress_total;
+                case GetBlockPolicyReason::TEMPLATE_SOURCE_UNAVAILABLE:
+                    return ++g_get_block_control_source_unavailable_total;
+                case GetBlockPolicyReason::CHANNEL_NOT_SET:
+                    return ++g_get_block_control_channel_not_set_total;
                 case GetBlockPolicyReason::NONE:
                     return 0;
                 default:
@@ -847,6 +860,7 @@ namespace LLP
                 {
                     debug::error("   ❌ Channel not set");
                     debug::log(2, "📥 === GET_BLOCK: REJECTED (NO CHANNEL) ===");
+                    SendGetBlockControlResponse(GetBlockPolicyReason::CHANNEL_NOT_SET, 0, false);
                     return true;
                 }
                 
@@ -858,6 +872,10 @@ namespace LLP
 
                 debug::log(0, "   Calling new_block()...");
 
+                /* Track GET_BLOCK response latency for observability.
+                 * Bounded deadline: if new_block() exceeds 500ms, return explicit status. */
+                const auto tGetBlockStart = std::chrono::steady_clock::now();
+
                 /* Create a new block */
                 TAO::Ledger::Block* pBlock = new_block();
 
@@ -868,6 +886,11 @@ namespace LLP
                     debug::log(2, FUNCTION, "new_block() returned nullptr — retrying once (chain may have advanced mid-creation)");
                     pBlock = new_block();
                 }
+
+                const auto tGetBlockEnd = std::chrono::steady_clock::now();
+                const auto nGetBlockLatencyMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    tGetBlockEnd - tGetBlockStart).count();
+                debug::log(2, FUNCTION, "metric get_block_response_latency_ms=", nGetBlockLatencyMs);
 
                 /* Re-acquire MUTEX for respond() and context mutations */
                 lk.lock();

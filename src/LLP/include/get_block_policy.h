@@ -31,25 +31,33 @@ namespace LLP
 
     enum class GetBlockPolicyReason : uint8_t
     {
-        NONE                = 0,
-        RATE_LIMIT_EXCEEDED = 1,
-        SESSION_INVALID     = 2,
-        UNAUTHENTICATED     = 3,
-        TEMPLATE_NOT_READY  = 4,
-        INTERNAL_RETRY      = 5,
-        NO_TEMPLATE_READY   = TEMPLATE_NOT_READY /* Backward-compatible alias (DEPRECATED, remove after 2026-06-30). */
+        NONE                         = 0,
+        RATE_LIMIT_EXCEEDED          = 1,
+        SESSION_INVALID              = 2,
+        UNAUTHENTICATED              = 3,
+        TEMPLATE_NOT_READY           = 4,
+        INTERNAL_RETRY               = 5,
+        TEMPLATE_STALE               = 6,
+        TEMPLATE_REBUILD_IN_PROGRESS = 7,
+        TEMPLATE_SOURCE_UNAVAILABLE  = 8,
+        CHANNEL_NOT_SET              = 9,
+        NO_TEMPLATE_READY            = TEMPLATE_NOT_READY /* Backward-compatible alias (DEPRECATED, remove after 2026-06-30). */
     };
 
     inline const char* GetBlockPolicyReasonCode(GetBlockPolicyReason eReason)
     {
         switch(eReason)
         {
-            case GetBlockPolicyReason::RATE_LIMIT_EXCEEDED: return "RATE_LIMIT_EXCEEDED";
-            case GetBlockPolicyReason::SESSION_INVALID:     return "SESSION_INVALID";
-            case GetBlockPolicyReason::UNAUTHENTICATED:     return "UNAUTHENTICATED";
-            case GetBlockPolicyReason::TEMPLATE_NOT_READY:  return "TEMPLATE_NOT_READY";
-            case GetBlockPolicyReason::INTERNAL_RETRY:      return "INTERNAL_RETRY";
-            default:                                        return "NONE";
+            case GetBlockPolicyReason::RATE_LIMIT_EXCEEDED:          return "RATE_LIMIT_EXCEEDED";
+            case GetBlockPolicyReason::SESSION_INVALID:              return "SESSION_INVALID";
+            case GetBlockPolicyReason::UNAUTHENTICATED:              return "UNAUTHENTICATED";
+            case GetBlockPolicyReason::TEMPLATE_NOT_READY:           return "TEMPLATE_NOT_READY";
+            case GetBlockPolicyReason::INTERNAL_RETRY:               return "INTERNAL_RETRY";
+            case GetBlockPolicyReason::TEMPLATE_STALE:               return "TEMPLATE_STALE";
+            case GetBlockPolicyReason::TEMPLATE_REBUILD_IN_PROGRESS: return "TEMPLATE_REBUILD_IN_PROGRESS";
+            case GetBlockPolicyReason::TEMPLATE_SOURCE_UNAVAILABLE:  return "TEMPLATE_SOURCE_UNAVAILABLE";
+            case GetBlockPolicyReason::CHANNEL_NOT_SET:              return "CHANNEL_NOT_SET";
+            default:                                                 return "NONE";
         }
     }
 
@@ -59,7 +67,10 @@ namespace LLP
     {
         return (eReason == GetBlockPolicyReason::RATE_LIMIT_EXCEEDED ||
                 eReason == GetBlockPolicyReason::TEMPLATE_NOT_READY ||
-                eReason == GetBlockPolicyReason::INTERNAL_RETRY);
+                eReason == GetBlockPolicyReason::INTERNAL_RETRY ||
+                eReason == GetBlockPolicyReason::TEMPLATE_STALE ||
+                eReason == GetBlockPolicyReason::TEMPLATE_REBUILD_IN_PROGRESS ||
+                eReason == GetBlockPolicyReason::TEMPLATE_SOURCE_UNAVAILABLE);
     }
 
     /**
