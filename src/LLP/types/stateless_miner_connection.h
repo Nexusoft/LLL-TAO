@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/channel_state_manager.h>
 #include <LLP/include/auto_cooldown.h>
+#include <LLP/include/get_block_policy.h>
 #include <LLP/include/mining_constants.h>
 #include <TAO/Ledger/types/block.h>
 #include <atomic>
@@ -125,7 +126,7 @@ namespace LLP
         struct RateLimitConfig {
             // Request limits per minute
             static constexpr uint32_t MAX_GET_ROUND_PER_MINUTE = 12;
-            static constexpr uint32_t MAX_GET_BLOCK_PER_MINUTE = 20;  // was 10; recovery needs headroom
+            static constexpr uint32_t MAX_GET_BLOCK_PER_MINUTE = 25;
             static constexpr uint32_t MAX_SUBMIT_BLOCK_PER_MINUTE = 60;  // Lenient for solutions!
             static constexpr uint32_t MAX_SET_CHANNEL_PER_MINUTE = 5;
             
@@ -168,6 +169,7 @@ namespace LLP
         };
         
         RateLimitState m_rateLimit;
+        GetBlockRollingLimiter m_getBlockRollingLimiter;
 
         /** Track whether NODE_SHUTDOWN was already sent on this connection. **/
         GracefulShutdown::NotificationState m_nodeShutdownNotification;
@@ -404,7 +406,7 @@ namespace LLP
          *  @return true if allowed, false if rate limited
          *
          **/
-        bool CheckRateLimit(uint16_t nRequestType);
+        bool CheckRateLimit(uint16_t nRequestType, uint32_t* pnRetryAfterMs = nullptr);
         
         /** RecordViolation
          *
@@ -427,6 +429,12 @@ namespace LLP
          *
          **/
         void ResetMinuteCounters();
+
+        /** Build per-session/lane limiter key for GET_BLOCK rolling policy. **/
+        std::string GetBlockRateKey() const;
+
+        /** Send legacy-safe empty BLOCK_DATA with explicit reason/retry logs. **/
+        void SendGetBlockPolicyEmpty(GetBlockPolicyReason eReason, uint32_t nRetryAfterMs);
         
         /** IsThrottled
          *

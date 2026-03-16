@@ -771,9 +771,9 @@ simple 2-second rate-limit floor — **not** a lockout window:
 - `MINER_READY` explicitly resets this cooldown so the first recovery
   GET_BLOCK is served immediately after re-subscription.
 - Localhost connections bypass AutoCoolDown entirely (they cannot be a
-  DDOS vector); the per-minute cap (20 GET_BLOCKs/min) provides control.
-- The per-minute cap (20 GET_BLOCKs/min) provides the primary spam
-  protection; the 2-second floor prevents rapid-fire polling abuse.
+  DDOS vector); the rolling per-minute cap (25 GET_BLOCKs/min) provides control.
+- The rolling per-minute cap (25 GET_BLOCKs/min) provides the primary spam
+  protection.
 
 The old 30-second strategy caused an unrecoverable doom loop during
 Emergency/Degraded recovery: serving one GET_BLOCK would restart the 30s

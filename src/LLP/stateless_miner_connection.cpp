@@ -83,6 +83,31 @@ namespace LLP
         using Diagnostics::KeyFingerprint;
         using Diagnostics::YesNo;
         using Diagnostics::PassFail;
+
+        std::atomic<uint64_t> g_get_block_requests_total{0};
+        std::atomic<uint64_t> g_get_block_rate_limited_total{0};
+        std::atomic<uint64_t> g_get_block_template_served_total{0};
+        std::atomic<uint64_t> g_get_block_empty_rate_limit_total{0};
+        std::atomic<uint64_t> g_get_block_empty_session_invalid_total{0};
+        std::atomic<uint64_t> g_get_block_empty_unauthenticated_total{0};
+        std::atomic<uint64_t> g_get_block_empty_no_template_total{0};
+
+        uint64_t IncrementEmptyCounter(const GetBlockPolicyReason eReason)
+        {
+            switch(eReason)
+            {
+                case GetBlockPolicyReason::RATE_LIMIT_EXCEEDED:
+                    return ++g_get_block_empty_rate_limit_total;
+                case GetBlockPolicyReason::SESSION_INVALID:
+                    return ++g_get_block_empty_session_invalid_total;
+                case GetBlockPolicyReason::UNAUTHENTICATED:
+                    return ++g_get_block_empty_unauthenticated_total;
+                case GetBlockPolicyReason::NO_TEMPLATE_READY:
+                    return ++g_get_block_empty_no_template_total;
+                default:
+                    return 0;
+            }
+        }
     }
 
     static_assert(MaxEncryptedPayloadBytes(NodeCryptoMode::EVP, FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX) < LEGACY_STALE_FRAME_LIMIT_BYTES,
@@ -144,6 +169,7 @@ namespace LLP
     , SESSION_MUTEX()
     , m_pPrimeState(std::make_unique<PrimeStateManager>())
     , m_pHashState(std::make_unique<HashStateManager>())
+    , m_getBlockRollingLimiter(RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE, std::chrono::seconds(60))
     {
         /* Log channel manager initialization */
         debug::log(2, FUNCTION, "✓ Channel state managers initialized (Prime + Hash)");
@@ -160,6 +186,7 @@ namespace LLP
     , SESSION_MUTEX()
     , m_pPrimeState(std::make_unique<PrimeStateManager>())
     , m_pHashState(std::make_unique<HashStateManager>())
+    , m_getBlockRollingLimiter(RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE, std::chrono::seconds(60))
     {
         /* Log channel manager initialization */
         debug::log(2, FUNCTION, "✓ Channel state managers initialized (Prime + Hash)");
@@ -176,6 +203,7 @@ namespace LLP
     , SESSION_MUTEX()
     , m_pPrimeState(std::make_unique<PrimeStateManager>())
     , m_pHashState(std::make_unique<HashStateManager>())
+    , m_getBlockRollingLimiter(RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE, std::chrono::seconds(60))
     {
         /* Log channel manager initialization */
         debug::log(2, FUNCTION, "✓ Channel state managers initialized (Prime + Hash)");
@@ -776,50 +804,43 @@ namespace LLP
             /* Handle GET_BLOCK - requires authentication and channel */
             if(PACKET.HEADER == GET_BLOCK)
             {
-                // Check AutoCoolDown FIRST — don't count as violation if cooldown blocks it
-                bool fLocalhostBypass = false;
-                if(MiningConstants::DISABLE_LOCALHOST_AUTOCOOLDOWN)
-                {
-                    std::string strIP = GetAddress().ToStringIP();
-                    if(strIP == "127.0.0.1" || strIP == "::1")
-                        fLocalhostBypass = true;
-                }
-                if(!fLocalhostBypass && !m_get_block_cooldown.Ready())
-                {
-                    debug::log(1, FUNCTION, "GET_BLOCK cooldown active for ", GetAddress().ToStringIP(),
-                        " (", m_get_block_cooldown.Remaining().count(), "ms remaining) — not counting as violation");
-                    StatelessPacket response(OpcodeUtility::Stateless::BLOCK_DATA);
-                    response.LENGTH = 0;
-                    respond(response);
-                    return true;  // Handled (cooldown blocked, no violation)
-                }
-
-                // AUTOMATED RATE LIMIT CHECK (only reached if cooldown allows)
-                if (!CheckRateLimit(GET_BLOCK)) {
-                    // Request rejected - violation already recorded
-                    // Send empty response to indicate rate limited
-                    debug::log(1, FUNCTION, "GET_BLOCK rate limited for ", GetAddress().ToStringIP());
-                    StatelessPacket response(OpcodeUtility::Stateless::BLOCK_DATA);
-                    response.LENGTH = 0;
-                    respond(response);
-                    return true;  // Handled (rejected)
-                }
+                const uint64_t nRequestsTotal = ++g_get_block_requests_total;
+                debug::log(2, FUNCTION, "metric get_block_requests_total=", nRequestsTotal);
                 
                 debug::log(2, "📥 === GET_BLOCK REQUEST ===");
                 debug::log(0, "   From: ", GetAddress().ToStringIP());
                 debug::log(0, "   Authenticated: ", (context.fAuthenticated ? "YES" : "NO"));
                 debug::log(0, "   Channel: ", context.nChannel);
                 debug::log(0, "   Session ID: ", context.nSessionId);
+
+                /* Explicit session validity policy handling. */
+                const uint64_t nNow = runtime::unifiedtimestamp();
+                if(context.nSessionId == 0 || context.IsSessionExpired(nNow))
+                {
+                    SendGetBlockPolicyEmpty(GetBlockPolicyReason::SESSION_INVALID, 0);
+                    return true;
+                }
                 
                 /* Check authentication */
                 if(!context.fAuthenticated)
                 {
+                    debug::warning(FUNCTION, "GET_BLOCK rejected reason=", GetBlockPolicyReasonCode(GetBlockPolicyReason::UNAUTHENTICATED));
                     debug::error("   ❌ Authentication required");
                     StatelessPacket response(MINER_AUTH_RESULT);
                     response.DATA.push_back(0x00);  // Failure
                     response.LENGTH = 1;
                     respond(response);
                     debug::log(2, "📥 === GET_BLOCK: REJECTED (AUTH) ===");
+                    return true;
+                }
+
+                /* Rolling 25/min policy check (session+lane+connection scoped). */
+                uint32_t nRetryAfterMs = 0;
+                if(!CheckRateLimit(GET_BLOCK, &nRetryAfterMs))
+                {
+                    const uint64_t nRateLimited = ++g_get_block_rate_limited_total;
+                    debug::log(1, FUNCTION, "metric get_block_rate_limited_total=", nRateLimited);
+                    SendGetBlockPolicyEmpty(GetBlockPolicyReason::RATE_LIMIT_EXCEEDED, nRetryAfterMs);
                     return true;
                 }
                 
@@ -857,9 +878,7 @@ namespace LLP
                 {
                     /* Only send 0-payload if retry also failed (genuine failure, not a timing race) */
                     debug::error("   ❌ new_block() failed after retry — sending empty BLOCK_DATA");
-                    StatelessPacket response(OpcodeUtility::Stateless::BLOCK_DATA);
-                    response.LENGTH = 0;
-                    respond(response);
+                    SendGetBlockPolicyEmpty(GetBlockPolicyReason::NO_TEMPLATE_READY, MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS);
                     debug::log(2, "📥 === GET_BLOCK: FAILED (NO BLOCK AFTER RETRY) ===");
                     return true;
                 }
@@ -889,9 +908,7 @@ namespace LLP
                     if(vData.empty())
                     {
                         debug::error("   ❌ Serialization returned empty vector!");
-                        StatelessPacket response(OpcodeUtility::Stateless::BLOCK_DATA);
-                        response.LENGTH = 0;
-                        respond(response);
+                        SendGetBlockPolicyEmpty(GetBlockPolicyReason::NO_TEMPLATE_READY, MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS);
                         debug::log(2, "📥 === GET_BLOCK: FAILED (EMPTY SERIALIZATION) ===");
                         return true;
                     }
@@ -958,10 +975,8 @@ namespace LLP
                             debug::error(FUNCTION, "❌ nChannel mismatch after serialization!");
                             debug::error(FUNCTION, "   Expected: ", pBlock->nChannel);
                             debug::error(FUNCTION, "   Got: ", nChannelFromSerialized);
-                            
-                            StatelessPacket response(OpcodeUtility::Stateless::BLOCK_DATA);
-                            response.LENGTH = 0;
-                            respond(response);
+
+                            SendGetBlockPolicyEmpty(GetBlockPolicyReason::NO_TEMPLATE_READY, MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS);
                             debug::log(2, "📥 === GET_BLOCK: FAILED (CHANNEL MISMATCH) ===");
                             return true;
                         }
@@ -972,10 +987,8 @@ namespace LLP
                             debug::error(FUNCTION, "❌ nHeight mismatch after serialization!");
                             debug::error(FUNCTION, "   Expected: ", pBlock->nHeight);
                             debug::error(FUNCTION, "   Got: ", nHeightFromSerialized);
-                            
-                            StatelessPacket response(OpcodeUtility::Stateless::BLOCK_DATA);
-                            response.LENGTH = 0;
-                            respond(response);
+
+                            SendGetBlockPolicyEmpty(GetBlockPolicyReason::NO_TEMPLATE_READY, MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS);
                             debug::log(2, "📥 === GET_BLOCK: FAILED (HEIGHT MISMATCH) ===");
                             return true;
                         }
@@ -1047,6 +1060,8 @@ namespace LLP
 
                     /* Send the response */
                     respond(response);
+                    const uint64_t nTemplatesServed = ++g_get_block_template_served_total;
+                    debug::log(2, FUNCTION, "metric get_block_template_served_total=", nTemplatesServed);
                     
                     debug::log(0, "   ✅ Packet sent!");
                     debug::log(2, "📥 === GET_BLOCK: SUCCESS ===");
@@ -1095,11 +1110,8 @@ namespace LLP
                 catch(const std::exception& e) {
                     debug::error("   ❌ Serialization exception: ", e.what());
                     debug::log(2, "📥 === GET_BLOCK: EXCEPTION ===");
-                    
-                    StatelessPacket response(OpcodeUtility::Stateless::BLOCK_DATA);
-                    response.LENGTH = 0;
-                    respond(response);
-                    
+
+                    SendGetBlockPolicyEmpty(GetBlockPolicyReason::NO_TEMPLATE_READY, MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS);
                     return true;
                 }
             }
@@ -3963,9 +3975,34 @@ namespace LLP
     // RATE LIMITING IMPLEMENTATION
     // ═══════════════════════════════════════════════════════════════════════
 
-    bool StatelessMinerConnection::CheckRateLimit(uint16_t nRequestType)
+    std::string StatelessMinerConnection::GetBlockRateKey() const
+    {
+        return std::to_string(context.nSessionId) + "|" +
+               std::to_string(context.nChannel) + "|" +
+               GetAddress().ToStringIP();
+    }
+
+    void StatelessMinerConnection::SendGetBlockPolicyEmpty(GetBlockPolicyReason eReason, uint32_t nRetryAfterMs)
+    {
+        StatelessPacket response(OpcodeUtility::Stateless::BLOCK_DATA);
+        response.LENGTH = 0; // legacy-safe empty shape
+        respond(response);
+
+        const uint64_t nReasonCount = IncrementEmptyCounter(eReason);
+        debug::log(1, FUNCTION,
+            "GET_BLOCK policy empty response reason=", GetBlockPolicyReasonCode(eReason),
+            " retry_after_ms=", nRetryAfterMs,
+            " [legacy-shape=empty BLOCK_DATA]");
+        debug::log(1, FUNCTION,
+            "metric get_block_empty_total{reason=", GetBlockPolicyReasonCode(eReason),
+            "}=", nReasonCount);
+    }
+
+    bool StatelessMinerConnection::CheckRateLimit(uint16_t nRequestType, uint32_t* pnRetryAfterMs)
     {
         auto now = std::chrono::steady_clock::now();
+        if(pnRetryAfterMs)
+            *pnRetryAfterMs = 0;
         
         // Reset counters every minute
         auto elapsedSinceReset = std::chrono::duration_cast<std::chrono::seconds>(
@@ -4137,18 +4174,27 @@ namespace LLP
                 }
                 #endif
                 
-                // Check per-minute limit
-                if (m_rateLimit.nGetBlockCount >= RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE) {
-                    std::string reason = "GET_BLOCK limit exceeded: " + 
-                        std::to_string(m_rateLimit.nGetBlockCount) + "/" + 
-                        std::to_string(RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE) + " per minute";
+                const std::string strRateKey = GetBlockRateKey();
+                uint32_t nRetryAfterMs = 0;
+                std::size_t nCurrentInWindow = 0;
+                if(!m_getBlockRollingLimiter.Allow(strRateKey, now, nRetryAfterMs, nCurrentInWindow))
+                {
+                    std::string reason = "GET_BLOCK rolling limit exceeded for key=" + strRateKey +
+                        " count=" + std::to_string(nCurrentInWindow) + "/" +
+                        std::to_string(RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE) +
+                        " window=60s retry_after_ms=" + std::to_string(nRetryAfterMs);
                     RecordViolation(reason);
+                    if(pnRetryAfterMs)
+                        *pnRetryAfterMs = nRetryAfterMs;
+                    debug::log(2, FUNCTION, "GET_BLOCK rolling snapshot key=", strRateKey,
+                        " count=", nCurrentInWindow, "/", RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE);
                     return false;
                 }
                 
-                // Request allowed
-                m_rateLimit.nGetBlockCount++;
+                m_rateLimit.nGetBlockCount = static_cast<uint32_t>(nCurrentInWindow);
                 m_rateLimit.tLastGetBlock = now;
+                debug::log(3, FUNCTION, "GET_BLOCK rolling snapshot key=", strRateKey,
+                    " count=", nCurrentInWindow, "/", RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE);
                 return true;
             }
             

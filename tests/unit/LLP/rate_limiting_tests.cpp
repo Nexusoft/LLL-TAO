@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/auto_cooldown_manager.h>
 #include <LLP/include/base_address.h>
+#include <LLP/include/get_block_policy.h>
 #include <LLP/include/mining_constants.h>
 #include <Util/include/runtime.h>
 
@@ -170,9 +171,8 @@ TEST_CASE("AutoCooldownManager Security Properties", "[auto_cooldown][security]"
  *   1. GET_BLOCK_MIN_INTERVAL_MS == 2000 → the per-request minimum is a
  *      2-second floor matching GET_BLOCK_COOLDOWN_SECONDS; both mechanisms
  *      enforce the same floor with no lockout and no doom loop.
- *   2. The per-minute cap (20/min) is the spam guard; a miner that fires 21
- *      requests inside a 60-second window triggers RecordViolation.
- *      Increased from 10/min to give recovery sufficient retries.
+ *   2. The rolling per-minute cap (25/min) is the spam guard; a miner that
+ *      fires 26 requests inside a 60-second window is throttled.
  *   3. GET_BLOCK_COOLDOWN_SECONDS == 2 so miners can retry every 2 seconds during recovery.
  * ─────────────────────────────────────────────────────────────────────────────
  */
@@ -221,4 +221,67 @@ TEST_CASE("GET_BLOCK rate-limit constants", "[rate_limit][mining_constants]")
          * Both debug and production builds must agree on this threshold. */
         REQUIRE(RATE_LIMIT_STRIKE_THRESHOLD == 15u);
     }
+}
+
+TEST_CASE("GET_BLOCK rolling limiter policy behavior", "[rate_limit][get_block][rolling]")
+{
+    LLP::GetBlockRollingLimiter limiter(25, std::chrono::seconds(60));
+    const std::string key = "session=1|lane=1|ip=127.0.0.1";
+    const auto t0 = LLP::GetBlockRollingLimiter::clock::now();
+
+    SECTION("<=25/min allows requests for valid session key")
+    {
+        for(int i = 0; i < 25; ++i)
+        {
+            uint32_t retryAfterMs = 0;
+            std::size_t inWindow = 0;
+            REQUIRE(limiter.Allow(key, t0 + std::chrono::milliseconds(i), retryAfterMs, inWindow));
+            REQUIRE(retryAfterMs == 0u);
+            REQUIRE(inWindow == static_cast<std::size_t>(i + 1));
+        }
+    }
+
+    SECTION("26th request in same rolling 60s is rate limited with retry hint")
+    {
+        for(int i = 0; i < 25; ++i)
+        {
+            uint32_t retryAfterMs = 0;
+            std::size_t inWindow = 0;
+            REQUIRE(limiter.Allow(key, t0 + std::chrono::milliseconds(i), retryAfterMs, inWindow));
+        }
+
+        uint32_t retryAfterMs = 0;
+        std::size_t inWindow = 0;
+        REQUIRE_FALSE(limiter.Allow(key, t0 + std::chrono::seconds(10), retryAfterMs, inWindow));
+        REQUIRE(retryAfterMs > 0u);
+        REQUIRE(inWindow == 25u);
+    }
+
+    SECTION("Limiter recovers after rolling window advances")
+    {
+        for(int i = 0; i < 25; ++i)
+        {
+            uint32_t retryAfterMs = 0;
+            std::size_t inWindow = 0;
+            REQUIRE(limiter.Allow(key, t0 + std::chrono::milliseconds(i), retryAfterMs, inWindow));
+        }
+
+        uint32_t retryAfterMs = 0;
+        std::size_t inWindow = 0;
+        REQUIRE_FALSE(limiter.Allow(key, t0 + std::chrono::seconds(1), retryAfterMs, inWindow));
+        REQUIRE(retryAfterMs > 0u);
+
+        retryAfterMs = 0;
+        inWindow = 0;
+        REQUIRE(limiter.Allow(key, t0 + std::chrono::seconds(61), retryAfterMs, inWindow));
+        REQUIRE(retryAfterMs == 0u);
+    }
+}
+
+TEST_CASE("GET_BLOCK policy reason codes are explicit", "[rate_limit][get_block][reason]")
+{
+    REQUIRE(std::string(LLP::GetBlockPolicyReasonCode(LLP::GetBlockPolicyReason::RATE_LIMIT_EXCEEDED)) == "RATE_LIMIT_EXCEEDED");
+    REQUIRE(std::string(LLP::GetBlockPolicyReasonCode(LLP::GetBlockPolicyReason::SESSION_INVALID)) == "SESSION_INVALID");
+    REQUIRE(std::string(LLP::GetBlockPolicyReasonCode(LLP::GetBlockPolicyReason::UNAUTHENTICATED)) == "UNAUTHENTICATED");
+    REQUIRE(std::string(LLP::GetBlockPolicyReasonCode(LLP::GetBlockPolicyReason::NO_TEMPLATE_READY)) == "NO_TEMPLATE_READY");
 }
