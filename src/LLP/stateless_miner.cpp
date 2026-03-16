@@ -61,6 +61,7 @@ namespace LLP
         using Diagnostics::KeyFingerprint;
         using Diagnostics::YesNo;
         using Diagnostics::PassFail;
+        static constexpr uint64_t GENERATION_EPOCH_MASK = 0xFFFFFFFFu;
 
         enum class RewardResultFrameReason : uint8_t
         {
@@ -92,6 +93,7 @@ namespace LLP
                 case RewardResultFrameReason::REWARD_RESULT_EVP_PHASE_MISMATCH:
                     return "REWARD_RESULT_EVP_PHASE_MISMATCH";
                 default:
+                    debug::error(FUNCTION, "Unhandled RewardResultFrameReason enum value=", static_cast<uint32_t>(reason));
                     return "REWARD_RESULT_UNKNOWN";
             }
         }
@@ -104,6 +106,7 @@ namespace LLP
             const RewardResultFrameReason reason)
         {
             const uint64_t nGeneration = SessionKeyLifecycle::SessionGeneration(context.nSessionId);
+            const uint32_t nEpoch = static_cast<uint32_t>(nGeneration & GENERATION_EPOCH_MASK);
             debug::error(
                 FUNCTION,
                 "opcode=0x",
@@ -119,7 +122,7 @@ namespace LLP
                 " sid=",
                 context.nSessionId,
                 " epoch=",
-                nGeneration,
+                nEpoch,
                 " gen=",
                 nGeneration,
                 " reason=",

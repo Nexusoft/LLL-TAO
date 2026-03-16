@@ -44,6 +44,14 @@ ________________________________________________________________________________
 using namespace LLC;
 using namespace LLC::MiningSessionKeys;
 
+static const char* const TEST_GENESIS_HASH_T44 = "8c2cf304e1bb28f03a88c2b5b412a120c58b9dbd40e0e0f38b9dc8ec94c6e2ac";
+static const char* const TEST_GENESIS_HASH_T45 = "1234c304e1bb28f03a88c2b5b412a120c58b9dbd40e0e0f38b9dc8ec94c6e2ac";
+static const char* const TEST_GENESIS_HASH_T46 = "2234c304e1bb28f03a88c2b5b412a120c58b9dbd40e0e0f38b9dc8ec94c6e2ac";
+static const uint8_t TEST_REWARD_BYTE_T44 = 0x33;
+static const uint8_t TEST_REWARD_BYTE_T46 = 0x44;
+static const std::vector<uint8_t> TEST_AAD_REWARD_ADDRESS{'R','E','W','A','R','D','_','A','D','D','R','E','S','S'};
+static const std::vector<uint8_t> TEST_AAD_REWARD_RESULT{'R','E','W','A','R','D','_','R','E','S','U','L','T'};
+
 
 /* ══════════════════════════════════════════════════════════════════════
  * GROUP 1 — KDF Consistency (T01–T04)
@@ -1357,7 +1365,7 @@ TEST_CASE("T44: REWARD_RESULT in EVP mode uses session-bound frame contract", "[
 
     const uint32_t nSessionId = 4101;
     uint256_t hashGenesis;
-    hashGenesis.SetHex("8c2cf304e1bb28f03a88c2b5b412a120c58b9dbd40e0e0f38b9dc8ec94c6e2ac");
+    hashGenesis.SetHex(TEST_GENESIS_HASH_T44);
     std::vector<uint8_t> vKey = DeriveChaCha20Key(hashGenesis);
     REQUIRE(vKey.size() == 32);
 
@@ -1369,16 +1377,15 @@ TEST_CASE("T44: REWARD_RESULT in EVP mode uses session-bound frame contract", "[
         .WithGenesis(hashGenesis)
         .WithChaChaKey(vKey);
 
-    std::vector<uint8_t> vReward(32, 0x33);
+    std::vector<uint8_t> vReward(32, TEST_REWARD_BYTE_T44);
     std::vector<uint8_t> vSetRewardEncrypted;
-    const std::vector<uint8_t> vAADRewardAddress{'R','E','W','A','R','D','_','A','D','D','R','E','S','S'};
     REQUIRE(LLP::PacketCryptoService::Encode(
         nSessionId,
         static_cast<uint16_t>(LLP::StatelessOpcodes::SET_REWARD),
         vKey,
         vReward,
         vSetRewardEncrypted,
-        vAADRewardAddress));
+        TEST_AAD_REWARD_ADDRESS));
 
     LLP::StatelessPacket setRewardPacket(LLP::StatelessOpcodes::SET_REWARD);
     setRewardPacket.DATA = vSetRewardEncrypted;
@@ -1390,14 +1397,13 @@ TEST_CASE("T44: REWARD_RESULT in EVP mode uses session-bound frame contract", "[
     REQUIRE(result.response.DATA.size() >= LLP::MinEncryptedFrameBytes(LLP::NodeCryptoMode::EVP));
 
     std::vector<uint8_t> vRewardResultPlain;
-    const std::vector<uint8_t> vAADRewardResult{'R','E','W','A','R','D','_','R','E','S','U','L','T'};
     REQUIRE(LLP::PacketCryptoService::Decode(
         nSessionId,
         static_cast<uint16_t>(LLP::StatelessOpcodes::REWARD_RESULT),
         vKey,
         result.response.DATA,
         vRewardResultPlain,
-        vAADRewardResult));
+        TEST_AAD_REWARD_RESULT));
     REQUIRE(vRewardResultPlain == std::vector<uint8_t>{0x01});
 
     LLP::SessionKeyLifecycle::TeardownSession(nSessionId);
@@ -1412,14 +1418,13 @@ TEST_CASE("T45: REWARD_RESULT EVP malformed and mismatch frames are rejected", "
 
     const uint32_t nSessionId = 4102;
     uint256_t hashGenesis;
-    hashGenesis.SetHex("1234c304e1bb28f03a88c2b5b412a120c58b9dbd40e0e0f38b9dc8ec94c6e2ac");
+    hashGenesis.SetHex(TEST_GENESIS_HASH_T45);
     std::vector<uint8_t> vKey = DeriveChaCha20Key(hashGenesis);
     REQUIRE(vKey.size() == 32);
 
     LLP::SessionKeyLifecycle::EstablishSession(nSessionId, vKey);
 
     const std::vector<uint8_t> vPlaintext{0x01};
-    const std::vector<uint8_t> vAADRewardResult{'R','E','W','A','R','D','_','R','E','S','U','L','T'};
     std::vector<uint8_t> vFrame;
     REQUIRE(LLP::PacketCryptoService::Encode(
         nSessionId,
@@ -1427,18 +1432,19 @@ TEST_CASE("T45: REWARD_RESULT EVP malformed and mismatch frames are rejected", "
         vKey,
         vPlaintext,
         vFrame,
-        vAADRewardResult));
+        TEST_AAD_REWARD_RESULT));
     REQUIRE(vFrame.size() >= LLP::MinEncryptedFrameBytes(LLP::NodeCryptoMode::EVP));
 
     std::vector<uint8_t> vDecrypted;
-    std::vector<uint8_t> vShort(vFrame.begin(), vFrame.begin() + LLP::MinEncryptedFrameBytes(LLP::NodeCryptoMode::EVP) - 1);
+    const size_t nMinFrameSize = LLP::MinEncryptedFrameBytes(LLP::NodeCryptoMode::EVP);
+    std::vector<uint8_t> vShort(vFrame.begin(), vFrame.begin() + nMinFrameSize - 1);
     REQUIRE_FALSE(LLP::PacketCryptoService::Decode(
         nSessionId,
         static_cast<uint16_t>(LLP::StatelessOpcodes::REWARD_RESULT),
         vKey,
         vShort,
         vDecrypted,
-        vAADRewardResult));
+        TEST_AAD_REWARD_RESULT));
 
     std::vector<uint8_t> vFlagsMismatch = vFrame;
     vFlagsMismatch[1] ^= 0x01;
@@ -1448,7 +1454,7 @@ TEST_CASE("T45: REWARD_RESULT EVP malformed and mismatch frames are rejected", "
         vKey,
         vFlagsMismatch,
         vDecrypted,
-        vAADRewardResult));
+        TEST_AAD_REWARD_RESULT));
 
     std::vector<uint8_t> vSidMismatch = vFrame;
     vSidMismatch[2] ^= 0x01;
@@ -1458,7 +1464,7 @@ TEST_CASE("T45: REWARD_RESULT EVP malformed and mismatch frames are rejected", "
         vKey,
         vSidMismatch,
         vDecrypted,
-        vAADRewardResult));
+        TEST_AAD_REWARD_RESULT));
 
     LLP::SessionKeyLifecycle::TeardownSession(nSessionId);
     config::mapArgs = mapOriginalArgs;
@@ -1472,7 +1478,7 @@ TEST_CASE("T46: REWARD_RESULT legacy mode stays compatible", "[stateless_miner_c
 
     const uint32_t nSessionId = 4103;
     uint256_t hashGenesis;
-    hashGenesis.SetHex("2234c304e1bb28f03a88c2b5b412a120c58b9dbd40e0e0f38b9dc8ec94c6e2ac");
+    hashGenesis.SetHex(TEST_GENESIS_HASH_T46);
     std::vector<uint8_t> vKey = DeriveChaCha20Key(hashGenesis);
     REQUIRE(vKey.size() == 32);
 
@@ -1482,16 +1488,15 @@ TEST_CASE("T46: REWARD_RESULT legacy mode stays compatible", "[stateless_miner_c
         .WithGenesis(hashGenesis)
         .WithChaChaKey(vKey);
 
-    std::vector<uint8_t> vReward(32, 0x44);
+    std::vector<uint8_t> vReward(32, TEST_REWARD_BYTE_T46);
     std::vector<uint8_t> vSetRewardEncrypted;
-    const std::vector<uint8_t> vAADRewardAddress{'R','E','W','A','R','D','_','A','D','D','R','E','S','S'};
     REQUIRE(LLP::PacketCryptoService::Encode(
         nSessionId,
         static_cast<uint16_t>(LLP::StatelessOpcodes::SET_REWARD),
         vKey,
         vReward,
         vSetRewardEncrypted,
-        vAADRewardAddress));
+        TEST_AAD_REWARD_ADDRESS));
 
     LLP::StatelessPacket setRewardPacket(LLP::StatelessOpcodes::SET_REWARD);
     setRewardPacket.DATA = vSetRewardEncrypted;
@@ -1502,14 +1507,13 @@ TEST_CASE("T46: REWARD_RESULT legacy mode stays compatible", "[stateless_miner_c
     REQUIRE(result.response.HEADER == LLP::StatelessOpcodes::REWARD_RESULT);
 
     std::vector<uint8_t> vDecrypted;
-    const std::vector<uint8_t> vAADRewardResult{'R','E','W','A','R','D','_','R','E','S','U','L','T'};
     REQUIRE(LLP::PacketCryptoService::Decode(
         nSessionId,
         static_cast<uint16_t>(LLP::StatelessOpcodes::REWARD_RESULT),
         vKey,
         result.response.DATA,
         vDecrypted,
-        vAADRewardResult));
+        TEST_AAD_REWARD_RESULT));
     REQUIRE(vDecrypted == std::vector<uint8_t>{0x01});
 
     config::mapArgs = mapOriginalArgs;
