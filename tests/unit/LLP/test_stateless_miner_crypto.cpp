@@ -26,6 +26,8 @@ ________________________________________________________________________________
 #include <LLP/include/crypto_envelope.h>
 #include <LLP/include/packet_crypto_service.h>
 #include <LLP/include/session_key_lifecycle.h>
+#include <LLP/include/stateless_miner.h>
+#include <LLP/include/stateless_opcodes.h>
 
 #include <TAO/Ledger/include/stateless_block_utility.h>
 
@@ -1343,6 +1345,172 @@ TEST_CASE("T43: PacketCryptoService legacy interop remains miner-compatible", "[
     REQUIRE(vDecrypted == vPayload);
     REQUIRE(LLC::DecryptPayloadChaCha20(vEncrypted, vKey, vDecrypted));
     REQUIRE(vDecrypted == vPayload);
+
+    config::mapArgs = mapOriginalArgs;
+}
+
+
+TEST_CASE("T44: REWARD_RESULT in EVP mode uses session-bound frame contract", "[stateless_miner_crypto][reward_result][evp]")
+{
+    const auto mapOriginalArgs = config::mapArgs;
+    config::mapArgs["-crypto_mode"] = "evp";
+
+    const uint32_t nSessionId = 4101;
+    uint256_t hashGenesis;
+    hashGenesis.SetHex("8c2cf304e1bb28f03a88c2b5b412a120c58b9dbd40e0e0f38b9dc8ec94c6e2ac");
+    std::vector<uint8_t> vKey = DeriveChaCha20Key(hashGenesis);
+    REQUIRE(vKey.size() == 32);
+
+    LLP::SessionKeyLifecycle::EstablishSession(nSessionId, vKey);
+
+    LLP::MiningContext ctx = LLP::MiningContext()
+        .WithAuth(true)
+        .WithSession(nSessionId)
+        .WithGenesis(hashGenesis)
+        .WithChaChaKey(vKey);
+
+    std::vector<uint8_t> vReward(32, 0x33);
+    std::vector<uint8_t> vSetRewardEncrypted;
+    const std::vector<uint8_t> vAADRewardAddress{'R','E','W','A','R','D','_','A','D','D','R','E','S','S'};
+    REQUIRE(LLP::PacketCryptoService::Encode(
+        nSessionId,
+        static_cast<uint16_t>(LLP::StatelessOpcodes::SET_REWARD),
+        vKey,
+        vReward,
+        vSetRewardEncrypted,
+        vAADRewardAddress));
+
+    LLP::StatelessPacket setRewardPacket(LLP::StatelessOpcodes::SET_REWARD);
+    setRewardPacket.DATA = vSetRewardEncrypted;
+    setRewardPacket.LENGTH = static_cast<uint32_t>(setRewardPacket.DATA.size());
+
+    LLP::ProcessResult result = LLP::StatelessMiner::ProcessPacket(ctx, setRewardPacket);
+    REQUIRE(result.fSuccess);
+    REQUIRE(result.response.HEADER == LLP::StatelessOpcodes::REWARD_RESULT);
+    REQUIRE(result.response.DATA.size() >= LLP::MinEncryptedFrameBytes(LLP::NodeCryptoMode::EVP));
+
+    std::vector<uint8_t> vRewardResultPlain;
+    const std::vector<uint8_t> vAADRewardResult{'R','E','W','A','R','D','_','R','E','S','U','L','T'};
+    REQUIRE(LLP::PacketCryptoService::Decode(
+        nSessionId,
+        static_cast<uint16_t>(LLP::StatelessOpcodes::REWARD_RESULT),
+        vKey,
+        result.response.DATA,
+        vRewardResultPlain,
+        vAADRewardResult));
+    REQUIRE(vRewardResultPlain == std::vector<uint8_t>{0x01});
+
+    LLP::SessionKeyLifecycle::TeardownSession(nSessionId);
+    config::mapArgs = mapOriginalArgs;
+}
+
+
+TEST_CASE("T45: REWARD_RESULT EVP malformed and mismatch frames are rejected", "[stateless_miner_crypto][reward_result][evp][malformed]")
+{
+    const auto mapOriginalArgs = config::mapArgs;
+    config::mapArgs["-crypto_mode"] = "evp";
+
+    const uint32_t nSessionId = 4102;
+    uint256_t hashGenesis;
+    hashGenesis.SetHex("1234c304e1bb28f03a88c2b5b412a120c58b9dbd40e0e0f38b9dc8ec94c6e2ac");
+    std::vector<uint8_t> vKey = DeriveChaCha20Key(hashGenesis);
+    REQUIRE(vKey.size() == 32);
+
+    LLP::SessionKeyLifecycle::EstablishSession(nSessionId, vKey);
+
+    const std::vector<uint8_t> vPlaintext{0x01};
+    const std::vector<uint8_t> vAADRewardResult{'R','E','W','A','R','D','_','R','E','S','U','L','T'};
+    std::vector<uint8_t> vFrame;
+    REQUIRE(LLP::PacketCryptoService::Encode(
+        nSessionId,
+        static_cast<uint16_t>(LLP::StatelessOpcodes::REWARD_RESULT),
+        vKey,
+        vPlaintext,
+        vFrame,
+        vAADRewardResult));
+    REQUIRE(vFrame.size() >= LLP::MinEncryptedFrameBytes(LLP::NodeCryptoMode::EVP));
+
+    std::vector<uint8_t> vDecrypted;
+    std::vector<uint8_t> vShort(vFrame.begin(), vFrame.begin() + LLP::MinEncryptedFrameBytes(LLP::NodeCryptoMode::EVP) - 1);
+    REQUIRE_FALSE(LLP::PacketCryptoService::Decode(
+        nSessionId,
+        static_cast<uint16_t>(LLP::StatelessOpcodes::REWARD_RESULT),
+        vKey,
+        vShort,
+        vDecrypted,
+        vAADRewardResult));
+
+    std::vector<uint8_t> vFlagsMismatch = vFrame;
+    vFlagsMismatch[1] ^= 0x01;
+    REQUIRE_FALSE(LLP::PacketCryptoService::Decode(
+        nSessionId,
+        static_cast<uint16_t>(LLP::StatelessOpcodes::REWARD_RESULT),
+        vKey,
+        vFlagsMismatch,
+        vDecrypted,
+        vAADRewardResult));
+
+    std::vector<uint8_t> vSidMismatch = vFrame;
+    vSidMismatch[2] ^= 0x01;
+    REQUIRE_FALSE(LLP::PacketCryptoService::Decode(
+        nSessionId,
+        static_cast<uint16_t>(LLP::StatelessOpcodes::REWARD_RESULT),
+        vKey,
+        vSidMismatch,
+        vDecrypted,
+        vAADRewardResult));
+
+    LLP::SessionKeyLifecycle::TeardownSession(nSessionId);
+    config::mapArgs = mapOriginalArgs;
+}
+
+
+TEST_CASE("T46: REWARD_RESULT legacy mode stays compatible", "[stateless_miner_crypto][reward_result][legacy]")
+{
+    const auto mapOriginalArgs = config::mapArgs;
+    config::mapArgs["-crypto_mode"] = "legacy";
+
+    const uint32_t nSessionId = 4103;
+    uint256_t hashGenesis;
+    hashGenesis.SetHex("2234c304e1bb28f03a88c2b5b412a120c58b9dbd40e0e0f38b9dc8ec94c6e2ac");
+    std::vector<uint8_t> vKey = DeriveChaCha20Key(hashGenesis);
+    REQUIRE(vKey.size() == 32);
+
+    LLP::MiningContext ctx = LLP::MiningContext()
+        .WithAuth(true)
+        .WithSession(nSessionId)
+        .WithGenesis(hashGenesis)
+        .WithChaChaKey(vKey);
+
+    std::vector<uint8_t> vReward(32, 0x44);
+    std::vector<uint8_t> vSetRewardEncrypted;
+    const std::vector<uint8_t> vAADRewardAddress{'R','E','W','A','R','D','_','A','D','D','R','E','S','S'};
+    REQUIRE(LLP::PacketCryptoService::Encode(
+        nSessionId,
+        static_cast<uint16_t>(LLP::StatelessOpcodes::SET_REWARD),
+        vKey,
+        vReward,
+        vSetRewardEncrypted,
+        vAADRewardAddress));
+
+    LLP::StatelessPacket setRewardPacket(LLP::StatelessOpcodes::SET_REWARD);
+    setRewardPacket.DATA = vSetRewardEncrypted;
+    setRewardPacket.LENGTH = static_cast<uint32_t>(setRewardPacket.DATA.size());
+
+    LLP::ProcessResult result = LLP::StatelessMiner::ProcessPacket(ctx, setRewardPacket);
+    REQUIRE(result.fSuccess);
+    REQUIRE(result.response.HEADER == LLP::StatelessOpcodes::REWARD_RESULT);
+
+    std::vector<uint8_t> vDecrypted;
+    const std::vector<uint8_t> vAADRewardResult{'R','E','W','A','R','D','_','R','E','S','U','L','T'};
+    REQUIRE(LLP::PacketCryptoService::Decode(
+        nSessionId,
+        static_cast<uint16_t>(LLP::StatelessOpcodes::REWARD_RESULT),
+        vKey,
+        result.response.DATA,
+        vDecrypted,
+        vAADRewardResult));
+    REQUIRE(vDecrypted == std::vector<uint8_t>{0x01});
 
     config::mapArgs = mapOriginalArgs;
 }
