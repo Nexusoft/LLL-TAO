@@ -178,7 +178,8 @@ namespace LLC
             {
                 SessionState state;
                 state.vSessionKey = vSessionKey;
-                auto [insertedIt, _] = mapSessions.emplace(nSessionId, std::move(state));
+                auto [insertedIt, fInserted] = mapSessions.emplace(nSessionId, std::move(state));
+                (void)fInserted;
                 return insertedIt->second.vSessionKey;
             }
 

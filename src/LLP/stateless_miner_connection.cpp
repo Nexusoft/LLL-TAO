@@ -2690,6 +2690,8 @@ namespace LLP
                 {
                     if(nPrevSessionId != 0 && nPrevSessionId != context.nSessionId)
                     {
+                        /* Session ID changed (cross-port canonicalization or auth refresh):
+                         * teardown old session ID state first, then rotate/seed the active ID. */
                         LLC::ChaCha20EvpManager::Instance().TeardownSession(nPrevSessionId);
                         LLC::ChaCha20EvpManager::Instance().RotateSession(context.nSessionId, context.vChaChaKey);
                     }

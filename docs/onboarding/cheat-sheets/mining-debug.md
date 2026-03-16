@@ -189,7 +189,7 @@ without advancing the Prime channel height.
 | Node `-crypto_mode` | Legacy miner | EVP-capable miner |
 |---|---|---|
 | `legacy` (default) | ✅ Supported (unchanged behavior) | ✅ Supported (legacy wire compatibility) |
-| `evp` | ✅ Supported (legacy wire format retained; node EVP lifecycle + nonce replay guard active) | ✅ Supported |
+| `evp` | ✅ Supported (same ChaCha20 payload structure: `nonce + ciphertext + tag`; node EVP lifecycle + nonce replay guard active) | ✅ Supported |
 | `tls` | ✅ Supported (currently legacy-equivalent path) | ✅ Supported (currently legacy-equivalent path) |
 
 ---

@@ -1002,6 +1002,8 @@ TEST_CASE("T29: Node crypto_mode=legacy preserves current encrypt/decrypt intero
     REQUIRE(LLC::ChaCha20EvpManager::Instance().EncryptPacket(1001, vKey, vPayload, vEncrypted));
     REQUIRE(LLC::ChaCha20EvpManager::Instance().DecryptPacket(1001, vKey, vEncrypted, vDecrypted));
     REQUIRE(vDecrypted == vPayload);
+    REQUIRE(LLC::DecryptPayloadChaCha20(vEncrypted, vKey, vDecrypted));
+    REQUIRE(vDecrypted == vPayload);
 
     LLC::ChaCha20EvpManager::Instance().TeardownSession(1001);
     config::mapArgs = mapOriginalArgs;
