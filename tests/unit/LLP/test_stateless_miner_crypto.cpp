@@ -26,6 +26,7 @@ ________________________________________________________________________________
 #include <LLP/include/crypto_envelope.h>
 #include <LLP/include/packet_crypto_service.h>
 #include <LLP/include/session_key_lifecycle.h>
+#include <LLP/include/stateless_miner.h>
 
 #include <TAO/Ledger/include/stateless_block_utility.h>
 
@@ -1342,6 +1343,120 @@ TEST_CASE("T43: PacketCryptoService legacy interop remains miner-compatible", "[
     REQUIRE(LLP::PacketCryptoService::Decode(3007, TEST_MESSAGE_TYPE, vKey, vEncrypted, vDecrypted));
     REQUIRE(vDecrypted == vPayload);
     REQUIRE(LLC::DecryptPayloadChaCha20(vEncrypted, vKey, vDecrypted));
+    REQUIRE(vDecrypted == vPayload);
+
+    config::mapArgs = mapOriginalArgs;
+}
+
+
+TEST_CASE("T44: 0xD0D6 reward-result EVP decode succeeds with canonical envelope", "[stateless_miner_crypto][crypto_mode][evp][reward_result]")
+{
+    static constexpr uint32_t TEST_SESSION_ID = 3101;
+    static constexpr uint16_t TEST_MESSAGE_TYPE = LLP::OpcodeUtility::Stateless::REWARD_RESULT;
+    const auto mapOriginalArgs = config::mapArgs;
+    config::mapArgs["-crypto_mode"] = "evp";
+
+    std::vector<uint8_t> vKey(32, 0xB1);
+    std::vector<uint8_t> vPayload{0x01};
+    std::vector<uint8_t> vEncrypted;
+    std::vector<uint8_t> vDecrypted;
+    std::vector<uint8_t> vAAD{'R','E','W','A','R','D','_','R','E','S','U','L','T'};
+    LLP::RewardResultEvpReason nReason = LLP::RewardResultEvpReason::DECRYPT_FAILED;
+
+    LLP::SessionKeyLifecycle::EstablishSession(TEST_SESSION_ID, vKey);
+    const uint64_t nGenerationBefore = LLP::SessionKeyLifecycle::SessionGeneration(TEST_SESSION_ID);
+    REQUIRE(LLP::PacketCryptoService::Encode(TEST_SESSION_ID, TEST_MESSAGE_TYPE, vKey, vPayload, vEncrypted, vAAD));
+    REQUIRE(LLP::StatelessMiner::DecryptRewardResult(TEST_SESSION_ID, vEncrypted, vKey, vDecrypted, &nReason));
+    REQUIRE(nReason == LLP::RewardResultEvpReason::OK);
+    REQUIRE(vDecrypted == vPayload);
+    REQUIRE(LLP::SessionKeyLifecycle::SessionGeneration(TEST_SESSION_ID) == nGenerationBefore);
+
+    LLP::SessionKeyLifecycle::TeardownSession(TEST_SESSION_ID);
+    config::mapArgs = mapOriginalArgs;
+}
+
+
+TEST_CASE("T45: 0xD0D6 reward-result EVP short frame rejects with FRAME_TOO_SHORT and no session mutation", "[stateless_miner_crypto][crypto_mode][evp][reward_result]")
+{
+    static constexpr uint32_t TEST_SESSION_ID = 3102;
+    static constexpr uint16_t TEST_MESSAGE_TYPE = LLP::OpcodeUtility::Stateless::REWARD_RESULT;
+    const auto mapOriginalArgs = config::mapArgs;
+    config::mapArgs["-crypto_mode"] = "evp";
+
+    std::vector<uint8_t> vKey(32, 0xB2);
+    std::vector<uint8_t> vPayload{0x00};
+    std::vector<uint8_t> vEncrypted;
+    std::vector<uint8_t> vShortFrame;
+    std::vector<uint8_t> vDecrypted;
+    std::vector<uint8_t> vAAD{'R','E','W','A','R','D','_','R','E','S','U','L','T'};
+    LLP::RewardResultEvpReason nReason = LLP::RewardResultEvpReason::OK;
+
+    LLP::SessionKeyLifecycle::EstablishSession(TEST_SESSION_ID, vKey);
+    const uint64_t nGenerationBefore = LLP::SessionKeyLifecycle::SessionGeneration(TEST_SESSION_ID);
+    REQUIRE(LLP::PacketCryptoService::Encode(TEST_SESSION_ID, TEST_MESSAGE_TYPE, vKey, vPayload, vEncrypted, vAAD));
+    REQUIRE(vEncrypted.size() >= LLP::MinEncryptedFrameBytes(LLP::NodeCryptoMode::EVP));
+    vShortFrame.assign(vEncrypted.begin(), vEncrypted.end() - 1);
+
+    REQUIRE_FALSE(LLP::StatelessMiner::DecryptRewardResult(TEST_SESSION_ID, vShortFrame, vKey, vDecrypted, &nReason));
+    REQUIRE(nReason == LLP::RewardResultEvpReason::FRAME_TOO_SHORT);
+
+    std::vector<uint8_t> vTinyFrame(5, 0x00);
+    REQUIRE_FALSE(LLP::StatelessMiner::DecryptRewardResult(TEST_SESSION_ID, vTinyFrame, vKey, vDecrypted, &nReason));
+    REQUIRE(nReason == LLP::RewardResultEvpReason::FRAME_TOO_SHORT);
+    REQUIRE(LLP::SessionKeyLifecycle::SessionGeneration(TEST_SESSION_ID) == nGenerationBefore);
+
+    LLP::SessionKeyLifecycle::TeardownSession(TEST_SESSION_ID);
+    config::mapArgs = mapOriginalArgs;
+}
+
+
+TEST_CASE("T46: 0xD0D6 reward-result EVP flags mismatch rejects explicitly with no session mutation", "[stateless_miner_crypto][crypto_mode][evp][reward_result]")
+{
+    static constexpr uint32_t TEST_SESSION_ID = 3103;
+    static constexpr uint16_t TEST_MESSAGE_TYPE = LLP::OpcodeUtility::Stateless::REWARD_RESULT;
+    const auto mapOriginalArgs = config::mapArgs;
+    config::mapArgs["-crypto_mode"] = "evp";
+
+    std::vector<uint8_t> vKey(32, 0xB3);
+    std::vector<uint8_t> vPayload{0x01};
+    std::vector<uint8_t> vEncrypted;
+    std::vector<uint8_t> vDecrypted;
+    std::vector<uint8_t> vAAD{'R','E','W','A','R','D','_','R','E','S','U','L','T'};
+    LLP::RewardResultEvpReason nReason = LLP::RewardResultEvpReason::OK;
+
+    LLP::SessionKeyLifecycle::EstablishSession(TEST_SESSION_ID, vKey);
+    const uint64_t nGenerationBefore = LLP::SessionKeyLifecycle::SessionGeneration(TEST_SESSION_ID);
+    REQUIRE(LLP::PacketCryptoService::Encode(TEST_SESSION_ID, TEST_MESSAGE_TYPE, vKey, vPayload, vEncrypted, vAAD));
+    REQUIRE(vEncrypted.size() >= LLP::MinEncryptedFrameBytes(LLP::NodeCryptoMode::EVP));
+    static constexpr uint8_t NON_DEFAULT_EVP_FLAG = 0x01;
+    vEncrypted[1] = NON_DEFAULT_EVP_FLAG; // ENVELOPE_FLAGS_DEFAULT is 0x00; force mismatch.
+
+    REQUIRE_FALSE(LLP::StatelessMiner::DecryptRewardResult(TEST_SESSION_ID, vEncrypted, vKey, vDecrypted, &nReason));
+    REQUIRE(nReason == LLP::RewardResultEvpReason::FLAGS_MISMATCH);
+    REQUIRE(LLP::SessionKeyLifecycle::SessionGeneration(TEST_SESSION_ID) == nGenerationBefore);
+
+    LLP::SessionKeyLifecycle::TeardownSession(TEST_SESSION_ID);
+    config::mapArgs = mapOriginalArgs;
+}
+
+
+TEST_CASE("T47: 0xD0D6 reward-result legacy decode remains unchanged", "[stateless_miner_crypto][crypto_mode][legacy][reward_result]")
+{
+    static constexpr uint32_t TEST_SESSION_ID = 3104;
+    static constexpr uint16_t TEST_MESSAGE_TYPE = LLP::OpcodeUtility::Stateless::REWARD_RESULT;
+    const auto mapOriginalArgs = config::mapArgs;
+    config::mapArgs["-crypto_mode"] = "legacy";
+
+    std::vector<uint8_t> vKey(32, 0xB4);
+    std::vector<uint8_t> vPayload{0x01};
+    std::vector<uint8_t> vEncrypted;
+    std::vector<uint8_t> vDecrypted;
+    std::vector<uint8_t> vAAD{'R','E','W','A','R','D','_','R','E','S','U','L','T'};
+    LLP::RewardResultEvpReason nReason = LLP::RewardResultEvpReason::DECRYPT_FAILED;
+
+    REQUIRE(LLP::PacketCryptoService::Encode(TEST_SESSION_ID, TEST_MESSAGE_TYPE, vKey, vPayload, vEncrypted, vAAD));
+    REQUIRE(LLP::StatelessMiner::DecryptRewardResult(TEST_SESSION_ID, vEncrypted, vKey, vDecrypted, &nReason));
+    REQUIRE(nReason == LLP::RewardResultEvpReason::OK);
     REQUIRE(vDecrypted == vPayload);
 
     config::mapArgs = mapOriginalArgs;
