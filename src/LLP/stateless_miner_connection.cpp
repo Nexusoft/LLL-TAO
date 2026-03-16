@@ -842,14 +842,16 @@ namespace LLP
                     return true;
                 }
                 
-                /* Check channel is set */
+                /* Check channel is set — every path below the rate-limit check MUST send a wire response. */
                 if(context.nChannel == 0)
                 {
-                    debug::error("   ❌ Channel not set");
+                    debug::error(FUNCTION, "Channel not set for authenticated in-budget miner; miner must call SET_CHANNEL first — sending TEMPLATE_NOT_READY");
                     debug::log(2, "📥 === GET_BLOCK: REJECTED (NO CHANNEL) ===");
+                    SendGetBlockControlResponse(GetBlockPolicyReason::TEMPLATE_NOT_READY, MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS, true);
                     return true;
                 }
-                
+
+                debug::log(2, FUNCTION, "Invariant: authenticated + in-budget + channel set → BLOCK_DATA MUST follow");
                 debug::log(0, "   ✅ Validation passed");
 
                 /* CRITICAL: Release MUTEX before new_block() — new_block() acquires MUTEX internally.
@@ -4038,13 +4040,16 @@ namespace LLP
         const uint16_t GET_BLOCK = STATELESS_GET_BLOCK;
         const uint16_t SUBMIT_BLOCK = STATELESS_SUBMIT_BLOCK;
         
-        // If in throttle mode, check minimum interval enforcement (non-blocking)
-        // Instead of blocking with sleep, we reject requests that come too soon
-        if (m_rateLimit.fThrottleMode) {
+        // If in throttle mode, check minimum interval enforcement for non-GET_BLOCK requests.
+        // For GET_BLOCK the rolling limiter is the authoritative gate: throttle mode must only
+        // amplify genuine over-budget behaviour, never create an independent gate that blocks
+        // an authenticated miner who is still within the rolling window.
+        if (m_rateLimit.fThrottleMode && nRequestType != GET_BLOCK) {
+            // Default to GET_ROUND timing; overridden below for SUBMIT_BLOCK.
+            // GET_BLOCK is excluded from this gate (see condition above) — the
+            // rolling limiter is its sole authoritative gate.
             auto lastRequestTime = m_rateLimit.tLastGetRound;
-            if (nRequestType == GET_BLOCK) {
-                lastRequestTime = m_rateLimit.tLastGetBlock;
-            } else if (nRequestType == SUBMIT_BLOCK) {
+            if (nRequestType == SUBMIT_BLOCK) {
                 lastRequestTime = m_rateLimit.tLastSubmitBlock;
             }
             

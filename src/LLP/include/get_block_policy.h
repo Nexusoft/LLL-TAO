@@ -26,7 +26,8 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    constexpr std::size_t GET_BLOCK_ROLLING_LIMIT_PER_MINUTE = 25;
+    // Node MUST always return BLOCK_DATA for authenticated miners within this window.
+    constexpr std::size_t GET_BLOCK_ROLLING_LIMIT_PER_MINUTE = 20;
     constexpr std::chrono::seconds GET_BLOCK_ROLLING_WINDOW = std::chrono::seconds(60);
 
     enum class GetBlockPolicyReason : uint8_t

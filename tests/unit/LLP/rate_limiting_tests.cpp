@@ -168,12 +168,12 @@ TEST_CASE("AutoCooldownManager Security Properties", "[auto_cooldown][security]"
  * CheckRateLimit() is a private method of StatelessMinerConnection, so we
  * verify the constants that govern its behaviour rather than the method itself.
  *
- * Key invariants after the doom-loop fix:
+ * Key invariants after the authenticated-miner refactor:
  *   1. GET_BLOCK_MIN_INTERVAL_MS == 2000 → the per-request minimum is a
  *      2-second floor matching GET_BLOCK_COOLDOWN_SECONDS; both mechanisms
  *      enforce the same floor with no lockout and no doom loop.
- *   2. The rolling per-minute cap (25/min) is the spam guard; a miner that
- *      fires 26 requests inside a 60-second window is throttled.
+ *   2. The rolling per-minute cap (20/min) is the spam guard; a miner that
+ *      fires 21 requests inside a 60-second window is throttled.
  *   3. GET_BLOCK_COOLDOWN_SECONDS == 2 so miners can retry every 2 seconds during recovery.
  * ─────────────────────────────────────────────────────────────────────────────
  */
@@ -231,7 +231,7 @@ TEST_CASE("GET_BLOCK rolling limiter policy behavior", "[rate_limit][get_block][
     const std::string key = "session=1|lane=1|ip=127.0.0.1";
     const auto t0 = LLP::GetBlockRollingLimiter::clock::now();
 
-    SECTION("up to 25/min allows requests for valid session key")
+    SECTION("up to 20/min allows requests for valid session key")
     {
         for(int i = 0; i < MAX_REQUESTS; ++i)
         {
@@ -243,7 +243,7 @@ TEST_CASE("GET_BLOCK rolling limiter policy behavior", "[rate_limit][get_block][
         }
     }
 
-    SECTION("26th request in same rolling 60s is rate limited with retry hint")
+    SECTION("21st request in same rolling 60s is rate limited with retry hint")
     {
         for(int i = 0; i < MAX_REQUESTS; ++i)
         {
@@ -278,6 +278,95 @@ TEST_CASE("GET_BLOCK rolling limiter policy behavior", "[rate_limit][get_block][
         REQUIRE(limiter.Allow(key, t0 + std::chrono::seconds(61), retryAfterMs, inWindow));
         REQUIRE(retryAfterMs == 0u);
     }
+}
+
+TEST_CASE("GET_BLOCK rolling limit constant equals 20", "[rate_limit][get_block][invariant]")
+{
+    /* Invariant: Node MUST always return BLOCK_DATA for authenticated miners
+     * within this window.  The constant is 20 (reduced from 25) to provide
+     * stricter spam protection while still giving legitimate mining clients
+     * a generous burst budget — one request every 3 seconds on average.
+     * The policy header and the stateless connection's MAX_GET_BLOCK_PER_MINUTE
+     * (which derives from this constant via static_assert) must stay in sync. */
+    REQUIRE(LLP::GET_BLOCK_ROLLING_LIMIT_PER_MINUTE == 20u);
+}
+
+TEST_CASE("Authenticated miner sending exactly 20 GET_BLOCK in 60s all succeed", "[rate_limit][get_block][invariant]")
+{
+    /* Invariant: an authenticated miner with a valid session and request count
+     * <= 20 in the last 60 s ALWAYS receives BLOCK_DATA from the rolling limiter.
+     * This test verifies the rolling limiter itself honours the contract. */
+    constexpr std::size_t LIMIT = LLP::GET_BLOCK_ROLLING_LIMIT_PER_MINUTE; // == 20
+    LLP::GetBlockRollingLimiter limiter(LIMIT, LLP::GET_BLOCK_ROLLING_WINDOW);
+    const std::string key = "session=99|lane=1|ip=10.0.0.1";
+    const auto t0 = LLP::GetBlockRollingLimiter::clock::now();
+
+    for(std::size_t i = 0; i < LIMIT; ++i)
+    {
+        uint32_t retryAfterMs = 0;
+        std::size_t inWindow = 0;
+        INFO("Request " << (i + 1) << " of " << LIMIT << " must be allowed");
+        REQUIRE(limiter.Allow(key, t0 + std::chrono::milliseconds(i * 100), retryAfterMs, inWindow));
+        REQUIRE(retryAfterMs == 0u);
+    }
+}
+
+TEST_CASE("21st GET_BLOCK request in 60s is rejected with RATE_LIMIT_EXCEEDED", "[rate_limit][get_block][invariant]")
+{
+    /* Invariant: the 21st request in the same 60-second rolling window must be
+     * rejected with a non-zero retry_after_ms so the miner knows when to retry. */
+    constexpr std::size_t LIMIT = LLP::GET_BLOCK_ROLLING_LIMIT_PER_MINUTE; // == 20
+    LLP::GetBlockRollingLimiter limiter(LIMIT, LLP::GET_BLOCK_ROLLING_WINDOW);
+    const std::string key = "session=42|lane=2|ip=10.0.0.2";
+    const auto t0 = LLP::GetBlockRollingLimiter::clock::now();
+
+    for(std::size_t i = 0; i < LIMIT; ++i)
+    {
+        uint32_t retryAfterMs = 0;
+        std::size_t inWindow = 0;
+        REQUIRE(limiter.Allow(key, t0 + std::chrono::milliseconds(i * 10), retryAfterMs, inWindow));
+    }
+
+    /* 21st request — must be denied */
+    uint32_t retryAfterMs = 0;
+    std::size_t inWindow = 0;
+    REQUIRE_FALSE(limiter.Allow(key, t0 + std::chrono::seconds(5), retryAfterMs, inWindow));
+    REQUIRE(retryAfterMs > 0u);
+    REQUIRE(inWindow == LIMIT);
+}
+
+TEST_CASE("Throttle mode alone does not block an in-budget authenticated miner", "[rate_limit][get_block][invariant]")
+{
+    /* Invariant: throttle mode must act as an amplifier of genuine over-budget
+     * behaviour, not as an independent gate.  The rolling limiter itself should
+     * allow requests that are within the window regardless of any external flags.
+     *
+     * Since CheckRateLimit() is private, this test verifies the rolling limiter's
+     * behaviour directly: it must allow in-budget requests without any throttle-mode
+     * awareness, enabling CheckRateLimit to skip the throttle pre-check for GET_BLOCK
+     * and rely solely on the rolling window as the authoritative gate. */
+    constexpr std::size_t LIMIT = LLP::GET_BLOCK_ROLLING_LIMIT_PER_MINUTE; // == 20
+    LLP::GetBlockRollingLimiter limiter(LIMIT, LLP::GET_BLOCK_ROLLING_WINDOW);
+    const std::string key = "session=7|lane=1|ip=172.16.0.1";
+    const auto t0 = LLP::GetBlockRollingLimiter::clock::now();
+
+    /* Simulate half the budget used (10 out of 20). */
+    for(std::size_t i = 0; i < LIMIT / 2; ++i)
+    {
+        uint32_t retryAfterMs = 0;
+        std::size_t inWindow = 0;
+        REQUIRE(limiter.Allow(key, t0 + std::chrono::milliseconds(i * 50), retryAfterMs, inWindow));
+    }
+
+    /* Even if external throttle-mode were set, the rolling limiter still has
+     * capacity and MUST allow the next request.  The rolling limiter does not
+     * know about throttle mode — that is correct by design: the gate is the
+     * window, not a separate flag. */
+    uint32_t retryAfterMs = 0;
+    std::size_t inWindow = 0;
+    REQUIRE(limiter.Allow(key, t0 + std::chrono::milliseconds(LIMIT / 2 * 50 + 100), retryAfterMs, inWindow));
+    REQUIRE(retryAfterMs == 0u);
+    REQUIRE(inWindow == LIMIT / 2 + 1);
 }
 
 TEST_CASE("GET_BLOCK policy reason codes are explicit", "[rate_limit][get_block][reason]")

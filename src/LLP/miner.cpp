@@ -1783,29 +1783,14 @@ namespace LLP
         /* Check if reward address is bound for stateless miners */
         if(!fRewardBound)
         {
-            debug::error(FUNCTION, "GET_BLOCK: reward address not set - send MINER_SET_REWARD first");
-            return debug::error(FUNCTION, "Reward address required for mining");
+            respond(BLOCK_REJECTED, BuildGetBlockControlPayload(GetBlockPolicyReason::TEMPLATE_NOT_READY, 0));
+            return debug::error(FUNCTION, "GET_BLOCK: reward address not set - send MINER_SET_REWARD first");
         }
 
-        /* Check AutoCoolDown FIRST — don't count as violation if cooldown blocks it */
-        {
-            bool fLocalhostBypass = false;
-            if(MiningConstants::DISABLE_LOCALHOST_AUTOCOOLDOWN)
-            {
-                std::string strIP = GetAddress().ToStringIP();
-                if(strIP == "127.0.0.1" || strIP == "::1")
-                    fLocalhostBypass = true;
-            }
-            LOCK(MUTEX);
-            if(!fLocalhostBypass && !m_get_block_cooldown.Ready())
-            {
-                const uint32_t nRetryAfterMs = static_cast<uint32_t>(m_get_block_cooldown.Remaining().count());
-                debug::log(1, FUNCTION, "GET_BLOCK cooldown active for ", GetAddress().ToStringIP(),
-                    " (", nRetryAfterMs, "ms remaining) — not counting as violation");
-                respond(BLOCK_REJECTED, BuildGetBlockControlPayload(GetBlockPolicyReason::RATE_LIMIT_EXCEEDED, nRetryAfterMs));
-                return true;  // Handled (cooldown blocked, no violation)
-            }
-        }
+        /* AutoCoolDown only applies to unauthenticated or over-budget miners.
+         * Authentication is already confirmed above; skip the cooldown gate so that
+         * an authenticated miner who is within the rate-limit budget always receives
+         * BLOCK_DATA (invariant: authenticated + in-budget → BLOCK_DATA MUST follow). */
 
         TAO::Ledger::Block *pBlock = nullptr;
 
