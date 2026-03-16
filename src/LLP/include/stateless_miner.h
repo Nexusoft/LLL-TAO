@@ -1264,6 +1264,22 @@ namespace LLP
             std::vector<uint8_t>& vPlaintext
         );
 
+        /** EncryptRewardResult
+         *
+         *  Encrypts reward result response using ChaCha20-Poly1305.
+         *
+         *  @param[in] vPlaintext The data to encrypt
+         *  @param[in] vKey The ChaCha20 session key
+         *
+         *  @return Encrypted payload (nonce + ciphertext + tag)
+         *
+         **/
+        static std::vector<uint8_t> EncryptRewardResult(
+            uint32_t nSessionId,
+            const std::vector<uint8_t>& vPlaintext,
+            const std::vector<uint8_t>& vKey
+        );
+
         /** ValidateRewardAddress
          *
          *  Validates that a reward address is non-zero and properly formatted.
