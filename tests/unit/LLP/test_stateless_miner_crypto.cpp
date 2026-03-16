@@ -1233,7 +1233,8 @@ TEST_CASE("T39: PacketCryptoService rejects tampered auth tag and records auth f
 
     REQUIRE(LLP::PacketCryptoService::Encode(3003, TEST_MESSAGE_TYPE, vKey, vPayload, vEncrypted));
     REQUIRE(vEncrypted.size() >= LLP::MinEncryptedFrameBytes(LLP::NodeCryptoMode::EVP));
-    vEncrypted.back() ^= 0x01;
+    static constexpr uint8_t AUTH_TAG_TAMPER_BIT = 0x01;
+    vEncrypted.back() ^= AUTH_TAG_TAMPER_BIT;
 
     REQUIRE_FALSE(LLP::PacketCryptoService::Decode(3003, TEST_MESSAGE_TYPE, vKey, vEncrypted, vDecrypted));
     const LLP::PacketCryptoService::MetricsSnapshot metrics = LLP::PacketCryptoService::Metrics();

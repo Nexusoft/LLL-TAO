@@ -284,6 +284,7 @@ namespace LLC
         struct SessionState
         {
             std::vector<uint8_t> vSessionKey;
+            /* Session generation; incremented on RotateSession and encoded into nonce epoch bytes. */
             uint64_t nEpoch = 0;
             uint64_t nTxNonce = 0;
             uint32_t nRxEpoch = 0;
