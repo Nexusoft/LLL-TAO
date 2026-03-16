@@ -19,7 +19,6 @@ ________________________________________________________________________________
 #include <LLP/include/falcon_constants.h>
 #include <LLP/include/falcon_auth.h>
 #include <LLP/include/falcon_verify.h>
-#include <LLP/include/crypto_envelope.h>
 #include <LLP/include/disposable_falcon.h>
 #include <LLP/include/session_recovery.h>
 #include <LLP/include/auto_cooldown_manager.h>
@@ -51,7 +50,6 @@ ________________________________________________________________________________
 #include <LLC/include/flkey.h>
 #include <LLC/include/eckey.h>
 #include <LLC/include/chacha20_helpers.h>
-#include <LLC/include/chacha20_evp_manager.h>
 #include <LLC/include/mining_session_keys.h>
 #include <LLC/include/falcon_constants_v2.h>
 #include <LLC/types/bignum.h>
@@ -121,9 +119,6 @@ namespace LLP
             return config::GetBoolArg("-allow_legacy_empty_block_data", false);
         }
     }
-
-    static_assert(MaxEncryptedPayloadBytes(NodeCryptoMode::EVP, FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX) < LEGACY_STALE_FRAME_LIMIT_BYTES,
-                  "SUBMIT_BLOCK EVP max must remain below legacy 2MB assumptions to keep parser bounds and compatibility checks sane");
 
     /* Import opcode constants for stateless mining protocol */
     static constexpr uint16_t MINER_AUTH_INIT = OpcodeUtility::Stateless::AUTH_INIT;
@@ -225,9 +220,6 @@ namespace LLP
     /** Default Destructor **/
     StatelessMinerConnection::~StatelessMinerConnection()
     {
-        if(context.nSessionId != 0)
-            LLC::ChaCha20EvpManager::Instance().TeardownSession(context.nSessionId);
-
         /* Clear session keys */
         {
             std::lock_guard<std::mutex> lock(SESSION_MUTEX);
@@ -620,9 +612,6 @@ namespace LLP
                     LOCK(MUTEX);
                     StatelessMinerManager::Get().RemoveMiner(context.strAddress);
                 }
-
-                if(context.nSessionId != 0)
-                    LLC::ChaCha20EvpManager::Instance().TeardownSession(context.nSessionId);
 
                 return;
             }
@@ -1220,33 +1209,17 @@ namespace LLP
                            " size=", PACKET.DATA.size(),
                            " bound_reward_hash=", FullHexOrUnset(context.hashRewardAddress));
 
-                const NodeCryptoMode mode = GetNodeCryptoMode();
-                const CryptoPhase phase = ResolveCryptoPhase(context.fAuthenticated, context.nSessionId);
-                debug::log(2, FUNCTION, "SUBMIT_BLOCK crypto phase=", CryptoPhaseString(phase),
-                           " mode=", NodeCryptoModeString(mode),
-                           " sid=", context.nSessionId);
-
-                if(mode == NodeCryptoMode::EVP && phase != CryptoPhase::PHASE_SESSION_BOUND)
-                {
-                    debug::error(FUNCTION, "SUBMIT_BLOCK rejected: mode=evp requires ", CryptoPhaseString(CryptoPhase::PHASE_SESSION_BOUND),
-                                 " current=", CryptoPhaseString(phase), " sid=", context.nSessionId);
-                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                    respond(response);
-                    return true;
-                }
-
-                const size_t MIN_SIZE = (mode == NodeCryptoMode::EVP)
-                    ? MinEncryptedFrameBytes(mode)
-                    : (FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE);
-                const size_t MAX_SIZE = (mode == NodeCryptoMode::EVP)
-                    ? MaxEncryptedPayloadBytes(mode, FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX)
-                    : FalconConstants::SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX;
+                /* Validate packet size using FalconConstants */
+                /* Minimum: merkle(64) + nonce(8) = 72 bytes (legacy format) */
+                const size_t MIN_SIZE = FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE;
+                
+                /* Maximum: full block with ChaCha20 encryption = SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX */
+                const size_t MAX_SIZE = FalconConstants::SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX;
 
                 if(PACKET.DATA.size() < MIN_SIZE)
                 {
-                    debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK packet too small: mode=",
-                               NodeCryptoModeString(mode),
-                               " frame=", PACKET.DATA.size(), " expected_min=", MIN_SIZE, " sid=", context.nSessionId);
+                    debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK packet too small: ", 
+                               PACKET.DATA.size(), " < ", MIN_SIZE);
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
                     return true;
@@ -1254,9 +1227,8 @@ namespace LLP
 
                 if(PACKET.DATA.size() > MAX_SIZE)
                 {
-                    debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK packet too large: mode=",
-                               NodeCryptoModeString(mode),
-                               " frame=", PACKET.DATA.size(), " expected_max=", MAX_SIZE, " sid=", context.nSessionId);
+                    debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK packet too large: ",
+                               PACKET.DATA.size(), " > ", MAX_SIZE);
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
                     return true;
@@ -1339,13 +1311,14 @@ namespace LLP
                                 debug::log(0, "🔓 CHACHA20 DECRYPTION:");
                                 debug::log(0, "   Encrypted payload size: ", PACKET.DATA.size(), " bytes");
                                 
-                                /* Decrypt using ChaCha20-Poly1305 with v1 contract AAD
-                                 * (protocol_version + session_id + message_type + payload_length). */
-                                bool fDecrypted = LLC::ChaCha20EvpManager::Instance().DecryptPacket(
-                                    context.nSessionId,
-                                    PACKET.HEADER,
-                                    context.vChaChaKey,
+                                /* Decrypt using ChaCha20-Poly1305 helper
+                                 * Note: No AAD (Additional Authenticated Data) is used here because
+                                 * the entire SUBMIT_BLOCK packet is encrypted as-is without domain separation.
+                                 * Unlike MINER_SET_REWARD which uses AAD for context binding, SUBMIT_BLOCK
+                                 * encrypts the complete payload for transport-layer confidentiality. */
+                                bool fDecrypted = LLC::DecryptPayloadChaCha20(
                                     PACKET.DATA,
+                                    context.vChaChaKey,
                                     decryptedData
                                 );
                                 
@@ -1372,7 +1345,7 @@ namespace LLP
                                     debug::log(0, FUNCTION, "- recovered session genesis: ",
                                                optRecovery.has_value() ? FullHexOrUnset(optRecovery->hashGenesis) : "NOT AVAILABLE");
                                     debug::log(0, FUNCTION, "- recovered session genesis matches live context: ", YesNo(fRecoveryGenesisMatches));
-                                    debug::log(0, FUNCTION, "- AAD used for decryption: wire_v1+sid+msg_type+payload_length");
+                                    debug::log(0, FUNCTION, "- AAD used for decryption: '' (0 bytes, empty)");
                                     debug::log(0, FUNCTION, "- encrypted payload size received: ", PACKET.DATA.size(), " bytes");
                                     if(PACKET.DATA.size() >= 12)
                                     {
@@ -1519,12 +1492,7 @@ namespace LLP
                             {
                                 /* Fallback: legacy Falcon wrapper [merkle][nonce][timestamp][sig_len][signature] */
                                 std::vector<uint8_t> decryptedData;
-                                if(!LLC::ChaCha20EvpManager::Instance().DecryptPacket(
-                                    context.nSessionId,
-                                    PACKET.HEADER,
-                                    context.vChaChaKey,
-                                    PACKET.DATA,
-                                    decryptedData))
+                                if(!LLC::DecryptPayloadChaCha20(PACKET.DATA, context.vChaChaKey, decryptedData))
                                 {
                                     const auto optRecovery = SessionRecoveryManager::Get().RecoverSessionByIdentity(
                                         context.hashKeyID,
@@ -2646,7 +2614,6 @@ namespace LLP
                     }
                 }
                 
-                const uint32_t nPrevSessionId = context.nSessionId;
                 context = result.context;
 
                 /* Derive ChaCha20 key from genesis using unified helper (same as legacy miner) */
@@ -2715,21 +2682,6 @@ namespace LLP
                     {
                         uint256_t hashKey(context.vChaChaKey);
                         SessionRecoveryManager::Get().SaveChaCha20State(context.hashKeyID, hashKey, 0);
-                    }
-                }
-
-                if(GetNodeCryptoMode() == NodeCryptoMode::EVP && context.fEncryptionReady && !context.vChaChaKey.empty())
-                {
-                    if(nPrevSessionId != 0 && nPrevSessionId != context.nSessionId)
-                    {
-                        /* Session ID changed (cross-port canonicalization or auth refresh):
-                         * teardown old session ID state first, then rotate/seed the active ID. */
-                        LLC::ChaCha20EvpManager::Instance().TeardownSession(nPrevSessionId);
-                        LLC::ChaCha20EvpManager::Instance().RotateSession(context.nSessionId, context.vChaChaKey);
-                    }
-                    else
-                    {
-                        LLC::ChaCha20EvpManager::Instance().InitSession(context.nSessionId, context.vChaChaKey);
                     }
                 }
 

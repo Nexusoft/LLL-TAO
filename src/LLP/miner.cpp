@@ -18,7 +18,6 @@ ________________________________________________________________________________
 #include <LLP/include/falcon_constants.h>
 #include <LLP/include/falcon_auth.h>
 #include <LLP/include/disposable_falcon.h>
-#include <LLP/include/crypto_envelope.h>
 #include <LLP/include/opcode_utility.h>
 #include <LLP/include/node_cache.h>
 #include <LLP/include/session_recovery.h>
@@ -59,7 +58,6 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 #include <LLC/include/encrypt.h>
 #include <LLC/include/chacha20_helpers.h>
-#include <LLC/include/chacha20_evp_manager.h>
 #include <LLC/include/mining_session_keys.h>
 #include <LLC/hash/SK.h>
 
@@ -2008,41 +2006,22 @@ namespace LLP
         debug::log(2, FUNCTION, "SUBMIT_BLOCK from ", GetAddress().ToStringIP(),
                    " size=", PACKET.DATA.size());
 
-        const NodeCryptoMode mode = GetNodeCryptoMode();
-        const CryptoPhase phase = ResolveCryptoPhase(fMinerAuthenticated, nSessionId);
-        debug::log(2, FUNCTION, "SUBMIT_BLOCK crypto phase=", CryptoPhaseString(phase),
-                   " mode=", NodeCryptoModeString(mode),
-                   " sid=", nSessionId);
-
-        if(mode == NodeCryptoMode::EVP && phase != CryptoPhase::PHASE_SESSION_BOUND)
-        {
-            debug::error(FUNCTION, "SUBMIT_BLOCK rejected: mode=evp requires ", CryptoPhaseString(CryptoPhase::PHASE_SESSION_BOUND),
-                         " current=", CryptoPhaseString(phase), " sid=", nSessionId);
-            respond(BLOCK_REJECTED);
-            return true;
-        }
-
-        const size_t MIN_SIZE = (mode == NodeCryptoMode::EVP)
-            ? MinEncryptedFrameBytes(mode)
-            : (FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE);
-        const size_t MAX_SIZE = (mode == NodeCryptoMode::EVP)
-            ? MaxEncryptedPayloadBytes(mode, FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX)
-            : FalconConstants::SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX;
+        /* Validate packet size using FalconConstants */
+        const size_t MIN_SIZE = FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE;
+        const size_t MAX_SIZE = FalconConstants::SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX;
 
         if(PACKET.DATA.size() < MIN_SIZE)
         {
-            debug::log(0, FUNCTION, "SUBMIT_BLOCK packet too small: mode=",
-                       NodeCryptoModeString(mode),
-                       " frame=", PACKET.DATA.size(), " expected_min=", MIN_SIZE, " sid=", nSessionId);
+            debug::log(0, FUNCTION, "SUBMIT_BLOCK packet too small: ",
+                       PACKET.DATA.size(), " < ", MIN_SIZE);
             respond(BLOCK_REJECTED);
             return true;
         }
 
         if(PACKET.DATA.size() > MAX_SIZE)
         {
-            debug::log(0, FUNCTION, "SUBMIT_BLOCK packet too large: mode=",
-                       NodeCryptoModeString(mode),
-                       " frame=", PACKET.DATA.size(), " expected_max=", MAX_SIZE, " sid=", nSessionId);
+            debug::log(0, FUNCTION, "SUBMIT_BLOCK packet too large: ",
+                       PACKET.DATA.size(), " > ", MAX_SIZE);
             respond(BLOCK_REJECTED);
             return true;
         }
@@ -2069,15 +2048,10 @@ namespace LLP
 
         /* Attempt to unwrap ChaCha20-encrypted payloads */
         if(fEncryptionReady && !vChaChaKey.empty() &&
-           PACKET.DATA.size() >= MIN_SIZE)
+           PACKET.DATA.size() >= FalconConstants::SUBMIT_BLOCK_WRAPPER_MIN)
         {
             std::vector<uint8_t> vDecrypted;
-            if(LLC::ChaCha20EvpManager::Instance().DecryptPacket(
-                    nSessionId,
-                    static_cast<uint16_t>(PACKET.HEADER),
-                    vChaChaKey,
-                    PACKET.DATA,
-                    vDecrypted))
+            if(LLC::DecryptPayloadChaCha20(PACKET.DATA, vChaChaKey, vDecrypted))
             {
                 debug::log(2, FUNCTION, "SUBMIT_BLOCK: ChaCha20 decryption succeeded");
                 vWorkData = std::move(vDecrypted);
