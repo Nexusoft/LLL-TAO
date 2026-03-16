@@ -1784,6 +1784,8 @@ namespace LLP
         if(!fRewardBound)
         {
             debug::error(FUNCTION, "GET_BLOCK: reward address not set - send MINER_SET_REWARD first");
+            respond(BLOCK_REJECTED,
+                BuildGetBlockControlPayload(GetBlockPolicyReason::CHANNEL_NOT_SET, 0));
             return debug::error(FUNCTION, "Reward address required for mining");
         }
 
