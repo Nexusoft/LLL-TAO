@@ -84,17 +84,6 @@ namespace LLP
 
     const char* SessionConsistencyResultString(const SessionConsistencyResult result);
 
-    enum class RewardResultEvpReason : uint8_t
-    {
-        OK = 0,
-        FRAME_TOO_SHORT,
-        FLAGS_MISMATCH,
-        SESSION_MISMATCH,
-        DECRYPT_FAILED
-    };
-
-    const char* RewardResultEvpReasonString(const RewardResultEvpReason result);
-
     /** SessionBinding
      *
      *  Shared immutable-style identity snapshot for comparing/logging mining
@@ -1241,29 +1230,6 @@ namespace LLP
         static ProcessResult ProcessSetReward(
             const MiningContext& context,
             const StatelessPacket& packet
-        );
-
-        /** DecryptRewardResult
-         *
-         *  Decodes a 0xD0D6/0xD06 reward-result payload with EVP guardrails.
-         *  In EVP mode this validates frame minimum length, flags, and session binding
-         *  before decryption and reports an explicit reason code.
-         *
-         *  @param[in] nSessionId Expected authoritative session id
-         *  @param[in] vEncrypted Reward-result encrypted frame
-         *  @param[in] vKey Session key
-         *  @param[out] vPlaintext Decoded payload
-         *  @param[out] pReason Optional explicit result reason
-         *
-         *  @return True if decrypt succeeded
-         *
-         **/
-        static bool DecryptRewardResult(
-            uint32_t nSessionId,
-            const std::vector<uint8_t>& vEncrypted,
-            const std::vector<uint8_t>& vKey,
-            std::vector<uint8_t>& vPlaintext,
-            RewardResultEvpReason* pReason = nullptr
         );
 
     private:

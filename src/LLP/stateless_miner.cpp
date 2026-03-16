@@ -51,7 +51,6 @@ ________________________________________________________________________________
 #include <iomanip>
 #include <algorithm>
 #include <cstring>
-#include <cassert>
 
 namespace LLP
 {
@@ -61,19 +60,6 @@ namespace LLP
         using Diagnostics::KeyFingerprint;
         using Diagnostics::YesNo;
         using Diagnostics::PassFail;
-        static constexpr size_t MIN_ENVELOPE_HEADER_BYTES =
-            WIRE_VERSION_BYTES + CRYPTO_FLAGS_BYTES + SESSION_ID_BYTES;
-
-        /* EVP wire header layout: [version(1)][flags(1)][session_id(4 LE)]...
-         * Session binding is validated from bytes [2..5] in little-endian order. */
-        inline uint32_t ExtractEnvelopeSessionId(const std::vector<uint8_t>& vEncrypted)
-        {
-            assert(vEncrypted.size() >= MIN_ENVELOPE_HEADER_BYTES);
-            return static_cast<uint32_t>(vEncrypted[2]) |
-                   (static_cast<uint32_t>(vEncrypted[3]) << 8) |
-                   (static_cast<uint32_t>(vEncrypted[4]) << 16) |
-                   (static_cast<uint32_t>(vEncrypted[5]) << 24);
-        }
 
         static const char* const SESSION_CONSISTENCY_RESULT_STRINGS[] =
         {
@@ -115,20 +101,6 @@ namespace LLP
             return SESSION_CONSISTENCY_RESULT_STRINGS[nIndex];
 
         return "Unknown";
-    }
-
-    const char* RewardResultEvpReasonString(const RewardResultEvpReason result)
-    {
-        switch(result)
-        {
-            case RewardResultEvpReason::OK:              return "OK";
-            case RewardResultEvpReason::FRAME_TOO_SHORT: return "FRAME_TOO_SHORT";
-            case RewardResultEvpReason::FLAGS_MISMATCH:  return "FLAGS_MISMATCH";
-            case RewardResultEvpReason::SESSION_MISMATCH: return "SESSION_MISMATCH";
-            case RewardResultEvpReason::DECRYPT_FAILED:  return "DECRYPT_FAILED";
-        }
-
-        return "UNKNOWN";
     }
 
     /* Default constructor */
@@ -2016,105 +1988,7 @@ namespace LLP
             return std::vector<uint8_t>();
         }
 
-        if(GetNodeCryptoMode() == NodeCryptoMode::EVP)
-        {
-            const size_t nExpectedMinLen = MinEncryptedFrameBytes(NodeCryptoMode::EVP);
-            assert(nExpectedMinLen >= MIN_ENVELOPE_HEADER_BYTES);
-            RewardResultEvpReason nReason = RewardResultEvpReason::OK;
-            if(vEncrypted.size() < nExpectedMinLen)
-                nReason = RewardResultEvpReason::FRAME_TOO_SHORT;
-            else if(vEncrypted[1] != ENVELOPE_FLAGS_DEFAULT)
-                nReason = RewardResultEvpReason::FLAGS_MISMATCH;
-            else
-            {
-                const uint32_t nEnvelopeSessionId = ExtractEnvelopeSessionId(vEncrypted);
-                if(nEnvelopeSessionId != nSessionId)
-                    nReason = RewardResultEvpReason::SESSION_MISMATCH;
-            }
-
-            debug::log(2, FUNCTION, "REWARD_RESULT (0xD0D6) EVP frame validation mode=evp sid=", nSessionId,
-                       " expected_min_len=", nExpectedMinLen,
-                       " actual_len=", vEncrypted.size(),
-                       " result_reason=", RewardResultEvpReasonString(nReason));
-
-            if(nReason != RewardResultEvpReason::OK)
-                return std::vector<uint8_t>();
-        }
-
         return vEncrypted;
-    }
-
-
-    bool StatelessMiner::DecryptRewardResult(
-        uint32_t nSessionId,
-        const std::vector<uint8_t>& vEncrypted,
-        const std::vector<uint8_t>& vKey,
-        std::vector<uint8_t>& vPlaintext,
-        RewardResultEvpReason* pReason
-    )
-    {
-        RewardResultEvpReason nReason = RewardResultEvpReason::DECRYPT_FAILED;
-        const NodeCryptoMode mode = GetNodeCryptoMode();
-        const size_t nExpectedMinLen = MinEncryptedFrameBytes(mode);
-        assert(nExpectedMinLen >= MIN_ENVELOPE_HEADER_BYTES);
-
-        if(mode == NodeCryptoMode::EVP)
-        {
-            if(vEncrypted.size() < nExpectedMinLen)
-            {
-                nReason = RewardResultEvpReason::FRAME_TOO_SHORT;
-                debug::error(FUNCTION, "REWARD_RESULT (0xD0D6) EVP decode reject mode=evp sid=", nSessionId,
-                             " expected_min_len=", nExpectedMinLen,
-                             " actual_len=", vEncrypted.size(),
-                             " result_reason=", RewardResultEvpReasonString(nReason));
-                if(pReason != nullptr)
-                    *pReason = nReason;
-                return false;
-            }
-
-            if(vEncrypted[1] != ENVELOPE_FLAGS_DEFAULT)
-            {
-                nReason = RewardResultEvpReason::FLAGS_MISMATCH;
-                debug::error(FUNCTION, "REWARD_RESULT (0xD0D6) EVP decode reject mode=evp sid=", nSessionId,
-                             " expected_min_len=", nExpectedMinLen,
-                             " actual_len=", vEncrypted.size(),
-                             " result_reason=", RewardResultEvpReasonString(nReason));
-                if(pReason != nullptr)
-                    *pReason = nReason;
-                return false;
-            }
-
-            const uint32_t nEnvelopeSessionId = ExtractEnvelopeSessionId(vEncrypted);
-            if(nEnvelopeSessionId != nSessionId)
-            {
-                nReason = RewardResultEvpReason::SESSION_MISMATCH;
-                debug::error(FUNCTION, "REWARD_RESULT (0xD0D6) EVP decode reject mode=evp sid=", nSessionId,
-                             " expected_min_len=", nExpectedMinLen,
-                             " actual_len=", vEncrypted.size(),
-                             " result_reason=", RewardResultEvpReasonString(nReason));
-                if(pReason != nullptr)
-                    *pReason = nReason;
-                return false;
-            }
-        }
-
-        const bool fDecrypted = PacketCryptoService::Decode(
-            nSessionId, static_cast<uint16_t>(REWARD_RESULT), vKey, vEncrypted, vPlaintext, AAD_REWARD_RESULT
-        );
-
-        nReason = fDecrypted ? RewardResultEvpReason::OK : RewardResultEvpReason::DECRYPT_FAILED;
-        if(mode == NodeCryptoMode::EVP)
-        {
-            debug::log(2, FUNCTION, "REWARD_RESULT (0xD0D6) EVP decode mode=evp sid=", nSessionId,
-                       " expected_min_len=", nExpectedMinLen,
-                       " actual_len=", vEncrypted.size(),
-                       " result_reason=", RewardResultEvpReasonString(nReason));
-        }
-
-        if(pReason != nullptr)
-            *pReason = nReason;
-
-        return fDecrypted;
     }
 
 
@@ -2329,18 +2203,6 @@ namespace LLP
         /* Build success response (encrypted) */
         std::vector<uint8_t> vSuccessMsg = {0x01};  // Success status
         std::vector<uint8_t> vEncryptedSuccess = EncryptRewardResult(context.nSessionId, vSuccessMsg, vChaChaKey);
-
-        const bool fRewardResultSessionInvariant = (newContext.nSessionId == context.nSessionId);
-        const bool fRewardResultAuthInvariant = (newContext.fAuthenticated == context.fAuthenticated);
-        if(!fRewardResultSessionInvariant || !fRewardResultAuthInvariant)
-        {
-            debug::error(FUNCTION, "REWARD_RESULT (0xD0D6) invariant violation sid_before=", context.nSessionId,
-                         " sid_after=", newContext.nSessionId,
-                         " auth_before=", YesNo(context.fAuthenticated),
-                         " auth_after=", YesNo(newContext.fAuthenticated));
-        }
-        assert(fRewardResultSessionInvariant && "REWARD_RESULT must not mutate session_id");
-        assert(fRewardResultAuthInvariant && "REWARD_RESULT must not mutate auth state");
         
         StatelessPacket response(StatelessOpcodes::REWARD_RESULT);
         response.DATA = vEncryptedSuccess;
