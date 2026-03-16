@@ -192,12 +192,6 @@ without advancing the Prime channel height.
 | `evp` | ✅ Supported (same ChaCha20 payload structure: `nonce + ciphertext + tag`; node EVP lifecycle + nonce replay guard active) | ✅ Supported |
 | `tls` | ✅ Supported (currently legacy-equivalent path) | ✅ Supported (currently legacy-equivalent path) |
 
-### Migration / Deprecation Notes
-
-- `legacy` remains the default safe mode for staged rollout and miner compatibility.
-- `evp` now routes node packet encode/decode through a unified packet crypto service with strict session generation + nonce monotonic checks.
-- Legacy ChaCha20 helpers remain as a controlled bridge for compatibility mode during migration; operators should prefer `-crypto_mode=evp` once peers are validated.
-
 ---
 
 ## Cross-References
