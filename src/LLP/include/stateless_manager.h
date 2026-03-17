@@ -16,12 +16,23 @@ ________________________________________________________________________________
 #define NEXUS_LLP_INCLUDE_STATELESS_MANAGER_H
 
 #include <LLP/include/stateless_miner.h>
+#include <LLP/include/get_block_policy.h>
 #include <Util/templates/concurrent_hashmap.h>
+
+#include <LLC/types/uint1024.h>
 
 #include <string>
 #include <vector>
 #include <optional>
 #include <atomic>
+#include <functional>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <unordered_map>
+
+/* Forward declaration to avoid including block.h in manager header */
+namespace TAO { namespace Ledger { class Block; } }
 
 namespace LLP
 {
@@ -487,6 +498,85 @@ namespace LLP
                                      TAO::Register::Address& hashDefault) const;
 
 
+        /* ═══════════════════════════════════════════════════════════════════════
+         * SIM-LINK SESSION-SCOPED SERVICES
+         *
+         * These APIs support the dual-lane architecture where a single authenticated
+         * miner session is simultaneously active on both the legacy (8323) and
+         * stateless (9323) lanes, sharing a single rate-limit budget and block
+         * template store across both connection threads.
+         * ═══════════════════════════════════════════════════════════════════════ */
+
+        /** GetSessionRateLimiter
+         *
+         *  Get (or create) the session-scoped rolling rate limiter for a session.
+         *  The returned shared_ptr is thread-safe; multiple connection threads may
+         *  call Allow() concurrently — GetBlockRollingLimiter is internally locked.
+         *
+         *  This replaces the per-connection m_getBlockRollingLimiter for GET_BLOCK
+         *  so that a miner with both a legacy and a stateless connection shares one
+         *  20/60s budget across both lanes (SIM-LINK combined budget).
+         *
+         *  Key format used by callers: "session=N|combined"
+         *
+         *  @param[in] nSessionId Session identifier
+         *
+         *  @return Shared pointer to the session-scoped rate limiter (never null)
+         *
+         **/
+        std::shared_ptr<GetBlockRollingLimiter> GetSessionRateLimiter(uint32_t nSessionId);
+
+        /** StoreSessionBlock
+         *
+         *  Store a block template in the session-scoped cross-lane block map.
+         *  Called by SharedGetBlockHandler after new_block() succeeds on either lane.
+         *
+         *  The session map uses shared_ptr ownership so both the legacy and stateless
+         *  connection threads can safely access the same template, and the template
+         *  survives for cross-lane SUBMIT_BLOCK resolution (a solution submitted on
+         *  port 8323 can resolve a template issued on port 9323).
+         *
+         *  Thread-safe: protected by m_sessionBlockMutex.
+         *
+         *  @param[in] nSessionId      Session identifier
+         *  @param[in] hashMerkleRoot  Block template merkle root (lookup key)
+         *  @param[in] spBlock         Shared ownership of the block template
+         *
+         **/
+        void StoreSessionBlock(uint32_t nSessionId, const uint512_t& hashMerkleRoot,
+                               std::shared_ptr<TAO::Ledger::Block> spBlock);
+
+        /** FindSessionBlock
+         *
+         *  Look up a block template in the session-scoped cross-lane block map.
+         *  Used by SUBMIT_BLOCK handlers on either lane to resolve templates issued
+         *  on the other lane (cross-lane resolution).
+         *
+         *  Thread-safe: protected by m_sessionBlockMutex.
+         *
+         *  @param[in] nSessionId      Session identifier
+         *  @param[in] hashMerkleRoot  Block template merkle root to search for
+         *
+         *  @return Shared pointer to the block template, or nullptr if not found
+         *
+         **/
+        std::shared_ptr<TAO::Ledger::Block> FindSessionBlock(uint32_t nSessionId,
+                                                              const uint512_t& hashMerkleRoot);
+
+        /** PruneSessionBlocks
+         *
+         *  Remove all stale block templates from the session-scoped block map for
+         *  a given session.  Called when the chain tip advances (SendChannelNotification
+         *  fires) to prevent unbounded growth of the session-scoped template store.
+         *
+         *  Thread-safe: protected by m_sessionBlockMutex.
+         *
+         *  @param[in] nSessionId  Session identifier whose templates to prune
+         *
+         **/
+        void PruneSessionBlocks(uint32_t nSessionId);
+
+
 
     private:
         /** Private constructor for singleton **/
@@ -530,6 +620,26 @@ namespace LLP
 
         /** Atomic counter for total blocks accepted **/
         mutable std::atomic<uint64_t> nTotalBlocksAccepted{0};
+
+        /* ═══════════════════════════════════════════════════════════════════════
+         * SIM-LINK SESSION-SCOPED STORAGE (private)
+         * ═══════════════════════════════════════════════════════════════════════ */
+
+        /** Mutex protecting session rate limiter map **/
+        mutable std::mutex m_sessionLimiterMutex;
+
+        /** Session-scoped rate limiters keyed by session ID.
+         *  Each limiter enforces 20/60s GET_BLOCK budget shared across both lanes.
+         *  Using shared_ptr so callers can hold a reference past the lock window. **/
+        std::unordered_map<uint32_t, std::shared_ptr<GetBlockRollingLimiter>> m_mapSessionLimiters;
+
+        /** Mutex protecting session block template map **/
+        mutable std::mutex m_sessionBlockMutex;
+
+        /** Session-scoped block template storage for cross-lane SUBMIT_BLOCK resolution.
+         *  Outer key: session ID.  Inner key: hashMerkleRoot.
+         *  shared_ptr ownership allows both lane threads to safely access the template. **/
+        std::unordered_map<uint32_t, std::map<uint512_t, std::shared_ptr<TAO::Ledger::Block>>> m_mapSessionBlocks;
     };
 
 } // namespace LLP

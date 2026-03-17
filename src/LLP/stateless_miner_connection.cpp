@@ -27,6 +27,7 @@ ________________________________________________________________________________
 #include <LLP/include/push_notification.h>
 #include <LLP/include/mining_constants.h>
 #include <LLP/include/session_status.h>
+#include <LLP/include/get_block_handler.h>
 #include <LLP/templates/events.h>
 
 #include <TAO/Ledger/include/create.h>
@@ -852,17 +853,18 @@ namespace LLP
                     return true;
                 }
 
-                /* Rolling 25/min policy check (session+lane+connection scoped). */
-                uint32_t nRetryAfterMs = 0;
-                if(!CheckRateLimit(GET_BLOCK, &nRetryAfterMs))
-                {
-                    const uint64_t nRateLimited = ++g_get_block_rate_limited_total;
-                    debug::log(1, FUNCTION, "metric get_block_rate_limited_total=", nRateLimited);
-                    SendGetBlockControlResponse(GetBlockPolicyReason::RATE_LIMIT_EXCEEDED, nRetryAfterMs, true);
-                    return true;
-                }
-                
-                /* Check channel is set — every path below the rate-limit check MUST send a wire response. */
+                /* ── SIM-LINK: Delegate to SharedGetBlockHandler ─────────────────────
+                 * Session-scoped rate limit check, block creation, session block storage,
+                 * and 228-byte payload serialization are all handled by the shared handler.
+                 *
+                 * Rate limiting is now session-scoped (shared 20/60s budget across both
+                 * the legacy (8323) and stateless (9323) lanes for this session).
+                 *
+                 * The CheckRateLimit() call for GET_BLOCK is intentionally removed here;
+                 * the session limiter inside SharedGetBlockHandler is the authoritative gate.
+                 */
+
+                /* Check channel is set — every path below MUST send a wire response. */
                 if(context.nChannel == 0)
                 {
                     debug::error(FUNCTION, "Channel not set for authenticated in-budget miner; miner must call SET_CHANNEL first — sending TEMPLATE_NOT_READY");
@@ -871,283 +873,123 @@ namespace LLP
                     return true;
                 }
 
-                debug::log(2, FUNCTION, "Invariant: authenticated + in-budget + channel set → BLOCK_DATA MUST follow");
-                debug::log(0, "   ✅ Validation passed");
+                debug::log(2, FUNCTION, "Invariant: authenticated + in-budget + channel set → BLOCK_DATA MUST follow (SIM-LINK session-scoped rate check)");
+                debug::log(0, "   ✅ Validation passed, delegating to SharedGetBlockHandler");
 
-                /* CRITICAL: Release MUTEX before new_block() — new_block() acquires MUTEX internally.
-                 * std::mutex is non-recursive; holding lk and calling new_block() causes a deadlock. */
+                /* CRITICAL: Release MUTEX before new_block() via SharedGetBlockHandler —
+                 * new_block() acquires MUTEX internally.  std::mutex is non-recursive;
+                 * holding lk and calling new_block() causes a deadlock. */
                 lk.unlock();
 
-                debug::log(0, "   Calling new_block()...");
+                /* Build request for the shared handler */
+                GetBlockRequest gbReq;
+                gbReq.context   = context;           /* immutable snapshot (no MUTEX needed after unlock) */
+                gbReq.nSessionId = context.nSessionId;
+                gbReq.fnCreateBlock = [this]() -> TAO::Ledger::Block*
+                {
+                    return new_block();
+                };
 
-                /* Track GET_BLOCK response latency for observability. */
+                /* Track GET_BLOCK response latency for observability */
                 const auto tGetBlockStart = std::chrono::steady_clock::now();
 
-                /* Create a new block */
-                TAO::Ledger::Block* pBlock = new_block();
-
-                /* Handle if the block failed to be created. */
-                if(!pBlock)
-                {
-                    /* Chain may have advanced during template creation — retry once with fresh chain state */
-                    debug::log(2, FUNCTION, "new_block() returned nullptr — retrying once (chain may have advanced mid-creation)");
-                    pBlock = new_block();
-                }
+                GetBlockResult gbResult = SharedGetBlockHandler(gbReq);
 
                 const auto tGetBlockEnd = std::chrono::steady_clock::now();
                 const auto nGetBlockLatencyMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                     tGetBlockEnd - tGetBlockStart).count();
                 debug::log(2, FUNCTION, "metric get_block_response_latency_ms=", nGetBlockLatencyMs);
 
-                /* Bounded deadline: if template build exceeded 500ms and failed,
-                 * return TEMPLATE_REBUILD_IN_PROGRESS so caller retries quickly. */
-                constexpr int64_t GET_BLOCK_DEADLINE_MS = 500;
-
                 /* Re-acquire MUTEX for respond() and context mutations */
                 lk.lock();
 
-                if(!pBlock)
+                if(!gbResult.fSuccess)
                 {
-                    debug::error("   ❌ new_block() failed after retry");
-                    /* Use TEMPLATE_REBUILD_IN_PROGRESS when deadline exceeded,
-                     * INTERNAL_RETRY otherwise.
-                     * Invariant: INTERNAL_RETRY MUST always carry a non-zero retry_after_ms
-                     * so miners do not poll blind. Value = GET_BLOCK_THROTTLE_INTERVAL_MS (2000ms). */
-                    const GetBlockPolicyReason eFailReason =
-                        (nGetBlockLatencyMs >= GET_BLOCK_DEADLINE_MS)
-                            ? GetBlockPolicyReason::TEMPLATE_REBUILD_IN_PROGRESS
-                            : GetBlockPolicyReason::INTERNAL_RETRY;
-                    SendGetBlockControlResponse(eFailReason, MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS, true);
-                    debug::log(2, "📥 === GET_BLOCK: FAILED (NO BLOCK AFTER RETRY, latency=",
-                               nGetBlockLatencyMs, "ms reason=", GetBlockPolicyReasonCode(eFailReason), ") ===");
+                    if(gbResult.eReason == GetBlockPolicyReason::RATE_LIMIT_EXCEEDED)
+                    {
+                        const uint64_t nRateLimited = ++g_get_block_rate_limited_total;
+                        debug::log(1, FUNCTION, "metric get_block_rate_limited_total=", nRateLimited);
+                    }
+
+                    /* Translate INTERNAL_RETRY to TEMPLATE_REBUILD_IN_PROGRESS when deadline exceeded */
+                    constexpr int64_t GET_BLOCK_DEADLINE_MS = 500;
+                    GetBlockPolicyReason eReportReason = gbResult.eReason;
+                    if(eReportReason == GetBlockPolicyReason::INTERNAL_RETRY &&
+                       nGetBlockLatencyMs >= GET_BLOCK_DEADLINE_MS)
+                    {
+                        eReportReason = GetBlockPolicyReason::TEMPLATE_REBUILD_IN_PROGRESS;
+                    }
+
+                    SendGetBlockControlResponse(eReportReason, gbResult.nRetryAfterMs, true);
+                    debug::log(2, "📥 === GET_BLOCK: FAILED (reason=",
+                               GetBlockPolicyReasonCode(eReportReason), " latency=", nGetBlockLatencyMs, "ms) ===");
                     return true;
                 }
-                
-                debug::log(0, "   ✅ Block created successfully");
-                if(nGetBlockLatencyMs >= GET_BLOCK_DEADLINE_MS)
-                    debug::warning(FUNCTION, "GET_BLOCK new_block() latency ", nGetBlockLatencyMs, "ms exceeded ", GET_BLOCK_DEADLINE_MS, "ms deadline (block created but slow)");
-                debug::log(0, "      Height: ", pBlock->nHeight);
-                debug::log(0, "      Channel: ", pBlock->nChannel);
-                debug::log(0, "      Merkle root: ", pBlock->hashMerkleRoot.SubString());
-                debug::log(0, "[BLOCK CREATE] hashPrevBlock = ", pBlock->hashPrevBlock.SubString(),
-                           " (template anchor baked in, unified height ", pBlock->nHeight, ")");
-                debug::log(2, FUNCTION, "[BLOCK CREATE] hashPrevBlock FULL (MSB-first): ", pBlock->hashPrevBlock.GetHex());
-                
-                /* Note: Block is already stored in mapBlocks by new_block() */
-                
-                try {
-                    debug::log(0, "   Serializing block...");
-                    
-                    /* Before serialization */
-                    debug::log(0, "   Block fields before serialization:");
-                    debug::log(0, "      nChannel: ", pBlock->nChannel);
-                    debug::log(0, "      nHeight: ", pBlock->nHeight);
-                    debug::log(0, "      Merkle: ", pBlock->hashMerkleRoot.SubString());
-                    
-                    /* Use block's Serialize() method - returns 216-byte mining template */
-                    std::vector<uint8_t> vData = pBlock->Serialize();
-                    
-                    if(vData.empty())
-                    {
-                        debug::error("   ❌ Serialization returned empty vector!");
-                        SendGetBlockControlResponse(GetBlockPolicyReason::TEMPLATE_NOT_READY, MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS, true);
-                        debug::log(2, "📥 === GET_BLOCK: FAILED (EMPTY SERIALIZATION) ===");
-                        return true;
-                    }
-                    
-                    debug::log(0, "   ✅ Serialized! Size: ", vData.size(), " bytes");
-                    
-                    /* ARCHITECTURAL NOTE: nChannelHeight vs nChannel vs nHeight
-                     * =========================================================
-                     * 
-                     * The 216-byte Tritium block template contains:
-                     *   - nChannel (offset 196): Which channel this block is for (1=Prime, 2=Hash)
-                     *   - nHeight (offset 200):  Unified blockchain height (all channels combined)
-                     * 
-                     * The TemplateMetadata structure ADDITIONALLY stores:
-                     *   - nChannelHeight: Channel-specific height (NOT in serialized template)
-                     * 
-                     * Why nChannelHeight is not in the template:
-                     *   - Block (216 bytes) = Minimal serializable data for mining
-                     *   - BlockState (extended) = Block + chain state (calculated during Accept())
-                     *   - nChannelHeight is calculated by Block::Accept() using GetLastState()
-                     *   - TemplateMetadata stores it for staleness detection before Accept()
-                     * 
-                     * Flow:
-                     *   1. Node creates Block with nChannel=1, nHeight=6536668
-                     *   2. Node calculates nChannelHeight=2302369 for metadata
-                     *   3. Node serializes Block (216 bytes, includes nChannel at offset 196)
-                     *   4. Node stores TemplateMetadata with nChannelHeight=2302369
-                     *   5. Miner receives 216-byte template, deserializes nChannel from offset 196
-                     *   6. When miner submits, Block::Accept() recalculates nChannelHeight
-                     */
-                    
-                    /* Verify both nChannel and nHeight in serialized template */
-                    if(vData.size() >= TRITIUM_BLOCK_SIZE)
-                    {
-                        /* Tritium block serialization format (216 bytes):
-                         *   [0-3]     nVersion (4 bytes)
-                         *   [4-131]   hashPrevBlock (128 bytes)
-                         *   [132-195] hashMerkleRoot (64 bytes)
-                         *   [196-199] nChannel (4 bytes)      ← CORRECT offset
-                         *   [200-203] nHeight (4 bytes)
-                         *   [204-207] nBits (4 bytes)
-                         *   [208-215] nNonce (8 bytes)
-                         * Total: 216 bytes
-                         */
-                        
-                        /* Extract nChannel at offset 196 */
-                        uint32_t nChannelFromSerialized =
-                            convert::bytes2uint(vData, TRITIUM_OFFSET_NCHANNEL);
-                        
-                        /* Extract nHeight at offset 200 */
-                        uint32_t nHeightFromSerialized =
-                            convert::bytes2uint(vData, TRITIUM_OFFSET_NHEIGHT);
-                        
-                        debug::log(0, "   Serialization verification:");
-                        debug::log(0, "      Template fields:");
-                        debug::log(0, "         nChannel: ", pBlock->nChannel, " → serialized: ", nChannelFromSerialized);
-                        debug::log(0, "         nHeight:  ", pBlock->nHeight, " → serialized: ", nHeightFromSerialized);
-                        debug::log(0, "      Metadata fields (not serialized in template):");
-                        debug::log(0, "         nChannelHeight: (stored in TemplateMetadata for staleness detection)");
-                        
-                        /* Validate nChannel */
-                        if(nChannelFromSerialized != pBlock->nChannel)
-                        {
-                            debug::error(FUNCTION, "❌ nChannel mismatch after serialization!");
-                            debug::error(FUNCTION, "   Expected: ", pBlock->nChannel);
-                            debug::error(FUNCTION, "   Got: ", nChannelFromSerialized);
 
-                            SendGetBlockControlResponse(GetBlockPolicyReason::TEMPLATE_NOT_READY, MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS, true);
-                            debug::log(2, "📥 === GET_BLOCK: FAILED (CHANNEL MISMATCH) ===");
-                            return true;
-                        }
-                        
-                        /* Validate nHeight */
-                        if(nHeightFromSerialized != pBlock->nHeight)
-                        {
-                            debug::error(FUNCTION, "❌ nHeight mismatch after serialization!");
-                            debug::error(FUNCTION, "   Expected: ", pBlock->nHeight);
-                            debug::error(FUNCTION, "   Got: ", nHeightFromSerialized);
+                /* Invariant: authenticated + in-budget → non-empty BLOCK_DATA */
+                assert(!gbResult.vPayload.empty());
 
-                            SendGetBlockControlResponse(GetBlockPolicyReason::TEMPLATE_NOT_READY, MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS, true);
-                            debug::log(2, "📥 === GET_BLOCK: FAILED (HEIGHT MISMATCH) ===");
-                            return true;
-                        }
-                        
-                        debug::log(0, "   ✅ Serialization verified: nChannel and nHeight preserved correctly");
-                    }
-                    
-                    /* Build 12-byte metadata prefix required by NexusMiner wire protocol:
-                     *   [0-3]   nUnifiedHeight  (big-endian)
-                     *   [4-7]   nChannelHeight  (big-endian)
-                     *   [8-11]  nBits           (big-endian)
-                     * Followed by the 216-byte serialized block = 228 bytes total. */
-                    uint32_t nUnifiedHeight = static_cast<uint32_t>(TAO::Ledger::ChainState::nBestHeight.load());
-                    uint32_t nChannelHeightMeta = 0;
+                /* Build canonical chain state snapshot using nBits from the created block */
+                {
+                    TAO::Ledger::BlockState stateGetBlock = TAO::Ledger::ChainState::tStateBest.load();
+                    TAO::Ledger::BlockState stateGetBlockCh = stateGetBlock;
+                    if(TAO::Ledger::GetLastState(stateGetBlockCh, gbResult.nBlockChannel))
                     {
-                        TAO::Ledger::BlockState stateChannelMeta = TAO::Ledger::ChainState::tStateBest.load();
-                        if(TAO::Ledger::GetLastState(stateChannelMeta, pBlock->nChannel))
-                            nChannelHeightMeta = stateChannelMeta.nChannelHeight;
+                        CanonicalChainState canonicalSnap = CanonicalChainState::from_chain_state(
+                            stateGetBlock, stateGetBlockCh, gbResult.nBlockBits);
+                        debug::log(2, FUNCTION, "GET_BLOCK canonical snapshot: unified=",
+                                   canonicalSnap.canonical_unified_height,
+                                   " channel=", canonicalSnap.canonical_channel_height,
+                                   " drift=", canonicalSnap.height_drift_from_canonical());
+                        context = context.WithCanonicalSnap(canonicalSnap);
                     }
-                    uint32_t nBitsMeta = pBlock->nBits;
-
-                    /* Build canonical chain state snapshot for GET_BLOCK response and store in context.
-                     * NOTE: MUTEX re-acquired via lk.lock() after new_block() returned — safe to
-                     * mutate context here. */
-                    {
-                        TAO::Ledger::BlockState stateGetBlock = TAO::Ledger::ChainState::tStateBest.load();
-                        TAO::Ledger::BlockState stateGetBlockCh = stateGetBlock;
-                        if(TAO::Ledger::GetLastState(stateGetBlockCh, pBlock->nChannel))
-                        {
-                            CanonicalChainState canonicalSnap = CanonicalChainState::from_chain_state(
-                                stateGetBlock, stateGetBlockCh, nBitsMeta);
-                            debug::log(2, FUNCTION, "GET_BLOCK canonical snapshot: unified=",
-                                       canonicalSnap.canonical_unified_height,
-                                       " channel=", canonicalSnap.canonical_channel_height,
-                                       " drift=", canonicalSnap.height_drift_from_canonical());
-                            /* Store snapshot in context so SUBMIT_BLOCK pre-check gate can read it. */
-                            context = context.WithCanonicalSnap(canonicalSnap);
-                        }
-                    }
-
-                    std::vector<uint8_t> vPayload;
-                    vPayload.reserve(12 + vData.size());
-                    vPayload.push_back((nUnifiedHeight     >> 24) & 0xFF);
-                    vPayload.push_back((nUnifiedHeight     >> 16) & 0xFF);
-                    vPayload.push_back((nUnifiedHeight     >>  8) & 0xFF);
-                    vPayload.push_back((nUnifiedHeight          ) & 0xFF);
-                    vPayload.push_back((nChannelHeightMeta >> 24) & 0xFF);
-                    vPayload.push_back((nChannelHeightMeta >> 16) & 0xFF);
-                    vPayload.push_back((nChannelHeightMeta >>  8) & 0xFF);
-                    vPayload.push_back((nChannelHeightMeta      ) & 0xFF);
-                    vPayload.push_back((nBitsMeta          >> 24) & 0xFF);
-                    vPayload.push_back((nBitsMeta          >> 16) & 0xFF);
-                    vPayload.push_back((nBitsMeta          >>  8) & 0xFF);
-                    vPayload.push_back((nBitsMeta               ) & 0xFF);
-                    vPayload.insert(vPayload.end(), vData.begin(), vData.end());
-
-                    debug::log(0, "   📤 Sending BLOCK_DATA...");
-                    debug::log(0, "      Packet header: ", static_cast<uint32_t>(OpcodeUtility::Stateless::BLOCK_DATA));
-                    debug::log(0, "      Packet LENGTH field: ", vPayload.size());
-                    debug::log(0, "      Packet DATA size: ", vPayload.size());
-                    debug::log(0, "      [nUnifiedHeight=", nUnifiedHeight,
-                               " nChannelHeight=", nChannelHeightMeta,
-                               " nBits=", nBitsMeta, "]");
-
-                    SendGetBlockDataResponse(vPayload, true);
-                    
-                    debug::log(0, "   ✅ Packet sent!");
-                    debug::log(2, "📥 === GET_BLOCK: SUCCESS ===");
-                    
-                    /* Notify local pool of authenticated miner (if not already notified) */
-                    if(PoolDiscovery::IsLocalPoolEnabled() && context.fAuthenticated && context.hashGenesis != 0)
-                    {
-                        /* Detect Falcon version from context if available */
-                        bool fUsesFalcon1024 = false;
-                        if(context.fFalconVersionDetected)
-                        {
-                            fUsesFalcon1024 = (context.nFalconVersion == LLC::FalconVersion::FALCON_1024);
-                        }
-                        
-                        /* Notify pool (pool tracks unique miners internally) */
-                        PoolDiscovery::OnMinerAuthenticated(
-                            context.hashGenesis,
-                            GetAddress().ToStringIP(),
-                            context.nChannel,
-                            fUsesFalcon1024
-                        );
-                    }
-                    
-                    /* Update context timestamp, height, last template channel height, and
-                     * hashLastBlock snapshot (primary staleness anchor, StakeMinter pattern).
-                     * nLastTemplateChannelHeight uses the channel-specific height (not unified)
-                     * to ensure templates are only refreshed when the miner's channel advances. */
-                    {
-                        TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
-                        TAO::Ledger::BlockState stateChannel = stateBest;
-                        uint32_t nChannelHeight = 0;
-                        if(TAO::Ledger::GetLastState(stateChannel, context.nChannel))
-                            nChannelHeight = stateChannel.nChannelHeight;
-                        context = context.WithTimestamp(runtime::unifiedtimestamp())
-                                         .WithHeight(stateBest.nHeight)
-                                         .WithLastTemplateChannelHeight(nChannelHeight)
-                                         .WithHashLastBlock(TAO::Ledger::ChainState::hashBestChain.load());
-                    }
-                    
-                    /* Update manager with new context after template served */
-                    StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
-                    StatelessMinerManager::Get().IncrementTemplatesServed();
-                    
-                    return true;
                 }
-                catch(const std::exception& e) {
-                    debug::error("   ❌ Serialization exception: ", e.what());
-                    debug::log(2, "📥 === GET_BLOCK: EXCEPTION ===");
 
-                    SendGetBlockControlResponse(GetBlockPolicyReason::INTERNAL_RETRY, MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS, true);
-                    return true;
+                debug::log(0, "   📤 Sending BLOCK_DATA (SIM-LINK)...");
+                debug::log(0, "      Packet DATA size: ", gbResult.vPayload.size());
+                debug::log(0, "      [channel=", gbResult.nBlockChannel,
+                           " height=", gbResult.nBlockHeight,
+                           " nBits=", gbResult.nBlockBits, "]");
+
+                SendGetBlockDataResponse(gbResult.vPayload, true);
+
+                debug::log(0, "   ✅ Packet sent!");
+                debug::log(2, "📥 === GET_BLOCK: SUCCESS (SIM-LINK) ===");
+
+                /* Notify local pool of authenticated miner (if not already notified) */
+                if(PoolDiscovery::IsLocalPoolEnabled() && context.fAuthenticated && context.hashGenesis != 0)
+                {
+                    bool fUsesFalcon1024 = false;
+                    if(context.fFalconVersionDetected)
+                        fUsesFalcon1024 = (context.nFalconVersion == LLC::FalconVersion::FALCON_1024);
+
+                    PoolDiscovery::OnMinerAuthenticated(
+                        context.hashGenesis,
+                        GetAddress().ToStringIP(),
+                        context.nChannel,
+                        fUsesFalcon1024
+                    );
                 }
+
+                /* Update context timestamp, height, last template channel height, and
+                 * hashLastBlock snapshot (primary staleness anchor, StakeMinter pattern). */
+                {
+                    TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
+                    TAO::Ledger::BlockState stateChannel = stateBest;
+                    uint32_t nChannelHeight = 0;
+                    if(TAO::Ledger::GetLastState(stateChannel, context.nChannel))
+                        nChannelHeight = stateChannel.nChannelHeight;
+                    context = context.WithTimestamp(runtime::unifiedtimestamp())
+                                     .WithHeight(stateBest.nHeight)
+                                     .WithLastTemplateChannelHeight(nChannelHeight)
+                                     .WithHashLastBlock(TAO::Ledger::ChainState::hashBestChain.load());
+                }
+
+                /* Update manager with new context after template served */
+                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
+                StatelessMinerManager::Get().IncrementTemplatesServed();
+
+                return true;
             }
 
             /* Handle SUBMIT_BLOCK - requires authentication and channel */
@@ -4230,7 +4072,17 @@ namespace LLP
                     debug::log(2, "      Client may be using legacy polling flow.");
                 }
                 debug::log(2, "════════════════════════════════════════════════════════════");
-                
+
+                /* SIM-LINK SESSION-SCOPED RATE LIMIT for GET_BLOCK
+                 *
+                 * The per-connection m_getBlockRollingLimiter has been replaced by a
+                 * session-scoped limiter shared across both the legacy (8323) and stateless
+                 * (9323) lanes.  A miner with simultaneous connections on both lanes shares
+                 * one 20/60s budget, preventing rate-limit bypass via dual-connection.
+                 *
+                 * Key format: "session=N|combined"
+                 */
+
                 // Check for localhost bypass in DEBUG mode
                 #ifdef ENABLE_DEBUG
                 if (MiningConstants::DISABLE_LOCALHOST_RATE_LIMITING)
@@ -4245,26 +4097,30 @@ namespace LLP
                     }
                 }
                 #endif
-                
-                const std::string strRateKey = GetBlockRateKey();
+
+                /* Delegate to session-scoped limiter (shared 20/60s budget across both lanes) */
+                auto pSessionLimiter = StatelessMinerManager::Get().GetSessionRateLimiter(context.nSessionId);
+                const std::string strSessionKey = "session=" + std::to_string(context.nSessionId) + "|combined";
                 uint32_t nRetryAfterMs = 0;
                 std::size_t nCurrentInWindow = 0;
-                if(!m_getBlockRollingLimiter.Allow(strRateKey, now, nRetryAfterMs, nCurrentInWindow))
+                if(!pSessionLimiter->Allow(strSessionKey, now, nRetryAfterMs, nCurrentInWindow))
                 {
-                    std::string reason = "GET_BLOCK rolling limit exceeded for key=" + strRateKey +
+                    const std::string strReason =
+                        "GET_BLOCK session rate limit exceeded: key=" + strSessionKey +
                         " count=" + std::to_string(nCurrentInWindow) + "/" +
                         std::to_string(RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE) +
-                        " window=60s retry_after_ms=" + std::to_string(nRetryAfterMs);
-                    RecordViolation(reason);
+                        " window=60s retry_after_ms=" + std::to_string(nRetryAfterMs) +
+                        " (combined across all lanes)";
+                    RecordViolation(strReason);
                     if(pnRetryAfterMs)
                         *pnRetryAfterMs = nRetryAfterMs;
-                    debug::log(2, FUNCTION, "GET_BLOCK rolling snapshot key=", strRateKey,
+                    debug::log(1, FUNCTION, "SIM-LINK GET_BLOCK session rate limit: key=", strSessionKey,
                         " count=", nCurrentInWindow, "/", RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE);
                     return false;
                 }
-                
+
                 m_rateLimit.tLastGetBlock = now;
-                debug::log(3, FUNCTION, "GET_BLOCK rolling snapshot key=", strRateKey,
+                debug::log(3, FUNCTION, "SIM-LINK GET_BLOCK session budget: key=", strSessionKey,
                     " count=", nCurrentInWindow, "/", RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE);
                 return true;
             }
@@ -4523,6 +4379,14 @@ namespace LLP
                    " (unified=", stateBest.nHeight, 
                    ", channelHeight=", nChannelHeight,
                    ", diff=", std::hex, nDifficulty, std::dec, ")");
+
+        /* SIM-LINK: Prune stale session-scoped block templates now that the tip has
+         * advanced.  Per-connection templates are pruned via CleanupStaleTemplates();
+         * the session-scoped store needs its own prune call.  Non-fatal on session_id=0. */
+        if(nSessionId_snap != 0)
+        {
+            StatelessMinerManager::Get().PruneSessionBlocks(nSessionId_snap);
+        }
     }
 
 

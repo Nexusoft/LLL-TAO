@@ -340,6 +340,7 @@ ifdef UNIT_TESTS
 		   build/Tests_LLP_template_metadata_channel_height.o \
 		   build/Tests_LLP_test_cleanup_stale_templates.o \
 		   build/Tests_LLP_test_stateless_miner_crypto.o \
+		   build/Tests_LLP_test_simlink_session_rate_limiter.o \
 		   build/Tests_LLP_node_integration_hardening.o \
 		   build/Tests_LLP_session_management_comprehensive.o \
 		   build/Tests_LLP_prime_sign_finalization_tests.o \
@@ -483,6 +484,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_stateless_manager.o \
 		build/LLP_genesis_constants.o \
 		build/LLP_stateless_miner_connection.o \
+		build/LLP_get_block_handler.o \
 		build/LLP_channel_state_manager.o \
 		build/LLP_falcon_auth.o \
 		build/LLP_disposable_falcon.o \
