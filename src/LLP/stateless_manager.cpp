@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <LLP/include/genesis_constants.h>
 #include <LLP/include/node_cache.h>
 
+#include <TAO/Ledger/types/block.h>
 #include <TAO/Register/types/address.h>
 
 #include <Util/include/json.h>
@@ -775,6 +776,86 @@ namespace LLP
         }
 
         return vResult;
+    }
+
+
+    /* ═══════════════════════════════════════════════════════════════════════════
+     * SIM-LINK SESSION-SCOPED SERVICES IMPLEMENTATION
+     * ═══════════════════════════════════════════════════════════════════════════ */
+
+    /* Get (or create) the session-scoped rolling rate limiter */
+    std::shared_ptr<GetBlockRollingLimiter> StatelessMinerManager::GetSessionRateLimiter(uint32_t nSessionId)
+    {
+        std::lock_guard<std::mutex> lock(m_sessionLimiterMutex);
+
+        auto it = m_mapSessionLimiters.find(nSessionId);
+        if(it == m_mapSessionLimiters.end())
+        {
+            /* First access for this session — create a fresh limiter */
+            auto spLimiter = std::make_shared<GetBlockRollingLimiter>(
+                GET_BLOCK_ROLLING_LIMIT_PER_MINUTE,
+                GET_BLOCK_ROLLING_WINDOW);
+
+            auto result = m_mapSessionLimiters.emplace(nSessionId, std::move(spLimiter));
+            debug::log(2, FUNCTION, "SIM-LINK: created session rate limiter for session=", nSessionId);
+            return result.first->second;
+        }
+
+        return it->second;
+    }
+
+
+    /* Store a block template in the session-scoped cross-lane block map */
+    void StatelessMinerManager::StoreSessionBlock(uint32_t nSessionId,
+                                                   const uint512_t& hashMerkleRoot,
+                                                   std::shared_ptr<TAO::Ledger::Block> spBlock)
+    {
+        if(!spBlock)
+            return;
+
+        std::lock_guard<std::mutex> lock(m_sessionBlockMutex);
+        m_mapSessionBlocks[nSessionId][hashMerkleRoot] = std::move(spBlock);
+
+        debug::log(3, FUNCTION, "SIM-LINK: stored session block session=", nSessionId,
+            " merkle=", hashMerkleRoot.SubString());
+    }
+
+
+    /* Look up a block template in the session-scoped cross-lane block map */
+    std::shared_ptr<TAO::Ledger::Block> StatelessMinerManager::FindSessionBlock(
+        uint32_t nSessionId, const uint512_t& hashMerkleRoot)
+    {
+        std::lock_guard<std::mutex> lock(m_sessionBlockMutex);
+
+        auto itSession = m_mapSessionBlocks.find(nSessionId);
+        if(itSession == m_mapSessionBlocks.end())
+            return nullptr;
+
+        auto itBlock = itSession->second.find(hashMerkleRoot);
+        if(itBlock == itSession->second.end())
+            return nullptr;
+
+        return itBlock->second;
+    }
+
+
+    /* Remove all block templates for a session (called on tip advance) */
+    void StatelessMinerManager::PruneSessionBlocks(uint32_t nSessionId)
+    {
+        std::lock_guard<std::mutex> lock(m_sessionBlockMutex);
+
+        auto it = m_mapSessionBlocks.find(nSessionId);
+        if(it == m_mapSessionBlocks.end())
+            return;
+
+        const size_t nPruned = it->second.size();
+        it->second.clear();
+
+        if(nPruned > 0)
+        {
+            debug::log(2, FUNCTION, "SIM-LINK: pruned ", nPruned,
+                " session block(s) for session=", nSessionId, " (tip advanced)");
+        }
     }
 
 

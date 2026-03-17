@@ -71,6 +71,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/colin_mining_agent.h>
 #include <LLP/include/node_session_registry.h>
+#include <LLP/include/get_block_handler.h>
 
 #include <cstring>
 
@@ -1792,77 +1793,42 @@ namespace LLP
          * an authenticated miner who is within the rate-limit budget always receives
          * BLOCK_DATA (invariant: authenticated + in-budget → BLOCK_DATA MUST follow). */
 
-        TAO::Ledger::Block *pBlock = nullptr;
-
-        /* Prepare the data to serialize on request. */
-        std::vector<uint8_t> vData;
+        /* ── SIM-LINK: Delegate to SharedGetBlockHandler ─────────────────────────
+         * Build the session context from current connection state.  The handler
+         * performs session-scoped rate limiting (shared 20/60s budget across both
+         * legacy and stateless lanes), calls new_block(), stores the template in
+         * the session block map for cross-lane SUBMIT_BLOCK resolution, and
+         * serialises the 228-byte BLOCK_DATA payload. */
         {
             LOCK(MUTEX);
 
-            /* Create a new block */
-            pBlock = new_block();
+            GetBlockRequest req;
+            /* Build a minimal context snapshot: lane is LEGACY for rate-limit key logging */
+            req.context = MiningContext()
+                .WithAuth(fMinerAuthenticated)
+                .WithProtocolLane(ProtocolLane::LEGACY)
+                .WithSession(nSessionId);
 
-            /* Handle if the block failed to be created — retry once in case chain advanced mid-creation */
-            if(!pBlock)
+            req.nSessionId = nSessionId;
+            req.fnCreateBlock = [this]() -> TAO::Ledger::Block*
             {
-                debug::log(2, FUNCTION, "new_block() returned nullptr — retrying once (chain may have advanced mid-creation)");
-                pBlock = new_block();
-            }
+                return new_block();
+            };
 
-            if(!pBlock)
+            GetBlockResult result = SharedGetBlockHandler(req);
+
+            if(!result.fSuccess)
             {
-                debug::log(2, FUNCTION, "Failed to create block after retry.");
-                // Invariant: INTERNAL_RETRY MUST always carry a non-zero retry_after_ms
-                // so miners do not poll blind. Value = GET_BLOCK_THROTTLE_INTERVAL_MS (2000ms).
                 respond(BLOCK_REJECTED,
-                    BuildGetBlockControlPayload(GetBlockPolicyReason::INTERNAL_RETRY,
-                    MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS));
+                    BuildGetBlockControlPayload(result.eReason, result.nRetryAfterMs));
                 return true;
             }
 
-            /* Store the new block in the memory map of recent blocks being worked on. */
-            mapBlocks[pBlock->hashMerkleRoot] = pBlock;
+            /* Invariant: authenticated + in-budget → non-empty BLOCK_DATA */
+            assert(!result.vPayload.empty());
 
-            /* Snapshot hashBestChain alongside the block for hash-based staleness detection.
-             * This catches same-height reorgs that nBestHeight cannot detect. */
-            mapBlockHashes[pBlock->hashMerkleRoot] = TAO::Ledger::ChainState::hashBestChain.load();
-
-            /* Serialize the block vData */
-            vData = pBlock->Serialize();
+            respond_stateless(OpcodeUtility::Stateless::BLOCK_DATA, result.vPayload);
         }
-
-        /* Build 12-byte metadata prefix + 216-byte block = 228 bytes total.
-         * NexusMiner wire protocol requires:
-         *   [0-3]   nUnifiedHeight  (big-endian)
-         *   [4-7]   nChannelHeight  (big-endian)
-         *   [8-11]  nBits           (big-endian)
-         *   [12-227] Block::Serialize() (216 bytes) */
-        uint32_t nUnifiedHeight = static_cast<uint32_t>(TAO::Ledger::ChainState::nBestHeight.load());
-        uint32_t nChannelHeightMeta = 0;
-        {
-            TAO::Ledger::BlockState stateChannelMeta = TAO::Ledger::ChainState::tStateBest.load();
-            if(TAO::Ledger::GetLastState(stateChannelMeta, pBlock->nChannel))
-                nChannelHeightMeta = stateChannelMeta.nChannelHeight;
-        }
-
-        std::vector<uint8_t> vPayload;
-        vPayload.reserve(12 + vData.size());
-        vPayload.push_back((nUnifiedHeight     >> 24) & 0xFF);
-        vPayload.push_back((nUnifiedHeight     >> 16) & 0xFF);
-        vPayload.push_back((nUnifiedHeight     >>  8) & 0xFF);
-        vPayload.push_back((nUnifiedHeight          ) & 0xFF);
-        vPayload.push_back((nChannelHeightMeta >> 24) & 0xFF);
-        vPayload.push_back((nChannelHeightMeta >> 16) & 0xFF);
-        vPayload.push_back((nChannelHeightMeta >>  8) & 0xFF);
-        vPayload.push_back((nChannelHeightMeta      ) & 0xFF);
-        vPayload.push_back((pBlock->nBits      >> 24) & 0xFF);
-        vPayload.push_back((pBlock->nBits      >> 16) & 0xFF);
-        vPayload.push_back((pBlock->nBits      >>  8) & 0xFF);
-        vPayload.push_back((pBlock->nBits           ) & 0xFF);
-        vPayload.insert(vPayload.end(), vData.begin(), vData.end());
-
-        /* Create and write the response packet using 16-bit stateless framing. */
-        respond_stateless(OpcodeUtility::Stateless::BLOCK_DATA, vPayload);
 
         /* Update last template channel height after sending template.
          * Uses channel-specific height (not unified) to prevent false template
@@ -1874,19 +1840,10 @@ namespace LLP
                 nLastTemplateChannelHeight = stateChannel.nChannelHeight;
         }
 
-        debug::log(0, FUNCTION, "[BLOCK CREATE] hashPrevBlock = ", pBlock->hashPrevBlock.SubString(),
-                   " (template anchor baked in, unified height ", pBlock->nHeight, ")");
-        debug::log(2, FUNCTION, "[BLOCK CREATE] hashPrevBlock FULL (MSB-first): ", pBlock->hashPrevBlock.GetHex());
-        debug::log(2, FUNCTION, "Sent BLOCK_DATA (", vPayload.size(), " bytes)"
-                   " channel=", pBlock->nChannel, " height=", pBlock->nHeight,
-                   " [nUnifiedHeight=", nUnifiedHeight, " nChannelHeight=", nChannelHeightMeta,
-                   " nBits=", pBlock->nBits, "]");
-
         /* Notify Colin agent: template pushed via GET_BLOCK */
         if(hashGenesis != 0)
         {
             ColinMiningAgent::Get().on_get_block_received(hashGenesis.SubString(8), false);
-            ColinMiningAgent::Get().on_template_pushed(pBlock->nChannel, pBlock->nHeight);
         }
 
         return true;
