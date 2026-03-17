@@ -170,6 +170,21 @@ namespace LLP
             
             // Initialize timestamps
             RateLimitState() : tLastCounterReset(std::chrono::steady_clock::now()) {}
+
+            /** ResetViolationState
+             *
+             *  @brief Clear throttle/violation counters on clean re-authentication.
+             *  Rolling window counters (nGetBlockCount etc.) are intentionally NOT
+             *  reset here — the rolling window limiter (GetBlockRollingLimiter) is
+             *  keyed by session+lane and self-manages its own window expiry.
+             *
+             **/
+            void ResetViolationState()
+            {
+                fThrottleMode  = false;
+                nViolationCount = 0;
+                nStrikeCount   = 0;
+            }
         };
         
         RateLimitState m_rateLimit;

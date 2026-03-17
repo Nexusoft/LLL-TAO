@@ -27,6 +27,9 @@ ________________________________________________________________________________
 namespace LLP
 {
     // Node MUST always return BLOCK_DATA for authenticated miners within this window.
+    // AUTHORITATIVE: This is the enforced limit. Any documentation stating a different
+    // value (e.g., "25/min") is outdated and incorrect. See static_assert in
+    // stateless_miner_connection.h which enforces alignment with this value.
     constexpr std::size_t GET_BLOCK_ROLLING_LIMIT_PER_MINUTE = 20;
     constexpr std::chrono::seconds GET_BLOCK_ROLLING_WINDOW = std::chrono::seconds(60);
 

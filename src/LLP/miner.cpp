@@ -1812,6 +1812,8 @@ namespace LLP
             if(!pBlock)
             {
                 debug::log(2, FUNCTION, "Failed to create block after retry.");
+                // Invariant: INTERNAL_RETRY MUST always carry a non-zero retry_after_ms
+                // so miners do not poll blind. Value = GET_BLOCK_THROTTLE_INTERVAL_MS (2000ms).
                 respond(BLOCK_REJECTED,
                     BuildGetBlockControlPayload(GetBlockPolicyReason::INTERNAL_RETRY,
                     MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS));

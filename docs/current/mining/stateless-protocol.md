@@ -771,14 +771,23 @@ simple 2-second rate-limit floor — **not** a lockout window:
 - `MINER_READY` explicitly resets this cooldown so the first recovery
   GET_BLOCK is served immediately after re-subscription.
 - Localhost connections bypass AutoCoolDown entirely (they cannot be a
-  DDOS vector); the rolling per-minute cap (25 GET_BLOCKs/min) provides control.
-- The rolling per-minute cap (25 GET_BLOCKs/min) provides the primary spam
+  DDOS vector); the rolling per-minute cap (20 GET_BLOCKs/min) provides control.
+- The rolling per-minute cap (20 GET_BLOCKs/min) provides the primary spam
   protection.
 
 The old 30-second strategy caused an unrecoverable doom loop during
 Emergency/Degraded recovery: serving one GET_BLOCK would restart the 30s
 window, blocking all subsequent recovery retries and leaving the miner
 permanently stuck.
+
+> **INVARIANT:** An authenticated miner within the 20/60s rolling budget MUST
+> always receive `BLOCK_DATA`. The node MUST NOT return empty or zero-byte
+> `BLOCK_DATA` on the authenticated path. The only valid rejection codes for
+> an authenticated, in-budget miner are:
+> - `SESSION_INVALID` — session expired or `nSessionId == 0`
+> - `CHANNEL_NOT_SET` — `nChannel == 0`, miner must `SET_CHANNEL` first
+> - `INTERNAL_RETRY` — `new_block()` failed transiently; retry after 2000 ms
+> - `TEMPLATE_REBUILD_IN_PROGRESS` — template build exceeded 500 ms deadline; retry after 2000 ms
 
 ### Class `LLP::AutoCoolDown`
 
