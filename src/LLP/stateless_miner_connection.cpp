@@ -792,6 +792,13 @@ namespace LLP
                  * fresh work immediately regardless of when the previous push was sent. */
                 {
                     LOCK(MUTEX);
+                    // Reset violation state so a miner that accumulated violations on a
+                    // previous session gets a clean slate after re-authentication.
+                    // fThrottleMode MUST NOT persist across reconnects — it would permanently
+                    // block an authenticated, in-budget miner (violates the "auto-expire"
+                    // reversibility principle).  Rolling window counters are NOT reset here;
+                    // GetBlockRollingLimiter is keyed by session+lane and expires on its own.
+                    m_rateLimit.ResetViolationState();
                     m_force_next_push = true;
                 }
                 SendStatelessTemplate();
@@ -903,7 +910,9 @@ namespace LLP
                 {
                     debug::error("   ❌ new_block() failed after retry");
                     /* Use TEMPLATE_REBUILD_IN_PROGRESS when deadline exceeded,
-                     * INTERNAL_RETRY otherwise. */
+                     * INTERNAL_RETRY otherwise.
+                     * Invariant: INTERNAL_RETRY MUST always carry a non-zero retry_after_ms
+                     * so miners do not poll blind. Value = GET_BLOCK_THROTTLE_INTERVAL_MS (2000ms). */
                     const GetBlockPolicyReason eFailReason =
                         (nGetBlockLatencyMs >= GET_BLOCK_DEADLINE_MS)
                             ? GetBlockPolicyReason::TEMPLATE_REBUILD_IN_PROGRESS
@@ -2454,6 +2463,9 @@ namespace LLP
                  * Also reset the AutoCoolDown so the recovery GET_BLOCK is served immediately. */
                 {
                     LOCK(MUTEX);
+                    // Reset violation state on clean re-subscription — same invariant as
+                    // STATELESS_MINER_READY: fThrottleMode MUST NOT persist across reconnects.
+                    m_rateLimit.ResetViolationState();
                     m_force_next_push = true;
                     // Reassign (not Reset()) — we want Ready() to return true immediately
                     // so the recovery GET_BLOCK is served without waiting 2 s.
