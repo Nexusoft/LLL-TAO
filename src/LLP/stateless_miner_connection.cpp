@@ -1627,7 +1627,9 @@ namespace LLP
                 } /* end if(!fCrossLane) */
                 else
                 {
-                    /* Cross-lane path: apply nonce/offsets directly to the session-store copy */
+                    /* Cross-lane path: apply nonce/offsets directly to the session-store copy.
+                     * NOTE: This channel-dispatch logic mirrors the cross-lane path in
+                     * Miner::handle_submit_block_stateless (miner.cpp). */
                     pTritium = dynamic_cast<TAO::Ledger::TritiumBlock*>(spCrossLaneHolder.get());
                     if(!pTritium)
                     {

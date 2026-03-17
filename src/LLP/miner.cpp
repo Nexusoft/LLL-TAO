@@ -2108,7 +2108,9 @@ namespace LLP
 
         /* GAP 1: Pre-fetch cross-lane block BEFORE acquiring MUTEX to avoid
          * holding two locks simultaneously.  FindSessionBlock() acquires
-         * m_sessionBlockMutex internally; MUTEX is per-connection. */
+         * m_sessionBlockMutex internally; MUTEX is per-connection.
+         * Convention: nSessionId == 0 means "not yet established" (same sentinel
+         * used throughout the miner authentication path). */
         std::shared_ptr<TAO::Ledger::Block> spCrossLane;
         if(nCrossLaneSessionId != 0)
             spCrossLane = StatelessMinerManager::Get().FindSessionBlock(nCrossLaneSessionId, hashMerkle);
@@ -2142,7 +2144,9 @@ namespace LLP
         {
             /* Cross-lane path: template was issued on the stateless port (9323) and
              * submitted here on the legacy port (8323).  Apply nonce/offsets directly
-             * to the shared_ptr<Block> copy from the session store. */
+             * to the shared_ptr<Block> copy from the session store.
+             * NOTE: This channel-dispatch logic mirrors the cross-lane path in
+             * StatelessMinerConnection::ProcessPacket (SUBMIT_BLOCK handler). */
             debug::log(1, FUNCTION, "SIM-LINK cross-lane SUBMIT_BLOCK resolved: session=",
                        nCrossLaneSessionId, " merkle=", hashMerkle.SubString());
 

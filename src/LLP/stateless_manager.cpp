@@ -419,7 +419,10 @@ namespace LLP
                 /* Session is expired if it no longer exists in mapSessionToAddress */
                 auto optAddr = mapSessionToAddress.Get(it->first);
                 if(!optAddr.has_value())
-                    it = m_mapSessionLimiters.erase(it), ++nLimitersRemoved;
+                {
+                    it = m_mapSessionLimiters.erase(it);
+                    ++nLimitersRemoved;
+                }
                 else
                     ++it;
             }
@@ -432,7 +435,10 @@ namespace LLP
             {
                 auto optAddr = mapSessionToAddress.Get(it->first);
                 if(!optAddr.has_value())
-                    it = m_mapSessionBlocks.erase(it), ++nBlocksRemoved;
+                {
+                    it = m_mapSessionBlocks.erase(it);
+                    ++nBlocksRemoved;
+                }
                 else
                     ++it;
             }
