@@ -205,6 +205,40 @@ namespace LLP
         return mapMiners.Get(optAddress.value());
     }
 
+
+    /* Look up a miner context by IP address only (port-agnostic fallback) */
+    std::optional<MiningContext> StatelessMinerManager::GetMinerContextByIP(
+        const std::string& strIP
+    ) const
+    {
+        auto pairs = mapMiners.GetAllPairs();
+        MiningContext best;
+        bool fFound = false;
+
+        for(const auto& pair : pairs)
+        {
+            /* Extract IP from the stored "IP:port" key */
+            const std::string& strKey = pair.first;
+            const size_t nColon = strKey.rfind(':');
+            if(nColon == std::string::npos)
+                continue;
+
+            if(strKey.substr(0, nColon) == strIP)
+            {
+                if(!fFound || pair.second.nTimestamp > best.nTimestamp)
+                {
+                    best = pair.second;
+                    fFound = true;
+                }
+            }
+        }
+
+        if(fFound)
+            return best;
+
+        return std::nullopt;
+    }
+
     /* Get miner context by session ID */
     std::optional<MiningContext> StatelessMinerManager::GetMinerContextBySessionID(
         uint32_t nSessionId
@@ -364,7 +398,53 @@ namespace LLP
             debug::log(2, FUNCTION, "Cleaned up ", nRemoved, " expired sessions");
         }
 
+        /* Also prune session-scoped maps for any sessions no longer in mapMiners */
+        CleanupSessionScopedMaps();
+
         return nRemoved;
+    }
+
+
+    /* Remove session-scoped rate limiters and block maps for dead sessions */
+    uint32_t StatelessMinerManager::CleanupSessionScopedMaps()
+    {
+        uint32_t nLimitersRemoved = 0;
+        uint32_t nBlocksRemoved   = 0;
+
+        /* Pass A — rate limiter cleanup (m_sessionLimiterMutex held alone) */
+        {
+            std::lock_guard<std::mutex> lk(m_sessionLimiterMutex);
+            for(auto it = m_mapSessionLimiters.begin(); it != m_mapSessionLimiters.end(); )
+            {
+                /* Session is expired if it no longer exists in mapSessionToAddress */
+                auto optAddr = mapSessionToAddress.Get(it->first);
+                if(!optAddr.has_value())
+                    it = m_mapSessionLimiters.erase(it), ++nLimitersRemoved;
+                else
+                    ++it;
+            }
+        }
+
+        /* Pass B — session block map cleanup (m_sessionBlockMutex held alone) */
+        {
+            std::lock_guard<std::mutex> lk(m_sessionBlockMutex);
+            for(auto it = m_mapSessionBlocks.begin(); it != m_mapSessionBlocks.end(); )
+            {
+                auto optAddr = mapSessionToAddress.Get(it->first);
+                if(!optAddr.has_value())
+                    it = m_mapSessionBlocks.erase(it), ++nBlocksRemoved;
+                else
+                    ++it;
+            }
+        }
+
+        if(nLimitersRemoved > 0 || nBlocksRemoved > 0)
+        {
+            debug::log(2, FUNCTION, "SIM-LINK cleanup: removed ", nLimitersRemoved,
+                " session limiters, ", nBlocksRemoved, " session block maps");
+        }
+
+        return nLimitersRemoved + nBlocksRemoved;
     }
 
     /* Get miner status as JSON */

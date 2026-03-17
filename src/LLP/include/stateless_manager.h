@@ -171,6 +171,20 @@ namespace LLP
          **/
         std::optional<MiningContext> GetMinerContextByKeyID(const uint256_t& hashKeyID) const;
 
+        /** GetMinerContextByIP
+         *
+         *  Look up a miner context using only the IP address (ignoring port).
+         *  Used as fallback when IP:port lookup misses due to ephemeral port changes.
+         *  If multiple miners share the same IP (e.g. behind NAT), returns the most
+         *  recently active one.
+         *
+         *  @param[in] strIP   IP address string (no port)
+         *
+         *  @return Optional MiningContext, empty if not found
+         *
+         **/
+        std::optional<MiningContext> GetMinerContextByIP(const std::string& strIP) const;
+
         /** GetMinerContextBySessionID
          *
          *  Retrieve context by session ID.
@@ -302,6 +316,17 @@ namespace LLP
          *
          **/
         uint32_t CleanupExpiredSessions();
+
+        /** CleanupSessionScopedMaps
+         *
+         *  Remove rate limiters and session block maps for sessions that no longer
+         *  exist in mapMiners.  Called from CleanupExpiredSessions() and directly
+         *  from tests.
+         *
+         *  @return Number of entries removed (limiters + block maps combined)
+         *
+         **/
+        uint32_t CleanupSessionScopedMaps();
 
         /** PurgeInactiveMiners
          *

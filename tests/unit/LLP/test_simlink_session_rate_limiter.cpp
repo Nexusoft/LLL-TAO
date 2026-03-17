@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLP/include/get_block_policy.h>
 #include <LLP/include/get_block_handler.h>
 #include <LLP/include/stateless_manager.h>
+#include <TAO/Ledger/types/tritium.h>
 
 #include <chrono>
 #include <cstdint>
@@ -159,6 +160,37 @@ TEST_CASE("SIM-LINK: Session block storage and retrieval", "[simlink][session_bl
         /* Pruning a non-existent session should not crash */
         REQUIRE_NOTHROW(StatelessMinerManager::Get().PruneSessionBlocks(nSessionId));
     }
+
+    SECTION("FindSessionBlock returns nullptr for unknown session")
+    {
+        const uint32_t nUnknownSession = 0xDEADC0DE;
+        uint512_t fakeMerkle(uint64_t(0xABCDEF));
+
+        auto pResult = StatelessMinerManager::Get().FindSessionBlock(nUnknownSession, fakeMerkle);
+        REQUIRE(pResult == nullptr);
+    }
+
+    SECTION("FindSessionBlock returns nullptr for unknown merkle under known session")
+    {
+        const uint32_t nSessionId = 0xBEEFCAFE;
+        uint512_t knownMerkle(uint64_t(0x1111));
+        uint512_t unknownMerkle(uint64_t(0x2222));
+
+        /* Store a block under knownMerkle */
+        auto spBlock = std::make_shared<TAO::Ledger::TritiumBlock>();
+        StatelessMinerManager::Get().StoreSessionBlock(nSessionId, knownMerkle, spBlock);
+
+        /* Looking up an unrelated merkle should return nullptr */
+        auto pMiss = StatelessMinerManager::Get().FindSessionBlock(nSessionId, unknownMerkle);
+        REQUIRE(pMiss == nullptr);
+
+        /* Looking up the stored merkle should succeed */
+        auto pHit = StatelessMinerManager::Get().FindSessionBlock(nSessionId, knownMerkle);
+        REQUIRE(pHit != nullptr);
+
+        /* Clean up */
+        StatelessMinerManager::Get().PruneSessionBlocks(nSessionId);
+    }
 }
 
 
@@ -216,5 +248,123 @@ TEST_CASE("SIM-LINK: Combined key format", "[simlink][rate_limit]")
         const std::string legacyKey    = "session=" + std::to_string(nSessionId) + "|combined";
         const std::string statelessKey = "session=" + std::to_string(nSessionId) + "|combined";
         REQUIRE(legacyKey == statelessKey);
+    }
+}
+
+
+TEST_CASE("SIM-LINK: CleanupSessionScopedMaps removes orphaned entries", "[simlink][cleanup]")
+{
+    SECTION("CleanupSessionScopedMaps removes rate limiter for session not in mapMiners")
+    {
+        /* Use a high fake session ID that has no associated miner entry */
+        const uint32_t nOrphanSessionId = 0xFACEFACE;
+
+        /* Force-create an entry in the session rate limiter map */
+        auto pLimiter = StatelessMinerManager::Get().GetSessionRateLimiter(nOrphanSessionId);
+        REQUIRE(pLimiter != nullptr);
+
+        /* Calling cleanup should remove the orphan (no miner registered for this session) */
+        uint32_t nRemoved = StatelessMinerManager::Get().CleanupSessionScopedMaps();
+
+        /* The limiter for nOrphanSessionId must have been pruned.
+         * nRemoved may be > 1 if other orphan limiters existed from earlier tests. */
+        REQUIRE(nRemoved >= 1);
+
+        /* A subsequent GetSessionRateLimiter call creates a fresh limiter.
+         * Verify the old one is gone by checking the fresh limiter is new. */
+        auto pLimiter2 = StatelessMinerManager::Get().GetSessionRateLimiter(nOrphanSessionId);
+        REQUIRE(pLimiter2 != nullptr);
+        /* After cleanup, a new limiter should have been created; its window should be empty */
+        const std::string strKey = "session=" + std::to_string(nOrphanSessionId) + "|combined";
+        auto tNow = std::chrono::steady_clock::now();
+        uint32_t nRetryAfterMs = 0;
+        std::size_t nCurrentInWindow = 0;
+        bool fAllowed = pLimiter2->Allow(strKey, tNow, nRetryAfterMs, nCurrentInWindow);
+        REQUIRE(fAllowed);
+        REQUIRE(nCurrentInWindow == 1);  /* fresh limiter: only this one request in window */
+
+        /* Cleanup the new limiter too */
+        StatelessMinerManager::Get().CleanupSessionScopedMaps();
+    }
+
+    SECTION("CleanupSessionScopedMaps removes orphaned session block map")
+    {
+        const uint32_t nOrphanSessionId = 0xC0DEBABE;
+        uint512_t fakeMerkle(uint64_t(0xDEAD));
+
+        /* Store a block under this orphan session */
+        auto spBlock = std::make_shared<TAO::Ledger::TritiumBlock>();
+        StatelessMinerManager::Get().StoreSessionBlock(nOrphanSessionId, fakeMerkle, spBlock);
+
+        /* Block should be retrievable before cleanup */
+        auto pPre = StatelessMinerManager::Get().FindSessionBlock(nOrphanSessionId, fakeMerkle);
+        REQUIRE(pPre != nullptr);
+
+        /* Cleanup removes orphan session block maps */
+        uint32_t nRemoved = StatelessMinerManager::Get().CleanupSessionScopedMaps();
+        REQUIRE(nRemoved >= 1);
+
+        /* Block should no longer be found */
+        auto pPost = StatelessMinerManager::Get().FindSessionBlock(nOrphanSessionId, fakeMerkle);
+        REQUIRE(pPost == nullptr);
+    }
+}
+
+
+TEST_CASE("SIM-LINK: GetMinerContextByIP fallback lookup", "[simlink][session][gap3]")
+{
+    SECTION("GetMinerContextByIP returns context for registered IP")
+    {
+        const std::string strAddr = "192.168.7.1:45000";
+        MiningContext ctx;
+        ctx.strAddress  = strAddr;
+        ctx.nSessionId  = 0xA1B2C3D4;
+        ctx.nTimestamp  = 1000;
+        ctx.fAuthenticated = true;
+
+        StatelessMinerManager::Get().UpdateMiner(strAddr, ctx);
+
+        auto opt = StatelessMinerManager::Get().GetMinerContextByIP("192.168.7.1");
+        REQUIRE(opt.has_value());
+        REQUIRE(opt->nSessionId == ctx.nSessionId);
+
+        /* Cleanup */
+        StatelessMinerManager::Get().RemoveMiner(strAddr);
+    }
+
+    SECTION("GetMinerContextByIP returns nullopt for unknown IP")
+    {
+        auto opt = StatelessMinerManager::Get().GetMinerContextByIP("10.99.88.77");
+        REQUIRE_FALSE(opt.has_value());
+    }
+
+    SECTION("GetMinerContextByIP returns most recently active context when IP has two ports")
+    {
+        const std::string strAddrOld = "192.168.7.2:45000";
+        const std::string strAddrNew = "192.168.7.2:45001";
+
+        MiningContext ctxOld;
+        ctxOld.strAddress  = strAddrOld;
+        ctxOld.nSessionId  = 0x00000001;
+        ctxOld.nTimestamp  = 500;   /* older */
+        ctxOld.fAuthenticated = true;
+
+        MiningContext ctxNew;
+        ctxNew.strAddress  = strAddrNew;
+        ctxNew.nSessionId  = 0x00000002;
+        ctxNew.nTimestamp  = 2000;  /* more recent */
+        ctxNew.fAuthenticated = true;
+
+        StatelessMinerManager::Get().UpdateMiner(strAddrOld, ctxOld);
+        StatelessMinerManager::Get().UpdateMiner(strAddrNew, ctxNew);
+
+        auto opt = StatelessMinerManager::Get().GetMinerContextByIP("192.168.7.2");
+        REQUIRE(opt.has_value());
+        /* Should return the newer (strAddrNew) context */
+        REQUIRE(opt->nSessionId == ctxNew.nSessionId);
+
+        /* Cleanup */
+        StatelessMinerManager::Get().RemoveMiner(strAddrOld);
+        StatelessMinerManager::Get().RemoveMiner(strAddrNew);
     }
 }

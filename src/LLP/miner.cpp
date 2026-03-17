@@ -1930,12 +1930,17 @@ namespace LLP
         /* R-02: Session consistency gate — validate the authoritative session context
          * persisted in StatelessMinerManager before proceeding with block processing.
          * The live connection context has hashKeyID=0 for legacy-lane miners; the
-         * StatelessMinerManager carries the full context populated during auth. */
+         * StatelessMinerManager carries the full context populated during auth.
+         *
+         * Also resolves nCrossLaneSessionId for the cross-lane SUBMIT_BLOCK fallback
+         * path (GAP 3 hardening: IP-only lookup if IP:port misses on reconnect). */
+        uint32_t nCrossLaneSessionId = nSessionId;   /* default: per-connection session */
         {
             const std::string strLookupAddr = GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort());
             const auto optCtx = StatelessMinerManager::Get().GetMinerContext(strLookupAddr);
             if(optCtx.has_value())
             {
+                nCrossLaneSessionId = optCtx->nSessionId;
                 const SessionConsistencyResult consistency = optCtx->ValidateConsistency();
                 if(consistency != SessionConsistencyResult::Ok)
                 {
@@ -1943,6 +1948,21 @@ namespace LLP
                                SessionConsistencyResultString(consistency));
                     respond(BLOCK_REJECTED);
                     return true;
+                }
+            }
+            else
+            {
+                /* Fallback: IP-only lookup (port may have changed on reconnect) */
+                const auto optCtxIP = StatelessMinerManager::Get().GetMinerContextByIP(GetAddress().ToStringIP());
+                if(optCtxIP.has_value())
+                {
+                    nCrossLaneSessionId = optCtxIP->nSessionId;
+                    debug::log(1, FUNCTION, "Legacy lane: resolved session via IP-only fallback, session=",
+                               nCrossLaneSessionId);
+                }
+                else
+                {
+                    debug::log(2, FUNCTION, "Legacy lane: no session context found, cross-lane resolution unavailable");
                 }
             }
         }
@@ -2086,25 +2106,88 @@ namespace LLP
 
         debug::log(3, FUNCTION, "Block merkle root: ", hashMerkle.SubString(), " nonce: ", nonce);
 
+        /* GAP 1: Pre-fetch cross-lane block BEFORE acquiring MUTEX to avoid
+         * holding two locks simultaneously.  FindSessionBlock() acquires
+         * m_sessionBlockMutex internally; MUTEX is per-connection. */
+        std::shared_ptr<TAO::Ledger::Block> spCrossLane;
+        if(nCrossLaneSessionId != 0)
+            spCrossLane = StatelessMinerManager::Get().FindSessionBlock(nCrossLaneSessionId, hashMerkle);
+
         LOCK(MUTEX);
 
         /* Make sure the block was created by this mining server. */
-        if(!find_block(hashMerkle))
+        const bool fLocalBlock = find_block(hashMerkle);
+
+        if(!fLocalBlock && !spCrossLane)
         {
             debug::log(2, FUNCTION, "Block not found in map");
             respond(BLOCK_REJECTED);
             return true;
         }
 
-        /* Make sure there is no inconsistencies in signing block. */
-        if(!sign_block(nonce, hashMerkle, vPrimeOffsets))
+        TAO::Ledger::TritiumBlock* pTritium = nullptr;
+
+        if(fLocalBlock)
         {
-            respond(BLOCK_REJECTED);
-            return true;
+            /* Local path: sign_block mutates the block in-place via mapBlocks */
+            if(!sign_block(nonce, hashMerkle, vPrimeOffsets))
+            {
+                respond(BLOCK_REJECTED);
+                return true;
+            }
+
+            pTritium = dynamic_cast<TAO::Ledger::TritiumBlock*>(mapBlocks[hashMerkle]);
+        }
+        else
+        {
+            /* Cross-lane path: template was issued on the stateless port (9323) and
+             * submitted here on the legacy port (8323).  Apply nonce/offsets directly
+             * to the shared_ptr<Block> copy from the session store. */
+            debug::log(1, FUNCTION, "SIM-LINK cross-lane SUBMIT_BLOCK resolved: session=",
+                       nCrossLaneSessionId, " merkle=", hashMerkle.SubString());
+
+            pTritium = dynamic_cast<TAO::Ledger::TritiumBlock*>(spCrossLane.get());
+            if(!pTritium)
+            {
+                debug::error(FUNCTION, "SIM-LINK cross-lane block is not a TritiumBlock");
+                respond(BLOCK_REJECTED);
+                return true;
+            }
+
+            if(pTritium->nChannel == TAO::Ledger::CHANNEL::PRIME)
+            {
+                *pTritium = TAO::Ledger::BuildSolvedPrimeCandidateFromTemplate(*pTritium, nonce, vPrimeOffsets);
+
+                if(!pTritium->vOffsets.empty() &&
+                   !TAO::Ledger::VerifySubmittedPrimeOffsets(*pTritium, pTritium->vOffsets))
+                {
+                    debug::error(FUNCTION, "Cross-lane: Prime vOffsets structural validation failed");
+                    respond(BLOCK_REJECTED);
+                    return true;
+                }
+
+                if(pTritium->vOffsets.empty())
+                    TAO::Ledger::GetOffsets(pTritium->GetPrime(), pTritium->vOffsets);
+            }
+            else if(pTritium->nChannel == TAO::Ledger::CHANNEL::HASH)
+            {
+                *pTritium = TAO::Ledger::BuildSolvedHashCandidateFromTemplate(*pTritium, nonce);
+            }
+            else
+            {
+                pTritium->nNonce = nonce;
+                pTritium->vOffsets.clear();
+                pTritium->vchBlockSig.clear();
+            }
+
+            if(!TAO::Ledger::FinalizeWalletSignatureForSolvedBlock(*pTritium))
+            {
+                debug::error(FUNCTION, "Cross-lane: FinalizeWalletSignatureForSolvedBlock failed");
+                respond(BLOCK_REJECTED);
+                return true;
+            }
         }
 
-        TAO::Ledger::TritiumBlock* pTritium =
-            dynamic_cast<TAO::Ledger::TritiumBlock*>(mapBlocks[hashMerkle]);
         if(!pTritium)
         {
             debug::error(FUNCTION, "SUBMIT_BLOCK unexpected non-Tritium block for merkle ",

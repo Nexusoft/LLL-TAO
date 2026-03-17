@@ -129,8 +129,27 @@ The legacy lane (`Miner::handle_get_block_stateless()`) previously had no rate l
 
 ## Known Limitations (Exploratory PR)
 
-1. **Cross-lane SUBMIT_BLOCK resolution is additive-only.** The session block store holds copies, but SUBMIT_BLOCK handlers on each lane still only check their per-connection `mapBlocks`. Wiring `FindSessionBlock()` into the SUBMIT_BLOCK path is a follow-up task.
+1. **Cross-lane SUBMIT_BLOCK resolution** — **RESOLVED**: `FindSessionBlock()` is now wired
+   into both SUBMIT_BLOCK handlers (`miner.cpp` and `stateless_miner_connection.cpp`).
+   When the per-connection `mapBlocks` lookup misses, both handlers fall back to
+   `StatelessMinerManager::Get().FindSessionBlock(nSessionId, hashMerkle)` before
+   rejecting.  The cross-lane block is signed via the same
+   `BuildSolvedPrimeCandidateFromTemplate` / `BuildSolvedHashCandidateFromTemplate` /
+   `FinalizeWalletSignatureForSolvedBlock` helpers used by `sign_block()`.
 
-2. **Session limiter cleanup.** `m_mapSessionLimiters` grows with the number of unique sessions seen during the node's uptime. A periodic cleanup (tied to `CleanupExpiredSessions()`) should be added to prevent unbounded memory growth.
+2. **Session limiter and block-map cleanup** — **RESOLVED**: `CleanupSessionScopedMaps()`
+   is now implemented and called from `CleanupExpiredSessions()`.  It removes entries
+   from `m_mapSessionLimiters` and `m_mapSessionBlocks` for sessions that no longer exist
+   in `mapMiners` (using `mapSessionToAddress` as the authoritative set).  The two maps are
+   cleaned under separate mutex acquisitions to avoid the double-lock anti-pattern.
+   A public `CleanupSessionScopedMaps()` API also allows targeted testing without
+   triggering the full miner cleanup cycle.
 
-3. **Legacy lane session ID lookup.** The legacy handler uses `GetMinerContext(GetAddress().ToString())` to find the session ID. This lookup is per-connection-address; if the same miner connects from different IPs, the session IDs may not be correlated. This is a fundamental limitation of the legacy port's connection-scoped identity model.
+3. **Legacy lane session ID lookup** — **MITIGATED**: `GetMinerContextByIP()` is now
+   implemented and used as a fallback in `handle_submit_block_stateless` when the primary
+   `GetMinerContext(IP:port)` lookup misses (e.g. after an ephemeral port change on
+   reconnect).  The most recently active context for the IP is returned, and its
+   `nSessionId` is used for the cross-lane `FindSessionBlock()` lookup.  The fundamental
+   limitation — that connection-scoped identity breaks for miners behind NAT sharing an IP
+   — remains.  Full resolution would require Falcon key–based session correlation across
+   lanes, which is a larger architectural change.

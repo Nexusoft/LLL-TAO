@@ -1470,94 +1470,115 @@ namespace LLP
                 /* Continue with existing template lookup and validation... */
                 StatelessMinerManager::Get().IncrementBlocksSubmitted();
 
+                /* GAP 1: keep the cross-lane block alive through validation */
+                std::shared_ptr<TAO::Ledger::Block> spCrossLaneHolder;
+                bool fCrossLane = false;
+
                 /* Make sure the block was created by this mining server. */
                 if(!find_block(hashMerkle))
                 {
-                    debug::error(FUNCTION, "════════════════════════════════════════");
-                    debug::error(FUNCTION, "   ❌ TEMPLATE NOT FOUND");
-                    debug::error(FUNCTION, "════════════════════════════════════════");
-                    debug::error(FUNCTION, "Submitted merkle root: ", hashMerkle.SubString());
-                    debug::error(FUNCTION, "");
-                    debug::error(FUNCTION, "Current blockchain state:");
-                    debug::error(FUNCTION, "  Height: ", TAO::Ledger::ChainState::nBestHeight.load());
-                    debug::error(FUNCTION, "  Synchronizing: ", TAO::Ledger::ChainState::Synchronizing() ? "YES" : "NO");
-                    debug::error(FUNCTION, "");
-                    debug::error(FUNCTION, "Known templates (", mapBlocks.size(), " total):");
-                    
-                    if(mapBlocks.empty())
+                    /* Cross-lane fallback: template may have been issued on the
+                     * legacy port (8323) and stored in the session block map by
+                     * SharedGetBlockHandler on that lane. */
+                    spCrossLaneHolder = StatelessMinerManager::Get().FindSessionBlock(
+                        context.nSessionId, hashMerkle);
+
+                    if(!spCrossLaneHolder)
                     {
-                        debug::error(FUNCTION, "  (none - all templates expired)");
-                    }
-                    else
-                    {
-                        for(const auto& entry : mapBlocks)
+                        debug::error(FUNCTION, "════════════════════════════════════════");
+                        debug::error(FUNCTION, "   ❌ TEMPLATE NOT FOUND");
+                        debug::error(FUNCTION, "════════════════════════════════════════");
+                        debug::error(FUNCTION, "Submitted merkle root: ", hashMerkle.SubString());
+                        debug::error(FUNCTION, "");
+                        debug::error(FUNCTION, "Current blockchain state:");
+                        debug::error(FUNCTION, "  Height: ", TAO::Ledger::ChainState::nBestHeight.load());
+                        debug::error(FUNCTION, "  Synchronizing: ", TAO::Ledger::ChainState::Synchronizing() ? "YES" : "NO");
+                        debug::error(FUNCTION, "");
+                        debug::error(FUNCTION, "Known templates (", mapBlocks.size(), " total):");
+                        
+                        if(mapBlocks.empty())
                         {
-                            const TemplateMetadata& meta = entry.second;
-                            uint64_t nAge = runtime::unifiedtimestamp() - meta.nCreationTime;
-                            
-                            debug::error(FUNCTION, "  ✓ ", entry.first.SubString());
-                            debug::error(FUNCTION, "    Height: ", meta.nHeight, 
-                                       " (current: ", TAO::Ledger::ChainState::nBestHeight.load() + 1, ")");
-                            debug::error(FUNCTION, "    Channel Height: ", meta.nChannelHeight);
-                            debug::error(FUNCTION, "    Age: ", nAge, "s (max: ", LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS, "s)");
-                            debug::error(FUNCTION, "    Channel: ", meta.GetChannelName());
-                            debug::error(FUNCTION, "    Valid: ", !meta.IsStale() ? "YES" : "NO");
+                            debug::error(FUNCTION, "  (none - all templates expired)");
                         }
+                        else
+                        {
+                            for(const auto& entry : mapBlocks)
+                            {
+                                const TemplateMetadata& meta = entry.second;
+                                uint64_t nAge = runtime::unifiedtimestamp() - meta.nCreationTime;
+                                
+                                debug::error(FUNCTION, "  ✓ ", entry.first.SubString());
+                                debug::error(FUNCTION, "    Height: ", meta.nHeight, 
+                                           " (current: ", TAO::Ledger::ChainState::nBestHeight.load() + 1, ")");
+                                debug::error(FUNCTION, "    Channel Height: ", meta.nChannelHeight);
+                                debug::error(FUNCTION, "    Age: ", nAge, "s (max: ", LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS, "s)");
+                                debug::error(FUNCTION, "    Channel: ", meta.GetChannelName());
+                                debug::error(FUNCTION, "    Valid: ", !meta.IsStale() ? "YES" : "NO");
+                            }
+                        }
+                        
+                        debug::error(FUNCTION, "");
+                        debug::error(FUNCTION, "COMMON CAUSES:");
+                        debug::error(FUNCTION, "  1. Template expired (height changed during mining)");
+                        debug::error(FUNCTION, "     → Solution: Poll GET_ROUND more frequently");
+                        debug::error(FUNCTION, "");
+                        debug::error(FUNCTION, "  2. Miner computed wrong merkle root");
+                        debug::error(FUNCTION, "     → Solution: Check miner's merkle calculation");
+                        debug::error(FUNCTION, "");
+                        debug::error(FUNCTION, "  3. Miner mining stale template (>60s old)");
+                        debug::error(FUNCTION, "     → Solution: Reduce work time per template");
+                        debug::error(FUNCTION, "");
+                        debug::error(FUNCTION, "  4. Template cleanup removed it");
+                        debug::error(FUNCTION, "     → Solution: Request new template immediately");
+                        debug::error(FUNCTION, "════════════════════════════════════════");
+                        
+                        StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                        respond(response);
+                        debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Unknown template) ===", ANSI_COLOR_RESET);
+                        return true;
                     }
-                    
-                    debug::error(FUNCTION, "");
-                    debug::error(FUNCTION, "COMMON CAUSES:");
-                    debug::error(FUNCTION, "  1. Template expired (height changed during mining)");
-                    debug::error(FUNCTION, "     → Solution: Poll GET_ROUND more frequently");
-                    debug::error(FUNCTION, "");
-                    debug::error(FUNCTION, "  2. Miner computed wrong merkle root");
-                    debug::error(FUNCTION, "     → Solution: Check miner's merkle calculation");
-                    debug::error(FUNCTION, "");
-                    debug::error(FUNCTION, "  3. Miner mining stale template (>60s old)");
-                    debug::error(FUNCTION, "     → Solution: Reduce work time per template");
-                    debug::error(FUNCTION, "");
-                    debug::error(FUNCTION, "  4. Template cleanup removed it");
-                    debug::error(FUNCTION, "     → Solution: Request new template immediately");
-                    debug::error(FUNCTION, "════════════════════════════════════════");
-                    
-                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                    respond(response);
-                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Unknown template) ===", ANSI_COLOR_RESET);
-                    return true;
-                }
-                
-                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Found original template (wallet-signed)", ANSI_COLOR_RESET);
 
-                /* Get iterator to block template for processing */
-                auto it = mapBlocks.find(hashMerkle);
-                if(it == mapBlocks.end())
-                {
-                    debug::error(FUNCTION, "❌ Template lookup failed (race condition)");
-                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                    respond(response);
-                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (template lookup failed) ===", ANSI_COLOR_RESET);
-                    return true;
+                    debug::log(1, FUNCTION, "SIM-LINK cross-lane SUBMIT_BLOCK resolved: session=",
+                               context.nSessionId, " merkle=", hashMerkle.SubString());
+                    fCrossLane = true;
                 }
 
-                /* ── Canonical pre-check gate (WARN-ONLY) ───────────────────────────
-                 *  Use the snapshot captured at GET_BLOCK / push time (MiningContext).
-                 *  Node's validate_block() + ledger remain the final authority on
-                 *  acceptance; these checks only emit diagnostic warnings.
-                 */
+                TAO::Ledger::TritiumBlock* pTritium = nullptr;
+
+                if(!fCrossLane)
                 {
-                    const CanonicalChainState& snap = context.canonical_snap;
+                    debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Found original template (wallet-signed)", ANSI_COLOR_RESET);
 
-                    const bool fSnapStale = snap.is_canonically_stale();
-                    const uint64_t nSnapAgeMs = snap.is_initialized()
-                        ? static_cast<uint64_t>(
-                            std::chrono::duration_cast<std::chrono::milliseconds>(
-                                std::chrono::steady_clock::now() - snap.canonical_received_at).count())
-                        : 0;
-
-                    if(fSnapStale)
+                    /* Get iterator to block template for processing */
+                    auto it = mapBlocks.find(hashMerkle);
+                    if(it == mapBlocks.end())
                     {
-                        debug::warning(FUNCTION, "SUBMIT_BLOCK pre-check: canonical snapshot stale (>30s) — proceeding with caution");
+                        debug::error(FUNCTION, "❌ Template lookup failed (race condition)");
+                        StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                        respond(response);
+                        debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (template lookup failed) ===", ANSI_COLOR_RESET);
+                        return true;
                     }
+
+                    /* ── Canonical pre-check gate (WARN-ONLY) ───────────────────────────
+                     *  Use the snapshot captured at GET_BLOCK / push time (MiningContext).
+                     *  Node's validate_block() + ledger remain the final authority on
+                     *  acceptance; these checks only emit diagnostic warnings.
+                     */
+                    {
+                        const CanonicalChainState& snap = context.canonical_snap;
+
+                        const bool fSnapStale = snap.is_canonically_stale();
+                        const uint64_t nSnapAgeMs = snap.is_initialized()
+                            ? static_cast<uint64_t>(
+                                std::chrono::duration_cast<std::chrono::milliseconds>(
+                                    std::chrono::steady_clock::now() - snap.canonical_received_at).count())
+                            : 0;
+
+                        if(fSnapStale)
+                        {
+                            debug::warning(FUNCTION, "SUBMIT_BLOCK pre-check: canonical snapshot stale (>30s) — proceeding with caution");
+                        }
 
                     /* Compare template height against canonical unified height (WARN only).
                      * Prefer the Falcon-authenticated miner-submitted height (nHeightFromBlock)
@@ -1584,25 +1605,73 @@ namespace LLP
                     }
                 }
 
-                /* Make sure there is no inconsistencies in signing block. */
-                if(!sign_block(nonce, hashMerkle, vPrimeOffsets))
-                {
-                    debug::error(FUNCTION, "❌ sign_block failed (nonce update failed)");
-                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                    respond(response);
-                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (sign_block failed) ===", ANSI_COLOR_RESET);
-                    return true;
-                }
+                    /* Make sure there is no inconsistencies in signing block. */
+                    if(!sign_block(nonce, hashMerkle, vPrimeOffsets))
+                    {
+                        debug::error(FUNCTION, "❌ sign_block failed (nonce update failed)");
+                        StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                        respond(response);
+                        debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (sign_block failed) ===", ANSI_COLOR_RESET);
+                        return true;
+                    }
 
-                TAO::Ledger::TritiumBlock* pTritium =
-                    dynamic_cast<TAO::Ledger::TritiumBlock*>(it->second.pBlock.get());
-                if(!pTritium)
+                    pTritium = dynamic_cast<TAO::Ledger::TritiumBlock*>(it->second.pBlock.get());
+                    if(!pTritium)
+                    {
+                        debug::error(FUNCTION, "❌ invalid block type (expected TritiumBlock)");
+                        StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                        respond(response);
+                        debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (invalid block type) ===", ANSI_COLOR_RESET);
+                        return true;
+                    }
+                } /* end if(!fCrossLane) */
+                else
                 {
-                    debug::error(FUNCTION, "❌ invalid block type (expected TritiumBlock)");
-                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                    respond(response);
-                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (invalid block type) ===", ANSI_COLOR_RESET);
-                    return true;
+                    /* Cross-lane path: apply nonce/offsets directly to the session-store copy */
+                    pTritium = dynamic_cast<TAO::Ledger::TritiumBlock*>(spCrossLaneHolder.get());
+                    if(!pTritium)
+                    {
+                        debug::error(FUNCTION, "❌ SIM-LINK cross-lane block is not a TritiumBlock");
+                        StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                        respond(response);
+                        return true;
+                    }
+
+                    if(pTritium->nChannel == TAO::Ledger::CHANNEL::PRIME)
+                    {
+                        *pTritium = TAO::Ledger::BuildSolvedPrimeCandidateFromTemplate(
+                            *pTritium, nonce, vPrimeOffsets);
+
+                        if(!pTritium->vOffsets.empty() &&
+                           !TAO::Ledger::VerifySubmittedPrimeOffsets(*pTritium, pTritium->vOffsets))
+                        {
+                            debug::error(FUNCTION, "Cross-lane: Prime vOffsets structural validation failed");
+                            StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                            respond(response);
+                            return true;
+                        }
+
+                        if(pTritium->vOffsets.empty())
+                            TAO::Ledger::GetOffsets(pTritium->GetPrime(), pTritium->vOffsets);
+                    }
+                    else if(pTritium->nChannel == TAO::Ledger::CHANNEL::HASH)
+                    {
+                        *pTritium = TAO::Ledger::BuildSolvedHashCandidateFromTemplate(*pTritium, nonce);
+                    }
+                    else
+                    {
+                        pTritium->nNonce = nonce;
+                        pTritium->vOffsets.clear();
+                        pTritium->vchBlockSig.clear();
+                    }
+
+                    if(!TAO::Ledger::FinalizeWalletSignatureForSolvedBlock(*pTritium))
+                    {
+                        debug::error(FUNCTION, "Cross-lane: FinalizeWalletSignatureForSolvedBlock failed");
+                        StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                        respond(response);
+                        return true;
+                    }
                 }
 
                 /* Hash-based staleness guard — mirrors StakeMinter pattern.
