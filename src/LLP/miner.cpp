@@ -1802,14 +1802,6 @@ namespace LLP
         {
             LOCK(MUTEX);
 
-            /* Look up the session ID for this connection from the manager */
-            uint32_t nSessionId = 0;
-            {
-                auto optCtx = StatelessMinerManager::Get().GetMinerContext(GetAddress().ToString());
-                if(optCtx.has_value())
-                    nSessionId = optCtx->nSessionId;
-            }
-
             GetBlockRequest req;
             /* Build a minimal context snapshot: lane is LEGACY for rate-limit key logging */
             req.context = MiningContext()
