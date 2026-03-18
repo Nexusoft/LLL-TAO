@@ -428,12 +428,6 @@ namespace LLP
                 }
                 debug::log(0, FUNCTION, "[", strCategory, "] Disconnecting ", GetAddress().ToStringIP(), " (", strReason, ")");
 
-                /* hashKeyID is only considered valid after authenticated Falcon session setup.
-                 * Zero remains the sentinel for "no authenticated session", and the registry
-                 * also safely no-ops if the key was never registered. */
-                if(context.fAuthenticated && context.hashKeyID != 0)
-                    NodeSessionRegistry::Get().MarkDisconnected(context.hashKeyID, ProtocolLane::LEGACY);
-
                 /* Notify Colin agent on disconnect (only if genesis was known) */
                 if(hashGenesis != 0)
                 {
