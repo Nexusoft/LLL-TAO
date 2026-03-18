@@ -1208,7 +1208,11 @@ namespace LLP
             ProtocolType::CONNECTIONS.store(0);
             ProtocolType::DISCONNECTS.store(0);
             
-            /* Periodic cleanup for AutoCooldownManager (every 60 seconds) */
+            /* Periodic cleanup cadence is 60 seconds, but the sweep cadence is not the
+             * expiry threshold itself. Each pass compares entries against the much longer
+             * session/cache timeouts (for example SESSION_LIVENESS_TIMEOUT_SECONDS = 86400s),
+             * so running cleanup once per minute only bounds stale-state retention latency
+             * without shortening the underlying liveness window. */
             if(CLEANUP_TIMER.Elapsed() >= 60)
             {
                 AutoCooldownManager::Get().CleanupExpired();

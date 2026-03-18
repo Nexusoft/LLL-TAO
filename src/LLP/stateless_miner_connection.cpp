@@ -640,7 +640,10 @@ namespace LLP
                 debug::log(0, FUNCTION, "MinerLLP: [", strCategory, "] Disconnected from ", GetAddress().ToStringIP(),
                            " reason: ", strReason);
 
-                if(context.hashKeyID != 0)
+                /* hashKeyID is only considered valid after authenticated Falcon session setup.
+                 * Zero remains the sentinel for "no authenticated session", and the registry
+                 * also safely no-ops if the key was never registered. */
+                if(context.fAuthenticated && context.hashKeyID != 0)
                     NodeSessionRegistry::Get().MarkDisconnected(context.hashKeyID, ProtocolLane::STATELESS);
 
                 /* Remove from StatelessMinerManager tracking */
