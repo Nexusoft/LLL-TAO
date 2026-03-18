@@ -21,7 +21,6 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands/crypto.h>
 #include <TAO/API/types/commands/finance.h>
 #include <TAO/API/types/commands/market.h>
-#include <TAO/API/types/commands/mining.h>
 #include <TAO/API/types/commands/network.h>
 #include <TAO/API/types/commands/profiles.h>
 #include <TAO/API/types/commands/register.h>
@@ -63,7 +62,6 @@ namespace TAO::API
         Commands::Register<Invoices>();
         Commands::Register<Ledger>();
         Commands::Register<Local>();
-        Commands::Register<Mining>();
         Commands::Register<Network>(config::fClient.load()); //DISABLED for -client mode
         Commands::Register<Names>();
         Commands::Register<Profiles>();
