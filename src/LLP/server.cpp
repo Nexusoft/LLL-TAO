@@ -28,6 +28,10 @@ ________________________________________________________________________________
 
 #include <LLP/include/trust_address.h>
 #include <LLP/include/auto_cooldown_manager.h>
+#include <LLP/include/node_cache.h>
+#include <LLP/include/stateless_manager.h>
+#include <LLP/include/session_recovery.h>
+#include <LLP/include/node_session_registry.h>
 
 #include <Util/include/args.h>
 #include <Util/include/signals.h>
@@ -63,6 +67,10 @@ namespace LLP
     
     template <typename T>
     inline constexpr bool has_mining_notifications_v = has_mining_notifications<T>::value;
+
+    template <typename T>
+    inline constexpr bool is_miner_protocol_v =
+        std::is_same_v<T, Miner> || std::is_same_v<T, StatelessMinerConnection>;
 }
 
 
@@ -1200,10 +1208,24 @@ namespace LLP
             ProtocolType::CONNECTIONS.store(0);
             ProtocolType::DISCONNECTS.store(0);
             
-            /* Periodic cleanup for AutoCooldownManager (every 60 seconds) */
-            if(CLEANUP_TIMER.Elapsed() >= 60)
+            /* Periodic cleanup cadence is 10 minutes, but the sweep cadence is not the
+             * expiry threshold itself. Each pass compares entries against the much longer
+             * session/cache timeouts (for example SESSION_LIVENESS_TIMEOUT_SECONDS = 86400s),
+             * so running cleanup every 10 minutes only bounds stale-state retention latency
+             * without shortening the underlying liveness window. */
+            if(CLEANUP_TIMER.Elapsed() >= 600)
             {
                 AutoCooldownManager::Get().CleanupExpired();
+
+                if constexpr (is_miner_protocol_v<ProtocolType>)
+                {
+                    StatelessMinerManager::Get().CleanupInactive(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
+                    StatelessMinerManager::Get().PurgeInactiveMiners();
+                    SessionRecoveryManager::Get().CleanupExpired(
+                        SessionRecoveryManager::Get().GetSessionTimeout());
+                    NodeSessionRegistry::Get().SweepExpired(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
+                }
+
                 CLEANUP_TIMER.Reset();
             }
         }

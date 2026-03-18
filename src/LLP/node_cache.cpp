@@ -74,5 +74,16 @@ namespace NodeCache
         return DEFAULT_CACHE_PURGE_TIMEOUT;
     }
 
+
+    /** GetSessionLivenessTimeout
+     *
+     *  Get the rolling session liveness timeout used for keepalive expiry.
+     *
+     **/
+    uint64_t GetSessionLivenessTimeout([[maybe_unused]] const std::string& strAddress)
+    {
+        return SESSION_LIVENESS_TIMEOUT_SECONDS;
+    }
+
 } // namespace NodeCache
 } // namespace LLP

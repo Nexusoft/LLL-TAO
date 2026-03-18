@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <LLP/include/stateless_manager.h>
 #include <LLP/include/stateless_opcodes.h>
 #include <LLP/include/keepalive_v2.h>
+#include <LLP/include/node_cache.h>
 #include <helpers/test_fixtures.h>
 
 #include <Util/include/runtime.h>
@@ -800,5 +801,25 @@ TEST_CASE("Session: SESSION_EXPIRED Opcode and Graceful Eviction", "[session][ex
 
         /* After extension, session is no longer expired */
         REQUIRE(result.context.IsSessionExpired(now) == false);
+    }
+}
+
+
+TEST_CASE("Session liveness timeout remains separate from cache purge timeout", "[session][timeout][node_cache]")
+{
+    SECTION("Remote miner session timeout uses dedicated liveness window")
+    {
+        REQUIRE(NodeCache::GetSessionLivenessTimeout("192.168.1.10") ==
+                NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
+        REQUIRE(NodeCache::GetSessionLivenessTimeout("192.168.1.10") <
+                NodeCache::GetPurgeTimeout("192.168.1.10"));
+    }
+
+    SECTION("Localhost still uses the same liveness timeout but longer purge retention")
+    {
+        REQUIRE(NodeCache::GetSessionLivenessTimeout("127.0.0.1") ==
+                NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
+        REQUIRE(NodeCache::GetSessionLivenessTimeout("127.0.0.1") <
+                NodeCache::GetPurgeTimeout("127.0.0.1"));
     }
 }

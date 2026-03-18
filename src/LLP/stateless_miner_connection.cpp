@@ -83,6 +83,32 @@ namespace LLP
         using Diagnostics::YesNo;
         using Diagnostics::PassFail;
 
+        /* KEEPALIVE_V2 wire format is always 8 bytes:
+         * session_id (4 bytes little-endian) + prevblock suffix / canary (4 bytes big-endian). */
+        static constexpr uint32_t KEEPALIVE_V2_FALLBACK_SIZE = 8;
+
+        inline StatelessPacket BuildSessionExpiredResponse(const uint32_t nSessionId, const uint8_t nReason = 0x01)
+        {
+            StatelessPacket response(OpcodeUtility::Stateless::SESSION_EXPIRED);
+            response.DATA = {
+                static_cast<uint8_t>(nSessionId & 0xFF),
+                static_cast<uint8_t>((nSessionId >> 8) & 0xFF),
+                static_cast<uint8_t>((nSessionId >> 16) & 0xFF),
+                static_cast<uint8_t>((nSessionId >> 24) & 0xFF),
+                nReason
+            };
+            response.LENGTH = static_cast<uint32_t>(response.DATA.size());
+            return response;
+        }
+
+        inline StatelessPacket BuildFallbackKeepaliveV2Packet()
+        {
+            StatelessPacket packet(KEEPALIVE_V2);
+            packet.DATA.resize(KEEPALIVE_V2_FALLBACK_SIZE, 0);
+            packet.LENGTH = KEEPALIVE_V2_FALLBACK_SIZE;
+            return packet;
+        }
+
         std::atomic<uint64_t> g_get_block_requests_total{0};
         std::atomic<uint64_t> g_get_block_rate_limited_total{0};
         std::atomic<uint64_t> g_get_block_blockdata_sent_total{0};
@@ -613,6 +639,12 @@ namespace LLP
 
                 debug::log(0, FUNCTION, "MinerLLP: [", strCategory, "] Disconnected from ", GetAddress().ToStringIP(),
                            " reason: ", strReason);
+
+                /* hashKeyID is only considered valid after authenticated Falcon session setup.
+                 * Zero remains the sentinel for "no authenticated session", and the registry
+                 * also safely no-ops if the key was never registered. */
+                if(context.fAuthenticated && context.hashKeyID != 0)
+                    NodeSessionRegistry::Get().MarkDisconnected(context.hashKeyID, ProtocolLane::STATELESS);
 
                 /* Remove from StatelessMinerManager tracking */
                 {
@@ -1450,6 +1482,7 @@ namespace LLP
 
                 /* GAP 1: keep the cross-lane block alive through validation */
                 std::shared_ptr<TAO::Ledger::Block> spCrossLaneHolder;
+                std::unique_ptr<TAO::Ledger::Block> upCrossLaneClone;
                 bool fCrossLane = false;
 
                 /* Make sure the block was created by this mining server. */
@@ -1518,6 +1551,14 @@ namespace LLP
 
                     debug::log(1, FUNCTION, "SIM-LINK cross-lane SUBMIT_BLOCK resolved: session=",
                                context.nSessionId, " merkle=", hashMerkle.SubString());
+                    upCrossLaneClone = std::unique_ptr<TAO::Ledger::Block>(spCrossLaneHolder->Clone());
+                    if(!upCrossLaneClone)
+                    {
+                        debug::error(FUNCTION, "❌ SIM-LINK cross-lane block clone failed");
+                        StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                        respond(response);
+                        return true;
+                    }
                     fCrossLane = true;
                 }
 
@@ -1605,10 +1646,11 @@ namespace LLP
                 } /* end if(!fCrossLane) */
                 else
                 {
-                    /* Cross-lane path: apply nonce/offsets directly to the session-store copy.
+                    /* Cross-lane path: clone the session-store block before applying
+                     * nonce/offsets so the other lane never observes mutated template state.
                      * NOTE: This channel-dispatch logic mirrors the cross-lane path in
                      * Miner::handle_submit_block_stateless (miner.cpp). */
-                    pTritium = dynamic_cast<TAO::Ledger::TritiumBlock*>(spCrossLaneHolder.get());
+                    pTritium = dynamic_cast<TAO::Ledger::TritiumBlock*>(upCrossLaneClone.get());
                     if(!pTritium)
                     {
                         debug::error(FUNCTION, "❌ SIM-LINK cross-lane block is not a TritiumBlock");
@@ -2715,6 +2757,33 @@ namespace LLP
                     errorResponse.LENGTH = 1;
                     respond(errorResponse);
                     debug::log(2, FUNCTION, "Sent MINER_AUTH_RESULT error response");
+                }
+                else if(PACKET.HEADER == KEEPALIVE_V2)
+                {
+                    if(context.fAuthenticated && context.nSessionId != 0)
+                    {
+                        /* Use an all-zero fallback frame because the error path only needs
+                         * a syntactically valid KEEPALIVE_V2 packet to trigger the normal
+                         * ACK-building path; session identity and liveness come from context. */
+                        const StatelessPacket fallbackKeepalive = BuildFallbackKeepaliveV2Packet();
+
+                        const ProcessResult fallbackResult =
+                            StatelessMiner::ProcessKeepaliveV2(context, fallbackKeepalive);
+
+                        if(fallbackResult.fSuccess && fallbackResult.response.LENGTH > 0)
+                        {
+                            respond(fallbackResult.response);
+                            debug::log(2, FUNCTION,
+                                       "Sent KEEPALIVE_V2 fallback response after processing error");
+                        }
+                    }
+                    else
+                    {
+                        errorResponse = BuildSessionExpiredResponse(context.nSessionId);
+                        respond(errorResponse);
+                        debug::log(2, FUNCTION,
+                                   "Sent SESSION_EXPIRED fallback response after KEEPALIVE_V2 error");
+                    }
                 }
                 
                 /* For other packet types, connection will be closed gracefully */
