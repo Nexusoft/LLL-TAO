@@ -80,9 +80,8 @@ namespace NodeCache
      *  Get the rolling session liveness timeout used for keepalive expiry.
      *
      **/
-    uint64_t GetSessionLivenessTimeout(const std::string& strAddress)
+    uint64_t GetSessionLivenessTimeout([[maybe_unused]] const std::string& strAddress)
     {
-        (void)strAddress;
         return SESSION_LIVENESS_TIMEOUT_SECONDS;
     }
 

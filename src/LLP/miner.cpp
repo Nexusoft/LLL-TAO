@@ -2115,12 +2115,20 @@ namespace LLP
          * Convention: nSessionId == 0 means "not yet established" (same sentinel
          * used throughout the miner authentication path). */
         std::shared_ptr<TAO::Ledger::Block> spCrossLane;
-        std::unique_ptr<TAO::Ledger::Block> pCrossLaneClone;
+        std::unique_ptr<TAO::Ledger::Block> upCrossLaneClone;
         if(nCrossLaneSessionId != 0)
         {
             spCrossLane = StatelessMinerManager::Get().FindSessionBlock(nCrossLaneSessionId, hashMerkle);
             if(spCrossLane)
-                pCrossLaneClone.reset(spCrossLane->Clone());
+            {
+                upCrossLaneClone = std::unique_ptr<TAO::Ledger::Block>(spCrossLane->Clone());
+                if(!upCrossLaneClone)
+                {
+                    debug::error(FUNCTION, "SIM-LINK cross-lane block clone failed");
+                    respond(BLOCK_REJECTED);
+                    return true;
+                }
+            }
         }
 
         LOCK(MUTEX);
@@ -2159,7 +2167,7 @@ namespace LLP
             debug::log(1, FUNCTION, "SIM-LINK cross-lane SUBMIT_BLOCK resolved: session=",
                        nCrossLaneSessionId, " merkle=", hashMerkle.SubString());
 
-            pTritium = dynamic_cast<TAO::Ledger::TritiumBlock*>(pCrossLaneClone.get());
+            pTritium = dynamic_cast<TAO::Ledger::TritiumBlock*>(upCrossLaneClone.get());
             if(!pTritium)
             {
                 debug::error(FUNCTION, "SIM-LINK cross-lane block is not a TritiumBlock");

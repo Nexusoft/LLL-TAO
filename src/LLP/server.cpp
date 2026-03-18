@@ -67,6 +67,10 @@ namespace LLP
     
     template <typename T>
     inline constexpr bool has_mining_notifications_v = has_mining_notifications<T>::value;
+
+    template <typename T>
+    inline constexpr bool is_miner_protocol_v =
+        std::is_same_v<T, Miner> || std::is_same_v<T, StatelessMinerConnection>;
 }
 
 
@@ -1209,8 +1213,7 @@ namespace LLP
             {
                 AutoCooldownManager::Get().CleanupExpired();
 
-                if constexpr (std::is_same_v<ProtocolType, Miner> ||
-                              std::is_same_v<ProtocolType, StatelessMinerConnection>)
+                if constexpr (is_miner_protocol_v<ProtocolType>)
                 {
                     StatelessMinerManager::Get().CleanupInactive(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
                     StatelessMinerManager::Get().PurgeInactiveMiners();
