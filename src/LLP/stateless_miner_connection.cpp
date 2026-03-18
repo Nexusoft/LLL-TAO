@@ -614,6 +614,9 @@ namespace LLP
                 debug::log(0, FUNCTION, "MinerLLP: [", strCategory, "] Disconnected from ", GetAddress().ToStringIP(),
                            " reason: ", strReason);
 
+                if(context.hashKeyID != 0)
+                    NodeSessionRegistry::Get().MarkDisconnected(context.hashKeyID, ProtocolLane::STATELESS);
+
                 /* Remove from StatelessMinerManager tracking */
                 {
                     LOCK(MUTEX);
@@ -1450,6 +1453,7 @@ namespace LLP
 
                 /* GAP 1: keep the cross-lane block alive through validation */
                 std::shared_ptr<TAO::Ledger::Block> spCrossLaneHolder;
+                std::unique_ptr<TAO::Ledger::Block> pCrossLaneClone;
                 bool fCrossLane = false;
 
                 /* Make sure the block was created by this mining server. */
@@ -1518,6 +1522,7 @@ namespace LLP
 
                     debug::log(1, FUNCTION, "SIM-LINK cross-lane SUBMIT_BLOCK resolved: session=",
                                context.nSessionId, " merkle=", hashMerkle.SubString());
+                    pCrossLaneClone.reset(spCrossLaneHolder->Clone());
                     fCrossLane = true;
                 }
 
@@ -1605,10 +1610,11 @@ namespace LLP
                 } /* end if(!fCrossLane) */
                 else
                 {
-                    /* Cross-lane path: apply nonce/offsets directly to the session-store copy.
+                    /* Cross-lane path: clone the session-store block before applying
+                     * nonce/offsets so the other lane never observes mutated template state.
                      * NOTE: This channel-dispatch logic mirrors the cross-lane path in
                      * Miner::handle_submit_block_stateless (miner.cpp). */
-                    pTritium = dynamic_cast<TAO::Ledger::TritiumBlock*>(spCrossLaneHolder.get());
+                    pTritium = dynamic_cast<TAO::Ledger::TritiumBlock*>(pCrossLaneClone.get());
                     if(!pTritium)
                     {
                         debug::error(FUNCTION, "❌ SIM-LINK cross-lane block is not a TritiumBlock");
@@ -2715,6 +2721,40 @@ namespace LLP
                     errorResponse.LENGTH = 1;
                     respond(errorResponse);
                     debug::log(2, FUNCTION, "Sent MINER_AUTH_RESULT error response");
+                }
+                else if(PACKET.HEADER == KEEPALIVE_V2)
+                {
+                    if(context.fAuthenticated && context.nSessionId != 0)
+                    {
+                        StatelessPacket fallbackKeepalive(KEEPALIVE_V2);
+                        fallbackKeepalive.DATA.resize(8, 0);
+                        fallbackKeepalive.LENGTH = 8;
+
+                        const ProcessResult fallbackResult =
+                            StatelessMiner::ProcessKeepaliveV2(context, fallbackKeepalive);
+
+                        if(fallbackResult.fSuccess && fallbackResult.response.LENGTH > 0)
+                        {
+                            respond(fallbackResult.response);
+                            debug::log(2, FUNCTION,
+                                       "Sent KEEPALIVE_V2 fallback response after processing error");
+                        }
+                    }
+                    else
+                    {
+                        errorResponse.HEADER = OpcodeUtility::Stateless::SESSION_EXPIRED;
+                        errorResponse.DATA = {
+                            static_cast<uint8_t>(context.nSessionId & 0xFF),
+                            static_cast<uint8_t>((context.nSessionId >> 8) & 0xFF),
+                            static_cast<uint8_t>((context.nSessionId >> 16) & 0xFF),
+                            static_cast<uint8_t>((context.nSessionId >> 24) & 0xFF),
+                            static_cast<uint8_t>(0x01)
+                        };
+                        errorResponse.LENGTH = static_cast<uint32_t>(errorResponse.DATA.size());
+                        respond(errorResponse);
+                        debug::log(2, FUNCTION,
+                                   "Sent SESSION_EXPIRED fallback response after KEEPALIVE_V2 error");
+                    }
                 }
                 
                 /* For other packet types, connection will be closed gracefully */

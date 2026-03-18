@@ -428,6 +428,9 @@ namespace LLP
                 }
                 debug::log(0, FUNCTION, "[", strCategory, "] Disconnecting ", GetAddress().ToStringIP(), " (", strReason, ")");
 
+                if(context.hashKeyID != 0)
+                    NodeSessionRegistry::Get().MarkDisconnected(context.hashKeyID, ProtocolLane::LEGACY);
+
                 /* Notify Colin agent on disconnect (only if genesis was known) */
                 if(hashGenesis != 0)
                 {
@@ -550,7 +553,7 @@ namespace LLP
                 MiningContext sessionContext = optContext.value();
                 uint64_t nNow = runtime::unifiedtimestamp();
                 const uint32_t nExpirySeconds =
-                    static_cast<uint32_t>(NodeCache::GetPurgeTimeout(sessionContext.strAddress));
+                    static_cast<uint32_t>(NodeCache::GetSessionLivenessTimeout(sessionContext.strAddress));
 
                 sessionContext = sessionContext
                     .WithTimestamp(nNow)
@@ -843,7 +846,7 @@ namespace LLP
                     {
                         uint64_t nNow = runtime::unifiedtimestamp();
                         const uint32_t nExpirySeconds =
-                            static_cast<uint32_t>(NodeCache::GetPurgeTimeout(updatedContext.strAddress));
+                            static_cast<uint32_t>(NodeCache::GetSessionLivenessTimeout(updatedContext.strAddress));
 
                         if(updatedContext.nSessionStart == 0)
                             updatedContext = updatedContext.WithSessionStart(nNow);
@@ -2112,8 +2115,13 @@ namespace LLP
          * Convention: nSessionId == 0 means "not yet established" (same sentinel
          * used throughout the miner authentication path). */
         std::shared_ptr<TAO::Ledger::Block> spCrossLane;
+        std::unique_ptr<TAO::Ledger::Block> pCrossLaneClone;
         if(nCrossLaneSessionId != 0)
+        {
             spCrossLane = StatelessMinerManager::Get().FindSessionBlock(nCrossLaneSessionId, hashMerkle);
+            if(spCrossLane)
+                pCrossLaneClone.reset(spCrossLane->Clone());
+        }
 
         LOCK(MUTEX);
 
@@ -2143,14 +2151,15 @@ namespace LLP
         else
         {
             /* Cross-lane path: template was issued on the stateless port (9323) and
-             * submitted here on the legacy port (8323).  Apply nonce/offsets directly
-             * to the shared_ptr<Block> copy from the session store.
+             * submitted here on the legacy port (8323).  Clone the session-store block
+             * before applying nonce/offsets so cross-lane submissions never mutate the
+             * shared_ptr<Block> copy used by the other lane.
              * NOTE: This channel-dispatch logic mirrors the cross-lane path in
              * StatelessMinerConnection::ProcessPacket (SUBMIT_BLOCK handler). */
             debug::log(1, FUNCTION, "SIM-LINK cross-lane SUBMIT_BLOCK resolved: session=",
                        nCrossLaneSessionId, " merkle=", hashMerkle.SubString());
 
-            pTritium = dynamic_cast<TAO::Ledger::TritiumBlock*>(spCrossLane.get());
+            pTritium = dynamic_cast<TAO::Ledger::TritiumBlock*>(pCrossLaneClone.get());
             if(!pTritium)
             {
                 debug::error(FUNCTION, "SIM-LINK cross-lane block is not a TritiumBlock");

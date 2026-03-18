@@ -28,6 +28,10 @@ ________________________________________________________________________________
 
 #include <LLP/include/trust_address.h>
 #include <LLP/include/auto_cooldown_manager.h>
+#include <LLP/include/node_cache.h>
+#include <LLP/include/stateless_manager.h>
+#include <LLP/include/session_recovery.h>
+#include <LLP/include/node_session_registry.h>
 
 #include <Util/include/args.h>
 #include <Util/include/signals.h>
@@ -1204,6 +1208,17 @@ namespace LLP
             if(CLEANUP_TIMER.Elapsed() >= 60)
             {
                 AutoCooldownManager::Get().CleanupExpired();
+
+                if constexpr (std::is_same_v<ProtocolType, Miner> ||
+                              std::is_same_v<ProtocolType, StatelessMinerConnection>)
+                {
+                    StatelessMinerManager::Get().CleanupInactive(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
+                    StatelessMinerManager::Get().PurgeInactiveMiners();
+                    SessionRecoveryManager::Get().CleanupExpired(
+                        SessionRecoveryManager::Get().GetSessionTimeout());
+                    NodeSessionRegistry::Get().SweepExpired(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
+                }
+
                 CLEANUP_TIMER.Reset();
             }
         }

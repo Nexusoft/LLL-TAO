@@ -46,6 +46,14 @@ namespace NodeCache
      **/
     static constexpr uint64_t DEFAULT_KEEPALIVE_INTERVAL = 86400;
 
+    /** SESSION_LIVENESS_TIMEOUT_SECONDS
+     *
+     *  Session liveness timeout used for rolling keepalive/session expiry.
+     *  This is intentionally distinct from the much longer cache purge timeout.
+     *
+     **/
+    static constexpr uint64_t SESSION_LIVENESS_TIMEOUT_SECONDS = DEFAULT_KEEPALIVE_INTERVAL;
+
     /** DEFAULT_CACHE_PURGE_TIMEOUT
      *
      *  Timeout after which inactive miners are purged from cache.
@@ -94,6 +102,19 @@ namespace NodeCache
      *
      **/
     uint64_t GetPurgeTimeout(const std::string& strAddress);
+
+    /** GetSessionLivenessTimeout
+     *
+     *  Get the rolling session liveness timeout for a miner connection.
+     *  This timeout is used for session expiry / keepalive logic and remains
+     *  intentionally separate from cache retention / purge timeouts.
+     *
+     *  @param[in] strAddress The miner's network address
+     *
+     *  @return Session liveness timeout in seconds
+     *
+     **/
+    uint64_t GetSessionLivenessTimeout(const std::string& strAddress);
 
 } // namespace NodeCache
 } // namespace LLP
