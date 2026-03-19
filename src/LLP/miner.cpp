@@ -187,6 +187,7 @@ namespace LLP
         strMinerId.clear();
         vAuthNonce.clear();
         fMinerAuthenticated = false;
+        hashKeyID = 0;
 
         /* Send a notification to wake up sleeping thread to finish shutdown process. */
         this->NotifyEvent();
@@ -427,6 +428,11 @@ namespace LLP
                         break;
                 }
                 debug::log(0, FUNCTION, "[", strCategory, "] Disconnecting ", GetAddress().ToStringIP(), " (", strReason, ")");
+
+                /* Notify NodeSessionRegistry that this legacy lane miner has disconnected.
+                 * hashKeyID is set during Falcon authentication; zero means never authenticated. */
+                if(fMinerAuthenticated && hashKeyID != 0)
+                    NodeSessionRegistry::Get().MarkDisconnected(hashKeyID, ProtocolLane::LEGACY);
 
                 /* Notify Colin agent on disconnect (only if genesis was known) */
                 if(hashGenesis != 0)
@@ -885,6 +891,9 @@ namespace LLP
                             debug::log(0, FUNCTION, "✓ Refreshed EXISTING session in NodeSessionRegistry: sessionId=",
                                        canonicalSessionId, " keyID=", updatedContext.hashKeyID.SubString());
                         }
+
+                        /* Store hashKeyID as member for DISCONNECT handler cleanup */
+                        hashKeyID = updatedContext.hashKeyID;
                     }
 
                     /* Persist session and lane state for cross-lane recovery */
