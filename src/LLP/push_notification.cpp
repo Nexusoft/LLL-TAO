@@ -17,9 +17,19 @@ ________________________________________________________________________________
 #include <LLP/packets/stateless_packet.h>
 #include <LLP/include/opcode_utility.h>
 #include <TAO/Ledger/types/state.h>
+#include <TAO/Ledger/include/chainstate.h>
 
 namespace LLP
 {
+    uint1024_t PushNotificationBuilder::BestChainHashForNotification(
+        const TAO::Ledger::BlockState& stateBest)
+    {
+        if(!stateBest.IsNull())
+            return stateBest.GetHash();
+
+        return TAO::Ledger::ChainState::hashBestChain.load();
+    }
+
     /* BuildPayload - Build 140-byte notification payload (big-endian) */
     std::vector<uint8_t> PushNotificationBuilder::BuildPayload(
         uint32_t nUnifiedHeight,

@@ -4392,11 +4392,15 @@ namespace LLP
         
         /* Get difficulty */
         uint32_t nDifficulty = TAO::Ledger::GetNextTargetRequired(stateBest, nChannel);
+
+        /* Keep the tip hash consistent with the loaded best-state snapshot. */
+        const uint1024_t hashBestChain =
+            PushNotificationBuilder::BestChainHashForNotification(stateBest);
         
         /* Build notification using unified builder */
         StatelessPacket notification = PushNotificationBuilder::BuildChannelNotification<StatelessPacket>(
             nChannel, ProtocolLane::STATELESS, stateBest, stateChannel, nDifficulty,
-            TAO::Ledger::ChainState::hashBestChain.load());
+            hashBestChain);
         
         /* Log the notification details BEFORE sending for diagnostics */
         const std::string strOpcodeName = (nChannel == 1) ? 
@@ -4419,7 +4423,7 @@ namespace LLP
         debug::log(2, "      Difficulty (calc):  ", std::fixed, std::setprecision(6), 
                    TAO::Ledger::GetDifficulty(nDifficulty, nChannel));
         debug::log(2, "   Packet Size:    ", notification.LENGTH, " bytes");
-        debug::log(0, FUNCTION, "[BLOCK CREATE] hashPrevBlock = ", TAO::Ledger::ChainState::hashBestChain.load().SubString(),
+        debug::log(0, FUNCTION, "[BLOCK CREATE] hashPrevBlock = ", hashBestChain.SubString(),
                    " (template anchor embedded in push notification, unified height ", stateBest.nHeight + 1, ")");
         debug::log(2, "");
         debug::log(2, "   ⚠️  EXPECTED CLIENT ACTION:");

@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLP/packets/packet.h>
 #include <LLP/packets/stateless_packet.h>
 #include <LLP/include/opcode_utility.h>
+#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/state.h>
 
 #include <vector>
@@ -230,6 +231,57 @@ TEST_CASE("PushNotificationBuilder - Payload Construction", "[push_notification]
         {
             REQUIRE(notification.DATA[i] == 0xFF);
         }
+    }
+}
+
+TEST_CASE("PushNotificationBuilder - Notification tip hash selection", "[push_notification][llp]")
+{
+    struct BestChainHashGuard
+    {
+        uint1024_t original;
+
+        BestChainHashGuard()
+            : original(TAO::Ledger::ChainState::hashBestChain.load())
+        {
+        }
+
+        ~BestChainHashGuard()
+        {
+            TAO::Ledger::ChainState::hashBestChain = original;
+        }
+    };
+
+    SECTION("Uses the loaded best-state hash when stateBest is available")
+    {
+        BestChainHashGuard guard;
+
+        TAO::Ledger::BlockState stateBest;
+        stateBest.nVersion = 4;
+        stateBest.nChannel = 1;
+        stateBest.nHeight = 6639346;
+        stateBest.nChannelHeight = 2342835;
+        stateBest.nBits = 0x03C00000;
+        REQUIRE(!stateBest.IsNull());
+
+        const uint1024_t ignoredGlobalHash = uint1024_t(77);
+        const uint1024_t expectedHash = stateBest.GetHash();
+
+        REQUIRE(expectedHash != ignoredGlobalHash);
+
+        TAO::Ledger::ChainState::hashBestChain = ignoredGlobalHash;
+        REQUIRE(LLP::PushNotificationBuilder::BestChainHashForNotification(stateBest) == expectedHash);
+    }
+
+    SECTION("Falls back to hashBestChain when best state is null")
+    {
+        BestChainHashGuard guard;
+
+        TAO::Ledger::BlockState stateBest;
+        REQUIRE(stateBest.IsNull());
+        const uint1024_t expectedHash = uint1024_t(12345);
+
+        TAO::Ledger::ChainState::hashBestChain = expectedHash;
+        REQUIRE(LLP::PushNotificationBuilder::BestChainHashForNotification(stateBest) == expectedHash);
     }
 }
 

@@ -1752,16 +1752,20 @@ namespace LLP
         
         /* Get difficulty */
         uint32_t nDifficulty = LLP::StatelessMinerConnection::GetCachedDifficulty(nSubscribedChannel);
+
+        /* Keep the tip hash consistent with the loaded best-state snapshot. */
+        const uint1024_t hashBestChain =
+            PushNotificationBuilder::BestChainHashForNotification(stateBest);
         
         /* Build notification using unified builder (8-bit opcodes for legacy lane) */
         Packet notification = PushNotificationBuilder::BuildChannelNotification<Packet>(
             nSubscribedChannel, ProtocolLane::LEGACY, stateBest, stateChannel, nDifficulty,
-            TAO::Ledger::ChainState::hashBestChain.load());
+            hashBestChain);
         
         /* Send to miner */
         respond(notification.HEADER, notification.DATA);
         
-        debug::log(0, FUNCTION, "[BLOCK CREATE] hashPrevBlock = ", TAO::Ledger::ChainState::hashBestChain.load().SubString(),
+        debug::log(0, FUNCTION, "[BLOCK CREATE] hashPrevBlock = ", hashBestChain.SubString(),
                    " (template anchor embedded in push notification, unified height ", stateBest.nHeight + 1, ")");
         debug::log(2, FUNCTION, "Sent ", GetChannelName(nSubscribedChannel), 
                    " notification to ", GetAddress().ToStringIP(),
