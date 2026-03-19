@@ -90,6 +90,21 @@ namespace LLP
     class PushNotificationBuilder
     {
     public:
+        /** BestChainHashForNotification
+         *
+         *  Resolve the best-chain hash to embed in a push notification.
+         *  Prefers the hash from the loaded best-state snapshot so the
+         *  notification hash stays consistent with the state/height fields
+         *  even while SetBest() is publishing tStateBest and hashBestChain.
+         *
+         *  @param[in] stateBest Current best block state snapshot
+         *
+         *  @return Hash to embed in the notification payload
+         *
+         **/
+        static uint1024_t BestChainHashForNotification(
+            const TAO::Ledger::BlockState& stateBest);
+
         /** BuildChannelNotification
          *
          *  Build a channel-specific push notification packet.
