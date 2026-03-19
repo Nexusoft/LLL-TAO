@@ -43,6 +43,12 @@ namespace LLP
 
     public:
 
+        enum Update : uint64_t
+        {
+            Empty   = 0,
+            Timeout = 1,
+        };
+
         /** Default Constructor. **/
         Trigger()
         : CONDITION     ( )
@@ -143,7 +149,7 @@ namespace LLP
             std::unique_lock<std::mutex> REQUEST_LOCK(REQUEST_MUTEX);
 
             /* We want to track our nonce outside of the lambda. */
-            uint64_t nNonce = 0;
+            uint64_t nNonce = Update::Empty;
 
             /* Track the time elapsed now as well. */
             refresh_timeout();
@@ -156,16 +162,28 @@ namespace LLP
                 if(config::fShutdown.load())
                     return true;
 
+
                 { LOCK(TRIGGER_MUTEX);
 
-                    /* Reset the stream. */
+                    /* This check is for spurious wake-ups. */
                     ssArgs.Reset();
                     if(ssArgs.size() == 0)
                         return false;
+
+                    /* Check our Nonce. */
+                    ssArgs >> nNonce;
                 }
 
-                /* Check for genesis. */
-                ssArgs >> nNonce;
+                /* Check if we have a timeout reset nonce. */
+                if(nNonce == Update::Timeout)
+                {
+                    /* Refresh our timeout. */
+                    refresh_timeout();
+
+                    /* Reset our Nonce and go back to waiting. */
+                    nNonce = Update::Empty;
+                    return false;
+                }
 
                 /* Check the nonce for trigger. */
                 if(nNonce == nTriggerNonce)

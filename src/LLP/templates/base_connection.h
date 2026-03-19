@@ -122,7 +122,7 @@ namespace LLP
 
         /** Total incoming connections. **/
         static std::atomic<uint64_t> CONNECTIONS;
-        
+
 
         /** Total disconnections. **/
         static std::atomic<uint64_t> DISCONNECTS;

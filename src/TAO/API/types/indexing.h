@@ -211,8 +211,10 @@ namespace TAO::API
          *
          *  Download a sigchain's remote indexes.
          *
+         *  @param[in] hashGenesis The genesis-id we are building indexes for.
+         *
          **/
-        static void DownloadIndexes(const uint256_t& hashSession);
+        static void DownloadIndexes(const uint256_t& hashGenesis);
 
 
         /** Initialize Thread

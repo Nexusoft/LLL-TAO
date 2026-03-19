@@ -21,15 +21,11 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Sync's a user's indexing entries. */
-    void Indexing::DownloadIndexes(const uint256_t& hashSession)
+    void Indexing::DownloadIndexes(const uint256_t& hashGenesis)
     {
         /* This is only for -client mode. */
         if(!config::fClient.load())
             return;
-
-        /* Get our current genesis-id to start initialization. */
-        const uint256_t hashGenesis =
-            Authentication::Caller(hashSession);
 
         /* Broadcast our unconfirmed transactions first. */
         BroadcastUnconfirmed(hashGenesis);
@@ -51,7 +47,7 @@ namespace TAO::API
         if(LLP::TRITIUM_SERVER)
         {
             /* Find an active connection to sync from. */
-            std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
+            std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->RandomConnection();
             if(pNode != nullptr)
             {
                 debug::log(0, FUNCTION, "CLIENT MODE: Synchronizing Sigchain");
@@ -104,7 +100,7 @@ namespace TAO::API
         if(LLP::TRITIUM_SERVER)
         {
             /* Find an active connection to sync from. */
-            std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
+            std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->RandomConnection();
             if(pNode != nullptr)
             {
                 debug::log(0, FUNCTION, "CLIENT MODE: Synchronizing Notifications");
@@ -114,13 +110,13 @@ namespace TAO::API
                 LLD::Sessions->ReadTritiumSequence(hashGenesis, nTritiumSequence);
 
                 /* Loop until we have received all of our events. */
-                do
+                while(!config::fShutdown.load())
                 {
                     /* Request the sig chain. */
                     debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::NOTIFICATION from ", nTritiumSequence, " for ", hashGenesis.SubString());
                     LLP::TritiumNode::BlockingMessage
                     (
-                        30000,
+                        5000,
                         pNode.get(), LLP::TritiumNode::ACTION::LIST,
                         uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis, nTritiumSequence
                     );
@@ -137,11 +133,12 @@ namespace TAO::API
                     /* Check that are starting and current sequences match. */
                     if(nCurrentSequence == nTritiumSequence)
                     {
-                        debug::log(0, FUNCTION, "CLIENT MODE: LIST::NOTIFICATION completed for ", hashGenesis.SubString());
+                        debug::log(0, FUNCTION, "CLIENT MODE: LIST::NOTIFICATION completed at ", nCurrentSequence, "for ", hashGenesis.SubString());
                         break;
                     }
+
+                    LLD::Sessions->ReadTritiumSequence(hashGenesis, nTritiumSequence);
                 }
-                while(LLD::Sessions->ReadTritiumSequence(hashGenesis, nTritiumSequence));
 
                 /* Get our current legacy events sequence now. */
                 uint32_t nLegacySequence = 0;
@@ -154,7 +151,7 @@ namespace TAO::API
                     debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::LEGACY::NOTIFICATION from ", nLegacySequence, " for ", hashGenesis.SubString());
                     LLP::TritiumNode::BlockingMessage
                     (
-                        30000,
+                        5000,
                         pNode.get(), LLP::TritiumNode::ACTION::LIST,
                         uint8_t(LLP::TritiumNode::SPECIFIER::LEGACY), uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION),
                         hashGenesis, nLegacySequence

@@ -156,6 +156,10 @@ namespace TAO::API
             /* Write our current time to the database. */
             LLD::Sessions->WriteAccess(hashGenesis, runtime::unifiedtimestamp());
 
+            /* Download our sigchain if in -client mode. */
+            if(config::fClient.load())
+                Indexing::DownloadIndexes(hashGenesis);
+
             /* Check that our indexes are built. */
             BuildIndexes(hashGenesis);
 

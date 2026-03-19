@@ -74,6 +74,53 @@ namespace LLD
     /* Reads a transaction from the client DB. */
     bool ClientDB::ReadTx(const uint512_t& hashTx, TAO::Ledger::MerkleTx &tx, const uint8_t nFlags)
     {
+        /* Handle if we are performing a lookup. */
+        if(!Exists(hashTx))
+        {
+            if(nFlags == TAO::Ledger::FLAGS::LOOKUP)
+            {
+                /* Check for -client mode or active server object. */
+                if(!LLP::TRITIUM_SERVER || !LLP::LOOKUP_SERVER)
+                    throw debug::exception(FUNCTION, "tritium or lookup servers inactive");
+
+                /* Keep trying until we get the data we want or we have no connections. */
+                while(!config::fShutdown.load())
+                {
+                    /* Try to find a connection first. */
+                    std::shared_ptr<LLP::LookupNode> pConnection = LLP::LOOKUP_SERVER->RandomConnection();
+                    if(pConnection == nullptr)
+                    {
+                        /* Attempt to get an active tritium connection for lookup. */
+                        std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->RandomConnection();
+                        if(pNode != nullptr)
+                        {
+                            /* Get our lookup address now. */
+                            const std::string strAddress =
+                                pNode->GetAddress().ToStringIP();
+
+                            /* Make our new connection now. */
+                            if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
+                                continue;
+                        }
+                    }
+
+                    /* Check that we were able to make a connection. */
+                    if(!pConnection)
+                        throw debug::exception(FUNCTION, "no connections found");
+
+                    /* Debug output to console. */
+                    if(pConnection->BlockingLookup
+                    (
+                        5000,
+                        LLP::LookupNode::REQUEST::DEPENDANT,
+                        uint8_t(LLP::LookupNode::SPECIFIER::TRITIUM),
+                        hashTx
+                    ))
+                        break; //this is a success
+                }
+            }
+        }
+
         return Read(hashTx, tx);
     }
 
@@ -88,6 +135,53 @@ namespace LLD
     /* Reads a transaction from the client DB. */
     bool ClientDB::ReadTx(const uint512_t& hashTx, Legacy::MerkleTx &tx, const uint8_t nFlags)
     {
+        /* Handle if we are performing a lookup. */
+        if(!Exists(hashTx))
+        {
+            if(nFlags == TAO::Ledger::FLAGS::LOOKUP)
+            {
+                /* Check for -client mode or active server object. */
+                if(!LLP::TRITIUM_SERVER || !LLP::LOOKUP_SERVER)
+                    throw debug::exception(FUNCTION, "tritium or lookup servers inactive");
+
+                /* Keep trying until we get the data we want or we have no connections. */
+                while(!config::fShutdown.load())
+                {
+                    /* Try to find a connection first. */
+                    std::shared_ptr<LLP::LookupNode> pConnection = LLP::LOOKUP_SERVER->RandomConnection();
+                    if(pConnection == nullptr)
+                    {
+                        /* Attempt to get an active tritium connection for lookup. */
+                        std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->RandomConnection();
+                        if(pNode != nullptr)
+                        {
+                            /* Get our lookup address now. */
+                            const std::string strAddress =
+                                pNode->GetAddress().ToStringIP();
+
+                            /* Make our new connection now. */
+                            if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
+                                continue;
+                        }
+                    }
+
+                    /* Check that we were able to make a connection. */
+                    if(!pConnection)
+                        throw debug::exception(FUNCTION, "no connections found");
+
+                    /* Debug output to console. */
+                    if(pConnection->BlockingLookup
+                    (
+                        5000,
+                        LLP::LookupNode::REQUEST::DEPENDANT,
+                        uint8_t(LLP::LookupNode::SPECIFIER::LEGACY),
+                        hashTx
+                    ))
+                        break; //this is a success
+                }
+            }
+        }
+
         return Read(hashTx, tx);
     }
 
@@ -95,6 +189,53 @@ namespace LLD
     /* Checks client DB if a transaction exists. */
     bool ClientDB::HasTx(const uint512_t& hashTx, const uint8_t nFlags)
     {
+        /* Handle if we are performing a lookup. */
+        if(!Exists(hashTx))
+        {
+            if(nFlags == TAO::Ledger::FLAGS::LOOKUP)
+            {
+                /* Check for -client mode or active server object. */
+                if(!LLP::TRITIUM_SERVER || !LLP::LOOKUP_SERVER)
+                    throw debug::exception(FUNCTION, "tritium or lookup servers inactive");
+
+                /* Keep trying until we get the data we want or we have no connections. */
+                while(!config::fShutdown.load())
+                {
+                    /* Try to find a connection first. */
+                    std::shared_ptr<LLP::LookupNode> pConnection = LLP::LOOKUP_SERVER->RandomConnection();
+                    if(pConnection == nullptr)
+                    {
+                        /* Attempt to get an active tritium connection for lookup. */
+                        std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->RandomConnection();
+                        if(pNode != nullptr)
+                        {
+                            /* Get our lookup address now. */
+                            const std::string strAddress =
+                                pNode->GetAddress().ToStringIP();
+
+                            /* Make our new connection now. */
+                            if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
+                                continue;
+                        }
+                    }
+
+                    /* Check that we were able to make a connection. */
+                    if(!pConnection)
+                        throw debug::exception(FUNCTION, "no connections found");
+
+                    /* Debug output to console. */
+                    if(pConnection->BlockingLookup
+                    (
+                        5000,
+                        LLP::LookupNode::REQUEST::DEPENDANT,
+                        uint8_t(LLP::LookupNode::SPECIFIER::LEGACY),
+                        hashTx
+                    ))
+                        break; //this is a success
+                }
+            }
+        }
+
         return Exists(hashTx);
     }
 

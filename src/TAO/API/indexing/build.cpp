@@ -23,7 +23,7 @@ namespace TAO::API
 {
     /* Build a user's indexing entries. */
     void Indexing::BuildIndexes(const uint256_t& hashGenesis)
-    {
+    {    
         /* Track our last event processed so we don't double up our work. */
         uint512_t hashLast = 0;
 

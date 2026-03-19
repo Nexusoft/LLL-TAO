@@ -3044,6 +3044,9 @@ namespace LLP
                         return debug::drop(NODE, "TYPES::MERKLE: invalid type specifier for TYPES::MERKLE");
                 }
 
+                /* Trigger the event with an incomplete nonce so we reset our timeout. */
+                TriggerEvent(RESPONSE::COMPLETED, uint64_t(Trigger::Update::Timeout));
+
                 break;
             }
 
