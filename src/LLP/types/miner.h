@@ -452,6 +452,7 @@ namespace LLP
         bool                 fMinerAuthenticated; // Whether auth succeeded
         uint256_t            hashGenesis;        // Miner's genesis (for Falcon auth)
         uint32_t             nSessionId = 0;     // Session ID derived from Falcon key hash
+        uint256_t            hashKeyID = 0;      // Falcon key hash for cross-lane disconnect tracking (0 = unauthenticated)
 
         /* ChaCha20 encryption state (established after Falcon auth) */
         std::vector<uint8_t> vChaChaKey;         // ChaCha20 session key

@@ -103,7 +103,7 @@ namespace LLP
 
         inline StatelessPacket BuildFallbackKeepaliveV2Packet()
         {
-            StatelessPacket packet(KEEPALIVE_V2);
+            StatelessPacket packet(OpcodeUtility::Stateless::KEEPALIVE_V2);
             packet.DATA.resize(KEEPALIVE_V2_FALLBACK_SIZE, 0);
             packet.LENGTH = KEEPALIVE_V2_FALLBACK_SIZE;
             return packet;
