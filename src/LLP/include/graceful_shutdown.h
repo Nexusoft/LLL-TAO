@@ -30,5 +30,13 @@ namespace LLP
         private:
             std::atomic<bool> fSent{false};
         };
+
+        /* Abort guard for channel/template push notifications during disconnect/shutdown. */
+        inline bool ShouldAbortChannelNotification(bool fConnected,
+                                                   bool fConnectionShutdownRequested,
+                                                   bool fGlobalShutdown)
+        {
+            return !fConnected || fConnectionShutdownRequested || fGlobalShutdown;
+        }
     }
 }

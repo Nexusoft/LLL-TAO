@@ -136,6 +136,7 @@ namespace LLP
     , m_report_thread()
     , m_stop(false)
     , m_running(false)
+    , m_shutdown_report_pending(false)
     {
     }
 
@@ -192,8 +193,37 @@ namespace LLP
 
     void ColinMiningAgent::on_node_shutdown()
     {
-        debug::log(0, FUNCTION, "Node shutdown — emitting final Colin report before miner disconnect");
-        emit_report();
+        if(m_running.load())
+        {
+            debug::log(0, FUNCTION, "Node shutdown — requesting final Colin report on background report thread");
+            m_stop.store(true);
+            return;
+        }
+
+        if(m_shutdown_report_pending.exchange(true))
+        {
+            debug::log(1, FUNCTION, "Node shutdown Colin report already pending");
+            return;
+        }
+
+        debug::log(0, FUNCTION, "Node shutdown — queueing final Colin report in background");
+        std::thread([this]()
+        {
+            try
+            {
+                emit_report();
+            }
+            catch(const std::exception& e)
+            {
+                debug::error(FUNCTION, "Background Colin shutdown report failed: ", e.what());
+            }
+            catch(...)
+            {
+                debug::error(FUNCTION, "Background Colin shutdown report failed: unknown exception");
+            }
+
+            m_shutdown_report_pending.store(false);
+        }).detach();
     }
 
 

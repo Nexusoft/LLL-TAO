@@ -465,6 +465,7 @@ namespace LLP
         std::thread                         m_report_thread;
         std::atomic<bool>                   m_stop{false};
         std::atomic<bool>                   m_running{false};
+        std::atomic<bool>                   m_shutdown_report_pending{false};
 
         /** Cross-connection SUBMIT_BLOCK deduplication cache.
          *  Keyed by hash of (nHeight, nNonce, merkleHex).  TTL = 10 seconds.

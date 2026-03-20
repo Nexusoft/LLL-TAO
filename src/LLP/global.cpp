@@ -568,7 +568,7 @@ namespace LLP
                     debug::warning(FUNCTION, "Disconnecting legacy miner without prior NODE_SHUTDOWN state: ",
                                    pConn->GetAddress().ToStringIP());
 
-                pConn->Disconnect();
+                pConn->request_shutdown();
                 ++nLegacyDisconnected;
             }
 

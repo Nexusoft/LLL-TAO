@@ -19,7 +19,7 @@ Both **stateless** (port 9323) and **legacy** (port 8323) miners receive the sam
 3. The mining DataThreads are woken so any buffered shutdown packets can flush immediately.
 4. **Phase 2** — A single shared flush window (250 ms) gives the kernel TCP send buffers time to transmit the packets before hard close.
 5. **Phase 3** — `Disconnect()` closes the TCP socket for each miner and DataThreads are woken again for teardown.
-6. `ColinMiningAgent::on_node_shutdown()` runs after the miner disconnect phase, and any exception is logged without aborting shutdown.
+6. `ColinMiningAgent::on_node_shutdown()` is queued non-blocking after the miner disconnect phase so final Colin reporting does not stall shutdown.
 7. `FalconAuth::Shutdown()` and then the miner servers (`STATELESS_MINER_SERVER`, `MINING_SERVER`) shut down cleanly.
 
 **Debug log order (expected):**
