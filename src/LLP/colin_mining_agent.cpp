@@ -134,9 +134,10 @@ namespace LLP
     , m_global()
     , m_interval_s(60)
     , m_report_thread()
+    , m_shutdownReportThread()
     , m_stop(false)
     , m_running(false)
-    , m_shutdown_report_pending(false)
+    , m_shutdownReportPending(false)
     {
     }
 
@@ -179,12 +180,20 @@ namespace LLP
     void ColinMiningAgent::stop()
     {
         if(!m_running.load())
+        {
+            if(m_shutdownReportThread.joinable())
+                m_shutdownReportThread.join();
+
             return;
+        }
 
         m_stop.store(true);
 
         if(m_report_thread.joinable())
             m_report_thread.join();
+
+        if(m_shutdownReportThread.joinable())
+            m_shutdownReportThread.join();
 
         m_running.store(false);
         debug::log(1, FUNCTION, "Colin mining agent stopped");
@@ -200,14 +209,17 @@ namespace LLP
             return;
         }
 
-        if(m_shutdown_report_pending.exchange(true))
+        if(m_shutdownReportPending.exchange(true, std::memory_order_acq_rel))
         {
             debug::log(1, FUNCTION, "Node shutdown Colin report already pending");
             return;
         }
 
         debug::log(0, FUNCTION, "Node shutdown — queueing final Colin report in background");
-        std::thread([this]()
+        if(m_shutdownReportThread.joinable())
+            m_shutdownReportThread.join();
+
+        m_shutdownReportThread = std::thread([this]()
         {
             try
             {
@@ -222,8 +234,8 @@ namespace LLP
                 debug::error(FUNCTION, "Background Colin shutdown report failed: unknown exception");
             }
 
-            m_shutdown_report_pending.store(false);
-        }).detach();
+            m_shutdownReportPending.store(false, std::memory_order_release);
+        });
     }
 
 

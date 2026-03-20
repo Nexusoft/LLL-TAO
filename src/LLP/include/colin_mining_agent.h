@@ -463,9 +463,10 @@ namespace LLP
         GlobalStats                         m_global;
         uint32_t                            m_interval_s;
         std::thread                         m_report_thread;
+        std::thread                         m_shutdownReportThread;
         std::atomic<bool>                   m_stop{false};
         std::atomic<bool>                   m_running{false};
-        std::atomic<bool>                   m_shutdown_report_pending{false};
+        std::atomic<bool>                   m_shutdownReportPending{false};
 
         /** Cross-connection SUBMIT_BLOCK deduplication cache.
          *  Keyed by hash of (nHeight, nNonce, merkleHex).  TTL = 10 seconds.

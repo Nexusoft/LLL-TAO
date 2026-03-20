@@ -123,7 +123,7 @@ TEST_CASE("Graceful shutdown flush window remains bounded", "[graceful_shutdown]
     REQUIRE(GracefulShutdown::MINER_SHUTDOWN_FLUSH_MS <= 500);
 }
 
-TEST_CASE("Channel notifications abort when disconnect or shutdown is requested", "[graceful_shutdown]")
+TEST_CASE("ShouldAbortChannelNotification returns correct values based on connection and shutdown state", "[graceful_shutdown]")
 {
     REQUIRE_FALSE(GracefulShutdown::ShouldAbortChannelNotification(true, false, false));
 
