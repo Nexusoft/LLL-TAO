@@ -31,7 +31,7 @@ ________________________________________________________________________________
  * 
  * Key test areas:
  * - Opcode selection (lane-aware)
- * - Payload construction (12-byte big-endian)
+ * - Payload construction (148-byte big-endian)
  * - Template specialization (Packet vs StatelessPacket)
  * - Channel-specific opcodes (Prime vs Hash)
  */
@@ -122,7 +122,7 @@ TEST_CASE("PushNotificationBuilder - Opcode Selection", "[push_notification][llp
 
 TEST_CASE("PushNotificationBuilder - Payload Construction", "[push_notification][llp]")
 {
-    SECTION("140-byte payload format - big-endian encoding")
+    SECTION("148-byte payload format - big-endian encoding")
     {
         TAO::Ledger::BlockState stateBest;
         stateBest.nHeight = 0x12345678;  // Unified height
@@ -137,8 +137,8 @@ TEST_CASE("PushNotificationBuilder - Payload Construction", "[push_notification]
             1, LLP::ProtocolLane::LEGACY, stateBest, stateChannel, nDifficulty);
         
         /* Verify payload size */
-        REQUIRE(notification.LENGTH == 140);
-        REQUIRE(notification.DATA.size() == 140);
+        REQUIRE(notification.LENGTH == 148);
+        REQUIRE(notification.DATA.size() == 148);
         
         /* Verify unified height (bytes 0-3, big-endian) */
         REQUIRE(notification.DATA[0] == 0x12);
@@ -157,6 +157,21 @@ TEST_CASE("PushNotificationBuilder - Payload Construction", "[push_notification]
         REQUIRE(notification.DATA[9] == 0xAD);
         REQUIRE(notification.DATA[10] == 0xBE);
         REQUIRE(notification.DATA[11] == 0xEF);
+
+        /* Verify other channel height (bytes 12-15) — zero when no live chain */
+        REQUIRE(notification.DATA[12] == 0x00);
+        REQUIRE(notification.DATA[13] == 0x00);
+        REQUIRE(notification.DATA[14] == 0x00);
+        REQUIRE(notification.DATA[15] == 0x00);
+
+        /* Verify stake height (bytes 16-19) — zero when no live chain */
+        REQUIRE(notification.DATA[16] == 0x00);
+        REQUIRE(notification.DATA[17] == 0x00);
+        REQUIRE(notification.DATA[18] == 0x00);
+        REQUIRE(notification.DATA[19] == 0x00);
+
+        /* hashBestChain now starts at offset 20 */
+        REQUIRE(notification.DATA.size() == 148);
     }
     
     SECTION("Payload consistency across lanes")
@@ -177,8 +192,8 @@ TEST_CASE("PushNotificationBuilder - Payload Construction", "[push_notification]
             1, LLP::ProtocolLane::STATELESS, stateBest, stateChannel, nDifficulty);
         
         /* Verify both have same payload size */
-        REQUIRE(legacyNotification.LENGTH == 140);
-        REQUIRE(statelessNotification.LENGTH == 140);
+        REQUIRE(legacyNotification.LENGTH == 148);
+        REQUIRE(statelessNotification.LENGTH == 148);
         REQUIRE(legacyNotification.DATA.size() == statelessNotification.DATA.size());
         
         /* Verify payload bytes are identical */
@@ -202,9 +217,10 @@ TEST_CASE("PushNotificationBuilder - Payload Construction", "[push_notification]
         LLP::Packet notification = LLP::PushNotificationBuilder::BuildChannelNotification<LLP::Packet>(
             1, LLP::ProtocolLane::LEGACY, stateBest, stateChannel, nDifficulty);
         
-        /* Verify payload is all zeros (height=0, channelHeight=0, difficulty=0, hashBestChain=0) */
-        REQUIRE(notification.LENGTH == 140);
-        for (size_t i = 0; i < 140; ++i)
+        /* Verify payload is all zeros (height=0, channelHeight=0, difficulty=0,
+         * other_channel=0, stake=0, hashBestChain=0) */
+        REQUIRE(notification.LENGTH == 148);
+        for (size_t i = 0; i < 148; ++i)
         {
             REQUIRE(notification.DATA[i] == 0x00);
         }
@@ -225,11 +241,17 @@ TEST_CASE("PushNotificationBuilder - Payload Construction", "[push_notification]
             2, LLP::ProtocolLane::LEGACY, stateBest, stateChannel, nDifficulty);
         
         /* Verify header bytes (0-11) are all 0xFF.
-         * Note: bytes 12-139 (hashBestChain) default to 0 when not passed. */
-        REQUIRE(notification.LENGTH == 140);
+         * Note: bytes 12-19 (other_channel_height, stake_height) are 0 when no
+         * live chain is present (GetLastState returns false in unit tests).
+         * Bytes 20-147 (hashBestChain) default to 0 when not passed. */
+        REQUIRE(notification.LENGTH == 148);
         for (size_t i = 0; i < 12; ++i)
         {
             REQUIRE(notification.DATA[i] == 0xFF);
+        }
+        for (size_t i = 12; i < 20; ++i)
+        {
+            REQUIRE(notification.DATA[i] == 0x00);
         }
     }
 }
@@ -303,8 +325,8 @@ TEST_CASE("PushNotificationBuilder - Template Specialization", "[push_notificati
         
         /* Verify it's a valid Packet type */
         REQUIRE(notification.HEADER < 256);  // 8-bit range
-        REQUIRE(notification.LENGTH == 140);
-        REQUIRE(notification.DATA.size() == 140);
+        REQUIRE(notification.LENGTH == 148);
+        REQUIRE(notification.DATA.size() == 148);
     }
     
     SECTION("StatelessPacket type (16-bit)")
@@ -324,8 +346,8 @@ TEST_CASE("PushNotificationBuilder - Template Specialization", "[push_notificati
         /* Verify it's a valid StatelessPacket type */
         REQUIRE(notification.HEADER >= 0xD000);  // 16-bit stateless range
         REQUIRE(notification.HEADER <= 0xD0FF);
-        REQUIRE(notification.LENGTH == 140);
-        REQUIRE(notification.DATA.size() == 140);
+        REQUIRE(notification.LENGTH == 148);
+        REQUIRE(notification.DATA.size() == 148);
     }
 }
 
@@ -347,7 +369,7 @@ TEST_CASE("PushNotificationBuilder - Real-World Scenarios", "[push_notification]
         
         /* Verify basic structure */
         REQUIRE(notification.HEADER == 0xD9);  // Prime
-        REQUIRE(notification.LENGTH == 140);
+        REQUIRE(notification.LENGTH == 148);
         
         /* Verify height encoding */
         uint32_t decodedHeight = 
@@ -554,9 +576,9 @@ TEST_CASE("PushNotificationBuilder - Universal Tip Push", "[push_notification][l
         REQUIRE(primeNotif.HEADER == 0xD0D9);  // STATELESS PRIME_BLOCK_AVAILABLE
         REQUIRE(hashNotif.HEADER  == 0xD0DA);  // STATELESS HASH_BLOCK_AVAILABLE
 
-        /* Protocol payload is 140 bytes (12 header + 128 hashBestChain) */
-        REQUIRE(primeNotif.LENGTH == 140);
-        REQUIRE(hashNotif.LENGTH  == 140);
+        /* Protocol payload is 148 bytes (20 header + 128 hashBestChain) */
+        REQUIRE(primeNotif.LENGTH == 148);
+        REQUIRE(hashNotif.LENGTH  == 148);
     }
 }
 

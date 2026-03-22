@@ -77,8 +77,8 @@ namespace OpcodeUtility
 
         /* Push notification packets (216-218) */
         static constexpr uint8_t MINER_READY          = 216;  // header-only
-        static constexpr uint8_t PRIME_BLOCK_AVAILABLE = 217; // 140-byte payload: unified(4)+channel(4)+difficulty(4)+hashBestChain(128)
-        static constexpr uint8_t HASH_BLOCK_AVAILABLE  = 218; // 140-byte payload: unified(4)+channel(4)+difficulty(4)+hashBestChain(128)
+        static constexpr uint8_t PRIME_BLOCK_AVAILABLE = 217; // 148-byte payload: unified(4)+prime_height(4)+difficulty(4)+hash_height(4)+stake_height(4)+hashBestChain(128)
+        static constexpr uint8_t HASH_BLOCK_AVAILABLE  = 218; // 148-byte payload: unified(4)+hash_height(4)+difficulty(4)+prime_height(4)+stake_height(4)+hashBestChain(128)
 
         /* Alias opcodes for compatibility (map to same values as above) */
         static constexpr uint8_t NEW_PRIME_AVAILABLE = 217;  // Alias for PRIME_BLOCK_AVAILABLE
