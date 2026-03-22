@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -22,13 +22,12 @@ ________________________________________________________________________________
 #include <TAO/Register/include/build.h>
 #include <TAO/Register/types/object.h>
 
+#include <Util/encoding/include/utf-8.h>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /*  Determines whether a string value is a valid base58 encoded register address.
-     *  This only checks to see if the value an be decoded into a valid Register::Address with a valid Type.
-     *  It does not check to see whether the register address exists in the database
-     */
+    /*  Determines whether a string value is a valid base58 encoded register address. */
     bool CheckAddress(const std::string& strValue)
     {
         /* Decode the incoming string into a register address */
@@ -52,8 +51,20 @@ namespace TAO::API
             return false;
 
         /* Check for an empty string. */
-        if(jParams[strKey].is_string() && jParams[strKey] == "")
-            return false;
+        if(jParams[strKey].is_string())
+        {
+            /* Get a reference of our string. */
+            const std::string& strParam =
+                jParams[strKey].get<std::string>();
+
+            /* Check for an empty string. */
+            if(strParam == "")
+                return false;
+
+            /* Check we are using proper utf-8 encoding. */
+            if(!encoding::utf8::is_valid(strParam.begin(), strParam.end()))
+                throw Exception(-130, "Invalid character encoding for [", strKey, "], expecting utf8");
+        }
 
         /* If no type specified, return now. */
         if(strType.empty())
@@ -84,18 +95,18 @@ namespace TAO::API
     {
         /* Get the user configurable required maturity */
         const uint32_t nMaturityRequired =
-            config::GetArg("-maturityrequired", config::fTestNet ? 2 : 33);
+            config::GetArg("-maturityrequired", config::fTestNet ? 2 : 7);
 
         /* If set to 0 then there is no point checking the maturity so return early */
         if(nMaturityRequired > 0)
         {
             /* The hash of the last transaction for this sig chain from disk */
             uint512_t hashLast = 0;
-            if(LLD::Logical->ReadLast(hashGenesis, hashLast))
+            if(LLD::Sessions->ReadLast(hashGenesis, hashLast))
             {
                 /* Get the last transaction from disk for this sig chain */
                 TAO::API::Transaction tx;
-                if(!LLD::Logical->ReadTx(hashLast, tx))
+                if(!LLD::Sessions->ReadTx(hashLast, tx))
                     return false;
 
                 /* If the previous transaction is a coinbase or coinstake then check the maturity */
@@ -121,12 +132,12 @@ namespace TAO::API
     {
         /* The hash of the last transaction for this sig chain from disk */
         uint512_t hashLast = 0;
-        if(!LLD::Logical->ReadLast(hashGenesis, hashLast))
+        if(!LLD::Sessions->ReadLast(hashGenesis, hashLast))
             return true;
 
         /* Get the last transaction from disk for this sig chain */
         TAO::API::Transaction tx;
-        if(!LLD::Logical->ReadTx(hashLast, tx))
+        if(!LLD::Sessions->ReadTx(hashLast, tx))
             return true;
 
         return (tx.nTimestamp + nSeconds < runtime::unifiedtimestamp());

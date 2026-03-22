@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -24,13 +24,13 @@ namespace version
     const uint32_t CLIENT_MINOR = 1;
 
     /* Patch version Z (x.y.Z | Z > 0). */
-    const uint32_t CLIENT_PATCH = 0;
+    const uint32_t CLIENT_PATCH = 6;
 
     /* Build version determines release candidate. */
-    const uint32_t CLIENT_REVISION = 20;
+    const uint32_t CLIENT_REVISION = 2;
 
     /* This tells us minor build tweaks rather than release candidate. */
-    const uint32_t CLIENT_BUILD    = 3;
+    const uint32_t CLIENT_BUILD    = 1;
 
 
     /* The version of the actual wallet client. */
@@ -44,7 +44,7 @@ namespace version
 
     /* The version number */
     const std::string CLIENT_VERSION_STRING =
-        debug::safe_printstr(CLIENT_MAJOR, ".", CLIENT_MINOR, ".", CLIENT_PATCH);
+        debug::safe_printstr(CLIENT_MAJOR, ".", CLIENT_MINOR, ".", CLIENT_PATCH, (CLIENT_REVISION == 0) ? "" : debug::safe_printstr("-rc", CLIENT_REVISION, "-", CLIENT_BUILD));
 
 
     /* The interface used Qt, CLI, or Tritium) */
@@ -65,11 +65,13 @@ namespace version
     #endif
 
 
-    /* The Architecture (32-Bit, ARM 64, or 64-Bit) */
+    /* The Architecture (32-Bit, ARM 32/64, or 64-Bit) */
     #if defined x86
         const std::string BUILD_ARCH = "[x86]";
     #elif defined aarch64
         const std::string BUILD_ARCH = "[ARM aarch64]";
+    #elif defined arm
+	const std::string BUILD_ARCH = "[ARM arm32(armv*l)]";
     #else
         const std::string BUILD_ARCH = "[x64]";
     #endif

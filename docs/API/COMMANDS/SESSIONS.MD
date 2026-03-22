@@ -35,6 +35,13 @@ The following nouns are supported for this API command-set:
 [`local`] - The location of the session.
 
 -----------------------------------
+## `Direct Endpoints`
+
+The following commands are direct endpoints and thus do not support the above verb and noun structure available above.
+
+[`validate/pin`](#validate/pin)
+
+-----------------------------------
 
 # <a name="create"></a> `create`
 
@@ -361,5 +368,33 @@ This command only supports the `local` noun.
 `staking` : Boolean flag indicating whether the profile is unlocked for staking.
 
 `transactions` : Boolean flag indicating whether the profile is unlocked for creating any transactions (except those automatically created through mining/processing notifications if those are unlocked).
+
+-----------------------------------
+
+# <a name="validate/pin"></a> `validate/pin`
+
+Validates a pin/string against the current logged in session. Uses the internal authentication logic to attempt to authenticate with the supplied string. This allows for UI layers to gatekeep information without executing a command.  
+
+```
+sessions/validate/pin
+```
+
+### Parameters:
+
+`pin` : A string to use to attempt to authenticate a command. 
+
+### Results:
+
+#### Return value JSON object:
+
+```
+{
+   true
+}
+```
+   
+#### Return value:
+
+Boolean flag indicating whether the supplied pin would authenticate a command. 
 
 -----------------------------------

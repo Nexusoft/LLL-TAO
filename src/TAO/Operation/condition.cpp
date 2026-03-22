@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-        (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+        Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-        (c) Copyright The Nexus Developers 2014 - 2021
+        (c) Copyright The Nexus Developers 2014 - 2025
 
         Distributed under the MIT software license, see the accompanying
         file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -1864,15 +1864,15 @@ namespace TAO
                     /* Get the current height of the chain. */
                     case OP::LEDGER::HEIGHT:
                     {
-                        /* Special check for timestamp if it is a client and already synced up. */
-                        if(config::fClient.load())
+                        /* Special case when in -client mode or undergoing a reorganization. */
+                        if(config::fClient.load() || TAO::Ledger::ChainState::fChainReorg.load())
                         {
                             /* Check if we can read a current block for current caller. */
-                            TAO::Ledger::ClientBlock stateBest;
-                            if(LLD::Client->ReadBlock(caller.Hash(), stateBest))
+                            TAO::Ledger::BlockState tStateLoad;
+                            if(LLD::Ledger->ReadBlock(caller.Hash(), tStateLoad))
                             {
                                 /* Allocate our memory now. */
-                                allocate(stateBest.nHeight, vRet);
+                                allocate(tStateLoad.Prev().nHeight, vRet);
 
                                 /* Check for overflows. */
                                 if(nCost + 4 < nCost)
@@ -1886,7 +1886,7 @@ namespace TAO
                         }
 
                         /* Allocate to the registers. */
-                        allocate(TAO::Ledger::ChainState::stateBest.load().nHeight, vRet);
+                        allocate(TAO::Ledger::ChainState::tStateBest.load().nHeight, vRet);
 
                         /* Check for overflows. */
                         if(nCost + 4 < nCost)
@@ -1902,15 +1902,15 @@ namespace TAO
                     /* Get the current supply of the chain. */
                     case OP::LEDGER::SUPPLY:
                     {
-                        /* Special check for timestamp if it is a client and already synced up. */
-                        if(config::fClient.load())
+                        /* Special case when in -client mode or undergoing a reorganization. */
+                        if(config::fClient.load() || TAO::Ledger::ChainState::fChainReorg.load())
                         {
                             /* Check if we can read a current block for current caller. */
-                            TAO::Ledger::ClientBlock stateBest;
-                            if(LLD::Client->ReadBlock(caller.Hash(), stateBest))
+                            TAO::Ledger::BlockState tStateLoad;
+                            if(LLD::Ledger->ReadBlock(caller.Hash(), tStateLoad))
                             {
                                 /* Allocate our memory now. */
-                                allocate(uint64_t(stateBest.nMoneySupply), vRet);
+                                allocate(uint64_t(tStateLoad.Prev().nMoneySupply), vRet);
 
                                 /* Check for overflows. */
                                 if(nCost + 8 < nCost)
@@ -1924,7 +1924,7 @@ namespace TAO
                         }
 
                         /* Allocate to the registers. */
-                        allocate(uint64_t(TAO::Ledger::ChainState::stateBest.load().nMoneySupply), vRet);
+                        allocate(uint64_t(TAO::Ledger::ChainState::tStateBest.load().nMoneySupply), vRet);
 
                         /* Check for overflows. */
                         if(nCost + 8 < nCost)
@@ -1940,15 +1940,15 @@ namespace TAO
                     /* Get the best block timestamp. */
                     case OP::LEDGER::TIMESTAMP:
                     {
-                        /* Special check for timestamp if it is a client and already synced up. */
-                        if(config::fClient.load())
+                        /* Special case when in -client mode or undergoing a reorganization. */
+                        if(config::fClient.load() || TAO::Ledger::ChainState::fChainReorg.load())
                         {
                             /* Check if we can read a current block for current caller. */
-                            TAO::Ledger::ClientBlock stateBest;
-                            if(LLD::Client->ReadBlock(caller.Hash(), stateBest))
+                            TAO::Ledger::BlockState tStateLoad;
+                            if(LLD::Ledger->ReadBlock(caller.Hash(), tStateLoad))
                             {
                                 /* Allocate our memory now. */
-                                allocate(uint64_t(stateBest.nTime), vRet);
+                                allocate(uint64_t(tStateLoad.Prev().nTime), vRet);
 
                                 /* Check for overflows. */
                                 if(nCost + 8 < nCost)
@@ -1962,7 +1962,7 @@ namespace TAO
                         }
 
                         /* Allocate to the registers. */
-                        allocate(uint64_t(TAO::Ledger::ChainState::stateBest.load().nTime), vRet);
+                        allocate(uint64_t(TAO::Ledger::ChainState::tStateBest.load().nTime), vRet);
 
                         /* Check for overflows. */
                         if(nCost + 8 < nCost)

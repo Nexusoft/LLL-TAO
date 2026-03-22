@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -55,23 +55,28 @@ namespace TAO
          *
          *  Create a producer transaction object from signature chain.
          *
+         *  Dual-identity mining: user signs the block, hashDynamicGenesis receives rewards.
+         *
          *  @param[in] user The signature chain to generate this tx
          *  @param[in] pin The pin number to generate with.
          *  @param[out] tx The traansaction object being created
-         *  @param[in] stateBest The current best block state
+         *  @param[in] tStateBest The current best block state
          *  @param[in] nBlockVersion The block version the producer is being created for
          *  @param[in] nChannel The channel to create block for.
          *  @param[in] nExtraNonce An extra nonce to use for double iterating.
          *  @param[in] pCoinbaseRecipients The coinbase recipients, if any.
+         *  @param[in] hashDynamicGenesis Reward recipient (genesis hash OR register address, 0 = use user genesis)
          *
          **/
         bool CreateProducer(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& pin,
                                TAO::Ledger::Transaction& tx,
-                               const TAO::Ledger::BlockState& stateBest,
+                               const TAO::Ledger::BlockState& tStateBest,
                                const uint32_t nBlockVersion,
                                const uint32_t nChannel,
                                const uint64_t nExtraNonce,
-                               Legacy::Coinbase *pCoinbaseRecipients = nullptr);
+                               Legacy::Coinbase *pCoinbaseRecipients = nullptr,
+                               const uint256_t& hashDynamicGenesis = uint256_t(0));
+
 
 
         /** AddTransactions
@@ -88,12 +93,12 @@ namespace TAO
          *
          *  Populate block header data for a new block.
          *
-         *  @param[in] stateBest the current best state of the chain at the time of block creation
+         *  @param[in] tStateBest the current best state of the chain at the time of block creation
          *  @param[in] nChannel The channel creating the block.
          *  @param[out] block The block object being created.
          *
          **/
-        void AddBlockData(const TAO::Ledger::BlockState& stateBest, const uint32_t nChannel, TAO::Ledger::TritiumBlock& block);
+        void AddBlockData(const TAO::Ledger::BlockState& tStateBest, const uint32_t nChannel, TAO::Ledger::TritiumBlock& block);
 
 
         /** CreateBlock
@@ -106,17 +111,20 @@ namespace TAO
          *  When called for Coinbase or private blocks, this method completes all block setup, including creating the block
          *  producer with producer operations and adding transactions to the block.
          *
+         *  Dual-identity mining: user signs the block, hashDynamicGenesis receives rewards.
+         *
          *  @param[in] user The signature chain to generate this block
          *  @param[in] pin The pin number to generate with.
          *  @param[in] nChannel The channel to create block for.
          *  @param[out] block The block object being created.
          *  @param[in] nExtraNonce An extra nonce to use for double iterating.
          *  @param[in] pCoinbaseRecipients The coinbase recipients, if any.
+         *  @param[in] hashDynamicGenesis Reward recipient (genesis hash OR register address, 0 = use user genesis)
          *
          **/
         bool CreateBlock(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& pin,
                          const uint32_t nChannel, TAO::Ledger::TritiumBlock& block, const uint64_t nExtraNonce = 0,
-                         Legacy::Coinbase *pCoinbaseRecipients = nullptr);
+                         Legacy::Coinbase *pCoinbaseRecipients = nullptr, const uint256_t& hashDynamicGenesis = uint256_t(0));
 
 
         /** CreateStakeBlock

@@ -1,0 +1,15 @@
+03. Offline Prototype to C++ Porting
+
+[offline Julia prototype]
+          │
+          ▼
+[deterministic fixture set]
+          │
+          ▼
+[benchmark evidence]
+          │
+          ▼
+[code review decision]
+          │
+          ▼
+[production C++ implementation]

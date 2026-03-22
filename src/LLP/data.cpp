@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2021
+			(c) Copyright The Nexus Developers 2014 - 2025
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -16,12 +16,16 @@ ________________________________________________________________________________
 #include <LLP/templates/static.h>
 #include <LLP/templates/socket.h>
 
+#include <chrono>
+
 #include <LLP/types/tritium.h>
 #include <LLP/types/time.h>
 #include <LLP/types/apinode.h>
+#include <LLP/types/filenode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
 #include <LLP/types/lookup.h>
+#include <LLP/types/stateless_miner_connection.h>
 
 #include <Util/include/hex.h>
 
@@ -42,8 +46,10 @@ namespace LLP
     , TIMEOUT         (nTimeout)
     , DDOS_rSCORE     (rScore)
     , DDOS_cSCORE     (cScore)
-    , CONNECTIONS     (util::atomic::lock_unique_ptr<std::vector<std::shared_ptr<ProtocolType>> >(new std::vector<std::shared_ptr<ProtocolType>>()))
-    , RELAY           (util::atomic::lock_unique_ptr<std::queue<std::pair<typename ProtocolType::message_t, DataStream>> >(new std::queue<std::pair<typename ProtocolType::message_t, DataStream>>()))
+    , CONNECTIONS     (util::atomic::lock_unique_ptr<std::vector<std::shared_ptr<ProtocolType>> >
+        (new std::vector<std::shared_ptr<ProtocolType>>()))
+    , RELAY           (util::atomic::lock_unique_ptr<std::queue<std::pair<typename ProtocolType::message_t, DataStream>> >
+        (new std::queue<std::pair<typename ProtocolType::message_t, DataStream>>()))
     , CONDITION       ( )
     , DATA_THREAD     (std::bind(&DataThread::Thread, this))
     , FLUSH_CONDITION ( )
@@ -56,18 +62,74 @@ namespace LLP
     template <class ProtocolType>
     DataThread<ProtocolType>::~DataThread()
     {
+        debug::log(2, FUNCTION, "Shutting down data thread ", ID);
+
         fDestruct = true;
         CONDITION.notify_all();
-
-        /* Wait for all data threads. */
-        if(DATA_THREAD.joinable())
-            DATA_THREAD.join();
-
         FLUSH_CONDITION.notify_all();
 
-        /* Wait for any threads still flushing buffers. */
-        if(FLUSH_THREAD.joinable())
-            FLUSH_THREAD.join();
+        /* ── Timeout-guarded join ─────────────────────────────────────────────
+         * Use a timed join instead of a blocking join() to prevent infinite
+         * stall when a connected miner's socket is stuck in OS-level cleanup
+         * (TCP TIME_WAIT). poll() has a 100ms timeout per iteration, but with
+         * multiple connections and slow kernel teardown, join() can block for
+         * seconds or indefinitely.
+         *
+         * If the thread does not exit within SHUTDOWN_JOIN_TIMEOUT_MS, we
+         * detach it and let the OS clean up on process exit. The hard-exit
+         * watchdog in signals.cpp provides the final safety net.
+         */
+        constexpr uint32_t SHUTDOWN_JOIN_TIMEOUT_MS = 500;
+
+        auto join_with_timeout = [&](std::thread& t, const char* name)
+        {
+            if(!t.joinable())
+                return;
+
+            /* Move the thread handle and joined flag into shared_ptrs so the
+             * waiter thread holds shared ownership — no dangling references if
+             * join_with_timeout returns before the waiter finishes. */
+            auto sp_thread = std::make_shared<std::thread>(std::move(t));
+            auto sp_joined = std::make_shared<std::atomic<bool>>(false);
+
+            /* Spawn a waiter thread to perform the actual join. */
+            std::thread waiter([sp_thread, sp_joined]()
+            {
+                if(sp_thread->joinable())
+                    sp_thread->join();
+                sp_joined->store(true);
+            });
+
+            /* Poll until joined or deadline reached. */
+            const auto deadline = std::chrono::steady_clock::now() +
+                                  std::chrono::milliseconds(SHUTDOWN_JOIN_TIMEOUT_MS);
+
+            while(!sp_joined->load() && std::chrono::steady_clock::now() < deadline)
+                runtime::sleep(10);
+
+            if(sp_joined->load())
+            {
+                waiter.join();
+                debug::log(2, FUNCTION, "  ", name, " joined cleanly for thread ", ID);
+            }
+            else
+            {
+                /* Thread did not exit in time — detach the waiter and let it
+                 * run to completion independently. The shared_ptrs keep the
+                 * thread handle and flag alive until the waiter exits.
+                 * The hard-exit watchdog in signals.cpp will force-terminate
+                 * the process if graceful shutdown does not complete within
+                 * 8 seconds. */
+                debug::error(FUNCTION, "  ", name, " (thread ", ID, ") did not exit within ",
+                             SHUTDOWN_JOIN_TIMEOUT_MS, "ms — detaching (watchdog will force exit)");
+                waiter.detach();
+            }
+        };
+
+        join_with_timeout(DATA_THREAD,  "DATA_THREAD");
+        join_with_timeout(FLUSH_THREAD, "FLUSH_THREAD");
+
+        debug::log(2, FUNCTION, "Data thread ", ID, " shutdown complete");
     }
 
 
@@ -90,22 +152,9 @@ namespace LLP
                 return false;
             }
 
-            /* Find an available slot. */
-            uint32_t nSlot = find_slot();
-
             /* Update the indexes. */
             pnode->nDataThread     = ID;
-            pnode->nDataIndex      = nSlot;
             pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
-
-            /* Set our return connection pointer. */
-            pNodeRet = std::shared_ptr<ProtocolType>(pnode);
-
-            /* Find a slot that is empty. */
-            if(nSlot == CONNECTIONS->size())
-                CONNECTIONS->push_back(pNodeRet);
-            else
-                CONNECTIONS->at(nSlot) = pNodeRet;
 
             /* Check for inbound socket. */
             if(pnode->Incoming())
@@ -113,8 +162,18 @@ namespace LLP
             else
                 ++nOutbound;
 
+            /* Find an avilable data thread slot. */
+            const uint32_t nSlot = find_slot();
+
             /* Fire the connected event. */
+            pnode->nDataIndex = nSlot;
             pnode->Event(EVENTS::CONNECT);
+
+            /* Find a slot that is empty. */
+            if(nSlot == CONNECTIONS->size())
+                CONNECTIONS->push_back(std::shared_ptr<ProtocolType>(pnode));
+            else
+                CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
 
             /* Notify data thread to wake up. */
             CONDITION.notify_all();
@@ -201,19 +260,26 @@ namespace LLP
             CONDITION.wait(CONDITION_LOCK,
             [this]
             {
+                /* CRITICAL: Check for shutdown FIRST, before checking suspend state.
+                 * This ensures the thread wakes up during shutdown even if protocol is suspended.
+                 * Bug fix: Previously checked fSuspendProtocol first, causing shutdown hang. */
+                if(fDestruct.load() || config::fShutdown.load())
+                    return true;
+
                 /* Check for suspended state. */
                 if(config::fSuspendProtocol.load())
                     return false;
 
-                return fDestruct.load()
-                || config::fShutdown.load()
-                || nIncoming.load() > 0
-                || nOutbound.load() > 0;
+                /* Wake up if there are active connections to process. */
+                return nIncoming.load() > 0 || nOutbound.load() > 0;
             });
 
             /* Check for close. */
             if(fDestruct.load() || config::fShutdown.load())
+            {
+                debug::log(2, FUNCTION, "DATA_THREAD ", ID, " exiting: shutdown requested");
                 return;
+            }
 
             /* Check if we are suspended. */
             if(config::fSuspendProtocol.load())
@@ -275,6 +341,10 @@ namespace LLP
             /* Check all connections for data and packets. */
             for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
+                /* Break early if shutdown signaled mid-iteration. */
+                if(fDestruct.load() || config::fShutdown.load())
+                    break;
+
                 /* Access the shared pointer. */
                 std::shared_ptr<ProtocolType> CONNECTION = CONNECTIONS->at(nIndex);
                 try
@@ -282,6 +352,29 @@ namespace LLP
                     /* Skip over Inactive Connections. */
                     if(!CONNECTION || !CONNECTION->Connected())
                         continue;
+                    
+                    /* Detect stateless Miner connections for special handling. */
+                    Miner* pMiner = nullptr;
+                    bool fStatelessMiner = false;
+                    
+                    /* All Miner connections now use stateless protocol (no session required) */
+                    if(ProtocolType::Name() == std::string("Miner"))
+                    {
+                        pMiner = dynamic_cast<Miner*>(CONNECTION.get());
+                        if(pMiner)
+                        {
+                            fStatelessMiner = true;
+                        }
+                    }
+                    
+                    /* Log data thread connection assignment at verbose level 3. */
+                    if(config::nVerbose.load() >= 3 && CONNECTION->PacketComplete())
+                    {
+                        debug::log(3, FUNCTION, "DataThread[", ID, "]: Processing connection id=", nIndex, 
+                                   " type=", ProtocolType::Name(), 
+                                   " from ", CONNECTION->GetAddress().ToStringIP(), ":", CONNECTION->GetAddress().GetPort(),
+                                   " stateless=", (fStatelessMiner ? "true" : "false"));
+                    }
 
                     /* Disconnect if there was a polling error */
                     if(POLLFDS.at(nIndex).revents & POLLERR)
@@ -322,7 +415,7 @@ namespace LLP
 
                     /* Disconnect if buffer is full and remote host isn't reading at all. */
                     if(CONNECTION->Buffered()
-                    && CONNECTION->Timeout(15000, Socket::WRITE))
+                    && CONNECTION->Timeout(5000, Socket::WRITE))
                     {
                         remove_connection_with_event(nIndex, DISCONNECT::TIMEOUT_WRITE);
                         continue;
@@ -345,8 +438,7 @@ namespace LLP
                     if(fDDOS.load() && CONNECTION->DDOS && !CONNECTION->addr.IsLocal())
                     {
                         /* Ban a node if it has too many Requests per Second. **/
-                        if(CONNECTION->DDOS->rSCORE.Score() > DDOS_rSCORE
-                        || CONNECTION->DDOS->cSCORE.Score() > DDOS_cSCORE)
+                        if(CONNECTION->DDOS->rSCORE.Score() > DDOS_rSCORE)
                             CONNECTION->DDOS->Ban();
 
                         /* Remove a connection if it was banned by DDOS Protection. */
@@ -391,8 +483,51 @@ namespace LLP
                 }
                 catch(const std::exception& e)
                 {
-                    debug::error(FUNCTION, "Data Connection: ", e.what());
-                    remove_connection_with_event(nIndex, DISCONNECT::ERRORS);
+                    /* Get the connection for detailed logging. */
+                    std::shared_ptr<ProtocolType> CONNECTION = CONNECTIONS->at(nIndex);
+                    
+                    /* Check if this is a "Session not found" error */
+                    std::string strError = e.what();
+                    bool fSessionError = (strError.find("Session not found") != std::string::npos);
+                    
+                    /* Check if this is a mining connection (stateless protocol doesn't use TAO API sessions).
+                     * CRITICAL: Stateless mining can happen on two server types:
+                     * 1. MINING_SERVER (port 9325) - uses Miner class (thin wrapper to StatelessMiner)
+                     * 2. STATELESS_MINER_SERVER (port 8323) - uses StatelessMinerConnection class
+                     * Both should be allowed to continue even if legacy code tries to access sessions. */
+                    std::string strProtocol = ProtocolType::Name();
+                    bool fMiningConnection = (strProtocol == "Miner" || strProtocol == "StatelessMiner");
+                    
+                    /* Allow mining connections to proceed even without TAO API session.
+                     * The stateless mining protocol uses MiningContext state tracked by
+                     * StatelessMinerManager, not TAO API sessions. */
+                    if(fSessionError && fMiningConnection)
+                    {
+                        /* Log suppression of session errors for stateless miners. */
+                        debug::log(2, FUNCTION, "DataThread[", ID, "]: Session error ignored for stateless mining (",
+                                   strProtocol, ") from ",
+                                   CONNECTION->GetAddress().ToStringIP(), ":", CONNECTION->GetAddress().GetPort(),
+                                   " - stateless protocol doesn't use TAO API sessions");
+                        
+                        /* CRITICAL: Continue to next connection without disconnect.
+                         * This allows GET_BLOCK and other mining operations to proceed
+                         * even though legacy code may throw "Session not found" exceptions. */
+                        continue;
+                    }
+                    else
+                    {
+                        /* For all other cases, maintain existing behavior: log error and disconnect. */
+                        if(CONNECTION)
+                        {
+                            debug::log(1, FUNCTION, "DataThread[", ID, "]: Exception for connection id=", nIndex, 
+                                       " type=", strProtocol, 
+                                       " from ", CONNECTION->GetAddress().ToStringIP(), ":", CONNECTION->GetAddress().GetPort(),
+                                       " - ", e.what());
+                        }
+                        
+                        debug::error(FUNCTION, "Data Connection: ", e.what());
+                        remove_connection_with_event(nIndex, DISCONNECT::ERRORS);
+                    }
                 }
             }
         }
@@ -481,6 +616,10 @@ namespace LLP
             uint32_t nSize = CONNECTIONS->size();
             for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
+                /* Break early if shutdown signaled mid-iteration. */
+                if(fDestruct.load() || config::fShutdown.load())
+                    break;
+
                 try
                 {
                     /* Reset stream read position. */
@@ -593,7 +732,13 @@ namespace LLP
 
         /* Adjust our internal counters for incoming/outbound. */
         if(CONNECTIONS->at(nIndex)->Incoming())
+        {
             --nIncoming;
+
+            /* Handle Meters and DDOS. */
+            if(fMETER)
+                ++ProtocolType::DISCONNECTS;
+        }
         else
             --nOutbound;
 
@@ -608,9 +753,10 @@ namespace LLP
     uint32_t DataThread<ProtocolType>::find_slot()
     {
         /* Loop through each connection. */
-        uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
+        const uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
         for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
         {
+            /* Find an available connection. */
             if(!CONNECTIONS->at(nIndex))
                 return nIndex;
         }
@@ -624,6 +770,8 @@ namespace LLP
     template class DataThread<LookupNode>;
     template class DataThread<TimeNode>;
     template class DataThread<APINode>;
+    template class DataThread<FileNode>;
     template class DataThread<RPCNode>;
     template class DataThread<Miner>;
+    template class DataThread<StatelessMinerConnection>;
 }

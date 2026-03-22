@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -43,6 +43,10 @@ namespace TAO
         std::atomic<uint64_t> ChainState::nCheckpointHeight;
 
 
+        /* The best block in the chain. */
+        std::atomic<bool> ChainState::fChainReorg;
+
+
         /* The best hash in the chain. */
         memory::atomic<uint1024_t> ChainState::hashBestChain;
 
@@ -52,11 +56,11 @@ namespace TAO
 
 
         /* The best block in the chain. */
-        memory::atomic<BlockState> ChainState::stateBest;
+        memory::atomic<BlockState> ChainState::tStateBest;
 
 
         /* The best block in the chain. */
-        BlockState ChainState::stateGenesis;
+        BlockState ChainState::tStateGenesis;
 
 
         /* Flag to tell if initial blocks are downloading. */
@@ -78,7 +82,7 @@ namespace TAO
             #ifndef UNIT_TESTS
 
             /* Check for null best state. */
-            if(stateBest.load().IsNull())
+            if(tStateBest.load().IsNull())
                 return true;
 
             /* Check if there's been a new block from internal static values. */
@@ -108,7 +112,7 @@ namespace TAO
                 (
                     /* If using main testnet then rely on the LLP synchronized flag */
                     (!fLocalTestnet && !LLP::TritiumNode::fSynchronized.load()
-                        && stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60)
+                        && tStateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60)
 
                     /* If local testnet with connections then rely on LLP flag  */
                     || (fLocalTestnet && fHasConnections && !LLP::TritiumNode::fSynchronized.load())
@@ -117,7 +121,7 @@ namespace TAO
                        and block age is more than 20 mins, which gives us a 30s window to connect to a local peer */
                     || (fLocalTestnet && !fHasConnections
                         && runtime::unifiedtimestamp() - nLastTime < 30
-                        && stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60)
+                        && tStateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60)
                 );
 
                 return fSynchronizing;
@@ -127,7 +131,7 @@ namespace TAO
             fSynchronizing =
             (
                 (!LLP::TritiumNode::fSynchronized.load() &&
-                (stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 60 * 60))
+                (tStateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 60 * 60))
             );
 
             return fSynchronizing;
@@ -148,7 +152,7 @@ namespace TAO
                 (config::fClient.load() ? TritiumGenesis().nHeight : config::fHybrid.load() ? HybridGenesis().nHeight : LegacyGenesis().nHeight);
 
             /* Calculate the time between the last block received and now. */
-            const uint32_t nBlocks = stateBest.load().nHeight - nGenesis;
+            const uint32_t nBlocks = tStateBest.load().nHeight - nGenesis;
             const uint32_t nTotals = (LLP::TritiumNode::nSyncStop.load() - nGenesis);
 
             /* Calculate the sync percent. */
@@ -164,7 +168,7 @@ namespace TAO
                 return 0.0;
 
             /* Total blocks synchronized */
-            const uint32_t nBlocks = stateBest.load().nHeight - LLP::TritiumNode::nSyncStart.load();
+            const uint32_t nBlocks = tStateBest.load().nHeight - LLP::TritiumNode::nSyncStart.load();
             const uint32_t nTotals = LLP::TritiumNode::nSyncStop.load() - LLP::TritiumNode::nSyncStart.load();
 
             /* Calculate the sync percent. */
@@ -184,20 +188,20 @@ namespace TAO
                 return debug::error(FUNCTION, "failed to read best chain");
 
             /* Get the best chain stats. */
-            if(!LLD::Ledger->ReadBlock(hashBestChain.load(), stateBest))
+            if(!LLD::Ledger->ReadBlock(hashBestChain.load(), tStateBest))
             {
                 debug::error(FUNCTION, "failed to read best block, attempting to recover database");
 
                 /* If hashBestChain exists, but block doesn't attempt to recover database from invalid write.  */
-                BlockState stateBestKnown = stateGenesis;
-                while(!stateBestKnown.IsNull() && stateBestKnown.hashNextBlock != 0)
+                BlockState tStateBestKnown = tStateGenesis;
+                while(!tStateBestKnown.IsNull() && tStateBestKnown.hashNextBlock != 0)
                 {
-                    stateBest = stateBestKnown;
-                    stateBestKnown = stateBestKnown.Next();
+                    tStateBest = tStateBestKnown;
+                    tStateBestKnown = tStateBestKnown.Next();
                 }
 
                 /* Once new best chain is found, write it to disk. */
-                hashBestChain = stateBest.load().GetHash();
+                hashBestChain = tStateBest.load().GetHash();
                 if(!LLD::Ledger->WriteBestChain(hashBestChain.load()))
                     return debug::error(FUNCTION, "failed to write best chain");
 
@@ -205,7 +209,7 @@ namespace TAO
             }
 
             /* Check database consistency. */
-            if(stateBest.load().GetHash() != hashBestChain.load())
+            if(tStateBest.load().GetHash() != hashBestChain.load())
                 return debug::error(FUNCTION, "disk index inconsistent with best chain");
 
             /* Reverse iterator to find the most recent common ancestor. Skip if not on mainnet*/
@@ -215,7 +219,7 @@ namespace TAO
                 for(auto it = mapCheckpoints.rbegin(); it != mapCheckpoints.rend(); ++it)
                 {
                     /* Check that we are within correct height ranges. */
-                    if(it->first > stateBest.load().nHeight)
+                    if(it->first > tStateBest.load().nHeight)
                         continue;
 
                     /* Load the block from disk. */
@@ -246,12 +250,12 @@ namespace TAO
             }
 
             /* Rewind the chain a total number of blocks. */
-            int64_t nForkblocks = config::GetArg("-forkblocks", 0);
-            if(nForkblocks > 0)
+            uint64_t nRevertBlocks = config::GetArg("-revertblocks", 0);
+            if(nRevertBlocks > 0)
             {
                 /* Rollback the chain a given number of blocks. */
-                TAO::Ledger::BlockState state = stateBest.load();
-                for(int i = 0; i < nForkblocks; ++i)
+                TAO::Ledger::BlockState state = tStateBest.load();
+                for(int i = 0; i < nRevertBlocks; ++i)
                 {
                     /* Check for Genesis. */
                     if(state.hashPrevBlock == 0)
@@ -265,22 +269,31 @@ namespace TAO
 
                 /* Set the best to older block. */
                 LLD::TxnBegin();
-                state.SetBest();
-                LLD::TxnCommit();
 
-                /* Debug Output. */
-                debug::log(0, FUNCTION, "-forkblocks=XXX requested removal of ", nForkblocks, " blocks");
+                /* Abort our transaction if we fail to rollback. */
+                if(!state.SetBest())
+                {
+                    /* Debug Output. */
+                    debug::log(0, FUNCTION, "-revertblocks=XXX failed to remove ", nRevertBlocks, " blocks");
+                    LLD::TxnAbort();
+                }
+                else
+                {
+                    /* Debug Output. */
+                    debug::log(0, FUNCTION, "-revertblocks=XXX requested removal of ", nRevertBlocks, " blocks");
+                    LLD::TxnCommit();
+                }
             }
 
             /* Fill out the best chain stats. */
-            nBestHeight     = stateBest.load().nHeight;
-            nBestChainTrust = stateBest.load().nChainTrust;
+            nBestHeight     = tStateBest.load().nHeight;
+            nBestChainTrust = tStateBest.load().nChainTrust;
 
             /* Set the checkpoint. */
-            hashCheckpoint = stateBest.load().hashCheckpoint;
+            hashCheckpoint = tStateBest.load().hashCheckpoint;
 
             /* Find the last checkpoint. */
-            if(stateBest != stateGenesis)
+            if(tStateBest != tStateGenesis)
             {
                 /* Go back 10 checkpoints on startup. */
                 for(uint32_t i = 0; i < config::GetArg("-checkpoints", 100); ++i)
@@ -291,7 +304,7 @@ namespace TAO
                         break;
 
                     /* Check we haven't reached the genesis */
-                    if(state == stateGenesis)
+                    if(state == tStateGenesis)
                         break;
 
                     /* Get the previous state. */
@@ -319,8 +332,29 @@ namespace TAO
                 TAO::Ledger::BlockState tLastBlock;
                 if(config::GetBoolArg("-reindexheight") || !LLD::Ledger->ReadBlock(nCheckpointHeight.load(), tLastBlock))
                 {
-                    /* Set our last block as genesis. */
-                    tLastBlock = stateGenesis;
+                    /* Check for first block index. */
+                    if(LLD::Ledger->ReadBlock(1, tLastBlock)) //check for genesis
+                    {
+                        /* We use this to jump back more than 1 db read at a time. */
+                        uint32_t nInterval = 1;
+
+                        /* Check back to our last index. */
+                        uint32_t nLastHeight = nCheckpointHeight.load();
+                        while(!LLD::Ledger->ReadBlock(nLastHeight, tLastBlock) && !config::fShutdown.load())
+                        {
+                            /* Exit if we reach the genesis. */
+                            if(nLastHeight == 0)
+                            {
+                                tLastBlock = tStateGenesis;
+                                break;
+                            }
+
+                            /* Jump backwards at increasing intervals. */
+                            nLastHeight = std::max(uint32_t(0), nLastHeight - nInterval++);
+                        }
+                    }
+                    else
+                        tLastBlock = tStateGenesis;
 
                     /* Use genesis as our hash start. */
                     uint1024_t hashStart = tLastBlock.GetHash();
@@ -411,19 +445,23 @@ namespace TAO
                 }
             }
 
-            stateBest.load().print();
+            /* Print our best block to console. */
+            tStateBest.load().print();
+
+            /* Set our cache best height. */
+            TAO::API::nBlockCounter.store(tStateBest.load().nHeight);
 
             /* Log the weights. */
             debug::log(0, FUNCTION, "WEIGHTS",
-                " Prime ", stateBest.load().nChannelWeight[1].Get64(),
-                " Hash ",  stateBest.load().nChannelWeight[2].Get64(),
-                " Stake ", stateBest.load().nChannelWeight[0].Get64());
+                " Prime ", tStateBest.load().nChannelWeight[1].Get64(),
+                " Hash ",  tStateBest.load().nChannelWeight[2].Get64(),
+                " Stake ", tStateBest.load().nChannelWeight[0].Get64());
 
 
             /* Debug logging. */
             debug::log(0, FUNCTION, config::fTestNet.load() ? "Test" : "Nexus", " Network: genesis=", Genesis().SubString(),
             " nBitsStart=0x", std::hex, bnProofOfWorkStart[0].GetCompact(), " best=", hashBestChain.load().SubString(),
-            " checkpoint=", hashCheckpoint.load().SubString()," height=", std::dec, stateBest.load().nHeight);
+            " checkpoint=", hashCheckpoint.load().SubString()," height=", std::dec, tStateBest.load().nHeight);
 
             return true;
         }

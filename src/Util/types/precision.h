@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -99,7 +99,7 @@ class precision_t
 
             /* Check that we are within correct digits. */
             if(fThrow && nDigitsCheck > nDigits)
-                throw debug::exception(FUNCTION, "Parameter can only have ", nDigits, " decimal places");
+                throw debug::exception(FUNCTION, "Parameter can only have ", uint32_t(nDigits), " decimal places");
         }
 
         /* Build a copy string to test. */
@@ -314,7 +314,7 @@ public:
 
                 /* Check if we have correct number of digits. */
                 if(nDigitsCheck > nDigits)
-                    throw debug::exception(FUNCTION, "Parameter can only have ", nDigits, " decimal places");
+                    throw debug::exception(FUNCTION, "Parameter can only have ", uint32_t(nDigits), " decimal places");
             }
         }
 

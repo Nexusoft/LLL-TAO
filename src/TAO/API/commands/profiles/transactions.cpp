@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -62,7 +62,7 @@ namespace TAO::API
         {
             /* Get the last transaction. */
             uint512_t hashFirst = 0;
-            if(!LLD::Logical->ReadFirst(hashGenesis, hashFirst))
+            if(!LLD::Sessions->ReadFirst(hashGenesis, hashFirst))
                 throw Exception(-144, "No transactions found");
 
             /* Loop until genesis, storing all tx into a vector (these will be in descending order). */
@@ -70,7 +70,7 @@ namespace TAO::API
             {
                 /* Get the transaction from disk. */
                 TAO::API::Transaction tx;
-                if(!LLD::Logical->ReadTx(hashFirst, tx))
+                if(!LLD::Sessions->ReadTx(hashFirst, tx))
                     throw Exception(-108, "Failed to read transaction");
 
                 /* Read the block state from the the ledger DB using the transaction hash index */
@@ -111,7 +111,7 @@ namespace TAO::API
         {
             /* Get the last transaction. */
             uint512_t hashLast = 0;
-            if(!LLD::Logical->ReadLast(hashGenesis, hashLast))
+            if(!LLD::Sessions->ReadLast(hashGenesis, hashLast))
                 throw Exception(-144, "No transactions found");
 
             /* Loop until genesis, storing all tx into a vector (these will be in descending order). */
@@ -119,7 +119,7 @@ namespace TAO::API
             {
                 /* Get the transaction from disk. */
                 TAO::API::Transaction tx;
-                if(!LLD::Logical->ReadTx(hashLast, tx))
+                if(!LLD::Sessions->ReadTx(hashLast, tx))
                     throw Exception(-108, "Failed to read transaction");
 
                 /* Read the block state from the the ledger DB using the transaction hash index */

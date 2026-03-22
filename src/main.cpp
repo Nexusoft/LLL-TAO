@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -18,11 +18,13 @@ ________________________________________________________________________________
 #include <LLP/types/miner.h>
 #include <LLP/include/lisp.h>
 #include <LLP/include/port.h>
+#include <LLP/include/channel_state_manager.h>
 
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/cmd.h>
+#include <TAO/API/types/authentication.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/dispatch.h>
@@ -41,6 +43,117 @@ ________________________________________________________________________________
 #ifndef WIN32
 #include <sys/resource.h>
 #endif
+
+
+/** Startup
+ *
+ *  Wrap all our initialization logic here that needs to run in the background after startup.
+ *
+ **/
+void Startup()
+{
+    /* Add our connections from commandline. */
+    LLP::MakeConnections<LLP::TimeNode>   (LLP::TIME_SERVER);
+    LLP::MakeConnections<LLP::TritiumNode>(LLP::TRITIUM_SERVER);
+
+    /* Run our autologin scripts now. */
+    if(config::GetBoolArg("-autocreate", false) || config::GetBoolArg("-autologin", false))
+    {
+        /* Check that we are in single-user mode. */
+        if(config::fMultiuser.load())
+        {
+            /* Output our new warning message if the API was disabled. */
+            debug::log(0, ANSI_COLOR_BRIGHT_RED, "-autocreate and -autologin DISABLED", ANSI_COLOR_RESET);
+            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "You cannot use -multiuser=1 with -auto(type) arguments.", ANSI_COLOR_RESET);
+
+            return;
+        }
+
+        /* Create a JSON encoding and call the main API endpoint. */
+        encoding::json jParams =
+        {
+            { "username", config::GetArg("-username", "") },
+            { "password", config::GetArg("-password", "") },
+            { "pin",      config::GetArg("-pin", "")      }
+        };
+
+        /* Handle for -autocreate if specified. */
+        std::string strCreate = "create/master";
+        if(config::GetBoolArg("-autocreate", false))
+        {
+            try { TAO::API::Commands::Invoke("profiles", strCreate, jParams); }
+            catch(const TAO::API::Exception& e){ debug::notice(FUNCTION, "::autocreate:", e.what()); }
+        }
+
+        /* Handle for -autologin if specified. */
+        if(config::GetBoolArg("-autologin", false))
+        {
+            try
+            {
+                /* Create our local session first. */
+                debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "=== AUTOLOGIN: Starting session creation ===", ANSI_COLOR_RESET);
+                std::string strLogin = "create/local";
+                TAO::API::Commands::Invoke("sessions", strLogin, jParams);
+                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "    Session created successfully", ANSI_COLOR_RESET);
+
+                /* Wait for dynamic indexing services. */
+                debug::log(0, "    Waiting for sigchain indexing...");
+                std::string strStatus = "status/local";
+                uint32_t nWaitCount = 0;
+                while(!config::fShutdown.load())
+                {
+                    /* Check our current status against indexing services. */
+                    const encoding::json jStatus =
+                        TAO::API::Commands::Invoke("sessions", strStatus, jParams);
+
+                    /* Break once we have indexed sigchain. */
+                    if(!jStatus["indexing"].get<bool>()) //basic spin-lock
+                    {
+                        debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "    Indexing complete (waited ", nWaitCount, " seconds)", ANSI_COLOR_RESET);
+                        break;
+                    }
+
+                    /* Log progress every 5 seconds */
+                    if(nWaitCount % 5 == 0)
+                        debug::log(0, "    Still indexing... (", nWaitCount, " seconds)");
+
+                    ++nWaitCount;
+
+                    /* Make sure we don't spin at 100% of a CPU core. */
+                    runtime::sleep(1);
+                }
+
+                /* Create a JSON encoding and call the main API endpoint. */
+                encoding::json jUnlock =
+                {
+                    { "pin",  config::GetArg("-pin", "") },
+                    { "notifications",              "1" },
+                    { "mining",                     "1" },
+                    { "staking",                    "1" }
+                };
+
+                /* Unlock our local session now. */
+                debug::log(0, "    Unlocking session for mining/staking/notifications...");
+                std::string strUnlock = "unlock/local";
+                TAO::API::Commands::Invoke("sessions", strUnlock, jUnlock);
+                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "    Session unlocked successfully", ANSI_COLOR_RESET);
+                
+                /* Verify Session::DEFAULT is available */
+                if(TAO::API::Authentication::Unlocked(TAO::Ledger::PinUnlock::MINING))
+                {
+                    debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "    Session::DEFAULT verified (mining ready)", ANSI_COLOR_RESET);
+                }
+                else
+                {
+                    debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "    Warning: Session::DEFAULT not unlocked for mining", ANSI_COLOR_RESET);
+                }
+                    
+                debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "=== AUTOLOGIN: Complete ===", ANSI_COLOR_RESET);
+            }
+            catch(const TAO::API::Exception& e){ debug::notice(FUNCTION, "::autologin: ", e.what()); }
+        }
+    }
+}
 
 
 int main(int argc, char** argv)
@@ -85,6 +198,52 @@ int main(int argc, char** argv)
 
             return TAO::API::CommandLineRPC(argc, argv, i);
         }
+    }
+
+
+    /* Handle forensic fork analysis commands */
+    if(config::GetBoolArg("-forensicforks", false) || config::GetBoolArg("-analyzeforks", false))
+    {
+        /* Initialize minimal subsystems for forensic analysis */
+        debug::log(0, FUNCTION, "Starting forensic fork analysis...");
+        
+        /* Initialize LLD to access blockchain data */
+        LLD::Initialize();
+        
+        /* Initialize ChainState to access block data */
+        TAO::Ledger::ChainState::Initialize();
+        
+        /* Run comprehensive forensic analysis */
+        LLP::ForensicForkInfo info = LLP::ChannelStateManager::AnalyzeChannelHeightDiscrepancy();
+        
+        /* Shutdown and exit */
+        LLD::Shutdown();
+        debug::Shutdown();
+        
+        return 0;
+    }
+    
+    /* Handle channel statistics output */
+    if(config::GetBoolArg("-channelstats", false))
+    {
+        /* Initialize minimal subsystems for stats */
+        debug::log(0, FUNCTION, "Retrieving channel height statistics...");
+        
+        /* Initialize LLD to access blockchain data */
+        LLD::Initialize();
+        
+        /* Initialize ChainState to access block data */
+        TAO::Ledger::ChainState::Initialize();
+        
+        /* Get and output statistics */
+        std::string strStats = LLP::ChannelStateManager::GetChannelHeightStatistics();
+        debug::log(0, "\n", strStats);
+        
+        /* Shutdown and exit */
+        LLD::Shutdown();
+        debug::Shutdown();
+        
+        return 0;
     }
 
 
@@ -148,6 +307,10 @@ int main(int argc, char** argv)
         config::fInitialized.store(true);
 
 
+        /* Kick off our startup thread for post-startup processing. */
+        std::thread tStartup = std::thread(Startup);
+
+
         /* Initialize generator thread. */
         std::thread thread;
         if(config::fHybrid.load())
@@ -169,6 +332,10 @@ int main(int argc, char** argv)
             getchar();
             config::fShutdown = true;
         }
+
+
+        /* Wait for our startup thread to finish. */
+        tStartup.join();
 
 
         /* Stop stake minter if running. Minter ignores request if not running, so safe to just call both */

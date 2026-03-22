@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -36,7 +36,7 @@ namespace TAO::API
 
         /* Check for duplicates in ledger db. */
         uint512_t hashLast;
-        if(!LLD::Logical->ReadFirst(hashGenesis, hashLast) || !LLD::Logical->ReadLast(hashGenesis, hashLast))
+        if(!LLD::Sessions->ReadFirst(hashGenesis, hashLast) || !LLD::Sessions->ReadLast(hashGenesis, hashLast))
             throw Exception(-130, "Account doesn't exist or has never logged in. Try profiles/recover instead");
 
         /* The new key scheme */
@@ -103,11 +103,57 @@ namespace TAO::API
                             throw Exception(-138, "No previous transaction found");
                     }
 
-                    /* Set our recovery phrase now with new credentials. */
+                    /* Set our recovery phrase now with new credentials and new recovery hash. */
                     tx.hashRecovery = pCredentials->RecoveryHash(strRecoveryNew, nRecoveryType);
+                    tx.nKeyType     = nRecoveryType; //make sure we set our recovery key type
 
-                    /* Sign the transaction. */
-                    if(!tx.Sign(pCredentials->Generate(strRecovery)))
+                    /* Check our recovery hash is correct. */
+                    const uint256_t hashRecoveryCheck = pCredentials->RecoveryHash(strRecovery, nRecoveryType);
+                    if(hashRecoveryCheck != hashRecovery)
+                    {
+                        /* Give ourselves a little log output to know we are proceeding with legacy recovery. */
+                        debug::warning("Invalid recovery, ", hashRecoveryCheck.ToString(), " is not ", hashRecovery.ToString(), ", checking our deprecated recovery hash");
+
+                        /* Do a backup check with old recovery. */
+                        const uint256_t hashRecoveryDeprecated = pCredentials->RecoveryDeprecated(strRecovery, nRecoveryType);
+                        if(hashRecoveryDeprecated != hashRecovery)
+                            throw Exception(-33, "Recovery hash mismatch ", hashRecoveryDeprecated.ToString(), " is not ", hashRecovery.ToString());
+
+                        /* Sign the transaction using our old deprecated recovery. */
+                        else if(tx.Sign(pCredentials->GenerateDeprecated(strRecovery)))
+                        {
+                            /* Double check our next hash if -safemode enabled. */
+                            if(config::GetBoolArg("-safemode", false))
+                            {
+                                /* Re-calculate our next hash if safemode forcing not to use cache. */
+                                const uint256_t hashRecovery =
+                                    TAO::Ledger::Transaction::NextHash(pCredentials->GenerateDeprecated(strRecovery), nRecoveryType);
+
+                                /* Check that this next hash is what we are expecting. */
+                                if(tx.hashRecovery != hashRecovery)
+                                    throw Exception(-31, "-safemode recovery hash mismatch, broadcast terminated");
+                            }
+                        }
+                        else
+                            throw Exception(-31, "Ledger failed to sign transaction");
+                    }
+
+                    /* Sign our credentials using current recovery. */
+                    else if(tx.Sign(pCredentials->Generate(strRecovery)))
+                    {
+                        /* Double check our next hash if -safemode enabled. */
+                        if(config::GetBoolArg("-safemode", false))
+                        {
+                            /* Re-calculate our next hash if safemode forcing not to use cache. */
+                            const uint256_t hashRecovery =
+                                TAO::Ledger::Transaction::NextHash(pCredentials->Generate(strRecoveryNew), nRecoveryType);
+
+                            /* Check that this next hash is what we are expecting. */
+                            if(tx.hashRecovery != hashRecovery)
+                                throw Exception(-31, "-safemode recovery hash mismatch, broadcast terminated");
+                        }
+                    }
+                    else
                         throw Exception(-31, "Ledger failed to sign transaction");
                 }
                 else
@@ -116,7 +162,21 @@ namespace TAO::API
                     tx.hashRecovery = pCredentials->RecoveryHash(strRecoveryNew, tx.nKeyType);
 
                     /* Sign the transaction. */
-                    if(!tx.Sign(pCredentials->Generate(tx.nSequence, strPIN)))
+                    if(tx.Sign(pCredentials->Generate(tx.nSequence, strPIN)))
+                    {
+                        /* Double check our next hash if -safemode enabled. */
+                        if(config::GetBoolArg("-safemode", false))
+                        {
+                            /* Re-calculate our next hash if safemode forcing not to use cache. */
+                            const uint256_t hashRecovery =
+                                TAO::Ledger::Transaction::NextHash(pCredentials->Generate(strRecoveryNew), tx.nKeyType);
+
+                            /* Check that this next hash is what we are expecting. */
+                            if(tx.hashRecovery != hashRecovery)
+                                throw Exception(-31, "-safemode recovery hash mismatch, broadcast terminated");
+                        }
+                    }
+                    else
                         throw Exception(-31, "Ledger failed to sign transaction");
                 }
 
@@ -179,7 +239,7 @@ namespace TAO::API
             if(*pCredentialsOld == *pCredentials && strNewPIN == strPIN)
             {
                 pCredentials.free();
-                throw Exception(-233, "Missing parameter [new_password or new_pin]");
+                throw Exception(-233, "You must use new credentials to update sigchain");
             }
 
             /* Create the transaction. */

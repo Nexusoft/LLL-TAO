@@ -1,13 +1,13 @@
 /*__________________________________________________________________________________________
 
-(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-(c) Copyright The Nexus Developers 2014 2018
+            (c) Copyright The Nexus Developers 2014 2018
 
-Distributed under the MIT software license, see the accompanying
-file COPYING or http://www.opensource.org/licenses/mit-license.php.
+            Distributed under the MIT software license, see the accompanying
+            file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-"ad vocem populi" To the Voice of the People
+            "ad vocem populi" To the Voice of the People
 
 ____________________________________________________________________________________________*/
 
@@ -232,14 +232,6 @@ namespace TAO
         TAO::Ledger::BlockState stateLast;
 
 
-        /** Flag to indicate whether the user has a current stake change request **/
-        bool fStakeChange;
-
-
-        /** Stake change request for current user, when one is present **/
-        TAO::Ledger::StakeChange stakeChange;
-
-
         /** The candidate block that the stake minter is currently attempting to mine **/
         TritiumBlock block;
 
@@ -363,7 +355,7 @@ namespace TAO
         bool FindLastStake(const uint256_t& hashGenesis, uint512_t& hashLast);
 
 
-        /** FindStakeChange
+        /** CheckStakeChange
          *
          *  Identifies any pending stake change request, populates the stakeChange instance variable with it, and sets
          *  fStakeChange to the appropriate value.
@@ -386,7 +378,7 @@ namespace TAO
          *  @return true if processed successfully
          *
          **/
-        bool FindStakeChange(const uint256_t& hashGenesis, const uint512_t hashLast);
+        bool CheckStakeChange(const uint256_t& hashGenesis, const uint512_t hashLast, TAO::Ledger::StakeChange &tStakeChange);
 
 
         /** CreateCandidateBlock

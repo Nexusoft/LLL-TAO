@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2021
+			(c) Copyright The Nexus Developers 2014 - 2025
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -76,6 +76,10 @@ namespace TAO
 
             /** Record of conflicted transactions in mempool. **/
             std::map<uint512_t, uint512_t> mapClaimed;
+
+
+            /** Record of conflicted transactions in mempool. **/
+            std::set<uint512_t> mapRejected;
 
 
             /** Record of legacy inputs in the mempool. **/
@@ -320,12 +324,13 @@ namespace TAO
             uint32_t Size();
 
 
-            /** SizeLegacy
+            /** Conflicts
              *
-             *  Gets the size of the legacy memory pool.
+             *  Gets the size of the conflicts memory pool.
              *
              **/
-            uint32_t SizeLegacy();
+            uint32_t Conflicts();
+
         };
 
         extern Mempool mempool;

@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -47,12 +47,217 @@ namespace TAO
         /* Standard initialization function. */
         void System::Initialize()
         {
-            mapFunctions["get/info"]         = Function(std::bind(&System::GetInfo,    this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["get/metrics"]      = Function(std::bind(&System::Metrics,    this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["stop"]             = Function(std::bind(&System::Stop,       this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/peers"]       = Function(std::bind(&System::ListPeers,  this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/lisp-eids"]   = Function(std::bind(&System::LispEIDs,   this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["validate/address"] = Function(std::bind(&System::Validate,   this, std::placeholders::_1, std::placeholders::_2));
+            /* Handle for get/info. */
+            mapFunctions["get/info"] = Function
+            (
+                std::bind
+                (
+                    &System::GetInfo,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+                , ENABLE::FILTERS
+            );
+
+
+            /* Handle for get/metrics. */
+            mapFunctions["get/metrics"] = Function
+            (
+                std::bind
+                (
+                    &System::Metrics,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                ),
+                {
+                    ENABLE::CACHING | ENABLE::FILTERS,
+                    &nBlockCounter
+                }
+            );
+
+
+            /* Handle for get/info. */
+            mapFunctions["stop"] = Function
+            (
+                std::bind
+                (
+                    &System::Stop,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for stop. */
+            mapFunctions["stop"] = Function
+            (
+                std::bind
+                (
+                    &System::Stop,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for list/peers. */
+            mapFunctions["list/peers"] = Function
+            (
+                std::bind
+                (
+                    &System::ListPeers,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for list/lisp-eids. */
+            mapFunctions["list/lisp-eids"] = Function
+            (
+                std::bind
+                (
+                    &System::LispEIDs,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+            /* Handle for validate/address */
+            mapFunctions["validate/address"] = Function
+            (
+                std::bind
+                (
+                    &System::Validate,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for get/mininginfo */
+            mapFunctions["get/mininginfo"] = Function
+            (
+                std::bind
+                (
+                    &System::GetMiningInfo,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for set/mining */
+            mapFunctions["set/mining"] = Function
+            (
+                std::bind
+                (
+                    &System::SetMining,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for list/miners */
+            mapFunctions["list/miners"] = Function
+            (
+                std::bind
+                (
+                    &System::ListMiners,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for get/minerstatus */
+            mapFunctions["get/minerstatus"] = Function
+            (
+                std::bind
+                (
+                    &System::GetMinerStatus,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for disconnect/miner */
+            mapFunctions["disconnect/miner"] = Function
+            (
+                std::bind
+                (
+                    &System::DisconnectMiner,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for generate/falconkey */
+            mapFunctions["generate/falconkey"] = Function
+            (
+                std::bind
+                (
+                    &System::GenerateFalconKey,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for list/falconkeys */
+            mapFunctions["list/falconkeys"] = Function
+            (
+                std::bind
+                (
+                    &System::ListFalconKeys,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for test/falconauth */
+            mapFunctions["test/falconauth"] = Function
+            (
+                std::bind
+                (
+                    &System::TestFalconAuth,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for bind/falconkey */
+            mapFunctions["bind/falconkey"] = Function
+            (
+                std::bind
+                (
+                    &System::BindFalconKey,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
         }
 
 
@@ -77,7 +282,6 @@ namespace TAO
             Shutdown();
             return std::string("Nexus server stopping");
         }
-
 
 
         /* Reurns a summary of node and ledger information for the currently running node. */
@@ -157,6 +361,7 @@ namespace TAO
 
             /* Number of transactions in the node's mempool*/
             jRet["txtotal"] = TAO::Ledger::mempool.Size();
+            jRet["conflicts"] = TAO::Ledger::mempool.Conflicts();
 
             /* Then check connections to the tritium server */
             if(LLP::TRITIUM_SERVER)

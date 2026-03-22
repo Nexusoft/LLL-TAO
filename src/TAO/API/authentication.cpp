@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2019
+			(c) Copyright The Nexus Developers 2014 - 2025
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/extract.h>
 
 #include <TAO/API/types/authentication.h>
+#include <TAO/API/types/notifications.h>
 
 #include <TAO/Register/types/address.h>
 #include <TAO/Register/types/object.h>
@@ -54,6 +55,10 @@ namespace TAO::API
 
         /* Add the new session to sessions map. */
         mapSessions.insert(std::make_pair(hashSession, std::move(rSession)));
+
+        /* Handle auto-tx feature. */
+        if(config::GetBoolArg("-autotx", false))
+            Notifications::mapDispatch->insert(std::make_pair(hashSession, std::vector<TAO::Operation::Contract>()));
     }
 
 
@@ -307,6 +312,17 @@ namespace TAO::API
     }
 
 
+    /* Get the session-id of the given caller using session from params. */
+    uint256_t Authentication::ExtractSession(const encoding::json& jParams)
+    {
+        /* Get the current session-id. */
+        const uint256_t hashSession =
+            ExtractHash(jParams, "session", default_session());
+
+        return hashSession;
+    }
+
+
     /* Determine if a sigchain is unlocked for given actions. */
     bool Authentication::UnlockStatus(const encoding::json& jParams, uint8_t &nRequestedActions)
     {
@@ -438,23 +454,49 @@ namespace TAO::API
     /* Unlock and get the active pin from current session. */
     std::recursive_mutex& Authentication::Unlock(const encoding::json& jParams, SecureString &strPIN, const uint8_t nRequestedActions)
     {
-        RECURSIVE(MUTEX);
+        /* We use this to find our unlocked bucket. */
+        uint64_t nHash = 0;
 
         /* Get the current session-id. */
         const uint256_t hashSession =
             ExtractHash(jParams, "session", default_session());
 
-        /* Check for active session. */
-        if(!mapSessions.count(hashSession))
-            throw Exception(-11, "Session not found");
+        {
+            RECURSIVE(MUTEX);
 
-        /* Get a copy of our current active session. */
-        const Session& rSession =
-            mapSessions[hashSession];
+            /* Check for active session. */
+            if(!mapSessions.count(hashSession))
+                throw Exception(-11, "Session not found");
 
-        /* Check for initializing sigchain. */
-        if(rSession.fInitializing.load())
-            throw Exception(-139, "Cannot unlock while initializing dynamic indexing services: Check sessions/status/local");
+            /* Get a copy of our current active session. */
+            const Session& rSession =
+                mapSessions[hashSession];
+
+            /* Check for initializing sigchain. */
+            if(rSession.fInitializing.load())
+                throw Exception(-139, "Cannot unlock while initializing dynamic indexing services: Check sessions/status/local");
+
+            /* Get the active pin if not currently stored. */
+            if(CheckParameter(jParams, "pin", "string, number") || !rSession.Unlock(strPIN, nRequestedActions))
+                strPIN = ExtractPIN(jParams);
+
+            /* Check internal authenticate function. */
+            if(!authenticate(strPIN, rSession))
+            {
+                /* Increment failure and throw. */
+                increment_failures(hashSession);
+
+                throw Exception(-139, "Failed to unlock (Invalid PIN)");
+            }
+
+            /* Get bytes of our session. */
+            const std::vector<uint8_t> vSession =
+                hashSession.GetBytes();
+
+            /* Get an xxHash. */
+            nHash =
+                XXH64(&vSession[0], vSession.size(), 0);
+        }
 
         /* Check for password requirement field. */
         if(config::GetBoolArg("-requirepassword", false))
@@ -468,7 +510,7 @@ namespace TAO::API
                 SecureString(jParams["password"].get<std::string>().c_str());
 
             /* Check our password input compared to our internal sigchain password. */
-            if(rSession.Credentials()->Password() != strPassword)
+            if(Credentials(hashSession)->Password() != strPassword)
             {
                 /* Increment failure and throw. */
                 increment_failures(hashSession);
@@ -476,27 +518,6 @@ namespace TAO::API
                 throw Exception(-139, "Failed to unlock (Invalid Password)");
             }
         }
-
-        /* Get the active pin if not currently stored. */
-        if(CheckParameter(jParams, "pin", "string, number") || !rSession.Unlock(strPIN, nRequestedActions))
-            strPIN = ExtractPIN(jParams);
-
-        /* Check internal authenticate function. */
-        if(!authenticate(strPIN, rSession))
-        {
-            /* Increment failure and throw. */
-            increment_failures(hashSession);
-
-            throw Exception(-139, "Failed to unlock (Invalid PIN)");
-        }
-
-        /* Get bytes of our session. */
-        const std::vector<uint8_t> vSession =
-            hashSession.GetBytes();
-
-        /* Get an xxHash. */
-        const uint64_t nHash =
-            XXH64(&vSession[0], vSession.size(), 0);
 
         return vLocks[nHash % vLocks.size()];
     }
@@ -623,6 +644,10 @@ namespace TAO::API
 
             RECURSIVE(vLocks[nHash % vLocks.size()]); //this will make sure transactions have finished processing
         }
+
+        /* Now we delete our pending queues. */
+        if(config::GetBoolArg("-autotx", false))
+            Notifications::mapDispatch->erase(hashSession);
 
         /* Terminate the session now. */
         RECURSIVE(MUTEX);

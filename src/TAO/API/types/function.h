@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #pragma once
 
 #include <TAO/API/types/exception.h>
+#include <TAO/API/types/cache.h>
 
 #include <Util/include/json.h>
 #include <Util/include/string.h>
@@ -25,6 +26,11 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
+    /** Global value to tell cache systems to refresh state. **/
+    extern std::atomic<uint32_t> nBlockCounter;
+    extern std::atomic<uint32_t> nRegisterCounter;
+    extern std::atomic<uint32_t> nTransactionCounter;
+
     /** Function
      *
      *  Base class for all JSON based API methods
@@ -33,6 +39,7 @@ namespace TAO::API
      **/
     class Function
     {
+
         /** The function pointer to be called. */
         std::function<encoding::json(const encoding::json&, bool)> tFunction;
 
@@ -55,6 +62,9 @@ namespace TAO::API
 
     public:
 
+        /** The public cache object of commands. */
+        mutable ResponseCache oCache;
+
 
         /** Default Constructor. **/
         Function()
@@ -63,9 +73,61 @@ namespace TAO::API
         , nMaxVersion (0)
         , strMessage  ( )
         , setNouns    ( )
+        , oCache      (0)
         {
         }
 
+
+        /** Copy Constructor. **/
+        Function(const Function& a)
+        : tFunction   (a.tFunction)
+        , nActivation (a.nActivation)
+        , nMaxVersion (a.nMaxVersion)
+        , strMessage  (a.strMessage)
+        , setNouns    (a.setNouns)
+        , oCache      (a.oCache)
+        {
+        }
+
+
+        /** Move Constructor. **/
+        Function(Function&& a)
+        : tFunction   (std::move(a.tFunction))
+        , nActivation (std::move(a.nActivation))
+        , nMaxVersion (std::move(a.nMaxVersion))
+        , strMessage  (std::move(a.strMessage))
+        , setNouns    (std::move(a.setNouns))
+        , oCache      (std::move(a.oCache))
+        {
+        }
+
+
+        /** Copy Assignment. **/
+        Function& operator=(const Function& a)
+        {
+            tFunction   = a.tFunction;
+            nActivation = a.nActivation;
+            nMaxVersion = a.nMaxVersion;
+            strMessage  = a.strMessage;
+            setNouns    = a.setNouns;
+            oCache      = a.oCache;
+
+            return *this;
+        }
+
+
+        /** Move Assignment. **/
+        Function& operator=(Function& a)
+        {
+            tFunction   = std::move(a.tFunction);
+            nActivation = std::move(a.nActivation);
+            nMaxVersion = std::move(a.nMaxVersion);
+            strMessage  = std::move(a.strMessage);
+            setNouns    = std::move(a.setNouns);
+            oCache      = std::move(a.oCache);
+
+            return *this;
+        }
 
         /** Constructor
          *
@@ -73,15 +135,19 @@ namespace TAO::API
          *  An activation timestamp of zero means that command activates with release of update, not at hard fork time.
          *
          *  @param[in] tFunctionIn The function to be executed by this class.
+         *  @param[in] nSettingsIn The function settings that will be automated when function is executed
+         *  @param[in] pExternalCounter A counter object that contains cache related settings.
          *  @param[in] nActivationIn The activating timestamp if this method activates with hard fork. default value of 0.
          *
          **/
-        Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn, const uint64_t nActivationIn = 0)
+        Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn,
+                 const CacheSettings& rSettings = CacheSettings(), const uint64_t nActivationIn = 0)
         : tFunction   (tFunctionIn)
         , nActivation (nActivationIn) //default: zero denotes there is no activation switch
         , nMaxVersion (0)
         , strMessage  ( )
         , setNouns    ( )
+        , oCache      (rSettings)
         {
         }
 
@@ -92,15 +158,18 @@ namespace TAO::API
          *  An activation timestamp of zero means that command activates with release of update, not at hard fork time.
          *
          *  @param[in] tFunctionIn The function to be executed by this class.
-         *  @param[in] nActivationIn The activating timestamp if this method activates with hard fork. default value of 0.
+         *  @param[in] nSettingsIn The function settings that will be automated when function is executed
+         *  @param[in] pExternalCounter A counter object that contains cache related settings.
          *
          **/
-        Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn, const std::string& strNouns)
+        Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn, const std::string& strNouns,
+                 const CacheSettings& rSettings = CacheSettings())
         : tFunction   (tFunctionIn)
         , nActivation (0) //default: zero denotes there is no activation switch
         , nMaxVersion (0)
         , strMessage  ( )
         , setNouns    ( )
+        , oCache      (rSettings)
         {
             /* Grab our nouns to add to the set. */
             ParseString(strNouns, ',', setNouns, true); //true to trim spaces
@@ -117,13 +186,14 @@ namespace TAO::API
          *  @param[in] strMessageIn The deprecation message including info for re-routes or alternative methods.
          *
          **/
-        Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn,
-                 const uint64_t nActivationIn, const uint32_t nMaxVersionIn, const std::string& strMessageIn)
+        Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn, const uint64_t nActivationIn,
+                 const uint32_t nMaxVersionIn, const std::string& strMessageIn, const CacheSettings& rSettings = CacheSettings())
         : tFunction   (tFunctionIn)
         , nActivation (nActivationIn)
         , nMaxVersion (nMaxVersionIn)
         , strMessage  (strMessageIn)
         , setNouns    ( )
+        , oCache      (rSettings)
         {
         }
 
@@ -139,13 +209,14 @@ namespace TAO::API
          *  @param[in] nActivationIn The activating timestamp if this method activates with hard fork, default value of 0.
          *
          **/
-        Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn,
-                 const uint32_t nMaxVersionIn, const std::string& strMessageIn, const uint64_t nActivationIn = 0)
+        Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn, const uint32_t nMaxVersionIn,
+                 const std::string& strMessageIn, const CacheSettings& rSettings = CacheSettings(), const uint64_t nActivationIn = 0)
         : tFunction   (tFunctionIn)
         , nActivation (nActivationIn)
         , nMaxVersion (nMaxVersionIn)
         , strMessage  (strMessageIn)
         , setNouns    ( )
+        , oCache      (rSettings)
         {
         }
 
@@ -160,7 +231,7 @@ namespace TAO::API
          *  @return The json formatted response.
          *
          **/
-        encoding::json Execute(const encoding::json& jParams, const bool fHelp)
+        encoding::json Execute(const encoding::json& jParams, const bool fHelp) const
         {
             /* Check for activation status. */
             const uint64_t nTimestamp = runtime::unifiedtimestamp();

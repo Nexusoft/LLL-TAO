@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -30,7 +30,7 @@ namespace math
      *  @return the integer value of nBase^nExp
      *
      **/
-    __attribute__((const)) inline uint64_t pow(const uint64_t nBase, const uint8_t nExp)
+    inline uint64_t pow(const uint64_t nBase, const uint8_t nExp)
     {
         /* We just do a simple for loop here for repeated multiplication. */
         uint64_t nRet = 1;
@@ -58,7 +58,7 @@ namespace math
      *  @return the integer value of log on value
      *
      **/
-    __attribute__((const)) inline uint8_t log(const uint64_t nBase, const uint64_t nValue)
+    inline uint8_t log(const uint64_t nBase, const uint64_t nValue)
     {
         /* Our return value is only 8-bits, since maximum log for 64-bits possible is 64 in base-2. */
         uint8_t nRet = 0;

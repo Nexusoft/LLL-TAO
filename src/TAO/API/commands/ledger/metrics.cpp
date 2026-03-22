@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -39,7 +39,10 @@ namespace TAO::API
     {
         /* Grab our best block. */
         const TAO::Ledger::BlockState tBestBlock =
-            TAO::Ledger::ChainState::stateBest.load();
+            TAO::Ledger::ChainState::tStateBest.load();
+
+        /* Wrap this in a cache. */
+        encoding::json jRet;
 
         /* Get the current time of height of blockchain. */
         const uint64_t nBestTime =
@@ -351,13 +354,9 @@ namespace TAO::API
         };
 
         /* Add chain-state data. */
-        encoding::json jRet;
         jRet["volumes"]    = jVolumes;
         jRet["exchanges"]  = jExchanges;
         jRet["network"]    = jNetwork;
-
-        /* Filter our fieldname. */
-        FilterFieldname(jParams, jRet);
 
         return jRet;
     }

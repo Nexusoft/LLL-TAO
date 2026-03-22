@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -326,7 +326,7 @@ namespace LLD
          *
          *  Sequential read from a specified binary position.
          *
-         *  @param[in] nStart The starting binary position
+         *  @param[in] nFilePos The starting binary position
          *  @param[in] nFile The starting file
          *  @param[in] strType The type specifier to read records from
          *  @param[out] vValues The database entry value to read out.
@@ -336,7 +336,7 @@ namespace LLD
          *
          **/
         template<typename Type>
-        bool GetBatch(uint64_t nStart, uint32_t nFile, const std::string& strType,
+        bool GetBatch(uint64_t nFilePos, uint32_t nFile, const std::string& strType,
             std::vector<Type>& vValues, int32_t nLimit = 1000)
         {
             /* Clear any remaining data. */
@@ -366,7 +366,7 @@ namespace LLD
                 while(stream)
                 {
                     /* Check that we aren't seeking past end of file. */
-                    if(nStart >= nFileSize)
+                    if(nFilePos >= nFileSize)
                         break;
 
                     /* Read into serialize stream. */
@@ -377,14 +377,21 @@ namespace LLD
                         LOCK(SECTOR_MUTEX);
 
                         /* Seek stream to beginning. */
-                        stream.seekg(nStart, std::ios::beg);
+                        stream.seekg(nFilePos, std::ios::beg);
 
                         /* Read the data into the buffer. */
                         if(!stream.read((char*)ssData.data(), nBufferSize))
-                            ssData.resize(stream.gcount());
+                            ssData.resize(stream.gcount()); //resize buffer to read size if incomplete read
 
                         /* Iterate if meters are enabled. */
-                        nBytesRead += static_cast<uint32_t>(stream.gcount());
+                        const uint64_t nBufferRead = stream.gcount();
+
+                        /* Exit if we read zero bytes. */
+                        if(nBufferRead == 0)
+                            break;
+
+                        /* Otherwise iterate our bytes read. */
+                        nBytesRead += static_cast<uint32_t>(nBufferRead);
                     }
 
                     /* Read records. */
@@ -393,13 +400,18 @@ namespace LLD
                         try
                         {
                             /* Get the current stream position. */
-                            uint64_t nPos  = ssData.GetPos();
+                            const uint64_t nPos  = ssData.GetPos();
 
                             /* Read compact size. */
-                            uint64_t nSize = ReadCompactSize(ssData);
+                            const uint64_t nSize =
+                                ReadCompactSize(ssData);
+
+                            /* Check for if we are passing through null data */
                             if(nSize == 0) //reached end of current file
                             {
+                                nFilePos++; //if we iterate our datastream we need to iterate our file read pointer
                                 ssData.SetPos(nPos + 1); //continue forward until we reach a valid length
+
                                 continue;
                             }
 
@@ -422,10 +434,14 @@ namespace LLD
                                     return (vValues.size() > 0);
                             }
                             else
-                                ssData.SetPos(nPos + nSize + GetSizeOfCompactSize(nSize));
+                            {
+                                try { ssData.SetPos(nPos + nSize + GetSizeOfCompactSize(nSize)); }
+                                catch(const std::exception& e){ break; }
+                            }
+
 
                             /* Iterate to next position. */
-                            nStart += nSize + GetSizeOfCompactSize(nSize);
+                            nFilePos += nSize + GetSizeOfCompactSize(nSize);
                         }
                         catch(const std::exception& e)
                         {
@@ -441,7 +457,7 @@ namespace LLD
                 ++nFile;
 
                 /* Reset the start position. */
-                nStart = 0;
+                nFilePos = 0;
             }
 
             return (vValues.size() > 0);
@@ -461,65 +477,72 @@ namespace LLD
         template<typename Key, typename Type>
         bool Read(const Key& key, Type& value)
         {
-            /* Serialize Key into Bytes. */
-            DataStream ssKey(SER_LLD, DATABASE_VERSION);
-            ssKey << key;
-
-            /* Get the Data from Sector Database. */
-            std::vector<uint8_t> vData;
-
-            /* Get reference of key. */
-            std::vector<uint8_t>& vKey = ssKey.Bytes();
-
-            /* Check that the key is not pending in a transaction for Erase. */
+            try
             {
-                LOCK(TRANSACTION_MUTEX);
-                if(pTransaction)
+                /* Serialize Key into Bytes. */
+                DataStream ssKey(SER_LLD, DATABASE_VERSION);
+                ssKey << key;
+
+                /* Get the Data from Sector Database. */
+                std::vector<uint8_t> vData;
+
+                /* Get reference of key. */
+                std::vector<uint8_t>& vKey = ssKey.Bytes();
+
+                /* Check that the key is not pending in a transaction for Erase. */
                 {
-                    /* Check if in erase queue. */
-                    if(pTransaction->setErasedData.count(vKey))
-                        return false;
-
-                    /* Check for indexes. */
-                    if(pTransaction->mapIndex.count(vKey))
-                        vKey = pTransaction->mapIndex[vKey];
-
-                    /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
-                    if(pTransaction->mapTransactions.count(vKey))
+                    LOCK(TRANSACTION_MUTEX);
+                    if(pTransaction)
                     {
-                        /* Get the data from the transction object. */
-                        vData = pTransaction->mapTransactions[vKey];
+                        /* Check if in erase queue. */
+                        if(pTransaction->setErasedData.count(vKey))
+                            return false;
 
-                        /* Deserialize Value. */
-                        DataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
+                        /* Check for indexes. */
+                        if(pTransaction->mapIndex.count(vKey))
+                            vKey = pTransaction->mapIndex[vKey];
 
-                        /* Deserialize the String. */
-                        std::string strType;
-                        ssValue >> strType;
+                        /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
+                        if(pTransaction->mapTransactions.count(vKey))
+                        {
+                            /* Get the data from the transction object. */
+                            vData = pTransaction->mapTransactions[vKey];
 
-                        /* Deseriazlie the Value. */
-                        ssValue >> value;
+                            /* Deserialize Value. */
+                            DataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
 
-                        return true;
+                            /* Deserialize the String. */
+                            std::string strType;
+                            ssValue >> strType;
+
+                            /* Deseriazlie the Value. */
+                            ssValue >> value;
+
+                            return true;
+                        }
                     }
                 }
+
+                /* Get the data from the database. */
+                if(!Get(vKey, vData))
+                    return false;
+
+                /* Deserialize Value. */
+                DataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
+
+                /* Deserialize the String. */
+                std::string strType;
+                ssValue >> strType;
+
+                /* Deseriazlie the Value. */
+                ssValue >> value;
+
+                return true;
             }
-
-            /* Get the data from the database. */
-            if(!Get(vKey, vData))
+            catch(const std::exception& e)
+            {
                 return false;
-
-            /* Deserialize Value. */
-            DataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
-
-            /* Deserialize the String. */
-            std::string strType;
-            ssValue >> strType;
-
-            /* Deseriazlie the Value. */
-            ssValue >> value;
-
-            return true;
+            }
         }
 
 

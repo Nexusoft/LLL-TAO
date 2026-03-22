@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -26,18 +26,21 @@ namespace TAO::Register { class Object; }
 /* Global TAO namespace. */
 namespace TAO::API
 {
+
     /** Base
      *
      *  Base class for all JSON based API's.
      *
-     *  Instances of JSONAPIBase derivations must be registered with the
-     *  JSONAPINode processing the HTTP requests. This class holds a map of
-     *  JSONAPIMethod instances that in turn perform the processing for each
+     *  Instances of Base derivations must be registered with the
+     *  node processing the HTTP requests. This class holds a map of
+     *  method instances that in turn perform the processing for each
      *  API method request.
      *
      **/
     class Base
     {
+    protected:
+
         /* Simple enum for readability. */
         enum URI : uint8_t
         {
@@ -47,7 +50,6 @@ namespace TAO::API
             OPERATOR = 3,
         };
 
-    protected:
 
         /** Initializer Flag. */
         bool fInitialized;
@@ -61,20 +63,10 @@ namespace TAO::API
         std::map<std::string, Standard>  mapStandards;
 
 
-        /** Map of standard nouns to check for standard object types. **/
-        std::map<std::string, Operator>  mapOperators;
-
-
     public:
 
         /** Default Constructor **/
-        Base ( )
-        : fInitialized (false)
-        , mapFunctions ( )
-        , mapStandards ( )
-        , mapOperators ( )
-        {
-        }
+        Base ( );
 
 
         /** Default destructor **/
@@ -134,6 +126,18 @@ namespace TAO::API
         bool CheckObject(const std::string& strType, const TAO::Register::Object& tObject) const;
 
 
+        /** HasStandard
+         *
+         *  Check if a given standard exists in this command-set.
+         *
+         *  @param[in] strStandard The standard we are checking for.
+         *
+         *  @return true if the standard exists.
+         *
+         **/
+        bool HasStandard(const std::string& strStandard) const;
+
+
         /** EncodeObject
          *
          *  Encode a standard object into json using custom encoding function.
@@ -161,7 +165,7 @@ namespace TAO::API
          *  @return JSON encoded response.
          *
          **/
-        encoding::json Execute(std::string &strMethod, encoding::json &jParams, const bool fHelp = false);
+        encoding::json Execute(std::string &strMethod, encoding::json &jParams, const bool fHelp = false) const;
 
 
         /** RewriteURL
@@ -176,7 +180,7 @@ namespace TAO::API
          *  @return the API method URL
          *
          **/
-        virtual std::string RewriteURL(const std::string& strMethod, encoding::json &jParams);
+         std::string RewriteURL(const std::string& strMethod, encoding::json &jParams) const;
 
 
         /** Index

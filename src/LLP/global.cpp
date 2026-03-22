@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -14,7 +14,12 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 
 #include <LLP/include/global.h>
+#include <LLP/include/graceful_shutdown.h>
+#include <LLP/include/mining_config.h>
+#include <LLP/include/mining_server_factory.h>
 #include <LLP/include/network.h>
+#include <LLP/include/falcon_auth.h>
+#include <LLP/include/colin_mining_agent.h>
 
 #include <TAO/API/include/global.h>
 
@@ -30,14 +35,15 @@ namespace LLP
     /* Track our hostname so we don't have to call system every request. */
     std::string strHostname;
 
-
     /* Declare the Global LLP Instances. */
     Server<TritiumNode>* TRITIUM_SERVER;
     Server<LookupNode>*  LOOKUP_SERVER;
     Server<TimeNode>*    TIME_SERVER;
     Server<APINode>*     API_SERVER;
+    Server<FileNode>*    FILE_SERVER;
     Server<RPCNode>*     RPC_SERVER;
     Server<Miner>*       MINING_SERVER;
+    Server<StatelessMinerConnection>* STATELESS_MINER_SERVER;
 
 
     /* Current session identifier. */
@@ -59,6 +65,9 @@ namespace LLP
         /* Initialize API Pointers. */
         TAO::API::Initialize();
 
+        /* Initialize Falcon Auth for mining authentication. */
+        FalconAuth::Initialize();
+
 
         /* TIME_SERVER instance */
         {
@@ -69,6 +78,7 @@ namespace LLP
             /* Generate our config object and use correct settings. */
             LLP::Config CONFIG     = LLP::Config(GetTimePort());
             CONFIG.ENABLE_LISTEN   = fServer;
+            CONFIG.ENABLE_UPNP     = fServer;
             CONFIG.ENABLE_METERS   = false;
             CONFIG.ENABLE_DDOS     = true;
             CONFIG.ENABLE_MANAGER  = true;
@@ -99,10 +109,11 @@ namespace LLP
                 (!config::fClient.load() && config::fIndexProofs.load() && config::fIndexRegister.load());
 
             CONFIG.ENABLE_METERS   = false;
+            CONFIG.ENABLE_UPNP     = CONFIG.ENABLE_LISTEN;
             CONFIG.ENABLE_DDOS     = true;
             CONFIG.ENABLE_MANAGER  = false;
             CONFIG.ENABLE_SSL      = false;
-            CONFIG.ENABLE_REMOTE   = true;
+            CONFIG.ENABLE_REMOTE   = CONFIG.ENABLE_LISTEN;
             CONFIG.REQUIRE_SSL     = false;
             CONFIG.PORT_SSL        = 0; //TODO: this is disabled until SSL code can be refactored
             CONFIG.MAX_INCOMING    = 128;
@@ -124,6 +135,7 @@ namespace LLP
             /* Generate our config object and use correct settings. */
             LLP::Config CONFIG     = LLP::Config(GetDefaultPort());
             CONFIG.ENABLE_LISTEN   = config::GetBoolArg(std::string("-listen"), (config::fClient.load() ? false : true));
+            CONFIG.ENABLE_UPNP     = true; //we want UPNP for main tritium protocol
             CONFIG.ENABLE_METERS   = config::GetBoolArg(std::string("-meters"), false);
             CONFIG.ENABLE_DDOS     = config::GetBoolArg(std::string("-ddos"), false);
             CONFIG.ENABLE_MANAGER  = config::GetBoolArg(std::string("-manager"), true);
@@ -145,14 +157,46 @@ namespace LLP
         }
 
 
+        /* FILE_SERVER instance */
+        if(config::fFileServer.load())
+        {
+            /* Generate our config object and use correct settings. */
+            LLP::Config CONFIG     = LLP::Config(80); //default http uses port 80
+            CONFIG.ENABLE_LISTEN   = true;
+            CONFIG.ENABLE_UPNP     = true; //we want UPNP for main fileserver protocol
+            CONFIG.ENABLE_METERS   = config::GetBoolArg(std::string("-httpmeters"), false);
+            CONFIG.ENABLE_DDOS     = true;
+            CONFIG.ENABLE_MANAGER  = false;
+            CONFIG.ENABLE_SSL      = config::GetBoolArg(std::string("-httpssl"));
+            CONFIG.ENABLE_REMOTE   = config::GetBoolArg(std::string("-httpremote"), true);
+            CONFIG.REQUIRE_SSL     = config::GetBoolArg(std::string("-httpsslrequired"), false);
+            CONFIG.PORT_SSL        = 443; //default https uses port 443
+            CONFIG.MAX_INCOMING    = 128;
+            CONFIG.MAX_CONNECTIONS = 128;
+            CONFIG.MAX_THREADS     = config::GetArg(std::string("-httpthreads"), 8);
+            CONFIG.DDOS_CSCORE     = config::GetArg(std::string("-httpcscore"), 5);
+            CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-httprscore"), 5);
+            CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-httptimespan"), 60);
+            CONFIG.MANAGER_SLEEP   = 0; //this is disabled
+            CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-httptimeout"), 30);
+
+            /* Create the server instance. */
+            LLP::FILE_SERVER = new Server<FileNode>(CONFIG);
+
+            /* We want to post a notice if this parameter is enabled. */
+            debug::notice("HTTP SERVER ENABLED: you have set -fileroot=<directory> parameter, listening on port 80.");
+        }
+
+
         /* API_SERVER instance */
         if((config::HasArg("-apiuser") && config::HasArg("-apipassword")) || !config::GetBoolArg("-apiauth", true))
         {
             /* Generate our config object and use correct settings. */
             LLP::Config CONFIG     = LLP::Config(GetAPIPort());
             CONFIG.ENABLE_LISTEN   = true;
+            CONFIG.ENABLE_UPNP     = false;
             CONFIG.ENABLE_METERS   = config::GetBoolArg(std::string("-apimeters"), false);
-            CONFIG.ENABLE_DDOS     = true;
+            CONFIG.ENABLE_DDOS     = config::GetBoolArg(std::string("-apiddos"), true);
             CONFIG.ENABLE_MANAGER  = false;
             CONFIG.ENABLE_SSL      = config::GetBoolArg(std::string("-apissl"));
             CONFIG.ENABLE_REMOTE   = config::GetBoolArg(std::string("-apiremote"), false);
@@ -186,6 +230,7 @@ namespace LLP
             /* Generate our config object and use correct settings. */
             LLP::Config CONFIG     = LLP::Config(GetRPCPort());
             CONFIG.ENABLE_LISTEN   = true;
+            CONFIG.ENABLE_UPNP     = false;
             CONFIG.ENABLE_METERS   = config::GetBoolArg(std::string("-rpcmeters"), false);
             CONFIG.ENABLE_DDOS     = true;
             CONFIG.ENABLE_MANAGER  = false;
@@ -214,36 +259,69 @@ namespace LLP
         #endif
 
 
-        /* MINING_SERVER instance */
+        /* STATELESS_MINER_SERVER instance - Phase 2 Stateless Miner LLP */
+        /* This server repurposes miningport as the canonical stateless miner LLP port */
         if(config::GetBoolArg(std::string("-mining"), false) && !config::fClient.load())
         {
-            /* Generate our config object and use correct settings. */
-            LLP::Config CONFIG     = LLP::Config(GetMiningPort());
-            CONFIG.ENABLE_LISTEN   = true;
-            CONFIG.ENABLE_METERS   = false;
-            CONFIG.ENABLE_DDOS     = config::GetBoolArg(std::string("-miningddos"), false);
-            CONFIG.ENABLE_MANAGER  = false;
-            CONFIG.ENABLE_SSL      = false;
-            CONFIG.ENABLE_REMOTE   = true;
-            CONFIG.REQUIRE_SSL     = false;
-            CONFIG.PORT_SSL        = 0; //TODO: this is disabled until SSL code can be refactored
-            CONFIG.MAX_INCOMING    = 128;
-            CONFIG.MAX_CONNECTIONS = 128;
-            CONFIG.MAX_THREADS     = config::GetArg(std::string("-miningthreads"), 4);
-            CONFIG.DDOS_CSCORE     = config::GetArg(std::string("-miningcscore"), 1);
-            CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-miningrscore"), 50);
-            CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-miningtimespan"), 60);
-            CONFIG.MANAGER_SLEEP   = 0; //this is disabled
-            CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-miningtimeout"), 30);
+            /* Load and validate mining configuration before starting server */
+            if(!LoadMiningConfig())
+            {
+                debug::error(FUNCTION, "Mining configuration validation failed - mining server will not start");
+                debug::error(FUNCTION, "Please ensure miningpubkey is configured in nexus.conf");
+            }
+            else
+            {
+                /* Generate unified config via MiningServerFactory for stateless lane */
+                LLP::Config CONFIG = MiningServerFactory::BuildConfig(
+                    MiningServerFactory::Lane::STATELESS);
 
-            /* Create the server instance. */
-            MINING_SERVER = new Server<Miner>(CONFIG);
+                /* Create the Phase 2 stateless miner server instance. */
+                STATELESS_MINER_SERVER = new Server<StatelessMinerConnection>(CONFIG);
+
+                debug::log(0, FUNCTION, "Phase 2 Stateless Miner LLP server started on port ", GetMiningPort());
+
+                if(config::GetBoolArg(std::string("-miningssl"), false))
+                {
+                    if(config::GetBoolArg(std::string("-miningsslrequired"), false))
+                        debug::log(0, FUNCTION, "Stateless Miner SSL listener on port ", GetMiningSSLPort(), " (plaintext suppressed)");
+                    else
+                        debug::log(0, FUNCTION, "Stateless Miner SSL listener on port ", GetMiningSSLPort(), " (plaintext also open on port ", GetMiningPort(), ")");
+                }
+            }
         }
 
+        /* MINING_SERVER instance - Legacy hybrid stateful/stateless miner (optional) */
+        /* This can be enabled on a different port if needed for backward compatibility */
+        /* With -mining=1, legacy server now starts by default unless explicitly disabled */
+        if(config::GetBoolArg(std::string("-mining"), false) &&
+           !config::fClient.load())
+        {
+            /* Check if legacy mining port is explicitly disabled (set to 0) */
+            uint16_t nLegacyPort = GetLegacyMiningPort();
+            if(nLegacyPort != 0)
+            {
+                /* Generate unified config via MiningServerFactory for legacy lane */
+                LLP::Config LEGACY_CONFIG = MiningServerFactory::BuildConfig(
+                    MiningServerFactory::Lane::LEGACY);
 
-        /* Add our connections from commandline. */
-        MakeConnections<LLP::TimeNode>   (TIME_SERVER);
-        MakeConnections<LLP::TritiumNode>(TRITIUM_SERVER);
+                /* Create the legacy miner server instance. */
+                MINING_SERVER = new Server<Miner>(LEGACY_CONFIG);
+
+                debug::log(0, FUNCTION, "Legacy Mining LLP server started on port ", nLegacyPort);
+
+                if(config::GetBoolArg(std::string("-miningssl"), false))
+                {
+                    if(config::GetBoolArg(std::string("-miningsslrequired"), false))
+                        debug::log(0, FUNCTION, "Legacy Miner SSL listener on port ", GetLegacyMiningSSLPort(), " (plaintext suppressed)");
+                    else
+                        debug::log(0, FUNCTION, "Legacy Miner SSL listener on port ", GetLegacyMiningSSLPort(), " (plaintext also open on port ", nLegacyPort, ")");
+                }
+            }
+            else
+            {
+                debug::log(0, FUNCTION, "Legacy Mining LLP server disabled (port set to 0)");
+            }
+        }
 
         return true;
     }
@@ -281,6 +359,9 @@ namespace LLP
         /* Close sockets for the mining server and its subsystems. */
         CloseSockets<Miner>(MINING_SERVER);
 
+        /* Close sockets for the stateless miner server and its subsystems. */
+        CloseSockets<StatelessMinerConnection>(STATELESS_MINER_SERVER);
+
     }
 
 
@@ -311,6 +392,9 @@ namespace LLP
 
         /* Open sockets for the mining server and its subsystems. */
         OpenListening<Miner>(MINING_SERVER);
+
+        /* Open sockets for the stateless miner server and its subsystems. */
+        OpenListening<StatelessMinerConnection>(STATELESS_MINER_SERVER);
 
         /* Remove our protocol from suspended state once established. */
         config::fSuspendProtocol.store(false);
@@ -345,6 +429,168 @@ namespace LLP
 
         /* Release the mining server and its subsystems. */
         Release<Miner>(MINING_SERVER);
+
+        /* Release the stateless miner server and its subsystems. */
+        Release<StatelessMinerConnection>(STATELESS_MINER_SERVER);
+    }
+
+
+    /*  Gracefully disconnect all connected miners before server teardown.
+     *
+     *  Both stateless (port 9323) and legacy (port 8323) lanes receive the
+     *  same NODE_SHUTDOWN (0xD0FF) packet in a single unified sequence:
+     *
+     *    Phase 1 — Send NODE_SHUTDOWN to every connected miner (both lanes).
+     *    Phase 2 — Single shared flush window for TCP send buffers.
+     *    Phase 3 — Hard-disconnect every miner and wake DataThreads.
+     */
+    static void GracefulDisconnectAllMiners()
+    {
+        debug::log(0, FUNCTION, "Sending graceful disconnect to all connected miners...");
+
+        uint32_t nStatelessNotifyAttempts = 0;
+        uint32_t nLegacyNotifyAttempts    = 0;
+        uint32_t nStatelessNotified       = 0;
+        uint32_t nLegacyNotified          = 0;
+        uint32_t nStatelessDisconnected = 0;
+        uint32_t nLegacyDisconnected    = 0;
+
+        /* ── Phase 1: Send NODE_SHUTDOWN to ALL miners (both lanes) ──────── */
+
+        /* Stateless lane (port 9323) */
+        if(STATELESS_MINER_SERVER)
+        {
+            auto vConns = STATELESS_MINER_SERVER->GetConnections();
+            for(auto& pConn : vConns)
+            {
+                if(!pConn || !pConn->Connected())
+                    continue;
+
+                ++nStatelessNotifyAttempts;
+
+                try
+                {
+                    pConn->SendNodeShutdown(GracefulShutdown::REASON_GRACEFUL);
+
+                    if(pConn->NodeShutdownSent())
+                        ++nStatelessNotified;
+                }
+                catch(const std::exception& e)
+                {
+                    debug::error(FUNCTION, "Failed to send NODE_SHUTDOWN to stateless miner ",
+                                 pConn->GetAddress().ToStringIP(), ": ", e.what());
+                }
+                catch(...)
+                {
+                    debug::error(FUNCTION, "Failed to send NODE_SHUTDOWN to stateless miner ",
+                                 pConn->GetAddress().ToStringIP(), ": unknown exception");
+                }
+            }
+
+            STATELESS_MINER_SERVER->NotifyEvent();
+        }
+
+        /* Legacy lane (port 8323) */
+        if(MINING_SERVER)
+        {
+            auto vConns = MINING_SERVER->GetConnections();
+            for(auto& pConn : vConns)
+            {
+                if(!pConn || !pConn->Connected())
+                    continue;
+
+                ++nLegacyNotifyAttempts;
+
+                try
+                {
+                    pConn->SendNodeShutdown(GracefulShutdown::REASON_GRACEFUL);
+
+                    if(pConn->NodeShutdownSent())
+                        ++nLegacyNotified;
+                }
+                catch(const std::exception& e)
+                {
+                    debug::error(FUNCTION, "Failed to send NODE_SHUTDOWN to legacy miner ",
+                                 pConn->GetAddress().ToStringIP(), ": ", e.what());
+                }
+                catch(...)
+                {
+                    debug::error(FUNCTION, "Failed to send NODE_SHUTDOWN to legacy miner ",
+                                 pConn->GetAddress().ToStringIP(), ": unknown exception");
+                }
+            }
+
+            MINING_SERVER->NotifyEvent();
+        }
+
+        /* ── Phase 2: Single shared flush window ─────────────────────────── */
+        debug::log(0, FUNCTION, "NODE_SHUTDOWN queued for ",
+                   nStatelessNotified, "/", nStatelessNotifyAttempts, " stateless and ",
+                   nLegacyNotified, "/", nLegacyNotifyAttempts, " legacy miners; waiting ",
+                   GracefulShutdown::MINER_SHUTDOWN_FLUSH_MS, " ms for egress before disconnect");
+        runtime::sleep(GracefulShutdown::MINER_SHUTDOWN_FLUSH_MS);
+
+        /* ── Phase 3: Hard-disconnect all miners and wake DataThreads ────── */
+        if(STATELESS_MINER_SERVER)
+        {
+            auto vConns = STATELESS_MINER_SERVER->GetConnections();
+            for(auto& pConn : vConns)
+            {
+                if(!pConn || !pConn->Connected())
+                    continue;
+
+                debug::log(1, FUNCTION, "Disconnecting stateless miner ",
+                           pConn->GetAddress().ToStringIP(), " after graceful shutdown wait");
+
+                if(!pConn->NodeShutdownSent())
+                    debug::warning(FUNCTION, "Disconnecting stateless miner without prior NODE_SHUTDOWN state: ",
+                                   pConn->GetAddress().ToStringIP());
+
+                pConn->Disconnect();
+                ++nStatelessDisconnected;
+            }
+
+            STATELESS_MINER_SERVER->NotifyEvent();
+        }
+
+        if(MINING_SERVER)
+        {
+            auto vConns = MINING_SERVER->GetConnections();
+            for(auto& pConn : vConns)
+            {
+                if(!pConn || !pConn->Connected())
+                    continue;
+
+                debug::log(1, FUNCTION, "Disconnecting legacy miner ",
+                           pConn->GetAddress().ToStringIP(), " after graceful shutdown wait");
+
+                if(!pConn->NodeShutdownSent())
+                    debug::warning(FUNCTION, "Disconnecting legacy miner without prior NODE_SHUTDOWN state: ",
+                                   pConn->GetAddress().ToStringIP());
+
+                pConn->RequestShutdown();
+                ++nLegacyDisconnected;
+            }
+
+            MINING_SERVER->NotifyEvent();
+        }
+
+        debug::log(0, FUNCTION, "Graceful disconnect complete: ",
+                   nStatelessDisconnected, " stateless + ",
+                   nLegacyDisconnected, " legacy miners disconnected");
+
+        try
+        {
+            ColinMiningAgent::Get().on_node_shutdown();
+        }
+        catch(const std::exception& e)
+        {
+            debug::error(FUNCTION, "Colin shutdown report failed after miner disconnect: ", e.what());
+        }
+        catch(...)
+        {
+            debug::error(FUNCTION, "Colin shutdown report failed after miner disconnect: unknown exception");
+        }
     }
 
 
@@ -353,11 +599,31 @@ namespace LLP
     {
         debug::log(0, FUNCTION, "Shutting down LLP");
 
+        /* Gracefully notify and disconnect all miners BEFORE server teardown. */
+        try
+        {
+            GracefulDisconnectAllMiners();
+        }
+        catch(const std::exception& e)
+        {
+            debug::error(FUNCTION, "Graceful miner shutdown phase failed: ", e.what());
+        }
+        catch(...)
+        {
+            debug::error(FUNCTION, "Graceful miner shutdown phase failed: unknown exception");
+        }
+
+        /* Shutdown Falcon Auth. */
+        FalconAuth::Shutdown();
+
         /* Shutdown the time server and its subsystems. */
         Shutdown<TimeNode>(TIME_SERVER);
 
         /* Shutdown the mining server and its subsystems. */
         Shutdown<Miner>(MINING_SERVER);
+
+        /* Shutdown the stateless miner server and its subsystems. */
+        Shutdown<StatelessMinerConnection>(STATELESS_MINER_SERVER);
 
         /* Shutdown the core API server and its subsystems. */
         Shutdown<APINode>(API_SERVER);

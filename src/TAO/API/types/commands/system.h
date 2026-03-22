@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -133,6 +133,122 @@ namespace TAO::API
          **/
         encoding::json Metrics(const encoding::json& params, const bool fHelp);
 
+
+        /** GetMiningInfo
+         *
+         *  Returns mining-related information including enabled status, channel, height, and connections
+         *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json GetMiningInfo(const encoding::json& params, const bool fHelp);
+
+
+        /** SetMining
+         *
+         *  Enable or disable mining via RPC
+         *
+         *  @param[in] params The parameters from the API call (boolean enable flag).
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json SetMining(const encoding::json& params, const bool fHelp);
+
+
+        /** ListMiners
+         *
+         *  Phase 2: List all active stateless miners
+         *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return Array of miner status objects
+         *
+         **/
+        encoding::json ListMiners(const encoding::json& params, const bool fHelp);
+
+
+        /** GetMinerStatus
+         *
+         *  Phase 2: Get status for a specific miner
+         *
+         *  @param[in] params The parameters from the API call (address string).
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return Miner status object
+         *
+         **/
+        encoding::json GetMinerStatus(const encoding::json& params, const bool fHelp);
+
+
+        /** DisconnectMiner
+         *
+         *  Phase 2: Disconnect a specific miner
+         *
+         *  @param[in] params The parameters from the API call (address string).
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return Success confirmation
+         *
+         **/
+        encoding::json DisconnectMiner(const encoding::json& params, const bool fHelp);
+
+
+        /** GenerateFalconKey
+         *
+         *  Phase 2: Generate a new Falcon key pair
+         *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return New key metadata
+         *
+         **/
+        encoding::json GenerateFalconKey(const encoding::json& params, const bool fHelp);
+
+
+        /** ListFalconKeys
+         *
+         *  Phase 2: List all stored Falcon keys
+         *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return Array of key metadata
+         *
+         **/
+        encoding::json ListFalconKeys(const encoding::json& params, const bool fHelp);
+
+
+        /** TestFalconAuth
+         *
+         *  Phase 2: Test Falcon authentication for a key
+         *
+         *  @param[in] params The parameters from the API call (key_id string).
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return Test result
+         *
+         **/
+        encoding::json TestFalconAuth(const encoding::json& params, const bool fHelp);
+
+
+        /** BindFalconKey
+         *
+         *  Phase 2: Bind a Falcon key to a Tritium genesis
+         *
+         *  @param[in] params The parameters from the API call (key_id, genesis strings).
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return Binding confirmation
+         *
+         **/
+        encoding::json BindFalconKey(const encoding::json& params, const bool fHelp);
 
 
     private:

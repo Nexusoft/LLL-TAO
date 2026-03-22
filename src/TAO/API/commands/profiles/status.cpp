@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -39,7 +39,7 @@ namespace TAO::API
 
         /* Add the genesis */
         jRet["genesis"]      = hashGenesis.ToString();
-        jRet["confirmed"]    = bool(LLD::Logical->ReadFirst(hashGenesis, hashLast));
+        jRet["confirmed"]    = bool(LLD::Sessions->ReadFirst(hashGenesis, hashLast));
         jRet["recovery"]     = false;
         jRet["crypto"]       = false;
         jRet["transactions"] = 0;

@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -23,10 +23,6 @@ namespace TAO::API
     /* Standard initialization function. */
     void Ledger::Initialize()
     {
-        /* Populate our operators. */
-        Operators::Initialize(mapOperators);
-
-
         /* Handle for get/blockhash. */
         mapFunctions["get/blockhash"] = Function
         (
@@ -60,7 +56,11 @@ namespace TAO::API
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2
-            )
+            ),
+            {
+                ENABLE::CACHING | ENABLE::FILTERS,
+                &nBlockCounter
+            }
         );
 
         /* Handle for get/metrics. */
@@ -72,7 +72,11 @@ namespace TAO::API
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2
-            )
+            ),
+            {
+                ENABLE::CACHING | ENABLE::FILTERS,
+                &nBlockCounter
+            }
         );
 
         /* Handle for list/blocks. */
@@ -84,7 +88,8 @@ namespace TAO::API
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2
-            )
+            ),
+            ENABLE::FILTERS | ENABLE::OPERATORS
         );
 
         /* Handle for list/transactions. */
@@ -105,6 +110,18 @@ namespace TAO::API
             std::bind
             (
                 &Ledger::GetTransaction,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for list/blocks. */
+        mapFunctions["recent/blocks"] = Function
+        (
+            std::bind
+            (
+                &Ledger::RecentBlocks,
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2

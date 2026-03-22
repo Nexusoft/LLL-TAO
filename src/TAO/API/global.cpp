@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands/assets.h>
 #include <TAO/API/types/commands/ledger.h>
+#include <TAO/API/types/commands/local.h>
 #include <TAO/API/types/commands/names.h>
 #include <TAO/API/types/commands/invoices.h>
 #include <TAO/API/types/commands/crypto.h>
@@ -36,7 +37,14 @@ ________________________________________________________________________________
 
 namespace TAO::API
 {
+    /* Global value to tell cache to refresh state. */
+    std::atomic<uint32_t> nBlockCounter;
+    std::atomic<uint32_t> nRegisterCounter;
+    std::atomic<uint32_t> nTransactionCounter;
+
+    /* Global value to hold the command-set function pointers. */
     std::map<std::string, Base*> Commands::mapTypes;
+
 
     /*  Instantiate global instances of the API. */
     void Initialize()
@@ -53,6 +61,7 @@ namespace TAO::API
         Commands::Register<Finance>();
         Commands::Register<Invoices>();
         Commands::Register<Ledger>();
+        Commands::Register<Local>();
         Commands::Register<Network>(config::fClient.load()); //DISABLED for -client mode
         Commands::Register<Names>();
         Commands::Register<Profiles>();

@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -82,6 +82,10 @@ namespace LLP
 
         /** Listener Thread for accepting incoming connections. **/
         std::vector<std::thread> THREAD_LISTEN;
+
+
+        /** Upnp Threads for accepting incoming connections. **/
+        std::vector<std::thread> THREAD_UPNP;
 
 
         /** Meter Thread for tracking incoming and outgoing packet counts. **/
@@ -235,6 +239,26 @@ namespace LLP
         std::vector<std::shared_ptr<ProtocolType>> GetConnections() const;
 
 
+        /** NotifyChannelMiners
+         *
+         *  Broadcast channel-specific notification to subscribed miners on this server lane.
+         *  Called from BroadcastChannelNotification() (state.cpp) for each lane separately.
+         *
+         *  Server-side filtering ensures only miners subscribed to the specific channel
+         *  receive notifications.  Logs include channel, lane, and miner count for
+         *  de-duplication verification.
+         *
+         *  @param[in] nChannel   Channel that advanced (1=Prime, 2=Hash)
+         *
+         *  @return Number of miners that were notified on this lane.
+         *
+         *  @note This method is only meaningful for StatelessMinerConnection and Miner servers.
+         *        For other protocol types, it will be a no-op that returns 0.
+         *
+         **/
+        uint32_t NotifyChannelMiners(uint32_t nChannel);
+
+
         /** GetConnectionCount
          *
          *  Get the number of active connection pointers from data threads.
@@ -247,10 +271,18 @@ namespace LLP
 
         /** Get Connection
          *
-         *  Select a random and currently open connection
+         *  Select lowest latency and currently open connection
          *
          **/
         std::shared_ptr<ProtocolType> GetConnection();
+
+
+        /** Get Connection
+         *
+         *  Select a random and currently open connection
+         *
+         **/
+        std::shared_ptr<ProtocolType> RandomConnection();
 
 
         /** Get Connection
@@ -432,6 +464,16 @@ namespace LLP
          *
          **/
         void Meter();
+
+
+        /** UPnP
+         *
+         *  LLP UPnP listener thread to open up our listening ports.
+         *
+         *  @param[in] nPort The port number that we are using.
+         *
+         **/
+        void UPnP(const uint16_t nPort);
 
 
         /** get_listening_socket

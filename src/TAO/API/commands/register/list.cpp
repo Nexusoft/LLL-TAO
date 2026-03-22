@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/filter.h>
 #include <TAO/API/include/format.h>
 #include <TAO/API/include/get.h>
+#include <TAO/API/include/list.h>
 #include <TAO/API/types/exception.h>
 
 #include <TAO/Ledger/include/stake.h>
@@ -38,123 +39,72 @@ namespace TAO::API
         /* Grab our type to run some checks against. */
         const std::set<std::string> setTypes = ExtractTypes(jParams);
 
-        /* Number of results to return. */
-        uint32_t nLimit = 100, nOffset = 0;
-
-        /* Get the params to apply to the response. */
-        std::string strOrder = "desc", strColumn = "modified";
-        ExtractList(jParams, strOrder, strColumn, nLimit, nOffset);
-
-        /* Build our object list and sort on insert. */
-        std::set<encoding::json, CompareResults> setRegisters({}, CompareResults(strOrder, strColumn));
-
-        /* Loop through our types. */
-        for(const auto& strType : setTypes)
-        {
-            /* Get our standard type. */
-            const std::string strStandard =
-                mapStandards[strType].Type();
-
-            /* Special handle if address indexed. */
-            if(config::fIndexAddress.load())
-            {
-                /* Batch read up to 1000 at a time */
-                std::vector<std::pair<uint256_t, TAO::Register::Object>> vObjects;
-                if(LLD::Register->BatchRead(strStandard + "_address", vObjects, -1))
-                {
-                    /* Add the register data to the response */
-                    for(auto& rObject : vObjects)
-                    {
-                        /* Parse our object now. */
-                        if(rObject.second.nType == TAO::Register::REGISTER::OBJECT && !rObject.second.Parse())
-                            continue;
-
-                        /* Check our object standards. */
-                        if(!CheckStandard(jParams, rObject.second))
-                            continue;
-
-                        /* Populate the response */
-                        encoding::json jRegister =
-                            StandardToJSON(jParams, rObject.second, rObject.first);
-
-                        /* Check that we match our filters. */
-                        if(!FilterResults(jParams, jRegister))
-                            continue;
-
-                        /* Filter out our expected fieldnames if specified. */
-                        if(!FilterFieldname(jParams, jRegister))
-                            continue;
-
-                        /* Insert into set and automatically sort. */
-                        setRegisters.insert(jRegister);
-                    }
-                }
-            }
-            else
-            {
-                /* Batch read up to 1000 at a time */
-                std::vector<TAO::Register::Object> vObjects;
-                if(LLD::Register->BatchRead(strStandard, vObjects, -1))
-                {
-                    /* Add the register data to the response */
-                    for(auto& rObject : vObjects)
-                    {
-                        /* Parse our object now. */
-                        if(rObject.nType == TAO::Register::REGISTER::OBJECT && !rObject.Parse())
-                            continue;
-
-                        /* Check our object standards. */
-                        if(!CheckStandard(jParams, rObject))
-                            continue;
-
-                        /* Populate the response */
-                        encoding::json jRegister =
-                            StandardToJSON(jParams, rObject);
-
-                        /* Check that we match our filters. */
-                        if(!FilterResults(jParams, jRegister))
-                            continue;
-
-                        /* Filter out our expected fieldnames if specified. */
-                        if(!FilterFieldname(jParams, jRegister))
-                            continue;
-
-                        /* Insert into set and automatically sort. */
-                        setRegisters.insert(jRegister);
-                    }
-                }
-            }
-        }
-
-        /* Check that we have results. */
-        if(setRegisters.empty())
-            throw Exception(-74, "No registers found");
-
-        /* Check that our offset is in range. */
-        if(nOffset > setRegisters.size())
-            throw Exception(-75, "Value [offset=", nOffset, "] exceeds dataset size [", setRegisters.size(), "]");
-
         /* Build our return value. */
         encoding::json jRet = encoding::json::array();
-
-        /* Handle paging and offsets. */
-        uint32_t nTotal = 0;
-        for(const auto& jRegister : setRegisters)
+        for(const auto& strType : setTypes)
         {
-            /* Check the offset. */
-            if(++nTotal <= nOffset)
-                continue;
+            try
+            {
+                /* Get our standard type. */
+                const std::string strStandard =
+                    mapStandards[strType].Type();
 
-            /* Check the limit */
-            if(jRet.size() == nLimit)
-                break;
+                /* Special handle if address indexed. */
+                if(config::fIndexAddress.load())
+                {
+                    /* Batch read up to 1000 at a time */
+                    std::vector<std::pair<uint256_t, TAO::Register::Object>> vObjects;
+                    if(LLD::Register->BatchRead(strStandard + "_address", vObjects, -1))
+                    {
+                        /* Add the register data to the response */
+                        for(auto& rObject : vObjects)
+                        {
+                            /* Parse our object now. */
+                            if(rObject.second.nType == TAO::Register::REGISTER::OBJECT && !rObject.second.Parse())
+                                continue;
 
-            jRet.push_back(jRegister);
+                            /* Check our object standards. */
+                            if(!CheckStandard(jParams, rObject.second))
+                                continue;
+
+                            /* Populate the response */
+                            encoding::json jRegister =
+                                StandardToJSON(jParams, rObject.second, rObject.first);
+
+                            /* Insert into our return value. */
+                            jRet.push_back(jRegister);
+                        }
+                    }
+                }
+                else
+                {
+                    /* Batch read up to 1000 at a time */
+                    std::vector<TAO::Register::Object> vObjects;
+                    if(LLD::Register->BatchRead(strStandard, vObjects, -1))
+                    {
+                        /* Add the register data to the response */
+                        for(auto& rObject : vObjects)
+                        {
+                            /* Parse our object now. */
+                            if(rObject.nType == TAO::Register::REGISTER::OBJECT && !rObject.Parse())
+                                continue;
+
+                            /* Check our object standards. */
+                            if(!CheckStandard(jParams, rObject))
+                                continue;
+
+                            /* Populate the response */
+                            encoding::json jRegister =
+                                StandardToJSON(jParams, rObject);
+
+                            /* Insert into our return value. */
+                            jRet.push_back(jRegister);
+                        }
+                    }
+                }
+            }
+            catch(const std::exception& e){ debug::warning("Exception: ", e.what()); }
         }
-
-        /* Check for over paging. */
-        if(jRet.empty())
-            throw Exception(-75, "Value [offset=", nOffset, "] + [limit=", nLimit, "] exceeds dataset size [", setRegisters.size(), "]");
 
         return jRet;
     }

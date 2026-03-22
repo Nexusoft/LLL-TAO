@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -99,7 +99,7 @@ namespace TAO::API
          *  @return The json formatted response.
          *
          **/
-        __attribute__((const)) encoding::json Execute(const encoding::json& jParams, const encoding::json& jList)
+        __attribute__((pure)) encoding::json Execute(const encoding::json& jParams, const encoding::json& jList) const
         {
             /* Check for deprecation status. */
             if(nMaxVersion != 0 && version::CLIENT_VERSION >= nMaxVersion)

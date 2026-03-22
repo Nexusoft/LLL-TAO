@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -94,7 +94,6 @@ namespace LLD
     template<typename KeyType, typename DataType>
     class TemplateLRU
     {
-
         /* The Maximum Size of the Cache. */
         uint32_t MAX_CACHE_ELEMENTS;
 
@@ -147,11 +146,39 @@ namespace LLD
 
 
         /** Copy assignment. **/
-        TemplateLRU& operator=(const TemplateLRU& cache) = delete;
+        TemplateLRU& operator=(const TemplateLRU& cacheIn)
+        {
+            MAX_CACHE_ELEMENTS = cacheIn.MAX_CACHE_ELEMENTS;
+
+            /* Loop through the incoming cache and add the data items. */
+            for(const auto& item : cacheIn.cache)
+                Put(item.second->Key, item.second->Data);
+
+            return *this;
+        }
 
 
         /** Move assignment. **/
-        TemplateLRU& operator=(TemplateLRU&& cache)      = delete;
+        TemplateLRU& operator=(TemplateLRU&& cacheIn)
+        {
+            MAX_CACHE_ELEMENTS = std::move(cacheIn.MAX_CACHE_ELEMENTS);
+
+            /* Loop through the incoming cache and copy the pointers and set source to null. */
+            for(auto& item : cacheIn.cache)
+            {
+                /* Set the pointers in our cache. */
+                cache[item.first] = item.second;
+
+                /* Set to null now so we don't delete them when source is destructed. */
+                item.second = nullptr;
+            }
+
+            /* Set our internal head and tail of the linked list. */
+            pfirst = cacheIn.pfirst;
+            plast  = cacheIn.plast;
+
+            return *this;
+        }
 
 
         /** Class Destructor. **/
@@ -197,6 +224,54 @@ namespace LLD
             LOCK(MUTEX);
 
             return cache.find(Key) != cache.end();
+        }
+
+
+        /** Keys
+         *
+         *  Get a list of all the keys in the container.
+         *
+         *  @return All the keys currently in the container.
+         *
+         **/
+        const std::vector<KeyType> Keys() const
+        {
+            LOCK(MUTEX);
+
+            /* Loop all elements in the container. */
+            std::vector<KeyType> vRet;
+            for(auto & item : cache)
+                vRet.push_back(item.first);
+
+            return vRet;
+        }
+
+        /** Clear
+         *
+         *  Clear all elements out of the container.
+         *
+         **/
+        void Clear()
+        {
+            LOCK(MUTEX);
+
+            /* Loop through the linked list. */
+            for(auto& item : cache)
+            {
+                /* Delete pointers if they are not null. */
+                if(item.second)
+                {
+                    delete item.second;
+                    item.second = nullptr;
+                }
+            }
+
+            /* Clear the cache map. */
+            cache.clear();
+
+            /* Reset our pointers. */
+            pfirst = nullptr;
+            plast  = nullptr;
         }
 
 

@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -12,9 +12,15 @@
 ____________________________________________________________________________________________*/
 
 #include <Util/include/signals.h>
-#include <signal.h>
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
+#include <Util/include/runtime.h>
+
+#include <signal.h>
+#include <atomic>
+#include <thread>
+#include <cstdlib>
+
 
 std::condition_variable SHUTDOWN;
 
@@ -29,46 +35,56 @@ void Shutdown()
 /** Catch Signal Handler function **/
 void HandleSIGTERM(int signum)
 {
-    std::string strSignal = "";
-    switch(signum)
+#ifndef WIN32
+    if(signum == SIGPIPE)
+        return;  /* SIGPIPE: ignore, broken pipe on closed connection */
+#else
+    if(signum == SIGINT)
+        return;  /* Windows: Ctrl+C handled differently, ignore SIGINT */
+#endif
+
+    /* First interrupt: initiate graceful shutdown and arm hard-exit watchdog. */
+    if(!config::fShutdown.load())
     {
-        case SIGABRT:
-            strSignal = "SIGABRT";
-            break;
+        Shutdown();  /* sets fShutdown=true, notifies SHUTDOWN cv */
 
-        case SIGILL:
-            strSignal = "SIGILL";
-            break;
+        /* ── Hard-exit watchdog ───────────────────────────────────────────────
+         * Spawn a detached background thread. If the process has not exited
+         * within HARD_EXIT_TIMEOUT_SECONDS after graceful shutdown was
+         * requested, force-terminate via std::_Exit().
+         *
+         * This handles the "muted thread" scenario where DataThread::join()
+         * blocks indefinitely on a connected miner socket that the kernel
+         * has not fully cleaned up (e.g. TCP TIME_WAIT), preventing LLP
+         * server destructors from completing and the process from exiting.
+         *
+         * std::_Exit() bypasses all C++ destructors — intentional here,
+         * because we are already in an unrecoverable shutdown-stall state.
+         * The OS will reclaim all resources on process exit.
+         */
+        static constexpr int HARD_EXIT_TIMEOUT_SECONDS = 8;
+        static constexpr int SLEEP_INTERVAL_MS         = 100;
+        static constexpr int MAX_ITERATIONS = (HARD_EXIT_TIMEOUT_SECONDS * 1000) / SLEEP_INTERVAL_MS;
 
-        case SIGINT:
-            strSignal = "SIGINT";
-            break;
+        std::thread([]()
+        {
+            for(int i = 0; i < MAX_ITERATIONS; ++i)
+            {
+                runtime::sleep(SLEEP_INTERVAL_MS);
+            }
+            /* If we reach here, graceful shutdown stalled. Force exit. */
+            debug::error("SHUTDOWN WATCHDOG: graceful shutdown did not complete within ",
+                         HARD_EXIT_TIMEOUT_SECONDS, "s — forcing process termination "
+                         "(DataThread join likely blocked on miner socket cleanup)");
+            std::_Exit(1);
+        }).detach();
 
-        case SIGTERM:
-            strSignal = "SIGTERM";
-            break;
-
-        #ifndef WIN32
-        case SIGPIPE:
-            strSignal = "SIGPIPE";
-            break;
-        #endif
-
-        default:
-            strSignal = "UNKNOWN";
-            break;
+        return;
     }
 
-    debug::notice("Signal received ", strSignal);
-
-#ifndef WIN32
-
-    if(signum != SIGPIPE)
-        Shutdown();
-
-#else
-    Shutdown();
-#endif
+    /* Second interrupt received while already shutting down: immediate hard exit. */
+    debug::error("Second interrupt received during shutdown — forcing immediate exit");
+    std::_Exit(1);
 }
 
 
@@ -96,8 +112,6 @@ void SetupSignals()
         signal(SIGILL, HandleSIGTERM);
         signal(SIGINT, HandleSIGTERM);
         signal(SIGTERM, HandleSIGTERM);
-        /* UNIX signal, not applicable to Windows */
-        //signal(SIGPIPE, HandleSIGTERM);
 
     #ifdef SIGBREAK
         signal(SIGBREAK, HandleSIGTERM);
