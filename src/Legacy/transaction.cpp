@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -551,7 +551,7 @@ namespace Legacy
                     /* Current state is not connected (eg, this is a candidate block)
                      * so begin repair from best state
                      */
-                    statePrev = TAO::Ledger::ChainState::stateBest.load();
+                    statePrev = TAO::Ledger::ChainState::tStateBest.load();
                 }
                 else
                     statePrev = block;
@@ -1059,12 +1059,12 @@ namespace Legacy
                     return debug::error(FUNCTION, "trust key and block trust key mismatch");
 
                 /* Trust Keys can only exist after the Genesis Transaction. */
-                TAO::Ledger::BlockState stateGenesis;
-                if(!LLD::Ledger->ReadBlock(trustKey.hashGenesisBlock, stateGenesis))
+                TAO::Ledger::BlockState tStateGenesis;
+                if(!LLD::Ledger->ReadBlock(trustKey.hashGenesisBlock, tStateGenesis))
                     return debug::error(FUNCTION, "genesis block not found");
 
                 /* Double Check the Genesis Transaction. */
-                if(!trustKey.CheckGenesis(stateGenesis))
+                if(!trustKey.CheckGenesis(tStateGenesis))
                     return debug::error(FUNCTION, "invalid genesis transaction");
 
                 /* Check that the trust score is accurate. */
@@ -1261,29 +1261,37 @@ namespace Legacy
             //add tolerance to stake reward of + 1 (viz.) for stake rewards
             if (vout[0].nValue / 1000 > (nStakeReward + nValueIn) / 1000)
                 return debug::error(FUNCTION, GetHash().SubString(), " stake reward ", vout[0].nValue / 1000, " mismatch ", (nStakeReward + nValueIn) / 1000);
-        }
-        else if(nValueIn < GetValueOut())
-            return debug::error(FUNCTION, GetHash().SubString(), " value in ", nValueIn, " < value out ", GetValueOut());
 
-        /* Calculate the mint if connected with a block. */
-        if(nFlags == TAO::Ledger::FLAGS::BLOCK)
-            state.nMint += (int32_t)(GetValueOut() - nValueIn);
+            /* Calculate the mint if connected with a block. */
+            if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+                state.nMint = uint32_t(GetValueOut() - nValueIn);
+        }
+        else
+        {
+            /* Check that our value ranges are correct. */
+            if(nValueIn < GetValueOut())
+                return debug::error(FUNCTION, GetHash().SubString(), " value in ", nValueIn, " < value out ", GetValueOut());
+
+            /* Calculate the mint if connected with a block. */
+            if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+                state.nFees += uint32_t(nValueIn - GetValueOut());
+        }
 
         /* UTXO to Sig Chain support - If we are connected with a block then check the outputs to see if any of them
            are to a register address.  If they are then write an event for the account holder */
-        for(const auto txout : vout )
+        for(const auto& txout : vout)
         {
             uint256_t hashTo;
             if(ExtractRegister(txout.scriptPubKey, hashTo))
             {
+                /* Read the owner of register. (check this for MEMPOOL, too) */
+                TAO::Register::State state;
+                if(!LLD::Register->ReadState(hashTo, state, nFlags))
+                    return debug::error(FUNCTION, "failed to read register to");
+
                 /* Write event for FLAGS::BLOCK only. */
                 if(nFlags == TAO::Ledger::FLAGS::BLOCK)
                 {
-                    /* Read the owner of register. (check this for MEMPOOL, too) */
-                    TAO::Register::State state;
-                    if(!LLD::Register->ReadState(hashTo, state, nFlags))
-                        return debug::error(FUNCTION, "failed to read register to");
-
                     /* Commit an event for receiving sigchain in the legay DB. */
                     if(!LLD::Legacy->WriteEvent(state.hashOwner, GetHash()))
                         return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());
@@ -1312,7 +1320,7 @@ namespace Legacy
             }
 
             /* Remove events for any UTXO to sig chain sends */
-            for(const auto txout : vout )
+            for(const auto& txout : vout)
             {
                 uint256_t hashTo;
                 if(ExtractRegister(txout.scriptPubKey, hashTo))
@@ -1324,7 +1332,7 @@ namespace Legacy
 
                     /* Commit an event for receiving sigchain in the legacy DB. */
                     if(!LLD::Legacy->EraseEvent(stateReg.hashOwner))
-                        return debug::error(FUNCTION, "failed to write event for account ", stateReg.hashOwner.SubString());
+                        return debug::error(FUNCTION, "failed to erase event for account ", stateReg.hashOwner.SubString());
                 }
             }
         }
@@ -1466,11 +1474,11 @@ namespace Legacy
                 return debug::error(FUNCTION, "version 4 block sequence number is ", nSequence);
 
             /* Ensure that a version 4 trust key is not expired based on new timespan rules. */
-            if(trustKey.Expired(TAO::Ledger::ChainState::stateBest.load()))
+            if(trustKey.Expired(TAO::Ledger::ChainState::tStateBest.load()))
                 return debug::error("version 4 key expired");
 
             /* Score is the total age of the trust key for version 4. */
-            nScorePrev = trustKey.Age(TAO::Ledger::ChainState::stateBest.load().GetBlockTime());
+            nScorePrev = trustKey.Age(TAO::Ledger::ChainState::tStateBest.load().GetBlockTime());
         }
 
         /* Version 5 blocks that are trust must pass sequence checks. */

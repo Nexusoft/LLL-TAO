@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -116,4 +116,72 @@ TEST_CASE( "Block primitive values", "[ledger]")
     REQUIRE(state2.hashCheckpoint    == block3.GetHash());
 
 
+}
+
+
+TEST_CASE( "Prime Calculation - Nonce Endianness (PR #128)", "[ledger][prime][endianness]")
+{
+    SECTION("GetPrime() correctly handles little-endian nonce")
+    {
+        /* Create a block with known values */
+        TAO::Ledger::Block block(1, 0, 1, 100);  // version=1, prev=0, channel=1 (prime), height=100
+        
+        /* Set a known nonce value - this is stored in memory as little-endian on x86/x64
+         * Value: 0x3400000207b56300
+         * In memory (LE): [0x00, 0x63, 0xb5, 0x07, 0x02, 0x00, 0x00, 0x34]
+         * If same bytes misinterpreted as BE, they would represent: 0x0063b50702000034 */
+        block.nNonce = 0x3400000207b56300ULL;
+        
+        /* Calculate prime - this should use the nonce value as-is (little-endian) */
+        uint1024_t nPrime1 = block.GetPrime();
+        
+        /* Calculate expected prime using explicit addition */
+        uint1024_t nProofHash = block.ProofHash();
+        uint1024_t nExpected = nProofHash + 0x3400000207b56300ULL;
+        
+        /* Verify that GetPrime produces the expected result */
+        REQUIRE(nPrime1 == nExpected);
+        
+        /* Verify it's NOT equal if the byte array was misinterpreted as big-endian
+         * If bytes [0x00,0x63,0xb5,0x07,0x02,0x00,0x00,0x34] were read as BE,
+         * they would be interpreted as 0x0063b50702000034 instead of 0x3400000207b56300 */
+        uint1024_t nWrongBE = nProofHash + 0x0063b50702000034ULL;
+        REQUIRE(nPrime1 != nWrongBE);
+    }
+    
+    SECTION("Different nonce values produce different primes")
+    {
+        TAO::Ledger::Block block1(1, 0, 1, 100);
+        TAO::Ledger::Block block2(1, 0, 1, 100);
+        
+        /* Set different nonce values */
+        block1.nNonce = 0x1234567890ABCDEFULL;
+        block2.nNonce = 0xFEDCBA0987654321ULL;
+        
+        /* Calculate primes */
+        uint1024_t nPrime1 = block1.GetPrime();
+        uint1024_t nPrime2 = block2.GetPrime();
+        
+        /* They should be different */
+        REQUIRE(nPrime1 != nPrime2);
+        
+        /* But the difference should be exactly the difference in nonce */
+        uint1024_t nDiff = (nPrime1 > nPrime2) ? (nPrime1 - nPrime2) : (nPrime2 - nPrime1);
+        uint64_t nNonceDiff = (block1.nNonce > block2.nNonce) ? 
+            (block1.nNonce - block2.nNonce) : (block2.nNonce - block1.nNonce);
+        
+        REQUIRE(nDiff == nNonceDiff);
+    }
+    
+    SECTION("Zero nonce produces base prime equal to ProofHash")
+    {
+        TAO::Ledger::Block block(1, 0, 1, 100);
+        block.nNonce = 0;
+        
+        uint1024_t nPrime = block.GetPrime();
+        uint1024_t nProofHash = block.ProofHash();
+        
+        /* With nonce=0, prime should equal ProofHash */
+        REQUIRE(nPrime == nProofHash);
+    }
 }

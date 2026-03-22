@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-        (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+        Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-        (c) Copyright The Nexus Developers 2014 - 2021
+        (c) Copyright The Nexus Developers 2014 - 2025
 
         Distributed under the MIT software license, see the accompanying
         file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLP/include/genesis_constants.h>
+
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
 
@@ -20,6 +22,8 @@ ________________________________________________________________________________
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/rollback.h>
 #include <TAO/Register/types/object.h>
+
+#include <Util/include/runtime.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -260,12 +264,74 @@ namespace TAO
                         uint256_t hashGenesis;
                         contract >> hashGenesis;
 
-                        /* Seek to end. */
-                        contract.Seek(16);
+                        /* Get the coinbase amount. */
+                        uint64_t nAmount = 0;
+                        contract >> nAmount;
 
-                        /* Commit to disk. */
-                        if(nFlags == TAO::Ledger::FLAGS::BLOCK && contract.Caller() != hashGenesis && !LLD::Ledger->EraseEvent(hashGenesis))
-                            return false;
+                        /* Seek to end (skip nExtraNonce which is 8 bytes). */
+                        contract.Seek(8);
+
+                        /* Check if auto-credit was applied by looking for proof. */
+                        if(nFlags == TAO::Ledger::FLAGS::BLOCK && contract.Caller() != hashGenesis)
+                        {
+                            /* Check if a proof exists (indicates auto-credit occurred). */
+                            if(LLD::Ledger->HasProof(hashGenesis, contract.Hash(), 0, nFlags))
+                            {
+                                /* Proof exists - auto-credit was applied, need to rollback balance.
+                                 * 
+                                 * IMPORTANT: In the new Direct Reward Address system, hashGenesis contains
+                                 * the reward account address (not the authentication genesis).
+                                 * 
+                                 * This is because block creation uses the reward address from MINER_SET_REWARD
+                                 * as hashDynamicGenesis, which becomes hashGenesis in the coinbase transaction. */
+                                TAO::Register::Address hashRewardAccount = hashGenesis;
+
+                                /* Read the current account state. */
+                                TAO::Register::Object account;
+                                if(LLD::Register->ReadState(hashRewardAccount, account, nFlags))
+                                {
+                                    /* Parse the account. */
+                                    if(account.Parse())
+                                    {
+                                        /* Rollback the balance by subtracting the amount. */
+                                        uint64_t nBalance = account.get<uint64_t>("balance");
+                                        
+                                        /* Check for balance underflow. */
+                                        if(nBalance >= nAmount)
+                                        {
+                                            /* Subtract the amount. */
+                                            account.Write("balance", nBalance - nAmount);
+                                            account.nModified = runtime::unifiedtimestamp();
+                                            account.SetChecksum();
+
+                                            /* Write the rolled back account state. */
+                                            if(!LLD::Register->WriteState(hashRewardAccount, account, nFlags))
+                                                debug::log(0, FUNCTION, "OP::COINBASE: failed to rollback auto-credited balance");
+                                            else
+                                                debug::log(0, FUNCTION, "OP::COINBASE: rolled back ", nAmount, 
+                                                          " NXS from ", hashRewardAccount.SubString());
+                                        }
+                                        else
+                                        {
+                                            debug::log(0, FUNCTION, "OP::COINBASE: balance underflow during rollback, skipping balance adjustment");
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    /* Account was deleted - skip balance adjustment but continue with proof erasure. */
+                                    debug::log(1, FUNCTION, "OP::COINBASE: reward account no longer exists, skipping balance rollback");
+                                }
+
+                                /* Always erase the proof to maintain consistency, even if balance rollback was skipped. */
+                                if(!LLD::Ledger->EraseProof(hashGenesis, contract.Hash(), 0, nFlags))
+                                    return debug::error(FUNCTION, "OP::COINBASE: failed to erase auto-credit proof");
+                            }
+
+                            /* Erase the event (legacy event-only mode). */
+                            if(!LLD::Ledger->EraseEvent(hashGenesis))
+                                return false;
+                        }
 
                         break;
                     }
@@ -362,15 +428,15 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::DEBIT: failed to rollback to pre-state");
 
                         /* Write the event to the ledger database. */
-                        if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+                        if(nFlags == TAO::Ledger::FLAGS::BLOCK && hashTo != WILDCARD_ADDRESS)
                         {
                             /* Read the owner of register. */
                             TAO::Register::State stateTo;
                             if(!LLD::Register->ReadState(hashTo, stateTo, nFlags))
-                                return debug::error(FUNCTION, "failed to read register to");
+                                return debug::error(FUNCTION, "failed to read register to ", TAO::Register::Address(hashTo).ToString());
 
                             /* Attempt to rollback event. */
-                            if(hashTo != WILDCARD_ADDRESS && !LLD::Ledger->EraseEvent(stateTo.hashOwner))
+                            if(!LLD::Ledger->EraseEvent(stateTo.hashOwner))
                                 return debug::error(FUNCTION, "OP::DEBIT: failed to rollback event");
                         }
 
@@ -422,7 +488,8 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::CREDIT: failed to rollback to pre-state");
 
                         /* Read the debit. */
-                        const TAO::Operation::Contract debit = LLD::Ledger->ReadContract(hashTx, nContract);
+                        const TAO::Operation::Contract debit =
+                            LLD::Ledger->ReadContract(hashTx, nContract, nFlags, false); //rollback doesn't check indexes
 
                         /* Check for non coinbase. */
                         uint8_t nDebit = 0;

@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -325,6 +325,10 @@ namespace TAO
         /* Gets the list of contracts internal to transaction. */
         const std::vector<TAO::Operation::Contract>& Transaction::Contracts() const
         {
+            /* Bind all of our contracts if we are accessing the entire vector. */
+            for(const auto& rContract : vContracts)
+                rContract.Bind(this, true);
+
             return vContracts;
         }
 
@@ -571,6 +575,7 @@ namespace TAO
             return true;
         }
 
+
         /* Check the trust score that is claimed is correct. */
         static const uint256_t hashConsistencyCheck = uint256_t("0xa15efdcd1969a9a645eda0296b52678f1ef3d9e91ec9f54a4f82f9ab7ce65a6c");
         bool Transaction::CheckTrust(BlockState* pblock) const
@@ -605,6 +610,10 @@ namespace TAO
             uint64_t nBlockAge    = 0;
             uint64_t nStake       = 0;
             int64_t  nStakeChange = 0;
+
+            /* Weights for threshold calculations */
+            cv::softdouble nTrustWeight = cv::softdouble(0.0);
+            cv::softdouble nBlockWeight = cv::softdouble(0.0);
 
             /* Check for trust calculations. */
             if(IsTrust())
@@ -664,6 +673,10 @@ namespace TAO
                     return debug::error(FUNCTION, "claimed trust score ", nClaimedTrust,
                                                   " does not match calculated trust score ", nTrust);
 
+                /* Get expected trust and block weights. */
+                nTrustWeight = TrustWeight(nTrust);
+                nBlockWeight = BlockWeight(nBlockAge);
+
                 /* Enforce the minimum interval between stake blocks. */
                 const uint32_t nInterval = pblock->nHeight - stateLast.nHeight;
                 if(nInterval <= MinStakeInterval(*pblock))
@@ -679,7 +692,7 @@ namespace TAO
                                                   " does not match calculated reward ", nReward);
 
                 /* Update mint values. */
-                pblock->nMint += nReward;
+                pblock->nMint = nReward;
             }
 
             else if(IsGenesis())
@@ -697,6 +710,9 @@ namespace TAO
                 /* Calculate the Coin Age. */
                 const uint64_t nAge = pblock->GetBlockTime() - account.nModified;
 
+                /* Trust Weight For Genesis Transaction based on coin age. */
+                nTrustWeight = GenesisWeight(nAge);
+
                 /* Calculate the coinstake reward */
                 nReward = GetCoinstakeReward(nStake, nAge, 0, true);
 
@@ -705,21 +721,40 @@ namespace TAO
                     return debug::error(FUNCTION, "claimed hashGenesis reward ", nClaimedReward, " does not match calculated reward ", nReward);
 
                 /* Update mint values. */
-                pblock->nMint += nReward;
+                pblock->nMint = nReward;
             }
 
             else
                 return debug::error(FUNCTION, "invalid stake operation");
 
-            /* Set target for logging */
-            LLC::CBigNum bnTarget;
-            bnTarget.SetCompact(pblock->nBits);
+            /* If stake added in block finder, apply to threshold calculation. */
+            uint64_t nStakeApplied = nStake;
+            if(nStakeChange > 0)
+                nStakeApplied += nStakeChange;
+
+            /* Check the stake balance. */
+            if(nStakeApplied == 0)
+                return debug::error(FUNCTION, "cannot stake if stake balance is zero");
+
+            /* Calculate the energy efficiency thresholds. */
+            const uint64_t nBlockTime =
+                pblock->GetBlockTime() - this->nTimestamp;
+
+            /* Calculate our staking threshold. */
+            const cv::softdouble nThreshold =
+                GetCurrentThreshold(nBlockTime, pblock->nNonce);
+
+            /* Calculate the required threshold. */
+            const cv::softdouble nRequired  =
+                GetRequiredThreshold(nTrustWeight, nBlockWeight, nStakeApplied);
+
+            /* Check that the threshold was not violated. */
+            if(nThreshold < nRequired)
+                return debug::error(FUNCTION, "energy threshold too low ", nThreshold, " required ", nRequired);
 
             /* Verbose logging. */
             if(config::nVerbose >= 2)
                 debug::log(2, FUNCTION,
-                    "stake hash=", pblock->StakeHash().SubString(), ", ",
-                    "target=", bnTarget.getuint1024().SubString(), ", ",
                     "type=", (IsTrust() ? "Trust" : "Genesis"), ", ",
                     "trust score=", nTrust, ", ",
                     "prev trust score=", nTrustPrev, ", ",
@@ -903,7 +938,7 @@ namespace TAO
                     /* Make sure the previous transaction is on disk or mempool. */
                     TAO::Ledger::Transaction txPrev;
                     if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev, nFlags))
-                        return debug::error(FUNCTION, "prev transaction not on disk");
+                        return debug::error(FUNCTION, "prev transaction not on disk ", hashPrevTx.SubString());
 
                     /* Double check sequence numbers here. */
                     if(txPrev.nSequence + 1 != nSequence)
@@ -968,7 +1003,7 @@ namespace TAO
                                 return debug::error(FUNCTION, "failed to read confirmations for coinbase");
 
                             /* Check that the previous TX has reached sig chain maturity */
-                            if(nConfirms + 1 < MaturityCoinBase((pblock ? *pblock : ChainState::stateBest.load())))
+                            if(nConfirms + 1 < MaturityCoinBase((pblock ? *pblock : ChainState::tStateBest.load())))
                                 return debug::error(FUNCTION, "coinbase is immature ", nConfirms);
 
                             break;
@@ -976,7 +1011,7 @@ namespace TAO
                     }
 
                     /* Check that the previous transaction is indexed. */
-                    if((nFlags == FLAGS::BLOCK || nFlags == FLAGS::MINER) && !LLD::Ledger->HasIndex(hashPrev))
+                    if(!LLD::Ledger->HasIndex(hashPrev))
                         return debug::error(FUNCTION, hashPrev.SubString(), " not indexed");
                 }
 
@@ -992,7 +1027,7 @@ namespace TAO
                     TAO::Operation::TxCost(contract, nCost);
 
                 /* Index our registers here now if not -client mode and setting enabled. */
-                if(!config::fClient.load() && config::fIndexRegister.load())
+                if(!config::fClient.load() && config::fIndexRegister.load() && nFlags == FLAGS::BLOCK)
                 {
                     /* Unpack the address we will be working on. */
                     uint256_t hashAddress;
@@ -1005,7 +1040,7 @@ namespace TAO
 
                     /* Check fo register in database. */
                     if(!LLD::Logical->PushRegisterTx(hashAddress, hash))
-                        return debug::error(FUNCTION, "failed to push register tx ", TAO::Register::Address(hashAddress).ToString());
+                        debug::warning(FUNCTION, "failed to push register tx ", TAO::Register::Address(hashAddress).ToString());
 
                     /* Push the address now. */
                     setAddresses.insert(hashAddress);
@@ -1113,7 +1148,7 @@ namespace TAO
                     return false;
 
                 /* Erase our register index here now if not -client mode and setting enabled. */
-                if(!config::fClient.load() && config::fIndexRegister.load())
+                if(!config::fClient.load() && config::fIndexRegister.load() && nFlags == FLAGS::BLOCK)
                 {
                     /* Unpack the address we will be working on. */
                     uint256_t hashAddress;
@@ -1126,7 +1161,7 @@ namespace TAO
 
                     /* Check fo register in database. */
                     if(!LLD::Logical->EraseRegisterTx(hashAddress))
-                        return debug::error(FUNCTION, "failed to erase register tx ", TAO::Register::Address(hashAddress).ToString());
+                        debug::warning(FUNCTION, "failed to erase register tx ", TAO::Register::Address(hashAddress).ToString());
 
                     /* Push the address now. */
                     setAddresses.insert(hashAddress);
@@ -1453,7 +1488,7 @@ namespace TAO
                 "nextHash  = ",  hashNext.SubString(), ", ",
                 "prevHash  = ",  PrevHash().SubString(), ", ",
                 "hashPrevTx = ", hashPrevTx.SubString(), ", ",
-                "hashGenesis = ", hashGenesis.SubString(), ", ",
+                "hashGenesis = ", hashGenesis.ToString(), ", ",
                 "pub = ", HexStr(vchPubKey).substr(0, 20), ", ",
                 "sig = ", HexStr(vchSig).substr(0, 20), ", ",
                 "hash = ", GetHash().SubString()

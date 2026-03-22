@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -17,11 +17,12 @@ ________________________________________________________________________________
 #include <TAO/API/types/operators/initialize.h>
 #include <TAO/API/types/operators/array.h>
 #include <TAO/API/types/operators/count.h>
+#include <TAO/API/types/operators/floor.h>
+#include <TAO/API/types/operators/lookup.h>
 #include <TAO/API/types/operators/max.h>
 #include <TAO/API/types/operators/mean.h>
 #include <TAO/API/types/operators/min.h>
 #include <TAO/API/types/operators/mode.h>
-#include <TAO/API/types/operators/floor.h>
 #include <TAO/API/types/operators/sum.h>
 
 #include <Util/include/string.h>
@@ -30,7 +31,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Track what operators are currently supported by initialize. */
-    const std::map<std::string, Operator> Operators::mapSupported =
+    const std::map<std::string, Operator> Operators::mapOperators =
     {
         /* Handle for the ARRAY operator. */
         { "array", Operator
@@ -62,6 +63,18 @@ namespace TAO::API
                 std::bind
                 (
                     &Operators::Floor,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            )
+        },
+
+        /* Handle for the LOOKUP operator. */
+        { "lookup", Operator
+            (
+                std::bind
+                (
+                    &Operators::Lookup,
                     std::placeholders::_1,
                     std::placeholders::_2
                 )
@@ -116,34 +129,4 @@ namespace TAO::API
             )
         },
     };
-
-
-    /* Initialize a set of operators using a set series of string arguments in CSV format. */
-    void Operators::Initialize(std::map<std::string, Operator> &mapOperators, const std::string& strOperators)
-    {
-        /* Extract the operators from the token string. */
-        std::set<std::string> setOperators;
-        ParseString(strOperators, ',', setOperators, true); //trim spaces from parsing
-
-        /* Check for empty set. */
-        if(setOperators.empty())
-        {
-            /* Copy over our data from our supported into operators. */
-            for(const auto& rSupported : mapSupported)
-                mapOperators.insert(std::make_pair(rSupported.first, rSupported.second));
-
-            return;
-        }
-
-        /* Loop through all of our operators. */
-        for(const auto& strOperator : setOperators)
-        {
-            /* Add the operator if it is supported. */
-            if(!mapSupported.count(strOperator))
-                throw Exception(-1, "Initialize Error: [", strOperator, "] not supported");
-
-            /* Copy over our data from our supported into operators. */
-            mapOperators.insert(std::make_pair(strOperator, mapSupported.at(strOperator)));
-        }
-    }
 }

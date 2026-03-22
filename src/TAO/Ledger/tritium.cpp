@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -34,6 +34,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/syncblock.h>
@@ -204,13 +205,19 @@ namespace TAO
                         else
                         {
                             /* Get the transaction hash */
-                            uint512_t hash = tx.GetHash();
+                            const uint512_t hash = tx.GetHash();
 
                             /* Accept into memory pool. */
-                            if(!LLD::Ledger->HasTx(tx.GetHash()))
-                                mempool.AddUnchecked(tx);
+                            if(!LLD::Ledger->HasTx(hash))
+                            {
+                                /* Add unchecked when syncing. */
+                                if(ChainState::Synchronizing())
+                                    mempool.AddUnchecked(tx);
+                                else
+                                    mempool.Accept(tx);
+                            }
 
-                            vtx.push_back(std::make_pair(block.vtx[n].first, tx.GetHash()));
+                            vtx.push_back(std::make_pair(block.vtx[n].first, hash));
                         }
 
                         break;
@@ -231,7 +238,13 @@ namespace TAO
 
                         /* Accept into memory pool. */
                         if(!LLD::Legacy->HasTx(hash))
-                            mempool.AddUnchecked(tx);
+                        {
+                            /* Add unchecked when syncing. */
+                            if(ChainState::Synchronizing())
+                                mempool.AddUnchecked(tx);
+                            else
+                                mempool.Accept(tx);
+                        }
 
                         /* Add transaction to binary data. */
                         vtx.push_back(std::make_pair(block.vtx[n].first, hash));
@@ -280,7 +293,7 @@ namespace TAO
         /* Update the nTime of the current block. */
         void TritiumBlock::UpdateTime()
         {
-            nTime = static_cast<uint32_t>(std::max(ChainState::stateBest.load().GetBlockTime() + 1, runtime::unifiedtimestamp()));
+            nTime = static_cast<uint32_t>(std::max(ChainState::tStateBest.load().GetBlockTime() + 1, runtime::unifiedtimestamp()));
         }
 
 
@@ -314,7 +327,7 @@ namespace TAO
         {
             /* Read ledger DB for duplicate block. */
             if(LLD::Ledger->HasBlock(GetHash()))
-                return false;//debug::error(FUNCTION, "already have block ", GetHash().SubString());
+                return false;
 
             /* Check the Size limits of the Current Block. */
             if(::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
@@ -653,6 +666,9 @@ namespace TAO
                     /* Write to disk. */
                     if(!LLD::Ledger->WriteTx(hash, tx))
                         return debug::error(FUNCTION, "failed to write tx to disk");
+
+                    /* Compute our stats variable. */
+                    TAO::Ledger::nProcessedContracts += tx.Size();
                 }
 
                 /* Get the legacy transaction. */
@@ -676,6 +692,9 @@ namespace TAO
                     /* Write to disk. */
                     if(!LLD::Legacy->WriteTx(hash, tx))
                         return debug::error(FUNCTION, "failed to write tx to disk");
+
+                    /* Compute our stats variable. */
+                    TAO::Ledger::nProcessedContracts += tx.vout.size();
                 }
 
                 /* Checkpoints DISABLED for now. */
@@ -718,19 +737,6 @@ namespace TAO
         /* Check the proof of stake calculations. */
         bool TritiumBlock::CheckStake() const
         {
-            /* Get previous block. Used for block age/coin age and pooled stake proof calculations */
-            TAO::Ledger::BlockState statePrev;
-            if(!LLD::Ledger->ReadBlock(hashPrevBlock, statePrev))
-                return debug::error(FUNCTION, "prev block not in database");
-
-            /* Weights for threshold calculations */
-            cv::softdouble nTrustWeight = cv::softdouble(0.0);
-            cv::softdouble nBlockWeight = cv::softdouble(0.0);
-
-            /* Stake amount and stake change for threshold calculations */
-            int64_t nStakeChange = 0;
-            uint64_t nStake      = 0;
-
             /* Reset the coinstake contract streams. */
             producer[0].Seek(1, TAO::Operation::Contract::REGISTERS, STREAM::BEGIN);
 
@@ -745,79 +751,6 @@ namespace TAO
             /* Validate that it is a trust account. */
             if(account.Standard() != TAO::Register::OBJECTS::TRUST)
                 return debug::error(FUNCTION, "stake producer account is not a trust account");
-
-            /* Process trust transaction. */
-            if(producer.IsTrust())
-            {
-                /* Seek to last trust. */
-                producer[0].Seek(1, TAO::Operation::Contract::OPERATIONS, STREAM::BEGIN);
-
-                /* Get last trust hash. */
-                uint512_t hashLastTrust = 0;
-                producer[0] >> hashLastTrust;
-
-                /* Get the trust score and stake change. */
-                uint64_t nTrustScore = 0;
-                producer[0] >> nTrustScore;
-                producer[0] >> nStakeChange;
-
-                /* Get the last stake block. */
-                TAO::Ledger::BlockState stateLast;
-                if(!LLD::Ledger->ReadBlock(hashLastTrust, stateLast))
-                    return debug::error(FUNCTION, "last block not in database");
-
-                /* Calculate Block Age (time from last stake block until previous block) */
-                const uint64_t nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
-
-                /* Get expected trust and block weights. */
-                nTrustWeight = TrustWeight(nTrustScore);
-                nBlockWeight = BlockWeight(nBlockAge);
-
-                /* Set the stake to pre-state value. */
-                nStake = account.get<uint64_t>("stake");
-            }
-
-            /* Process genesis transaction. */
-            else if(producer.IsGenesis())
-            {
-                /* Genesis transaction can't have any transactions. */
-                if(vtx.size() != 0)
-                    return debug::error(FUNCTION, "stake genesis cannot include transactions");
-
-                /* Calculate the Coin Age. */
-                const uint64_t nAge = GetBlockTime() - account.nModified;
-
-                /* Validate that Genesis coin age exceeds required minimum. */
-                if(nAge < MinCoinAge())
-                    return debug::error(FUNCTION, "stake genesis age is immature");
-
-                /* Trust Weight For Genesis Transaction based on coin age. */
-                nTrustWeight = GenesisWeight(nAge);
-
-                /* Set the stake to pre-state value. */
-                nStake = account.get<uint64_t>("balance");
-            }
-
-            else
-                return debug::error(FUNCTION, "invalid solo stake operation");
-
-            /* If stake added in block finder, apply to threshold calculation. */
-            uint64_t nStakeApplied = nStake;
-            if(nStakeChange > 0)
-                nStakeApplied += nStakeChange;
-
-            /* Check the stake balance. */
-            if(nStakeApplied == 0)
-                return debug::error(FUNCTION, "cannot stake if stake balance is zero");
-
-            /* Calculate the energy efficiency thresholds. */
-            uint64_t nBlockTime       = GetBlockTime() - producer.nTimestamp;
-            cv::softdouble nThreshold = GetCurrentThreshold(nBlockTime, nNonce);
-            cv::softdouble nRequired  = GetRequiredThreshold(nTrustWeight, nBlockWeight, nStakeApplied);
-
-            /* Check that the threshold was not violated. */
-            if(nThreshold < nRequired)
-                return debug::error(FUNCTION, "energy threshold too low ", nThreshold, " required ", nRequired);
 
             /* Set target for logging */
             LLC::CBigNum bnTarget;

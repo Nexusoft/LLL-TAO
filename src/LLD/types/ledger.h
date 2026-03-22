@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -89,6 +89,10 @@ namespace LLD
         LedgerTransaction* pMiner;
 
 
+        /** Sanitize transaction to track current states for contract verification. **/
+        LedgerTransaction* pSanitize;
+
+
         /** Ledger transaction to keep open all commited data. **/
         LedgerTransaction* pCommit;
 
@@ -172,12 +176,13 @@ namespace LLD
          *  @param[in] hashTx The txid of transaction to read.
          *  @param[in] nContract The contract output to read.
          *  @param[in] nFlags The flags to determine memory pool or disk
+         *  @param[in] fCheckIndex Flag to check if dependant is indexed (is in main chain)
          *
          *  @return The contract object that was read.
          *
          **/
         const TAO::Operation::Contract ReadContract(const uint512_t& hashTx,
-                                              const uint32_t nContract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+                    const uint32_t nContract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK, const bool fCheckIndex = true);
 
 
         /** ReadTx

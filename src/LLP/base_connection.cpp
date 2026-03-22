@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLP/templates/events.h>
 
 #include <LLP/packets/packet.h>
+#include <LLP/packets/stateless_packet.h>
 #include <LLP/packets/http.h>
 #include <LLP/packets/message.h>
 
@@ -39,6 +40,16 @@ namespace LLP
     /* Total outgoing packets. */
     template <class PacketType>
     std::atomic<uint64_t> BaseConnection<PacketType>::PACKETS;
+
+
+    /* Total connection requests. */
+    template <class PacketType>
+    std::atomic<uint64_t> BaseConnection<PacketType>::CONNECTIONS;
+
+
+    /* Total connection requests. */
+    template <class PacketType>
+    std::atomic<uint64_t> BaseConnection<PacketType>::DISCONNECTS;
 
 
     /* Build Base Connection with no parameters */
@@ -328,5 +339,6 @@ namespace LLP
     template class BaseConnection<Packet>;
     template class BaseConnection<MessagePacket>;
     template class BaseConnection<HTTPPacket>;
+    template class BaseConnection<StatelessPacket>;
 
 }

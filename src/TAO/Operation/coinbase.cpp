@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-        (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+        Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-        (c) Copyright The Nexus Developers 2014 - 2021
+        (c) Copyright The Nexus Developers 2014 - 2025
 
         Distributed under the MIT software license, see the accompanying
         file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -13,8 +13,15 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLP/include/genesis_constants.h>
+#include <LLP/include/stateless_manager.h>
+
 #include <TAO/Operation/include/coinbase.h>
 #include <TAO/Operation/include/enum.h>
+#include <TAO/Register/include/enum.h>
+
+#include <Util/include/debug.h>
+#include <Util/include/runtime.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -24,7 +31,7 @@ namespace TAO
     namespace Operation
     {
         /* Commit the final state to disk. */
-        bool Coinbase::Commit(const uint256_t& hashAddress, const uint512_t& hashTx, const uint8_t nFlags)
+        bool Coinbase::Commit(const uint256_t& hashGenesis, const uint64_t nAmount, const uint512_t& hashTx, const uint8_t nFlags)
         {
             /* EVENTS DISABLED for -client mode. */
             if(!config::fClient.load())
@@ -33,8 +40,64 @@ namespace TAO
                 if(nFlags == TAO::Ledger::FLAGS::BLOCK)
                 {
                     /* Write the event to the database. */
-                    if(!LLD::Ledger->WriteEvent(hashAddress, hashTx))
+                    if(!LLD::Ledger->WriteEvent(hashGenesis, hashTx))
                         return debug::error(FUNCTION, "OP::COINBASE: failed to write event for coinbase");
+
+                    /* AUTO-CREDIT LOGIC - Direct reward routing
+                     * 
+                     * IMPORTANT: In the new Direct Reward Address system, hashGenesis contains
+                     * the reward account address (not the authentication genesis).
+                     * 
+                     * Flow: Miner sets reward address via MINER_SET_REWARD (encrypted) → 
+                     *       Block creation uses it as hashDynamicGenesis → 
+                     *       hashDynamicGenesis becomes hashGenesis in the block →
+                     *       Coinbase::Commit receives it as hashGenesis parameter
+                     * 
+                     * The reward address is already validated as a valid NXS account. */
+                    if(LLP::GenesisConstants::IsAutoCreditEnabled())
+                    {
+                        /* hashGenesis is the reward account address (via dynamic routing) */
+                        TAO::Register::Address hashRewardAccount = hashGenesis;
+
+                        /* Read the account state */
+                        TAO::Register::Object account;
+                        if(!LLD::Register->ReadState(hashRewardAccount, account, nFlags))
+                        {
+                            debug::log(1, FUNCTION, "Failed to read reward account ", hashRewardAccount.SubString(),
+                                      ", using event-only mode");
+                            return true;  // Fallback to event-only
+                        }
+
+                        /* Parse the account object */
+                        if(!account.Parse())
+                        {
+                            debug::log(1, FUNCTION, "Failed to parse reward account object, using event-only mode");
+                            return true;  // Fallback to event-only
+                        }
+
+                        /* Direct credit to reward account */
+                        uint64_t nBalance = account.get<uint64_t>("balance");
+                        account.Write("balance", nBalance + nAmount);
+                        account.nModified = runtime::unifiedtimestamp();
+                        account.SetChecksum();
+
+                        /* Write updated account state to register database */
+                        if(!LLD::Register->WriteState(hashRewardAccount, account, nFlags))
+                        {
+                            debug::log(0, FUNCTION, "Failed to write account state, using event-only mode");
+                            return true;  // Fallback to event-only
+                        }
+
+                        /* Write proof to prevent double-claim */
+                        if(!LLD::Ledger->WriteProof(hashGenesis, hashTx, 0, nFlags))
+                        {
+                            debug::log(0, FUNCTION, "Failed to write proof, but account credited");
+                            return true;  // Account already credited, continue
+                        }
+
+                        debug::log(0, FUNCTION, "AUTO-CREDIT ", nAmount, " NXS to ", hashRewardAccount.SubString(),
+                                  " (owner: ", account.hashOwner.SubString(), ")");
+                    }
                 }
             }
 

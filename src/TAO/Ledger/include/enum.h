@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2021
+			(c) Copyright The Nexus Developers 2014 - 2025
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -219,7 +219,7 @@ namespace TAO
             };
 
             /* Track a mapping to enum. */
-            __attribute__((const)) static inline uint8_t TYPE(const std::string& strType)
+            static inline uint8_t TYPE(const std::string& strType)
             {
                 /* Check for brainpool standard. */
                 if(strType == "brainpool")
@@ -290,6 +290,9 @@ namespace TAO
 
                 /* Force a remote lookup for -client mode. */
                 FORCED      = 0x07,
+
+                /* Write data into memory on sanitize. */
+                SANITIZE    = 0x08,
             };
         };
 

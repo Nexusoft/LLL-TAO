@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -24,6 +24,8 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/enum.h>
+
+namespace TAO::API { extern std::atomic<uint32_t> nRegisterCounter; } //we need to track register database updates
 
 namespace LLD
 {
@@ -68,6 +70,10 @@ namespace LLD
 
         /** Miner transaction to track current states for miner verification. **/
         RegisterTransaction* pMiner;
+
+
+        /** Sanitize transaction to track current states for contract verification. **/
+        RegisterTransaction* pSanitize;
 
 
         /** Register transaction to keep open all commited data. **/

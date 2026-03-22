@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -57,7 +57,7 @@ namespace TAO::API
 
         /* Load the encrypted data from the local DB */
         std::vector<uint8_t> vchCypherText;
-        if(!LLD::Local->ReadSession(hashGenesis, vchCypherText))
+        if(LLD::Sessions && !LLD::Sessions->ReadSession(hashGenesis, vchCypherText))
             throw Exception(-309, "Error loading session.");
 
         /* Generate a symmetric key to encrypt it based on the session ID and pin */
@@ -95,7 +95,8 @@ namespace TAO::API
             if(!validate_session(tSession, strPIN)) //this is a paranoid check, but let's still do it
             {
                 /* Erase our session on failed auth. */
-                LLD::Local->EraseSession(hashGenesis);
+                if(LLD::Sessions)
+                    LLD::Sessions->EraseSession(hashGenesis);
 
                 throw Exception(-139, "Invalid credentials");
             }

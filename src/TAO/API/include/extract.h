@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -266,6 +266,18 @@ namespace TAO::API
      *  Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result
      *
      *  @param[in] jParams The parameters passed into the request
+     *  @param[out] nLimit The number of results to return
+     *  @param[out] nOffset The offset to apply to the results
+     *
+     **/
+    void ExtractList(const encoding::json& jParams, uint32_t &nLimit, uint32_t &nOffset);
+
+
+    /** ExtractList
+     *
+     *  Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result
+     *
+     *  @param[in] jParams The parameters passed into the request
      *  @param[out] strOrder The sort order to apply
      *  @param[out] nLimit The number of results to return
      *  @param[out] nOffset The offset to apply to the results
@@ -287,6 +299,33 @@ namespace TAO::API
      *
      **/
     void ExtractList(const encoding::json& jParams, std::string &strOrder, std::string &strSort, uint32_t &nLimit, uint32_t &nOffset);
+
+
+    /** ExtractSort
+     *
+     *  Extracts the order and sorting field from incoming parameters
+     *
+     *  @param[in] jParams The parameters passed into the request
+     *  @param[out] strOrder The sort order to apply
+     *  @param[out] strSort The column to sort by.
+     *
+     *  @return the order string if we succeed without throwing exception
+     *
+     **/
+    void ExtractSort(const encoding::json& jParams, std::string &strOrder, std::string &strSort);
+
+
+    /** ExtractOrder
+     *
+     *  Extracts the order applicable to a List API call in order to apply a filter/offset/limit to the result
+     *
+     *  @param[in] jParams The parameters passed into the request
+     *  @param[in] fThrow Check if we throw or return
+     *
+     *  @return the order string if we succeed without throwing exception
+     *
+     **/
+    std::string ExtractOrder(const encoding::json& jParams, const bool fThrow = false);
 
 
     /** ExtractBoolean
@@ -348,11 +387,11 @@ namespace TAO::API
 
         /* Check for invalid type. */
         if(!jParams[strKey].is_string())
-            throw Exception(-35, "Invalid parameter [", strKey, "], expecting [hex-string]");
+            throw Exception(-35, "Invalid parameter [", strKey, "], expecting [string]");
 
         /* Check for hex encoding. */
         const std::string strHash = jParams[strKey].get<std::string>();
-        if(!IsHex(strHash))
+        if(!IsHex(strHash) && strHash != "0")
             throw Exception(-35, "Invalid parameter [", strKey, "], expecting [hex-string]");
 
         return Type(strHash);

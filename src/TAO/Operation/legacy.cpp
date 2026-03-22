@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-        (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+        Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-        (c) Copyright The Nexus Developers 2014 - 2021
+        (c) Copyright The Nexus Developers 2014 - 2025
 
         Distributed under the MIT software license, see the accompanying
         file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -89,6 +89,10 @@ namespace TAO
             /* Check operation byte. */
             if(OP != OP::LEGACY)
                 return debug::error(FUNCTION, "called with incorrect OP");
+
+            /* Check transaction version. */
+            if(contract.Version() > 4)
+                return debug::error(FUNCTION, "OP::LEGACY: disabled after version 4");
 
             /* Extract the address from contract. */
             TAO::Register::Address hashFrom;

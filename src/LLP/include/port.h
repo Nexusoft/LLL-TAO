@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -59,7 +59,19 @@ ________________________________________________________________________________
 
 
 #ifndef MAINNET_MINING_LLP_PORT
-#define MAINNET_MINING_LLP_PORT 9325
+#define MAINNET_MINING_LLP_PORT 9323
+#endif
+
+#ifndef MAINNET_LEGACY_MINING_LLP_PORT
+#define MAINNET_LEGACY_MINING_LLP_PORT 8323
+#endif
+
+#ifndef MAINNET_MINING_LLP_SSL_PORT
+#define MAINNET_MINING_LLP_SSL_PORT 9325
+#endif
+
+#ifndef MAINNET_LEGACY_MINING_LLP_SSL_PORT
+#define MAINNET_LEGACY_MINING_LLP_SSL_PORT 8325
 #endif
 
 #ifndef MAINNET_P2P_PORT
@@ -106,7 +118,19 @@ ________________________________________________________________________________
 #endif
 
 #ifndef TESTNET_MINING_LLP_PORT
-#define TESTNET_MINING_LLP_PORT 8325
+#define TESTNET_MINING_LLP_PORT 9323
+#endif
+
+#ifndef TESTNET_LEGACY_MINING_LLP_PORT
+#define TESTNET_LEGACY_MINING_LLP_PORT 8323
+#endif
+
+#ifndef TESTNET_MINING_LLP_SSL_PORT
+#define TESTNET_MINING_LLP_SSL_PORT 9325
+#endif
+
+#ifndef TESTNET_LEGACY_MINING_LLP_SSL_PORT
+#define TESTNET_LEGACY_MINING_LLP_SSL_PORT 8325
 #endif
 
 #ifndef TESTNET_P2P_PORT
@@ -209,7 +233,7 @@ namespace LLP
 
     /** GetMiningPort
      *
-     *  Get the Main Mining LLP Port for Nexus.
+     *  Get the Main Mining LLP Port for Nexus (stateless mining).
      *
      *  @return Returns a 16-bit port number for mining mainnet or testnet.
      *
@@ -222,6 +246,74 @@ namespace LLP
             config::fTestNet.load() ?
                 TESTNET_MINING_LLP_PORT :
                 MAINNET_MINING_LLP_PORT)
+        );
+    }
+
+
+    /** GetLegacyMiningPort
+     *
+     *  Get the Legacy Mining LLP Port for Nexus (legacy 8-bit framing).
+     *
+     *  @return Returns a 16-bit port number for legacy mining mainnet or testnet.
+     *
+     **/
+    inline uint16_t GetLegacyMiningPort()
+    {
+        return static_cast<uint16_t>
+        (
+            config::GetArg(std::string("-legacyminingport"),
+            config::fTestNet.load() ?
+                TESTNET_LEGACY_MINING_LLP_PORT :
+                MAINNET_LEGACY_MINING_LLP_PORT)
+        );
+    }
+
+
+    /** GetMiningSSLPort
+     *
+     *  Get the SSL port for the Stateless Mining LLP (port 9323 plaintext → 9325 TLS).
+     *
+     *  Enabled via -miningssl=1 in nexus.conf or command line.
+     *  Override with -miningstatelesssslport=<port>.
+     *
+     *  @return Returns a 16-bit SSL port number for stateless mining mainnet or testnet.
+     *
+     **/
+    inline uint16_t GetMiningSSLPort()
+    {
+        return static_cast<uint16_t>
+        (
+            config::GetArg(std::string("-miningstatelesssslport"),
+            config::fTestNet.load() ?
+                TESTNET_MINING_LLP_SSL_PORT :
+                MAINNET_MINING_LLP_SSL_PORT)
+        );
+    }
+
+
+    /** GetLegacyMiningSSLPort
+     *
+     *  Get the SSL port for the Legacy Mining LLP (port 8323 plaintext → 8325 TLS).
+     *
+     *  Enabled via -miningssl=1 in nexus.conf or command line.
+     *  Override with -mininglegacysslport=<port>.
+     *
+     *  This port is the "guaranteed clean reconnect" lane: every miner arriving
+     *  on this TLS port receives a brand-new Server<Miner> protocol instance with
+     *  zero ghost state from any prior session, eliminating the silent crypto-key
+     *  mismatch failure mode observed when reconnecting on the same plaintext port.
+     *
+     *  @return Returns a 16-bit SSL port number for legacy mining mainnet or testnet.
+     *
+     **/
+    inline uint16_t GetLegacyMiningSSLPort()
+    {
+        return static_cast<uint16_t>
+        (
+            config::GetArg(std::string("-mininglegacysslport"),
+            config::fTestNet.load() ?
+                TESTNET_LEGACY_MINING_LLP_SSL_PORT :
+                MAINNET_LEGACY_MINING_LLP_SSL_PORT)
         );
     }
 

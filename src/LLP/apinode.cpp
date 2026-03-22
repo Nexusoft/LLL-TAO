@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -95,6 +95,26 @@ namespace LLP
     }
 
 
+    /** Local helper function to unpack JSON objects to extract and process variables inline. **/
+    void ProcessParams(encoding::json &jParam)
+    {
+        /* Process variables from string arguments. */
+        if(jParam.is_string())
+        {
+            jParam = TAO::API::VariableToJSON(jParam.get<std::string>());
+            return;
+        }
+
+        /* Process variables in array or object. */
+        if(jParam.is_array() || jParam.is_object())
+        {
+            /* Loop through all params and process the variables. */
+            for(auto& jItem : jParam)
+                ProcessParams(jItem);
+        }
+    }
+
+
     /** Main message handler once a packet is recieved. **/
     bool APINode::ProcessPacket()
     {
@@ -164,6 +184,15 @@ namespace LLP
                     {
                         /* Parse JSON like normal. */
                         jParams = encoding::json::parse(INCOMING.strContent);
+
+                        /* Loop through all params and process the variables. */
+                        for(auto jItem = jParams.begin(); jItem != jParams.end(); ++jItem)
+                        {
+                            /* We only process variables here when not in the where clause. */
+                            if(jItem.key() != "where")
+                                ProcessParams(jItem.value());
+                        }
+
                     }
                     else
                         throw TAO::API::Exception(-5, "content-type [", INCOMING.mapHeaders["content-type"], "] not supported");
@@ -271,6 +300,14 @@ namespace LLP
 
             /* Populate the return JSON to the error */
             jRet = { { "error", jError } };
+        }
+
+        catch(const std::exception& e)
+        {
+            nStatus = 500;
+
+            /* Populate the return JSON to the error */
+            jRet = { { "error", { { "code", -1 }, { "message", e.what() }} } };
         }
 
         /* Build packet. */

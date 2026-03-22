@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -186,80 +186,57 @@ namespace LLD
         bool EraseSuppressNotification(const uint512_t& hashTx, const uint32_t nContract);
 
 
-        /** WriteFirst
+        /** HasRecord
          *
-         *  Writes a username - genesis hash pair to the local database.
+         *  Check if a record exists for a table.
          *
-         *  @param[in] strUsername The username.
-         *  @param[in] hashGenesis The genesis hash corresponding to this username.
+         *  @param[in] strTable The table that we are checking for key in.
+         *  @param[in] strKey The key we are checking for in the table
          *
-         *  @return True if the last was successfully written, false otherwise.
-         *
-         **/
-        bool WriteFirst(const SecureString& strUsername, const uint256_t& hashGenesis);
-
-
-        /** ReadFirst
-         *
-         *  Reads a genesis hash from the local database for a given username.
-         *
-         *  @param[in] strUsername The username to read the genesis hash for.
-         *  @param[out] hashGenesis The genesis hash corresponding to this username.
-         *
-         *  @return True if the last was successfully read, false otherwise.
+         *  @return True if record exists in table, false otherwise.
          *
          **/
-        bool ReadFirst(const SecureString& strUsername, uint256_t &hashGenesis);
+        bool HasRecord(const std::string& strTable, const std::string& strKey);
 
 
-        /** WriteSession
+        /** EraseRecord
          *
-         *  Writes session data to the local database.
+         *  Erase a record from a table.
          *
-         *  @param[in] hashGenesis The genesis hash of the user to save the session for.
-         *  @param[in] vchData The session data to be saved.
+         *  @param[in] strTable The table that we are erasing in.
+         *  @param[in] strKey The key we are erasing in the table
          *
-         *  @return True if the session was successfully written, false otherwise.
+         *  @return True if record was erased, false otherwise.
          *
          **/
-        bool WriteSession(const uint256_t& hashGenesis, const std::vector<uint8_t>& vchData);
+        bool EraseRecord(const std::string& strTable, const std::string& strKey);
 
 
-        /** ReadSession
+        /** PushRecord
          *
-         *  Reads session data from the local database .
+         *  Push a new record to a given table.
          *
-         *  @param[in] nSession The genesis hash of the user to load the session for
-         *  @param[out] vchData The session data to be loaded.
-         *
-         *  @return True if the session was successfully read, false otherwise.
-         *
-         **/
-        bool ReadSession(const uint256_t& hashGenesis, std::vector<uint8_t>& vchData);
-
-
-        /** EraseSession
-         *
-         *  Deletes session data from the local database fort he given session ID.
-         *
-         *  @param[in] hashGenesis The genesis hash of the user to erase the session for
-         *
-         *  @return True if the data was successfully deleted, false otherwise.
-         *
-         **/
-        bool EraseSession(const uint256_t& hashGenesis);
-
-
-        /** HasSession
-         *
-         *  Determines whether the local DB contains session data for the given session ID
-         *
-         *  @param[in] hashGenesis The genesis hash of the user to check
+         *  @param[in] strTable The table that we are erasing in.
+         *  @param[in] strKey The key we are erasing in the table
+         *  @param[in] strValue The value that we are pushing as a record.
          *
          *  @return True if the session data exists, false otherwise.
          *
          **/
-        bool HasSession(const uint256_t& hashGenesis);
+        bool PushRecord(const std::string& strTable, const std::string& strKey, const std::string& strValue);
+
+
+        /** ListRecords
+         *
+         *  List the current records for a given table.
+         *
+         *  @param[in] strTable The table that we are erasing in.
+         *  @param[out] vRecords The return vector that holds records retrieved.
+         *
+         *  @return True if we found data in the given records.
+         *
+         **/
+        bool ListRecords(const std::string& strTable, std::vector<std::pair<std::string, std::string>> &vRecords);
 
     };
 }

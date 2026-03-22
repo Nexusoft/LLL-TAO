@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -60,14 +60,14 @@ namespace TAO::API
 
         /* Get the list of txid's that modified given register. */
         std::vector<uint512_t> vTransactions;
-        if(LLD::Logical->ListTransactions(hashRegister, vTransactions))
+        if(LLD::Sessions->ListTransactions(hashRegister, vTransactions))
         {
             /* Loop through all entries in list. */
             for(const auto& hashLast : vTransactions)
             {
                 /* Get the transaction from disk. */
                 TAO::API::Transaction tx;
-                if(!LLD::Logical->ReadTx(hashLast, tx))
+                if(!LLD::Sessions->ReadTx(hashLast, tx))
                     throw Exception(-108, "Failed to read transaction");
 
                 /* Read the block state from the the ledger DB using the transaction hash index */

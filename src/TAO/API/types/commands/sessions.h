@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -160,6 +160,17 @@ namespace TAO::API
          **/
         encoding::json Unlock(const encoding::json& jParams, const bool fHelp);
 
+        /** Validate_Pin 
+         * 
+         * Validate if the supplied PIN can authenticate the session
+         *  
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json ValidatePin(const encoding::json &jParams, const bool fHelp);
 
     private:
 

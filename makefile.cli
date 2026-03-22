@@ -33,7 +33,7 @@ ifeq (${STATIC}, 1)
 	endif
 endif
 
-#Configure for 32/64 Bit and ARM
+#Configure for x86(32BIT)/x64(64BIT), ARM32/64, and RISC-V
 ifndef 32BIT
 	override 32BIT= 0
 
@@ -46,8 +46,21 @@ else ifeq (${ARM64}, 1)
         BUILD_ARCH=aarch64
         CXXFLAGS+= -march=native -mtune=native
 
-else ifeq ($(shell uname -m),armv7l)
+else ifeq (${ARM32}, 1)
         BUILD_ARCH=arm
+	CXXFLAGS+= -march=native -mtune=native
+
+else ifeq (${RISCV64}, 1)
+        BUILD_ARCH=riscv64
+        # RV64GC baseline: General-purpose registers + Compressed instructions
+        # -march=rv64gc includes: RV64I (base), M (multiply), A (atomic), F/D (float/double), C (compressed)
+        # For hardware crypto acceleration (Zbkb/Zbkc), OpenSSL auto-detects at runtime
+        CXXFLAGS+= -march=rv64gc -mtune=rocket
+        # Optional: Enable RISC-V Vector extension (RVV) if RISCV_VECTOR=1
+        ifdef RISCV_VECTOR
+                CXXFLAGS+= -march=rv64gcv
+                DEFS+= -DRISCV_VECTOR
+        endif
 
 else
 	BUILD_ARCH=x64
@@ -73,8 +86,11 @@ ifndef OPENSSL_LIB_PATH
 		#Arch Linux Fix
 		ifeq ($(shell uname -r | grep -o ....$), ARCH)
 			OPENSSL_LIB_PATH= /usr/lib/openssl-1.0
+		else ifeq (${RISCV64}, 1)
+			# RISC-V 64-bit library path (Debian/Ubuntu convention)
+			OPENSSL_LIB_PATH= /usr/lib/riscv64-linux-gnu
 		else
-		OPENSSL_LIB_PATH= /usr/lib/x86_64-linux-gnu
+			OPENSSL_LIB_PATH= /usr/lib/x86_64-linux-gnu
 		endif
 	endif
 endif
@@ -96,6 +112,7 @@ ifndef OPENSSL_INCLUDE_PATH
 		ifeq ($(shell uname -r | grep -o ....$), ARCH)
 			OPENSSL_INCLUDE_PATH= /usr/include/openssl-1.0
 		else
+			# OpenSSL headers are typically in standard /usr/include/openssl for all architectures
 			OPENSSL_INCLUDE_PATH= /usr/include/openssl
 		endif
 	endif
@@ -110,7 +127,12 @@ ifndef NO_WALLET
 			BDB_LIB_PATH= /usr/local/opt/db/lib
 		endif
 		ifeq ($(detected_OS),Linux)
-			BDB_LIB_PATH= /usr/lib/x86_64-linux-gnu
+			ifeq (${RISCV64}, 1)
+				# RISC-V 64-bit library path
+				BDB_LIB_PATH= /usr/lib/riscv64-linux-gnu
+			else
+				BDB_LIB_PATH= /usr/lib/x86_64-linux-gnu
+			endif
 		endif
 	endif
 	ifndef BDB_INCLUDE_PATH
@@ -134,7 +156,18 @@ ifndef MINIUPNPC_LIB_PATH
 		MINIUPNPC_LIB_PATH= /usr/local/opt/miniupnpc/lib
 	endif
 	ifeq ($(detected_OS),Linux)
-		MINIUPNPC_LIB_PATH= /usr/local/opt/miniupnpc/lib
+		MINIUPNPC_LIB_PATH= /usr/lib/miniupnpc
+	endif
+endif
+ifndef MINIUPNPC_INCLUDE_PATH
+	ifeq ($(detected_OS),Windows)
+		MINIUPNPC_INCLUDE_PATH= "C:\deps\include"
+	endif
+	ifeq ($(detected_OS),OSX)
+		MINIUPNPC_INCLUDE_PATH= /usr/local/opt/miniupnpc/include
+	endif
+	ifeq ($(detected_OS),Linux)
+		MINIUPNPC_INCLUDE_PATH= /usr/include
 	endif
 endif
 
@@ -286,7 +319,32 @@ ifdef UNIT_TESTS
 		   build/Tests_Legacy_utxo.o \
 		   build/Tests_Legacy_mempool.o \
 		   build/Tests_LLC_aes.o \
+		   build/Tests_LLC_falcon_qtv_parity_test.o \
 		   build/Tests_LLP_base_address.o \
+		   build/Tests_LLP_falcon_endianness.o \
+		   build/Tests_LLP_falcon_1024_detection_test.o \
+		   build/Tests_LLP_genesis_validation.o \
+		   build/Tests_LLP_packet_data_payload.o \
+		   build/Tests_LLP_packet_round_response.o \
+		   build/Tests_LLP_push_notification_tests.o \
+		   build/Tests_LLP_push_throttle_test.o \
+		   build/Tests_LLP_keepalive_v2_tests.o \
+		   build/Tests_LLP_rate_limiting_tests.o \
+		   build/Tests_LLP_test_get_block_response_contract.o \
+		   build/Tests_LLP_session_recovery.o \
+		   build/Tests_LLP_session_status_tests.o \
+		   build/Tests_LLP_stateless_miner.o \
+		   build/Tests_LLP_dual_connection_manager_tests.o \
+		   build/Tests_LLP_graceful_shutdown_tests.o \
+		   build/Tests_LLP_test_template_staleness.o \
+		   build/Tests_LLP_template_metadata_channel_height.o \
+		   build/Tests_LLP_test_cleanup_stale_templates.o \
+		   build/Tests_LLP_test_stateless_miner_crypto.o \
+		   build/Tests_LLP_test_simlink_session_rate_limiter.o \
+		   build/Tests_LLP_node_integration_hardening.o \
+		   build/Tests_LLP_session_management_comprehensive.o \
+		   build/Tests_LLP_prime_sign_finalization_tests.o \
+		   build/Tests_LLP_hash_sign_finalization_tests.o \
 		   build/Tests_TAO_API_assets.o \
 		   build/Tests_TAO_API_finance.o \
 		   build/Tests_TAO_API_names.o \
@@ -294,7 +352,9 @@ ifdef UNIT_TESTS
 		   build/Tests_TAO_API_tokens.o \
 		   build/Tests_TAO_API_util.o \
 		   build/Tests_TAO_Ledger_block.o \
+		   build/Tests_TAO_Ledger_channel_height.o \
 		   build/Tests_TAO_Ledger_mempool.o \
+		   build/Tests_TAO_Ledger_prime.o \
            build/Tests_TAO_Ledger_transaction.o \
 		   build/Tests_TAO_Ledger_sigchain.o \
 		   build/Tests_TAO_Ledger_stake.o \
@@ -315,6 +375,7 @@ ifdef UNIT_TESTS
 		   build/Tests_TAO_Operation_trust.o \
 		   build/Tests_TAO_Operation_validate.o \
 		   build/Tests_TAO_Operation_write.o \
+		   build/Tests_Util_config.o \
 		   build/Tests_Util_hex.o \
 		   build/Tests_Util_math.o
 
@@ -371,16 +432,17 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLC_shake.o \
 		build/LLC_sign.o \
 		build/LLC_vrfy.o \
-        build/LLC_x509_cert.o \
-        build/LLD_address.o \
-        build/LLD_ledger.o \
-        build/LLD_legacy.o \
+    	build/LLC_x509_cert.o \
+    	build/LLD_address.o \
+    	build/LLD_ledger.o \
+    	build/LLD_legacy.o \
 		build/LLD_logical.o \
+		build/LLD_session.o \
 		build/LLD_contract.o \
 		build/LLD_client.o \
-        build/LLD_local.o \
-        build/LLD_register.o \
-        build/LLD_trust.o \
+    	build/LLD_local.o \
+    	build/LLD_register.o \
+    	build/LLD_trust.o \
 		build/LLD_binary_key.o \
 		build/LLD_binary_lru.o \
 		build/LLD_binary_lfu.o \
@@ -395,8 +457,10 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_base_connection.o \
 		build/LLP_miner.o \
 		build/LLP_connection.o \
-        build/LLP_httpnode.o \
+    	build/LLP_httpnode.o \
 		build/LLP_apinode.o \
+		build/LLP_auto_cooldown_manager.o \
+		build/LLP_filenode.o \
 		build/LLP_data.o \
 		build/LLP_ddos.o \
 		build/LLP_global.o \
@@ -415,6 +479,28 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_time.o \
 		build/LLP_tritium.o \
 		build/LLP_trust_address.o \
+		build/LLP_stateless_miner.o \
+		build/LLP_stateless_connection.o \
+		build/LLP_stateless_manager.o \
+		build/LLP_genesis_constants.o \
+		build/LLP_stateless_miner_connection.o \
+		build/LLP_get_block_handler.o \
+		build/LLP_channel_state_manager.o \
+		build/LLP_falcon_auth.o \
+		build/LLP_disposable_falcon.o \
+		build/LLP_mining_config.o \
+		build/LLP_validation_thread_pool.o \
+		build/LLP_session_recovery.o \
+		build/LLP_node_sync.o \
+		build/LLP_node_cache.o \
+		build/LLP_node_session_registry.o \
+		build/LLP_falcon_handshake.o \
+		build/LLP_falcon_verify.o \
+		build/LLP_opcode_utility.o \
+		build/LLP_push_notification.o \
+		build/LLP_colin_mining_agent.o \
+		build/LLP_failover_connection_tracker.o \
+		build/LLP_miner_push_dispatcher.o \
 		build/API_commands_assets_initialize.o \
 		build/API_commands_assets_json.o \
 		build/API_commands_assets_partial.o \
@@ -436,16 +522,23 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_invoices_json.o \
 		build/API_commands_invoices_initialize.o \
 		build/API_commands_invoices_pay.o \
+        build/API_commands_invoices_reject.o \
 		build/API_commands_ledger_get-block.o \
 		build/API_commands_ledger_get-block-hash.o \
 		build/API_commands_ledger_get-info.o \
 		build/API_commands_ledger_get-transaction.o \
 		build/API_commands_ledger_initialize.o \
+		build/API_commands_ledger_recent-blocks.o \
 		build/API_commands_ledger_list-blocks.o \
 		build/API_commands_ledger_list-transactions.o \
 		build/API_commands_ledger_metrics.o \
 		build/API_commands_ledger_submit-transaction.o \
 		build/API_commands_ledger_sync-status.o \
+		build/API_commands_local_erase.o \
+		build/API_commands_local_initialize.o \
+		build/API_commands_local_has.o \
+		build/API_commands_local_list.o \
+		build/API_commands_local_push.o \
 		build/API_commands_market_cancel.o \
 		build/API_commands_market_create.o \
 		build/API_commands_market_execute.o \
@@ -460,6 +553,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_names_index.o \
 		build/API_commands_names_lookup.o \
 		build/API_commands_names_names.o \
+		build/API_commands_names_rename.o \
 		build/API_commands_names_resolve.o \
 		build/API_commands_profiles_create.o \
 		build/API_commands_profiles_initialize.o \
@@ -488,6 +582,9 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_system_initialize.o \
 		build/API_commands_system_metrics.o \
 		build/API_commands_system_validate.o \
+		build/API_commands_system_mining_control.o \
+		build/API_commands_system_getmininginfo.o \
+		build/API_commands_system_setmining.o \
 		build/API_commands_templates_claim.o \
 		build/API_commands_templates_create.o \
 		build/API_commands_templates_get.o \
@@ -501,10 +598,17 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_contracts_exchange.o \
 		build/API_contracts_expiring.o \
 		build/API_contracts_verify.o \
+		build/API_indexing_build.o \
+		build/API_indexing_download.o \
+		build/API_indexing_initialize.o \
+		build/API_indexing_manager.o \
+		build/API_indexing_refresh.o \
+		build/API_indexing_index.o \
 		build/API_operators_initialize.o \
 		build/API_operators_array.o \
 		build/API_operators_count.o \
 		build/API_operators_floor.o \
+		build/API_operators_lookup.o \
 		build/API_operators_max.o \
 		build/API_operators_mean.o \
 		build/API_operators_min.o \
@@ -523,7 +627,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_format.o \
 		build/API_get.o \
 		build/API_global.o \
-		build/API_indexing.o \
 		build/API_json.o \
 		build/API_list.o \
 		build/API_notifications.o \
@@ -538,7 +641,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Operation_create.o \
 		build/Operation_credit.o \
 		build/Operation_debit.o \
-        build/Operation_execute.o \
+    	build/Operation_execute.o \
 		build/Operation_fee.o \
 		build/Operation_genesis.o \
 		build/Operation_legacy.o \
@@ -578,6 +681,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Ledger_stake_change.o \
 		build/Ledger_stake_minter.o \
 		build/Ledger_state.o \
+		build/Ledger_stateless_block_utility.o \
 		build/Ledger_supply.o \
 		build/Ledger_syncblock.o \
 		build/Ledger_timelocks.o \
@@ -619,6 +723,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Legacy_trustkey.o \
 		build/Legacy_txin.o \
 		build/Legacy_txout.o \
+		build/Legacy_keystore.o
 
 
 ifndef NO_WALLET
@@ -636,7 +741,6 @@ ifndef NO_WALLET
 			build/Legacy_db.o \
 			build/Legacy_keypool.o \
 			build/Legacy_keypoolentry.o \
-			build/Legacy_keystore.o \
 			build/Legacy_output.o \
 			build/Legacy_wallet.o \
 			build/Legacy_walletdb.o \
@@ -769,6 +873,9 @@ build/API_commands_invoices_%.o: ./src/TAO/API/commands/invoices/%.cpp $(HEADERS
 build/API_commands_ledger_%.o: ./src/TAO/API/commands/ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
+build/API_commands_local_%.o: ./src/TAO/API/commands/local/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
 build/API_commands_names_%.o: ./src/TAO/API/commands/names/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
@@ -800,6 +907,9 @@ build/API_commands_tokens_%.o: ./src/TAO/API/commands/tokens/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_contracts_%.o: ./src/TAO/API/contracts/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_indexing_%.o: ./src/TAO/API/indexing/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_operators_%.o: ./src/TAO/API/operators/%.cpp $(HEADERS)
@@ -937,7 +1047,7 @@ endif
 
 
 #OS Specific Compiler Flags
-CXXFLAGS+= -mmacosx-version-min=10.13 \
+CXXFLAGS+= -mmacosx-version-min=10.09 \
 	-O3 \
 	$(DEFS) \
 	$(DEBUG) \
@@ -1387,6 +1497,13 @@ build/API_commands_ledger_%.o: src/TAO/API/commands/ledger/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
+build/API_commands_local_%.o: src/TAO/API/commands/local/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
 build/API_commands_profiles_%.o: src/TAO/API/commands/profiles/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
@@ -1437,6 +1554,13 @@ build/API_commands_tokens_%.o: src/TAO/API/commands/tokens/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/API_contracts_%.o: src/TAO/API/contracts/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_indexing_%.o: src/TAO/API/indexing/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -1528,7 +1652,7 @@ build/Tests_LLD_%.o: tests/unit/LLD/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/Tests_LLP_%.o: tests/unit/LLP/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	$(CXX) -c $(CXXFLAGS) -I$(CURDIR)/tests/unit/LLP -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \

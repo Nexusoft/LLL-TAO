@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -27,10 +27,6 @@ namespace TAO::API
     /* Standard initialization function. */
     void Finance::Initialize()
     {
-        /* Populate our operators. */
-        Operators::Initialize(mapOperators);
-
-
         /* Populate our ACCOUNT standard. */
         mapStandards["account"] = Standard
         (

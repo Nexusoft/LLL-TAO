@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -58,7 +58,7 @@ namespace TAO
              *  @param[in] nType The enum type to deduce if state or not.
              *
              **/
-            __attribute__((const)) static inline uint8_t STATE(const uint8_t nType)
+            static inline uint8_t STATE(const uint8_t nType)
             {
                 return (nType == READONLY || nType == APPEND || nType == RAW);
             }

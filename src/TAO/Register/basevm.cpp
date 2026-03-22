@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-        (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+        Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-        (c) Copyright The Nexus Developers 2014 - 2021
+        (c) Copyright The Nexus Developers 2014 - 2025
 
         Distributed under the MIT software license, see the accompanying
         file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -474,6 +474,10 @@ namespace TAO
                     for(uint64_t n = 1; n < vB.size(); ++n)
                     {
                         //debug::log(0, "I ", i, " Byte ", vA[i + n], " vs Bytes ", vB[n]);
+
+                        /* Break if we have exhaused our bytes in value a. */
+                        if(i + n == vA.size())
+                            break;
 
                         /* Break if bytes don't match and search isn't a wildcard byte. */
                         if(vA[i + n] != vB[n] && vB[n] != TAO::Operation::OP::WILDCARD)

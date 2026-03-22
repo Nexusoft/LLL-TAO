@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -32,11 +32,12 @@ namespace LLD
     , nBucketsIn
     , nCacheIn)
 
-    , MEMORY  ( )
-    , pMemory (nullptr)
-    , pMiner  (nullptr)
-    , pCommit (new RegisterTransaction())
-    , pLookup (nullptr)
+    , MEMORY    ( )
+    , pMemory   (nullptr)
+    , pMiner    (nullptr)
+    , pSanitize (nullptr)
+    , pCommit   (new RegisterTransaction())
+    , pLookup   (nullptr)
     {
         /* Add a register cache if in client mode. */
         if(config::fClient.load())
@@ -54,6 +55,10 @@ namespace LLD
         /* Cleanup memory transactions. */
         if(pMiner)
             delete pMiner;
+
+        /* Free sanitize memory. */
+        if(pSanitize)
+            delete pSanitize;
 
         /* Cleanup commited states. */
         if(pCommit)
@@ -122,6 +127,16 @@ namespace LLD
 
             return true;
         }
+        else if(nFlags == TAO::Ledger::FLAGS::SANITIZE)
+        {
+            LOCK(MEMORY);
+
+            /* Check for memory mode. */
+            if(pSanitize)
+                pSanitize->mapStates[hashRegister] = state;
+
+            return true;
+        }
         else if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::ERASE)
         {
             LOCK(MEMORY);
@@ -152,6 +167,9 @@ namespace LLD
             if(nFlags == TAO::Ledger::FLAGS::ERASE)
                 return true;
         }
+
+        /* Trigger that a register state was written to disk here. */
+        TAO::API::nRegisterCounter++;
 
         /* Check for register address index. */
         if(config::fIndexAddress.load())
@@ -207,6 +225,19 @@ namespace LLD
             {
                 /* Get the state from temporary transaction. */
                 state = pMiner->mapStates[hashRegister];
+
+                return true;
+            }
+        }
+        else if(nFlags == TAO::Ledger::FLAGS::SANITIZE)
+        {
+            LOCK(MEMORY);
+
+            /* Check for a memory transaction first */
+            if(pSanitize && pSanitize->mapStates.count(hashRegister))
+            {
+                /* Get the state from temporary transaction. */
+                state = pSanitize->mapStates[hashRegister];
 
                 return true;
             }
@@ -388,6 +419,20 @@ namespace LLD
                 return true;
             }
         }
+        else if(nFlags == TAO::Ledger::FLAGS::SANITIZE)
+        {
+            LOCK(MEMORY);
+
+            /* Check for a memory transaction first */
+            if(pSanitize && pSanitize->mapStates.count(hashRegister))
+            {
+                /* Get the state from temporary transaction. */
+                state = pSanitize->mapStates[hashRegister];
+
+                return true;
+            }
+        }
+
 
         return ReadState(hashRegister, state);
     }
@@ -426,6 +471,14 @@ namespace LLD
 
             /* Check internal memory state. */
             if(pMiner && pMiner->mapStates.count(hashRegister))
+                return true;
+        }
+        else if(nFlags == TAO::Ledger::FLAGS::SANITIZE)
+        {
+            LOCK(MEMORY);
+
+            /* Check internal memory state. */
+            if(pSanitize && pSanitize->mapStates.count(hashRegister))
                 return true;
         }
 
@@ -481,6 +534,8 @@ namespace LLD
         TAO::Ledger::BlockState state;
         if(!LLD::Ledger->ReadBlock(hashBegin, state))
         {
+            Write(std::string("reindexed"));
+
             debug::warning(FUNCTION, "No tritium blocks available ", hashBegin.SubString());
             return;
         }
@@ -597,6 +652,18 @@ namespace LLD
             return;
         }
 
+        /* Check for sanitize. */
+        if(nFlags == TAO::Ledger::FLAGS::SANITIZE)
+        {
+            /* Set the pre-commit memory mode. */
+            if(pSanitize)
+                delete pSanitize;
+
+            pSanitize = new RegisterTransaction();
+
+            return;
+        }
+
         /* Set the pre-commit memory mode. */
         if(pMemory)
             delete pMemory;
@@ -618,6 +685,18 @@ namespace LLD
                 delete pMiner;
 
             pMiner = nullptr;
+
+            return;
+        }
+
+        /* Check for sanitize. */
+        if(nFlags == TAO::Ledger::FLAGS::SANITIZE)
+        {
+            /* Set the pre-commit memory mode. */
+            if(pSanitize)
+                delete pSanitize;
+
+            pSanitize = nullptr;
 
             return;
         }

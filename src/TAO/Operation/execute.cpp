@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-        (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+        Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-        (c) Copyright The Nexus Developers 2014 - 2021
+        (c) Copyright The Nexus Developers 2014 - 2025
 
         Distributed under the MIT software license, see the accompanying
         file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -495,11 +495,15 @@ namespace TAO::Operation
                     uint256_t hashGenesis;
                     contract >> hashGenesis;
 
+                    /* Get the coinbase amount. */
+                    uint64_t nAmount = 0;
+                    contract >> nAmount;
+
                     /* Seek to end. */
-                    contract.Seek(16);
+                    contract.Seek(8);
 
                     /* Commit to disk. */
-                    if(contract.Caller() != hashGenesis && !Coinbase::Commit(hashGenesis, contract.Hash(), nFlags))
+                    if(contract.Caller() != hashGenesis && !Coinbase::Commit(hashGenesis, nAmount, contract.Hash(), nFlags))
                         return false;
 
                     break;
@@ -726,7 +730,7 @@ namespace TAO::Operation
                     contract >> nAmount;
 
                     /* Verify the operation rules. */
-                    Contract debit = LLD::Ledger->ReadContract(hashTx, nContract, nFlags);
+                    const Contract debit = LLD::Ledger->ReadContract(hashTx, nContract, nFlags);
                     if(!Credit::Verify(contract, debit, nFlags))
                         return false;
 

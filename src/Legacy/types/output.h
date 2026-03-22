@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2021
+			(c) Copyright The Nexus Developers 2014 - 2025
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -16,11 +16,12 @@ ________________________________________________________________________________
 #define NEXUS_LEGACY_TYPES_OUTPUT_H
 
 #include <string>
+#include <cstdint>
 
 namespace Legacy
 {
     class WalletTx;
-    
+
 
      /** @class Output
       *

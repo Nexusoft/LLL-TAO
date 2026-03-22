@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -14,6 +14,8 @@ ________________________________________________________________________________
 #pragma once
 
 #include <TAO/API/types/base.h>
+
+#include <map>
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -62,7 +64,7 @@ namespace TAO::API
             if(!Commands::mapTypes.count(strAPI))
                 return nullptr; //we don't throw here as this function won't be used directly in commands body, more of a helper
 
-            return static_cast<Base*>(Commands::mapTypes[strAPI]->Instance());
+            return static_cast<Base*>(Commands::mapTypes.at(strAPI)->Instance());
         }
 
 
@@ -81,7 +83,7 @@ namespace TAO::API
             if(!Commands::mapTypes.count(strAPI))
                 throw TAO::API::Exception(-4, "API Not Found: ", strAPI);
 
-            return static_cast<Type*>(Commands::mapTypes[Type::Name()]->Instance());
+            return static_cast<Type*>(Commands::mapTypes.at(Type::Name())->Instance());
         }
 
 
@@ -121,7 +123,7 @@ namespace TAO::API
             if(!Commands::mapTypes.count(strAPI))
                 throw TAO::API::Exception(-4, "API Not Found: ", strAPI);
 
-            return Commands::mapTypes[strAPI]->Execute(strMethod, jParams);
+            return Commands::mapTypes.at(strAPI)->Execute(strMethod, jParams);
         }
 
 
@@ -141,7 +143,7 @@ namespace TAO::API
             if(!Commands::mapTypes.count(strAPI))
                 return debug::safe_printstr("API Not Found: ", strAPI);
 
-            return Commands::mapTypes[strAPI]->Status(strMethod);
+            return Commands::mapTypes.at(strAPI)->Status(strMethod);
         }
 
 

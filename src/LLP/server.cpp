@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2021
+			(c) Copyright The Nexus Developers 2014 - 2025
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -20,11 +20,18 @@ ________________________________________________________________________________
 #include <LLP/types/tritium.h>
 #include <LLP/types/time.h>
 #include <LLP/types/apinode.h>
+#include <LLP/types/filenode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
 #include <LLP/types/lookup.h>
+#include <LLP/types/stateless_miner_connection.h>
 
 #include <LLP/include/trust_address.h>
+#include <LLP/include/auto_cooldown_manager.h>
+#include <LLP/include/node_cache.h>
+#include <LLP/include/stateless_manager.h>
+#include <LLP/include/session_recovery.h>
+#include <LLP/include/node_session_registry.h>
 
 #include <Util/include/args.h>
 #include <Util/include/signals.h>
@@ -33,6 +40,7 @@ ________________________________________________________________________________
 #include <LLP/include/permissions.h>
 #include <functional>
 #include <numeric>
+#include <type_traits>
 
 #include <openssl/ssl.h>
 
@@ -42,6 +50,28 @@ ________________________________________________________________________________
 #include <miniupnpc/upnpcommands.h>
 #include <miniupnpc/upnperrors.h>
 #endif
+
+
+namespace LLP
+{
+    /* Type trait to detect if a protocol type supports channel mining notifications.
+     * This is used with if constexpr to only compile mining-specific code for types that support it. */
+    template <typename T, typename = void>
+    struct has_mining_notifications : std::false_type {};
+    
+    template <typename T>
+    struct has_mining_notifications<T, std::void_t<
+        decltype(std::declval<T>().GetContext()),
+        decltype(std::declval<T>().SendChannelNotification())
+    >> : std::true_type {};
+    
+    template <typename T>
+    inline constexpr bool has_mining_notifications_v = has_mining_notifications<T>::value;
+
+    template <typename T>
+    inline constexpr bool is_miner_protocol_v =
+        std::is_same_v<T, Miner> || std::is_same_v<T, StatelessMinerConnection>;
+}
 
 
 namespace LLP
@@ -56,6 +86,7 @@ namespace LLP
     , pAddressManager   (nullptr)
     , THREADS_DATA      ( )
     , THREAD_LISTEN     ( )
+    , THREAD_UPNP       ( )
     , THREAD_METER      ( )
     , THREAD_MANAGER    ( )
     {
@@ -122,6 +153,25 @@ namespace LLP
                         )
                     )
                 );
+
+                /* Initialize the UPnP thread if remote connections are allowed. */
+                #ifdef USE_UPNP
+                if(CONFIG.ENABLE_REMOTE && CONFIG.ENABLE_UPNP)
+                {
+                    THREAD_UPNP.push_back
+                    (
+                        std::thread
+                        (
+                            std::bind
+                            (
+                                &Server::UPnP,
+                                this,
+                                CONFIG.PORT_BASE
+                            )
+                        )
+                    );
+                }
+                #endif
             }
 
             /* Add our SSL listener if enabled. */
@@ -141,6 +191,25 @@ namespace LLP
                         )
                     )
                 );
+
+                /* Initialize the UPnP thread if remote connections are allowed. */
+                #ifdef USE_UPNP
+                if(CONFIG.ENABLE_REMOTE && CONFIG.ENABLE_UPNP)
+                {
+                    THREAD_UPNP.push_back
+                    (
+                        std::thread
+                        (
+                            std::bind
+                            (
+                                &Server::UPnP,
+                                this,
+                                CONFIG.PORT_SSL
+                            )
+                        )
+                    );
+                }
+                #endif
             }
         }
 
@@ -154,44 +223,101 @@ namespace LLP
     template <class ProtocolType>
     Server<ProtocolType>::~Server()
     {
+        debug::log(1, FUNCTION, "Shutting down ", Name(), " server - waiting for threads...");
+
+        /* ── Pre-close all connection sockets BEFORE joining threads ──────────
+         * Closing the socket fd causes the kernel to return POLLHUP/POLLERR on
+         * the next poll() call inside DataThread::Thread(). This means the data
+         * thread exits its connection-processing loop immediately (rather than
+         * waiting up to 100ms for the poll timeout), sees fDestruct/fShutdown,
+         * and returns — allowing DataThread::~DataThread() join to succeed fast.
+         *
+         * Without this, with N active miner connections, shutdown could take
+         * up to N × 100ms just for poll() to naturally time out per thread.
+         */
+        for(uint16_t nIndex = 0; nIndex < CONFIG.MAX_THREADS; ++nIndex)
+        {
+            if(!THREADS_DATA[nIndex])
+                continue;
+
+            const uint32_t nSize = static_cast<uint32_t>(THREADS_DATA[nIndex]->CONNECTIONS->size());
+            for(uint32_t nConn = 0; nConn < nSize; ++nConn)
+            {
+                try
+                {
+                    std::shared_ptr<ProtocolType> conn = THREADS_DATA[nIndex]->CONNECTIONS->at(nConn);
+                    if(conn && conn->Connected())
+                        conn->Disconnect();  /* closes fd, unblocks poll() */
+                }
+                catch(...) {}
+            }
+
+            /* Wake the data thread's condition so it sees fDestruct/fShutdown
+             * immediately after the socket close, without waiting for spurious
+             * wakeup or the next poll() timeout. */
+            THREADS_DATA[nIndex]->CONDITION.notify_all();
+            THREADS_DATA[nIndex]->FLUSH_CONDITION.notify_all();
+        }
+
         /* Wait for address manager. */
+        debug::log(1, FUNCTION, "  Joining address manager thread...");
         if(THREAD_MANAGER.joinable())
             THREAD_MANAGER.join();
+        debug::log(1, FUNCTION, "  Address manager thread joined");
 
         /* Wait for meter thread. */
+        debug::log(1, FUNCTION, "  Joining meter thread...");
         if(THREAD_METER.joinable())
             THREAD_METER.join();
+        debug::log(1, FUNCTION, "  Meter thread joined");
 
         /* Check all registered listening threads. */
+        debug::log(1, FUNCTION, "  Joining ", THREAD_LISTEN.size(), " listening threads...");
         for(auto& THREAD : THREAD_LISTEN)
         {
-            /* Wait on listening threads. */
             if(THREAD.joinable())
                 THREAD.join();
         }
+        debug::log(1, FUNCTION, "  Listening threads joined");
 
+        /* Check all registered upnp threads. */
+        debug::log(1, FUNCTION, "  Joining ", THREAD_UPNP.size(), " UPNP threads...");
+        for(auto& THREAD : THREAD_UPNP)
+        {
+            if(THREAD.joinable())
+                THREAD.join();
+        }
+        debug::log(1, FUNCTION, "  UPNP threads joined");
 
         /* Delete the data threads. */
+        debug::log(1, FUNCTION, "  Deleting ", CONFIG.MAX_THREADS, " data threads...");
         for(uint16_t nIndex = 0; nIndex < CONFIG.MAX_THREADS; ++nIndex)
         {
+            debug::log(2, FUNCTION, "    Deleting data thread ", nIndex);
             delete THREADS_DATA[nIndex];
             THREADS_DATA[nIndex] = nullptr;
         }
+        debug::log(1, FUNCTION, "  Data threads deleted");
 
         /* Delete the DDOS entries. */
+        debug::log(1, FUNCTION, "  Deleting DDOS entries...");
         for(auto it = DDOS_MAP->begin(); it != DDOS_MAP->end(); ++it)
         {
-            /* Delete each DDOS entry if they are not set to nullptr. */
             if(it->second)
                 delete it->second;
         }
+        debug::log(1, FUNCTION, "  DDOS entries deleted");
 
         /* Clear the address manager. */
         if(pAddressManager)
         {
+            debug::log(1, FUNCTION, "  Deleting address manager...");
             delete pAddressManager;
             pAddressManager = nullptr;
+            debug::log(1, FUNCTION, "  Address manager deleted");
         }
+
+        debug::log(1, FUNCTION, Name(), " server shutdown complete");
     }
 
 
@@ -320,7 +446,104 @@ namespace LLP
     }
 
 
-    /*  Select a random and currently open connections. */
+    /*  Broadcast channel-specific notification to subscribed miners on this lane. */
+    template <class ProtocolType>
+    uint32_t Server<ProtocolType>::NotifyChannelMiners(uint32_t nChannel)
+    {
+        /* Use compile-time check to only execute for protocols that support mining notifications */
+        if constexpr (has_mining_notifications_v<ProtocolType>)
+        {
+            /* Determine lane name at compile time for clear per-lane logging */
+            constexpr const char* strLane =
+                std::is_same_v<ProtocolType, StatelessMinerConnection> ? "Stateless" : "Legacy";
+
+            /* Early exit if shutdown is in progress */
+            if (config::fShutdown.load())
+            {
+                debug::log(1, FUNCTION, "[", strLane, "] Shutdown in progress; skipping NotifyChannelMiners");
+                return 0;
+            }
+            
+            /* Validate channel */
+            if (nChannel != 1 && nChannel != 2)
+            {
+                debug::error(FUNCTION, "[", strLane, "] Invalid channel: ", nChannel);
+                return 0;
+            }
+            
+            const std::string strChannelName = (nChannel == 1) ? "Prime" : "Hash";
+            debug::log(1, FUNCTION, "[", strLane, "][", strChannelName, "] Broadcasting block notification");
+            
+            /* Get all connections */
+            std::vector<std::shared_ptr<ProtocolType>> vConnections = GetConnections();
+            
+            if (vConnections.empty())
+            {
+                debug::log(1, FUNCTION, "[", strLane, "][", strChannelName, "] No active miners (0 notified)");
+                return 0;
+            }
+            
+            uint32_t nNotified = 0;
+            uint32_t nSkippedWrongChannel = 0;
+            uint32_t nSkippedUnsubscribed = 0;
+            
+            /* SERVER-SIDE FILTERING: Only notify miners subscribed to the matching channel */
+            for (auto pConnection : vConnections)
+            {
+                /* CRITICAL: Skip null connections WITHOUT any counting */
+                if (!pConnection)
+                    continue;
+                
+                /* Verify connection is still active before processing
+                 * Prevents ghost connection counting from stale disconnected connections */
+                if (!pConnection->Connected())
+                    continue;
+                
+                /* Check for shutdown during iteration to exit quickly if needed */
+                if (config::fShutdown.load())
+                {
+                    debug::log(1, FUNCTION, "[", strLane, "] Shutdown detected during iteration; stopping");
+                    break;
+                }
+                
+                /* Get mining context - returns by value, so use auto (not auto&) */
+                auto context = pConnection->GetContext();
+                
+                /* Check subscription */
+                if (!context.fSubscribedToNotifications)
+                {
+                    nSkippedUnsubscribed++;
+                    continue;  // Miner using GET_ROUND polling instead of push notifications
+                }
+                
+                /* Channel filter: only notify miners subscribed to this specific channel */
+                if (context.nSubscribedChannel != nChannel)
+                {
+                    nSkippedWrongChannel++;
+                    continue;  // Wrong channel; skip to avoid duplicate notifications
+                }
+                
+                /* Send notification — exactly once per miner per event per lane */
+                pConnection->SendChannelNotification();
+                nNotified++;
+            }
+            
+            /* Log per-lane per-channel result for deduplication verification */
+            debug::log(0, FUNCTION, "[PUSH][", strLane, "][", strChannelName, "] Notified ", nNotified,
+                       " miners (skipped: ", nSkippedWrongChannel, " wrong-channel, ",
+                       nSkippedUnsubscribed, " polling)");
+
+            return nNotified;
+        }
+        else
+        {
+            /* No-op for protocol types that don't support mining notifications */
+            return 0;
+        }
+    }
+
+
+    /*  Select lowest latency and currently open connection. */
     template <class ProtocolType>
     std::shared_ptr<ProtocolType> Server<ProtocolType>::GetConnection()
     {
@@ -363,6 +586,54 @@ namespace LLP
         }
 
         return pRet;
+    }
+
+
+    /*  Select a random and currently open connections. */
+    template <class ProtocolType>
+    std::shared_ptr<ProtocolType> Server<ProtocolType>::RandomConnection()
+    {
+        /* Get the total count of connections in this server. */
+        const uint32_t nTotalConnections =
+            GetConnectionCount();
+
+        /* Check for no connections. */
+        if(nTotalConnections == 0)
+            return nullptr;
+
+        /* Get a random integer for this connection. */
+        uint32_t nConnectionIndex =
+            LLC::GetRandInt(nTotalConnections);
+
+        /* List of connections to return. */
+        for(uint16_t nThread = 0; nThread < CONFIG.MAX_THREADS; ++nThread)
+        {
+            /* Loop through connections in data thread. */
+            const uint16_t nSize =
+                static_cast<uint16_t>(THREADS_DATA[nThread]->CONNECTIONS->size());
+
+            /* Loop through all connections. */
+            for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
+            {
+                try
+                {
+                    /* Get the current atomic_ptr. */
+                    std::shared_ptr<ProtocolType> CONNECTION = THREADS_DATA[nThread]->CONNECTIONS->at(nIndex);
+                    if(!CONNECTION)
+                        continue;
+
+                    /* Push the active connection. */
+                    if(nConnectionIndex-- == 0)
+                        return CONNECTION;
+                }
+                catch(const std::exception& e)
+                {
+                    //debug::error(FUNCTION, e.what());
+                }
+            }
+        }
+
+        return RandomConnection();
     }
 
 
@@ -588,13 +859,6 @@ namespace LLP
                         debug::log(3, FUNCTION, "Connected to DNS Address: ", strDNS);
                 }
             }
-
-            /* Print the debug info every 10s */
-            if(TIMER.Elapsed() >= 10)
-            {
-                debug::log(3, FUNCTION, ProtocolType::Name(), " ", pAddressManager->ToString());
-                TIMER.Reset();
-            }
         }
     }
 
@@ -649,7 +913,7 @@ namespace LLP
             /* Set the listing socket descriptor on the pollfd.  We do this inside the loop in case the listening socket is
                explicitly closed and reopened whilst the app is running (used for mobile) */
             fds[0].fd = get_listening_socket(fIPv4, fSSL);
-            if (fds[0].fd != INVALID_SOCKET)
+            if(fds[0].fd != INVALID_SOCKET)
             {
                 /* Poll the sockets. */
                 fds[0].revents = 0;
@@ -696,7 +960,7 @@ namespace LLP
                     if(GetConnectionCount(FLAGS::INCOMING) >= CONFIG.MAX_INCOMING
                     || GetConnectionCount(FLAGS::ALL) >= CONFIG.MAX_CONNECTIONS)
                     {
-                        debug::log(3, FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Max connection count exceeded.");
+                        debug::notice(FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Max connection count exceeded.");
                         closesocket(hSocket);
                         runtime::sleep(500);
 
@@ -711,18 +975,30 @@ namespace LLP
                     Socket sockNew(hSocket, addr, fSSL);
 
                     /* Check that an address is banned. */
-                    if(DDOS_MAP->count(addr) && DDOS_MAP->at(addr)->Banned())
+                    if(DDOS_MAP->count(addr))
                     {
-                        debug::log(3, FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Banned.");
-                        sockNew.Close();
+                        /* Iterate the DDOS cScore (Connection score). */
+                        DDOS_MAP->at(addr)->cSCORE += 1;
 
-                        continue;
+                        /* Check if we have exceeded our maximum scores. */
+                        if(DDOS_MAP->at(addr)-> cSCORE.Score() > CONFIG.DDOS_CSCORE)
+                            DDOS_MAP->at(addr)->Ban();
+
+                        /* Check if we have violated DDOS score thresholds. */
+                        if(!addr.IsLocal() && DDOS_MAP->at(addr)->Banned())
+                        {
+                            debug::notice(FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Banned.");
+                            sockNew.Close();
+
+                            continue;
+                        }
                     }
+
 
                     /* Check for errors accepting the connection */
                     if(sockNew.Errors())
                     {
-                        debug::log(3, FUNCTION, "Incoming Connection Request ",  addr.ToString(), " failed.");
+                        debug::notice(FUNCTION, "Incoming Connection Request ",  addr.ToString(), " failed.");
                         sockNew.Close();
 
                         continue;
@@ -731,7 +1007,7 @@ namespace LLP
                     /* DDOS Operations: Only executed when DDOS is enabled. */
                     if(!CheckPermissions(addr.ToStringIP(), fSSL ? CONFIG.PORT_SSL : CONFIG.PORT_BASE))
                     {
-                        debug::log(3, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Denied by allowip whitelist.");
+                        debug::notice(FUNCTION, "Connection Request ",  addr.ToString(), " refused... Denied by allowip whitelist.");
 
                         sockNew.Close();
 
@@ -741,7 +1017,7 @@ namespace LLP
                     int32_t nThread = FindThread();
                     if(nThread < 0)
                     {
-                        debug::error(FUNCTION, "Server has no spare connection capacity... dropping");
+                        debug::notice(FUNCTION, "Server has no spare connection capacity... dropping");
                         sockNew.Close();
 
                         continue;
@@ -753,8 +1029,12 @@ namespace LLP
                     /* Accept an incoming connection. */
                     dt->AddConnection(sockNew, CONFIG.ENABLE_DDOS ? DDOS_MAP->at(addr) : nullptr);
 
+                    /* Add the address to the address manager if it exists. */
+                    if(pAddressManager)
+                        pAddressManager->AddAddress(addr, ConnectState::CONNECTED);
+
                     /* Verbose output. */
-                    debug::log(3, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ", fSSL ? CONFIG.PORT_SSL : CONFIG.PORT_BASE);
+                    debug::log(4, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ", fSSL ? CONFIG.PORT_SSL : CONFIG.PORT_BASE);
                 }
             }
             else
@@ -881,6 +1161,10 @@ namespace LLP
         /* Keep track of elapsed time. */
         runtime::timer TIMER;
         TIMER.Start();
+        
+        /* Keep track of cleanup timer (60 seconds for AutoCooldownManager) */
+        runtime::timer CLEANUP_TIMER;
+        CLEANUP_TIMER.Start();
 
         /* Loop until shutdown. */
         while(!config::fShutdown.load())
@@ -899,6 +1183,8 @@ namespace LLP
 
             /* Total incoming and outgoing packets. */
             uint32_t RPS = ProtocolType::REQUESTS / TIMER.Elapsed();
+            uint32_t CPS = ProtocolType::CONNECTIONS / TIMER.Elapsed();
+            uint32_t DPS = ProtocolType::DISCONNECTS / TIMER.Elapsed();
             uint32_t PPS = ProtocolType::PACKETS / TIMER.Elapsed();
 
             /* Omit meter when zero values detected. */
@@ -908,16 +1194,40 @@ namespace LLP
             /* Meter output. */
             debug::log(0,
                 ANSI_COLOR_FUNCTION, Name(), " LLP : ", ANSI_COLOR_RESET,
+                CPS, " Accepts/s | ",
+                DPS, " Closing/s | ",
                 RPS, " Incoming/s | ",
                 PPS, " Outgoing/s | ",
-                RPS + PPS, " Packets/s | ",
-                nGlobalConnections, " Connections."
+                nGlobalConnections, " Connections"
             );
 
             /* Reset meter info. */
             TIMER.Reset();
             ProtocolType::REQUESTS.store(0);
             ProtocolType::PACKETS.store(0);
+            ProtocolType::CONNECTIONS.store(0);
+            ProtocolType::DISCONNECTS.store(0);
+            
+            /* Periodic cleanup cadence is 10 minutes, but the sweep cadence is not the
+             * expiry threshold itself. Each pass compares entries against the much longer
+             * session/cache timeouts (for example SESSION_LIVENESS_TIMEOUT_SECONDS = 86400s),
+             * so running cleanup every 10 minutes only bounds stale-state retention latency
+             * without shortening the underlying liveness window. */
+            if(CLEANUP_TIMER.Elapsed() >= 600)
+            {
+                AutoCooldownManager::Get().CleanupExpired();
+
+                if constexpr (is_miner_protocol_v<ProtocolType>)
+                {
+                    StatelessMinerManager::Get().CleanupInactive(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
+                    StatelessMinerManager::Get().PurgeInactiveMiners();
+                    SessionRecoveryManager::Get().CleanupExpired(
+                        SessionRecoveryManager::Get().GetSessionTimeout());
+                    NodeSessionRegistry::Get().SweepExpired(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
+                }
+
+                CLEANUP_TIMER.Reset();
+            }
         }
     }
 
@@ -995,6 +1305,113 @@ namespace LLP
     }
 
 
+    /* UPnP Thread. If UPnP is enabled then this thread will set up the required port forwarding. */
+    template <class ProtocolType>
+    void Server<ProtocolType>::UPnP(const uint16_t nPort)
+    {
+    #ifndef USE_UPNP
+        return;
+    #else
+
+        char port[6];
+        sprintf(port, "%d", nPort);
+
+        const char * multicastif = 0;
+        const char * minissdpdpath = 0;
+        struct UPNPDev * devlist = 0;
+        char lanaddr[64];
+
+        #ifndef UPNPDISCOVER_SUCCESS
+            /* miniupnpc 1.5 */
+            devlist = upnpDiscover(2000, multicastif, minissdpdpath, 0);
+        #elif MINIUPNPC_API_VERSION < 14
+            /* miniupnpc 1.6 */
+            int error = 0;
+            devlist = upnpDiscover(2000, multicastif, minissdpdpath, 0, 0, &error);
+        #else
+            /* miniupnpc 1.9.20150730 */
+            int error = 0;
+            devlist = upnpDiscover(2000, multicastif, minissdpdpath, 0, 0, 2, &error);
+        #endif
+
+        struct UPNPUrls urls;
+        struct IGDdatas data;
+        int nResult;
+
+        if(devlist == 0)
+        {
+            debug::error(FUNCTION, "No UPnP devices found");
+            return;
+        }
+
+        nResult = UPNP_GetValidIGD(devlist, &urls, &data, lanaddr, sizeof(lanaddr), nullptr, 0);
+        if (nResult == 1)
+        {
+
+            std::string strDesc = version::CLIENT_VERSION_BUILD_STRING;
+        #ifndef UPNPDISCOVER_SUCCESS
+                /* miniupnpc 1.5 */
+                nResult = UPNP_AddPortMapping(urls.controlURL, data.first.servicetype,
+                                    port, port, lanaddr, strDesc.c_str(), "TCP", 0);
+        #else
+                /* miniupnpc 1.6 */
+                nResult = UPNP_AddPortMapping(urls.controlURL, data.first.servicetype,
+                                    port, port, lanaddr, strDesc.c_str(), "TCP", 0, "0");
+        #endif
+
+            if(nResult != UPNPCOMMAND_SUCCESS)
+                debug::error(FUNCTION, "AddPortMapping(", port, ", ", port, ", ", lanaddr, ") failed with code ", nResult, " (", strupnperror(nResult), ")");
+            else
+                debug::log(1, "UPnP Port Mapping successful for port: ", nPort);
+
+            runtime::timer TIMER;
+            TIMER.Start();
+
+            while(!config::fShutdown.load())
+            {
+                if (TIMER.Elapsed() >= 600) // Refresh every 10 minutes
+                {
+                    TIMER.Reset();
+
+        #ifndef UPNPDISCOVER_SUCCESS
+                    /* miniupnpc 1.5 */
+                    nResult = UPNP_AddPortMapping(urls.controlURL, data.first.servicetype,
+                                        port, port, lanaddr, strDesc.c_str(), "TCP", 0);
+        #else
+                    /* miniupnpc 1.6 */
+                    nResult = UPNP_AddPortMapping(urls.controlURL, data.first.servicetype,
+                                        port, port, lanaddr, strDesc.c_str(), "TCP", 0, "0");
+        #endif
+
+                    if(nResult != UPNPCOMMAND_SUCCESS)
+                        debug::error(FUNCTION, "AddPortMapping(", port, ", ", port, ", ", lanaddr, ") failed with code ", nResult, " (", strupnperror(nResult), ")");
+                    else
+                        debug::log(1, "UPnP Port Mapping successful for port: ", nPort);
+                }
+                runtime::sleep(1000);
+            }
+
+            /* Shutdown sequence */
+            nResult = UPNP_DeletePortMapping(urls.controlURL, data.first.servicetype, port, "TCP", 0);
+            debug::log(1, "UPNP_DeletePortMapping() returned : ", nResult);
+            freeUPNPDevlist(devlist); devlist = 0;
+            FreeUPNPUrls(&urls);
+        }
+        else
+        {
+            debug::error(FUNCTION, "No valid UPnP IGDs found.");
+            freeUPNPDevlist(devlist); devlist = 0;
+            if (nResult != 0)
+                FreeUPNPUrls(&urls);
+
+            return;
+        }
+
+       debug::log(0, "UPnP closed.");
+    #endif
+    }
+
+
 
 
     /* Explicity instantiate all template instances needed for compiler. */
@@ -1002,6 +1419,8 @@ namespace LLP
     template class Server<LookupNode>;
     template class Server<TimeNode>;
     template class Server<APINode>;
+    template class Server<FileNode>;
     template class Server<RPCNode>;
     template class Server<Miner>;
+    template class Server<StatelessMinerConnection>;
 }

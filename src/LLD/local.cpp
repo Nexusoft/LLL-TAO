@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -102,47 +102,72 @@ namespace LLD
     }
 
 
-    /* Writes a username - genesis hash pair to the local database. */
-    bool LocalDB::WriteFirst(const SecureString& strUsername, const uint256_t& hashGenesis)
+    /* Check if a record exists for a table. */
+    bool LocalDB::HasRecord(const std::string& strTable, const std::string& strKey)
     {
-        std::vector<uint8_t> vKey(strUsername.begin(), strUsername.end());
-        return Write(std::make_pair(std::string("genesis"), vKey), hashGenesis);
+        return Exists(std::make_tuple(std::string("record.proof"), strKey, strTable));
     }
 
 
-    /* Reads a genesis hash from the local database for a given username */
-    bool LocalDB::ReadFirst(const SecureString& strUsername, uint256_t &hashGenesis)
+    /* Erase a record from a table. */
+    bool LocalDB::EraseRecord(const std::string& strTable, const std::string& strKey)
     {
-        std::vector<uint8_t> vKey(strUsername.begin(), strUsername.end());
-        return Read(std::make_pair(std::string("genesis"), vKey), hashGenesis);
+        return Erase(std::make_tuple(std::string("record.proof"), strKey, strTable));
     }
 
 
-    /* Writes session data to the local database. */
-    bool LocalDB::WriteSession(const uint256_t& hashGenesis, const std::vector<uint8_t>& vchData)
+    /* Push a new record to a given table. */
+    bool LocalDB::PushRecord(const std::string& strTable, const std::string& strKey, const std::string& strValue)
     {
-        return Write(std::make_pair(std::string("session"), hashGenesis), vchData);
+        /* Check for already existing order. */
+        if(HasRecord(strTable, strKey))
+            return false;
+
+        /* Get our current sequence number. */
+        uint32_t nSequence = 0;
+
+        /* Read our sequences from disk. */
+        Read(std::make_pair(std::string("record.sequence"), strTable), nSequence);
+
+        /* Add our indexing entry by owner sequence number. */
+        if(!Write(std::make_tuple(std::string("record.index"), nSequence, strTable), std::make_pair(strKey, strValue)))
+            return false;
+
+        /* Write our new events sequence to disk. */
+        if(!Write(std::make_pair(std::string("record.sequence"), strTable), ++nSequence))
+            return false;
+
+        /* Write our order proof. */
+        if(!Write(std::make_tuple(std::string("record.proof"), strKey, strTable)))
+            return false;
+
+        return true;
     }
 
 
-    /* Reads session data from the local database */
-    bool LocalDB::ReadSession(const uint256_t& hashGenesis, std::vector<uint8_t>& vchData)
+    /* List the current records for a given table. */
+    bool LocalDB::ListRecords(const std::string& strTable, std::vector<std::pair<std::string, std::string>> &vRecords)
     {
-        return Read(std::make_pair(std::string("session"), hashGenesis), vchData);
-    }
+        /* Loop until we have failed. */
+        uint32_t nSequence = 0;
+        while(!config::fShutdown.load()) //we want to early terminate on shutdown
+        {
+            /* Use this to keep a local record of our pairs. */
+            std::pair<std::string, std::string> pairRecord;
 
+            /* Read our current record. */
+            if(!Read(std::make_tuple(std::string("record.index"), nSequence++, strTable), pairRecord))
+                break;
 
-    /* Deletes session data from the local database fort he given session ID. */
-    bool LocalDB::EraseSession(const uint256_t& hashGenesis)
-    {
-        return Erase(std::make_pair(std::string("session"), hashGenesis));
-    }
+            /* Check for transfer keys. */
+            if(!HasRecord(strTable, pairRecord.first))
+                continue; //NOTE: we skip over transfer keys
 
+            /* Push our record to return value. */
+            vRecords.push_back(pairRecord);
+        }
 
-    /* Determines whether the local DB contains session data for the given session ID */
-    bool LocalDB::HasSession(const uint256_t& hashGenesis)
-    {
-        return Exists(std::make_pair(std::string("session"), hashGenesis));
+        return !vRecords.empty();
     }
 
 }

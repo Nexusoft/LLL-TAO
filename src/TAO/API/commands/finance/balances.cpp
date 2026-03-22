@@ -1,9 +1,9 @@
 
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -59,7 +59,7 @@ namespace TAO::API
 
         /* First get the list of registers owned by this sig chain so we can work out which ones are NXS accounts */
         std::set<TAO::Register::Address> setAddresses;
-        if(!LLD::Logical->ListRegisters(hashGenesis, setAddresses))
+        if(!LLD::Sessions->ListRegisters(hashGenesis, setAddresses))
             throw Exception(-74, "No registers found");
 
         /* Keep a map to track our aggregated balance, we use a second map for better readability. */
@@ -116,10 +116,6 @@ namespace TAO::API
                 rBalances.second.at("decimals");
 
             /* Grab unconfirmed outgoing balances. */
-            const uint64_t nIncoming =
-                GetUnconfirmed(hashGenesis, hashToken, false);
-
-            /* Grab unconfirmed outgoing balances. */
             const uint64_t nOutgoing =
                 GetUnconfirmed(hashGenesis, hashToken, true);
 
@@ -127,10 +123,10 @@ namespace TAO::API
             encoding::json jBalances;
 
             /* Populate the rest of the balances. */
-            jBalances["available"]    = FormatBalance(rBalances.second.at("balance") + nIncoming - nOutgoing, nDecimals);
+            jBalances["available"]    = FormatBalance(rBalances.second.at("balance") - nOutgoing, nDecimals);
             jBalances["confirmed"]    = FormatBalance(rBalances.second.at("balance"), nDecimals);
             jBalances["unclaimed"]    = FormatBalance(GetUnclaimed(hashGenesis, hashToken), nDecimals);
-            jBalances["unconfirmed"]  = FormatNegative(int64_t(nIncoming) - nOutgoing, nDecimals);
+            jBalances["unconfirmed"]  = FormatBalance(GetUnconfirmed(hashGenesis, hashToken, false), nDecimals);
             jBalances["decimals"]     = nDecimals;
             jBalances["token"]        = hashToken.ToString();
 

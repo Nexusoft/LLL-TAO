@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -134,7 +134,7 @@ namespace LLP
                 LOCK(TIME_MUTEX);
 
                 /* Check for time server that is still initializing. */
-                if(MAP_TIME_DATA.size() <= (config::fTestNet.load() ? 0 : 1))
+                if(MAP_TIME_DATA.size() < (config::fTestNet.load() ? 0 : 1))
                 {
                     debug::log(0, FUNCTION, "REJECT: no time samples available");
 

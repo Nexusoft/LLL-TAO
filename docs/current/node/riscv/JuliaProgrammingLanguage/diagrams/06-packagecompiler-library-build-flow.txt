@@ -1,0 +1,12 @@
+06. PackageCompiler Library Build Flow
+
+project env
+   │
+   ▼
+PackageCompiler.create_library
+   │
+   ▼
+shared library artifact
+   │
+   ▼
+ABI review + parity tests

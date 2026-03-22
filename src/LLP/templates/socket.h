@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2025
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -31,7 +31,7 @@ namespace LLP
 {
 
     /** Max send buffer size. **/
-    const uint64_t MAX_SEND_BUFFER = 30 * 1024 * 1024; //30MB max send buffer
+    const uint64_t MAX_SEND_BUFFER = 3 * 1024 * 1024; //30MB max send buffer
 
 
     /** Socket
@@ -54,10 +54,6 @@ namespace LLP
 
         /** Mutex to protect buffered data. **/
         mutable std::mutex ADDRESS_MUTEX;
-
-
-        /** Mutex to protect buffered data. **/
-        mutable std::mutex BUFFER_MUTEX;
 
 
         /** Keep track of last time data was sent. **/

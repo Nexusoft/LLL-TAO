@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-        (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+        Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-        (c) Copyright The Nexus Developers 2014 - 2021
+        (c) Copyright The Nexus Developers 2014 - 2025
 
         Distributed under the MIT software license, see the accompanying
         file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -18,12 +18,15 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 #include <LLP/include/global.h>
 #include <LLP/include/inv.h>
+#include <LLP/include/channel_state_manager.h>
+#include <LLP/include/miner_push_dispatcher.h>
 
 #include <Legacy/types/legacy.h>
 #include <Legacy/wallet/wallet.h>
 
 #include <TAO/API/types/indexing.h>
 #include <TAO/API/types/transaction.h>
+#include <TAO/API/include/json.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -42,12 +45,16 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/prime.h>
 #include <TAO/Ledger/include/stake_change.h>
 #include <TAO/Ledger/include/supply.h>
+#include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/include/retarget.h>
 
 #include <TAO/Ledger/types/genesis.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/client.h>
+
+#include <Util/include/args.h>
+#include <Util/include/softfloat.h>
 
 
 /* Global TAO namespace. */
@@ -78,11 +85,11 @@ namespace TAO
                 /* Iterate backwards. */
                 state = state.Prev();
                 if(!state)
-                    return false;
+                    break;
             }
 
             /* If the max depth expired, return the genesis. */
-            state = ChainState::stateGenesis;
+            state = ChainState::tStateGenesis;
 
             return false;
         }
@@ -101,7 +108,7 @@ namespace TAO
         , nChannelHeight   (0)
         , nChannelWeight   {0, 0, 0}
         , nReleasedReserve {0, 0, 0}
-        , nFeeReserve      (0)
+        , nFeesBurned      (0)
         , hashNextBlock    (0)
         , hashCheckpoint   (0)
         {
@@ -125,7 +132,7 @@ namespace TAO
         , nReleasedReserve {block.nReleasedReserve[0]
                            ,block.nReleasedReserve[1]
                            ,block.nReleasedReserve[2]}
-        , nFeeReserve      (block.nFeeReserve)
+        , nFeesBurned      (block.nFeesBurned)
         , hashNextBlock    (block.hashNextBlock)
         , hashCheckpoint   (block.hashCheckpoint)
         {
@@ -149,7 +156,7 @@ namespace TAO
         , nReleasedReserve {std::move(block.nReleasedReserve[0])
                            ,std::move(block.nReleasedReserve[1])
                            ,std::move(block.nReleasedReserve[2])}
-        , nFeeReserve      (std::move(block.nFeeReserve))
+        , nFeesBurned      (std::move(block.nFeesBurned))
         , hashNextBlock    (std::move(block.hashNextBlock))
         , hashCheckpoint   (std::move(block.hashCheckpoint))
         {
@@ -186,7 +193,7 @@ namespace TAO
             nReleasedReserve[0] = block.nReleasedReserve[0];
             nReleasedReserve[1] = block.nReleasedReserve[1];
             nReleasedReserve[2] = block.nReleasedReserve[2];
-            nFeeReserve         = block.nFeeReserve;
+            nFeesBurned         = block.nFeesBurned;
             hashNextBlock       = block.hashNextBlock;
             hashCheckpoint      = block.hashCheckpoint;
 
@@ -224,7 +231,7 @@ namespace TAO
             nReleasedReserve[0] = std::move(block.nReleasedReserve[0]);
             nReleasedReserve[1] = std::move(block.nReleasedReserve[1]);
             nReleasedReserve[2] = std::move(block.nReleasedReserve[2]);
-            nFeeReserve         = std::move(block.nFeeReserve);
+            nFeesBurned         = std::move(block.nFeesBurned);
             hashNextBlock       = std::move(block.hashNextBlock);
             hashCheckpoint      = std::move(block.hashCheckpoint);
 
@@ -249,7 +256,7 @@ namespace TAO
         , nReleasedReserve {block.nReleasedReserve[0]
                            ,block.nReleasedReserve[1]
                            ,block.nReleasedReserve[2]}
-        , nFeeReserve      (0)
+        , nFeesBurned      (0)
         , hashNextBlock    (block.hashNextBlock)
         , hashCheckpoint   (0)
         {
@@ -273,7 +280,7 @@ namespace TAO
         , nReleasedReserve {std::move(block.nReleasedReserve[0])
                            ,std::move(block.nReleasedReserve[1])
                            ,std::move(block.nReleasedReserve[2])}
-        , nFeeReserve      (0)
+        , nFeesBurned      (0)
         , hashNextBlock    (std::move(block.hashNextBlock))
         , hashCheckpoint   (0)
         {
@@ -363,7 +370,7 @@ namespace TAO
         , nChannelHeight   (0)
         , nChannelWeight   {0, 0, 0}
         , nReleasedReserve {0, 0, 0}
-        , nFeeReserve      (0)
+        , nFeesBurned      (0)
         , hashNextBlock    (0)
         , hashCheckpoint   (0)
         {
@@ -389,7 +396,7 @@ namespace TAO
         , nChannelHeight   (0)
         , nChannelWeight   {0, 0, 0}
         , nReleasedReserve {0, 0, 0}
-        , nFeeReserve      (0)
+        , nFeesBurned      (0)
         , hashNextBlock    (0)
         , hashCheckpoint   (0)
         {
@@ -503,9 +510,6 @@ namespace TAO
 
             /* Compute the Channel Height. */
             nChannelHeight = stateLast.nChannelHeight + 1;
-
-            /* Carry over the fee reserves from last block. */
-            nFeeReserve = stateLast.nFeeReserve;
 
             /* Compute the Released Reserves. */
             if(IsProofOfWork())
@@ -698,6 +702,7 @@ namespace TAO
                 }
 
                 /* Calculate the new reserve amounts. */
+                nMint = 0; //reset our mint value here
                 for(int nType = 0; nType < 3; ++nType)
                 {
                     /* Calculate the Reserves from the Previous Block in Channel's reserve and new Release. */
@@ -720,9 +725,6 @@ namespace TAO
                     nMint += nCoinbaseRewards[nType];
                 }
             }
-
-            /* Log the accumulated fee reserves. */
-            debug::log(2, "Fee Reserves | ", std::fixed, nFeeReserve / double(TAO::Ledger::NXS_COIN));
 
             /* Add the Pending Checkpoint into the Blockchain. */
             if(IsNewTimespan(statePrev))
@@ -764,17 +766,23 @@ namespace TAO
                 for(uint32_t n = 0; n < 3; ++n)
                 {
                     /* Check each weight. */
-                    if(nChannelWeight[n] == ChainState::stateBest.load().nChannelWeight[n])
+                    if(nChannelWeight[n] == ChainState::tStateBest.load().nChannelWeight[n])
                         ++nEquals;
 
                     /* Check each weight. */
-                    if(nChannelWeight[n] > ChainState::stateBest.load().nChannelWeight[n])
+                    if(nChannelWeight[n] > ChainState::tStateBest.load().nChannelWeight[n])
                         ++nGreater;
                 }
 
                 /* Check for better height if it is a battle between two channels. */
                 if(nHeight > ChainState::nBestHeight.load() + 1 && (nEquals == 1 && nGreater == 1))
                     ++nGreater;
+
+                /* Log the weights. */
+                debug::log(2, FUNCTION, "WEIGHTS [", uint32_t(nGreater), "]",
+                    " Prime ", nChannelWeight[1].Get64(),
+                    " Hash ",  nChannelWeight[2].Get64(),
+                    " Stake ", nChannelWeight[0].Get64());
 
                 /* Check for conflicted blocks. */
                 if(fConflicted)
@@ -787,15 +795,14 @@ namespace TAO
                 /* Handle single channel having higher weight. */
                 else if((nEquals == 2 && nGreater == 1) || nGreater > 1)
                 {
-                    /* Log the weights. */
-                    debug::log(2, FUNCTION, "WEIGHTS [", uint32_t(nGreater), "]",
-                        " Prime ", nChannelWeight[1].Get64(),
-                        " Hash ",  nChannelWeight[2].Get64(),
-                        " Stake ", nChannelWeight[0].Get64());
-
                     /* Set the best chain. */
                     if(!SetBest())
+                    {
+                        /* If we fail at all here, we want to reset our reorg head. */
+                        ChainState::fChainReorg.store(false);
+
                         return debug::error(FUNCTION, "failed to set best chain");
+                    }
                 }
             }
             else if(nChainTrust > ChainState::nBestChainTrust.load())
@@ -836,7 +843,7 @@ namespace TAO
             uint1024_t hash = GetHash();
 
             /* Watch for genesis. */
-            if(!ChainState::stateGenesis)
+            if(!ChainState::tStateGenesis)
             {
                 /* Write the best chain pointer. */
                 if(!LLD::Ledger->WriteBestChain(hash))
@@ -847,12 +854,12 @@ namespace TAO
                     return debug::error(FUNCTION, "block state already exists");
 
                 /* Set the genesis block. */
-                ChainState::stateGenesis = *this;
+                ChainState::tStateGenesis = *this;
             }
             else
             {
                 /* Get initial block states. */
-                BlockState fork   = ChainState::stateBest.load();
+                BlockState fork   = ChainState::tStateBest.load();
                 BlockState longer = *this;
 
                 /* Get the blocks to connect and disconnect. */
@@ -886,27 +893,39 @@ namespace TAO
                 }
 
                 /* Log if there are blocks to disconnect. */
+                uint32_t nTotalDisconnect = 0;
                 if(vDisconnect.size() > 0)
                 {
                     debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "REORGANIZE:", ANSI_COLOR_RESET,
                         " Disconnect ", vDisconnect.size(), " blocks; ", fork.GetHash().SubString(),
-                        "..",  ChainState::stateBest.load().GetHash().SubString());
+                        "..",  ChainState::tStateBest.load().GetHash().SubString());
 
                     /* Keep this in vDisconnect check, or it will print every block, but only print on reorg if have at least 1 */
                     if(vConnect.size() > 0)
                         debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "REORGANIZE:", ANSI_COLOR_RESET,
                             " Connect ", vConnect.size(), " blocks; ", fork.GetHash().SubString(),
                             "..", hash.SubString());
+
+                    /* Track our total transactions to disconnect. */
+                    for(auto& state : vDisconnect)
+                        nTotalDisconnect += (state.vtx.size() - 1); //this will tally all non producer transactions
+
+                    /* Track that the chain is undergoing a re-org. */
+                    ChainState::fChainReorg.store(true);
                 }
 
                 /* Keep track of mempool transactions to delete. */
                 std::vector<std::pair<uint8_t, uint512_t>> vResurrect;
 
+                /* Check if we need to output our -debugreorg data. */
+                const bool fDebugReorg =
+                    (config::GetBoolArg("-debugreorg", false) && nTotalDisconnect > 0);
+
                 /* Disconnect given blocks. */
                 for(auto& state : vDisconnect)
                 {
                     /* Output the block state if flagged. */
-                    if(config::GetBoolArg("-printstate"))
+                    if(config::GetBoolArg("-printstate") || fDebugReorg)
                         debug::log(0, state.ToString(debug::flags::header | debug::flags::tx));
 
                     /* Disconnect the block. */
@@ -916,12 +935,96 @@ namespace TAO
                     /* Erase block if not connecting anything. */
                     if(vConnect.empty())
                     {
+                        /* Erase the blocks from disk if we are doing -forkblocks. */
                         LLD::Ledger->EraseBlock(state.GetHash());
-                        //LLD::Ledger->EraseIndex(state.nHeight);
+
+                        /* Disconnect the transctions in reverse order to preserve sigchain ordering. */
+                        for(auto proof = state.vtx.rbegin(); proof != state.vtx.rend(); ++proof)
+                        {
+                            /* Get the transaction hash. */
+                            const uint512_t& hash = proof->second;
+
+                            /* Only work on tritium transactions for now. */
+                            if(proof->first == TRANSACTION::TRITIUM)
+                                LLD::Ledger->EraseTx(hash);
+                        }
+
+                        /* Erase our height indexes if we have enabled. */
+                        if(config::GetBoolArg("-indexheight", false))
+                            LLD::Ledger->EraseIndex(state.nHeight);
+                    }
+
+                    /* Debug output if we are debugging reorgs */
+                    if(fDebugReorg)
+                    {
+                        /* Disconnect the transctions in reverse order to preserve sigchain ordering. */
+                        for(auto proof = state.vtx.rbegin(); proof != state.vtx.rend(); ++proof)
+                        {
+                            /* Get the transaction hash. */
+                            const uint512_t& hash = proof->second;
+
+                            /* Only work on tritium transactions for now. */
+                            if(proof->first == TRANSACTION::TRITIUM)
+                            {
+                                /* Make sure the transaction is on disk. */
+                                TAO::Ledger::Transaction tx;
+                                if(!LLD::Ledger->ReadTx(hash, tx))
+                                    return debug::error(FUNCTION, "transaction not on disk");
+
+                                /* Get a copy of our transaction if debugging reorgs. */
+                                const encoding::json jRet =
+                                    TAO::API::TransactionToJSON(tx, *this, 3);
+
+                                debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "DISCONNECTING:", ANSI_COLOR_RESET, jRet.dump(4));
+                            }
+                        }
                     }
 
                     /* Resurrect transactions that were disconnected. */
-                    vResurrect.insert(vResurrect.end(), state.vtx.rbegin(), state.vtx.rend());
+                    if(!vConnect.empty())
+                        vResurrect.insert(vResurrect.end(), state.vtx.rbegin(), state.vtx.rend());
+                }
+
+                /* Iterate forward through our transactions to resurrect in ascending order. */
+                for(auto proof = vResurrect.rbegin(); proof != vResurrect.rend(); ++proof)
+                {
+                    /* Check for tritium transctions. */
+                    if(proof->first == TRANSACTION::TRITIUM)
+                    {
+                        /* Make sure the transaction is on disk. */
+                        TAO::Ledger::Transaction tx;
+                        if(!LLD::Ledger->ReadTx(proof->second, tx))
+                            return debug::error(FUNCTION, "transaction not on disk");
+
+                        /* Check for producer transaction. */
+                        if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid())
+                            continue;
+
+                        /* Add back into memory pool. */
+                        mempool.Accept(tx);
+
+                        /* Print transaction on verbose 3. */
+                        if(config::nVerbose >= 3)
+                            tx.print();
+                    }
+                    else if(proof->first == TRANSACTION::LEGACY)
+                    {
+                        /* Make sure the transaction is on disk. */
+                        Legacy::Transaction tx;
+                        if(!LLD::Legacy->ReadTx(proof->second, tx))
+                            return debug::error(FUNCTION, "transaction not on disk");
+
+                        /* Check for producer transaction. */
+                        if(tx.IsCoinBase() || tx.IsCoinStake())
+                            continue;
+
+                        /* Add back into memory pool. */
+                        mempool.Accept(tx);
+
+                        /* Print transaction on verbose 3. */
+                        if(config::nVerbose >= 3)
+                            tx.print();
+                    }
                 }
 
                 /* Keep track of mempool transactions to delete. */
@@ -931,7 +1034,7 @@ namespace TAO
                 for(auto state = vConnect.rbegin(); state != vConnect.rend(); ++state)
                 {
                     /* Output the block state if flagged. */
-                    if(config::GetBoolArg("-printstate"))
+                    if(config::GetBoolArg("-printstate") || fDebugReorg)
                         debug::log(0, state->ToString(debug::flags::header | debug::flags::tx));
 
                     /* Connect the block. */
@@ -943,76 +1046,49 @@ namespace TAO
                     HardenCheckpoint(Prev());
                     #endif
 
-                    /* Insert into delete queue. */
+                    /* Debug output if we are debugging reorgs */
+                    if(fDebugReorg)
+                    {
+                        /* Output the connecting block. */
+                        debug::log(0, state->ToString(debug::flags::header | debug::flags::tx));
+
+                        /* Disconnect the transctions in reverse order to preserve sigchain ordering. */
+                        for(auto proof = state->vtx.begin(); proof != state->vtx.end(); ++proof)
+                        {
+                            /* Get the transaction hash. */
+                            const uint512_t& hash = proof->second;
+
+                            /* Only work on tritium transactions for now. */
+                            if(proof->first == TRANSACTION::TRITIUM)
+                            {
+                                /* Make sure the transaction is on disk. */
+                                TAO::Ledger::Transaction tx;
+                                if(!LLD::Ledger->ReadTx(hash, tx))
+                                    return debug::error(FUNCTION, "transaction not on disk");
+
+                                /* Get a copy of our transaction if debugging reorgs. */
+                                const encoding::json jRet =
+                                    TAO::API::TransactionToJSON(tx, *this, 3);
+
+                                debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "CONNECTING:", ANSI_COLOR_RESET, jRet.dump(4));
+                            }
+                        }
+                    }
+
+                    /* Add the transaction to delete queue. */
                     vDelete.insert(vDelete.end(), state->vtx.begin(), state->vtx.end());
                 }
 
-                /* Reverse the transction to connect to connect in ascending height. */
-                for(auto proof = vResurrect.rbegin(); proof != vResurrect.rend(); ++proof)
-                {
-                    /* Check for tritium transctions. */
-                    if(proof->first == TRANSACTION::TRITIUM)
-                    {
-                        /* Special case for deleting blocks, delete tx as well. */
-                        if(vConnect.empty())
-                        {
-                            /* Make sure the transaction is not on disk. */
-                            if(!LLD::Ledger->EraseTx(proof->second))
-                                return debug::error(FUNCTION, "transaction not on disk");
-                        }
-                        else
-                        {
-                            /* Make sure the transaction is on disk. */
-                            TAO::Ledger::Transaction tx;
-                            if(!LLD::Ledger->ReadTx(proof->second, tx))
-                                return debug::error(FUNCTION, "transaction not on disk");
+                /* Iterate forward through our transactions to remove in ascending order. */
+                for(auto proof = vDelete.begin(); proof != vDelete.end(); ++proof)
+                    mempool.Remove(proof->second);
 
-                            /* Check for producer transaction. */
-                            if(tx.IsCoinBase() || tx.IsCoinStake())
-                                continue;
-
-                            /* Add back into memory pool. */
-                            mempool.Accept(tx);
-
-                            if(config::nVerbose >= 3)
-                                tx.print();
-                        }
-                    }
-                    else if(proof->first == TRANSACTION::LEGACY)
-                    {
-                        /* Special case for deleting blocks, delete tx as well. */
-                        if(vConnect.empty())
-                        {
-                            /* Make sure the transaction is not on disk. */
-                            if(!LLD::Legacy->EraseTx(proof->second))
-                                return debug::error(FUNCTION, "transaction not on disk");
-                        }
-                        else
-                        {
-                            /* Make sure the transaction is on disk. */
-                            Legacy::Transaction tx;
-                            if(!LLD::Legacy->ReadTx(proof->second, tx))
-                                return debug::error(FUNCTION, "transaction not on disk");
-
-                            /* Check for producer transaction. */
-                            if(tx.IsCoinBase() || tx.IsCoinStake())
-                                continue;
-
-                            /* Add back into memory pool. */
-                            mempool.Accept(tx);
-
-                            if(config::nVerbose >= 3)
-                                tx.print();
-                        }
-                    }
-                }
-
-                /* Delete from mempool. */
-                for(const auto& proof : vDelete)
-                    mempool.Remove(proof.second);
+                /* Calculate the total transactions connected. */
+                const uint32_t nTotalConnected =
+                    (vDelete.size() - vConnect.size());
 
                 /* Debug output about the best chain. */
-                uint64_t nElapsed = (GetBlockTime() - ChainState::stateBest.load().GetBlockTime());
+                uint64_t nElapsed      = (GetBlockTime() - ChainState::tStateBest.load().GetBlockTime());
                 uint64_t nContractTime = swContract.ElapsedMicroseconds();
                 uint64_t nInputsTime   = swScript.ElapsedMicroseconds();
 
@@ -1022,17 +1098,27 @@ namespace TAO
                         "New Best Block hash=", hash.SubString(),
                         " height=", nHeight,
                         " trust=", nChainTrust,
-                        " tx=", vtx.size(),
+                        " tx=", (nTotalConnected + vConnect.size()),
                         " [", (nElapsed == 0 ? 0 : double(nTotalContracts / nElapsed)), " tx/s]"
                         " [processed at ", (nTotalContracts * 1000000.0) / (nContractTime + 1), " contract/s",
                         " | ", (nTotalInputs * 1000000.0) / (nInputsTime + 1), " script/s]",
                         " [", std::setw(3), (::GetSerializeSize(*this, SER_LLD, nVersion) / 1024.0), " kb]");
 
                 /* Set the best chain variables. */
-                ChainState::stateBest          = *this; //XXX: we are not getting all the data from connect, consider using pointer
+                ChainState::tStateBest          = *this; //XXX: we are not getting all the data from connect, consider using pointer
                 ChainState::hashBestChain      = hash;
                 ChainState::nBestChainTrust    = nChainTrust;
                 ChainState::nBestHeight        = nHeight;
+
+                /* Reset our reorg block now. */
+                ChainState::fChainReorg.store(false);
+
+                /* Set our cache to update state. */
+                if(nTotalConnected > 0)
+                    TAO::API::nTransactionCounter++;
+
+                /* Set our chain cache update now. */
+                TAO::API::nBlockCounter.store(nHeight);
 
                 /* Write the best chain pointer. */
                 if(!LLD::Ledger->WriteBestChain(hash))
@@ -1047,6 +1133,67 @@ namespace TAO
                 if(!ChainState::Synchronizing())
                     Dispatch::Instance().PushRelay(ChainState::hashBestChain.load());
                 #endif
+
+                /* PUSH NOTIFICATIONS: Universal tip push to both PoW channels on every unified tip advance.
+                 * Any channel (0=Stake, 1=Prime, 2=Hash) can advance the unified best tip.  When this
+                 * happens, PoW templates anchored to the previous tip become stale.  Notify ALL Prime and
+                 * Hash subscribers so miners immediately fetch fresh templates regardless of which channel
+                 * produced the winning block. */
+                if (config::fShutdown.load())
+                {
+                    debug::log(1, FUNCTION, "Shutdown requested; skipping miner notifications");
+                }
+                else
+                {
+                    /* Diagnostic log: compute per-channel state only when verbosity warrants it
+                     * (GetLastState and GetNextTargetRequired can involve disk I/O) */
+                    if(config::nVerbose >= 2)
+                    {
+                        BlockState statePrime = *this;
+                        BlockState stateHash  = *this;
+                        uint32_t nPrimeBits = 0;
+                        uint32_t nHashBits  = 0;
+                        if(GetLastState(statePrime, 1))
+                            nPrimeBits = GetNextTargetRequired(statePrime, 1, false);
+                        if(GetLastState(stateHash, 2))
+                            nHashBits = GetNextTargetRequired(stateHash, 2, false);
+
+                        debug::log(2, FUNCTION, "Universal tip push: best=", hash.SubString(),
+                                   " unified=", nHeight,
+                                   " | Prime ch=", statePrime.nChannelHeight,
+                                   " nBits=0x", std::hex, nPrimeBits, std::dec,
+                                   " | Hash ch=", stateHash.nChannelHeight,
+                                   " nBits=0x", std::hex, nHashBits, std::dec,
+                                   " (block_ch=", GetChannel(), ")");
+                    }
+
+                    /* MinerPushDispatcher — canonical unified pathway for all miner push notifications.
+                     * Broadcasts to BOTH lanes (Stateless + Legacy) for BOTH channels (Prime + Hash).
+                     * Includes deduplication to prevent double-sends from accidental re-entry.
+                     * Produces exactly 4 lane-level sends per push event:
+                     *   1. Prime → Stateless lane
+                     *   2. Prime → Legacy lane
+                     *   3. Hash  → Stateless lane
+                     *   4. Hash  → Legacy lane
+                     *
+                     * Phase 3 Refactor: Replaces inline BroadcastChannelNotification lambda with
+                     * canonical MinerPushDispatcher::DispatchPushEvent() for maintainability and
+                     * unified broadcasting logic across the codebase. */
+                    LLP::MinerPushDispatcher::DispatchPushEvent(nHeight, hash);
+                }
+
+                /* Verify unified height consistency using existing ChannelStateManager infrastructure */
+                uint32_t nVerifyInterval = config::GetArg("-verifyunified", 10);
+                if(nVerifyInterval > 0)
+                {
+                    if(!LLP::ChannelStateManager::VerifyAllChannels(nVerifyInterval))
+                    {
+                        debug::warning(FUNCTION, "Unified height verification failed at height ", nHeight);
+                        debug::warning(FUNCTION, "Chain may be in inconsistent state - fork callbacks triggered");
+                        /* Don't reject SetBest - block is already committed */
+                        /* Fork callbacks have been triggered on all channel managers */
+                    }
+                }
             }
 
             return true;
@@ -1059,16 +1206,18 @@ namespace TAO
             /* Get a copy of our block hash. */
             const uint1024_t hashBlock = GetHash();
 
-            /* Reset the transaction fees. */
-            nFees = 0;
-
-            debug::log(3, "BLOCK BEGIN-------------------------------------");
-
             /* Check through all the transactions. */
+            nFees = 0; //reset our fees value here.
             for(const auto& proof : vtx)
             {
                 /* Get the transaction hash. */
                 const uint512_t& hash = proof.second;
+
+                /* Check for transaction overwrites using indexing entries */
+                if(!LLD::Ledger->HasIndex(hash))
+                    LLD::Ledger->IndexBlock(proof.second, hashBlock); //write indexing entry for use during processing
+                else //this rule will trigger if we have indexes already
+                    return debug::error(FUNCTION, "transaction overwrites not allowed");
 
                 /* Only work on tritium transactions for now. */
                 if(proof.first == TRANSACTION::TRITIUM)
@@ -1076,15 +1225,12 @@ namespace TAO
                     /* Start the contracts stopwatch. */
                     swContract.start();
 
-                    /* Check for existing indexes. */
-                    if(LLD::Ledger->HasIndex(hash))
-                        return debug::error(FUNCTION, "transaction overwrites not allowed");
-
                     /* Make sure the transaction is on disk. */
                     TAO::Ledger::Transaction tx;
                     if(!LLD::Ledger->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction not on disk");
 
+                    /* Verbose 3 log output. */
                     if(config::nVerbose >= 3)
                         tx.print();
 
@@ -1128,27 +1274,31 @@ namespace TAO
                         if(!LLD::Ledger->WriteStake(tx.hashGenesis, hash))
                             return debug::error(FUNCTION, "failed to write last stake");
 
-                        /* If local database has a stake change request not marked as processed, update it.
-                         *
-                         * This updates a request that was reset because coinstake was disconnected and now is reconnected, such
-                         * as if execute a forkblocks and re-sync.
-                         *
-                         * It also handles marking stake changes in stake pool as processed, because the block is likely
-                         * mined by another node on the network, and stake change must be marked when that block is received.
-                         */
-                        StakeChange tRequest;
-                        if(LLD::Local->ReadStakeChange(tx.hashGenesis, tRequest))
+                        /* We don't need to check for stake changes when syncing. */
+                        if(!ChainState::Synchronizing())
                         {
-                            /* Update stake change request if not processed. */
-                            if(!tRequest.fProcessed)
+                            /* If local database has a stake change request not marked as processed, update it.
+                             *
+                             * This updates a request that was reset because coinstake was disconnected and now is reconnected, such
+                             * as if execute a forkblocks and re-sync.
+                             *
+                             * It also handles marking stake changes in stake pool as processed, because the block is likely
+                             * mined by another node on the network, and stake change must be marked when that block is received.
+                             */
+                            StakeChange tRequest;
+                            if(LLD::Local->ReadStakeChange(tx.hashGenesis, tRequest))
                             {
-                                /* Mark as processed. */
-                                tRequest.fProcessed = true;
-                                tRequest.hashTx     = hash;
+                                /* Update stake change request if not processed. */
+                                if(!tRequest.fProcessed)
+                                {
+                                    /* Mark as processed. */
+                                    tRequest.fProcessed = true;
+                                    tRequest.hashTx     = hash;
 
-                                /* Erase if we can't update it. */
-                                if(!LLD::Local->WriteStakeChange(tx.hashGenesis, tRequest))
-                                    LLD::Local->EraseStakeChange(tx.hashGenesis);
+                                    /* Erase if we can't update it. */
+                                    if(!LLD::Local->WriteStakeChange(tx.hashGenesis, tRequest))
+                                        LLD::Local->EraseStakeChange(tx.hashGenesis);
+                                }
                             }
                         }
                     }
@@ -1161,10 +1311,6 @@ namespace TAO
                 {
                     /* Start the script stopwatch. */
                     swScript.start();
-
-                    /* Check for existing indexes. */
-                    if(LLD::Ledger->HasIndex(hash))
-                        return debug::error(FUNCTION, "transaction overwrites not allowed");
 
                     /* Make sure the transaction isn't on disk. */
                     Legacy::Transaction tx;
@@ -1192,31 +1338,34 @@ namespace TAO
                 else
                     return debug::error(FUNCTION, "using an unknown transaction type");
 
-                /* Write the indexing entries. */
-                LLD::Ledger->IndexBlock(proof.second, hashBlock);
-
                 /* Push to our logical indexing in API. */
                 if(nTime > NEXUS_TRITIUM_TIMELOCK)
                     TAO::API::Indexing::PushTransaction(hash);
             }
 
+            /* Verbose 3 output for extra block data. */
             if(config::nVerbose >= 3)
                 debug::log(3, "Block Height ", nHeight, " Hash ", hashBlock.SubString());
-
-
-            debug::log(3, "BLOCK END-------------------------------------");
 
             /* Update the previous state's next pointer. */
             BlockState prev = Prev();
 
             /* Update the money supply. */
-            nMoneySupply = (prev.IsNull() ? 0 : prev.nMoneySupply) + nMint;
+            nMoneySupply = (prev.nMoneySupply + nMint) - nFees;
 
             /* Update the fee reserves. */
-            nFeeReserve += nFees;
+            nFeesBurned = (prev.nFeesBurned + nFees);
 
             /* Log how much was generated / destroyed. */
-            debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, nMint > 0 ? "Generated " : "Destroyed ", std::fixed, (double)nMint / TAO::Ledger::NXS_COIN, " Nexus | Money Supply ", std::fixed, (double)nMoneySupply / TAO::Ledger::NXS_COIN);
+            debug::log
+            (
+                TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
+
+                int64_t(nMint - nFees) > 0 ? "Generated " : "Destroyed ",
+                std::fixed, (double)int64_t(nMint - nFees) / TAO::Ledger::NXS_COIN, " Nexus | Money Supply ",
+                std::fixed, (double)(nMoneySupply) / TAO::Ledger::NXS_COIN, " | Burned Fees ",
+                std::fixed, (double)(nFeesBurned) / TAO::Ledger::NXS_COIN
+            );
 
             /* Write the updated block state to disk. */
             if(!LLD::Ledger->WriteBlock(hashBlock, *this))
@@ -1235,7 +1384,7 @@ namespace TAO
 
                 /* If we just updated hashNextBlock for genesis block, update the in-memory genesis */
                 if(hashPrevBlock == ChainState::Genesis())
-                    ChainState::stateGenesis = prev;
+                    ChainState::tStateGenesis = prev;
             }
 
             return true;
@@ -1264,20 +1413,19 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to disconnect transaction");
 
                     /* Make sure this sigchain needs to be de-indexed. */
-                    if(LLD::Logical->HasFirst(tx.hashGenesis))
+                    if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid()) //we only delete indexes for producer transactions
                     {
-                        /* Get a reference of our transaction. */
-                        TAO::API::Transaction wtx = TAO::API::Transaction(tx);
-
-                        /* Make sure indexes are deleted. */
-                        if(!wtx.Delete(hash))
+                        /* Remove the API sessions indexes if disconnecting a producer transaction. */
+                        if(LLD::Sessions->Active(tx.hashGenesis))
                         {
-                            debug::warning(FUNCTION, "failed to erase our API indexes for ", hash.SubString());
-                            continue;
-                        }
+                            /* Get a reference of our transaction. */
+                            TAO::API::Transaction wtx =
+                                TAO::API::Transaction(tx);
 
-                        /* TODO: delete this debug info for < verbose=3 */
-                        debug::log(0, FUNCTION, "deleted API session indexes for ", hash.SubString());
+                            /* Make sure indexes are deleted. */
+                            if(wtx.Delete(hash))
+                                debug::log(0, FUNCTION, "deleted API session indexes for ", hash.SubString());
+                        }
                     }
                 }
                 else if(proof->first == TRANSACTION::LEGACY)
@@ -1292,7 +1440,7 @@ namespace TAO
 
                     /* Disconnect the inputs. */
                     if(!tx.Disconnect(*this))
-                        return debug::error(FUNCTION, "failed to connect inputs");
+                        return debug::error(FUNCTION, "failed to disconnect inputs");
 
                     /* Wallets need to refund inputs when disonnecting coinstake */
                     #ifndef NO_WALLET
@@ -1302,7 +1450,8 @@ namespace TAO
                 }
 
                 /* Write the indexing entries. */
-                LLD::Ledger->EraseIndex(proof->second);
+                if(!LLD::Ledger->EraseIndex(proof->second))
+                    debug::notice(FUNCTION, "failed to erase indexes for ", proof->second.SubString());
             }
 
             /* Erase the index for block by height. */
@@ -1429,7 +1578,7 @@ namespace TAO
                                 throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to read trust key"));
 
                             /* Get trust score. */
-                            nTrust = trustKey.Age(TAO::Ledger::ChainState::stateBest.load().GetBlockTime());
+                            nTrust = trustKey.Age(TAO::Ledger::ChainState::tStateBest.load().GetBlockTime());
 
                         }
 
@@ -1561,6 +1710,10 @@ namespace TAO
                 TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(vtx.back().second, tx))
                     return debug::error(FUNCTION, "transaction is not on disk");
+
+                /* Use alternative function for version 9 blocks. */
+                if(nVersion >= 9)
+                    return Block::StakeHash(tx.hashGenesis);
 
                 return Block::StakeHash(tx.IsGenesis(), tx.hashGenesis);
             }
