@@ -30,40 +30,55 @@ namespace LLP
         return TAO::Ledger::ChainState::hashBestChain.load();
     }
 
-    /* BuildPayload - Build 140-byte notification payload (big-endian) */
+    /* BuildPayload - Build 148-byte notification payload (big-endian) */
     std::vector<uint8_t> PushNotificationBuilder::BuildPayload(
         uint32_t nUnifiedHeight,
         uint32_t nChannelHeight,
         uint32_t nDifficulty,
+        uint32_t nOtherChannelHeight,
+        uint32_t nStakeHeight,
         const uint1024_t& hashBestChain)
     {
         std::vector<uint8_t> vPayload;
-        vPayload.reserve(140);  // 12 bytes header + 128 bytes hash
+        vPayload.reserve(148);  // 20 bytes header + 128 bytes hash = 148 bytes
 
         // Unified height [0-3] (big-endian)
         vPayload.push_back((nUnifiedHeight >> 24) & 0xFF);
         vPayload.push_back((nUnifiedHeight >> 16) & 0xFF);
         vPayload.push_back((nUnifiedHeight >> 8) & 0xFF);
         vPayload.push_back((nUnifiedHeight >> 0) & 0xFF);
-        
-        // Channel height [4-7] (big-endian)
+
+        // Channel height [4-7] (big-endian) — OWN channel
         vPayload.push_back((nChannelHeight >> 24) & 0xFF);
         vPayload.push_back((nChannelHeight >> 16) & 0xFF);
         vPayload.push_back((nChannelHeight >> 8) & 0xFF);
         vPayload.push_back((nChannelHeight >> 0) & 0xFF);
-        
+
         // Difficulty [8-11] (big-endian)
         vPayload.push_back((nDifficulty >> 24) & 0xFF);
         vPayload.push_back((nDifficulty >> 16) & 0xFF);
         vPayload.push_back((nDifficulty >> 8) & 0xFF);
         vPayload.push_back((nDifficulty >> 0) & 0xFF);
 
-        // hashBestChain [12-139] (128 bytes, little-endian word order via GetBytes())
+        // Other PoW channel height [12-15] (big-endian) — NEW
+        // Prime push: Hash channel height; Hash push: Prime channel height
+        vPayload.push_back((nOtherChannelHeight >> 24) & 0xFF);
+        vPayload.push_back((nOtherChannelHeight >> 16) & 0xFF);
+        vPayload.push_back((nOtherChannelHeight >> 8) & 0xFF);
+        vPayload.push_back((nOtherChannelHeight >> 0) & 0xFF);
+
+        // Stake channel height [16-19] (big-endian) — NEW
+        vPayload.push_back((nStakeHeight >> 24) & 0xFF);
+        vPayload.push_back((nStakeHeight >> 16) & 0xFF);
+        vPayload.push_back((nStakeHeight >> 8) & 0xFF);
+        vPayload.push_back((nStakeHeight >> 0) & 0xFF);
+
+        // hashBestChain [20-147] (128 bytes, little-endian word order via GetBytes())
         // Allows miner to compare its template's hashPrevBlock against this value
         // for hash-based staleness detection (NexusMiner#170 pattern).
         std::vector<uint8_t> vHashBytes = hashBestChain.GetBytes();
         vPayload.insert(vPayload.end(), vHashBytes.begin(), vHashBytes.end());
-        
+
         return vPayload;
     }
 
@@ -98,21 +113,38 @@ namespace LLP
     {
         // Get 8-bit opcode (lane should be LEGACY)
         uint16_t nOpcode = GetNotificationOpcode(nChannel, lane);
-        
+
         // Create packet with 8-bit header
         Packet notification;
         notification.HEADER = static_cast<uint8_t>(nOpcode);
-        
-        // Build 140-byte payload (12 header + 128 hash)
+
+        // Fetch other PoW channel height and stake height for extended payload
+        // Prime push (nChannel==1): other channel = Hash (2)
+        // Hash push  (nChannel==2): other channel = Prime (1)
+        uint32_t nOtherChannel = (nChannel == 1) ? 2 : 1;
+        uint32_t nOtherChannelHeight = 0;
+        uint32_t nStakeHeight = 0;
+
+        TAO::Ledger::BlockState stateOther = stateBest;
+        if(TAO::Ledger::GetLastState(stateOther, nOtherChannel))
+            nOtherChannelHeight = stateOther.nChannelHeight;
+
+        TAO::Ledger::BlockState stateStake = stateBest;
+        if(TAO::Ledger::GetLastState(stateStake, 0))
+            nStakeHeight = stateStake.nChannelHeight;
+
+        // Build 148-byte payload (20 header + 128 hash)
         notification.DATA = BuildPayload(
             stateBest.nHeight,
             stateChannel.nChannelHeight,
             nDifficulty,
+            nOtherChannelHeight,
+            nStakeHeight,
             hashBestChain
         );
-        
+
         notification.LENGTH = static_cast<uint32_t>(notification.DATA.size());
-        
+
         return notification;
     }
 
@@ -128,20 +160,37 @@ namespace LLP
     {
         // Get 16-bit opcode (lane should be STATELESS)
         uint16_t nOpcode = GetNotificationOpcode(nChannel, lane);
-        
+
         // Create packet with 16-bit header
         StatelessPacket notification(nOpcode);
-        
-        // Build 140-byte payload (12 header + 128 hash)
+
+        // Fetch other PoW channel height and stake height for extended payload
+        // Prime push (nChannel==1): other channel = Hash (2)
+        // Hash push  (nChannel==2): other channel = Prime (1)
+        uint32_t nOtherChannel = (nChannel == 1) ? 2 : 1;
+        uint32_t nOtherChannelHeight = 0;
+        uint32_t nStakeHeight = 0;
+
+        TAO::Ledger::BlockState stateOther = stateBest;
+        if(TAO::Ledger::GetLastState(stateOther, nOtherChannel))
+            nOtherChannelHeight = stateOther.nChannelHeight;
+
+        TAO::Ledger::BlockState stateStake = stateBest;
+        if(TAO::Ledger::GetLastState(stateStake, 0))
+            nStakeHeight = stateStake.nChannelHeight;
+
+        // Build 148-byte payload (20 header + 128 hash)
         notification.DATA = BuildPayload(
             stateBest.nHeight,
             stateChannel.nChannelHeight,
             nDifficulty,
+            nOtherChannelHeight,
+            nStakeHeight,
             hashBestChain
         );
-        
+
         notification.LENGTH = static_cast<uint32_t>(notification.DATA.size());
-        
+
         return notification;
     }
 

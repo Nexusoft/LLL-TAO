@@ -128,27 +128,38 @@ Therefore, miners must refresh on `tip_moved` even when `channel_advanced` is fa
 
 ---
 
-## 4. Push Payload Semantics (12 bytes)
+## 4. Push Payload Semantics (148 bytes)
 
-Both protocol lanes (8-bit port 8323 and 16-bit port 9323) deliver a 12-byte push notification payload:
+Both protocol lanes (8-bit port 8323 and 16-bit port 9323) deliver a 148-byte push notification payload:
 
 ```
-Offset  Size  Field            Meaning
-------  ----  ---------------  ----------------------------------------
-0-3     4     nUnifiedHeight   Unified chain height at time of push
-4-7     4     nChannelHeight   Current height of the notified channel
-8-11    4     nBits            Next difficulty target for that channel
+Offset  Size  Field                 Meaning
+------  ----  --------------------  ---------------------------------------------------
+0-3     4     nUnifiedHeight        Unified chain height at time of push
+4-7     4     nChannelHeight        Height of the notified channel (OWN channel)
+8-11    4     nBits                 Next difficulty target for that channel
+12-15   4     nOtherChannelHeight   Other PoW channel height (NEW)
+                                      PRIME_BLOCK_AVAILABLE: Hash channel height
+                                      HASH_BLOCK_AVAILABLE:  Prime channel height
+16-19   4     nStakeHeight          Stake channel height (NEW)
+20-147  128   hashBestChain         Best-chain tip hash (little-endian via GetBytes())
 ```
+
+> **Backward compatibility:** Bytes [0-11] are identical in format to the prior 12-byte compact layout.
+> Old miners that parse only the first 12 bytes still receive correct `unified_height`,
+> `channel_height`, and `difficulty` values. The new fields at [12-19] and the
+> `hashBestChain` shift to [20-147] are invisible to such parsers.
 
 ### What the payload can express
 
 - `nUnifiedHeight` tells the miner the current global chain height, enabling **tip movement detection** without fetching a new template first.
 - `nChannelHeight` tells the miner the current channel-specific height, enabling **`channel_advanced` detection**.
 - `nBits` provides difficulty context without requiring a separate round-trip.
+- `nOtherChannelHeight` and `nStakeHeight` give the miner a **full 3-channel height picture** from a single push, enabling `HeightTracker` to populate all channel heights at push latency rather than waiting for `SESSION_KEEPALIVE` ACKs (~45 s cadence).
+- `hashBestChain` allows hash-based staleness detection before submitting work.
 
 ### What the payload cannot express
 
-- The payload does **not** include `hashBestChain`. Miners must fetch a new template to obtain `hashPrevBlock`, which is the authoritative anchor.
 - The payload does **not** guarantee the new template is already available; there may be a small propagation delay between the push and `GET_BLOCK` being served.
 - Authenticated `GET_BLOCK` handling no longer uses ambiguous empty `BLOCK_DATA`; when no template can be served, the node sends an explicit control outcome with reason/retry guidance.
 
@@ -156,10 +167,11 @@ Offset  Size  Field            Meaning
 
 ```
 1. Receive push (tip_moved detected via nUnifiedHeight change)
-2. Send GET_BLOCK immediately
-3. Replace current template with the response
-4. Verify pBlock->hashPrevBlock == expected hashBestChain
-5. Begin mining on new template
+2. Update HeightTracker with all four heights from the payload
+3. Send GET_BLOCK immediately
+4. Replace current template with the response
+5. Verify pBlock->hashPrevBlock == hashBestChain from payload (bytes 20-147)
+6. Begin mining on new template
 ```
 
 ---
