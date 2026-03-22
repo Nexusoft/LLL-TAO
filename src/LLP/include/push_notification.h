@@ -130,7 +130,7 @@ namespace LLP
          *    [16-19]   uint32_t  nStakeHeight         - Stake channel height (NEW)
          *    [20-147]  uint1024_t hashBestChain       - Best-chain hash (128 bytes, little-endian)
          *
-         *  The hashBestChain field (bytes 12-139) allows the miner to compare its current
+         *  The hashBestChain field (bytes 20-147) allows the miner to compare its current
          *  template's hashPrevBlock against the node's current tip, enabling hash-based
          *  staleness detection before submitting work (NexusMiner#170 pattern).
          *
