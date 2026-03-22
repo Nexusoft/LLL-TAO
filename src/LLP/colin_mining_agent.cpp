@@ -766,6 +766,26 @@ namespace LLP
                                   + " requests  Rate-limited: "
                                   + std::to_string(s.get_block_rate_limited)));
 
+            /* ── Height Tracker Snapshot (populated via Keepalive ACK) ── */
+            if(s.keepalive_ack_count > 0)
+            {
+                std::ostringstream hline;
+                hline << "  Heights | unified=" << s.last_unified_height
+                      << " prime=" << s.last_prime_height
+                      << " hash=" << s.last_hash_height
+                      << " stake=" << s.last_stake_height
+                      << "  (ACKs: " << s.keepalive_ack_count << ")";
+                debug::log(0, BoxLine(hline.str()));
+
+                if(s.peak_fork_score > 0)
+                {
+                    std::ostringstream fline;
+                    fline << "  Fork canary: score=" << s.last_fork_score
+                          << " peak=" << s.peak_fork_score;
+                    debug::log(0, BoxLine(fline.str()));
+                }
+            }
+
             /* ── Colin PING Diagnostics ──────────────────────────────── */
             {
                 debug::log(0, BoxLine("  \xE2\x94\x80 COLIN DIAGNOSTICS (Miner: "

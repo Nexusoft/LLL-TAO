@@ -6,6 +6,12 @@
 **Archived Date:** 2026-01-12  
 **Superseded By:** [STATELESS_MINING_PROTOCOL.md](STATELESS_MINING_PROTOCOL.md)  
 
+> **PROTOCOL NOTE (2026-03):** The NEW_ROUND payload was temporarily changed to 12 bytes
+> (unified+channel+difficulty) in an earlier PR but has been **reverted to the original 16-byte
+> Full Height Picture** format: `[Unified(4)][Prime(4)][Hash(4)][Stake(4)]`. All implementations
+> must use the 16-byte format. See `handle_get_round_stateless()` in `miner.cpp` and the
+> GET_ROUND handler in `stateless_miner_connection.cpp`.
+
 ---
 
 > ### ⚠️ Anchoring Warning — Read Before Using Any Code from This Document

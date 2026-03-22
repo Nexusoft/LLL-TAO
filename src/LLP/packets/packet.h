@@ -181,7 +181,7 @@ namespace LLP
          *  Packet ranges requiring data:
          *  - 0-127: Traditional data packets (BLOCK_DATA, SUBMIT_BLOCK, etc.)
          *  - 204-205: Mining round response packets (PR #151/PR #153)
-         *    - NEW_ROUND (204): 12 bytes - unified height + channel height + difficulty
+         *    - NEW_ROUND (204): 16 bytes - Full Height Picture: unified + prime + hash + stake heights
          *    - OLD_ROUND (205): variable - rejection reason or stale height info
          *  - 206: Channel acknowledgment
          *    - CHANNEL_ACK (206): channel number (1 byte)
