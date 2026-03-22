@@ -21,9 +21,11 @@ ________________________________________________________________________________
  * identified as packets requiring data payloads, and that GetBytes() properly
  * serializes them with header + LENGTH + DATA fields.
  *
- * Bug Fix: Previously, HasDataPayload() returned false for headers 204-205,
- * causing GetBytes() to serialize only the header byte, dropping the LENGTH
- * and DATA fields entirely (1 byte instead of 17 bytes for 12-byte payload).
+ * Protocol: NEW_ROUND carries the Full Height Picture (16 bytes):
+ *   [0-3]  uint32_t nUnifiedHeight  (big-endian)
+ *   [4-7]  uint32_t nPrimeHeight    (big-endian)
+ *   [8-11] uint32_t nHashHeight     (big-endian)
+ *   [12-15] uint32_t nStakeHeight   (big-endian)
  **/
 
 TEST_CASE("Packet::HasDataPayload() for mining round response packets", "[packet][round_response]")
@@ -32,7 +34,7 @@ TEST_CASE("Packet::HasDataPayload() for mining round response packets", "[packet
     {
         LLP::Packet packet;
         packet.HEADER = 204;  // NEW_ROUND
-        packet.LENGTH = 12;   // unified height + channel height + difficulty
+        packet.LENGTH = 16;   // unified height + prime height + hash height + stake height
         
         REQUIRE(packet.HasDataPayload() == true);
     }
@@ -50,26 +52,31 @@ TEST_CASE("Packet::HasDataPayload() for mining round response packets", "[packet
 
 TEST_CASE("Packet::GetBytes() serialization for NEW_ROUND", "[packet][round_response][serialization]")
 {
-    SECTION("NEW_ROUND with 12-byte payload serializes to 17 bytes (header + LENGTH + DATA)")
+    SECTION("NEW_ROUND with 16-byte payload serializes to 21 bytes (header + LENGTH + DATA)")
     {
         LLP::Packet packet;
         packet.HEADER = 204;  // NEW_ROUND
-        packet.LENGTH = 12;
+        packet.LENGTH = 16;
         
-        /* Create 12-byte payload: unified height (4) + channel height (4) + difficulty (4)
+        /* Create 16-byte Full Height Picture payload (big-endian):
+         *   [0-3]   nUnifiedHeight
+         *   [4-7]   nPrimeHeight
+         *   [8-11]  nHashHeight
+         *   [12-15] nStakeHeight
          * Note: These are example test values, not actual protocol constants */
         std::vector<uint8_t> vData = {
-            0xDC, 0xAE, 0x9E, 0x00,  // nUnifiedHeight (little-endian example)
-            0x08, 0x28, 0x23, 0x00,  // nChannelHeight (little-endian example)
-            0xFF, 0xFF, 0x00, 0x1D   // nDifficulty (little-endian example)
+            0x00, 0x9E, 0xAE, 0xDC,  // nUnifiedHeight = 6,537,436 (big-endian)
+            0x00, 0x23, 0x28, 0x10,  // nPrimeHeight   = 2,304,016 (big-endian)
+            0x00, 0x21, 0x10, 0x08,  // nHashHeight    = 2,166,792 (big-endian)
+            0x00, 0x1F, 0x87, 0x38   // nStakeHeight   = 2,066,232 (big-endian)
         };
         packet.DATA = vData;
         
         /* Get serialized bytes */
         std::vector<uint8_t> bytes = packet.GetBytes();
         
-        /* Verify packet is 17 bytes: 1 (header) + 4 (length) + 12 (data) */
-        REQUIRE(bytes.size() == 17);
+        /* Verify packet is 21 bytes: 1 (header) + 4 (length) + 16 (data) */
+        REQUIRE(bytes.size() == 21);
         
         /* Verify header byte */
         REQUIRE(bytes[0] == 204);
@@ -79,7 +86,7 @@ TEST_CASE("Packet::GetBytes() serialization for NEW_ROUND", "[packet][round_resp
                                           (static_cast<uint32_t>(bytes[2]) << 16) | 
                                           (static_cast<uint32_t>(bytes[3]) << 8) | 
                                           static_cast<uint32_t>(bytes[4]);
-        REQUIRE(serialized_length == 12);
+        REQUIRE(serialized_length == 16);
         
         /* Verify DATA field matches original */
         for(size_t i = 0; i < vData.size(); ++i)
@@ -136,7 +143,7 @@ TEST_CASE("Packet::Header() validation for round response packets", "[packet][ro
     {
         LLP::Packet packet;
         packet.HEADER = 204;  // NEW_ROUND
-        packet.LENGTH = 12;
+        packet.LENGTH = 16;
         
         REQUIRE(packet.Header() == true);
     }
@@ -167,8 +174,8 @@ TEST_CASE("Packet::Complete() for round response packets", "[packet][round_respo
     {
         LLP::Packet packet;
         packet.HEADER = 204;
-        packet.LENGTH = 12;
-        packet.DATA.resize(12, 0x00);
+        packet.LENGTH = 16;
+        packet.DATA.resize(16, 0x00);
         
         REQUIRE(packet.Complete() == true);
     }
@@ -177,8 +184,8 @@ TEST_CASE("Packet::Complete() for round response packets", "[packet][round_respo
     {
         LLP::Packet packet;
         packet.HEADER = 204;
-        packet.LENGTH = 12;
-        packet.DATA.resize(6, 0x00);  // Partial data
+        packet.LENGTH = 16;
+        packet.DATA.resize(8, 0x00);  // Partial data
         
         REQUIRE(packet.Complete() == false);
     }
