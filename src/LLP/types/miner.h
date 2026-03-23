@@ -493,12 +493,12 @@ namespace LLP
          **/
         bool m_force_next_push{false};
 
-        /** 2-second rate-limit floor for GET_BLOCK fallback polling.
+        /** 1-second rate-limit floor for GET_BLOCK fallback polling.
          *
          *  With the event-driven push model the miner should almost never poll.
-         *  This 2-second floor prevents rapid-fire polling abuse.
+         *  This 1-second floor prevents rapid-fire polling abuse.
          *  The cooldown is NOT Reset() after serving a GET_BLOCK — it naturally
-         *  expires, allowing miners to retry every 2 seconds during recovery.
+         *  expires, allowing miners to retry every 1 second during recovery.
          *  MINER_READY reassigns it to the "never triggered" state so the first
          *  recovery GET_BLOCK is served immediately.
          *  Protected by MUTEX.
@@ -600,7 +600,7 @@ namespace LLP
          *  throttle in SendChannelNotification) and reassigns m_get_block_cooldown
          *  to the "never triggered" state (Ready() returns true immediately) so
          *  the miner's first GET_BLOCK after the heartbeat push is not deferred by
-         *  the 2-second per-connection floor.
+         *  the 1-second per-connection floor.
          *
          *  Must be called under no external locks; acquires MUTEX internally.
          *  Called from Server::NotifyChannelMiners() when fHeartbeat=true.

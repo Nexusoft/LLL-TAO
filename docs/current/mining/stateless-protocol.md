@@ -759,21 +759,22 @@ is still well above any fork-resolution burst window (~100 ms) and below any
 real block-time floor, so miners always get a fresh template within 1 s of the
 tip stabilising.
 
-### 2-Second GET_BLOCK Rate-Limit Floor (`AutoCoolDown`, `GET_BLOCK_COOLDOWN_SECONDS`)
+### 1-Second GET_BLOCK Rate-Limit Floor (`AutoCoolDown`, `GET_BLOCK_COOLDOWN_SECONDS`)
 
-`LLP::AutoCoolDown m_get_block_cooldown{std::chrono::seconds(2)}` is held
+`LLP::AutoCoolDown m_get_block_cooldown{std::chrono::seconds(1)}` is held
 per connection on both `StatelessMinerConnection` and `Miner`.  This is a
-simple 2-second rate-limit floor — **not** a lockout window:
+simple 1-second rate-limit floor — **not** a lockout window:
 
 - The cooldown is **not** reset after successfully serving GET_BLOCK, so
-  miners can retry every 2 seconds during recovery from Emergency/Degraded
+  miners can retry every 1 second during recovery from Emergency/Degraded
   mode without being permanently locked out.
 - `MINER_READY` explicitly resets this cooldown so the first recovery
   GET_BLOCK is served immediately after re-subscription.
 - Localhost connections bypass AutoCoolDown entirely (they cannot be a
   DDOS vector); the rolling per-minute cap (20 GET_BLOCKs/min) provides control.
 - The rolling per-minute cap (20 GET_BLOCKs/min) provides the primary spam
-  protection.
+  protection — this is the real firewall. The 1s per-connection floor is
+  just burst smoothing.
 
 The old 30-second strategy caused an unrecoverable doom loop during
 Emergency/Degraded recovery: serving one GET_BLOCK would restart the 30s
@@ -796,8 +797,8 @@ It replaces ad-hoc magic-number cooldown comments with a self-contained
 object:
 
 ```cpp
-AutoCoolDown cd(std::chrono::seconds(2));
-if (!cd.Ready()) return;   // still within 2-second floor
+AutoCoolDown cd(std::chrono::seconds(1));
+if (!cd.Ready()) return;   // still within 1-second floor
 // (do NOT call cd.Reset() after serving — let it expire naturally)
 ```
 

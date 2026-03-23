@@ -30,14 +30,16 @@ namespace MiningConstants
 
         /** Minimum interval between GET_BLOCK requests.
          *
-         *  2-second minimum interval between GET_BLOCK requests.
+         *  1-second minimum interval between GET_BLOCK requests.
          *  Matches GET_BLOCK_COOLDOWN_SECONDS. Both mechanisms enforce the same
-         *  2-second floor — no lockout, no doom loop.
+         *  1-second floor — no lockout, no doom loop.
+         *  The 20/minute rolling cap is the primary firewall; the 1s floor is
+         *  just burst smoothing.
          */
-        constexpr uint32_t GET_BLOCK_MIN_INTERVAL_MS = 2000;
+        constexpr uint32_t GET_BLOCK_MIN_INTERVAL_MS = 1000;
 
-        /** Throttled interval for GET_BLOCK when rate limited (2 seconds) */
-        constexpr uint32_t GET_BLOCK_THROTTLE_INTERVAL_MS = 2000;
+        /** Throttled interval for GET_BLOCK when rate limited (1 second) */
+        constexpr uint32_t GET_BLOCK_THROTTLE_INTERVAL_MS = 1000;
 
         /** Number of rate limit violations before temporary ban (15 strikes) */
         constexpr uint32_t RATE_LIMIT_STRIKE_THRESHOLD = 15;
@@ -54,14 +56,16 @@ namespace MiningConstants
         
         /** Minimum interval between GET_BLOCK requests.
          *
-         *  2-second minimum interval between GET_BLOCK requests.
+         *  1-second minimum interval between GET_BLOCK requests.
          *  Matches GET_BLOCK_COOLDOWN_SECONDS. Both mechanisms enforce the same
-         *  2-second floor — no lockout, no doom loop.
+         *  1-second floor — no lockout, no doom loop.
+         *  The 20/minute rolling cap is the primary firewall; the 1s floor is
+         *  just burst smoothing.
          */
-        constexpr uint32_t GET_BLOCK_MIN_INTERVAL_MS = 2000;
+        constexpr uint32_t GET_BLOCK_MIN_INTERVAL_MS = 1000;
         
-        /** Throttled interval for GET_BLOCK when rate limited (2 seconds) */
-        constexpr uint32_t GET_BLOCK_THROTTLE_INTERVAL_MS = 2000;
+        /** Throttled interval for GET_BLOCK when rate limited (1 second) */
+        constexpr uint32_t GET_BLOCK_THROTTLE_INTERVAL_MS = 1000;
         
         /** Number of rate limit violations before temporary ban (15 strikes) */
         constexpr uint32_t RATE_LIMIT_STRIKE_THRESHOLD = 15;
@@ -119,27 +123,28 @@ namespace MiningConstants
      */
     constexpr int64_t TEMPLATE_PUSH_MIN_INTERVAL_MS = 1000;
 
-    /** Per-connection GET_BLOCK minimum interval (2 seconds).
+    /** Per-connection GET_BLOCK minimum interval (1 second).
      *
      *  Defined outside the #ifdef ENABLE_DEBUG block so it applies to
      *  BOTH debug and production builds.
      *
      *  Used by AutoCoolDown m_get_block_cooldown on each miner connection.
-     *  This is a simple 2-second rate-limit floor — NOT a lockout window.
+     *  This is a simple 1-second rate-limit floor — NOT a lockout window.
      *  The cooldown is NOT reset after serving a GET_BLOCK, so miners can
-     *  retry every 2 seconds during recovery from Emergency/Degraded mode.
+     *  retry every 1 second during recovery from Emergency/Degraded mode.
      *  The per-minute cap (MAX_GET_BLOCK_PER_MINUTE) provides the primary
-     *  spam protection; this floor just prevents rapid-fire polling abuse.
+     *  spam protection (the real firewall); this 1s floor is just burst
+     *  smoothing that prevents rapid-fire polling abuse.
      *  MINER_READY resets it for an immediate first GET_BLOCK after
      *  re-subscription.
      */
-    constexpr uint32_t GET_BLOCK_COOLDOWN_SECONDS = 2;
+    constexpr uint32_t GET_BLOCK_COOLDOWN_SECONDS = 1;
 
     /** Localhost connections skip AutoCoolDown in production.
      *
      *  A local miner cannot be a DDOS vector; the per-minute cap
      *  (MAX_GET_BLOCK_PER_MINUTE) provides sufficient rate control.
-     *  Remote miners are still protected by the 2-second rate-limit floor.
+     *  Remote miners are still protected by the 1-second rate-limit floor.
      */
     constexpr bool DISABLE_LOCALHOST_AUTOCOOLDOWN = true;
 
@@ -186,7 +191,7 @@ namespace MiningConstants
      *  1. The heartbeat push notification is NOT throttled even if a regular push
      *     was sent recently (e.g. within the 1-second push interval).
      *  2. The miner's subsequent GET_BLOCK response to the heartbeat push is served
-     *     immediately without the 2-second per-connection floor, causing new_block()
+     *     immediately without the 1-second per-connection floor, causing new_block()
      *     / CreateBlockForStatelessMining() to run and produce a genuinely fresh
      *     template with a new creation timestamp.
      *  3. The miner's template age counter resets because the fresh template carries
