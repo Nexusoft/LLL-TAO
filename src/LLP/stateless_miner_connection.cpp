@@ -1536,11 +1536,37 @@ namespace LLP
                 /* Make sure the block was created by this mining server. */
                 if(!find_block(hashMerkle))
                 {
-                    /* Cross-lane fallback: template may have been issued on the
-                     * legacy port (8323) and stored in the session block map by
-                     * SharedGetBlockHandler on that lane. */
-                    spCrossLaneHolder = StatelessMinerManager::Get().FindSessionBlock(
-                        context.nSessionId, hashMerkle);
+                    /* DEPRECATED: SIM-LINK cross-lane template resolution.
+                     *
+                     * Cross-lane block lookup is scheduled for removal once real
+                     * second-node failover (DualConnectionManager) is complete.
+                     * New miners should connect to a dedicated failover node rather
+                     * than relying on this cross-lane resolution path.
+                     *
+                     * To disable this fallback now and test the new failover model,
+                     * start the node with -deprecate-simlink-fallback=1.
+                     *
+                     * See: docs/architecture/SIMLINK_DUAL_LANE_ARCHITECTURE.md */
+                    if(!config::GetBoolArg("-deprecate-simlink-fallback", false))
+                    {
+                        /* Cross-lane fallback: template may have been issued on the
+                         * legacy port (8323) and stored in the session block map by
+                         * SharedGetBlockHandler on that lane. */
+                        spCrossLaneHolder = StatelessMinerManager::Get().FindSessionBlock(
+                            context.nSessionId, hashMerkle);
+
+                        if(spCrossLaneHolder)
+                            debug::log(0, FUNCTION,
+                                "[DEPRECATED] SIM-LINK: cross-lane block resolved from legacy lane "
+                                "session=", context.nSessionId, " merkle=", hashMerkle.SubString(),
+                                " — consider connecting to a dedicated failover node instead");
+                    }
+                    else
+                    {
+                        debug::log(0, FUNCTION,
+                            "[DEPRECATED] SIM-LINK: cross-lane fallback disabled via "
+                            "-deprecate-simlink-fallback; treating as unknown template");
+                    }
 
                     if(!spCrossLaneHolder)
                     {

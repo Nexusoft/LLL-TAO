@@ -567,6 +567,10 @@ namespace LLP
          *  @param[in] hashMerkleRoot  Block template merkle root (lookup key)
          *  @param[in] spBlock         Shared ownership of the block template
          *
+         *  @deprecated SIM-LINK cross-lane template sharing is scheduled for removal
+         *  once real second-node failover (DualConnectionManager) is complete.
+         *  See: docs/architecture/SIMLINK_DUAL_LANE_ARCHITECTURE.md
+         *
          **/
         void StoreSessionBlock(uint32_t nSessionId, const uint512_t& hashMerkleRoot,
                                std::shared_ptr<TAO::Ledger::Block> spBlock);
@@ -584,6 +588,11 @@ namespace LLP
          *
          *  @return Shared pointer to the block template, or nullptr if not found
          *
+         *  @deprecated SIM-LINK cross-lane template sharing is scheduled for removal
+         *  once real second-node failover (DualConnectionManager) is complete.
+         *  Use -deprecate-simlink-fallback=1 to disable this path today.
+         *  See: docs/architecture/SIMLINK_DUAL_LANE_ARCHITECTURE.md
+         *
          **/
         std::shared_ptr<TAO::Ledger::Block> FindSessionBlock(uint32_t nSessionId,
                                                               const uint512_t& hashMerkleRoot);
@@ -597,6 +606,10 @@ namespace LLP
          *  Thread-safe: protected by m_sessionBlockMutex.
          *
          *  @param[in] nSessionId  Session identifier whose templates to prune
+         *
+         *  @deprecated SIM-LINK cross-lane template sharing is scheduled for removal
+         *  once real second-node failover (DualConnectionManager) is complete.
+         *  See: docs/architecture/SIMLINK_DUAL_LANE_ARCHITECTURE.md
          *
          **/
         void PruneSessionBlocks(uint32_t nSessionId);

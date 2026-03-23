@@ -891,7 +891,9 @@ namespace LLP
     }
 
 
-    /* Store a block template in the session-scoped cross-lane block map */
+    /* Store a block template in the session-scoped cross-lane block map.
+     * DEPRECATED: SIM-LINK cross-lane template sharing is scheduled for removal
+     * once real second-node failover (DualConnectionManager) is complete. */
     void StatelessMinerManager::StoreSessionBlock(uint32_t nSessionId,
                                                    const uint512_t& hashMerkleRoot,
                                                    std::shared_ptr<TAO::Ledger::Block> spBlock)
@@ -907,7 +909,10 @@ namespace LLP
     }
 
 
-    /* Look up a block template in the session-scoped cross-lane block map */
+    /* Look up a block template in the session-scoped cross-lane block map.
+     * DEPRECATED: SIM-LINK cross-lane template sharing is scheduled for removal
+     * once real second-node failover (DualConnectionManager) is complete.
+     * Callers check -deprecate-simlink-fallback before invoking this method. */
     std::shared_ptr<TAO::Ledger::Block> StatelessMinerManager::FindSessionBlock(
         uint32_t nSessionId, const uint512_t& hashMerkleRoot)
     {
@@ -925,7 +930,9 @@ namespace LLP
     }
 
 
-    /* Remove all block templates for a session (called on tip advance) */
+    /* Remove all block templates for a session (called on tip advance).
+     * DEPRECATED: SIM-LINK cross-lane template sharing is scheduled for removal
+     * once real second-node failover (DualConnectionManager) is complete. */
     void StatelessMinerManager::PruneSessionBlocks(uint32_t nSessionId)
     {
         std::lock_guard<std::mutex> lock(m_sessionBlockMutex);

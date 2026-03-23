@@ -4,6 +4,62 @@
 
 The `DualConnectionManager` provides centralized tracking of connection lane health and failover state for the Nexus mining node. It coordinates with the Colin Mining Agent to provide real-time visibility into SIM Link dual-connection status and automatic failover between primary and backup mining pool nodes.
 
+---
+
+## ⚠️ SIM-LINK Deprecation Notice
+
+The SIM-LINK cross-lane fallback mechanism — where templates issued on one lane
+(port 9323 or 8323) can be resolved by `SUBMIT_BLOCK` arriving on the other lane — is
+**deprecated** and scheduled for removal once the real second-node failover model
+(`DualConnectionManager`) is complete.
+
+### Why It Is Deprecated
+
+During a rare dry spell (~600 s with no blocks mined on any channel), the miner entered
+DEGRADED MODE because its template aged past the hard `MAX_TEMPLATE_AGE_SECONDS = 600 s`
+cutoff. The SIM-LINK legacy lane (port 8323) was acting as a fallback when stateless
+push notifications stalled, but this created an implicit dependency on two ports to the
+same node rather than a true second-node failover.
+
+### Node-Side Mitigation: Proactive Heartbeat Refresh
+
+The node now implements a **proactive template heartbeat refresh** to prevent the 600 s
+timeout from triggering during legitimate dry spells:
+
+| Elapsed since last push | Action |
+|-------------------------|--------|
+| 300 s | NOTICE log: dry spell detected |
+| 450 s | WARNING log: approaching refresh threshold |
+| 480 s | **HEARTBEAT fires**: template re-pushed to all subscribed miners |
+| 550 s | CRITICAL log (if heartbeat did not reset the clock, e.g. no miners connected) |
+| 600 s | Hard cutoff: template expired (miner enters degraded mode) |
+
+The heartbeat is driven by `MinerPushDispatcher::HeartbeatRefreshCheck()`, called every
+`HEARTBEAT_CHECK_INTERVAL_SECONDS` (60 s) from `Server<ProtocolType>::Meter()`.
+
+```cpp
+// src/LLP/include/falcon_constants.h
+static const uint64_t TEMPLATE_HEARTBEAT_REFRESH_SECONDS = 480;  // fires at 8 min
+static const uint64_t MAX_TEMPLATE_AGE_SECONDS            = 600;  // hard cutoff at 10 min
+
+// src/LLP/include/mining_constants.h
+constexpr uint64_t HEARTBEAT_CHECK_INTERVAL_SECONDS = 60;         // check every 60 s
+```
+
+### Disabling the SIM-LINK Fallback
+
+To disable the cross-lane `FindSessionBlock` resolution path and test without it:
+
+```
+./nexus -deprecate-simlink-fallback=1
+```
+
+When set, block submissions on either lane that cannot find a local template will be
+**rejected outright** (no cross-lane lookup), matching the behaviour of the planned
+second-node failover model.
+
+---
+
 ## Architecture
 
 ### SIM Link Dual-Connection Model

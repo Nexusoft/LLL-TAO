@@ -129,13 +129,21 @@ The legacy lane (`Miner::handle_get_block_stateless()`) previously had no rate l
 
 ## Known Limitations (Exploratory PR)
 
-1. **Cross-lane SUBMIT_BLOCK resolution** — **RESOLVED**: `FindSessionBlock()` is now wired
+1. **Cross-lane SUBMIT_BLOCK resolution** — **RESOLVED (DEPRECATED)**: `FindSessionBlock()` is now wired
    into both SUBMIT_BLOCK handlers (`miner.cpp` and `stateless_miner_connection.cpp`).
    When the per-connection `mapBlocks` lookup misses, both handlers fall back to
    `StatelessMinerManager::Get().FindSessionBlock(nSessionId, hashMerkle)` before
    rejecting.  The cross-lane block is signed via the same
    `BuildSolvedPrimeCandidateFromTemplate` / `BuildSolvedHashCandidateFromTemplate` /
    `FinalizeWalletSignatureForSolvedBlock` helpers used by `sign_block()`.
+
+   > **⚠️ DEPRECATION NOTICE**: The SIM-LINK cross-lane fallback path (`FindSessionBlock`,
+   > `StoreSessionBlock`, `PruneSessionBlocks`) is scheduled for removal once the real
+   > second-node failover model (`DualConnectionManager`) is complete.  Operators should
+   > migrate to a dedicated failover node instead of relying on dual-lane SIM-LINK.
+   >
+   > To disable the cross-lane fallback today and test the new failover model, start the
+   > node with **`-deprecate-simlink-fallback=1`**.
 
 2. **Session limiter and block-map cleanup** — **RESOLVED**: `CleanupSessionScopedMaps()`
    is now implemented and called from `CleanupExpiredSessions()`.  It removes entries
