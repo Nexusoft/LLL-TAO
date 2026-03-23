@@ -370,7 +370,72 @@ TEST_CASE("SessionRecoveryManager Basic Tests", "[session_recovery]")
         REQUIRE(data.fAuthenticated == true);
     }
 
-    SECTION("SaveDisposableKey and UpdateLane preserve merge-managed recovery state")
+    SECTION("SaveSession with vDisposablePubKey in context persists the key for block submission")
+    {
+        /* Root cause regression test: when the auth flow embeds vDisposablePubKey in context
+         * before calling SaveSession (Fix 3), the recovery store should contain the key so
+         * RecoverSessionByIdentity returns it and mapSessionKeys can be repopulated. */
+        uint256_t testKeyId;
+        testKeyId.SetHex("abababababababababababababababababababababababababababababababab");
+
+        std::vector<uint8_t> vDisposablePubKey = {0x10, 0x11, 0x12, 0x13, 0x14};
+        uint256_t hashDisposableKeyId;
+        hashDisposableKeyId.SetHex("a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4");
+
+        MiningContext ctx = MiningContext()
+            .WithSession(777777)
+            .WithKeyId(testKeyId)
+            .WithAuth(true)
+            .WithDisposableKey(vDisposablePubKey, hashDisposableKeyId)
+            .WithProtocolLane(ProtocolLane::STATELESS);
+        ctx.strAddress = "10.0.0.1";
+
+        REQUIRE(manager.SaveSession(ctx) == true);
+
+        /* RecoverSession must return the disposable key */
+        MiningContext recovered;
+        REQUIRE(manager.RecoverSession(testKeyId, recovered) == true);
+        REQUIRE(recovered.vDisposablePubKey == vDisposablePubKey);
+        REQUIRE(recovered.hashDisposableKeyID == hashDisposableKeyId);
+
+        /* RecoverSessionByIdentity must also return it */
+        MiningContext live = MiningContext()
+            .WithSession(888888)
+            .WithKeyId(testKeyId)
+            .WithAuth(true)
+            .WithTimestamp(runtime::unifiedtimestamp());
+        live.strAddress = "10.0.0.1";
+
+        const auto optRecovered = manager.RecoverSessionByIdentity(live);
+        REQUIRE(optRecovered.has_value());
+        REQUIRE(optRecovered->vDisposablePubKey == vDisposablePubKey);
+
+        manager.RemoveSession(testKeyId);
+    }
+
+    SECTION("SaveDisposableKey called before SaveSession returns false (pre-existing behaviour)")
+    {
+        /* Regression guard for the root cause: SaveDisposableKey requires an existing session.
+         * This test documents that SaveDisposableKey alone (without a prior SaveSession) does
+         * NOT persist the key — hence the fix embeds the key in context before SaveSession. */
+        uint256_t testKeyId;
+        testKeyId.SetHex("cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd");
+
+        std::vector<uint8_t> vPubKey = {0x20, 0x21, 0x22};
+        uint256_t hashKeyId;
+        hashKeyId.SetHex("e1e2e3e4e1e2e3e4e1e2e3e4e1e2e3e4e1e2e3e4e1e2e3e4e1e2e3e4e1e2e3e4");
+
+        /* No SaveSession called first — SaveDisposableKey must return false */
+        REQUIRE(manager.SaveDisposableKey(testKeyId, vPubKey, hashKeyId) == false);
+
+        /* And there must be nothing to recover */
+        std::vector<uint8_t> vOut;
+        uint256_t hashOut;
+        REQUIRE(manager.RestoreDisposableKey(testKeyId, vOut, hashOut) == false);
+        REQUIRE(vOut.empty());
+    }
+
+
     {
         uint256_t testKeyId;
         testKeyId.SetHex("7777777777777777777777777777777777777777777777777777777777777777");
@@ -915,6 +980,52 @@ TEST_CASE("SessionRecoveryManager Basic Tests", "[session_recovery]")
         live.strAddress = "172.16.16.16";
 
         REQUIRE_FALSE(manager.RecoverSessionByIdentity(live).has_value());
+
+        manager.RemoveSession(testKeyId);
+    }
+
+    SECTION("RecoverSessionByIdentity preserves recovered disposable key when live context has no key")
+    {
+        /* Fix 1/Fix 2 regression test: when live context has no disposable key (fresh reconnect),
+         * the recovered snapshot's key must survive ResolveRecoveredSnapshot unchanged. */
+        uint256_t testKeyId;
+        testKeyId.SetHex("2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a");
+
+        uint256_t testGenesis;
+        testGenesis.SetHex("3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b");
+
+        std::vector<uint8_t> vStoredKey = {0xA1, 0xA2, 0xA3, 0xA4};
+        uint256_t hashStoredKeyId;
+        hashStoredKeyId.SetHex("b1b2b3b4b1b2b3b4b1b2b3b4b1b2b3b4b1b2b3b4b1b2b3b4b1b2b3b4b1b2b3b4");
+
+        /* Persist a session that includes a disposable key */
+        MiningContext storedCtx = MiningContext()
+            .WithChannel(2)
+            .WithSession(111111)
+            .WithKeyId(testKeyId)
+            .WithGenesis(testGenesis)
+            .WithAuth(true)
+            .WithDisposableKey(vStoredKey, hashStoredKeyId)
+            .WithTimestamp(runtime::unifiedtimestamp());
+        storedCtx.strAddress = "192.168.1.1";
+
+        REQUIRE(manager.SaveSession(storedCtx) == true);
+
+        /* Live context on reconnect: no disposable key, no ChaCha20 key */
+        MiningContext live = MiningContext()
+            .WithChannel(2)
+            .WithSession(222222)
+            .WithKeyId(testKeyId)
+            .WithGenesis(testGenesis)
+            .WithAuth(true)
+            .WithTimestamp(runtime::unifiedtimestamp());
+        live.strAddress = "192.168.1.1";
+
+        const auto optRecovered = manager.RecoverSessionByIdentity(live);
+        REQUIRE(optRecovered.has_value());
+        /* Key must be preserved from the stored snapshot */
+        REQUIRE(optRecovered->vDisposablePubKey == vStoredKey);
+        REQUIRE(optRecovered->hashDisposableKeyID == hashStoredKeyId);
 
         manager.RemoveSession(testKeyId);
     }

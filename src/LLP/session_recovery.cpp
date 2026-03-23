@@ -119,6 +119,23 @@ namespace LLP
                 if(liveContext.hashDisposableKeyID != 0)
                     resolved.hashDisposableKeyID = liveContext.hashDisposableKeyID;
             }
+            else if(!recovered.vDisposablePubKey.empty())
+            {
+                /* Live context lacks the key (e.g. fresh connection after reconnect) but the
+                 * recovered snapshot has it — keep it from resolved (already there via
+                 * resolved = recovered above).  Log at debug level for diagnostics. */
+                debug::log(2, FUNCTION, "Preserved disposable Falcon key from recovered snapshot for keyID=",
+                           liveContext.hashKeyID.SubString());
+            }
+            else
+            {
+                /* Fix 1: Neither live context nor recovered snapshot has the disposable Falcon key.
+                 * This should not happen if the auth flow correctly persists the key via SaveSession.
+                 * Log a warning so production logs surface this before the next SUBMIT_BLOCK. */
+                debug::warning(FUNCTION, "RECOVERY: Neither live context nor recovered snapshot has disposable "
+                               "Falcon key for keyID=", liveContext.hashKeyID.SubString(),
+                               ". Block submissions will fail until miner re-authenticates.");
+            }
 
             return resolved;
         }

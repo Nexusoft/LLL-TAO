@@ -748,9 +748,40 @@ namespace LLP
 
                     if(!optExisting->vDisposablePubKey.empty())
                     {
-                        std::lock_guard<std::mutex> lock(SESSION_MUTEX);
-                        if(optExisting->nSessionId != 0)
-                            mapSessionKeys[optExisting->nSessionId] = optExisting->vDisposablePubKey;
+                        {
+                            std::lock_guard<std::mutex> lock(SESSION_MUTEX);
+                            if(optExisting->nSessionId != 0)
+                                mapSessionKeys[optExisting->nSessionId] = optExisting->vDisposablePubKey;
+                        }
+                        /* Fix 2: Propagate recovered key into context so SaveSession re-persists it */
+                        context = context.WithDisposableKey(optExisting->vDisposablePubKey,
+                                                            optExisting->hashDisposableKeyID);
+                    }
+                    else
+                    {
+                        /* Fix 2: Fallback — try RestoreDisposableKey independently in case the
+                         * recovery container lost the key. */
+                        std::vector<uint8_t> vFallbackPubKey;
+                        uint256_t hashFallbackKeyID;
+                        if(context.hashKeyID != 0 &&
+                           SessionRecoveryManager::Get().RestoreDisposableKey(
+                               context.hashKeyID, vFallbackPubKey, hashFallbackKeyID) &&
+                           !vFallbackPubKey.empty())
+                        {
+                            {
+                                std::lock_guard<std::mutex> lock(SESSION_MUTEX);
+                                if(optExisting->nSessionId != 0)
+                                    mapSessionKeys[optExisting->nSessionId] = vFallbackPubKey;
+                            }
+                            context = context.WithDisposableKey(vFallbackPubKey, hashFallbackKeyID);
+                            debug::log(0, FUNCTION, "  Fallback: restored disposable Falcon key from dedicated key store");
+                        }
+                        else
+                        {
+                            debug::error(FUNCTION, "  ERROR: disposable Falcon key lost after recovery — block submissions will fail");
+                            debug::error(FUNCTION, "  keyID=", FullHexOrUnset(context.hashKeyID));
+                            debug::error(FUNCTION, "  Miner must re-authenticate to restore block submission capability");
+                        }
                     }
 
                     debug::log(0, FUNCTION, "Session recovered from lane switch");
@@ -759,7 +790,7 @@ namespace LLP
                     debug::log(0, FUNCTION, "  recovered session genesis: ", FullHexOrUnset(optExisting->hashGenesis));
                     debug::log(0, FUNCTION, "  recovered reward hash: ", FullHexOrUnset(optExisting->hashRewardAddress));
                     debug::log(0, FUNCTION, "  recovered ChaCha20 key hash: ", FullHexOrUnset(optExisting->hashChaCha20Key));
-                    debug::log(0, FUNCTION, "  recovered disposable Falcon key present: ", YesNo(!optExisting->vDisposablePubKey.empty()));
+                    debug::log(0, FUNCTION, "  recovered disposable Falcon key present: ", YesNo(!context.vDisposablePubKey.empty()));
                 }
                 
                 /* Subscribe to notifications (same logic as 8-bit MINER_READY) */
@@ -829,6 +860,23 @@ namespace LLP
                 }
                 SendStatelessTemplate();
                 debug::log(0, FUNCTION, "✓ Recovery template delivered via STATELESS_MINER_READY push — miner should resume mining");
+
+                /* Fix 4: Diagnostic assertion — verify mapSessionKeys is populated after recovery.
+                 * A missing key here means SUBMIT_BLOCK signature verification will fail silently. */
+                {
+                    std::lock_guard<std::mutex> lock(SESSION_MUTEX);
+                    const auto itKey = mapSessionKeys.find(context.nSessionId);
+                    const bool fKeyPresent = (itKey != mapSessionKeys.end() && !itKey->second.empty());
+                    if(!fKeyPresent && context.nSessionId != 0)
+                    {
+                        debug::error(FUNCTION, "⚠ CRITICAL: mapSessionKeys empty after STATELESS_MINER_READY recovery — block submissions will fail");
+                        debug::error(FUNCTION, "  session_id=", context.nSessionId, " key_id=", FullHexOrUnset(context.hashKeyID));
+                    }
+                    else if(context.nSessionId != 0)
+                    {
+                        debug::log(1, FUNCTION, "✓ Diagnostic: disposable Falcon key verified in mapSessionKeys for session ", context.nSessionId);
+                    }
+                }
 
                 debug::log(2, "📥 === STATELESS_MINER_READY: SUCCESS ===");
                 return true;
@@ -2299,9 +2347,40 @@ namespace LLP
 
                     if(!optExisting->vDisposablePubKey.empty())
                     {
-                        std::lock_guard<std::mutex> lock(SESSION_MUTEX);
-                        if(optExisting->nSessionId != 0)
-                            mapSessionKeys[optExisting->nSessionId] = optExisting->vDisposablePubKey;
+                        {
+                            std::lock_guard<std::mutex> lock(SESSION_MUTEX);
+                            if(optExisting->nSessionId != 0)
+                                mapSessionKeys[optExisting->nSessionId] = optExisting->vDisposablePubKey;
+                        }
+                        /* Fix 2: Propagate recovered key into context so SaveSession re-persists it */
+                        context = context.WithDisposableKey(optExisting->vDisposablePubKey,
+                                                            optExisting->hashDisposableKeyID);
+                    }
+                    else
+                    {
+                        /* Fix 2: Fallback — try RestoreDisposableKey independently in case the
+                         * recovery container lost the key. */
+                        std::vector<uint8_t> vFallbackPubKey;
+                        uint256_t hashFallbackKeyID;
+                        if(context.hashKeyID != 0 &&
+                           SessionRecoveryManager::Get().RestoreDisposableKey(
+                               context.hashKeyID, vFallbackPubKey, hashFallbackKeyID) &&
+                           !vFallbackPubKey.empty())
+                        {
+                            {
+                                std::lock_guard<std::mutex> lock(SESSION_MUTEX);
+                                if(optExisting->nSessionId != 0)
+                                    mapSessionKeys[optExisting->nSessionId] = vFallbackPubKey;
+                            }
+                            context = context.WithDisposableKey(vFallbackPubKey, hashFallbackKeyID);
+                            debug::log(0, FUNCTION, "  Fallback: restored disposable Falcon key from dedicated key store");
+                        }
+                        else
+                        {
+                            debug::error(FUNCTION, "  ERROR: disposable Falcon key lost after recovery — block submissions will fail");
+                            debug::error(FUNCTION, "  keyID=", FullHexOrUnset(context.hashKeyID));
+                            debug::error(FUNCTION, "  Miner must re-authenticate to restore block submission capability");
+                        }
                     }
 
                     debug::log(0, FUNCTION, "Session recovered from lane switch");
@@ -2310,7 +2389,7 @@ namespace LLP
                     debug::log(0, FUNCTION, "  recovered session genesis: ", FullHexOrUnset(optExisting->hashGenesis));
                     debug::log(0, FUNCTION, "  recovered reward hash: ", FullHexOrUnset(optExisting->hashRewardAddress));
                     debug::log(0, FUNCTION, "  recovered ChaCha20 key hash: ", FullHexOrUnset(optExisting->hashChaCha20Key));
-                    debug::log(0, FUNCTION, "  recovered disposable Falcon key present: ", YesNo(!optExisting->vDisposablePubKey.empty()));
+                    debug::log(0, FUNCTION, "  recovered disposable Falcon key present: ", YesNo(!context.vDisposablePubKey.empty()));
                 }
                 
                 /* Subscribe to notifications */
@@ -2518,15 +2597,6 @@ namespace LLP
                         
                         mapSessionKeys[result.context.nSessionId] = result.context.vMinerPubKey;
 
-                        if(result.context.hashKeyID != 0)
-                        {
-                            SessionRecoveryManager::Get().SaveDisposableKey(
-                                result.context.hashKeyID,
-                                result.context.vMinerPubKey,
-                                LLC::SK256(result.context.vMinerPubKey)
-                            );
-                        }
-                        
                         debug::log(1, FUNCTION, "✓ Extracted and stored miner's Falcon pubkey for session 0x",
                                   std::hex, result.context.nSessionId, std::dec,
                                   " (", result.context.vMinerPubKey.size(), " bytes)");
@@ -2602,6 +2672,19 @@ namespace LLP
                 /* Persist session and lane state for cross-lane recovery */
                 if(context.fAuthenticated && context.hashKeyID != 0)
                 {
+                    /* CRITICAL (Fix 3): Ensure vDisposablePubKey is included in context before
+                     * SaveSession so the recovery cache is created with the Falcon pubkey.
+                     * SaveDisposableKey cannot be called before SaveSession (no session exists
+                     * yet at that point), so we embed the key in context here instead. */
+                    if(PACKET.HEADER == MINER_AUTH_RESPONSE &&
+                       !context.vMinerPubKey.empty() &&
+                       context.vDisposablePubKey.empty())
+                    {
+                        context = context.WithDisposableKey(context.vMinerPubKey,
+                                                            LLC::SK256(context.vMinerPubKey));
+                        debug::log(1, FUNCTION, "✓ Embedded disposable Falcon key in context for session recovery persistence");
+                    }
+
                     SessionRecoveryManager::Get().SaveSession(context);
                     SessionRecoveryManager::Get().UpdateLane(context.hashKeyID, 1);
                     if(context.fEncryptionReady && !context.vChaChaKey.empty())
@@ -2615,7 +2698,7 @@ namespace LLP
                 /* CRITICAL: This must be done AFTER ChaCha20 key derivation to ensure
                  * StatelessMinerManager has the complete encryption state */
                 StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
-                
+
                 /* Log session registration for auth packets */
                 if(PACKET.HEADER == MINER_AUTH_RESPONSE && context.fAuthenticated)
                 {
