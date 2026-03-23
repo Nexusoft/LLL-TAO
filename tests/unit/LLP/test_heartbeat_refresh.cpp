@@ -141,6 +141,7 @@ TEST_CASE("SIM-LINK: -deprecate-simlink-fallback config flag", "[heartbeat][depr
 }
 
 
+
 //=============================================================================
 // Section 4: Dry spell detection warning thresholds (documented contract)
 //=============================================================================
@@ -175,5 +176,40 @@ TEST_CASE("Heartbeat dry spell warning thresholds are sane", "[heartbeat][thresh
         constexpr uint64_t CRITICAL_THRESHOLD = 550u;
         REQUIRE(CRITICAL_THRESHOLD > FalconConstants::TEMPLATE_HEARTBEAT_REFRESH_SECONDS);
         REQUIRE(CRITICAL_THRESHOLD < FalconConstants::MAX_TEMPLATE_AGE_SECONDS);
+    }
+}
+
+
+//=============================================================================
+// Section 5: BroadcastChannel fHeartbeat parameter — documented contract
+//=============================================================================
+
+TEST_CASE("BroadcastChannel: fHeartbeat parameter is accepted without crash",
+          "[heartbeat][broadcast]")
+{
+    /* BroadcastChannel is a private static helper called by HeartbeatRefreshCheck.
+     * When fHeartbeat=false (default) it behaves like a normal push.
+     * When fHeartbeat=true it additionally:
+     *   - Adds a [HEARTBEAT] annotation to the summary log line.
+     *   - Passes fHeartbeat=true to NotifyChannelMiners() on each server, which
+     *     in turn calls PrepareHeartbeatNotification() on each eligible connection
+     *     before SendChannelNotification() — resetting m_force_next_push and
+     *     m_get_block_cooldown so the push and subsequent GET_BLOCK are unthrottled.
+     *
+     * With no servers running (STATELESS_MINER_SERVER and MINING_SERVER are null),
+     * HeartbeatRefreshCheck and its BroadcastChannel call-through must be safe no-ops.
+     */
+
+    SECTION("HeartbeatRefreshCheck compiles and runs cleanly (no servers running)")
+    {
+        /* HeartbeatRefreshCheck skips channels with zero dispatch time, so this is
+         * a no-op — but it confirms the fHeartbeat=true call chain compiles. */
+        REQUIRE_NOTHROW(MinerPushDispatcher::HeartbeatRefreshCheck());
+    }
+
+    SECTION("Multiple HeartbeatRefreshCheck calls are safe (no servers running)")
+    {
+        for(int i = 0; i < 3; ++i)
+            REQUIRE_NOTHROW(MinerPushDispatcher::HeartbeatRefreshCheck());
     }
 }

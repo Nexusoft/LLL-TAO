@@ -591,6 +591,24 @@ namespace LLP
         void SendChannelNotification();
 
 
+        /** PrepareHeartbeatNotification
+         *
+         *  Reset per-connection state so that the imminent heartbeat push notification
+         *  and the miner's subsequent GET_BLOCK are both served without rate-limiting.
+         *
+         *  Sets m_force_next_push = true (bypasses TEMPLATE_PUSH_MIN_INTERVAL_MS
+         *  throttle in SendChannelNotification) and reassigns m_get_block_cooldown
+         *  to the "never triggered" state (Ready() returns true immediately) so
+         *  the miner's first GET_BLOCK after the heartbeat push is not deferred by
+         *  the 2-second per-connection floor.
+         *
+         *  Must be called under no external locks; acquires MUTEX internally.
+         *  Called from Server::NotifyChannelMiners() when fHeartbeat=true.
+         *
+         **/
+        void PrepareHeartbeatNotification();
+
+
     private:
 
         /** respond

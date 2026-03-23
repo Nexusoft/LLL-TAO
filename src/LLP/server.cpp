@@ -453,7 +453,7 @@ namespace LLP
 
     /*  Broadcast channel-specific notification to subscribed miners on this lane. */
     template <class ProtocolType>
-    uint32_t Server<ProtocolType>::NotifyChannelMiners(uint32_t nChannel)
+    uint32_t Server<ProtocolType>::NotifyChannelMiners(uint32_t nChannel, bool fHeartbeat)
     {
         /* Use compile-time check to only execute for protocols that support mining notifications */
         if constexpr (has_mining_notifications_v<ProtocolType>)
@@ -477,7 +477,8 @@ namespace LLP
             }
             
             const std::string strChannelName = (nChannel == 1) ? "Prime" : "Hash";
-            debug::log(1, FUNCTION, "[", strLane, "][", strChannelName, "] Broadcasting block notification");
+            debug::log(1, FUNCTION, "[", strLane, "][", strChannelName, "] Broadcasting block notification",
+                       (fHeartbeat ? " [HEARTBEAT]" : ""));
             
             /* Get all connections */
             std::vector<std::shared_ptr<ProtocolType>> vConnections = GetConnections();
@@ -528,6 +529,17 @@ namespace LLP
                     continue;  // Wrong channel; skip to avoid duplicate notifications
                 }
                 
+                /* Heartbeat path: reset per-connection rate-limit state before sending so
+                 * that the push notification bypasses TEMPLATE_PUSH_MIN_INTERVAL_MS and
+                 * the miner's subsequent GET_BLOCK is not deferred by the 2-second cooldown
+                 * floor.  This is the same state reset that MINER_READY performs, applied
+                 * proactively by the heartbeat refresh. */
+                if (fHeartbeat)
+                {
+                    if constexpr (is_miner_protocol_v<ProtocolType>)
+                        pConnection->PrepareHeartbeatNotification();
+                }
+
                 /* Send notification — exactly once per miner per event per lane */
                 pConnection->SendChannelNotification();
                 nNotified++;

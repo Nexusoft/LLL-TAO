@@ -48,26 +48,28 @@ namespace LLP
     /* BroadcastChannel — send one channel notification to both lanes. */
     void MinerPushDispatcher::BroadcastChannel(uint32_t nChannel,
                                                uint32_t nHeight,
-                                               uint32_t hashPrefix4)
+                                               uint32_t hashPrefix4,
+                                               bool fHeartbeat)
     {
         const char* strChannel = (nChannel == 1) ? "Prime" : "Hash";
 
         /* Stateless lane */
         uint32_t nStateless = 0;
         if (LLP::STATELESS_MINER_SERVER)
-            nStateless = LLP::STATELESS_MINER_SERVER->NotifyChannelMiners(nChannel);
+            nStateless = LLP::STATELESS_MINER_SERVER->NotifyChannelMiners(nChannel, fHeartbeat);
         else
             debug::log(1, FUNCTION, "[PUSH][Stateless][", strChannel, "] Server not active");
 
         /* Legacy lane */
         uint32_t nLegacy = 0;
         if (LLP::MINING_SERVER)
-            nLegacy = LLP::MINING_SERVER->NotifyChannelMiners(nChannel);
+            nLegacy = LLP::MINING_SERVER->NotifyChannelMiners(nChannel, fHeartbeat);
         else
             debug::log(1, FUNCTION, "[PUSH][Legacy][", strChannel, "] Server not active");
 
         /* Summary: one line confirms dedup and exact send counts for this channel. */
         debug::log(0, FUNCTION,
+                   (fHeartbeat ? "[HEARTBEAT]" : ""),
                    "[PUSH][", strChannel, "] height=", nHeight,
                    " hash=", std::hex, hashPrefix4, std::dec,
                    " | Stateless=", nStateless, " Legacy=", nLegacy,
@@ -216,7 +218,7 @@ namespace LLP
             const uint32_t nHashPrefix4 = static_cast<uint32_t>(
                 hashBestChain.Get64(0) & 0xffffffffULL);
 
-            BroadcastChannel(ch.nChannel, nHeight, nHashPrefix4);
+            BroadcastChannel(ch.nChannel, nHeight, nHashPrefix4, true /* fHeartbeat */);
         }
     }
 
