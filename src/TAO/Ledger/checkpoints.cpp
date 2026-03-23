@@ -91,20 +91,33 @@ namespace TAO
 
             /* Check The Block Hash */
             BlockState check = state;
+            uint32_t nWalkDepth = 0;
             while(!check.IsNull())
             {
                 /* Check that checkpoint exists in the map. */
                 if(ChainState::hashCheckpoint.load() == check.hashCheckpoint)
                     return true;
 
-                /* Break when new height is found. */
-                if(state.nHeight < ChainState::nCheckpointHeight.load())
+                /* Break when the walking pointer drops below the checkpoint height. */
+                if(check.nHeight < ChainState::nCheckpointHeight.load())
+                {
+                    debug::log(2, FUNCTION, "IsDescendant FAILED: block height=", state.nHeight,
+                        " walked to height=", check.nHeight,
+                        " below checkpointHeight=", ChainState::nCheckpointHeight.load(),
+                        " checkpoint=", ChainState::hashCheckpoint.load().SubString(),
+                        " walkDepth=", nWalkDepth);
                     return false;
+                }
 
                 /* Iterate backwards. */
                 check = check.Prev();
+                ++nWalkDepth;
             }
 
+            debug::log(2, FUNCTION, "IsDescendant FAILED: block height=", state.nHeight,
+                " backward walk exhausted (null block) after ", nWalkDepth, " steps",
+                " checkpoint=", ChainState::hashCheckpoint.load().SubString(),
+                " checkpointHeight=", ChainState::nCheckpointHeight.load());
             return false;
         }
 
