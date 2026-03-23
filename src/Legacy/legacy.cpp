@@ -500,7 +500,41 @@ namespace Legacy
 
         /* Check that Block is Descendant of Hardened Checkpoints. */
         if(!TAO::Ledger::IsDescendant(statePrev))
-            return debug::error(FUNCTION, "not descendant of last checkpoint");
+        {
+            /* Diagnostic: check if in-memory checkpoint is stale relative to on-disk best state */
+            TAO::Ledger::BlockState stateBestDisk;
+            if(LLD::Ledger->ReadBlock(TAO::Ledger::ChainState::hashBestChain.load(), stateBestDisk) &&
+               stateBestDisk.hashCheckpoint != TAO::Ledger::ChainState::hashCheckpoint.load())
+            {
+                debug::error(FUNCTION, "CHECKPOINT STALE: in-memory=",
+                    TAO::Ledger::ChainState::hashCheckpoint.load().SubString(),
+                    " on-disk best=", stateBestDisk.hashCheckpoint.SubString(),
+                    " — repairing from on-disk state");
+
+                /* Repair: re-derive checkpoint from on-disk best state */
+                const uint1024_t hashCheckpointOld = TAO::Ledger::ChainState::hashCheckpoint.load();
+                TAO::Ledger::ChainState::hashCheckpoint = stateBestDisk.hashCheckpoint;
+
+                TAO::Ledger::BlockState stateCheckpoint;
+                if(!LLD::Ledger->ReadBlock(stateBestDisk.hashCheckpoint, stateCheckpoint))
+                {
+                    /* Restore old checkpoint to avoid partial update. */
+                    TAO::Ledger::ChainState::hashCheckpoint = hashCheckpointOld;
+                    return debug::error(FUNCTION, "not descendant of last checkpoint (repair failed: could not read checkpoint block)");
+                }
+                TAO::Ledger::ChainState::nCheckpointHeight = stateCheckpoint.nHeight;
+
+                /* Retry the descendant check with repaired checkpoint */
+                if(!TAO::Ledger::IsDescendant(statePrev))
+                    return debug::error(FUNCTION, "not descendant of last checkpoint (even after repair)");
+
+                debug::log(0, FUNCTION, "Checkpoint repair SUCCESS — block passes descendant check after repair");
+            }
+            else
+            {
+                return debug::error(FUNCTION, "not descendant of last checkpoint");
+            }
+        }
 
         /* Check the block proof of work rewards. */
         if(IsProofOfWork() && nVersion != 2 && nHeight != 2061881 && nHeight != 2191756)

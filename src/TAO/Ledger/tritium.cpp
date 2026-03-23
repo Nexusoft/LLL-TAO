@@ -625,7 +625,41 @@ namespace TAO
             /* Check that Block is Descendant of Hardened Checkpoints. */
             #ifndef UNIT_TESTS
             if(!ChainState::Synchronizing() && !IsDescendant(statePrev))
-                return debug::error(FUNCTION, "not descendant of last checkpoint");
+            {
+                /* Diagnostic: check if in-memory checkpoint is stale relative to on-disk best state */
+                BlockState stateBestDisk;
+                if(LLD::Ledger->ReadBlock(ChainState::hashBestChain.load(), stateBestDisk) &&
+                   stateBestDisk.hashCheckpoint != ChainState::hashCheckpoint.load())
+                {
+                    debug::error(FUNCTION, "CHECKPOINT STALE: in-memory=",
+                        ChainState::hashCheckpoint.load().SubString(),
+                        " on-disk best=", stateBestDisk.hashCheckpoint.SubString(),
+                        " — repairing from on-disk state");
+
+                    /* Repair: re-derive checkpoint from on-disk best state */
+                    const uint1024_t hashCheckpointOld = ChainState::hashCheckpoint.load();
+                    ChainState::hashCheckpoint = stateBestDisk.hashCheckpoint;
+
+                    BlockState stateCheckpoint;
+                    if(!LLD::Ledger->ReadBlock(stateBestDisk.hashCheckpoint, stateCheckpoint))
+                    {
+                        /* Restore old checkpoint to avoid partial update. */
+                        ChainState::hashCheckpoint = hashCheckpointOld;
+                        return debug::error(FUNCTION, "not descendant of last checkpoint (repair failed: could not read checkpoint block)");
+                    }
+                    ChainState::nCheckpointHeight = stateCheckpoint.nHeight;
+
+                    /* Retry the descendant check with repaired checkpoint */
+                    if(!IsDescendant(statePrev))
+                        return debug::error(FUNCTION, "not descendant of last checkpoint (even after repair)");
+
+                    debug::log(0, FUNCTION, "Checkpoint repair SUCCESS — block passes descendant check after repair");
+                }
+                else
+                {
+                    return debug::error(FUNCTION, "not descendant of last checkpoint");
+                }
+            }
             #endif
 
             /* Validate proof of stake. */

@@ -1043,7 +1043,17 @@ namespace TAO
 
                     /* Harden a checkpoint if there is any. */
                     #ifndef UNIT_TESTS
-                    HardenCheckpoint(Prev());
+                    {
+                        const uint1024_t hashCheckpointBefore = ChainState::hashCheckpoint.load();
+                        HardenCheckpoint(Prev());
+                        const uint1024_t hashCheckpointAfter = ChainState::hashCheckpoint.load();
+                        if(hashCheckpointBefore != hashCheckpointAfter)
+                        {
+                            debug::log(0, FUNCTION, "Checkpoint hardened: ",
+                                hashCheckpointBefore.SubString(), " -> ", hashCheckpointAfter.SubString(),
+                                " at height ", ChainState::nCheckpointHeight.load());
+                        }
+                    }
                     #endif
 
                     /* Debug output if we are debugging reorgs */
