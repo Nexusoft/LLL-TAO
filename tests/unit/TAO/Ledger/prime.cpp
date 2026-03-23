@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/prime.h>
 #include <unit/catch2/catch.hpp>
 #include <openssl/bn.h>
+#include <cstring>
 
 
 const LLC::CBigNum bnPrimes[11] = { 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31 };
@@ -137,7 +138,7 @@ TEST_CASE( "Prime Tests", "[Ledger]")
 
         REQUIRE(TAO::Ledger::GetFractionalDifficulty(bn1) == GetFractionalDifficulty2(bn2));
 
-        REQUIRE(TAO::Ledger::GetPrimeBits(bn1) == GetPrimeBits2(bn2));
+        REQUIRE(TAO::Ledger::GetPrimeBits(bn1, {}) == GetPrimeBits2(bn2));
     }
 
 }
@@ -209,5 +210,57 @@ TEST_CASE("PrimeCheck uses Miller-Rabin validation", "[prime][miller-rabin]")
         REQUIRE(TAO::Ledger::PrimeCheck(comp15) == false);
         REQUIRE(TAO::Ledger::PrimeCheck(comp100) == false);
         REQUIRE(TAO::Ledger::PrimeCheck(comp1001) == false);
+    }
+}
+
+
+TEST_CASE("GetPrimeDifficulty 4-byte fractional round-trip", "[prime][roundtrip]")
+{
+    SECTION("GetOffsets writes 4 bytes and GetPrimeDifficulty accepts them with fVerify=true")
+    {
+        /* 541 is prime; use it as a chain start */
+        uint1024_t knownPrime = 541;
+
+        std::vector<uint8_t> vOffsets;
+        TAO::Ledger::GetOffsets(knownPrime, vOffsets);
+
+        /* vOffsets must contain at least the 4 fractional bytes */
+        REQUIRE(vOffsets.size() >= 4);
+
+        /* GetPrimeDifficulty must accept the offsets written by GetOffsets */
+        double fDiff = TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, true);
+        REQUIRE(fDiff > 0.0);
+    }
+
+    SECTION("nFraction high byte is read correctly (4-byte read, not 3)")
+    {
+        /* Use a known prime to get a valid vOffsets skeleton */
+        uint1024_t knownPrime = 541;
+
+        std::vector<uint8_t> vOffsets;
+        TAO::Ledger::GetOffsets(knownPrime, vOffsets);
+
+        REQUIRE(vOffsets.size() >= 4);
+
+        /* Overwrite the last 4 bytes with a value whose high byte is non-zero.
+         * With the old buggy std::copy (half-open range stops 1 byte short),
+         * nFraction would read only 3 bytes -> 0x00020304 (high byte stays 0).
+         * With the fix (std::memcpy 4 bytes), nFraction = 0x01020304. */
+        uint32_t nFractionExpected = 0x01020304u;
+        std::memcpy(&vOffsets[vOffsets.size() - 4], &nFractionExpected, 4);
+
+        /* fVerify=false skips the fractional cross-check so we can isolate the read */
+        double fDiff = TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, false);
+
+        /* Expected fractional remainder: 1000000 / 0x01020304 ~= 0.0591, in [0, 1) */
+        double fExpectedRemainder = 1000000.0 / static_cast<double>(nFractionExpected);
+        REQUIRE(fExpectedRemainder > 0.0);
+        REQUIRE(fExpectedRemainder < 1.0);
+
+        /* For prime 541 the chain loop runs 0 times, so nClusterSize == 1 */
+        double fFrac = fDiff - 1.0;
+
+        /* Fractional part must match the 4-byte value we wrote */
+        REQUIRE(std::abs(fFrac - fExpectedRemainder) < 1e-6);
     }
 }
