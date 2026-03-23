@@ -328,6 +328,7 @@ ifdef UNIT_TESTS
 		   build/Tests_LLP_packet_round_response.o \
 		   build/Tests_LLP_push_notification_tests.o \
 		   build/Tests_LLP_push_throttle_test.o \
+		   build/Tests_LLP_burst_mode_push_notification_test.o \
 		   build/Tests_LLP_keepalive_v2_tests.o \
 		   build/Tests_LLP_rate_limiting_tests.o \
 		   build/Tests_LLP_test_get_block_response_contract.o \
