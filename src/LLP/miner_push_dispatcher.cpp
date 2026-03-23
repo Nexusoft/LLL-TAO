@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 #include <LLP/include/falcon_constants.h>
 #include <LLP/include/mining_constants.h>
+#include <LLP/include/push_notification.h>
 
 #include <TAO/Ledger/include/chainstate.h>
 
@@ -203,13 +204,17 @@ namespace LLP
                 "re-pushing current template to all subscribed miners");
 
             /* Read current chain state for logging height/hash in BroadcastChannel.
+             * Load both from the same tStateBest snapshot to keep height and hash
+             * consistent even if the chain tip advances between two separate loads.
              * SendChannelNotification() re-reads chain state independently, so this
              * snapshot is only used for the log line — correctness is unaffected. */
             const TAO::Ledger::BlockState stateBest =
                 TAO::Ledger::ChainState::tStateBest.load();
             const uint32_t nHeight      = stateBest.nHeight;
+            const uint1024_t hashBestChain =
+                PushNotificationBuilder::BestChainHashForNotification(stateBest);
             const uint32_t nHashPrefix4 = static_cast<uint32_t>(
-                TAO::Ledger::ChainState::hashBestChain.load().Get64(0) & 0xffffffffULL);
+                hashBestChain.Get64(0) & 0xffffffffULL);
 
             BroadcastChannel(ch.nChannel, nHeight, nHashPrefix4);
         }
