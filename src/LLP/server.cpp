@@ -32,6 +32,8 @@ ________________________________________________________________________________
 #include <LLP/include/stateless_manager.h>
 #include <LLP/include/session_recovery.h>
 #include <LLP/include/node_session_registry.h>
+#include <LLP/include/miner_push_dispatcher.h>
+#include <LLP/include/mining_constants.h>
 
 #include <Util/include/args.h>
 #include <Util/include/signals.h>
@@ -213,8 +215,11 @@ namespace LLP
             }
         }
 
-        /* Start meters if enabled. */
-        if(CONFIG.ENABLE_METERS)
+        /* Start meters if enabled.
+         * For miner protocols, always start the Meter thread (even without -meters) because
+         * it drives the heartbeat template refresh that prevents miners from entering
+         * degraded mode during dry spells. */
+        if(CONFIG.ENABLE_METERS || is_miner_protocol_v<ProtocolType>)
             THREAD_METER = std::thread(std::bind(&Server::Meter, this));
     }
 
@@ -1154,22 +1159,48 @@ namespace LLP
     template <class ProtocolType>
     void Server<ProtocolType>::Meter()
     {
-        /* Exit if not enabled. */
-        if(!CONFIG.ENABLE_METERS)
+        /* For miner protocols the Meter thread always runs (even without -meters) to
+         * drive the heartbeat template refresh.  For all other protocol types, exit
+         * early when meters are disabled (preserving the original behaviour). */
+        if(!CONFIG.ENABLE_METERS && !is_miner_protocol_v<ProtocolType>)
             return;
 
         /* Keep track of elapsed time. */
         runtime::timer TIMER;
-        TIMER.Start();
+        if(CONFIG.ENABLE_METERS)
+            TIMER.Start();
         
         /* Keep track of cleanup timer (60 seconds for AutoCooldownManager) */
         runtime::timer CLEANUP_TIMER;
         CLEANUP_TIMER.Start();
 
+        /* Heartbeat timer — fires HeartbeatRefreshCheck() every
+         * HEARTBEAT_CHECK_INTERVAL_SECONDS for miner protocols. */
+        runtime::timer HEARTBEAT_TIMER;
+        if constexpr (is_miner_protocol_v<ProtocolType>)
+            HEARTBEAT_TIMER.Start();
+
         /* Loop until shutdown. */
         while(!config::fShutdown.load())
         {
             runtime::sleep(100);
+
+            /* Proactive template heartbeat refresh for miner protocols.
+             * Runs regardless of ENABLE_METERS and before the zero-connection
+             * skip so that a connected-but-idle miner still receives refreshes. */
+            if constexpr (is_miner_protocol_v<ProtocolType>)
+            {
+                if(HEARTBEAT_TIMER.Elapsed() >= MiningConstants::HEARTBEAT_CHECK_INTERVAL_SECONDS)
+                {
+                    MinerPushDispatcher::HeartbeatRefreshCheck();
+                    HEARTBEAT_TIMER.Reset();
+                }
+            }
+
+            /* Skip metric logging if meters are disabled */
+            if(!CONFIG.ENABLE_METERS)
+                continue;
+
             if(TIMER.Elapsed() < 30)
                 continue;
 

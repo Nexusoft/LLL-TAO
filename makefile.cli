@@ -342,6 +342,7 @@ ifdef UNIT_TESTS
 		   build/Tests_LLP_test_stateless_miner_crypto.o \
 		   build/Tests_LLP_test_simlink_session_rate_limiter.o \
 		   build/Tests_LLP_node_integration_hardening.o \
+		   build/Tests_LLP_test_heartbeat_refresh.o \
 		   build/Tests_LLP_session_management_comprehensive.o \
 		   build/Tests_LLP_prime_sign_finalization_tests.o \
 		   build/Tests_LLP_hash_sign_finalization_tests.o \

@@ -13,9 +13,14 @@ ________________________________________________________________________________
 
 #include <LLP/include/miner_push_dispatcher.h>
 #include <LLP/include/global.h>
+#include <LLP/include/falcon_constants.h>
+#include <LLP/include/mining_constants.h>
+
+#include <TAO/Ledger/include/chainstate.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/config.h>
+#include <Util/include/runtime.h>
 #include <vector>
 namespace LLP
 {
@@ -25,6 +30,11 @@ namespace LLP
      * Initial value 0 ensures first real dispatch always proceeds. */
     std::atomic<uint64_t> MinerPushDispatcher::s_nPrimeDedup{0};
     std::atomic<uint64_t> MinerPushDispatcher::s_nHashDedup{0};
+
+    /* Per-channel UNIX timestamps of the last successful push dispatch.
+     * Zero = never dispatched (skip heartbeat until first real push fires). */
+    std::atomic<uint64_t> MinerPushDispatcher::s_nLastPrimeDispatchTime{0};
+    std::atomic<uint64_t> MinerPushDispatcher::s_nLastHashDispatchTime{0};
 
 
     /* Pack (height, hashPrefix4) into a single 64-bit dedup key. */
@@ -78,6 +88,7 @@ namespace LLP
             static_cast<uint32_t>(hashBestChain.Get64(0) & 0xffffffffULL);
 
         const uint64_t nNewKey = make_dedup_key(nHeight, hashPrefix4);
+        const uint64_t nNow    = runtime::unifiedtimestamp();
 
         /* --- Prime channel dedup --- */
         {
@@ -88,6 +99,7 @@ namespace LLP
                                                       std::memory_order_relaxed))
             {
                 BroadcastChannel(1 /* Prime */, nHeight, hashPrefix4);
+                s_nLastPrimeDispatchTime.store(nNow, std::memory_order_release);
             }
             else if (nOldPrime == nNewKey)
             {
@@ -106,6 +118,7 @@ namespace LLP
                                                      std::memory_order_relaxed))
             {
                 BroadcastChannel(2 /* Hash */, nHeight, hashPrefix4);
+                s_nLastHashDispatchTime.store(nNow, std::memory_order_release);
             }
             else if (nOldHash == nNewKey)
             {
@@ -113,6 +126,92 @@ namespace LLP
                            "[PUSH][Hash] Dedup: already dispatched for height=", nHeight,
                            " hash=", std::hex, hashPrefix4, std::dec, "; skipping");
             }
+        }
+    }
+
+
+    /* HeartbeatRefreshCheck — proactively re-push templates during dry spells. */
+    void MinerPushDispatcher::HeartbeatRefreshCheck()
+    {
+        if(config::fShutdown.load())
+            return;
+
+        const uint64_t nNow = runtime::unifiedtimestamp();
+
+        /* Per-channel state table for concise iteration */
+        struct ChannelEntry {
+            uint32_t                  nChannel;
+            std::atomic<uint64_t>&    nLastTime;
+            const char*               strName;
+        };
+
+        ChannelEntry channels[] = {
+            { 1, s_nLastPrimeDispatchTime, "Prime" },
+            { 2, s_nLastHashDispatchTime,  "Hash"  }
+        };
+
+        for(auto& ch : channels)
+        {
+            const uint64_t nLastTime = ch.nLastTime.load(std::memory_order_acquire);
+
+            /* Skip if no dispatch has ever been made (node just started). */
+            if(nLastTime == 0)
+                continue;
+
+            const uint64_t nElapsed = (nNow > nLastTime) ? (nNow - nLastTime) : 0;
+
+            /* Operator-visible dry spell warnings before the heartbeat fires */
+            if(nElapsed >= 550)
+            {
+                debug::log(0, FUNCTION,
+                    "[HEARTBEAT][", ch.strName, "] CRITICAL: No push in ", nElapsed,
+                    "s — heartbeat refresh fires at ",
+                    FalconConstants::TEMPLATE_HEARTBEAT_REFRESH_SECONDS, "s");
+            }
+            else if(nElapsed >= 450)
+            {
+                debug::log(0, FUNCTION,
+                    "[HEARTBEAT][", ch.strName, "] WARNING: No push in ", nElapsed,
+                    "s — approaching heartbeat refresh threshold (",
+                    FalconConstants::TEMPLATE_HEARTBEAT_REFRESH_SECONDS, "s)");
+            }
+            else if(nElapsed >= 300)
+            {
+                debug::log(0, FUNCTION,
+                    "[HEARTBEAT][", ch.strName, "] NOTICE: No new ", ch.strName,
+                    " block in ", nElapsed, "s — heartbeat refresh will fire at ",
+                    FalconConstants::TEMPLATE_HEARTBEAT_REFRESH_SECONDS, "s");
+            }
+
+            /* Fire heartbeat refresh when threshold exceeded */
+            if(nElapsed < FalconConstants::TEMPLATE_HEARTBEAT_REFRESH_SECONDS)
+                continue;
+
+            /* CAS on the dispatch timestamp prevents double-firing when both the
+             * Legacy and Stateless Meter threads call HeartbeatRefreshCheck()
+             * concurrently.  Only the first thread that succeeds the CAS proceeds. */
+            uint64_t nExpected = nLastTime;
+            if(!ch.nLastTime.compare_exchange_strong(nExpected, nNow,
+                                                     std::memory_order_release,
+                                                     std::memory_order_relaxed))
+                continue;  /* Another thread already fired the heartbeat for this channel */
+
+            debug::log(0, FUNCTION,
+                "[HEARTBEAT][", ch.strName, "] Firing heartbeat refresh — ",
+                nElapsed, "s since last push (threshold=",
+                FalconConstants::TEMPLATE_HEARTBEAT_REFRESH_SECONDS, "s); ",
+                "re-pushing current template to all subscribed miners");
+
+            /* Read current chain state for logging height/hash in BroadcastChannel.
+             * SendChannelNotification() re-reads chain state independently, so this
+             * snapshot is only used for the log line — correctness is unaffected. */
+            const TAO::Ledger::BlockState stateBest =
+                TAO::Ledger::ChainState::tStateBest.load();
+            const uint32_t nHeight      = stateBest.nHeight;
+            const uint32_t nHashPrefix4 = static_cast<uint32_t>(
+                TAO::Ledger::ChainState::hashBestChain.load().Get64(0) & 0xffffffffULL);
+
+            BroadcastChannel(ch.nChannel, nHeight, nHashPrefix4);
         }
     }
 

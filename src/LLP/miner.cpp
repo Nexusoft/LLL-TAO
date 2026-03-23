@@ -2156,21 +2156,41 @@ namespace LLP
          * holding two locks simultaneously.  FindSessionBlock() acquires
          * m_sessionBlockMutex internally; MUTEX is per-connection.
          * Convention: nSessionId == 0 means "not yet established" (same sentinel
-         * used throughout the miner authentication path). */
+         * used throughout the miner authentication path).
+         *
+         * DEPRECATED: SIM-LINK cross-lane template resolution.
+         * Cross-lane block lookup is scheduled for removal once real second-node
+         * failover (DualConnectionManager) is complete. New miners should connect
+         * to a dedicated failover node rather than relying on this cross-lane path.
+         * To disable now, start the node with -deprecate-simlink-fallback=1.
+         * See: docs/architecture/SIMLINK_DUAL_LANE_ARCHITECTURE.md */
         std::shared_ptr<TAO::Ledger::Block> spCrossLane;
         std::unique_ptr<TAO::Ledger::Block> upCrossLaneClone;
         if(nCrossLaneSessionId != 0)
         {
-            spCrossLane = StatelessMinerManager::Get().FindSessionBlock(nCrossLaneSessionId, hashMerkle);
-            if(spCrossLane)
+            if(!config::GetBoolArg("-deprecate-simlink-fallback", false))
             {
-                upCrossLaneClone = std::unique_ptr<TAO::Ledger::Block>(spCrossLane->Clone());
-                if(!upCrossLaneClone)
+                spCrossLane = StatelessMinerManager::Get().FindSessionBlock(nCrossLaneSessionId, hashMerkle);
+                if(spCrossLane)
                 {
-                    debug::error(FUNCTION, "SIM-LINK cross-lane block clone failed");
-                    respond(BLOCK_REJECTED);
-                    return true;
+                    debug::log(0, FUNCTION,
+                        "[DEPRECATED] SIM-LINK: cross-lane block resolved from stateless lane "
+                        "session=", nCrossLaneSessionId, " merkle=", hashMerkle.SubString(),
+                        " — consider connecting to a dedicated failover node instead");
+                    upCrossLaneClone = std::unique_ptr<TAO::Ledger::Block>(spCrossLane->Clone());
+                    if(!upCrossLaneClone)
+                    {
+                        debug::error(FUNCTION, "SIM-LINK cross-lane block clone failed");
+                        respond(BLOCK_REJECTED);
+                        return true;
+                    }
                 }
+            }
+            else
+            {
+                debug::log(0, FUNCTION,
+                    "[DEPRECATED] SIM-LINK: cross-lane fallback disabled via "
+                    "-deprecate-simlink-fallback; treating as unknown template");
             }
         }
 

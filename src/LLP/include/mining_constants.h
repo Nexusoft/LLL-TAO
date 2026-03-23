@@ -160,7 +160,19 @@ namespace MiningConstants
     
     static_assert(DIFFICULTY_CACHE_TTL_MS >= 1000, 
                   "DIFFICULTY_CACHE_TTL_MS must be >= 1000ms (1 second) to avoid truncation");
-    
+
+    //=========================================================================
+    // HEARTBEAT REFRESH CONFIGURATION
+    //=========================================================================
+
+    /** Heartbeat check interval in seconds.
+     *
+     *  How frequently the mining server's Meter thread calls
+     *  MinerPushDispatcher::HeartbeatRefreshCheck() to detect dry spells.
+     *  60 s gives a worst-case reaction window of one minute before issuing a
+     *  refresh notification at TEMPLATE_HEARTBEAT_REFRESH_SECONDS (480 s). */
+    constexpr uint64_t HEARTBEAT_CHECK_INTERVAL_SECONDS = 60;
+
 } // namespace MiningConstants
 } // namespace LLP
 
