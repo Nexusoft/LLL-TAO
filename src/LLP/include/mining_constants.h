@@ -173,6 +173,26 @@ namespace MiningConstants
      *  refresh notification at TEMPLATE_HEARTBEAT_REFRESH_SECONDS (480 s). */
     constexpr uint64_t HEARTBEAT_CHECK_INTERVAL_SECONDS = 60;
 
+    /** Heartbeat-triggered cooldown reset behaviour.
+     *
+     *  When HeartbeatRefreshCheck() fires BroadcastChannel(fHeartbeat=true),
+     *  NotifyChannelMiners() calls PrepareHeartbeatNotification() on each eligible
+     *  connection before SendChannelNotification().  This resets:
+     *
+     *    m_force_next_push      → true   bypasses TEMPLATE_PUSH_MIN_INTERVAL_MS
+     *    m_get_block_cooldown   → fresh  Ready() returns true immediately
+     *
+     *  This ensures that:
+     *  1. The heartbeat push notification is NOT throttled even if a regular push
+     *     was sent recently (e.g. within the 1-second push interval).
+     *  2. The miner's subsequent GET_BLOCK response to the heartbeat push is served
+     *     immediately without the 2-second per-connection floor, causing new_block()
+     *     / CreateBlockForStatelessMining() to run and produce a genuinely fresh
+     *     template with a new creation timestamp.
+     *  3. The miner's template age counter resets because the fresh template carries
+     *     a new server-assigned creation time, preventing the miner from entering
+     *     degraded mode at 600 s during legitimate dry spells. */
+
 } // namespace MiningConstants
 } // namespace LLP
 

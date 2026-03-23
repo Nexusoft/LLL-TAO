@@ -121,9 +121,15 @@ namespace LLP
          *  @param[in] nChannel     Mining channel (1=Prime, 2=Hash).
          *  @param[in] nHeight      Unified height (for logging).
          *  @param[in] hashPrefix4  First 4 bytes of hashBestChain (for logging).
+         *  @param[in] fHeartbeat   When true, adds a [HEARTBEAT] log annotation and
+         *                          resets per-connection rate-limit state via
+         *                          PrepareHeartbeatNotification() before each send so
+         *                          the push and the miner's subsequent GET_BLOCK are
+         *                          not suppressed by the 2-second cooldown floor.
          *
          **/
-        static void BroadcastChannel(uint32_t nChannel, uint32_t nHeight, uint32_t hashPrefix4);
+        static void BroadcastChannel(uint32_t nChannel, uint32_t nHeight, uint32_t hashPrefix4,
+                                     bool fHeartbeat = false);
     };
 
 } // namespace LLP
