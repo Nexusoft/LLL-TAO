@@ -54,7 +54,7 @@ TEST_CASE("Falcon Full Block Format Reconstruction", "[falcon_full_block]")
         size_t currentOffset = fullBlockPacket.size();  // Should be 196
         REQUIRE(currentOffset == 196);
         
-        /* Fill to offset FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET (4 bytes) */
+        /* Fill nChannel(4), nHeight(4), nBits(4) to reach nNonce at offset 208 */
         for(size_t i = currentOffset; i < FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET; ++i)
             fullBlockPacket.push_back(0xDD);
         

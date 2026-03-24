@@ -247,8 +247,8 @@ namespace FalconConstants
     
     /** Full Legacy block header size (serialized, without transactions)
      *  Fields: nVersion(4) + hashPrevBlock(128) + hashMerkleRoot(64) +
-     *          nTime(4) + nBits(4) + nNonce(4) + nChannel(4) + nHeight(4) +
-     *          nNonce64(8) = 220 bytes */
+     *          nChannel(4) + nHeight(4) + nBits(4) + nNonce(8) + nTime(4) = 220 bytes
+     *  Note: same field order as Tritium except Legacy appends nTime(4) at the end */
     static const size_t FULL_BLOCK_LEGACY_SIZE = 220;
     
     /** Minimum Legacy block size (empty block, coinbase only) */
@@ -261,16 +261,22 @@ namespace FalconConstants
     /** Channel offset in serialized Tritium full-block bodies. */
     static const size_t FULL_BLOCK_TRITIUM_CHANNEL_OFFSET = 196;
 
-    /** Height offset in serialized Tritium full-block bodies. */
+    /** Height offset in serialized Tritium full-block bodies.
+     *  Located after: nVersion(4) + hashPrevBlock(128) + hashMerkleRoot(64) + nChannel(4) = 200 bytes */
     static const size_t FULL_BLOCK_TRITIUM_HEIGHT_OFFSET = 200;
-    
-    /** Nonce offset in Tritium full block
-     *  Confirmed via diagnostic data at offset 200 */
-    static const size_t FULL_BLOCK_TRITIUM_NONCE_OFFSET = 200;
-    
-    /** Nonce offset in Legacy full block
-     *  Confirmed via diagnostic data at offset 204 */
-    static const size_t FULL_BLOCK_LEGACY_NONCE_OFFSET = 204;
+
+    /** nBits offset in serialized Tritium full-block bodies.
+     *  Located after: nVersion(4) + hashPrevBlock(128) + hashMerkleRoot(64) + nChannel(4) + nHeight(4) = 204 bytes */
+    static const size_t FULL_BLOCK_TRITIUM_BITS_OFFSET = 204;
+
+    /** Nonce offset in Tritium full block.
+     *  Located after: nVersion(4) + hashPrevBlock(128) + hashMerkleRoot(64) + nChannel(4) + nHeight(4) + nBits(4) = 208 bytes */
+    static const size_t FULL_BLOCK_TRITIUM_NONCE_OFFSET = 208;
+
+    /** Nonce offset in Legacy full block.
+     *  Legacy serializes the same field order as Tritium (nChannel/nHeight/nBits/nNonce) plus nTime(4) at the end.
+     *  Located after: nVersion(4) + hashPrevBlock(128) + hashMerkleRoot(64) + nChannel(4) + nHeight(4) + nBits(4) = 208 bytes */
+    static const size_t FULL_BLOCK_LEGACY_NONCE_OFFSET = 208;
     
     /** Format detection threshold for SUBMIT_BLOCK packets
      *  Packets >= 200 bytes are treated as full block format,
