@@ -1552,29 +1552,8 @@ namespace LLP
              * benefit and can violate the "immutable anchor field" invariant. */
             if(pBlock->nChannel == TAO::Ledger::CHANNEL::PRIME)
             {
-                *pBlock = TAO::Ledger::BuildSolvedPrimeCandidateFromTemplate(*pBlock, nNonce, vOffsets);
-
-                /* Structural validation of miner-submitted Prime offsets.
-                 * The prior GetOffsets(GetPrime()) equivalence check was broken: it
-                 * returned empty offsets whenever GetPrime() was not itself prime,
-                 * causing false rejections for otherwise valid Prime submissions.
-                 * VerifySubmittedPrimeOffsets() performs lightweight structural checks
-                 * only; the authoritative proof-of-work gate is VerifyWork() in Check().
-                 *
-                 * The empty check guards the legacy-fallback path below: when the miner
-                 * does not submit vOffsets (compact wrapper), we fall through to GetOffsets()
-                 * rather than rejecting. Only non-empty submissions are validated here. */
-                if(!pBlock->vOffsets.empty() &&
-                   !TAO::Ledger::VerifySubmittedPrimeOffsets(*pBlock, pBlock->vOffsets))
-                {
-                    return debug::error(FUNCTION, "Prime vOffsets structural validation failed");
-                }
-
-                /* Legacy fallback: derive offsets locally when the miner did not submit
-                 * them (compact wrapper path).  This preserves backwards compatibility
-                 * with older miners that do not include vOffsets in the payload. */
-                if(pBlock->vOffsets.empty())
-                    TAO::Ledger::GetOffsets(pBlock->GetPrime(), pBlock->vOffsets);
+                *pBlock = TAO::Ledger::BuildSolvedPrimeCandidateFromTemplate(*pBlock, nNonce);
+                TAO::Ledger::GetOffsets(pBlock->GetPrime(), pBlock->vOffsets);
             }
             else if(pBlock->nChannel == TAO::Ledger::CHANNEL::HASH)
             {
@@ -2254,18 +2233,8 @@ namespace LLP
 
             if(pTritium->nChannel == TAO::Ledger::CHANNEL::PRIME)
             {
-                *pTritium = TAO::Ledger::BuildSolvedPrimeCandidateFromTemplate(*pTritium, nonce, vPrimeOffsets);
-
-                if(!pTritium->vOffsets.empty() &&
-                   !TAO::Ledger::VerifySubmittedPrimeOffsets(*pTritium, pTritium->vOffsets))
-                {
-                    debug::error(FUNCTION, "Cross-lane: Prime vOffsets structural validation failed");
-                    respond(BLOCK_REJECTED);
-                    return true;
-                }
-
-                if(pTritium->vOffsets.empty())
-                    TAO::Ledger::GetOffsets(pTritium->GetPrime(), pTritium->vOffsets);
+                *pTritium = TAO::Ledger::BuildSolvedPrimeCandidateFromTemplate(*pTritium, nonce);
+                TAO::Ledger::GetOffsets(pTritium->GetPrime(), pTritium->vOffsets);
             }
             else if(pTritium->nChannel == TAO::Ledger::CHANNEL::HASH)
             {
