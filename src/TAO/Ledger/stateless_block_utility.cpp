@@ -278,16 +278,18 @@ namespace TAO::Ledger
             return result;
         }
 
-        if(!block.Check())
-        {
-            result.reason = "block Check() failed";
-            return result;
-        }
-
-        /* Stale detection uses unified chain tip shared across channels. */
+        /* Stale detection uses unified chain tip shared across channels.
+         * Perform this cheap check before the expensive block.Check() / VerifyWork()
+         * so stale blocks are rejected immediately without running full PoW verification. */
         if(block.hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
         {
             result.reason = "submitted block is stale";
+            return result;
+        }
+
+        if(!block.Check())
+        {
+            result.reason = "block Check() failed";
             return result;
         }
 
@@ -320,7 +322,11 @@ namespace TAO::Ledger
         }
 
         uint8_t nStatus = 0;
-        TAO::Ledger::Process(block, nStatus);
+        /* Pass fSkipCheck=true because ValidateMinedBlock() already ran block.Check()
+         * (including the expensive VerifyWork() / PrimeCheck() consensus validation).
+         * Skipping the redundant Check() inside Process() eliminates the double
+         * PoW verification that caused the triple-PrimeCheck stall in production. */
+        TAO::Ledger::Process(block, nStatus, nullptr, true);
         result.status = nStatus;
         result.accepted = (nStatus & TAO::Ledger::PROCESS::ACCEPTED);
 

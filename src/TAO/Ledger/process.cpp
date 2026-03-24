@@ -51,7 +51,7 @@ namespace TAO
 
         /* Processes a block incoming over the network. */
         static uint64_t nProcessedBlocks = 0;
-        void Process(const TAO::Ledger::Block& block, uint8_t &nStatus, LLP::TritiumNode* pnode)
+        void Process(const TAO::Ledger::Block& block, uint8_t &nStatus, LLP::TritiumNode* pnode, bool fSkipCheck)
         {
             LOCK(PROCESSING_MUTEX);
 
@@ -124,8 +124,8 @@ namespace TAO
                     return;
                 }
 
-                /* Check if the block is valid. */
-                if(!block.Check())
+                /* Check if the block is valid. Skip when already validated by ValidateMinedBlock(). */
+                if(!fSkipCheck && !block.Check())
                 {
                     /* Check for missing transactions. */
                     if(block.vMissing.size() == 0)
