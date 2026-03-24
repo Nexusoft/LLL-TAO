@@ -1837,61 +1837,68 @@ namespace LLP
                     return true;
                 }
 
+                /* PoW fully validated — notify the miner immediately so it can proceed
+                 * to the next template without waiting for the ledger write in
+                 * AcceptMinedBlock() / Process(), which may take hundreds of milliseconds.
+                 * The block has been consensus-verified; the miner's obligation is fulfilled. */
+                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✅ Block validated — sending STATELESS_BLOCK_ACCEPTED immediately", ANSI_COLOR_RESET);
+                debug::log(0, FUNCTION, "BLOCK ACCEPTED — unified nHeight=", pTritium->nHeight,
+                           " channel=", pTritium->nChannel,
+                           " hashMerkleRoot=", pTritium->hashMerkleRoot.SubString(),
+                           " hashPrevBlock (validated == hashBestChain)=", pTritium->hashPrevBlock.SubString());
+
+                /* Log signature configuration (PR #122) */
+                LogFalconSignatureInfo(context);
+
+                /* Get block for detailed logging */
+                {
+                    auto itLog = mapBlocks.find(hashMerkle);
+                    if(itLog != mapBlocks.end() && itLog->second.pBlock)
+                    {
+                        TAO::Ledger::Block *pBlock = itLog->second.pBlock.get();
+                        debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   🎉 Block ", pBlock->nHeight, " submitted to Nexus network", ANSI_COLOR_RESET);
+                        debug::log(0, "   Miner: ", GetAddress().ToStringIP());
+                        debug::log(0, "   Channel: ", pBlock->nChannel, " (", MiningContext::ChannelName(pBlock->nChannel), ")");
+                    }
+                }
+
+                {
+                    StatelessPacket response(STATELESS_BLOCK_ACCEPTED);
+                    respond(response);
+                }
+                debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "📥 === SUBMIT_BLOCK: SUCCESS ===", ANSI_COLOR_RESET);
+                debug::log(2, FUNCTION, "✓ Disposable Falcon signature discarded after SUBMIT_BLOCK");
+
                 TAO::Ledger::BlockAcceptanceResult acceptanceResult =
                     TAO::Ledger::AcceptMinedBlock(*pTritium);
                 if(!acceptanceResult.accepted)
                 {
-                    debug::error(FUNCTION, "❌ AcceptMinedBlock failed: ", acceptanceResult.reason);
+                    /* STATELESS_BLOCK_ACCEPTED was already sent — the block's PoW was valid.
+                     * The ledger-write failure (duplicate race, orphan, etc.) is a
+                     * node-side issue; do not confuse the miner with a follow-up
+                     * rejection.  Log clearly so operators can investigate. */
+                    debug::error(FUNCTION, "❌ AcceptMinedBlock ledger write failed after STATELESS_BLOCK_ACCEPTED sent: ", acceptanceResult.reason);
 
-                    /* Notify Colin agent on rejection */
+                    /* Notify Colin agent on ledger-write failure */
                     if(context.hashGenesis != 0)
                     {
                         ColinMiningAgent::Get().on_block_submitted(
                             context.hashGenesis.SubString(8), pTritium->nChannel,
                             false, acceptanceResult.reason);
                     }
-
-                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                    respond(response);
-                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (", acceptanceResult.reason, ") ===", ANSI_COLOR_RESET);
-                    return true;
                 }
-
-                /* Block accepted - track in manager */
-                StatelessMinerManager::Get().IncrementBlocksAccepted();
-
-                /* Notify Colin agent: block accepted */
-                if(context.hashGenesis != 0)
+                else
                 {
-                    ColinMiningAgent::Get().on_block_submitted(
-                        context.hashGenesis.SubString(8), pTritium->nChannel, true, "");
-                }
+                    /* Block accepted - track in manager */
+                    StatelessMinerManager::Get().IncrementBlocksAccepted();
 
-                /* Generate an Accepted response. */
-                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✅ Block accepted by network!", ANSI_COLOR_RESET);
-                debug::log(0, FUNCTION, "BLOCK ACCEPTED — unified nHeight=", pTritium->nHeight,
-                           " channel=", pTritium->nChannel,
-                           " hashMerkleRoot=", pTritium->hashMerkleRoot.SubString(),
-                           " hashPrevBlock (validated == hashBestChain)=", pTritium->hashPrevBlock.SubString());
-                
-                /* Log signature configuration (PR #122) */
-                LogFalconSignatureInfo(context);
-                
-                debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "📥 === SUBMIT_BLOCK: SUCCESS ===", ANSI_COLOR_RESET);
-                
-                /* Get block for detailed logging */
-                auto it = mapBlocks.find(hashMerkle);
-                if(it != mapBlocks.end() && it->second.pBlock)
-                {
-                    TAO::Ledger::Block *pBlock = it->second.pBlock.get();
-                    debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   🎉 Block ", pBlock->nHeight, " accepted by Nexus network", ANSI_COLOR_RESET);
-                    debug::log(0, "   Miner: ", GetAddress().ToStringIP());
-                    debug::log(0, "   Channel: ", pBlock->nChannel, " (", MiningContext::ChannelName(pBlock->nChannel), ")");
+                    /* Notify Colin agent: block accepted */
+                    if(context.hashGenesis != 0)
+                    {
+                        ColinMiningAgent::Get().on_block_submitted(
+                            context.hashGenesis.SubString(8), pTritium->nChannel, true, "");
+                    }
                 }
-                
-                StatelessPacket response(STATELESS_BLOCK_ACCEPTED);
-                respond(response);
-                debug::log(2, FUNCTION, "✓ Disposable Falcon signature discarded after SUBMIT_BLOCK");
 
                 /* Update context timestamp */
                 context = context.WithTimestamp(runtime::unifiedtimestamp());
@@ -3504,26 +3511,14 @@ namespace LLP
                 debug::log(0, "   hashPrime   = ", hashPrime.ToString().substr(0, 64), "...");
                 debug::log(0, "   (Full 1024-bit value shown in hex above)");
 
-                /* Test if base is prime using node's PrimeCheck */
-                debug::log(0, "");
-                debug::log(0, "🧪 PRIME VALIDATION TEST:");
-                debug::log(0, "   Calling TAO::Ledger::PrimeCheck(hashPrime)...");
-
-                bool isPrimeBase = TAO::Ledger::PrimeCheck(hashPrime);
-
-                if(isPrimeBase)
-                {
-                    debug::log(0, "   Result: ", ANSI_COLOR_BRIGHT_GREEN, "✅ BASE IS PRIME", ANSI_COLOR_RESET);
-                }
-                else
-                {
-                    debug::log(0, "   Result: ", ANSI_COLOR_BRIGHT_RED, "❌ BASE IS NOT PRIME", ANSI_COLOR_RESET);
-                    debug::log(0, "   ⚠️  Mismatch: Miner validated this as prime, but node disagrees!");
-                    debug::log(0, "   ⚠️  This indicates either:");
-                    debug::log(0, "      - Different PrimeCheck implementations (miner vs node)");
-                    debug::log(0, "      - Different hashPrime calculation (endianness? encoding?)");
-                    debug::log(0, "      - Nonce corruption during transmission");
-                }
+                /* NOTE: The standalone PrimeCheck() call that previously appeared here
+                 * has been removed.  It ran the full Miller-Rabin + Fermat primality
+                 * test for diagnostic purposes only (result was never used for accept/
+                 * reject decisions) and produced a spurious first "PRIMECHECK DIAGNOSTIC"
+                 * series in the logs before the consensus VerifyWork() checks, making
+                 * it appear as if three separate Prime validations occurred per block.
+                 * The authoritative primality gate is VerifyWork() inside block.Check(),
+                 * which runs inside ValidateMinedBlock() further down this call stack. */
 
                 /* Display Cunningham chain offsets (already validated above). */
                 debug::log(0, "");

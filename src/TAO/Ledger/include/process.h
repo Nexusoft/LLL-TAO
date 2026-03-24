@@ -74,9 +74,13 @@ namespace TAO
          *  @param[in] block The block being processed
          *  @param[out] nStatus The status flags returned.
          *  @param[out] pnode The node that block came from.
+         *  @param[in] fSkipCheck Skip the block.Check() call when the block has
+         *             already been validated by ValidateMinedBlock() prior to
+         *             calling this function. Avoids redundant PoW verification
+         *             for locally-mined blocks. Default is false (full validation).
          *
          **/
-        void Process(const TAO::Ledger::Block& block, uint8_t &nStatus, LLP::TritiumNode* pnode = nullptr);
+        void Process(const TAO::Ledger::Block& block, uint8_t &nStatus, LLP::TritiumNode* pnode = nullptr, bool fSkipCheck = false);
 
     }
 }

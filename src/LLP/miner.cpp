@@ -2355,31 +2355,40 @@ namespace LLP
             return true;
         }
 
+        /* PoW fully validated — notify the miner immediately so it can proceed
+         * to the next template without waiting for the ledger write in
+         * AcceptMinedBlock() / Process(), which may take hundreds of milliseconds.
+         * The block has been consensus-verified; the miner's obligation is fulfilled. */
+        debug::log(0, FUNCTION, "BLOCK ACCEPTED — unified nHeight=", pTritium->nHeight,
+                   " channel=", pTritium->nChannel,
+                   " hashPrevBlock=", pTritium->hashPrevBlock.SubString(),
+                   " merkle=", hashMerkle.SubString());
+        respond(BLOCK_ACCEPTED);
+
         TAO::Ledger::BlockAcceptanceResult acceptanceResult =
             TAO::Ledger::AcceptMinedBlock(*pTritium);
         if(!acceptanceResult.accepted)
         {
-            debug::error(FUNCTION, "SUBMIT_BLOCK rejected: ", acceptanceResult.reason);
+            /* BLOCK_ACCEPTED was already sent — the block's PoW was valid.
+             * The ledger-write failure (duplicate race, orphan, etc.) is a
+             * node-side issue; do not confuse the miner with a follow-up
+             * rejection.  Log clearly so operators can investigate. */
+            debug::error(FUNCTION, "SUBMIT_BLOCK ledger write failed after BLOCK_ACCEPTED sent: ", acceptanceResult.reason);
             if(hashGenesis != 0)
             {
                 ColinMiningAgent::Get().on_block_submitted(
                     hashGenesis.SubString(8), pTritium->nChannel,
                     false, acceptanceResult.reason);
             }
-            respond(BLOCK_REJECTED);
-            return true;
         }
-
-        debug::log(0, FUNCTION, "BLOCK ACCEPTED — unified nHeight=", pTritium->nHeight,
-                   " channel=", pTritium->nChannel,
-                   " hashPrevBlock=", pTritium->hashPrevBlock.SubString(),
-                   " merkle=", hashMerkle.SubString());
-        if(hashGenesis != 0)
+        else
         {
-            ColinMiningAgent::Get().on_block_submitted(
-                hashGenesis.SubString(8), pTritium->nChannel, true, "");
+            if(hashGenesis != 0)
+            {
+                ColinMiningAgent::Get().on_block_submitted(
+                    hashGenesis.SubString(8), pTritium->nChannel, true, "");
+            }
         }
-        respond(BLOCK_ACCEPTED);
         return true;
     }
 
