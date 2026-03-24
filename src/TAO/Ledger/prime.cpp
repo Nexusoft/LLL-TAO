@@ -15,6 +15,8 @@ ________________________________________________________________________________
 #include <LLC/types/bignum.h>
 #include <openssl/bn.h>
 
+#include <cstring>
+
 #include <Util/include/debug.h>
 #include <Util/include/softfloat.h>
 #include <Util/include/config.h>
@@ -77,7 +79,7 @@ namespace TAO
 
                 /* Get fractional difficulty. */
                 uint32_t nFraction = 0;
-                std::copy((uint8_t*)&vOffsets[nSize - 4], (uint8_t*)&vOffsets[nSize - 1], (uint8_t*)&nFraction);
+                std::memcpy(&nFraction, &vOffsets[nSize - 4], 4);
 
                 /* If verifying check the fractional difficulty. */
                 if(fVerify && GetFractionalDifficulty(hashNext + 14) != nFraction)
