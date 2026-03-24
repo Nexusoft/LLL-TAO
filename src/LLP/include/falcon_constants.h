@@ -294,32 +294,36 @@ namespace FalconConstants
      *  NOTE: This is FIXED regardless of actual block size */
     static const size_t SUBMIT_BLOCK_MESSAGE_SIZE = 80;  // 64 + 8 + 8
 
-    /***************************************************************************
+     /***************************************************************************
      * Submit Block Wrapper Sizes (Serialized Transmission)
      * 
      * In the stateless mining protocol, miners submit block HEADERS only.
      * The node holds all transactions; the miner never sends them.
-     * The packet format is:
-     *   [block_header(var)] [prime_offsets(var)] [timestamp(8)] [siglen(2)] [signature(var)]
+     * The packet format is now identical for Prime and Hash channels:
+     *   [block_header(var)] [timestamp(8)] [siglen(2)] [signature(var)]
+     * Miners no longer transmit vOffsets on the wire.  The node always
+     * derives vOffsets via GetOffsets(GetPrime(), vOffsets) after setting nNonce.
      **************************************************************************/
     
     /** Minimum Submit Block wrapper size (without signature)
      *  merkle(64) + nonce(8) + timestamp(8) + sig_len(2) = 82 bytes */
     static const size_t SUBMIT_BLOCK_WRAPPER_MIN = 82;
 
-    /** Maximum prime offsets budget for Submit Block packets.
-     *  Prime-channel miners include a vOffsets array (Cunningham chain offsets).
-     *  Typical chains carry 5-20 bytes; 256 bytes provides ample safety margin. */
+    /** Prime offsets budget retained for backwards-compatibility sizing calculations.
+     *  Miners no longer send vOffsets on the wire; this constant is kept so that
+     *  SUBMIT_BLOCK_WRAPPER_MAX retains its original generous upper bound. */
     static const size_t SUBMIT_BLOCK_PRIME_OFFSETS_MAX = 256;
     
     /** Submit Block wrapper maximum (no encryption)
-     *  Format: [block_header(max=220)] [prime_offsets(max=256)] [timestamp(8)] [siglen(2)] [sig(max=1577)]
+     *  Format: [block_header(max=220)] [timestamp(8)] [siglen(2)] [sig(max=1577)]
      *  Note: Miners submit block HEADERS only; transactions are NOT included.
+     *  Note: vOffsets are no longer on the wire; SUBMIT_BLOCK_PRIME_OFFSETS_MAX
+     *        is retained in this sum for a conservative upper bound.
      *  Max: FULL_BLOCK_LEGACY_SIZE(220) + SUBMIT_BLOCK_PRIME_OFFSETS_MAX(256)
      *       + TIMESTAMP_SIZE(8) + LENGTH_FIELD_SIZE(2) + FALCON1024_SIG_ABSOLUTE_MAX(1577) = 2063 bytes */
     static const size_t SUBMIT_BLOCK_WRAPPER_MAX =
         FULL_BLOCK_LEGACY_SIZE +          // 220 bytes (max block header, no transactions)
-        SUBMIT_BLOCK_PRIME_OFFSETS_MAX +   // 256 bytes (generous prime offsets budget)
+        SUBMIT_BLOCK_PRIME_OFFSETS_MAX +   // 256 bytes (conservative budget, no longer on wire)
         TIMESTAMP_SIZE +                   // 8 bytes
         LENGTH_FIELD_SIZE +                // 2 bytes
         FALCON1024_SIG_ABSOLUTE_MAX;       // 1577 bytes (Falcon-1024 CT, default)
@@ -358,12 +362,12 @@ namespace FalconConstants
     static const size_t SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_ENCRYPTED_MAX = SUBMIT_BLOCK_FULL_TRITIUM_HASH_WRAPPER_ENCRYPTED_MAX;
 
     /** Prime-channel Tritium wrapper signature (Falcon-512) - localhost
-     *  Format: [block(216)][vOffsets(N)][timestamp(8)][siglen(2)][sig(809)]
-     *  Minimum is the Hash-channel size; additional Prime offsets add N bytes. */
+     *  Format: [block(216)][timestamp(8)][siglen(2)][sig(809)]  (same as Hash; no vOffsets on wire)
+     *  Miners derive vOffsets on the node side via GetOffsets(GetPrime(), vOffsets). */
     static const size_t SUBMIT_BLOCK_FULL_TRITIUM_PRIME_WRAPPER_MIN = SUBMIT_BLOCK_FULL_TRITIUM_HASH_WRAPPER_MAX;
 
     /** Prime-channel Tritium wrapper signature (Falcon-512) - encrypted
-     *  Minimum is the encrypted Hash-channel size; additional Prime offsets add N bytes. */
+     *  Same as Hash-channel encrypted size; no vOffsets on wire. */
     static const size_t SUBMIT_BLOCK_FULL_TRITIUM_PRIME_WRAPPER_ENCRYPTED_MIN = SUBMIT_BLOCK_FULL_TRITIUM_HASH_WRAPPER_ENCRYPTED_MAX;
 
     /** Legacy wrapper signature (Falcon-512) - localhost
@@ -400,12 +404,12 @@ namespace FalconConstants
     static const size_t SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_FALCON1024_ENCRYPTED_MAX = SUBMIT_BLOCK_FULL_TRITIUM_HASH_WRAPPER_FALCON1024_ENCRYPTED_MAX;
 
     /** Prime-channel Tritium wrapper signature (Falcon-1024) - localhost
-     *  Format: [block(216)][vOffsets(N)][timestamp(8)][siglen(2)][sig(1577)]
-     *  Minimum is the Hash-channel size; additional Prime offsets add N bytes. */
+     *  Format: [block(216)][timestamp(8)][siglen(2)][sig(1577)]  (same as Hash; no vOffsets on wire)
+     *  Miners derive vOffsets on the node side via GetOffsets(GetPrime(), vOffsets). */
     static const size_t SUBMIT_BLOCK_FULL_TRITIUM_PRIME_WRAPPER_FALCON1024_MIN = SUBMIT_BLOCK_FULL_TRITIUM_HASH_WRAPPER_FALCON1024_MAX;
 
     /** Prime-channel Tritium wrapper signature (Falcon-1024) - encrypted
-     *  Minimum is the encrypted Hash-channel size; additional Prime offsets add N bytes. */
+     *  Same as Hash-channel encrypted size; no vOffsets on wire. */
     static const size_t SUBMIT_BLOCK_FULL_TRITIUM_PRIME_WRAPPER_FALCON1024_ENCRYPTED_MIN = SUBMIT_BLOCK_FULL_TRITIUM_HASH_WRAPPER_FALCON1024_ENCRYPTED_MAX;
 
     /** Legacy wrapper signature (Falcon-1024) - localhost

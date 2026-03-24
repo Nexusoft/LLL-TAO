@@ -1735,20 +1735,8 @@ namespace LLP
 
                     if(pTritium->nChannel == TAO::Ledger::CHANNEL::PRIME)
                     {
-                        *pTritium = TAO::Ledger::BuildSolvedPrimeCandidateFromTemplate(
-                            *pTritium, nonce, vPrimeOffsets);
-
-                        if(!pTritium->vOffsets.empty() &&
-                           !TAO::Ledger::VerifySubmittedPrimeOffsets(*pTritium, pTritium->vOffsets))
-                        {
-                            debug::error(FUNCTION, "Cross-lane: Prime vOffsets structural validation failed");
-                            StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                            respond(response);
-                            return true;
-                        }
-
-                        if(pTritium->vOffsets.empty())
-                            TAO::Ledger::GetOffsets(pTritium->GetPrime(), pTritium->vOffsets);
+                        *pTritium = TAO::Ledger::BuildSolvedPrimeCandidateFromTemplate(*pTritium, nonce);
+                        TAO::Ledger::GetOffsets(pTritium->GetPrime(), pTritium->vOffsets);
                     }
                     else if(pTritium->nChannel == TAO::Ledger::CHANNEL::HASH)
                     {
@@ -3439,31 +3427,9 @@ namespace LLP
              * AcceptMinedBlock() operate on the fully-prepared signed block. */
             if(pBlock->nChannel == TAO::Ledger::CHANNEL::PRIME)
             {
-                *pBlock = TAO::Ledger::BuildSolvedPrimeCandidateFromTemplate(*pBlock, nNonce, vOffsets);
-
-                /* Structural validation of miner-submitted Prime offsets.
-                 * The prior GetOffsets(GetPrime()) equivalence check has been removed:
-                 * it returned empty vOffsets whenever GetPrime() was not itself prime,
-                 * producing false rejections for valid Prime submissions.
-                 * VerifySubmittedPrimeOffsets() does lightweight structural checks;
-                 * the authoritative PoW gate remains VerifyWork() inside Check().
-                 *
-                 * The empty check guards the legacy-fallback path below: when the miner
-                 * does not submit vOffsets (compact wrapper), we fall through to GetOffsets()
-                 * rather than rejecting. Only non-empty submissions are validated here. */
-                if(!pBlock->vOffsets.empty() &&
-                   !TAO::Ledger::VerifySubmittedPrimeOffsets(*pBlock, pBlock->vOffsets))
-                {
-                    debug::error(FUNCTION, "Prime vOffsets structural validation failed — BLOCK_REJECTED");
-                    return false;
-                }
-
-                /* Legacy fallback: derive offsets locally when the miner did not submit
-                 * them (compact wrapper path).  Backwards-compatible with older miners. */
-                if(pBlock->vOffsets.empty())
-                    TAO::Ledger::GetOffsets(pBlock->GetPrime(), pBlock->vOffsets);
-
-                debug::log(2, FUNCTION, "Prime channel: solved candidate built (nTime preserved, vOffsets applied)");
+                *pBlock = TAO::Ledger::BuildSolvedPrimeCandidateFromTemplate(*pBlock, nNonce);
+                TAO::Ledger::GetOffsets(pBlock->GetPrime(), pBlock->vOffsets);
+                debug::log(2, FUNCTION, "Prime channel: solved candidate built (nTime preserved, vOffsets derived by node)");
             }
             else if(pBlock->nChannel == TAO::Ledger::CHANNEL::HASH)
             {
