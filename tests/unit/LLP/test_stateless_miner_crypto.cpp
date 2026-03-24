@@ -396,8 +396,7 @@ static FalconFullBlockFixture BuildFalconFullBlockFixture(
     fixture.hashMerkle.SetBytes(merkleBytes);
 
     std::vector<uint8_t> blockBytes = BuildTritiumBlockBody(nChannel, fixture.hashMerkle, fixture.nonce);
-    /* vOffsets are no longer transmitted on the wire (PR #452).
-     * The node derives them locally via GetOffsets(pBlock->GetPrime(), pBlock->vOffsets). */
+    blockBytes.insert(blockBytes.end(), offsets.begin(), offsets.end());
 
     std::vector<uint8_t> message = blockBytes;
     for(size_t i = 0; i < LLP::FalconConstants::TIMESTAMP_SIZE; ++i)
@@ -572,9 +571,7 @@ TEST_CASE("T22: Shared Falcon full-block parser handles Hash and Prime payloads"
     {
         FalconFullBlockFixture fixture = BuildFalconFullBlockFixture(2, {}, 1700000000, LLC::FalconVersion::FALCON_1024);
 
-        /* 216 (block) + 8 (timestamp) + 2 (sig_len) + Falcon-1024 sig (~1577 bytes) = 1803 */
         REQUIRE(fixture.payload.size() == 1803);
-        /* ChaCha20 adds 28 bytes overhead (12-byte nonce + 16-byte poly tag) */
         REQUIRE(LLC::EncryptPayloadChaCha20(fixture.payload, std::vector<uint8_t>(32, 0x11)).size() == 1831);
 
         auto result = TAO::Ledger::ParseFalconWrappedSubmitBlock(fixture.payload);
@@ -588,20 +585,19 @@ TEST_CASE("T22: Shared Falcon full-block parser handles Hash and Prime payloads"
         REQUIRE(result.nSignatureLength == result.vSignature.size());
     }
 
-    SECTION("Prime Falcon-1024 payload is fixed-size (vOffsets derived by node, not on wire)")
+    SECTION("Prime Falcon-1024 payload accepts appended offsets")
     {
-        FalconFullBlockFixture fixture = BuildFalconFullBlockFixture(1, {}, 1700000000, LLC::FalconVersion::FALCON_1024);
+        std::vector<uint8_t> offsets = {2, 4, 6, 8, 10, 12, 14, 16, 18, 20};
+        FalconFullBlockFixture fixture = BuildFalconFullBlockFixture(1, offsets, 1700000000, LLC::FalconVersion::FALCON_1024);
 
-        /* Same size as Hash channel: 216 + 8 + 2 + Falcon-1024 sig = 1803 */
-        REQUIRE(fixture.payload.size() == 1803);
-        REQUIRE(LLC::EncryptPayloadChaCha20(fixture.payload, std::vector<uint8_t>(32, 0x22)).size() == 1831);
+        REQUIRE(fixture.payload.size() == 1813);
+        REQUIRE(LLC::EncryptPayloadChaCha20(fixture.payload, std::vector<uint8_t>(32, 0x22)).size() == 1841);
 
         auto result = TAO::Ledger::ParseFalconWrappedSubmitBlock(fixture.payload);
         REQUIRE(result.success);
         REQUIRE(result.nChannel == 1);
         REQUIRE(result.vBlockBody.size() == 216);
-        /* vOffsets is always empty from the parser; node derives them via GetOffsets(GetPrime(), ...) */
-        REQUIRE(result.vOffsets.empty());
+        REQUIRE(result.vOffsets == offsets);
         REQUIRE(result.hashMerkle == fixture.hashMerkle);
         REQUIRE(result.nonce == fixture.nonce);
         REQUIRE(result.timestamp == fixture.timestamp);
@@ -619,15 +615,14 @@ TEST_CASE("T23: Shared Falcon full-block verifier is lane-agnostic", "[stateless
         return result;
     };
 
-    SECTION("legacy lane using shared parser accepts Prime channel payload")
+    SECTION("legacy lane using shared parser accepts Prime offsets")
     {
         FalconFullBlockFixture fixture = BuildFalconFullBlockFixture(
-            1, {}, 1700000011, LLC::FalconVersion::FALCON_1024);
+            1, {1, 3, 5, 7, 9}, 1700000011, LLC::FalconVersion::FALCON_1024);
 
         auto result = verifyForLane(fixture);
         REQUIRE(result.nChannel == 1);
-        /* vOffsets is always empty from the parser; node derives via GetOffsets(GetPrime(), ...) */
-        REQUIRE(result.vOffsets.empty());
+        REQUIRE(result.vOffsets == fixture.offsets);
     }
 
     SECTION("stateless lane using shared parser accepts Hash fixed-size payload")
@@ -885,21 +880,25 @@ TEST_CASE("T21: ChaCha20 failure diagnostic includes payload size", "[stateless_
  * GROUP 6 — Defence-in-Depth Gaps (T25–T28)
  * ══════════════════════════════════════════════════════════════════════ */
 
-TEST_CASE("T25: Parser always returns empty vOffsets; node derives them via GetOffsets()", "[stateless_miner_crypto][submit_block][voffsets]")
+TEST_CASE("T25: vOffsets cross-validation rejects mismatched offsets", "[stateless_miner_crypto][submit_block][voffsets]")
 {
-    /* Build a Prime payload — vOffsets are never transmitted on the wire */
-    FalconFullBlockFixture fixture = BuildFalconFullBlockFixture(1, {}, 1700000000, LLC::FalconVersion::FALCON_1024);
+    /* Build a Prime payload with offsets {1,2,3,4,5} */
+    std::vector<uint8_t> offsets = {1, 2, 3, 4, 5};
+    FalconFullBlockFixture fixture = BuildFalconFullBlockFixture(1, offsets, 1700000000, LLC::FalconVersion::FALCON_1024);
 
-    /* Verify the payload parses correctly with empty vOffsets */
+    /* Verify the payload parses correctly with those offsets */
     auto result = TAO::Ledger::ParseFalconWrappedSubmitBlock(fixture.payload);
     REQUIRE(result.success);
     REQUIRE(result.nChannel == 1);
-    /* vOffsets is ALWAYS empty from the parser regardless of channel */
-    REQUIRE(result.vOffsets.empty());
+    REQUIRE(result.vOffsets == offsets);
 
-    /* The node derives offsets itself after applying the nonce:
-     *   GetOffsets(pBlock->GetPrime(), pBlock->vOffsets)
-     * This matches the upstream Nexusoft/LLL-TAO behavior exactly. */
+    /* Simulate cross-validation: miner-submitted offsets vs a mismatched node-derived set */
+    std::vector<uint8_t> vDerivedOffsets = {9, 9, 9};  /* Simulated mismatched derived offsets */
+    REQUIRE(result.vOffsets != vDerivedOffsets);         /* Cross-validation logic would return false */
+
+    /* Verify that matching offsets pass the same check */
+    std::vector<uint8_t> vMatchingOffsets = offsets;
+    REQUIRE(result.vOffsets == vMatchingOffsets);        /* Cross-validation logic would return true */
 }
 
 

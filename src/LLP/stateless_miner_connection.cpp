@@ -1368,6 +1368,7 @@ namespace LLP
                                 debug::log(0, "   Signature length: ", fullBlockSubmission.nSignatureLength, " bytes");
                                 debug::log(0, "   Total packet size: ", decryptedData.size(), " bytes");
                                 debug::log(0, "   Channel: ", fullBlockSubmission.nChannel);
+                                debug::log(0, "   Prime offsets: ", fullBlockSubmission.vOffsets.size(), " elements");
                                 debug::log(0, "   Timestamp: ", fullBlockSubmission.timestamp);
                                 debug::log(0, "   Merkle: ", fullBlockSubmission.hashMerkle.SubString());
                                 debug::log(0, "   Nonce: 0x", std::hex, fullBlockSubmission.nonce, std::dec);
@@ -1378,6 +1379,7 @@ namespace LLP
 
                                 hashMerkle = fullBlockSubmission.hashMerkle;
                                 nonce = fullBlockSubmission.nonce;
+                                vPrimeOffsets = fullBlockSubmission.vOffsets;
                                 fFalconVerified = true;
                                 nChannelFromBlock = fullBlockSubmission.nChannel;
                                 nHeightFromBlock = fullBlockSubmission.nUnifiedHeight;

@@ -2071,10 +2071,11 @@ namespace LLP
                 {
                     hashMerkle = fullBlockSubmission.hashMerkle;
                     nonce = fullBlockSubmission.nonce;
+                    vPrimeOffsets = fullBlockSubmission.vOffsets;
                     fParsed = true;
 
                     debug::log(2, FUNCTION, "Disposable Falcon signature verified (legacy lane, shared full-block parser, channel=",
-                               fullBlockSubmission.nChannel, ")");
+                               fullBlockSubmission.nChannel, ", offsets=", fullBlockSubmission.vOffsets.size(), ")");
                 }
                 else
                 {

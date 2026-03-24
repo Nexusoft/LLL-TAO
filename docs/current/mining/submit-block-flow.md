@@ -138,25 +138,9 @@ still at the correct height) should **not** be rejected by the pre-check.
 [ChaCha20 ciphertext]
     └── decrypted ──►
         Full-block format (Hash channel):  [216-byte block][timestamp 8B LE][sig_len 2B LE][Falcon signature]
-        Full-block format (Prime channel): [216-byte block][timestamp 8B LE][sig_len 2B LE][Falcon signature]
+        Full-block format (Prime channel): [216-byte block][vOffsets N bytes][timestamp 8B LE][sig_len 2B LE][Falcon signature]
         Compact legacy wrapper:            [merkle 64B][nonce 8B LE][timestamp 8B LE][sig_len 2B LE][Falcon signature]
 ```
-
-Both Prime and Hash channels use the identical 216-byte full-block wire format. The node derives
-`vOffsets` locally after applying the nonce via `GetOffsets(pBlock->GetPrime(), pBlock->vOffsets)`.
-
-**216-byte Tritium block header field layout:**
-
-| Offset | Size | Field        |
-|--------|------|--------------|
-| 0      | 4    | nVersion     |
-| 4      | 128  | hashPrevBlock |
-| 132    | 64   | hashMerkleRoot |
-| 196    | 4    | nChannel     |
-| 200    | 4    | nHeight      |
-| 204    | 4    | nBits        |
-| 208    | 8    | nNonce       |
-| **Total** | **216** | |
 
 The Falcon-wrapped full-block payload grammar is shared by both mining lanes. Only the
 outer packet framing differs:
