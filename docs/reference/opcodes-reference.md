@@ -347,10 +347,10 @@ Total Size: 60 bytes (encrypted payload)
    std::copy(vPlaintext.begin(), vPlaintext.begin() + 32, hashReward.begin());
    ```
 
-4. **Validate Reward Address Format**
+4. **Validate Reward Address Type**
    ```cpp
-   if(hashReward == 0) {
-       return SendResponse(MINER_REWARD_RESULT, {0x00}); // Invalid address
+   if(!GenesisConstants::IsValidGenesisType(hashReward)) {
+       return SendResponse(MINER_REWARD_RESULT, {0x00}); // Invalid type byte
    }
    ```
 
@@ -362,7 +362,7 @@ Total Size: 60 bytes (encrypted payload)
 
 6. **Send MINER_REWARD_RESULT (0xD004)**
 
-**Note:** The node does **NOT** verify that the reward address exists on the blockchain at this stage. Existence validation happens during block acceptance in consensus rules. This allows miners to set new addresses that will be created later.
+**Note:** The reward address **must** be a valid TritiumGenesis (UserType) sigchain hash. Register Addresses (type 0x02 ACCOUNT registers) are explicitly rejected — `Coinbase::Verify()` enforces this on all network peers; a block with a Register Address in the coinbase field is rejected by the entire network. Pool operators provide their own TritiumGenesis account as the reward address and handle miner payouts separately.
 
 **Performance:**
 - ChaCha20-Poly1305 decryption: <0.5ms

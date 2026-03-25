@@ -63,9 +63,12 @@ namespace TAO
                         TAO::Register::Object account;
                         if(!LLD::Register->ReadState(hashRewardAccount, account, nFlags))
                         {
-                            debug::log(1, FUNCTION, "Failed to read reward account ", hashRewardAccount.SubString(),
-                                      ", using event-only mode");
-                            return true;  // Fallback to event-only
+                            debug::warning(FUNCTION, "AUTO-CREDIT FAILED: cannot read reward account state for ",
+                                          hashRewardAccount.SubString(),
+                                          " — reward address may be a Register Address (not supported) or",
+                                          " account may not exist on chain.",
+                                          " Falling back to event-only mode. NXS will NOT be auto-credited.");
+                            return true;  // Fallback to event-only — upstream validation should prevent this
                         }
 
                         /* Parse the account object */
@@ -125,7 +128,14 @@ namespace TAO
 
             /* Check for valid genesis. */
             if(hashGenesis.GetType() != TAO::Ledger::GENESIS::UserType())
-                return debug::error(FUNCTION, "invalid genesis for coinbase");
+            {
+                return debug::error(FUNCTION, "invalid genesis for coinbase: type byte 0x",
+                                    std::hex, static_cast<int>(hashGenesis.GetType()), std::dec,
+                                    " expected 0x",
+                                    std::hex, static_cast<int>(TAO::Ledger::GENESIS::UserType()), std::dec,
+                                    " — coinbase recipient must be a TritiumGenesis sigchain address,",
+                                    " not a Register Address");
+            }
 
             /* Seek read position to first position. */
             contract.Rewind(32, Contract::OPERATIONS);

@@ -948,10 +948,12 @@ namespace LLP
         /** GetPayoutAddress
          *
          *  Get the payout address for rewards.
-         *  Returns reward address if bound via MINER_SET_REWARD, otherwise genesis hash.
-         *  Falls back to 0 if username-based addressing needs resolution.
+         *  Returns reward address (must be TritiumGenesis) if bound via MINER_SET_REWARD,
+         *  otherwise falls back to genesis hash (always a valid TritiumGenesis by construction).
+         *  Register Addresses are NOT valid coinbase recipients — Coinbase::Verify() enforces
+         *  UserType on all network peers. ValidateRewardAddress() enforces this at bind time.
          *
-         *  @return Reward address, genesis hash, or 0 for username resolution
+         *  @return TritiumGenesis reward address, genesis hash fallback, or 0 if neither is set
          *
         **/
         uint256_t GetPayoutAddress() const;
@@ -1280,11 +1282,14 @@ namespace LLP
 
         /** ValidateRewardAddress
          *
-         *  Validates that a reward address is non-zero and properly formatted.
+         *  Validates that a reward address is non-zero and is a valid TritiumGenesis
+         *  (UserType) address. Register Addresses are explicitly rejected because
+         *  Coinbase::Verify() enforces UserType on all network peers — a block with a
+         *  Register Address as coinbase recipient will be rejected by the whole network.
          *
          *  @param[in] hashReward The reward address to validate
          *
-         *  @return True if valid format
+         *  @return True if the address is a non-zero TritiumGenesis (UserType) hash
          *
          **/
         static bool ValidateRewardAddress(const uint256_t& hashReward);

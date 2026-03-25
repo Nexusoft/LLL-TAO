@@ -98,7 +98,7 @@ TEST_CASE("Integration: Complete Mining Cycle - Single Miner", "[integration][fu
         REQUIRE(phase2->nSessionId == 12345);
         
         /* === PHASE 3: REWARD BINDING === */
-        uint256_t rewardAddr = CreateTestRegisterAddress();
+        uint256_t rewardAddr = CreateTestGenesis(Constants::GENESIS_2);
         
         MiningContext rewardBound = authenticated
             .WithRewardAddress(rewardAddr);
@@ -162,9 +162,9 @@ TEST_CASE("Integration: Multi-Miner Concurrent Mining", "[integration][multi-min
     {
         StatelessMinerManager& manager = StatelessMinerManager::Get();
         
-        /* === MINER 1: Uses register address, hash channel === */
+        /* === MINER 1: Uses TritiumGenesis reward address, hash channel === */
         uint256_t miner1Auth = CreateTestGenesis(Constants::GENESIS_1);
-        uint256_t miner1Reward = CreateTestRegisterAddress(Constants::REGISTER_ADDR_1);
+        uint256_t miner1Reward = CreateTestGenesis(Constants::GENESIS_2);
         
         MiningContext miner1 = MiningContext()
             .WithGenesis(miner1Auth)
@@ -284,7 +284,7 @@ TEST_CASE("Integration: Miner Disconnection and Reconnection", "[integration][re
         
         /* === INITIAL CONNECTION === */
         uint256_t authGenesis = CreateTestGenesis();
-        uint256_t rewardAddr = CreateTestRegisterAddress();
+        uint256_t rewardAddr = CreateTestGenesis(Constants::GENESIS_2);
         uint64_t sessionStart = runtime::unifiedtimestamp();
         
         MiningContext connected = MiningContext()

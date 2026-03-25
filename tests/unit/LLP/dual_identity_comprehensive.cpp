@@ -49,34 +49,23 @@ using namespace TestFixtures;
  *     - Bound during MINER_SET_REWARD packet processing
  *     - Stored in context.hashRewardAddress
  *
- *  THE CRITICAL FIX THIS VALIDATES:
- *  =================================
- *  CreateProducer() MUST route coinbase to hashDynamicGenesis (reward address)
- *  WITHOUT performing HasFirst() lookup, because register addresses will FAIL
- *  that lookup (they're not genesis hashes on the blockchain).
- *
- *  PREVIOUS BUG:
- *  -------------
- *  CreateProducer() checked if(HasFirst(hashDynamicGenesis)) before routing.
- *  This caused register addresses to fail the check and fallback to node
- *  operator's genesis, sending rewards to the WRONG address.
- *
- *  CORRECT BEHAVIOR:
- *  -----------------
- *  CreateProducer() TRUSTS hashDynamicGenesis directly.
- *  Network consensus validates the address later.
- *  Node operator signs block, miner receives rewards.
+ *  THE CRITICAL ARCHITECTURAL PRINCIPLE:
+ *  ======================================
+ *  Both AUTH identity (hashGenesis) and REWARD identity (hashRewardAddress)
+ *  MUST be valid TritiumGenesis (UserType) hashes. Register Addresses are NOT
+ *  supported as mining reward addresses — Coinbase::Verify() enforces the UserType
+ *  check on all network peers and will reject any block whose coinbase field contains
+ *  a Register Address type byte. ValidateRewardAddress() enforces this at bind time.
  *
  *  WHAT WE TEST:
  *  =============
  *  1. Authentication and reward identities are independent
- *  2. Reward address can differ from authentication genesis
- *  3. Register addresses work correctly (the fix!)
- *  4. Genesis hashes work correctly (backward compatibility)
- *  5. Mixed scenarios (some miners use register, some use genesis)
- *  6. Zero/invalid addresses are handled correctly
- *  7. Context updates preserve both identities correctly
- *  8. Manager tracks both identities correctly
+ *  2. Reward address can differ from authentication genesis (e.g. Pool use case)
+ *  3. Both auth genesis and reward address MUST be TritiumGenesis (UserType)
+ *  4. Multiple miners can use different TritiumGenesis reward addresses
+ *  5. Zero/invalid addresses are handled correctly
+ *  6. Context updates preserve both identities correctly
+ *  7. Manager tracks both identities correctly
  *
  **/
 
@@ -113,8 +102,8 @@ TEST_CASE("Dual-Identity: Authentication vs Reward Separation", "[dual-identity]
         REQUIRE(authenticated.hashGenesis == authGenesis);
         REQUIRE(authenticated.fRewardBound == false);
         
-        /* Step 2: Bind reward address */
-        uint256_t rewardAddr = CreateTestRegisterAddress();
+        /* Step 2: Bind reward address (must be a TritiumGenesis) */
+        uint256_t rewardAddr = CreateTestGenesis(Constants::GENESIS_2);
         MiningContext rewardBound = authenticated
             .WithRewardAddress(rewardAddr);
         
@@ -129,7 +118,7 @@ TEST_CASE("Dual-Identity: Authentication vs Reward Separation", "[dual-identity]
     SECTION("GetPayoutAddress returns reward address when bound")
     {
         uint256_t authGenesis = CreateTestGenesis(Constants::GENESIS_1);
-        uint256_t rewardAddr = CreateTestRegisterAddress();
+        uint256_t rewardAddr = CreateTestGenesis(Constants::GENESIS_2);
         
         MiningContext ctx = MiningContext()
             .WithGenesis(authGenesis)
@@ -159,80 +148,80 @@ TEST_CASE("Dual-Identity: Authentication vs Reward Separation", "[dual-identity]
 }
 
 
-TEST_CASE("Dual-Identity: Register Address Support", "[dual-identity][register-address][critical]")
+TEST_CASE("Dual-Identity: TritiumGenesis Reward Address Support", "[dual-identity][genesis-reward][critical]")
 {
-    SECTION("Register address can be used as reward address")
+    SECTION("TritiumGenesis can be used as reward address (required)")
     {
-        uint256_t authGenesis = CreateTestGenesis();
-        uint256_t registerAddr = CreateTestRegisterAddress();
-        
+        uint256_t authGenesis = CreateTestGenesis(Constants::GENESIS_1);
+        uint256_t rewardGenesis = CreateTestGenesis(Constants::GENESIS_2);
+
         MiningContext ctx = MiningContext()
             .WithGenesis(authGenesis)
             .WithAuth(true)
-            .WithRewardAddress(registerAddr);
-        
-        /* Register address stored correctly */
+            .WithRewardAddress(rewardGenesis);
+
+        /* TritiumGenesis reward address stored correctly */
         REQUIRE(ctx.fRewardBound == true);
-        REQUIRE(ctx.hashRewardAddress == registerAddr);
-        REQUIRE(ctx.GetPayoutAddress() == registerAddr);
+        REQUIRE(ctx.hashRewardAddress == rewardGenesis);
+        REQUIRE(ctx.GetPayoutAddress() == rewardGenesis);
     }
-    
-    SECTION("Multiple miners can use different register addresses")
+
+    SECTION("Multiple miners can use different TritiumGenesis reward addresses")
     {
         StatelessMinerManager& manager = StatelessMinerManager::Get();
-        
+
         uint256_t miner1Auth = CreateTestGenesis(Constants::GENESIS_1);
-        uint256_t miner1Reward = CreateTestRegisterAddress(Constants::REGISTER_ADDR_1);
-        
-        uint256_t miner2Auth = CreateTestGenesis(Constants::GENESIS_2);
-        uint256_t miner2Reward = CreateTestRegisterAddress(Constants::REGISTER_ADDR_2);
-        
+        uint256_t miner1Reward = CreateTestGenesis(Constants::GENESIS_2);
+
+        uint256_t miner2Auth = CreateTestGenesis(Constants::GENESIS_3);
+        uint256_t miner2Reward = CreateTestGenesis(Constants::GENESIS_4);
+
         MiningContext ctx1 = MiningContext()
             .WithGenesis(miner1Auth)
             .WithRewardAddress(miner1Reward)
             .WithAuth(true);
         ctx1.strAddress = "192.168.1.100:9325";
-        
+
         MiningContext ctx2 = MiningContext()
             .WithGenesis(miner2Auth)
             .WithRewardAddress(miner2Reward)
             .WithAuth(true);
         ctx2.strAddress = "192.168.1.101:9325";
-        
+
         manager.UpdateMiner(ctx1.strAddress, ctx1, 0);
         manager.UpdateMiner(ctx2.strAddress, ctx2, 0);
-        
+
         /* Verify both contexts stored correctly */
         auto retrieved1 = manager.GetMinerContext(ctx1.strAddress);
         auto retrieved2 = manager.GetMinerContext(ctx2.strAddress);
-        
+
         REQUIRE(retrieved1.has_value());
         REQUIRE(retrieved2.has_value());
-        
+
         REQUIRE(retrieved1->hashRewardAddress == miner1Reward);
         REQUIRE(retrieved2->hashRewardAddress == miner2Reward);
-        
+
         /* Different miners have different addresses */
         REQUIRE(retrieved1->hashRewardAddress != retrieved2->hashRewardAddress);
-        
+
         /* Cleanup */
         manager.RemoveMiner(ctx1.strAddress);
         manager.RemoveMiner(ctx2.strAddress);
     }
-    
-    SECTION("Register address preserved through height updates")
+
+    SECTION("Reward TritiumGenesis preserved through height updates")
     {
-        uint256_t registerAddr = CreateTestRegisterAddress();
-        
+        uint256_t rewardGenesis = CreateTestGenesis(Constants::GENESIS_2);
+
         MiningContext ctx = MiningContext()
-            .WithRewardAddress(registerAddr)
+            .WithRewardAddress(rewardGenesis)
             .WithHeight(100000);
-        
+
         /* Update height */
         MiningContext updated = ctx.WithHeight(100001);
-        
-        /* Register address preserved */
-        REQUIRE(updated.hashRewardAddress == registerAddr);
+
+        /* Reward genesis preserved */
+        REQUIRE(updated.hashRewardAddress == rewardGenesis);
         REQUIRE(updated.fRewardBound == true);
         REQUIRE(updated.nHeight == 100001);
     }
@@ -276,13 +265,13 @@ TEST_CASE("Dual-Identity: Genesis Hash Support", "[dual-identity][genesis-hash]"
 
 TEST_CASE("Dual-Identity: Mixed Miner Scenarios", "[dual-identity][mixed-scenarios]")
 {
-    SECTION("Some miners use register addresses, some use genesis hashes")
+    SECTION("Miners can use different TritiumGenesis reward addresses")
     {
         StatelessMinerManager& manager = StatelessMinerManager::Get();
-        
-        /* Miner 1: Uses register address */
+
+        /* Miner 1: Uses a different TritiumGenesis as reward */
         uint256_t miner1Auth = CreateTestGenesis(Constants::GENESIS_1);
-        uint256_t miner1Reward = CreateTestRegisterAddress();
+        uint256_t miner1Reward = CreateTestGenesis(Constants::GENESIS_2);
         
         MiningContext ctx1 = MiningContext()
             .WithGenesis(miner1Auth)
@@ -369,8 +358,8 @@ TEST_CASE("Dual-Identity: Zero and Invalid Address Handling", "[dual-identity][e
     
     SECTION("Can update reward address after initial binding")
     {
-        uint256_t reward1 = CreateTestRegisterAddress(Constants::REGISTER_ADDR_1);
-        uint256_t reward2 = CreateTestRegisterAddress(Constants::REGISTER_ADDR_2);
+        uint256_t reward1 = CreateTestGenesis(Constants::GENESIS_2);
+        uint256_t reward2 = CreateTestGenesis(Constants::GENESIS_3);
         
         MiningContext ctx = MiningContext()
             .WithRewardAddress(reward1)
@@ -388,9 +377,9 @@ TEST_CASE("Dual-Identity: Manager Integration", "[dual-identity][manager]")
     SECTION("Manager tracks both auth and reward identities")
     {
         StatelessMinerManager& manager = StatelessMinerManager::Get();
-        
+
         uint256_t authGenesis = CreateTestGenesis(Constants::GENESIS_1);
-        uint256_t rewardAddr = CreateTestRegisterAddress();
+        uint256_t rewardAddr = CreateTestGenesis(Constants::GENESIS_2);
         
         MiningContext ctx = MiningContext()
             .WithGenesis(authGenesis)
@@ -415,9 +404,9 @@ TEST_CASE("Dual-Identity: Manager Integration", "[dual-identity][manager]")
     {
         StatelessMinerManager& manager = StatelessMinerManager::Get();
         
-        /* Miner 1: Reward bound */
+        /* Miner 1: Reward bound (TritiumGenesis) */
         MiningContext ctx1 = MiningContext()
-            .WithRewardAddress(CreateTestRegisterAddress())
+            .WithRewardAddress(CreateTestGenesis(Constants::GENESIS_2))
             .WithAuth(true);
         ctx1.strAddress = "192.168.1.100:9325";
         
@@ -452,7 +441,7 @@ TEST_CASE("Dual-Identity: Payout Address Logic", "[dual-identity][payout]")
     SECTION("GetPayoutAddress returns reward when both genesis and reward set")
     {
         uint256_t authGenesis = CreateTestGenesis(Constants::GENESIS_1);
-        uint256_t rewardAddr = CreateTestRegisterAddress();
+        uint256_t rewardAddr = CreateTestGenesis(Constants::GENESIS_2);
         
         MiningContext ctx = MiningContext()
             .WithGenesis(authGenesis)
@@ -531,8 +520,8 @@ TEST_CASE("Dual-Identity: Protocol Flow Simulation", "[dual-identity][protocol-f
         REQUIRE(ctx1->hashGenesis == authGenesis);
         REQUIRE(ctx1->fRewardBound == false);
         
-        /* Step 3: Miner sends MINER_SET_REWARD with register address */
-        uint256_t rewardAddr = CreateTestRegisterAddress();
+        /* Step 3: Miner sends MINER_SET_REWARD with TritiumGenesis reward address */
+        uint256_t rewardAddr = CreateTestGenesis(Constants::GENESIS_2);
         
         MiningContext rewardBound = authenticated
             .WithRewardAddress(rewardAddr);

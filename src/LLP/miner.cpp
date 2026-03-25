@@ -13,6 +13,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <LLP/include/global.h>
+#include <LLP/include/genesis_constants.h>
 #include <LLP/include/stateless_manager.h>
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/falcon_constants.h>
@@ -1472,6 +1473,18 @@ namespace LLP
                 debug::error(FUNCTION, "No reward address available: ", e.what());
                 return nullptr;
             }
+        }
+
+        /* Defense-in-depth: reject any resolved reward address whose type byte is not a valid
+         * TritiumGenesis. Coinbase::Verify() enforces this on all network peers — a block with
+         * a Register Address as coinbase recipient will be rejected by the entire network. */
+        if(!LLP::GenesisConstants::IsValidGenesisType(hashReward))
+        {
+            debug::error(FUNCTION, "Resolved reward address has invalid type byte 0x",
+                         std::hex, static_cast<int>(hashReward.GetType()), std::dec,
+                         " — Register Addresses cannot be used as coinbase recipient.",
+                         " Block creation aborted. Set a valid TritiumGenesis via MINER_SET_REWARD.");
+            return nullptr;
         }
         
         /* Prime channel optimization */
