@@ -459,8 +459,12 @@ namespace TAO::Ledger
                 /* Handle for STALE producer. */
                 debug::log(0, FUNCTION, "Producer is stale, rebuilding...");
 
-                /* Create a new producer transaction for given block. */
-                if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients, hashGenesis))
+                /* Create a new producer transaction for given block.
+                 * Pass hashDynamicGenesis (miner reward address) so coinbase is routed
+                 * to the remote miner, not the node operator. */
+                debug::log(2, FUNCTION, "Rebuilding stale producer: reward address = ",
+                    hashDynamicGenesis != 0 ? hashDynamicGenesis.SubString() : std::string("none (solo)"));
+                if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients, hashDynamicGenesis))
                     return debug::error(FUNCTION, "Failed to create producer transactions.");
 
                 /* Store new block cache. */
@@ -502,8 +506,12 @@ namespace TAO::Ledger
             /* Must add transactions first, before creating producer, so producer is sequenced last if user has tx in block */
             AddTransactions(rBlockRet);
 
-            /* Create the new producer transaction for given block. */
-            if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients, hashGenesis))
+            /* Create the new producer transaction for given block.
+             * Pass hashDynamicGenesis (miner reward address) so coinbase is routed
+             * to the remote miner, not the node operator. */
+            debug::log(2, FUNCTION, "Creating fresh producer: reward address = ",
+                hashDynamicGenesis != 0 ? hashDynamicGenesis.SubString() : std::string("none (solo)"));
+            if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients, hashDynamicGenesis))
                 return debug::error(FUNCTION, "Failed to create producer transactions.");
 
             /* Update the producer timestamp */
