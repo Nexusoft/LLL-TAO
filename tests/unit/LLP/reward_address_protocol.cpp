@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <unit/catch2/catch.hpp>
 
 #include <LLC/types/uint1024.h>
+#include <Util/include/hex.h>
 #include <cstdint>
 #include <cstring>
 #include <string>
@@ -45,16 +46,27 @@ TEST_CASE("MINER_SET_REWARD Packet Structure Tests", "[miner][reward][protocol]"
         REQUIRE(hashReconstructed == hashReward);
     }
     
-    SECTION("Byte order preservation with memcpy - matching NexusMiner protocol")
+    SECTION("Byte order: HexStr+SetHex correctly decodes big-endian miner bytes")
     {
-        /* Test the exact scenario from the bug report:
-         * NexusMiner sends 32-byte hash in natural order,
-         * Node must preserve exact byte order (not reverse it) */
-        
-        /* Simulate the hash that NexusMiner sent (from problem statement) */
-        const char* hex_sent = "30727fb2d271c6ecdb64f65ba1eec88a9ce9355ff9104995c6849f59d68ebff2";
-        
-        /* Create raw byte vector as NexusMiner would send it */
+        /* NexusMiner encodes the genesis hash in big-endian / display byte order:
+         * hex_decode_genesis_hash() decodes the 64-char hex string left-to-right,
+         * so vDecrypted[0] == 0xa1 (the type byte) and vDecrypted[31] == the last byte.
+         *
+         * uint256_t internal storage (pn[]) is little-endian word order: pn[0] is
+         * the LEAST significant 32-bit word and pn[WIDTH-1] is the MOST significant.
+         * GetType() reads from pn[WIDTH-1] >> 24, expecting the type byte there.
+         *
+         * CORRECT: use HexStr + SetHex — SetHex reverses the bytes into pn[] so that
+         * the first hex character (type byte 0xa1) ends up in pn[WIDTH-1].
+         *
+         * WRONG: memcpy(hashReward.begin(), ...) places vDecrypted[0] into pn[0]
+         * (least significant word), so GetType() reads vDecrypted[28] instead of
+         * vDecrypted[0], returning the wrong type byte. */
+
+        /* The exact genesis hash from the bug report */
+        const char* hex_sent = "a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122";
+
+        /* Simulate the raw bytes as NexusMiner sends them (big-endian / display order) */
         std::vector<uint8_t> vDecrypted;
         for(size_t i = 0; i < 64; i += 2)
         {
@@ -62,30 +74,31 @@ TEST_CASE("MINER_SET_REWARD Packet Structure Tests", "[miner][reward][protocol]"
             uint8_t byte = static_cast<uint8_t>(std::strtoul(byteString.c_str(), nullptr, 16));
             vDecrypted.push_back(byte);
         }
-        
+
         REQUIRE(vDecrypted.size() == 32);
-        
-        /* Use memcpy to preserve byte order (as fixed in ProcessSetReward) */
+        /* Confirm byte[0] is the type byte 0xa1 */
+        REQUIRE(vDecrypted[0] == 0xa1);
+
+        /* --- CORRECT approach: HexStr + SetHex (what ProcessSetReward now uses) --- */
         uint256_t hashReward;
-        std::memcpy(hashReward.begin(), vDecrypted.data(), 32);
-        
-        /* Convert back to hex string */
-        std::string hex_stored = hashReward.ToString();
-        
-        /* Verify the stored hash matches what was sent (no byte reversal) */
-        REQUIRE(hex_stored == hex_sent);
-        
-        /* Also verify the WRONG way (SetBytes) would have reversed it */
+        hashReward.SetHex(HexStr(vDecrypted.begin(), vDecrypted.end()));
+
+        /* GetHex() must round-trip back to the original display-order hex string */
+        REQUIRE(hashReward.GetHex() == hex_sent);
+
+        /* GetType() must return 0xa1 — the first byte of the display-order string */
+        REQUIRE(hashReward.GetType() == 0xa1);
+
+        /* --- WRONG approach: memcpy (the old bug — documented here as regression proof) ---
+         * memcpy places vDecrypted[0..3] into pn[0] (least significant word),
+         * so GetType() reads from pn[WIDTH-1], which gets vDecrypted[28] == 0x22. */
         uint256_t hashWrongWay;
-        hashWrongWay.SetBytes(vDecrypted);
-        std::string hex_wrong = hashWrongWay.ToString();
-        
-        /* This should be different (reversed) */
-        REQUIRE(hex_wrong != hex_sent);
-        
-        /* Verify it's the reversed version (corrected from problem statement typo) */
-        const char* hex_reversed = "d68ebff2c6849f59f91049959ce9355fa1eec88adb64f65bd271c6ec30727fb2";
-        REQUIRE(hex_wrong == hex_reversed);
+        std::memcpy(hashWrongWay.begin(), vDecrypted.data(), 32);
+
+        /* memcpy does NOT give the correct type byte */
+        REQUIRE(hashWrongWay.GetType() != 0xa1);
+        /* Byte 28 of the genesis hash above is 0x22 — the wrong type byte seen in logs */
+        REQUIRE(hashWrongWay.GetType() == 0x22);
     }
     
     SECTION("Invalid payload - too small")
