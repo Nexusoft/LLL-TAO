@@ -598,6 +598,10 @@ namespace LLP
      *  2. SECONDARY CHECK: Age timeout (600 second safety net)
      *     - Template is stale if older than 600 seconds
      *     - Handles edge cases: reorgs, network partitions, clock skew
+     *  3. TERTIARY CHECK: Unified height drift guard
+     *     - Template is stale if current unified height has advanced > 1 block beyond
+     *       template creation height.  Catches the scenario where stake or opposite-
+     *       channel blocks advance hashBestChain while the mining channel is unchanged.
      *  
      *  EXAMPLE SCENARIOS:
      *  ==================
@@ -626,6 +630,15 @@ namespace LLP
      *  Template: prime_channel=2165443, unified=6535198, age=610s
      *  Blockchain: prime_channel=2165443 (no channel change)
      *  Result: STALE ✅ (age exceeded 600s limit)
+     *  
+     *  Scenario E: Template is STALE - unified height drift (FIXED here)
+     *  ------------------------------------------------------------------
+     *  Template: prime_channel=2346186, unified=6647130, age=874s
+     *  Blockchain: prime_channel=2346186 (unchanged), but 4 stake/hash blocks mined
+     *    → unified=6647134, hashBestChain has advanced 4 blocks
+     *  OLD BEHAVIOR: NOT STALE ❌ (channel height unchanged, age<600s, hash check
+     *    bypassed if hashBestChainAtCreation was zero — miner mined stale template)
+     *  NEW BEHAVIOR: STALE ✅ (drift=4 > 1 — TERTIARY check fires; template discarded)
      */
     bool TemplateMetadata::IsStale(uint64_t nNow) const
     {
@@ -705,13 +718,46 @@ namespace LLP
         }
         
         /* ═══════════════════════════════════════════════════════════════════════════ */
+        /* TERTIARY CHECK: Unified height drift guard                                   */
+        /* ═══════════════════════════════════════════════════════════════════════════ */
+
+        /* A template becomes cryptographically stale if the unified chain tip has
+         * advanced more than 1 block since creation, even when the same-channel
+         * height is unchanged.  This catches the scenario where stake blocks or
+         * opposite-channel blocks advance hashBestChain while the mining channel
+         * height stays constant — the template's hashPrevBlock then points to a
+         * stale chain tip and any submitted solution would be rejected by Guard 2
+         * (hashPrevBlock != hashBestChain).
+         *
+         * Tolerance of 1 is intentional: a single unified-height advance between
+         * template creation and this staleness check is normal racing behaviour
+         * (another channel solved a block just after this template was built).
+         * A drift of ≥ 2 means the miner is mining on an obsolete chain tip.
+         *
+         * Observed in the field (2026-03-25): unified drift of 4 (template.nHeight=
+         * 6647130, current_best=6647134) caused 874 s of stale mining because
+         * the channel height was unchanged and the previous checks did not fire. */
+        const uint32_t nCurrentUnified = static_cast<uint32_t>(
+            TAO::Ledger::ChainState::nBestHeight.load());
+        if(nCurrentUnified > nHeight + 1)
+        {
+            debug::log(1, "TemplateMetadata::IsStale",
+                       " UNIFIED DRIFT: template.nHeight=", nHeight,
+                       " current_best=", nCurrentUnified,
+                       " drift=", (nCurrentUnified - nHeight),
+                       " (>1) — template hashPrevBlock is stale; marking STALE");
+            return true;  // STALE: Unified height drift exceeded tolerance
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════════════ */
         /* TEMPLATE IS FRESH                                                            */
         /* ═══════════════════════════════════════════════════════════════════════════ */
         
         /* Template passes all checks:
          * ✅ Age < 600 seconds
+         * ✅ hashBestChain unchanged (hash-based chain tip comparison)
          * ✅ Channel height matches (blockchain is at N-1, template mines N)
-         * ✅ No other channel blocks invalidated this template
+         * ✅ Unified height drift within tolerance (≤ 1 block)
          */
         return false;  // FRESH: Template is valid for mining
     }

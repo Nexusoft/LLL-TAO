@@ -2918,6 +2918,30 @@ namespace LLP
     /** Send a stateless packet response */
     void StatelessMinerConnection::respond(const StatelessPacket& packet)
     {
+        /* INVESTIGATION (2026-03-25): During a sustained ACTION::GET TRANSACTION flood from
+         * suspicious peer 83.8.1.23, the node's send buffer can fill beyond MAX_SEND_BUFFER,
+         * causing BaseConnection<>::WritePacket() to silently drop outbound packets (only
+         * logged at level 4).  This was observed as a 930s SESSION_STATUS_ACK silence
+         * coinciding with a TRANSACTION burst — a possible network-layer attack vector
+         * (send-queue starvation / write-queue saturation).
+         *
+         * Keepalive handler code paths are NOT the root cause: ProcessKeepaliveV2() and
+         * ProcessSessionStatus() are pure/lock-free and build responses correctly.
+         * respond() itself acquires no mutex and calls WritePacket() directly.
+         *
+         * fBufferFull is set to true by WritePacket() when a write is dropped and reset
+         * to false by Socket::Flush() after data drains successfully.  Logging at level 0
+         * here makes the saturation condition operator-visible without requiring -v 4. */
+        if(fBufferFull.load() &&
+           (packet.HEADER == StatelessOpcodes::KEEPALIVE_V2_ACK         ||
+            packet.HEADER == OpcodeUtility::Stateless::SESSION_STATUS_ACK ||
+            packet.HEADER == OpcodeUtility::Stateless::SESSION_KEEPALIVE))
+        {
+            debug::log(0, FUNCTION, "WARNING: keepalive ACK write may be dropped — "
+                       "send buffer saturated (opcode=0x", std::hex, packet.HEADER, std::dec, "); "
+                       "possible TRANSACTION flood causing send-queue saturation");
+        }
+
         /* Serialize and write the packet */
         WritePacket(packet);
     }
@@ -3014,8 +3038,35 @@ namespace LLP
                         }
                         else
                         {
-                            debug::log(2, FUNCTION, "Cached template is still fresh — returning it");
-                            return m_last_created_template;
+                            /* Defense-in-depth: verify unified height drift before returning
+                             * the cached template.  IsStale() detects most staleness via hash
+                             * comparison and channel height, but this integer check is a fast
+                             * independent guard against unified-height drift (e.g., multiple
+                             * stake/opposite-channel blocks arriving while the miner's channel
+                             * height is unchanged).
+                             *
+                             * nTemplateBest == pBlock->nHeight == tStateBest.nHeight + 1 at
+                             * creation time (UNIFIED, per AddBlockData() contract).
+                             * Tolerance of 1: allow nCurrentBest == nTemplateBest (1-block advance);
+                             * discard if chain has advanced ≥ 2 blocks beyond the template tip. */
+                            const uint32_t nCurrentBest = static_cast<uint32_t>(
+                                TAO::Ledger::ChainState::nBestHeight.load());
+                            const uint32_t nTemplateBest = static_cast<uint32_t>(
+                                m_last_created_template->nHeight);
+                            if(nCurrentBest > nTemplateBest + 1)
+                            {
+                                debug::log(1, FUNCTION,
+                                           "Cached template unified height drift: template.nHeight=", nTemplateBest,
+                                           " current_best=", nCurrentBest,
+                                           " drift=", (nCurrentBest - nTemplateBest),
+                                           " — discarding stale cached template");
+                                /* Fall through to create a fresh template below */
+                            }
+                            else
+                            {
+                                debug::log(2, FUNCTION, "Cached template is still fresh — returning it");
+                                return m_last_created_template;
+                            }
                         }
                     }
                     else
