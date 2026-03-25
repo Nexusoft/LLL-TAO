@@ -2096,11 +2096,16 @@ namespace LLP
         }
 
         /* Parse the 32-byte reward address from decrypted payload.
-         * NOTE: vDecrypted contains raw 32-byte hash in natural order.
-         * Do NOT use SetBytes() as it reverses byte order for uint256_t internal format.
-         * Use memcpy to preserve exact byte order sent by NexusMiner. */
+         * NexusMiner sends the genesis hash in big-endian / display byte order
+         * (hex_decode_genesis_hash decodes left-to-right: byte[0] == 0xa1 type byte).
+         * uint256_t internal storage is little-endian word order: pn[0] is the least
+         * significant word and pn[WIDTH-1] is the most significant.  GetType() reads
+         * from pn[WIDTH-1], so we must load via SetHex() which performs the correct
+         * reversal — exactly the same pattern used in ProcessMinerAuthInit for genesis.
+         * Do NOT use memcpy(begin(), ...) — that places byte[0] into the least
+         * significant word, causing GetType() to read the wrong byte. */
         uint256_t hashReward;
-        std::memcpy(hashReward.begin(), vDecrypted.data(), 32);
+        hashReward.SetHex(HexStr(vDecrypted.begin(), vDecrypted.end()));
 
         debug::log(0, FUNCTION, "Received decoded reward register/account hash: ", hashReward.GetHex());
 
