@@ -181,17 +181,17 @@ This test suite provides **UNLIMITED CREATIVE FREEDOM** to validate the stateles
 
 ## Critical Paths Validated
 
-### ✅ Register Address Reward Routing
-**The Core Fix**: Validates that CreateProducer() routes coinbase to hashDynamicGenesis WITHOUT HasFirst() lookup.
+### ✅ TritiumGenesis-Only Reward Routing
+**The Core Constraint**: Only TritiumGenesis (UserType) sigchain hashes are valid as coinbase recipients. `Coinbase::Verify()` enforces this on all network peers. Register Addresses are explicitly rejected by `ValidateRewardAddress()` at bind time and by defense-in-depth guards in `new_block()`.
 
 **Test Flow**:
-1. Miner sends base58 NXS register address
-2. Decoded to uint256_t and stored in context.hashRewardAddress
-3. Passed as hashDynamicGenesis to CreateBlock()
-4. CreateProducer() routes coinbase to hashDynamicGenesis (NOT user->Genesis())
-5. Block created with miner's address as coinbase recipient
+1. Miner sends encrypted TritiumGenesis reward address via MINER_SET_REWARD
+2. `ValidateRewardAddress()` validates the address has UserType byte
+3. Address stored in context.hashRewardAddress
+4. Passed as hashDynamicGenesis to CreateBlock()
+5. `CreateProducer()` routes coinbase to hashDynamicGenesis (NOT user->Genesis())
 6. Block signed by node operator credentials
-7. Network validates and accepts block
+7. Network validates and accepts block (`Coinbase::Verify()` passes UserType check)
 
 **Tests**: dual_identity_comprehensive.cpp, integration_comprehensive.cpp
 
@@ -279,7 +279,7 @@ make -f makefile.cli UNIT_TESTS=1 -j 4
 ```bash
 ./nexus "MiningContext Default Construction"
 ./nexus "Complete Mining Cycle"
-./nexus "Register Address Support"
+./nexus "Dual-Identity: TritiumGenesis Reward Address Support"
 ```
 
 ### Run Tests Matching Pattern

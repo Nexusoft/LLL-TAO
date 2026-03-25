@@ -105,7 +105,7 @@ TEST_CASE("Error Handling: Authentication Errors", "[error-handling][authenticat
     {
         MiningContext ctx = MiningContext()
             .WithChannel(2)
-            .WithRewardAddress(CreateTestRegisterAddress());
+            .WithRewardAddress(CreateTestGenesis(Constants::GENESIS_2));
         
         /* Not authenticated */
         REQUIRE(ctx.fAuthenticated == false);
@@ -118,7 +118,7 @@ TEST_CASE("Error Handling: Authentication Errors", "[error-handling][authenticat
     SECTION("Reward binding attempted before authentication")
     {
         MiningContext ctx = MiningContext()
-            .WithRewardAddress(CreateTestRegisterAddress());
+            .WithRewardAddress(CreateTestGenesis(Constants::GENESIS_2));
         
         /* Reward can be set, but mining requires auth */
         REQUIRE(ctx.fRewardBound == true);
@@ -168,8 +168,8 @@ TEST_CASE("Error Handling: Reward Binding Errors", "[error-handling][reward]")
     
     SECTION("Reward address changed mid-mining")
     {
-        uint256_t reward1 = CreateTestRegisterAddress(Constants::REGISTER_ADDR_1);
-        uint256_t reward2 = CreateTestRegisterAddress(Constants::REGISTER_ADDR_2);
+        uint256_t reward1 = CreateTestGenesis(Constants::GENESIS_2);
+        uint256_t reward2 = CreateTestGenesis(Constants::GENESIS_3);
         
         MiningContext ctx = MiningContext()
             .WithRewardAddress(reward1)
@@ -593,7 +593,7 @@ TEST_CASE("Error Handling: Recovery from Errors", "[error-handling][recovery]")
         
         /* Set valid reward address */
         MiningContext fixed = ctx
-            .WithRewardAddress(CreateTestRegisterAddress());
+            .WithRewardAddress(CreateTestGenesis(Constants::GENESIS_2));
         
         REQUIRE(fixed.GetPayoutAddress() != uint256_t(0));
         REQUIRE(fixed.fRewardBound == true);

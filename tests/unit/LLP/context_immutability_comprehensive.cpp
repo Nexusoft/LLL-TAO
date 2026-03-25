@@ -184,7 +184,7 @@ TEST_CASE("MiningContext Immutability - Identity Fields", "[context][immutabilit
     
     SECTION("WithRewardAddress creates new context, original unchanged")
     {
-        uint256_t testReward = CreateTestRegisterAddress();
+        uint256_t testReward = CreateTestGenesis(Constants::GENESIS_2);
         
         MiningContext original;
         MiningContext updated = original.WithRewardAddress(testReward);
@@ -285,7 +285,7 @@ TEST_CASE("MiningContext Method Chaining", "[context][immutability][chaining]")
     SECTION("Chain ten updates - complete initialization")
     {
         uint256_t testGenesis = CreateTestGenesis();
-        uint256_t testReward = CreateTestRegisterAddress();
+        uint256_t testReward = CreateTestGenesis(Constants::GENESIS_2);
         uint256_t testKeyId = CreateRandomHash();
         std::vector<uint8_t> testNonce = CreateTestNonce();
         uint64_t testTimestamp = runtime::unifiedtimestamp();
@@ -361,7 +361,7 @@ TEST_CASE("MiningContext State Transitions", "[context][immutability][transition
     SECTION("Transition: Authenticated -> Reward Bound")
     {
         MiningContext authenticated = CreateAuthenticatedContext();
-        uint256_t testReward = CreateTestRegisterAddress();
+        uint256_t testReward = CreateTestGenesis(Constants::GENESIS_2);
         
         MiningContext rewardBound = authenticated
             .WithRewardAddress(testReward);
@@ -393,7 +393,7 @@ TEST_CASE("MiningContext State Transitions", "[context][immutability][transition
     SECTION("Complete lifecycle: Disconnected -> Mining Ready")
     {
         uint256_t authGenesis = CreateTestGenesis(Constants::GENESIS_1);
-        uint256_t rewardAddr = CreateTestRegisterAddress();
+        uint256_t rewardAddr = CreateTestGenesis(Constants::GENESIS_2);
         uint256_t keyId = CreateRandomHash();
         std::vector<uint8_t> nonce = CreateTestNonce();
         
@@ -527,7 +527,7 @@ TEST_CASE("MiningContext Helper Methods", "[context][immutability][helpers]")
 {
     SECTION("GetPayoutAddress returns reward address when bound")
     {
-        uint256_t reward = CreateTestRegisterAddress();
+        uint256_t reward = CreateTestGenesis(Constants::GENESIS_2);
         
         MiningContext ctx = MiningContext()
             .WithRewardAddress(reward);

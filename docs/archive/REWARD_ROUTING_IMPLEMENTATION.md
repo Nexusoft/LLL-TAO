@@ -25,9 +25,7 @@ NexusMiner                              Nexus Node
     │──── MINER_SET_REWARD ─────────────────▶│  Encrypted(Reward Address)
     │                                        │  Node validates:
     │                                        │  ├─ Address != 0
-    │                                        │  ├─ Address exists on chain
-    │                                        │  ├─ Type = ACCOUNT
-    │                                        │  └─ Token = 0 (NXS)
+    │                                        │  └─ Type byte = UserType (TritiumGenesis)
     │◀─── MINER_REWARD_RESULT ──────────────│  Encrypted(Success)
     │                                        │
     │──── GET_BLOCK ────────────────────────▶│  Mining begins
@@ -95,10 +93,13 @@ vChaChaKey = SK256(vInput)
 
 **Checks** (ValidateRewardAddress):
 1. ✓ Address is not zero
-2. ✓ Address exists on blockchain (via LLD::Register)
-3. ✓ Object parses successfully
-4. ✓ Type is ACCOUNT (not TRUST, TOKEN, etc.)
-5. ✓ Token is 0 (NXS native currency)
+2. ✓ Address has valid TritiumGenesis type byte (GenesisConstants::IsValidGenesisType)
+
+**Note:** Register Addresses (type 0x02 ACCOUNT registers) are explicitly **NOT** supported.
+`Coinbase::Verify()` enforces that the coinbase recipient must be a TritiumGenesis (UserType)
+sigchain address. Any block with a Register Address in the coinbase field is rejected by all
+network peers. Pool operators use their own TritiumGenesis account as `hashRewardAddress` and
+handle internal payout to individual miners separately.
 
 ### 4. Block Creation Integration
 
@@ -143,7 +144,7 @@ MINING
 2. **Encrypted Communication**: All reward data protected by ChaCha20-Poly1305
 3. **Session Isolation**: Unique keys per session via nonce
 4. **Address Validation**: On-chain verification prevents invalid destinations
-5. **Flexible Routing**: Any valid NXS account can receive rewards
+5. **TritiumGenesis-Only Routing**: Only valid TritiumGenesis (UserType) sigchain accounts accepted; prevents consensus rejection by network peers
 
 ### ⚠️ Considerations
 

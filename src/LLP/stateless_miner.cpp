@@ -34,6 +34,8 @@ ________________________________________________________________________________
 #include <LLC/include/mining_session_keys.h>
 #include <LLC/hash/SK.h>
 
+#include <TAO/Ledger/include/enum.h>
+
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/retarget.h>
 
@@ -483,21 +485,19 @@ namespace LLP
 
     uint256_t MiningContext::GetPayoutAddress() const
     {
-        /* Priority 1: Use explicit reward address if bound via MINER_SET_REWARD */
+        /* Priority 1: Use explicit reward address if bound via MINER_SET_REWARD.
+         * This address MUST be a TritiumGenesis (UserType) — Register Addresses are
+         * NOT valid coinbase recipients and will cause Coinbase::Verify() to fail on
+         * all network peers. ValidateRewardAddress() enforces this at bind time. */
         if(fRewardBound && hashRewardAddress != 0)
         {
             return hashRewardAddress;
         }
         
         /* Priority 2: Fall back to genesis hash (legacy behavior from v5.1+)
-         * This allows mining without explicit reward address binding.
-         * The genesis hash serves dual purpose:
-         *   - WHO you are (authentication identity via Falcon signature)
-         *   - WHERE rewards go (fallback payout destination)
-         * 
-         * This fallback has been part of Nexus since the introduction of
-         * dual-identity mining, allowing miners to authenticate and receive
-         * rewards to the same genesis without requiring separate MINER_SET_REWARD.
+         * The genesis hash is always a valid TritiumGenesis by construction —
+         * it is validated during MINER_AUTH_INIT via GenesisConstants::ValidateGenesis()
+         * which checks the UserType byte. This fallback is therefore always safe.
          */
         if(hashGenesis != 0)
         {
@@ -1982,7 +1982,19 @@ namespace LLP
             return false;
         }
 
-        /* Basic validation passed - more complex validation happens during block acceptance */
+        /* Must be a TritiumGenesis (user sigchain) — Register Addresses are NOT valid coinbase
+         * recipients. Coinbase::Verify() hard-enforces that the coinbase field must carry a
+         * UserType genesis hash; any other type byte causes network peers to reject the block. */
+        if(!GenesisConstants::IsValidGenesisType(hashReward))
+        {
+            debug::error(FUNCTION, "Reward address has invalid type byte 0x",
+                         std::hex, static_cast<int>(hashReward.GetType()), std::dec,
+                         " — must be a TritiumGenesis account (type 0x",
+                         std::hex, static_cast<int>(TAO::Ledger::GENESIS::UserType()), std::dec,
+                         "). Register Addresses are not supported as mining reward addresses.");
+            return false;
+        }
+
         return true;
     }
 

@@ -563,15 +563,16 @@ namespace TAO::Ledger
         if(nChannel == 1 || nChannel == 2)
         {
             /* Determine reward recipient for coinbase transaction.
-             * hashDynamicGenesis can be: Tritium genesis hash OR register address.
-             * Register addresses include: account register address or trust register address.
-             * Trust the address - network consensus validates during block acceptance. */
+             * hashDynamicGenesis MUST be a valid TritiumGenesis (UserType) sigchain hash.
+             * Register Addresses are NOT valid coinbase recipients — Coinbase::Verify()
+             * enforces this on all network peers. The caller (new_block()) validates the
+             * type byte before reaching this point via ValidateRewardAddress() and the
+             * defense-in-depth guard. */
             uint256_t hashRewardRecipient = user->Genesis();
-            
+
             if(hashDynamicGenesis != 0)
             {
-                /* Route rewards to dynamic address (miner).
-                 * No pre-validation needed - invalid addresses rejected by network consensus. */
+                /* Route rewards to dynamic address (miner's TritiumGenesis). */
                 hashRewardRecipient = hashDynamicGenesis;
                 debug::log(1, FUNCTION, "Reward routing: DYNAMIC to ", hashRewardRecipient.SubString(), " (miner)");
             }

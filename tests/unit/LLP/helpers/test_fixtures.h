@@ -236,8 +236,8 @@ namespace TestFixtures
     inline LLP::MiningContext CreateFullMiningContext(uint32_t nChannel = 2)
     {
         uint256_t authGenesis = CreateTestGenesis(Constants::GENESIS_1);
-        uint256_t rewardAddr = CreateTestRegisterAddress(Constants::REGISTER_ADDR_1);
-        
+        uint256_t rewardAddr = CreateTestGenesis(Constants::GENESIS_2);  // Must be TritiumGenesis
+
         return CreateRewardBoundContext(authGenesis, rewardAddr)
             .WithChannel(nChannel)
             .WithHeight(100000)
