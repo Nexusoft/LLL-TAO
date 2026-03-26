@@ -513,30 +513,13 @@ namespace Legacy
         /* Check that Block is Descendant of Hardened Checkpoints. */
         if(!TAO::Ledger::IsDescendant(statePrev))
         {
-            /* Diagnostic: check if in-memory checkpoint is stale relative to on-disk best state */
-            TAO::Ledger::BlockState stateBestDisk;
-            if(LLD::Ledger->ReadBlock(TAO::Ledger::ChainState::hashBestChain.load(), stateBestDisk) &&
-               stateBestDisk.hashCheckpoint != TAO::Ledger::ChainState::hashCheckpoint.load())
+            /* In-memory gate: only attempt disk repair when tStateBest.hashCheckpoint
+             * disagrees with the standalone hashCheckpoint atomic.  This avoids the
+             * I/O amplification vector where a remote sender spams blocks to trigger
+             * ReadBlock() on every IsDescendant() failure. */
+            if(TAO::Ledger::ChainState::RepairCheckpointIfStale())
             {
-                debug::error(FUNCTION, "CHECKPOINT STALE: in-memory=",
-                    TAO::Ledger::ChainState::hashCheckpoint.load().SubString(),
-                    " on-disk best=", stateBestDisk.hashCheckpoint.SubString(),
-                    " — repairing from on-disk state");
-
-                /* Repair: re-derive checkpoint from on-disk best state */
-                const uint1024_t hashCheckpointOld = TAO::Ledger::ChainState::hashCheckpoint.load();
-                TAO::Ledger::ChainState::hashCheckpoint = stateBestDisk.hashCheckpoint;
-
-                TAO::Ledger::BlockState stateCheckpoint;
-                if(!LLD::Ledger->ReadBlock(stateBestDisk.hashCheckpoint, stateCheckpoint))
-                {
-                    /* Restore old checkpoint to avoid partial update. */
-                    TAO::Ledger::ChainState::hashCheckpoint = hashCheckpointOld;
-                    return debug::error(FUNCTION, "not descendant of last checkpoint (repair failed: could not read checkpoint block)");
-                }
-                TAO::Ledger::ChainState::nCheckpointHeight = stateCheckpoint.nHeight;
-
-                /* Retry the descendant check with repaired checkpoint */
+                /* Retry the descendant check with repaired checkpoint. */
                 if(!TAO::Ledger::IsDescendant(statePrev))
                     return debug::error(FUNCTION, "not descendant of last checkpoint (even after repair)");
 
