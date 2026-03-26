@@ -173,6 +173,19 @@ namespace TAO
         BlockAcceptanceResult AcceptMinedBlock(TAO::Ledger::TritiumBlock& block);
 
 
+        /** RefreshProducerIfStale
+         *
+         *  Pre-validation producer refresh.  Must be called after sign_block() and
+         *  BEFORE ValidateMinedBlock() in both the stateless (port 9323) and legacy
+         *  (port 8323) SUBMIT_BLOCK paths.
+         *
+         *  @param[in,out] block  The solved TritiumBlock candidate.
+         *  @return true if consistent or successfully refreshed; false on failure
+         *          (caller must reject the block).
+         **/
+        bool RefreshProducerIfStale(TAO::Ledger::TritiumBlock& block);
+
+
         /** ParseStatelessWorkSubmission
          *
          *  Parse stateless miner work submission payloads (merkle + nonce).

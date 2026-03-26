@@ -1818,6 +1818,23 @@ namespace LLP
                     return true;
                 }
 
+                /* ── Pre-validation producer refresh ─────────────────────────────────────
+                 *  If block.vtx contains transactions for the same sigchain genesis as the
+                 *  producer, the producer must follow the last vtx tx — not the disk last
+                 *  at template-creation time.  TritiumBlock::Check() (called inside
+                 *  ValidateMinedBlock) enforces this via mapLast, so the refresh must
+                 *  happen here, BEFORE Check() runs.
+                 *
+                 *  Also handles the case where a different channel's block advanced the
+                 *  disk last between template issuance and SUBMIT_BLOCK receipt. */
+                if(!TAO::Ledger::RefreshProducerIfStale(*pTritium))
+                {
+                    debug::error(FUNCTION, "SUBMIT_BLOCK: producer refresh failed — rejecting");
+                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                    respond(response);
+                    return true;
+                }
+
                 TAO::Ledger::BlockValidationResult validationResult =
                     TAO::Ledger::ValidateMinedBlock(*pTritium);
                 if(!validationResult.valid)

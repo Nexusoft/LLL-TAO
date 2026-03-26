@@ -291,40 +291,6 @@ namespace TAO::Ledger
             return result;
         }
 
-        /* Producer sigchain staleness check — cheap disk read before expensive PoW
-         * verification.  If the producer's hashPrevTx no longer matches the on-disk
-         * last transaction for this genesis the template is stale: another block from
-         * the same sigchain was accepted during the mining window.  Rejecting here
-         * avoids running PrimeCheck() only to fail later in Transaction::Connect()
-         * with "prev transaction incorrect sequence" or "last hash mismatch".
-         *
-         * Contrast with upstream Nexusoft/LLL-TAO: upstream sends BLOCK_ACCEPTED only
-         * after Process() fully completes, so a stale producer there produces an honest
-         * rejection without a misleading acknowledgement.  In this fork BLOCK_ACCEPTED
-         * is sent immediately after ValidateMinedBlock() returns true, so we MUST catch
-         * the stale producer here — before PoW — to avoid confirming a block that the
-         * ledger will subsequently refuse to connect. */
-        if(!block.producer.IsFirst())
-        {
-            uint512_t hashLast = 0;
-            if(!LLD::Ledger->ReadLast(block.producer.hashGenesis, hashLast))
-            {
-                debug::log(0, FUNCTION, "SUBMIT_BLOCK warning: could not read ledger last for genesis ",
-                           block.producer.hashGenesis.SubString(),
-                           " — sigchain freshness unverifiable, proceeding to full validation");
-            }
-            else if(block.producer.hashPrevTx != hashLast)
-            {
-                debug::log(0, FUNCTION, "SUBMIT_BLOCK rejected: producer sigchain stale — "
-                           "producer.hashPrevTx=", block.producer.hashPrevTx.SubString(),
-                           " current ledger last=", hashLast.SubString(),
-                           " producer.nSequence=", block.producer.nSequence,
-                           " — request a new block template");
-                result.reason = "producer sigchain stale: request a new block template";
-                return result;
-            }
-        }
-
         if(!block.Check())
         {
             result.reason = "block Check() failed";
@@ -335,6 +301,165 @@ namespace TAO::Ledger
         result.reason = "valid";
         return result;
     }
+
+    /* Pre-validation producer refresh.  Called after sign_block() and BEFORE
+     * ValidateMinedBlock() so that TritiumBlock::Check() (called inside
+     * ValidateMinedBlock) sees a producer that is consistent with both the
+     * block's vtx transactions and the on-disk sigchain state. */
+    bool RefreshProducerIfStale(TAO::Ledger::TritiumBlock& block)
+    {
+        /* Only PoW channels (Prime=1, Hash=2) have a sigchain producer that can
+         * go stale.  Stake (0) and Private (3) use different producer semantics. */
+        if(block.nChannel != 1 && block.nChannel != 2)
+            return true;
+
+        /* ── Step 1: find the highest-sequence vtx tx for the producer's genesis ──
+         *
+         * block.vtx transactions will be connected by BlockState::Connect() BEFORE
+         * the producer.  Each one calls WriteLast(genesis, hash).  So by the time
+         * Connect() reaches the producer, the on-disk last will be whatever is the
+         * last same-genesis tx in vtx — not what was on disk when this function runs.
+         *
+         * We must therefore make the producer follow the last vtx tx for its genesis,
+         * not the current disk last. */
+        uint512_t hashVtxLast    = 0;
+        uint32_t  nVtxLastSeq    = 0;
+        bool      fHasVtxSameGen = false;
+
+        for(const auto& txpair : block.vtx)
+        {
+            /* We only store TRITIUM transactions in vtx for sigchain ordering. */
+            if(txpair.first != TAO::Ledger::TRANSACTION::TRITIUM)
+                continue;
+
+            TAO::Ledger::Transaction txVtx;
+            if(!LLD::Ledger->ReadTx(txpair.second, txVtx, TAO::Ledger::FLAGS::MEMPOOL))
+            {
+                debug::log(2, FUNCTION, "vtx ReadTx failed for ", txpair.second.SubString(),
+                           " — skipping for producer staleness check");
+                continue;
+            }
+
+            if(txVtx.hashGenesis != block.producer.hashGenesis)
+                continue;
+
+            /* Track the highest sequence. vtx is typically in ascending order, but
+             * we use max() defensively to handle any reordering or edge cases. */
+            if(!fHasVtxSameGen || txVtx.nSequence > nVtxLastSeq)
+            {
+                hashVtxLast    = txpair.second;
+                nVtxLastSeq    = txVtx.nSequence;
+                fHasVtxSameGen = true;
+            }
+        }
+
+        /* ── Step 2: determine the true predecessor for the producer ── */
+        uint512_t hashTrueLast = 0;
+        uint32_t  nTrueLastSeq = 0;
+
+        if(fHasVtxSameGen)
+        {
+            /* vtx transactions win — they will be on-disk by connect time. */
+            hashTrueLast = hashVtxLast;
+            nTrueLastSeq = nVtxLastSeq;
+        }
+        else
+        {
+            /* No vtx tx for this genesis: use on-disk last (scenario B). */
+            if(!LLD::Ledger->ReadLast(block.producer.hashGenesis, hashTrueLast))
+                return true; /* genesis not yet on disk (first block) — no staleness */
+
+            TAO::Ledger::Transaction txLast;
+            if(LLD::Ledger->ReadTx(hashTrueLast, txLast, TAO::Ledger::FLAGS::MEMPOOL))
+                nTrueLastSeq = txLast.nSequence;
+        }
+
+        /* ── Step 3: check if refresh is actually needed ── */
+        if(hashTrueLast == 0 || hashTrueLast == block.producer.hashPrevTx)
+            return true; /* already consistent — nothing to do */
+
+        /* ── Step 4: perform the refresh ── */
+        debug::log(0, FUNCTION,
+            "Producer pre-validation refresh:"
+            " genesis=",          block.producer.hashGenesis.SubString(),
+            " old.hashPrevTx=",   block.producer.hashPrevTx.SubString(),
+            " old.nSequence=",    block.producer.nSequence,
+            " trueLast=",         hashTrueLast.SubString(),
+            " new.nSequence=",    nTrueLastSeq + 1,
+            " vtxContrib=",       fHasVtxSameGen);
+
+        /* Unlock the sigchain to obtain credentials for re-signing. */
+        SecureString strPIN;
+        try
+        {
+            RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
+        }
+        catch(const std::exception& e)
+        {
+            debug::error(FUNCTION, "producer refresh: unlock failed: ", e.what());
+            strPIN.clear();
+            return false;
+        }
+
+        const auto& pCredentials =
+            TAO::API::Authentication::Credentials(uint256_t(TAO::API::Authentication::SESSION::DEFAULT));
+        if(!pCredentials)
+        {
+            debug::error(FUNCTION, "producer refresh: null credentials");
+            strPIN.clear();
+            return false;
+        }
+
+        /* CreateTransaction gives us fresh key-chain metadata.  We override
+         * nSequence and hashPrevTx with the block-correct values below. */
+        TAO::Ledger::Transaction txFresh;
+        if(!CreateTransaction(pCredentials, strPIN, txFresh))
+        {
+            debug::error(FUNCTION, "producer refresh: CreateTransaction failed");
+            strPIN.clear();
+            return false;
+        }
+
+        /* ── CRITICAL: override with block-correct sequence/prev, not disk state ── */
+        block.producer.nSequence   = nTrueLastSeq + 1;
+        block.producer.hashPrevTx  = hashTrueLast;
+
+        /* Copy remaining sigchain metadata from fresh transaction. */
+        block.producer.nKeyType    = txFresh.nKeyType;
+        block.producer.nNextType   = txFresh.nNextType;
+        block.producer.hashRecovery= txFresh.hashRecovery;
+        block.producer.hashNext    = txFresh.hashNext;
+        block.producer.nTimestamp  = txFresh.nTimestamp;
+        block.producer.nVersion    = txFresh.nVersion;
+
+        /* Re-sign producer with corrected sequence. */
+        block.producer.Sign(pCredentials->Generate(block.producer.nSequence, strPIN));
+        strPIN.clear();
+
+        /* Rebuild merkle root (producer hash changed). */
+        std::vector<uint512_t> vHashes;
+        for(const auto& tx : block.vtx)
+            vHashes.push_back(tx.second);
+        vHashes.push_back(block.producer.GetHash(true));
+        block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
+
+        /* Re-sign block (vchBlockSig covers hashMerkleRoot). */
+        block.vchBlockSig.clear();
+        if(!FinalizeWalletSignatureForSolvedBlock(block))
+        {
+            debug::error(FUNCTION, "producer refresh: block re-sign failed");
+            return false;
+        }
+
+        debug::log(0, FUNCTION,
+            "Producer refresh SUCCESS:"
+            " nSequence=",  block.producer.nSequence,
+            " hashPrevTx=", block.producer.hashPrevTx.SubString(),
+            " merkle=",     block.hashMerkleRoot.SubString());
+
+        return true;
+    }
+
     /* Canonical acceptance entrypoint for mined Tritium blocks. */
     BlockAcceptanceResult AcceptMinedBlock(TAO::Ledger::TritiumBlock& block)
     {
@@ -347,8 +472,7 @@ namespace TAO::Ledger
         debug::log(2, FUNCTION, "Centralized acceptance for block ", block.hashMerkleRoot.SubString(),
                    " channel=", block.nChannel, " unified_height=", block.nHeight);
 
-        /* Unlock sigchain to process mined block.
-         * strPIN is retained after unlock so it can be used for producer refresh below. */
+        /* Unlock sigchain to process mined block. */
         SecureString strPIN;
         try
         {
@@ -359,97 +483,7 @@ namespace TAO::Ledger
             result.reason = e.what();
             return result;
         }
-
-        /* Producer staleness check: detect whether the sigchain has advanced since the
-         * block template was created.  If another block on a different channel was
-         * accepted between template issuance and this call, its producer may share the
-         * same sigchain genesis — bumping the on-disk nSequence so that the baked-in
-         * hashPrevTx no longer points to nSequence-1.  Transaction::Connect() will then
-         * fail with "prev transaction incorrect sequence", losing a valid solved block.
-         *
-         * We repair this by refreshing the sigchain-dependent fields of the producer
-         * (nSequence, hashPrevTx, nKeyType, nNextType, hashRecovery, hashNext,
-         * nTimestamp, and the producer transaction's nVersion) while keeping every
-         * consensus-critical block header field (block.nVersion, hashPrevBlock,
-         * nChannel, nHeight, nBits, nNonce) and every COINBASE contract unchanged.
-         *
-         * NOTE: block.producer.nVersion is the TRANSACTION protocol version — it is
-         * entirely separate from block.nVersion (the BLOCK header version that appears
-         * in ProofHash()).  Only the block header fields are PoW-critical.
-         *
-         * ProofHash() for Prime covers block.nVersion→nBits only (not hashMerkleRoot),
-         * and for Hash covers block.nVersion→nNonce only, so mutating the producer
-         * and rebuilding the merkle root does NOT invalidate the miner's proof-of-work. */
-        if(block.nChannel == 1 || block.nChannel == 2)
-        {
-            uint512_t hashCurrentLast = 0;
-            const bool fGotLast = LLD::Ledger->ReadLast(block.producer.hashGenesis, hashCurrentLast);
-
-            if(fGotLast && hashCurrentLast != block.producer.hashPrevTx)
-            {
-                const uint32_t nOldSeq = block.producer.nSequence;
-                debug::log(0, FUNCTION, "Producer stale: sigchain advanced since template creation",
-                           " genesis=", block.producer.hashGenesis.SubString(),
-                           " template.hashPrevTx=", block.producer.hashPrevTx.SubString(),
-                           " current.hashLast=", hashCurrentLast.SubString());
-
-                /* Retrieve credentials for re-signing. */
-                const auto& pCredentials =
-                    TAO::API::Authentication::Credentials(uint256_t(TAO::API::Authentication::SESSION::DEFAULT));
-
-                if(!pCredentials)
-                {
-                    result.reason = "producer refresh: null credentials";
-                    return result;
-                }
-
-                /* Create a fresh transaction to obtain up-to-date sigchain fields. */
-                TAO::Ledger::Transaction txFresh;
-                if(!CreateTransaction(pCredentials, strPIN, txFresh))
-                {
-                    result.reason = "producer refresh: CreateTransaction failed";
-                    return result;
-                }
-
-                /* Transfer fresh sigchain metadata onto the existing producer while
-                 * preserving the COINBASE contracts (vContracts unchanged). */
-                block.producer.nSequence   = txFresh.nSequence;
-                block.producer.hashPrevTx  = txFresh.hashPrevTx;
-                block.producer.nKeyType    = txFresh.nKeyType;
-                block.producer.nNextType   = txFresh.nNextType;
-                block.producer.hashRecovery= txFresh.hashRecovery;
-                block.producer.hashNext    = txFresh.hashNext;
-                block.producer.nTimestamp  = txFresh.nTimestamp;
-                block.producer.nVersion    = txFresh.nVersion;
-
-                /* Re-sign the producer transaction with the fresh sequence key. */
-                block.producer.Sign(pCredentials->Generate(block.producer.nSequence, strPIN));
-
-                /* Rebuild the merkle root from vtx list plus the refreshed producer. */
-                std::vector<uint512_t> vHashes;
-                for(const auto& tx : block.vtx)
-                    vHashes.push_back(tx.second);
-                vHashes.push_back(block.producer.GetHash(true));
-                block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
-
-                /* Re-sign the block: vchBlockSig covers SignatureHash() which includes
-                 * hashMerkleRoot, so it must be regenerated after the merkle update. */
-                block.vchBlockSig.clear();
-                if(!FinalizeWalletSignatureForSolvedBlock(block))
-                {
-                    result.reason = "producer refresh: block re-sign failed";
-                    return result;
-                }
-
-                debug::log(0, FUNCTION, "Producer refresh SUCCESS: nSequence ", nOldSeq,
-                           "→", block.producer.nSequence,
-                           " merkle=", block.hashMerkleRoot.SubString());
-            }
-
-            /* Explicitly clear the sensitive PIN from memory now that producer refresh
-             * is complete to minimize the window where the PIN data persists on the stack. */
-            strPIN.clear();
-        }
+        strPIN.clear();
 
         uint8_t nStatus = 0;
         /* Pass fSkipCheck=true because ValidateMinedBlock() already ran block.Check()
