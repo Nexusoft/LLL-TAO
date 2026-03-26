@@ -2365,6 +2365,14 @@ namespace LLP
             return true;
         }
 
+        /* Pre-validation producer refresh — see stateless_miner_connection.cpp comment */
+        if(!TAO::Ledger::RefreshProducerIfStale(*pTritium))
+        {
+            debug::error(FUNCTION, "SUBMIT_BLOCK: producer refresh failed — rejecting");
+            respond(BLOCK_REJECTED);
+            return true;
+        }
+
         TAO::Ledger::BlockValidationResult validationResult =
             TAO::Ledger::ValidateMinedBlock(*pTritium);
         if(!validationResult.valid)
