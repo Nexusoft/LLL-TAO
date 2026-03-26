@@ -1880,6 +1880,17 @@ namespace LLP
                      * rejection.  Log clearly so operators can investigate. */
                     debug::error(FUNCTION, "❌ AcceptMinedBlock ledger write failed after STATELESS_BLOCK_ACCEPTED sent: ", acceptanceResult.reason);
 
+                    /* Invalidate the failed template from the cache so the miner's
+                     * follow-up GET_BLOCK receives a fresh template rather than the
+                     * stale one that just failed to land. */
+                    auto itFailed = mapBlocks.find(hashMerkle);
+                    if(itFailed != mapBlocks.end())
+                    {
+                        debug::log(0, FUNCTION, "Invalidating failed template ",
+                            hashMerkle.SubString(), " from cache — next GET_BLOCK will regenerate");
+                        mapBlocks.erase(itFailed);
+                    }
+
                     /* Notify Colin agent on ledger-write failure */
                     if(context.hashGenesis != 0)
                     {

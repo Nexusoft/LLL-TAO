@@ -1676,6 +1676,18 @@ namespace LLP
             if(!acceptanceResult.accepted)
             {
                 debug::error(FUNCTION, "AcceptMinedBlock failed: ", acceptanceResult.reason);
+
+                /* Invalidate the failed template from the cache so the miner's
+                 * next new_block() receives a fresh template rather than the
+                 * stale one that failed to land. */
+                auto itFailed = mapBlocks.find(hashMerkleRoot);
+                if(itFailed != mapBlocks.end())
+                {
+                    debug::log(0, FUNCTION, "Invalidating failed template ",
+                        hashMerkleRoot.SubString(), " from cache — next new_block() will regenerate");
+                    mapBlocks.erase(itFailed);
+                }
+
                 return false;
             }
 

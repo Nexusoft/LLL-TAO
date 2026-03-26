@@ -472,5 +472,67 @@ namespace TAO
         {
             return (config::fHybrid.load() ? TAO::Ledger::hashGenesisHybrid : config::fTestNet.load() ? TAO::Ledger::hashGenesisTestnet : (config::fClient.load() ? TAO::Ledger::hashTritium : TAO::Ledger::hashGenesis));
         }
+
+
+        /* Repair in-memory checkpoint state when it drifts from the on-disk best-chain state. */
+        bool ChainState::RepairCheckpointIfStale()
+        {
+            /* In-memory gate: compare tStateBest.hashCheckpoint (the checkpoint embedded
+             * in the best block state struct) against the standalone hashCheckpoint atomic.
+             * If they are consistent there is nothing to repair — avoid disk I/O entirely.
+             * This eliminates the I/O amplification DoS vector where a remote peer could
+             * trigger repeated ReadBlock() calls by spamming blocks with bad checkpoints. */
+            const uint1024_t hashMemCheckpoint  = ChainState::hashCheckpoint.load();
+            const uint1024_t hashBestCheckpoint = ChainState::tStateBest.load().hashCheckpoint;
+
+            if(hashMemCheckpoint == hashBestCheckpoint)
+            {
+                /* In-memory state is consistent — no repair needed. */
+                return false;
+            }
+
+            /* In-memory mismatch detected: repair from on-disk best state. */
+            debug::error(FUNCTION, "CHECKPOINT STALE: in-memory=", hashMemCheckpoint.SubString(),
+                " tStateBest.hashCheckpoint=", hashBestCheckpoint.SubString(),
+                " — repairing");
+
+            /* Read the on-disk best-chain block to get the authoritative checkpoint hash. */
+            BlockState stateBestDisk;
+            if(!LLD::Ledger->ReadBlock(ChainState::hashBestChain.load(), stateBestDisk))
+            {
+                debug::error(FUNCTION, "repair failed: could not read best block from disk");
+                return false;
+            }
+
+            /* Double-check disk matches in-memory tStateBest expectation. */
+            if(stateBestDisk.hashCheckpoint != hashBestCheckpoint)
+            {
+                debug::error(FUNCTION, "repair aborted: disk checkpoint=",
+                    stateBestDisk.hashCheckpoint.SubString(),
+                    " does not match tStateBest.hashCheckpoint=", hashBestCheckpoint.SubString());
+                return false;
+            }
+
+            /* Read the checkpoint block so we can update nCheckpointHeight. */
+            const uint1024_t hashCheckpointOld = hashMemCheckpoint;
+            ChainState::hashCheckpoint = stateBestDisk.hashCheckpoint;
+
+            BlockState stateCheckpoint;
+            if(!LLD::Ledger->ReadBlock(stateBestDisk.hashCheckpoint, stateCheckpoint))
+            {
+                /* Restore old checkpoint to avoid a partial update. */
+                ChainState::hashCheckpoint = hashCheckpointOld;
+                debug::error(FUNCTION, "repair failed: could not read checkpoint block");
+                return false;
+            }
+
+            ChainState::nCheckpointHeight = stateCheckpoint.nHeight;
+
+            debug::log(0, FUNCTION, "Checkpoint repair SUCCESS: hash=",
+                ChainState::hashCheckpoint.load().SubString(),
+                " height=", ChainState::nCheckpointHeight.load());
+
+            return true;
+        }
     }
 }
