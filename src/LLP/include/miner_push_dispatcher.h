@@ -16,7 +16,12 @@ ________________________________________________________________________________
 #define NEXUS_LLP_INCLUDE_MINER_PUSH_DISPATCHER_H
 
 #include <atomic>
+#include <condition_variable>
 #include <cstdint>
+#include <mutex>
+#include <queue>
+#include <thread>
+#include <utility>
 
 #include <LLC/types/uint1024.h>
 
@@ -48,13 +53,24 @@ namespace LLP
      *     proactively re-pushes the current template to prevent miners from
      *     entering degraded mode during dry spells on slow channels (e.g. Prime).
      *
+     *  5. ASYNC DISPATCH: SetBest() enqueues the push event and returns immediately
+     *     via EnqueuePushEvent().  A dedicated worker thread dequeues and calls
+     *     DispatchPushEvent() so that a flood of Tritium peer GET requests can never
+     *     delay the delivery of PRIME_BLOCK_AVAILABLE / HASH_BLOCK_AVAILABLE
+     *     notifications to miners.
+     *
      *  USAGE (state.cpp)
      *  =================
-     *     LLP::MinerPushDispatcher::DispatchPushEvent(nHeight, hash);
+     *     LLP::MinerPushDispatcher::EnqueuePushEvent(nHeight, hash);
      *
      *  HEARTBEAT USAGE (server.cpp Meter thread)
      *  =========================================
      *     LLP::MinerPushDispatcher::HeartbeatRefreshCheck();
+     *
+     *  LIFECYCLE (global.cpp)
+     *  ======================
+     *     LLP::MinerPushDispatcher::StartPushWorker();   // at init
+     *     LLP::MinerPushDispatcher::StopPushWorker();    // at shutdown
      *
      **/
     class MinerPushDispatcher
@@ -71,11 +87,53 @@ namespace LLP
          *  Also records the dispatch timestamp per channel (used by
          *  HeartbeatRefreshCheck to detect dry spells).
          *
+         *  This is now called from the dedicated push-worker thread rather than
+         *  directly from SetBest().  Callers inside SetBest() should use
+         *  EnqueuePushEvent() instead.
+         *
          *  @param[in] nHeight      Unified blockchain height at the time of the new tip.
          *  @param[in] hashBestChain Current best-chain hash (uint1024_t).
          *
          **/
         static void DispatchPushEvent(uint32_t nHeight, const uint1024_t& hashBestChain);
+
+
+        /** EnqueuePushEvent
+         *
+         *  Non-blocking entry-point called from SetBest() on the Tritium P2P data
+         *  thread.  Enqueues the (nHeight, hashBestChain) pair into the async push
+         *  queue and signals the push-worker thread to process it, then returns
+         *  immediately so the Tritium data thread is never blocked by miner
+         *  notification delivery.
+         *
+         *  If the push-worker has not been started (e.g. in unit-test contexts),
+         *  falls back to calling DispatchPushEvent() synchronously.
+         *
+         *  @param[in] nHeight      Unified blockchain height at the time of the new tip.
+         *  @param[in] hashBestChain Current best-chain hash (uint1024_t).
+         *
+         **/
+        static void EnqueuePushEvent(uint32_t nHeight, const uint1024_t& hashBestChain);
+
+
+        /** StartPushWorker
+         *
+         *  Starts the dedicated push-notification worker thread.
+         *  Must be called once during node initialisation before any blocks are
+         *  accepted (i.e. before the Tritium server is opened for connections).
+         *
+         **/
+        static void StartPushWorker();
+
+
+        /** StopPushWorker
+         *
+         *  Signals the push-worker thread to drain its queue and exit, then joins
+         *  the thread.  Must be called during node shutdown after all peer servers
+         *  have been stopped so no new events are enqueued after this returns.
+         *
+         **/
+        static void StopPushWorker();
 
 
         /** HeartbeatRefreshCheck
@@ -114,6 +172,19 @@ namespace LLP
         static std::atomic<uint64_t> s_nLastPrimeDispatchTime;
         static std::atomic<uint64_t> s_nLastHashDispatchTime;
 
+        /** Async push queue protected by s_pushMutex + s_pushCV.
+         *  Each entry is a (unified_height, hashBestChain) pair. **/
+        static std::queue<std::pair<uint32_t, uint1024_t>> s_pushQueue;
+        static std::mutex                                   s_pushMutex;
+        static std::condition_variable                      s_pushCV;
+
+        /** The dedicated push-worker thread. **/
+        static std::thread s_pushThread;
+
+        /** Set to true while the push-worker thread is running. **/
+        static std::atomic<bool> s_pushRunning;
+
+
         /** BroadcastChannel
          *
          *  Internal helper: broadcast one channel on both lanes and log results.
@@ -130,6 +201,15 @@ namespace LLP
          **/
         static void BroadcastChannel(uint32_t nChannel, uint32_t nHeight, uint32_t hashPrefix4,
                                      bool fHeartbeat = false);
+
+
+        /** PushWorkerThread
+         *
+         *  Worker-thread body.  Drains s_pushQueue and calls DispatchPushEvent()
+         *  for each event until s_pushRunning is false and the queue is empty.
+         *
+         **/
+        static void PushWorkerThread();
     };
 
 } // namespace LLP

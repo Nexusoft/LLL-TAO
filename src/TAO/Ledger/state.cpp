@@ -1188,8 +1188,13 @@ namespace TAO
                      *
                      * Phase 3 Refactor: Replaces inline BroadcastChannelNotification lambda with
                      * canonical MinerPushDispatcher::DispatchPushEvent() for maintainability and
-                     * unified broadcasting logic across the codebase. */
-                    LLP::MinerPushDispatcher::DispatchPushEvent(nHeight, hash);
+                     * unified broadcasting logic across the codebase.
+                     *
+                     * Async dispatch: EnqueuePushEvent() returns immediately after enqueuing the
+                     * event into the push-worker thread's queue.  This prevents a syncing peer's
+                     * flood of ACTION::GET requests from delaying PRIME_BLOCK_AVAILABLE /
+                     * HASH_BLOCK_AVAILABLE notifications to miners. */
+                    LLP::MinerPushDispatcher::EnqueuePushEvent(nHeight, hash);
                 }
 
                 /* Verify unified height consistency using existing ChannelStateManager infrastructure */

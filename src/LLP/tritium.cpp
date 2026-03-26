@@ -1863,6 +1863,31 @@ namespace LLP
                             if(DDOS)
                                 DDOS->rSCORE += 50;
 
+                            /* Per-connection GET::BLOCK rate limiting.
+                             * Reset the rolling window if expired, then check whether
+                             * this connection has exceeded the per-window block limit.
+                             * If so, log once and skip the remaining items in this packet
+                             * to protect block validation and mining push notification paths. */
+                            m_getTracker.MaybeResetWindow();
+                            {
+                                const uint32_t nMaxBlocks = static_cast<uint32_t>(
+                                    config::GetArg(std::string("-maxgetblocks"),
+                                        static_cast<int64_t>(GetRequestRateTracker::DEFAULT_MAX_GET_BLOCKS)));
+
+                                if(m_getTracker.ShouldThrottleBlock(nMaxBlocks))
+                                {
+                                    debug::log(0, NODE, "ACTION::GET::BLOCK throttled — peer ",
+                                               GetAddress().ToStringIP(), " exceeded ",
+                                               nMaxBlocks,
+                                               " block requests/", GetRequestRateTracker::WINDOW_SECONDS, "s window");
+                                    break;
+                                }
+                            }
+                            if(m_getTracker.RecordGetBlock(
+                                static_cast<uint32_t>(config::GetArg(std::string("-getyieldthreshold"),
+                                    static_cast<int64_t>(GetRequestRateTracker::DEFAULT_YIELD_SCORE)))))
+                                std::this_thread::yield();
+
                             break;
                         }
 
@@ -1914,6 +1939,31 @@ namespace LLP
                             /* Add DDOS filtering here. */
                             if(DDOS)
                                 DDOS->rSCORE += 15;
+
+                            /* Per-connection GET::TRANSACTION rate limiting.
+                             * Mirror of the BLOCK guard above: resets window when expired,
+                             * then checks whether the per-window transaction limit has been
+                             * reached.  Yields the CPU when the per-second score threshold
+                             * is exceeded so the mining notification path gets CPU time. */
+                            m_getTracker.MaybeResetWindow();
+                            {
+                                const uint32_t nMaxTx = static_cast<uint32_t>(
+                                    config::GetArg(std::string("-maxgettx"),
+                                        static_cast<int64_t>(GetRequestRateTracker::DEFAULT_MAX_GET_TX)));
+
+                                if(m_getTracker.ShouldThrottleTx(nMaxTx))
+                                {
+                                    debug::log(0, NODE, "ACTION::GET::TRANSACTION throttled — peer ",
+                                               GetAddress().ToStringIP(), " exceeded ",
+                                               nMaxTx,
+                                               " tx requests/", GetRequestRateTracker::WINDOW_SECONDS, "s window");
+                                    break;
+                                }
+                            }
+                            if(m_getTracker.RecordGetTx(
+                                static_cast<uint32_t>(config::GetArg(std::string("-getyieldthreshold"),
+                                    static_cast<int64_t>(GetRequestRateTracker::DEFAULT_YIELD_SCORE)))))
+                                std::this_thread::yield();
 
                             break;
                         }
