@@ -21,6 +21,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/include/process.h>
 
+#include <LLD/include/global.h>
+
 #include <TAO/API/include/global.h>
 #include <TAO/API/types/authentication.h>
 
@@ -285,6 +287,40 @@ namespace TAO::Ledger
         {
             result.reason = "submitted block is stale";
             return result;
+        }
+
+        /* Producer sigchain staleness check — cheap disk read before expensive PoW
+         * verification.  If the producer's hashPrevTx no longer matches the on-disk
+         * last transaction for this genesis the template is stale: another block from
+         * the same sigchain was accepted during the mining window.  Rejecting here
+         * avoids running PrimeCheck() only to fail later in Transaction::Connect()
+         * with "prev transaction incorrect sequence" or "last hash mismatch".
+         *
+         * Contrast with upstream Nexusoft/LLL-TAO: upstream sends BLOCK_ACCEPTED only
+         * after Process() fully completes, so a stale producer there produces an honest
+         * rejection without a misleading acknowledgement.  In this fork BLOCK_ACCEPTED
+         * is sent immediately after ValidateMinedBlock() returns true, so we MUST catch
+         * the stale producer here — before PoW — to avoid confirming a block that the
+         * ledger will subsequently refuse to connect. */
+        if(!block.producer.IsFirst())
+        {
+            uint512_t hashLast = 0;
+            if(!LLD::Ledger->ReadLast(block.producer.hashGenesis, hashLast))
+            {
+                debug::log(0, FUNCTION, "SUBMIT_BLOCK warning: could not read ledger last for genesis ",
+                           block.producer.hashGenesis.SubString(),
+                           " — sigchain freshness unverifiable, proceeding to full validation");
+            }
+            else if(block.producer.hashPrevTx != hashLast)
+            {
+                debug::log(0, FUNCTION, "SUBMIT_BLOCK rejected: producer sigchain stale — "
+                           "producer.hashPrevTx=", block.producer.hashPrevTx.SubString(),
+                           " current ledger last=", hashLast.SubString(),
+                           " producer.nSequence=", block.producer.nSequence,
+                           " — request a new block template");
+                result.reason = "producer sigchain stale: request a new block template";
+                return result;
+            }
         }
 
         if(!block.Check())
