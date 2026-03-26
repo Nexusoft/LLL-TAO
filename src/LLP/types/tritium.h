@@ -29,8 +29,151 @@ ________________________________________________________________________________
 
 #include <Util/include/memory.h>
 
+#include <atomic>
+#include <chrono>
+#include <thread>
+
 namespace LLP
 {
+
+    /** GetRequestRateTracker
+     *
+     *  Per-connection rolling-window rate tracker for ACTION::GET flood prevention.
+     *  Limits the number of GET::BLOCK and GET::TRANSACTION requests a single peer
+     *  can issue within a configurable time window, and yields the CPU when a per-
+     *  second score threshold is exceeded so the mining notification path is not
+     *  starved.
+     *
+     **/
+    struct GetRequestRateTracker
+    {
+        /** Number of ACTION::GET BLOCK requests counted in the current window. **/
+        std::atomic<uint32_t> nGetBlockCount{0};
+
+        /** Number of ACTION::GET TRANSACTION requests counted in the current window. **/
+        std::atomic<uint32_t> nGetTxCount{0};
+
+        /** Cumulative score accumulated within the current one-second slice.
+         *  Used to decide when to yield() to other threads. **/
+        std::atomic<uint32_t> nGetScorePerSecond{0};
+
+        /** Start of the current 60-second rolling window. **/
+        std::chrono::steady_clock::time_point tWindowStart{std::chrono::steady_clock::now()};
+
+        /** Start of the current one-second slice for yield scoring. **/
+        std::chrono::steady_clock::time_point tSecondStart{std::chrono::steady_clock::now()};
+
+        /** Length of the rolling window in seconds.
+         *  60 seconds matches the DDOS subsystem's default moving-average timespan
+         *  (-timespan) so the two rate-limiting mechanisms operate on the same
+         *  time scale without requiring separate configuration. **/
+        static constexpr uint32_t WINDOW_SECONDS = 60;
+
+        /** Maximum ACTION::GET BLOCK requests per connection per window.
+         *  Configurable via -maxgetblocks (default 500). **/
+        static constexpr uint32_t DEFAULT_MAX_GET_BLOCKS = 500;
+
+        /** Maximum ACTION::GET TRANSACTION requests per connection per window.
+         *  Configurable via -maxgettx (default 2000). **/
+        static constexpr uint32_t DEFAULT_MAX_GET_TX = 2000;
+
+        /** Cumulative score per second above which the data thread yields to give
+         *  the mining notification path CPU time.
+         *  Configurable via -getyieldthreshold (default 200). **/
+        static constexpr uint32_t DEFAULT_YIELD_SCORE = 200;
+
+
+        /** MaybeResetWindow
+         *
+         *  Resets window counters when the 60-second window has expired.
+         *  Must be called at the start of every ACTION::GET iteration.
+         *
+         **/
+        void MaybeResetWindow()
+        {
+            const auto tNow = std::chrono::steady_clock::now();
+
+            /* Reset the rolling 60-second window if expired. */
+            if(std::chrono::duration_cast<std::chrono::seconds>(tNow - tWindowStart).count()
+               >= static_cast<int64_t>(WINDOW_SECONDS))
+            {
+                nGetBlockCount.store(0, std::memory_order_relaxed);
+                nGetTxCount.store(0, std::memory_order_relaxed);
+                tWindowStart = tNow;
+            }
+
+            /* Reset the per-second yield score if the second has turned over. */
+            if(std::chrono::duration_cast<std::chrono::seconds>(tNow - tSecondStart).count() >= 1)
+            {
+                nGetScorePerSecond.store(0, std::memory_order_relaxed);
+                tSecondStart = tNow;
+            }
+        }
+
+
+        /** ShouldThrottleBlock
+         *
+         *  Returns true when this connection has exceeded the per-window GET BLOCK limit.
+         *
+         *  @param[in] nMaxBlocks  Window limit (from -maxgetblocks).
+         *
+         **/
+        bool ShouldThrottleBlock(const uint32_t nMaxBlocks = DEFAULT_MAX_GET_BLOCKS) const
+        {
+            return nGetBlockCount.load(std::memory_order_relaxed) >= nMaxBlocks;
+        }
+
+
+        /** ShouldThrottleTx
+         *
+         *  Returns true when this connection has exceeded the per-window GET TRANSACTION limit.
+         *
+         *  @param[in] nMaxTx  Window limit (from -maxgettx).
+         *
+         **/
+        bool ShouldThrottleTx(const uint32_t nMaxTx = DEFAULT_MAX_GET_TX) const
+        {
+            return nGetTxCount.load(std::memory_order_relaxed) >= nMaxTx;
+        }
+
+
+        /** RecordGetBlock
+         *
+         *  Increments the block counter and the per-second score.
+         *  Returns true when the per-second score has exceeded the yield threshold,
+         *  signalling the caller to std::this_thread::yield().
+         *
+         *  Block requests contribute 50 points to the per-second yield score,
+         *  matching the weight used by the DDOS subsystem (DDOS->rSCORE += 50).
+         *
+         *  @param[in] nYieldThreshold  Yield threshold (from -getyieldthreshold).
+         *
+         **/
+        bool RecordGetBlock(const uint32_t nYieldThreshold = DEFAULT_YIELD_SCORE)
+        {
+            nGetBlockCount.fetch_add(1, std::memory_order_relaxed);
+            return nGetScorePerSecond.fetch_add(50, std::memory_order_relaxed) + 50 >= nYieldThreshold;
+        }
+
+
+        /** RecordGetTx
+         *
+         *  Increments the transaction counter and the per-second score.
+         *  Returns true when the per-second score has exceeded the yield threshold.
+         *
+         *  Transaction requests contribute 15 points to the per-second yield score,
+         *  matching the weight used by the DDOS subsystem (DDOS->rSCORE += 15).
+         *
+         *  @param[in] nYieldThreshold  Yield threshold (from -getyieldthreshold).
+         *
+         **/
+        bool RecordGetTx(const uint32_t nYieldThreshold = DEFAULT_YIELD_SCORE)
+        {
+            nGetTxCount.fetch_add(1, std::memory_order_relaxed);
+            return nGetScorePerSecond.fetch_add(15, std::memory_order_relaxed) + 15 >= nYieldThreshold;
+        }
+    };
+
 
     /** TritiumNode
      *
@@ -239,6 +382,10 @@ namespace LLP
 
 
     private:
+
+
+        /** Per-connection rate tracker for ACTION::GET flood prevention. **/
+        GetRequestRateTracker m_getTracker;
 
 
         /** State of if this node has logged in to remote node. **/

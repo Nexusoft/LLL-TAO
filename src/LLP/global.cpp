@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <LLP/include/graceful_shutdown.h>
 #include <LLP/include/mining_config.h>
 #include <LLP/include/mining_server_factory.h>
+#include <LLP/include/miner_push_dispatcher.h>
 #include <LLP/include/network.h>
 #include <LLP/include/falcon_auth.h>
 #include <LLP/include/colin_mining_agent.h>
@@ -67,6 +68,11 @@ namespace LLP
 
         /* Initialize Falcon Auth for mining authentication. */
         FalconAuth::Initialize();
+
+        /* Start the async push-notification worker thread.
+         * Must be started before any blocks are accepted so that EnqueuePushEvent()
+         * routes events to the worker rather than falling back to sync dispatch. */
+        MinerPushDispatcher::StartPushWorker();
 
 
         /* TIME_SERVER instance */
@@ -615,6 +621,10 @@ namespace LLP
 
         /* Shutdown Falcon Auth. */
         FalconAuth::Shutdown();
+
+        /* Stop the async push-notification worker thread before shutting down
+         * the mining servers so any queued notifications are delivered first. */
+        MinerPushDispatcher::StopPushWorker();
 
         /* Shutdown the time server and its subsystems. */
         Shutdown<TimeNode>(TIME_SERVER);

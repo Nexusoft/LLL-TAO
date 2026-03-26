@@ -37,6 +37,13 @@ namespace LLP
     std::atomic<uint64_t> MinerPushDispatcher::s_nLastPrimeDispatchTime{0};
     std::atomic<uint64_t> MinerPushDispatcher::s_nLastHashDispatchTime{0};
 
+    /* Async push queue and synchronisation primitives. */
+    std::queue<std::pair<uint32_t, uint1024_t>> MinerPushDispatcher::s_pushQueue;
+    std::mutex                                   MinerPushDispatcher::s_pushMutex;
+    std::condition_variable                      MinerPushDispatcher::s_pushCV;
+    std::thread                                  MinerPushDispatcher::s_pushThread;
+    std::atomic<bool>                            MinerPushDispatcher::s_pushRunning{false};
+
 
     /* Pack (height, hashPrefix4) into a single 64-bit dedup key. */
     static inline uint64_t make_dedup_key(uint32_t nHeight, uint32_t nHashPrefix4)
@@ -130,6 +137,113 @@ namespace LLP
                            " hash=", std::hex, hashPrefix4, std::dec, "; skipping");
             }
         }
+    }
+
+
+    /* EnqueuePushEvent — non-blocking caller for SetBest() on the Tritium data thread. */
+    void MinerPushDispatcher::EnqueuePushEvent(uint32_t nHeight,
+                                               const uint1024_t& hashBestChain)
+    {
+        if (config::fShutdown.load())
+            return;
+
+        /* If the async worker is running, enqueue the event and wake the worker. */
+        if (s_pushRunning.load(std::memory_order_acquire))
+        {
+            {
+                std::lock_guard<std::mutex> lock(s_pushMutex);
+                s_pushQueue.emplace(nHeight, hashBestChain);
+            }
+            s_pushCV.notify_one();
+            return;
+        }
+
+        /* Fallback: worker not started (e.g. unit-test context) — dispatch synchronously. */
+        DispatchPushEvent(nHeight, hashBestChain);
+    }
+
+
+    /* PushWorkerThread — drains the async queue and dispatches events. */
+    void MinerPushDispatcher::PushWorkerThread()
+    {
+        debug::log(1, FUNCTION, "Push-worker thread started");
+
+        while (true)
+        {
+            std::pair<uint32_t, uint1024_t> event;
+            bool fGotEvent = false;
+
+            {
+                std::unique_lock<std::mutex> lock(s_pushMutex);
+
+                /* Wait until there is work to do or we are asked to stop. */
+                s_pushCV.wait(lock, []
+                {
+                    return !s_pushQueue.empty() || !s_pushRunning.load(std::memory_order_acquire);
+                });
+
+                if (!s_pushQueue.empty())
+                {
+                    event = std::move(s_pushQueue.front());
+                    s_pushQueue.pop();
+                    fGotEvent = true;
+                }
+            }
+
+            if (fGotEvent)
+            {
+                DispatchPushEvent(event.first, event.second);
+            }
+            else if (!s_pushRunning.load(std::memory_order_acquire))
+            {
+                /* Drain any remaining items before exiting. */
+                std::unique_lock<std::mutex> lock(s_pushMutex);
+                while (!s_pushQueue.empty())
+                {
+                    event = std::move(s_pushQueue.front());
+                    s_pushQueue.pop();
+                    lock.unlock();
+                    DispatchPushEvent(event.first, event.second);
+                    lock.lock();
+                }
+                break;
+            }
+        }
+
+        debug::log(1, FUNCTION, "Push-worker thread exiting");
+    }
+
+
+    /* StartPushWorker — launch the dedicated push-notification worker thread. */
+    void MinerPushDispatcher::StartPushWorker()
+    {
+        bool fExpected = false;
+        if (!s_pushRunning.compare_exchange_strong(fExpected, true,
+                                                   std::memory_order_release,
+                                                   std::memory_order_acquire))
+        {
+            debug::log(1, FUNCTION, "Push-worker already running; ignoring duplicate start");
+            return;
+        }
+
+        s_pushThread = std::thread(&MinerPushDispatcher::PushWorkerThread);
+        debug::log(0, FUNCTION, "Push-worker thread launched");
+    }
+
+
+    /* StopPushWorker — signal the worker thread to finish and join it. */
+    void MinerPushDispatcher::StopPushWorker()
+    {
+        if (!s_pushRunning.load(std::memory_order_acquire))
+            return;
+
+        s_pushRunning.store(false, std::memory_order_release);
+        s_pushCV.notify_all();
+
+        if (s_pushThread.joinable())
+            s_pushThread.join();
+
+        debug::log(0, FUNCTION, "Push-worker thread stopped");
     }
 
 
