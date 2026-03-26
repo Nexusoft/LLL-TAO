@@ -564,7 +564,7 @@ TAO::Ledger::Process(block, nStatus);
 ### Block Cache Invalidation (Channels 1, 2, 3)
 
 ```cpp
-// CreateBlock() — three invalidation conditions:
+// CreateBlock() — four invalidation conditions:
 bool fNeedsNewBlock = false;
 
 // PRIMARY: chain advanced
@@ -578,6 +578,16 @@ if(hashGenesis != tBlockCached.producer.hashGenesis)
 // TERTIARY: safety timeout (default 90 seconds)
 if(unifiedtimestamp() >= tBlockCached.producer.nTimestamp + nExpiration)
     fNeedsNewBlock = true;
+
+// QUATERNARY: sigchain advanced since template was cached (PoW channels only)
+// Catches the case where a different-channel block connected and advanced
+// WriteLast() for the same genesis without triggering the Primary check.
+if(!fNeedsNewBlock && (nChannel == 1 || nChannel == 2) && !tBlockCached.producer.IsFirst()) {
+    uint512_t hashDiskLast = 0;
+    if(LLD::Ledger->ReadLast(tBlockCached.producer.hashGenesis, hashDiskLast)
+       && hashDiskLast != tBlockCached.producer.hashPrevTx)
+        fNeedsNewBlock = true;
+}
 ```
 
 ---

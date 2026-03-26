@@ -434,6 +434,37 @@ namespace TAO::Ledger
             debug::log(0, FUNCTION, "Block cache timed out after ", nExpiration, " seconds (safety net), regenerating...");
         }
 
+        /* Quaternary check: sigchain advanced since template was cached.
+         * This catches the case where a block on a DIFFERENT channel connected
+         * after this template was cached, advancing WriteLast() for the same
+         * genesis without advancing hashBestChain enough to trigger the Primary
+         * check.  If the cached producer.hashPrevTx no longer matches the ledger's
+         * current last for this genesis, the template will cause a sequence error
+         * in Transaction::Connect() — rebuild now rather than let the miner work
+         * on a template that will be rejected.
+         *
+         * Note: Only applies to PoW channels (1=Prime, 2=Hash) with a proper
+         * sigchain producer.  Private (3) uses a different producer model.
+         * Skip for genesis transactions (producer.IsFirst()) — they have no
+         * preceding sigchain entry. */
+        if(!fNeedsNewBlock
+           && (nChannel == 1 || nChannel == 2)
+           && !tBlockCached.producer.IsFirst())
+        {
+            uint512_t hashDiskLast = 0;
+            if(LLD::Ledger->ReadLast(tBlockCached.producer.hashGenesis, hashDiskLast)
+               && hashDiskLast != tBlockCached.producer.hashPrevTx)
+            {
+                fNeedsNewBlock = true;
+                debug::log(0, FUNCTION,
+                    "Block cache invalidated: producer sigchain advanced since template creation"
+                    " genesis=", tBlockCached.producer.hashGenesis.SubString(),
+                    " cached.hashPrevTx=", tBlockCached.producer.hashPrevTx.SubString(),
+                    " disk.last=", hashDiskLast.SubString(),
+                    " - rebuilding template to prevent sequence error at connect time");
+            }
+        }
+
         /* Reuse cached block if no invalidation condition triggered. */
         if(!fNeedsNewBlock)
         {
