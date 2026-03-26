@@ -140,19 +140,19 @@ namespace TAO
                 );
             }
 
-            /* Update the Checkpoints into Memory. */
-            ChainState::hashCheckpoint    = state.hashCheckpoint;
-
-            /* Get checkpoint state. */
+            /* Read the checkpoint block BEFORE updating atomics to avoid
+             * partial-update visibility between hashCheckpoint and nCheckpointHeight. */
             BlockState stateCheckpoint;
             if(!LLD::Ledger->ReadBlock(state.hashCheckpoint, stateCheckpoint))
                 return debug::error(FUNCTION, "failed to read checkpoint");
 
-            /* Set the correct height for the checkpoint. */
+            /* Store height first, then hash — any thread that reads the new hashCheckpoint
+             * will already see the matching nCheckpointHeight. */
             ChainState::nCheckpointHeight = stateCheckpoint.nHeight;
+            ChainState::hashCheckpoint    = state.hashCheckpoint;
 
             /* Dump the Checkpoint if not Initializing. */
-            if(config::nVerbose >= ChainState::Synchronizing() ? 1 : 0)
+            if(config::nVerbose >= (ChainState::Synchronizing() ? 1 : 0))
                 debug::log(ChainState::Synchronizing() ? 1 : 0, "===== Hardened Checkpoint ", ChainState::hashCheckpoint.load().SubString(), " Height ", ChainState::nCheckpointHeight.load());
 
             return true;
