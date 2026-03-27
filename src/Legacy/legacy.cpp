@@ -498,23 +498,15 @@ namespace Legacy
         if(nBlockTime <= statePrev.GetBlockTime())
             return debug::error(FUNCTION, "block's timestamp too early Block: ", nBlockTime, " Prev: ", statePrev.GetBlockTime());
 
-        /* Early-out: block is significantly below the current hardened checkpoint.
+        /* Early-out: block is at or below the current hardened checkpoint.
          * This happens when a late block arrives after the chain has advanced past
          * its height and hardened a new checkpoint. It cannot be an ancestor of the
-         * current checkpoint, so drop as a late orphan.
-         *
-         * A 200-block tolerance margin is applied so that legitimately mined blocks
-         * (e.g., a slow-propagating Prime solution) are not silently discarded when
-         * the checkpoint races ahead during multi-channel mining. */
-        constexpr uint32_t CHECKPOINT_LATE_ORPHAN_MARGIN = 200;
-        const uint32_t nCheckpointHeight = (uint32_t)TAO::Ledger::ChainState::nCheckpointHeight.load();
-        if(!TAO::Ledger::ChainState::Synchronizing() &&
-           nHeight + CHECKPOINT_LATE_ORPHAN_MARGIN <= nCheckpointHeight)
+         * current checkpoint, so silently drop as a late orphan — no ERROR needed. */
+        if(!TAO::Ledger::ChainState::Synchronizing() && nHeight <= (uint32_t)TAO::Ledger::ChainState::nCheckpointHeight.load())
         {
-            debug::log(0, FUNCTION, "Block height=", nHeight,
-                " is at or below checkpointHeight=", nCheckpointHeight,
-                " (margin=", CHECKPOINT_LATE_ORPHAN_MARGIN,
-                ") — dropping as late orphan (not an error)");
+            debug::log(2, FUNCTION, "Block height=", nHeight,
+                " is at or below checkpointHeight=", TAO::Ledger::ChainState::nCheckpointHeight.load(),
+                " — dropping as late orphan (not an error)");
             return false;
         }
 
