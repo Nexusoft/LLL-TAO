@@ -178,6 +178,97 @@ TEST_CASE("SessionRecoveryData Basic Tests", "[session_recovery]")
         REQUIRE(restored.nProtocolLane == ProtocolLane::STATELESS);
     }
     
+    SECTION("Subscription fields default to false/zero in MinerSessionContainer")
+    {
+        SessionRecoveryData data;
+        REQUIRE_FALSE(data.fSubscribedToNotifications);
+        REQUIRE(data.nSubscribedChannel == 0);
+    }
+
+    SECTION("MergeContext persists subscription fields")
+    {
+        uint256_t testKeyId;
+        testKeyId.SetHex("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+
+        MiningContext ctx = MiningContext()
+            .WithChannel(1)
+            .WithSession(55555)
+            .WithKeyId(testKeyId)
+            .WithAuth(true)
+            .WithSubscription(1);
+
+        SessionRecoveryData data(ctx);
+
+        REQUIRE(data.fSubscribedToNotifications == true);
+        REQUIRE(data.nSubscribedChannel == 1);
+    }
+
+    SECTION("MergeContext does not clear subscription state on subsequent merge without subscription")
+    {
+        uint256_t testKeyId;
+        testKeyId.SetHex("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+
+        MiningContext ctxSubscribed = MiningContext()
+            .WithChannel(2)
+            .WithSession(66666)
+            .WithKeyId(testKeyId)
+            .WithAuth(true)
+            .WithSubscription(2);
+
+        SessionRecoveryData data(ctxSubscribed);
+        REQUIRE(data.fSubscribedToNotifications == true);
+        REQUIRE(data.nSubscribedChannel == 2);
+
+        /* Merge a context that lacks subscription (e.g. a keepalive update) */
+        MiningContext ctxNoSub = MiningContext()
+            .WithChannel(2)
+            .WithSession(66666)
+            .WithKeyId(testKeyId)
+            .WithAuth(true);
+
+        data.MergeContext(ctxNoSub);
+
+        REQUIRE(data.fSubscribedToNotifications == true);
+        REQUIRE(data.nSubscribedChannel == 2);
+    }
+
+    SECTION("ToContext restores subscription fields")
+    {
+        uint256_t testKeyId;
+        testKeyId.SetHex("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+
+        MiningContext original = MiningContext()
+            .WithChannel(2)
+            .WithSession(99999)
+            .WithKeyId(testKeyId)
+            .WithAuth(true)
+            .WithSubscription(2);
+
+        SessionRecoveryData data(original);
+        MiningContext restored = data.ToContext();
+
+        REQUIRE(restored.fSubscribedToNotifications == true);
+        REQUIRE(restored.nSubscribedChannel == 2);
+    }
+
+    SECTION("ToContext does not restore subscription when not subscribed")
+    {
+        uint256_t testKeyId;
+        testKeyId.SetHex("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+
+        MiningContext original = MiningContext()
+            .WithChannel(2)
+            .WithSession(99999)
+            .WithKeyId(testKeyId)
+            .WithAuth(true);
+
+        SessionRecoveryData data(original);
+        MiningContext restored = data.ToContext();
+
+        REQUIRE_FALSE(restored.fSubscribedToNotifications);
+        REQUIRE(restored.nSubscribedChannel == 0);
+    }
+
     SECTION("IsExpired returns true for old sessions")
     {
         SessionRecoveryData data;
@@ -311,6 +402,82 @@ TEST_CASE("SessionRecoveryManager Basic Tests", "[session_recovery]")
         REQUIRE(recovered.fRewardBound == true);
         REQUIRE(recovered.vChaChaKey == std::vector<uint8_t>(32, 0x44));
         REQUIRE(recovered.fEncryptionReady == true);
+
+        manager.RemoveSession(testKeyId);
+    }
+
+    SECTION("SaveSession and RecoverSession preserve subscription state")
+    {
+        uint256_t testKeyId;
+        testKeyId.SetHex("e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1");
+
+        MiningContext ctx = MiningContext()
+            .WithSession(11112)
+            .WithKeyId(testKeyId)
+            .WithAuth(true)
+            .WithChannel(1)
+            .WithSubscription(1);
+
+        REQUIRE(manager.SaveSession(ctx) == true);
+
+        MiningContext recovered;
+        REQUIRE(manager.RecoverSession(testKeyId, recovered) == true);
+        REQUIRE(recovered.fSubscribedToNotifications == true);
+        REQUIRE(recovered.nSubscribedChannel == 1);
+
+        manager.RemoveSession(testKeyId);
+    }
+
+    SECTION("SaveSession does not restore subscription state when not subscribed")
+    {
+        uint256_t testKeyId;
+        testKeyId.SetHex("e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2");
+
+        MiningContext ctx = MiningContext()
+            .WithSession(22223)
+            .WithKeyId(testKeyId)
+            .WithAuth(true)
+            .WithChannel(2);
+
+        REQUIRE(manager.SaveSession(ctx) == true);
+
+        MiningContext recovered;
+        REQUIRE(manager.RecoverSession(testKeyId, recovered) == true);
+        REQUIRE_FALSE(recovered.fSubscribedToNotifications);
+        REQUIRE(recovered.nSubscribedChannel == 0);
+
+        manager.RemoveSession(testKeyId);
+    }
+
+    SECTION("SaveSession preserves subscription state across partial refreshes")
+    {
+        uint256_t testKeyId;
+        testKeyId.SetHex("e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3");
+
+        /* First save: subscribed to channel 2 */
+        MiningContext ctxSubscribed = MiningContext()
+            .WithSession(33334)
+            .WithKeyId(testKeyId)
+            .WithAuth(true)
+            .WithChannel(2)
+            .WithSubscription(2);
+
+        REQUIRE(manager.SaveSession(ctxSubscribed) == true);
+
+        /* Partial refresh: keepalive update without subscription flag */
+        MiningContext ctxRefresh = MiningContext()
+            .WithSession(33334)
+            .WithKeyId(testKeyId)
+            .WithAuth(true)
+            .WithChannel(2);
+
+        REQUIRE(manager.SaveSession(ctxRefresh) == true);
+
+        /* Subscription must still be present */
+        MiningContext recovered;
+        REQUIRE(manager.RecoverSession(testKeyId, recovered) == true);
+        REQUIRE(recovered.fSubscribedToNotifications == true);
+        REQUIRE(recovered.nSubscribedChannel == 2);
 
         manager.RemoveSession(testKeyId);
     }

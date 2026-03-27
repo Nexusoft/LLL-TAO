@@ -39,6 +39,11 @@ namespace LLP
             return data.fEncryptionReady && !data.vChaCha20Key.empty();
         }
 
+        bool IsValidSubscriptionChannel(uint32_t nChannel)
+        {
+            return nChannel == 1 || nChannel == 2;
+        }
+
         SessionRecoveryData ResolveRecoveredSnapshot(
             const MiningContext& liveContext,
             const SessionRecoveryData& recovered,
@@ -176,6 +181,8 @@ namespace LLP
     , nChaCha20Nonce(0)
     , vDisposablePubKey()
     , hashDisposableKeyID(0)
+    , fSubscribedToNotifications(false)
+    , nSubscribedChannel(0)
     {
     }
 
@@ -252,6 +259,14 @@ namespace LLP
             fEncryptionReady = true;
             hashChaCha20Key = uint256_t(context.vChaChaKey);
         }
+
+        if(context.fSubscribedToNotifications && IsValidSubscriptionChannel(context.nSubscribedChannel))
+        {
+            fSubscribedToNotifications = true;
+            nSubscribedChannel = context.nSubscribedChannel;
+        }
+        /* MergeContext never clears subscription state: once a miner subscribes the server
+         * restores the subscription on reconnect until the session expires. */
     }
 
 
@@ -278,6 +293,9 @@ namespace LLP
 
         if(fEncryptionReady && !vChaCha20Key.empty())
             context = context.WithChaChaKey(vChaCha20Key);
+
+        if(fSubscribedToNotifications && IsValidSubscriptionChannel(nSubscribedChannel))
+            context = context.WithSubscription(nSubscribedChannel);
 
         return context;
     }

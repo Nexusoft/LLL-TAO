@@ -61,6 +61,8 @@ namespace LLP
         uint64_t nChaCha20Nonce;                // ChaCha20 nonce counter
         std::vector<uint8_t> vDisposablePubKey; // Disposable Falcon session public key
         uint256_t hashDisposableKeyID;          // Disposable Falcon session key ID
+        bool fSubscribedToNotifications;        // Whether miner subscribed to push notifications
+        uint32_t nSubscribedChannel;            // Channel subscribed to (1=Prime, 2=Hash)
 
         /** Default Constructor **/
         MinerSessionContainer();
