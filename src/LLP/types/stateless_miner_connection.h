@@ -142,6 +142,12 @@ namespace LLP
             static constexpr uint32_t VIOLATIONS_BEFORE_STRIKE = 3;
             static constexpr uint32_t VIOLATIONS_BEFORE_THROTTLE = 6;
             static constexpr uint32_t VIOLATIONS_BEFORE_DISCONNECT = 10;
+
+            /** After this many consecutive GET_BLOCK rate-limit violations with no
+             *  successful request between them, the connection is closed with a
+             *  diagnostic message to prevent the tight-loop self-DDoS. */
+            static constexpr uint32_t MAX_CONSECUTIVE_RATE_LIMIT_STRIKES =
+                MiningConstants::RATE_LIMIT_STRIKE_THRESHOLD;
             
             // Cooldown duration (NOT a ban - auto-expires)
             static constexpr uint32_t COOLDOWN_DURATION_SECONDS = 300;  // 5 minutes
@@ -167,6 +173,14 @@ namespace LLP
             uint32_t nViolationCount = 0;
             uint32_t nStrikeCount = 0;
             bool fThrottleMode = false;
+
+            /** Consecutive GET_BLOCK rate-limit counter.
+             *
+             *  Incremented each time GET_BLOCK is rejected with RATE_LIMIT_EXCEEDED.
+             *  Reset to 0 whenever a GET_BLOCK request succeeds.  When it reaches
+             *  RateLimitConfig::MAX_CONSECUTIVE_RATE_LIMIT_STRIKES the connection is
+             *  closed to stop the tight-loop self-DDoS. */
+            uint32_t nConsecutiveRateLimitStrikes = 0;
             
             // Initialize timestamps
             RateLimitState() : tLastCounterReset(std::chrono::steady_clock::now()) {}
@@ -184,6 +198,7 @@ namespace LLP
                 fThrottleMode  = false;
                 nViolationCount = 0;
                 nStrikeCount   = 0;
+                nConsecutiveRateLimitStrikes = 0;
             }
         };
         

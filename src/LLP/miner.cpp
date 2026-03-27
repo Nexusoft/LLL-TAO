@@ -69,6 +69,7 @@ ________________________________________________________________________________
 #include <Util/include/convert.h>
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
+#include <Util/include/runtime.h>
 
 #include <LLP/include/colin_mining_agent.h>
 #include <LLP/include/node_session_registry.h>
@@ -1906,8 +1907,36 @@ namespace LLP
             {
                 respond(BLOCK_REJECTED,
                     BuildGetBlockControlPayload(result.eReason, result.nRetryAfterMs));
+
+                if(result.eReason == GetBlockPolicyReason::RATE_LIMIT_EXCEEDED)
+                {
+                    /* Track consecutive rate-limit violations (legacy lane). */
+                    const uint32_t nStrikes = ++m_nConsecutiveRateLimitStrikes;
+
+                    if(nStrikes >= MiningConstants::RATE_LIMIT_STRIKE_THRESHOLD)
+                    {
+                        debug::error(FUNCTION,
+                            "Closing miner connection (legacy lane) — ", nStrikes,
+                            " consecutive GET_BLOCK rate-limit violations without a"
+                            " successful request (tight-loop self-DDoS prevention)"
+                            " peer=", GetAddress().ToStringIP());
+                        lk.unlock();
+                        Disconnect();
+                        return true;
+                    }
+
+                    /* Suspend reads for retry_after_ms (floor: 1 second). */
+                    const uint32_t nSleepMs = std::max(result.nRetryAfterMs, 1000u);
+                    lk.unlock();
+                    runtime::sleep(nSleepMs);
+                    return true;
+                }
+
                 return true;
             }
+
+            /* Successful GET_BLOCK — reset the consecutive rate-limit strike counter. */
+            m_nConsecutiveRateLimitStrikes = 0;
 
             /* Invariant: authenticated + in-budget → non-empty BLOCK_DATA */
             assert(!result.vPayload.empty());
