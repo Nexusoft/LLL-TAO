@@ -114,7 +114,7 @@ namespace TAO
                     std::placeholders::_1,
                     std::placeholders::_2
                 )
-                , ENABLE::FILTERS | ENABLE::QUERIES | ENABLE::OPERATORS
+                , ENABLE::FILTERS | ENABLE::QUERIES | ENABLE::OPERATORS | ENABLE::SORTING
             );
 
 
