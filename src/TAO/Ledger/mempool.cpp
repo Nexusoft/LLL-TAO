@@ -185,9 +185,15 @@ namespace TAO
                     /* Check for conflicts. */
                     if(mapClaimed.count(tx.hashPrevTx) || mapConflicts.count(tx.hashPrevTx))
                     {
-                        /* Add to conflicts map. */
-                        debug::error(FUNCTION, "CONFLICT: prev tx ", (mapClaimed.count(tx.hashPrevTx) ? "CLAIMED " : "CONFLICTED "), tx.hashPrevTx.SubString());
-                        mapConflicts[hashTx] = tx;
+                        /* We only need to output debug info and insert if this is a new conflict. */
+                        if(!mapConflicts.count(hashTx))
+                        {
+                            /* Add to conflicts map. */
+                            debug::error(FUNCTION, "CONFLICT: prev tx ", (mapClaimed.count(tx.hashPrevTx) ? "CLAIMED " : "CONFLICTED "), tx.hashPrevTx.SubString());
+
+                            mapConflicts[hashTx] = tx;
+                        }
+
 
                         return false;
                     }
@@ -200,18 +206,26 @@ namespace TAO
                     /* Check for conflicts. */
                     if(tx.hashPrevTx != hashLast)
                     {
-                        /* Add to conflicts map. */
-                        debug::error(FUNCTION, "CONFLICT: hash last mismatch ", tx.hashPrevTx.SubString(), " and ", hashLast.SubString());
-                        mapConflicts[hashTx] = tx;
+                        /* We only need to output debug info and insert if this is a new conflict. */
+                        if(!mapConflicts.count(hashTx))
+                        {
+                            /* Add to conflicts map. */
+                            debug::error(FUNCTION, "CONFLICT: hash last mismatch ", tx.hashPrevTx.SubString(), " and ", hashLast.SubString());
+                            mapConflicts[hashTx] = tx;
+                        }
 
                         return false;
                     }
                 }
                 else if(tx.IsFirst() && LLD::Ledger->HasFirst(tx.hashGenesis))
                 {
-                    /* Add to conflicts map. */
-                    debug::error(FUNCTION, "CONFLICT: duplicate genesis-id ", tx.hashGenesis.SubString());
-                    mapConflicts[hashTx] = tx;
+                    /* We only need to output debug info and insert if this is a new conflict. */
+                    if(!mapConflicts.count(hashTx))
+                    {
+                        /* Add to conflicts map. */
+                        debug::error(FUNCTION, "CONFLICT: duplicate genesis-id ", tx.hashGenesis.SubString());
+                        mapConflicts[hashTx] = tx;
+                    }
 
                     return false;
                 }
