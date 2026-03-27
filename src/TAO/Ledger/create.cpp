@@ -22,6 +22,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 #include <LLP/include/global.h>
+#include <LLP/include/falcon_constants.h>
 
 #include <TAO/Ledger/include/ambassador.h>
 #include <TAO/Ledger/include/developer.h>
@@ -426,42 +427,65 @@ namespace TAO::Ledger
             debug::log(2, FUNCTION, "Block cache invalidated (genesis/user change), regenerating...");
         }
 
-        /* Tertiary check: Time-based safety timeout */
-        const uint64_t nExpiration = config::GetArg("-blockrefresh", 90);
+        /* Tertiary check: Time-based safety timeout.
+         * Default aligned with heartbeat refresh: TEMPLATE_HEARTBEAT_REFRESH_SECONDS - 60
+         * ensures the block cache is rebuilt before the heartbeat re-push fires at 480 s,
+         * so miners always receive a genuinely fresh template rather than a stale cached one.
+         * Operator can override via -blockrefresh command-line arg.
+         * The computed default (420 s) is always positive, so the narrowing conversion from
+         * int64_t to uint64_t is safe here. */
+        const uint64_t nExpiration = static_cast<uint64_t>(config::GetArg("-blockrefresh",
+            static_cast<int64_t>(LLP::FalconConstants::TEMPLATE_HEARTBEAT_REFRESH_SECONDS) - 60));
         if(runtime::unifiedtimestamp() >= tBlockCached.producer.nTimestamp + nExpiration)
         {
             fNeedsNewBlock = true;
             debug::log(0, FUNCTION, "Block cache timed out after ", nExpiration, " seconds (safety net), regenerating...");
         }
 
-        /* Quaternary check: sigchain advanced since template was cached.
-         * This catches the case where a block on a DIFFERENT channel connected
-         * after this template was cached, advancing WriteLast() for the same
-         * genesis without advancing hashBestChain enough to trigger the Primary
-         * check.  If the cached producer.hashPrevTx no longer matches the ledger's
-         * current last for this genesis, the template will cause a sequence error
-         * in Transaction::Connect() — rebuild now rather than let the miner work
-         * on a template that will be rejected.
-         *
-         * Note: Only applies to PoW channels (1=Prime, 2=Hash) with a proper
-         * sigchain producer.  Private (3) uses a different producer model.
-         * Skip for genesis transactions (producer.IsFirst()) — they have no
-         * preceding sigchain entry. */
-        if(!fNeedsNewBlock
-           && (nChannel == 1 || nChannel == 2)
-           && !tBlockCached.producer.IsFirst())
+        /* Quaternary check: Has the producer's sigchain advanced on disk?
+         * This catches the case where a different channel's block committed a producer
+         * for the same sigchain (advancing WriteLast), but hashBestChain hasn't changed
+         * yet from this channel's perspective — meaning checks 1-3 all pass and the
+         * cache would serve a stale producer.
+         * Defense-in-depth: RefreshProducerIfStale() at SUBMIT_BLOCK time remains the
+         * authoritative backstop for any TOCTOU races. */
+        if(!fNeedsNewBlock && tBlockCached.producer.hashGenesis != 0)
         {
             uint512_t hashDiskLast = 0;
-            if(LLD::Ledger->ReadLast(tBlockCached.producer.hashGenesis, hashDiskLast)
-               && hashDiskLast != tBlockCached.producer.hashPrevTx)
+            if(LLD::Ledger->ReadLast(tBlockCached.producer.hashGenesis, hashDiskLast))
             {
-                fNeedsNewBlock = true;
-                debug::log(0, FUNCTION,
-                    "Block cache invalidated: producer sigchain advanced since template creation"
-                    " genesis=", tBlockCached.producer.hashGenesis.SubString(),
-                    " cached.hashPrevTx=", tBlockCached.producer.hashPrevTx.SubString(),
-                    " disk.last=", hashDiskLast.SubString(),
-                    " - rebuilding template to prevent sequence error at connect time");
+                if(hashDiskLast != tBlockCached.producer.hashPrevTx)
+                {
+                    fNeedsNewBlock = true;
+                    debug::log(0, FUNCTION, "Block cache invalidated: producer sigchain advanced on disk"
+                               " (disk last=", hashDiskLast.SubString(),
+                               " != cached producer.hashPrevTx=", tBlockCached.producer.hashPrevTx.SubString(),
+                               "), regenerating...");
+                }
+            }
+        }
+
+        /* Quinary check: Does the mempool contain a transaction for the producer's genesis?
+         * If so, AddTransactions() will pick it up into block.vtx, and the producer must
+         * follow it — but the cached producer was built before this mempool tx arrived.
+         * Force a rebuild so CreateProducer() sees the mempool state and sequences correctly.
+         * Note: mempool.Get() is O(1) hash lookup — negligible cost.
+         * This is an early-exit companion to the post-cache mempool check below (line ~488).
+         * Both use the same comparison logic; this one avoids entering the cache path at all
+         * when a stale producer can be detected upfront. */
+        if(!fNeedsNewBlock && tBlockCached.producer.hashGenesis != 0)
+        {
+            TAO::Ledger::Transaction txMempool;
+            if(mempool.Get(tBlockCached.producer.hashGenesis, txMempool))
+            {
+                if(txMempool.GetHash() != tBlockCached.producer.hashPrevTx)
+                {
+                    fNeedsNewBlock = true;
+                    debug::log(0, FUNCTION, "Block cache invalidated: mempool has newer sigchain tx"
+                               " for producer genesis (mempool tx=", txMempool.GetHash().SubString(),
+                               " != cached producer.hashPrevTx=", tBlockCached.producer.hashPrevTx.SubString(),
+                               "), regenerating...");
+                }
             }
         }
 

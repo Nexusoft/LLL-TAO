@@ -1120,6 +1120,11 @@ namespace TAO
                 ChainState::nBestChainTrust    = nChainTrust;
                 ChainState::nBestHeight        = nHeight;
 
+                /* Capture whether this SetBest invocation was completing a chain reorganization.
+                 * Must be read before fChainReorg is cleared so the value is preserved for the
+                 * reorg-recovery diagnostic emitted after the push event is enqueued below. */
+                const bool fWasReorg = ChainState::fChainReorg.load();
+
                 /* Reset our reorg block now. */
                 ChainState::fChainReorg.store(false);
 
@@ -1195,6 +1200,15 @@ namespace TAO
                      * flood of ACTION::GET requests from delaying PRIME_BLOCK_AVAILABLE /
                      * HASH_BLOCK_AVAILABLE notifications to miners. */
                     LLP::MinerPushDispatcher::EnqueuePushEvent(nHeight, hash);
+
+                    /* Reorg-recovery diagnostic: if this SetBest completed a chain reorganization,
+                     * log that the push was enqueued so operators can trace reorg-recovery behavior.
+                     * During large reorgs the miner's LLP poll timeout may fire while SetBest() is
+                     * still processing, causing a disconnect.  This entry confirms the push was
+                     * sent regardless of how many miners were connected at enqueue time. */
+                    if(fWasReorg)
+                        debug::log(0, FUNCTION, "Reorg-recovery push enqueued at height ", nHeight,
+                                   " (disconnect=", vDisconnect.size(), " connect=", vConnect.size(), ")");
                 }
 
                 /* Verify unified height consistency using existing ChannelStateManager infrastructure */
