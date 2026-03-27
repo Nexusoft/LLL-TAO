@@ -577,6 +577,18 @@ namespace LLP
                                " — recording as potential failover connection");
                 }
 
+                /* If the session was recovered and the miner was previously subscribed to
+                 * push notifications, restore that subscription state immediately.
+                 * Without this, the miner is invisible to NotifyChannelMiners until it
+                 * explicitly re-sends MINER_READY — causing missed pushes on reconnect
+                 * (e.g. after a reorg-triggered disconnect). */
+                if(fRecovered && recoveredContext.fSubscribedToNotifications)
+                {
+                    context = context.WithSubscription(recoveredContext.nSubscribedChannel);
+                    debug::log(0, FUNCTION, "Session recovered for ", strAddr,
+                               " — subscription state restored (channel=", recoveredContext.nSubscribedChannel, ")");
+                }
+
                 /* Register with StatelessMinerManager for tracking */
                 StatelessMinerManager::Get().UpdateMiner(strAddr, context, 1);
 
