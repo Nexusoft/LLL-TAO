@@ -622,37 +622,63 @@ namespace TAO
             if(GetBlockTime() <= statePrev.GetBlockTime())
                 return debug::error(FUNCTION, "block's timestamp too early");
 
-            /* Early-out: block is at or below the current hardened checkpoint.
-             * This happens when a late block arrives after the chain has advanced past
-             * its height and hardened a new checkpoint. It cannot be an ancestor of the
-             * current checkpoint, so silently drop as a late orphan — no ERROR needed. */
-            if(!ChainState::Synchronizing() && nHeight <= (uint32_t)ChainState::nCheckpointHeight.load())
-            {
-                debug::log(2, FUNCTION, "Block height=", nHeight,
-                    " is at or below checkpointHeight=", ChainState::nCheckpointHeight.load(),
-                    " — dropping as late orphan (not an error)");
-                return false;
-            }
-
-            /* Check that Block is Descendant of Hardened Checkpoints. */
+            /* Checkpoint validation — gated on chain membership.
+             *
+             * A block whose parent is on the current best chain must satisfy the
+             * hardened checkpoint rules (late-orphan drop + IsDescendant check).
+             *
+             * A block whose parent is NOT on the best chain could be part of a
+             * valid reorganization that forks below the hardened checkpoint.
+             * IsDescendant() cannot pass for such a block (the backward walk
+             * would drop below checkpoint height on a different chain), so we
+             * skip checkpoint validation and let SetBest() compare chain trust
+             * to decide the correct tip. */
             #ifndef UNIT_TESTS
-            if(!ChainState::Synchronizing() && !IsDescendant(statePrev))
+            if(!ChainState::Synchronizing())
             {
-                /* In-memory gate: only attempt disk repair when tStateBest.hashCheckpoint
-                 * disagrees with the standalone hashCheckpoint atomic.  This avoids the
-                 * I/O amplification vector where a remote sender spams blocks to trigger
-                 * ReadBlock() on every IsDescendant() failure. */
-                if(ChainState::RepairCheckpointIfStale())
-                {
-                    /* Retry the descendant check with repaired checkpoint. */
-                    if(!IsDescendant(statePrev))
-                        return debug::error(FUNCTION, "not descendant of last checkpoint (even after repair)");
+                /* A connected best-chain block has a non-zero hashNextBlock
+                 * (a successor was connected) or is the current tip. */
+                const bool fParentOnBestChain =
+                    (statePrev.hashNextBlock != 0 ||
+                     statePrev.GetHash() == ChainState::hashBestChain.load());
 
-                    debug::log(0, FUNCTION, "Checkpoint repair SUCCESS — block passes descendant check after repair");
+                if(fParentOnBestChain)
+                {
+                    /* Parent is on the current best chain. */
+
+                    /* Early-out: block at or below checkpoint on the same chain
+                     * is a genuine late orphan — already superseded. */
+                    if(nHeight <= (uint32_t)ChainState::nCheckpointHeight.load())
+                    {
+                        debug::log(2, FUNCTION, "Block height=", nHeight,
+                            " at or below checkpointHeight=", ChainState::nCheckpointHeight.load(),
+                            " and parent on best chain — dropping as late orphan (not an error)");
+                        return false;
+                    }
+
+                    /* Above checkpoint — validate checkpoint ancestry. */
+                    if(!IsDescendant(statePrev))
+                    {
+                        if(ChainState::RepairCheckpointIfStale())
+                        {
+                            if(!IsDescendant(statePrev))
+                                return debug::error(FUNCTION, "not descendant of last checkpoint (even after repair)");
+
+                            debug::log(0, FUNCTION, "Checkpoint repair SUCCESS — block passes descendant check after repair");
+                        }
+                        else
+                        {
+                            return debug::error(FUNCTION, "not descendant of last checkpoint");
+                        }
+                    }
                 }
                 else
                 {
-                    return debug::error(FUNCTION, "not descendant of last checkpoint");
+                    /* Parent is NOT on the best chain — potential reorganization.
+                     * Skip checkpoint descendant check and let SetBest() evaluate
+                     * chain trust to determine whether the reorg should proceed. */
+                    debug::log(2, FUNCTION, "Block height=", nHeight,
+                        " parent not on best chain — skipping checkpoint check for potential reorg");
                 }
             }
             #endif
