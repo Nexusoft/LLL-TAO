@@ -624,7 +624,7 @@ namespace TAO
 
             /* Check that Block is Descendant of Hardened Checkpoints. */
             #ifndef UNIT_TESTS
-            if(config::GetBoolArg("-checkpoints", true) && !ChainState::Synchronizing() && !IsDescendant(statePrev))
+            if(config::GetBoolArg("-checkpoints", false) && !ChainState::Synchronizing() && !IsDescendant(statePrev))
                 return debug::error(FUNCTION, "not descendant of last checkpoint");
             #endif
 
