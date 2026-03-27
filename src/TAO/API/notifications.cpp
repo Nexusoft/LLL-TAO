@@ -757,7 +757,7 @@ namespace TAO::API
                                 return true;
 
                             /* Log some info about this. */
-                            debug::log(2, FUNCTION, "OP::CLAIM: sanitize failed for ", rEvent.first.SubString(), ", adding to work queue");
+                            //debug::log(2, FUNCTION, "OP::CLAIM: sanitize failed for ", rEvent.first.SubString(), ", adding to work queue");
 
                             /* Push this to our contracts queue so we can process again later. */
                             LLD::Sessions->PushContract(hashGenesis, rEvent.first, rEvent.second);
