@@ -497,7 +497,7 @@ namespace TAO
                     const uint64_t nMemHeight = ChainState::nCheckpointHeight.load();
                     if(nMemHeight != stateCheckpoint.nHeight)
                     {
-                        debug::log(0, FUNCTION, "HEIGHT DRIFT: in-memory nCheckpointHeight=",
+                        debug::log(0, FUNCTION, "Checkpoint height drift (transient race): in-memory nCheckpointHeight=",
                             nMemHeight, " expected=", stateCheckpoint.nHeight, " — repairing");
 
                         ChainState::nCheckpointHeight = stateCheckpoint.nHeight;
