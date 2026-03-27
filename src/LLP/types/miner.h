@@ -505,6 +505,15 @@ namespace LLP
          **/
         AutoCoolDown m_get_block_cooldown{std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS)};
 
+        /** Consecutive GET_BLOCK rate-limit counter (legacy lane).
+         *
+         *  Incremented each time GET_BLOCK is rejected with RATE_LIMIT_EXCEEDED.
+         *  Reset to 0 whenever a GET_BLOCK request succeeds.  After
+         *  MiningConstants::RATE_LIMIT_STRIKE_THRESHOLD consecutive rejections without
+         *  a successful request the connection is closed to prevent a tight-loop
+         *  self-DDoS. */
+        uint32_t m_nConsecutiveRateLimitStrikes = 0;
+
     public:
 
         /** Default Constructor **/

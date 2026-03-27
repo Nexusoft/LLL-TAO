@@ -226,6 +226,18 @@ namespace LLP
             return;
         }
 
+        /* Seed heartbeat timestamps so the first heartbeat fires approximately 60 seconds
+         * after node startup even when no real push dispatch has occurred yet (e.g., no
+         * blocks mined on this channel, miner not yet connected).  Without this seeding
+         * the timestamps stay at zero and HeartbeatRefreshCheck() skips the channel
+         * forever, meaning miners never receive a proactive template refresh. */
+        const uint64_t nNow  = runtime::unifiedtimestamp();
+        const uint64_t nSeed = nNow - FalconConstants::TEMPLATE_HEARTBEAT_REFRESH_SECONDS + 60;
+        s_nLastPrimeDispatchTime.store(nSeed, std::memory_order_release);
+        s_nLastHashDispatchTime.store(nSeed, std::memory_order_release);
+        debug::log(1, FUNCTION,
+            "Seeded heartbeat timestamps: heartbeat will fire in ~60s if no real push occurs");
+
         s_pushThread = std::thread(&MinerPushDispatcher::PushWorkerThread);
         debug::log(0, FUNCTION, "Push-worker thread launched");
     }

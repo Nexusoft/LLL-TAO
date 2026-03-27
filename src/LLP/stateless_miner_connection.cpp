@@ -995,6 +995,30 @@ namespace LLP
                     {
                         const uint64_t nRateLimited = ++g_get_block_rate_limited_total;
                         debug::log(1, FUNCTION, "metric get_block_rate_limited_total=", nRateLimited);
+
+                        /* Track consecutive rate-limit violations to detect the tight-loop
+                         * self-DDoS pattern (miner floods GET_BLOCK with no back-off). */
+                        const uint32_t nStrikes = ++m_rateLimit.nConsecutiveRateLimitStrikes;
+                        debug::log(1, FUNCTION,
+                            "GET_BLOCK consecutive rate-limit strike #", nStrikes,
+                            "/", RateLimitConfig::MAX_CONSECUTIVE_RATE_LIMIT_STRIKES,
+                            " session=", context.nSessionId,
+                            " peer=", GetAddress().ToStringIP());
+
+                        if(nStrikes >= RateLimitConfig::MAX_CONSECUTIVE_RATE_LIMIT_STRIKES)
+                        {
+                            debug::error(FUNCTION,
+                                "Closing miner connection — ", nStrikes,
+                                " consecutive GET_BLOCK rate-limit violations without a"
+                                " successful request (tight-loop self-DDoS prevention)"
+                                " session=", context.nSessionId,
+                                " peer=", GetAddress().ToStringIP());
+                            SendGetBlockControlResponse(GetBlockPolicyReason::RATE_LIMIT_EXCEEDED,
+                                                        gbResult.nRetryAfterMs, true);
+                            lk.unlock();
+                            Disconnect();
+                            return true;
+                        }
                     }
 
                     /* Translate INTERNAL_RETRY to TEMPLATE_REBUILD_IN_PROGRESS when deadline exceeded */
@@ -1009,8 +1033,27 @@ namespace LLP
                     SendGetBlockControlResponse(eReportReason, gbResult.nRetryAfterMs, true);
                     debug::log(2, "📥 === GET_BLOCK: FAILED (reason=",
                                GetBlockPolicyReasonCode(eReportReason), " latency=", nGetBlockLatencyMs, "ms) ===");
+
+                    /* After a RATE_LIMIT_EXCEEDED response, suspend reads on this connection
+                     * for the retry_after_ms period (floor: 1 second).  This prevents the
+                     * miner from immediately retrying and creating a tight-loop self-DDoS
+                     * that starves push notifications and heartbeat checks. */
+                    if(gbResult.eReason == GetBlockPolicyReason::RATE_LIMIT_EXCEEDED)
+                    {
+                        const uint32_t nSleepMs = std::max(gbResult.nRetryAfterMs, 1000u);
+                        debug::log(1, FUNCTION,
+                            "GET_BLOCK rate-limit: suspending reads for ", nSleepMs, "ms"
+                            " session=", context.nSessionId);
+                        lk.unlock();
+                        runtime::sleep(nSleepMs);
+                        return true;
+                    }
+
                     return true;
                 }
+
+                /* Successful GET_BLOCK — reset the consecutive rate-limit strike counter. */
+                m_rateLimit.nConsecutiveRateLimitStrikes = 0;
 
                 /* Invariant: authenticated + in-budget → non-empty BLOCK_DATA */
                 assert(!gbResult.vPayload.empty());
