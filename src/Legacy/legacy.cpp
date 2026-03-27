@@ -498,38 +498,9 @@ namespace Legacy
         if(nBlockTime <= statePrev.GetBlockTime())
             return debug::error(FUNCTION, "block's timestamp too early Block: ", nBlockTime, " Prev: ", statePrev.GetBlockTime());
 
-        /* Early-out: block is at or below the current hardened checkpoint.
-         * This happens when a late block arrives after the chain has advanced past
-         * its height and hardened a new checkpoint. It cannot be an ancestor of the
-         * current checkpoint, so silently drop as a late orphan — no ERROR needed. */
-        if(!TAO::Ledger::ChainState::Synchronizing() && nHeight <= (uint32_t)TAO::Ledger::ChainState::nCheckpointHeight.load())
-        {
-            debug::log(2, FUNCTION, "Block height=", nHeight,
-                " is at or below checkpointHeight=", TAO::Ledger::ChainState::nCheckpointHeight.load(),
-                " — dropping as late orphan (not an error)");
-            return false;
-        }
-
         /* Check that Block is Descendant of Hardened Checkpoints. */
-        if(!TAO::Ledger::IsDescendant(statePrev))
-        {
-            /* In-memory gate: only attempt disk repair when tStateBest.hashCheckpoint
-             * disagrees with the standalone hashCheckpoint atomic.  This avoids the
-             * I/O amplification vector where a remote sender spams blocks to trigger
-             * ReadBlock() on every IsDescendant() failure. */
-            if(TAO::Ledger::ChainState::RepairCheckpointIfStale())
-            {
-                /* Retry the descendant check with repaired checkpoint. */
-                if(!TAO::Ledger::IsDescendant(statePrev))
-                    return debug::error(FUNCTION, "not descendant of last checkpoint (even after repair)");
-
-                debug::log(0, FUNCTION, "Checkpoint repair SUCCESS — block passes descendant check after repair");
-            }
-            else
-            {
-                return debug::error(FUNCTION, "not descendant of last checkpoint");
-            }
-        }
+        if(config::GetBoolArg("-checkpoints", true) && !TAO::Ledger::ChainState::Synchronizing() && !TAO::Ledger::IsDescendant(statePrev))
+            return debug::error(FUNCTION, "not descendant of last checkpoint");
 
         /* Check the block proof of work rewards. */
         if(IsProofOfWork() && nVersion != 2 && nHeight != 2061881 && nHeight != 2191756)

@@ -622,65 +622,10 @@ namespace TAO
             if(GetBlockTime() <= statePrev.GetBlockTime())
                 return debug::error(FUNCTION, "block's timestamp too early");
 
-            /* Checkpoint validation — gated on chain membership.
-             *
-             * A block whose parent is on the current best chain must satisfy the
-             * hardened checkpoint rules (late-orphan drop + IsDescendant check).
-             *
-             * A block whose parent is NOT on the best chain could be part of a
-             * valid reorganization that forks below the hardened checkpoint.
-             * IsDescendant() cannot pass for such a block (the backward walk
-             * would drop below checkpoint height on a different chain), so we
-             * skip checkpoint validation and let SetBest() compare chain trust
-             * to decide the correct tip. */
+            /* Check that Block is Descendant of Hardened Checkpoints. */
             #ifndef UNIT_TESTS
-            if(!ChainState::Synchronizing())
-            {
-                /* A connected best-chain block has a non-zero hashNextBlock
-                 * (a successor was connected) or is the current tip. */
-                const bool fParentOnBestChain =
-                    (statePrev.hashNextBlock != 0 ||
-                     statePrev.GetHash() == ChainState::hashBestChain.load());
-
-                if(fParentOnBestChain)
-                {
-                    /* Parent is on the current best chain. */
-
-                    /* Early-out: block at or below checkpoint on the same chain
-                     * is a genuine late orphan — already superseded. */
-                    if(nHeight <= (uint32_t)ChainState::nCheckpointHeight.load())
-                    {
-                        debug::log(2, FUNCTION, "Block height=", nHeight,
-                            " at or below checkpointHeight=", ChainState::nCheckpointHeight.load(),
-                            " and parent on best chain — dropping as late orphan (not an error)");
-                        return false;
-                    }
-
-                    /* Above checkpoint — validate checkpoint ancestry. */
-                    if(!IsDescendant(statePrev))
-                    {
-                        if(ChainState::RepairCheckpointIfStale())
-                        {
-                            if(!IsDescendant(statePrev))
-                                return debug::error(FUNCTION, "not descendant of last checkpoint (even after repair)");
-
-                            debug::log(0, FUNCTION, "Checkpoint repair SUCCESS — block passes descendant check after repair");
-                        }
-                        else
-                        {
-                            return debug::error(FUNCTION, "not descendant of last checkpoint");
-                        }
-                    }
-                }
-                else
-                {
-                    /* Parent is NOT on the best chain — potential reorganization.
-                     * Skip checkpoint descendant check and let SetBest() evaluate
-                     * chain trust to determine whether the reorg should proceed. */
-                    debug::log(2, FUNCTION, "Block height=", nHeight,
-                        " parent not on best chain — skipping checkpoint check for potential reorg");
-                }
-            }
+            if(config::GetBoolArg("-checkpoints", true) && !ChainState::Synchronizing() && !IsDescendant(statePrev))
+                return debug::error(FUNCTION, "not descendant of last checkpoint");
             #endif
 
             /* Validate proof of stake. */
