@@ -622,12 +622,11 @@ namespace TAO
             if(GetBlockTime() <= statePrev.GetBlockTime())
                 return debug::error(FUNCTION, "block's timestamp too early");
 
-            /* Check that Block is Descendant of Hardened Checkpoints.
+            /* Check that Block is Descendant of Hardened Checkpoints. */
             #ifndef UNIT_TESTS
-            if(!ChainState::Synchronizing() && !IsDescendant(statePrev))
+            if(config::GetBoolArg("-checkpoints", true) && !ChainState::Synchronizing() && !IsDescendant(statePrev))
                 return debug::error(FUNCTION, "not descendant of last checkpoint");
             #endif
-            */
 
             /* Validate proof of stake. */
             if(IsProofOfStake() && !CheckStake())
