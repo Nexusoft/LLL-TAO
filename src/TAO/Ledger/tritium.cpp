@@ -622,18 +622,6 @@ namespace TAO
             if(GetBlockTime() <= statePrev.GetBlockTime())
                 return debug::error(FUNCTION, "block's timestamp too early");
 
-            /* Early-out: block is at or below the current hardened checkpoint.
-             * This happens when a late block arrives after the chain has advanced past
-             * its height and hardened a new checkpoint. It cannot be an ancestor of the
-             * current checkpoint, so silently drop as a late orphan — no ERROR needed. */
-            if(!ChainState::Synchronizing() && nHeight <= (uint32_t)ChainState::nCheckpointHeight.load())
-            {
-                debug::log(2, FUNCTION, "Block height=", nHeight,
-                    " is at or below checkpointHeight=", ChainState::nCheckpointHeight.load(),
-                    " — dropping as late orphan (not an error)");
-                return false;
-            }
-
             /* Check that Block is Descendant of Hardened Checkpoints. */
             #ifndef UNIT_TESTS
             if(!ChainState::Synchronizing() && !IsDescendant(statePrev))
