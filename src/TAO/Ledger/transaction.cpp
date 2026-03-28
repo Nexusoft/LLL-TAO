@@ -65,7 +65,7 @@ namespace TAO
             return config::GetBoolArg("-nseqdiag", false);
         }
 
-        const char* SequenceDiagFlagName(const uint8_t nFlags)
+        const char* SequenceDiagFlagToString(const uint8_t nFlags)
         {
             switch(nFlags)
             {
@@ -969,7 +969,7 @@ namespace TAO
                         debug::log(0, FUNCTION,
                             "[NSEQ_DIAG][Transaction::Check]"
                             " genesis=", hashGenesis.SubString(),
-                            " context=", SequenceDiagFlagName(nFlags),
+                            " context=", SequenceDiagFlagToString(nFlags),
                             " current.hashPrevTx=", hashPrevTx.SubString(),
                             " prev.hash=", txPrev.GetHash().SubString(),
                             " prev.nSequence=", txPrev.nSequence,
@@ -987,7 +987,7 @@ namespace TAO
                             debug::log(0, FUNCTION,
                                 "[NSEQ_DIAG][Transaction::Check][MISMATCH]"
                                 " genesis=", hashGenesis.SubString(),
-                                " context=", SequenceDiagFlagName(nFlags),
+                                " context=", SequenceDiagFlagToString(nFlags),
                                 " prev.hash=", txPrev.GetHash().SubString(),
                                 " prev.nSequence=", txPrev.nSequence,
                                 " current.nSequence=", nSequence,

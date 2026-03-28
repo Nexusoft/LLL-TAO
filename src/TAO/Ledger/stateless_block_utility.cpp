@@ -410,6 +410,7 @@ namespace TAO::Ledger
         /* ── Step 4: perform the refresh ── */
         const uint512_t hashOldProducer = block.producer.GetHash(true);
         const uint1024_t hashOldMerkle = block.hashMerkleRoot;
+        const std::vector<uint8_t> vOldProducerSig = block.producer.vchSig;
         const std::vector<uint8_t> vOldBlockSig = block.vchBlockSig;
         const bool fOldHadBlockSig = !vOldBlockSig.empty();
 
@@ -497,7 +498,7 @@ namespace TAO::Ledger
             debug::log(0, FUNCTION,
                 "[NSEQ_DIAG][RefreshProducerIfStale][MUTATION]"
                 " producer_mutated=", (hashOldProducer != hashNewProducer ? "yes" : "no"),
-                " producer_resigned=", (hashOldProducer != hashNewProducer ? "yes" : "no"),
+                " producer_resigned=", (vOldProducerSig != block.producer.vchSig ? "yes" : "no"),
                 " old.producer=", hashOldProducer.SubString(),
                 " new.producer=", hashNewProducer.SubString(),
                 " merkle_changed=", (hashOldMerkle != block.hashMerkleRoot ? "yes" : "no"),

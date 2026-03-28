@@ -128,7 +128,7 @@ namespace TAO::Ledger
             }
         }
 
-        /* Check that we found a dependant and therfore it is not the first transaction. */
+        /* Check that we found a dependent and therefore it is not the first transaction. */
         if(txPrev.hashGenesis != 0)
         {
             if(fSeqDiag)
