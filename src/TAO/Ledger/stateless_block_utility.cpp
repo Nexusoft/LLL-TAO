@@ -46,6 +46,11 @@ namespace TAO::Ledger
 {
     namespace
     {
+        bool SequenceDiagnosticsEnabled()
+        {
+            return config::GetBoolArg("-nseqdiag", false);
+        }
+
         uint64_t ReadUint64LE(const std::vector<uint8_t>& vData, const size_t nOffset)
         {
             if(nOffset + sizeof(uint64_t) > vData.size())
@@ -308,6 +313,8 @@ namespace TAO::Ledger
      * block's vtx transactions and the on-disk sigchain state. */
     bool RefreshProducerIfStale(TAO::Ledger::TritiumBlock& block)
     {
+        const bool fSeqDiag = SequenceDiagnosticsEnabled();
+
         /* Only PoW channels (Prime=1, Hash=2) have a sigchain producer that can
          * go stale.  Stake (0) and Private (3) use different producer semantics. */
         if(block.nChannel != 1 && block.nChannel != 2)
@@ -325,6 +332,7 @@ namespace TAO::Ledger
         uint512_t hashVtxLast    = 0;
         uint32_t  nVtxLastSeq    = 0;
         bool      fHasVtxSameGen = false;
+        bool      fVtxReadFailure = false;
 
         for(const auto& txpair : block.vtx)
         {
@@ -335,6 +343,7 @@ namespace TAO::Ledger
             TAO::Ledger::Transaction txVtx;
             if(!LLD::Ledger->ReadTx(txpair.second, txVtx, TAO::Ledger::FLAGS::MEMPOOL))
             {
+                fVtxReadFailure = true;
                 debug::log(2, FUNCTION, "vtx ReadTx failed for ", txpair.second.SubString(),
                            " — skipping for producer staleness check");
                 continue;
@@ -356,12 +365,15 @@ namespace TAO::Ledger
         /* ── Step 2: determine the true predecessor for the producer ── */
         uint512_t hashTrueLast = 0;
         uint32_t  nTrueLastSeq = 0;
+        const char* strSeqSource = "none";
+        bool fFallbackPath = false;
 
         if(fHasVtxSameGen)
         {
             /* vtx transactions win — they will be on-disk by connect time. */
             hashTrueLast = hashVtxLast;
             nTrueLastSeq = nVtxLastSeq;
+            strSeqSource = "vtx";
         }
         else
         {
@@ -369,9 +381,26 @@ namespace TAO::Ledger
             if(!LLD::Ledger->ReadLast(block.producer.hashGenesis, hashTrueLast))
                 return true; /* genesis not yet on disk (first block) — no staleness */
 
+            strSeqSource = "ledger_last";
+            fFallbackPath = true;
+
             TAO::Ledger::Transaction txLast;
             if(LLD::Ledger->ReadTx(hashTrueLast, txLast, TAO::Ledger::FLAGS::MEMPOOL))
                 nTrueLastSeq = txLast.nSequence;
+        }
+
+        if(fSeqDiag)
+        {
+            debug::log(0, FUNCTION,
+                "[NSEQ_DIAG][RefreshProducerIfStale][SOURCE]"
+                " genesis=", block.producer.hashGenesis.SubString(),
+                " source=", strSeqSource,
+                " fallback=", (fFallbackPath ? "yes" : "no"),
+                " vtx_read_failure=", (fVtxReadFailure ? "yes" : "no"),
+                " hashTrueLast=", hashTrueLast.SubString(),
+                " nTrueLastSeq=", nTrueLastSeq,
+                " current.hashPrevTx=", block.producer.hashPrevTx.SubString(),
+                " current.nSequence=", block.producer.nSequence);
         }
 
         /* ── Step 3: check if refresh is actually needed ── */
@@ -379,6 +408,11 @@ namespace TAO::Ledger
             return true; /* already consistent — nothing to do */
 
         /* ── Step 4: perform the refresh ── */
+        const uint512_t hashOldProducer = block.producer.GetHash(true);
+        const uint1024_t hashOldMerkle = block.hashMerkleRoot;
+        const std::vector<uint8_t> vOldBlockSig = block.vchBlockSig;
+        const bool fOldHadBlockSig = !vOldBlockSig.empty();
+
         debug::log(0, FUNCTION,
             "Producer pre-validation refresh:"
             " genesis=",          block.producer.hashGenesis.SubString(),
@@ -456,6 +490,24 @@ namespace TAO::Ledger
             " nSequence=",  block.producer.nSequence,
             " hashPrevTx=", block.producer.hashPrevTx.SubString(),
             " merkle=",     block.hashMerkleRoot.SubString());
+
+        if(fSeqDiag)
+        {
+            const uint512_t hashNewProducer = block.producer.GetHash(true);
+            debug::log(0, FUNCTION,
+                "[NSEQ_DIAG][RefreshProducerIfStale][MUTATION]"
+                " producer_mutated=", (hashOldProducer != hashNewProducer ? "yes" : "no"),
+                " producer_resigned=", (hashOldProducer != hashNewProducer ? "yes" : "no"),
+                " old.producer=", hashOldProducer.SubString(),
+                " new.producer=", hashNewProducer.SubString(),
+                " merkle_changed=", (hashOldMerkle != block.hashMerkleRoot ? "yes" : "no"),
+                " old.merkle=", hashOldMerkle.SubString(),
+                " new.merkle=", block.hashMerkleRoot.SubString(),
+                " blocksig_was_present=", (fOldHadBlockSig ? "yes" : "no"),
+                " blocksig_changed=", (vOldBlockSig != block.vchBlockSig ? "yes" : "no"),
+                " old.blocksig.size=", vOldBlockSig.size(),
+                " new.blocksig.size=", block.vchBlockSig.size());
+        }
 
         return true;
     }

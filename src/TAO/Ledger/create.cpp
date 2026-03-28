@@ -47,12 +47,21 @@ ________________________________________________________________________________
 #include <TAO/API/types/transaction.h>
 
 #include <Util/include/convert.h>
+#include <Util/include/args.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 
 /* Global TAO namespace. */
 namespace TAO::Ledger
 {
+    namespace
+    {
+        bool SequenceDiagnosticsEnabled()
+        {
+            return config::GetBoolArg("-nseqdiag", false);
+        }
+    }
+
     /* Condition variable for private blocks. */
     std::condition_variable PRIVATE_CONDITION;
 
@@ -65,43 +74,81 @@ namespace TAO::Ledger
     bool CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::Credentials>& pCredentials, const SecureString& pin,
                            TAO::Ledger::Transaction& tx, const uint8_t nScheme)
     {
+        const bool fSeqDiag = SequenceDiagnosticsEnabled();
+
         /* Get the genesis id of the sigchain. */
         const uint256_t hashGenesis =
             pCredentials->Genesis();
 
         /* Last sigchain transaction. */
         uint512_t hashLast = 0;
+        std::string strSeqSource = "none";
+        bool fFallbackToLedger = false;
+        bool fUsedSessionIndex = false;
+        bool fUsedMempool = false;
 
         /* Get the last transaction. */
         TAO::API::Transaction txPrev;
         if(LLD::Sessions->ReadLast(hashGenesis, hashLast))
         {
+            fUsedSessionIndex = true;
+
             /* Check that we can read the logical disk index. */
             if(!LLD::Sessions->ReadTx(hashLast, txPrev))
                 debug::warning(FUNCTION, "could not read logical transaction index");
+            else
+                strSeqSource = "sessions";
         }
 
         /* If we don't have the indexes available we need to build from ledger state. */
         TAO::Ledger::Transaction txMem;
         if(mempool.Get(hashGenesis, txMem))
         {
+            fUsedMempool = true;
+
             /* Check that the mempool transaction is greater than our logical database. */
             if(txMem.nSequence > txPrev.nSequence)
+            {
                 txPrev = txMem;
+                strSeqSource = (fUsedSessionIndex ? "mempool_override_sessions" : "mempool");
+            }
         }
 
         /* Get the last transaction. */
         else if(LLD::Ledger->ReadLast(hashGenesis, hashLast))
         {
+            fFallbackToLedger = true;
+
             /* Get previous transaction */
             TAO::Ledger::Transaction txDisk;
             if(LLD::Ledger->ReadTx(hashLast, txDisk) && txDisk.nSequence > txPrev.nSequence)
+            {
                 txPrev = txDisk;
+                strSeqSource = (fUsedSessionIndex ? "ledger_override_sessions" : "ledger");
+            }
         }
 
         /* Check that we found a dependant and therfore it is not the first transaction. */
         if(txPrev.hashGenesis != 0)
         {
+            if(fSeqDiag)
+            {
+                const uint512_t hashPrevComputed = txPrev.GetHash();
+                debug::log(0, FUNCTION,
+                    "[NSEQ_DIAG][CreateTransaction]"
+                    " genesis=", hashGenesis.SubString(),
+                    " source=", strSeqSource,
+                    " used_sessions=", (fUsedSessionIndex ? "yes" : "no"),
+                    " used_mempool=", (fUsedMempool ? "yes" : "no"),
+                    " fallback_ledger=", (fFallbackToLedger ? "yes" : "no"),
+                    " hashLast=", hashLast.SubString(),
+                    " txPrev.hash=", hashPrevComputed.SubString(),
+                    " hashLast_mismatch=", (hashLast != hashPrevComputed ? "yes" : "no"),
+                    " txPrev.nSequence=", txPrev.nSequence,
+                    " txPrev.nTimestamp=", txPrev.nTimestamp,
+                    " chosen.nSequence=", txPrev.nSequence + 1);
+            }
+
             /* Build new transaction object. */
             tx.nSequence    = txPrev.nSequence + 1;
             tx.hashGenesis  = txPrev.hashGenesis;
@@ -122,6 +169,18 @@ namespace TAO::Ledger
         /* Set the initial and next key type for genesis transactions */
         else if(tx.IsFirst())
         {
+            if(fSeqDiag)
+            {
+                debug::log(0, FUNCTION,
+                    "[NSEQ_DIAG][CreateTransaction]"
+                    " genesis=", hashGenesis.SubString(),
+                    " source=first_transaction",
+                    " used_sessions=", (fUsedSessionIndex ? "yes" : "no"),
+                    " used_mempool=", (fUsedMempool ? "yes" : "no"),
+                    " fallback_ledger=", (fFallbackToLedger ? "yes" : "no"),
+                    " chosen.nSequence=0");
+            }
+
             /* Set the next key type for the genesis transaction */
             tx.nKeyType    = nScheme; //this should use a default value
             tx.nNextType   = nScheme;

@@ -30,6 +30,8 @@ ________________________________________________________________________________
 #include <LLP/include/get_block_handler.h>
 #include <LLP/templates/events.h>
 
+#include <LLD/include/global.h>
+
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/stateless_block_utility.h>
 #include <TAO/Ledger/include/prime.h>
@@ -40,6 +42,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/types/tritium.h>
+#include <TAO/Ledger/types/mempool.h>
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/types/authentication.h>
@@ -77,6 +80,14 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    namespace
+    {
+        bool SequenceDiagnosticsEnabled()
+        {
+            return config::GetBoolArg("-nseqdiag", false);
+        }
+    }
+
     namespace
     {
         using Diagnostics::FullHexOrUnset;
@@ -1882,6 +1893,34 @@ namespace LLP
                  *
                  *  Also handles the case where a different channel's block advanced the
                  *  disk last between template issuance and SUBMIT_BLOCK receipt. */
+                if(SequenceDiagnosticsEnabled())
+                {
+                    uint512_t hashDiskLast = 0;
+                    bool fDiskLast = (pTritium->producer.hashGenesis != 0)
+                        && LLD::Ledger->ReadLast(pTritium->producer.hashGenesis, hashDiskLast);
+
+                    TAO::Ledger::Transaction txMemLast;
+                    bool fMempoolLast = (pTritium->producer.hashGenesis != 0)
+                        && TAO::Ledger::mempool.Get(pTritium->producer.hashGenesis, txMemLast);
+
+                    debug::log(0, FUNCTION,
+                        "[NSEQ_DIAG][SUBMIT_BLOCK][PRE_REFRESH]"
+                        " channel=", pTritium->nChannel,
+                        " height=", pTritium->nHeight,
+                        " template.merkle=", hashMerkle.SubString(),
+                        " producer.genesis=", pTritium->producer.hashGenesis.SubString(),
+                        " producer.hashPrevTx=", pTritium->producer.hashPrevTx.SubString(),
+                        " producer.nSequence=", pTritium->producer.nSequence,
+                        " producer.timestamp=", pTritium->producer.nTimestamp,
+                        " disk_last.exists=", (fDiskLast ? "yes" : "no"),
+                        " disk_last.hash=", (fDiskLast ? hashDiskLast.SubString() : std::string("none")),
+                        " mempool_last.exists=", (fMempoolLast ? "yes" : "no"),
+                        " mempool_last.hash=", (fMempoolLast ? txMemLast.GetHash().SubString() : std::string("none")),
+                        " mempool_last.nSequence=", (fMempoolLast ? txMemLast.nSequence : 0),
+                        " canonical.snap.stale=", (context.canonical_snap.is_canonically_stale() ? "yes" : "no"),
+                        " canonical.unified=", context.canonical_snap.canonical_unified_height);
+                }
+
                 if(!TAO::Ledger::RefreshProducerIfStale(*pTritium))
                 {
                     debug::error(FUNCTION, "SUBMIT_BLOCK: producer refresh failed — rejecting");
