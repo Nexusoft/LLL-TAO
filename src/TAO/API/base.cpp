@@ -179,18 +179,6 @@ namespace TAO::API
                 }
             }
 
-            /* Handle here if we need to sort. */
-            if(nSettings & ENABLE::SORTING)
-            {
-                /* Get our current order and column. */
-                std::string strOrder = "desc", strColumn = "";
-                ExtractSort(jParams, strOrder, strColumn);
-
-                /* Sort the data once we have the parameters. */
-                if(!strColumn.empty()) //only sort if we have a column specified
-                    std::sort(jResults.begin(), jResults.end(), CompareResults(strOrder, strColumn));
-            }
-
             /* Check for operator. */
             if(nSettings & ENABLE::OPERATORS)
             {
