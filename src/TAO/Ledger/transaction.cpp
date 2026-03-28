@@ -51,12 +51,34 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/merkle.h>
 #include <TAO/Ledger/types/mempool.h>
 
+#include <Util/include/args.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 
 /* Global TAO namespace. */
 namespace TAO
 {
+    namespace
+    {
+        bool SequenceDiagnosticsEnabled()
+        {
+            return config::GetBoolArg("-nseqdiag", false);
+        }
+
+        const char* SequenceDiagFlagToString(const uint8_t nFlags)
+        {
+            switch(nFlags)
+            {
+                case TAO::Ledger::FLAGS::BLOCK:   return "BLOCK";
+                case TAO::Ledger::FLAGS::MINER:   return "MINER";
+                case TAO::Ledger::FLAGS::MEMPOOL: return "MEMPOOL";
+                case TAO::Ledger::FLAGS::LOOKUP:  return "LOOKUP";
+                case TAO::Ledger::FLAGS::ERASE:   return "ERASE";
+                default:                          return "OTHER";
+            }
+        }
+    }
+
 
     /* Ledger Layer namespace. */
     namespace Ledger
@@ -935,14 +957,45 @@ namespace TAO
                 /* We want this to trigger for times not in -client mode. */
                 if(!config::fClient.load() || (TAO::API::Authentication::Active(hashGenesis) && nFlags != FLAGS::LOOKUP))
                 {
+                    const bool fSeqDiag = SequenceDiagnosticsEnabled();
+
                     /* Make sure the previous transaction is on disk or mempool. */
                     TAO::Ledger::Transaction txPrev;
                     if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev, nFlags))
                         return debug::error(FUNCTION, "prev transaction not on disk ", hashPrevTx.SubString());
 
+                    if(fSeqDiag)
+                    {
+                        debug::log(0, FUNCTION,
+                            "[NSEQ_DIAG][Transaction::Check]"
+                            " genesis=", hashGenesis.SubString(),
+                            " context=", SequenceDiagFlagToString(nFlags),
+                            " current.hashPrevTx=", hashPrevTx.SubString(),
+                            " prev.hash=", txPrev.GetHash().SubString(),
+                            " prev.nSequence=", txPrev.nSequence,
+                            " prev.nTimestamp=", txPrev.nTimestamp,
+                            " current.nSequence=", nSequence,
+                            " current.nTimestamp=", nTimestamp,
+                            " expected.nSequence=", txPrev.nSequence + 1);
+                    }
+
                     /* Double check sequence numbers here. */
                     if(txPrev.nSequence + 1 != nSequence)
+                    {
+                        if(fSeqDiag)
+                        {
+                            debug::log(0, FUNCTION,
+                                "[NSEQ_DIAG][Transaction::Check][MISMATCH]"
+                                " genesis=", hashGenesis.SubString(),
+                                " context=", SequenceDiagFlagToString(nFlags),
+                                " prev.hash=", txPrev.GetHash().SubString(),
+                                " prev.nSequence=", txPrev.nSequence,
+                                " current.nSequence=", nSequence,
+                                " expected.nSequence=", txPrev.nSequence + 1);
+                        }
+
                         return debug::error(FUNCTION, "prev transaction incorrect sequence");
+                    }
 
                     /* Check timestamp to previous transaction. */
                     if(nTimestamp < txPrev.nTimestamp)
