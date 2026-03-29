@@ -487,25 +487,7 @@ namespace TAO
 
             if(hashMemCheckpoint == hashBestCheckpoint)
             {
-                /* Hash is consistent.  Check whether nCheckpointHeight drifted
-                 * (can happen when a concurrent HardenCheckpoint() wrote
-                 * nCheckpointHeight but had not yet stored hashCheckpoint at the
-                 * moment the failing IsDescendant() took its snapshot). */
-                BlockState stateCheckpoint;
-                if(LLD::Ledger->ReadBlock(hashMemCheckpoint, stateCheckpoint))
-                {
-                    const uint64_t nMemHeight = ChainState::nCheckpointHeight.load();
-                    if(nMemHeight != stateCheckpoint.nHeight)
-                    {
-                        debug::log(0, FUNCTION, "Checkpoint height drift (transient race): in-memory nCheckpointHeight=",
-                            nMemHeight, " expected=", stateCheckpoint.nHeight, " — repairing");
-
-                        ChainState::nCheckpointHeight = stateCheckpoint.nHeight;
-                        return true;
-                    }
-                }
-
-                /* Fully consistent — no repair needed. */
+                /* In-memory state is consistent — no repair needed. */
                 return false;
             }
 
