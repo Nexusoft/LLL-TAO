@@ -110,7 +110,7 @@ namespace TAO
                             pnode->DDOS->rSCORE += 1;
                     }
 
-                    return debug::error(FUNCTION, "duplicate ORPHAN");
+                    return false;
                 }
 
                 /* Check for rejected tx. */
@@ -329,9 +329,9 @@ namespace TAO
                 if(!Accept(tx))
                 {
                     //mapRejected.insert(hashTx);
-                    debug::log(0, FUNCTION, "ORPHAN tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+                    debug::log(0, FUNCTION, "ORPHAN tx ", hashTx.SubString(), " REJECTED");
 
-                    break;
+                    return;
                 }
 
                 /* Erase the transaction. */
