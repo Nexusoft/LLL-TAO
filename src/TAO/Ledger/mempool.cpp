@@ -102,8 +102,8 @@ namespace TAO
                     /* Increment consecutive orphans. */
                     if(pnode)
                     {
-                        /* Increment our consecutive orphans here. */
-                        ++pnode->nConsecutiveOrphans;
+                        /* Ask for our previous transaction now. */
+                        pnode->PushMessage(LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::TRANSACTION), tx.hashPrevTx);
 
                         /* Add an additional DDOS penalty. */
                         if(pnode->DDOS)
