@@ -52,6 +52,10 @@ namespace TAO
         extern std::map<uint1024_t, std::unique_ptr<TAO::Ledger::Block>> mapOrphans;
 
 
+        /** Track the times we have requested processed missing transactions so we don't loop too much. **/
+        extern std::pair<uint1024_t, uint64_t> pairLastMissing;
+
+
         /** Mutex to protect checking more than one block at a time. **/
         extern std::mutex PROCESSING_MUTEX;
 

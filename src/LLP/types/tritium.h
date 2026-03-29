@@ -130,6 +130,10 @@ namespace LLP
             static const uint32_t SUBSCRIBE_MAX_ITEMS = 100;
 
 
+            /** Limit for the maximum consecutive retries for missing transactions issue. **/
+            static const uint32_t MAX_MISSING_TRANSACTIONS_RETRIES = 10;
+
+
             /* Message enumeration values. */
             enum : MessagePacket::message_t
             {

@@ -33,6 +33,10 @@ namespace TAO
         std::map<uint1024_t, std::unique_ptr<TAO::Ledger::Block>> mapOrphans;
 
 
+        /* Track the times we have requested processed missing transactions so we don't loop too much. */
+        std::pair<uint1024_t, uint64_t> pairLastMissing;
+
+
         /* Mutex to protect checking more than one block at a time. */
         std::mutex PROCESSING_MUTEX;
 
@@ -142,6 +146,23 @@ namespace TAO
 
                     /* Set the missing block. */
                     block.hashMissing = hashBlock;
+
+                    /* Set our last missing. */
+                    if(pairLastMissing.first == hashBlock)
+                    {
+                        /* Increment and check if we have reached limits. */
+                        if(++pairLastMissing.second > LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES)
+                        {
+                            block.vMissing.clear(); //we want to clear so we don't keep re-requesting the transactions
+                            block.hashMissing = 0;
+                        }
+                    }
+                    else
+                    {
+                        /* Reset to current block so we can track consecutive retries. */
+                        pairLastMissing.first  = hashBlock;
+                        pairLastMissing.second = 0;
+                    }
 
                     return;
                 }
