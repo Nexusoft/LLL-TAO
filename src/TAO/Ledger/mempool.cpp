@@ -94,7 +94,7 @@ namespace TAO
             {
                 /* Check for transaction on disk. */
                 if(mapLedger.count(hashTx))
-                    return false; //NOTE: this was true, but changed to false to prevent relay loops in tritium LLP
+                    return debug::error(FUNCTION, "duplicate transaction"); //NOTE: this was true, but changed to false to prevent relay loops in tritium LLP
 
                 /* Keep adding penalties if we have consecutive orphans. */
                 if(mapOrphans.count(tx.hashPrevTx))
@@ -110,7 +110,7 @@ namespace TAO
                             pnode->DDOS->rSCORE += 1;
                     }
 
-                    return false;
+                    return debug::error(FUNCTION, "duplicate ORPHAN");
                 }
 
                 /* Check for rejected tx. */
@@ -309,20 +309,29 @@ namespace TAO
                 /* Debug output. */
                 debug::log(0, FUNCTION, "PROCESSING ORPHAN tx ", hashThis.SubString());
 
+                /* Check if this is already in our mempool. */
+                if(mapLedger.count(hashTx))
+                {
+                    /* Erase the transaction. */
+                    mapOrphans.erase(hashTx);
+                    setOrphansByIndex.erase(hashThis);
+
+                    /* Set the hashTx. */
+                    hashTx = hashThis;
+
+                    continue;
+                }
+
                 /* Set our internal cached hash. */
                 tx.hashCache = hashThis;
 
-                /* Make sure this transaction has not already processed. */
-                if(!mapLedger.count(hashThis))
+                /* Accept the transaction into memory pool. */
+                if(!Accept(tx))
                 {
-                    /* Accept the transaction into memory pool. */
-                    if(!Accept(tx))
-                    {
-                        //mapRejected.insert(hashTx);
-                        debug::log(0, FUNCTION, "ORPHAN tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+                    //mapRejected.insert(hashTx);
+                    debug::log(0, FUNCTION, "ORPHAN tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
-                        break;
-                    }
+                    break;
                 }
 
                 /* Erase the transaction. */

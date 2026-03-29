@@ -131,7 +131,7 @@ namespace LLP
 
 
             /** Limit for the maximum consecutive retries for missing transactions issue. **/
-            static const uint32_t MAX_MISSING_TRANSACTIONS_RETRIES = 10;
+            static const uint32_t MAX_MISSING_TRANSACTIONS_RETRIES = 50;
 
 
             /* Message enumeration values. */
