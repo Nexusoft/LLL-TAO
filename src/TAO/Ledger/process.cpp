@@ -127,12 +127,15 @@ namespace TAO
                 /* Check if the block is valid. */
                 if(!block.Check())
                 {
-                    /* Check for missing transactions. */
-                    if(block.vMissing.size() == 0)
-                    {
-                        nStatus |= PROCESS::REJECTED;
-                        return;
-                    }
+                    nStatus |= PROCESS::REJECTED;
+                    return;
+                }
+
+                /* Check for missing transactions. */
+                if(block.vMissing.size() != 0)
+                {
+                    /* Give some debug info that we are missing some transactions here. */
+                    debug::notice(FUNCTION, "missing ", block.vMissing.size(), " transactions");
 
                     /* Incomplete blocks can pass through orphan checks. */
                     nStatus |= PROCESS::INCOMPLETE;

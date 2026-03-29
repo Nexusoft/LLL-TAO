@@ -532,10 +532,6 @@ namespace TAO
             vHashes.push_back(hashProducer);
             setUnique.insert(hashProducer);
 
-            /* Check for missing transactions. */
-            if(vMissing.size() != 0)
-                return debug::error(FUNCTION, "missing ", vMissing.size(), " transactions");
-
             /* Check for duplicate txid's. */
             if(setUnique.size() != vHashes.size())
                 return debug::error(FUNCTION, "duplicate transaction");
