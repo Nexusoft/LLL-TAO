@@ -329,6 +329,7 @@ namespace TAO
                 /* Accept the transaction into memory pool. */
                 if(!Accept(tx))
                 {
+                    mapRejected.insert(hashTx);
                     debug::log(0, FUNCTION, "ORPHAN tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
                     break;
