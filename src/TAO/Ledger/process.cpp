@@ -103,7 +103,7 @@ namespace TAO
                             uint8_t(LLP::TritiumNode::TYPES::BLOCK),
                             uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
                             TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
-                            uint1024_t(block.hashPrevBlock)
+                            hashBlock //stop at our current block
                         );
 
                         /* Send a request to download the orphaned block.

@@ -99,21 +99,20 @@ namespace TAO
                 /* Keep adding penalties if we have consecutive orphans. */
                 if(mapOrphans.count(tx.hashPrevTx))
                 {
+                    /* Ask for our previous transaction now. */
+                    if(LLP::TRITIUM_SERVER)
+                    {
+                        /* Get a random node in case we have an unreliable node that gave us an ORPHAN */
+                        std::shared_ptr<LLP::TritiumNode> pCheck =
+                            LLP::TRITIUM_SERVER->RandomConnection();
+
+                        /* Ask the random node for our orphan data. */
+                        pCheck->PushMessage(LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::TRANSACTION), tx.hashPrevTx);
+                    }
+                    
                     /* Increment consecutive orphans. */
                     if(pnode)
                     {
-                        /* Ask for our previous transaction now. */
-                        if(LLP::TRITIUM_SERVER)
-                        {
-                            /* Get a random node in case we have an unreliable node that gave us an ORPHAN */
-                            std::shared_ptr<LLP::TritiumNode> pCheck =
-                                LLP::TRITIUM_SERVER->RandomConnection();
-
-                            /* Ask the random node for our orphan data. */
-                            pCheck->PushMessage(LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::TRANSACTION), tx.hashPrevTx);
-                        }
-
-
                         /* Add an additional DDOS penalty. */
                         if(pnode->DDOS)
                             pnode->DDOS->rSCORE += 1;
