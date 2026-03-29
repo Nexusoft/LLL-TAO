@@ -117,7 +117,7 @@ namespace TAO
                 if(mapRejected.count(tx.hashPrevTx))
                 {
                     mapRejected.insert(hashTx);
-                    return false;
+                    return debug::error(FUNCTION, "part of rejected transaction orphan chain");
                 }
 
                 /* Print the transaction here. */
@@ -152,7 +152,7 @@ namespace TAO
                 /* Check that the transaction is in a valid state. */
                 if(!tx.Check())
                 {
-                    //mapRejected.insert(hashTx);
+                    mapRejected.insert(hashTx);
                     return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
                 }
 
@@ -233,7 +233,7 @@ namespace TAO
                 /* Begin an ACID transction for internal memory commits. */
                 if(!tx.Verify(FLAGS::MEMPOOL))
                 {
-                    //mapRejected.insert(hashTx);
+                    mapRejected.insert(hashTx);
                     return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
                 }
 
@@ -243,7 +243,7 @@ namespace TAO
                 {
                     /* Abort memory commits on failures. */
                     LLD::TxnAbort(FLAGS::MEMPOOL);
-                    //mapRejected.insert(hashTx);
+                    mapRejected.insert(hashTx);
 
                     return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
                 }
@@ -284,7 +284,6 @@ namespace TAO
             }
             catch(const std::exception& e)
             {
-                //mapRejected.insert(hashTx);
                 return false; //debug::error(FUNCTION, "REJECTED: exception encountered ", e.what());
             }
 
@@ -326,13 +325,17 @@ namespace TAO
                 /* Set our internal cached hash. */
                 tx.hashCache = hashThis;
 
-                /* Accept the transaction into memory pool. */
-                if(!Accept(tx))
+                /* Make sure this transaction has not already processed. */
+                if(mapLedger.count(hashTx))
                 {
-                    //mapRejected.insert(hashTx);
-                    debug::log(0, FUNCTION, "ORPHAN tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+                    /* Accept the transaction into memory pool. */
+                    if(!Accept(tx))
+                    {
+                        //mapRejected.insert(hashTx);
+                        debug::log(0, FUNCTION, "ORPHAN tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
-                    break;
+                        break;
+                    }
                 }
 
                 /* Erase the transaction. */
