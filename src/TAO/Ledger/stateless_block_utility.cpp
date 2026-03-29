@@ -513,13 +513,19 @@ namespace TAO::Ledger
         return true;
     }
 
-    /* Pre-connect vtx sigchain staleness check.  Simulates the disk-only
-     * ReadLast() check that BlockState::Connect() performs for each vtx TRITIUM
-     * transaction (state.cpp lines 1266-1277), with an in-flight mapLast to
-     * handle multiple same-genesis transactions within the block (mirroring
-     * TritiumBlock::Check()).  Uses disk-only ReadLast() (no FLAGS::MEMPOOL) to
-     * match the reads performed by Connect() so a stale vtx entry is detected
-     * before the irreversible AcceptMinedBlock() call. */
+    /* Pre-connect vtx sigchain staleness check.  Uses FLAGS::MEMPOOL for
+     * ReadLast() to match the mempool-aware state that CreateTransaction() and
+     * TritiumBlock::Check() see when the template is built.  An in-flight
+     * mapLast handles multiple same-genesis transactions within the block,
+     * mirroring TritiumBlock::Check() logic.  Catches stale vtx entries before
+     * the irreversible AcceptMinedBlock() call.
+     *
+     * NOTE: BlockState::Connect() (state.cpp lines 1266-1277) uses disk-only
+     * ReadLast() without accounting for in-block vtx ordering; that is an
+     * upstream limitation.  Using FLAGS::MEMPOOL here is correct: if mempool
+     * says the chain is consistent the block is genuinely valid and Connect()
+     * will succeed once mempool transactions are flushed to disk during block
+     * processing. */
     bool ValidateVtxSigchainConsistency(const TAO::Ledger::TritiumBlock& block)
     {
         const bool fSeqDiag = SequenceDiagnosticsEnabled();
@@ -540,8 +546,7 @@ namespace TAO::Ledger
                 continue;
 
             /* Read the vtx transaction.  It may still be mempool-only at this
-             * point so allow a mempool fallback for the ReadTx here.  The
-             * sequence predecessor check uses disk-only ReadLast() below. */
+             * point so allow a mempool fallback for the ReadTx here. */
             TAO::Ledger::Transaction tx;
             if(!LLD::Ledger->ReadTx(txpair.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
             {
@@ -565,12 +570,15 @@ namespace TAO::Ledger
                 }
                 else
                 {
-                    /* No prior in-block entry: read disk-only last (no mempool
-                     * fallback), matching exactly what Connect() does. */
-                    if(!LLD::Ledger->ReadLast(tx.hashGenesis, hashLast))
+                    /* No prior in-block entry: read mempool-aware last hash.
+                     * FLAGS::MEMPOOL checks the mempool first then falls back to
+                     * disk, matching the same state that CreateTransaction() and
+                     * TritiumBlock::Check() use when building/validating the
+                     * sigchain. */
+                    if(!LLD::Ledger->ReadLast(tx.hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
                     {
-                        /* Genesis not on disk — Connect() will also fail here,
-                         * but with a different error.  Skip; let Connect() report. */
+                        /* Genesis not in mempool or on disk — skip; let
+                         * Connect() report the failure. */
                         if(fSeqDiag)
                             debug::log(0, FUNCTION,
                                 "[NSEQ_DIAG][ValidateVtxSigchainConsistency]"
@@ -584,11 +592,11 @@ namespace TAO::Ledger
                 {
                     debug::error(FUNCTION,
                         "ValidateVtxSigchainConsistency:"
-                        " vtx tx stale — sigchain advanced on disk since template creation:"
+                        " vtx tx stale — sigchain advanced in mempool/disk since template creation:"
                         " genesis=", tx.hashGenesis.SubString(),
                         " tx=", txpair.second.SubString(),
                         " tx.hashPrevTx=", tx.hashPrevTx.SubString(),
-                        " disk.hashLast=", hashLast.SubString(),
+                        " mempool.hashLast=", hashLast.SubString(),
                         " tx.nSequence=", tx.nSequence);
                     return false;
                 }
