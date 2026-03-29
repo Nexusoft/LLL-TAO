@@ -96,9 +96,19 @@ namespace TAO
                 if(mapLedger.count(hashTx))
                     return false; //NOTE: this was true, but changed to false to prevent relay loops in tritium LLP
 
-                /* Keep adding penalties if we have consecutive orphans. */
-                if(mapOrphans.count(tx.hashPrevTx))
+                /* If we are already an ORPHAN, keep iterating backwards. */
+                if(mapOrphans.count(hashTx))
                 {
+                    /* Track our starting orphan. */
+                    uint512_t hashMissing = hashTx;
+
+                    /* Go back to our last ORPHAN on record. */
+                    while(mapOrphans.count(hashMissing))
+                        hashMissing = mapOrphans[hashMissing].hashPrevTx;
+
+                    /* Debug output. */
+                    debug::log(0, FUNCTION, "REQUESTING ORPHAN tx ", hashMissing.SubString());
+
                     /* Ask for our previous transaction now. */
                     if(LLP::TRITIUM_SERVER)
                     {
@@ -107,18 +117,8 @@ namespace TAO
                             LLP::TRITIUM_SERVER->RandomConnection();
 
                         /* Ask the random node for our orphan data. */
-                        pCheck->PushMessage(LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::TRANSACTION), tx.hashPrevTx);
+                        pCheck->PushMessage(LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::TRANSACTION), hashMissing);
                     }
-                    
-                    /* Increment consecutive orphans. */
-                    if(pnode)
-                    {
-                        /* Add an additional DDOS penalty. */
-                        if(pnode->DDOS)
-                            pnode->DDOS->rSCORE += 1;
-                    }
-
-                    return false;
                 }
 
                 /* Check for rejected tx. */
@@ -183,9 +183,16 @@ namespace TAO
                         if(pnode)
                             ++pnode->nConsecutiveOrphans;
 
-                        /* Ask for the missing transaction. */
-                        if(pnode)
-                            pnode->PushMessage(LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::TRANSACTION), tx.hashPrevTx);
+                        /* Ask for our previous transaction now. */
+                        if(LLP::TRITIUM_SERVER)
+                        {
+                            /* Get a random node in case we have an unreliable node that gave us an ORPHAN */
+                            std::shared_ptr<LLP::TritiumNode> pCheck =
+                                LLP::TRITIUM_SERVER->RandomConnection();
+
+                            /* Ask the random node for our orphan data. */
+                            pCheck->PushMessage(LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::TRANSACTION), tx.hashPrevTx);
+                        }
 
                         return false;
                     }
