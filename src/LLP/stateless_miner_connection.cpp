@@ -1949,11 +1949,10 @@ namespace LLP
                     return true;
                 }
 
-                /* PoW fully validated — notify the miner immediately so it can proceed
-                 * to the next template without waiting for the ledger write in
-                 * AcceptMinedBlock() / Process(), which may take hundreds of milliseconds.
-                 * The block has been consensus-verified; the miner's obligation is fulfilled. */
-                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✅ Block validated — sending STATELESS_BLOCK_ACCEPTED immediately", ANSI_COLOR_RESET);
+                /* PoW fully validated.  Send STATELESS_BLOCK_ACCEPTED only after
+                 * AcceptMinedBlock() succeeds so protocol behavior matches upstream
+                 * commit ordering. */
+                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✅ Block validated — awaiting ledger commit before STATELESS_BLOCK_ACCEPTED", ANSI_COLOR_RESET);
                 debug::log(0, FUNCTION, "BLOCK ACCEPTED — unified nHeight=", pTritium->nHeight,
                            " channel=", pTritium->nChannel,
                            " hashMerkleRoot=", pTritium->hashMerkleRoot.SubString(),
@@ -1974,22 +1973,14 @@ namespace LLP
                     }
                 }
 
-                {
-                    StatelessPacket response(STATELESS_BLOCK_ACCEPTED);
-                    respond(response);
-                }
-                debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "📥 === SUBMIT_BLOCK: SUCCESS ===", ANSI_COLOR_RESET);
-                debug::log(2, FUNCTION, "✓ Disposable Falcon signature discarded after SUBMIT_BLOCK");
-
                 TAO::Ledger::BlockAcceptanceResult acceptanceResult =
                     TAO::Ledger::AcceptMinedBlock(*pTritium);
                 if(!acceptanceResult.accepted)
                 {
-                    /* STATELESS_BLOCK_ACCEPTED was already sent — the block's PoW was valid.
-                     * The ledger-write failure (duplicate race, orphan, etc.) is a
-                     * node-side issue; do not confuse the miner with a follow-up
-                     * rejection.  Log clearly so operators can investigate. */
-                    debug::error(FUNCTION, "❌ AcceptMinedBlock ledger write failed after STATELESS_BLOCK_ACCEPTED sent: ", acceptanceResult.reason);
+                    debug::error(FUNCTION, "❌ AcceptMinedBlock ledger write failed: ", acceptanceResult.reason);
+
+                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                    respond(response);
 
                     /* Invalidate the failed template from the cache so the miner's
                      * follow-up GET_BLOCK receives a fresh template rather than the
@@ -2012,6 +2003,12 @@ namespace LLP
                 }
                 else
                 {
+                    StatelessPacket response(STATELESS_BLOCK_ACCEPTED);
+                    respond(response);
+
+                    debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "📥 === SUBMIT_BLOCK: SUCCESS ===", ANSI_COLOR_RESET);
+                    debug::log(2, FUNCTION, "✓ Disposable Falcon signature discarded after SUBMIT_BLOCK");
+
                     /* Block accepted - track in manager */
                     StatelessMinerManager::Get().IncrementBlocksAccepted();
 
