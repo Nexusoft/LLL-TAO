@@ -309,24 +309,11 @@ namespace TAO
                 /* Debug output. */
                 debug::log(0, FUNCTION, "PROCESSING ORPHAN tx ", hashThis.SubString());
 
-                /* Check if this is already in our mempool. */
-                if(mapLedger.count(hashTx))
-                {
-                    /* Erase the transaction. */
-                    mapOrphans.erase(hashTx);
-                    setOrphansByIndex.erase(hashThis);
-
-                    /* Set the hashTx. */
-                    hashTx = hashThis;
-
-                    continue;
-                }
-
                 /* Set our internal cached hash. */
                 tx.hashCache = hashThis;
 
                 /* Make sure this transaction has not already processed. */
-                if(mapLedger.count(hashTx))
+                if(!mapLedger.count(hashThis))
                 {
                     /* Accept the transaction into memory pool. */
                     if(!Accept(tx))
