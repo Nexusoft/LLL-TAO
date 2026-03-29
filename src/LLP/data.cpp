@@ -328,7 +328,7 @@ namespace LLP
                         continue;
                     }
 
-                    /* Check that write buffers aren't overflowed. */
+                    /* Check that write buffers aren't overflowing with too much data. */
                     if(CONNECTION->Buffered() > config::GetArg("-maxsendbuffer", MAX_SEND_BUFFER))
                     {
                         remove_connection_with_event(nIndex, DISCONNECT::BUFFER);

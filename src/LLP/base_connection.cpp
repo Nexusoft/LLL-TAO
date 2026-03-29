@@ -230,7 +230,8 @@ namespace LLP
     template <class PacketType>
     void BaseConnection<PacketType>::WritePacket(const PacketType& PACKET)
     {
-        /* Only get this value one time. */
+
+        /* Only get this value one time so we don't need to keep accessing the args map. */
         static const uint64_t nMaxSendBuffer =
             config::GetArg("-maxsendbuffer", MAX_SEND_BUFFER);
 
