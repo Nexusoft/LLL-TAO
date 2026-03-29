@@ -355,6 +355,7 @@ ifdef UNIT_TESTS
 		   build/Tests_TAO_API_util.o \
 		   build/Tests_TAO_Ledger_block.o \
 		   build/Tests_TAO_Ledger_channel_height.o \
+		   build/Tests_TAO_Ledger_create_transaction.o \
 		   build/Tests_TAO_Ledger_mempool.o \
 		   build/Tests_TAO_Ledger_prime.o \
            build/Tests_TAO_Ledger_transaction.o \
