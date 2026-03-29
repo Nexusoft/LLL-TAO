@@ -21,30 +21,17 @@ cutoff. The SIM-LINK legacy lane (port 8323) was acting as a fallback when state
 push notifications stalled, but this created an implicit dependency on two ports to the
 same node rather than a true second-node failover.
 
-### Node-Side Mitigation: Proactive Heartbeat Refresh
+### Node-Side Design: Push-Driven Template Delivery
 
-The node now implements a **proactive template heartbeat refresh** to prevent the 600 s
-timeout from triggering during legitimate dry spells:
+The node pushes fresh templates to miners on every unified tip advance via
+`MinerPushDispatcher::EnqueuePushEvent()`.  Both Prime and Hash channel miners
+receive notifications regardless of which channel produced the winning block,
+because every unified height movement requires a fresh template with the
+correct `hashPrevBlock`.
 
-| Elapsed since last push | Action |
-|-------------------------|--------|
-| 300 s | NOTICE log: dry spell detected |
-| 450 s | WARNING log: approaching refresh threshold |
-| 480 s | **HEARTBEAT fires**: template re-pushed to all subscribed miners |
-| 550 s | CRITICAL log (if heartbeat did not reset the clock, e.g. no miners connected) |
-| 600 s | Hard cutoff: template expired (miner enters degraded mode) |
-
-The heartbeat is driven by `MinerPushDispatcher::HeartbeatRefreshCheck()`, called every
-`HEARTBEAT_CHECK_INTERVAL_SECONDS` (60 s) from `Server<ProtocolType>::Meter()`.
-
-```cpp
-// src/LLP/include/falcon_constants.h
-static const uint64_t TEMPLATE_HEARTBEAT_REFRESH_SECONDS = 480;  // fires at 8 min
-static const uint64_t MAX_TEMPLATE_AGE_SECONDS            = 600;  // hard cutoff at 10 min
-
-// src/LLP/include/mining_constants.h
-constexpr uint64_t HEARTBEAT_CHECK_INTERVAL_SECONDS = 60;         // check every 60 s
-```
+Template refresh during dry spells (no blocks mined for an extended period)
+is handled on the **miner side**: the miner detects stale templates and
+autonomously sends `GET_BLOCK` to request fresh work.
 
 ### Disabling the SIM-LINK Fallback
 

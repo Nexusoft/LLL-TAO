@@ -242,20 +242,13 @@ namespace LLP
         /** NotifyChannelMiners
          *
          *  Broadcast channel-specific notification to subscribed miners on this server lane.
-         *  Called from BroadcastChannelNotification() (state.cpp) for each lane separately.
+         *  Called from MinerPushDispatcher::BroadcastChannel() for each lane separately.
          *
          *  Server-side filtering ensures only miners subscribed to the specific channel
          *  receive notifications.  Logs include channel, lane, and miner count for
          *  de-duplication verification.
          *
-         *  When fHeartbeat=true, PrepareHeartbeatNotification() is called on each eligible
-         *  connection before SendChannelNotification() so that the heartbeat push bypasses
-         *  the TEMPLATE_PUSH_MIN_INTERVAL_MS throttle and the miner's subsequent GET_BLOCK
-         *  is not deferred by the 2-second per-connection cooldown floor.
-         *
          *  @param[in] nChannel    Channel that advanced (1=Prime, 2=Hash)
-         *  @param[in] fHeartbeat  When true, resets per-connection rate-limit state before
-         *                         sending so the push and subsequent GET_BLOCK are unthrottled.
          *
          *  @return Number of miners that were notified on this lane.
          *
@@ -263,7 +256,7 @@ namespace LLP
          *        For other protocol types, it will be a no-op that returns 0.
          *
          **/
-        uint32_t NotifyChannelMiners(uint32_t nChannel, bool fHeartbeat = false);
+        uint32_t NotifyChannelMiners(uint32_t nChannel);
 
 
         /** GetConnectionCount

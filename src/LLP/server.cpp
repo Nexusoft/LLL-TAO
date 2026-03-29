@@ -217,8 +217,7 @@ namespace LLP
 
         /* Start meters if enabled.
          * For miner protocols, always start the Meter thread (even without -meters) because
-         * it drives the heartbeat template refresh that prevents miners from entering
-         * degraded mode during dry spells. */
+         * it drives periodic cleanup of expired sessions and cooldowns. */
         if(CONFIG.ENABLE_METERS || is_miner_protocol_v<ProtocolType>)
             THREAD_METER = std::thread(std::bind(&Server::Meter, this));
     }
@@ -453,7 +452,7 @@ namespace LLP
 
     /*  Broadcast channel-specific notification to subscribed miners on this lane. */
     template <class ProtocolType>
-    uint32_t Server<ProtocolType>::NotifyChannelMiners(uint32_t nChannel, bool fHeartbeat)
+    uint32_t Server<ProtocolType>::NotifyChannelMiners(uint32_t nChannel)
     {
         /* Use compile-time check to only execute for protocols that support mining notifications */
         if constexpr (has_mining_notifications_v<ProtocolType>)
@@ -477,8 +476,7 @@ namespace LLP
             }
             
             const std::string strChannelName = (nChannel == 1) ? "Prime" : "Hash";
-            debug::log(1, FUNCTION, "[", strLane, "][", strChannelName, "] Broadcasting block notification",
-                       (fHeartbeat ? " [HEARTBEAT]" : ""));
+            debug::log(1, FUNCTION, "[", strLane, "][", strChannelName, "] Broadcasting block notification");
             
             /* Get all connections */
             std::vector<std::shared_ptr<ProtocolType>> vConnections = GetConnections();
@@ -529,17 +527,6 @@ namespace LLP
                     continue;  // Wrong channel; skip to avoid duplicate notifications
                 }
                 
-                /* Heartbeat path: reset per-connection rate-limit state before sending so
-                 * that the push notification bypasses TEMPLATE_PUSH_MIN_INTERVAL_MS and
-                 * the miner's subsequent GET_BLOCK is not deferred by the 2-second cooldown
-                 * floor.  This is the same state reset that MINER_READY performs, applied
-                 * proactively by the heartbeat refresh. */
-                if (fHeartbeat)
-                {
-                    if constexpr (is_miner_protocol_v<ProtocolType>)
-                        pConnection->PrepareHeartbeatNotification();
-                }
-
                 /* Send notification — exactly once per miner per event per lane */
                 pConnection->SendChannelNotification();
                 nNotified++;
@@ -1172,8 +1159,8 @@ namespace LLP
     void Server<ProtocolType>::Meter()
     {
         /* For miner protocols the Meter thread always runs (even without -meters) to
-         * drive the heartbeat template refresh.  For all other protocol types, exit
-         * early when meters are disabled (preserving the original behaviour). */
+         * drive periodic cleanup of expired sessions and cooldowns.  For all other
+         * protocol types, exit early when meters are disabled. */
         if(!CONFIG.ENABLE_METERS && !is_miner_protocol_v<ProtocolType>)
             return;
 
@@ -1186,28 +1173,10 @@ namespace LLP
         runtime::timer CLEANUP_TIMER;
         CLEANUP_TIMER.Start();
 
-        /* Heartbeat timer — fires HeartbeatRefreshCheck() every
-         * HEARTBEAT_CHECK_INTERVAL_SECONDS for miner protocols. */
-        runtime::timer HEARTBEAT_TIMER;
-        if constexpr (is_miner_protocol_v<ProtocolType>)
-            HEARTBEAT_TIMER.Start();
-
         /* Loop until shutdown. */
         while(!config::fShutdown.load())
         {
             runtime::sleep(100);
-
-            /* Proactive template heartbeat refresh for miner protocols.
-             * Runs regardless of ENABLE_METERS and before the zero-connection
-             * skip so that a connected-but-idle miner still receives refreshes. */
-            if constexpr (is_miner_protocol_v<ProtocolType>)
-            {
-                if(HEARTBEAT_TIMER.Elapsed() >= MiningConstants::HEARTBEAT_CHECK_INTERVAL_SECONDS)
-                {
-                    MinerPushDispatcher::HeartbeatRefreshCheck();
-                    HEARTBEAT_TIMER.Reset();
-                }
-            }
 
             /* Skip metric logging if meters are disabled */
             if(!CONFIG.ENABLE_METERS)

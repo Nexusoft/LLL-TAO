@@ -22,7 +22,6 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 #include <LLP/include/global.h>
-#include <LLP/include/falcon_constants.h>
 
 #include <TAO/Ledger/include/ambassador.h>
 #include <TAO/Ledger/include/developer.h>
@@ -488,14 +487,12 @@ namespace TAO::Ledger
         }
 
         /* Tertiary check: Time-based safety timeout.
-         * Default aligned with heartbeat refresh: TEMPLATE_HEARTBEAT_REFRESH_SECONDS - 60
-         * ensures the block cache is rebuilt before the heartbeat re-push fires at 480 s,
-         * so miners always receive a genuinely fresh template rather than a stale cached one.
+         * Default 420 s (7 minutes) — ensures the block cache is rebuilt periodically
+         * as a safety net during long dry spells on slow channels (e.g. Prime).
          * Operator can override via -blockrefresh command-line arg.
          * The computed default (420 s) is always positive, so the narrowing conversion from
          * int64_t to uint64_t is safe here. */
-        const uint64_t nExpiration = static_cast<uint64_t>(config::GetArg("-blockrefresh",
-            static_cast<int64_t>(LLP::FalconConstants::TEMPLATE_HEARTBEAT_REFRESH_SECONDS) - 60));
+        const uint64_t nExpiration = static_cast<uint64_t>(config::GetArg("-blockrefresh", 420));
         if(runtime::unifiedtimestamp() >= tBlockCached.producer.nTimestamp + nExpiration)
         {
             fNeedsNewBlock = true;
