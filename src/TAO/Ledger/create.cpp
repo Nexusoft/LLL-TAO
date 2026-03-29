@@ -109,7 +109,8 @@ namespace TAO::Ledger
             /* Check that the mempool transaction is greater than our logical database. */
             if(txMem.nSequence > txPrev.nSequence)
             {
-                txPrev = txMem;
+                txPrev    = txMem;
+                hashLast  = txMem.GetHash();    // CRITICAL: sync hashLast to mempool tx hash
                 strSeqSource = (fUsedSessionIndex ? "mempool_override_sessions" : "mempool");
             }
         }
