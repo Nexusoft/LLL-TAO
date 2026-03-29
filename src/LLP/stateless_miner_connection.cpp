@@ -1929,6 +1929,17 @@ namespace LLP
                     return true;
                 }
 
+                /* Pre-connect vtx sigchain staleness check — detect stale vtx
+                 * transactions before AcceptMinedBlock() so the miner receives
+                 * STATELESS_BLOCK_REJECTED and can request a fresh template. */
+                if(!TAO::Ledger::ValidateVtxSigchainConsistency(*pTritium))
+                {
+                    debug::error(FUNCTION, "SUBMIT_BLOCK: vtx sigchain stale — rejecting");
+                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                    respond(response);
+                    return true;
+                }
+
                 TAO::Ledger::BlockValidationResult validationResult =
                     TAO::Ledger::ValidateMinedBlock(*pTritium);
                 if(!validationResult.valid)

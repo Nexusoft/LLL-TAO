@@ -186,6 +186,32 @@ namespace TAO
         bool RefreshProducerIfStale(TAO::Ledger::TritiumBlock& block);
 
 
+        /** ValidateVtxSigchainConsistency
+         *
+         *  Pre-connect vtx sigchain staleness check.  Must be called after
+         *  RefreshProducerIfStale() and BEFORE AcceptMinedBlock() in both the
+         *  stateless (port 9323) and legacy (port 8323) SUBMIT_BLOCK paths.
+         *
+         *  Simulates the disk-only ReadLast() check that BlockState::Connect()
+         *  performs for each vtx TRITIUM transaction (state.cpp lines 1266-1277),
+         *  using an in-flight mapLast to account for multiple transactions from
+         *  the same genesis within the block (matching TritiumBlock::Check()
+         *  logic, but against disk state rather than mempool state).
+         *
+         *  If another block was connected between template creation and this call,
+         *  the disk last-hash for a vtx transaction's genesis may have advanced,
+         *  causing tx.hashPrevTx != hashLast and a guaranteed Connect() failure.
+         *  Catching this early lets the miner receive BLOCK_REJECTED before the
+         *  irreversible AcceptMinedBlock() call so it can request a fresh template.
+         *
+         *  @param[in] block  The solved TritiumBlock candidate (const: no mutation).
+         *  @return true if all vtx TRITIUM transactions are consistent with
+         *          current on-disk sigchain state; false if any are stale
+         *          (caller must reject the block and respond BLOCK_REJECTED).
+         **/
+        bool ValidateVtxSigchainConsistency(const TAO::Ledger::TritiumBlock& block);
+
+
         /** ParseStatelessWorkSubmission
          *
          *  Parse stateless miner work submission payloads (merkle + nonce).
