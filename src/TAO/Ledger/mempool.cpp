@@ -94,7 +94,7 @@ namespace TAO
             {
                 /* Check for transaction on disk. */
                 if(mapLedger.count(hashTx))
-                    return debug::error(FUNCTION, "duplicate transaction"); //NOTE: this was true, but changed to false to prevent relay loops in tritium LLP
+                    return false; //NOTE: this was true, but changed to false to prevent relay loops in tritium LLP
 
                 /* Keep adding penalties if we have consecutive orphans. */
                 if(mapOrphans.count(tx.hashPrevTx))
@@ -284,7 +284,7 @@ namespace TAO
             }
             catch(const std::exception& e)
             {
-                return false; //debug::error(FUNCTION, "REJECTED: exception encountered ", e.what());
+                return debug::error(FUNCTION, "REJECTED: exception encountered ", e.what());
             }
 
             return false;
