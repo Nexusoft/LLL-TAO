@@ -513,6 +513,104 @@ namespace TAO::Ledger
         return true;
     }
 
+    /* Pre-connect vtx sigchain staleness check.  Simulates the disk-only
+     * ReadLast() check that BlockState::Connect() performs for each vtx TRITIUM
+     * transaction (state.cpp lines 1266-1277), with an in-flight mapLast to
+     * handle multiple same-genesis transactions within the block (mirroring
+     * TritiumBlock::Check()).  Uses disk-only ReadLast() (no FLAGS::MEMPOOL) to
+     * match the reads performed by Connect() so a stale vtx entry is detected
+     * before the irreversible AcceptMinedBlock() call. */
+    bool ValidateVtxSigchainConsistency(const TAO::Ledger::TritiumBlock& block)
+    {
+        const bool fSeqDiag = SequenceDiagnosticsEnabled();
+
+        /* Only PoW channels (Prime=1, Hash=2) have sigchain producers whose vtx
+         * entries can go stale.  Stake (0) and Private (3) use different semantics. */
+        if(block.nChannel != 1 && block.nChannel != 2)
+            return true;
+
+        /* In-flight map of last hashes, tracking what WriteLast() will have
+         * committed for each genesis by the time Connect() processes each tx.
+         * Populated from the vtx entries in order, matching Connect() behaviour. */
+        std::map<uint256_t, uint512_t> mapLast;
+
+        for(const auto& txpair : block.vtx)
+        {
+            if(txpair.first != TAO::Ledger::TRANSACTION::TRITIUM)
+                continue;
+
+            /* Read the vtx transaction.  It may still be mempool-only at this
+             * point so allow a mempool fallback for the ReadTx here.  The
+             * sequence predecessor check uses disk-only ReadLast() below. */
+            TAO::Ledger::Transaction tx;
+            if(!LLD::Ledger->ReadTx(txpair.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
+            {
+                if(fSeqDiag)
+                    debug::log(0, FUNCTION,
+                        "[NSEQ_DIAG][ValidateVtxSigchainConsistency]"
+                        " vtx tx not readable: ", txpair.second.SubString(),
+                        " — skipping consistency check for this entry");
+                continue;
+            }
+
+            if(!tx.IsFirst())
+            {
+                uint512_t hashLast = 0;
+
+                if(mapLast.count(tx.hashGenesis))
+                {
+                    /* A prior vtx entry for this genesis will have advanced
+                     * WriteLast() by the time Connect() reaches this tx. */
+                    hashLast = mapLast[tx.hashGenesis];
+                }
+                else
+                {
+                    /* No prior in-block entry: read disk-only last (no mempool
+                     * fallback), matching exactly what Connect() does. */
+                    if(!LLD::Ledger->ReadLast(tx.hashGenesis, hashLast))
+                    {
+                        /* Genesis not on disk — Connect() will also fail here,
+                         * but with a different error.  Skip; let Connect() report. */
+                        if(fSeqDiag)
+                            debug::log(0, FUNCTION,
+                                "[NSEQ_DIAG][ValidateVtxSigchainConsistency]"
+                                " ReadLast failed for genesis=", tx.hashGenesis.SubString(),
+                                " tx=", txpair.second.SubString(), " — skipping");
+                        continue;
+                    }
+                }
+
+                if(tx.hashPrevTx != hashLast)
+                {
+                    debug::error(FUNCTION,
+                        "ValidateVtxSigchainConsistency:"
+                        " vtx tx stale — sigchain advanced on disk since template creation:"
+                        " genesis=", tx.hashGenesis.SubString(),
+                        " tx=", txpair.second.SubString(),
+                        " tx.hashPrevTx=", tx.hashPrevTx.SubString(),
+                        " disk.hashLast=", hashLast.SubString(),
+                        " tx.nSequence=", tx.nSequence);
+                    return false;
+                }
+
+                if(fSeqDiag)
+                    debug::log(0, FUNCTION,
+                        "[NSEQ_DIAG][ValidateVtxSigchainConsistency]"
+                        " vtx tx OK:"
+                        " genesis=", tx.hashGenesis.SubString(),
+                        " tx=", txpair.second.SubString(),
+                        " nSequence=", tx.nSequence,
+                        " hashPrevTx=", tx.hashPrevTx.SubString());
+            }
+
+            /* Track what WriteLast() will write for this genesis. */
+            mapLast[tx.hashGenesis] = txpair.second;
+        }
+
+        return true;
+    }
+
+
     /* Canonical acceptance entrypoint for mined Tritium blocks. */
     BlockAcceptanceResult AcceptMinedBlock(TAO::Ledger::TritiumBlock& block)
     {

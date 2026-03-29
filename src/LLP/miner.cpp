@@ -2402,6 +2402,16 @@ namespace LLP
             return true;
         }
 
+        /* Pre-connect vtx sigchain staleness check — detect stale vtx transactions
+         * before AcceptMinedBlock() so the miner gets BLOCK_REJECTED and can
+         * request a fresh template rather than receiving a false BLOCK_ACCEPTED. */
+        if(!TAO::Ledger::ValidateVtxSigchainConsistency(*pTritium))
+        {
+            debug::error(FUNCTION, "SUBMIT_BLOCK: vtx sigchain stale — rejecting");
+            respond(BLOCK_REJECTED);
+            return true;
+        }
+
         TAO::Ledger::BlockValidationResult validationResult =
             TAO::Ledger::ValidateMinedBlock(*pTritium);
         if(!validationResult.valid)
@@ -2417,34 +2427,27 @@ namespace LLP
             return true;
         }
 
-        /* PoW fully validated — notify the miner immediately so it can proceed
-         * to the next template without waiting for the ledger write in
-         * AcceptMinedBlock() / Process(), which may take hundreds of milliseconds.
-         * The block has been consensus-verified; the miner's obligation is fulfilled. */
-        debug::log(0, FUNCTION, "BLOCK ACCEPTED — unified nHeight=", pTritium->nHeight,
-                   " channel=", pTritium->nChannel,
-                   " hashPrevBlock=", pTritium->hashPrevBlock.SubString(),
-                   " merkle=", hashMerkle.SubString());
-        respond(BLOCK_ACCEPTED);
-
         TAO::Ledger::BlockAcceptanceResult acceptanceResult =
             TAO::Ledger::AcceptMinedBlock(*pTritium);
         if(!acceptanceResult.accepted)
         {
-            /* BLOCK_ACCEPTED was already sent — the block's PoW was valid.
-             * The ledger-write failure (duplicate race, orphan, etc.) is a
-             * node-side issue; do not confuse the miner with a follow-up
-             * rejection.  Log clearly so operators can investigate. */
-            debug::error(FUNCTION, "SUBMIT_BLOCK ledger write failed after BLOCK_ACCEPTED sent: ", acceptanceResult.reason);
+            debug::error(FUNCTION, "SUBMIT_BLOCK ledger write failed: ", acceptanceResult.reason);
             if(hashGenesis != 0)
             {
                 ColinMiningAgent::Get().on_block_submitted(
                     hashGenesis.SubString(8), pTritium->nChannel,
                     false, acceptanceResult.reason);
             }
+            respond(BLOCK_REJECTED);
         }
         else
         {
+            debug::log(0, FUNCTION, "BLOCK ACCEPTED — unified nHeight=", pTritium->nHeight,
+                       " channel=", pTritium->nChannel,
+                       " hashPrevBlock=", pTritium->hashPrevBlock.SubString(),
+                       " merkle=", hashMerkle.SubString());
+            respond(BLOCK_ACCEPTED);
+
             if(hashGenesis != 0)
             {
                 ColinMiningAgent::Get().on_block_submitted(
