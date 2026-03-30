@@ -8,8 +8,9 @@
 ---
 
 **Document Version:** 2.0 — Unified keepalive format (PR #299–302, #214–216)  
-**Last Updated:** 2026-02-26  
-**Breaking Changes:** BuildBestCurrentResponse() deleted; KeepAliveV2AckFrame field `sequence` renamed to `session_id`
+**Last Updated:** 2026-03-30  
+**Breaking Changes:** BuildBestCurrentResponse() deleted; KeepAliveV2AckFrame field `sequence` renamed to `session_id`  
+**Addendum:** Section 4.2 and 2.2 annotated 2026-03-30 — node-side vs miner-side staleness distinction.
 
 ## Table of Contents
 
@@ -90,6 +91,8 @@ Channel Height: increments ONLY when that channel mines a block
 
 **Key insight:** A miner's template for Prime channel is NOT stale when a Hash block is mined. Only when a *new Prime block* appears does `nChannelHeight` advance and the template become obsolete.
 
+> 📝 **Miner note (2026-03):** While the template is not stale in the channel-height sense, its `hashPrevBlock` **is** stale after any cross-channel or Stake block — the unified tip advanced and the chain tip changed. Miner clients must request a fresh template on every unified-tip advance, not only when the same channel mines. See Section 4.2 note and [`unified-tip-and-channel-heights.md`](../current/mining/unified-tip-and-channel-heights.md).
+
 ---
 
 ## 3. Upstream Classes & Functions You Must Know
@@ -126,6 +129,8 @@ TemplateMetadata::IsStale()
                     └── compares against TemplateMetadata::nChannelHeight
 ```
 
+*(node-side only — see Section 4.2 note for miner-side requirements)*
+
 ---
 
 ### 3.2 `TAO::Ledger::GetLastState()`
@@ -155,6 +160,8 @@ TemplateMetadata::IsStale()
     │
     └── [SECONDARY] age check: (now - nCreationTime) > 90s
 ```
+
+*(node-side only — see Section 4.2 note for miner-side requirements)*
 
 ---
 
@@ -329,6 +336,8 @@ These are the **new classes** introduced in our stateless mining work. They live
 | `GetChannelName()` | `std::string GetChannelName() const` | Returns `"Prime"`, `"Hash"`, or `"Stake"` |
 
 **Staleness logic:**
+
+> ⚠️ **NODE-SIDE ONLY — SUPERSEDED FOR MINER CLIENTS (2026-03):** The logic below describes the **node's internal** `TemplateMetadata::IsStale()` check, which correctly uses channel height + age for node-side template management. **Miner clients must NOT rely solely on channel height.** After any block on any channel (including Stake and the opposite PoW channel), `hashPrevBlock` in the miner's template is stale and a fresh template must be requested. See [`docs/current/mining/unified-tip-and-channel-heights.md`](../current/mining/unified-tip-and-channel-heights.md) and `push_notification_handler.cpp` in the NexusMiner repository for the correct miner-side model.
 
 ```
 IsStale() — checked in order:
