@@ -2,7 +2,7 @@
 
 **Status:** Canonical Reference (Active)  
 **Applies to:** Stateless Mining Protocol, Legacy Tritium Protocol  
-**Last Updated:** 2026-02-23
+**Last Updated:** 2026-03-30
 
 ---
 
@@ -126,6 +126,19 @@ A new block appeared in this miner's specific channel, incrementing `nChannelHei
 
 Therefore, miners must refresh on `tip_moved` even when `channel_advanced` is false.
 
+### Current NexusMiner Implementation Note (2026-03)
+
+> 📝 **Implementation note:** The two-axis model above accurately describes the *conceptual* staleness space and the **node-side** `TemplateMetadata::IsStale()` logic. The current NexusMiner miner client (`push_notification_handler.cpp`, commit `1bda859cad83ce99f74463c78890a95b8137578a` in the NexusMiner repository) uses a **unified-height-driven model** that supersedes the two-axis trigger approach for miner-side decisions:
+>
+> - **Every PUSH unconditionally triggers `request_work_fn()`** — the miner does not conditionally filter by `tip_moved` or `channel_advanced`.
+> - `channel_advanced` (`is_template_stale()`) is checked for **bookkeeping only**: `AdvanceChannelTarget()` is called to prevent doom-loops, but this does NOT suppress the work request.
+> - Cross-channel PUSH (a Hash push received by a Prime miner) also triggers `request_work_fn()` if the unified height advanced, because `hashPrevBlock` changed.
+> - The `GetBlockReason` enum (`get_block_reason.hpp`) captures the semantic reason (`PUSH_STALE`, `PUSH_TIP_MOVED`, `PUSH_SAME_HEIGHT_TIP`, `PUSH_NO_TEMPLATE`) for dedup policy decisions, but all PUSH reasons result in a work request.
+>
+> The practical effect: the two axes are now both observable (via `HeightTracker::Snapshot`, diagnostics, `ExplainMismatch`) but neither axis gates the template refresh action on a PUSH event. `tip_moved` remains the conceptually correct reason label for the refresh; it just fires on every PUSH rather than being a conditional filter.
+>
+> See [`docs/current/mining-protocols/get-block-dedup-unified-height.md`](../../NexusMiner/docs/current/mining-protocols/get-block-dedup-unified-height.md) (NexusMiner repo) for the dedup guard that prevents rapid-burst double-requests.
+
 ---
 
 ## 4. Push Payload Semantics (148 bytes)
@@ -166,7 +179,8 @@ Offset  Size  Field                 Meaning
 ### Recommended miner response to a push notification
 
 ```
-1. Receive push (tip_moved detected via nUnifiedHeight change)
+1. Receive push — unconditionally triggers template refresh (unified tip moved)
+   [tip_moved is the reason label; the refresh fires on every PUSH regardless]
 2. Update HeightTracker with all four heights from the payload
 3. Send GET_BLOCK immediately
 4. Replace current template with the response
