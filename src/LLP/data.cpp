@@ -280,8 +280,15 @@ namespace LLP
                 try
                 {
                     /* Skip over Inactive Connections. */
-                    if(!CONNECTION || !CONNECTION->Connected())
+                    if(!CONNECTION)
                         continue;
+
+                    /* Remove connection if connection flag is disabled. */
+                    if(!CONNECTION->Connected())
+                    {
+                         remove_connection_with_event(nIndex, DISCONNECT::FORCE);
+                         continue;
+                    }
 
                     /* Disconnect if there was a polling error */
                     if(POLLFDS.at(nIndex).revents & POLLERR)

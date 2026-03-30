@@ -306,8 +306,8 @@ namespace LLP
                     /* Give some debug info that node didn't give version message. */
                     debug::notice(NODE, "no version message in first 5 seconds");
 
-                    /* Disconnect the node and return from events. */
-                    Disconnect();
+                    /* Flag to make connection disconnected. */
+                    fCONNECTED.store(false);
                     return;
                 }
 
