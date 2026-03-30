@@ -103,8 +103,8 @@ namespace TAO
                     uint512_t hashMissing = hashTx;
 
                     /* Go back to our last ORPHAN on record. */
-                    while(mapOrphans.count(hashMissing))
-                        hashMissing = mapOrphans[hashMissing].hashPrevTx;
+                    //while(mapOrphans.count(hashMissing))
+                    hashMissing = mapOrphans[hashMissing].hashPrevTx;
 
                     /* Debug output. */
                     debug::log(0, FUNCTION, "REQUESTING ORPHAN tx ", hashMissing.SubString());
@@ -400,7 +400,7 @@ namespace TAO
             debug::log(0, "getting from mempool unlocked");
             RECURSIVE(MUTEX);
             debug::log(0, "getting from mempool locked.");
-            
+
             /* Check in ledger memory. */
             if(mapLedger.count(hashTx))
             {
