@@ -97,6 +97,8 @@ namespace LLP
             if(!Incoming())
                 PushMessage(REQUEST::CONNECT, LLP::SESSION_ID);
 
+            debug::log(0, NODE, "LOOKUP Connection Established");
+
             return;
         }
 

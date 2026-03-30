@@ -224,8 +224,6 @@ namespace LLP
                     break;
                 }
 
-                debug::log(0, NODE, fOUTGOING ? "Outgoing" : "Incoming", " Connection Established");
-
                 /* Set the laset ping time. */
                 nLastPing    = runtime::unifiedtimestamp();
 
@@ -256,6 +254,7 @@ namespace LLP
                     }
                 }
 
+                debug::log(0, NODE, fOUTGOING ? "Outgoing" : "Incoming", " Connection Established");
 
                 break;
             }
@@ -525,6 +524,8 @@ namespace LLP
     /** Main message handler once a packet is recieved. **/
     bool TritiumNode::ProcessPacket()
     {
+        debug::log(0, NODE, "Received packet of ", std::hex, INCOMING.MESSAGE, " with payload ", INCOMING.LENGTH);
+        
         /* Deserialize the packeet from incoming packet payload. */
         DataStream ssPacket(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
         switch(INCOMING.MESSAGE)
