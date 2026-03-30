@@ -249,12 +249,8 @@ namespace TAO
                         return;
 
                     /* Check for missing transactions for ORPHAN. */
-                    if(block.vMissing.size() != 0)
+                    if(pOrphan->vMissing.size() != 0)
                     {
-                        /* Check for missing transactions. */
-                        if(pOrphan->vMissing.size() == 0)
-                            return;
-
                         /* Incomplete blocks can pass through orphan checks. */
                         nStatus |= PROCESS::INCOMPLETE;
 
