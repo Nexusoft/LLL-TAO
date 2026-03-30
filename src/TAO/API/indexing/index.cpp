@@ -33,6 +33,7 @@ namespace TAO::API
         if(hashTx.GetType() == TAO::Ledger::TRITIUM)
         {
             /* Index our sigchain first. */
+            debug::log(0, "index sigchain");
             IndexSigchain(hashTx);
 
             /* Make sure the transaction is on disk. */
@@ -67,13 +68,17 @@ namespace TAO::API
             if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
             {
                 /* Check if we need to index the main sigchain. */
+                debug::log(0, "check session active");
                 if(LLD::Sessions->Active(tx.hashGenesis)) //we want to catch all calls to this without SESSION_TIMEOUT
                 {
+                    debug::log(0, "updating session for ", tx.hashGenesis.SubString());
+
                     /* Build an API transaction. */
                     TAO::API::Transaction tIndex =
                         TAO::API::Transaction(tx);
 
                     /* Index the transaction to the database. */
+                    debug::log(0, "indexing sigchain");
                     if(!tIndex.Index(hashTx))
                         return;
                 }
