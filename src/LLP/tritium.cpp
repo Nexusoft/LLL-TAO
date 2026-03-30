@@ -496,11 +496,13 @@ namespace LLP
                         SwitchNode();
                     }
 
-                    LOCK(SESSIONS_MUTEX);
+                    /* Critical Section changing mapSessions. */
+                    { LOCK(SESSIONS_MUTEX);
 
-                    /* Free the session as long as it is not a duplicate connection that we are closing. */
-                    if(mapSessions.count(nCurrentSession))
-                        mapSessions.erase(nCurrentSession);
+                        /* Free the session as long as it is not a duplicate connection that we are closing. */
+                        if(mapSessions.count(nCurrentSession))
+                            mapSessions.erase(nCurrentSession);
+                    }
 
                     /* Reset session value. */
                     nCurrentSession = 0;
@@ -3758,15 +3760,21 @@ namespace LLP
     /* Get a node by connected session. */
     std::shared_ptr<TritiumNode> TritiumNode::GetNode(const uint64_t nSession)
     {
-        LOCK(SESSIONS_MUTEX);
+        /* Make a copy of our pair inside the critical section. */
+        std::pair<uint32_t, uint32_t> pair;
 
-        /* Check for connected session. */
-        static std::shared_ptr<TritiumNode> pNULL;
-        if(!mapSessions.count(nSession))
-            return pNULL;
+        {
+            LOCK(SESSIONS_MUTEX);
 
-        /* Get a reference of session. */
-        const std::pair<uint32_t, uint32_t>& pair = mapSessions[nSession];
+            /* Check for connected session. */
+            static std::shared_ptr<TritiumNode> pNULL;
+            if(!mapSessions.count(nSession))
+                return pNULL;
+
+            /* Get a reference of session. */
+            pair = mapSessions[nSession];
+        }
+
         return TRITIUM_SERVER->GetConnection(pair.first, pair.second);
     }
 
