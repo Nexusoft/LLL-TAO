@@ -75,11 +75,16 @@ bool CheckPermissions(const std::string& strAddress, const uint16_t nPort)
         return true;
 
     /* If no llpallowip whitelist defined for a default open port then we assume permission */
-    if(config::mapIPFilters.at(nPort).empty() && fStandardPort)
+    if(!config::mapIPFilters.count(nPort) && fStandardPort)
         return true;
 
+    /* Check if our map is empty without standard port. */
+    if(!config::mapIPFilters.count(nPort))
+        return false;
+
     /* Check against the llpallowip list from config / commandline parameters. */
-    for(const auto& strIPFilter : config::mapIPFilters.at(nPort))
+    const std::vector<std::string> vFilters = config::mapIPFilters[nPort];
+    for(const auto& strIPFilter : vFilters)
     {
         /* Split the components of the IP so that we can check for wildcard ranges. */
         std::vector<std::string> vCheck;
