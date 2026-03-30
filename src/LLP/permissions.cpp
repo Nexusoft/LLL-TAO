@@ -23,6 +23,9 @@ ________________________________________________________________________________
 /*  IP Filtering Definitions. IP's are Filtered By Ports. */
 bool CheckPermissions(const std::string& strAddress, const uint16_t nPort)
 {
+    /* Make a const copy of our IP filters for easy access. */
+    static const std::map<uint16_t, std::vector<std::string>> mapFilters = config::mapIPFilters;
+
     /* Build some constants if we need them. */
     static const uint16_t TRITIUM_MAINNET_PORT_CHECK     = config::GetArg(std::string("-port"),    TRITIUM_MAINNET_PORT);
     static const uint16_t TRITIUM_MAINNET_SSL_PORT_CHECK = config::GetArg(std::string("-sslport"), TRITIUM_MAINNET_SSL_PORT);
@@ -75,15 +78,15 @@ bool CheckPermissions(const std::string& strAddress, const uint16_t nPort)
         return true;
 
     /* If no llpallowip whitelist defined for a default open port then we assume permission */
-    if(!config::mapIPFilters.count(nPort) && fStandardPort)
+    if(!mapFilters.count(nPort) && fStandardPort)
         return true;
 
     /* Check if our map is empty without standard port. */
-    if(!config::mapIPFilters.count(nPort))
+    if(!mapFilters.count(nPort))
         return false;
 
     /* Check against the llpallowip list from config / commandline parameters. */
-    const std::vector<std::string> vFilters = config::mapIPFilters[nPort];
+    const std::vector<std::string> vFilters = mapFilters.at(nPort);
     for(const auto& strIPFilter : vFilters)
     {
         /* Split the components of the IP so that we can check for wildcard ranges. */
