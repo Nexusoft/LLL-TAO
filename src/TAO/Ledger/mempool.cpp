@@ -397,8 +397,10 @@ namespace TAO
         /* Gets a transaction from mempool */
         bool Mempool::Get(const uint512_t& hashTx, TAO::Ledger::Transaction &tx) const
         {
+            debug::log(0, "getting from mempool unlocked");
             RECURSIVE(MUTEX);
-
+            debug::log(0, "getting from mempool locked.");
+            
             /* Check in ledger memory. */
             if(mapLedger.count(hashTx))
             {

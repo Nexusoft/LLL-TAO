@@ -66,6 +66,8 @@ namespace TAO::API
         {
             /* Make sure the transaction is on disk. */
             TAO::Ledger::Transaction tx;
+
+            debug::log(0, "read transaction from mempool");
             if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
             {
                 /* Check if we need to index the main sigchain. */
