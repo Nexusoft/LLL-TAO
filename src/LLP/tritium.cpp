@@ -301,6 +301,17 @@ namespace LLP
 
             case EVENTS::GENERIC:
             {
+                /* Check if no version message within first 5 seconds. */
+                if(nCurrentSession == 0 && Incoming() && nLastPing + 5 < runtime::unifiedtimestamp())
+                {
+                    /* Give some debug info that node didn't give version message. */
+                    debug::notice(NODE, "no version message in first 5 seconds");
+
+                    /* Disconnect the node and return from events. */
+                    Disconnect();
+                    return;
+                }
+
                 /* Handle sending the pings to remote node.. */
                 if(nLastPing + 15 < runtime::unifiedtimestamp())
                 {
