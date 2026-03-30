@@ -246,6 +246,10 @@ namespace TAO
 
                     /* Check if the block is valid. */
                     if(!pOrphan->Check())
+                        return;
+
+                    /* Check for missing transactions for ORPHAN. */
+                    if(block.vMissing.size() != 0)
                     {
                         /* Check for missing transactions. */
                         if(pOrphan->vMissing.size() == 0)
