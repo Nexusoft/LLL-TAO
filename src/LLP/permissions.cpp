@@ -27,9 +27,6 @@ bool CheckPermissions(const std::string& strAddress, const uint16_t nPort)
     static const uint16_t TRITIUM_MAINNET_PORT_CHECK     = config::GetArg(std::string("-port"),    TRITIUM_MAINNET_PORT);
     static const uint16_t TRITIUM_MAINNET_SSL_PORT_CHECK = config::GetArg(std::string("-sslport"), TRITIUM_MAINNET_SSL_PORT);
 
-    /* Make a const copy of our IP filters for easy access. */
-    static const std::map<uint16_t, std::vector<std::string>> mapFilters = config::mapIPFilters;
-
     /* Bypass localhost addresses first. */
     if(strAddress == "127.0.0.1" || strAddress == "::1") //XXX: we may not want this rule, assess security
         return true;
@@ -78,11 +75,11 @@ bool CheckPermissions(const std::string& strAddress, const uint16_t nPort)
         return true;
 
     /* If no llpallowip whitelist defined for a default open port then we assume permission */
-    if(mapFilters.at(nPort).empty() && fStandardPort)
+    if(config::mapIPFilters.at(nPort).empty() && fStandardPort)
         return true;
 
     /* Check against the llpallowip list from config / commandline parameters. */
-    for(const auto& strIPFilter : mapFilters.at(nPort))
+    for(const auto& strIPFilter : config::mapIPFilters.at(nPort))
     {
         /* Split the components of the IP so that we can check for wildcard ranges. */
         std::vector<std::string> vCheck;
