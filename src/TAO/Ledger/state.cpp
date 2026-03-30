@@ -1164,6 +1164,7 @@ namespace TAO
                 const uint512_t& hash = proof.second;
 
                 /* Check for transaction overwrites using indexing entries */
+                debug::log(0, "Index Block");
                 if(!LLD::Ledger->HasIndex(hash))
                     LLD::Ledger->IndexBlock(proof.second, hashBlock); //write indexing entry for use during processing
                 else //this rule will trigger if we have indexes already
@@ -1176,6 +1177,7 @@ namespace TAO
                     swContract.start();
 
                     /* Make sure the transaction is on disk. */
+                    debug::log(0, "Get transaction from disk");
                     TAO::Ledger::Transaction tx;
                     if(!LLD::Ledger->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction not on disk");
@@ -1185,9 +1187,11 @@ namespace TAO
                         tx.print();
 
                     /* Check the ledger rules for sigchain at end. */
+                    debug::log(0, "Handle genesis");
                     if(!tx.IsFirst())
                     {
                         /* Check for the last hash. */
+                        debug::log(0, "Read last");
                         uint512_t hashLast = 0;
                         if(!LLD::Ledger->ReadLast(tx.hashGenesis, hashLast))
                             return debug::error(FUNCTION, "failed to read last on non-genesis");
@@ -1198,10 +1202,12 @@ namespace TAO
                     }
 
                     /* Verify the Ledger Pre-States. */
+                    debug::log(0, "Verify pre-states");
                     if(!tx.Verify(FLAGS::BLOCK)) //NOTE: double checking this for now in post-processing
                         return false;
 
                     /* Connect the transaction. */
+                    debug::log(0, "Connect tx ", hash.SubString());
                     if(!tx.Connect(FLAGS::BLOCK, this))
                         return debug::error(FUNCTION, "failed to connect transaction");
 
@@ -1211,16 +1217,19 @@ namespace TAO
                     #endif
 
                     /* Accumulate the fees. */
+                    debug::log(0, "get fees");
                     nFees += tx.Fees();
 
                     /* If tx is coinstake, also write the last stake. */
                     if(tx.IsCoinStake())
                     {
                         /* Check the coinstake trust and reward values. */
+                        debug::log(0, "Check trust");
                         if(!tx.CheckTrust(this))
                             return debug::error(FUNCTION, "trust checks failed");
 
                         /* Write the last stake value into the database. */
+                        debug::log(0, "write stake");
                         if(!LLD::Ledger->WriteStake(tx.hashGenesis, hash))
                             return debug::error(FUNCTION, "failed to write last stake");
 
@@ -1289,6 +1298,7 @@ namespace TAO
                     return debug::error(FUNCTION, "using an unknown transaction type");
 
                 /* Push to our logical indexing in API. */
+                debug::log(0, "Push transaction to indexing");
                 if(nTime > NEXUS_TRITIUM_TIMELOCK)
                     TAO::API::Indexing::PushTransaction(hash);
             }
@@ -1298,6 +1308,7 @@ namespace TAO
                 debug::log(3, "Block Height ", nHeight, " Hash ", hashBlock.SubString());
 
             /* Update the previous state's next pointer. */
+            debug::log(0, "get prev pointer");
             BlockState prev = Prev();
 
             /* Update the money supply. */
