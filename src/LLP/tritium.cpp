@@ -302,7 +302,7 @@ namespace LLP
             case EVENTS::GENERIC:
             {
                 /* Check if no version message within first 5 seconds. */
-                if(nCurrentSession == 0 && Incoming() && nLastPing + 5 < runtime::unifiedtimestamp())
+                if(nCurrentSession == 0 && nLastPing + 5 < runtime::unifiedtimestamp())
                 {
                     /* Give some debug info that node didn't give version message. */
                     debug::notice(NODE, "no version message in first 5 seconds");
@@ -313,7 +313,7 @@ namespace LLP
                 }
 
                 /* Handle sending the pings to remote node.. */
-                if(nLastPing + 15 < runtime::unifiedtimestamp())
+                if(nCurrentSession != 0 && nLastPing + 15 < runtime::unifiedtimestamp())
                 {
                     /* Create a random nonce. */
                     uint64_t nNonce = LLC::GetRand();
