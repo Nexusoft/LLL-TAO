@@ -1845,6 +1845,10 @@ namespace LLP
                                                 if(!LLD::Legacy->ReadTx(proof.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                                     continue;
 
+                                                /* We want to iterate our DDOS values here. */
+                                                if(DDOS && fDDOS.load())
+                                                    DDOS->rSCORE += 1;
+
                                                 /* Push message of transaction. */
                                                 PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
                                             }
@@ -1857,6 +1861,9 @@ namespace LLP
                                                 if(!LLD::Ledger->ReadTx(proof.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                                     continue;
 
+                                                /* We want to iterate our DDOS values here. */
+                                                if(DDOS && fDDOS.load())
+                                                    DDOS->rSCORE += 1;
 
                                                 /* Push message of transaction. */
                                                 PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
@@ -1907,14 +1914,11 @@ namespace LLP
                                     /* Check if producer is being asked for, and send block instead. */
                                     if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid())
                                     {
-                                        /* Read block state from disk. */
-                                        TAO::Ledger::BlockState state;
-                                        if(LLD::Ledger->ReadBlock(hashTx, state))
-                                        {
-                                            /* Send off tritium block. */
-                                            TAO::Ledger::TritiumBlock block(state);
-                                            PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::TRITIUM), block);
-                                        }
+                                        /* We want to iterate our DDOS values here. */
+                                        if(DDOS && fDDOS.load())
+                                            DDOS->rSCORE += 100; //make a high penalty for doing this
+
+                                        return debug::drop(NODE, "ACTION::GET: TRANSACTION: cannot request producer without block");
                                     }
                                     else
                                         PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
