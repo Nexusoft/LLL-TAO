@@ -38,6 +38,7 @@ namespace TAO::API
 
             /* Make sure the transaction is on disk. */
             TAO::Ledger::Transaction tx;
+            debug::log(0, "index dependant");
             if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
                 IndexDependant(hashTx, tx);
 
@@ -189,6 +190,8 @@ namespace TAO::API
         /* Check all the tx contracts. */
         for(uint32_t nContract = 0; nContract < tx.Size(); nContract++)
         {
+            debug::log(0, "indexing contract ", nContract);
+
             /* Grab reference of our contract. */
             const TAO::Operation::Contract& rContract = tx[nContract];
 
@@ -231,6 +234,7 @@ namespace TAO::API
                     }
 
                     /* Check if we need to build index for this contract. */
+                    debug::log(0, FUNCTION, "checking sessions active for DEBIT");
                     if(LLD::Sessions->Active(hashRecipient))
                     {
                         /* Debug output to show event has fired. */
@@ -257,6 +261,7 @@ namespace TAO::API
                     rContract >> hashRecipient;
 
                     /* Check if we need to build index for this contract. */
+                    debug::log(0, FUNCTION, "checking sessions active for COINBASE");
                     if(LLD::Sessions->Active(hashRecipient))
                     {
                         /* Debug output to show event has fired. */

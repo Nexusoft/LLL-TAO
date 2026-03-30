@@ -264,6 +264,7 @@ namespace LLD
         }
 
         /* Perform -client lookup if available. */
+        debug::log(0, "performing -client lookup");
         if(client_lookup(hashRegister, state, nFlags))
             return true;
 
