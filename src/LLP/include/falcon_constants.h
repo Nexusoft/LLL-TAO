@@ -573,19 +573,6 @@ namespace FalconConstants
      *  Prevents miners from working on very stale templates. */
     static const uint64_t MAX_TEMPLATE_AGE_SECONDS = 600;
 
-    /** Heartbeat template refresh threshold in seconds.
-     *
-     *  When no new block push notification has been sent for this many seconds, the
-     *  node proactively re-pushes the current template to all subscribed miners.
-     *  This prevents miners from entering degraded mode during legitimate dry spells,
-     *  for example on the Prime channel which can routinely take 2–5+ minutes between
-     *  solutions (5–7 chain primes).
-     *
-     *  Set to 480 s (8 min) — 120 s before the hard MAX_TEMPLATE_AGE_SECONDS (600 s)
-     *  cutoff — so miners always receive a refreshed template well before their
-     *  template-age timer expires. */
-    static const uint64_t TEMPLATE_HEARTBEAT_REFRESH_SECONDS = 480;
-
 } // namespace FalconConstants
 } // namespace LLP
 

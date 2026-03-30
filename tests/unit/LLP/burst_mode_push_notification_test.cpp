@@ -16,7 +16,6 @@ ________________________________________________________________________________
 #include <LLP/include/push_notification.h>
 #include <LLP/include/miner_push_dispatcher.h>
 #include <LLP/include/mining_constants.h>
-#include <LLP/include/falcon_constants.h>
 #include <LLP/packets/packet.h>
 #include <LLP/packets/stateless_packet.h>
 #include <LLP/include/opcode_utility.h>
@@ -48,7 +47,6 @@ ________________________________________________________________________________
  *    4. Payload construction throughput at scale
  *    5. Cross-channel isolation with large miner populations
  *    6. Mixed protocol lanes (Legacy + Stateless) under burst load
- *    7. Heartbeat refresh timing with large miner pools
  *
  * =========================================================================== */
 
@@ -736,84 +734,7 @@ TEST_CASE("Burst Mode — Full broadcast simulation with 750 miners and fork-res
 
 
 /* ===========================================================================
- *  Section 7: Heartbeat Refresh Timing at Scale
- * =========================================================================== */
-
-TEST_CASE("Burst Mode — Heartbeat refresh constants protect 1000-miner pool", "[burst_mode][heartbeat][llp]")
-{
-    SECTION("Heartbeat fires before hard template age cutoff")
-    {
-        REQUIRE(LLP::FalconConstants::TEMPLATE_HEARTBEAT_REFRESH_SECONDS <
-                LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS);
-    }
-
-    SECTION("120-second margin between heartbeat and hard cutoff")
-    {
-        uint64_t nMargin = LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS -
-                           LLP::FalconConstants::TEMPLATE_HEARTBEAT_REFRESH_SECONDS;
-        REQUIRE(nMargin >= 120);
-    }
-
-    SECTION("Heartbeat check interval allows multiple checks before refresh fires")
-    {
-        uint64_t nChecksBeforeRefresh =
-            LLP::FalconConstants::TEMPLATE_HEARTBEAT_REFRESH_SECONDS /
-            LLP::MiningConstants::HEARTBEAT_CHECK_INTERVAL_SECONDS;
-        /* At least 4 check cycles before the heartbeat threshold */
-        REQUIRE(nChecksBeforeRefresh >= 4);
-    }
-
-    SECTION("Even at 1000 miners, a single heartbeat push delivers to all subscribers")
-    {
-        const uint32_t N = 1000;
-        std::vector<SimMinerCtx> vMiners(N, { true, 1, true });  /* all Prime subscribers */
-
-        /* Heartbeat broadcast */
-        auto result = SimulateBroadcast(vMiners, 1);
-        REQUIRE(result.nNotified == N);
-        REQUIRE(result.nSkippedWrongChannel == 0);
-        REQUIRE(result.nSkippedUnsubscribed == 0);
-    }
-
-    SECTION("Heartbeat force-flag resets throttle for all 1000 miners")
-    {
-        const uint32_t N = 1000;
-        std::vector<PushThrottleState> vStates(N);
-        auto tBase = steady_clock::now();
-
-        /* Initial push */
-        for (auto& state : vStates)
-            SimulateSend(state, tBase);
-
-        /* Simulate heartbeat: set force flag on all (PrepareHeartbeatNotification) */
-        for (auto& state : vStates)
-            state.m_force_next_push = true;
-
-        /* Heartbeat push 10ms later (still within throttle interval) */
-        auto tHeartbeat = tBase + std::chrono::milliseconds(10);
-        uint32_t nSent = 0;
-        for (auto& state : vStates)
-        {
-            if (SimulateSend(state, tHeartbeat) == ThrottleResult::SEND)
-                ++nSent;
-        }
-        REQUIRE(nSent == N);
-
-        /* Force flags consumed — next rapid push should be throttled */
-        auto tAfter = tHeartbeat + std::chrono::milliseconds(1);
-        uint32_t nThrottled = 0;
-        for (auto& state : vStates)
-        {
-            if (SimulateSend(state, tAfter) == ThrottleResult::THROTTLED)
-                ++nThrottled;
-        }
-        REQUIRE(nThrottled == N);
-    }
-}
-
-
-/* ===========================================================================
- *  Section 8: Bandwidth Estimation Under Burst Load
+ *  Section 7: Bandwidth Estimation Under Burst Load
  * =========================================================================== */
 
 TEST_CASE("Burst Mode — Bandwidth calculation for 500-1000 miner push burst", "[burst_mode][bandwidth][llp]")

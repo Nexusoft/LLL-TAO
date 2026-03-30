@@ -4607,20 +4607,6 @@ namespace LLP
     }
 
 
-    /* PrepareHeartbeatNotification - Reset per-connection rate-limit state for heartbeat push */
-    void StatelessMinerConnection::PrepareHeartbeatNotification()
-    {
-        LOCK(MUTEX);
-        /* Force the next SendChannelNotification() / SendStatelessTemplate() to bypass
-         * the push throttle (same bypass used by STATELESS_MINER_READY re-subscription). */
-        m_force_next_push = true;
-        /* Reassign (not Reset()) so Ready() returns true immediately — restores the
-         * "never triggered" state so the miner's first GET_BLOCK after the heartbeat
-         * push is served without the 2-second cooldown delay. */
-        m_get_block_cooldown = AutoCoolDown(std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS));
-    }
-
-
     /* SendChannelNotification - Send push notification to subscribed miner */
     void StatelessMinerConnection::SendChannelNotification()
     {
