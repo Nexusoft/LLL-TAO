@@ -304,6 +304,10 @@ namespace LLP
                 /* Check if no version message within first 5 seconds. */
                 if(nCurrentSession == 0 && nLastPing + 10 < runtime::unifiedtimestamp())
                 {
+                    /* We want to iterate our DDOS values here. */
+                    if(DDOS && fDDOS.load())
+                        DDOS->rSCORE += 500; //make a high penalty for doing this
+
                     /* Give some debug info that node didn't give version message. */
                     debug::notice(NODE, "no version message in first 10 seconds");
 
