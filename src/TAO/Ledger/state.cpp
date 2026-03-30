@@ -461,6 +461,10 @@ namespace TAO
             if(hashPrevBlock == 0)
                 return state;
 
+            /* Check if we debug our -reorg. */
+            if(config::GetBoolArg("-debugreorg", false))
+                debug::log(0, FUNCTION, "getting previous block ", hashPrevBlock.SubString());
+
             /* Read the previous block from ledger. */
             if(LLD::Ledger->ReadBlock(hashPrevBlock, state))
                 return state;
