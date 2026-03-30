@@ -116,7 +116,7 @@ namespace TAO
             if(!IsNewTimespan(state))
                 return false;
 
-            /* Notify nodes of the checkpoint. */
+            /* Notify nodes of the checkpoint.
             if(LLP::TRITIUM_SERVER && !ChainState::Synchronizing())
             {
                 LLP::TRITIUM_SERVER->Relay
@@ -126,6 +126,7 @@ namespace TAO
                     state.hashCheckpoint
                 );
             }
+            */
 
             /* Update the Checkpoints into Memory. */
             ChainState::hashCheckpoint    = state.hashCheckpoint;
