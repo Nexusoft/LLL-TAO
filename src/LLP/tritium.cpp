@@ -524,8 +524,8 @@ namespace LLP
     /** Main message handler once a packet is recieved. **/
     bool TritiumNode::ProcessPacket()
     {
-        debug::log(0, NODE, "Received packet of ", std::hex, INCOMING.MESSAGE, " with payload ", INCOMING.LENGTH);
-        
+        debug::log(0, NODE, "Received packet of ", std::hex, INCOMING.MESSAGE, " with payload ",std::dec, INCOMING.LENGTH);
+
         /* Deserialize the packeet from incoming packet payload. */
         DataStream ssPacket(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
         switch(INCOMING.MESSAGE)
@@ -1908,6 +1908,8 @@ namespace LLP
                                     /* Check if producer is being asked for, and send block instead. */
                                     if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid())
                                     {
+                                        return debug::drop(NODE, "producer transaction not available without block");
+                                        
                                         /* Read block state from disk. */
                                         TAO::Ledger::BlockState state;
                                         if(LLD::Ledger->ReadBlock(hashTx, state))
