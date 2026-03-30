@@ -1846,6 +1846,10 @@ namespace LLP
                                                 if(!LLD::Legacy->ReadTx(proof.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                                     continue;
 
+
+                                                if(DDOS && fDDOS.load())
+                                                    DDOS->rSCORE += 1;
+
                                                 /* Push message of transaction. */
                                                 PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
                                             }
@@ -1858,6 +1862,8 @@ namespace LLP
                                                 if(!LLD::Ledger->ReadTx(proof.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                                     continue;
 
+                                                if(DDOS && fDDOS.load())
+                                                    DDOS->rSCORE += 1;
 
                                                 /* Push message of transaction. */
                                                 PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
