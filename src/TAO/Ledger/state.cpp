@@ -1044,15 +1044,18 @@ namespace TAO
                         debug::log(0, state->ToString(debug::flags::header | debug::flags::tx));
 
                     /* Connect the block. */
+                    debug::log(0, "Connect block");
                     if(!state->Connect())
                         return debug::error(FUNCTION, "failed to connect ", state->GetHash().SubString());
 
                     /* Harden a checkpoint if there is any. */
                     #ifndef UNIT_TESTS
+                    debug::log(0, "Harden Checkpoint");
                     HardenCheckpoint(Prev());
                     #endif
 
                     /* Debug output if we are debugging reorgs */
+                    debug::log(0, "Debug Reorg");
                     if(fDebugReorg)
                     {
                         /* Output the connecting block. */
@@ -1086,6 +1089,7 @@ namespace TAO
                 }
 
                 /* Iterate forward through our transactions to remove in ascending order. */
+                debug::log(0, "Remove mempool transactions");
                 for(auto proof = vDelete.begin(); proof != vDelete.end(); ++proof)
                     mempool.Remove(proof->second);
 
@@ -1094,6 +1098,7 @@ namespace TAO
                     (vDelete.size() - vConnect.size());
 
                 /* Debug output about the best chain. */
+                debug::log(0, "Calculate final figures");
                 uint64_t nElapsed      = (GetBlockTime() - ChainState::tStateBest.load().GetBlockTime());
                 uint64_t nContractTime = swContract.ElapsedMicroseconds();
                 uint64_t nInputsTime   = swScript.ElapsedMicroseconds();
