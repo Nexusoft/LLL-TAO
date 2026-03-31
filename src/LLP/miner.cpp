@@ -1897,6 +1897,18 @@ namespace LLP
         {
             LOCK(MUTEX);
 
+            /* BUG #4 fix: Validate nSessionId is non-zero before rate-limit lookups.
+             * If nSessionId is 0 (uninitialized), all such connections would share a
+             * single rate limiter bucket, allowing one miner to exhaust the budget for others. */
+            if(nSessionId == 0)
+            {
+                debug::error(FUNCTION, "GET_BLOCK rejected: nSessionId is 0 (uninitialized) from ",
+                             GetAddress().ToStringIP());
+                respond_auto(BLOCK_REJECTED,
+                    BuildGetBlockControlPayload(GetBlockPolicyReason::SESSION_INVALID, 0));
+                return true;
+            }
+
             GetBlockRequest req;
             /* Build a minimal context snapshot: detect protocol lane from connection state */
             req.context = MiningContext()
@@ -1949,6 +1961,14 @@ namespace LLP
 
             /* Invariant: authenticated + in-budget → non-empty BLOCK_DATA */
             assert(!result.vPayload.empty());
+
+            /* BLOCK_DATA (0xD000) is the request-response path: miner explicitly
+             * requested a template via GET_BLOCK.  This is distinct from the push
+             * path (0xD081 GET_BLOCK) used by SendStatelessTemplate() which proactively
+             * delivers templates on chain-tip advance.  Logging this distinction helps
+             * miner developers trace latency between the two delivery mechanisms. */
+            debug::log(2, FUNCTION, "BLOCK_DATA (request-response) → ", GetAddress().ToStringIP(),
+                       " session=", nSessionId, " payload=", result.vPayload.size(), " bytes");
 
             respond_auto(BLOCK_DATA, result.vPayload);
         }
