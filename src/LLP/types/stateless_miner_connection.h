@@ -59,6 +59,16 @@ namespace LLP
         /** Mutex for thread-safe context updates **/
         std::mutex MUTEX;
 
+        /** Atomic mirror of context.fAuthenticated for lock-free reads by DataThread.
+         *
+         *  The DataThread calls IsTimeoutExempt() from its polling loop on every
+         *  iteration — taking the MUTEX there would serialize all timeout checks
+         *  against packet processing.  This atomic bool is updated under MUTEX
+         *  whenever context.fAuthenticated transitions false → true, and is read
+         *  lock-free by IsTimeoutExempt().  Because authentication is write-once
+         *  (set to true, never cleared), a relaxed store / relaxed load is safe. **/
+        std::atomic<bool> fAuthenticatedAtomic{false};
+
         /** The map to hold the list of blocks that are being mined with metadata. 
          *  Updated in PR #131 to track template metadata for staleness detection. **/
         std::map<uint512_t, TemplateMetadata> mapBlocks;
