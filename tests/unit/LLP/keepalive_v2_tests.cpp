@@ -282,7 +282,7 @@ TEST_CASE("KeepaliveV2 - backward compatibility", "[keepalive_v2][llp]")
     SECTION("8-byte keepalive with zero suffix is valid (miner has no template yet)")
     {
         std::vector<uint8_t> data = {
-            0x00, 0x00, 0x00, 0x01,  /* session_id = 1 (BE) */
+            0x01, 0x00, 0x00, 0x00,  /* session_id = 1 (LE) */
             0x00, 0x00, 0x00, 0x00   /* suffix = 0 */
         };
 
@@ -308,7 +308,7 @@ TEST_CASE("KeepaliveV2 legacy path request-parsing", "[keepalive_v2][llp]")
     SECTION("4-byte request: ParsePayload returns false (must send 8 bytes)")
     {
         /* Old miners send only session_id (4 bytes); now rejected — must send 8 bytes */
-        std::vector<uint8_t> data = { 0x00, 0x00, 0x00, 0x01 };   /* session_id = 1 (BE) */
+        std::vector<uint8_t> data = { 0x01, 0x00, 0x00, 0x00 };   /* session_id = 1 (LE) */
 
         uint32_t nSessionId = 0;
         std::array<uint8_t, 4> suffixBytes = {0xFF, 0xFF, 0xFF, 0xFF};
@@ -325,10 +325,10 @@ TEST_CASE("KeepaliveV2 legacy path request-parsing", "[keepalive_v2][llp]")
 
     SECTION("8-byte request: nMinerPrevHashLo32 derived as BE uint32 from raw suffix bytes")
     {
-        /* Miners send session_id (BE) + hashPrevBlock_lo32 (BE on wire).
+        /* Miners send session_id (LE) + hashPrevBlock_lo32 (BE on wire).
          * Both legacy and stateless paths now echo this value and compute fork_score. */
         std::vector<uint8_t> data = {
-            0x00, 0x00, 0x00, 0x05,   /* session_id = 5 (BE) */
+            0x05, 0x00, 0x00, 0x00,   /* session_id = 5 (LE) */
             0xDE, 0xAD, 0xBE, 0xEF    /* hashPrevBlock_lo32 = 0xDEADBEEF (BE on wire) */
         };
 
@@ -421,16 +421,16 @@ TEST_CASE("KeepaliveV2::KeepAliveV2AckFrame::Serialize", "[keepalive_v2][llp]")
         REQUIRE(KeepAliveV2AckFrame::PAYLOAD_SIZE == 32u);
     }
 
-    SECTION("session_id encoded big-endian at bytes [0-3]")
+    SECTION("session_id encoded little-endian at bytes [0-3]")
     {
         KeepAliveV2AckFrame ack;
         ack.session_id = 0xDEADBEEFu;
         std::vector<uint8_t> v = ack.Serialize();
-        // BE: DE AD BE EF
-        REQUIRE(v[0] == 0xDEu);
-        REQUIRE(v[1] == 0xADu);
-        REQUIRE(v[2] == 0xBEu);
-        REQUIRE(v[3] == 0xEFu);
+        // LE: EF BE AD DE
+        REQUIRE(v[0] == 0xEFu);
+        REQUIRE(v[1] == 0xBEu);
+        REQUIRE(v[2] == 0xADu);
+        REQUIRE(v[3] == 0xDEu);
     }
 
     SECTION("hashPrevBlock_lo32 encoded big-endian at bytes [4-7]")
@@ -525,9 +525,9 @@ TEST_CASE("KeepaliveV2::KeepAliveV2AckFrame::Serialize", "[keepalive_v2][llp]")
         std::vector<uint8_t> v = ack.Serialize();
         REQUIRE(v.size() == 32u);
 
-        /* session_id BE: 00 00 00 01 */
-        REQUIRE(v[0] == 0x00u); REQUIRE(v[1] == 0x00u);
-        REQUIRE(v[2] == 0x00u); REQUIRE(v[3] == 0x01u);
+        /* session_id LE: 01 00 00 00 */
+        REQUIRE(v[0] == 0x01u); REQUIRE(v[1] == 0x00u);
+        REQUIRE(v[2] == 0x00u); REQUIRE(v[3] == 0x00u);
 
         /* hashPrevBlock_lo32 BE */
         REQUIRE(v[4] == 0xDEu); REQUIRE(v[5] == 0xADu);

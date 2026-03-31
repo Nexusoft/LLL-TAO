@@ -616,13 +616,13 @@ TEST_CASE("Session: SESSION_EXPIRED Opcode and Graceful Eviction", "[session][ex
         /* Session should be expired */
         REQUIRE(ctx.IsSessionExpired(now) == true);
 
-        /* Build keepalive packet (8 bytes BE: session_id + prevblock_lo32) */
+        /* Build keepalive packet (8 bytes: session_id LE + prevblock_lo32 BE) */
         StatelessPacket keepalivePacket(StatelessOpcodes::SESSION_KEEPALIVE);
         uint32_t sessionId = 12345;
-        keepalivePacket.DATA.push_back(static_cast<uint8_t>((sessionId >> 24) & 0xFF));
-        keepalivePacket.DATA.push_back(static_cast<uint8_t>((sessionId >> 16) & 0xFF));
-        keepalivePacket.DATA.push_back(static_cast<uint8_t>((sessionId >> 8) & 0xFF));
         keepalivePacket.DATA.push_back(static_cast<uint8_t>(sessionId & 0xFF));
+        keepalivePacket.DATA.push_back(static_cast<uint8_t>((sessionId >> 8) & 0xFF));
+        keepalivePacket.DATA.push_back(static_cast<uint8_t>((sessionId >> 16) & 0xFF));
+        keepalivePacket.DATA.push_back(static_cast<uint8_t>((sessionId >> 24) & 0xFF));
         /* hashPrevBlock_lo32 = 0 (no template) */
         keepalivePacket.DATA.push_back(0x00);
         keepalivePacket.DATA.push_back(0x00);
@@ -697,16 +697,16 @@ TEST_CASE("Session: SESSION_EXPIRED Opcode and Graceful Eviction", "[session][ex
 
         REQUIRE(ctx.IsSessionExpired(now) == true);
 
-        /* Build SESSION_KEEPALIVE packet (8 bytes BE: session_id + prevblock_lo32) */
+        /* Build SESSION_KEEPALIVE packet (8 bytes: session_id LE + prevblock_lo32 BE) */
         StatelessPacket v2Packet(StatelessOpcodes::SESSION_KEEPALIVE);
         uint32_t sessionId = 54321;
         uint32_t prevHashLo32 = 0xDEADBEEF;
 
-        /* session_id (4 bytes BE) */
-        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 24) & 0xFF));
-        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 16) & 0xFF));
-        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 8) & 0xFF));
+        /* session_id (4 bytes LE) */
         v2Packet.DATA.push_back(static_cast<uint8_t>(sessionId & 0xFF));
+        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 8) & 0xFF));
+        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 16) & 0xFF));
+        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 24) & 0xFF));
 
         /* prevHashLo32 (4 bytes BE) */
         v2Packet.DATA.push_back(static_cast<uint8_t>((prevHashLo32 >> 24) & 0xFF));

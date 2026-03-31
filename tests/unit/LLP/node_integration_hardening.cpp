@@ -109,11 +109,11 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
 
         StatelessPacket keepalivePacket(SESSION_KEEPALIVE);
         uint32_t zeroSessionId = 0;
-        /* 8-byte BE payload: session_id (4 BE) + hashPrevBlock_lo32 (4 BE) */
-        keepalivePacket.DATA.push_back(static_cast<uint8_t>((zeroSessionId >> 24) & 0xFF));
-        keepalivePacket.DATA.push_back(static_cast<uint8_t>((zeroSessionId >> 16) & 0xFF));
-        keepalivePacket.DATA.push_back(static_cast<uint8_t>((zeroSessionId >> 8) & 0xFF));
+        /* 8-byte payload: session_id (4 LE) + hashPrevBlock_lo32 (4 BE) */
         keepalivePacket.DATA.push_back(static_cast<uint8_t>(zeroSessionId & 0xFF));
+        keepalivePacket.DATA.push_back(static_cast<uint8_t>((zeroSessionId >> 8) & 0xFF));
+        keepalivePacket.DATA.push_back(static_cast<uint8_t>((zeroSessionId >> 16) & 0xFF));
+        keepalivePacket.DATA.push_back(static_cast<uint8_t>((zeroSessionId >> 24) & 0xFF));
         keepalivePacket.DATA.push_back(0x00);
         keepalivePacket.DATA.push_back(0x00);
         keepalivePacket.DATA.push_back(0x00);
@@ -156,11 +156,11 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
         /* Step 4: Mining can resume on same connection */
         /* Send keepalive on new session */
         StatelessPacket newKeepalive(SESSION_KEEPALIVE);
-        /* 8-byte BE payload: session_id + hashPrevBlock_lo32 */
-        newKeepalive.DATA.push_back(static_cast<uint8_t>((newSessionId >> 24) & 0xFF));
-        newKeepalive.DATA.push_back(static_cast<uint8_t>((newSessionId >> 16) & 0xFF));
-        newKeepalive.DATA.push_back(static_cast<uint8_t>((newSessionId >> 8) & 0xFF));
+        /* 8-byte payload: session_id (LE) + hashPrevBlock_lo32 (BE) */
         newKeepalive.DATA.push_back(static_cast<uint8_t>(newSessionId & 0xFF));
+        newKeepalive.DATA.push_back(static_cast<uint8_t>((newSessionId >> 8) & 0xFF));
+        newKeepalive.DATA.push_back(static_cast<uint8_t>((newSessionId >> 16) & 0xFF));
+        newKeepalive.DATA.push_back(static_cast<uint8_t>((newSessionId >> 24) & 0xFF));
         newKeepalive.DATA.push_back(0x00);
         newKeepalive.DATA.push_back(0x00);
         newKeepalive.DATA.push_back(0x00);
@@ -200,16 +200,16 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
 
         REQUIRE(expiredCtx.IsSessionExpired(now) == true);
 
-        /* Build SESSION_KEEPALIVE packet (8 bytes BE: session_id + prevblock_lo32) */
+        /* Build SESSION_KEEPALIVE packet (8 bytes: session_id LE + prevblock_lo32 BE) */
         StatelessPacket v2Packet(SESSION_KEEPALIVE);
         uint32_t sessionId = 0;
         uint32_t prevHashLo32 = 0xDEADBEEF;
 
-        /* session_id (4 bytes BE) */
-        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 24) & 0xFF));
-        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 16) & 0xFF));
-        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 8) & 0xFF));
+        /* session_id (4 bytes LE) */
         v2Packet.DATA.push_back(static_cast<uint8_t>(sessionId & 0xFF));
+        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 8) & 0xFF));
+        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 16) & 0xFF));
+        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 24) & 0xFF));
 
         /* prevHashLo32 (4 bytes BE) */
         v2Packet.DATA.push_back(static_cast<uint8_t>((prevHashLo32 >> 24) & 0xFF));
@@ -309,14 +309,14 @@ TEST_CASE("Integration: BLOCK_REJECTED:FORK with Miner Recovery", "[integration]
 
         REQUIRE(minerPrevHashLo32 != nodeTipLo32);  // Fork condition
 
-        /* Build SESSION_KEEPALIVE packet (8 bytes BE: session_id + prevblock_lo32) */
+        /* Build SESSION_KEEPALIVE packet (8 bytes: session_id LE + prevblock_lo32 BE) */
         StatelessPacket v2Packet(SESSION_KEEPALIVE);
 
-        /* session_id (4 bytes BE) */
-        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 24) & 0xFF));
-        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 16) & 0xFF));
-        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 8) & 0xFF));
+        /* session_id (4 bytes LE) */
         v2Packet.DATA.push_back(static_cast<uint8_t>(sessionId & 0xFF));
+        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 8) & 0xFF));
+        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 16) & 0xFF));
+        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 24) & 0xFF));
 
         /* Miner's prevHashLo32 (4 bytes BE) */
         v2Packet.DATA.push_back(static_cast<uint8_t>((minerPrevHashLo32 >> 24) & 0xFF));
