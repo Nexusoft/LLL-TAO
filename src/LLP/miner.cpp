@@ -495,20 +495,20 @@ namespace LLP
             }
 
             /* Handle SESSION_KEEPALIVE (212 / 0xD4) — unified keepalive handler.
-             * Request: 8 bytes BE — [session_id BE][hashPrevBlock_lo32 BE]
-             * Response: 32 bytes BE — unified chain state telemetry */
+             * Request: 8 bytes — [session_id LE][hashPrevBlock_lo32 BE]
+             * Response: 32 bytes — [session_id LE][all other fields BE] */
             if(PACKET.HEADER == SESSION_KEEPALIVE)
             {
                 debug::log(2, FUNCTION, "════════════════════════════════════");
                 debug::log(2, FUNCTION, "SESSION_KEEPALIVE received");
 
-                /* Parse 8-byte keepalive payload (all big-endian) */
+                /* Parse 8-byte keepalive payload (session_id LE, hashPrevBlock_lo32 BE) */
                 uint32_t nKeepaliveSession = 0;
                 std::array<uint8_t, 4> prevblockSuffixBytes = {};
 
                 if(!KeepaliveV2::ParsePayload(PACKET.DATA, nKeepaliveSession, prevblockSuffixBytes))
                 {
-                    debug::error(FUNCTION, "Invalid SESSION_KEEPALIVE: need 8-byte BE payload, got ", PACKET.DATA.size(), " bytes");
+                    debug::error(FUNCTION, "Invalid SESSION_KEEPALIVE: need 8-byte payload, got ", PACKET.DATA.size(), " bytes");
                     return true;
                 }
 

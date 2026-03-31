@@ -1173,7 +1173,7 @@ namespace LLP
         /** ProcessSessionKeepalive
          *
          *  Process SESSION_KEEPALIVE (0xD0D4) — unified keepalive handler.
-         *  Request: 8 bytes BE — [session_id BE][hashPrevBlock_lo32 BE]
+         *  Request: 8 bytes — [session_id LE][hashPrevBlock_lo32 BE]
          *  Response: 32 bytes BE — unified chain state telemetry.
          *  Extends the authenticated miner's 24-hour session timeout.
          *

@@ -26,14 +26,14 @@ namespace LLP
      *  Common utility for SESSION_KEEPALIVE protocol handling.
      *  Used by both the Legacy (Miner.cpp) and Stateless (stateless_miner.cpp) lanes.
      *
-     *  Unified Client → Node (len == 8, all big-endian):
-     *    [0..3] session_id          (big-endian uint32)
+     *  Unified Client → Node (len == 8):
+     *    [0..3] session_id          (little-endian uint32; matches all other protocol packets)
      *    [4..7] hashPrevBlock_lo32  (big-endian uint32; low 32 bits of miner's
      *                                current prevHash, fork canary; 0 if no template)
      *
      *  Node → Client UNIFIED (len == 32):
      *    Used on BOTH ports — SESSION_KEEPALIVE (port 8323, 0xD4) and (port 9323, 0xD0D4).
-     *    [0..3]   session_id          (big-endian uint32; session validation)
+     *    [0..3]   session_id          (little-endian uint32; matches all other protocol packets)
      *    [4..7]   hashPrevBlock_lo32  (big-endian uint32; echo of miner's fork canary)
      *    [8..11]  unified_height      (big-endian uint32)
      *    [12..15] hash_tip_lo32       (big-endian uint32; lo32 of node hashBestChain, fork cross-check)
@@ -51,7 +51,7 @@ namespace LLP
         /** KeepAliveV2AckFrame — 32-byte unified keepalive response (SESSION_KEEPALIVE on both ports)
          *
          *  Wire format:
-         *    [0-3]   uint32_t  session_id          big-endian — session validation
+         *    [0-3]   uint32_t  session_id          little-endian — matches all other protocol packets
          *    [4-7]   uint32_t  hashPrevBlock_lo32  big-endian — echo of miner's fork canary
          *    [8-11]  uint32_t  unified_height      big-endian
          *    [12-15] uint32_t  hash_tip_lo32       big-endian — lo32 of node hashBestChain
@@ -69,7 +69,7 @@ namespace LLP
          **/
         struct KeepAliveV2AckFrame
         {
-            uint32_t session_id{0};         // [0-3]  BE — session validation
+            uint32_t session_id{0};         // [0-3]  LE — matches all other protocol packets
             uint32_t hashPrevBlock_lo32{0}; // [4-7]  BE — echo of miner's fork canary
             uint32_t unified_height{0};     // [8-11] BE
             uint32_t hash_tip_lo32{0};      // [12-15] BE — lo32 of node hashBestChain
@@ -85,14 +85,19 @@ namespace LLP
                 std::vector<uint8_t> v;
                 v.reserve(32);
 
-                // All fields big-endian (unified wire format)
+                // session_id: little-endian (matches all other protocol packets)
+                v.push_back(static_cast<uint8_t>( session_id        & 0xFF));
+                v.push_back(static_cast<uint8_t>((session_id >>  8) & 0xFF));
+                v.push_back(static_cast<uint8_t>((session_id >> 16) & 0xFF));
+                v.push_back(static_cast<uint8_t>((session_id >> 24) & 0xFF));
+
+                // remaining fields: big-endian
                 auto p32be = [&](uint32_t x) {
                     v.push_back((x >> 24) & 0xFF);
                     v.push_back((x >> 16) & 0xFF);
                     v.push_back((x >>  8) & 0xFF);
                     v.push_back( x        & 0xFF);
                 };
-                p32be(session_id);
                 p32be(hashPrevBlock_lo32);
                 p32be(unified_height);
                 p32be(hash_tip_lo32);
@@ -109,7 +114,7 @@ namespace LLP
          *
          *  Build the 32-byte unified keepalive response used on both legacy and stateless paths.
          *
-         *  @param[in] nSessionId      Session identifier (big-endian in wire format)
+         *  @param[in] nSessionId      Session identifier (little-endian in wire format)
          *  @param[in] nHashPrevLo32   Lo32 of miner's hashPrevBlock echo (from request)
          *  @param[in] nUnifiedHeight  Current unified best-chain height
          *  @param[in] nHashTipLo32    Lo32 of node's current hashBestChain
@@ -118,7 +123,7 @@ namespace LLP
          *  @param[in] nStakeHeight    Current Stake channel height
          *  @param[in] nForkScore      Fork divergence score (0=healthy)
          *
-         *  @return 32-byte serialized payload (all fields big-endian)
+         *  @return 32-byte serialized payload (session_id LE, all other fields BE)
          **/
         inline std::vector<uint8_t> BuildUnifiedResponse(
             uint32_t nSessionId,
@@ -145,14 +150,14 @@ namespace LLP
 
         /** ParsePayload
          *
-         *  Parse an 8-byte SESSION_KEEPALIVE request payload (big-endian).
+         *  Parse an 8-byte SESSION_KEEPALIVE request payload.
          *
          *  Wire format:
-         *    [0..3] session_id          (big-endian uint32)
+         *    [0..3] session_id          (little-endian uint32; matches all other protocol packets)
          *    [4..7] hashPrevBlock_lo32  (big-endian uint32; fork canary, 0 if no template)
          *
          *  @param[in]  data                   Raw payload bytes (must be exactly 8)
-         *  @param[out] nSessionId             Session ID (bytes [0..3], big-endian)
+         *  @param[out] nSessionId             Session ID (bytes [0..3], little-endian)
          *  @param[out] prevblockSuffixBytes   Raw bytes [4..7] as-sent (fork canary)
          *
          *  @return true if the payload is valid (len >= 8), false otherwise
@@ -168,14 +173,14 @@ namespace LLP
             if(data.size() < 8)
                 return false;
 
-            /* Parse session_id (big-endian) */
+            /* Parse session_id (little-endian — matches AUTH_RESULT, SESSION_START, etc.) */
             nSessionId =
-                (static_cast<uint32_t>(data[0]) << 24) |
-                (static_cast<uint32_t>(data[1]) << 16) |
-                (static_cast<uint32_t>(data[2]) << 8)  |
-                 static_cast<uint32_t>(data[3]);
+                 static_cast<uint32_t>(data[0])        |
+                (static_cast<uint32_t>(data[1]) << 8)  |
+                (static_cast<uint32_t>(data[2]) << 16) |
+                (static_cast<uint32_t>(data[3]) << 24);
 
-            /* Copy hashPrevBlock_lo32 as raw bytes (already big-endian on wire) */
+            /* Copy hashPrevBlock_lo32 as raw bytes (big-endian on wire) */
             prevblockSuffixBytes[0] = data[4];
             prevblockSuffixBytes[1] = data[5];
             prevblockSuffixBytes[2] = data[6];

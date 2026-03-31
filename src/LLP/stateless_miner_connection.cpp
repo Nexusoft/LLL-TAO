@@ -96,7 +96,7 @@ namespace LLP
         using Diagnostics::PassFail;
 
         /* SESSION_KEEPALIVE wire format is always 8 bytes:
-         * session_id (4 bytes big-endian) + hashPrevBlock_lo32 (4 bytes big-endian). */
+         * session_id (4 bytes little-endian) + hashPrevBlock_lo32 (4 bytes big-endian). */
         static constexpr uint32_t SESSION_KEEPALIVE_PAYLOAD_SIZE = 8;
 
         inline StatelessPacket BuildSessionExpiredResponse(const uint32_t nSessionId, const uint8_t nReason = 0x01)

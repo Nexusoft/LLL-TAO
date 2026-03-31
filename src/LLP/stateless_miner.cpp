@@ -1649,7 +1649,7 @@ namespace LLP
 
 
     /* Process session keepalive — unified handler for SESSION_KEEPALIVE (0xD0D4) on both ports.
-     * Request: 8 bytes BE — [session_id BE][hashPrevBlock_lo32 BE]
+     * Request: 8 bytes — [session_id LE][hashPrevBlock_lo32 BE]
      * Response: 32 bytes BE — unified chain state telemetry */
     ProcessResult StatelessMiner::ProcessSessionKeepalive(
         const MiningContext& context,
@@ -1706,7 +1706,7 @@ namespace LLP
             }
         }
 
-        /* Parse 8-byte keepalive payload (all big-endian) */
+        /* Parse 8-byte keepalive payload (session_id LE, hashPrevBlock_lo32 BE) */
         uint32_t nPayloadSession = 0;
         std::array<uint8_t, 4> prevblockSuffixBytes = {};
         if(!KeepaliveV2::ParsePayload(packet.DATA, nPayloadSession, prevblockSuffixBytes))

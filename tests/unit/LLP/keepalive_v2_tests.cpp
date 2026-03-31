@@ -24,8 +24,8 @@ ________________________________________________________________________________
  *
  * Covers:
  *   - ParsePayload: requires exactly 8 bytes (v1 4-byte no longer supported)
- *   - ParsePayload: session_id parsed as big-endian, suffix returned as raw bytes
- *   - BuildUnifiedResponse: correct size (32 bytes), field positions, all big-endian
+ *   - ParsePayload: session_id parsed as little-endian, suffix returned as raw bytes
+ *   - BuildUnifiedResponse: correct size (32 bytes), field positions, session_id LE, rest BE
  */
 
 TEST_CASE("KeepaliveV2::ParsePayload", "[keepalive_v2][llp]")
@@ -51,10 +51,10 @@ TEST_CASE("KeepaliveV2::ParsePayload", "[keepalive_v2][llp]")
 
     SECTION("8-byte payload returns true with session_id and suffix parsed")
     {
-        /* session_id  = 0xDEADBEEF (BE: DE AD BE EF)
+        /* session_id  = 0xDEADBEEF (LE: EF BE AD DE)
          * suffix bytes as-sent: 78 56 34 12 */
         std::vector<uint8_t> data = {
-            0xDE, 0xAD, 0xBE, 0xEF,   /* session_id BE */
+            0xEF, 0xBE, 0xAD, 0xDE,   /* session_id LE */
             0x78, 0x56, 0x34, 0x12    /* prevblock_suffix raw bytes */
         };
 
@@ -75,7 +75,7 @@ TEST_CASE("KeepaliveV2::ParsePayload", "[keepalive_v2][llp]")
     SECTION("8-byte payload with zero suffix (no template)")
     {
         std::vector<uint8_t> data = {
-            0x00, 0x00, 0x00, 0x01,   /* session_id = 1 (BE) */
+            0x01, 0x00, 0x00, 0x00,   /* session_id = 1 (LE) */
             0x00, 0x00, 0x00, 0x00    /* suffix = all zeros */
         };
 
@@ -130,7 +130,7 @@ TEST_CASE("KeepaliveV2::ParsePayload", "[keepalive_v2][llp]")
         /* Bytes [4..7] on the wire: AA BB CC DD
          * Expected: suffixBytes[0]=AA, [1]=BB, [2]=CC, [3]=DD */
         std::vector<uint8_t> data = {
-            0x00, 0x00, 0x00, 0x01,  /* session_id = 1 (BE) */
+            0x01, 0x00, 0x00, 0x00,  /* session_id = 1 (LE) */
             0xAA, 0xBB, 0xCC, 0xDD   /* suffix bytes in wire order */
         };
 
@@ -159,15 +159,15 @@ TEST_CASE("KeepaliveV2::BuildUnifiedResponse", "[keepalive_v2][llp]")
         REQUIRE(v.size() == 32u);
     }
 
-    SECTION("session_id encoded big-endian at bytes [0-3]")
+    SECTION("session_id encoded little-endian at bytes [0-3]")
     {
         /* session_id = 0xDEADBEEF
-         * Expected BE bytes: DE AD BE EF */
+         * Expected LE bytes: EF BE AD DE */
         auto v = BuildUnifiedResponse(0xDEADBEEFu, 0, 0, 0, 0, 0, 0, 0);
-        REQUIRE(v[0] == 0xDEu);
-        REQUIRE(v[1] == 0xADu);
-        REQUIRE(v[2] == 0xBEu);
-        REQUIRE(v[3] == 0xEFu);
+        REQUIRE(v[0] == 0xEFu);
+        REQUIRE(v[1] == 0xBEu);
+        REQUIRE(v[2] == 0xADu);
+        REQUIRE(v[3] == 0xDEu);
     }
 
     SECTION("hashPrevBlock_lo32 big-endian at bytes [4-7]")
@@ -259,9 +259,9 @@ TEST_CASE("KeepaliveV2::BuildUnifiedResponse", "[keepalive_v2][llp]")
             999u,          // stake_height
             7u);           // fork_score
         REQUIRE(v.size() == 32u);
-        /* session_id BE: 00 00 00 01 */
-        REQUIRE(v[0] == 0x00u); REQUIRE(v[1] == 0x00u);
-        REQUIRE(v[2] == 0x00u); REQUIRE(v[3] == 0x01u);
+        /* session_id LE: 01 00 00 00 */
+        REQUIRE(v[0] == 0x01u); REQUIRE(v[1] == 0x00u);
+        REQUIRE(v[2] == 0x00u); REQUIRE(v[3] == 0x00u);
         /* hashPrevBlock_lo32 BE: DE AD BE EF */
         REQUIRE(v[4] == 0xDEu); REQUIRE(v[5] == 0xADu);
         REQUIRE(v[6] == 0xBEu); REQUIRE(v[7] == 0xEFu);
