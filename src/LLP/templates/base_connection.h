@@ -74,6 +74,8 @@ namespace LLP
         virtual bool ProcessPacket() = 0;
 
 
+    public:
+
         /** IsTimeoutExempt
          *
          *  Virtual method to determine if this connection should be exempted from
@@ -92,8 +94,6 @@ namespace LLP
          **/
         virtual bool IsTimeoutExempt() const { return false; }
 
-
-    public:
 
         /** Incoming Packet Being Built. **/
         PacketType     INCOMING;
