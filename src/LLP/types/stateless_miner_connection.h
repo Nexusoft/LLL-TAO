@@ -153,6 +153,11 @@ namespace LLP
             static constexpr uint32_t VIOLATIONS_BEFORE_THROTTLE = 6;
             static constexpr uint32_t VIOLATIONS_BEFORE_DISCONNECT = 10;
 
+            // Throttle hysteresis: throttle activates at VIOLATIONS_BEFORE_THROTTLE (high water)
+            // and deactivates only when violations drop to THROTTLE_LOW_WATER (low water).
+            // This prevents yo-yo behavior for borderline miners.
+            static constexpr uint32_t THROTTLE_LOW_WATER = 3;
+
             /** After this many consecutive GET_BLOCK rate-limit violations with no
              *  successful request between them, the connection is closed with a
              *  diagnostic message to prevent the tight-loop self-DDoS. */

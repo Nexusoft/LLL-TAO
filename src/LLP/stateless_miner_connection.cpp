@@ -1166,7 +1166,7 @@ namespace LLP
                     debug::error(FUNCTION, "   Legacy plaintext mining is no longer supported");
                     
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                    response.DATA.push_back(0x0C);  // Reason: Encryption required
+                    response.DATA.push_back(static_cast<uint8_t>(OpcodeUtility::SubmitBlockRejectionReason::ENCRYPTION_REQUIRED));
                     response.LENGTH = 1;
                     respond(response);
                     
@@ -1292,7 +1292,7 @@ namespace LLP
                             debug::error(FUNCTION, "   Session may have expired or never authenticated properly");
                             
                             StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                            response.DATA.push_back(0x0D);  // Reason: No session key
+                            response.DATA.push_back(static_cast<uint8_t>(OpcodeUtility::SubmitBlockRejectionReason::NO_SESSION_KEY));
                             response.LENGTH = 1;
                             respond(response);
                             
@@ -1367,7 +1367,7 @@ namespace LLP
                                     debug::log(0, FUNCTION, "- consistency result: FAIL");
                                     
                                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                                    response.DATA.push_back(0x0B);  // Reason: ChaCha20 decryption failure
+                                    response.DATA.push_back(static_cast<uint8_t>(OpcodeUtility::SubmitBlockRejectionReason::CHACHA20_DECRYPTION_FAILED));
                                     response.LENGTH = 1;
                                     respond(response);
                                     
@@ -1422,7 +1422,7 @@ namespace LLP
                                 {
                                     debug::error(FUNCTION, "❌ Falcon signature verification FAILED");
                                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                                    response.DATA.push_back(0x0C);  // Reason: Signature verification failed
+                                    response.DATA.push_back(static_cast<uint8_t>(OpcodeUtility::SubmitBlockRejectionReason::ENCRYPTION_REQUIRED));  // sig verify failed
                                     response.LENGTH = 1;
                                     respond(response);
 
@@ -1527,7 +1527,7 @@ namespace LLP
                                     debug::log(0, FUNCTION, "- recovered session genesis matches live context: ", YesNo(fRecoveryGenesisMatches));
                                     debug::log(0, FUNCTION, "- consistency result: FAIL");
                                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                                    response.DATA.push_back(0x0B);  // Reason: ChaCha20 decryption failure
+                                    response.DATA.push_back(static_cast<uint8_t>(OpcodeUtility::SubmitBlockRejectionReason::CHACHA20_DECRYPTION_FAILED));
                                     response.LENGTH = 1;
                                     respond(response);
                                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (ChaCha20 decryption failed) ===", ANSI_COLOR_RESET);
@@ -1540,7 +1540,7 @@ namespace LLP
                                 {
                                     debug::error(FUNCTION, "❌ Disposable Falcon verification failed (legacy format)");
                                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                                    response.DATA.push_back(0x0C);  // Reason: Signature verification failed
+                                    response.DATA.push_back(static_cast<uint8_t>(OpcodeUtility::SubmitBlockRejectionReason::ENCRYPTION_REQUIRED));  // sig verify failed
                                     response.LENGTH = 1;
                                     respond(response);
                                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Signature verification failed) ===", ANSI_COLOR_RESET);
@@ -1584,7 +1584,7 @@ namespace LLP
                     debug::error(FUNCTION, "   This indicates a bug in the SUBMIT_BLOCK handler");
                     
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                    response.DATA.push_back(0xFF);  // Reason: Internal error
+                    response.DATA.push_back(static_cast<uint8_t>(OpcodeUtility::SubmitBlockRejectionReason::INTERNAL_ERROR));
                     response.LENGTH = 1;
                     respond(response);
                     
@@ -4585,13 +4585,15 @@ namespace LLP
         if (m_rateLimit.nViolationCount > 0) {
             m_rateLimit.nViolationCount--;
             
-            // Exit throttle mode if violations drop below threshold
+            // Exit throttle mode only when violations drop below low water mark
+            // (hysteresis prevents yo-yo behavior for borderline miners)
             if (m_rateLimit.fThrottleMode && 
-                m_rateLimit.nViolationCount < RateLimitConfig::VIOLATIONS_BEFORE_THROTTLE) 
+                m_rateLimit.nViolationCount < RateLimitConfig::THROTTLE_LOW_WATER) 
             {
                 m_rateLimit.fThrottleMode = false;
                 debug::log(1, FUNCTION, "✅ Throttle mode disabled for ", GetAddress().ToStringIP(),
-                    " - behavior improved");
+                    " - violations below low water mark (", m_rateLimit.nViolationCount, 
+                    " < ", RateLimitConfig::THROTTLE_LOW_WATER, ")");
             }
         }
         

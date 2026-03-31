@@ -314,6 +314,33 @@ namespace OpcodeUtility
         FORK        = 5,  // Block on an alternate chain
     };
 
+    //=========================================================================
+    // SUBMIT_BLOCK REJECTION REASON CODES (stateless_miner_connection.cpp)
+    // 1-byte payload sent with STATELESS_BLOCK_REJECTED to distinguish the
+    // specific rejection reason in the stateless SUBMIT_BLOCK handler.
+    // Replaces magic numbers 0x0B, 0x0C, 0x0D, 0xFF scattered through the code.
+    //=========================================================================
+    enum class SubmitBlockRejectionReason : uint8_t
+    {
+        CHACHA20_DECRYPTION_FAILED  = 0x0B,  // ChaCha20 payload decryption error
+        ENCRYPTION_REQUIRED         = 0x0C,  // ChaCha20 encryption not enabled / sig verify failed
+        NO_SESSION_KEY              = 0x0D,  // Falcon pubkey missing for session
+        INTERNAL_ERROR              = 0xFF,  // Logic error / unreachable code
+    };
+
+    /** Convert SubmitBlockRejectionReason to human-readable string */
+    inline const char* SubmitBlockRejectionReasonString(SubmitBlockRejectionReason eReason)
+    {
+        switch(eReason)
+        {
+            case SubmitBlockRejectionReason::CHACHA20_DECRYPTION_FAILED: return "CHACHA20_DECRYPTION_FAILED";
+            case SubmitBlockRejectionReason::ENCRYPTION_REQUIRED:        return "ENCRYPTION_REQUIRED";
+            case SubmitBlockRejectionReason::NO_SESSION_KEY:             return "NO_SESSION_KEY";
+            case SubmitBlockRejectionReason::INTERNAL_ERROR:             return "INTERNAL_ERROR";
+            default:                                                     return "UNKNOWN";
+        }
+    }
+
 
     //=========================================================================
     // OPCODE CLASSIFICATION FUNCTIONS
