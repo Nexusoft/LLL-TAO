@@ -176,8 +176,6 @@ namespace LLP
     static constexpr uint16_t MINER_AUTH_CHALLENGE = OpcodeUtility::Stateless::AUTH_CHALLENGE;
     static constexpr uint16_t MINER_AUTH_RESPONSE = OpcodeUtility::Stateless::AUTH_RESPONSE;
     static constexpr uint16_t MINER_AUTH_RESULT = OpcodeUtility::Stateless::AUTH_RESULT;
-    static constexpr uint16_t SESSION_START = OpcodeUtility::Stateless::SESSION_START;
-    static constexpr uint16_t SESSION_KEEPALIVE = OpcodeUtility::Stateless::SESSION_KEEPALIVE;
 
     /**
      * DetectedFalconVersionString
