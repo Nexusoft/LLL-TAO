@@ -139,7 +139,6 @@ namespace LLP
     , nLastTemplateChannelHeight(0)
     , hashLastBlock(0)
     , nMinerPrevblockSuffix({})
-    , fKeepaliveV2(false)
     , nStakeHeight(0)
     , strChannelName("Unknown")
     {
@@ -191,7 +190,6 @@ namespace LLP
     , nLastTemplateChannelHeight(0)
     , hashLastBlock(0)
     , nMinerPrevblockSuffix({})
-    , fKeepaliveV2(false)
     , nStakeHeight(0)
     , strChannelName(MiningContext::ChannelName(nChannel_))
     {
@@ -359,14 +357,6 @@ namespace LLP
     {
         MiningContext c = *this;
         c.nMinerPrevblockSuffix = suffixBytes_;
-        c.fKeepaliveV2 = true;
-        return c;
-    }
-
-    MiningContext MiningContext::WithKeepaliveV2(bool fV2_) const
-    {
-        MiningContext c = *this;
-        c.fKeepaliveV2 = fV2_;
         return c;
     }
 
@@ -904,10 +894,6 @@ namespace LLP
             case SESSION_KEEPALIVE:
                 debug::log(3, FUNCTION, "Routing to ProcessSessionKeepalive");
                 return ProcessSessionKeepalive(context, packet);
-
-            case KEEPALIVE_V2:
-                debug::log(3, FUNCTION, "Routing to ProcessKeepaliveV2");
-                return ProcessKeepaliveV2(context, packet);
 
             case SET_REWARD:
                 debug::log(2, FUNCTION, "Routing to ProcessSetReward");
@@ -1662,15 +1648,17 @@ namespace LLP
     }
 
 
-    /* Process session keepalive */
+    /* Process session keepalive — unified handler for SESSION_KEEPALIVE (0xD0D4) on both ports.
+     * Request: 8 bytes BE — [session_id BE][hashPrevBlock_lo32 BE]
+     * Response: 32 bytes BE — unified chain state telemetry */
     ProcessResult StatelessMiner::ProcessSessionKeepalive(
         const MiningContext& context,
         const StatelessPacket& packet
     )
     {
-        /* Phase 2: Require authentication before keepalive */
+        /* Require authentication before keepalive */
         if(!context.fAuthenticated)
-            return ProcessResult::Error(context, "Not authenticated");
+            return ProcessResult::Error(context, "SESSION_KEEPALIVE: not authenticated");
 
         /* Check if session has been started */
         if(context.nSessionStart == 0)
@@ -1682,15 +1670,7 @@ namespace LLP
         if(context.IsSessionExpired(nNow))
         {
             /* If the miner is still authenticated and has a valid session ID, the keepalive
-             * is evidence of liveness — extend the session instead of forcing a full reconnect.
-             *
-             * This handles the case where a miner was in DEGRADED MODE for longer than
-             * nSessionTimeout (e.g. due to escape-ladder bugs or network disruption) but is
-             * still alive and sending keepalives. The subsequent WithTimestamp(nNow) call in
-             * the normal keepalive path will refresh the session deadline automatically.
-             *
-             * Only send SESSION_EXPIRED if the miner has no valid authentication — in that
-             * case a full reconnect is needed regardless. */
+             * is evidence of liveness — extend the session instead of forcing a full reconnect. */
             if(context.fAuthenticated && context.nSessionId != 0)
             {
                 uint64_t nIdleSec = nNow - context.nTimestamp;
@@ -1704,9 +1684,7 @@ namespace LLP
                 debug::log(0, FUNCTION, "SESSION_KEEPALIVE rejected - session expired for sessionId=",
                            context.nSessionId, " last_activity=", context.nTimestamp);
 
-                /* Send SESSION_EXPIRED notification to miner instead of silent disconnect.
-                 * This allows the miner to know it needs to re-authenticate rather than
-                 * seeing a bare TCP disconnect error. */
+                /* Send SESSION_EXPIRED notification to miner instead of silent disconnect. */
                 StatelessPacket expiredResponse(StatelessOpcodes::SESSION_EXPIRED);
 
                 /* Build 5-byte payload: session_id (4 bytes LE) + reason (1 byte) */
@@ -1724,204 +1702,53 @@ namespace LLP
                 debug::log(0, FUNCTION, "Sending SESSION_EXPIRED notification to miner (sessionId=",
                            context.nSessionId, ", reason=INACTIVITY)");
 
-                /* Return success with SESSION_EXPIRED response to allow graceful handling.
-                 * The connection stays open to allow re-authentication on same TCP connection. */
                 return ProcessResult::Success(context, expiredResponse);
             }
         }
 
-        /* Parse keepalive payload: detect v1 (len==4) or v2 (len==8) */
+        /* Parse 8-byte keepalive payload (all big-endian) */
         uint32_t nPayloadSession = 0;
         std::array<uint8_t, 4> prevblockSuffixBytes = {};
-        bool fIsV2 = KeepaliveV2::ParsePayload(packet.DATA, nPayloadSession, prevblockSuffixBytes);
+        if(!KeepaliveV2::ParsePayload(packet.DATA, nPayloadSession, prevblockSuffixBytes))
+        {
+            debug::log(1, FUNCTION, "SESSION_KEEPALIVE: payload too short (", packet.DATA.size(), " bytes, need 8)");
+            return ProcessResult::Error(context, "SESSION_KEEPALIVE: invalid payload (need 8 bytes)");
+        }
 
-        /* Update timestamp, keepalive counters, and v2 fields if applicable */
+        /* Update timestamp, keepalive counters, and prevblock suffix */
         uint32_t nNewKeepaliveCount = context.nKeepaliveCount + 1;
         uint32_t nNewKeepaliveSent = context.nKeepaliveSent + 1;
         MiningContext newContext = context
             .WithTimestamp(nNow)
             .WithKeepaliveCount(nNewKeepaliveCount)
             .WithKeepaliveSent(nNewKeepaliveSent)
-            .WithLastKeepaliveTime(nNow);
+            .WithLastKeepaliveTime(nNow)
+            .WithMinerPrevblockSuffix(prevblockSuffixBytes);
 
-        if(fIsV2)
-            newContext = newContext.WithMinerPrevblockSuffix(prevblockSuffixBytes);
+        /* Derive nMinerPrevHashLo32 from suffix bytes (BE) */
+        uint32_t nMinerPrevHashLo32 =
+            (uint32_t(prevblockSuffixBytes[0]) << 24) |
+            (uint32_t(prevblockSuffixBytes[1]) << 16) |
+            (uint32_t(prevblockSuffixBytes[2]) <<  8) |
+             uint32_t(prevblockSuffixBytes[3]);
 
         /* Log at different verbosity levels based on keepalive frequency */
         uint32_t nLogLevel = (nNewKeepaliveCount % 10 == 0) ? 2 : 3;
-        if(fIsV2)
         {
             char suffixHex[9];
             std::snprintf(suffixHex, sizeof(suffixHex), "%02x%02x%02x%02x",
                           prevblockSuffixBytes[0], prevblockSuffixBytes[1],
                           prevblockSuffixBytes[2], prevblockSuffixBytes[3]);
-            debug::log(nLogLevel, FUNCTION, "SESSION_KEEPALIVE v2 from sessionId=", context.nSessionId,
+            debug::log(nLogLevel, FUNCTION, "SESSION_KEEPALIVE from sessionId=", context.nSessionId,
                        " keepalive_rx=", nNewKeepaliveCount,
                        " keepalive_tx=", nNewKeepaliveSent,
                        " prevblock_suffix=", suffixHex,
                        " session_duration=", newContext.GetSessionDuration(nNow), "s");
         }
-        else
-        {
-            debug::log(nLogLevel, FUNCTION, "SESSION_KEEPALIVE from sessionId=", context.nSessionId,
-                       " keepalive_rx=", nNewKeepaliveCount,
-                       " keepalive_tx=", nNewKeepaliveSent,
-                       " session_duration=", newContext.GetSessionDuration(nNow), "s");
-        }
 
-        /* Build keepalive response.
-         * v2 reply (28 bytes): BESTCURRENT telemetry if miner sent v2 this packet, or
-         *   if the session was previously negotiated to v2.
-         * v1 reply (5 bytes): [status(1)][remaining_timeout(4)] for legacy miners. */
-        StatelessPacket response(StatelessOpcodes::SESSION_KEEPALIVE);
-
-        bool fSendV2 = (fIsV2 || newContext.fKeepaliveV2);
-        if(fSendV2)
-        {
-            /* Gather current chain state for unified 32-byte reply.
-             * CRITICAL: Use stateBest.GetHash() instead of loading hashBestChain separately
-             * to prevent race conditions where heights come from block N but hash from block N+1.
-             * This ensures hash_tip_lo32 matches the unified height being reported. */
-            TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
-            uint32_t nUnifiedHeight = stateBest.nHeight;
-
-            TAO::Ledger::BlockState stateChannel = stateBest;
-            uint32_t nPrimeHeight = 0;
-            if(TAO::Ledger::GetLastState(stateChannel, 1))
-                nPrimeHeight = stateChannel.nChannelHeight;
-
-            stateChannel = stateBest;
-            uint32_t nHashHeight = 0;
-            if(TAO::Ledger::GetLastState(stateChannel, 2))
-                nHashHeight = stateChannel.nChannelHeight;
-
-            stateChannel = stateBest;
-            uint32_t nStakeHeight = 0;
-            if(TAO::Ledger::GetLastState(stateChannel, 0))
-                nStakeHeight = stateChannel.nChannelHeight;
-
-            /* Extract hash from the same atomic snapshot to ensure consistency */
-            uint1024_t hashBestChain = stateBest.GetHash();
-            uint32_t nHashTipLo32 = static_cast<uint32_t>(hashBestChain.Get64(0) & 0xFFFFFFFF);
-
-            uint32_t nMinerPrevHashLo32 = 0u;
-            if(fIsV2)
-                nMinerPrevHashLo32 =
-                    (uint32_t(prevblockSuffixBytes[0]) << 24) |
-                    (uint32_t(prevblockSuffixBytes[1]) << 16) |
-                    (uint32_t(prevblockSuffixBytes[2]) <<  8) |
-                     uint32_t(prevblockSuffixBytes[3]);
-
-            uint32_t nForkScore = (nMinerPrevHashLo32 != 0 && nMinerPrevHashLo32 != nHashTipLo32) ? 1u : 0u;
-
-            std::vector<uint8_t> vV2 = KeepaliveV2::BuildUnifiedResponse(
-                newContext.nSessionId,
-                nMinerPrevHashLo32,    // echo miner's fork canary (0 if v1 miner)
-                nUnifiedHeight,
-                nHashTipLo32,
-                nPrimeHeight,
-                nHashHeight,
-                nStakeHeight,
-                nForkScore);           // computed canary (0 if v1 miner, 0 if hashes match)
-
-            response.DATA = vV2;
-
-            debug::log(nLogLevel, FUNCTION, "SESSION_KEEPALIVE unified reply (32 bytes): sessionId=",
-                       newContext.nSessionId,
-                       " unified=", nUnifiedHeight,
-                       " prime=", nPrimeHeight,
-                       " hash=", nHashHeight,
-                       " stake=", nStakeHeight,
-                       " hash_tip_lo32=0x", std::hex, nHashTipLo32,
-                       " miner_prevhash_lo32=0x", nMinerPrevHashLo32,
-                       " fork_score=", std::dec, nForkScore);
-        }
-        else
-        {
-            /* v1 reply: [status(1)][remaining_timeout(4)] */
-            response.DATA.push_back(0x01); // Success/active
-
-            uint64_t nElapsed = nNow - context.nTimestamp;
-            uint64_t nRemaining = (nElapsed < context.nSessionTimeout)
-                                ? (context.nSessionTimeout - nElapsed)
-                                : 0;
-
-            response.DATA.push_back(static_cast<uint8_t>(nRemaining & 0xFF));
-            response.DATA.push_back(static_cast<uint8_t>((nRemaining >> 8) & 0xFF));
-            response.DATA.push_back(static_cast<uint8_t>((nRemaining >> 16) & 0xFF));
-            response.DATA.push_back(static_cast<uint8_t>((nRemaining >> 24) & 0xFF));
-        }
-
-        response.LENGTH = static_cast<uint32_t>(response.DATA.size());
-
-        return ProcessResult::Success(newContext, response);
-    }
-
-
-    /* Process KEEPALIVE_V2 (0xD100) — stateless-only keepalive with chain state ACK */
-    ProcessResult StatelessMiner::ProcessKeepaliveV2(
-        const MiningContext& context,
-        const StatelessPacket& packet
-    )
-    {
-        /* Require authentication before accepting KEEPALIVE_V2 */
-        if(!context.fAuthenticated)
-            return ProcessResult::Error(context, "KEEPALIVE_V2: not authenticated");
-
-        /* Check if session has expired */
-        uint64_t nNow = runtime::unifiedtimestamp();
-        if(context.IsSessionExpired(nNow))
-        {
-            /* If the miner is still authenticated and has a valid session ID, the keepalive
-             * is evidence of liveness — extend the session instead of forcing a full reconnect.
-             * This mirrors the extension logic in ProcessSessionKeepalive(). */
-            if(context.fAuthenticated && context.nSessionId != 0)
-            {
-                uint64_t nIdleSec = nNow - context.nTimestamp;
-                debug::log(0, FUNCTION, "KEEPALIVE_V2: session nominally expired but miner is "
-                           "authenticated — extending session for sessionId=", context.nSessionId,
-                           " (idle=", nIdleSec, "s, timeout=", context.nSessionTimeout, "s)");
-                /* Fall through to normal processing; context update below will clear expiry */
-            }
-            else
-            {
-                debug::log(0, FUNCTION, "KEEPALIVE_V2 rejected - session expired for sessionId=",
-                           context.nSessionId, " last_activity=", context.nTimestamp);
-
-                /* Send SESSION_EXPIRED notification to miner instead of silent disconnect */
-                StatelessPacket expiredResponse(StatelessOpcodes::SESSION_EXPIRED);
-
-                /* Build 5-byte payload: session_id (4 bytes LE) + reason (1 byte) */
-                uint32_t nSessionId = context.nSessionId;
-                expiredResponse.DATA.push_back(static_cast<uint8_t>(nSessionId & 0xFF));
-                expiredResponse.DATA.push_back(static_cast<uint8_t>((nSessionId >> 8) & 0xFF));
-                expiredResponse.DATA.push_back(static_cast<uint8_t>((nSessionId >> 16) & 0xFF));
-                expiredResponse.DATA.push_back(static_cast<uint8_t>((nSessionId >> 24) & 0xFF));
-
-                /* Reason code: 0x01 = EXPIRED_INACTIVITY */
-                expiredResponse.DATA.push_back(0x01);
-
-                expiredResponse.LENGTH = 5;
-
-                debug::log(0, FUNCTION, "Sending SESSION_EXPIRED notification to miner (sessionId=",
-                           context.nSessionId, ", reason=INACTIVITY)");
-
-                return ProcessResult::Success(context, expiredResponse);
-            }
-        }
-
-        /* Parse the 8-byte KeepAliveV2Frame */
-        KeepaliveV2::KeepAliveV2Frame frame;
-        if(!frame.Parse(packet.DATA))
-        {
-            debug::log(1, FUNCTION, "KEEPALIVE_V2: payload too short (", packet.DATA.size(), " bytes, need 8)");
-            return ProcessResult::Error(context, "KEEPALIVE_V2: invalid payload");
-        }
-
-        /* Gather live chain state.
+        /* Gather current chain state for unified 32-byte reply.
          * CRITICAL: Use stateBest.GetHash() instead of loading hashBestChain separately
-         * to prevent race conditions where heights come from block N but hash from block N+1.
-         * This ensures hash_tip_lo32 matches the unified height being reported. */
+         * to prevent race conditions where heights come from block N but hash from block N+1. */
         TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
         uint32_t nUnifiedHeight = stateBest.nHeight;
 
@@ -1944,14 +1771,12 @@ namespace LLP
         uint1024_t hashBestChain = stateBest.GetHash();
         uint32_t nHashTipLo32 = static_cast<uint32_t>(hashBestChain.Get64(0) & 0xFFFFFFFF);
 
-        /* fork_score: non-zero when miner's prevHash lo32 differs from node tip —
-         * checked by Miner::IsForkDetected() as (hash_tip_lo32 != myHashPrevBlock_lo32 || fork_score > 0) */
-        uint32_t nForkScore = (frame.hashPrevBlock_lo32 != 0 && frame.hashPrevBlock_lo32 != nHashTipLo32) ? 1u : 0u;
+        /* fork_score: non-zero when miner's prevHash lo32 differs from node tip */
+        uint32_t nForkScore = (nMinerPrevHashLo32 != 0 && nMinerPrevHashLo32 != nHashTipLo32) ? 1u : 0u;
 
-        /* Build 32-byte unified ACK */
-        std::vector<uint8_t> vAck = KeepaliveV2::BuildUnifiedResponse(
-            context.nSessionId,        // session_id — authoritative session identifier
-            frame.hashPrevBlock_lo32,  // echo miner's fork canary
+        std::vector<uint8_t> vResponse = KeepaliveV2::BuildUnifiedResponse(
+            newContext.nSessionId,
+            nMinerPrevHashLo32,    // echo miner's fork canary
             nUnifiedHeight,
             nHashTipLo32,
             nPrimeHeight,
@@ -1959,19 +1784,21 @@ namespace LLP
             nStakeHeight,
             nForkScore);
 
-        debug::log(3, FUNCTION, "KEEPALIVE_V2 seq=", frame.sequence,
+        debug::log(nLogLevel, FUNCTION, "SESSION_KEEPALIVE unified reply (32 bytes): sessionId=",
+                   newContext.nSessionId,
                    " unified=", nUnifiedHeight,
                    " prime=", nPrimeHeight,
                    " hash=", nHashHeight,
                    " stake=", nStakeHeight,
                    " hash_tip_lo32=0x", std::hex, nHashTipLo32,
+                   " miner_prevhash_lo32=0x", nMinerPrevHashLo32,
                    " fork_score=", std::dec, nForkScore);
 
-        StatelessPacket response(StatelessOpcodes::KEEPALIVE_V2_ACK);
-        response.DATA   = vAck;
+        StatelessPacket response(StatelessOpcodes::SESSION_KEEPALIVE);
+        response.DATA = vResponse;
         response.LENGTH = static_cast<uint32_t>(response.DATA.size());
 
-        /* Notify Colin agent with keepalive telemetry */
+        /* Notify Colin agent with keepalive telemetry (observability hook) */
         {
             std::string genesis_prefix = context.hashGenesis != uint256_t(0)
                 ? context.hashGenesis.SubString(8)
@@ -1985,11 +1812,10 @@ namespace LLP
                 nForkScore);
         }
 
-        /* Update context: refresh timestamp and increment keepalive counter */
+        /* Update context: refresh timestamp and cache latest stake height */
         nNow = runtime::unifiedtimestamp();
-        MiningContext newContext = context
+        newContext = newContext
             .WithTimestamp(nNow)
-            .WithKeepaliveCount(context.nKeepaliveCount + 1)
             .WithStakeHeight(nStakeHeight);
 
         return ProcessResult::Success(newContext, response);

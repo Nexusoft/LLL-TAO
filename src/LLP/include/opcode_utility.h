@@ -238,43 +238,6 @@ namespace OpcodeUtility
         // They all carry DATA payloads — never header-only.
         //=====================================================================
 
-        /** KEEPALIVE_V2 (0xD100)
-         *
-         *  Stateless-only session keepalive sent by the Miner to the Node.
-         *  Carries an 8-byte payload:
-         *
-         *  PAYLOAD (8 bytes, big-endian):
-         *    [0-3]  uint32_t  sequence            Monotonic keepalive sequence number
-         *    [4-7]  uint32_t  hashPrevBlock_lo32  Low 32 bits of miner's current prevHash (fork canary)
-         *
-         *  The node responds with a 32-byte KEEPALIVE_V2_ACK (0xD101).
-         *  Miner must send KEEPALIVE_V2 at least every session_timeout seconds
-         *  to prevent the stateless server from closing the authenticated session.
-         *
-         *  NOT available on legacy port 8323. Use bare PING (0xFD) there.
-         **/
-        static constexpr uint16_t KEEPALIVE_V2     = 0xD100;   // DATA-bearing, stateless-only
-
-        /** KEEPALIVE_V2_ACK (0xD101)
-         *
-         *  Node response to KEEPALIVE_V2. Carries chain state telemetry for
-         *  the miner's fork detection and height management systems.
-         *  Also used for the legacy SESSION_KEEPALIVE v2 response (port 8323).
-         *
-         *  PAYLOAD (32 bytes):
-         *    [0-3]   uint32_t  session_id          little-endian — session validation
-         *    [4-7]   uint32_t  hashPrevBlock_lo32  big-endian — echo of miner's prevHash canary (0 on legacy path)
-         *    [8-11]  uint32_t  unified_height      big-endian — node's unified block height
-         *    [12-15] uint32_t  hash_tip_lo32       big-endian — low 32 bits of node's hashBestChain
-         *    [16-19] uint32_t  prime_height        big-endian — node's Prime channel height
-         *    [20-23] uint32_t  hash_height         big-endian — node's Hash channel height
-         *    [24-27] uint32_t  stake_height        big-endian — node's Stake channel height
-         *    [28-31] uint32_t  fork_score          big-endian — 0=healthy, >0=divergence magnitude
-         *
-         *  nBits is NOT included — miner obtains difficulty from the 12-byte GET_BLOCK response.
-         **/
-        static constexpr uint16_t KEEPALIVE_V2_ACK = 0xD101;   // DATA-bearing, stateless-only
-
         /** PING_DIAG (0xD0E0)
          *
          *  Colin AI Miner Agent 64-byte diagnostic PING. Sent by the node to

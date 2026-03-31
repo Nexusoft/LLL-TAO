@@ -23,28 +23,18 @@ namespace LLP
 
     /** KeepaliveV2
      *
-     *  Common utility for KEEPALIVE v2 protocol handling.
+     *  Common utility for SESSION_KEEPALIVE protocol handling.
      *  Used by both the Legacy (Miner.cpp) and Stateless (stateless_miner.cpp) lanes.
      *
-     *  Protocol versions (distinguished by payload length):
+     *  Unified Client → Node (len == 8, all big-endian):
+     *    [0..3] session_id          (big-endian uint32)
+     *    [4..7] hashPrevBlock_lo32  (big-endian uint32; low 32 bits of miner's
+     *                                current prevHash, fork canary; 0 if no template)
      *
-     *  v1 Client → Node (len == 4):
-     *    [0..3] session_id (little-endian uint32)
-     *
-     *  v2 Client → Node (len == 8):
-     *    [0..3] session_id            (little-endian uint32)
-     *    [4..7] miner_prevblock_suffix (little-endian uint32; last 4 bytes of template
-     *                                   hashPrevBlock, or 0 if no template)
-     *
-     *  v1 Node → Client:
-     *    Legacy lane   (len == 4): [0..3] session expiry seconds (little-endian uint32)
-     *    Stateless lane (len == 5): [0] status byte (0x01 = active) +
-     *                               [1..4] remaining_timeout (little-endian uint32)
-     *
-     *  v2 Node → Client UNIFIED (len == 32):
-     *    Used on BOTH ports — SESSION_KEEPALIVE (port 8323) and KEEPALIVE_V2_ACK (port 9323, 0xD101).
-     *    [0..3]   session_id          (little-endian uint32; session validation)
-     *    [4..7]   hashPrevBlock_lo32  (big-endian uint32; echo of miner's fork canary, 0 on legacy path)
+     *  Node → Client UNIFIED (len == 32):
+     *    Used on BOTH ports — SESSION_KEEPALIVE (port 8323, 0xD4) and (port 9323, 0xD0D4).
+     *    [0..3]   session_id          (big-endian uint32; session validation)
+     *    [4..7]   hashPrevBlock_lo32  (big-endian uint32; echo of miner's fork canary)
      *    [8..11]  unified_height      (big-endian uint32)
      *    [12..15] hash_tip_lo32       (big-endian uint32; lo32 of node hashBestChain, fork cross-check)
      *    [16..19] prime_height        (big-endian uint32)
@@ -58,37 +48,10 @@ namespace LLP
     namespace KeepaliveV2
     {
 
-        /** KeepAliveV2Frame — 8-byte frame parsed from Miner → Node request (KEEPALIVE_V2)
-         *
-         *  Wire format (big-endian):
-         *    [0-3]  uint32_t  sequence            Monotonic miner keepalive counter
-         *    [4-7]  uint32_t  hashPrevBlock_lo32  Low 32 bits of miner's current prevHash (fork canary)
-         **/
-        struct KeepAliveV2Frame
-        {
-            uint32_t sequence{0};
-            uint32_t hashPrevBlock_lo32{0};
-
-            static constexpr uint32_t PAYLOAD_SIZE = 8;
-
-            bool Parse(const std::vector<uint8_t>& data)
-            {
-                if(data.size() < 8) return false;
-                auto r32 = [&](int o) -> uint32_t {
-                    return (uint32_t(data[o  ]) << 24) | (uint32_t(data[o+1]) << 16)
-                          |(uint32_t(data[o+2]) <<  8) |  uint32_t(data[o+3]);
-                };
-                sequence           = r32(0);
-                hashPrevBlock_lo32 = r32(4);
-                return true;
-            }
-        };
-
-
-        /** KeepAliveV2AckFrame — 32-byte unified keepalive response (both SESSION_KEEPALIVE and KEEPALIVE_V2_ACK)
+        /** KeepAliveV2AckFrame — 32-byte unified keepalive response (SESSION_KEEPALIVE on both ports)
          *
          *  Wire format:
-         *    [0-3]   uint32_t  session_id          little-endian — session validation
+         *    [0-3]   uint32_t  session_id          big-endian — session validation
          *    [4-7]   uint32_t  hashPrevBlock_lo32  big-endian — echo of miner's fork canary
          *    [8-11]  uint32_t  unified_height      big-endian
          *    [12-15] uint32_t  hash_tip_lo32       big-endian — lo32 of node hashBestChain
@@ -98,15 +61,15 @@ namespace LLP
          *    [28-31] uint32_t  fork_score          big-endian — 0=healthy, >0=divergence
          *
          *  Used on BOTH ports:
-         *    - Legacy SESSION_KEEPALIVE response (port 8323)   replaces BuildBestCurrentResponse()
-         *    - Stateless KEEPALIVE_V2_ACK (port 9323, 0xD101) replaces the old sequence-based format
+         *    - Legacy SESSION_KEEPALIVE response (port 8323)
+         *    - Stateless SESSION_KEEPALIVE response (port 9323, 0xD0D4)
          *
          *  nBits is NOT included — miner obtains difficulty from the 12-byte GET_BLOCK response.
          *  hashBestChain_prefix is NOT included — hash_tip_lo32 serves the fork-canary role.
          **/
         struct KeepAliveV2AckFrame
         {
-            uint32_t session_id{0};         // [0-3]  LE — session validation
+            uint32_t session_id{0};         // [0-3]  BE — session validation
             uint32_t hashPrevBlock_lo32{0}; // [4-7]  BE — echo of miner's fork canary
             uint32_t unified_height{0};     // [8-11] BE
             uint32_t hash_tip_lo32{0};      // [12-15] BE — lo32 of node hashBestChain
@@ -122,19 +85,14 @@ namespace LLP
                 std::vector<uint8_t> v;
                 v.reserve(32);
 
-                // session_id: little-endian (matches legacy SESSION_KEEPALIVE encoding)
-                v.push_back(static_cast<uint8_t>( session_id        & 0xFF));
-                v.push_back(static_cast<uint8_t>((session_id >>  8) & 0xFF));
-                v.push_back(static_cast<uint8_t>((session_id >> 16) & 0xFF));
-                v.push_back(static_cast<uint8_t>((session_id >> 24) & 0xFF));
-
-                // remaining fields: big-endian
+                // All fields big-endian (unified wire format)
                 auto p32be = [&](uint32_t x) {
                     v.push_back((x >> 24) & 0xFF);
                     v.push_back((x >> 16) & 0xFF);
                     v.push_back((x >>  8) & 0xFF);
                     v.push_back( x        & 0xFF);
                 };
+                p32be(session_id);
                 p32be(hashPrevBlock_lo32);
                 p32be(unified_height);
                 p32be(hash_tip_lo32);
@@ -150,18 +108,17 @@ namespace LLP
         /** BuildUnifiedResponse
          *
          *  Build the 32-byte unified keepalive response used on both legacy and stateless paths.
-         *  Replaces BuildBestCurrentResponse() which is now deleted.
          *
-         *  @param[in] nSessionId      Session identifier (little-endian in wire format)
-         *  @param[in] nHashPrevLo32   Lo32 of miner's hashPrevBlock echo (from request, 0 if legacy path)
+         *  @param[in] nSessionId      Session identifier (big-endian in wire format)
+         *  @param[in] nHashPrevLo32   Lo32 of miner's hashPrevBlock echo (from request)
          *  @param[in] nUnifiedHeight  Current unified best-chain height
          *  @param[in] nHashTipLo32    Lo32 of node's current hashBestChain
          *  @param[in] nPrimeHeight    Current Prime channel height
          *  @param[in] nHashHeight     Current Hash channel height
          *  @param[in] nStakeHeight    Current Stake channel height
-         *  @param[in] nForkScore      Fork divergence score (0=healthy; use 0 on legacy path)
+         *  @param[in] nForkScore      Fork divergence score (0=healthy)
          *
-         *  @return 32-byte serialized payload
+         *  @return 32-byte serialized payload (all fields big-endian)
          **/
         inline std::vector<uint8_t> BuildUnifiedResponse(
             uint32_t nSessionId,
@@ -188,14 +145,17 @@ namespace LLP
 
         /** ParsePayload
          *
-         *  Parse a keepalive payload to extract session_id and (for v2) miner_prevblock_suffix.
+         *  Parse an 8-byte SESSION_KEEPALIVE request payload (big-endian).
          *
-         *  @param[in]  data                   Raw payload bytes
-         *  @param[out] nSessionId             Session ID (bytes [0..3], little-endian)
-         *  @param[out] prevblockSuffixBytes   Raw bytes [4..7] as-sent (zeroed if payload is v1)
+         *  Wire format:
+         *    [0..3] session_id          (big-endian uint32)
+         *    [4..7] hashPrevBlock_lo32  (big-endian uint32; fork canary, 0 if no template)
          *
-         *  @return true if the payload is v2 (len >= 8), false if v1 (len >= 4 but < 8)
-         *          Callers should reject if data.size() < 4.
+         *  @param[in]  data                   Raw payload bytes (must be exactly 8)
+         *  @param[out] nSessionId             Session ID (bytes [0..3], big-endian)
+         *  @param[out] prevblockSuffixBytes   Raw bytes [4..7] as-sent (fork canary)
+         *
+         *  @return true if the payload is valid (len >= 8), false otherwise
          *
          **/
         inline bool ParsePayload(
@@ -205,27 +165,22 @@ namespace LLP
         {
             prevblockSuffixBytes = {};
 
-            if(data.size() < 4)
+            if(data.size() < 8)
                 return false;
 
-            /* Parse session_id (little-endian) */
+            /* Parse session_id (big-endian) */
             nSessionId =
-                static_cast<uint32_t>(data[0])        |
-                (static_cast<uint32_t>(data[1]) << 8)  |
-                (static_cast<uint32_t>(data[2]) << 16) |
-                (static_cast<uint32_t>(data[3]) << 24);
+                (static_cast<uint32_t>(data[0]) << 24) |
+                (static_cast<uint32_t>(data[1]) << 16) |
+                (static_cast<uint32_t>(data[2]) << 8)  |
+                 static_cast<uint32_t>(data[3]);
 
-            if(data.size() >= 8)
-            {
-                /* v2: copy miner_prevblock_suffix as raw bytes (no endian conversion) */
-                prevblockSuffixBytes[0] = data[4];
-                prevblockSuffixBytes[1] = data[5];
-                prevblockSuffixBytes[2] = data[6];
-                prevblockSuffixBytes[3] = data[7];
-                return true;
-            }
-
-            return false; /* v1 */
+            /* Copy hashPrevBlock_lo32 as raw bytes (already big-endian on wire) */
+            prevblockSuffixBytes[0] = data[4];
+            prevblockSuffixBytes[1] = data[5];
+            prevblockSuffixBytes[2] = data[6];
+            prevblockSuffixBytes[3] = data[7];
+            return true;
         }
 
     } /* namespace KeepaliveV2 */
