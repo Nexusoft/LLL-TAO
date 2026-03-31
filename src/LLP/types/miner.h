@@ -472,10 +472,8 @@ namespace LLP
          * OWN channel advances, preventing ~40% wasted work from cross-channel triggers. */
         uint32_t             nLastTemplateChannelHeight;
 
-        /* KEEPALIVE v2 telemetry fields.
-         * fKeepaliveV2: true once the miner sent a v2 keepalive (len==8) on this connection.
-         * nMinerPrevblockSuffix: raw bytes [4..7] of v2 payload (prevblock suffix as-sent). */
-        bool                           fKeepaliveV2;
+        /* KEEPALIVE telemetry fields.
+         * nMinerPrevblockSuffix: raw bytes [4..7] of keepalive payload (hashPrevBlock_lo32 as-sent). */
         std::array<uint8_t, 4>         nMinerPrevblockSuffix;
 
         /** Timestamp of the last template push (SendChannelNotification).

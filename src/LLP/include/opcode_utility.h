@@ -375,12 +375,11 @@ namespace OpcodeUtility
      *
      *  Returns a human-readable name for a 16-bit stateless opcode for logging purposes.
      *  Handles both mirrored opcodes (0xD0xx) and un-mirrored stateless-only opcodes:
-     *    - KEEPALIVE_V2 (0xD100), KEEPALIVE_V2_ACK (0xD101)
      *    - PING_DIAG (0xD0E0), PONG_DIAG (0xD0E1)
      *
      *  @param[in] nOpcode The 16-bit opcode to get the name for
      *
-     *  @return String name of the opcode (e.g., "STATELESS_GET_BLOCK", "KEEPALIVE_V2")
+     *  @return String name of the opcode (e.g., "STATELESS_GET_BLOCK", "STATELESS_SESSION_KEEPALIVE")
      *
      **/
     std::string GetOpcodeName16(uint16_t nOpcode);
@@ -423,9 +422,7 @@ namespace OpcodeUtility
      *  Check if a 16-bit stateless opcode carries a data payload.
      *
      *  Covers both mirrored opcodes (0xD0xx) and un-mirrored stateless-only
-     *  opcodes (0xD1xx). Un-mirrored data-bearing opcodes:
-     *    - KEEPALIVE_V2     (0xD100): 8-byte payload
-     *    - KEEPALIVE_V2_ACK (0xD101): 32-byte payload
+     *  opcodes. Un-mirrored data-bearing opcodes:
      *    - PING_DIAG        (0xD0E0): 64-byte PingFrame
      *    - PONG_DIAG        (0xD0E1): 64-byte PongFrame
      *
@@ -443,8 +440,7 @@ namespace OpcodeUtility
      *  Un-mirrored opcodes have NO legacy lane equivalent and must NEVER
      *  be sent or accepted on legacy port 8323.
      *
-     *  Un-mirrored opcodes: KEEPALIVE_V2 (0xD100), KEEPALIVE_V2_ACK (0xD101),
-     *  PING_DIAG (0xD0E0), PONG_DIAG (0xD0E1).
+     *  Un-mirrored opcodes: PING_DIAG (0xD0E0), PONG_DIAG (0xD0E1).
      *
      *  @param[in] nOpcode  The 16-bit opcode to check
      *
@@ -460,8 +456,6 @@ namespace OpcodeUtility
      *  fixed-length payloads. Returns 0 for variable-length or header-only.
      *
      *  Fixed-size opcodes:
-     *    - KEEPALIVE_V2     (0xD100): 8 bytes
-     *    - KEEPALIVE_V2_ACK (0xD101): 32 bytes
      *    - PING_DIAG        (0xD0E0): 64 bytes
      *    - PONG_DIAG        (0xD0E1): 64 bytes
      *
@@ -491,8 +485,6 @@ namespace OpcodeUtility
      *
      *  Validates that a stateless packet's length is within acceptable bounds.
      *  Enforces exact payload sizes for fixed-length un-mirrored stateless opcodes:
-     *    - KEEPALIVE_V2: exactly 8 bytes
-     *    - KEEPALIVE_V2_ACK: exactly 32 bytes
      *    - PING_DIAG / PONG_DIAG: exactly 64 bytes
      *
      *  @param[in] packet The stateless packet to validate

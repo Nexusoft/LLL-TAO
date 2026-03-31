@@ -271,8 +271,8 @@ namespace LLP
 
         /** on_keepalive_ack
          *
-         *  Called by miner.cpp (SESSION_KEEPALIVE reply) and stateless_miner.cpp
-         *  (KEEPALIVE_V2_ACK reply) immediately after BuildUnifiedResponse() is sent.
+         *  Called by miner.cpp and stateless_miner.cpp (SESSION_KEEPALIVE reply)
+         *  immediately after BuildUnifiedResponse() is sent.
          *
          *  Stores the unified chain-state snapshot for the connected miner so that
          *  Colin's periodic report can display live heights and fork canary status.

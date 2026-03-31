@@ -816,10 +816,10 @@ namespace LLP
         /** WithStakeHeight
          *
          *  Returns a new context with updated stake channel height.
-         *  Called after each KEEPALIVE_V2 cycle to persist nStakeHeight
+         *  Called after each keepalive cycle to persist nStakeHeight
          *  across keepalive cycles without re-querying ChainState.
          *
-         *  @param[in] h The Stake channel height from the last KEEPALIVE_V2 ACK
+         *  @param[in] h The Stake channel height from the last keepalive response
          *
          **/
         MiningContext WithStakeHeight(uint32_t h) const;
