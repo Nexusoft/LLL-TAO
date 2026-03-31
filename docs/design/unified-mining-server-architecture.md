@@ -26,7 +26,7 @@ Both lanes previously had nearly identical code for:
 
 The **only** differences were:
 - Port number: `GetMiningPort()` vs `GetLegacyMiningPort()`
-- Default socket timeout: 300s (stateless) vs 120s (legacy)
+- Default socket timeout: 300s (unified for both lanes; authenticated miners exempt via IsTimeoutExempt())
 
 ## Solution: MiningServerFactory
 
@@ -49,7 +49,7 @@ struct MiningServerFactory
 {
     enum class Lane {
         STATELESS,  // Port 9323, 300s timeout, push-based
-        LEGACY      // Port 8323, 120s timeout, polling-based
+        LEGACY      // Port 8323, 300s timeout, polling-based
     };
 
     static LLP::Config BuildConfig(Lane lane);
@@ -79,7 +79,7 @@ LLP::Config LEGACY_CONFIG = LLP::Config(nLegacyPort);
 LEGACY_CONFIG.ENABLE_LISTEN = true;
 LEGACY_CONFIG.ENABLE_METERS = false;
 // ... 30+ more lines of duplication ...
-LEGACY_CONFIG.SOCKET_TIMEOUT = config::GetArg(std::string("-miningtimeout"), 120);
+LEGACY_CONFIG.SOCKET_TIMEOUT = config::GetArg(std::string("-miningtimeout"), 300);
 MINING_SERVER = new Server<Miner>(LEGACY_CONFIG);
 ```
 
@@ -111,7 +111,7 @@ MINING_SERVER = new Server<Miner>(LEGACY_CONFIG);
 | **SSL Port** | 9325 (configurable via `-miningstatelesssslport`) | 8325 (configurable via `-mininglegacysslport`) |
 | **Protocol** | 16-bit stateless framing | 8-bit legacy framing |
 | **Communication** | Push notifications (event-driven) | GET_BLOCK polling (request-driven) |
-| **Timeout** | 300s (accommodates long Prime searches) | 120s (traditional polling interval) |
+| **Timeout** | 300s (authenticated miners exempt via IsTimeoutExempt()) | 300s (unified; authenticated miners exempt) |
 | **Authentication** | Falcon mandatory | Falcon optional (backward compat) |
 | **Connection Type** | `Server<StatelessMinerConnection>` | `Server<Miner>` |
 | **Opcode Width** | 2 bytes (0xD0xx range) | 1 byte (0xD9, 0xDA) |
@@ -168,7 +168,7 @@ nexus -legacyminingport=0
 **Timeout Configuration Priority:**
 1. Lane-specific argument (`-miningstatelesstimeout` or `-mininglegacytimeout`)
 2. Generic argument (`-miningtimeout`) for backward compatibility
-3. Lane-specific default (300s for stateless, 120s for legacy)
+3. Unified default (300s for both lanes; authenticated miners exempt via IsTimeoutExempt())
 
 **Problem Solved:** Prior to per-lane timeout support, setting `-miningtimeout=60` would clobber the stateless lane's protective 300s timeout, breaking Prime mining. Now users can:
 - Use `-miningstatelesstimeout=300 -mininglegacytimeout=60` for optimal per-lane control
@@ -239,7 +239,7 @@ failure observed when reconnecting on the same plaintext port after a drop.
 
 **Key Characteristics:**
 - **Polling Protocol**: Miner periodically calls GET_ROUND (every 5-10s) to check for new work
-- **Short Timeout**: 120-second default matches traditional polling frequency
+- **Unified Timeout**: 300-second default (matches stateless lane; authenticated miners exempt from socket timeout)
 - **8-bit Opcodes**: Legacy packet framing (0x00-0xFF range)
 - **Optional Authentication**: Falcon signatures optional for backward compatibility
 - **Active Polling**: Miner activity expected every 5-10 seconds
@@ -268,8 +268,8 @@ static LLP::Config BuildConfig(Lane lane)
     const uint16_t nPort = (lane == Lane::STATELESS) ?
         GetMiningPort() : GetLegacyMiningPort();
 
-    // 2. Determine lane-specific default timeout
-    const uint32_t nDefaultTimeout = (lane == Lane::STATELESS) ? 300 : 120;
+    // 2. Determine unified default timeout (both lanes use same value)
+    const uint32_t nDefaultTimeout = 300;
 
     // 3. Create base config with port
     LLP::Config CONFIG = LLP::Config(nPort);
@@ -288,7 +288,7 @@ static LLP::Config BuildConfig(Lane lane)
 
 **Design Rationale:**
 - **Ternary Operator**: Clear, concise lane differentiation
-- **Default Timeout**: Lane-appropriate defaults (300s vs 120s)
+- **Default Timeout**: Unified 300s default (authenticated miners exempt via IsTimeoutExempt())
 - **Command-Line Override**: `-miningtimeout` can override lane defaults
 - **Return by Value**: Config copied to caller (safe ownership transfer)
 
@@ -375,7 +375,7 @@ TEST_CASE("MiningServerFactory BuildConfig")
     SECTION("Legacy lane produces correct config")
     {
         auto cfg = MiningServerFactory::BuildConfig(MiningServerFactory::Lane::LEGACY);
-        CHECK(cfg.SOCKET_TIMEOUT == 120);  // Default for legacy
+        CHECK(cfg.SOCKET_TIMEOUT == 300);  // Default for legacy (unified with stateless)
         CHECK(cfg.ENABLE_LISTEN == true);
         CHECK(cfg.MAX_THREADS == 4);
     }
@@ -404,7 +404,7 @@ nexus -mining=1 -testnet
 
 # Test legacy lane
 nexus -mining=1 -legacyminingport=8323
-# Verify: Port 8323 listening, 120s timeout
+# Verify: Port 8323 listening, 300s timeout
 
 # Test with custom timeout
 nexus -mining=1 -miningtimeout=180
@@ -422,7 +422,7 @@ Verify protocol behavior unchanged:
 1. **Stateless Lane**: Connect NexusMiner, verify push notifications work
 2. **Legacy Lane**: Connect legacy miner, verify GET_ROUND polling works
 3. **Dual-Lane**: Connect both simultaneously, verify no interference
-4. **Timeout Behavior**: Verify stateless tolerates 300s idle, legacy times out at 120s
+4. **Timeout Behavior**: Verify both lanes tolerate 300s idle; authenticated miners exempt from socket timeout
 
 ## Migration Notes
 

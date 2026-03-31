@@ -211,13 +211,15 @@ namespace LLP
             const uint16_t nPort = (lane == Lane::STATELESS) ?
                 GetMiningPort() : GetLegacyMiningPort();
 
-            /* Default timeout depends on protocol:
-             * - Stateless (300s): Accommodates long Prime block searches (2-5+ minutes).
-             *   The miner doesn't send data during mining, only after finding a block.
-             *   The node pushes templates, so read-idle silence is expected.
-             * - Legacy (120s): Traditional polling protocol with ~5-10s GET_BLOCK intervals.
-             *   Miner actively polls, so shorter timeout is appropriate. */
-            const uint32_t nDefaultTimeout = (lane == Lane::STATELESS) ? 300 : 120;
+            /* Socket timeout for mining lanes.
+             * Both Stateless and Legacy lanes use the same default timeout.
+             * The only protocol difference is opcode size (1-byte vs 2-byte).
+             *
+             * With authenticated miners exempt from socket read-idle timeout
+             * (via IsTimeoutExempt()), this value primarily affects
+             * unauthenticated connections that haven't completed Falcon auth.
+             * Authenticated miners are governed by the 24-hour session keepalive. */
+            const uint32_t nDefaultTimeout = 300;
 
             /* Generate unified config object */
             LLP::Config CONFIG = LLP::Config(nPort);

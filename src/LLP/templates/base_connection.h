@@ -76,6 +76,25 @@ namespace LLP
 
     public:
 
+        /** IsTimeoutExempt
+         *
+         *  Virtual method to determine if this connection should be exempted from
+         *  socket read-idle timeout disconnection in the DataThread polling loop.
+         *
+         *  Mining connections override this to return true when the miner has
+         *  completed Falcon authentication. This prevents the socket-level
+         *  DISCONNECT::TIMEOUT from killing authenticated miners that are
+         *  legitimately idle (e.g., during long Prime block searches).
+         *
+         *  The session-level keepalive timeout (24 hours) remains the authority
+         *  for session expiration; the socket timeout is bypassed.
+         *
+         *  @return true if connection should bypass socket read timeout, false otherwise.
+         *
+         **/
+        virtual bool IsTimeoutExempt() const { return false; }
+
+
         /** Incoming Packet Being Built. **/
         PacketType     INCOMING;
 

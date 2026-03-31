@@ -2776,6 +2776,11 @@ namespace LLP
                 
                 context = result.context;
 
+                /* Mirror authentication state to atomic flag for lock-free DataThread reads.
+                 * Only transitions false → true (write-once); relaxed ordering is sufficient. */
+                if(context.fAuthenticated)
+                    fAuthenticatedAtomic.store(true, std::memory_order_relaxed);
+
                 /* Derive ChaCha20 key from genesis using unified helper (same as legacy miner) */
                 if(PACKET.HEADER == MINER_AUTH_RESPONSE && context.fAuthenticated)
                 {
@@ -4600,6 +4605,18 @@ namespace LLP
      * data races with writers (e.g. in ProcessPacket). Callers get a snapshot
      * of the state and cannot mutate the internal context directly.
      */
+    /* IsTimeoutExempt - authenticated miners bypass socket read-idle timeout */
+    bool StatelessMinerConnection::IsTimeoutExempt() const
+    {
+        /* Read the atomic mirror of context.fAuthenticated.
+         * This avoids taking MUTEX on the hot DataThread polling path.
+         * The atomic is set once (false → true) under MUTEX when Falcon auth
+         * succeeds, so a relaxed load is sufficient — no ordering with other
+         * fields is required here. */
+        return fAuthenticatedAtomic.load(std::memory_order_relaxed);
+    }
+
+
     MiningContext StatelessMinerConnection::GetContext()
     {
         std::lock_guard<std::mutex> lock(MUTEX);

@@ -278,10 +278,12 @@ miningtimespan=60
 ### `miningtimeout`
 
 **Type:** Integer
-**Default:** Depends on lane (300s for stateless, 120s for legacy)
+**Default:** 300s (unified for both lanes)
 **Description:** Socket timeout (in seconds) for mining connections (applies to both lanes)
 
 Idle mining connections will be closed after this duration. This setting affects both the stateless (port 9323) and legacy (port 8323) mining lanes.
+
+**Note:** Authenticated miners (completed Falcon handshake) are **exempt** from socket read-idle timeout via `IsTimeoutExempt()`. Their session is governed by the 24-hour keepalive timeout instead. This socket timeout primarily affects unauthenticated connections.
 
 **Note:** For per-lane control, use `miningstatelesstimeout` and `mininglegacytimeout` instead.
 
@@ -292,8 +294,8 @@ miningtimeout=180
 
 **Recommendations:**
 - Use lane-specific settings for optimal performance
-- Stateless lane needs longer timeout for Prime mining (2-5+ minutes)
-- Legacy lane can use shorter timeout for polling protocol
+- Both lanes use 300s default; authenticated miners are exempt from socket timeout
+- The 24-hour session keepalive timeout governs authenticated session expiration
 
 ---
 
@@ -305,7 +307,7 @@ miningtimeout=180
 
 Controls timeout specifically for the stateless mining protocol. Takes priority over the generic `miningtimeout` setting.
 
-The stateless lane uses a push notification protocol where miners may be silent for several minutes while searching for Prime blocks. The default 300-second timeout accommodates this behavior.
+The stateless lane uses a push notification protocol where miners may be silent for several minutes while searching for Prime blocks. Authenticated miners are exempt from this socket timeout via `IsTimeoutExempt()`.
 
 **Example:**
 ```ini
@@ -314,7 +316,7 @@ miningstatelesstimeout=300
 
 **Recommendations:**
 - Keep at 300s or higher for Prime mining
-- Increase if miners frequently disconnect during Prime block searches
+- Authenticated miners are exempt from socket timeout (governed by 24-hour keepalive)
 - This setting overrides `miningtimeout` for the stateless lane
 
 ---
@@ -322,21 +324,20 @@ miningstatelesstimeout=300
 ### `mininglegacytimeout`
 
 **Type:** Integer
-**Default:** `120`
+**Default:** `300`
 **Description:** Socket timeout (in seconds) for legacy mining lane (port 8323)
 
 Controls timeout specifically for the legacy mining protocol. Takes priority over the generic `miningtimeout` setting.
 
-The legacy lane uses a polling protocol where miners actively request work every 5-10 seconds. The default 120-second timeout is appropriate for this active communication pattern.
+The legacy lane now uses the same 300-second default as the stateless lane. Authenticated miners are exempt from this socket timeout via `IsTimeoutExempt()`. The only protocol difference is opcode size (1-byte vs 2-byte).
 
 **Example:**
 ```ini
-mininglegacytimeout=120
+mininglegacytimeout=300
 ```
 
 **Recommendations:**
-- Keep at 120s or lower for polling protocol
-- Decrease to free up resources faster
+- Authenticated miners are exempt from socket timeout (governed by 24-hour keepalive)
 - This setting overrides `miningtimeout` for the legacy lane
 
 ---

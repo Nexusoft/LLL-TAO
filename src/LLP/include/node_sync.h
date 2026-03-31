@@ -252,7 +252,7 @@ namespace LLP
          *  @return Number of entries removed
          *
          **/
-        uint32_t CleanupStale(uint64_t nSessionTimeoutSec = 3600, uint64_t nBlockTimeoutSec = 600);
+        uint32_t CleanupStale(uint64_t nSessionTimeoutSec = 86400, uint64_t nBlockTimeoutSec = 600);
 
         /** SetLocalNodeAddress
          *

@@ -120,7 +120,7 @@ namespace LLP
          *  @return true if expired
          *
          **/
-        bool IsExpired(uint64_t nTimeoutSec = 3600) const;
+        bool IsExpired(uint64_t nTimeoutSec = 604800) const;
 
         /** UpdateActivity
          *
@@ -350,7 +350,7 @@ namespace LLP
          *  @return Number of sessions removed
          *
          **/
-        uint32_t CleanupExpired(uint64_t nTimeoutSec = 3600);
+        uint32_t CleanupExpired(uint64_t nTimeoutSec = 604800);
 
         /** GetSessionCount
          *

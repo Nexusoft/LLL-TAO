@@ -479,7 +479,7 @@ Add new method `PurgeInactiveConnections()`:
 - Log purged connections: "Purged inactive miner: [address]"
 
 Method `Timer()` line 234:
-- Call `PurgeInactiveConnections()` every 3600 seconds
+- Call `PurgeInactiveConnections()` every 86400 seconds (24 hours)
 
 ### File: src/LLP/types/miner.h
 

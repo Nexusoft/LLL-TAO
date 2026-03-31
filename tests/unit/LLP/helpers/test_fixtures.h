@@ -52,8 +52,8 @@ namespace TestFixtures
         /* ChaCha20 key size */
         const size_t CHACHA_KEY_SIZE = 32;
         
-        /* Default session timeout */
-        const uint64_t DEFAULT_SESSION_TIMEOUT = 3600;
+        /* Default session timeout (24 hours) */
+        const uint64_t DEFAULT_SESSION_TIMEOUT = 86400;
     }
     
     /** CreateTestGenesis

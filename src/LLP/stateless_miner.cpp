@@ -81,10 +81,11 @@ namespace LLP
 
     /* Default session timeout in seconds for mining sessions.
      * This is the inactivity timeout - sessions expire if no keepalive
-     * is received within this window. Set to 1 hour to prevent premature
-     * disconnection of active miners. Network-only disconnect policy:
+     * is received within this window. Set to 24 hours: miners send
+     * 2 KeepAliveV2 per 24 hours by default, and only 1 is required
+     * to keep the session alive. Network-only disconnect policy:
      * only disconnect on actual TCP errors, not idle time. */
-    static const uint64_t DEFAULT_SESSION_TIMEOUT = 3600;
+    static const uint64_t DEFAULT_SESSION_TIMEOUT = 86400;
 
     /* AAD (Additional Authenticated Data) strings for ChaCha20-Poly1305 AEAD
      * These provide domain separation between different packet types */

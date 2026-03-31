@@ -25,7 +25,7 @@ ________________________________________________________________________________
  * The factory should support:
  * 1. Lane-specific timeouts (-miningstatelesstimeout, -mininglegacytimeout)
  * 2. Generic timeout for backward compatibility (-miningtimeout)
- * 3. Lane-specific defaults (300s for stateless, 120s for legacy)
+ * 3. Unified default (300s for both lanes — authenticated miners are exempt via IsTimeoutExempt())
  */
 
 TEST_CASE("MiningServerFactory per-lane timeout configuration", "[miner][config][factory]")
@@ -47,9 +47,9 @@ TEST_CASE("MiningServerFactory per-lane timeout configuration", "[miner][config]
         LLP::Config legacy = LLP::MiningServerFactory::BuildConfig(
             LLP::MiningServerFactory::Lane::LEGACY);
 
-        /* Verify lane-specific default timeouts */
+        /* Verify unified default timeout (both lanes use 300s) */
         REQUIRE(stateless.SOCKET_TIMEOUT == 300);  // Stateless default: 300s
-        REQUIRE(legacy.SOCKET_TIMEOUT == 120);     // Legacy default: 120s
+        REQUIRE(legacy.SOCKET_TIMEOUT == 300);     // Legacy default: 300s (unified)
     }
 
     SECTION("Generic -miningtimeout applies to both lanes")
@@ -85,7 +85,7 @@ TEST_CASE("MiningServerFactory per-lane timeout configuration", "[miner][config]
 
         /* Stateless uses the specified timeout, legacy uses default */
         REQUIRE(stateless.SOCKET_TIMEOUT == 450);
-        REQUIRE(legacy.SOCKET_TIMEOUT == 120);
+        REQUIRE(legacy.SOCKET_TIMEOUT == 300);
     }
 
     SECTION("-mininglegacytimeout overrides default for legacy lane only")
