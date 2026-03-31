@@ -77,7 +77,7 @@ This pull request implements comprehensive enhancements to the LLL-TAO Node's mi
 - **Automatic Persistence:** Authenticated sessions saved for recovery
 - **Falcon Key Recovery:** Reconnect using key ID without re-authentication
 - **Address-Based Recovery:** Alternative recovery by IP address
-- **Configurable Timeout:** 1-hour default recovery window
+- **Configurable Timeout:** 24-hour session timeout / 7-day recovery cleanup window
 - **Reconnection Limits:** Maximum 10 attempts per session
 - **Thread-Safe Storage:** Concurrent hash maps for parallel access
 
@@ -293,13 +293,13 @@ The system includes comprehensive session recovery to handle temporary network i
 - **Automatic session persistence:** Authenticated sessions are automatically saved for recovery
 - **Falcon key-based recovery:** Miners can reconnect using their Falcon key ID without re-authentication
 - **Address-based recovery:** Alternative recovery by IP address for same-origin reconnects
-- **Configurable timeout:** Default 1-hour session recovery window (configurable)
+- **Configurable timeout:** Default 24-hour session timeout / 7-day recovery cleanup window (configurable)
 - **Reconnection limits:** Maximum 10 reconnection attempts per session (prevents abuse)
 - **Thread-safe storage:** Concurrent hash maps for safe parallel access
 
 **Recovery Flow:**
 1. Miner loses connection (network drop, WiFi disconnect, etc.)
-2. Session state persists in `SessionRecoveryManager` for up to 1 hour
+2. Session state persists in `SessionRecoveryManager` for up to 7 days (cleanup) / 24-hour session timeout
 3. Miner reconnects and presents Falcon key ID
 4. System validates: session exists, not expired, under reconnect limit
 5. Session restored with: channel, genesis hash, authentication status
@@ -313,7 +313,7 @@ The system includes comprehensive session recovery to handle temporary network i
 **Configuration:**
 ```cpp
 SessionRecoveryManager& mgr = SessionRecoveryManager::Get();
-mgr.SetSessionTimeout(3600);      // 1 hour default
+mgr.SetSessionTimeout(86400);      // 24 hours default
 mgr.SetMaxReconnects(10);          // 10 attempts default
 ```
 
@@ -339,7 +339,7 @@ This ensures miners using home internet connections (WiFi drops, ISP interruptio
 - Current design supports 500 concurrent miners
 - Can scale to 1000+ with configuration changes
 - Consider sharding for 10,000+ miner deployments
-- Session recovery supports memory-based persistence (1-hour window)
+- Session recovery supports memory-based persistence (24-hour session / 7-day cleanup window)
 
 ### Security Summary
 

@@ -267,7 +267,7 @@ nexusminer --host=pool.example.com --port=9336
 
 **Node Side Validation:**
 1. Check if session exists for presented key ID
-2. Verify session not expired (< 1 hour since last activity)
+2. Verify session not expired (< 24 hours since last activity, 7-day recovery window)
 3. Verify reconnection count under limit (< 10 attempts)
 4. Restore session: channel, genesis hash, authentication status
 5. Resume mining operations
@@ -276,7 +276,7 @@ nexusminer --host=pool.example.com --port=9336
 
 ```bash
 # In nexus.conf
-sessionrecovery.timeout=3600        # 1 hour default
+sessionrecovery.timeout=604800        # 7 days default (recovery cleanup window)
 sessionrecovery.maxreconnects=10    # 10 attempts default
 sessionrecovery.enabled=1           # Enable recovery
 ```
