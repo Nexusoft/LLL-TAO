@@ -146,8 +146,11 @@ namespace LLP
         }
     }
 
-    /** Default session timeout: 1 hour **/
-    static const uint64_t DEFAULT_SESSION_TIMEOUT = 3600;
+    /** Default session recovery timeout: 7 days.
+     *  Disconnected sessions are preserved for recovery during this window.
+     *  This is intentionally much longer than the 24-hour keepalive session
+     *  timeout to allow miners to reconnect after extended outages. **/
+    static const uint64_t DEFAULT_SESSION_TIMEOUT = 604800;
 
     /** Default max reconnects **/
     static const uint32_t DEFAULT_MAX_RECONNECTS = 10;

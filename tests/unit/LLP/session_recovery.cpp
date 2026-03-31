@@ -274,7 +274,7 @@ TEST_CASE("SessionRecoveryData Basic Tests", "[session_recovery]")
         SessionRecoveryData data;
         data.nLastActivity = runtime::unifiedtimestamp() - 7200;  // 2 hours ago
         
-        REQUIRE(data.IsExpired(3600) == true);  // 1 hour timeout
+        REQUIRE(data.IsExpired(3600) == true);  // Explicit 1-hour threshold for this test
     }
     
     SECTION("IsExpired returns false for recent sessions")
@@ -282,7 +282,7 @@ TEST_CASE("SessionRecoveryData Basic Tests", "[session_recovery]")
         SessionRecoveryData data;
         data.nLastActivity = runtime::unifiedtimestamp() - 100;  // 100 seconds ago
         
-        REQUIRE(data.IsExpired(3600) == false);  // 1 hour timeout
+        REQUIRE(data.IsExpired(3600) == false);  // Explicit 1-hour threshold for this test
     }
 }
 

@@ -397,8 +397,13 @@ namespace LLP
                         continue;
                     }
 
-                    /* Remove Connection if it has Timed out or had any Errors. */
-                    if(CONNECTION->Timeout(TIMEOUT * 1000, Socket::READ))
+                    /* Remove Connection if it has Timed out or had any Errors.
+                     * Authenticated mining connections are exempt — their session-level
+                     * 24-hour keepalive timeout governs expiration, not the socket
+                     * read-idle timer. This prevents the DataThread from killing miners
+                     * that are legitimately idle during long mining operations. */
+                    if(CONNECTION->Timeout(TIMEOUT * 1000, Socket::READ)
+                    && !CONNECTION->IsTimeoutExempt())
                     {
                         remove_connection_with_event(nIndex, DISCONNECT::TIMEOUT);
                         continue;

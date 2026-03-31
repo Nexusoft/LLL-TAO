@@ -4600,6 +4600,16 @@ namespace LLP
      * data races with writers (e.g. in ProcessPacket). Callers get a snapshot
      * of the state and cannot mutate the internal context directly.
      */
+    /* IsTimeoutExempt - authenticated miners bypass socket read-idle timeout */
+    bool StatelessMinerConnection::IsTimeoutExempt() const
+    {
+        /* Note: context.fAuthenticated is set once during auth and never cleared,
+         * so reading it without the mutex is safe for this boolean check.
+         * The MUTEX protects mutable context updates, not this read-only query. */
+        return context.fAuthenticated;
+    }
+
+
     MiningContext StatelessMinerConnection::GetContext()
     {
         std::lock_guard<std::mutex> lock(MUTEX);

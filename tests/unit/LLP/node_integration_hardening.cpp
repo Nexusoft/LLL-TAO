@@ -712,20 +712,20 @@ TEST_CASE("Integration: Session Timeout Configuration Scenarios", "[integration]
         REQUIRE(ctx.IsSessionExpired(now + 300) == true);
     }
 
-    SECTION("Long timeout (enterprise/pool: 3600s)")
+    SECTION("Long timeout (24-hour keepalive session)")
     {
-        /* Test with 3600s timeout (1 hour) - for stable pool connections */
+        /* Test with 86400s timeout (24 hours) - standard authenticated mining session */
 
         uint64_t now = runtime::unifiedtimestamp();
 
         MiningContext ctx = MiningContext()
             .WithSessionStart(now)
             .WithTimestamp(now)
-            .WithSessionTimeout(Constants::DEFAULT_SESSION_TIMEOUT)  // 3600s
+            .WithSessionTimeout(Constants::DEFAULT_SESSION_TIMEOUT)  // 86400s
             .WithSession(54321)
             .WithAuth(true);
 
-        REQUIRE(ctx.IsSessionExpired(now + 3599) == false);
-        REQUIRE(ctx.IsSessionExpired(now + 3600) == true);
+        REQUIRE(ctx.IsSessionExpired(now + 86399) == false);
+        REQUIRE(ctx.IsSessionExpired(now + 86400) == true);
     }
 }

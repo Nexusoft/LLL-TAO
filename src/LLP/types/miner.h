@@ -564,6 +564,21 @@ namespace LLP
         bool ProcessPacket() final;
 
 
+        /** IsTimeoutExempt
+         *
+         *  Authenticated mining connections are exempt from socket read-idle timeout.
+         *  The session-level 24-hour keepalive timeout governs session expiration;
+         *  the socket timeout must not kill long-running authenticated miners.
+         *
+         *  @return true if miner is authenticated and should bypass socket timeout.
+         *
+         **/
+        bool IsTimeoutExempt() const final
+        {
+            return fMinerAuthenticated;
+        }
+
+
         /** ProcessPacketStateless
          *
          *  Handles packets from stateless miners.
