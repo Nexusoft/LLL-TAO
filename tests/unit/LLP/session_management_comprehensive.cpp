@@ -616,14 +616,19 @@ TEST_CASE("Session: SESSION_EXPIRED Opcode and Graceful Eviction", "[session][ex
         /* Session should be expired */
         REQUIRE(ctx.IsSessionExpired(now) == true);
 
-        /* Build keepalive packet */
+        /* Build keepalive packet (8 bytes: session_id LE + prevblock_lo32 BE) */
         StatelessPacket keepalivePacket(StatelessOpcodes::SESSION_KEEPALIVE);
         uint32_t sessionId = 12345;
         keepalivePacket.DATA.push_back(static_cast<uint8_t>(sessionId & 0xFF));
         keepalivePacket.DATA.push_back(static_cast<uint8_t>((sessionId >> 8) & 0xFF));
         keepalivePacket.DATA.push_back(static_cast<uint8_t>((sessionId >> 16) & 0xFF));
         keepalivePacket.DATA.push_back(static_cast<uint8_t>((sessionId >> 24) & 0xFF));
-        keepalivePacket.LENGTH = 4;
+        /* hashPrevBlock_lo32 = 0 (no template) */
+        keepalivePacket.DATA.push_back(0x00);
+        keepalivePacket.DATA.push_back(0x00);
+        keepalivePacket.DATA.push_back(0x00);
+        keepalivePacket.DATA.push_back(0x00);
+        keepalivePacket.LENGTH = 8;
 
         /* Process keepalive on expired but authenticated session */
         ProcessResult result = StatelessMiner::ProcessSessionKeepalive(ctx, keepalivePacket);
@@ -661,8 +666,8 @@ TEST_CASE("Session: SESSION_EXPIRED Opcode and Graceful Eviction", "[session][ex
         REQUIRE(ctx.IsSessionExpired(now) == true);
 
         StatelessPacket keepalivePacket(StatelessOpcodes::SESSION_KEEPALIVE);
-        keepalivePacket.DATA.resize(4, 0);
-        keepalivePacket.LENGTH = 4;
+        keepalivePacket.DATA.resize(8, 0);
+        keepalivePacket.LENGTH = 8;
 
         ProcessResult result = StatelessMiner::ProcessSessionKeepalive(ctx, keepalivePacket);
 
@@ -677,7 +682,7 @@ TEST_CASE("Session: SESSION_EXPIRED Opcode and Graceful Eviction", "[session][ex
         REQUIRE(result.response.DATA[4] == 0x01);  // EXPIRED_INACTIVITY
     }
 
-    SECTION("ProcessKeepaliveV2 extends session for authenticated expired miner")
+    SECTION("ProcessSessionKeepalive extends session for authenticated expired miner (8-byte payload)")
     {
         uint64_t now = runtime::unifiedtimestamp();
         uint64_t oldTime = now - 400;
@@ -692,16 +697,16 @@ TEST_CASE("Session: SESSION_EXPIRED Opcode and Graceful Eviction", "[session][ex
 
         REQUIRE(ctx.IsSessionExpired(now) == true);
 
-        /* Build KEEPALIVE_V2 packet (8 bytes: sequence + prevblock_lo32) */
-        StatelessPacket v2Packet(StatelessOpcodes::KEEPALIVE_V2);
-        uint32_t sequence = 100;
+        /* Build SESSION_KEEPALIVE packet (8 bytes: session_id LE + prevblock_lo32 BE) */
+        StatelessPacket v2Packet(StatelessOpcodes::SESSION_KEEPALIVE);
+        uint32_t sessionId = 54321;
         uint32_t prevHashLo32 = 0xDEADBEEF;
 
-        /* Sequence (4 bytes BE) */
-        v2Packet.DATA.push_back(static_cast<uint8_t>((sequence >> 24) & 0xFF));
-        v2Packet.DATA.push_back(static_cast<uint8_t>((sequence >> 16) & 0xFF));
-        v2Packet.DATA.push_back(static_cast<uint8_t>((sequence >> 8) & 0xFF));
-        v2Packet.DATA.push_back(static_cast<uint8_t>(sequence & 0xFF));
+        /* session_id (4 bytes LE) */
+        v2Packet.DATA.push_back(static_cast<uint8_t>(sessionId & 0xFF));
+        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 8) & 0xFF));
+        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 16) & 0xFF));
+        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 24) & 0xFF));
 
         /* prevHashLo32 (4 bytes BE) */
         v2Packet.DATA.push_back(static_cast<uint8_t>((prevHashLo32 >> 24) & 0xFF));
@@ -711,17 +716,17 @@ TEST_CASE("Session: SESSION_EXPIRED Opcode and Graceful Eviction", "[session][ex
 
         v2Packet.LENGTH = 8;
 
-        /* Process KEEPALIVE_V2 on expired but authenticated session */
-        ProcessResult result = StatelessMiner::ProcessKeepaliveV2(ctx, v2Packet);
+        /* Process SESSION_KEEPALIVE on expired but authenticated session */
+        ProcessResult result = StatelessMiner::ProcessSessionKeepalive(ctx, v2Packet);
 
         /* Should return Success */
         REQUIRE(result.fSuccess == true);
 
-        /* Response should be a KEEPALIVE_V2_ACK (0xD101), NOT SESSION_EXPIRED — session is extended */
-        REQUIRE(result.response.HEADER == StatelessOpcodes::KEEPALIVE_V2_ACK);
+        /* Response should be SESSION_KEEPALIVE, NOT SESSION_EXPIRED — session is extended */
+        REQUIRE(result.response.HEADER == StatelessOpcodes::SESSION_KEEPALIVE);
     }
 
-    SECTION("ProcessKeepaliveV2 sends SESSION_EXPIRED for expired session with no session ID")
+    SECTION("ProcessSessionKeepalive sends SESSION_EXPIRED for expired session with no session ID (8-byte payload)")
     {
         uint64_t now = runtime::unifiedtimestamp();
         uint64_t oldTime = now - 400;
@@ -736,11 +741,11 @@ TEST_CASE("Session: SESSION_EXPIRED Opcode and Graceful Eviction", "[session][ex
 
         REQUIRE(ctx.IsSessionExpired(now) == true);
 
-        StatelessPacket v2Packet(StatelessOpcodes::KEEPALIVE_V2);
+        StatelessPacket v2Packet(StatelessOpcodes::SESSION_KEEPALIVE);
         v2Packet.DATA.resize(8, 0);
         v2Packet.LENGTH = 8;
 
-        ProcessResult result = StatelessMiner::ProcessKeepaliveV2(ctx, v2Packet);
+        ProcessResult result = StatelessMiner::ProcessSessionKeepalive(ctx, v2Packet);
 
         /* Should return Success (keeps connection open) */
         REQUIRE(result.fSuccess == true);
@@ -788,8 +793,8 @@ TEST_CASE("Session: SESSION_EXPIRED Opcode and Graceful Eviction", "[session][ex
             .WithAuth(true);
 
         StatelessPacket keepalive(StatelessOpcodes::SESSION_KEEPALIVE);
-        keepalive.DATA.resize(4, 0);
-        keepalive.LENGTH = 4;
+        keepalive.DATA.resize(8, 0);
+        keepalive.LENGTH = 8;
 
         ProcessResult result = StatelessMiner::ProcessSessionKeepalive(expired, keepalive);
 

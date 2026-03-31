@@ -117,7 +117,6 @@ namespace LLP
     , fSubscribedToNotifications(false)
     , nSubscribedChannel(0)
     , nLastTemplateChannelHeight(0)
-    , fKeepaliveV2(false)
     , nMinerPrevblockSuffix({})
     {
     }
@@ -146,7 +145,6 @@ namespace LLP
     , fSubscribedToNotifications(false)
     , nSubscribedChannel(0)
     , nLastTemplateChannelHeight(0)
-    , fKeepaliveV2(false)
     , nMinerPrevblockSuffix({})
     {
     }
@@ -175,7 +173,6 @@ namespace LLP
     , fSubscribedToNotifications(false)
     , nSubscribedChannel(0)
     , nLastTemplateChannelHeight(0)
-    , fKeepaliveV2(false)
     , nMinerPrevblockSuffix({})
     {
     }
@@ -501,55 +498,41 @@ namespace LLP
                 return false;
             }
 
-            /* Handle SESSION_KEEPALIVE (212 / 0xD4) locally to refresh cache expiry */
+            /* Handle SESSION_KEEPALIVE (212 / 0xD4) — unified keepalive handler.
+             * Request: 8 bytes — [session_id LE][hashPrevBlock_lo32 BE]
+             * Response: 32 bytes — [session_id LE][all other fields BE] */
             if(PACKET.HEADER == SESSION_KEEPALIVE)
             {
                 debug::log(2, FUNCTION, "════════════════════════════════════");
                 debug::log(2, FUNCTION, "SESSION_KEEPALIVE received");
 
-                /* Parse keepalive payload: detect v1 (len==4) or v2 (len==8) */
+                /* Parse 8-byte keepalive payload (session_id LE, hashPrevBlock_lo32 BE) */
                 uint32_t nKeepaliveSession = 0;
                 std::array<uint8_t, 4> prevblockSuffixBytes = {};
-                bool fIsV2 = false;
 
-                if(PACKET.DATA.size() >= 4)
+                if(!KeepaliveV2::ParsePayload(PACKET.DATA, nKeepaliveSession, prevblockSuffixBytes))
                 {
-                    fIsV2 = KeepaliveV2::ParsePayload(PACKET.DATA, nKeepaliveSession, prevblockSuffixBytes);
-                }
-                else if(nSessionId != 0)
-                {
-                    nKeepaliveSession = nSessionId;
-                    debug::log(2, FUNCTION, "SESSION_KEEPALIVE missing session ID, using connection session");
-                }
-                else
-                {
-                    debug::error(FUNCTION, "Invalid SESSION_KEEPALIVE length");
+                    debug::error(FUNCTION, "Invalid SESSION_KEEPALIVE: need 8-byte payload, got ", PACKET.DATA.size(), " bytes");
                     return true;
                 }
 
-                /* Derive hashPrevBlock_lo32 from suffix bytes (0 if v1 miner) */
-                uint32_t nMinerPrevHashLo32 = 0u;
+                /* Derive hashPrevBlock_lo32 from suffix bytes (BE) */
+                uint32_t nMinerPrevHashLo32 =
+                    (uint32_t(prevblockSuffixBytes[0]) << 24) |
+                    (uint32_t(prevblockSuffixBytes[1]) << 16) |
+                    (uint32_t(prevblockSuffixBytes[2]) <<  8) |
+                     uint32_t(prevblockSuffixBytes[3]);
 
-                /* Update connection-level v2 negotiation state */
-                if(fIsV2)
-                {
-                    fKeepaliveV2 = true;
-                    nMinerPrevblockSuffix = prevblockSuffixBytes;
-                    char suffixHex[9];
-                    std::snprintf(suffixHex, sizeof(suffixHex), "%02x%02x%02x%02x",
-                                  prevblockSuffixBytes[0], prevblockSuffixBytes[1],
-                                  prevblockSuffixBytes[2], prevblockSuffixBytes[3]);
-                    debug::log(2, FUNCTION, "SESSION_KEEPALIVE v2: prevblock_suffix=", suffixHex);
-
-                    nMinerPrevHashLo32 =
-                        (uint32_t(prevblockSuffixBytes[0]) << 24) |
-                        (uint32_t(prevblockSuffixBytes[1]) << 16) |
-                        (uint32_t(prevblockSuffixBytes[2]) <<  8) |
-                         uint32_t(prevblockSuffixBytes[3]);
-                    debug::log(3, FUNCTION, "SESSION_KEEPALIVE v2 request:"
-                               " session=0x", std::hex, nKeepaliveSession,
-                               " miner_prevhash_lo32=0x", nMinerPrevHashLo32, std::dec);
-                }
+                /* Store prevblock suffix */
+                nMinerPrevblockSuffix = prevblockSuffixBytes;
+                char suffixHex[9];
+                std::snprintf(suffixHex, sizeof(suffixHex), "%02x%02x%02x%02x",
+                              prevblockSuffixBytes[0], prevblockSuffixBytes[1],
+                              prevblockSuffixBytes[2], prevblockSuffixBytes[3]);
+                debug::log(2, FUNCTION, "SESSION_KEEPALIVE: prevblock_suffix=", suffixHex);
+                debug::log(3, FUNCTION, "SESSION_KEEPALIVE request:"
+                           " session=0x", std::hex, nKeepaliveSession,
+                           " miner_prevhash_lo32=0x", nMinerPrevHashLo32, std::dec);
 
                 debug::log(2, FUNCTION, "Session ID: 0x", std::hex, nKeepaliveSession, std::dec);
 
@@ -570,11 +553,8 @@ namespace LLP
                 sessionContext = sessionContext
                     .WithTimestamp(nNow)
                     .WithSessionTimeout(nExpirySeconds)
-                    .WithKeepaliveCount(sessionContext.nKeepaliveCount + 1);
-
-                /* Persist v2 negotiation and prevblock suffix in the session context */
-                if(fIsV2 || fKeepaliveV2)
-                    sessionContext = sessionContext.WithMinerPrevblockSuffix(nMinerPrevblockSuffix);
+                    .WithKeepaliveCount(sessionContext.nKeepaliveCount + 1)
+                    .WithMinerPrevblockSuffix(nMinerPrevblockSuffix);
 
                 auto optLane = StatelessMinerManager::Get().GetMinerLane(sessionContext.strAddress);
                 StatelessMinerManager::Get().UpdateMiner(
@@ -594,77 +574,61 @@ namespace LLP
                 debug::log(2, FUNCTION, "  New expiry: ", (nNow + nExpirySeconds), " (",
                            (nExpirySeconds / SECONDS_PER_DAY), "d)");
 
-                /* Build response: unified 32-byte if negotiated, else v1 (4 bytes) */
-                if(fKeepaliveV2 || sessionContext.fKeepaliveV2)
+                /* Build unified 32-byte response */
+                TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
+                uint32_t nUnifiedHeight = stateBest.nHeight;
+
+                TAO::Ledger::BlockState stateChannel = stateBest;
+                uint32_t nPrimeHeight = 0;
+                if(TAO::Ledger::GetLastState(stateChannel, 1))
+                    nPrimeHeight = stateChannel.nChannelHeight;
+
+                stateChannel = stateBest;
+                uint32_t nHashHeight = 0;
+                if(TAO::Ledger::GetLastState(stateChannel, 2))
+                    nHashHeight = stateChannel.nChannelHeight;
+
+                stateChannel = stateBest;
+                uint32_t nStakeHeight = 0;
+                if(TAO::Ledger::GetLastState(stateChannel, 0))
+                    nStakeHeight = stateChannel.nChannelHeight;
+
+                uint1024_t hashBestChain = stateBest.GetHash();
+                uint32_t nHashTipLo32 = static_cast<uint32_t>(hashBestChain.Get64(0) & 0xFFFFFFFF);
+
+                uint32_t nForkScore = (nMinerPrevHashLo32 != 0 && nMinerPrevHashLo32 != nHashTipLo32) ? 1u : 0u;
+
+                std::vector<uint8_t> vV2 = KeepaliveV2::BuildUnifiedResponse(
+                    nKeepaliveSession,
+                    nMinerPrevHashLo32,   // echo miner's fork canary
+                    nUnifiedHeight,
+                    nHashTipLo32,
+                    nPrimeHeight,
+                    nHashHeight,
+                    nStakeHeight,
+                    nForkScore);
+
+                debug::log(2, FUNCTION, "Sent SESSION_KEEPALIVE unified reply (32 bytes):",
+                           " unified=", nUnifiedHeight,
+                           " prime=", nPrimeHeight,
+                           " hash=", nHashHeight,
+                           " stake=", nStakeHeight,
+                           " hash_tip_lo32=0x", std::hex, nHashTipLo32,
+                           " miner_prevhash_lo32=0x", nMinerPrevHashLo32,
+                           " fork_score=", std::dec, nForkScore);
+
+                respond(SESSION_KEEPALIVE, vV2);
+
+                /* Notify Colin agent with keepalive telemetry (observability hook) */
+                if(hashGenesis != 0)
                 {
-                    /* Gather current chain state */
-                    TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
-                    uint32_t nUnifiedHeight = stateBest.nHeight;
-
-                    TAO::Ledger::BlockState stateChannel = stateBest;
-                    uint32_t nPrimeHeight = 0;
-                    if(TAO::Ledger::GetLastState(stateChannel, 1))
-                        nPrimeHeight = stateChannel.nChannelHeight;
-
-                    stateChannel = stateBest;
-                    uint32_t nHashHeight = 0;
-                    if(TAO::Ledger::GetLastState(stateChannel, 2))
-                        nHashHeight = stateChannel.nChannelHeight;
-
-                    stateChannel = stateBest;
-                    uint32_t nStakeHeight = 0;
-                    if(TAO::Ledger::GetLastState(stateChannel, 0))
-                        nStakeHeight = stateChannel.nChannelHeight;
-
-                    uint1024_t hashBestChain = TAO::Ledger::ChainState::hashBestChain.load();
-                    uint32_t nHashTipLo32 = static_cast<uint32_t>(hashBestChain.Get64(0) & 0xFFFFFFFF);
-
-                    uint32_t nForkScore = (nMinerPrevHashLo32 != 0 && nMinerPrevHashLo32 != nHashTipLo32) ? 1u : 0u;
-
-                    std::vector<uint8_t> vV2 = KeepaliveV2::BuildUnifiedResponse(
-                        nKeepaliveSession,
-                        nMinerPrevHashLo32,   // echo miner's fork canary (0 if v1 miner)
+                    ColinMiningAgent::Get().on_keepalive_ack(
+                        hashGenesis.SubString(8),
                         nUnifiedHeight,
-                        nHashTipLo32,
                         nPrimeHeight,
                         nHashHeight,
                         nStakeHeight,
-                        nForkScore);          // computed canary (0 if v1 miner, 0 if hashes match)
-
-                    debug::log(2, FUNCTION, "Sent SESSION_KEEPALIVE unified reply (32 bytes):",
-                               " unified=", nUnifiedHeight,
-                               " prime=", nPrimeHeight,
-                               " hash=", nHashHeight,
-                               " stake=", nStakeHeight,
-                               " hash_tip_lo32=0x", std::hex, nHashTipLo32,
-                               " miner_prevhash_lo32=0x", nMinerPrevHashLo32,
-                               " fork_score=", std::dec, nForkScore);
-
-                    respond(SESSION_KEEPALIVE, vV2);
-
-                    /* Notify Colin agent with keepalive telemetry (observability hook) */
-                    if(hashGenesis != 0)
-                    {
-                        ColinMiningAgent::Get().on_keepalive_ack(
-                            hashGenesis.SubString(8),
-                            nUnifiedHeight,
-                            nPrimeHeight,
-                            nHashHeight,
-                            nStakeHeight,
-                            nForkScore);
-                    }
-                }
-                else
-                {
-                    /* v1 reply: 4-byte expiry seconds (little-endian) */
-                    std::vector<uint8_t> vResponse(4);
-                    vResponse[0] = static_cast<uint8_t>(nExpirySeconds & 0xFF);
-                    vResponse[1] = static_cast<uint8_t>((nExpirySeconds >> 8) & 0xFF);
-                    vResponse[2] = static_cast<uint8_t>((nExpirySeconds >> 16) & 0xFF);
-                    vResponse[3] = static_cast<uint8_t>((nExpirySeconds >> 24) & 0xFF);
-
-                    respond(SESSION_KEEPALIVE, vResponse);
-                    debug::log(2, FUNCTION, "Sent SESSION_KEEPALIVE v1 response");
+                        nForkScore);
                 }
 
                 debug::log(2, FUNCTION, "════════════════════════════════════");

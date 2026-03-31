@@ -95,9 +95,9 @@ namespace LLP
         using Diagnostics::YesNo;
         using Diagnostics::PassFail;
 
-        /* KEEPALIVE_V2 wire format is always 8 bytes:
-         * session_id (4 bytes little-endian) + prevblock suffix / canary (4 bytes big-endian). */
-        static constexpr uint32_t KEEPALIVE_V2_FALLBACK_SIZE = 8;
+        /* SESSION_KEEPALIVE wire format is always 8 bytes:
+         * session_id (4 bytes little-endian) + hashPrevBlock_lo32 (4 bytes big-endian). */
+        static constexpr uint32_t SESSION_KEEPALIVE_PAYLOAD_SIZE = 8;
 
         inline StatelessPacket BuildSessionExpiredResponse(const uint32_t nSessionId, const uint8_t nReason = 0x01)
         {
@@ -113,11 +113,11 @@ namespace LLP
             return response;
         }
 
-        inline StatelessPacket BuildFallbackKeepaliveV2Packet()
+        inline StatelessPacket BuildFallbackKeepalivePacket()
         {
-            StatelessPacket packet(OpcodeUtility::Stateless::KEEPALIVE_V2);
-            packet.DATA.resize(KEEPALIVE_V2_FALLBACK_SIZE, 0);
-            packet.LENGTH = KEEPALIVE_V2_FALLBACK_SIZE;
+            StatelessPacket packet(OpcodeUtility::Stateless::SESSION_KEEPALIVE);
+            packet.DATA.resize(SESSION_KEEPALIVE_PAYLOAD_SIZE, 0);
+            packet.LENGTH = SESSION_KEEPALIVE_PAYLOAD_SIZE;
             return packet;
         }
 
@@ -717,7 +717,7 @@ namespace LLP
 
             /* Strict stateless lane enforcement (port 9323):
              * reject anything outside 0xD000-0xD0FF with no endian/lane fallback.
-             * Exception: un-mirrored opcodes (KEEPALIVE_V2 0xD100, KEEPALIVE_V2_ACK 0xD101)
+             * Exception: un-mirrored opcodes (PING_DIAG 0xD0E0, PONG_DIAG 0xD0E1)
              * are handled explicitly above before this check. */
             if(!StatelessOpcodes::IsStateless(PACKET.HEADER) &&
                !OpcodeUtility::IsUnmirroredStatelessOpcode(PACKET.HEADER))
@@ -2732,7 +2732,7 @@ namespace LLP
                 return true;
             }
 
-            /* For all other packets (including KEEPALIVE_V2), route through StatelessMiner processor */
+            /* For all other packets, route through StatelessMiner processor */
             ProcessResult result = StatelessMiner::ProcessPacket(context, PACKET);
 
             /* Update context if successful */
@@ -2989,23 +2989,23 @@ namespace LLP
                     respond(errorResponse);
                     debug::log(2, FUNCTION, "Sent MINER_AUTH_RESULT error response");
                 }
-                else if(PACKET.HEADER == KEEPALIVE_V2)
+                else if(PACKET.HEADER == SESSION_KEEPALIVE)
                 {
                     if(context.fAuthenticated && context.nSessionId != 0)
                     {
                         /* Use an all-zero fallback frame because the error path only needs
-                         * a syntactically valid KEEPALIVE_V2 packet to trigger the normal
-                         * ACK-building path; session identity and liveness come from context. */
-                        const StatelessPacket fallbackKeepalive = BuildFallbackKeepaliveV2Packet();
+                         * a syntactically valid SESSION_KEEPALIVE packet to trigger the normal
+                         * response-building path; session identity and liveness come from context. */
+                        const StatelessPacket fallbackKeepalive = BuildFallbackKeepalivePacket();
 
                         const ProcessResult fallbackResult =
-                            StatelessMiner::ProcessKeepaliveV2(context, fallbackKeepalive);
+                            StatelessMiner::ProcessSessionKeepalive(context, fallbackKeepalive);
 
                         if(fallbackResult.fSuccess && fallbackResult.response.LENGTH > 0)
                         {
                             respond(fallbackResult.response);
                             debug::log(2, FUNCTION,
-                                       "Sent KEEPALIVE_V2 fallback response after processing error");
+                                       "Sent SESSION_KEEPALIVE fallback response after processing error");
                         }
                     }
                     else
@@ -3013,7 +3013,7 @@ namespace LLP
                         errorResponse = BuildSessionExpiredResponse(context.nSessionId);
                         respond(errorResponse);
                         debug::log(2, FUNCTION,
-                                   "Sent SESSION_EXPIRED fallback response after KEEPALIVE_V2 error");
+                                   "Sent SESSION_EXPIRED fallback response after keepalive error");
                     }
                 }
                 
@@ -3060,17 +3060,16 @@ namespace LLP
          * coinciding with a TRANSACTION burst — a possible network-layer attack vector
          * (send-queue starvation / write-queue saturation).
          *
-         * Keepalive handler code paths are NOT the root cause: ProcessKeepaliveV2() and
-         * ProcessSessionStatus() are pure/lock-free and build responses correctly.
+         * Keepalive handler code paths are NOT the root cause: ProcessSessionKeepalive()
+         * and ProcessSessionStatus() are pure/lock-free and build responses correctly.
          * respond() itself acquires no mutex and calls WritePacket() directly.
          *
          * fBufferFull is set to true by WritePacket() when a write is dropped and reset
          * to false by Socket::Flush() after data drains successfully.  Logging at level 0
          * here makes the saturation condition operator-visible without requiring -v 4. */
         if(fBufferFull.load() &&
-           (packet.HEADER == StatelessOpcodes::KEEPALIVE_V2_ACK         ||
-            packet.HEADER == OpcodeUtility::Stateless::SESSION_STATUS_ACK ||
-            packet.HEADER == OpcodeUtility::Stateless::SESSION_KEEPALIVE))
+           (packet.HEADER == OpcodeUtility::Stateless::SESSION_KEEPALIVE  ||
+            packet.HEADER == OpcodeUtility::Stateless::SESSION_STATUS_ACK))
         {
             debug::log(0, FUNCTION, "WARNING: keepalive ACK write may be dropped — "
                        "send buffer saturated (opcode=0x", std::hex, packet.HEADER, std::dec, "); "

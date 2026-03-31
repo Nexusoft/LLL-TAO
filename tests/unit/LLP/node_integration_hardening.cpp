@@ -54,7 +54,7 @@ using namespace TestFixtures;
  *     - Each keepalive updates nTimestamp
  *     - Session stays alive with regular keepalives
  *     - Session expires only after true inactivity
- *     - Both v1 and v2 keepalive variants tested
+ *     - 8-byte BE keepalive format tested
  *
  *  WHY THESE TESTS MATTER:
  *  =======================
@@ -109,11 +109,16 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
 
         StatelessPacket keepalivePacket(SESSION_KEEPALIVE);
         uint32_t zeroSessionId = 0;
+        /* 8-byte payload: session_id (4 LE) + hashPrevBlock_lo32 (4 BE) */
         keepalivePacket.DATA.push_back(static_cast<uint8_t>(zeroSessionId & 0xFF));
         keepalivePacket.DATA.push_back(static_cast<uint8_t>((zeroSessionId >> 8) & 0xFF));
         keepalivePacket.DATA.push_back(static_cast<uint8_t>((zeroSessionId >> 16) & 0xFF));
         keepalivePacket.DATA.push_back(static_cast<uint8_t>((zeroSessionId >> 24) & 0xFF));
-        keepalivePacket.LENGTH = 4;
+        keepalivePacket.DATA.push_back(0x00);
+        keepalivePacket.DATA.push_back(0x00);
+        keepalivePacket.DATA.push_back(0x00);
+        keepalivePacket.DATA.push_back(0x00);
+        keepalivePacket.LENGTH = 8;
 
         ProcessResult expiredResult = StatelessMiner::ProcessSessionKeepalive(ctxNoSessionId, keepalivePacket);
 
@@ -122,7 +127,7 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
         REQUIRE(expiredResult.response.HEADER == SESSION_EXPIRED);
         REQUIRE(expiredResult.response.LENGTH == 5);
 
-        /* Verify payload: session_id (4 bytes LE) + reason (1 byte) */
+        /* Verify payload: session_id (4 bytes) + reason (1 byte) */
         uint32_t respSessionId = static_cast<uint32_t>(expiredResult.response.DATA[0]) |
                                 (static_cast<uint32_t>(expiredResult.response.DATA[1]) << 8) |
                                 (static_cast<uint32_t>(expiredResult.response.DATA[2]) << 16) |
@@ -151,11 +156,16 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
         /* Step 4: Mining can resume on same connection */
         /* Send keepalive on new session */
         StatelessPacket newKeepalive(SESSION_KEEPALIVE);
+        /* 8-byte payload: session_id (LE) + hashPrevBlock_lo32 (BE) */
         newKeepalive.DATA.push_back(static_cast<uint8_t>(newSessionId & 0xFF));
         newKeepalive.DATA.push_back(static_cast<uint8_t>((newSessionId >> 8) & 0xFF));
         newKeepalive.DATA.push_back(static_cast<uint8_t>((newSessionId >> 16) & 0xFF));
         newKeepalive.DATA.push_back(static_cast<uint8_t>((newSessionId >> 24) & 0xFF));
-        newKeepalive.LENGTH = 4;
+        newKeepalive.DATA.push_back(0x00);
+        newKeepalive.DATA.push_back(0x00);
+        newKeepalive.DATA.push_back(0x00);
+        newKeepalive.DATA.push_back(0x00);
+        newKeepalive.LENGTH = 8;
 
         ProcessResult resumeResult = StatelessMiner::ProcessSessionKeepalive(reauthCtx, newKeepalive);
 
@@ -169,13 +179,13 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
         REQUIRE(updated.nKeepaliveCount == 1);
     }
 
-    SECTION("V2 Protocol: SESSION_EXPIRED with prevhash in keepalive (zero session ID)")
+    SECTION("SESSION_KEEPALIVE with prevhash: SESSION_EXPIRED for zero session ID")
     {
-        /* Test SESSION_EXPIRED flow with KEEPALIVE_V2 (8-byte payload).
+        /* Test SESSION_EXPIRED flow with 8-byte keepalive payload.
          * When nSessionId == 0 (no session ID assigned) and the session has expired,
-         * the node sends SESSION_EXPIRED even for V2 keepalive.
+         * the node sends SESSION_EXPIRED.
          * An authenticated miner with nSessionId != 0 would instead get its session
-         * EXTENDED via a KEEPALIVE_V2_ACK response. */
+         * EXTENDED via a SESSION_KEEPALIVE response. */
 
         uint64_t now = runtime::unifiedtimestamp();
         uint64_t oldTime = now - 400;
@@ -190,16 +200,16 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
 
         REQUIRE(expiredCtx.IsSessionExpired(now) == true);
 
-        /* Build KEEPALIVE_V2 packet (8 bytes: sequence + prevblock_lo32) */
-        StatelessPacket v2Packet(KEEPALIVE_V2);
-        uint32_t sequence = 100;
+        /* Build SESSION_KEEPALIVE packet (8 bytes: session_id LE + prevblock_lo32 BE) */
+        StatelessPacket v2Packet(SESSION_KEEPALIVE);
+        uint32_t sessionId = 0;
         uint32_t prevHashLo32 = 0xDEADBEEF;
 
-        /* Sequence (4 bytes BE) */
-        v2Packet.DATA.push_back(static_cast<uint8_t>((sequence >> 24) & 0xFF));
-        v2Packet.DATA.push_back(static_cast<uint8_t>((sequence >> 16) & 0xFF));
-        v2Packet.DATA.push_back(static_cast<uint8_t>((sequence >> 8) & 0xFF));
-        v2Packet.DATA.push_back(static_cast<uint8_t>(sequence & 0xFF));
+        /* session_id (4 bytes LE) */
+        v2Packet.DATA.push_back(static_cast<uint8_t>(sessionId & 0xFF));
+        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 8) & 0xFF));
+        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 16) & 0xFF));
+        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 24) & 0xFF));
 
         /* prevHashLo32 (4 bytes BE) */
         v2Packet.DATA.push_back(static_cast<uint8_t>((prevHashLo32 >> 24) & 0xFF));
@@ -209,8 +219,8 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
 
         v2Packet.LENGTH = 8;
 
-        /* Process V2 keepalive on expired session with zero session ID */
-        ProcessResult result = StatelessMiner::ProcessKeepaliveV2(expiredCtx, v2Packet);
+        /* Process SESSION_KEEPALIVE on expired session with zero session ID */
+        ProcessResult result = StatelessMiner::ProcessSessionKeepalive(expiredCtx, v2Packet);
 
         /* Verify SESSION_EXPIRED response — zero session ID path */
         REQUIRE(result.fSuccess == true);
@@ -250,8 +260,8 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
 
         /* Send keepalive — authenticated session with valid ID is EXTENDED, not expired */
         StatelessPacket keepalive(SESSION_KEEPALIVE);
-        keepalive.DATA.resize(4, 0);
-        keepalive.LENGTH = 4;
+        keepalive.DATA.resize(8, 0);
+        keepalive.LENGTH = 8;
 
         ProcessResult result = StatelessMiner::ProcessSessionKeepalive(ctx, keepalive);
 
@@ -276,7 +286,7 @@ TEST_CASE("Integration: BLOCK_REJECTED:FORK with Miner Recovery", "[integration]
     SECTION("Fork detection via keepalive prevhash mismatch")
     {
         /* SCENARIO: Miner is mining on wrong fork, node detects via
-         * keepalive V2 prevhash comparison, provides fork_score indication */
+         * keepalive prevhash comparison, provides fork_score indication */
 
         uint64_t now = runtime::unifiedtimestamp();
         uint32_t sessionId = 88888;
@@ -299,15 +309,14 @@ TEST_CASE("Integration: BLOCK_REJECTED:FORK with Miner Recovery", "[integration]
 
         REQUIRE(minerPrevHashLo32 != nodeTipLo32);  // Fork condition
 
-        /* Build KEEPALIVE_V2 packet from miner */
-        StatelessPacket v2Packet(KEEPALIVE_V2);
-        uint32_t sequence = 1;
+        /* Build SESSION_KEEPALIVE packet (8 bytes: session_id LE + prevblock_lo32 BE) */
+        StatelessPacket v2Packet(SESSION_KEEPALIVE);
 
-        /* Sequence (4 bytes BE) */
-        v2Packet.DATA.push_back(static_cast<uint8_t>((sequence >> 24) & 0xFF));
-        v2Packet.DATA.push_back(static_cast<uint8_t>((sequence >> 16) & 0xFF));
-        v2Packet.DATA.push_back(static_cast<uint8_t>((sequence >> 8) & 0xFF));
-        v2Packet.DATA.push_back(static_cast<uint8_t>(sequence & 0xFF));
+        /* session_id (4 bytes LE) */
+        v2Packet.DATA.push_back(static_cast<uint8_t>(sessionId & 0xFF));
+        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 8) & 0xFF));
+        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 16) & 0xFF));
+        v2Packet.DATA.push_back(static_cast<uint8_t>((sessionId >> 24) & 0xFF));
 
         /* Miner's prevHashLo32 (4 bytes BE) */
         v2Packet.DATA.push_back(static_cast<uint8_t>((minerPrevHashLo32 >> 24) & 0xFF));
@@ -317,7 +326,7 @@ TEST_CASE("Integration: BLOCK_REJECTED:FORK with Miner Recovery", "[integration]
 
         v2Packet.LENGTH = 8;
 
-        /* In real implementation, ProcessKeepaliveV2 would:
+        /* In real implementation, ProcessSessionKeepalive would:
          * 1. Parse miner's prevhash from payload
          * 2. Compare with node's tip
          * 3. Set fork_score = 1 if mismatch
@@ -329,7 +338,7 @@ TEST_CASE("Integration: BLOCK_REJECTED:FORK with Miner Recovery", "[integration]
         bool fIsV2 = KeepaliveV2::ParsePayload(v2Packet.DATA, parsedSessionId, suffixBytes);
 
         REQUIRE(fIsV2 == true);
-        REQUIRE(parsedSessionId == sequence);  // Note: This is sequence, not session ID
+        REQUIRE(parsedSessionId == sessionId);
 
         /* Verify suffix bytes contain miner's prevhash */
         uint32_t parsedPrevHash = (static_cast<uint32_t>(suffixBytes[0]) << 24) |
@@ -345,7 +354,7 @@ TEST_CASE("Integration: BLOCK_REJECTED:FORK with Miner Recovery", "[integration]
         REQUIRE(fork_score == 1u);  // Fork detected!
 
         /* In real protocol, node would:
-         * - Send KEEPALIVE_V2_RESPONSE with fork_score=1 in bytes [28-31]
+         * - Send SESSION_KEEPALIVE response with fork_score=1 in bytes [28-31]
          * - Optionally send new BLOCK template to help miner resync
          * - If miner submits block on wrong fork, send BLOCK_REJECTED */
 
@@ -419,12 +428,12 @@ TEST_CASE("Integration: BLOCK_REJECTED:FORK with Miner Recovery", "[integration]
 
         REQUIRE(fork_score == 0u);  // No fork, synchronized
 
-        /* Also test v1 miner (prevhash=0) - should get fork_score=0 */
-        uint32_t v1PrevHash = 0;
-        uint32_t v1_fork_score = (v1PrevHash != 0 &&
-                                  v1PrevHash != nodeTipLo32) ? 1u : 0u;
+        /* Also test miner with prevhash=0 (no template yet) - should get fork_score=0 */
+        uint32_t noTemplatePrevHash = 0;
+        uint32_t noTemplate_fork_score = (noTemplatePrevHash != 0 &&
+                                          noTemplatePrevHash != nodeTipLo32) ? 1u : 0u;
 
-        REQUIRE(v1_fork_score == 0u);  // V1 miners always get 0
+        REQUIRE(noTemplate_fork_score == 0u);  // No-template miners always get 0
     }
 }
 
@@ -507,9 +516,9 @@ TEST_CASE("Integration: Keepalive Rolling Window Resets", "[integration][keepali
         REQUIRE((afterTimeout - ctx.nTimestamp) > ctx.nSessionTimeout);
     }
 
-    SECTION("V1 and V2 keepalive both update rolling window")
+    SECTION("Keepalive updates rolling window consistently")
     {
-        /* Test that both keepalive variants (v1 and v2) update nTimestamp */
+        /* Test that keepalives update nTimestamp */
 
         uint64_t now = runtime::unifiedtimestamp();
         uint32_t sessionId = 33333;
@@ -523,26 +532,26 @@ TEST_CASE("Integration: Keepalive Rolling Window Resets", "[integration][keepali
 
         REQUIRE(ctx.IsSessionExpired(now) == false);
 
-        /* Test V1 keepalive (4 bytes: session_id) */
+        /* First keepalive at t+60 */
         uint64_t t1 = now + 60;
-        MiningContext afterV1 = ctx
+        MiningContext afterFirst = ctx
             .WithTimestamp(t1)
             .WithKeepaliveCount(1);
 
-        REQUIRE(afterV1.IsSessionExpired(t1) == false);
-        REQUIRE(afterV1.nTimestamp == t1);
+        REQUIRE(afterFirst.IsSessionExpired(t1) == false);
+        REQUIRE(afterFirst.nTimestamp == t1);
 
-        /* Test V2 keepalive (8 bytes: sequence + prevhash) */
+        /* Second keepalive at t+120 */
         uint64_t t2 = now + 120;
-        MiningContext afterV2 = afterV1
+        MiningContext afterSecond = afterFirst
             .WithTimestamp(t2)
             .WithKeepaliveCount(2);
 
-        REQUIRE(afterV2.IsSessionExpired(t2) == false);
-        REQUIRE(afterV2.nTimestamp == t2);
+        REQUIRE(afterSecond.IsSessionExpired(t2) == false);
+        REQUIRE(afterSecond.nTimestamp == t2);
 
-        /* Both keepalive types maintain rolling window */
-        REQUIRE(afterV2.nKeepaliveCount == 2);
+        /* Both keepalives maintain rolling window */
+        REQUIRE(afterSecond.nKeepaliveCount == 2);
     }
 
     SECTION("Rolling window reset on any activity (not just keepalive)")

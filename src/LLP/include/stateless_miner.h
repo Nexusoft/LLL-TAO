@@ -598,17 +598,14 @@ namespace LLP
          */
         uint1024_t hashLastBlock;  // hashBestChain snapshot when last BLOCK_DATA was pushed
 
-        /* KEEPALIVE v2 telemetry fields.
-         * Populated when the miner sends a v2 keepalive (len == 8).
-         * nMinerPrevblockSuffix: raw bytes [4..7] of v2 payload (prevblock suffix as-sent).
-         * fKeepaliveV2: true once the miner has sent at least one v2 keepalive (len == 8). */
+        /* KEEPALIVE telemetry fields.
+         * nMinerPrevblockSuffix: raw bytes [4..7] of keepalive payload (hashPrevBlock_lo32 as-sent). */
         std::array<uint8_t, 4> nMinerPrevblockSuffix;  // Miner's reported prevblock suffix (raw bytes [4..7])
-        bool     fKeepaliveV2;           // Whether this session negotiated keepalive v2
 
-        /* Channel heights from the last KEEPALIVE_V2 cycle.
+        /* Channel heights from the last keepalive cycle.
          * Persisted in context so stake height survives across keepalive cycles
          * without requiring a ChainState re-query on every round. */
-        uint32_t nStakeHeight;           ///< Stake channel height from last KEEPALIVE_V2 cycle
+        uint32_t nStakeHeight;           ///< Stake channel height from last keepalive cycle
 
         /** Canonical chain state snapshot captured at the last GET_BLOCK or push event.
          *
@@ -809,31 +806,20 @@ namespace LLP
 
         /** WithMinerPrevblockSuffix
          *
-         *  Returns a new context with updated miner prevblock suffix (from keepalive v2).
-         *  Also sets fKeepaliveV2 to true to mark this session as v2-capable.
+         *  Returns a new context with updated miner prevblock suffix (from keepalive).
          *
-         *  @param[in] suffixBytes_ Raw bytes [4..7] of the v2 keepalive payload
+         *  @param[in] suffixBytes_ Raw bytes [4..7] of the keepalive payload
          *
          **/
         MiningContext WithMinerPrevblockSuffix(const std::array<uint8_t, 4>& suffixBytes_) const;
 
-        /** WithKeepaliveV2
-         *
-         *  Returns a new context with updated keepalive v2 flag.
-         *  Use WithMinerPrevblockSuffix() to set both the suffix and the flag together.
-         *
-         *  @param[in] fV2_ Whether this session has negotiated keepalive v2
-         *
-         **/
-        MiningContext WithKeepaliveV2(bool fV2_) const;
-
         /** WithStakeHeight
          *
          *  Returns a new context with updated stake channel height.
-         *  Called after each KEEPALIVE_V2 cycle to persist nStakeHeight
+         *  Called after each keepalive cycle to persist nStakeHeight
          *  across keepalive cycles without re-querying ChainState.
          *
-         *  @param[in] h The Stake channel height from the last KEEPALIVE_V2 ACK
+         *  @param[in] h The Stake channel height from the last keepalive response
          *
          **/
         MiningContext WithStakeHeight(uint32_t h) const;
@@ -1184,33 +1170,17 @@ namespace LLP
             const StatelessPacket& packet
         );
 
-        /** ProcessKeepaliveV2
-         *
-         *  Process KEEPALIVE_V2 (0xD100) packet from miner.
-         *  Parses the 8-byte KeepAliveV2Frame, populates a 28-byte
-         *  KeepAliveV2AckFrame from live chain state, and sends it
-         *  as KEEPALIVE_V2_ACK (0xD101).
-         *
-         *  @param[in] context Current miner state
-         *  @param[in] packet KEEPALIVE_V2 packet (8-byte payload)
-         *
-         *  @return ProcessResult with KEEPALIVE_V2_ACK response
-         *
-         **/
-        static ProcessResult ProcessKeepaliveV2(
-            const MiningContext& context,
-            const StatelessPacket& packet
-        );
-
         /** ProcessSessionKeepalive
          *
-         *  Phase 2: Process session keepalive.
-         *  Updates session timestamp to maintain connection.
+         *  Process SESSION_KEEPALIVE (0xD0D4) — unified keepalive handler.
+         *  Request: 8 bytes — [session_id LE][hashPrevBlock_lo32 BE]
+         *  Response: 32 bytes BE — unified chain state telemetry.
+         *  Extends the authenticated miner's 24-hour session timeout.
          *
          *  @param[in] context Current miner state
-         *  @param[in] packet Keepalive packet
+         *  @param[in] packet SESSION_KEEPALIVE packet (8-byte payload)
          *
-         *  @return ProcessResult with updated timestamp
+         *  @return ProcessResult with 32-byte unified response
          *
          **/
         static ProcessResult ProcessSessionKeepalive(

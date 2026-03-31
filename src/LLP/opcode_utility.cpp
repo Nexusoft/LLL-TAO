@@ -408,8 +408,6 @@ namespace OpcodeUtility
     std::string GetOpcodeName16(uint16_t nOpcode)
     {
         /* Un-mirrored stateless-only opcodes — check before IsStateless() */
-        if(nOpcode == Stateless::KEEPALIVE_V2)      return "KEEPALIVE_V2";
-        if(nOpcode == Stateless::KEEPALIVE_V2_ACK)  return "KEEPALIVE_V2_ACK";
         if(nOpcode == Stateless::PING_DIAG)         return "PING_DIAG";
         if(nOpcode == Stateless::PONG_DIAG)         return "PONG_DIAG";
 
@@ -480,8 +478,6 @@ namespace OpcodeUtility
     bool HasDataPayload16(uint16_t nOpcode)
     {
         /* Un-mirrored stateless-only data-bearing opcodes */
-        if(nOpcode == Stateless::KEEPALIVE_V2)      return true;  // 0xD100: 8B
-        if(nOpcode == Stateless::KEEPALIVE_V2_ACK)  return true;  // 0xD101: 32B
         if(nOpcode == Stateless::PING_DIAG)         return true;  // 0xD0E0: 64B
         if(nOpcode == Stateless::PONG_DIAG)         return true;  // 0xD0E1: 64B
 
@@ -497,8 +493,6 @@ namespace OpcodeUtility
     {
         switch(nOpcode)
         {
-            case Stateless::KEEPALIVE_V2:      // 0xD100
-            case Stateless::KEEPALIVE_V2_ACK:  // 0xD101
             case Stateless::PING_DIAG:         // 0xD0E0
             case Stateless::PONG_DIAG:         // 0xD0E1
                 return true;
@@ -512,8 +506,6 @@ namespace OpcodeUtility
     {
         switch(nOpcode)
         {
-            case Stateless::KEEPALIVE_V2:        return 8;   // sequence(4) + hashPrevBlock_lo32(4), miner→node
-            case Stateless::KEEPALIVE_V2_ACK:    return 32;  // 8×uint32_t unified chain state, node→miner
             case Stateless::PING_DIAG:           return 64;  // PingFrame
             case Stateless::PONG_DIAG:           return 64;  // PongFrame
             case Stateless::SESSION_STATUS:      return 8;   // session_id(4 LE) + status_flags(4 BE)
