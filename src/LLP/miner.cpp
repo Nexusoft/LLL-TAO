@@ -109,6 +109,7 @@ namespace LLP
     , vAuthNonce()
     , fMinerAuthenticated(false)
     , hashGenesis(0)
+    , fStatelessProtocol(false)
     , vChaChaKey()
     , fEncryptionReady(false)
     , hashRewardAddress(0)
@@ -137,6 +138,7 @@ namespace LLP
     , vAuthNonce()
     , fMinerAuthenticated(false)
     , hashGenesis(0)
+    , fStatelessProtocol(false)
     , vChaChaKey()
     , fEncryptionReady(false)
     , hashRewardAddress(0)
@@ -165,6 +167,7 @@ namespace LLP
     , vAuthNonce()
     , fMinerAuthenticated(false)
     , hashGenesis(0)
+    , fStatelessProtocol(false)
     , vChaChaKey()
     , fEncryptionReady(false)
     , hashRewardAddress(0)
@@ -189,6 +192,7 @@ namespace LLP
         strMinerId.clear();
         vAuthNonce.clear();
         fMinerAuthenticated = false;
+        fStatelessProtocol = false;
         hashKeyID = 0;
 
         /* Send a notification to wake up sleeping thread to finish shutdown process. */
@@ -816,6 +820,12 @@ namespace LLP
                     fMinerAuthenticated = result.context.fAuthenticated;
                     nSessionId = result.context.nSessionId;
                     hashGenesis = result.context.hashGenesis;
+
+                    /* Mark connection as using stateless protocol framing after successful
+                     * Falcon authentication.  All subsequent responses on this connection
+                     * will use 16-bit stateless opcodes via respond_auto(). */
+                    if(!fWasAuthenticated && result.context.fAuthenticated)
+                        fStatelessProtocol = true;
                     
                     /* Update authentication state */
                     if(!result.context.vAuthNonce.empty())
@@ -1307,6 +1317,19 @@ namespace LLP
                    " length=", vData.size());
 
         this->WritePacket(RESPONSE);
+    }
+
+
+    /* Unified response dispatch with lane auto-detection.
+     * Checks fStatelessProtocol to determine framing:
+     *   - true:  16-bit stateless framing via respond_stateless()
+     *   - false: 8-bit legacy framing via respond() */
+    void Miner::respond_auto(uint8_t nLegacyOpcode, const std::vector<uint8_t>& vData)
+    {
+        if(fStatelessProtocol)
+            respond_stateless(OpcodeUtility::Stateless::Mirror(nLegacyOpcode), vData);
+        else
+            respond(nLegacyOpcode, vData);
     }
 
 
@@ -1849,14 +1872,14 @@ namespace LLP
             debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted GET_BLOCK before authentication from ",
                        GetAddress().ToStringIP());
             std::vector<uint8_t> vFail(1, 0x00);
-            respond(MINER_AUTH_RESULT, vFail);
+            respond_auto(MINER_AUTH_RESULT, vFail);
             return debug::error(FUNCTION, "Authentication required for stateless miner commands");
         }
 
         /* Check if reward address is bound for stateless miners */
         if(!fRewardBound)
         {
-            respond(BLOCK_REJECTED, BuildGetBlockControlPayload(GetBlockPolicyReason::TEMPLATE_NOT_READY, 0));
+            respond_auto(BLOCK_REJECTED, BuildGetBlockControlPayload(GetBlockPolicyReason::TEMPLATE_NOT_READY, 0));
             return debug::error(FUNCTION, "GET_BLOCK: reward address not set - send MINER_SET_REWARD first");
         }
 
@@ -1875,10 +1898,10 @@ namespace LLP
             LOCK(MUTEX);
 
             GetBlockRequest req;
-            /* Build a minimal context snapshot: lane is LEGACY for rate-limit key logging */
+            /* Build a minimal context snapshot: detect protocol lane from connection state */
             req.context = MiningContext()
                 .WithAuth(fMinerAuthenticated)
-                .WithProtocolLane(ProtocolLane::LEGACY)
+                .WithProtocolLane(fStatelessProtocol ? ProtocolLane::STATELESS : ProtocolLane::LEGACY)
                 .WithSession(nSessionId);
 
             req.nSessionId = nSessionId;
@@ -1891,7 +1914,7 @@ namespace LLP
 
             if(!result.fSuccess)
             {
-                respond(BLOCK_REJECTED,
+                respond_auto(BLOCK_REJECTED,
                     BuildGetBlockControlPayload(result.eReason, result.nRetryAfterMs));
 
                 if(result.eReason == GetBlockPolicyReason::RATE_LIMIT_EXCEEDED)
@@ -1927,7 +1950,7 @@ namespace LLP
             /* Invariant: authenticated + in-budget → non-empty BLOCK_DATA */
             assert(!result.vPayload.empty());
 
-            respond_stateless(OpcodeUtility::Stateless::BLOCK_DATA, result.vPayload);
+            respond_auto(BLOCK_DATA, result.vPayload);
         }
 
         /* Update last template channel height after sending template.
@@ -2023,7 +2046,7 @@ namespace LLP
             debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted SUBMIT_BLOCK before authentication from ",
                        GetAddress().ToStringIP());
             std::vector<uint8_t> vFail(1, 0x00);
-            respond(MINER_AUTH_RESULT, vFail);
+            respond_auto(MINER_AUTH_RESULT, vFail);
             return debug::error(FUNCTION, "Authentication required for stateless miner commands");
         }
 
@@ -2046,7 +2069,7 @@ namespace LLP
                 {
                     debug::log(0, FUNCTION, "Session consistency violation at SUBMIT_BLOCK (legacy): ",
                                SessionConsistencyResultString(consistency));
-                    respond(BLOCK_REJECTED);
+                    respond_auto(BLOCK_REJECTED);
                     return true;
                 }
             }
@@ -2078,7 +2101,7 @@ namespace LLP
         {
             debug::log(0, FUNCTION, "SUBMIT_BLOCK packet too small: ",
                        PACKET.DATA.size(), " < ", MIN_SIZE);
-            respond(BLOCK_REJECTED);
+            respond_auto(BLOCK_REJECTED);
             return true;
         }
 
@@ -2086,7 +2109,7 @@ namespace LLP
         {
             debug::log(0, FUNCTION, "SUBMIT_BLOCK packet too large: ",
                        PACKET.DATA.size(), " > ", MAX_SIZE);
-            respond(BLOCK_REJECTED);
+            respond_auto(BLOCK_REJECTED);
             return true;
         }
 
@@ -2123,7 +2146,7 @@ namespace LLP
                 if(vMinerPubKey.empty())
                 {
                     debug::error(FUNCTION, "SUBMIT_BLOCK verify failed: missing Falcon public key");
-                    respond(BLOCK_REJECTED);
+                    respond_auto(BLOCK_REJECTED);
                     return true;
                 }
 
@@ -2148,7 +2171,7 @@ namespace LLP
                     if(!DisposableFalcon::VerifyWorkSubmission(vWorkData, vMinerPubKey, submission))
                     {
                         debug::error(FUNCTION, "SUBMIT_BLOCK verify failed: Disposable Falcon signature invalid");
-                        respond(BLOCK_REJECTED);  // 8-bit opcode — correct for legacy lane
+                        respond_auto(BLOCK_REJECTED);  // auto-detect lane framing
                         return true;
                     }
 
@@ -2196,7 +2219,7 @@ namespace LLP
             if(!parseResult.success)
             {
                 debug::error(FUNCTION, "SUBMIT_BLOCK parse failed: ", parseResult.reason);
-                respond(BLOCK_REJECTED);
+                respond_auto(BLOCK_REJECTED);
                 return true;
             }
 
@@ -2235,7 +2258,7 @@ namespace LLP
                     if(!upCrossLaneClone)
                     {
                         debug::error(FUNCTION, "SIM-LINK cross-lane block clone failed");
-                        respond(BLOCK_REJECTED);
+                        respond_auto(BLOCK_REJECTED);
                         return true;
                     }
                 }
@@ -2256,7 +2279,7 @@ namespace LLP
         if(!fLocalBlock && !spCrossLane)
         {
             debug::log(2, FUNCTION, "Block not found in map");
-            respond(BLOCK_REJECTED);
+            respond_auto(BLOCK_REJECTED);
             return true;
         }
 
@@ -2267,7 +2290,7 @@ namespace LLP
             /* Local path: sign_block mutates the block in-place via mapBlocks */
             if(!sign_block(nonce, hashMerkle, vPrimeOffsets))
             {
-                respond(BLOCK_REJECTED);
+                respond_auto(BLOCK_REJECTED);
                 return true;
             }
 
@@ -2288,7 +2311,7 @@ namespace LLP
             if(!pTritium)
             {
                 debug::error(FUNCTION, "SIM-LINK cross-lane block is not a TritiumBlock");
-                respond(BLOCK_REJECTED);
+                respond_auto(BLOCK_REJECTED);
                 return true;
             }
 
@@ -2300,7 +2323,7 @@ namespace LLP
                    !TAO::Ledger::VerifySubmittedPrimeOffsets(*pTritium, pTritium->vOffsets))
                 {
                     debug::error(FUNCTION, "Cross-lane: Prime vOffsets structural validation failed");
-                    respond(BLOCK_REJECTED);
+                    respond_auto(BLOCK_REJECTED);
                     return true;
                 }
 
@@ -2321,7 +2344,7 @@ namespace LLP
             if(!TAO::Ledger::FinalizeWalletSignatureForSolvedBlock(*pTritium))
             {
                 debug::error(FUNCTION, "Cross-lane: FinalizeWalletSignatureForSolvedBlock failed");
-                respond(BLOCK_REJECTED);
+                respond_auto(BLOCK_REJECTED);
                 return true;
             }
         }
@@ -2330,7 +2353,7 @@ namespace LLP
         {
             debug::error(FUNCTION, "SUBMIT_BLOCK unexpected non-Tritium block for merkle ",
                          hashMerkle.SubString());
-            respond(BLOCK_REJECTED);
+            respond_auto(BLOCK_REJECTED);
             return true;
         }
 
@@ -2352,7 +2375,7 @@ namespace LLP
             debug::log(0, FUNCTION, "SUBMIT_BLOCK rejected STALE — hashPrevBlock=",
                        pTritium->hashPrevBlock.SubString(),
                        " != hashBestChain=", hashCurrentBest.SubString());
-            respond(ORPHAN_BLOCK);
+            respond_auto(ORPHAN_BLOCK);
             return true;
         }
 
@@ -2376,7 +2399,7 @@ namespace LLP
                     hashGenesis.SubString(8), pTritium->nChannel,
                     false, "DUPLICATE_SUBMISSION");
             }
-            respond(BLOCK_REJECTED);
+            respond_auto(BLOCK_REJECTED);
             return true;
         }
 
@@ -2384,7 +2407,7 @@ namespace LLP
         if(!TAO::Ledger::RefreshProducerIfStale(*pTritium))
         {
             debug::error(FUNCTION, "SUBMIT_BLOCK: producer refresh failed — rejecting");
-            respond(BLOCK_REJECTED);
+            respond_auto(BLOCK_REJECTED);
             return true;
         }
 
@@ -2394,7 +2417,7 @@ namespace LLP
         if(!TAO::Ledger::ValidateVtxSigchainConsistency(*pTritium))
         {
             debug::error(FUNCTION, "SUBMIT_BLOCK: vtx sigchain stale — rejecting");
-            respond(BLOCK_REJECTED);
+            respond_auto(BLOCK_REJECTED);
             return true;
         }
 
@@ -2409,7 +2432,7 @@ namespace LLP
                     hashGenesis.SubString(8), pTritium->nChannel,
                     false, validationResult.reason);
             }
-            respond(BLOCK_REJECTED);
+            respond_auto(BLOCK_REJECTED);
             return true;
         }
 
@@ -2424,7 +2447,7 @@ namespace LLP
                     hashGenesis.SubString(8), pTritium->nChannel,
                     false, acceptanceResult.reason);
             }
-            respond(BLOCK_REJECTED);
+            respond_auto(BLOCK_REJECTED);
         }
         else
         {
@@ -2432,7 +2455,7 @@ namespace LLP
                        " channel=", pTritium->nChannel,
                        " hashPrevBlock=", pTritium->hashPrevBlock.SubString(),
                        " merkle=", hashMerkle.SubString());
-            respond(BLOCK_ACCEPTED);
+            respond_auto(BLOCK_ACCEPTED);
 
             if(hashGenesis != 0)
             {
@@ -2455,7 +2478,7 @@ namespace LLP
             debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted GET_ROUND before authentication from ",
                        GetAddress().ToStringIP());
             std::vector<uint8_t> vFail(1, 0x00);
-            respond(MINER_AUTH_RESULT, vFail);
+            respond_auto(MINER_AUTH_RESULT, vFail);
             return debug::error(FUNCTION, "Authentication required for stateless miner commands");
         }
 
@@ -2519,7 +2542,7 @@ namespace LLP
                    " prime=", nPrimeHeight, " hash=", nHashHeight, " stake=", nStakeHeight);
 
         /* Send the NEW_ROUND response */
-        respond(NEW_ROUND, vResponse);
+        respond_auto(NEW_ROUND, vResponse);
 
         /* GET_ROUND COMPATIBILITY: AUTO-SEND TEMPLATE
          * Legacy miners using GET_ROUND polling expect to receive BLOCK_DATA automatically
