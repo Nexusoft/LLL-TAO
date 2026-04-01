@@ -614,7 +614,19 @@ namespace LLP
     }
 
 
-    /* Purge inactive miners based on cache timeout */
+    /* Purge inactive miners based on cache timeout.
+     *
+     * This is a CACHE HYGIENE function, NOT a session liveness function.
+     * Session liveness is governed exclusively by CleanupInactive() which uses
+     * the 24-hour 3-way AND check (activity + keepalive count + grace period).
+     *
+     * PurgeInactiveMiners runs on a much longer timescale:
+     *   - Remote miners:    7 days   (604800s)  via DEFAULT_CACHE_PURGE_TIMEOUT
+     *   - Localhost miners: 30 days  (2592000s) via LOCALHOST_CACHE_PURGE_TIMEOUT
+     *
+     * Its purpose is to clean up stale map entries for miners that disconnected
+     * long ago but whose context was not removed (e.g., due to unclean TCP close).
+     * It does NOT affect active miners with keepalives. */
     uint32_t StatelessMinerManager::PurgeInactiveMiners()
     {
         uint32_t nRemoved = 0;

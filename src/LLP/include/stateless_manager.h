@@ -321,9 +321,13 @@ namespace LLP
 
         /** PurgeInactiveMiners
          *
-         *  Purge miners that haven't sent keepalive within configured timeout.
-         *  Uses different timeouts for localhost vs remote miners.
-         *  This is the primary cache maintenance routine for DDOS protection.
+         *  Cache hygiene: remove stale map entries for miners that disconnected
+         *  long ago.  This is NOT a session liveness function — that role belongs
+         *  exclusively to CleanupInactive() with the 24-hour 3-way AND check.
+         *
+         *  Timeouts:
+         *    - Remote:    7 days   (DEFAULT_CACHE_PURGE_TIMEOUT)
+         *    - Localhost: 30 days  (LOCALHOST_CACHE_PURGE_TIMEOUT)
          *
          *  @return Number of miners purged
          *
