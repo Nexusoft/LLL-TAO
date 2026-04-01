@@ -186,6 +186,27 @@ namespace TAO
         bool RefreshProducerIfStale(TAO::Ledger::TritiumBlock& block);
 
 
+        /** PruneCommittedVtxTransactions
+         *
+         *  Remove vtx transactions that have already been committed to the ledger
+         *  by another block.  Between template creation and block submission, other
+         *  miners may have mined blocks that included some of our vtx transactions.
+         *  Those transactions are now indexed on disk and would cause
+         *  BlockState::Connect() to fail with "transaction overwrites not allowed".
+         *
+         *  Must be called BEFORE RefreshProducerIfStale() so that vtx-same-genesis
+         *  scanning in the refresh function operates on the pruned set.
+         *
+         *  If any vtx entries are removed, the merkle root is rebuilt and the block
+         *  is re-signed.  Returns true on success (even if no pruning was needed),
+         *  false if re-signing fails (caller should reject).
+         *
+         *  @param[in,out] block  The solved TritiumBlock candidate.
+         *  @return true if successful; false on re-signing failure.
+         **/
+        bool PruneCommittedVtxTransactions(TAO::Ledger::TritiumBlock& block);
+
+
         /** ValidateVtxSigchainConsistency
          *
          *  Pre-connect vtx sigchain staleness check.  Must be called after

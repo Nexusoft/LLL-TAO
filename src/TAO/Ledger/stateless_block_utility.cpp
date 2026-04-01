@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/include/process.h>
+#include <TAO/Ledger/types/mempool.h>
 
 #include <LLD/include/global.h>
 
@@ -307,6 +308,65 @@ namespace TAO::Ledger
         return result;
     }
 
+    /* Remove vtx transactions already committed by another block. */
+    bool PruneCommittedVtxTransactions(TAO::Ledger::TritiumBlock& block)
+    {
+        /* Only PoW channels (Prime=1, Hash=2) include user transactions in vtx. */
+        if(block.nChannel != 1 && block.nChannel != 2)
+            return true;
+
+        /* Scan for already-indexed vtx entries. */
+        std::vector<std::pair<uint8_t, uint512_t>> vPruned;
+        uint32_t nRemoved = 0;
+
+        for(const auto& txpair : block.vtx)
+        {
+            if(LLD::Ledger->HasIndex(txpair.second))
+            {
+                /* This transaction was already committed by another block.
+                 * Including it would cause "transaction overwrites not allowed"
+                 * in BlockState::Connect(). */
+                debug::log(0, FUNCTION,
+                    "Pruning already-committed vtx tx=", txpair.second.SubString(),
+                    " type=", uint32_t(txpair.first));
+                ++nRemoved;
+                continue;
+            }
+            vPruned.push_back(txpair);
+        }
+
+        if(nRemoved == 0)
+            return true; /* nothing to prune */
+
+        debug::log(0, FUNCTION,
+            "Pruned ", nRemoved, " already-committed vtx transaction(s) from block"
+            " channel=", block.nChannel, " height=", block.nHeight);
+
+        /* Replace vtx with pruned set. */
+        block.vtx = std::move(vPruned);
+
+        /* Rebuild merkle root (vtx changed, producer hash unchanged). */
+        std::vector<uint512_t> vHashes;
+        for(const auto& tx : block.vtx)
+            vHashes.push_back(tx.second);
+        vHashes.push_back(block.producer.GetHash(true));
+        block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
+
+        /* Re-sign block (vchBlockSig covers hashMerkleRoot). */
+        block.vchBlockSig.clear();
+        if(!FinalizeWalletSignatureForSolvedBlock(block))
+        {
+            debug::error(FUNCTION, "vtx pruning: block re-sign failed");
+            return false;
+        }
+
+        debug::log(0, FUNCTION,
+            "Vtx pruning complete: remaining vtx=", block.vtx.size(),
+            " new merkle=", block.hashMerkleRoot.SubString());
+
+        return true;
+    }
+
     /* Pre-validation producer refresh.  Called after sign_block() and BEFORE
      * ValidateMinedBlock() so that TritiumBlock::Check() (called inside
      * ValidateMinedBlock) sees a producer that is consistent with both the
@@ -377,16 +437,40 @@ namespace TAO::Ledger
         }
         else
         {
-            /* No vtx tx for this genesis: use on-disk last (scenario B). */
+            /* No vtx tx for this genesis: check disk first, then mempool.
+             *
+             * FIX: Previously this only checked disk (LLD::Ledger->ReadLast) and missed
+             * genesis profiles that are still mempool-only.  When the genesis is in the
+             * mempool but hasn't been committed to a block yet (e.g. the profile was just
+             * created via -autocreate), ReadLast returns false and the function incorrectly
+             * reports "no staleness".  The producer might have seq=0 when the mempool
+             * genesis means it should be seq=1.
+             *
+             * We now also check the mempool via mempool.Get() as a fallback, matching the
+             * same sources that CreateTransaction() consults. */
             if(!LLD::Ledger->ReadLast(block.producer.hashGenesis, hashTrueLast))
-                return true; /* genesis not yet on disk (first block) — no staleness */
+            {
+                /* Disk has no entry.  Check mempool for a genesis profile. */
+                TAO::Ledger::Transaction txMem;
+                if(TAO::Ledger::mempool.Get(block.producer.hashGenesis, txMem))
+                {
+                    hashTrueLast = txMem.GetHash();
+                    nTrueLastSeq = txMem.nSequence;
+                    strSeqSource = "mempool";
+                    fFallbackPath = true;
+                }
+                else
+                    return true; /* genesis not on disk or in mempool (first block) — no staleness */
+            }
+            else
+            {
+                strSeqSource = "ledger_last";
+                fFallbackPath = true;
 
-            strSeqSource = "ledger_last";
-            fFallbackPath = true;
-
-            TAO::Ledger::Transaction txLast;
-            if(LLD::Ledger->ReadTx(hashTrueLast, txLast, TAO::Ledger::FLAGS::MEMPOOL))
-                nTrueLastSeq = txLast.nSequence;
+                TAO::Ledger::Transaction txLast;
+                if(LLD::Ledger->ReadTx(hashTrueLast, txLast, TAO::Ledger::FLAGS::MEMPOOL))
+                    nTrueLastSeq = txLast.nSequence;
+            }
         }
 
         if(fSeqDiag)

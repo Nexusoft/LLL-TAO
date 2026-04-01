@@ -357,6 +357,7 @@ ifdef UNIT_TESTS
 		   build/Tests_TAO_Ledger_block.o \
 		   build/Tests_TAO_Ledger_channel_height.o \
 		   build/Tests_TAO_Ledger_create_transaction.o \
+		   build/Tests_TAO_Ledger_stake_sequence.o \
 		   build/Tests_TAO_Ledger_validate_vtx_consistency.o \
 		   build/Tests_TAO_Ledger_mempool.o \
 		   build/Tests_TAO_Ledger_prime.o \
