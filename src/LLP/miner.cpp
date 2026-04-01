@@ -547,12 +547,9 @@ namespace LLP
 
                 MiningContext sessionContext = optContext.value();
                 uint64_t nNow = runtime::unifiedtimestamp();
-                const uint32_t nExpirySeconds =
-                    static_cast<uint32_t>(NodeCache::GetSessionLivenessTimeout(sessionContext.strAddress));
 
                 sessionContext = sessionContext
                     .WithTimestamp(nNow)
-                    .WithSessionTimeout(nExpirySeconds)
                     .WithKeepaliveCount(sessionContext.nKeepaliveCount + 1)
                     .WithMinerPrevblockSuffix(nMinerPrevblockSuffix);
 
@@ -571,8 +568,8 @@ namespace LLP
                 constexpr uint64_t SECONDS_PER_DAY = 86400;
                 debug::log(2, FUNCTION, "Session refreshed:");
                 debug::log(2, FUNCTION, "  Keepalives: ", sessionContext.nKeepaliveCount);
-                debug::log(2, FUNCTION, "  New expiry: ", (nNow + nExpirySeconds), " (",
-                           (nExpirySeconds / SECONDS_PER_DAY), "d)");
+                debug::log(2, FUNCTION, "  Liveness window: ", SECONDS_PER_DAY, "s (",
+                           (SECONDS_PER_DAY / SECONDS_PER_DAY), "d)");
 
                 /* Build unified 32-byte response */
                 TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
@@ -827,13 +824,9 @@ namespace LLP
                     if(updatedContext.fAuthenticated && updatedContext.nSessionId != 0)
                     {
                         uint64_t nNow = runtime::unifiedtimestamp();
-                        const uint32_t nExpirySeconds =
-                            static_cast<uint32_t>(NodeCache::GetSessionLivenessTimeout(updatedContext.strAddress));
 
                         if(updatedContext.nSessionStart == 0)
                             updatedContext = updatedContext.WithSessionStart(nNow);
-
-                        updatedContext = updatedContext.WithSessionTimeout(nExpirySeconds);
                     }
 
                     /* Register session in NodeSessionRegistry for cross-port session identity.

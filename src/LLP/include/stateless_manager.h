@@ -308,20 +308,11 @@ namespace LLP
          **/
         uint32_t CleanupInactive(uint64_t nTimeoutSec = 86400);
 
-        /** CleanupExpiredSessions
-         *
-         *  Remove miners with expired sessions based on their session timeout.
-         *
-         *  @return Number of miners removed
-         *
-         **/
-        uint32_t CleanupExpiredSessions();
-
         /** CleanupSessionScopedMaps
          *
          *  Remove rate limiters and session block maps for sessions that no longer
-         *  exist in mapMiners.  Called from CleanupExpiredSessions() and directly
-         *  from tests.
+         *  exist in mapMiners.  Called from CleanupInactive() after removing
+         *  expired sessions, and directly from tests.
          *
          *  @return Number of entries removed (limiters + block maps combined)
          *

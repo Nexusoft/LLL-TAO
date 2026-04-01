@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLP/include/genesis_constants.h>
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/stateless_manager.h>
+#include <LLP/include/node_cache.h>
 #include <LLP/include/stateless_opcodes.h>
 #include <LLP/include/falcon_constants.h>
 #include <LLP/include/falcon_auth.h>
@@ -924,9 +925,12 @@ namespace LLP
                 debug::log(0, "   Channel: ", context.nChannel);
                 debug::log(0, "   Session ID: ", context.nSessionId);
 
-                /* Explicit session validity policy handling. */
-                const uint64_t nNow = runtime::unifiedtimestamp();
-                if(context.nSessionId == 0 || context.IsSessionExpired(nNow))
+                /* Session validity: only require a non-zero session ID.
+                 * Session liveness is enforced exclusively by CleanupInactive()
+                 * (24-hour 3-way AND check) on a 10-minute sweep cadence.
+                 * Authenticated miners with valid keepalives must never be
+                 * blocked from GET_BLOCK — only DDOS rate limiting applies. */
+                if(context.nSessionId == 0)
                 {
                     SendGetBlockControlResponse(GetBlockPolicyReason::SESSION_INVALID, 0, false);
                     return true;
@@ -2942,10 +2946,10 @@ namespace LLP
                         sessionStart.DATA.push_back(static_cast<uint8_t>((nSessionId >> 24) & 0xFF));
 
                         /* Add timeout (4 bytes, little-endian)
-                         * Cast to uint32_t to avoid silent truncation if nSessionTimeout > 0xFFFFFFFF.
-                         * NexusMiner parser expects 4 bytes LE. Session timeouts realistically fit in 32 bits
-                         * (max ~136 years if in seconds, or ~49 days if in milliseconds). */
-                        uint32_t nTimeout = static_cast<uint32_t>(context.nSessionTimeout);
+                         * Session liveness is governed by CleanupInactive() with the global
+                         * SESSION_LIVENESS_TIMEOUT_SECONDS (86400s).  Send that value to
+                         * the miner so it knows the node's liveness window. */
+                        uint32_t nTimeout = static_cast<uint32_t>(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
                         sessionStart.DATA.push_back(static_cast<uint8_t>(nTimeout & 0xFF));
                         sessionStart.DATA.push_back(static_cast<uint8_t>((nTimeout >> 8) & 0xFF));
                         sessionStart.DATA.push_back(static_cast<uint8_t>((nTimeout >> 16) & 0xFF));
