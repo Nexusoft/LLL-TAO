@@ -12,16 +12,20 @@
 ____________________________________________________________________________________________*/
 
 /*
- * Regression test for the CreateTransaction() hashLast / hashPrevTx desync bug.
+ * Regression test for the CreateTransaction() three-source resolution bugs.
  *
- * Bug: when the mempool branch wins the three-source resolution in CreateTransaction(),
- * txPrev was updated to the mempool tx but hashLast was NOT updated.  The downstream
- * assignment  tx.hashPrevTx = hashLast  then wrote a stale (or zero) hash, causing
- * Transaction::Connect() to fail with "prev transaction incorrect sequence".
+ * Original bug (hashLast desync):
+ *   When the mempool branch wins, txPrev was updated but hashLast was NOT.
+ *   Fix: add  hashLast = txMem.GetHash();  after  txPrev = txMem;
  *
- * Fix: add  hashLast = txMem.GetHash();  after  txPrev = txMem;  in the mempool branch.
+ * Additional fixes (PR #493):
+ *   Fix 1: Mempool genesis (seq=0) was ignored when txPrev was unset because
+ *          0 > 0 == false.  Fix: add  || (txPrev.hashGenesis == 0 && txMem.hashGenesis != 0)
+ *   Fix 2: Disk path was gated by `else if`, preventing disk from being consulted
+ *          when mempool.Get() returned true.  Fix: make disk check unconditional.
  *
- * See docs/NSEQ_DIAG_MEMPOOL_HASHLAST_BUG.md for the full root-cause analysis.
+ * See docs/NSEQ_DIAG_MEMPOOL_HASHLAST_BUG.md and
+ *     docs/SIGCHAIN_SEQUENCE_FIX_VERIFICATION.md for full analysis.
  */
 
 #include <LLC/include/random.h>
@@ -56,7 +60,7 @@ namespace
      *  hashLedgerLast  – hash that Ledger->ReadLast() would return
      *
      * The return value holds the winning (txPrev, hashLast) after the same
-     * conditional tree used in CreateTransaction().
+     * conditional tree used in CreateTransaction() — including all three fixes.
      */
     ResolutionResult SimulateCreateTransactionResolution(
         const TAO::Ledger::Transaction* pSessionTx,
@@ -65,7 +69,7 @@ namespace
         const TAO::Ledger::Transaction* pLedgerTx,
         const uint512_t&                hashLedgerLast)
     {
-        /* ---- exact copy of the resolution tree from create.cpp ---- */
+        /* ---- mirrors the FIXED resolution tree from create.cpp ---- */
         uint512_t hashLast = 0;
 
         TAO::Ledger::Transaction txPrev;   // default-constructed → hashGenesis == 0
@@ -75,15 +79,19 @@ namespace
             txPrev   = *pSessionTx;
         }
 
+        /* Source 2: Mempool (with Fix 1: genesis override) */
         if(pMempoolTx != nullptr)
         {
-            if(pMempoolTx->nSequence > txPrev.nSequence)
+            if(pMempoolTx->nSequence > txPrev.nSequence
+                || (txPrev.hashGenesis == 0 && pMempoolTx->hashGenesis != 0))
             {
                 txPrev   = *pMempoolTx;
                 hashLast = pMempoolTx->GetHash();   // ← the one-line fix under test
             }
         }
-        else if(pLedgerTx != nullptr)
+
+        /* Source 3: Disk (Fix 2: unconditional — no else if) */
+        if(pLedgerTx != nullptr)
         {
             if(pLedgerTx->nSequence > txPrev.nSequence)
             {
@@ -231,4 +239,59 @@ TEST_CASE( "CreateTransaction produces zero hashLast for genesis transaction", "
 
     REQUIRE(r.txPrev.hashGenesis == uint256_t(0));
     REQUIRE(r.hashLast           == uint512_t(0));
+}
+
+
+/* ===========================================================================
+ * Test 5 — Fix 1: Mempool genesis (seq=0) accepted when txPrev is unset
+ *
+ * Before Fix 1, when mempool had a genesis tx (seq=0) and txPrev was
+ * default-constructed (also seq=0), the comparison 0 > 0 was false and
+ * the mempool entry was silently ignored.  This caused CreateTransaction
+ * to enter the IsFirst() branch and create a duplicate seq=0 producer.
+ * =========================================================================== */
+TEST_CASE( "CreateTransaction Fix 1: mempool genesis accepted when txPrev unset", "[ledger]" )
+{
+    const uint256_t hashGenesis = TAO::Ledger::Genesis(LLC::GetRand256(), true);
+
+    TAO::Ledger::Transaction txMem = MakeTx(hashGenesis, 0);
+    const uint512_t hashMem = txMem.GetHash();
+
+    ResolutionResult r = SimulateCreateTransactionResolution(
+        nullptr, uint512_t(0),   // No Sessions
+        &txMem,                   // Mempool: seq=0 genesis
+        nullptr, uint512_t(0)    // No Disk
+    );
+
+    /* Fix 1: txPrev must be the mempool genesis, not empty. */
+    REQUIRE(r.txPrev.hashGenesis == hashGenesis);
+    REQUIRE(r.txPrev.nSequence   == 0u);
+    REQUIRE(r.hashLast           == hashMem);
+}
+
+
+/* ===========================================================================
+ * Test 6 — Fix 2: Disk is always checked (unconditional)
+ *
+ * Before Fix 2, the disk path was gated by `else if`, so it was skipped
+ * whenever mempool.Get() returned true — even if the mempool entry didn't
+ * win the comparison.  Now disk is always checked.
+ * =========================================================================== */
+TEST_CASE( "CreateTransaction Fix 2: disk always checked even when mempool present", "[ledger]" )
+{
+    const uint256_t hashGenesis = TAO::Ledger::Genesis(LLC::GetRand256(), true);
+
+    TAO::Ledger::Transaction txMem  = MakeTx(hashGenesis, 0);  // Mempool: seq=0
+    TAO::Ledger::Transaction txDisk = MakeTx(hashGenesis, 1);  // Disk: seq=1
+    const uint512_t hashDisk = txDisk.GetHash();
+
+    ResolutionResult r = SimulateCreateTransactionResolution(
+        nullptr, uint512_t(0),   // No Sessions
+        &txMem,                   // Mempool: seq=0 (present but lower)
+        &txDisk, hashDisk        // Disk: seq=1 (higher)
+    );
+
+    /* Fix 2: disk (seq=1) must win over mempool (seq=0). */
+    REQUIRE(r.txPrev.nSequence == 1u);
+    REQUIRE(r.hashLast         == hashDisk);
 }

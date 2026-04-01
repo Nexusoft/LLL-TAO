@@ -188,26 +188,81 @@ mempool activity exists for the signing genesis, every subsequent mined block wi
 
 ---
 
+## Stake Minter Verification
+
+This bug affects the **Proof-of-Stake (staking) path** identically to PoW mining.
+The Tritium Stake Minter calls `CreateStakeBlock()` (create.cpp:865), which calls
+the same `CreateTransaction()` function (create.cpp:893) that PoW uses via
+`CreateProducer()` (create.cpp:705).
+
+**Call chain:**
+```
+TritiumMinter::StakeMinterThread()  →  CreateCandidateBlock()
+  →  CreateStakeBlock(pCredentials, strPIN, block, fGenesis)
+    →  CreateTransaction(user, pin, rProducer)   ← SAME FIXED FUNCTION
+```
+
+Because all block production paths converge on a single `CreateTransaction()`,
+the fix automatically applies to staking.  See
+`docs/SIGCHAIN_SEQUENCE_FIX_VERIFICATION.md` for the full cross-path verification
+and `docs/diagrams/mining/sigchain-sequence-resolution.md` for flow diagrams.
+
+---
+
+## Additional Fixes (PR #493)
+
+Two additional bugs were identified and fixed in `CreateTransaction()` during the
+same investigation:
+
+### Fix 1: Mempool genesis (seq=0) ignored when txPrev is unset
+
+When the mempool contained the genesis profile (seq=0) and Sessions had no entry,
+`txPrev` was default-constructed with `hashGenesis==0` and `nSequence==0`.
+The comparison `txMem.nSequence > txPrev.nSequence` evaluated to `0 > 0 → false`,
+silently ignoring the only valid transaction.  The disk fallback was also skipped
+(see Fix 2).
+
+**Fix:** Added `|| (txPrev.hashGenesis == 0 && txMem.hashGenesis != 0)`.
+
+### Fix 2: `else if` prevented disk fallback
+
+The disk lookup was gated by `else if(LLD::Ledger->ReadLast(...))`, meaning it was
+skipped whenever `mempool.Get()` returned true — even if the mempool entry didn't
+win the comparison.
+
+**Fix:** Changed to unconditional block with separate `hashDiskLast` variable.
+
+---
+
 ## Upstream Reference
 
-The identical bug is present in `Nexusoft/LLL-TAO` at commit
+The identical bugs are present in `Nexusoft/LLL-TAO` at commit
 `ff33dea5fc4e9dc3bf325c059278d6938934bfb9`, lines 84-99 of `src/TAO/Ledger/create.cpp`.
 This document and its accompanying PR fix should be reported to upstream maintainer Colin McKinlay
-so that the upstream codebase can receive the same one-line correction.
+so that the upstream codebase can receive the same corrections.
 
 ---
 
 ## Regression Prevention
 
-A dedicated unit test was added in `tests/unit/TAO/Ledger/create_transaction.cpp`.  The test
-directly exercises the three-source resolution logic with a controlled mempool winner and asserts
-that after the resolution:
+Dedicated unit tests were added:
 
-1. `hashLast` equals `txMem.GetHash()` (not the session/zero value).
-2. `txPrev.nSequence` equals the mempool tx's sequence.
-3. The derived `tx.nSequence` and `tx.hashPrevTx` are consistent.
+- `tests/unit/TAO/Ledger/create_transaction.cpp` — Tests the three-source resolution
+  logic including the hashLast sync fix and both Fix 1 (genesis override) and Fix 2
+  (unconditional disk check).
 
-Run the regression test with:
+- `tests/unit/TAO/Ledger/stake_sequence.cpp` — Tests the same resolution logic in
+  stake minter scenarios (bootstrap, restart, mempool-only genesis, etc.).
+
+The tests exercise the resolution with controlled source inputs and assert:
+
+1. `hashLast` equals the hash of the winning transaction.
+2. `txPrev.nSequence` equals the winning transaction's sequence.
+3. `hashLast` and `txPrev` always come from the same source (invariant check).
+4. Mempool genesis (seq=0) is accepted when txPrev is unset (Fix 1).
+5. Disk is always consulted even when mempool is present (Fix 2).
+
+Run the regression tests with:
 
 ```bash
 make -f makefile.cli test
@@ -224,4 +279,15 @@ make -f makefile.cli test
 | #479 | Added `SequenceDiagnosticsEnabled()` and `[NSEQ_DIAG]` logging infrastructure |
 | #480 | Moved `STATELESS_BLOCK_ACCEPTED` after ledger commit — prerequisite fix |
 | #481 | Added vtx sigchain pre-checks — complementary, does not fix core issue |
+| #493 | Fix 1 (genesis override) + Fix 2 (unconditional disk) + PruneCommittedVtx |
 | This PR | One-line fix: `hashLast = txMem.GetHash()` + unit test + documentation |
+
+---
+
+## Related Documentation
+
+| Document | Description |
+|----------|-------------|
+| `docs/SIGCHAIN_SEQUENCE_FIX_VERIFICATION.md` | Full cross-path verification (PoW + PoS) |
+| `docs/diagrams/mining/sigchain-sequence-resolution.md` | Flow diagrams for all scenarios |
+| `docs/NSEQ_DIAG_MEMPOOL_READLAST_FIX.md` | ValidateVtxSigchainConsistency fix |
