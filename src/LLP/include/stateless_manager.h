@@ -538,9 +538,9 @@ namespace LLP
          *  The returned shared_ptr is thread-safe; multiple connection threads may
          *  call Allow() concurrently — GetBlockRollingLimiter is internally locked.
          *
-         *  This replaces the per-connection m_getBlockRollingLimiter for GET_BLOCK
+         *  This replaces the former per-connection m_getBlockRollingLimiter for GET_BLOCK
          *  so that a miner with both a legacy and a stateless connection shares one
-         *  20/60s budget across both lanes (SIM-LINK combined budget).
+         *  25/60s budget across both lanes (SIM-LINK combined budget).
          *
          *  Key format used by callers: "session=N|combined"
          *
@@ -667,7 +667,7 @@ namespace LLP
         mutable std::mutex m_sessionLimiterMutex;
 
         /** Session-scoped rate limiters keyed by session ID.
-         *  Each limiter enforces 20/60s GET_BLOCK budget shared across both lanes.
+         *  Each limiter enforces 25/60s GET_BLOCK budget shared across both lanes.
          *  Using shared_ptr so callers can hold a reference past the lock window. **/
         std::unordered_map<uint32_t, std::shared_ptr<GetBlockRollingLimiter>> m_mapSessionLimiters;
 

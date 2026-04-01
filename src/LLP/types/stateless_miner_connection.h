@@ -135,16 +135,13 @@ namespace LLP
         // ═══════════════════════════════════════════════════════════════════════
         
         struct RateLimitConfig {
-            // Request limits per minute
-            static constexpr uint32_t MAX_GET_ROUND_PER_MINUTE = 12;
+            // Session-scoped rolling limit (authoritative, from get_block_policy.h)
             static constexpr uint32_t MAX_GET_BLOCK_PER_MINUTE = static_cast<uint32_t>(GET_BLOCK_ROLLING_LIMIT_PER_MINUTE);
-            static_assert(MAX_GET_BLOCK_PER_MINUTE == 20,
-                "MAX_GET_BLOCK_PER_MINUTE must equal GET_BLOCK_ROLLING_LIMIT_PER_MINUTE (20). "
+            static_assert(MAX_GET_BLOCK_PER_MINUTE == 25,
+                "MAX_GET_BLOCK_PER_MINUTE must equal GET_BLOCK_ROLLING_LIMIT_PER_MINUTE (25). "
                 "Update get_block_policy.h if the rolling limit changes.");
-            static constexpr uint32_t MAX_SUBMIT_BLOCK_PER_MINUTE = 60;  // Lenient for solutions!
-            static constexpr uint32_t MAX_SET_CHANNEL_PER_MINUTE = 5;
             
-            // Minimum intervals (from mining_constants.h - DEBUG vs PRODUCTION)
+            // Minimum intervals between consecutive requests of the same type
             static constexpr uint32_t MIN_GET_ROUND_INTERVAL_MS = 5000;   // 5 seconds
             static constexpr uint32_t MIN_SUBMIT_BLOCK_INTERVAL_MS = 1000; // 1 second (lenient)
             
@@ -172,17 +169,10 @@ namespace LLP
         };
         
         struct RateLimitState {
-            // Per-minute request counters
-            uint32_t nGetRoundCount = 0;
-            uint32_t nGetBlockCount = 0;
-            uint32_t nSubmitBlockCount = 0;
-            uint32_t nSetChannelCount = 0;
-            
-            // Last request timestamps
+            // Last request timestamps (used for minimum-interval enforcement)
             std::chrono::steady_clock::time_point tLastGetRound;
             std::chrono::steady_clock::time_point tLastGetBlock;
             std::chrono::steady_clock::time_point tLastSubmitBlock;
-            std::chrono::steady_clock::time_point tLastCounterReset;
             
             // Violation tracking
             uint32_t nViolationCount = 0;
@@ -196,16 +186,12 @@ namespace LLP
              *  RateLimitConfig::MAX_CONSECUTIVE_RATE_LIMIT_STRIKES the connection is
              *  closed to stop the tight-loop self-DDoS. */
             uint32_t nConsecutiveRateLimitStrikes = 0;
-            
-            // Initialize timestamps
-            RateLimitState() : tLastCounterReset(std::chrono::steady_clock::now()) {}
 
             /** ResetViolationState
              *
              *  @brief Clear throttle/violation counters on clean re-authentication.
-             *  Rolling window counters (nGetBlockCount etc.) are intentionally NOT
-             *  reset here — the rolling window limiter (GetBlockRollingLimiter) is
-             *  keyed by session+lane and self-manages its own window expiry.
+             *  The session-scoped rolling window limiter (GetBlockRollingLimiter)
+             *  is keyed by session and self-manages its own window expiry.
              *
              **/
             void ResetViolationState()
@@ -218,7 +204,6 @@ namespace LLP
         };
         
         RateLimitState m_rateLimit;
-        GetBlockRollingLimiter m_getBlockRollingLimiter;
 
         /** Track whether NODE_SHUTDOWN was already sent on this connection. **/
         GracefulShutdown::NotificationState m_nodeShutdownNotification;
@@ -484,13 +469,6 @@ namespace LLP
          *
          **/
         void RecordViolation(const std::string& strReason);
-        
-        /** ResetMinuteCounters
-         *
-         *  @brief Reset per-minute counters (called every 60 seconds)
-         *
-         **/
-        void ResetMinuteCounters();
 
         /** Build per-session/lane limiter key for GET_BLOCK rolling policy. **/
         std::string GetBlockRateKey() const;

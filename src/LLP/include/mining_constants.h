@@ -23,60 +23,26 @@ namespace MiningConstants
 {
     //=========================================================================
     // RATE LIMITING CONFIGURATION
-    // Different values for DEBUG vs PRODUCTION builds
     //=========================================================================
-    
-    #ifdef ENABLE_DEBUG
 
-        /** Minimum interval between GET_BLOCK requests.
-         *
-         *  1-second minimum interval between GET_BLOCK requests.
-         *  Matches GET_BLOCK_COOLDOWN_SECONDS. Both mechanisms enforce the same
-         *  1-second floor — no lockout, no doom loop.
-         *  The 20/minute rolling cap is the primary firewall; the 1s floor is
-         *  just burst smoothing.
-         */
-        constexpr uint32_t GET_BLOCK_MIN_INTERVAL_MS = 1000;
+    /** Minimum interval between GET_BLOCK requests.
+     *
+     *  1-second minimum interval between GET_BLOCK requests.
+     *  Matches GET_BLOCK_COOLDOWN_SECONDS. Both mechanisms enforce the same
+     *  1-second floor — no lockout, no doom loop.
+     *  The 25/minute rolling cap is the primary firewall; the 1s floor is
+     *  just burst smoothing.
+     */
+    constexpr uint32_t GET_BLOCK_MIN_INTERVAL_MS = 1000;
 
-        /** Throttled interval for GET_BLOCK when rate limited (1 second) */
-        constexpr uint32_t GET_BLOCK_THROTTLE_INTERVAL_MS = 1000;
+    /** Throttled interval for GET_BLOCK when rate limited (1 second) */
+    constexpr uint32_t GET_BLOCK_THROTTLE_INTERVAL_MS = 1000;
 
-        /** Number of rate limit violations before temporary ban (15 strikes) */
-        constexpr uint32_t RATE_LIMIT_STRIKE_THRESHOLD = 15;
+    /** Number of rate limit violations before temporary ban (15 strikes) */
+    constexpr uint32_t RATE_LIMIT_STRIKE_THRESHOLD = 15;
 
-        /** Auto-cooldown duration in seconds (5 minute) */
-        constexpr uint32_t AUTOCOOLDOWN_DURATION_SECONDS = 300;
-
-        /** Disable rate limiting for localhost connections in debug mode */
-        constexpr bool DISABLE_LOCALHOST_RATE_LIMITING = false;
-
-    #else
-
-        /* Production Build - Strict rate limits for network security */
-        
-        /** Minimum interval between GET_BLOCK requests.
-         *
-         *  1-second minimum interval between GET_BLOCK requests.
-         *  Matches GET_BLOCK_COOLDOWN_SECONDS. Both mechanisms enforce the same
-         *  1-second floor — no lockout, no doom loop.
-         *  The 20/minute rolling cap is the primary firewall; the 1s floor is
-         *  just burst smoothing.
-         */
-        constexpr uint32_t GET_BLOCK_MIN_INTERVAL_MS = 1000;
-        
-        /** Throttled interval for GET_BLOCK when rate limited (1 second) */
-        constexpr uint32_t GET_BLOCK_THROTTLE_INTERVAL_MS = 1000;
-        
-        /** Number of rate limit violations before temporary ban (15 strikes) */
-        constexpr uint32_t RATE_LIMIT_STRIKE_THRESHOLD = 15;
-        
-        /** Auto-cooldown duration in seconds (5 minutes) */
-        constexpr uint32_t AUTOCOOLDOWN_DURATION_SECONDS = 300;
-        
-        /** Disable rate limiting for localhost connections (false in production) */
-        constexpr bool DISABLE_LOCALHOST_RATE_LIMITING = false;
-        
-    #endif
+    /** Auto-cooldown duration in seconds (5 minutes) */
+    constexpr uint32_t AUTOCOOLDOWN_DURATION_SECONDS = 300;
     
     //=========================================================================
     // OPCODE VALIDATION RANGES
@@ -125,9 +91,6 @@ namespace MiningConstants
 
     /** Per-connection GET_BLOCK minimum interval (1 second).
      *
-     *  Defined outside the #ifdef ENABLE_DEBUG block so it applies to
-     *  BOTH debug and production builds.
-     *
      *  Used by AutoCoolDown m_get_block_cooldown on each miner connection.
      *  This is a simple 1-second rate-limit floor — NOT a lockout window.
      *  The cooldown is NOT reset after serving a GET_BLOCK, so miners can
@@ -139,14 +102,6 @@ namespace MiningConstants
      *  re-subscription.
      */
     constexpr uint32_t GET_BLOCK_COOLDOWN_SECONDS = 1;
-
-    /** Localhost connections skip AutoCoolDown in production.
-     *
-     *  A local miner cannot be a DDOS vector; the per-minute cap
-     *  (MAX_GET_BLOCK_PER_MINUTE) provides sufficient rate control.
-     *  Remote miners are still protected by the 1-second rate-limit floor.
-     */
-    constexpr bool DISABLE_LOCALHOST_AUTOCOOLDOWN = true;
 
     //=========================================================================
     // DIFFICULTY CACHING
