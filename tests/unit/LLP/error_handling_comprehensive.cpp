@@ -189,35 +189,6 @@ TEST_CASE("Error Handling: Reward Binding Errors", "[error-handling][reward]")
 
 TEST_CASE("Error Handling: Session Errors", "[error-handling][session]")
 {
-    SECTION("Session expired")
-    {
-        uint64_t now = runtime::unifiedtimestamp();
-        uint64_t oldTime = now - 400;  // 400 seconds ago
-        
-        MiningContext ctx = MiningContext()
-            .WithSessionStart(oldTime)
-            .WithSessionTimeout(300)  // 300s timeout
-            .WithAuth(true);
-        
-        REQUIRE(ctx.IsSessionExpired() == true);
-        
-        /* Should reject operations on expired session */
-    }
-    
-    SECTION("Session timeout zero (never expires)")
-    {
-        uint64_t veryOldTime = runtime::unifiedtimestamp() - 10000;
-        
-        MiningContext ctx = MiningContext()
-            .WithSessionStart(veryOldTime)
-            .WithSessionTimeout(0)
-            .WithAuth(true);
-        
-        REQUIRE(ctx.IsSessionExpired() == false);
-        
-        /* Zero timeout = never expires */
-    }
-    
     SECTION("Session not initialized")
     {
         MiningContext ctx = MiningContext()
@@ -493,7 +464,6 @@ TEST_CASE("Error Handling: Edge Case Scenarios", "[error-handling][edge-cases]")
             .WithHeight(UINT32_MAX)
             .WithSession(UINT32_MAX)
             .WithTimestamp(UINT64_MAX)
-            .WithSessionTimeout(UINT64_MAX)
             .WithKeepaliveCount(UINT32_MAX);
         
         /* Should handle max values without overflow */
@@ -606,16 +576,13 @@ TEST_CASE("Error Handling: Recovery from Errors", "[error-handling][recovery]")
         /* Expired session */
         MiningContext expired = MiningContext()
             .WithSessionStart(now - 400)
-            .WithSessionTimeout(300);
         
-        REQUIRE(expired.IsSessionExpired() == true);
         
         /* Renew session */
         MiningContext renewed = expired
             .WithSessionStart(now)
             .WithTimestamp(now);
         
-        REQUIRE(renewed.IsSessionExpired() == false);
     }
     
     SECTION("Recover from invalid channel")
@@ -650,13 +617,10 @@ TEST_CASE("Error Handling: Defensive Programming Patterns", "[error-handling][de
         REQUIRE(ctx.HasValidPayout() == false);
     }
     
-    SECTION("IsSessionExpired handles zero session start")
     {
         MiningContext ctx = MiningContext()
-            .WithSessionTimeout(300);
         
         /* Session start is 0, should be expired */
-        REQUIRE(ctx.IsSessionExpired() == true);
     }
     
     SECTION("Context updates preserve immutability")

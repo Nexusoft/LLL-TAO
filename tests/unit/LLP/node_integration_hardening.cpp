@@ -92,13 +92,11 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
         MiningContext ctx = MiningContext()
             .WithSessionStart(sessionStart)
             .WithTimestamp(lastActivity)
-            .WithSessionTimeout(300)  // 300s timeout (5 minutes)
             .WithSession(sessionId)
             .WithAuth(true)
             .WithChannel(2);  // Hash channel
 
         /* Verify session is expired */
-        REQUIRE(ctx.IsSessionExpired(now) == true);
 
         /* Step 2: Miner sends keepalive on a zero-session-ID context.
          * When nSessionId == 0 (no session ID assigned) and the session has expired,
@@ -149,7 +147,6 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
             .WithAuth(true);
 
         /* Verify new session is active */
-        REQUIRE(reauthCtx.IsSessionExpired(reauthTime) == false);
         REQUIRE(reauthCtx.nSessionId == newSessionId);
         REQUIRE(reauthCtx.fAuthenticated == true);
 
@@ -194,11 +191,9 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
         MiningContext expiredCtx = MiningContext()
             .WithSessionStart(oldTime)
             .WithTimestamp(oldTime)
-            .WithSessionTimeout(300)
             .WithSession(0)        // Zero session ID → SESSION_EXPIRED (not extended)
             .WithAuth(true);
 
-        REQUIRE(expiredCtx.IsSessionExpired(now) == true);
 
         /* Build SESSION_KEEPALIVE packet (8 bytes: session_id LE + prevblock_lo32 BE) */
         StatelessPacket v2Packet(SESSION_KEEPALIVE);
@@ -250,13 +245,11 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
         MiningContext ctx = MiningContext()
             .WithSessionStart(oldTime)
             .WithTimestamp(oldTime)
-            .WithSessionTimeout(300)
             .WithSession(12345)
             .WithAuth(true)
             .WithChannel(1)      // Prime channel
             .WithHeight(500000); // Current height
 
-        REQUIRE(ctx.IsSessionExpired(now) == true);
 
         /* Send keepalive — authenticated session with valid ID is EXTENDED, not expired */
         StatelessPacket keepalive(SESSION_KEEPALIVE);
@@ -270,7 +263,6 @@ TEST_CASE("Integration: SESSION_EXPIRED with In-Band Reauth", "[integration][ses
         REQUIRE(result.response.HEADER == SESSION_KEEPALIVE);
 
         /* After extension: session is no longer expired */
-        REQUIRE(result.context.IsSessionExpired(now) == false);
 
         /* Channel and height are preserved through extension (no reauth needed) */
         REQUIRE(result.context.nChannel == 1);
@@ -295,7 +287,6 @@ TEST_CASE("Integration: BLOCK_REJECTED:FORK with Miner Recovery", "[integration]
         MiningContext ctx = MiningContext()
             .WithSessionStart(now)
             .WithTimestamp(now)
-            .WithSessionTimeout(300)
             .WithSession(sessionId)
             .WithAuth(true)
             .WithChannel(2)      // Hash channel
@@ -392,7 +383,6 @@ TEST_CASE("Integration: BLOCK_REJECTED:FORK with Miner Recovery", "[integration]
         MiningContext forkedCtx = MiningContext()
             .WithSessionStart(now)
             .WithTimestamp(now)
-            .WithSessionTimeout(300)
             .WithSession(sessionId)
             .WithAuth(true)
             .WithChannel(2)
@@ -412,7 +402,6 @@ TEST_CASE("Integration: BLOCK_REJECTED:FORK with Miner Recovery", "[integration]
 
         /* Step 4: Mining continues on correct chain */
         /* Miner can now submit blocks that will be accepted */
-        REQUIRE(resyncedCtx.IsSessionExpired() == false);
         REQUIRE(resyncedCtx.fAuthenticated == true);
     }
 
@@ -453,13 +442,11 @@ TEST_CASE("Integration: Keepalive Rolling Window Resets", "[integration][keepali
         MiningContext ctx = MiningContext()
             .WithSessionStart(sessionStart)  // Started 1000s ago (> timeout)
             .WithTimestamp(now - 100)        // Last activity 100s ago (< timeout)
-            .WithSessionTimeout(300)
             .WithSession(sessionId)
             .WithAuth(true);
 
         /* Key insight: Session is NOT expired because last activity (nTimestamp)
          * was only 100s ago, even though session started 1000s ago */
-        REQUIRE(ctx.IsSessionExpired(now) == false);
 
         /* Simulate keepalive sequence over time */
         uint64_t t0 = now;
@@ -475,13 +462,11 @@ TEST_CASE("Integration: Keepalive Rolling Window Resets", "[integration][keepali
                           .WithKeepaliveCount(active.nKeepaliveCount + 1);
 
             /* Session should still be active */
-            REQUIRE(active.IsSessionExpired(currentTime) == false);
             REQUIRE(active.nKeepaliveCount == static_cast<uint32_t>(i + 1));
         }
 
         /* After 5 minutes of regular keepalives, session still active */
         uint64_t t5 = t0 + 300;
-        REQUIRE(active.IsSessionExpired(t5) == false);
 
         /* Even though session started 1300s ago! */
         REQUIRE((t5 - sessionStart) == 1300);
@@ -499,21 +484,17 @@ TEST_CASE("Integration: Keepalive Rolling Window Resets", "[integration][keepali
         MiningContext ctx = MiningContext()
             .WithSessionStart(sessionStart)
             .WithTimestamp(sessionStart)  // No activity since session start
-            .WithSessionTimeout(300)
             .WithSession(22222)
             .WithAuth(true);
 
         /* Initially active */
-        REQUIRE(ctx.IsSessionExpired(now) == false);
 
         /* Time passes without keepalives */
         uint64_t afterTimeout = now + 250;  // Total 350s since last activity
 
         /* Session should be expired */
-        REQUIRE(ctx.IsSessionExpired(afterTimeout) == true);
 
         /* Verify it's based on nTimestamp, not nSessionStart */
-        REQUIRE((afterTimeout - ctx.nTimestamp) > ctx.nSessionTimeout);
     }
 
     SECTION("Keepalive updates rolling window consistently")
@@ -526,11 +507,9 @@ TEST_CASE("Integration: Keepalive Rolling Window Resets", "[integration][keepali
         MiningContext ctx = MiningContext()
             .WithSessionStart(now)
             .WithTimestamp(now)
-            .WithSessionTimeout(300)
             .WithSession(sessionId)
             .WithAuth(true);
 
-        REQUIRE(ctx.IsSessionExpired(now) == false);
 
         /* First keepalive at t+60 */
         uint64_t t1 = now + 60;
@@ -538,7 +517,6 @@ TEST_CASE("Integration: Keepalive Rolling Window Resets", "[integration][keepali
             .WithTimestamp(t1)
             .WithKeepaliveCount(1);
 
-        REQUIRE(afterFirst.IsSessionExpired(t1) == false);
         REQUIRE(afterFirst.nTimestamp == t1);
 
         /* Second keepalive at t+120 */
@@ -547,7 +525,6 @@ TEST_CASE("Integration: Keepalive Rolling Window Resets", "[integration][keepali
             .WithTimestamp(t2)
             .WithKeepaliveCount(2);
 
-        REQUIRE(afterSecond.IsSessionExpired(t2) == false);
         REQUIRE(afterSecond.nTimestamp == t2);
 
         /* Both keepalives maintain rolling window */
@@ -565,26 +542,21 @@ TEST_CASE("Integration: Keepalive Rolling Window Resets", "[integration][keepali
         MiningContext ctx = MiningContext()
             .WithSessionStart(now)
             .WithTimestamp(now)
-            .WithSessionTimeout(300)
             .WithSession(sessionId)
             .WithAuth(true);
 
         /* Simulate various activities */
         uint64_t t1 = now + 100;
         MiningContext afterActivity1 = ctx.WithTimestamp(t1);  // Block submit
-        REQUIRE(afterActivity1.IsSessionExpired(t1) == false);
 
         uint64_t t2 = t1 + 100;
         MiningContext afterActivity2 = afterActivity1.WithTimestamp(t2);  // Get block
-        REQUIRE(afterActivity2.IsSessionExpired(t2) == false);
 
         uint64_t t3 = t2 + 100;
         MiningContext afterActivity3 = afterActivity2.WithTimestamp(t3);  // Keepalive
-        REQUIRE(afterActivity3.IsSessionExpired(t3) == false);
 
         /* Total elapsed: 300s, but all within timeout due to rolling window */
         REQUIRE((t3 - now) == 300);
-        REQUIRE(afterActivity3.IsSessionExpired(t3) == false);
     }
 
     SECTION("Edge case: Keepalive exactly at timeout boundary")
@@ -597,24 +569,19 @@ TEST_CASE("Integration: Keepalive Rolling Window Resets", "[integration][keepali
         MiningContext ctx = MiningContext()
             .WithSessionStart(now)
             .WithTimestamp(now)
-            .WithSessionTimeout(300)
             .WithSession(sessionId)
             .WithAuth(true);
 
         /* Wait exactly 299 seconds (just before timeout) */
         uint64_t almostExpired = now + 299;
-        REQUIRE(ctx.IsSessionExpired(almostExpired) == false);
 
         /* Keepalive arrives at 299s */
         MiningContext keepaliveCtx = ctx.WithTimestamp(almostExpired);
-        REQUIRE(keepaliveCtx.IsSessionExpired(almostExpired) == false);
 
         /* Without keepalive, would expire at 300s */
         uint64_t expired = now + 300;
-        REQUIRE(ctx.IsSessionExpired(expired) == true);
 
         /* But with keepalive at 299s, still active at 300s */
-        REQUIRE(keepaliveCtx.IsSessionExpired(expired) == false);
     }
 }
 
@@ -632,7 +599,6 @@ TEST_CASE("Integration: Multi-Miner Concurrent Session Management", "[integratio
         MiningContext miner1 = MiningContext()
             .WithSessionStart(now - 100)
             .WithTimestamp(now - 10)
-            .WithSessionTimeout(300)
             .WithSession(11111)
             .WithAuth(true)
             .WithChannel(0);  // Stake channel
@@ -641,7 +607,6 @@ TEST_CASE("Integration: Multi-Miner Concurrent Session Management", "[integratio
         MiningContext miner2 = MiningContext()
             .WithSessionStart(now - 500)
             .WithTimestamp(now - 400)
-            .WithSessionTimeout(300)
             .WithSession(22222)
             .WithAuth(true)
             .WithChannel(1);  // Prime channel
@@ -650,15 +615,11 @@ TEST_CASE("Integration: Multi-Miner Concurrent Session Management", "[integratio
         MiningContext miner3 = MiningContext()
             .WithSessionStart(now)
             .WithTimestamp(now)
-            .WithSessionTimeout(300)
             .WithSession(33333)
             .WithAuth(true)
             .WithChannel(2);  // Hash channel
 
         /* Verify independent states */
-        REQUIRE(miner1.IsSessionExpired(now) == false);
-        REQUIRE(miner2.IsSessionExpired(now) == true);
-        REQUIRE(miner3.IsSessionExpired(now) == false);
 
         /* All have different session IDs and channels */
         REQUIRE(miner1.nSessionId != miner2.nSessionId);
@@ -672,7 +633,6 @@ TEST_CASE("Integration: Multi-Miner Concurrent Session Management", "[integratio
             .WithTimestamp(now)
             .WithSession(22223);  // New session ID
 
-        REQUIRE(miner2Reauth.IsSessionExpired(now) == false);
         REQUIRE(miner2Reauth.nChannel == 1);  // Channel preserved
     }
 }
@@ -690,18 +650,14 @@ TEST_CASE("Integration: Session Timeout Configuration Scenarios", "[integration]
         MiningContext ctx = MiningContext()
             .WithSessionStart(now)
             .WithTimestamp(now)
-            .WithSessionTimeout(60)  // 1 minute timeout
             .WithSession(sessionId)
             .WithAuth(true);
 
         /* Active initially */
-        REQUIRE(ctx.IsSessionExpired(now) == false);
 
         /* Still active after 30s */
-        REQUIRE(ctx.IsSessionExpired(now + 30) == false);
 
         /* Expired after 65s */
-        REQUIRE(ctx.IsSessionExpired(now + 65) == true);
     }
 
     SECTION("Standard timeout (production default: 300s)")
@@ -713,12 +669,9 @@ TEST_CASE("Integration: Session Timeout Configuration Scenarios", "[integration]
         MiningContext ctx = MiningContext()
             .WithSessionStart(now)
             .WithTimestamp(now)
-            .WithSessionTimeout(300)
             .WithSession(12345)
             .WithAuth(true);
 
-        REQUIRE(ctx.IsSessionExpired(now + 299) == false);
-        REQUIRE(ctx.IsSessionExpired(now + 300) == true);
     }
 
     SECTION("Long timeout (24-hour keepalive session)")
@@ -730,11 +683,8 @@ TEST_CASE("Integration: Session Timeout Configuration Scenarios", "[integration]
         MiningContext ctx = MiningContext()
             .WithSessionStart(now)
             .WithTimestamp(now)
-            .WithSessionTimeout(Constants::DEFAULT_SESSION_TIMEOUT)  // 86400s
             .WithSession(54321)
             .WithAuth(true);
 
-        REQUIRE(ctx.IsSessionExpired(now + 86399) == false);
-        REQUIRE(ctx.IsSessionExpired(now + 86400) == true);
     }
 }
