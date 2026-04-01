@@ -4402,10 +4402,10 @@ namespace LLP
 
                 /* SIM-LINK SESSION-SCOPED RATE LIMIT for GET_BLOCK
                  *
-                 * The per-connection m_getBlockRollingLimiter has been replaced by a
-                 * session-scoped limiter shared across both the legacy (8323) and stateless
-                 * (9323) lanes.  A miner with simultaneous connections on both lanes shares
-                 * one 25/60s budget, preventing rate-limit bypass via dual-connection.
+                 * The session-scoped limiter is shared across both the legacy (8323) and
+                 * stateless (9323) lanes.  A miner with simultaneous connections on both
+                 * lanes shares one 25/60s budget, preventing rate-limit bypass via
+                 * dual-connection.
                  *
                  * Key format: "session=N|combined"
                  */
