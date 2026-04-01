@@ -105,8 +105,20 @@ namespace TAO::Ledger
         {
             fUsedMempool = true;
 
-            /* Check that the mempool transaction is greater than our logical database. */
-            if(txMem.nSequence > txPrev.nSequence)
+            /* Check that the mempool transaction is greater than our logical database.
+             *
+             * FIX: When txPrev is still default-constructed (hashGenesis==0) and mempool
+             * has a valid genesis (seq=0), the old check `nSequence > 0` was false, causing
+             * the mempool genesis to be silently ignored.  The `else if` on the disk
+             * fallback then prevented ReadLast from running, so the code fell through to the
+             * IsFirst() branch and created a seq=0 producer — a duplicate genesis-id that
+             * would be rejected at Connect time.
+             *
+             * The additional condition ensures that any valid mempool transaction overrides
+             * a still-unset txPrev, fixing the first-mining-block bootstrap path for sigchains
+             * whose genesis profile is still mempool-only. */
+            if(txMem.nSequence > txPrev.nSequence
+                || (txPrev.hashGenesis == 0 && txMem.hashGenesis != 0))
             {
                 txPrev    = txMem;
                 hashLast  = txMem.GetHash();    // CRITICAL: sync hashLast to mempool tx hash
@@ -114,17 +126,31 @@ namespace TAO::Ledger
             }
         }
 
-        /* Get the last transaction. */
-        else if(LLD::Ledger->ReadLast(hashGenesis, hashLast))
+        /* Always check on-disk ledger state as well (not exclusive with mempool).
+         *
+         * FIX: Previously this was `else if`, meaning that when mempool.Get() returned
+         * true but the sequence comparison above failed (e.g. both were seq=0 and the
+         * additional condition caught it), the disk path was still skipped.  More
+         * critically, when mempool.Get() returned true with a stale entry that lost the
+         * comparison, the disk entry — which might be newer — was never consulted.
+         *
+         * Now we always check disk.  We use a separate hashDiskLast to avoid clobbering
+         * a mempool-set hashLast.  The disk entry only wins if its sequence is strictly
+         * greater than whatever txPrev already holds. */
         {
-            fFallbackToLedger = true;
-
-            /* Get previous transaction */
-            TAO::Ledger::Transaction txDisk;
-            if(LLD::Ledger->ReadTx(hashLast, txDisk) && txDisk.nSequence > txPrev.nSequence)
+            uint512_t hashDiskLast = 0;
+            if(LLD::Ledger->ReadLast(hashGenesis, hashDiskLast))
             {
-                txPrev = txDisk;
-                strSeqSource = (fUsedSessionIndex ? "ledger_override_sessions" : "ledger");
+                fFallbackToLedger = true;
+
+                /* Get previous transaction */
+                TAO::Ledger::Transaction txDisk;
+                if(LLD::Ledger->ReadTx(hashDiskLast, txDisk) && txDisk.nSequence > txPrev.nSequence)
+                {
+                    txPrev = txDisk;
+                    hashLast = hashDiskLast;
+                    strSeqSource = (fUsedSessionIndex ? "ledger_override_sessions" : "ledger");
+                }
             }
         }
 

@@ -1919,6 +1919,17 @@ namespace LLP
                         " canonical.unified=", context.canonical_snap.canonical_unified_height);
                 }
 
+                /* Pre-validation vtx pruning — remove transactions already committed
+                 * by another block to prevent "transaction overwrites not allowed"
+                 * in BlockState::Connect(). */
+                if(!TAO::Ledger::PruneCommittedVtxTransactions(*pTritium))
+                {
+                    debug::error(FUNCTION, "SUBMIT_BLOCK: vtx pruning failed — rejecting");
+                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                    respond(response);
+                    return true;
+                }
+
                 if(!TAO::Ledger::RefreshProducerIfStale(*pTritium))
                 {
                     debug::error(FUNCTION, "SUBMIT_BLOCK: producer refresh failed — rejecting");

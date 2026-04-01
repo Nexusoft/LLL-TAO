@@ -2387,6 +2387,15 @@ namespace LLP
             return true;
         }
 
+        /* Pre-validation vtx pruning — remove transactions already committed by
+         * another block to prevent "transaction overwrites not allowed" in Connect(). */
+        if(!TAO::Ledger::PruneCommittedVtxTransactions(*pTritium))
+        {
+            debug::error(FUNCTION, "SUBMIT_BLOCK: vtx pruning failed — rejecting");
+            respond_auto(BLOCK_REJECTED);
+            return true;
+        }
+
         /* Pre-validation producer refresh — see stateless_miner_connection.cpp comment */
         if(!TAO::Ledger::RefreshProducerIfStale(*pTritium))
         {
