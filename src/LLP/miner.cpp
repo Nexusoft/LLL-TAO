@@ -1854,7 +1854,7 @@ namespace LLP
 
         /* ── SIM-LINK: Delegate to SharedGetBlockHandler ─────────────────────────
          * Build the session context from current connection state.  The handler
-         * performs session-scoped rate limiting (shared 20/60s budget across both
+         * performs session-scoped rate limiting (shared 25/60s budget across both
          * legacy and stateless lanes), calls new_block(), stores the template in
          * the session block map for cross-lane SUBMIT_BLOCK resolution, and
          * serialises the 228-byte BLOCK_DATA payload. */
@@ -1905,6 +1905,11 @@ namespace LLP
                             " consecutive GET_BLOCK rate-limit violations without a"
                             " successful request (tight-loop self-DDoS prevention)"
                             " peer=", GetAddress().ToStringIP());
+
+                        /* SAFETY: lk is std::unique_lock (from LOCK(MUTEX) macro).
+                         * Explicit unlock before Disconnect() avoids holding the lock
+                         * during socket teardown.  The unique_lock destructor is a
+                         * no-op on an already-unlocked lock (owns_lock() == false). */
                         lk.unlock();
                         Disconnect();
                         return true;
@@ -1912,6 +1917,9 @@ namespace LLP
 
                     /* Suspend reads for retry_after_ms (floor: 1 second). */
                     const uint32_t nSleepMs = std::max(result.nRetryAfterMs, 1000u);
+
+                    /* SAFETY: same pattern — release the lock before sleeping so
+                     * other threads (e.g. push notifications) can progress. */
                     lk.unlock();
                     runtime::sleep(nSleepMs);
                     return true;

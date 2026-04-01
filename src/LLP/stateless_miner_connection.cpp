@@ -133,7 +133,6 @@ namespace LLP
         std::atomic<uint64_t> g_get_block_control_rebuild_in_progress_total{0};
         std::atomic<uint64_t> g_get_block_control_source_unavailable_total{0};
         std::atomic<uint64_t> g_get_block_control_channel_not_set_total{0};
-        std::atomic<uint64_t> g_get_block_legacy_empty_attempt_blocked_total{0};
         std::atomic<uint64_t> g_get_block_silent_drop_total{0};
 
         uint64_t IncrementControlCounter(const GetBlockPolicyReason eReason)
@@ -165,10 +164,6 @@ namespace LLP
             }
         }
 
-        bool AllowLegacyEmptyBlockData()
-        {
-            return config::GetBoolArg("-allow_legacy_empty_block_data", false);
-        }
     }
 
     /* Import opcode constants for stateless mining protocol */
@@ -225,7 +220,6 @@ namespace LLP
     , SESSION_MUTEX()
     , m_pPrimeState(std::make_unique<PrimeStateManager>())
     , m_pHashState(std::make_unique<HashStateManager>())
-    , m_getBlockRollingLimiter(RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE, GET_BLOCK_ROLLING_WINDOW)
     {
         /* Log channel manager initialization */
         debug::log(2, FUNCTION, "✓ Channel state managers initialized (Prime + Hash)");
@@ -242,7 +236,6 @@ namespace LLP
     , SESSION_MUTEX()
     , m_pPrimeState(std::make_unique<PrimeStateManager>())
     , m_pHashState(std::make_unique<HashStateManager>())
-    , m_getBlockRollingLimiter(RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE, GET_BLOCK_ROLLING_WINDOW)
     {
         /* Log channel manager initialization */
         debug::log(2, FUNCTION, "✓ Channel state managers initialized (Prime + Hash)");
@@ -259,7 +252,6 @@ namespace LLP
     , SESSION_MUTEX()
     , m_pPrimeState(std::make_unique<PrimeStateManager>())
     , m_pHashState(std::make_unique<HashStateManager>())
-    , m_getBlockRollingLimiter(RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE, GET_BLOCK_ROLLING_WINDOW)
     {
         /* Log channel manager initialization */
         debug::log(2, FUNCTION, "✓ Channel state managers initialized (Prime + Hash)");
@@ -952,7 +944,7 @@ namespace LLP
                  * Session-scoped rate limit check, block creation, session block storage,
                  * and 228-byte payload serialization are all handled by the shared handler.
                  *
-                 * Rate limiting is now session-scoped (shared 20/60s budget across both
+                 * Rate limiting is now session-scoped (shared 25/60s budget across both
                  * the legacy (8323) and stateless (9323) lanes for this session).
                  *
                  * The CheckRateLimit() call for GET_BLOCK is intentionally removed here;
@@ -4224,29 +4216,6 @@ namespace LLP
 
     void StatelessMinerConnection::SendGetBlockControlResponse(GetBlockPolicyReason eReason, uint32_t nRetryAfterMs, bool fAuthenticatedPath)
     {
-        const bool fLegacyEligible = fAuthenticatedPath && IsGetBlockRetryable(eReason);
-        const bool fAllowLegacyEmpty = fLegacyEligible && AllowLegacyEmptyBlockData();
-
-        if(fLegacyEligible && !fAllowLegacyEmpty)
-        {
-            const uint64_t nBlocked = ++g_get_block_legacy_empty_attempt_blocked_total;
-            debug::log(1, FUNCTION, "metric get_block_legacy_empty_attempt_blocked_total=", nBlocked);
-        }
-
-        if(fAllowLegacyEmpty)
-        {
-            StatelessPacket response(OpcodeUtility::Stateless::BLOCK_DATA);
-            response.LENGTH = 0;
-            respond(response);
-
-            debug::warning(FUNCTION,
-                "GET_BLOCK legacy empty BLOCK_DATA enabled via -allow_legacy_empty_block_data=true "
-                "[DEPRECATED: removal target 2026-06-30, follow-up PR pending] reason=",
-                GetBlockPolicyReasonCode(eReason),
-                " retry_after_ms=", nRetryAfterMs);
-            return;
-        }
-
         StatelessPacket response(OpcodeUtility::Stateless::BLOCK_REJECTED);
         response.DATA = BuildGetBlockControlPayload(eReason, nRetryAfterMs);
         response.LENGTH = static_cast<uint32_t>(response.DATA.size());
@@ -4289,13 +4258,6 @@ namespace LLP
         auto now = std::chrono::steady_clock::now();
         if(pnRetryAfterMs)
             *pnRetryAfterMs = 0;
-        
-        // Reset counters every minute
-        auto elapsedSinceReset = std::chrono::duration_cast<std::chrono::seconds>(
-            now - m_rateLimit.tLastCounterReset).count();
-        if (elapsedSinceReset >= 60) {
-            ResetMinuteCounters();
-        }
         
         // Use stateless protocol constants (16-bit opcodes)
         using namespace StatelessOpcodes;
@@ -4386,17 +4348,7 @@ namespace LLP
                     return false;
                 }
                 
-                // Check per-minute limit
-                if (m_rateLimit.nGetRoundCount >= RateLimitConfig::MAX_GET_ROUND_PER_MINUTE) {
-                    std::string reason = "GET_ROUND limit exceeded: " + 
-                        std::to_string(m_rateLimit.nGetRoundCount) + "/" + 
-                        std::to_string(RateLimitConfig::MAX_GET_ROUND_PER_MINUTE) + " per minute";
-                    RecordViolation(reason);
-                    return false;
-                }
-                
                 // Request allowed - update tracking
-                m_rateLimit.nGetRoundCount++;
                 m_rateLimit.tLastGetRound = now;
                 return true;
             }
@@ -4450,30 +4402,15 @@ namespace LLP
 
                 /* SIM-LINK SESSION-SCOPED RATE LIMIT for GET_BLOCK
                  *
-                 * The per-connection m_getBlockRollingLimiter has been replaced by a
-                 * session-scoped limiter shared across both the legacy (8323) and stateless
-                 * (9323) lanes.  A miner with simultaneous connections on both lanes shares
-                 * one 20/60s budget, preventing rate-limit bypass via dual-connection.
+                 * The session-scoped limiter is shared across both the legacy (8323) and
+                 * stateless (9323) lanes.  A miner with simultaneous connections on both
+                 * lanes shares one 25/60s budget, preventing rate-limit bypass via
+                 * dual-connection.
                  *
                  * Key format: "session=N|combined"
                  */
 
-                // Check for localhost bypass in DEBUG mode
-                #ifdef ENABLE_DEBUG
-                if (MiningConstants::DISABLE_LOCALHOST_RATE_LIMITING)
-                {
-                    std::string strIP = GetAddress().ToStringIP();
-                    if (strIP == "127.0.0.1" || strIP == "::1" || strIP == "localhost")
-                    {
-                        debug::log(2, "🔓 DEBUG: Skipping rate limit for localhost connection");
-                        m_rateLimit.nGetBlockCount++;
-                        m_rateLimit.tLastGetBlock = now;
-                        return true;
-                    }
-                }
-                #endif
-
-                /* Delegate to session-scoped limiter (shared 20/60s budget across both lanes) */
+                /* Delegate to session-scoped limiter (shared 25/60s budget across both lanes) */
                 auto pSessionLimiter = StatelessMinerManager::Get().GetSessionRateLimiter(context.nSessionId);
                 const std::string strSessionKey = "session=" + std::to_string(context.nSessionId) + "|combined";
                 uint32_t nRetryAfterMs = 0;
@@ -4516,16 +4453,7 @@ namespace LLP
                         " (", intervalMs, "ms interval) - allowing but logging");
                 }
                 
-                if (m_rateLimit.nSubmitBlockCount >= RateLimitConfig::MAX_SUBMIT_BLOCK_PER_MINUTE) {
-                    std::string reason = "SUBMIT_BLOCK limit exceeded: " + 
-                        std::to_string(m_rateLimit.nSubmitBlockCount) + "/" + 
-                        std::to_string(RateLimitConfig::MAX_SUBMIT_BLOCK_PER_MINUTE) + " per minute";
-                    RecordViolation(reason);
-                    return false;
-                }
-                
                 // Request allowed
-                m_rateLimit.nSubmitBlockCount++;
                 m_rateLimit.tLastSubmitBlock = now;
                 return true;
             }
@@ -4577,35 +4505,6 @@ namespace LLP
             // Disconnect the connection
             Disconnect();
         }
-    }
-
-    void StatelessMinerConnection::ResetMinuteCounters()
-    {
-        // Reset per-minute counters
-        m_rateLimit.nGetRoundCount = 0;
-        m_rateLimit.nGetBlockCount = 0;
-        m_rateLimit.nSubmitBlockCount = 0;
-        m_rateLimit.nSetChannelCount = 0;
-        m_rateLimit.tLastCounterReset = std::chrono::steady_clock::now();
-        
-        // Gradually reduce violation count (forgiveness over time)
-        // The if condition above prevents underflow
-        if (m_rateLimit.nViolationCount > 0) {
-            m_rateLimit.nViolationCount--;
-            
-            // Exit throttle mode only when violations drop below low water mark
-            // (hysteresis prevents yo-yo behavior for borderline miners)
-            if (m_rateLimit.fThrottleMode && 
-                m_rateLimit.nViolationCount < RateLimitConfig::THROTTLE_LOW_WATER) 
-            {
-                m_rateLimit.fThrottleMode = false;
-                debug::log(1, FUNCTION, "✅ Throttle mode disabled for ", GetAddress().ToStringIP(),
-                    " - violations below low water mark (", m_rateLimit.nViolationCount, 
-                    " < ", RateLimitConfig::THROTTLE_LOW_WATER, ")");
-            }
-        }
-        
-        debug::log(3, FUNCTION, "Rate limit counters reset for ", GetAddress().ToStringIP());
     }
 
 

@@ -31,7 +31,7 @@ namespace LLP
     {
         /* ── Step 1: Session-scoped rate limit check ──────────────────────────────
          * We use a single GetBlockRollingLimiter keyed by session ID so that a
-         * miner with simultaneous legacy + stateless connections shares one 20/60s
+         * miner with simultaneous legacy + stateless connections shares one 25/60s
          * budget across both lanes (SIM-LINK combined budget).
          * The limiter is retrieved (or created) from the global manager, ensuring
          * the same object is returned for both lane threads of the same session. */
