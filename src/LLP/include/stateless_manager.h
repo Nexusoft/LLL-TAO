@@ -308,20 +308,11 @@ namespace LLP
          **/
         uint32_t CleanupInactive(uint64_t nTimeoutSec = 86400);
 
-        /** CleanupExpiredSessions
-         *
-         *  Remove miners with expired sessions based on their session timeout.
-         *
-         *  @return Number of miners removed
-         *
-         **/
-        uint32_t CleanupExpiredSessions();
-
         /** CleanupSessionScopedMaps
          *
          *  Remove rate limiters and session block maps for sessions that no longer
-         *  exist in mapMiners.  Called from CleanupExpiredSessions() and directly
-         *  from tests.
+         *  exist in mapMiners.  Called from CleanupInactive() after removing
+         *  expired sessions, and directly from tests.
          *
          *  @return Number of entries removed (limiters + block maps combined)
          *
@@ -330,9 +321,13 @@ namespace LLP
 
         /** PurgeInactiveMiners
          *
-         *  Purge miners that haven't sent keepalive within configured timeout.
-         *  Uses different timeouts for localhost vs remote miners.
-         *  This is the primary cache maintenance routine for DDOS protection.
+         *  Cache hygiene: remove stale map entries for miners that disconnected
+         *  long ago.  This is NOT a session liveness function — that role belongs
+         *  exclusively to CleanupInactive() with the 24-hour 3-way AND check.
+         *
+         *  Timeouts:
+         *    - Remote:    7 days   (DEFAULT_CACHE_PURGE_TIMEOUT)
+         *    - Localhost: 30 days  (LOCALHOST_CACHE_PURGE_TIMEOUT)
          *
          *  @return Number of miners purged
          *

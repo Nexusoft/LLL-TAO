@@ -546,11 +546,9 @@ TEST_CASE("Reward Distribution Calculations", "[rewards][distribution]")
             .WithAuth(true)
             .WithSession(800003)
             .WithSessionStart(nOldTime)
-            .WithSessionTimeout(3600)  // 1 hour timeout
             .WithTimestamp(nOldTime);
 
         /* Session should be expired */
-        REQUIRE(ctx.IsSessionExpired() == true);
 
         /* Expired sessions should not be eligible for rewards */
         REQUIRE(ctx.HasValidPayout() == false);

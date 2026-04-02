@@ -299,7 +299,11 @@ namespace LLP
         return nAuthenticatedMiners.load();
     }
 
-    /* Get active session count */
+    /* Get active session count.
+     * A session is active if it has been started (nSessionStart > 0) and
+     * still has recent activity within the global liveness window.
+     * Session liveness is governed by CleanupInactive() with
+     * SESSION_LIVENESS_TIMEOUT_SECONDS (86400s). */
     size_t StatelessMinerManager::GetActiveSessionCount() const
     {
         size_t nCount = 0;
@@ -308,8 +312,9 @@ namespace LLP
         auto vMiners = mapMiners.GetAll();
         for(const auto& ctx : vMiners)
         {
-            /* Session is active if started and not expired */
-            if(ctx.nSessionStart > 0 && !ctx.IsSessionExpired(nNow))
+            /* Session is active if started and has recent activity */
+            if(ctx.nSessionStart > 0 &&
+               (nNow - ctx.nTimestamp) <= NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS)
                 ++nCount;
         }
 
@@ -373,32 +378,9 @@ namespace LLP
             debug::log(0, FUNCTION, "Cleaned up ", nRemoved, " truly idle miners");
         }
 
-        return nRemoved;
-    }
-
-    /* Cleanup expired sessions */
-    uint32_t StatelessMinerManager::CleanupExpiredSessions()
-    {
-        uint32_t nRemoved = 0;
-        uint64_t nNow = runtime::unifiedtimestamp();
-
-        auto pairs = mapMiners.GetAllPairs();
-        for(const auto& pair : pairs)
-        {
-            /* Use context's own session timeout for expiry check */
-            if(pair.second.IsSessionExpired(nNow))
-            {
-                if(RemoveMiner(pair.first))
-                    ++nRemoved;
-            }
-        }
-
-        if(nRemoved > 0)
-        {
-            debug::log(2, FUNCTION, "Cleaned up ", nRemoved, " expired sessions");
-        }
-
-        /* Also prune session-scoped maps for any sessions no longer in mapMiners */
+        /* Prune session-scoped rate limiters and block maps for sessions that
+         * were just removed (or removed by other paths).  This was previously
+         * called from the now-removed CleanupExpiredSessions(). */
         CleanupSessionScopedMaps();
 
         return nRemoved;
@@ -475,11 +457,14 @@ namespace LLP
         result["key_id"] = ctx.hashKeyID.ToString();
         result["genesis"] = ctx.hashGenesis.ToString();
 
-        /* Add session management fields */
+        /* Add session management fields.
+         * Session liveness is governed by CleanupInactive() with a 24-hour
+         * 3-way AND check; the "session_active" field reflects whether the
+         * session has recent activity within the global liveness window. */
         result["session_start"] = ctx.nSessionStart;
-        result["session_timeout"] = ctx.nSessionTimeout;
         result["session_duration"] = ctx.GetSessionDuration(nNow);
-        result["session_expired"] = ctx.IsSessionExpired(nNow);
+        result["session_active"] = (ctx.nSessionStart > 0 &&
+            (nNow - ctx.nTimestamp) <= NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
         result["keepalive_count"] = ctx.nKeepaliveCount;
 
         return result.dump(4);
@@ -507,9 +492,9 @@ namespace LLP
 
             /* Add session management fields */
             miner["session_start"] = ctx.nSessionStart;
-            miner["session_timeout"] = ctx.nSessionTimeout;
             miner["session_duration"] = ctx.GetSessionDuration(nNow);
-            miner["session_expired"] = ctx.IsSessionExpired(nNow);
+            miner["session_active"] = (ctx.nSessionStart > 0 &&
+                (nNow - ctx.nTimestamp) <= NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
             miner["keepalive_count"] = ctx.nKeepaliveCount;
 
             miners.push_back(miner);
@@ -629,7 +614,19 @@ namespace LLP
     }
 
 
-    /* Purge inactive miners based on cache timeout */
+    /* Purge inactive miners based on cache timeout.
+     *
+     * This is a CACHE HYGIENE function, NOT a session liveness function.
+     * Session liveness is governed exclusively by CleanupInactive() which uses
+     * the 24-hour 3-way AND check (activity + keepalive count + grace period).
+     *
+     * PurgeInactiveMiners runs on a much longer timescale:
+     *   - Remote miners:    7 days   (604800s)  via DEFAULT_CACHE_PURGE_TIMEOUT
+     *   - Localhost miners: 30 days  (2592000s) via LOCALHOST_CACHE_PURGE_TIMEOUT
+     *
+     * Its purpose is to clean up stale map entries for miners that disconnected
+     * long ago but whose context was not removed (e.g., due to unclean TCP close).
+     * It does NOT affect active miners with keepalives. */
     uint32_t StatelessMinerManager::PurgeInactiveMiners()
     {
         uint32_t nRemoved = 0;

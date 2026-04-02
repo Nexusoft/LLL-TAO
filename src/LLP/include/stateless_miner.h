@@ -516,8 +516,13 @@ namespace LLP
      *
      *  Session Stability Extensions:
      *  - nSessionStart: When the session was established
-     *  - nSessionTimeout: Configurable timeout for session expiry
      *  - nKeepaliveCount: Number of keepalives received (for monitoring)
+     *
+     *  Session liveness is governed exclusively by CleanupInactive() in
+     *  stateless_manager.cpp, using a 24-hour 3-way AND check (activity +
+     *  keepalive count + grace period).  There is no per-session timeout
+     *  field; the global SESSION_LIVENESS_TIMEOUT_SECONDS (86400s) is the
+     *  single authority.
      *
      **/
     struct MiningContext
@@ -540,7 +545,6 @@ namespace LLP
         std::vector<uint8_t> vDisposablePubKey; // Disposable Falcon session public key
         uint256_t hashDisposableKeyID;          // Disposable Falcon session key ID
         uint64_t nSessionStart;      // Timestamp when session was established
-        uint64_t nSessionTimeout;    // Session timeout in seconds (default 300s)
         uint32_t nReconnectCount;    // Recovery metadata; live SaveSession refreshes must not reset this implicitly
         uint32_t nKeepaliveCount;    // Number of keepalives received
         uint32_t nKeepaliveSent;     // Number of keepalive responses sent
@@ -767,13 +771,6 @@ namespace LLP
          **/
         MiningContext WithSessionStart(uint64_t nSessionStart_) const;
 
-        /** WithSessionTimeout
-         *
-         *  Returns a new context with updated session timeout.
-         *
-         **/
-        MiningContext WithSessionTimeout(uint64_t nSessionTimeout_) const;
-
         /** WithReconnectCount
          *
          *  Returns a new context with updated reconnect count.
@@ -982,17 +979,6 @@ namespace LLP
          *
          **/
         bool HasValidPayout() const;
-
-        /** IsSessionExpired
-         *
-         *  Check if the session has expired based on timeout.
-         *
-         *  @param[in] nNow Current timestamp (defaults to current time if 0)
-         *
-         *  @return true if session has expired
-         *
-         **/
-        bool IsSessionExpired(uint64_t nNow = 0) const;
 
         /** GetSessionDuration
          *
