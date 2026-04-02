@@ -22,7 +22,7 @@ ________________________________________________________________________________
  *
  * Design:
  *   - Each active mining session is registered on MINER_READY
- *   - Weak references prevent preventing connection cleanup
+ *   - Weak references avoid preventing connection cleanup
  *   - Failed packet delivery increments a failure counter
  *   - After configurable threshold failures, session is marked disconnected
  *   - Marked sessions stop receiving PUSH until re-authentication
