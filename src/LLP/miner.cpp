@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <LLP/include/node_cache.h>
 #include <LLP/include/session_recovery.h>
 #include <LLP/include/get_block_policy.h>
+#include <LLP/include/mining_session_health.h>
 #include <LLP/include/push_notification.h>
 #include <LLP/include/keepalive_v2.h>
 #include <LLP/include/session_status.h>
@@ -972,29 +973,34 @@ namespace LLP
             /* Get the error message */
             std::string strError = e.what();
             
-            /* Suppress "Session not found" errors for stateless mining.
-             * These exceptions are thrown by legacy TAO API code that expects
-             * user sessions (login/create/unlock), but stateless mining uses
-             * MiningContext tracked by StatelessMinerManager instead.
-             * 
-             * Common sources:
-             * - new_block() trying to access TAO::API::Authentication::Credentials()
-             * - new_block() calling TAO::API::Authentication::Unlock() 
-             * - Legacy mining code expecting session-based authentication
-             * - TAO API methods called during block template creation
-             * 
-             * This is safe to suppress because:
-             * 1. Stateless mining has its own auth (Falcon challenge-response)
-             * 2. State is tracked in StatelessMinerManager via MiningContext
-             * 3. No TAO API sessions are needed for mining operations
+            /* SESSION::DEFAULT not found — new_block() or CreateBlockForStatelessMining()
+             * tried to access the wallet session that was never established (or expired).
+             * This happens when the node is started without -autologin=user:pass and the
+             * wallet has not been unlocked for mining via the API.
+             *
+             * CRITICAL FIX: Do NOT silently return true here.  The miner sent GET_BLOCK
+             * and is waiting for a response; swallowing the exception leaves the miner
+             * in template-starvation (push_ahead N, round_ahead 0).  We must send an
+             * explicit TEMPLATE_SOURCE_UNAVAILABLE wire response so the miner backs off
+             * and retries, rather than hanging indefinitely.
              */
             if(strError.find("Session not found") != std::string::npos)
             {
-                debug::log(2, FUNCTION, "MinerLLP: Session error suppressed for stateless mining from ", GetAddress().ToStringIP(), " - stateless protocol uses MiningContext, not TAO API sessions");
-                
-                /* Return true to continue processing - the packet has been handled,
-                 * we just encountered legacy code trying to access non-existent sessions.
-                 * For stateless mining, this is expected and not an error. */
+                debug::error(FUNCTION, "MinerLLP: SESSION::DEFAULT not available for mining from ",
+                             GetAddress().ToStringIP(),
+                             " — node requires -autologin=user:pass or manual unlock for mining."
+                             " GET_BLOCK will return TEMPLATE_SOURCE_UNAVAILABLE to miner");
+
+                /* Send explicit wire response so the miner knows to back off and retry.
+                 * Keep the connection alive — the session may become available later. */
+                try
+                {
+                    respond_auto(BLOCK_REJECTED,
+                        BuildGetBlockControlPayload(
+                            GetBlockPolicyReason::TEMPLATE_SOURCE_UNAVAILABLE, 5000u));
+                }
+                catch(...) { /* best-effort send — ignore secondary send failure */ }
+
                 return true;
             }
             
@@ -1426,6 +1432,18 @@ namespace LLP
     /*  Adds a new block to the map. */
     TAO::Ledger::Block *Miner::new_block()
     {
+        /* SESSION::DEFAULT health pre-check: fail fast before diving into
+         * CreateBlockForStatelessMining() which requires the wallet session.
+         * If the session is unavailable, log clearly and return nullptr so
+         * the GET_BLOCK handler can send TEMPLATE_SOURCE_UNAVAILABLE to the miner. */
+        if(!LLP::IsDefaultSessionReady())
+        {
+            debug::error(FUNCTION, "SESSION::DEFAULT not available for mining"
+                         " — node requires -autologin=user:pass or manual unlock."
+                         " GET_BLOCK will return TEMPLATE_SOURCE_UNAVAILABLE to miner");
+            return nullptr;
+        }
+
         /* Determine reward address - priority order:
          * 1. hashRewardAddress (explicit via MINER_SET_REWARD)
          * 2. hashGenesis (fallback from Falcon auth - PR #92)

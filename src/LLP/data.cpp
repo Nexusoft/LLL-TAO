@@ -508,15 +508,18 @@ namespace LLP
                      * StatelessMinerManager, not TAO API sessions. */
                     if(fSessionError && fMiningConnection)
                     {
-                        /* Log suppression of session errors for stateless miners. */
-                        debug::log(2, FUNCTION, "DataThread[", ID, "]: Session error ignored for stateless mining (",
-                                   strProtocol, ") from ",
-                                   CONNECTION->GetAddress().ToStringIP(), ":", CONNECTION->GetAddress().GetPort(),
-                                   " - stateless protocol doesn't use TAO API sessions");
-                        
-                        /* CRITICAL: Continue to next connection without disconnect.
-                         * This allows GET_BLOCK and other mining operations to proceed
-                         * even though legacy code may throw "Session not found" exceptions. */
+                        /* Log at level 0 so operators can see the session health issue.
+                         * ProcessPacket should have already sent TEMPLATE_SOURCE_UNAVAILABLE
+                         * to the miner; this is a safety-net log for unexpected code paths. */
+                        debug::error(FUNCTION, "DataThread[", ID, "]: SESSION::DEFAULT not available"
+                                     " for mining (", strProtocol, ") from ",
+                                     CONNECTION->GetAddress().ToStringIP(), ":",
+                                     CONNECTION->GetAddress().GetPort(),
+                                     " — node requires -autologin=user:pass or manual"
+                                     " unlock. Miner should receive TEMPLATE_SOURCE_UNAVAILABLE.");
+
+                        /* Continue to next connection without disconnecting.
+                         * The session may become available on the next request. */
                         continue;
                     }
                     else

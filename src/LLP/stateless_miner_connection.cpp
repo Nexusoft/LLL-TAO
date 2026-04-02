@@ -27,6 +27,7 @@ ________________________________________________________________________________
 #include <LLP/include/opcode_utility.h>
 #include <LLP/include/push_notification.h>
 #include <LLP/include/mining_constants.h>
+#include <LLP/include/mining_session_health.h>
 #include <LLP/include/session_status.h>
 #include <LLP/include/stateless_get_block_handler.h>
 #include <LLP/templates/events.h>
@@ -1022,16 +1023,35 @@ namespace LLP
                         }
                     }
 
-                    /* Translate INTERNAL_RETRY to TEMPLATE_REBUILD_IN_PROGRESS when deadline exceeded */
+                    /* Translate INTERNAL_RETRY to a more specific reason when possible:
+                     *
+                     * 1. If SESSION::DEFAULT is unavailable (no -autologin or manual unlock),
+                     *    remap to TEMPLATE_SOURCE_UNAVAILABLE with a longer retry hint so the
+                     *    miner knows this is a node-configuration issue, not a transient hiccup.
+                     *
+                     * 2. If the handler simply timed out, remap to TEMPLATE_REBUILD_IN_PROGRESS. */
                     constexpr int64_t GET_BLOCK_DEADLINE_MS = 500;
                     GetBlockPolicyReason eReportReason = gbResult.eReason;
+                    uint32_t nReportRetryMs = gbResult.nRetryAfterMs;
+
                     if(eReportReason == GetBlockPolicyReason::INTERNAL_RETRY &&
-                       nGetBlockLatencyMs >= GET_BLOCK_DEADLINE_MS)
+                       !LLP::IsDefaultSessionReady())
+                    {
+                        eReportReason  = GetBlockPolicyReason::TEMPLATE_SOURCE_UNAVAILABLE;
+                        nReportRetryMs = 5000u;
+                        debug::error(FUNCTION,
+                            "SESSION::DEFAULT not available — sending TEMPLATE_SOURCE_UNAVAILABLE"
+                            " to miner (session=", context.nSessionId,
+                            " peer=", GetAddress().ToStringIP(), ")."
+                            " Node requires -autologin=user:pass or manual unlock for mining");
+                    }
+                    else if(eReportReason == GetBlockPolicyReason::INTERNAL_RETRY &&
+                            nGetBlockLatencyMs >= GET_BLOCK_DEADLINE_MS)
                     {
                         eReportReason = GetBlockPolicyReason::TEMPLATE_REBUILD_IN_PROGRESS;
                     }
 
-                    SendGetBlockControlResponse(eReportReason, gbResult.nRetryAfterMs, true);
+                    SendGetBlockControlResponse(eReportReason, nReportRetryMs, true);
                     debug::log(2, "📥 === GET_BLOCK: FAILED (reason=",
                                GetBlockPolicyReasonCode(eReportReason), " latency=", nGetBlockLatencyMs, "ms) ===");
 
@@ -3256,7 +3276,20 @@ namespace LLP
         debug::log(0, "      Channel: ", nChannel_snap);
         debug::log(0, "      Session ID: ", nSessionId_snap);
         debug::log(0, "      Falcon authenticated: ", fAuthenticated_snap ? "Yes" : "No");
-        
+
+        /* SESSION::DEFAULT health pre-check: fail fast before calling
+         * CreateBlockForStatelessMining() which requires the wallet session.
+         * If SESSION::DEFAULT is absent or not unlocked for mining, we log
+         * clearly at level 0 and return nullptr so the GET_BLOCK handler can
+         * send TEMPLATE_SOURCE_UNAVAILABLE to the miner instead of INTERNAL_RETRY. */
+        if(!LLP::IsDefaultSessionReady())
+        {
+            debug::error(FUNCTION, "SESSION::DEFAULT not available for mining"
+                         " — node requires -autologin=user:pass or manual unlock."
+                         " GET_BLOCK will return TEMPLATE_SOURCE_UNAVAILABLE to miner");
+            return nullptr;
+        }
+
         /* Ensure wallet is unlocked for mining (matches legacy Miner::new_block behavior).
          * CreateBlockForStatelessMining() requires Authentication::Unlocked(PinUnlock::MINING).
          * Legacy miners auto-unlock; stateless miners must do the same. */
