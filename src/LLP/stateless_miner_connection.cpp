@@ -1585,17 +1585,10 @@ namespace LLP
                 /* Continue with existing template lookup and validation... */
                 StatelessMinerManager::Get().IncrementBlocksSubmitted();
 
-                /* GAP 1: keep the cross-lane block alive through validation */
-                std::shared_ptr<TAO::Ledger::Block> spCrossLaneHolder;
-                std::unique_ptr<TAO::Ledger::Block> upCrossLaneClone;
-                bool fCrossLane = false;
-
                 /* Make sure the block was created by this mining server. */
                 if(!find_block(hashMerkle))
                 {
-                    /* Cross-lane block lookup removed (no longer sharing templates
-                     * across lanes).  If the template is not in this connection's
-                     * mapBlocks, it is treated as unknown. */
+                    /* Template not found in this connection's mapBlocks. */
                     {
                         debug::error(FUNCTION, "════════════════════════════════════════");
                         debug::error(FUNCTION, "   ❌ TEMPLATE NOT FOUND");
@@ -1649,23 +1642,10 @@ namespace LLP
                         debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Unknown template) ===", ANSI_COLOR_RESET);
                         return true;
                     }
-
-                    debug::log(1, FUNCTION, "SIM-LINK cross-lane SUBMIT_BLOCK resolved: session=",
-                               context.nSessionId, " merkle=", hashMerkle.SubString());
-                    upCrossLaneClone = std::unique_ptr<TAO::Ledger::Block>(spCrossLaneHolder->Clone());
-                    if(!upCrossLaneClone)
-                    {
-                        debug::error(FUNCTION, "❌ SIM-LINK cross-lane block clone failed");
-                        StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                        respond(response);
-                        return true;
-                    }
-                    fCrossLane = true;
                 }
 
                 TAO::Ledger::TritiumBlock* pTritium = nullptr;
 
-                if(!fCrossLane)
                 {
                     debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Found original template (wallet-signed)", ANSI_COLOR_RESET);
 
@@ -1742,57 +1722,6 @@ namespace LLP
                         StatelessPacket response(STATELESS_BLOCK_REJECTED);
                         respond(response);
                         debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (invalid block type) ===", ANSI_COLOR_RESET);
-                        return true;
-                    }
-                } /* end if(!fCrossLane) */
-                else
-                {
-                    /* Cross-lane path: clone the session-store block before applying
-                     * nonce/offsets so the other lane never observes mutated template state.
-                     * NOTE: This channel-dispatch logic mirrors the cross-lane path in
-                     * Miner::handle_submit_block_stateless (miner.cpp). */
-                    pTritium = dynamic_cast<TAO::Ledger::TritiumBlock*>(upCrossLaneClone.get());
-                    if(!pTritium)
-                    {
-                        debug::error(FUNCTION, "❌ SIM-LINK cross-lane block is not a TritiumBlock");
-                        StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                        respond(response);
-                        return true;
-                    }
-
-                    if(pTritium->nChannel == TAO::Ledger::CHANNEL::PRIME)
-                    {
-                        *pTritium = TAO::Ledger::BuildSolvedPrimeCandidateFromTemplate(
-                            *pTritium, nonce, vPrimeOffsets);
-
-                        if(!pTritium->vOffsets.empty() &&
-                           !TAO::Ledger::VerifySubmittedPrimeOffsets(*pTritium, pTritium->vOffsets))
-                        {
-                            debug::error(FUNCTION, "Cross-lane: Prime vOffsets structural validation failed");
-                            StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                            respond(response);
-                            return true;
-                        }
-
-                        if(pTritium->vOffsets.empty())
-                            TAO::Ledger::GetOffsets(pTritium->GetPrime(), pTritium->vOffsets);
-                    }
-                    else if(pTritium->nChannel == TAO::Ledger::CHANNEL::HASH)
-                    {
-                        *pTritium = TAO::Ledger::BuildSolvedHashCandidateFromTemplate(*pTritium, nonce);
-                    }
-                    else
-                    {
-                        pTritium->nNonce = nonce;
-                        pTritium->vOffsets.clear();
-                        pTritium->vchBlockSig.clear();
-                    }
-
-                    if(!TAO::Ledger::FinalizeWalletSignatureForSolvedBlock(*pTritium))
-                    {
-                        debug::error(FUNCTION, "Cross-lane: FinalizeWalletSignatureForSolvedBlock failed");
-                        StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                        respond(response);
                         return true;
                     }
                 }

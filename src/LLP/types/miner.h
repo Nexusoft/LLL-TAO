@@ -519,7 +519,7 @@ namespace LLP
         uint32_t m_nConsecutiveRateLimitStrikes = 0;
 
         /** Per-connection GET_BLOCK rolling rate limiter (25/60s).
-         *  Replaces the former session-scoped SIM-LINK shared limiter. **/
+         *  Each legacy Miner connection has its own independent rate limit. **/
         GetBlockRollingLimiter m_getBlockRateLimiter;
 
     public:

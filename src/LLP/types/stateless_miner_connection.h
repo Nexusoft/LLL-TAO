@@ -206,7 +206,7 @@ namespace LLP
         RateLimitState m_rateLimit;
 
         /** Per-connection GET_BLOCK rolling rate limiter (25/60s).
-         *  Replaces the former session-scoped SIM-LINK shared limiter. **/
+         *  Each stateless connection has its own independent rate limit. **/
         GetBlockRollingLimiter m_getBlockRateLimiter;
 
         /** Track whether NODE_SHUTDOWN was already sent on this connection. **/
