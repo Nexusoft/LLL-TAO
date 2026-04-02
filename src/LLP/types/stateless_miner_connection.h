@@ -142,7 +142,7 @@ namespace LLP
                 "Update get_block_policy.h if the rolling limit changes.");
             
             // Minimum intervals between consecutive requests of the same type
-            static constexpr uint32_t MIN_GET_ROUND_INTERVAL_MS = 5000;   // 5 seconds
+            static constexpr uint32_t MIN_GET_ROUND_INTERVAL_MS = 2000;   // 2 seconds (lowered from 5s)
             static constexpr uint32_t MIN_SUBMIT_BLOCK_INTERVAL_MS = 1000; // 1 second (lenient)
             
             // Violation thresholds
@@ -204,6 +204,10 @@ namespace LLP
         };
         
         RateLimitState m_rateLimit;
+
+        /** Per-connection GET_BLOCK rolling rate limiter (25/60s).
+         *  Replaces the former session-scoped SIM-LINK shared limiter. **/
+        GetBlockRollingLimiter m_getBlockRateLimiter;
 
         /** Track whether NODE_SHUTDOWN was already sent on this connection. **/
         GracefulShutdown::NotificationState m_nodeShutdownNotification;
@@ -300,6 +304,16 @@ namespace LLP
          *
          **/
         void SendStatelessTemplate();
+
+        /** TryAttachBlockTemplate
+         *
+         *  Best-effort template tag-along with PUSH notification.
+         *  Creates a block template and sends it as BLOCK_DATA immediately after
+         *  the push notification.  If template creation fails, the notification was
+         *  already sent and the miner will fall back to GET_BLOCK or GET_ROUND.
+         *
+         **/
+        void TryAttachBlockTemplate();
 
         /** SendNodeShutdown
          *

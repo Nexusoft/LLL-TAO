@@ -73,7 +73,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/colin_mining_agent.h>
 #include <LLP/include/node_session_registry.h>
-#include <LLP/include/get_block_handler.h>
+#include <LLP/include/legacy_get_block_handler.h>
 
 #include <cstring>
 
@@ -1845,12 +1845,11 @@ namespace LLP
          * an authenticated miner who is within the rate-limit budget always receives
          * BLOCK_DATA (invariant: authenticated + in-budget → BLOCK_DATA MUST follow). */
 
-        /* ── SIM-LINK: Delegate to SharedGetBlockHandler ─────────────────────────
-         * Build the session context from current connection state.  The handler
-         * performs session-scoped rate limiting (shared 25/60s budget across both
-         * legacy and stateless lanes), calls new_block(), stores the template in
-         * the session block map for cross-lane SUBMIT_BLOCK resolution, and
-         * serialises the 228-byte BLOCK_DATA payload. */
+        /* ── Legacy Lane: Delegate to LegacyGetBlockHandler ─────────────────────
+         * Build the request with per-connection rate limiter.  The handler
+         * performs per-connection rate limiting (25/60s), calls new_block(),
+         * and serialises the 228-byte BLOCK_DATA payload.
+         * No cross-lane state sharing. */
         {
             LOCK(MUTEX);
 
@@ -1866,20 +1865,15 @@ namespace LLP
                 return true;
             }
 
-            GetBlockRequest req;
-            /* Build a minimal context snapshot: detect protocol lane from connection state */
-            req.context = MiningContext()
-                .WithAuth(fMinerAuthenticated)
-                .WithProtocolLane(fStatelessProtocol ? ProtocolLane::STATELESS : ProtocolLane::LEGACY)
-                .WithSession(nSessionId);
-
+            LegacyGetBlockRequest req;
             req.nSessionId = nSessionId;
+            req.pRateLimiter = &m_getBlockRateLimiter;
             req.fnCreateBlock = [this]() -> TAO::Ledger::Block*
             {
                 return new_block();
             };
 
-            GetBlockResult result = SharedGetBlockHandler(req);
+            LegacyGetBlockResult result = LegacyGetBlockHandler(req);
 
             if(!result.fSuccess)
             {
@@ -2220,48 +2214,15 @@ namespace LLP
          * Convention: nSessionId == 0 means "not yet established" (same sentinel
          * used throughout the miner authentication path).
          *
-         * DEPRECATED: SIM-LINK cross-lane template resolution.
-         * Cross-lane block lookup is scheduled for removal once real second-node
-         * failover (DualConnectionManager) is complete. New miners should connect
-         * to a dedicated failover node rather than relying on this cross-lane path.
-         * To disable now, start the node with -deprecate-simlink-fallback=1.
-         * See: docs/architecture/SIMLINK_DUAL_LANE_ARCHITECTURE.md */
-        std::shared_ptr<TAO::Ledger::Block> spCrossLane;
-        std::unique_ptr<TAO::Ledger::Block> upCrossLaneClone;
-        if(nCrossLaneSessionId != 0)
-        {
-            if(!config::GetBoolArg("-deprecate-simlink-fallback", false))
-            {
-                spCrossLane = StatelessMinerManager::Get().FindSessionBlock(nCrossLaneSessionId, hashMerkle);
-                if(spCrossLane)
-                {
-                    debug::log(0, FUNCTION,
-                        "[DEPRECATED] SIM-LINK: cross-lane block resolved from stateless lane "
-                        "session=", nCrossLaneSessionId, " merkle=", hashMerkle.SubString(),
-                        " — consider connecting to a dedicated failover node instead");
-                    upCrossLaneClone = std::unique_ptr<TAO::Ledger::Block>(spCrossLane->Clone());
-                    if(!upCrossLaneClone)
-                    {
-                        debug::error(FUNCTION, "SIM-LINK cross-lane block clone failed");
-                        respond_auto(BLOCK_REJECTED);
-                        return true;
-                    }
-                }
-            }
-            else
-            {
-                debug::log(0, FUNCTION,
-                    "[DEPRECATED] SIM-LINK: cross-lane fallback disabled via "
-                    "-deprecate-simlink-fallback; treating as unknown template");
-            }
-        }
+         * Cross-lane block lookup removed — each lane's templates are
+         * per-connection only (no shared session block store). */
 
         LOCK(MUTEX);
 
         /* Make sure the block was created by this mining server. */
         const bool fLocalBlock = find_block(hashMerkle);
 
-        if(!fLocalBlock && !spCrossLane)
+        if(!fLocalBlock)
         {
             debug::log(2, FUNCTION, "Block not found in map");
             respond_auto(BLOCK_REJECTED);
@@ -2270,7 +2231,6 @@ namespace LLP
 
         TAO::Ledger::TritiumBlock* pTritium = nullptr;
 
-        if(fLocalBlock)
         {
             /* Local path: sign_block mutates the block in-place via mapBlocks */
             if(!sign_block(nonce, hashMerkle, vPrimeOffsets))
@@ -2280,58 +2240,6 @@ namespace LLP
             }
 
             pTritium = dynamic_cast<TAO::Ledger::TritiumBlock*>(mapBlocks[hashMerkle]);
-        }
-        else
-        {
-            /* Cross-lane path: template was issued on the stateless port (9323) and
-             * submitted here on the legacy port (8323).  Clone the session-store block
-             * before applying nonce/offsets so cross-lane submissions never mutate the
-             * shared_ptr<Block> copy used by the other lane.
-             * NOTE: This channel-dispatch logic mirrors the cross-lane path in
-             * StatelessMinerConnection::ProcessPacket (SUBMIT_BLOCK handler). */
-            debug::log(1, FUNCTION, "SIM-LINK cross-lane SUBMIT_BLOCK resolved: session=",
-                       nCrossLaneSessionId, " merkle=", hashMerkle.SubString());
-
-            pTritium = dynamic_cast<TAO::Ledger::TritiumBlock*>(upCrossLaneClone.get());
-            if(!pTritium)
-            {
-                debug::error(FUNCTION, "SIM-LINK cross-lane block is not a TritiumBlock");
-                respond_auto(BLOCK_REJECTED);
-                return true;
-            }
-
-            if(pTritium->nChannel == TAO::Ledger::CHANNEL::PRIME)
-            {
-                *pTritium = TAO::Ledger::BuildSolvedPrimeCandidateFromTemplate(*pTritium, nonce, vPrimeOffsets);
-
-                if(!pTritium->vOffsets.empty() &&
-                   !TAO::Ledger::VerifySubmittedPrimeOffsets(*pTritium, pTritium->vOffsets))
-                {
-                    debug::error(FUNCTION, "Cross-lane: Prime vOffsets structural validation failed");
-                    respond_auto(BLOCK_REJECTED);
-                    return true;
-                }
-
-                if(pTritium->vOffsets.empty())
-                    TAO::Ledger::GetOffsets(pTritium->GetPrime(), pTritium->vOffsets);
-            }
-            else if(pTritium->nChannel == TAO::Ledger::CHANNEL::HASH)
-            {
-                *pTritium = TAO::Ledger::BuildSolvedHashCandidateFromTemplate(*pTritium, nonce);
-            }
-            else
-            {
-                pTritium->nNonce = nonce;
-                pTritium->vOffsets.clear();
-                pTritium->vchBlockSig.clear();
-            }
-
-            if(!TAO::Ledger::FinalizeWalletSignatureForSolvedBlock(*pTritium))
-            {
-                debug::error(FUNCTION, "Cross-lane: FinalizeWalletSignatureForSolvedBlock failed");
-                respond_auto(BLOCK_REJECTED);
-                return true;
-            }
         }
 
         if(!pTritium)
