@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/auto_cooldown.h>
 #include <LLP/include/mining_constants.h>
+#include <LLP/include/get_block_policy.h>
 #include <TAO/Ledger/types/block.h>
 #include <Legacy/types/coinbase.h>
 #include <atomic>
@@ -516,6 +517,10 @@ namespace LLP
          *  a successful request the connection is closed to prevent a tight-loop
          *  self-DDoS. */
         uint32_t m_nConsecutiveRateLimitStrikes = 0;
+
+        /** Per-connection GET_BLOCK rolling rate limiter (25/60s).
+         *  Each legacy Miner connection has its own independent rate limit. **/
+        GetBlockRollingLimiter m_getBlockRateLimiter;
 
     public:
 

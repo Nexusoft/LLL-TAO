@@ -378,61 +378,15 @@ namespace LLP
             debug::log(0, FUNCTION, "Cleaned up ", nRemoved, " truly idle miners");
         }
 
-        /* Prune session-scoped rate limiters and block maps for sessions that
-         * were just removed (or removed by other paths).  This was previously
-         * called from the now-removed CleanupExpiredSessions(). */
-        CleanupSessionScopedMaps();
-
         return nRemoved;
     }
 
 
-    /* Remove session-scoped rate limiters and block maps for dead sessions */
+    /* CleanupSessionScopedMaps — no-op after SIM-LINK removal.
+     * Kept as stub for callers; returns 0. */
     uint32_t StatelessMinerManager::CleanupSessionScopedMaps()
     {
-        uint32_t nLimitersRemoved = 0;
-        uint32_t nBlocksRemoved   = 0;
-
-        /* Pass A — rate limiter cleanup (m_sessionLimiterMutex held alone) */
-        {
-            std::lock_guard<std::mutex> lk(m_sessionLimiterMutex);
-            for(auto it = m_mapSessionLimiters.begin(); it != m_mapSessionLimiters.end(); )
-            {
-                /* Session is expired if it no longer exists in mapSessionToAddress */
-                auto optAddr = mapSessionToAddress.Get(it->first);
-                if(!optAddr.has_value())
-                {
-                    it = m_mapSessionLimiters.erase(it);
-                    ++nLimitersRemoved;
-                }
-                else
-                    ++it;
-            }
-        }
-
-        /* Pass B — session block map cleanup (m_sessionBlockMutex held alone) */
-        {
-            std::lock_guard<std::mutex> lk(m_sessionBlockMutex);
-            for(auto it = m_mapSessionBlocks.begin(); it != m_mapSessionBlocks.end(); )
-            {
-                auto optAddr = mapSessionToAddress.Get(it->first);
-                if(!optAddr.has_value())
-                {
-                    it = m_mapSessionBlocks.erase(it);
-                    ++nBlocksRemoved;
-                }
-                else
-                    ++it;
-            }
-        }
-
-        if(nLimitersRemoved > 0 || nBlocksRemoved > 0)
-        {
-            debug::log(2, FUNCTION, "SIM-LINK cleanup: removed ", nLimitersRemoved,
-                " session limiters, ", nBlocksRemoved, " session block maps");
-        }
-
-        return nLimitersRemoved + nBlocksRemoved;
+        return 0;
     }
 
     /* Get miner status as JSON */
@@ -859,93 +813,6 @@ namespace LLP
         }
 
         return vResult;
-    }
-
-
-    /* ═══════════════════════════════════════════════════════════════════════════
-     * SIM-LINK SESSION-SCOPED SERVICES IMPLEMENTATION
-     * ═══════════════════════════════════════════════════════════════════════════ */
-
-    /* Get (or create) the session-scoped rolling rate limiter */
-    std::shared_ptr<GetBlockRollingLimiter> StatelessMinerManager::GetSessionRateLimiter(uint32_t nSessionId)
-    {
-        std::lock_guard<std::mutex> lock(m_sessionLimiterMutex);
-
-        auto it = m_mapSessionLimiters.find(nSessionId);
-        if(it == m_mapSessionLimiters.end())
-        {
-            /* First access for this session — create a fresh limiter */
-            auto spLimiter = std::make_shared<GetBlockRollingLimiter>(
-                GET_BLOCK_ROLLING_LIMIT_PER_MINUTE,
-                GET_BLOCK_ROLLING_WINDOW);
-
-            auto result = m_mapSessionLimiters.emplace(nSessionId, std::move(spLimiter));
-            debug::log(2, FUNCTION, "SIM-LINK: created session rate limiter for session=", nSessionId);
-            return result.first->second;
-        }
-
-        return it->second;
-    }
-
-
-    /* Store a block template in the session-scoped cross-lane block map.
-     * DEPRECATED: SIM-LINK cross-lane template sharing is scheduled for removal
-     * once real second-node failover (DualConnectionManager) is complete. */
-    void StatelessMinerManager::StoreSessionBlock(uint32_t nSessionId,
-                                                   const uint512_t& hashMerkleRoot,
-                                                   std::shared_ptr<TAO::Ledger::Block> spBlock)
-    {
-        if(!spBlock)
-            return;
-
-        std::lock_guard<std::mutex> lock(m_sessionBlockMutex);
-        m_mapSessionBlocks[nSessionId][hashMerkleRoot] = std::move(spBlock);
-
-        debug::log(3, FUNCTION, "SIM-LINK: stored session block session=", nSessionId,
-            " merkle=", hashMerkleRoot.SubString());
-    }
-
-
-    /* Look up a block template in the session-scoped cross-lane block map.
-     * DEPRECATED: SIM-LINK cross-lane template sharing is scheduled for removal
-     * once real second-node failover (DualConnectionManager) is complete.
-     * Callers check -deprecate-simlink-fallback before invoking this method. */
-    std::shared_ptr<TAO::Ledger::Block> StatelessMinerManager::FindSessionBlock(
-        uint32_t nSessionId, const uint512_t& hashMerkleRoot)
-    {
-        std::lock_guard<std::mutex> lock(m_sessionBlockMutex);
-
-        auto itSession = m_mapSessionBlocks.find(nSessionId);
-        if(itSession == m_mapSessionBlocks.end())
-            return nullptr;
-
-        auto itBlock = itSession->second.find(hashMerkleRoot);
-        if(itBlock == itSession->second.end())
-            return nullptr;
-
-        return itBlock->second;
-    }
-
-
-    /* Remove all block templates for a session (called on tip advance).
-     * DEPRECATED: SIM-LINK cross-lane template sharing is scheduled for removal
-     * once real second-node failover (DualConnectionManager) is complete. */
-    void StatelessMinerManager::PruneSessionBlocks(uint32_t nSessionId)
-    {
-        std::lock_guard<std::mutex> lock(m_sessionBlockMutex);
-
-        auto it = m_mapSessionBlocks.find(nSessionId);
-        if(it == m_mapSessionBlocks.end())
-            return;
-
-        const size_t nPruned = it->second.size();
-        it->second.clear();
-
-        if(nPruned > 0)
-        {
-            debug::log(2, FUNCTION, "SIM-LINK: pruned ", nPruned,
-                " session block(s) for session=", nSessionId, " (tip advanced)");
-        }
     }
 
 
