@@ -1829,15 +1829,15 @@ namespace LLP
                     return true;
                 }
 
-                /* ── Pre-validation producer refresh ─────────────────────────────────────
+                /* ── Pre-validation staleness diagnostics ──────────────────────────────
                  *  If block.vtx contains transactions for the same sigchain genesis as the
                  *  producer, the producer must follow the last vtx tx — not the disk last
                  *  at template-creation time.  TritiumBlock::Check() (called inside
-                 *  ValidateMinedBlock) enforces this via mapLast, so the refresh must
-                 *  happen here, BEFORE Check() runs.
+                 *  ValidateMinedBlock) enforces this via mapLast.
                  *
-                 *  Also handles the case where a different channel's block advanced the
-                 *  disk last between template issuance and SUBMIT_BLOCK receipt. */
+                 *  All pre-validation checks are detection-only: they do NOT mutate the
+                 *  block.  If any check fails, the block is rejected and the miner
+                 *  requests a fresh template via GET_BLOCK. */
                 if(SequenceDiagnosticsEnabled())
                 {
                     uint512_t hashDiskLast = 0;
@@ -1866,20 +1866,26 @@ namespace LLP
                         " canonical.unified=", context.canonical_snap.canonical_unified_height);
                 }
 
-                /* Pre-validation vtx pruning — remove transactions already committed
-                 * by another block to prevent "transaction overwrites not allowed"
-                 * in BlockState::Connect(). */
-                if(!TAO::Ledger::PruneCommittedVtxTransactions(*pTritium))
+                /* ── Merkle root immutability anchor ──
+                 * After sign_block() the hashMerkleRoot is frozen: it was part of
+                 * the ProofHash the miner solved against.  No pre-validation step
+                 * may mutate it or the proof-of-work becomes invalid. */
+                const uint512_t hashMerkleFrozen = pTritium->hashMerkleRoot;
+
+                /* Pre-validation vtx check — detect transactions already committed
+                 * by another block.  Mutating the block to remove them would change
+                 * the merkle root and invalidate the proof-of-work. */
+                if(!TAO::Ledger::ValidateVtxNotCommitted(*pTritium))
                 {
-                    debug::error(FUNCTION, "SUBMIT_BLOCK: vtx pruning failed — rejecting");
+                    debug::error(FUNCTION, "SUBMIT_BLOCK: vtx already committed — template stale, rejecting");
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
                     return true;
                 }
 
-                if(!TAO::Ledger::RefreshProducerIfStale(*pTritium))
+                if(!TAO::Ledger::ValidateProducerFreshness(*pTritium))
                 {
-                    debug::error(FUNCTION, "SUBMIT_BLOCK: producer refresh failed — rejecting");
+                    debug::error(FUNCTION, "SUBMIT_BLOCK: producer sigchain stale — template stale, rejecting");
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
                     return true;
@@ -1891,6 +1897,20 @@ namespace LLP
                 if(!TAO::Ledger::ValidateVtxSigchainConsistency(*pTritium))
                 {
                     debug::error(FUNCTION, "SUBMIT_BLOCK: vtx sigchain stale — rejecting");
+                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                    respond(response);
+                    return true;
+                }
+
+                /* Merkle root immutability assertion — all pre-validation steps
+                 * above are detection-only and must NOT have mutated the block.
+                 * If this fires, a code change has reintroduced a mutation bug. */
+                if(pTritium->hashMerkleRoot != hashMerkleFrozen)
+                {
+                    debug::error(FUNCTION, "SUBMIT_BLOCK BUG: hashMerkleRoot mutated after sign_block!"
+                                 " This indicates a regression in the pre-validation pipeline."
+                                 " frozen=", hashMerkleFrozen.SubString(),
+                                 " current=", pTritium->hashMerkleRoot.SubString());
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
                     return true;

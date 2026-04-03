@@ -530,7 +530,7 @@ namespace TAO::Ledger
          * for the same sigchain (advancing WriteLast), but hashBestChain hasn't changed
          * yet from this channel's perspective — meaning checks 1-3 all pass and the
          * cache would serve a stale producer.
-         * Defense-in-depth: RefreshProducerIfStale() at SUBMIT_BLOCK time remains the
+         * Defense-in-depth: ValidateProducerFreshness() at SUBMIT_BLOCK time remains the
          * authoritative backstop for any TOCTOU races. */
         if(!fNeedsNewBlock && tBlockCached.producer.hashGenesis != 0)
         {
