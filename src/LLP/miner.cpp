@@ -2440,6 +2440,7 @@ namespace LLP
         if(pTritium->hashMerkleRoot != hashMerkleFrozen)
         {
             debug::error(FUNCTION, "SUBMIT_BLOCK BUG: hashMerkleRoot mutated after sign_block!"
+                         " This indicates a regression in the pre-validation pipeline."
                          " frozen=", hashMerkleFrozen.SubString(),
                          " current=", pTritium->hashMerkleRoot.SubString());
             respond_auto(BLOCK_REJECTED);

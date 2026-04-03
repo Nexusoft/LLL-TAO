@@ -458,7 +458,7 @@ namespace TAO::Ledger
                 {
                     hashTrueLast = txMem.GetHash();
                     nTrueLastSeq = txMem.nSequence;
-                    strSeqSource = (hashSessionsLast != 0 ? "mempool_override_sessions" : "mempool");
+                    strSeqSource = (hashSessionsLast != 0 ? "mempool_over_sessions" : "mempool");
                 }
             }
 
