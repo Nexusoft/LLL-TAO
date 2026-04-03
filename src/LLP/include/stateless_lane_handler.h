@@ -47,6 +47,55 @@ namespace LLP
      *  handled by the connection layer directly, preserving existing
      *  block-management state patterns.
      *
+     *  ═══════════════════════════════════════════════════════════════════
+     *  ALIAS ANALYSIS: StatelessMiner::ProcessPacket() → m_laneHandler.Dispatch()
+     *  ═══════════════════════════════════════════════════════════════════
+     *
+     *  Q: Should StatelessMiner::ProcessPacket() be aliased to
+     *     m_laneHandler.Dispatch() on the stateless lane (port 9323)?
+     *
+     *  RECOMMENDATION: NO — not yet.  A thin compatibility shim is sound
+     *  hygiene, but a direct alias is premature at this stage.  Here's why:
+     *
+     *  1. ARCHITECTURAL ROLE MISMATCH:
+     *     StatelessMiner::ProcessPacket() is a static pure-functional router
+     *     used by BOTH lanes.  The legacy lane already uses it as a fallback
+     *     for opcodes LegacyLaneHandler doesn't cover (GET_BLOCK → "Unknown
+     *     packet type" → ProcessPacketStateless).  Aliasing it on the
+     *     stateless lane would break that shared fallback semantic.
+     *
+     *  2. HANDLER COVERAGE IS PARTIAL:
+     *     StatelessLaneHandler only registers 6 opcodes (AUTH_INIT,
+     *     AUTH_RESPONSE, SESSION_START, SESSION_KEEPALIVE, SET_CHANNEL,
+     *     SET_REWARD).  The remaining ~12 cases in the switch (GET_BLOCK,
+     *     SUBMIT_BLOCK, BLOCK_DATA, GET_HEIGHT, etc.) still need the
+     *     StatelessMiner::ProcessPacket() switch for routing to the
+     *     connection layer.  A full alias would require registering ALL
+     *     opcodes — block operations included.
+     *
+     *  3. MIGRATION PATH — RECOMMENDED APPROACH:
+     *     a. Phase 1 (DONE - Legacy lane): Wire m_laneHandler.Dispatch() for
+     *        the 6 auth/session/config opcodes.  Unhandled opcodes fall through
+     *        to StatelessMiner::ProcessPacket().
+     *     b. Phase 2 (FUTURE): Add SubmitBlockHandler, GetBlockHandler, etc.
+     *        with their own mutexes.  When ALL opcodes have handlers, THEN
+     *        StatelessMiner::ProcessPacket() can be retired and both lanes
+     *        dispatch exclusively via their lane handlers.
+     *     c. Phase 3 (FUTURE): StatelessMiner class becomes a namespace of
+     *        pure-functional helpers (BuildAuthMessage, etc.) with no routing.
+     *
+     *  4. RE-AUTH READINESS:
+     *     The handler architecture already enables re-authentication:
+     *     any handler can call SessionStartPacket::BuildPayload() to rebuild
+     *     a SESSION_START without duplicating serialization logic.  This makes
+     *     reconnect/re-auth possible from any handler context.
+     *
+     *  SUMMARY: Keep StatelessMiner::ProcessPacket() as the stateless lane's
+     *  primary router for now.  m_laneHandler (StatelessLaneHandler) is wired
+     *  and available but should not be aliased to ProcessPacket() until all
+     *  opcodes have per-class handlers.
+     *  ═══════════════════════════════════════════════════════════════════
+     *
      **/
     class StatelessLaneHandler
     {
