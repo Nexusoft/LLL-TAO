@@ -95,9 +95,18 @@ namespace TAO
                             debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.SubString());
                     }
 
-                    /* Send a request to download the orphaned block.*/
+                    /* Check if we have an active node. */
                     if(pnode)
-                        pnode->PushMessage(LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::BLOCK), block.hashPrevBlock);
+                    {
+                        /* Send a request to download the orphaned block. */
+                        pnode->PushMessage(LLP::TritiumNode::ACTION::GET,
+
+                            #ifndef DEBUG_MISSING
+                            uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS),
+                            #endif
+
+                            uint8_t(LLP::TritiumNode::TYPES::BLOCK), block.hashPrevBlock);
+                    }
 
                     return;
                 }
