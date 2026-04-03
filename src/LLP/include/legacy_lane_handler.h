@@ -64,27 +64,25 @@ namespace LLP
             /* Register per-opcode handlers using 16-bit mirrored opcodes.
              * The caller mirrors 8-bit → 16-bit before lookup. */
 
-            using StatelessOpcodes = OpcodeUtility::Stateless;
-
             /* Authentication handlers */
-            m_registry.Register(StatelessOpcodes::Mirror(OpcodeUtility::Opcodes::MINER_AUTH_INIT),
+            m_registry.Register(OpcodeUtility::Stateless::Mirror(OpcodeUtility::Opcodes::MINER_AUTH_INIT),
                 std::make_shared<AuthInitHandler>());
 
-            m_registry.Register(StatelessOpcodes::Mirror(OpcodeUtility::Opcodes::MINER_AUTH_RESPONSE),
+            m_registry.Register(OpcodeUtility::Stateless::Mirror(OpcodeUtility::Opcodes::MINER_AUTH_RESPONSE),
                 std::make_shared<AuthResponseHandler>());
 
             /* Session handlers */
-            m_registry.Register(StatelessOpcodes::Mirror(OpcodeUtility::Opcodes::SESSION_START),
+            m_registry.Register(OpcodeUtility::Stateless::Mirror(OpcodeUtility::Opcodes::SESSION_START),
                 std::make_shared<SessionStartHandler>());
 
-            m_registry.Register(StatelessOpcodes::Mirror(OpcodeUtility::Opcodes::SESSION_KEEPALIVE),
+            m_registry.Register(OpcodeUtility::Stateless::Mirror(OpcodeUtility::Opcodes::SESSION_KEEPALIVE),
                 std::make_shared<SessionKeepaliveHandler>());
 
             /* Configuration handlers */
-            m_registry.Register(StatelessOpcodes::Mirror(OpcodeUtility::Opcodes::SET_CHANNEL),
+            m_registry.Register(OpcodeUtility::Stateless::Mirror(OpcodeUtility::Opcodes::SET_CHANNEL),
                 std::make_shared<SetChannelHandler>());
 
-            m_registry.Register(StatelessOpcodes::Mirror(OpcodeUtility::Opcodes::MINER_SET_REWARD),
+            m_registry.Register(OpcodeUtility::Stateless::Mirror(OpcodeUtility::Opcodes::MINER_SET_REWARD),
                 std::make_shared<SetRewardHandler>());
         }
 
