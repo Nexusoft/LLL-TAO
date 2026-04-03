@@ -217,6 +217,86 @@ TEST_CASE("ConcurrentHashMap Thread Safety", "[concurrent_hashmap]")
 }
 
 
+TEST_CASE("ConcurrentHashMap Transform Operations", "[concurrent_hashmap]")
+{
+    SECTION("Transform modifies existing entry atomically")
+    {
+        ConcurrentHashMap<std::string, int> map;
+        map.Insert("key1", 100);
+
+        bool result = map.Transform("key1", [](const int& val) { return val + 50; });
+
+        REQUIRE(result == true);
+        REQUIRE(map.Get("key1").value() == 150);
+    }
+
+    SECTION("Transform returns false for missing key")
+    {
+        ConcurrentHashMap<std::string, int> map;
+
+        bool result = map.Transform("missing", [](const int& val) { return val + 1; });
+
+        REQUIRE(result == false);
+    }
+
+    SECTION("TransformAll modifies all entries under single lock")
+    {
+        ConcurrentHashMap<std::string, int> map;
+        map.Insert("a", 1);
+        map.Insert("b", 2);
+        map.Insert("c", 3);
+
+        uint32_t count = map.TransformAll([](const int& val) { return val * 10; });
+
+        REQUIRE(count == 3);
+        REQUIRE(map.Get("a").value() == 10);
+        REQUIRE(map.Get("b").value() == 20);
+        REQUIRE(map.Get("c").value() == 30);
+    }
+
+    SECTION("TransformAll on empty map returns 0")
+    {
+        ConcurrentHashMap<std::string, int> map;
+
+        uint32_t count = map.TransformAll([](const int& val) { return val + 1; });
+
+        REQUIRE(count == 0);
+    }
+
+    SECTION("Transform does not race with concurrent TransformAll")
+    {
+        ConcurrentHashMap<int, int> map;
+        for(int i = 0; i < 100; ++i)
+            map.Insert(i, 0);
+
+        std::atomic<bool> done(false);
+
+        /* TransformAll thread — increments all values */
+        std::thread bulkWriter([&map, &done]() {
+            for(int iter = 0; iter < 500; ++iter)
+                map.TransformAll([](const int& val) { return val + 1; });
+            done = true;
+        });
+
+        /* Per-key Transform thread — also increments */
+        std::thread pointWriter([&map, &done]() {
+            while(!done)
+            {
+                for(int i = 0; i < 100; ++i)
+                    map.Transform(i, [](const int& val) { return val + 1; });
+            }
+        });
+
+        bulkWriter.join();
+        pointWriter.join();
+
+        /* All values should be >= 500 (from TransformAll) and no crashes */
+        for(int i = 0; i < 100; ++i)
+            REQUIRE(map.Get(i).value() >= 500);
+    }
+}
+
+
 TEST_CASE("ConcurrentOrderedMap Basic Operations", "[concurrent_hashmap]")
 {
     SECTION("Default constructor creates empty map")
