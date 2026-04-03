@@ -198,7 +198,6 @@ TEST_CASE("Session Keep-Alive Stress Testing", "[falcon_auth][keepalive][stress]
             .WithAuth(true)
             .WithSession(12345)
             .WithSessionStart(runtime::unifiedtimestamp())
-            .WithSessionTimeout(300)
             .WithTimestamp(runtime::unifiedtimestamp());
 
         const int nKeepalives = 100;
@@ -220,25 +219,6 @@ TEST_CASE("Session Keep-Alive Stress Testing", "[falcon_auth][keepalive][stress]
 
         /* Final keepalive count should match */
         REQUIRE(ctx.nKeepaliveCount == nKeepalives);
-    }
-
-    SECTION("Keepalive with expired session")
-    {
-        /* Create context with old timestamp (expired) */
-        uint64_t nOldTime = runtime::unifiedtimestamp() - 3600;  // 1 hour ago
-        MiningContext ctx = MiningContext()
-            .WithAuth(true)
-            .WithSession(99999)
-            .WithSessionStart(nOldTime)
-            .WithSessionTimeout(300)  // 5 minute timeout
-            .WithTimestamp(nOldTime);
-
-        Packet packet(SESSION_KEEPALIVE_TEST);
-        ProcessResult result = StatelessMiner::ProcessPacket(ctx, packet);
-
-        /* Should fail - session expired */
-        REQUIRE(result.fSuccess == false);
-        REQUIRE(result.strError.find("expired") != std::string::npos);
     }
 
     SECTION("Keepalive before session start")

@@ -59,7 +59,6 @@ TEST_CASE("MiningContext Default Construction", "[context][immutability][archite
         REQUIRE(ctx.nProtocolVersion == 0);
         REQUIRE(ctx.nSessionId == 0);
         REQUIRE(ctx.nSessionStart == 0);
-        REQUIRE(ctx.nSessionTimeout == 0);
         REQUIRE(ctx.nKeepaliveCount == 0);
         
         /* String fields are empty */

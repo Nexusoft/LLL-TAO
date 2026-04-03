@@ -299,7 +299,11 @@ namespace LLP
         return nAuthenticatedMiners.load();
     }
 
-    /* Get active session count */
+    /* Get active session count.
+     * A session is active if it has been started (nSessionStart > 0) and
+     * still has recent activity within the global liveness window.
+     * Session liveness is governed by CleanupInactive() with
+     * SESSION_LIVENESS_TIMEOUT_SECONDS (86400s). */
     size_t StatelessMinerManager::GetActiveSessionCount() const
     {
         size_t nCount = 0;
@@ -308,8 +312,9 @@ namespace LLP
         auto vMiners = mapMiners.GetAll();
         for(const auto& ctx : vMiners)
         {
-            /* Session is active if started and not expired */
-            if(ctx.nSessionStart > 0 && !ctx.IsSessionExpired(nNow))
+            /* Session is active if started and has recent activity */
+            if(ctx.nSessionStart > 0 &&
+               (nNow - ctx.nTimestamp) <= NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS)
                 ++nCount;
         }
 
@@ -376,81 +381,12 @@ namespace LLP
         return nRemoved;
     }
 
-    /* Cleanup expired sessions */
-    uint32_t StatelessMinerManager::CleanupExpiredSessions()
-    {
-        uint32_t nRemoved = 0;
-        uint64_t nNow = runtime::unifiedtimestamp();
 
-        auto pairs = mapMiners.GetAllPairs();
-        for(const auto& pair : pairs)
-        {
-            /* Use context's own session timeout for expiry check */
-            if(pair.second.IsSessionExpired(nNow))
-            {
-                if(RemoveMiner(pair.first))
-                    ++nRemoved;
-            }
-        }
-
-        if(nRemoved > 0)
-        {
-            debug::log(2, FUNCTION, "Cleaned up ", nRemoved, " expired sessions");
-        }
-
-        /* Also prune session-scoped maps for any sessions no longer in mapMiners */
-        CleanupSessionScopedMaps();
-
-        return nRemoved;
-    }
-
-
-    /* Remove session-scoped rate limiters and block maps for dead sessions */
+    /* CleanupSessionScopedMaps — no-op after SIM-LINK removal.
+     * Kept as stub for callers; returns 0. */
     uint32_t StatelessMinerManager::CleanupSessionScopedMaps()
     {
-        uint32_t nLimitersRemoved = 0;
-        uint32_t nBlocksRemoved   = 0;
-
-        /* Pass A — rate limiter cleanup (m_sessionLimiterMutex held alone) */
-        {
-            std::lock_guard<std::mutex> lk(m_sessionLimiterMutex);
-            for(auto it = m_mapSessionLimiters.begin(); it != m_mapSessionLimiters.end(); )
-            {
-                /* Session is expired if it no longer exists in mapSessionToAddress */
-                auto optAddr = mapSessionToAddress.Get(it->first);
-                if(!optAddr.has_value())
-                {
-                    it = m_mapSessionLimiters.erase(it);
-                    ++nLimitersRemoved;
-                }
-                else
-                    ++it;
-            }
-        }
-
-        /* Pass B — session block map cleanup (m_sessionBlockMutex held alone) */
-        {
-            std::lock_guard<std::mutex> lk(m_sessionBlockMutex);
-            for(auto it = m_mapSessionBlocks.begin(); it != m_mapSessionBlocks.end(); )
-            {
-                auto optAddr = mapSessionToAddress.Get(it->first);
-                if(!optAddr.has_value())
-                {
-                    it = m_mapSessionBlocks.erase(it);
-                    ++nBlocksRemoved;
-                }
-                else
-                    ++it;
-            }
-        }
-
-        if(nLimitersRemoved > 0 || nBlocksRemoved > 0)
-        {
-            debug::log(2, FUNCTION, "SIM-LINK cleanup: removed ", nLimitersRemoved,
-                " session limiters, ", nBlocksRemoved, " session block maps");
-        }
-
-        return nLimitersRemoved + nBlocksRemoved;
+        return 0;
     }
 
     /* Get miner status as JSON */
@@ -475,11 +411,14 @@ namespace LLP
         result["key_id"] = ctx.hashKeyID.ToString();
         result["genesis"] = ctx.hashGenesis.ToString();
 
-        /* Add session management fields */
+        /* Add session management fields.
+         * Session liveness is governed by CleanupInactive() with a 24-hour
+         * 3-way AND check; the "session_active" field reflects whether the
+         * session has recent activity within the global liveness window. */
         result["session_start"] = ctx.nSessionStart;
-        result["session_timeout"] = ctx.nSessionTimeout;
         result["session_duration"] = ctx.GetSessionDuration(nNow);
-        result["session_expired"] = ctx.IsSessionExpired(nNow);
+        result["session_active"] = (ctx.nSessionStart > 0 &&
+            (nNow - ctx.nTimestamp) <= NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
         result["keepalive_count"] = ctx.nKeepaliveCount;
 
         return result.dump(4);
@@ -507,9 +446,9 @@ namespace LLP
 
             /* Add session management fields */
             miner["session_start"] = ctx.nSessionStart;
-            miner["session_timeout"] = ctx.nSessionTimeout;
             miner["session_duration"] = ctx.GetSessionDuration(nNow);
-            miner["session_expired"] = ctx.IsSessionExpired(nNow);
+            miner["session_active"] = (ctx.nSessionStart > 0 &&
+                (nNow - ctx.nTimestamp) <= NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
             miner["keepalive_count"] = ctx.nKeepaliveCount;
 
             miners.push_back(miner);
@@ -629,7 +568,19 @@ namespace LLP
     }
 
 
-    /* Purge inactive miners based on cache timeout */
+    /* Purge inactive miners based on cache timeout.
+     *
+     * This is a CACHE HYGIENE function, NOT a session liveness function.
+     * Session liveness is governed exclusively by CleanupInactive() which uses
+     * the 24-hour 3-way AND check (activity + keepalive count + grace period).
+     *
+     * PurgeInactiveMiners runs on a much longer timescale:
+     *   - Remote miners:    7 days   (604800s)  via DEFAULT_CACHE_PURGE_TIMEOUT
+     *   - Localhost miners: 30 days  (2592000s) via LOCALHOST_CACHE_PURGE_TIMEOUT
+     *
+     * Its purpose is to clean up stale map entries for miners that disconnected
+     * long ago but whose context was not removed (e.g., due to unclean TCP close).
+     * It does NOT affect active miners with keepalives. */
     uint32_t StatelessMinerManager::PurgeInactiveMiners()
     {
         uint32_t nRemoved = 0;
@@ -862,93 +813,6 @@ namespace LLP
         }
 
         return vResult;
-    }
-
-
-    /* ═══════════════════════════════════════════════════════════════════════════
-     * SIM-LINK SESSION-SCOPED SERVICES IMPLEMENTATION
-     * ═══════════════════════════════════════════════════════════════════════════ */
-
-    /* Get (or create) the session-scoped rolling rate limiter */
-    std::shared_ptr<GetBlockRollingLimiter> StatelessMinerManager::GetSessionRateLimiter(uint32_t nSessionId)
-    {
-        std::lock_guard<std::mutex> lock(m_sessionLimiterMutex);
-
-        auto it = m_mapSessionLimiters.find(nSessionId);
-        if(it == m_mapSessionLimiters.end())
-        {
-            /* First access for this session — create a fresh limiter */
-            auto spLimiter = std::make_shared<GetBlockRollingLimiter>(
-                GET_BLOCK_ROLLING_LIMIT_PER_MINUTE,
-                GET_BLOCK_ROLLING_WINDOW);
-
-            auto result = m_mapSessionLimiters.emplace(nSessionId, std::move(spLimiter));
-            debug::log(2, FUNCTION, "SIM-LINK: created session rate limiter for session=", nSessionId);
-            return result.first->second;
-        }
-
-        return it->second;
-    }
-
-
-    /* Store a block template in the session-scoped cross-lane block map.
-     * DEPRECATED: SIM-LINK cross-lane template sharing is scheduled for removal
-     * once real second-node failover (DualConnectionManager) is complete. */
-    void StatelessMinerManager::StoreSessionBlock(uint32_t nSessionId,
-                                                   const uint512_t& hashMerkleRoot,
-                                                   std::shared_ptr<TAO::Ledger::Block> spBlock)
-    {
-        if(!spBlock)
-            return;
-
-        std::lock_guard<std::mutex> lock(m_sessionBlockMutex);
-        m_mapSessionBlocks[nSessionId][hashMerkleRoot] = std::move(spBlock);
-
-        debug::log(3, FUNCTION, "SIM-LINK: stored session block session=", nSessionId,
-            " merkle=", hashMerkleRoot.SubString());
-    }
-
-
-    /* Look up a block template in the session-scoped cross-lane block map.
-     * DEPRECATED: SIM-LINK cross-lane template sharing is scheduled for removal
-     * once real second-node failover (DualConnectionManager) is complete.
-     * Callers check -deprecate-simlink-fallback before invoking this method. */
-    std::shared_ptr<TAO::Ledger::Block> StatelessMinerManager::FindSessionBlock(
-        uint32_t nSessionId, const uint512_t& hashMerkleRoot)
-    {
-        std::lock_guard<std::mutex> lock(m_sessionBlockMutex);
-
-        auto itSession = m_mapSessionBlocks.find(nSessionId);
-        if(itSession == m_mapSessionBlocks.end())
-            return nullptr;
-
-        auto itBlock = itSession->second.find(hashMerkleRoot);
-        if(itBlock == itSession->second.end())
-            return nullptr;
-
-        return itBlock->second;
-    }
-
-
-    /* Remove all block templates for a session (called on tip advance).
-     * DEPRECATED: SIM-LINK cross-lane template sharing is scheduled for removal
-     * once real second-node failover (DualConnectionManager) is complete. */
-    void StatelessMinerManager::PruneSessionBlocks(uint32_t nSessionId)
-    {
-        std::lock_guard<std::mutex> lock(m_sessionBlockMutex);
-
-        auto it = m_mapSessionBlocks.find(nSessionId);
-        if(it == m_mapSessionBlocks.end())
-            return;
-
-        const size_t nPruned = it->second.size();
-        it->second.clear();
-
-        if(nPruned > 0)
-        {
-            debug::log(2, FUNCTION, "SIM-LINK: pruned ", nPruned,
-                " session block(s) for session=", nSessionId, " (tip advanced)");
-        }
     }
 
 

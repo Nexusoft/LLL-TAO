@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <LLP/include/node_cache.h>
 #include <LLP/include/session_recovery.h>
 #include <LLP/include/get_block_policy.h>
+#include <LLP/include/mining_session_health.h>
 #include <LLP/include/push_notification.h>
 #include <LLP/include/keepalive_v2.h>
 #include <LLP/include/session_status.h>
@@ -74,7 +75,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/colin_mining_agent.h>
 #include <LLP/include/node_session_registry.h>
-#include <LLP/include/get_block_handler.h>
+#include <LLP/include/legacy_get_block_handler.h>
 
 #include <cstring>
 
@@ -548,12 +549,9 @@ namespace LLP
 
                 MiningContext sessionContext = optContext.value();
                 uint64_t nNow = runtime::unifiedtimestamp();
-                const uint32_t nExpirySeconds =
-                    static_cast<uint32_t>(NodeCache::GetSessionLivenessTimeout(sessionContext.strAddress));
 
                 sessionContext = sessionContext
                     .WithTimestamp(nNow)
-                    .WithSessionTimeout(nExpirySeconds)
                     .WithKeepaliveCount(sessionContext.nKeepaliveCount + 1)
                     .WithMinerPrevblockSuffix(nMinerPrevblockSuffix);
 
@@ -572,8 +570,8 @@ namespace LLP
                 constexpr uint64_t SECONDS_PER_DAY = 86400;
                 debug::log(2, FUNCTION, "Session refreshed:");
                 debug::log(2, FUNCTION, "  Keepalives: ", sessionContext.nKeepaliveCount);
-                debug::log(2, FUNCTION, "  New expiry: ", (nNow + nExpirySeconds), " (",
-                           (nExpirySeconds / SECONDS_PER_DAY), "d)");
+                debug::log(2, FUNCTION, "  Liveness window: ", SECONDS_PER_DAY, "s (",
+                           (SECONDS_PER_DAY / SECONDS_PER_DAY), "d)");
 
                 /* Build unified 32-byte response */
                 TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
@@ -860,13 +858,9 @@ namespace LLP
                     if(updatedContext.fAuthenticated && updatedContext.nSessionId != 0)
                     {
                         uint64_t nNow = runtime::unifiedtimestamp();
-                        const uint32_t nExpirySeconds =
-                            static_cast<uint32_t>(NodeCache::GetSessionLivenessTimeout(updatedContext.strAddress));
 
                         if(updatedContext.nSessionStart == 0)
                             updatedContext = updatedContext.WithSessionStart(nNow);
-
-                        updatedContext = updatedContext.WithSessionTimeout(nExpirySeconds);
                     }
 
                     /* Register session in NodeSessionRegistry for cross-port session identity.
@@ -1034,29 +1028,34 @@ namespace LLP
             /* Get the error message */
             std::string strError = e.what();
             
-            /* Suppress "Session not found" errors for stateless mining.
-             * These exceptions are thrown by legacy TAO API code that expects
-             * user sessions (login/create/unlock), but stateless mining uses
-             * MiningContext tracked by StatelessMinerManager instead.
-             * 
-             * Common sources:
-             * - new_block() trying to access TAO::API::Authentication::Credentials()
-             * - new_block() calling TAO::API::Authentication::Unlock() 
-             * - Legacy mining code expecting session-based authentication
-             * - TAO API methods called during block template creation
-             * 
-             * This is safe to suppress because:
-             * 1. Stateless mining has its own auth (Falcon challenge-response)
-             * 2. State is tracked in StatelessMinerManager via MiningContext
-             * 3. No TAO API sessions are needed for mining operations
+            /* SESSION::DEFAULT not found — new_block() or CreateBlockForStatelessMining()
+             * tried to access the wallet session that was never established (or expired).
+             * This happens when the node is started without -autologin=user:pass and the
+             * wallet has not been unlocked for mining via the API.
+             *
+             * CRITICAL FIX: Do NOT silently return true here.  The miner sent GET_BLOCK
+             * and is waiting for a response; swallowing the exception leaves the miner
+             * in template-starvation (push_ahead N, round_ahead 0).  We must send an
+             * explicit TEMPLATE_SOURCE_UNAVAILABLE wire response so the miner backs off
+             * and retries, rather than hanging indefinitely.
              */
             if(strError.find("Session not found") != std::string::npos)
             {
-                debug::log(2, FUNCTION, "MinerLLP: Session error suppressed for stateless mining from ", GetAddress().ToStringIP(), " - stateless protocol uses MiningContext, not TAO API sessions");
-                
-                /* Return true to continue processing - the packet has been handled,
-                 * we just encountered legacy code trying to access non-existent sessions.
-                 * For stateless mining, this is expected and not an error. */
+                debug::error(FUNCTION, "MinerLLP: SESSION::DEFAULT not available for mining from ",
+                             GetAddress().ToStringIP(),
+                             " — node requires -autologin=user:pass or manual unlock for mining."
+                             " GET_BLOCK will return TEMPLATE_SOURCE_UNAVAILABLE to miner");
+
+                /* Send explicit wire response so the miner knows to back off and retry.
+                 * Keep the connection alive — the session may become available later. */
+                try
+                {
+                    respond_auto(BLOCK_REJECTED,
+                        BuildGetBlockControlPayload(
+                            GetBlockPolicyReason::TEMPLATE_SOURCE_UNAVAILABLE, 5000u));
+                }
+                catch(...) { /* best-effort send — ignore secondary send failure */ }
+
                 return true;
             }
             
@@ -1488,6 +1487,18 @@ namespace LLP
     /*  Adds a new block to the map. */
     TAO::Ledger::Block *Miner::new_block()
     {
+        /* SESSION::DEFAULT health pre-check: fail fast before diving into
+         * CreateBlockForStatelessMining() which requires the wallet session.
+         * If the session is unavailable, log clearly and return nullptr so
+         * the GET_BLOCK handler can send TEMPLATE_SOURCE_UNAVAILABLE to the miner. */
+        if(!LLP::IsDefaultSessionReady())
+        {
+            debug::error(FUNCTION, "SESSION::DEFAULT not available for mining"
+                         " — node requires -autologin=user:pass or manual unlock."
+                         " GET_BLOCK will return TEMPLATE_SOURCE_UNAVAILABLE to miner");
+            return nullptr;
+        }
+
         /* Determine reward address - priority order:
          * 1. hashRewardAddress (explicit via MINER_SET_REWARD)
          * 2. hashGenesis (fallback from Falcon auth - PR #92)
@@ -1907,12 +1918,11 @@ namespace LLP
          * an authenticated miner who is within the rate-limit budget always receives
          * BLOCK_DATA (invariant: authenticated + in-budget → BLOCK_DATA MUST follow). */
 
-        /* ── SIM-LINK: Delegate to SharedGetBlockHandler ─────────────────────────
-         * Build the session context from current connection state.  The handler
-         * performs session-scoped rate limiting (shared 25/60s budget across both
-         * legacy and stateless lanes), calls new_block(), stores the template in
-         * the session block map for cross-lane SUBMIT_BLOCK resolution, and
-         * serialises the 228-byte BLOCK_DATA payload. */
+        /* ── Legacy Lane: Delegate to LegacyGetBlockHandler ─────────────────────
+         * Build the request with per-connection rate limiter.  The handler
+         * performs per-connection rate limiting (25/60s), calls new_block(),
+         * and serialises the 228-byte BLOCK_DATA payload.
+         * No cross-lane state sharing. */
         {
             LOCK(MUTEX);
 
@@ -1928,20 +1938,15 @@ namespace LLP
                 return true;
             }
 
-            GetBlockRequest req;
-            /* Build a minimal context snapshot: detect protocol lane from connection state */
-            req.context = MiningContext()
-                .WithAuth(fMinerAuthenticated)
-                .WithProtocolLane(fStatelessProtocol ? ProtocolLane::STATELESS : ProtocolLane::LEGACY)
-                .WithSession(nSessionId);
-
+            LegacyGetBlockRequest req;
             req.nSessionId = nSessionId;
+            req.pRateLimiter = &m_getBlockRateLimiter;
             req.fnCreateBlock = [this]() -> TAO::Ledger::Block*
             {
                 return new_block();
             };
 
-            GetBlockResult result = SharedGetBlockHandler(req);
+            LegacyGetBlockResult result = LegacyGetBlockHandler(req);
 
             if(!result.fSuccess)
             {
@@ -2282,48 +2287,15 @@ namespace LLP
          * Convention: nSessionId == 0 means "not yet established" (same sentinel
          * used throughout the miner authentication path).
          *
-         * DEPRECATED: SIM-LINK cross-lane template resolution.
-         * Cross-lane block lookup is scheduled for removal once real second-node
-         * failover (DualConnectionManager) is complete. New miners should connect
-         * to a dedicated failover node rather than relying on this cross-lane path.
-         * To disable now, start the node with -deprecate-simlink-fallback=1.
-         * See: docs/architecture/SIMLINK_DUAL_LANE_ARCHITECTURE.md */
-        std::shared_ptr<TAO::Ledger::Block> spCrossLane;
-        std::unique_ptr<TAO::Ledger::Block> upCrossLaneClone;
-        if(nCrossLaneSessionId != 0)
-        {
-            if(!config::GetBoolArg("-deprecate-simlink-fallback", false))
-            {
-                spCrossLane = StatelessMinerManager::Get().FindSessionBlock(nCrossLaneSessionId, hashMerkle);
-                if(spCrossLane)
-                {
-                    debug::log(0, FUNCTION,
-                        "[DEPRECATED] SIM-LINK: cross-lane block resolved from stateless lane "
-                        "session=", nCrossLaneSessionId, " merkle=", hashMerkle.SubString(),
-                        " — consider connecting to a dedicated failover node instead");
-                    upCrossLaneClone = std::unique_ptr<TAO::Ledger::Block>(spCrossLane->Clone());
-                    if(!upCrossLaneClone)
-                    {
-                        debug::error(FUNCTION, "SIM-LINK cross-lane block clone failed");
-                        respond_auto(BLOCK_REJECTED);
-                        return true;
-                    }
-                }
-            }
-            else
-            {
-                debug::log(0, FUNCTION,
-                    "[DEPRECATED] SIM-LINK: cross-lane fallback disabled via "
-                    "-deprecate-simlink-fallback; treating as unknown template");
-            }
-        }
+         * Cross-lane block lookup removed — each lane's templates are
+         * per-connection only (no shared session block store). */
 
         LOCK(MUTEX);
 
         /* Make sure the block was created by this mining server. */
         const bool fLocalBlock = find_block(hashMerkle);
 
-        if(!fLocalBlock && !spCrossLane)
+        if(!fLocalBlock)
         {
             debug::log(2, FUNCTION, "Block not found in map");
             respond_auto(BLOCK_REJECTED);
@@ -2332,7 +2304,6 @@ namespace LLP
 
         TAO::Ledger::TritiumBlock* pTritium = nullptr;
 
-        if(fLocalBlock)
         {
             /* Local path: sign_block mutates the block in-place via mapBlocks */
             if(!sign_block(nonce, hashMerkle, vPrimeOffsets))
@@ -2342,58 +2313,6 @@ namespace LLP
             }
 
             pTritium = dynamic_cast<TAO::Ledger::TritiumBlock*>(mapBlocks[hashMerkle]);
-        }
-        else
-        {
-            /* Cross-lane path: template was issued on the stateless port (9323) and
-             * submitted here on the legacy port (8323).  Clone the session-store block
-             * before applying nonce/offsets so cross-lane submissions never mutate the
-             * shared_ptr<Block> copy used by the other lane.
-             * NOTE: This channel-dispatch logic mirrors the cross-lane path in
-             * StatelessMinerConnection::ProcessPacket (SUBMIT_BLOCK handler). */
-            debug::log(1, FUNCTION, "SIM-LINK cross-lane SUBMIT_BLOCK resolved: session=",
-                       nCrossLaneSessionId, " merkle=", hashMerkle.SubString());
-
-            pTritium = dynamic_cast<TAO::Ledger::TritiumBlock*>(upCrossLaneClone.get());
-            if(!pTritium)
-            {
-                debug::error(FUNCTION, "SIM-LINK cross-lane block is not a TritiumBlock");
-                respond_auto(BLOCK_REJECTED);
-                return true;
-            }
-
-            if(pTritium->nChannel == TAO::Ledger::CHANNEL::PRIME)
-            {
-                *pTritium = TAO::Ledger::BuildSolvedPrimeCandidateFromTemplate(*pTritium, nonce, vPrimeOffsets);
-
-                if(!pTritium->vOffsets.empty() &&
-                   !TAO::Ledger::VerifySubmittedPrimeOffsets(*pTritium, pTritium->vOffsets))
-                {
-                    debug::error(FUNCTION, "Cross-lane: Prime vOffsets structural validation failed");
-                    respond_auto(BLOCK_REJECTED);
-                    return true;
-                }
-
-                if(pTritium->vOffsets.empty())
-                    TAO::Ledger::GetOffsets(pTritium->GetPrime(), pTritium->vOffsets);
-            }
-            else if(pTritium->nChannel == TAO::Ledger::CHANNEL::HASH)
-            {
-                *pTritium = TAO::Ledger::BuildSolvedHashCandidateFromTemplate(*pTritium, nonce);
-            }
-            else
-            {
-                pTritium->nNonce = nonce;
-                pTritium->vOffsets.clear();
-                pTritium->vchBlockSig.clear();
-            }
-
-            if(!TAO::Ledger::FinalizeWalletSignatureForSolvedBlock(*pTritium))
-            {
-                debug::error(FUNCTION, "Cross-lane: FinalizeWalletSignatureForSolvedBlock failed");
-                respond_auto(BLOCK_REJECTED);
-                return true;
-            }
         }
 
         if(!pTritium)

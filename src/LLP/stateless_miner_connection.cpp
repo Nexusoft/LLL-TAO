@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLP/include/genesis_constants.h>
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/stateless_manager.h>
+#include <LLP/include/node_cache.h>
 #include <LLP/include/stateless_opcodes.h>
 #include <LLP/include/falcon_constants.h>
 #include <LLP/include/falcon_auth.h>
@@ -26,9 +27,11 @@ ________________________________________________________________________________
 #include <LLP/include/opcode_utility.h>
 #include <LLP/include/push_notification.h>
 #include <LLP/include/mining_constants.h>
+#include <LLP/include/mining_session_health.h>
 #include <LLP/include/session_status.h>
 #include <LLP/include/session_start_packet.h>
 #include <LLP/include/get_block_handler.h>
+#include <LLP/include/stateless_get_block_handler.h>
 #include <LLP/templates/events.h>
 
 #include <LLD/include/global.h>
@@ -925,9 +928,12 @@ namespace LLP
                 debug::log(0, "   Channel: ", context.nChannel);
                 debug::log(0, "   Session ID: ", context.nSessionId);
 
-                /* Explicit session validity policy handling. */
-                const uint64_t nNow = runtime::unifiedtimestamp();
-                if(context.nSessionId == 0 || context.IsSessionExpired(nNow))
+                /* Session validity: only require a non-zero session ID.
+                 * Session liveness is enforced exclusively by CleanupInactive()
+                 * (24-hour 3-way AND check) on a 10-minute sweep cadence.
+                 * Authenticated miners with valid keepalives must never be
+                 * blocked from GET_BLOCK — only DDOS rate limiting applies. */
+                if(context.nSessionId == 0)
                 {
                     SendGetBlockControlResponse(GetBlockPolicyReason::SESSION_INVALID, 0, false);
                     return true;
@@ -941,38 +947,34 @@ namespace LLP
                     return true;
                 }
 
-                /* ── SIM-LINK: Delegate to SharedGetBlockHandler ─────────────────────
-                 * Session-scoped rate limit check, block creation, session block storage,
-                 * and 228-byte payload serialization are all handled by the shared handler.
+                /* ── Stateless Lane: Delegate to StatelessGetBlockHandler ────────────
+                 * Block creation and 228-byte payload serialization are handled by the
+                 * dedicated stateless lane handler.  No cross-lane state sharing.
                  *
-                 * Rate limiting is now session-scoped (shared 25/60s budget across both
-                 * the legacy (8323) and stateless (9323) lanes for this session).
-                 *
-                 * The CheckRateLimit() call for GET_BLOCK is intentionally removed here;
-                 * the session limiter inside SharedGetBlockHandler is the authoritative gate.
+                 * Rate limiting for GET_BLOCK on the stateless lane uses the session-scoped
+                 * limiter in CheckRateLimit (called earlier in the packet dispatch).
                  */
 
                 /* Check channel is set — every path below MUST send a wire response. */
                 if(context.nChannel == 0)
                 {
-                    debug::error(FUNCTION, "Channel not set for authenticated in-budget miner; miner must call SET_CHANNEL first — sending TEMPLATE_NOT_READY");
+                    debug::error(FUNCTION, "Channel not set for authenticated miner; miner must call SET_CHANNEL first — sending TEMPLATE_NOT_READY");
                     debug::log(2, "📥 === GET_BLOCK: REJECTED (NO CHANNEL) ===");
                     SendGetBlockControlResponse(GetBlockPolicyReason::TEMPLATE_NOT_READY, MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS, true);
                     return true;
                 }
 
-                debug::log(2, FUNCTION, "Invariant: authenticated + in-budget + channel set → BLOCK_DATA MUST follow (SIM-LINK session-scoped rate check)");
-                debug::log(0, "   ✅ Validation passed, delegating to SharedGetBlockHandler");
+                debug::log(2, FUNCTION, "Invariant: authenticated + channel set → BLOCK_DATA MUST follow");
+                debug::log(0, "   ✅ Validation passed, delegating to StatelessGetBlockHandler");
 
-                /* CRITICAL: Release MUTEX before new_block() via SharedGetBlockHandler —
+                /* CRITICAL: Release MUTEX before new_block() via StatelessGetBlockHandler —
                  * new_block() acquires MUTEX internally.  std::mutex is non-recursive;
                  * holding lk and calling new_block() causes a deadlock. */
                 lk.unlock();
 
-                /* Build request for the shared handler */
-                GetBlockRequest gbReq;
+                /* Build request for the stateless lane handler */
+                StatelessGetBlockRequest gbReq;
                 gbReq.context   = context;           /* immutable snapshot (no MUTEX needed after unlock) */
-                gbReq.nSessionId = context.nSessionId;
                 gbReq.fnCreateBlock = [this]() -> TAO::Ledger::Block*
                 {
                     return new_block();
@@ -981,7 +983,7 @@ namespace LLP
                 /* Track GET_BLOCK response latency for observability */
                 const auto tGetBlockStart = std::chrono::steady_clock::now();
 
-                GetBlockResult gbResult = SharedGetBlockHandler(gbReq);
+                StatelessGetBlockResult gbResult = StatelessGetBlockHandler(gbReq);
 
                 const auto tGetBlockEnd = std::chrono::steady_clock::now();
                 const auto nGetBlockLatencyMs = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -1023,16 +1025,35 @@ namespace LLP
                         }
                     }
 
-                    /* Translate INTERNAL_RETRY to TEMPLATE_REBUILD_IN_PROGRESS when deadline exceeded */
+                    /* Translate INTERNAL_RETRY to a more specific reason when possible:
+                     *
+                     * 1. If SESSION::DEFAULT is unavailable (no -autologin or manual unlock),
+                     *    remap to TEMPLATE_SOURCE_UNAVAILABLE with a longer retry hint so the
+                     *    miner knows this is a node-configuration issue, not a transient hiccup.
+                     *
+                     * 2. If the handler simply timed out, remap to TEMPLATE_REBUILD_IN_PROGRESS. */
                     constexpr int64_t GET_BLOCK_DEADLINE_MS = 500;
                     GetBlockPolicyReason eReportReason = gbResult.eReason;
+                    uint32_t nReportRetryMs = gbResult.nRetryAfterMs;
+
                     if(eReportReason == GetBlockPolicyReason::INTERNAL_RETRY &&
-                       nGetBlockLatencyMs >= GET_BLOCK_DEADLINE_MS)
+                       !LLP::IsDefaultSessionReady())
+                    {
+                        eReportReason  = GetBlockPolicyReason::TEMPLATE_SOURCE_UNAVAILABLE;
+                        nReportRetryMs = 5000u;
+                        debug::error(FUNCTION,
+                            "SESSION::DEFAULT not available — sending TEMPLATE_SOURCE_UNAVAILABLE"
+                            " to miner (session=", context.nSessionId,
+                            " peer=", GetAddress().ToStringIP(), ")."
+                            " Node requires -autologin=user:pass or manual unlock for mining");
+                    }
+                    else if(eReportReason == GetBlockPolicyReason::INTERNAL_RETRY &&
+                            nGetBlockLatencyMs >= GET_BLOCK_DEADLINE_MS)
                     {
                         eReportReason = GetBlockPolicyReason::TEMPLATE_REBUILD_IN_PROGRESS;
                     }
 
-                    SendGetBlockControlResponse(eReportReason, gbResult.nRetryAfterMs, true);
+                    SendGetBlockControlResponse(eReportReason, nReportRetryMs, true);
                     debug::log(2, "📥 === GET_BLOCK: FAILED (reason=",
                                GetBlockPolicyReasonCode(eReportReason), " latency=", nGetBlockLatencyMs, "ms) ===");
 
@@ -1076,7 +1097,7 @@ namespace LLP
                     }
                 }
 
-                debug::log(0, "   📤 Sending BLOCK_DATA (SIM-LINK)...");
+                debug::log(0, "   📤 Sending BLOCK_DATA...");
                 debug::log(0, "      Packet DATA size: ", gbResult.vPayload.size());
                 debug::log(0, "      [channel=", gbResult.nBlockChannel,
                            " height=", gbResult.nBlockHeight,
@@ -1085,7 +1106,7 @@ namespace LLP
                 SendGetBlockDataResponse(gbResult.vPayload, true);
 
                 debug::log(0, "   ✅ Packet sent!");
-                debug::log(2, "📥 === GET_BLOCK: SUCCESS (SIM-LINK) ===");
+                debug::log(2, "📥 === GET_BLOCK: SUCCESS ===");
 
                 /* Update context timestamp, height, last template channel height, and
                  * hashLastBlock snapshot (primary staleness anchor, StakeMinter pattern). */
@@ -1586,47 +1607,10 @@ namespace LLP
                 /* Continue with existing template lookup and validation... */
                 StatelessMinerManager::Get().IncrementBlocksSubmitted();
 
-                /* GAP 1: keep the cross-lane block alive through validation */
-                std::shared_ptr<TAO::Ledger::Block> spCrossLaneHolder;
-                std::unique_ptr<TAO::Ledger::Block> upCrossLaneClone;
-                bool fCrossLane = false;
-
                 /* Make sure the block was created by this mining server. */
                 if(!find_block(hashMerkle))
                 {
-                    /* DEPRECATED: SIM-LINK cross-lane template resolution.
-                     *
-                     * Cross-lane block lookup is scheduled for removal once real
-                     * second-node failover (DualConnectionManager) is complete.
-                     * New miners should connect to a dedicated failover node rather
-                     * than relying on this cross-lane resolution path.
-                     *
-                     * To disable this fallback now and test the new failover model,
-                     * start the node with -deprecate-simlink-fallback=1.
-                     *
-                     * See: docs/architecture/SIMLINK_DUAL_LANE_ARCHITECTURE.md */
-                    if(!config::GetBoolArg("-deprecate-simlink-fallback", false))
-                    {
-                        /* Cross-lane fallback: template may have been issued on the
-                         * legacy port (8323) and stored in the session block map by
-                         * SharedGetBlockHandler on that lane. */
-                        spCrossLaneHolder = StatelessMinerManager::Get().FindSessionBlock(
-                            context.nSessionId, hashMerkle);
-
-                        if(spCrossLaneHolder)
-                            debug::log(0, FUNCTION,
-                                "[DEPRECATED] SIM-LINK: cross-lane block resolved from legacy lane "
-                                "session=", context.nSessionId, " merkle=", hashMerkle.SubString(),
-                                " — consider connecting to a dedicated failover node instead");
-                    }
-                    else
-                    {
-                        debug::log(0, FUNCTION,
-                            "[DEPRECATED] SIM-LINK: cross-lane fallback disabled via "
-                            "-deprecate-simlink-fallback; treating as unknown template");
-                    }
-
-                    if(!spCrossLaneHolder)
+                    /* Template not found in this connection's mapBlocks. */
                     {
                         debug::error(FUNCTION, "════════════════════════════════════════");
                         debug::error(FUNCTION, "   ❌ TEMPLATE NOT FOUND");
@@ -1680,23 +1664,10 @@ namespace LLP
                         debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Unknown template) ===", ANSI_COLOR_RESET);
                         return true;
                     }
-
-                    debug::log(1, FUNCTION, "SIM-LINK cross-lane SUBMIT_BLOCK resolved: session=",
-                               context.nSessionId, " merkle=", hashMerkle.SubString());
-                    upCrossLaneClone = std::unique_ptr<TAO::Ledger::Block>(spCrossLaneHolder->Clone());
-                    if(!upCrossLaneClone)
-                    {
-                        debug::error(FUNCTION, "❌ SIM-LINK cross-lane block clone failed");
-                        StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                        respond(response);
-                        return true;
-                    }
-                    fCrossLane = true;
                 }
 
                 TAO::Ledger::TritiumBlock* pTritium = nullptr;
 
-                if(!fCrossLane)
                 {
                     debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Found original template (wallet-signed)", ANSI_COLOR_RESET);
 
@@ -1773,57 +1744,6 @@ namespace LLP
                         StatelessPacket response(STATELESS_BLOCK_REJECTED);
                         respond(response);
                         debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (invalid block type) ===", ANSI_COLOR_RESET);
-                        return true;
-                    }
-                } /* end if(!fCrossLane) */
-                else
-                {
-                    /* Cross-lane path: clone the session-store block before applying
-                     * nonce/offsets so the other lane never observes mutated template state.
-                     * NOTE: This channel-dispatch logic mirrors the cross-lane path in
-                     * Miner::handle_submit_block_stateless (miner.cpp). */
-                    pTritium = dynamic_cast<TAO::Ledger::TritiumBlock*>(upCrossLaneClone.get());
-                    if(!pTritium)
-                    {
-                        debug::error(FUNCTION, "❌ SIM-LINK cross-lane block is not a TritiumBlock");
-                        StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                        respond(response);
-                        return true;
-                    }
-
-                    if(pTritium->nChannel == TAO::Ledger::CHANNEL::PRIME)
-                    {
-                        *pTritium = TAO::Ledger::BuildSolvedPrimeCandidateFromTemplate(
-                            *pTritium, nonce, vPrimeOffsets);
-
-                        if(!pTritium->vOffsets.empty() &&
-                           !TAO::Ledger::VerifySubmittedPrimeOffsets(*pTritium, pTritium->vOffsets))
-                        {
-                            debug::error(FUNCTION, "Cross-lane: Prime vOffsets structural validation failed");
-                            StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                            respond(response);
-                            return true;
-                        }
-
-                        if(pTritium->vOffsets.empty())
-                            TAO::Ledger::GetOffsets(pTritium->GetPrime(), pTritium->vOffsets);
-                    }
-                    else if(pTritium->nChannel == TAO::Ledger::CHANNEL::HASH)
-                    {
-                        *pTritium = TAO::Ledger::BuildSolvedHashCandidateFromTemplate(*pTritium, nonce);
-                    }
-                    else
-                    {
-                        pTritium->nNonce = nonce;
-                        pTritium->vOffsets.clear();
-                        pTritium->vchBlockSig.clear();
-                    }
-
-                    if(!TAO::Ledger::FinalizeWalletSignatureForSolvedBlock(*pTritium))
-                    {
-                        debug::error(FUNCTION, "Cross-lane: FinalizeWalletSignatureForSolvedBlock failed");
-                        StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                        respond(response);
                         return true;
                     }
                 }
@@ -2381,13 +2301,24 @@ namespace LLP
                     debug::log(2, "");
                     debug::log(2, "   📤 Creating new block template...");
                     
-                    /* Create a new block template (same logic as GET_BLOCK handler) */
-                    TAO::Ledger::Block* pBlock = new_block();
+                    /* Create a new block template with retry logic.
+                     * Retry up to 3 times with a short sleep (50ms) between retries
+                     * to handle the common case where the chain tip advanced mid-creation. */
+                    TAO::Ledger::Block* pBlock = nullptr;
+                    for(int nRetry = 0; nRetry < 3 && !pBlock; ++nRetry)
+                    {
+                        pBlock = new_block();
+                        if(!pBlock && nRetry < 2)
+                        {
+                            debug::log(2, FUNCTION, "GET_ROUND auto-send: new_block() returned nullptr, retry ", nRetry + 1, "/3");
+                            runtime::sleep(50);
+                        }
+                    }
                     
                     if(!pBlock)
                     {
-                        debug::error(FUNCTION, "   ❌ GET_ROUND auto-send: new_block() returned nullptr");
-                        debug::error(FUNCTION, "      Template will not be sent - miner must use GET_BLOCK");
+                        debug::error(FUNCTION, "   ❌ GET_ROUND auto-send: new_block() failed after 3 retries");
+                        debug::error(FUNCTION, "      Template will not be sent - miner will retry on next GET_ROUND");
                     }
                     else
                     {
@@ -3329,7 +3260,20 @@ namespace LLP
         debug::log(0, "      Channel: ", nChannel_snap);
         debug::log(0, "      Session ID: ", nSessionId_snap);
         debug::log(0, "      Falcon authenticated: ", fAuthenticated_snap ? "Yes" : "No");
-        
+
+        /* SESSION::DEFAULT health pre-check: fail fast before calling
+         * CreateBlockForStatelessMining() which requires the wallet session.
+         * If SESSION::DEFAULT is absent or not unlocked for mining, we log
+         * clearly at level 0 and return nullptr so the GET_BLOCK handler can
+         * send TEMPLATE_SOURCE_UNAVAILABLE to the miner instead of INTERNAL_RETRY. */
+        if(!LLP::IsDefaultSessionReady())
+        {
+            debug::error(FUNCTION, "SESSION::DEFAULT not available for mining"
+                         " — node requires -autologin=user:pass or manual unlock."
+                         " GET_BLOCK will return TEMPLATE_SOURCE_UNAVAILABLE to miner");
+            return nullptr;
+        }
+
         /* Ensure wallet is unlocked for mining (matches legacy Miner::new_block behavior).
          * CreateBlockForStatelessMining() requires Authentication::Unlocked(PinUnlock::MINING).
          * Legacy miners auto-unlock; stateless miners must do the same. */
@@ -4383,39 +4327,35 @@ namespace LLP
                 }
                 debug::log(2, "════════════════════════════════════════════════════════════");
 
-                /* SIM-LINK SESSION-SCOPED RATE LIMIT for GET_BLOCK
+                /* Stateless lane per-connection rate limiter for GET_BLOCK.
                  *
-                 * The session-scoped limiter is shared across both the legacy (8323) and
-                 * stateless (9323) lanes.  A miner with simultaneous connections on both
-                 * lanes shares one 25/60s budget, preventing rate-limit bypass via
-                 * dual-connection.
+                 * Each stateless connection has its own independent 25/60s rolling
+                 * budget.  No cross-lane sharing with the legacy lane.
                  *
-                 * Key format: "session=N|combined"
+                 * Key format: "stateless|session=N"
                  */
 
-                /* Delegate to session-scoped limiter (shared 25/60s budget across both lanes) */
-                auto pSessionLimiter = StatelessMinerManager::Get().GetSessionRateLimiter(context.nSessionId);
-                const std::string strSessionKey = "session=" + std::to_string(context.nSessionId) + "|combined";
+                /* Per-connection rate limiter — no session-scoped sharing */
+                const std::string strRateKey = "stateless|session=" + std::to_string(context.nSessionId);
                 uint32_t nRetryAfterMs = 0;
                 std::size_t nCurrentInWindow = 0;
-                if(!pSessionLimiter->Allow(strSessionKey, now, nRetryAfterMs, nCurrentInWindow))
+                if(!m_getBlockRateLimiter.Allow(strRateKey, now, nRetryAfterMs, nCurrentInWindow))
                 {
                     const std::string strReason =
-                        "GET_BLOCK session rate limit exceeded: key=" + strSessionKey +
+                        "GET_BLOCK rate limit exceeded: key=" + strRateKey +
                         " count=" + std::to_string(nCurrentInWindow) + "/" +
                         std::to_string(RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE) +
-                        " window=60s retry_after_ms=" + std::to_string(nRetryAfterMs) +
-                        " (combined across all lanes)";
+                        " window=60s retry_after_ms=" + std::to_string(nRetryAfterMs);
                     RecordViolation(strReason);
                     if(pnRetryAfterMs)
                         *pnRetryAfterMs = nRetryAfterMs;
-                    debug::log(1, FUNCTION, "SIM-LINK GET_BLOCK session rate limit: key=", strSessionKey,
+                    debug::log(1, FUNCTION, "GET_BLOCK rate limit: key=", strRateKey,
                         " count=", nCurrentInWindow, "/", RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE);
                     return false;
                 }
 
                 m_rateLimit.tLastGetBlock = now;
-                debug::log(3, FUNCTION, "SIM-LINK GET_BLOCK session budget: key=", strSessionKey,
+                debug::log(3, FUNCTION, "GET_BLOCK rate budget: key=", strRateKey,
                     " count=", nCurrentInWindow, "/", RateLimitConfig::MAX_GET_BLOCK_PER_MINUTE);
                 return true;
             }
@@ -4649,13 +4589,87 @@ namespace LLP
                    ", channelHeight=", nChannelHeight,
                    ", diff=", std::hex, nDifficulty, std::dec, ")");
 
-        /* SIM-LINK: Prune stale session-scoped block templates now that the tip has
-         * advanced.  Per-connection templates are pruned via CleanupStaleTemplates();
-         * the session-scoped store needs its own prune call.  Non-fatal on session_id=0. */
-        if(nSessionId_snap != 0)
+        /* Work Item 6: Attach block template to PUSH notification.
+         * After sending the notification, immediately try to create and send
+         * a BLOCK_DATA template so the miner can start hashing without
+         * needing a separate GET_BLOCK round-trip. */
+        TryAttachBlockTemplate();
+    }
+
+
+    /* TryAttachBlockTemplate - Best-effort template tag-along with PUSH notification.
+     * Creates a block template and sends it as BLOCK_DATA immediately after the
+     * push notification.  If template creation fails, the notification was already
+     * sent and the miner will fall back to GET_BLOCK or GET_ROUND polling. */
+    void StatelessMinerConnection::TryAttachBlockTemplate()
+    {
+        if(config::fShutdown.load())
+            return;
+
+        /* Create block template — best effort, no retry loop here */
+        TAO::Ledger::Block* pBlock = new_block();
+        if(!pBlock)
         {
-            StatelessMinerManager::Get().PruneSessionBlocks(nSessionId_snap);
+            debug::log(2, FUNCTION, "TryAttachBlockTemplate: new_block() returned nullptr — "
+                "miner will use GET_BLOCK or GET_ROUND fallback");
+            return;
         }
+
+        /* Serialize and validate */
+        std::vector<uint8_t> vBlockData = pBlock->Serialize();
+        if(vBlockData.empty())
+        {
+            debug::error(FUNCTION, "TryAttachBlockTemplate: Serialize() returned empty");
+            return;
+        }
+
+        /* Build 228-byte payload: 12-byte metadata + 216-byte block */
+        TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
+        TAO::Ledger::BlockState stateChannel = stateBest;
+        uint32_t nChannelHeight = 0;
+        if(TAO::Ledger::GetLastState(stateChannel, pBlock->nChannel))
+            nChannelHeight = stateChannel.nChannelHeight;
+
+        const uint32_t nUnifiedHeight = static_cast<uint32_t>(stateBest.nHeight);
+
+        StatelessPacket blockPacket(OpcodeUtility::Stateless::BLOCK_DATA);
+        blockPacket.DATA.reserve(12 + vBlockData.size());
+
+        /* Unified height [0-3] */
+        blockPacket.DATA.push_back((nUnifiedHeight >> 24) & 0xFF);
+        blockPacket.DATA.push_back((nUnifiedHeight >> 16) & 0xFF);
+        blockPacket.DATA.push_back((nUnifiedHeight >>  8) & 0xFF);
+        blockPacket.DATA.push_back((nUnifiedHeight      ) & 0xFF);
+        /* Channel height [4-7] */
+        blockPacket.DATA.push_back((nChannelHeight >> 24) & 0xFF);
+        blockPacket.DATA.push_back((nChannelHeight >> 16) & 0xFF);
+        blockPacket.DATA.push_back((nChannelHeight >>  8) & 0xFF);
+        blockPacket.DATA.push_back((nChannelHeight      ) & 0xFF);
+        /* Difficulty [8-11] */
+        blockPacket.DATA.push_back((pBlock->nBits >> 24) & 0xFF);
+        blockPacket.DATA.push_back((pBlock->nBits >> 16) & 0xFF);
+        blockPacket.DATA.push_back((pBlock->nBits >>  8) & 0xFF);
+        blockPacket.DATA.push_back((pBlock->nBits      ) & 0xFF);
+        /* Block template [12-227] */
+        blockPacket.DATA.insert(blockPacket.DATA.end(), vBlockData.begin(), vBlockData.end());
+        blockPacket.LENGTH = static_cast<uint32_t>(blockPacket.DATA.size());
+
+        respond(blockPacket);
+
+        debug::log(2, FUNCTION, "Attached BLOCK_DATA to PUSH notification: ",
+            blockPacket.DATA.size(), "B channel=", pBlock->nChannel,
+            " height=", pBlock->nHeight);
+
+        /* Update staleness anchors */
+        {
+            LOCK(MUTEX);
+            context = context.WithTimestamp(runtime::unifiedtimestamp())
+                             .WithHeight(nUnifiedHeight)
+                             .WithLastTemplateChannelHeight(nChannelHeight)
+                             .WithHashLastBlock(TAO::Ledger::ChainState::hashBestChain.load());
+        }
+
+        StatelessMinerManager::Get().IncrementTemplatesServed();
     }
 
 

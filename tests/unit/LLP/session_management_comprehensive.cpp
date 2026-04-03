@@ -85,11 +85,9 @@ TEST_CASE("Session: Initialization and Basic Fields", "[session][initialization]
         MiningContext ctx = MiningContext()
             .WithSessionStart(startTime)
             .WithSession(12345)
-            .WithSessionTimeout(300);
         
         REQUIRE(ctx.nSessionStart == startTime);
         REQUIRE(ctx.nSessionId == 12345);
-        REQUIRE(ctx.nSessionTimeout == 300);
         REQUIRE(ctx.nKeepaliveCount == 0);
     }
     
@@ -99,7 +97,6 @@ TEST_CASE("Session: Initialization and Basic Fields", "[session][initialization]
         
         REQUIRE(ctx.nSessionStart == 0);
         REQUIRE(ctx.nSessionId == 0);
-        REQUIRE(ctx.nSessionTimeout == 0);
     }
     
     SECTION("Session can be initialized with current timestamp")
@@ -136,68 +133,49 @@ TEST_CASE("Session: Timeout Configuration", "[session][timeout]")
     SECTION("Default timeout can be set")
     {
         MiningContext ctx = MiningContext()
-            .WithSessionTimeout(Constants::DEFAULT_SESSION_TIMEOUT);
         
-        REQUIRE(ctx.nSessionTimeout == 86400);
     }
     
     SECTION("Custom timeouts can be configured")
     {
-        MiningContext ctx1 = MiningContext().WithSessionTimeout(60);   // 1 minute
-        MiningContext ctx2 = MiningContext().WithSessionTimeout(600);  // 10 minutes
-        MiningContext ctx3 = MiningContext().WithSessionTimeout(3600); // 1 hour
         
-        REQUIRE(ctx1.nSessionTimeout == 60);
-        REQUIRE(ctx2.nSessionTimeout == 600);
-        REQUIRE(ctx3.nSessionTimeout == 3600);
     }
     
     SECTION("Zero timeout means no expiration")
     {
         MiningContext ctx = MiningContext()
-            .WithSessionTimeout(0);
         
-        REQUIRE(ctx.nSessionTimeout == 0);
     }
 }
 
 
 TEST_CASE("Session: Expiration Detection", "[session][expiration]")
 {
-    SECTION("IsSessionExpired returns false when session is recent")
     {
         uint64_t now = runtime::unifiedtimestamp();
         
         MiningContext ctx = MiningContext()
             .WithSessionStart(now)
-            .WithSessionTimeout(300);
         
         /* Session just started, should not be expired */
-        REQUIRE(ctx.IsSessionExpired() == false);
     }
     
-    SECTION("IsSessionExpired returns true when session is old")
     {
         uint64_t oldTime = runtime::unifiedtimestamp() - 400;  // 400 seconds ago
         
         MiningContext ctx = MiningContext()
             .WithSessionStart(oldTime)
-            .WithSessionTimeout(300);  // 300 second timeout
         
         /* Session started 400s ago, timeout is 300s, should be expired */
-        REQUIRE(ctx.IsSessionExpired() == true);
     }
     
-    SECTION("IsSessionExpired handles zero timeout (never expires)")
     {
         uint64_t veryOldTime = runtime::unifiedtimestamp() - 10000;
         
         MiningContext ctx = MiningContext()
             .WithSessionStart(veryOldTime)
-            .WithSessionTimeout(0);  // No timeout
         
         /* Zero timeout means never expires */
-        REQUIRE(ctx.IsSessionExpired() == false);
     }
     
     SECTION("Session at exact timeout boundary")
@@ -207,11 +185,9 @@ TEST_CASE("Session: Expiration Detection", "[session][expiration]")
         
         MiningContext ctx = MiningContext()
             .WithSessionStart(startTime)
-            .WithSessionTimeout(300);
         
         /* At exact boundary, implementation may vary */
         /* Just verify it returns a boolean */
-        bool expired = ctx.IsSessionExpired();
         REQUIRE((expired == true || expired == false));
     }
 }
@@ -257,7 +233,6 @@ TEST_CASE("Session: Keepalive Handling", "[session][keepalive]")
         /* Session started 200s ago */
         MiningContext ctx = MiningContext()
             .WithSessionStart(now - 200)
-            .WithSessionTimeout(300)
             .WithTimestamp(now - 200);  // Last activity 200s ago
         
         /* Update timestamp (simulate keepalive) */
@@ -266,7 +241,6 @@ TEST_CASE("Session: Keepalive Handling", "[session][keepalive]")
             .WithKeepaliveCount(ctx.nKeepaliveCount + 1);
         
         /* Session should not be expired */
-        REQUIRE(keepalive.IsSessionExpired() == false);
     }
 }
 
@@ -282,7 +256,6 @@ TEST_CASE("Session: Manager Integration", "[session][manager]")
         MiningContext ctx = MiningContext()
             .WithSessionStart(startTime)
             .WithSession(12345)
-            .WithSessionTimeout(300)
             .WithAuth(true);
         ctx.strAddress = "192.168.1.100:9325";
         
@@ -385,7 +358,6 @@ TEST_CASE("Session: Immutability During Updates", "[session][immutability]")
         MiningContext ctx = MiningContext()
             .WithSessionStart(startTime)
             .WithSession(12345)
-            .WithSessionTimeout(300);
         
         /* Update channel, height, etc. */
         MiningContext updated = ctx
@@ -396,7 +368,6 @@ TEST_CASE("Session: Immutability During Updates", "[session][immutability]")
         /* Session fields preserved */
         REQUIRE(updated.nSessionStart == startTime);
         REQUIRE(updated.nSessionId == 12345);
-        REQUIRE(updated.nSessionTimeout == 300);
     }
     
     SECTION("Session can be updated independently")
@@ -427,24 +398,19 @@ TEST_CASE("Session: Edge Cases", "[session][edge-cases]")
     SECTION("Session with maximum timeout")
     {
         MiningContext ctx = MiningContext()
-            .WithSessionTimeout(UINT64_MAX);
         
-        REQUIRE(ctx.nSessionTimeout == UINT64_MAX);
         
         /* Should never expire with max timeout */
-        REQUIRE(ctx.IsSessionExpired() == false);
     }
     
     SECTION("Session with zero start time")
     {
         MiningContext ctx = MiningContext()
             .WithSessionStart(0)
-            .WithSessionTimeout(300);
         
         REQUIRE(ctx.nSessionStart == 0);
         
         /* Very old session, should be expired */
-        REQUIRE(ctx.IsSessionExpired() == true);
     }
     
     SECTION("Multiple keepalives don't overflow")
@@ -491,10 +457,8 @@ TEST_CASE("Session: Timestamp vs SessionStart", "[session][timestamps]")
         MiningContext ctx = MiningContext()
             .WithSessionStart(oldSessionStart)
             .WithTimestamp(now)  // Recent activity
-            .WithSessionTimeout(300);  // 300s timeout
         
         /* Session is expired based on start time, not last activity */
-        REQUIRE(ctx.IsSessionExpired() == true);
     }
 }
 
@@ -560,14 +524,12 @@ TEST_CASE("Session: Complete Lifecycle", "[session][lifecycle]")
             .WithAuth(true)
             .WithSessionStart(startTime)
             .WithSession(12345)
-            .WithSessionTimeout(300);
         
         manager.UpdateMiner(authenticated.strAddress, authenticated, 0);
         
         auto phase2 = manager.GetMinerContext(authenticated.strAddress);
         REQUIRE(phase2.has_value());
         REQUIRE(phase2->nSessionStart == startTime);
-        REQUIRE(phase2->IsSessionExpired() == false);
         
         /* Phase 3: Mining - keepalives maintain session */
         MiningContext mining = authenticated
@@ -580,7 +542,6 @@ TEST_CASE("Session: Complete Lifecycle", "[session][lifecycle]")
         auto phase3 = manager.GetMinerContext(mining.strAddress);
         REQUIRE(phase3.has_value());
         REQUIRE(phase3->nKeepaliveCount == 1);
-        REQUIRE(phase3->IsSessionExpired() == false);
         
         /* Phase 4: Expiration - session times out */
         uint64_t expiredTime = startTime + 400;  // Simulate 400s passing
@@ -589,7 +550,6 @@ TEST_CASE("Session: Complete Lifecycle", "[session][lifecycle]")
             .WithTimestamp(expiredTime);
         
         /* Session should be expired (started 400s ago, timeout 300s) */
-        REQUIRE(expired.IsSessionExpired() == true);
 
         manager.RemoveMiner(expired.strAddress);
     }
@@ -609,12 +569,10 @@ TEST_CASE("Session: SESSION_EXPIRED Opcode and Graceful Eviction", "[session][ex
         MiningContext ctx = MiningContext()
             .WithSessionStart(oldTime)
             .WithTimestamp(oldTime)  // Last activity 400s ago
-            .WithSessionTimeout(300)  // 300 second timeout
             .WithSession(12345)
             .WithAuth(true);
 
         /* Session should be expired */
-        REQUIRE(ctx.IsSessionExpired(now) == true);
 
         /* Build keepalive packet (8 bytes: session_id LE + prevblock_lo32 BE) */
         StatelessPacket keepalivePacket(StatelessOpcodes::SESSION_KEEPALIVE);
@@ -641,7 +599,6 @@ TEST_CASE("Session: SESSION_EXPIRED Opcode and Graceful Eviction", "[session][ex
         REQUIRE(result.response.HEADER == StatelessOpcodes::SESSION_KEEPALIVE);
 
         /* Resulting context timestamp should be refreshed (session no longer expired) */
-        REQUIRE(result.context.IsSessionExpired(now) == false);
 
         /* Keepalive counter should have been incremented */
         REQUIRE(result.context.nKeepaliveCount == ctx.nKeepaliveCount + 1);
@@ -659,11 +616,9 @@ TEST_CASE("Session: SESSION_EXPIRED Opcode and Graceful Eviction", "[session][ex
         MiningContext ctx = MiningContext()
             .WithSessionStart(oldTime)
             .WithTimestamp(oldTime)
-            .WithSessionTimeout(300)
             .WithSession(0)       // No session ID — triggers SESSION_EXPIRED
             .WithAuth(true);      // Authenticated (required to reach expiry check)
 
-        REQUIRE(ctx.IsSessionExpired(now) == true);
 
         StatelessPacket keepalivePacket(StatelessOpcodes::SESSION_KEEPALIVE);
         keepalivePacket.DATA.resize(8, 0);
@@ -691,11 +646,9 @@ TEST_CASE("Session: SESSION_EXPIRED Opcode and Graceful Eviction", "[session][ex
         MiningContext ctx = MiningContext()
             .WithSessionStart(oldTime)
             .WithTimestamp(oldTime)
-            .WithSessionTimeout(300)
             .WithSession(54321)
             .WithAuth(true);
 
-        REQUIRE(ctx.IsSessionExpired(now) == true);
 
         /* Build SESSION_KEEPALIVE packet (8 bytes: session_id LE + prevblock_lo32 BE) */
         StatelessPacket v2Packet(StatelessOpcodes::SESSION_KEEPALIVE);
@@ -735,11 +688,9 @@ TEST_CASE("Session: SESSION_EXPIRED Opcode and Graceful Eviction", "[session][ex
         MiningContext ctx = MiningContext()
             .WithSessionStart(oldTime)
             .WithTimestamp(oldTime)
-            .WithSessionTimeout(300)
             .WithSession(0)     // No session ID — SESSION_EXPIRED path
             .WithAuth(true);
 
-        REQUIRE(ctx.IsSessionExpired(now) == true);
 
         StatelessPacket v2Packet(StatelessOpcodes::SESSION_KEEPALIVE);
         v2Packet.DATA.resize(8, 0);
@@ -764,17 +715,14 @@ TEST_CASE("Session: SESSION_EXPIRED Opcode and Graceful Eviction", "[session][ex
         MiningContext ctx = MiningContext()
             .WithSessionStart(startTime)   // Started 500s ago
             .WithTimestamp(now - 100)      // Last activity 100s ago
-            .WithSessionTimeout(300);       // 300s timeout
 
         /* Session should NOT be expired because last activity was 100s ago */
         /* This proves the rolling window works (nTimestamp, not nSessionStart) */
-        REQUIRE(ctx.IsSessionExpired(now) == false);
 
         /* Now simulate no activity for 350s total */
         MiningContext expired = ctx.WithTimestamp(now - 350);
 
         /* Now should be expired (350s since last activity > 300s timeout) */
-        REQUIRE(expired.IsSessionExpired(now) == true);
     }
 
     SECTION("Connection stays open after session extension (degraded recovery)")
@@ -788,7 +736,6 @@ TEST_CASE("Session: SESSION_EXPIRED Opcode and Graceful Eviction", "[session][ex
         MiningContext expired = MiningContext()
             .WithSessionStart(oldTime)
             .WithTimestamp(oldTime)
-            .WithSessionTimeout(300)
             .WithSession(99999)
             .WithAuth(true);
 
@@ -805,7 +752,6 @@ TEST_CASE("Session: SESSION_EXPIRED Opcode and Graceful Eviction", "[session][ex
         REQUIRE(result.response.HEADER == StatelessOpcodes::SESSION_KEEPALIVE);
 
         /* After extension, session is no longer expired */
-        REQUIRE(result.context.IsSessionExpired(now) == false);
     }
 }
 

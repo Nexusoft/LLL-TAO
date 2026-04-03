@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLP/include/falcon_constants.h>
 #include <LLP/include/genesis_constants.h>
 #include <LLP/include/stateless_manager.h>
+#include <LLP/include/node_cache.h>
 #include <LLP/include/session_recovery.h>
 #include <LLP/include/stateless_opcodes.h>
 #include <LLP/include/session_start_packet.h>
@@ -80,14 +81,6 @@ namespace LLP
             "SessionConsistencyResult string table must stay aligned with enum ordering");
     }
 
-    /* Default session timeout in seconds for mining sessions.
-     * This is the inactivity timeout - sessions expire if no keepalive
-     * is received within this window. Set to 24 hours: miners send
-     * 2 KeepAliveV2 per 24 hours by default, and only 1 is required
-     * to keep the session alive. Network-only disconnect policy:
-     * only disconnect on actual TCP errors, not idle time. */
-    static const uint64_t DEFAULT_SESSION_TIMEOUT = 86400;
-
     /* AAD (Additional Authenticated Data) strings for ChaCha20-Poly1305 AEAD
      * These provide domain separation between different packet types */
     static const std::vector<uint8_t> AAD_REWARD_ADDRESS{'R','E','W','A','R','D','_','A','D','D','R','E','S','S'};
@@ -121,7 +114,6 @@ namespace LLP
     , vDisposablePubKey()
     , hashDisposableKeyID(0)
     , nSessionStart(0)
-    , nSessionTimeout(DEFAULT_SESSION_TIMEOUT)
     , nReconnectCount(0)
     , nKeepaliveCount(0)
     , nKeepaliveSent(0)
@@ -172,7 +164,6 @@ namespace LLP
     , vDisposablePubKey()
     , hashDisposableKeyID(0)
     , nSessionStart(0)
-    , nSessionTimeout(DEFAULT_SESSION_TIMEOUT)
     , nReconnectCount(0)
     , nKeepaliveCount(0)
     , nKeepaliveSent(0)
@@ -316,13 +307,6 @@ namespace LLP
     {
         MiningContext c = *this;
         c.nSessionStart = nSessionStart_;
-        return c;
-    }
-
-    MiningContext MiningContext::WithSessionTimeout(uint64_t nSessionTimeout_) const
-    {
-        MiningContext c = *this;
-        c.nSessionTimeout = nSessionTimeout_;
         return c;
     }
 
@@ -532,23 +516,6 @@ namespace LLP
     bool MiningContext::HasValidPayout() const
     {
         return hashGenesis != 0 || !strUserName.empty();
-    }
-
-    bool MiningContext::IsSessionExpired(uint64_t nNow) const
-    {
-        /* Get current time if not provided */
-        if(nNow == 0)
-            nNow = runtime::unifiedtimestamp();
-
-        /* Session never started means it's "expired" */
-        if(nSessionStart == 0)
-            return true;
-
-        /* Check if time since last activity exceeds timeout.
-         * This is an activity-based timeout (like keepalive):
-         * - nTimestamp is updated on each keepalive/activity
-         * - Session expires if no activity within nSessionTimeout */
-        return (nNow - nTimestamp) > nSessionTimeout;
     }
 
     uint64_t MiningContext::GetSessionDuration(uint64_t nNow) const
@@ -1447,7 +1414,6 @@ namespace LLP
             .WithGenesis(hashGenesis)
             .WithTimestamp(runtime::unifiedtimestamp())
             .WithSessionStart(runtime::unifiedtimestamp())   // Auto-start session at auth
-            .WithSessionTimeout(DEFAULT_SESSION_TIMEOUT)      // Set default timeout
             .WithNonce(std::vector<uint8_t>())  // Clear single-use nonce
             .WithFalconVersion(detectedVersion);  // Store detected Falcon version (PR #122)
             // Keep vMinerPubKey in context - it will be extracted and stored in mapSessionKeys
@@ -1478,8 +1444,7 @@ namespace LLP
         debug::log(0, FUNCTION, "   Key size:     ", newContext.vChaChaKey.size(), " bytes");
         debug::log(2, FUNCTION, "   ChaCha20 session key derived from genesis");
         debug::log(2, FUNCTION, "   Encryption is now ACTIVE for session ", nSessionId);
-        debug::log(2, FUNCTION, "Session auto-started at auth: nSessionStart=", newContext.nSessionStart,
-                   " timeout=", newContext.nSessionTimeout, "s");
+        debug::log(2, FUNCTION, "Session auto-started at auth: nSessionStart=", newContext.nSessionStart);
         debug::log(0, FUNCTION, "");
 
         /* Build success response */
@@ -1514,7 +1479,6 @@ namespace LLP
         if(!context.fAuthenticated)
             return ProcessResult::Error(context, "Not authenticated");
 
-        const std::vector<uint8_t>& vData = packet.DATA;
         uint64_t nNow = runtime::unifiedtimestamp();
 
         /* Validate: session was already auto-started at auth time.
@@ -1575,7 +1539,7 @@ namespace LLP
         debug::log(0, FUNCTION, "║           MINING SESSION ", (fSessionAlreadyActive ? "RE-NEGOTIATED" : "ESTABLISHED  "), "          ║");
         debug::log(0, FUNCTION, "╠═══════════════════════════════════════════════════════════╣");
         debug::log(0, FUNCTION, "║ Session ID:    ", context.nSessionId);
-        debug::log(0, FUNCTION, "║ Timeout:       ", nRequestedTimeout, " seconds");
+        debug::log(0, FUNCTION, "║ Liveness:      24-hour keepalive (CleanupInactive)");
         debug::log(0, FUNCTION, "║ Genesis Hash:  ", context.GenesisHex());
         debug::log(0, FUNCTION, "║ Miner:         ", context.strAddress);
         if(fSessionAlreadyActive)
@@ -1678,45 +1642,12 @@ namespace LLP
 
         uint64_t nNow = runtime::unifiedtimestamp();
 
-        /* Check if session has expired (even for keepalive) */
-        if(context.IsSessionExpired(nNow))
-        {
-            /* If the miner is still authenticated and has a valid session ID, the keepalive
-             * is evidence of liveness — extend the session instead of forcing a full reconnect. */
-            if(context.fAuthenticated && context.nSessionId != 0)
-            {
-                uint64_t nIdleSec = nNow - context.nTimestamp;
-                debug::log(0, FUNCTION, "SESSION_KEEPALIVE: session nominally expired but miner is "
-                           "authenticated — extending session for sessionId=", context.nSessionId,
-                           " (idle=", nIdleSec, "s, timeout=", context.nSessionTimeout, "s)");
-                /* Fall through to normal keepalive processing; WithTimestamp(nNow) will clear expiry */
-            }
-            else
-            {
-                debug::log(0, FUNCTION, "SESSION_KEEPALIVE rejected - session expired for sessionId=",
-                           context.nSessionId, " last_activity=", context.nTimestamp);
-
-                /* Send SESSION_EXPIRED notification to miner instead of silent disconnect. */
-                StatelessPacket expiredResponse(StatelessOpcodes::SESSION_EXPIRED);
-
-                /* Build 5-byte payload: session_id (4 bytes LE) + reason (1 byte) */
-                uint32_t nSessionId = context.nSessionId;
-                expiredResponse.DATA.push_back(static_cast<uint8_t>(nSessionId & 0xFF));
-                expiredResponse.DATA.push_back(static_cast<uint8_t>((nSessionId >> 8) & 0xFF));
-                expiredResponse.DATA.push_back(static_cast<uint8_t>((nSessionId >> 16) & 0xFF));
-                expiredResponse.DATA.push_back(static_cast<uint8_t>((nSessionId >> 24) & 0xFF));
-
-                /* Reason code: 0x01 = EXPIRED_INACTIVITY (no keepalive within timeout) */
-                expiredResponse.DATA.push_back(0x01);
-
-                expiredResponse.LENGTH = 5;
-
-                debug::log(0, FUNCTION, "Sending SESSION_EXPIRED notification to miner (sessionId=",
-                           context.nSessionId, ", reason=INACTIVITY)");
-
-                return ProcessResult::Success(context, expiredResponse);
-            }
-        }
+        /* Session liveness is governed exclusively by CleanupInactive() on a
+         * 10-minute sweep cadence with a 24-hour 3-way AND check.  A keepalive
+         * from an authenticated miner is positive evidence of liveness — always
+         * accept it and let WithTimestamp(nNow) refresh the activity window.
+         * There is no per-request IsSessionExpired gate here; the periodic
+         * cleanup timer is the single authority for session expiration. */
 
         /* Parse 8-byte keepalive payload (session_id LE, hashPrevBlock_lo32 BE) */
         uint32_t nPayloadSession = 0;

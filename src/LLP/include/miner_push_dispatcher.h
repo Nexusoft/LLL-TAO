@@ -49,10 +49,9 @@ namespace LLP
      *     sends and overall counts.
      *
      *  4. ASYNC DISPATCH: SetBest() enqueues the push event and returns immediately
-     *     via EnqueuePushEvent().  A dedicated worker thread dequeues and calls
-     *     DispatchPushEvent() so that a flood of Tritium peer GET requests can never
-     *     delay the delivery of PRIME_BLOCK_AVAILABLE / HASH_BLOCK_AVAILABLE
-     *     notifications to miners.
+     *     via EnqueuePushEvent().  Dedicated per-lane worker threads dequeue and
+     *     call their respective lane handlers so that stateless template creation
+     *     time does not affect legacy lane notification latency, and vice versa.
      *
      *  NOTE: Template refresh during dry spells is handled on the miner side.
      *  The miner detects stale templates and autonomously sends GET_BLOCK to
@@ -79,10 +78,6 @@ namespace LLP
          *  (unified_height, hash_prefix4, channel) so that accidental double-calls
          *  produce exactly one broadcast per (channel, lane) pair.
          *
-         *  This is now called from the dedicated push-worker thread rather than
-         *  directly from SetBest().  Callers inside SetBest() should use
-         *  EnqueuePushEvent() instead.
-         *
          *  @param[in] nHeight      Unified blockchain height at the time of the new tip.
          *  @param[in] hashBestChain Current best-chain hash (uint1024_t).
          *
@@ -93,12 +88,12 @@ namespace LLP
         /** EnqueuePushEvent
          *
          *  Non-blocking entry-point called from SetBest() on the Tritium P2P data
-         *  thread.  Enqueues the (nHeight, hashBestChain) pair into the async push
-         *  queue and signals the push-worker thread to process it, then returns
+         *  thread.  Enqueues the (nHeight, hashBestChain) pair into both per-lane
+         *  async push queues and signals their worker threads, then returns
          *  immediately so the Tritium data thread is never blocked by miner
          *  notification delivery.
          *
-         *  If the push-worker has not been started (e.g. in unit-test contexts),
+         *  If the push workers have not been started (e.g. in unit-test contexts),
          *  falls back to calling DispatchPushEvent() synchronously.
          *
          *  @param[in] nHeight      Unified blockchain height at the time of the new tip.
@@ -110,7 +105,7 @@ namespace LLP
 
         /** StartPushWorker
          *
-         *  Starts the dedicated push-notification worker thread.
+         *  Starts the dedicated push-notification worker threads (one per lane).
          *  Must be called once during node initialisation before any blocks are
          *  accepted (i.e. before the Tritium server is opened for connections).
          *
@@ -120,8 +115,8 @@ namespace LLP
 
         /** StopPushWorker
          *
-         *  Signals the push-worker thread to drain its queue and exit, then joins
-         *  the thread.  Must be called during node shutdown after all peer servers
+         *  Signals the push-worker threads to drain their queues and exit, then joins
+         *  the threads.  Must be called during node shutdown after all peer servers
          *  have been stopped so no new events are enqueued after this returns.
          *
          **/
@@ -134,38 +129,48 @@ namespace LLP
         static std::atomic<uint64_t> s_nPrimeDedup;   /* dedup key for Prime channel */
         static std::atomic<uint64_t> s_nHashDedup;    /* dedup key for Hash  channel */
 
-        /** Async push queue protected by s_pushMutex + s_pushCV.
-         *  Each entry is a (unified_height, hashBestChain) pair. **/
-        static std::queue<std::pair<uint32_t, uint1024_t>> s_pushQueue;
-        static std::mutex                                   s_pushMutex;
-        static std::condition_variable                      s_pushCV;
+        /* ── Stateless lane worker ──────────────────────────────────────────── */
+        static std::queue<std::pair<uint32_t, uint1024_t>> s_statelessQueue;
+        static std::mutex                                   s_statelessMutex;
+        static std::condition_variable                      s_statelessCV;
+        static std::thread                                  s_statelessThread;
+        static std::atomic<bool>                            s_statelessRunning;
 
-        /** The dedicated push-worker thread. **/
-        static std::thread s_pushThread;
+        /* ── Legacy lane worker ─────────────────────────────────────────────── */
+        static std::queue<std::pair<uint32_t, uint1024_t>> s_legacyQueue;
+        static std::mutex                                   s_legacyMutex;
+        static std::condition_variable                      s_legacyCV;
+        static std::thread                                  s_legacyThread;
+        static std::atomic<bool>                            s_legacyRunning;
 
-        /** Set to true while the push-worker thread is running. **/
-        static std::atomic<bool> s_pushRunning;
 
-
-        /** BroadcastChannel
+        /** BroadcastStatelessChannel
          *
-         *  Internal helper: broadcast one channel on both lanes and log results.
-         *
-         *  @param[in] nChannel     Mining channel (1=Prime, 2=Hash).
-         *  @param[in] nHeight      Unified height (for logging).
-         *  @param[in] hashPrefix4  First 4 bytes of hashBestChain (for logging).
+         *  Send one channel notification to the stateless lane only.
          *
          **/
-        static void BroadcastChannel(uint32_t nChannel, uint32_t nHeight, uint32_t hashPrefix4);
+        static void BroadcastStatelessChannel(uint32_t nChannel, uint32_t nHeight, uint32_t hashPrefix4);
 
-
-        /** PushWorkerThread
+        /** BroadcastLegacyChannel
          *
-         *  Worker-thread body.  Drains s_pushQueue and calls DispatchPushEvent()
-         *  for each event until s_pushRunning is false and the queue is empty.
+         *  Send one channel notification to the legacy lane only.
          *
          **/
-        static void PushWorkerThread();
+        static void BroadcastLegacyChannel(uint32_t nChannel, uint32_t nHeight, uint32_t hashPrefix4);
+
+
+        /** DispatchStatelessPush — dispatches to stateless lane only. **/
+        static void DispatchStatelessPush(uint32_t nHeight, const uint1024_t& hashBestChain);
+
+        /** DispatchLegacyPush — dispatches to legacy lane only. **/
+        static void DispatchLegacyPush(uint32_t nHeight, const uint1024_t& hashBestChain);
+
+
+        /** StatelessWorkerThread — drains stateless queue. **/
+        static void StatelessWorkerThread();
+
+        /** LegacyWorkerThread — drains legacy queue. **/
+        static void LegacyWorkerThread();
     };
 
 } // namespace LLP
