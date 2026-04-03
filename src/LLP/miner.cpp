@@ -27,6 +27,7 @@ ________________________________________________________________________________
 #include <LLP/include/push_notification.h>
 #include <LLP/include/keepalive_v2.h>
 #include <LLP/include/session_status.h>
+#include <LLP/include/session_start_packet.h>
 #include <LLP/types/miner.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
@@ -762,12 +763,44 @@ namespace LLP
                 if(fEncryptionReady && !vChaChaKey.empty())
                     context = context.WithChaChaKey(vChaChaKey);
 
-                /* Route ALL authentication/session packet processing to StatelessMiner */
-                ProcessResult result = StatelessMiner::ProcessPacket(context, PACKET);
+                /* Route auth/session/config opcodes through LegacyLaneHandler for per-opcode
+                 * MUTEX isolation.  Each handler class (AuthResponseHandler, SessionStartHandler,
+                 * etc.) owns its own mutex, so authentication doesn't serialize against keepalive,
+                 * channel selection, or reward binding.
+                 *
+                 * Opcodes NOT registered in LegacyLaneHandler (GET_BLOCK, SUBMIT_BLOCK, etc.)
+                 * fall through to StatelessMiner::ProcessPacket() which delegates them to the
+                 * connection layer via "Unknown packet type" → ProcessPacketStateless(). */
+                const uint16_t nMirroredOpcode = OpcodeUtility::Stateless::Mirror(
+                    static_cast<uint8_t>(PACKET.HEADER));
+
+                /* ProcessResult has const members → not assignable.  Use a dispatching
+                 * lambda so we can initialize result once via copy-elision (RVO). */
+                auto dispatchLegacyPacket = [&]() -> ProcessResult
+                {
+                    if(m_laneHandler.CanHandle(nMirroredOpcode))
+                    {
+                        /* Build StatelessPacket from legacy Packet for unified handler interface */
+                        StatelessPacket sp(nMirroredOpcode);
+                        sp.DATA   = PACKET.DATA;
+                        sp.LENGTH = PACKET.LENGTH;
+
+                        debug::log(2, FUNCTION, "LegacyLaneHandler: dispatching opcode ",
+                                   uint32_t(PACKET.HEADER), " (mirrored 0x",
+                                   std::hex, nMirroredOpcode, std::dec, ")");
+
+                        return m_laneHandler.Dispatch(context, sp);
+                    }
+
+                    /* Fall through to StatelessMiner::ProcessPacket for connection-layer opcodes */
+                    return StatelessMiner::ProcessPacket(context, PACKET);
+                };
+                ProcessResult result = dispatchLegacyPacket();
 
                 /* Legacy lane response transmission.
-                 * StatelessMiner::ProcessPacket() returns 16-bit stateless opcodes (0xD0xx).
-                 * Legacy lane expects 8-bit opcodes, so we unmirror and convert. */
+                 * Both LegacyLaneHandler and StatelessMiner::ProcessPacket() return 16-bit
+                 * stateless opcodes (0xD0xx).  Legacy lane expects 8-bit opcodes, so we
+                 * unmirror and convert. */
 
                 /* Handle result */
                 if(result.fSuccess)
@@ -917,6 +950,31 @@ namespace LLP
                         legacyResponse.DATA = result.response.DATA;
 
                         WritePacket(legacyResponse);
+                    }
+
+                    /* BUG FIX: Legacy lane (port 8323) previously never sent SESSION_START.
+                     * After successful authentication, send SESSION_START to advertise the
+                     * node's session timeout configuration to the miner.  This is a sibling
+                     * of the IsNull() check (not nested inside it) for robustness.
+                     * Uses shared SessionStartPacket::BuildPayload() for wire-format
+                     * consistency with the stateless lane (port 9323). */
+                    if(PACKET.HEADER == MINER_AUTH_RESPONSE && result.fSuccess && fMinerAuthenticated)
+                    {
+                        debug::log(0, FUNCTION, "Sending SESSION_START after successful authentication (legacy lane)");
+
+                        /* Build SESSION_START payload using shared utility.
+                         * The session liveness timeout is a node-wide constant from NodeCache,
+                         * NOT a per-context field.  nSessionTimeout was removed from MiningContext. */
+                        const uint64_t nLivenessTimeout = NodeCache::GetSessionLivenessTimeout(updatedContext.strAddress);
+                        std::vector<uint8_t> vSessionStart = SessionStartPacket::BuildPayload(
+                            nSessionId, nLivenessTimeout, hashGenesis);
+
+                        /* Send via respond_auto: uses 16-bit stateless framing after Falcon auth */
+                        respond_auto(OpcodeUtility::Opcodes::SESSION_START, vSessionStart);
+
+                        debug::log(0, FUNCTION, "SESSION_START: sessionId=", nSessionId,
+                                  " timeout=", static_cast<uint32_t>(nLivenessTimeout),
+                                  "s session_genesis=", (hashGenesis != 0 ? hashGenesis.SubString() : "none"));
                     }
 
                     return true;

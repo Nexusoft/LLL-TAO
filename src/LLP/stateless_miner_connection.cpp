@@ -29,6 +29,8 @@ ________________________________________________________________________________
 #include <LLP/include/mining_constants.h>
 #include <LLP/include/mining_session_health.h>
 #include <LLP/include/session_status.h>
+#include <LLP/include/session_start_packet.h>
+#include <LLP/include/get_block_handler.h>
 #include <LLP/include/stateless_get_block_handler.h>
 #include <LLP/templates/events.h>
 
@@ -2852,49 +2854,34 @@ namespace LLP
                                   std::hex, result.response.HEADER, std::dec);
                         respond(result.response);
                     }
+                }
 
-                    /* After successful authentication, automatically send SESSION_START
-                     * to advertise the node's session timeout configuration to the miner.
-                     * This allows modern miners to auto-calculate keepalive intervals. */
-                    if(PACKET.HEADER == MINER_AUTH_RESPONSE && result.fSuccess && context.fAuthenticated)
-                    {
-                        debug::log(0, FUNCTION, "Sending SESSION_START after successful authentication");
+                /* BUG FIX: SESSION_START must be a sibling of the IsNull() check, not nested
+                 * inside it.  Previously, if result.response.IsNull() was true (e.g. due to a
+                 * future code change returning ProcessResult::Success without a populated
+                 * response), SESSION_START would be silently skipped even on successful auth.
+                 *
+                 * The auth condition itself (result.fSuccess && context.fAuthenticated) is the
+                 * authoritative gate — not the presence of an AUTH_RESULT response packet.
+                 * Uses shared SessionStartPacket::BuildPayload() for wire-format consistency. */
+                if(PACKET.HEADER == MINER_AUTH_RESPONSE && result.fSuccess && context.fAuthenticated)
+                {
+                    debug::log(0, FUNCTION, "Sending SESSION_START after successful authentication");
 
-                        /* Build SESSION_START packet with session parameters */
-                        StatelessPacket sessionStart(StatelessOpcodes::SESSION_START);
-                        sessionStart.DATA.push_back(0x01); // Success
+                    /* Build SESSION_START using shared utility.
+                     * The session liveness timeout is a node-wide constant from NodeCache,
+                     * NOT a per-context field.  nSessionTimeout was removed from MiningContext. */
+                    const uint64_t nLivenessTimeout = NodeCache::GetSessionLivenessTimeout(context.strAddress);
+                    StatelessPacket sessionStart(StatelessOpcodes::SESSION_START);
+                    sessionStart.DATA = SessionStartPacket::BuildPayload(
+                        context.nSessionId, nLivenessTimeout, context.hashGenesis);
+                    sessionStart.LENGTH = static_cast<uint32_t>(sessionStart.DATA.size());
 
-                        /* Add session ID (4 bytes, little-endian) */
-                        uint32_t nSessionId = context.nSessionId;
-                        sessionStart.DATA.push_back(static_cast<uint8_t>(nSessionId & 0xFF));
-                        sessionStart.DATA.push_back(static_cast<uint8_t>((nSessionId >> 8) & 0xFF));
-                        sessionStart.DATA.push_back(static_cast<uint8_t>((nSessionId >> 16) & 0xFF));
-                        sessionStart.DATA.push_back(static_cast<uint8_t>((nSessionId >> 24) & 0xFF));
+                    debug::log(0, FUNCTION, "SESSION_START: sessionId=", context.nSessionId,
+                              " timeout=", static_cast<uint32_t>(nLivenessTimeout),
+                              "s session_genesis=", context.GenesisHex());
 
-                        /* Add timeout (4 bytes, little-endian)
-                         * Session liveness is governed by CleanupInactive() with the global
-                         * SESSION_LIVENESS_TIMEOUT_SECONDS (86400s).  Send that value to
-                         * the miner so it knows the node's liveness window. */
-                        uint32_t nTimeout = static_cast<uint32_t>(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
-                        sessionStart.DATA.push_back(static_cast<uint8_t>(nTimeout & 0xFF));
-                        sessionStart.DATA.push_back(static_cast<uint8_t>((nTimeout >> 8) & 0xFF));
-                        sessionStart.DATA.push_back(static_cast<uint8_t>((nTimeout >> 16) & 0xFF));
-                        sessionStart.DATA.push_back(static_cast<uint8_t>((nTimeout >> 24) & 0xFF));
-
-                        /* Add genesis hash if bound (32 bytes) */
-                        if(context.hashGenesis != 0)
-                        {
-                            std::vector<uint8_t> vGenesis = context.hashGenesis.GetBytes();
-                            sessionStart.DATA.insert(sessionStart.DATA.end(), vGenesis.begin(), vGenesis.end());
-                        }
-
-                        sessionStart.LENGTH = static_cast<uint32_t>(sessionStart.DATA.size());
-
-                        debug::log(0, FUNCTION, "SESSION_START: sessionId=", nSessionId,
-                                  " timeout=", nTimeout, "s session_genesis=", context.GenesisHex());
-
-                        respond(sessionStart);
-                    }
+                    respond(sessionStart);
                 }
             }
             else

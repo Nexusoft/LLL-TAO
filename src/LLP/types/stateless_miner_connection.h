@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLP/templates/stateless_connection.h>
 #include <LLP/include/graceful_shutdown.h>
 #include <LLP/include/stateless_miner.h>
+#include <LLP/include/stateless_lane_handler.h>
 #include <LLP/include/channel_state_manager.h>
 #include <LLP/include/auto_cooldown.h>
 #include <LLP/include/get_block_policy.h>
@@ -211,6 +212,11 @@ namespace LLP
 
         /** Track whether NODE_SHUTDOWN was already sent on this connection. **/
         GracefulShutdown::NotificationState m_nodeShutdownNotification;
+
+        /** Per-opcode handler dispatch for auth/session/config opcodes.
+         *  Each handler has its own mutex, eliminating contention between
+         *  opcode services (e.g., auth doesn't block keepalive). **/
+        StatelessLaneHandler m_laneHandler;
 
     public:
         /** Default Constructor **/

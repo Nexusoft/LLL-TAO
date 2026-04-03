@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <LLP/include/node_cache.h>
 #include <LLP/include/session_recovery.h>
 #include <LLP/include/stateless_opcodes.h>
+#include <LLP/include/session_start_packet.h>
 #include <LLP/include/keepalive_v2.h>
 #include <LLP/include/colin_mining_agent.h>
 
@@ -1480,29 +1481,76 @@ namespace LLP
 
         uint64_t nNow = runtime::unifiedtimestamp();
 
-        /* Session liveness is governed exclusively by CleanupInactive()
-         * with a 24-hour 3-way AND check (activity + keepalive count + grace).
-         * The per-session nSessionTimeout field has been removed; there is
-         * no client-requested timeout to parse from the packet. */
+        /* Validate: session was already auto-started at auth time.
+         * ProcessFalconResponse() sets nSessionStart via .WithSessionStart() at auth.
+         * The node also sends SESSION_START automatically after AUTH_RESULT in both
+         * stateless_miner_connection.cpp and miner.cpp.  If a miner sends a redundant
+         * SESSION_START, treat it as a re-negotiation (update timeout only) rather
+         * than silently resetting keepalive counters and timing state. */
+        const bool fSessionAlreadyActive = (context.nSessionStart != 0 && context.nSessionId != 0);
+        if(fSessionAlreadyActive)
+        {
+            debug::log(0, FUNCTION, "SESSION_START re-negotiation for existing session: sessionId=",
+                       context.nSessionId, " original_start=", context.nSessionStart,
+                       " keepalives=", context.nKeepaliveCount, " from ", context.strAddress);
+        }
 
-        /* Initialize session timing */
-        MiningContext newContext = context
-            .WithTimestamp(nNow)
-            .WithSessionStart(nNow)
-            .WithKeepaliveCount(0);
+        /* Parse optional session parameters from packet.DATA */
+        /* Format: [timeout (4 bytes, optional)] */
+        const std::vector<uint8_t>& vData = packet.DATA;
+        uint64_t nRequestedTimeout = NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS;
+        if(vData.size() >= 4)
+        {
+            /* Parse timeout as 4-byte little-endian */
+            nRequestedTimeout = vData[0] | (vData[1] << 8) |
+                               (vData[2] << 16) | (vData[3] << 24);
 
-        debug::log(0, FUNCTION, "SESSION_START established for sessionId=", context.nSessionId,
-                   " from ", context.strAddress);
+            /* Clamp timeout to reasonable range (60s to 86400s / 24 hours) */
+            if(nRequestedTimeout < 60)
+                nRequestedTimeout = 60;
+            else if(nRequestedTimeout > 86400)
+                nRequestedTimeout = 86400;
+        }
+
+        /* Build updated context.
+         * - If session is already active (re-negotiation), preserve nSessionStart
+         *   and nKeepaliveCount to avoid wiping timing/liveness state.
+         * - If session is not yet active (first explicit SESSION_START), initialize
+         *   nSessionStart to now and reset keepalive counter.
+         * Note: The timeout is a node-wide constant (NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS),
+         * not stored per-context.  It is sent to the miner in the SESSION_START response
+         * payload so the miner knows the keepalive cadence the node requires. */
+        MiningContext newContext = context.WithTimestamp(nNow);
+        if(!fSessionAlreadyActive)
+        {
+            newContext = newContext.WithSessionStart(nNow).WithKeepaliveCount(0);
+        }
+        else
+        {
+            /* Re-negotiation: nSessionStart and nKeepaliveCount are implicitly preserved
+             * from the input context via the immutable MiningContext pattern.  Only the
+             * timeout is updated.  This is intentional — the miner is allowed to change
+             * its preferred timeout without resetting liveness tracking. */
+        }
+
+        debug::log(0, FUNCTION, "SESSION_START ", (fSessionAlreadyActive ? "re-negotiated" : "established"),
+                   " for sessionId=", context.nSessionId,
+                   " timeout=", nRequestedTimeout, "s from ", context.strAddress);
 
         /* After session is established, log detailed summary */
         debug::log(0, FUNCTION, "");
         debug::log(0, FUNCTION, "╔═══════════════════════════════════════════════════════════╗");
-        debug::log(0, FUNCTION, "║           MINING SESSION ESTABLISHED                      ║");
+        debug::log(0, FUNCTION, "║           MINING SESSION ", (fSessionAlreadyActive ? "RE-NEGOTIATED" : "ESTABLISHED  "), "          ║");
         debug::log(0, FUNCTION, "╠═══════════════════════════════════════════════════════════╣");
         debug::log(0, FUNCTION, "║ Session ID:    ", context.nSessionId);
         debug::log(0, FUNCTION, "║ Liveness:      24-hour keepalive (CleanupInactive)");
         debug::log(0, FUNCTION, "║ Genesis Hash:  ", context.GenesisHex());
         debug::log(0, FUNCTION, "║ Miner:         ", context.strAddress);
+        if(fSessionAlreadyActive)
+        {
+            debug::log(0, FUNCTION, "║ Start:         ", context.nSessionStart, " (preserved)");
+            debug::log(0, FUNCTION, "║ Keepalives:    ", context.nKeepaliveCount, " (preserved)");
+        }
         debug::log(0, FUNCTION, "╚═══════════════════════════════════════════════════════════╝");
 
         /* Log reward routing status */
@@ -1522,32 +1570,11 @@ namespace LLP
             debug::log(0, FUNCTION, "REWARDS → Not configured (send MINER_SET_REWARD after auth)");
         }
 
-        /* Build acknowledgment response with session parameters */
-        /* Response format: [success (1)][session_id (4)][timeout (4)][genesis (32)] */
+        /* Build acknowledgment response with session parameters using shared utility.
+         * Response format: [success (1)][session_id (4)][timeout (4)][genesis (32)] */
         StatelessPacket response(StatelessOpcodes::SESSION_START);
-        response.DATA.push_back(0x01); // Success
-
-        /* Add session ID (4 bytes, little-endian) */
-        uint32_t nSessionId = newContext.nSessionId;
-        response.DATA.push_back(static_cast<uint8_t>(nSessionId & 0xFF));
-        response.DATA.push_back(static_cast<uint8_t>((nSessionId >> 8) & 0xFF));
-        response.DATA.push_back(static_cast<uint8_t>((nSessionId >> 16) & 0xFF));
-        response.DATA.push_back(static_cast<uint8_t>((nSessionId >> 24) & 0xFF));
-
-        /* Add timeout (4 bytes, little-endian) — global 24h liveness window */
-        uint32_t nLivenessTimeout = static_cast<uint32_t>(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
-        response.DATA.push_back(static_cast<uint8_t>(nLivenessTimeout & 0xFF));
-        response.DATA.push_back(static_cast<uint8_t>((nLivenessTimeout >> 8) & 0xFF));
-        response.DATA.push_back(static_cast<uint8_t>((nLivenessTimeout >> 16) & 0xFF));
-        response.DATA.push_back(static_cast<uint8_t>((nLivenessTimeout >> 24) & 0xFF));
-
-        /* Add genesis hash if bound (32 bytes) for GenesisHash reward mapping */
-        if(newContext.hashGenesis != 0)
-        {
-            std::vector<uint8_t> vGenesis = newContext.hashGenesis.GetBytes();
-            response.DATA.insert(response.DATA.end(), vGenesis.begin(), vGenesis.end());
-        }
-
+        response.DATA = SessionStartPacket::BuildPayload(
+            newContext.nSessionId, nRequestedTimeout, newContext.hashGenesis);
         response.LENGTH = static_cast<uint32_t>(response.DATA.size());
 
         return ProcessResult::Success(newContext, response);
