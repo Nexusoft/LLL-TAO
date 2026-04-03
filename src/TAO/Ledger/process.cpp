@@ -99,7 +99,6 @@ namespace TAO
                     if(pnode)
                         pnode->PushMessage(LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::BLOCK), block.hashPrevBlock);
 
-
                     return;
                 }
 
