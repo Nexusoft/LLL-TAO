@@ -1557,6 +1557,13 @@ namespace LLP
         {
             newContext = newContext.WithSessionStart(nNow).WithKeepaliveCount(0);
         }
+        else
+        {
+            /* Re-negotiation: nSessionStart and nKeepaliveCount are implicitly preserved
+             * from the input context via the immutable MiningContext pattern.  Only the
+             * timeout is updated.  This is intentional — the miner is allowed to change
+             * its preferred timeout without resetting liveness tracking. */
+        }
 
         debug::log(0, FUNCTION, "SESSION_START ", (fSessionAlreadyActive ? "re-negotiated" : "established"),
                    " for sessionId=", context.nSessionId,
