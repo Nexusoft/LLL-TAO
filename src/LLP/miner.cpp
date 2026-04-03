@@ -547,29 +547,31 @@ namespace LLP
                     return true;
                 }
 
-                MiningContext sessionContext = optContext.value();
-                uint64_t nNow = runtime::unifiedtimestamp();
+                /* Capture address before atomic transform for session recovery */
+                std::string strSessionAddress = optContext.value().strAddress;
 
-                sessionContext = sessionContext
-                    .WithTimestamp(nNow)
-                    .WithKeepaliveCount(sessionContext.nKeepaliveCount + 1)
-                    .WithMinerPrevblockSuffix(nMinerPrevblockSuffix);
+                /* Atomic transform: update timestamp, keepalive count, and prevblock suffix
+                 * directly on the CURRENT value in mapMiners, avoiding TOCTOU race where
+                 * NotifyNewRound could overwrite connection-specific fields. */
+                MiningContext transformedCtx;
+                StatelessMinerManager::Get().TransformMinerBySession(nKeepaliveSession,
+                    [&nMinerPrevblockSuffix, &transformedCtx](const MiningContext& current) {
+                        transformedCtx = current
+                            .WithTimestamp(runtime::unifiedtimestamp())
+                            .WithKeepaliveCount(current.nKeepaliveCount + 1)
+                            .WithMinerPrevblockSuffix(nMinerPrevblockSuffix);
+                        return transformedCtx;
+                    });
 
-                auto optLane = StatelessMinerManager::Get().GetMinerLane(sessionContext.strAddress);
-                StatelessMinerManager::Get().UpdateMiner(
-                    sessionContext.strAddress,
-                    sessionContext,
-                    optLane.value_or(0));
-
-                if(sessionContext.fAuthenticated && sessionContext.hashKeyID != 0)
-                    SessionRecoveryManager::Get().SaveSession(sessionContext);
+                if(transformedCtx.fAuthenticated && transformedCtx.hashKeyID != 0)
+                    SessionRecoveryManager::Get().SaveSession(transformedCtx);
 
                 /* Reset connection activity timer to prevent idle disconnection */
                 this->Reset();
 
                 constexpr uint64_t SECONDS_PER_DAY = 86400;
                 debug::log(2, FUNCTION, "Session refreshed:");
-                debug::log(2, FUNCTION, "  Keepalives: ", sessionContext.nKeepaliveCount);
+                debug::log(2, FUNCTION, "  Keepalives: ", transformedCtx.nKeepaliveCount);
                 debug::log(2, FUNCTION, "  Liveness window: ", SECONDS_PER_DAY, "s (",
                            (SECONDS_PER_DAY / SECONDS_PER_DAY), "d)");
 

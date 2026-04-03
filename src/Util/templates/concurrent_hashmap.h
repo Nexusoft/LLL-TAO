@@ -298,6 +298,51 @@ namespace util
             mapData.erase(it);
             return value;
         }
+
+        /** Transform
+         *
+         *  Atomically transform a single entry's value in-place.
+         *  The transformer receives the current value and returns the new value,
+         *  eliminating TOCTOU races from separate Get/Modify/Update sequences.
+         *
+         *  @param[in] key The key to transform
+         *  @param[in] transformer Function to produce new value from current value
+         *
+         *  @return true if key was found and transformed, false if key not found
+         *
+         **/
+        bool Transform(const KeyType& key, std::function<ValueType(const ValueType&)> transformer)
+        {
+            std::unique_lock<std::shared_mutex> lock(MUTEX);
+            auto it = mapData.find(key);
+            if(it == mapData.end())
+                return false;
+            it->second = transformer(it->second);
+            return true;
+        }
+
+        /** TransformAll
+         *
+         *  Atomically transform all entries under a single write lock.
+         *  Eliminates snapshot-overwrite races (e.g., NotifyNewRound)
+         *  by applying the transformer to the current value of each entry.
+         *
+         *  @param[in] transformer Function to produce new value from current value
+         *
+         *  @return Number of entries transformed
+         *
+         **/
+        uint32_t TransformAll(std::function<ValueType(const ValueType&)> transformer)
+        {
+            std::unique_lock<std::shared_mutex> lock(MUTEX);
+            uint32_t nUpdated = 0;
+            for(auto& pair : mapData)
+            {
+                pair.second = transformer(pair.second);
+                ++nUpdated;
+            }
+            return nUpdated;
+        }
     };
 
 

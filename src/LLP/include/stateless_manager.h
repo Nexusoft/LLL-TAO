@@ -104,6 +104,38 @@ namespace LLP
          **/
         void UpdateMiner(const std::string& strAddress, const MiningContext& context, uint8_t nLane = 0);
 
+        /** TransformMiner
+         *
+         *  Atomically transform a miner's context in-place using a callback.
+         *  The transformer receives the CURRENT value and returns the new value,
+         *  eliminating TOCTOU races from separate Get/Modify/UpdateMiner sequences.
+         *  Also maintains secondary indices (keyID, session, genesis, lane).
+         *
+         *  @param[in] strAddress Miner address
+         *  @param[in] transformer Function to produce new context from current context
+         *  @param[in] nLane Mining lane (0=Legacy, 1=Stateless)
+         *
+         *  @return true if miner was found and transformed
+         *
+         **/
+        bool TransformMiner(const std::string& strAddress,
+                            std::function<MiningContext(const MiningContext&)> transformer,
+                            uint8_t nLane = 0);
+
+        /** TransformMinerBySession
+         *
+         *  Atomically transform a miner's context looked up by session ID.
+         *  Resolves session → address, then applies transformer atomically.
+         *
+         *  @param[in] nSessionId Session identifier
+         *  @param[in] transformer Function to produce new context from current context
+         *
+         *  @return true if miner was found and transformed
+         *
+         **/
+        bool TransformMinerBySession(uint32_t nSessionId,
+                                     std::function<MiningContext(const MiningContext&)> transformer);
+
         /** GetMinerLane
          *
          *  Retrieve the last known mining lane for an address.
@@ -536,6 +568,11 @@ namespace LLP
 
         /** Track last known lane per miner address **/
         util::ConcurrentHashMap<std::string, uint8_t> mapAddressToLane;
+
+        /** Index by IP address (port-agnostic) for efficient lookups.
+         *  Key: IP string (e.g. "192.168.1.1"), Value: full address (e.g. "192.168.1.1:9323").
+         *  Updated in UpdateMiner/TransformMiner; used by GetMinerContextByIP(). **/
+        util::ConcurrentHashMap<std::string, std::string> mapIPToAddress;
 
         /** Atomic counter for total miners (lock-free stats) **/
         mutable std::atomic<size_t> nTotalMiners{0};
