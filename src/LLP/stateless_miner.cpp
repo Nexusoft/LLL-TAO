@@ -21,6 +21,7 @@ ________________________________________________________________________________
 #include <LLP/include/stateless_manager.h>
 #include <LLP/include/session_recovery.h>
 #include <LLP/include/stateless_opcodes.h>
+#include <LLP/include/session_start_packet.h>
 #include <LLP/include/keepalive_v2.h>
 #include <LLP/include/colin_mining_agent.h>
 
@@ -1570,31 +1571,11 @@ namespace LLP
             debug::log(0, FUNCTION, "REWARDS → Not configured (send MINER_SET_REWARD after auth)");
         }
 
-        /* Build acknowledgment response with session parameters */
-        /* Response format: [success (1)][session_id (4)][timeout (4)][genesis (32)] */
+        /* Build acknowledgment response with session parameters using shared utility.
+         * Response format: [success (1)][session_id (4)][timeout (4)][genesis (32)] */
         StatelessPacket response(StatelessOpcodes::SESSION_START);
-        response.DATA.push_back(0x01); // Success
-
-        /* Add session ID (4 bytes, little-endian) */
-        uint32_t nSessionId = newContext.nSessionId;
-        response.DATA.push_back(static_cast<uint8_t>(nSessionId & 0xFF));
-        response.DATA.push_back(static_cast<uint8_t>((nSessionId >> 8) & 0xFF));
-        response.DATA.push_back(static_cast<uint8_t>((nSessionId >> 16) & 0xFF));
-        response.DATA.push_back(static_cast<uint8_t>((nSessionId >> 24) & 0xFF));
-
-        /* Add timeout (4 bytes, little-endian) */
-        response.DATA.push_back(static_cast<uint8_t>(nRequestedTimeout & 0xFF));
-        response.DATA.push_back(static_cast<uint8_t>((nRequestedTimeout >> 8) & 0xFF));
-        response.DATA.push_back(static_cast<uint8_t>((nRequestedTimeout >> 16) & 0xFF));
-        response.DATA.push_back(static_cast<uint8_t>((nRequestedTimeout >> 24) & 0xFF));
-
-        /* Add genesis hash if bound (32 bytes) for GenesisHash reward mapping */
-        if(newContext.hashGenesis != 0)
-        {
-            std::vector<uint8_t> vGenesis = newContext.hashGenesis.GetBytes();
-            response.DATA.insert(response.DATA.end(), vGenesis.begin(), vGenesis.end());
-        }
-
+        response.DATA = SessionStartPacket::BuildPayload(
+            newContext.nSessionId, nRequestedTimeout, newContext.hashGenesis);
         response.LENGTH = static_cast<uint32_t>(response.DATA.size());
 
         return ProcessResult::Success(newContext, response);

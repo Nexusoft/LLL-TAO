@@ -26,6 +26,7 @@ ________________________________________________________________________________
 #include <LLP/include/push_notification.h>
 #include <LLP/include/keepalive_v2.h>
 #include <LLP/include/session_status.h>
+#include <LLP/include/session_start_packet.h>
 #include <LLP/types/miner.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
@@ -923,6 +924,28 @@ namespace LLP
                         legacyResponse.DATA = result.response.DATA;
 
                         WritePacket(legacyResponse);
+                    }
+
+                    /* BUG FIX: Legacy lane (port 8323) previously never sent SESSION_START.
+                     * After successful authentication, send SESSION_START to advertise the
+                     * node's session timeout configuration to the miner.  This is a sibling
+                     * of the IsNull() check (not nested inside it) for robustness.
+                     * Uses shared SessionStartPacket::BuildPayload() for wire-format
+                     * consistency with the stateless lane (port 9323). */
+                    if(PACKET.HEADER == MINER_AUTH_RESPONSE && result.fSuccess && fMinerAuthenticated)
+                    {
+                        debug::log(0, FUNCTION, "Sending SESSION_START after successful authentication (legacy lane)");
+
+                        /* Build SESSION_START payload using shared utility */
+                        std::vector<uint8_t> vSessionStart = SessionStartPacket::BuildPayload(
+                            nSessionId, updatedContext.nSessionTimeout, hashGenesis);
+
+                        /* Send via respond_auto: uses 16-bit stateless framing after Falcon auth */
+                        respond_auto(OpcodeUtility::Opcodes::SESSION_START, vSessionStart);
+
+                        debug::log(0, FUNCTION, "SESSION_START: sessionId=", nSessionId,
+                                  " timeout=", static_cast<uint32_t>(updatedContext.nSessionTimeout),
+                                  "s session_genesis=", (hashGenesis != 0 ? hashGenesis.SubString() : "none"));
                     }
 
                     return true;
