@@ -765,12 +765,44 @@ namespace LLP
                 if(fEncryptionReady && !vChaChaKey.empty())
                     context = context.WithChaChaKey(vChaChaKey);
 
-                /* Route ALL authentication/session packet processing to StatelessMiner */
-                ProcessResult result = StatelessMiner::ProcessPacket(context, PACKET);
+                /* Route auth/session/config opcodes through LegacyLaneHandler for per-opcode
+                 * MUTEX isolation.  Each handler class (AuthResponseHandler, SessionStartHandler,
+                 * etc.) owns its own mutex, so authentication doesn't serialize against keepalive,
+                 * channel selection, or reward binding.
+                 *
+                 * Opcodes NOT registered in LegacyLaneHandler (GET_BLOCK, SUBMIT_BLOCK, etc.)
+                 * fall through to StatelessMiner::ProcessPacket() which delegates them to the
+                 * connection layer via "Unknown packet type" → ProcessPacketStateless(). */
+                const uint16_t nMirroredOpcode = OpcodeUtility::Stateless::Mirror(
+                    static_cast<uint8_t>(PACKET.HEADER));
+
+                /* ProcessResult has const members → not assignable.  Use a dispatching
+                 * lambda so we can initialize result once via copy-elision (RVO). */
+                auto dispatchLegacyPacket = [&]() -> ProcessResult
+                {
+                    if(m_laneHandler.CanHandle(nMirroredOpcode))
+                    {
+                        /* Build StatelessPacket from legacy Packet for unified handler interface */
+                        StatelessPacket sp(nMirroredOpcode);
+                        sp.DATA   = PACKET.DATA;
+                        sp.LENGTH = PACKET.LENGTH;
+
+                        debug::log(2, FUNCTION, "LegacyLaneHandler: dispatching opcode ",
+                                   uint32_t(PACKET.HEADER), " (mirrored 0x",
+                                   std::hex, nMirroredOpcode, std::dec, ")");
+
+                        return m_laneHandler.Dispatch(context, sp);
+                    }
+
+                    /* Fall through to StatelessMiner::ProcessPacket for connection-layer opcodes */
+                    return StatelessMiner::ProcessPacket(context, PACKET);
+                };
+                ProcessResult result = dispatchLegacyPacket();
 
                 /* Legacy lane response transmission.
-                 * StatelessMiner::ProcessPacket() returns 16-bit stateless opcodes (0xD0xx).
-                 * Legacy lane expects 8-bit opcodes, so we unmirror and convert. */
+                 * Both LegacyLaneHandler and StatelessMiner::ProcessPacket() return 16-bit
+                 * stateless opcodes (0xD0xx).  Legacy lane expects 8-bit opcodes, so we
+                 * unmirror and convert. */
 
                 /* Handle result */
                 if(result.fSuccess)
