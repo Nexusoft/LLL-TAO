@@ -547,29 +547,32 @@ namespace LLP
                     return true;
                 }
 
-                MiningContext sessionContext = optContext.value();
-                uint64_t nNow = runtime::unifiedtimestamp();
+                /* Capture address before atomic transform for session recovery */
+                std::string strSessionAddress = optContext.value().strAddress;
 
-                sessionContext = sessionContext
-                    .WithTimestamp(nNow)
-                    .WithKeepaliveCount(sessionContext.nKeepaliveCount + 1)
-                    .WithMinerPrevblockSuffix(nMinerPrevblockSuffix);
+                /* Atomic transform: update timestamp, keepalive count, and prevblock suffix
+                 * directly on the CURRENT value in mapMiners, avoiding TOCTOU race where
+                 * NotifyNewRound could overwrite connection-specific fields. */
+                MiningContext transformedCtx;
+                std::array<uint8_t, 4> prevSuffix = nMinerPrevblockSuffix;
+                StatelessMinerManager::Get().TransformMinerBySession(nKeepaliveSession,
+                    [prevSuffix, &transformedCtx](const MiningContext& current) {
+                        transformedCtx = current
+                            .WithTimestamp(runtime::unifiedtimestamp())
+                            .WithKeepaliveCount(current.nKeepaliveCount + 1)
+                            .WithMinerPrevblockSuffix(prevSuffix);
+                        return transformedCtx;
+                    });
 
-                auto optLane = StatelessMinerManager::Get().GetMinerLane(sessionContext.strAddress);
-                StatelessMinerManager::Get().UpdateMiner(
-                    sessionContext.strAddress,
-                    sessionContext,
-                    optLane.value_or(0));
-
-                if(sessionContext.fAuthenticated && sessionContext.hashKeyID != 0)
-                    SessionRecoveryManager::Get().SaveSession(sessionContext);
+                if(transformedCtx.fAuthenticated && transformedCtx.hashKeyID != 0)
+                    SessionRecoveryManager::Get().SaveSession(transformedCtx);
 
                 /* Reset connection activity timer to prevent idle disconnection */
                 this->Reset();
 
                 constexpr uint64_t SECONDS_PER_DAY = 86400;
                 debug::log(2, FUNCTION, "Session refreshed:");
-                debug::log(2, FUNCTION, "  Keepalives: ", sessionContext.nKeepaliveCount);
+                debug::log(2, FUNCTION, "  Keepalives: ", transformedCtx.nKeepaliveCount);
                 debug::log(2, FUNCTION, "  Liveness window: ", SECONDS_PER_DAY, "s (",
                            (SECONDS_PER_DAY / SECONDS_PER_DAY), "d)");
 
@@ -918,8 +921,31 @@ namespace LLP
                         }
                     }
 
-                    /* Update StatelessMinerManager with COMPLETE context including encryption state */
-                    StatelessMinerManager::Get().UpdateMiner(updatedContext.strAddress, updatedContext, 0);
+                    /* Atomic transform: apply auth completion state to CURRENT value in mapMiners.
+                     * Captures all auth-specific fields from updatedContext and applies them
+                     * atomically, preserving any concurrent height/timestamp updates. */
+                    {
+                        MiningContext authCtx = updatedContext;
+                        StatelessMinerManager::Get().TransformMiner(updatedContext.strAddress,
+                            [authCtx](const MiningContext& current) {
+                                MiningContext result = current
+                                    .WithAuth(authCtx.fAuthenticated)
+                                    .WithSession(authCtx.nSessionId)
+                                    .WithKeyId(authCtx.hashKeyID)
+                                    .WithGenesis(authCtx.hashGenesis)
+                                    .WithUserName(authCtx.strUserName)
+                                    .WithPubKey(authCtx.vMinerPubKey)
+                                    .WithFalconVersion(authCtx.nFalconVersion)
+                                    .WithTimestamp(runtime::unifiedtimestamp());
+                                if(authCtx.nSessionStart != 0)
+                                    result = result.WithSessionStart(authCtx.nSessionStart);
+                                if(authCtx.fEncryptionReady && !authCtx.vChaChaKey.empty())
+                                    result = result.WithChaChaKey(authCtx.vChaChaKey);
+                                if(!authCtx.vDisposablePubKey.empty())
+                                    result = result.WithDisposableKey(authCtx.vDisposablePubKey, authCtx.hashDisposableKeyID);
+                                return result;
+                            }, 0);
+                    }
 
                     /* Notify Colin agent when genesis is authenticated for the first time */
                     if(!fWasAuthenticated && fMinerAuthenticated && hashGenesis != 0)

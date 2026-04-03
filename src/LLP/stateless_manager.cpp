@@ -64,12 +64,26 @@ namespace LLP
             const MiningContext& existing = optExisting.value();
             fWasAuthenticated = existing.fAuthenticated;
             nPrevKeepalives = existing.nKeepaliveCount;
+
+            /* Clean up stale secondary index entries when keys/session/genesis change.
+             * Without this, old index entries point to the wrong miner after re-auth. */
+            if(existing.hashKeyID != 0 && existing.hashKeyID != context.hashKeyID)
+                mapKeyToAddress.Erase(existing.hashKeyID);
+            if(existing.nSessionId != 0 && existing.nSessionId != context.nSessionId)
+                mapSessionToAddress.Erase(existing.nSessionId);
+            if(existing.hashGenesis != 0 && existing.hashGenesis != context.hashGenesis)
+                mapGenesisToAddress.Erase(existing.hashGenesis);
         }
 
-        /* Enforce cache limit before adding new miner (DDOS protection) */
+        /* Enforce cache limit before adding new miner (DDOS protection).
+         * Use atomic counter for cheap threshold check to avoid lock contention
+         * on the hot path — full enforcement only when 20% over limit. */
         if(fNewMiner)
         {
-            EnforceCacheLimit(NodeCache::DEFAULT_MAX_CACHE_SIZE);
+            size_t nCurrent = nTotalMiners.load();
+            size_t nLimit = NodeCache::DEFAULT_MAX_CACHE_SIZE;
+            if(nCurrent > nLimit + nLimit / 5)
+                EnforceCacheLimit(nLimit);
         }
 
         /* Update main miner map */
@@ -77,6 +91,13 @@ namespace LLP
 
         /* Track lane for cross-lane session coordination */
         mapAddressToLane.InsertOrUpdate(strAddress, nLane);
+
+        /* Update IP index for port-agnostic lookups */
+        {
+            const size_t nColon = strAddress.rfind(':');
+            if(nColon != std::string::npos)
+                mapIPToAddress.InsertOrUpdate(strAddress.substr(0, nColon), strAddress);
+        }
 
         /* Update atomic counters for lock-free stats */
         if(fNewMiner)
@@ -121,6 +142,89 @@ namespace LLP
         {
             mapGenesisToAddress.InsertOrUpdate(context.hashGenesis, strAddress);
         }
+    }
+
+
+    /* Atomically transform a miner's context in-place */
+    bool StatelessMinerManager::TransformMiner(
+        const std::string& strAddress,
+        std::function<MiningContext(const MiningContext&)> transformer,
+        uint8_t nLane
+    )
+    {
+        /* Read current state for pre-transform index comparison */
+        auto optOld = mapMiners.Get(strAddress);
+        if(!optOld.has_value())
+            return false;
+
+        const MiningContext& oldCtx = optOld.value();
+        uint32_t nOldKeepalives = oldCtx.nKeepaliveCount;
+        bool fWasAuthenticated = oldCtx.fAuthenticated;
+        uint256_t hashOldKeyID = oldCtx.hashKeyID;
+        uint32_t nOldSessionId = oldCtx.nSessionId;
+        uint256_t hashOldGenesis = oldCtx.hashGenesis;
+
+        /* Apply transformer atomically — operates on the CURRENT value inside the map,
+         * not on the snapshot we read above. This eliminates TOCTOU races. */
+        MiningContext newCtx;
+        bool fTransformed = mapMiners.Transform(strAddress,
+            [&transformer, &newCtx](const MiningContext& current) {
+                newCtx = transformer(current);
+                return newCtx;
+            });
+
+        if(!fTransformed)
+            return false;
+
+        /* Update lane tracking */
+        mapAddressToLane.InsertOrUpdate(strAddress, nLane);
+
+        /* Update IP index */
+        {
+            const size_t nColon = strAddress.rfind(':');
+            if(nColon != std::string::npos)
+                mapIPToAddress.InsertOrUpdate(strAddress.substr(0, nColon), strAddress);
+        }
+
+        /* Clean up stale secondary index entries */
+        if(hashOldKeyID != 0 && hashOldKeyID != newCtx.hashKeyID)
+            mapKeyToAddress.Erase(hashOldKeyID);
+        if(nOldSessionId != 0 && nOldSessionId != newCtx.nSessionId)
+            mapSessionToAddress.Erase(nOldSessionId);
+        if(hashOldGenesis != 0 && hashOldGenesis != newCtx.hashGenesis)
+            mapGenesisToAddress.Erase(hashOldGenesis);
+
+        /* Update authenticated counter */
+        if(newCtx.fAuthenticated && !fWasAuthenticated)
+            ++nAuthenticatedMiners;
+
+        /* Track keepalives */
+        if(newCtx.nKeepaliveCount > nOldKeepalives)
+            nTotalKeepalives += (newCtx.nKeepaliveCount - nOldKeepalives);
+
+        /* Update secondary indices */
+        if(newCtx.fAuthenticated && newCtx.hashKeyID != 0)
+            mapKeyToAddress.InsertOrUpdate(newCtx.hashKeyID, strAddress);
+        if(newCtx.nSessionId != 0)
+            mapSessionToAddress.InsertOrUpdate(newCtx.nSessionId, strAddress);
+        if(newCtx.hashGenesis != 0)
+            mapGenesisToAddress.InsertOrUpdate(newCtx.hashGenesis, strAddress);
+
+        return true;
+    }
+
+
+    /* Atomically transform a miner's context looked up by session ID */
+    bool StatelessMinerManager::TransformMinerBySession(
+        uint32_t nSessionId,
+        std::function<MiningContext(const MiningContext&)> transformer
+    )
+    {
+        auto optAddress = mapSessionToAddress.Get(nSessionId);
+        if(!optAddress.has_value())
+            return false;
+
+        return TransformMiner(optAddress.value(), transformer);
     }
 
     /* Get miner lane by address */
@@ -172,6 +276,13 @@ namespace LLP
 
         mapAddressToLane.Erase(strAddress);
 
+        /* Remove IP index entry */
+        {
+            const size_t nColon = strAddress.rfind(':');
+            if(nColon != std::string::npos)
+                mapIPToAddress.Erase(strAddress.substr(0, nColon));
+        }
+
         return true;
     }
 
@@ -206,37 +317,17 @@ namespace LLP
     }
 
 
-    /* Look up a miner context by IP address only (port-agnostic fallback) */
+    /* Look up a miner context by IP address only (port-agnostic fallback).
+     * Uses mapIPToAddress secondary index for O(1) lookup instead of O(N) scan. */
     std::optional<MiningContext> StatelessMinerManager::GetMinerContextByIP(
         const std::string& strIP
     ) const
     {
-        auto pairs = mapMiners.GetAllPairs();
-        MiningContext best;
-        bool fFound = false;
+        auto optAddress = mapIPToAddress.Get(strIP);
+        if(!optAddress.has_value())
+            return std::nullopt;
 
-        for(const auto& pair : pairs)
-        {
-            /* Extract IP from the stored "IP:port" key */
-            const std::string& strKey = pair.first;
-            const size_t nColon = strKey.rfind(':');
-            if(nColon == std::string::npos)
-                continue;
-
-            if(strKey.substr(0, nColon) == strIP)
-            {
-                if(!fFound || pair.second.nTimestamp > best.nTimestamp)
-                {
-                    best = pair.second;
-                    fFound = true;
-                }
-            }
-        }
-
-        if(fFound)
-            return best;
-
-        return std::nullopt;
+        return mapMiners.Get(optAddress.value());
     }
 
     /* Get miner context by session ID */
@@ -269,20 +360,18 @@ namespace LLP
         return mapMiners.GetAll();
     }
 
-    /* List miners by genesis hash */
+    /* List miners by genesis hash.
+     * Uses ForEach() to avoid full snapshot copy + filter pattern. */
     std::vector<MiningContext> StatelessMinerManager::ListMinersByGenesis(
         const uint256_t& hashGenesis
     ) const
     {
         std::vector<MiningContext> vResult;
 
-        /* Iterate all miners and filter by genesis */
-        auto vMiners = mapMiners.GetAll();
-        for(const auto& ctx : vMiners)
-        {
+        mapMiners.ForEach([&](const std::string& key, const MiningContext& ctx) {
             if(ctx.hashGenesis == hashGenesis)
                 vResult.push_back(ctx);
-        }
+        });
 
         return vResult;
     }
@@ -303,20 +392,18 @@ namespace LLP
      * A session is active if it has been started (nSessionStart > 0) and
      * still has recent activity within the global liveness window.
      * Session liveness is governed by CleanupInactive() with
-     * SESSION_LIVENESS_TIMEOUT_SECONDS (86400s). */
+     * SESSION_LIVENESS_TIMEOUT_SECONDS (86400s).
+     * Uses ForEach() to avoid full snapshot copy. */
     size_t StatelessMinerManager::GetActiveSessionCount() const
     {
         size_t nCount = 0;
         uint64_t nNow = runtime::unifiedtimestamp();
 
-        auto vMiners = mapMiners.GetAll();
-        for(const auto& ctx : vMiners)
-        {
-            /* Session is active if started and has recent activity */
+        mapMiners.ForEach([&](const std::string& key, const MiningContext& ctx) {
             if(ctx.nSessionStart > 0 &&
                (nNow - ctx.nTimestamp) <= NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS)
                 ++nCount;
-        }
+        });
 
         return nCount;
     }
@@ -424,15 +511,14 @@ namespace LLP
         return result.dump(4);
     }
 
-    /* Get all miners status as JSON */
+    /* Get all miners status as JSON.
+     * Uses ForEach() to avoid full snapshot copy. */
     std::string StatelessMinerManager::GetAllMinersStatus() const
     {
         encoding::json miners = encoding::json::array();
         uint64_t nNow = runtime::unifiedtimestamp();
 
-        auto vMiners = mapMiners.GetAll();
-        for(const auto& ctx : vMiners)
-        {
+        mapMiners.ForEach([&](const std::string& key, const MiningContext& ctx) {
             encoding::json miner;
             miner["address"] = ctx.strAddress;
             miner["channel"] = ctx.nChannel;
@@ -452,13 +538,16 @@ namespace LLP
             miner["keepalive_count"] = ctx.nKeepaliveCount;
 
             miners.push_back(miner);
-        }
+        });
 
         return miners.dump(4);
     }
 
 
-    /* Notify miners of new round */
+    /* Notify miners of new round.
+     * Uses TransformAll() to atomically update each miner's height
+     * under a single write lock, eliminating the snapshot-overwrite race
+     * where concurrent UpdateMiner() calls could be silently lost. */
     uint32_t StatelessMinerManager::NotifyNewRound(uint32_t nNewHeight)
     {
         /* Update tracked height */
@@ -468,17 +557,11 @@ namespace LLP
         if(nOldHeight == nNewHeight)
             return 0;
 
-        /* Get all tracked miners and update their contexts with new height */
-        uint32_t nNotified = 0;
-        auto pairs = mapMiners.GetAllPairs();
-
-        for(const auto& pair : pairs)
-        {
-            /* Update context with new height */
-            MiningContext newCtx = pair.second.WithHeight(nNewHeight);
-            mapMiners.InsertOrUpdate(pair.first, newCtx);
-            ++nNotified;
-        }
+        /* Atomically transform all entries — no snapshot, no stale overwrites */
+        uint32_t nNotified = mapMiners.TransformAll(
+            [nNewHeight](const MiningContext& ctx) {
+                return ctx.WithHeight(nNewHeight);
+            });
 
         if(nNotified > 0)
         {
@@ -510,17 +593,16 @@ namespace LLP
     }
 
 
-    /* Get miners for specific channel */
+    /* Get miners for specific channel.
+     * Uses ForEach() to avoid full snapshot copy. */
     std::vector<MiningContext> StatelessMinerManager::GetMinersForChannel(uint32_t nChannel) const
     {
         std::vector<MiningContext> vResult;
 
-        auto vMiners = mapMiners.GetAll();
-        for(const auto& ctx : vMiners)
-        {
+        mapMiners.ForEach([&](const std::string& key, const MiningContext& ctx) {
             if(ctx.nChannel == nChannel)
                 vResult.push_back(ctx);
-        }
+        });
 
         return vResult;
     }
@@ -735,18 +817,16 @@ namespace LLP
     }
 
 
-    /* Get count of miners with reward address bound */
+    /* Get count of miners with reward address bound.
+     * Uses ForEach() to avoid full snapshot copy. */
     size_t StatelessMinerManager::GetRewardBoundCount() const
     {
         size_t nCount = 0;
-        auto vMiners = mapMiners.GetAll();
 
-        for(const auto& ctx : vMiners)
-        {
-            /* Count miners with reward address explicitly bound */
+        mapMiners.ForEach([&](const std::string& key, const MiningContext& ctx) {
             if(ctx.fRewardBound && ctx.hashRewardAddress != 0)
                 ++nCount;
-        }
+        });
 
         return nCount;
     }
@@ -793,14 +873,13 @@ namespace LLP
     }
 
 
-    /* Get a list of all active miners with simplified information */
+    /* Get a list of all active miners with simplified information.
+     * Uses ForEach() to avoid full snapshot copy. */
     std::vector<MinerInfo> StatelessMinerManager::GetMinerList() const
     {
         std::vector<MinerInfo> vResult;
-        auto vMiners = mapMiners.GetAll();
 
-        for(const auto& ctx : vMiners)
-        {
+        mapMiners.ForEach([&](const std::string& key, const MiningContext& ctx) {
             MinerInfo info;
             info.hashGenesis = ctx.hashGenesis;
             info.hashRewardAddress = ctx.hashRewardAddress;
@@ -810,7 +889,7 @@ namespace LLP
             info.strAddress = ctx.strAddress;
 
             vResult.push_back(info);
-        }
+        });
 
         return vResult;
     }
