@@ -853,8 +853,26 @@ namespace LLP
                     }
                 }
 
-                /* Update StatelessMinerManager with COMPLETE context including encryption state */
-                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
+                /* Atomic transform: update MINER_READY state on CURRENT value in mapMiners.
+                 * Captures the connection-specific mutations (subscription, encryption,
+                 * channel height) and applies them atomically to avoid TOCTOU races. */
+                {
+                    bool fSubscribed = context.fSubscribedToNotifications;
+                    uint32_t nSubChannel = context.nSubscribedChannel;
+                    bool fEncReady = context.fEncryptionReady;
+                    std::vector<uint8_t> vKey = context.vChaChaKey;
+                    uint32_t nLastChHeight = context.nLastTemplateChannelHeight;
+                    StatelessMinerManager::Get().TransformMiner(context.strAddress,
+                        [fSubscribed, nSubChannel, fEncReady, vKey, nLastChHeight](const MiningContext& current) {
+                            MiningContext updated = current
+                                .WithSubscription(nSubChannel)
+                                .WithLastTemplateChannelHeight(nLastChHeight)
+                                .WithTimestamp(runtime::unifiedtimestamp());
+                            if(fEncReady && !vKey.empty())
+                                updated = updated.WithChaChaKey(vKey);
+                            return updated;
+                        }, 1);
+                }
                 
                 debug::log(0, FUNCTION, "✓ Miner subscribed to ", 
                           context.strChannelName, " notifications (stateless protocol)");
@@ -1122,8 +1140,24 @@ namespace LLP
                                      .WithHashLastBlock(TAO::Ledger::ChainState::hashBestChain.load());
                 }
 
-                /* Update manager with new context after template served */
-                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
+                /* Atomic transform: update template tracking on CURRENT value in mapMiners,
+                 * avoiding TOCTOU race with NotifyNewRound. We capture chain state
+                 * outside the transform and apply it atomically. */
+                {
+                    uint32_t nChannel = context.nChannel;
+                    StatelessMinerManager::Get().TransformMiner(context.strAddress,
+                        [nChannel](const MiningContext& current) {
+                            TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
+                            TAO::Ledger::BlockState stateChannel = stateBest;
+                            uint32_t nCH = 0;
+                            if(TAO::Ledger::GetLastState(stateChannel, nChannel))
+                                nCH = stateChannel.nChannelHeight;
+                            return current.WithTimestamp(runtime::unifiedtimestamp())
+                                          .WithHeight(stateBest.nHeight)
+                                          .WithLastTemplateChannelHeight(nCH)
+                                          .WithHashLastBlock(TAO::Ledger::ChainState::hashBestChain.load());
+                        }, 1);
+                }
                 StatelessMinerManager::Get().IncrementTemplatesServed();
 
                 return true;
@@ -1956,8 +1990,12 @@ namespace LLP
                 /* Update context timestamp */
                 context = context.WithTimestamp(runtime::unifiedtimestamp());
 
-                /* Update manager with new context */
-                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
+                /* Atomic transform: update timestamp on CURRENT value in mapMiners,
+                 * avoiding TOCTOU race with NotifyNewRound. */
+                StatelessMinerManager::Get().TransformMiner(context.strAddress,
+                    [](const MiningContext& current) {
+                        return current.WithTimestamp(runtime::unifiedtimestamp());
+                    }, 1);
 
                 return true;
             }
@@ -1990,12 +2028,19 @@ namespace LLP
                 
                 respond(response);
 
-                /* Update context timestamp */
+                /* Update context timestamp and height */
                 context = context.WithTimestamp(runtime::unifiedtimestamp())
                                  .WithHeight(nCurrentHeight);
 
-                /* Update manager with new context */
-                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
+                /* Atomic transform: update timestamp and height on CURRENT value in mapMiners */
+                {
+                    uint32_t nHeight = nCurrentHeight;
+                    StatelessMinerManager::Get().TransformMiner(context.strAddress,
+                        [nHeight](const MiningContext& current) {
+                            return current.WithTimestamp(runtime::unifiedtimestamp())
+                                          .WithHeight(nHeight);
+                        }, 1);
+                }
 
                 return true;
             }
@@ -2058,8 +2103,11 @@ namespace LLP
                 /* Update context timestamp */
                 context = context.WithTimestamp(runtime::unifiedtimestamp());
 
-                /* Update manager with new context */
-                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
+                /* Atomic transform: update timestamp on CURRENT value in mapMiners */
+                StatelessMinerManager::Get().TransformMiner(context.strAddress,
+                    [](const MiningContext& current) {
+                        return current.WithTimestamp(runtime::unifiedtimestamp());
+                    }, 1);
 
                 return true;
             }
@@ -2400,7 +2448,25 @@ namespace LLP
                     /* Update only timestamp, keep existing staleness anchors */
                     context = context.WithTimestamp(runtime::unifiedtimestamp());
                 }
-                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
+
+                /* Atomic transform: apply updates to CURRENT value in mapMiners,
+                 * avoiding TOCTOU race with NotifyNewRound. */
+                {
+                    bool fStale = fTemplateStale;
+                    uint32_t nUH = nUnifiedHeight;
+                    uint32_t nCH = nChannelHeight;
+                    uint1024_t hashBest = hashCurrentBest;
+                    StatelessMinerManager::Get().TransformMiner(context.strAddress,
+                        [fStale, nUH, nCH, hashBest](const MiningContext& current) {
+                            if(fStale)
+                                return current.WithTimestamp(runtime::unifiedtimestamp())
+                                              .WithHeight(nUH)
+                                              .WithLastTemplateChannelHeight(nCH)
+                                              .WithHashLastBlock(hashBest);
+                            else
+                                return current.WithTimestamp(runtime::unifiedtimestamp());
+                        }, 1);
+                }
 
                 return true;
             }
@@ -2569,8 +2635,26 @@ namespace LLP
                 SendStatelessTemplate();
                 debug::log(0, FUNCTION, "✓ Recovery template delivered via MINER_READY push — miner should resume mining");
 
-                /* Update manager with COMPLETE context including encryption state */
-                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
+                /* Atomic transform: update MINER_READY state on CURRENT value in mapMiners.
+                 * Captures the connection-specific mutations (subscription, encryption,
+                 * channel height) and applies them atomically to avoid TOCTOU races. */
+                {
+                    bool fSubscribed = context.fSubscribedToNotifications;
+                    uint32_t nSubChannel = context.nSubscribedChannel;
+                    bool fEncReady = context.fEncryptionReady;
+                    std::vector<uint8_t> vKey = context.vChaChaKey;
+                    uint32_t nLastChHeight = context.nLastTemplateChannelHeight;
+                    StatelessMinerManager::Get().TransformMiner(context.strAddress,
+                        [fSubscribed, nSubChannel, fEncReady, vKey, nLastChHeight](const MiningContext& current) {
+                            MiningContext updated = current
+                                .WithSubscription(nSubChannel)
+                                .WithLastTemplateChannelHeight(nLastChHeight)
+                                .WithTimestamp(runtime::unifiedtimestamp());
+                            if(fEncReady && !vKey.empty())
+                                updated = updated.WithChaChaKey(vKey);
+                            return updated;
+                        }, 1);
+                }
                 
                 debug::log(2, "📥 === MINER_READY: SUCCESS ===");
                 return true;
@@ -2796,10 +2880,36 @@ namespace LLP
                     }
                 }
 
-                /* Update manager with new context after successful packet processing */
-                /* CRITICAL: This must be done AFTER ChaCha20 key derivation to ensure
-                 * StatelessMinerManager has the complete encryption state */
-                StatelessMinerManager::Get().UpdateMiner(context.strAddress, context, 1);
+                /* Atomic transform: apply auth completion state to CURRENT value in mapMiners.
+                 * CRITICAL: This must be done AFTER ChaCha20 key derivation to ensure
+                 * StatelessMinerManager has the complete encryption state.
+                 * We capture all auth-specific fields from the connection-local context
+                 * and apply them atomically, preserving any concurrent height/timestamp
+                 * updates from NotifyNewRound. */
+                {
+                    MiningContext authCtx = context;  /* snapshot of all auth state */
+                    StatelessMinerManager::Get().TransformMiner(context.strAddress,
+                        [authCtx](const MiningContext& current) {
+                            /* Start from CURRENT (preserves height from NotifyNewRound),
+                             * then overlay auth-specific fields from connection context */
+                            MiningContext result = current
+                                .WithAuth(authCtx.fAuthenticated)
+                                .WithSession(authCtx.nSessionId)
+                                .WithKeyId(authCtx.hashKeyID)
+                                .WithGenesis(authCtx.hashGenesis)
+                                .WithUserName(authCtx.strUserName)
+                                .WithPubKey(authCtx.vMinerPubKey)
+                                .WithFalconVersion(authCtx.nFalconVersion)
+                                .WithTimestamp(runtime::unifiedtimestamp());
+                            if(authCtx.nSessionStart != 0)
+                                result = result.WithSessionStart(authCtx.nSessionStart);
+                            if(authCtx.fEncryptionReady && !authCtx.vChaChaKey.empty())
+                                result = result.WithChaChaKey(authCtx.vChaChaKey);
+                            if(!authCtx.vDisposablePubKey.empty())
+                                result = result.WithDisposableKey(authCtx.vDisposablePubKey, authCtx.hashDisposableKeyID);
+                            return result;
+                        }, 1);
+                }
 
                 /* Log session registration for auth packets */
                 if(PACKET.HEADER == MINER_AUTH_RESPONSE && context.fAuthenticated)

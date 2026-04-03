@@ -1990,8 +1990,20 @@ namespace LLP
         if(!vChaChaKey.empty())
             newContext = newContext.WithChaChaKey(vChaChaKey);
 
-        /* Update the context in StatelessMinerManager to persist the change */
-        StatelessMinerManager::Get().UpdateMiner(context.strAddress, newContext, 0);
+        /* Atomic transform: apply reward binding + ChaCha key to CURRENT value in mapMiners,
+         * avoiding TOCTOU race where NotifyNewRound could overwrite these fields. */
+        {
+            uint256_t hashRewardCopy = hashReward;
+            std::vector<uint8_t> vKeyCopy = vChaChaKey;
+            StatelessMinerManager::Get().TransformMiner(context.strAddress,
+                [hashRewardCopy, vKeyCopy](const MiningContext& current) {
+                    MiningContext updated = current.WithRewardAddress(hashRewardCopy)
+                                                   .WithTimestamp(runtime::unifiedtimestamp());
+                    if(!vKeyCopy.empty())
+                        updated = updated.WithChaChaKey(vKeyCopy);
+                    return updated;
+                }, 0);
+        }
 
         if(newContext.fAuthenticated && newContext.hashKeyID != 0)
         {
