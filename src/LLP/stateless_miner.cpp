@@ -1517,6 +1517,20 @@ namespace LLP
         const std::vector<uint8_t>& vData = packet.DATA;
         uint64_t nNow = runtime::unifiedtimestamp();
 
+        /* Validate: session was already auto-started at auth time.
+         * ProcessFalconResponse() sets nSessionStart via .WithSessionStart() at auth.
+         * The node also sends SESSION_START automatically after AUTH_RESULT in both
+         * stateless_miner_connection.cpp and miner.cpp.  If a miner sends a redundant
+         * SESSION_START, treat it as a re-negotiation (update timeout only) rather
+         * than silently resetting keepalive counters and timing state. */
+        const bool fSessionAlreadyActive = (context.nSessionStart != 0 && context.nSessionId != 0);
+        if(fSessionAlreadyActive)
+        {
+            debug::log(0, FUNCTION, "SESSION_START re-negotiation for existing session: sessionId=",
+                       context.nSessionId, " original_start=", context.nSessionStart,
+                       " keepalives=", context.nKeepaliveCount, " from ", context.strAddress);
+        }
+
         /* Parse optional session parameters from packet.DATA */
         /* Format: [timeout (4 bytes, optional)] */
         uint64_t nRequestedTimeout = DEFAULT_SESSION_TIMEOUT;
@@ -1533,25 +1547,35 @@ namespace LLP
                 nRequestedTimeout = 86400;
         }
 
-        /* Initialize session timing */
-        MiningContext newContext = context
-            .WithTimestamp(nNow)
-            .WithSessionStart(nNow)
-            .WithSessionTimeout(nRequestedTimeout)
-            .WithKeepaliveCount(0);
+        /* Build updated context.
+         * - If session is already active (re-negotiation), preserve nSessionStart
+         *   and nKeepaliveCount to avoid wiping timing/liveness state.
+         * - If session is not yet active (first explicit SESSION_START), initialize
+         *   nSessionStart to now and reset keepalive counter. */
+        MiningContext newContext = context.WithTimestamp(nNow).WithSessionTimeout(nRequestedTimeout);
+        if(!fSessionAlreadyActive)
+        {
+            newContext = newContext.WithSessionStart(nNow).WithKeepaliveCount(0);
+        }
 
-        debug::log(0, FUNCTION, "SESSION_START established for sessionId=", context.nSessionId,
+        debug::log(0, FUNCTION, "SESSION_START ", (fSessionAlreadyActive ? "re-negotiated" : "established"),
+                   " for sessionId=", context.nSessionId,
                    " timeout=", nRequestedTimeout, "s from ", context.strAddress);
 
         /* After session is established, log detailed summary */
         debug::log(0, FUNCTION, "");
         debug::log(0, FUNCTION, "╔═══════════════════════════════════════════════════════════╗");
-        debug::log(0, FUNCTION, "║           MINING SESSION ESTABLISHED                      ║");
+        debug::log(0, FUNCTION, "║           MINING SESSION ", (fSessionAlreadyActive ? "RE-NEGOTIATED" : "ESTABLISHED  "), "          ║");
         debug::log(0, FUNCTION, "╠═══════════════════════════════════════════════════════════╣");
         debug::log(0, FUNCTION, "║ Session ID:    ", context.nSessionId);
         debug::log(0, FUNCTION, "║ Timeout:       ", nRequestedTimeout, " seconds");
         debug::log(0, FUNCTION, "║ Genesis Hash:  ", context.GenesisHex());
         debug::log(0, FUNCTION, "║ Miner:         ", context.strAddress);
+        if(fSessionAlreadyActive)
+        {
+            debug::log(0, FUNCTION, "║ Start:         ", context.nSessionStart, " (preserved)");
+            debug::log(0, FUNCTION, "║ Keepalives:    ", context.nKeepaliveCount, " (preserved)");
+        }
         debug::log(0, FUNCTION, "╚═══════════════════════════════════════════════════════════╝");
 
         /* Log reward routing status */

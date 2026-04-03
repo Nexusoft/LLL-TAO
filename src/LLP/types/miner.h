@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLP/include/graceful_shutdown.h>
 #include <LLP/include/opcode_utility.h>
 #include <LLP/include/stateless_miner.h>
+#include <LLP/include/legacy_lane_handler.h>
 #include <LLP/include/auto_cooldown.h>
 #include <LLP/include/mining_constants.h>
 #include <TAO/Ledger/types/block.h>
@@ -792,6 +793,11 @@ namespace LLP
 
         /** Track whether NODE_SHUTDOWN was already sent on this connection. **/
         GracefulShutdown::NotificationState m_nodeShutdownNotification;
+
+        /** Per-opcode handler dispatch for auth/session/config opcodes.
+         *  Each handler has its own mutex, eliminating contention between
+         *  opcode services (e.g., auth doesn't block keepalive). **/
+        LegacyLaneHandler m_laneHandler;
 
         /** Set when disconnect/shutdown begins so in-flight push notifications can abort early. **/
         std::atomic<bool> m_shutdownRequested{false};
