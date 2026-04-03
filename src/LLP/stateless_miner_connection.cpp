@@ -30,7 +30,7 @@ ________________________________________________________________________________
 #include <LLP/include/mining_session_health.h>
 #include <LLP/include/session_status.h>
 #include <LLP/include/session_start_packet.h>
-#include <LLP/include/get_block_handler.h>
+
 #include <LLP/include/stateless_get_block_handler.h>
 #include <LLP/templates/events.h>
 
