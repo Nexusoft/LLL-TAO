@@ -2868,14 +2868,17 @@ namespace LLP
                 {
                     debug::log(0, FUNCTION, "Sending SESSION_START after successful authentication");
 
-                    /* Build SESSION_START using shared utility */
+                    /* Build SESSION_START using shared utility.
+                     * The session liveness timeout is a node-wide constant from NodeCache,
+                     * NOT a per-context field.  nSessionTimeout was removed from MiningContext. */
+                    const uint64_t nLivenessTimeout = NodeCache::GetSessionLivenessTimeout(context.strAddress);
                     StatelessPacket sessionStart(StatelessOpcodes::SESSION_START);
                     sessionStart.DATA = SessionStartPacket::BuildPayload(
-                        context.nSessionId, context.nSessionTimeout, context.hashGenesis);
+                        context.nSessionId, nLivenessTimeout, context.hashGenesis);
                     sessionStart.LENGTH = static_cast<uint32_t>(sessionStart.DATA.size());
 
                     debug::log(0, FUNCTION, "SESSION_START: sessionId=", context.nSessionId,
-                              " timeout=", static_cast<uint32_t>(context.nSessionTimeout),
+                              " timeout=", static_cast<uint32_t>(nLivenessTimeout),
                               "s session_genesis=", context.GenesisHex());
 
                     respond(sessionStart);

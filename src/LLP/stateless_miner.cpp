@@ -1497,7 +1497,8 @@ namespace LLP
 
         /* Parse optional session parameters from packet.DATA */
         /* Format: [timeout (4 bytes, optional)] */
-        uint64_t nRequestedTimeout = DEFAULT_SESSION_TIMEOUT;
+        const std::vector<uint8_t>& vData = packet.DATA;
+        uint64_t nRequestedTimeout = NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS;
         if(vData.size() >= 4)
         {
             /* Parse timeout as 4-byte little-endian */
@@ -1515,8 +1516,11 @@ namespace LLP
          * - If session is already active (re-negotiation), preserve nSessionStart
          *   and nKeepaliveCount to avoid wiping timing/liveness state.
          * - If session is not yet active (first explicit SESSION_START), initialize
-         *   nSessionStart to now and reset keepalive counter. */
-        MiningContext newContext = context.WithTimestamp(nNow).WithSessionTimeout(nRequestedTimeout);
+         *   nSessionStart to now and reset keepalive counter.
+         * Note: The timeout is a node-wide constant (NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS),
+         * not stored per-context.  It is sent to the miner in the SESSION_START response
+         * payload so the miner knows the keepalive cadence the node requires. */
+        MiningContext newContext = context.WithTimestamp(nNow);
         if(!fSessionAlreadyActive)
         {
             newContext = newContext.WithSessionStart(nNow).WithKeepaliveCount(0);

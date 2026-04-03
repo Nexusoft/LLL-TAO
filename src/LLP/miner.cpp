@@ -962,15 +962,18 @@ namespace LLP
                     {
                         debug::log(0, FUNCTION, "Sending SESSION_START after successful authentication (legacy lane)");
 
-                        /* Build SESSION_START payload using shared utility */
+                        /* Build SESSION_START payload using shared utility.
+                         * The session liveness timeout is a node-wide constant from NodeCache,
+                         * NOT a per-context field.  nSessionTimeout was removed from MiningContext. */
+                        const uint64_t nLivenessTimeout = NodeCache::GetSessionLivenessTimeout(updatedContext.strAddress);
                         std::vector<uint8_t> vSessionStart = SessionStartPacket::BuildPayload(
-                            nSessionId, updatedContext.nSessionTimeout, hashGenesis);
+                            nSessionId, nLivenessTimeout, hashGenesis);
 
                         /* Send via respond_auto: uses 16-bit stateless framing after Falcon auth */
                         respond_auto(OpcodeUtility::Opcodes::SESSION_START, vSessionStart);
 
                         debug::log(0, FUNCTION, "SESSION_START: sessionId=", nSessionId,
-                                  " timeout=", static_cast<uint32_t>(updatedContext.nSessionTimeout),
+                                  " timeout=", static_cast<uint32_t>(nLivenessTimeout),
                                   "s session_genesis=", (hashGenesis != 0 ? hashGenesis.SubString() : "none"));
                     }
 
