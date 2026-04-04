@@ -510,6 +510,15 @@ namespace LLP
          **/
         AutoCoolDown m_get_block_cooldown{std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS)};
 
+        /** Minimum interval between GET_ROUND requests (2 seconds).
+         *  BUG 3 FIX: Legacy lane previously had no rate limiting for GET_ROUND.
+         *  Matches stateless lane's RateLimitConfig::MIN_GET_ROUND_INTERVAL_MS. */
+        static constexpr uint32_t MIN_GET_ROUND_INTERVAL_MS = 2000;
+
+        /** Timestamp of the last GET_ROUND request.  Protected by MUTEX.
+         *  Used for rate limiting GET_ROUND on the legacy lane. */
+        std::chrono::steady_clock::time_point m_lastGetRoundTime;
+
         /** Consecutive GET_BLOCK rate-limit counter (legacy lane).
          *
          *  Incremented each time GET_BLOCK is rejected with RATE_LIMIT_EXCEEDED.
@@ -622,6 +631,20 @@ namespace LLP
          *
          **/
         void SendChannelNotification();
+
+
+        /** SendLegacyTemplate
+         *
+         *  Send a full block template to the miner via the legacy lane.
+         *  Mirrors SendStatelessTemplate() on the stateless lane.
+         *  Used by the SESSION_STATUS degraded-recovery two-step re-arm pattern
+         *  to deliver a fresh template after SendChannelNotification().
+         *
+         *  BUG 1 FIX: Legacy lane was missing this method, causing degraded miners
+         *  on the legacy port to never receive recovery templates.
+         *
+         **/
+        void SendLegacyTemplate();
 
 
 
