@@ -75,8 +75,12 @@ namespace LLP
          *  maximum accuracy — GET_ROUND is our backup GET_BLOCK system if PUSH
          *  goes down, so up-to-date data matters.
          *
-         *  Both tStateBest and hashBestChain are loaded in a tight scope to
-         *  minimize the TOCTOU window (BUG 4 fix).
+         *  Both tStateBest and hashBestChain are loaded back-to-back to minimize
+         *  the temporal inconsistency window (BUG 4 mitigation).  Note: these are
+         *  two separate atomic loads, so a chain advance between them is theoretically
+         *  possible but extremely unlikely in practice (microsecond window).  True
+         *  atomic consistency would require a single combined atomic structure which
+         *  is beyond the scope of this utility.
          *
          *  @return ChainHeightSnapshot with all channel heights and validity flag.
          *

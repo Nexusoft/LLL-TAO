@@ -49,9 +49,10 @@ namespace LLP
      *  │     address, not port).                                      │
      *  │   - Both lanes look up by session_id → finds same context.   │
      *  │   - If miner shuts down for 15s and reconnects, the session  │
-     *  │     survives the 24-hour CleanupInactive() window.           │
+     *  │     survives the CleanupInactive() sweep window.             │
+     *  │     (See StatelessMinerManager::CleanupInactive())           │
      *  │   - Re-auth on new port creates fresh context → old session  │
-     *  │     is orphaned but cleaned up within 10-minute sweep.       │
+     *  │     is orphaned and cleaned up during the next sweep.        │
      *  │                                                              │
      *  │ Using direct context.nSessionId (old stateless pattern):     │
      *  │   - Only works on the connection that created the session.   │

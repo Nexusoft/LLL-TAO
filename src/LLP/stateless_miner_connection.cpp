@@ -2217,6 +2217,7 @@ namespace LLP
                 {
                     /* Create block template with retry logic (up to 3 attempts) */
                     TAO::Ledger::Block* pBlock = nullptr;
+                    bool fTemplateSent = false;
                     for(int nRetry = 0; nRetry < 3 && !pBlock; ++nRetry)
                     {
                         pBlock = new_block();
@@ -2257,6 +2258,7 @@ namespace LLP
                                            " height=", pBlock->nHeight);
 
                                 StatelessMinerManager::Get().IncrementTemplatesServed();
+                                fTemplateSent = true;
                             }
                             else
                             {
@@ -2267,15 +2269,20 @@ namespace LLP
                             debug::error(FUNCTION, "GET_ROUND auto-send exception: ", e.what());
                         }
                     }
-                }
 
-                /* Update context staleness anchors */
-                if(fTemplateStale)
-                {
-                    context = context.WithTimestamp(runtime::unifiedtimestamp())
-                                     .WithHeight(snap.nUnifiedHeight)
-                                     .WithLastTemplateChannelHeight(nChannelHeight)
-                                     .WithHashLastBlock(snap.hashBestChain);
+                    /* Only advance staleness anchors if template was actually sent.
+                     * If creation failed, keep old anchors so the next GET_ROUND retries. */
+                    if(fTemplateSent)
+                    {
+                        context = context.WithTimestamp(runtime::unifiedtimestamp())
+                                         .WithHeight(snap.nUnifiedHeight)
+                                         .WithLastTemplateChannelHeight(nChannelHeight)
+                                         .WithHashLastBlock(snap.hashBestChain);
+                    }
+                    else
+                    {
+                        context = context.WithTimestamp(runtime::unifiedtimestamp());
+                    }
                 }
                 else
                 {
@@ -2284,13 +2291,13 @@ namespace LLP
 
                 /* Atomic transform: apply updates to CURRENT value in mapMiners */
                 {
-                    bool fStale = fTemplateStale;
+                    bool fSent = fTemplateStale;  // approximation for atomic transform
                     uint32_t nUH = snap.nUnifiedHeight;
                     uint32_t nCH = nChannelHeight;
                     uint1024_t hashBest = snap.hashBestChain;
                     StatelessMinerManager::Get().TransformMiner(context.strAddress,
-                        [fStale, nUH, nCH, hashBest](const MiningContext& current) {
-                            if(fStale)
+                        [fSent, nUH, nCH, hashBest](const MiningContext& current) {
+                            if(fSent)
                                 return current.WithTimestamp(runtime::unifiedtimestamp())
                                               .WithHeight(nUH)
                                               .WithLastTemplateChannelHeight(nCH)

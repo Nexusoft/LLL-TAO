@@ -1919,7 +1919,9 @@ namespace LLP
 
     /* SendLegacyTemplate - Send a full block template to the miner via the legacy lane.
      * Mirrors SendStatelessTemplate() on the stateless lane (port 9323).
-     * Used by SESSION_STATUS degraded-recovery two-step re-arm pattern.
+     * General-purpose legacy template delivery method.
+     * Used by SESSION_STATUS degraded-recovery, and anywhere the legacy lane
+     * needs to push a fresh template independent of SendChannelNotification().
      *
      * BUG 1 FIX: Legacy lane was missing this method, causing degraded miners
      * on the legacy port to never receive recovery templates. */
