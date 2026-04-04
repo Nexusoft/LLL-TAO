@@ -120,7 +120,7 @@ namespace LLP
     , fRewardBound(false)
     , fSubscribedToNotifications(false)
     , nSubscribedChannel(0)
-    , nLastTemplateChannelHeight(0)
+    , nLastTemplateUnifiedHeight(0)
     , nMinerPrevblockSuffix({})
     {
     }
@@ -148,7 +148,7 @@ namespace LLP
     , fRewardBound(false)
     , fSubscribedToNotifications(false)
     , nSubscribedChannel(0)
-    , nLastTemplateChannelHeight(0)
+    , nLastTemplateUnifiedHeight(0)
     , nMinerPrevblockSuffix({})
     {
     }
@@ -176,7 +176,7 @@ namespace LLP
     , fRewardBound(false)
     , fSubscribedToNotifications(false)
     , nSubscribedChannel(0)
-    , nLastTemplateChannelHeight(0)
+    , nLastTemplateUnifiedHeight(0)
     , nMinerPrevblockSuffix({})
     {
     }
@@ -2010,8 +2010,8 @@ namespace LLP
 
         StatelessMinerManager::Get().IncrementTemplatesServed();
 
-        /* Update last template channel height */
-        nLastTemplateChannelHeight = nChannelHeight;
+        /* Update last template unified height */
+        nLastTemplateUnifiedHeight = snap.nUnifiedHeight;
     }
 
 
@@ -2129,14 +2129,12 @@ namespace LLP
             respond_auto(BLOCK_DATA, result.vPayload);
         }
 
-        /* Update last template channel height after sending template.
-         * Uses channel-specific height (not unified) to prevent false template
-         * refreshes when other channels mine blocks. */
+        /* Update last template unified height after sending template.
+         * Uses UNIFIED height — every tip move changes hashPrevBlock,
+         * so ALL channels need fresh templates regardless of which channel mined. */
         {
             TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
-            TAO::Ledger::BlockState stateChannel = stateBest;
-            if(TAO::Ledger::GetLastState(stateChannel, nChannel))
-                nLastTemplateChannelHeight = stateChannel.nChannelHeight;
+            nLastTemplateUnifiedHeight = stateBest.nHeight;
         }
 
         /* Notify Colin agent: template pushed via GET_BLOCK */
@@ -2181,16 +2179,13 @@ namespace LLP
             {
                 MiningContext updatedCtx = optCtx.value();
 
-                /* Record the current channel height so recovery can avoid stale-height throttling */
-                TAO::Ledger::BlockState stateChannel = TAO::Ledger::ChainState::tStateBest.load();
-                uint32_t nChannelHeight = 0;
-                if(TAO::Ledger::GetLastState(stateChannel, nChannel))
-                    nChannelHeight = stateChannel.nChannelHeight;
-                updatedCtx = updatedCtx.WithLastTemplateChannelHeight(nChannelHeight);
+                /* Record the current unified height so recovery can avoid stale-height throttling */
+                TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
+                updatedCtx = updatedCtx.WithLastTemplateUnifiedHeight(stateBest.nHeight);
 
                 SessionRecoveryManager::Get().SaveSession(updatedCtx);
-                debug::log(2, FUNCTION, "Session saved (write-ahead) before push notification: channelHeight=",
-                           nChannelHeight, " keyID=", updatedCtx.hashKeyID.SubString());
+                debug::log(2, FUNCTION, "Session saved (write-ahead) before push notification: unifiedHeight=",
+                           stateBest.nHeight, " keyID=", updatedCtx.hashKeyID.SubString());
             }
         }
 
@@ -2642,16 +2637,17 @@ namespace LLP
         respond_auto(NEW_ROUND, vResponse);
 
         /* GET_ROUND COMPATIBILITY: AUTO-SEND TEMPLATE
-         * CRITICAL: Use channel-specific height (not unified) to avoid ~40% wasted work. */
+         * CRITICAL: Use UNIFIED height — every tip move (any channel) changes
+         * hashPrevBlock, requiring ALL channels to get fresh templates. */
         uint32_t nCurrentChannelHeight = RoundStateUtility::GetChannelHeight(snap, nChannel);
-        bool fChannelHeightChanged = RoundStateUtility::IsChannelStale(
-            nChannel, nLastTemplateChannelHeight, snap);
+        bool fUnifiedHeightChanged = RoundStateUtility::IsTemplateStale(
+            nLastTemplateUnifiedHeight, snap);
 
-        if(fChannelHeightChanged)
+        if(fUnifiedHeightChanged)
         {
-            debug::log(2, FUNCTION, "Channel ", nChannel.load(), " advanced: ",
-                       nLastTemplateChannelHeight, " -> ", nCurrentChannelHeight,
-                       " - auto-sending template");
+            debug::log(2, FUNCTION, "Unified height advanced: ",
+                       nLastTemplateUnifiedHeight, " -> ", snap.nUnifiedHeight,
+                       " - auto-sending template for channel ", nChannel.load());
 
             TAO::Ledger::Block* pBlock = new_block();
 
@@ -2683,8 +2679,8 @@ namespace LLP
 
                         StatelessMinerManager::Get().IncrementTemplatesServed();
 
-                        /* Update last template channel height only after successful send */
-                        nLastTemplateChannelHeight = nCurrentChannelHeight;
+                        /* Update last template unified height only after successful send */
+                        nLastTemplateUnifiedHeight = snap.nUnifiedHeight;
                     }
                 }
                 catch(const std::exception& e) {

@@ -215,28 +215,31 @@ namespace LLP
         }
 
 
-        /** IsChannelStale
+        /** IsTemplateStale
          *
-         *  Check if the miner's template is stale based on channel-specific height.
+         *  Check if the miner's template is stale based on UNIFIED height.
          *
-         *  CRITICAL: Uses channel-specific height (not unified height).
-         *  Only triggers refresh when the miner's OWN channel advances.
-         *  Using unified height would trigger unnecessary refreshes when OTHER
-         *  channels mine blocks, causing ~40% wasted mining work.
+         *  CRITICAL: Multi-channel mining blockchains require ALL channels to get
+         *  fresh templates whenever ANY channel mines a block, because every unified
+         *  height tip move changes hashPrevBlock (see create.cpp:434:
+         *  block.hashPrevBlock = tStateBest.GetHash()).  A Prime miner whose template
+         *  still carries an old hashPrevBlock would be rejected at SUBMIT_BLOCK time.
          *
-         *  @param[in] nChannel              The miner's mining channel (1=Prime, 2=Hash).
-         *  @param[in] nLastTemplateHeight   Height when last template was sent.
-         *  @param[in] snap                  Current chain height snapshot.
+         *  The old channel-specific height check missed cross-channel blocks — e.g.,
+         *  a Hash block advancing unified height would NOT trigger a Prime template
+         *  refresh, leaving Prime miners mining on stale hashPrevBlock.
+         *
+         *  @param[in] nLastTemplateUnifiedHeight  Unified height when last template was sent.
+         *  @param[in] snap                        Current chain height snapshot.
          *
          *  @return True if the template is stale and needs refreshing.
          *
          **/
-        inline bool IsChannelStale(
-            uint32_t nChannel,
-            uint32_t nLastTemplateHeight,
+        inline bool IsTemplateStale(
+            uint32_t nLastTemplateUnifiedHeight,
             const ChainHeightSnapshot& snap)
         {
-            return (nLastTemplateHeight != GetChannelHeight(snap, nChannel));
+            return (nLastTemplateUnifiedHeight != snap.nUnifiedHeight);
         }
 
 

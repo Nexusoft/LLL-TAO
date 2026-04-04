@@ -473,11 +473,12 @@ namespace LLP
         bool                 fSubscribedToNotifications;  // Whether miner subscribed to push notifications
         uint32_t             nSubscribedChannel;         // Channel miner subscribed to (1=Prime, 2=Hash)
 
-        /* Per-connection template tracking (channel-specific, not unified).
-         * Tracks the channel height at which the last BLOCK_DATA was sent.
-         * Used by GET_ROUND auto-send to only send templates when the miner's
-         * OWN channel advances, preventing ~40% wasted work from cross-channel triggers. */
-        uint32_t             nLastTemplateChannelHeight;
+        /* Per-connection template tracking (UNIFIED height, not channel-specific).
+         * Tracks the unified height at which the last BLOCK_DATA was sent.
+         * Used by GET_ROUND auto-send to send templates whenever ANY channel mines
+         * a block, because every unified tip move changes hashPrevBlock and ALL
+         * channels need fresh templates (multi-channel mining requirement). */
+        uint32_t             nLastTemplateUnifiedHeight;
 
         /* KEEPALIVE telemetry fields.
          * nMinerPrevblockSuffix: raw bytes [4..7] of keepalive payload (hashPrevBlock_lo32 as-sent). */

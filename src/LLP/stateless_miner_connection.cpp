@@ -830,17 +830,13 @@ namespace LLP
                     debug::log(0, "   Encryption ready: YES");
                 }
                 
-                /* Update last template channel height and persist session BEFORE sending
+                /* Update last template unified height and persist session BEFORE sending
                  * the template (write-ahead pattern): even if the connection drops after
                  * SaveSession but before the template arrives, the recovered session already
-                 * carries the correct channel height, preventing stale-height throttling. */
+                 * carries the correct unified height, preventing stale-height throttling. */
                 {
                     TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
-                    TAO::Ledger::BlockState stateChannel = stateBest;
-                    uint32_t nChannelHeight = 0;
-                    if(TAO::Ledger::GetLastState(stateChannel, context.nChannel))
-                        nChannelHeight = stateChannel.nChannelHeight;
-                    context = context.WithLastTemplateChannelHeight(nChannelHeight);
+                    context = context.WithLastTemplateUnifiedHeight(stateBest.nHeight);
                 }
 
                 /* Persist session and lane state for cross-lane recovery */
@@ -857,18 +853,18 @@ namespace LLP
 
                 /* Atomic transform: update MINER_READY state on CURRENT value in mapMiners.
                  * Captures the connection-specific mutations (subscription, encryption,
-                 * channel height) and applies them atomically to avoid TOCTOU races. */
+                 * unified height) and applies them atomically to avoid TOCTOU races. */
                 {
                     bool fSubscribed = context.fSubscribedToNotifications;
                     uint32_t nSubChannel = context.nSubscribedChannel;
                     bool fEncReady = context.fEncryptionReady;
                     std::vector<uint8_t> vKey = context.vChaChaKey;
-                    uint32_t nLastChHeight = context.nLastTemplateChannelHeight;
+                    uint32_t nLastUH = context.nLastTemplateUnifiedHeight;
                     StatelessMinerManager::Get().TransformMiner(context.strAddress,
-                        [fSubscribed, nSubChannel, fEncReady, vKey, nLastChHeight](const MiningContext& current) {
+                        [fSubscribed, nSubChannel, fEncReady, vKey, nLastUH](const MiningContext& current) {
                             MiningContext updated = current
                                 .WithSubscription(nSubChannel)
-                                .WithLastTemplateChannelHeight(nLastChHeight)
+                                .WithLastTemplateUnifiedHeight(nLastUH)
                                 .WithTimestamp(runtime::unifiedtimestamp());
                             if(fEncReady && !vKey.empty())
                                 updated = updated.WithChaChaKey(vKey);
@@ -1132,13 +1128,9 @@ namespace LLP
                  * hashLastBlock snapshot (primary staleness anchor, StakeMinter pattern). */
                 {
                     TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
-                    TAO::Ledger::BlockState stateChannel = stateBest;
-                    uint32_t nChannelHeight = 0;
-                    if(TAO::Ledger::GetLastState(stateChannel, context.nChannel))
-                        nChannelHeight = stateChannel.nChannelHeight;
                     context = context.WithTimestamp(runtime::unifiedtimestamp())
                                      .WithHeight(stateBest.nHeight)
-                                     .WithLastTemplateChannelHeight(nChannelHeight)
+                                     .WithLastTemplateUnifiedHeight(stateBest.nHeight)
                                      .WithHashLastBlock(TAO::Ledger::ChainState::hashBestChain.load());
                 }
 
@@ -1146,17 +1138,12 @@ namespace LLP
                  * avoiding TOCTOU race with NotifyNewRound. We capture chain state
                  * outside the transform and apply it atomically. */
                 {
-                    uint32_t nChannel = context.nChannel;
                     StatelessMinerManager::Get().TransformMiner(context.strAddress,
-                        [nChannel](const MiningContext& current) {
+                        [](const MiningContext& current) {
                             TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
-                            TAO::Ledger::BlockState stateChannel = stateBest;
-                            uint32_t nCH = 0;
-                            if(TAO::Ledger::GetLastState(stateChannel, nChannel))
-                                nCH = stateChannel.nChannelHeight;
                             return current.WithTimestamp(runtime::unifiedtimestamp())
                                           .WithHeight(stateBest.nHeight)
-                                          .WithLastTemplateChannelHeight(nCH)
+                                          .WithLastTemplateUnifiedHeight(stateBest.nHeight)
                                           .WithHashLastBlock(TAO::Ledger::ChainState::hashBestChain.load());
                         }, 1);
                 }
@@ -2203,13 +2190,14 @@ namespace LLP
 
                 /* GET_ROUND COMPATIBILITY: AUTO-SEND TEMPLATE
                  * Legacy miners polling GET_ROUND expect BLOCK_DATA when height changes.
-                 * CRITICAL: Use channel-specific height (not unified) to avoid ~40% wasted work. */
-                bool fChannelHeightChanged = RoundStateUtility::IsChannelStale(
-                    context.nChannel, context.nLastTemplateChannelHeight, snap);
-                bool fTemplateStale = fChannelHeightChanged || fHashChanged;
+                 * CRITICAL: Use UNIFIED height — every tip move (any channel) changes
+                 * hashPrevBlock, requiring ALL channels to get fresh templates. */
+                bool fUnifiedHeightChanged = RoundStateUtility::IsTemplateStale(
+                    context.nLastTemplateUnifiedHeight, snap);
+                bool fTemplateStale = fUnifiedHeightChanged || fHashChanged;
 
-                debug::log(2, FUNCTION, "GET_ROUND staleness: channel_changed=",
-                           (fChannelHeightChanged ? "YES" : "NO"),
+                debug::log(2, FUNCTION, "GET_ROUND staleness: unified_changed=",
+                           (fUnifiedHeightChanged ? "YES" : "NO"),
                            " reorg=", (fHashChanged ? "YES" : "NO"),
                            " stale=", (fTemplateStale ? "YES" : "NO"));
 
@@ -2276,7 +2264,7 @@ namespace LLP
                     {
                         context = context.WithTimestamp(runtime::unifiedtimestamp())
                                          .WithHeight(snap.nUnifiedHeight)
-                                         .WithLastTemplateChannelHeight(nChannelHeight)
+                                         .WithLastTemplateUnifiedHeight(snap.nUnifiedHeight)
                                          .WithHashLastBlock(snap.hashBestChain);
                     }
                     else
@@ -2293,14 +2281,13 @@ namespace LLP
                 {
                     bool fSent = fTemplateStale;  // approximation for atomic transform
                     uint32_t nUH = snap.nUnifiedHeight;
-                    uint32_t nCH = nChannelHeight;
                     uint1024_t hashBest = snap.hashBestChain;
                     StatelessMinerManager::Get().TransformMiner(context.strAddress,
-                        [fSent, nUH, nCH, hashBest](const MiningContext& current) {
+                        [fSent, nUH, hashBest](const MiningContext& current) {
                             if(fSent)
                                 return current.WithTimestamp(runtime::unifiedtimestamp())
                                               .WithHeight(nUH)
-                                              .WithLastTemplateChannelHeight(nCH)
+                                              .WithLastTemplateUnifiedHeight(nUH)
                                               .WithHashLastBlock(hashBest);
                             else
                                 return current.WithTimestamp(runtime::unifiedtimestamp());
@@ -2443,17 +2430,13 @@ namespace LLP
                     m_force_next_push = true;
                 }
 
-                /* Update last template channel height and persist session BEFORE sending
+                /* Update last template unified height and persist session BEFORE sending
                  * the template (write-ahead pattern): even if the connection drops after
                  * SaveSession but before the template arrives, the recovered session already
-                 * carries the correct channel height, preventing stale-height throttling. */
+                 * carries the correct unified height, preventing stale-height throttling. */
                 {
                     TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
-                    TAO::Ledger::BlockState stateChannel = stateBest;
-                    uint32_t nChannelHeight = 0;
-                    if(TAO::Ledger::GetLastState(stateChannel, context.nChannel))
-                        nChannelHeight = stateChannel.nChannelHeight;
-                    context = context.WithLastTemplateChannelHeight(nChannelHeight);
+                    context = context.WithLastTemplateUnifiedHeight(stateBest.nHeight);
                 }
 
                 /* Persist session and lane state for cross-lane recovery */
@@ -2476,18 +2459,18 @@ namespace LLP
 
                 /* Atomic transform: update MINER_READY state on CURRENT value in mapMiners.
                  * Captures the connection-specific mutations (subscription, encryption,
-                 * channel height) and applies them atomically to avoid TOCTOU races. */
+                 * unified height) and applies them atomically to avoid TOCTOU races. */
                 {
                     bool fSubscribed = context.fSubscribedToNotifications;
                     uint32_t nSubChannel = context.nSubscribedChannel;
                     bool fEncReady = context.fEncryptionReady;
                     std::vector<uint8_t> vKey = context.vChaChaKey;
-                    uint32_t nLastChHeight = context.nLastTemplateChannelHeight;
+                    uint32_t nLastUH = context.nLastTemplateUnifiedHeight;
                     StatelessMinerManager::Get().TransformMiner(context.strAddress,
-                        [fSubscribed, nSubChannel, fEncReady, vKey, nLastChHeight](const MiningContext& current) {
+                        [fSubscribed, nSubChannel, fEncReady, vKey, nLastUH](const MiningContext& current) {
                             MiningContext updated = current
                                 .WithSubscription(nSubChannel)
-                                .WithLastTemplateChannelHeight(nLastChHeight)
+                                .WithLastTemplateUnifiedHeight(nLastUH)
                                 .WithTimestamp(runtime::unifiedtimestamp());
                             if(fEncReady && !vKey.empty())
                                 updated = updated.WithChaChaKey(vKey);
@@ -4598,7 +4581,7 @@ namespace LLP
             LOCK(MUTEX);
             context = context.WithTimestamp(runtime::unifiedtimestamp())
                              .WithHeight(nUnifiedHeight)
-                             .WithLastTemplateChannelHeight(nChannelHeight)
+                             .WithLastTemplateUnifiedHeight(nUnifiedHeight)
                              .WithHashLastBlock(TAO::Ledger::ChainState::hashBestChain.load());
         }
 
