@@ -574,15 +574,18 @@ namespace LLP
         uint64_t nNotificationsSent;        // Total notifications sent to this session
 
         /* Per-connection template tracking for staleness detection.
-         * Tracks the CHANNEL-SPECIFIC height (not unified height) of the last template
+         * Tracks the UNIFIED height (not channel-specific height) of the last template
          * sent to this miner. Only updated when an actual template (BLOCK_DATA) is sent.
-         * Used by GET_ROUND to detect channel height changes and auto-send new templates.
-         * 
-         * IMPORTANT: This must be a channel height (e.g., Prime=2325188, Hash=4165000),
-         * NOT a unified height (e.g., 6594321). Unified height changes when ANY channel
-         * mines a block, but templates only need refreshing when the MINER'S channel advances.
+         * Used by GET_ROUND to detect height changes and auto-send new templates.
+         *
+         * CRITICAL: Multi-channel mining blockchains require ALL channels to get fresh
+         * templates whenever ANY channel mines a block.  Every unified height tip move
+         * changes hashPrevBlock (create.cpp:434: block.hashPrevBlock = tStateBest.GetHash()),
+         * so even if a Prime miner's channel height hasn't changed, a Hash block advancing
+         * unified height means the Prime miner's template has a stale hashPrevBlock that
+         * would be rejected at SUBMIT_BLOCK time.
          */
-        uint32_t nLastTemplateChannelHeight;  // Channel height of last template sent to this miner
+        uint32_t nLastTemplateUnifiedHeight;  // Unified height when last template was sent to this miner
 
         /** hashLastBlock: snapshot of ChainState::hashBestChain at template-creation time.
          *
@@ -682,14 +685,15 @@ namespace LLP
          **/
         MiningContext WithHeight(uint32_t nHeight_) const;
 
-        /** WithLastTemplateChannelHeight
+        /** WithLastTemplateUnifiedHeight
          *
-         *  Returns a new context with updated last template channel height.
+         *  Returns a new context with updated last template unified height.
          *  Only updated when an actual template (BLOCK_DATA) is sent to the miner.
-         *  MUST be set to the channel-specific height, NOT the unified height.
+         *  MUST be set to the UNIFIED height, because every unified tip move changes
+         *  hashPrevBlock and ALL channels need fresh templates.
          *
          **/
-        MiningContext WithLastTemplateChannelHeight(uint32_t nLastTemplateChannelHeight_) const;
+        MiningContext WithLastTemplateUnifiedHeight(uint32_t nLastTemplateUnifiedHeight_) const;
 
         /** WithHashLastBlock
          *

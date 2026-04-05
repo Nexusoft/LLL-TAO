@@ -27,7 +27,9 @@ ________________________________________________________________________________
 #include <LLP/include/push_notification.h>
 #include <LLP/include/keepalive_v2.h>
 #include <LLP/include/session_status.h>
+#include <LLP/include/session_status_utility.h>
 #include <LLP/include/session_start_packet.h>
+#include <LLP/include/round_state_utility.h>
 #include <LLP/types/miner.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
@@ -118,7 +120,7 @@ namespace LLP
     , fRewardBound(false)
     , fSubscribedToNotifications(false)
     , nSubscribedChannel(0)
-    , nLastTemplateChannelHeight(0)
+    , nLastTemplateUnifiedHeight(0)
     , nMinerPrevblockSuffix({})
     {
     }
@@ -146,7 +148,7 @@ namespace LLP
     , fRewardBound(false)
     , fSubscribedToNotifications(false)
     , nSubscribedChannel(0)
-    , nLastTemplateChannelHeight(0)
+    , nLastTemplateUnifiedHeight(0)
     , nMinerPrevblockSuffix({})
     {
     }
@@ -174,7 +176,7 @@ namespace LLP
     , fRewardBound(false)
     , fSubscribedToNotifications(false)
     , nSubscribedChannel(0)
-    , nLastTemplateChannelHeight(0)
+    , nLastTemplateUnifiedHeight(0)
     , nMinerPrevblockSuffix({})
     {
     }
@@ -638,7 +640,8 @@ namespace LLP
                 return true;
             }
 
-            /* Handle SESSION_STATUS (219 / 0xDB) — miner queries lane health on legacy port */
+            /* Handle SESSION_STATUS (219 / 0xDB) — miner queries lane health on legacy port.
+             * Uses SessionStatusUtility for robust SessionManager-based session lookup. */
             if(PACKET.HEADER == OpcodeUtility::Opcodes::SESSION_STATUS)
             {
                 debug::log(2, FUNCTION, "SESSION_STATUS received from ", GetAddress().ToStringIP());
@@ -650,35 +653,24 @@ namespace LLP
                     return true;
                 }
 
-                /* Validate session */
-                auto optContext = StatelessMinerManager::Get().GetMinerContextBySessionID(req.session_id);
-                if(!optContext.has_value())
-                {
-                    debug::error(FUNCTION, "SESSION_STATUS: unknown session_id=0x", std::hex, req.session_id, std::dec);
-                    /* Respond with zero flags — miner knows session is invalid */
-                    auto vAck = SessionStatus::BuildAckPayload(req.session_id, 0u, 0u, req.status_flags);
-                    respond(OpcodeUtility::Opcodes::SESSION_STATUS_ACK, vAck);
-                    return true;
-                }
+                /* Validate session and build ACK via shared utility.
+                 * Uses GetMinerContextBySessionID() for robust cross-port lookup. */
+                bool fSessionValid = false;
+                auto vAck = SessionStatusUtility::ValidateAndBuildAck(
+                    req, SessionStatus::LANE_SECONDARY_ALIVE, fSessionValid);
 
-                /* Build lane health flags */
-                uint32_t nLaneHealth = 0;
-                nLaneHealth |= SessionStatus::LANE_SECONDARY_ALIVE;   // legacy lane: we are ON it
-                nLaneHealth |= SessionStatus::LANE_AUTHENTICATED;     // session validated above
-
-                const uint32_t nUptime = static_cast<uint32_t>(optContext->GetSessionDuration(runtime::unifiedtimestamp()));
-                auto vAck = SessionStatus::BuildAckPayload(req.session_id, nLaneHealth, nUptime, req.status_flags);
                 respond(OpcodeUtility::Opcodes::SESSION_STATUS_ACK, vAck);
 
-                debug::log(2, FUNCTION, "SESSION_STATUS_ACK sent: lane_health=0x", std::hex, nLaneHealth, std::dec);
+                if(!fSessionValid)
+                    return true;
+
+                debug::log(2, FUNCTION, "SESSION_STATUS_ACK sent (legacy lane)");
 
                 /* TWO-STEP RE-ARM INVARIANT (PR #375):
-                 * SendChannelNotification() consumes m_force_next_push (sets it false)
-                 * AND resets m_last_template_push_time to "now". Without re-arming
-                 * m_force_next_push before any follow-up template send, the push is
-                 * throttled (elapsed ~0 ms). See stateless SESSION_STATUS handler and
-                 * handle_miner_ready_stateless() for the canonical two-step pattern. */
-                if((req.status_flags & SessionStatus::MINER_DEGRADED) &&
+                 * BUG 1 FIX: Legacy lane was missing the re-arm + SendLegacyTemplate() step.
+                 * set → SendChannelNotification → re-set → SendLegacyTemplate.
+                 * Without this, degraded miners on legacy port never received recovery templates. */
+                if(SessionStatusUtility::IsDegraded(req) &&
                     fSubscribedToNotifications && (nSubscribedChannel == 1 || nSubscribedChannel == 2))
                 {
                     debug::log(0, FUNCTION, "⚠️ Miner reports DEGRADED — forcing recovery push via legacy SESSION_STATUS");
@@ -688,7 +680,12 @@ namespace LLP
                         m_get_block_cooldown = AutoCoolDown(std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS));
                     }
                     SendChannelNotification();
-                    debug::log(0, FUNCTION, "✓ Degraded-recovery notification pushed on legacy lane");
+                    {
+                        LOCK(MUTEX);
+                        m_force_next_push = true;  // re-arm: SendChannelNotification() consumed the flag
+                    }
+                    SendLegacyTemplate();
+                    debug::log(0, FUNCTION, "✓ Degraded-recovery template pushed on legacy lane — miner should exit DEGRADED");
                 }
 
                 return true;
@@ -1920,6 +1917,104 @@ namespace LLP
     }
 
 
+    /* SendLegacyTemplate - Send a full block template to the miner via the legacy lane.
+     * Mirrors SendStatelessTemplate() on the stateless lane (port 9323).
+     * General-purpose legacy template delivery method.
+     * Used by SESSION_STATUS degraded-recovery, and anywhere the legacy lane
+     * needs to push a fresh template independent of SendChannelNotification().
+     *
+     * BUG 1 FIX: Legacy lane was missing this method, causing degraded miners
+     * on the legacy port to never receive recovery templates. */
+    void Miner::SendLegacyTemplate()
+    {
+        /* Early exit if shutdown is in progress */
+        if(config::fShutdown.load())
+        {
+            debug::log(2, FUNCTION, "Shutdown in progress; skipping legacy template");
+            return;
+        }
+
+        /* Thread-safe context access and push throttle */
+        uint32_t nChannelCopy;
+        {
+            LOCK(MUTEX);
+
+            /* Push throttle — same pattern as SendStatelessTemplate().
+             * TWO-STEP RE-ARM INVARIANT: caller must re-arm m_force_next_push
+             * after SendChannelNotification() before calling this method. */
+            auto now = std::chrono::steady_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                now - m_last_template_push_time).count();
+            if(m_force_next_push)
+            {
+                m_force_next_push = false;
+            }
+            else if(m_last_template_push_time != std::chrono::steady_clock::time_point{} &&
+                elapsed < MiningConstants::TEMPLATE_PUSH_MIN_INTERVAL_MS)
+            {
+                debug::log(1, FUNCTION, "⏳ Legacy template push throttled — ", elapsed,
+                           "ms since last push (min ", MiningConstants::TEMPLATE_PUSH_MIN_INTERVAL_MS, "ms)");
+                return;
+            }
+            m_last_template_push_time = now;
+
+            /* Validate channel */
+            nChannelCopy = nChannel.load();
+            if(nChannelCopy != 1 && nChannelCopy != 2)
+            {
+                debug::error(FUNCTION, "Invalid channel: ", nChannelCopy);
+                return;
+            }
+        }
+
+        /* Create block template */
+        TAO::Ledger::Block* pBlock = new_block();
+        if(!pBlock)
+        {
+            debug::log(2, FUNCTION, "new_block() returned nullptr — retrying once");
+            pBlock = new_block();
+        }
+        if(!pBlock)
+        {
+            debug::error(FUNCTION, "Failed to create block template after retry");
+            return;
+        }
+
+        /* Serialize block template */
+        std::vector<uint8_t> vBlockData = pBlock->Serialize();
+        if(vBlockData.empty())
+        {
+            debug::error(FUNCTION, "Invalid block serialization: empty");
+            return;
+        }
+
+        /* Get chain state for metadata */
+        RoundStateUtility::ChainHeightSnapshot snap = RoundStateUtility::CaptureHeights();
+        uint32_t nChannelHeight = RoundStateUtility::GetChannelHeight(snap, nChannelCopy);
+
+        /* Build payload: 12-byte metadata + block data using shared utility */
+        std::vector<uint8_t> vMetadata = RoundStateUtility::SerializeTemplateMetadata(
+            snap.nUnifiedHeight, nChannelHeight, pBlock->nBits);
+
+        std::vector<uint8_t> vPayload;
+        vPayload.reserve(vMetadata.size() + vBlockData.size());
+        vPayload.insert(vPayload.end(), vMetadata.begin(), vMetadata.end());
+        vPayload.insert(vPayload.end(), vBlockData.begin(), vBlockData.end());
+
+        /* Send via stateless framing (16-bit opcode) */
+        respond_stateless(OpcodeUtility::Stateless::BLOCK_DATA, vPayload);
+
+        debug::log(2, FUNCTION, "✅ Legacy template sent (",
+                   vPayload.size(), " bytes) channel=", pBlock->nChannel,
+                   " height=", pBlock->nHeight, " to ", GetAddress().ToStringIP());
+
+        StatelessMinerManager::Get().IncrementTemplatesServed();
+
+        /* Update last template unified height */
+        nLastTemplateUnifiedHeight = snap.nUnifiedHeight;
+    }
+
+
     /* Stateless handler for GET_BLOCK - creates a block template and sends BLOCK_DATA */
     bool Miner::handle_get_block_stateless()
     {
@@ -2034,14 +2129,12 @@ namespace LLP
             respond_auto(BLOCK_DATA, result.vPayload);
         }
 
-        /* Update last template channel height after sending template.
-         * Uses channel-specific height (not unified) to prevent false template
-         * refreshes when other channels mine blocks. */
+        /* Update last template unified height after sending template.
+         * Uses UNIFIED height — every tip move changes hashPrevBlock,
+         * so ALL channels need fresh templates regardless of which channel mined. */
         {
             TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
-            TAO::Ledger::BlockState stateChannel = stateBest;
-            if(TAO::Ledger::GetLastState(stateChannel, nChannel))
-                nLastTemplateChannelHeight = stateChannel.nChannelHeight;
+            nLastTemplateUnifiedHeight = stateBest.nHeight;
         }
 
         /* Notify Colin agent: template pushed via GET_BLOCK */
@@ -2086,16 +2179,13 @@ namespace LLP
             {
                 MiningContext updatedCtx = optCtx.value();
 
-                /* Record the current channel height so recovery can avoid stale-height throttling */
-                TAO::Ledger::BlockState stateChannel = TAO::Ledger::ChainState::tStateBest.load();
-                uint32_t nChannelHeight = 0;
-                if(TAO::Ledger::GetLastState(stateChannel, nChannel))
-                    nChannelHeight = stateChannel.nChannelHeight;
-                updatedCtx = updatedCtx.WithLastTemplateChannelHeight(nChannelHeight);
+                /* Record the current unified height so recovery can avoid stale-height throttling */
+                TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
+                updatedCtx = updatedCtx.WithLastTemplateUnifiedHeight(stateBest.nHeight);
 
                 SessionRecoveryManager::Get().SaveSession(updatedCtx);
-                debug::log(2, FUNCTION, "Session saved (write-ahead) before push notification: channelHeight=",
-                           nChannelHeight, " keyID=", updatedCtx.hashKeyID.SubString());
+                debug::log(2, FUNCTION, "Session saved (write-ahead) before push notification: unifiedHeight=",
+                           stateBest.nHeight, " keyID=", updatedCtx.hashKeyID.SubString());
             }
         }
 
@@ -2493,10 +2583,30 @@ namespace LLP
     }
 
 
-    /* Stateless handler for GET_ROUND - sends NEW_ROUND with height information */
+    /* Stateless handler for GET_ROUND - sends NEW_ROUND with height information.
+     * Uses RoundStateUtility shared utility for chain snapshot and serialization.
+     * BUG 3 FIX: Added rate limiting (2-second minimum interval). */
     bool Miner::handle_get_round_stateless()
     {
         debug::log(2, FUNCTION, "GET_ROUND from ", GetAddress().ToStringIP());
+
+        /* BUG 3 FIX: Rate limit GET_ROUND on legacy lane (2-second minimum interval).
+         * Previously only the stateless lane had rate limiting. */
+        {
+            LOCK(MUTEX);
+            auto now = std::chrono::steady_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                now - m_lastGetRoundTime).count();
+            if(m_lastGetRoundTime != std::chrono::steady_clock::time_point{} &&
+               elapsed < MIN_GET_ROUND_INTERVAL_MS)
+            {
+                debug::log(1, FUNCTION, "GET_ROUND rate limited for ", GetAddress().ToStringIP(),
+                           " (", elapsed, "ms < ", MIN_GET_ROUND_INTERVAL_MS, "ms)");
+                respond_auto(OLD_ROUND, std::vector<uint8_t>());
+                return true;
+            }
+            m_lastGetRoundTime = now;
+        }
 
         /* Check authentication for stateless miners */
         if(!fMinerAuthenticated)
@@ -2508,89 +2618,36 @@ namespace LLP
             return debug::error(FUNCTION, "Authentication required for stateless miner commands");
         }
 
-        /* Verify blockchain is ready */
-        TAO::Ledger::BlockState tStateBest = TAO::Ledger::ChainState::tStateBest.load();
+        /* Capture consistent chain height snapshot via shared utility */
+        RoundStateUtility::ChainHeightSnapshot snap = RoundStateUtility::CaptureHeights();
 
-        /* Check if blockchain is initialized (height == 0 means not yet initialized) */
-        if(tStateBest.nHeight == 0)
+        if(!snap.fValid)
         {
             debug::error(FUNCTION, "GET_ROUND: Blockchain not initialized from ", GetAddress().ToStringIP());
             return true;
         }
 
-        /* Get unified height */
-        uint32_t nUnifiedHeight = tStateBest.nHeight;
+        /* Build and send 16-byte NEW_ROUND response using shared utility */
+        std::vector<uint8_t> vResponse = RoundStateUtility::SerializeRoundResponse(snap);
 
-        /* Reuse a single BlockState for all GetLastState calls to reduce memory allocation. */
-        TAO::Ledger::BlockState stateChannel = tStateBest;
+        debug::log(2, FUNCTION, "Sending NEW_ROUND (16 bytes): unified=", snap.nUnifiedHeight,
+                   " prime=", snap.nPrimeHeight, " hash=", snap.nHashHeight,
+                   " stake=", snap.nStakeHeight);
 
-        /* Get Prime channel height (Channel 1) */
-        uint32_t nPrimeHeight = 0;
-        stateChannel = tStateBest;
-        if(TAO::Ledger::GetLastState(stateChannel, 1))
-            nPrimeHeight = stateChannel.nChannelHeight;
-
-        /* Get Hash channel height (Channel 2) */
-        uint32_t nHashHeight = 0;
-        stateChannel = tStateBest;
-        if(TAO::Ledger::GetLastState(stateChannel, 2))
-            nHashHeight = stateChannel.nChannelHeight;
-
-        /* Get Stake channel height (Channel 0) */
-        uint32_t nStakeHeight = 0;
-        stateChannel = tStateBest;
-        if(TAO::Ledger::GetLastState(stateChannel, 0))
-            nStakeHeight = stateChannel.nChannelHeight;
-
-        /* Build 16-byte NEW_ROUND response
-         * Format: [Unified(4)][Prime(4)][Hash(4)][Stake(4)] = 16 bytes total */
-        std::vector<uint8_t> vResponse;
-        vResponse.reserve(16);
-
-        std::vector<uint8_t> vUnified = convert::uint2bytes(nUnifiedHeight);
-        std::vector<uint8_t> vPrime = convert::uint2bytes(nPrimeHeight);
-        std::vector<uint8_t> vHash = convert::uint2bytes(nHashHeight);
-        std::vector<uint8_t> vStake = convert::uint2bytes(nStakeHeight);
-
-        vResponse.insert(vResponse.end(), vUnified.begin(), vUnified.end());
-        vResponse.insert(vResponse.end(), vPrime.begin(), vPrime.end());
-        vResponse.insert(vResponse.end(), vHash.begin(), vHash.end());
-        vResponse.insert(vResponse.end(), vStake.begin(), vStake.end());
-
-        /* Verify packet size */
-        if(vResponse.size() != 16)
-        {
-            debug::error(FUNCTION, "GET_ROUND: Response size mismatch (", vResponse.size(), " != 16)");
-            return true;
-        }
-
-        debug::log(2, FUNCTION, "Sending NEW_ROUND (16 bytes): unified=", nUnifiedHeight,
-                   " prime=", nPrimeHeight, " hash=", nHashHeight, " stake=", nStakeHeight);
-
-        /* Send the NEW_ROUND response */
         respond_auto(NEW_ROUND, vResponse);
 
         /* GET_ROUND COMPATIBILITY: AUTO-SEND TEMPLATE
-         * Legacy miners using GET_ROUND polling expect to receive BLOCK_DATA automatically
-         * when the height changes, without needing to explicitly request GET_BLOCK.
-         *
-         * CRITICAL: Use channel-specific height comparison (not unified height).
-         * Only send a new template when the miner's OWN channel advances.
-         * Using unified height would trigger unnecessary template sends when OTHER
-         * channels mine blocks, causing ~40% wasted mining work. */
-        uint32_t nCurrentChannelHeight = 0;
-        if(nChannel == 1)
-            nCurrentChannelHeight = nPrimeHeight;
-        else if(nChannel == 2)
-            nCurrentChannelHeight = nHashHeight;
+         * CRITICAL: Use UNIFIED height — every tip move (any channel) changes
+         * hashPrevBlock, requiring ALL channels to get fresh templates. */
+        uint32_t nCurrentChannelHeight = RoundStateUtility::GetChannelHeight(snap, nChannel);
+        bool fUnifiedHeightChanged = RoundStateUtility::IsTemplateStale(
+            nLastTemplateUnifiedHeight, snap);
 
-        bool fChannelHeightChanged = (nLastTemplateChannelHeight != nCurrentChannelHeight);
-
-        if(fChannelHeightChanged)
+        if(fUnifiedHeightChanged)
         {
-            debug::log(2, FUNCTION, "Channel ", nChannel.load(), " advanced: ",
-                       nLastTemplateChannelHeight, " -> ", nCurrentChannelHeight,
-                       " - auto-sending template");
+            debug::log(2, FUNCTION, "Unified height advanced: ",
+                       nLastTemplateUnifiedHeight, " -> ", snap.nUnifiedHeight,
+                       " - auto-sending template for channel ", nChannel.load());
 
             TAO::Ledger::Block* pBlock = new_block();
 
@@ -2605,38 +2662,25 @@ namespace LLP
 
                     if(!vBlockData.empty())
                     {
-                        /* Build 12-byte metadata prefix + 216-byte block = 228 bytes */
-                        uint32_t nUnifiedHeightRound = static_cast<uint32_t>(TAO::Ledger::ChainState::nBestHeight.load());
-                        uint32_t nBitsVal = pBlock->nBits;
+                        /* Build payload: 12-byte metadata + block data using shared utility */
+                        std::vector<uint8_t> vMetadata = RoundStateUtility::SerializeTemplateMetadata(
+                            snap.nUnifiedHeight, nCurrentChannelHeight, pBlock->nBits);
+
                         std::vector<uint8_t> vPayload;
-                        vPayload.reserve(12 + vBlockData.size());
-                        vPayload.push_back((nUnifiedHeightRound  >> 24) & 0xFF);
-                        vPayload.push_back((nUnifiedHeightRound  >> 16) & 0xFF);
-                        vPayload.push_back((nUnifiedHeightRound  >>  8) & 0xFF);
-                        vPayload.push_back((nUnifiedHeightRound       ) & 0xFF);
-                        vPayload.push_back((nCurrentChannelHeight >> 24) & 0xFF);
-                        vPayload.push_back((nCurrentChannelHeight >> 16) & 0xFF);
-                        vPayload.push_back((nCurrentChannelHeight >>  8) & 0xFF);
-                        vPayload.push_back((nCurrentChannelHeight      ) & 0xFF);
-                        vPayload.push_back((nBitsVal             >> 24) & 0xFF);
-                        vPayload.push_back((nBitsVal             >> 16) & 0xFF);
-                        vPayload.push_back((nBitsVal             >>  8) & 0xFF);
-                        vPayload.push_back((nBitsVal                  ) & 0xFF);
+                        vPayload.reserve(vMetadata.size() + vBlockData.size());
+                        vPayload.insert(vPayload.end(), vMetadata.begin(), vMetadata.end());
                         vPayload.insert(vPayload.end(), vBlockData.begin(), vBlockData.end());
 
                         respond_stateless(OpcodeUtility::Stateless::BLOCK_DATA, vPayload);
 
                         debug::log(2, FUNCTION, "Auto-sent BLOCK_DATA (",
                                    vPayload.size(), " bytes) channel=",
-                                   pBlock->nChannel, " height=", pBlock->nHeight,
-                                   " [nUnifiedHeight=", nUnifiedHeightRound,
-                                   " nChannelHeight=", nCurrentChannelHeight,
-                                   " nBits=", nBitsVal, "]");
+                                   pBlock->nChannel, " height=", pBlock->nHeight);
 
                         StatelessMinerManager::Get().IncrementTemplatesServed();
 
-                        /* Update last template channel height only after successful send */
-                        nLastTemplateChannelHeight = nCurrentChannelHeight;
+                        /* Update last template unified height only after successful send */
+                        nLastTemplateUnifiedHeight = snap.nUnifiedHeight;
                     }
                 }
                 catch(const std::exception& e) {

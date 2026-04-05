@@ -473,11 +473,12 @@ namespace LLP
         bool                 fSubscribedToNotifications;  // Whether miner subscribed to push notifications
         uint32_t             nSubscribedChannel;         // Channel miner subscribed to (1=Prime, 2=Hash)
 
-        /* Per-connection template tracking (channel-specific, not unified).
-         * Tracks the channel height at which the last BLOCK_DATA was sent.
-         * Used by GET_ROUND auto-send to only send templates when the miner's
-         * OWN channel advances, preventing ~40% wasted work from cross-channel triggers. */
-        uint32_t             nLastTemplateChannelHeight;
+        /* Per-connection template tracking (UNIFIED height, not channel-specific).
+         * Tracks the unified height at which the last BLOCK_DATA was sent.
+         * Used by GET_ROUND auto-send to send templates whenever ANY channel mines
+         * a block, because every unified tip move changes hashPrevBlock and ALL
+         * channels need fresh templates (multi-channel mining requirement). */
+        uint32_t             nLastTemplateUnifiedHeight;
 
         /* KEEPALIVE telemetry fields.
          * nMinerPrevblockSuffix: raw bytes [4..7] of keepalive payload (hashPrevBlock_lo32 as-sent). */
@@ -509,6 +510,15 @@ namespace LLP
          *  Protected by MUTEX.
          **/
         AutoCoolDown m_get_block_cooldown{std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS)};
+
+        /** Minimum interval between GET_ROUND requests (2 seconds).
+         *  BUG 3 FIX: Legacy lane previously had no rate limiting for GET_ROUND.
+         *  Matches stateless lane's RateLimitConfig::MIN_GET_ROUND_INTERVAL_MS. */
+        static constexpr uint32_t MIN_GET_ROUND_INTERVAL_MS = 2000;
+
+        /** Timestamp of the last GET_ROUND request.  Protected by MUTEX.
+         *  Used for rate limiting GET_ROUND on the legacy lane. */
+        std::chrono::steady_clock::time_point m_lastGetRoundTime;
 
         /** Consecutive GET_BLOCK rate-limit counter (legacy lane).
          *
@@ -622,6 +632,20 @@ namespace LLP
          *
          **/
         void SendChannelNotification();
+
+
+        /** SendLegacyTemplate
+         *
+         *  Send a full block template to the miner via the legacy lane.
+         *  Mirrors SendStatelessTemplate() on the stateless lane.
+         *  Used by the SESSION_STATUS degraded-recovery two-step re-arm pattern
+         *  to deliver a fresh template after SendChannelNotification().
+         *
+         *  BUG 1 FIX: Legacy lane was missing this method, causing degraded miners
+         *  on the legacy port to never receive recovery templates.
+         *
+         **/
+        void SendLegacyTemplate();
 
 
 

@@ -129,7 +129,7 @@ namespace LLP
     , nSubscribedChannel(0)
     , nLastNotificationTime(0)
     , nNotificationsSent(0)
-    , nLastTemplateChannelHeight(0)
+    , nLastTemplateUnifiedHeight(0)
     , hashLastBlock(0)
     , nMinerPrevblockSuffix({})
     , nStakeHeight(0)
@@ -179,7 +179,7 @@ namespace LLP
     , nSubscribedChannel(0)
     , nLastNotificationTime(0)
     , nNotificationsSent(0)
-    , nLastTemplateChannelHeight(0)
+    , nLastTemplateUnifiedHeight(0)
     , hashLastBlock(0)
     , nMinerPrevblockSuffix({})
     , nStakeHeight(0)
@@ -221,10 +221,10 @@ namespace LLP
         return c;
     }
 
-    MiningContext MiningContext::WithLastTemplateChannelHeight(uint32_t nLastTemplateChannelHeight_) const
+    MiningContext MiningContext::WithLastTemplateUnifiedHeight(uint32_t nLastTemplateUnifiedHeight_) const
     {
         MiningContext c = *this;
-        c.nLastTemplateChannelHeight = nLastTemplateChannelHeight_;
+        c.nLastTemplateUnifiedHeight = nLastTemplateUnifiedHeight_;
         return c;
     }
 

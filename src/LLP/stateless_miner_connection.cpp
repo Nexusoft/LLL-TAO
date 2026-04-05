@@ -29,7 +29,9 @@ ________________________________________________________________________________
 #include <LLP/include/mining_constants.h>
 #include <LLP/include/mining_session_health.h>
 #include <LLP/include/session_status.h>
+#include <LLP/include/session_status_utility.h>
 #include <LLP/include/session_start_packet.h>
+#include <LLP/include/round_state_utility.h>
 
 #include <LLP/include/stateless_get_block_handler.h>
 #include <LLP/templates/events.h>
@@ -828,17 +830,13 @@ namespace LLP
                     debug::log(0, "   Encryption ready: YES");
                 }
                 
-                /* Update last template channel height and persist session BEFORE sending
+                /* Update last template unified height and persist session BEFORE sending
                  * the template (write-ahead pattern): even if the connection drops after
                  * SaveSession but before the template arrives, the recovered session already
-                 * carries the correct channel height, preventing stale-height throttling. */
+                 * carries the correct unified height, preventing stale-height throttling. */
                 {
                     TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
-                    TAO::Ledger::BlockState stateChannel = stateBest;
-                    uint32_t nChannelHeight = 0;
-                    if(TAO::Ledger::GetLastState(stateChannel, context.nChannel))
-                        nChannelHeight = stateChannel.nChannelHeight;
-                    context = context.WithLastTemplateChannelHeight(nChannelHeight);
+                    context = context.WithLastTemplateUnifiedHeight(stateBest.nHeight);
                 }
 
                 /* Persist session and lane state for cross-lane recovery */
@@ -855,18 +853,18 @@ namespace LLP
 
                 /* Atomic transform: update MINER_READY state on CURRENT value in mapMiners.
                  * Captures the connection-specific mutations (subscription, encryption,
-                 * channel height) and applies them atomically to avoid TOCTOU races. */
+                 * unified height) and applies them atomically to avoid TOCTOU races. */
                 {
                     bool fSubscribed = context.fSubscribedToNotifications;
                     uint32_t nSubChannel = context.nSubscribedChannel;
                     bool fEncReady = context.fEncryptionReady;
                     std::vector<uint8_t> vKey = context.vChaChaKey;
-                    uint32_t nLastChHeight = context.nLastTemplateChannelHeight;
+                    uint32_t nLastUH = context.nLastTemplateUnifiedHeight;
                     StatelessMinerManager::Get().TransformMiner(context.strAddress,
-                        [fSubscribed, nSubChannel, fEncReady, vKey, nLastChHeight](const MiningContext& current) {
+                        [fSubscribed, nSubChannel, fEncReady, vKey, nLastUH](const MiningContext& current) {
                             MiningContext updated = current
                                 .WithSubscription(nSubChannel)
-                                .WithLastTemplateChannelHeight(nLastChHeight)
+                                .WithLastTemplateUnifiedHeight(nLastUH)
                                 .WithTimestamp(runtime::unifiedtimestamp());
                             if(fEncReady && !vKey.empty())
                                 updated = updated.WithChaChaKey(vKey);
@@ -1130,13 +1128,9 @@ namespace LLP
                  * hashLastBlock snapshot (primary staleness anchor, StakeMinter pattern). */
                 {
                     TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
-                    TAO::Ledger::BlockState stateChannel = stateBest;
-                    uint32_t nChannelHeight = 0;
-                    if(TAO::Ledger::GetLastState(stateChannel, context.nChannel))
-                        nChannelHeight = stateChannel.nChannelHeight;
                     context = context.WithTimestamp(runtime::unifiedtimestamp())
                                      .WithHeight(stateBest.nHeight)
-                                     .WithLastTemplateChannelHeight(nChannelHeight)
+                                     .WithLastTemplateUnifiedHeight(stateBest.nHeight)
                                      .WithHashLastBlock(TAO::Ledger::ChainState::hashBestChain.load());
                 }
 
@@ -1144,17 +1138,12 @@ namespace LLP
                  * avoiding TOCTOU race with NotifyNewRound. We capture chain state
                  * outside the transform and apply it atomically. */
                 {
-                    uint32_t nChannel = context.nChannel;
                     StatelessMinerManager::Get().TransformMiner(context.strAddress,
-                        [nChannel](const MiningContext& current) {
+                        [](const MiningContext& current) {
                             TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
-                            TAO::Ledger::BlockState stateChannel = stateBest;
-                            uint32_t nCH = 0;
-                            if(TAO::Ledger::GetLastState(stateChannel, nChannel))
-                                nCH = stateChannel.nChannelHeight;
                             return current.WithTimestamp(runtime::unifiedtimestamp())
                                           .WithHeight(stateBest.nHeight)
-                                          .WithLastTemplateChannelHeight(nCH)
+                                          .WithLastTemplateUnifiedHeight(stateBest.nHeight)
                                           .WithHashLastBlock(TAO::Ledger::ChainState::hashBestChain.load());
                         }, 1);
                 }
@@ -2132,356 +2121,173 @@ namespace LLP
                 return true;
             }
 
-            /* Handle GET_ROUND - requires authentication */
-            /* FULL HEIGHT PICTURE: Returns [Unified(4)][Prime(4)][Hash(4)][Stake(4)] = 16 bytes total */
+            /* Handle GET_ROUND - requires authentication
+             * Uses RoundStateUtility shared utility for chain snapshot and serialization. */
             if(PACKET.HEADER == GET_ROUND)
             {
-                // AUTOMATED RATE LIMIT CHECK
+                /* Rate limit check (2-second minimum interval) */
                 if (!CheckRateLimit(GET_ROUND)) {
-                    // Request rejected - violation already recorded
-                    // Send OLD_ROUND response to indicate rate limited
                     debug::log(1, FUNCTION, "GET_ROUND rate limited for ", GetAddress().ToStringIP());
                     StatelessPacket response(StatelessOpcodes::OLD_ROUND);
                     response.LENGTH = 0;
                     respond(response);
-                    return true;  // Handled (rejected)
+                    return true;
                 }
-                
+
                 /* Check authentication */
                 if(!context.fAuthenticated)
                 {
                     debug::log(0, FUNCTION, "Unauthenticated miner attempted GET_ROUND from ",
                                GetAddress().ToStringIP());
-                    std::vector<uint8_t> vFail(1, 0x00);
-                    StatelessPacket response(StatelessOpcodes::OLD_ROUND);
-                    response.DATA = vFail;
-                    respond(response);
-                    return true;
-                }
-
-                /* Check that miner has set a valid channel for stateless mining
-                 * Note: Stateless mining only supports Prime (1) and Hash (2) channels.
-                 * Stake mining (channel 0) uses a different mechanism and does NOT use GET_ROUND.
-                 * Therefore, context.nChannel == 0 means "not set" or "invalid for stateless mining".
-                 */
-                if(context.nChannel == 0)
-                {
-                    debug::error(FUNCTION, "GET_ROUND: Miner has not set channel (use SET_CHANNEL)");
-                    debug::error(FUNCTION, "   Valid channels: 1=Prime, 2=Hash (Stake mining uses different mechanism)");
                     StatelessPacket response(StatelessOpcodes::OLD_ROUND);
                     response.LENGTH = 0;
                     respond(response);
                     return true;
                 }
 
-                /* ═════════════════════════════════════════════════════════════════════════ */
-                /* FULL HEIGHT PICTURE: GET_ROUND/NEW_ROUND 16-byte response               */
-                /* ═════════════════════════════════════════════════════════════════════════ */
+                /* Validate channel (1=Prime, 2=Hash only; Stake uses different mechanism) */
+                if(context.nChannel == 0)
+                {
+                    debug::error(FUNCTION, "GET_ROUND: Miner has not set channel (use SET_CHANNEL)");
+                    StatelessPacket response(StatelessOpcodes::OLD_ROUND);
+                    response.LENGTH = 0;
+                    respond(response);
+                    return true;
+                }
 
-                /* Get current blockchain state */
-                TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
+                /* Capture consistent chain height snapshot via shared utility.
+                 * Uses raw GetLastState() and tightly-scoped atomic reads. */
+                RoundStateUtility::ChainHeightSnapshot snap = RoundStateUtility::CaptureHeights();
 
-                /* Validate blockchain is ready */
-                if(stateBest.nHeight == 0)
+                if(!snap.fValid)
                 {
                     debug::error(FUNCTION, "GET_ROUND: Blockchain not initialized");
-                    return true;  // Don't send response
+                    return true;
                 }
 
-                /* Guard 1 — mirror StakeMinter:534 pattern.
-                 * Snapshot hashBestChain at GET_ROUND time and compare against
-                 * context.hashLastBlock (captured when BLOCK_DATA was last pushed).
-                 * This catches same-height reorgs that fChannelHeightChanged misses.
-                 * Skip the check if no template has been pushed yet (hashLastBlock == 0). */
-                const uint1024_t hashCurrentBest = TAO::Ledger::ChainState::hashBestChain.load();
-                const bool fHashChanged = (context.hashLastBlock != uint1024_t(0) &&
-                                           context.hashLastBlock != hashCurrentBest);
+                /* Guard 1 — reorg detection (StakeMinter:534 pattern) */
+                const bool fHashChanged = RoundStateUtility::IsReorgDetected(
+                    context.hashLastBlock, snap);
 
-                uint32_t nUnifiedHeight = stateBest.nHeight;
+                /* Channel-specific height for staleness check */
+                uint32_t nChannelHeight = RoundStateUtility::GetChannelHeight(snap, context.nChannel);
 
-                /* Get all three channel heights for full height picture */
-                TAO::Ledger::BlockState stateChannel = stateBest;
-                uint32_t nPrimeHeight = 0;
-                uint32_t nHashHeight  = 0;
-                uint32_t nStakeHeight = 0;
+                debug::log(3, FUNCTION, "GET_ROUND: unified=", snap.nUnifiedHeight,
+                           " prime=", snap.nPrimeHeight, " hash=", snap.nHashHeight,
+                           " stake=", snap.nStakeHeight);
 
-                stateChannel = stateBest;
-                if(TAO::Ledger::GetLastState(stateChannel, 1))
-                    nPrimeHeight = stateChannel.nChannelHeight;
-                else
-                    debug::warning(FUNCTION, "GET_ROUND: Could not get Prime channel state");
+                /* Build and send 16-byte NEW_ROUND response using convert::uint2bytes() */
+                std::vector<uint8_t> vData = RoundStateUtility::SerializeRoundResponse(snap);
 
-                stateChannel = stateBest;
-                if(TAO::Ledger::GetLastState(stateChannel, 2))
-                    nHashHeight = stateChannel.nChannelHeight;
-                else
-                    debug::warning(FUNCTION, "GET_ROUND: Could not get Hash channel state");
+                debug::log(2, FUNCTION, "📤 Sending NEW_ROUND (16 bytes): Unified=", snap.nUnifiedHeight,
+                           " Prime=", snap.nPrimeHeight, " Hash=", snap.nHashHeight,
+                           " Stake=", snap.nStakeHeight, " to ", GetAddress().ToStringIP());
 
-                stateChannel = stateBest;
-                if(TAO::Ledger::GetLastState(stateChannel, 0))
-                    nStakeHeight = stateChannel.nChannelHeight;
-                else
-                    debug::warning(FUNCTION, "GET_ROUND: Could not get Stake channel state");
-
-                /* Channel-specific height for staleness check (used in auto-send below).
-                 * Note: channel 0 (Stake) is already rejected above via the nChannel == 0 guard.
-                 * Explicit three-way assignment here for clarity and future-proofing. */
-                uint32_t nChannelHeight = 0;
-                if(context.nChannel == 1)
-                    nChannelHeight = nPrimeHeight;
-                else if(context.nChannel == 2)
-                    nChannelHeight = nHashHeight;
-                /* else channel 0 stake (unreachable) remains 0 */
-
-                debug::log(3, FUNCTION, "GET_ROUND: unified=", nUnifiedHeight,
-                           " prime=", nPrimeHeight, " hash=", nHashHeight, " stake=", nStakeHeight);
-
-                /* ═════════════════════════════════════════════════════════════════════════ */
-                /* BUILD 16-BYTE RESPONSE — Full Height Picture                             */
-                /* ═════════════════════════════════════════════════════════════════════════ */
-
-                /* Response format (16 bytes, big-endian):
-                 *   [0-3]   uint32_t nUnifiedHeight  - Current blockchain height (all channels)
-                 *   [4-7]   uint32_t nPrimeHeight    - Last confirmed Prime channel height
-                 *   [8-11]  uint32_t nHashHeight     - Last confirmed Hash channel height
-                 *   [12-15] uint32_t nStakeHeight    - Last confirmed Stake channel height
-                 *
-                 * Total: 16 bytes
-                 *
-                 * This matches the legacy miner.cpp handle_get_round_stateless() format and
-                 * gives NexusMiner the Full Height Picture needed to populate HeightTracker
-                 * (unified_height, prime_height, hash_height, stake_height) without relying
-                 * solely on KeepAlive ACKs for channel-height data.
-                 */
-                std::vector<uint8_t> vData;
-                vData.reserve(16);
-
-                /* Unified height [0-3] big-endian */
-                vData.push_back((nUnifiedHeight >> 24) & 0xFF);
-                vData.push_back((nUnifiedHeight >> 16) & 0xFF);
-                vData.push_back((nUnifiedHeight >>  8) & 0xFF);
-                vData.push_back((nUnifiedHeight >>  0) & 0xFF);
-
-                /* Prime height [4-7] big-endian */
-                vData.push_back((nPrimeHeight >> 24) & 0xFF);
-                vData.push_back((nPrimeHeight >> 16) & 0xFF);
-                vData.push_back((nPrimeHeight >>  8) & 0xFF);
-                vData.push_back((nPrimeHeight >>  0) & 0xFF);
-
-                /* Hash height [8-11] big-endian */
-                vData.push_back((nHashHeight >> 24) & 0xFF);
-                vData.push_back((nHashHeight >> 16) & 0xFF);
-                vData.push_back((nHashHeight >>  8) & 0xFF);
-                vData.push_back((nHashHeight >>  0) & 0xFF);
-
-                /* Stake height [12-15] big-endian */
-                vData.push_back((nStakeHeight >> 24) & 0xFF);
-                vData.push_back((nStakeHeight >> 16) & 0xFF);
-                vData.push_back((nStakeHeight >>  8) & 0xFF);
-                vData.push_back((nStakeHeight >>  0) & 0xFF);
-
-                /* CRITICAL VALIDATION: Ensure exactly 16 bytes */
-                if(vData.size() != 16)
-                {
-                    debug::error(FUNCTION, "GET_ROUND: Response size mismatch!");
-                    debug::error(FUNCTION, "   Expected: 16 bytes");
-                    debug::error(FUNCTION, "   Got: ", vData.size(), " bytes");
-                    debug::error(FUNCTION, "   This is a CRITICAL BUG - miner will receive malformed packet");
-                    return true;  // Don't send malformed response
-                }
-
-                debug::log(3, FUNCTION, "✓ Sending NEW_ROUND (16 bytes): Unified=", nUnifiedHeight,
-                           " Prime=", nPrimeHeight, " Hash=", nHashHeight, " Stake=", nStakeHeight);
-
-                /* Diagnostic logging */
-                debug::log(2, "════════════════════════════════════════════════════════════");
-                debug::log(2, "📤 STATELESS PORT (9323): SENDING NEW_ROUND RESPONSE");
-                debug::log(2, "════════════════════════════════════════════════════════════");
-                debug::log(2, "   Thread ID:      ", std::this_thread::get_id());
-                debug::log(2, "   To:             ", GetAddress().ToStringIP());
-                debug::log(2, "   Opcode:         NEW_ROUND (204/0xCC)");
-                debug::log(2, "   Response Data (16 bytes, big-endian):");
-                debug::log(2, "      Unified Height:  ", nUnifiedHeight);
-                debug::log(2, "      Prime Height:    ", nPrimeHeight);
-                debug::log(2, "      Hash Height:     ", nHashHeight);
-                debug::log(2, "      Stake Height:    ", nStakeHeight);
-                debug::log(2, "   Packet Size:    16 bytes");
-                debug::log(2, "   ⚠️  NOTE:");
-                debug::log(2, "      This is the legacy polling flow response.");
-                debug::log(2, "      Preferred flow is push notifications:");
-                debug::log(2, "         MINER_READY → ", (context.nChannel == 1 ? "PRIME" : "HASH"), "_BLOCK_AVAILABLE");
-                debug::log(2, "════════════════════════════════════════════════════════════");
-
-                /* Send response */
                 StatelessPacket response(StatelessOpcodes::NEW_ROUND);
                 response.DATA = vData;
                 response.LENGTH = static_cast<uint32_t>(vData.size());
                 respond(response);
-                
-                /* ═════════════════════════════════════════════════════════════════════════ */
-                /* GET_ROUND COMPATIBILITY: AUTO-SEND TEMPLATE                              */
-                /* ═════════════════════════════════════════════════════════════════════════ */
-                
-                /* DESIGN RATIONALE:
-                 * Legacy miners using GET_ROUND polling expect to receive BLOCK_DATA automatically
-                 * when the height changes, without needing to explicitly request GET_BLOCK.
-                 * 
-                 * This compatibility behavior:
-                 * 1. Sends NEW_ROUND first (already done above)
-                 * 2. Checks if miner's CHANNEL height has changed (not unified height)
-                 * 3. If changed: Auto-send BLOCK_DATA (like GET_BLOCK does)
-                 * 4. If same: Skip template send (miner already has current template)
-                 * 
-                 * IMPORTANT: We compare channel-specific heights, not unified heights.
-                 * A Hash block advancing unified height should NOT trigger a Prime template refresh.
-                 * Only when the miner's own channel advances do we need a new template.
-                 *
-                 * This maintains backward compatibility with legacy mining software that relies
-                 * on GET_ROUND polling to automatically deliver templates.
-                 */
-                
-                /* Template staleness check: Guard 1 (StakeMinter pattern).
-                 * fChannelHeightChanged catches normal block advances.
-                 * fHashChanged catches same-height reorgs (hash advances without integer change).
-                 * Either condition means the miner's current template is stale. */
-                bool fChannelHeightChanged = (context.nLastTemplateChannelHeight != nChannelHeight);
-                bool fTemplateStale = fChannelHeightChanged || fHashChanged;
-                
-                debug::log(2, "");
-                debug::log(2, "   🔍 GET_ROUND GUARD-1 CHECK (StakeMinter pattern):");
-                debug::log(2, "      Miner's last template channel height:  ", context.nLastTemplateChannelHeight);
-                debug::log(2, "      Current channel height:                ", nChannelHeight, " (channel ", context.nChannel, ")");
-                debug::log(2, "      Channel height changed:                ", (fChannelHeightChanged ? "YES" : "NO"));
-                debug::log(2, "      hashLastBlock:   ", context.hashLastBlock.SubString());
-                debug::log(2, "      hashCurrentBest: ", hashCurrentBest.SubString());
-                debug::log(2, "      Hash changed (reorg):                  ", (fHashChanged ? "YES" : "NO"));
-                debug::log(2, "      Template stale:                        ", (fTemplateStale ? "YES" : "NO"));
-                
+
+                /* GET_ROUND COMPATIBILITY: AUTO-SEND TEMPLATE
+                 * Legacy miners polling GET_ROUND expect BLOCK_DATA when height changes.
+                 * CRITICAL: Use UNIFIED height — every tip move (any channel) changes
+                 * hashPrevBlock, requiring ALL channels to get fresh templates. */
+                bool fUnifiedHeightChanged = RoundStateUtility::IsTemplateStale(
+                    context.nLastTemplateUnifiedHeight, snap);
+                bool fTemplateStale = fUnifiedHeightChanged || fHashChanged;
+
+                debug::log(2, FUNCTION, "GET_ROUND staleness: unified_changed=",
+                           (fUnifiedHeightChanged ? "YES" : "NO"),
+                           " reorg=", (fHashChanged ? "YES" : "NO"),
+                           " stale=", (fTemplateStale ? "YES" : "NO"));
+
                 if(fTemplateStale)
                 {
-                    debug::log(2, "");
-                    if(fHashChanged)
-                        debug::log(2, "   ✅ REORG DETECTED (hashBestChain changed) - AUTO-SENDING TEMPLATE");
-                    else
-                        debug::log(2, "   ✅ CHANNEL HEIGHT CHANGED - AUTO-SENDING TEMPLATE");
-                    debug::log(2, "      This maintains compatibility with legacy miners");
-                    debug::log(2, "      that expect GET_ROUND to automatically deliver templates.");
-                    debug::log(2, "");
-                    debug::log(2, "   📤 Creating new block template...");
-                    
-                    /* Create a new block template with retry logic.
-                     * Retry up to 3 times with a short sleep (50ms) between retries
-                     * to handle the common case where the chain tip advanced mid-creation. */
+                    /* Create block template with retry logic (up to 3 attempts) */
                     TAO::Ledger::Block* pBlock = nullptr;
+                    bool fTemplateSent = false;
                     for(int nRetry = 0; nRetry < 3 && !pBlock; ++nRetry)
                     {
                         pBlock = new_block();
                         if(!pBlock && nRetry < 2)
                         {
-                            debug::log(2, FUNCTION, "GET_ROUND auto-send: new_block() returned nullptr, retry ", nRetry + 1, "/3");
+                            debug::log(2, FUNCTION, "GET_ROUND auto-send: new_block() retry ", nRetry + 1, "/3");
                             runtime::sleep(50);
                         }
                     }
-                    
+
                     if(!pBlock)
                     {
-                        debug::error(FUNCTION, "   ❌ GET_ROUND auto-send: new_block() failed after 3 retries");
-                        debug::error(FUNCTION, "      Template will not be sent - miner will retry on next GET_ROUND");
+                        debug::error(FUNCTION, "GET_ROUND auto-send: new_block() failed after 3 retries");
                     }
                     else
                     {
                         try {
-                            /* Serialize block template (216 bytes for Tritium) */
                             std::vector<uint8_t> vBlockData = pBlock->Serialize();
-                            
-                            if(vBlockData.empty())
+
+                            if(!vBlockData.empty())
                             {
-                                debug::error(FUNCTION, "   ❌ GET_ROUND auto-send: Serialization returned empty");
-                            }
-                            else
-                            {
-                                /* Build 12-byte metadata prefix + 216-byte block = 228 bytes */
-                                uint32_t nBitsVal = pBlock->nBits;
+                                /* Build payload: 12-byte metadata + block data using shared utility */
+                                std::vector<uint8_t> vMetadata = RoundStateUtility::SerializeTemplateMetadata(
+                                    snap.nUnifiedHeight, nChannelHeight, pBlock->nBits);
+
                                 std::vector<uint8_t> vPayload;
-                                vPayload.reserve(12 + vBlockData.size());
-                                vPayload.push_back((nUnifiedHeight >> 24) & 0xFF);
-                                vPayload.push_back((nUnifiedHeight >> 16) & 0xFF);
-                                vPayload.push_back((nUnifiedHeight >>  8) & 0xFF);
-                                vPayload.push_back((nUnifiedHeight      ) & 0xFF);
-                                vPayload.push_back((nChannelHeight >> 24) & 0xFF);
-                                vPayload.push_back((nChannelHeight >> 16) & 0xFF);
-                                vPayload.push_back((nChannelHeight >>  8) & 0xFF);
-                                vPayload.push_back((nChannelHeight      ) & 0xFF);
-                                vPayload.push_back((nBitsVal       >> 24) & 0xFF);
-                                vPayload.push_back((nBitsVal       >> 16) & 0xFF);
-                                vPayload.push_back((nBitsVal       >>  8) & 0xFF);
-                                vPayload.push_back((nBitsVal            ) & 0xFF);
+                                vPayload.reserve(vMetadata.size() + vBlockData.size());
+                                vPayload.insert(vPayload.end(), vMetadata.begin(), vMetadata.end());
                                 vPayload.insert(vPayload.end(), vBlockData.begin(), vBlockData.end());
 
-                                /* Send BLOCK_DATA packet */
                                 StatelessPacket blockPacket(OpcodeUtility::Stateless::BLOCK_DATA);
                                 blockPacket.DATA   = vPayload;
                                 blockPacket.LENGTH = static_cast<uint32_t>(vPayload.size());
                                 respond(blockPacket);
 
-                                debug::log(2, "   ✅ BLOCK_DATA AUTO-SENT!");
-                                debug::log(2, "      Template size:    ", vPayload.size(), " bytes");
-                                debug::log(2, "      Block height:     ", pBlock->nHeight);
-                                debug::log(2, "      Block channel:    ", pBlock->nChannel);
-                                debug::log(2, "      Merkle root:      ", pBlock->hashMerkleRoot.SubString());
-                                debug::log(2, "      [nUnifiedHeight=", nUnifiedHeight,
-                                           " nChannelHeight=", nChannelHeight,
-                                           " nBits=", nBitsVal, "]");
+                                debug::log(2, FUNCTION, "✅ BLOCK_DATA auto-sent (",
+                                           vPayload.size(), " bytes) channel=", pBlock->nChannel,
+                                           " height=", pBlock->nHeight);
 
-                                /* Update statistics */
                                 StatelessMinerManager::Get().IncrementTemplatesServed();
+                                fTemplateSent = true;
+                            }
+                            else
+                            {
+                                debug::error(FUNCTION, "GET_ROUND auto-send: Serialization returned empty");
                             }
                         }
                         catch(const std::exception& e) {
-                            debug::error(FUNCTION, "   ❌ GET_ROUND auto-send exception: ", e.what());
+                            debug::error(FUNCTION, "GET_ROUND auto-send exception: ", e.what());
                         }
+                    }
+
+                    /* Only advance staleness anchors if template was actually sent.
+                     * If creation failed, keep old anchors so the next GET_ROUND retries. */
+                    if(fTemplateSent)
+                    {
+                        context = context.WithTimestamp(runtime::unifiedtimestamp())
+                                         .WithHeight(snap.nUnifiedHeight)
+                                         .WithLastTemplateUnifiedHeight(snap.nUnifiedHeight)
+                                         .WithHashLastBlock(snap.hashBestChain);
+                    }
+                    else
+                    {
+                        context = context.WithTimestamp(runtime::unifiedtimestamp());
                     }
                 }
                 else
                 {
-                    debug::log(2, "");
-                    debug::log(2, "   ℹ️  TEMPLATE NOT STALE - NO TEMPLATE SENT");
-                    debug::log(2, "      Miner should continue mining current template.");
-                    debug::log(2, "      If miner needs new template, use GET_BLOCK explicitly.");
-                }
-                
-                debug::log(2, "════════════════════════════════════════════════════════════");
-                
-                /* Update context timestamp, height, and staleness anchors.
-                 * Only update channel height / hashLastBlock if a new template was sent
-                 * (prevents duplicate sends on the next GET_ROUND poll). */
-                if(fTemplateStale)
-                {
-                    /* Template was (or was attempted to be) sent — advance both anchors */
-                    context = context.WithTimestamp(runtime::unifiedtimestamp())
-                                     .WithHeight(nUnifiedHeight)
-                                     .WithLastTemplateChannelHeight(nChannelHeight)
-                                     .WithHashLastBlock(hashCurrentBest);
-                }
-                else
-                {
-                    /* Update only timestamp, keep existing staleness anchors */
                     context = context.WithTimestamp(runtime::unifiedtimestamp());
                 }
 
-                /* Atomic transform: apply updates to CURRENT value in mapMiners,
-                 * avoiding TOCTOU race with NotifyNewRound. */
+                /* Atomic transform: apply updates to CURRENT value in mapMiners */
                 {
-                    bool fStale = fTemplateStale;
-                    uint32_t nUH = nUnifiedHeight;
-                    uint32_t nCH = nChannelHeight;
-                    uint1024_t hashBest = hashCurrentBest;
+                    bool fSent = fTemplateStale;  // approximation for atomic transform
+                    uint32_t nUH = snap.nUnifiedHeight;
+                    uint1024_t hashBest = snap.hashBestChain;
                     StatelessMinerManager::Get().TransformMiner(context.strAddress,
-                        [fStale, nUH, nCH, hashBest](const MiningContext& current) {
-                            if(fStale)
+                        [fSent, nUH, hashBest](const MiningContext& current) {
+                            if(fSent)
                                 return current.WithTimestamp(runtime::unifiedtimestamp())
                                               .WithHeight(nUH)
-                                              .WithLastTemplateChannelHeight(nCH)
+                                              .WithLastTemplateUnifiedHeight(nUH)
                                               .WithHashLastBlock(hashBest);
                             else
                                 return current.WithTimestamp(runtime::unifiedtimestamp());
@@ -2624,17 +2430,13 @@ namespace LLP
                     m_force_next_push = true;
                 }
 
-                /* Update last template channel height and persist session BEFORE sending
+                /* Update last template unified height and persist session BEFORE sending
                  * the template (write-ahead pattern): even if the connection drops after
                  * SaveSession but before the template arrives, the recovered session already
-                 * carries the correct channel height, preventing stale-height throttling. */
+                 * carries the correct unified height, preventing stale-height throttling. */
                 {
                     TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
-                    TAO::Ledger::BlockState stateChannel = stateBest;
-                    uint32_t nChannelHeight = 0;
-                    if(TAO::Ledger::GetLastState(stateChannel, context.nChannel))
-                        nChannelHeight = stateChannel.nChannelHeight;
-                    context = context.WithLastTemplateChannelHeight(nChannelHeight);
+                    context = context.WithLastTemplateUnifiedHeight(stateBest.nHeight);
                 }
 
                 /* Persist session and lane state for cross-lane recovery */
@@ -2657,18 +2459,18 @@ namespace LLP
 
                 /* Atomic transform: update MINER_READY state on CURRENT value in mapMiners.
                  * Captures the connection-specific mutations (subscription, encryption,
-                 * channel height) and applies them atomically to avoid TOCTOU races. */
+                 * unified height) and applies them atomically to avoid TOCTOU races. */
                 {
                     bool fSubscribed = context.fSubscribedToNotifications;
                     uint32_t nSubChannel = context.nSubscribedChannel;
                     bool fEncReady = context.fEncryptionReady;
                     std::vector<uint8_t> vKey = context.vChaChaKey;
-                    uint32_t nLastChHeight = context.nLastTemplateChannelHeight;
+                    uint32_t nLastUH = context.nLastTemplateUnifiedHeight;
                     StatelessMinerManager::Get().TransformMiner(context.strAddress,
-                        [fSubscribed, nSubChannel, fEncReady, vKey, nLastChHeight](const MiningContext& current) {
+                        [fSubscribed, nSubChannel, fEncReady, vKey, nLastUH](const MiningContext& current) {
                             MiningContext updated = current
                                 .WithSubscription(nSubChannel)
-                                .WithLastTemplateChannelHeight(nLastChHeight)
+                                .WithLastTemplateUnifiedHeight(nLastUH)
                                 .WithTimestamp(runtime::unifiedtimestamp());
                             if(fEncReady && !vKey.empty())
                                 updated = updated.WithChaChaKey(vKey);
@@ -2680,7 +2482,8 @@ namespace LLP
                 return true;
             }
 
-            /* SESSION_STATUS (0xD0DB) — miner queries session/lane health on stateless port */
+            /* SESSION_STATUS (0xD0DB) — miner queries session/lane health on stateless port.
+             * Uses SessionStatusUtility for robust SessionManager-based session lookup. */
             if(PACKET.HEADER == OpcodeUtility::Stateless::SESSION_STATUS)
             {
                 debug::log(2, FUNCTION, "SESSION_STATUS received from ", GetAddress().ToStringIP());
@@ -2697,51 +2500,31 @@ namespace LLP
                     return true;
                 }
 
-                /* Validate session ID matches this connection's context */
-                if(req.session_id != context.nSessionId)
-                {
-                    debug::error(FUNCTION, "SESSION_STATUS: session_id mismatch (got=0x", std::hex,
-                                 req.session_id, " expected=0x", context.nSessionId, std::dec, ")");
-                    auto vAck = SessionStatus::BuildAckPayload(context.nSessionId, 0u, 0u, req.status_flags);
-                    StatelessPacket mismatchResponse(OpcodeUtility::Stateless::SESSION_STATUS_ACK);
-                    mismatchResponse.DATA = vAck;
-                    mismatchResponse.LENGTH = static_cast<uint32_t>(vAck.size());
-                    respond(mismatchResponse);
-                    return true;
-                }
+                /* Validate session and build ACK via shared utility.
+                 * Uses GetMinerContextBySessionID() for robust cross-port lookup. */
+                bool fSessionValid = false;
+                auto vAck = SessionStatusUtility::ValidateAndBuildAck(
+                    req, SessionStatus::LANE_PRIMARY_ALIVE, fSessionValid);
 
-                /* Build lane health flags — stateless lane: we are ON it + authenticated */
-                uint32_t nLaneHealth = 0;
-                nLaneHealth |= SessionStatus::LANE_PRIMARY_ALIVE;  // stateless lane alive
-                nLaneHealth |= SessionStatus::LANE_AUTHENTICATED;  // session verified
-
-                const uint32_t nUptime = static_cast<uint32_t>(context.GetSessionDuration(runtime::unifiedtimestamp()));
-                auto vAck = SessionStatus::BuildAckPayload(req.session_id, nLaneHealth, nUptime, req.status_flags);
                 StatelessPacket ackResponse(OpcodeUtility::Stateless::SESSION_STATUS_ACK);
                 ackResponse.DATA = vAck;
                 ackResponse.LENGTH = static_cast<uint32_t>(vAck.size());
                 respond(ackResponse);
 
-                debug::log(2, FUNCTION, "SESSION_STATUS_ACK sent: lane_health=0x", std::hex, nLaneHealth, std::dec);
+                if(!fSessionValid)
+                    return true;
+
+                debug::log(2, FUNCTION, "SESSION_STATUS_ACK sent (stateless lane)");
 
                 /* TWO-STEP RE-ARM INVARIANT (PR #375):
-                 * SendChannelNotification() consumes m_force_next_push (sets it false)
-                 * AND resets m_last_template_push_time to "now". Without re-arming
-                 * m_force_next_push before SendStatelessTemplate(), elapsed = ~0 ms
-                 * and the template push is throttled (TEMPLATE_PUSH_MIN_INTERVAL_MS).
-                 * Always: set → SendChannelNotification → re-set → SendStatelessTemplate.
-                 * See: MINER_READY handler for the canonical pattern. */
-                if((req.status_flags & SessionStatus::MINER_DEGRADED) &&
+                 * set → SendChannelNotification → re-set → SendStatelessTemplate */
+                if(SessionStatusUtility::IsDegraded(req) &&
                     context.fAuthenticated && (context.nChannel == 1 || context.nChannel == 2))
                 {
                     debug::log(0, FUNCTION, "⚠️ Miner reports DEGRADED — forcing recovery template push via SESSION_STATUS");
                     {
                         LOCK(MUTEX);
                         m_force_next_push = true;
-                        /* Reset cooldown so any pending GET_BLOCK from the miner is served
-                         * immediately rather than being held for GET_BLOCK_COOLDOWN_SECONDS.
-                         * Uses reassignment (not Reset()) to restore "never triggered" state
-                         * where Ready() returns true immediately. */
                         m_get_block_cooldown = AutoCoolDown(std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS));
                     }
                     SendChannelNotification();
@@ -4798,7 +4581,7 @@ namespace LLP
             LOCK(MUTEX);
             context = context.WithTimestamp(runtime::unifiedtimestamp())
                              .WithHeight(nUnifiedHeight)
-                             .WithLastTemplateChannelHeight(nChannelHeight)
+                             .WithLastTemplateUnifiedHeight(nUnifiedHeight)
                              .WithHashLastBlock(TAO::Ledger::ChainState::hashBestChain.load());
         }
 

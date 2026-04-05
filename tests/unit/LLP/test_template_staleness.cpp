@@ -20,21 +20,23 @@ ________________________________________________________________________________
 using namespace LLP;
 
 
-/** Test Suite: Template Staleness Detection (Channel-Height Based)
+/** Test Suite: Template Staleness Detection (Unified-Height Based)
  *
- *  These tests verify per-connection template tracking using CHANNEL-SPECIFIC
- *  heights (nLastTemplateChannelHeight) and MINER_READY compatibility opcodes.
+ *  These tests verify per-connection template tracking using UNIFIED heights
+ *  (nLastTemplateUnifiedHeight) and MINER_READY compatibility opcodes.
  *
- *  CRITICAL DESIGN: Templates are tracked by channel height, NOT unified height.
- *  A Hash block advancing unified height must NOT trigger a Prime template refresh.
- *  Only when the miner's own channel advances do we need a new template.
+ *  CRITICAL DESIGN: Templates are tracked by UNIFIED height, because every
+ *  tip move (any channel) changes hashPrevBlock.  ALL channels need fresh
+ *  templates whenever the unified height advances.  In a multi-channel mining
+ *  blockchain, a Hash block advancing unified height DOES trigger a Prime
+ *  template refresh — the old hashPrevBlock is stale.
  *
  *  Key behaviors:
- *  1. nLastTemplateChannelHeight tracks the channel height of the miner's last template
- *  2. GET_ROUND auto-sends template when nLastTemplateChannelHeight != current channel height
+ *  1. nLastTemplateUnifiedHeight tracks the unified height when last template was sent
+ *  2. GET_ROUND auto-sends template when nLastTemplateUnifiedHeight != current unified height
  *  3. MINER_READY compatibility opcodes (0xD090, 0x00D8) remap to 0xD0D8
  *  4. Multiple miners have independent template tracking
- *  5. Cross-channel blocks do NOT trigger false template refreshes
+ *  5. Cross-channel blocks DO trigger template refreshes (hashPrevBlock changes)
  *
  **/
 
@@ -47,16 +49,16 @@ namespace ChannelHeightConstants
 }
 
 
-TEST_CASE("MiningContext nLastTemplateChannelHeight Initialization", "[template_staleness]")
+TEST_CASE("MiningContext nLastTemplateUnifiedHeight Initialization", "[template_staleness]")
 {
-    SECTION("Default constructor initializes nLastTemplateChannelHeight to 0")
+    SECTION("Default constructor initializes nLastTemplateUnifiedHeight to 0")
     {
         MiningContext ctx;
 
-        REQUIRE(ctx.nLastTemplateChannelHeight == 0);
+        REQUIRE(ctx.nLastTemplateUnifiedHeight == 0);
     }
 
-    SECTION("Parameterized constructor initializes nLastTemplateChannelHeight to 0")
+    SECTION("Parameterized constructor initializes nLastTemplateUnifiedHeight to 0")
     {
         MiningContext ctx(
             1,          // nChannel (Prime)
@@ -70,29 +72,29 @@ TEST_CASE("MiningContext nLastTemplateChannelHeight Initialization", "[template_
             uint256_t(0)  // hashGenesis
         );
 
-        REQUIRE(ctx.nLastTemplateChannelHeight == 0);
+        REQUIRE(ctx.nLastTemplateUnifiedHeight == 0);
         REQUIRE(ctx.nHeight == 6594320);
     }
 }
 
 
-TEST_CASE("MiningContext WithLastTemplateChannelHeight Immutability", "[template_staleness]")
+TEST_CASE("MiningContext WithLastTemplateUnifiedHeight Immutability", "[template_staleness]")
 {
-    SECTION("WithLastTemplateChannelHeight returns new context with updated channel height")
+    SECTION("WithLastTemplateUnifiedHeight returns new context with updated unified height")
     {
         MiningContext ctx;
         ctx = ctx.WithChannel(1).WithHeight(6594320);
 
-        MiningContext updated = ctx.WithLastTemplateChannelHeight(ChannelHeightConstants::PRIME_CHANNEL_HEIGHT);
+        MiningContext updated = ctx.WithLastTemplateUnifiedHeight(ChannelHeightConstants::UNIFIED_HEIGHT);
 
-        /* New context has updated last template channel height */
-        REQUIRE(updated.nLastTemplateChannelHeight == ChannelHeightConstants::PRIME_CHANNEL_HEIGHT);
+        /* New context has updated last template unified height */
+        REQUIRE(updated.nLastTemplateUnifiedHeight == ChannelHeightConstants::UNIFIED_HEIGHT);
 
         /* Original context unchanged (immutability) */
-        REQUIRE(ctx.nLastTemplateChannelHeight == 0);
+        REQUIRE(ctx.nLastTemplateUnifiedHeight == 0);
     }
 
-    SECTION("WithLastTemplateChannelHeight preserves other fields")
+    SECTION("WithLastTemplateUnifiedHeight preserves other fields")
     {
         MiningContext ctx;
         ctx = ctx.WithChannel(1)
@@ -100,177 +102,170 @@ TEST_CASE("MiningContext WithLastTemplateChannelHeight Immutability", "[template
                  .WithAuth(true)
                  .WithSession(42);
 
-        MiningContext updated = ctx.WithLastTemplateChannelHeight(ChannelHeightConstants::PRIME_CHANNEL_HEIGHT);
+        MiningContext updated = ctx.WithLastTemplateUnifiedHeight(ChannelHeightConstants::UNIFIED_HEIGHT);
 
-        REQUIRE(updated.nLastTemplateChannelHeight == ChannelHeightConstants::PRIME_CHANNEL_HEIGHT);
+        REQUIRE(updated.nLastTemplateUnifiedHeight == ChannelHeightConstants::UNIFIED_HEIGHT);
         REQUIRE(updated.nChannel == 1);
         REQUIRE(updated.nHeight == 6594320);
         REQUIRE(updated.fAuthenticated == true);
         REQUIRE(updated.nSessionId == 42);
     }
 
-    SECTION("Can chain WithLastTemplateChannelHeight with other With methods")
+    SECTION("Can chain WithLastTemplateUnifiedHeight with other With methods")
     {
         MiningContext ctx;
 
         MiningContext updated = ctx.WithHeight(6594321)
-                                   .WithLastTemplateChannelHeight(ChannelHeightConstants::PRIME_CHANNEL_HEIGHT)
+                                   .WithLastTemplateUnifiedHeight(ChannelHeightConstants::UNIFIED_HEIGHT)
                                    .WithTimestamp(1000000);
 
         REQUIRE(updated.nHeight == 6594321);
-        REQUIRE(updated.nLastTemplateChannelHeight == ChannelHeightConstants::PRIME_CHANNEL_HEIGHT);
+        REQUIRE(updated.nLastTemplateUnifiedHeight == ChannelHeightConstants::UNIFIED_HEIGHT);
         REQUIRE(updated.nTimestamp == 1000000);
     }
 }
 
 
-TEST_CASE("GET_ROUND Channel Height Change Detection", "[template_staleness][get_round]")
+TEST_CASE("GET_ROUND Unified Height Change Detection", "[template_staleness][get_round]")
 {
-    SECTION("Channel height change detected: auto-send template")
+    SECTION("Unified height change detected: auto-send template")
     {
-        /* Prime miner has template for channel height 2325188 */
+        /* Prime miner has template for unified height 6594321 */
         MiningContext ctx;
         ctx = ctx.WithChannel(1)
-                 .WithLastTemplateChannelHeight(2325188);
+                 .WithLastTemplateUnifiedHeight(ChannelHeightConstants::UNIFIED_HEIGHT);
 
-        /* New Prime block found: channel height advances to 2325189 */
-        uint32_t nCurrentChannelHeight = 2325189;
+        /* New block found (any channel): unified height advances */
+        uint32_t nCurrentUnifiedHeight = ChannelHeightConstants::UNIFIED_HEIGHT + 1;
 
-        /* Channel height changed: should auto-send template */
-        bool fChannelHeightChanged = (ctx.nLastTemplateChannelHeight != nCurrentChannelHeight);
-        REQUIRE(fChannelHeightChanged == true);
+        /* Unified height changed: should auto-send template */
+        bool fTemplateStale = (ctx.nLastTemplateUnifiedHeight != nCurrentUnifiedHeight);
+        REQUIRE(fTemplateStale == true);
     }
 
-    SECTION("No channel height change: no duplicate template")
+    SECTION("No unified height change: no duplicate template")
     {
-        /* Prime miner has template for channel height 2325188 */
+        /* Prime miner has template for unified height 6594321 */
         MiningContext ctx;
         ctx = ctx.WithChannel(1)
-                 .WithLastTemplateChannelHeight(2325188);
+                 .WithLastTemplateUnifiedHeight(ChannelHeightConstants::UNIFIED_HEIGHT);
 
-        /* No new Prime blocks */
-        uint32_t nCurrentChannelHeight = 2325188;
+        /* No new blocks on any channel */
+        uint32_t nCurrentUnifiedHeight = ChannelHeightConstants::UNIFIED_HEIGHT;
 
-        /* Channel height unchanged: no duplicate template needed */
-        bool fChannelHeightChanged = (ctx.nLastTemplateChannelHeight != nCurrentChannelHeight);
-        REQUIRE(fChannelHeightChanged == false);
+        /* Unified height unchanged: no duplicate template needed */
+        bool fTemplateStale = (ctx.nLastTemplateUnifiedHeight != nCurrentUnifiedHeight);
+        REQUIRE(fTemplateStale == false);
     }
 
     SECTION("First GET_ROUND after connection always triggers template send")
     {
-        /* Fresh connection: nLastTemplateChannelHeight = 0 */
+        /* Fresh connection: nLastTemplateUnifiedHeight = 0 */
         MiningContext ctx;
         ctx = ctx.WithChannel(1);
 
-        /* Current Prime channel height */
-        uint32_t nCurrentChannelHeight = 2325188;
+        /* Current unified height */
+        uint32_t nCurrentUnifiedHeight = ChannelHeightConstants::UNIFIED_HEIGHT;
 
-        /* First request always triggers (0 != 2325188) */
-        bool fChannelHeightChanged = (ctx.nLastTemplateChannelHeight != nCurrentChannelHeight);
-        REQUIRE(fChannelHeightChanged == true);
+        /* First request always triggers (0 != 6594321) */
+        bool fTemplateStale = (ctx.nLastTemplateUnifiedHeight != nCurrentUnifiedHeight);
+        REQUIRE(fTemplateStale == true);
     }
 
-    SECTION("Cross-channel block does NOT trigger false template refresh")
+    SECTION("Cross-channel block DOES trigger template refresh (hashPrevBlock changes)")
     {
-        /* CRITICAL TEST: This is the bug the reviewer identified.
-         * A Hash block advancing unified height must NOT trigger a Prime template refresh.
+        /* CRITICAL TEST: Multi-channel mining blockchains require ALL channels
+         * to get fresh templates whenever ANY channel mines a block, because
+         * hashPrevBlock = tStateBest.GetHash() (see create.cpp:434).
          *
-         * Scenario: Prime miner at channel height 2325188, Hash block found.
+         * Scenario: Prime miner at unified height 6594321, Hash block found.
          * - Unified: 6594321 → 6594322  (changed)
-         * - Prime:   2325188 → 2325188  (UNCHANGED)
-         * - Expected: No auto-send (Prime channel didn't advance)
+         * - Prime channel height: 2325188 → 2325188  (unchanged, but irrelevant)
+         * - Expected: Auto-send (unified height advanced = new hashPrevBlock)
          */
         MiningContext ctx;
         ctx = ctx.WithChannel(1)  // Prime miner
-                 .WithLastTemplateChannelHeight(2325188);
+                 .WithLastTemplateUnifiedHeight(ChannelHeightConstants::UNIFIED_HEIGHT);
 
-        /* Hash block found: unified height changes, but Prime channel height stays the same */
-        uint32_t nCurrentPrimeChannelHeight = 2325188;  // UNCHANGED
+        /* Hash block found: unified height advances even though Prime channel unchanged */
+        uint32_t nNewUnifiedHeight = ChannelHeightConstants::UNIFIED_HEIGHT + 1;
 
-        /* Using channel height comparison: no false trigger */
-        bool fChannelHeightChanged = (ctx.nLastTemplateChannelHeight != nCurrentPrimeChannelHeight);
-        REQUIRE(fChannelHeightChanged == false);
-
-        /* Verify: if we had used unified height, it would have FALSELY triggered */
-        uint32_t nOldUnified = ChannelHeightConstants::UNIFIED_HEIGHT;
-        uint32_t nNewUnified = ChannelHeightConstants::UNIFIED_HEIGHT + 1;
-        bool fUnifiedChanged = (nOldUnified != nNewUnified);
-        REQUIRE(fUnifiedChanged == true);  // Unified DID change...
-        REQUIRE(fChannelHeightChanged == false);  // ...but channel did NOT
+        /* Unified height changed: template IS stale (new hashPrevBlock) */
+        bool fTemplateStale = (ctx.nLastTemplateUnifiedHeight != nNewUnifiedHeight);
+        REQUIRE(fTemplateStale == true);
     }
 
     SECTION("Same-channel block correctly triggers template refresh")
     {
-        /* Prime miner at channel height 2325188, another Prime block found */
+        /* Prime miner at unified 6594321, another Prime block found */
         MiningContext ctx;
         ctx = ctx.WithChannel(1)  // Prime miner
-                 .WithLastTemplateChannelHeight(2325188);
+                 .WithLastTemplateUnifiedHeight(ChannelHeightConstants::UNIFIED_HEIGHT);
 
-        /* Prime block found: channel height advances */
-        uint32_t nCurrentPrimeChannelHeight = 2325189;
+        /* Prime block found: unified height advances */
+        uint32_t nNewUnifiedHeight = ChannelHeightConstants::UNIFIED_HEIGHT + 1;
 
-        bool fChannelHeightChanged = (ctx.nLastTemplateChannelHeight != nCurrentPrimeChannelHeight);
-        REQUIRE(fChannelHeightChanged == true);
+        bool fTemplateStale = (ctx.nLastTemplateUnifiedHeight != nNewUnifiedHeight);
+        REQUIRE(fTemplateStale == true);
     }
 
     SECTION("GET_HEIGHT does not interfere with template tracking")
     {
-        /* Miner has template for channel height 2325188 */
+        /* Miner has template for unified height 6594321 */
         MiningContext ctx;
         ctx = ctx.WithChannel(1)
-                 .WithLastTemplateChannelHeight(2325188);
+                 .WithLastTemplateUnifiedHeight(ChannelHeightConstants::UNIFIED_HEIGHT);
 
-        /* GET_HEIGHT updates nHeight (unified) but NOT nLastTemplateChannelHeight */
-        ctx = ctx.WithHeight(6594322);
+        /* GET_HEIGHT updates nHeight (diagnostic) but NOT nLastTemplateUnifiedHeight */
+        ctx = ctx.WithHeight(ChannelHeightConstants::UNIFIED_HEIGHT + 1);
 
-        /* nLastTemplateChannelHeight should still reflect the old channel height */
-        REQUIRE(ctx.nLastTemplateChannelHeight == 2325188);
-        REQUIRE(ctx.nHeight == 6594322);  // unified height updated
+        /* nLastTemplateUnifiedHeight should still reflect the old unified height */
+        REQUIRE(ctx.nLastTemplateUnifiedHeight == ChannelHeightConstants::UNIFIED_HEIGHT);
+        REQUIRE(ctx.nHeight == ChannelHeightConstants::UNIFIED_HEIGHT + 1);
 
-        /* Channel height unchanged: no false trigger */
-        uint32_t nCurrentChannelHeight = 2325188;
-        bool fChannelHeightChanged = (ctx.nLastTemplateChannelHeight != nCurrentChannelHeight);
-        REQUIRE(fChannelHeightChanged == false);
+        /* If current unified matches the tracked one, no stale */
+        uint32_t nCurrentUnifiedHeight = ChannelHeightConstants::UNIFIED_HEIGHT;
+        bool fTemplateStale = (ctx.nLastTemplateUnifiedHeight != nCurrentUnifiedHeight);
+        REQUIRE(fTemplateStale == false);
     }
 }
 
 
-TEST_CASE("Multiple Miners Independent Channel State", "[template_staleness][multi_miner]")
+TEST_CASE("Multiple Miners Independent Unified Height State", "[template_staleness][multi_miner]")
 {
-    SECTION("Different miners have independent channel height tracking")
+    SECTION("Different miners have independent unified height tracking")
     {
-        /* Prime miner at channel height from constants */
+        /* Prime miner up-to-date at unified height */
         MiningContext ctxPrime;
         ctxPrime = ctxPrime.WithChannel(1)
                            .WithSession(100)
-                           .WithLastTemplateChannelHeight(ChannelHeightConstants::PRIME_CHANNEL_HEIGHT);
+                           .WithLastTemplateUnifiedHeight(ChannelHeightConstants::UNIFIED_HEIGHT);
 
-        /* Hash miner at channel height slightly behind current */
+        /* Hash miner slightly behind at unified height */
         MiningContext ctxHash;
         ctxHash = ctxHash.WithChannel(2)
                          .WithSession(200)
-                         .WithLastTemplateChannelHeight(ChannelHeightConstants::HASH_CHANNEL_HEIGHT - 1);
+                         .WithLastTemplateUnifiedHeight(ChannelHeightConstants::UNIFIED_HEIGHT - 1);
 
-        /* New Hash block found */
-        uint32_t nNewPrimeHeight = ChannelHeightConstants::PRIME_CHANNEL_HEIGHT;  // UNCHANGED
-        uint32_t nNewHashHeight = ChannelHeightConstants::HASH_CHANNEL_HEIGHT;    // Advanced
+        /* New block found: unified height advances */
+        uint32_t nNewUnifiedHeight = ChannelHeightConstants::UNIFIED_HEIGHT;
 
-        /* Prime miner: channel unchanged - no auto-send */
-        bool fPrimeChanged = (ctxPrime.nLastTemplateChannelHeight != nNewPrimeHeight);
-        REQUIRE(fPrimeChanged == false);
+        /* Prime miner: unified height matches - no auto-send needed */
+        bool fPrimeStale = (ctxPrime.nLastTemplateUnifiedHeight != nNewUnifiedHeight);
+        REQUIRE(fPrimeStale == false);
 
-        /* Hash miner: channel changed - auto-send */
-        bool fHashChanged = (ctxHash.nLastTemplateChannelHeight != nNewHashHeight);
-        REQUIRE(fHashChanged == true);
+        /* Hash miner: unified height behind - needs auto-send */
+        bool fHashStale = (ctxHash.nLastTemplateUnifiedHeight != nNewUnifiedHeight);
+        REQUIRE(fHashStale == true);
 
         /* Update Hash miner */
-        ctxHash = ctxHash.WithLastTemplateChannelHeight(nNewHashHeight);
+        ctxHash = ctxHash.WithLastTemplateUnifiedHeight(nNewUnifiedHeight);
 
         /* Hash miner now up to date */
-        REQUIRE(ctxHash.nLastTemplateChannelHeight == ChannelHeightConstants::HASH_CHANNEL_HEIGHT);
+        REQUIRE(ctxHash.nLastTemplateUnifiedHeight == ChannelHeightConstants::UNIFIED_HEIGHT);
 
-        /* Prime miner still at same channel height (correctly) */
-        REQUIRE(ctxPrime.nLastTemplateChannelHeight == ChannelHeightConstants::PRIME_CHANNEL_HEIGHT);
+        /* Prime miner still at same unified height (correctly independent) */
+        REQUIRE(ctxPrime.nLastTemplateUnifiedHeight == ChannelHeightConstants::UNIFIED_HEIGHT);
     }
 }
 
@@ -340,35 +335,35 @@ TEST_CASE("MINER_READY Compatibility Opcodes", "[template_staleness][miner_ready
 
 TEST_CASE("MINER_READY Recovery Scenario", "[template_staleness][recovery]")
 {
-    SECTION("MINER_READY should trigger template send and update channel height tracking")
+    SECTION("MINER_READY should trigger template send and update unified height tracking")
     {
         /* Miner enters degraded mode with stale template */
         MiningContext ctx;
         ctx = ctx.WithChannel(1)  // Prime miner
                  .WithAuth(true)
                  .WithSession(42)
-                 .WithLastTemplateChannelHeight(2325180);  // Far behind
+                 .WithLastTemplateUnifiedHeight(ChannelHeightConstants::UNIFIED_HEIGHT - 10);  // Far behind
 
-        /* Current Prime channel height */
-        uint32_t nCurrentChannelHeight = 2325189;
+        /* Current unified height */
+        uint32_t nCurrentUnifiedHeight = ChannelHeightConstants::UNIFIED_HEIGHT;
 
         /* After MINER_READY processing:
          * 1. Send push notification (PRIME_AVAILABLE)
          * 2. Auto-send BLOCK_DATA template
-         * 3. Update nLastTemplateChannelHeight to current channel height */
-        ctx = ctx.WithLastTemplateChannelHeight(nCurrentChannelHeight);
+         * 3. Update nLastTemplateUnifiedHeight to current unified height */
+        ctx = ctx.WithLastTemplateUnifiedHeight(nCurrentUnifiedHeight);
 
-        REQUIRE(ctx.nLastTemplateChannelHeight == 2325189);
+        REQUIRE(ctx.nLastTemplateUnifiedHeight == ChannelHeightConstants::UNIFIED_HEIGHT);
 
-        /* Next GET_ROUND should NOT send duplicate template (channel height unchanged) */
-        bool fChannelHeightChanged = (ctx.nLastTemplateChannelHeight != nCurrentChannelHeight);
-        REQUIRE(fChannelHeightChanged == false);
+        /* Next GET_ROUND should NOT send duplicate template (unified height unchanged) */
+        bool fTemplateStale = (ctx.nLastTemplateUnifiedHeight != nCurrentUnifiedHeight);
+        REQUIRE(fTemplateStale == false);
     }
 
     SECTION("Recovery works regardless of which MINER_READY opcode was used")
     {
         /* Test that the context update logic is the same regardless of opcode variant */
-        uint32_t nCurrentChannelHeight = 4165001;  // Hash channel height
+        uint32_t nCurrentUnifiedHeight = ChannelHeightConstants::UNIFIED_HEIGHT;
 
         /* Simulate recovery for three opcode variants */
         for(uint16_t nOpcode : {uint16_t(0xD0D8), uint16_t(0xD090), uint16_t(0x00D8)})
@@ -376,7 +371,7 @@ TEST_CASE("MINER_READY Recovery Scenario", "[template_staleness][recovery]")
             MiningContext ctx;
             ctx = ctx.WithChannel(2)  // Hash miner
                      .WithAuth(true)
-                     .WithLastTemplateChannelHeight(0);  // Fresh connection
+                     .WithLastTemplateUnifiedHeight(0);  // Fresh connection
 
             /* Remap compatibility opcodes (same logic as ProcessPacket) */
             if(nOpcode == 0x00D8 || nOpcode == 0xD090)
@@ -384,9 +379,9 @@ TEST_CASE("MINER_READY Recovery Scenario", "[template_staleness][recovery]")
 
             REQUIRE(nOpcode == 0xD0D8);
 
-            /* Update channel height after sending template */
-            ctx = ctx.WithLastTemplateChannelHeight(nCurrentChannelHeight);
-            REQUIRE(ctx.nLastTemplateChannelHeight == nCurrentChannelHeight);
+            /* Update unified height after sending template */
+            ctx = ctx.WithLastTemplateUnifiedHeight(nCurrentUnifiedHeight);
+            REQUIRE(ctx.nLastTemplateUnifiedHeight == nCurrentUnifiedHeight);
         }
     }
 }
