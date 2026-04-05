@@ -2244,6 +2244,12 @@ namespace LLP
 
                 if(fTemplateStale)
                 {
+                    /* CRITICAL: Release MUTEX before new_block() — new_block() acquires
+                     * MUTEX internally (line ~2982).  std::mutex is non-recursive;
+                     * holding lk and calling new_block() causes a deadlock.
+                     * Same pattern as the GET_BLOCK handler (lk.unlock at ~1030). */
+                    lk.unlock();
+
                     /* Create block template with retry logic (up to 3 attempts) */
                     TAO::Ledger::Block* pBlock = nullptr;
                     bool fTemplateSent = false;
@@ -2299,6 +2305,9 @@ namespace LLP
                         }
                     }
 
+                    /* Re-acquire MUTEX for context mutations */
+                    lk.lock();
+
                     /* Only advance staleness anchors if template was actually sent.
                      * If creation failed, keep old anchors so the next GET_ROUND retries. */
                     if(fTemplateSent)
@@ -2338,190 +2347,11 @@ namespace LLP
                 return true;
             }
 
-            /* Handle MINER_READY - Subscribe to push notifications */
-            if(PACKET.HEADER == MINER_READY)
-            {
-                debug::log(2, "📥 === MINER_READY REQUEST ===");
-                debug::log(0, "   From: ", GetAddress().ToStringIP());
-                debug::log(0, "   Authenticated: ", (context.fAuthenticated ? "YES" : "NO"));
-                debug::log(0, "   Channel: ", context.nChannel);
-                
-                /* Validate authentication */
-                if (!context.fAuthenticated)
-                {
-                    debug::error(FUNCTION, "MINER_READY: authentication required");
-                    debug::log(2, "📥 === MINER_READY: REJECTED (AUTH) ===");
-                    return false;
-                }
-                
-                /* CRITICAL: Only Prime (1) and Hash (2) support stateless mining */
-                if (context.nChannel != 1 && context.nChannel != 2)
-                {
-                    debug::error(FUNCTION, "MINER_READY: invalid channel ", context.nChannel);
-                    debug::error(FUNCTION, "  Valid: 1 (Prime), 2 (Hash)");
-                    debug::error(FUNCTION, "  Stake (0) uses Proof-of-Stake, not mined");
-                    debug::log(2, "📥 === MINER_READY: REJECTED (INVALID CHANNEL) ===");
-                    return false;
-                }
-
-                /* Attempt lane-switch recovery based on live node context */
-                context.strAddress = GetAddress().ToStringIP();
-                auto optExisting = SessionRecoveryManager::Get().RecoverSessionByIdentity(context);
-                if(optExisting.has_value())
-                {
-                    if(optExisting->fRewardBound && optExisting->hashRewardAddress != 0)
-                        context = context.WithRewardAddress(optExisting->hashRewardAddress);
-
-                    if(optExisting->fEncryptionReady && !optExisting->vChaCha20Key.empty())
-                        context = context.WithChaChaKey(optExisting->vChaCha20Key);
-
-                    if(!optExisting->vDisposablePubKey.empty())
-                    {
-                        {
-                            std::lock_guard<std::mutex> lock(SESSION_MUTEX);
-                            if(optExisting->nSessionId != 0)
-                                mapSessionKeys[optExisting->nSessionId] = optExisting->vDisposablePubKey;
-                        }
-                        /* Fix 2: Propagate recovered key into context so SaveSession re-persists it */
-                        context = context.WithDisposableKey(optExisting->vDisposablePubKey,
-                                                            optExisting->hashDisposableKeyID);
-                    }
-                    else
-                    {
-                        /* Fix 2: Fallback — try RestoreDisposableKey independently in case the
-                         * recovery container lost the key. */
-                        std::vector<uint8_t> vFallbackPubKey;
-                        uint256_t hashFallbackKeyID;
-                        if(context.hashKeyID != 0 &&
-                           SessionRecoveryManager::Get().RestoreDisposableKey(
-                               context.hashKeyID, vFallbackPubKey, hashFallbackKeyID) &&
-                           !vFallbackPubKey.empty())
-                        {
-                            {
-                                std::lock_guard<std::mutex> lock(SESSION_MUTEX);
-                                if(optExisting->nSessionId != 0)
-                                    mapSessionKeys[optExisting->nSessionId] = vFallbackPubKey;
-                            }
-                            context = context.WithDisposableKey(vFallbackPubKey, hashFallbackKeyID);
-                            debug::log(0, FUNCTION, "  Fallback: restored disposable Falcon key from dedicated key store");
-                        }
-                        else
-                        {
-                            debug::error(FUNCTION, "  ERROR: disposable Falcon key lost after recovery — block submissions will fail");
-                            debug::error(FUNCTION, "  keyID=", FullHexOrUnset(context.hashKeyID));
-                            debug::error(FUNCTION, "  Miner must re-authenticate to restore block submission capability");
-                        }
-                    }
-
-                    debug::log(0, FUNCTION, "Session recovered from lane switch");
-                    debug::log(0, FUNCTION, "  session state source: SessionRecoveryManager::RecoverSessionByIdentity");
-                    debug::log(0, FUNCTION, "  recovered falcon key id: ", FullHexOrUnset(optExisting->hashKeyID));
-                    debug::log(0, FUNCTION, "  recovered session genesis: ", FullHexOrUnset(optExisting->hashGenesis));
-                    debug::log(0, FUNCTION, "  recovered reward hash: ", FullHexOrUnset(optExisting->hashRewardAddress));
-                    debug::log(0, FUNCTION, "  recovered ChaCha20 key hash: ", FullHexOrUnset(optExisting->hashChaCha20Key));
-                    debug::log(0, FUNCTION, "  recovered disposable Falcon key present: ", YesNo(!context.vDisposablePubKey.empty()));
-                }
-                
-                /* Subscribe to notifications */
-                context = context.WithSubscription(context.nChannel);
-                
-                /* Ensure encryption is properly set up before mining starts
-                 * CRITICAL: ChaCha20 key should have been derived during authentication.
-                 * If not present, derive it now from genesis hash. */
-                if(context.hashGenesis != 0 && !context.fEncryptionReady)
-                {
-                    /* Derive ChaCha20 encryption key from genesis hash */
-                    context = context.WithChaChaKey(LLC::MiningSessionKeys::DeriveChaCha20Key(context.hashGenesis));
-                    
-                    debug::log(0, FUNCTION, "✓ Derived ChaCha20 key on MINER_READY (8-bit)");
-                    debug::log(0, "   Session genesis used for KDF: ", context.GenesisHex());
-                    debug::log(0, "   Derived key fingerprint: ", KeyFingerprint(context.vChaChaKey));
-                    debug::log(0, "   Encryption ready: YES");
-                }
-                
-                debug::log(0, FUNCTION, "✓ Miner subscribed to ", 
-                          context.strChannelName, " notifications");
-                debug::log(0, "   Encryption ready: ", (context.fEncryptionReady ? "YES" : "NO"));
-                debug::log(0, "   ChaCha key size: ", context.vChaChaKey.size(), " bytes");
-                
-                /* Send immediate notification with current state.
-                 * Force-bypass the push throttle — miner explicitly re-subscribed and needs
-                 * fresh work immediately regardless of when the previous push was sent.
-                 * Also reset the AutoCoolDown so the recovery GET_BLOCK is served immediately. */
-                {
-                    LOCK(MUTEX);
-                    // Reset violation state on clean re-subscription — same invariant as
-                    // STATELESS_MINER_READY: fThrottleMode MUST NOT persist across reconnects.
-                    m_rateLimit.ResetViolationState();
-                    m_force_next_push = true;
-                    // Reassign (not Reset()) — we want Ready() to return true immediately
-                    // so the recovery GET_BLOCK is served without waiting 2 s.
-                    // Reset() would START a new 2-second cooldown; reassignment
-                    // restores the "never triggered" state where Ready() returns true.
-                    m_get_block_cooldown = AutoCoolDown(std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS));
-                }
-                SendChannelNotification();
-
-                /* Re-arm the bypass flag: SendChannelNotification() consumed m_force_next_push
-                 * and updated m_last_template_push_time.  Without re-arming, SendStatelessTemplate()
-                 * would see elapsed ~0 ms and be throttled, leaving the miner without a full
-                 * template and keeping its recovery epoch alive. */
-                {
-                    LOCK(MUTEX);
-                    m_force_next_push = true;
-                }
-
-                /* Update last template unified height and persist session BEFORE sending
-                 * the template (write-ahead pattern): even if the connection drops after
-                 * SaveSession but before the template arrives, the recovered session already
-                 * carries the correct unified height, preventing stale-height throttling. */
-                {
-                    TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
-                    context = context.WithLastTemplateUnifiedHeight(stateBest.nHeight);
-                }
-
-                /* Persist session and lane state for cross-lane recovery */
-                if(context.fAuthenticated && context.hashKeyID != 0)
-                {
-                    SessionRecoveryManager::Get().SaveSession(context);
-                    SessionRecoveryManager::Get().UpdateLane(context.hashKeyID, 1);
-                    if(context.fEncryptionReady && !context.vChaChaKey.empty())
-                    {
-                        uint256_t hashKey(context.vChaChaKey);
-                        SessionRecoveryManager::Get().SaveChaCha20State(context.hashKeyID, hashKey, 0);
-                    }
-                }
-
-                /* Auto-send template so miner can resume mining immediately.
-                 * This is critical for MINER_READY recovery from degraded mode -
-                 * miners need both the push notification AND the actual template. */
-                SendStatelessTemplate();
-                debug::log(0, FUNCTION, "✓ Recovery template delivered via MINER_READY push — miner should resume mining");
-
-                /* Atomic transform: update MINER_READY state on CURRENT value in mapMiners.
-                 * Captures the connection-specific mutations (subscription, encryption,
-                 * unified height) and applies them atomically to avoid TOCTOU races. */
-                {
-                    bool fSubscribed = context.fSubscribedToNotifications;
-                    uint32_t nSubChannel = context.nSubscribedChannel;
-                    bool fEncReady = context.fEncryptionReady;
-                    std::vector<uint8_t> vKey = context.vChaChaKey;
-                    uint32_t nLastUH = context.nLastTemplateUnifiedHeight;
-                    StatelessMinerManager::Get().TransformMiner(context.strAddress,
-                        [fSubscribed, nSubChannel, fEncReady, vKey, nLastUH](const MiningContext& current) {
-                            MiningContext updated = current
-                                .WithSubscription(nSubChannel)
-                                .WithLastTemplateUnifiedHeight(nLastUH)
-                                .WithTimestamp(runtime::unifiedtimestamp());
-                            if(fEncReady && !vKey.empty())
-                                updated = updated.WithChaChaKey(vKey);
-                            return updated;
-                        }, 1);
-                }
-                
-                debug::log(2, "📥 === MINER_READY: SUCCESS ===");
-                return true;
-            }
+            /* NOTE: MINER_READY (0xD0D8) is handled by the STATELESS_MINER_READY
+             * handler at line ~774, BEFORE the broad LOCK(MUTEX) at line 972.
+             * STATELESS_MINER_READY == MINER_READY == Mirror(216) == 0xD0D8.
+             * No duplicate handler is needed here; the early handler returns true
+             * before execution reaches this point. */
 
             /* SESSION_STATUS (0xD0DB) — miner queries session/lane health on stateless port.
              * Uses SessionStatusUtility for robust SessionManager-based session lookup. */
@@ -2558,10 +2388,18 @@ namespace LLP
                 debug::log(2, FUNCTION, "SESSION_STATUS_ACK sent (stateless lane)");
 
                 /* TWO-STEP RE-ARM INVARIANT (PR #375):
-                 * set → SendChannelNotification → re-set → SendStatelessTemplate */
+                 * set → SendChannelNotification → re-set → SendStatelessTemplate
+                 *
+                 * CRITICAL: Release the broad MUTEX before the degraded-recovery block.
+                 * The nested { LOCK(MUTEX); } blocks and SendChannelNotification() /
+                 * SendStatelessTemplate() each acquire MUTEX internally.  std::mutex
+                 * is non-recursive; holding the outer lk would deadlock.
+                 * Same pattern as the legacy lane in miner.cpp (lines ~680–691). */
                 if(SessionStatusUtility::IsDegraded(req) &&
                     context.fAuthenticated && (context.nChannel == 1 || context.nChannel == 2))
                 {
+                    lk.unlock();
+
                     debug::log(0, FUNCTION, "⚠️ Miner reports DEGRADED — forcing recovery template push via SESSION_STATUS");
                     {
                         LOCK(MUTEX);
