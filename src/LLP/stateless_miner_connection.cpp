@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/types/stateless_miner_connection.h>
+#include <LLP/templates/ddos.h>
 #include <LLP/packets/stateless_packet.h>
 #include <LLP/include/genesis_constants.h>
 #include <LLP/include/stateless_miner.h>
@@ -517,6 +518,46 @@ namespace LLP
                                uint32_t(PACKET.HEADER), std::dec,
                                " length=", PACKET.LENGTH);
                 }
+
+                /* DDOS filtering at HEADER stage (before full packet body is read).
+                 * Mirrors the legacy lane (miner.cpp) defense-in-depth pattern:
+                 * reject obviously invalid packets before allocating memory for data. */
+                if(fDDOS.load() && Incoming())
+                {
+                    StatelessPacket PACKET = this->INCOMING;
+
+                    /* Ban node-to-miner opcodes that miners should never send */
+                    if(PACKET.HEADER == OpcodeUtility::Stateless::BLOCK_DATA ||
+                       PACKET.HEADER == OpcodeUtility::Stateless::BLOCK_HEIGHT ||
+                       PACKET.HEADER == OpcodeUtility::Stateless::BLOCK_ACCEPTED ||
+                       PACKET.HEADER == OpcodeUtility::Stateless::BLOCK_REJECTED ||
+                       PACKET.HEADER == OpcodeUtility::Stateless::AUTH_CHALLENGE ||
+                       PACKET.HEADER == OpcodeUtility::Stateless::AUTH_RESULT ||
+                       PACKET.HEADER == OpcodeUtility::Stateless::REWARD_RESULT ||
+                       PACKET.HEADER == OpcodeUtility::Stateless::NEW_ROUND ||
+                       PACKET.HEADER == OpcodeUtility::Stateless::OLD_ROUND)
+                        DDOS->Ban();
+
+                    /* Ban SUBMIT_BLOCK with payload exceeding Falcon+ChaCha20 maximum */
+                    if(PACKET.HEADER == OpcodeUtility::Stateless::SUBMIT_BLOCK &&
+                       PACKET.LENGTH > FalconConstants::SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX)
+                        DDOS->Ban();
+
+                    /* Ban oversized AUTH_INIT */
+                    if(PACKET.HEADER == OpcodeUtility::Stateless::AUTH_INIT &&
+                       PACKET.LENGTH > FalconConstants::MINER_AUTH_INIT_MAX)
+                        DDOS->Ban();
+
+                    /* Ban oversized AUTH_RESPONSE */
+                    if(PACKET.HEADER == OpcodeUtility::Stateless::AUTH_RESPONSE &&
+                       PACKET.LENGTH > FalconConstants::AUTH_RESPONSE_ENCRYPTED_MAX)
+                        DDOS->Ban();
+
+                    /* Ban SESSION_KEEPALIVE with oversized payload */
+                    if(PACKET.HEADER == OpcodeUtility::Stateless::SESSION_KEEPALIVE &&
+                       PACKET.LENGTH > 8)
+                        DDOS->Ban();
+                }
                 break;
             }
 
@@ -689,7 +730,7 @@ namespace LLP
             /* Get the incoming packet. */
             StatelessPacket PACKET = this->INCOMING;
             /* Log entry */
-            debug::log(1, FUNCTION, "MinerLLP: ProcessPacket from ", GetAddress().ToStringIP(),
+            debug::log(0, FUNCTION, "MinerLLP: ProcessPacket from ", GetAddress().ToStringIP(),
                        " header=0x", std::hex, std::setw(4), std::setfill('0'),
                        uint32_t(PACKET.HEADER), std::dec,
                        " length=", PACKET.LENGTH);
