@@ -225,7 +225,8 @@ namespace LLP
                     if(PACKET.HEADER == BLOCK_DATA)
                         DDOS->Ban();
 
-                    if(PACKET.HEADER == SUBMIT_BLOCK && PACKET.LENGTH > 72)
+                    if(PACKET.HEADER == SUBMIT_BLOCK &&
+                       PACKET.LENGTH > FalconConstants::SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX)
                         DDOS->Ban();
 
                     if(PACKET.HEADER == BLOCK_HEIGHT)
@@ -283,6 +284,7 @@ namespace LLP
                         DDOS->Ban();
 
                 }
+                break;
             }
 
 
@@ -2261,8 +2263,8 @@ namespace LLP
             }
         }
 
-        debug::log(2, FUNCTION, "SUBMIT_BLOCK from ", GetAddress().ToStringIP(),
-                   " size=", PACKET.DATA.size());
+        debug::log(0, FUNCTION, "📥 === SUBMIT_BLOCK received (legacy lane) === from ",
+                   GetAddress().ToStringIP(), " size=", PACKET.DATA.size());
 
         /* Validate packet size using FalconConstants */
         const size_t MIN_SIZE = FalconConstants::MERKLE_ROOT_SIZE + FalconConstants::NONCE_SIZE;
@@ -2416,7 +2418,8 @@ namespace LLP
 
         if(!fLocalBlock)
         {
-            debug::log(2, FUNCTION, "Block not found in map");
+            debug::log(0, FUNCTION, "📥 === SUBMIT_BLOCK: REJECTED (Unknown template, legacy lane) === ",
+                       "merkle=", hashMerkle.SubString());
             respond_auto(BLOCK_REJECTED);
             return true;
         }
@@ -2427,6 +2430,7 @@ namespace LLP
             /* Local path: sign_block mutates the block in-place via mapBlocks */
             if(!sign_block(nonce, hashMerkle, vPrimeOffsets))
             {
+                debug::log(0, FUNCTION, "📥 === SUBMIT_BLOCK: REJECTED (sign_block failed, legacy lane) ===");
                 respond_auto(BLOCK_REJECTED);
                 return true;
             }
@@ -2444,7 +2448,7 @@ namespace LLP
 
         /* Diagnostic log — cross-reference with miner's [SUBMIT AUDIT] log. */
         const uint1024_t hashCurrentBest = TAO::Ledger::ChainState::hashBestChain.load();
-        debug::log(2, FUNCTION, "[BLOCK SUBMIT] nHeight=", pTritium->nHeight, " (unified)",
+        debug::log(0, FUNCTION, "[BLOCK SUBMIT] nHeight=", pTritium->nHeight, " (unified)",
                    " channel=", pTritium->nChannel,
                    " hashPrevBlock=", pTritium->hashPrevBlock.SubString(),
                    " hashBestChain=", hashCurrentBest.SubString(),
