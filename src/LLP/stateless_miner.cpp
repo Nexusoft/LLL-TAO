@@ -446,14 +446,21 @@ namespace LLP
 
     SessionConsistencyResult MiningContext::ValidateConsistency() const
     {
-        if(fAuthenticated && nSessionId == 0)
-            return SessionConsistencyResult::MissingSessionId;
+        /* Use SessionBinding::IsValid() to check that all three identity fields
+         * are non-zero when the session is authenticated (OPT-1 migration).
+         * Individual error codes are preserved for diagnostics. */
+        if(fAuthenticated)
+        {
+            const SessionBinding binding = GetSessionBinding();
+            if(binding.nSessionId == 0)
+                return SessionConsistencyResult::MissingSessionId;
 
-        if(fAuthenticated && hashGenesis == 0)
-            return SessionConsistencyResult::MissingGenesis;
+            if(binding.hashGenesis == 0)
+                return SessionConsistencyResult::MissingGenesis;
 
-        if(fAuthenticated && hashKeyID == 0)
-            return SessionConsistencyResult::MissingFalconKey;
+            if(binding.hashKeyID == 0)
+                return SessionConsistencyResult::MissingFalconKey;
+        }
 
         if(fRewardBound && hashRewardAddress == 0)
             return SessionConsistencyResult::RewardBoundMissingHash;

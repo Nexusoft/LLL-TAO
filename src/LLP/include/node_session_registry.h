@@ -27,6 +27,89 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    /** NodeSessionEntryKey
+     *
+     *  Lightweight identity + liveness tuple extracted from NodeSessionEntry.
+     *  Contains only the three identity scalars (nSessionId, hashKeyID,
+     *  hashGenesis), the two liveness booleans, and the activity timestamp —
+     *  no MiningContext.  Significantly cheaper to copy than the full entry.
+     *
+     *  The inline With*() builders return copies with a single field modified,
+     *  mirroring the NodeSessionEntry builder API for ergonomic test code.
+     *
+     *  NOTE: uint256_t is not constexpr in C++17, so the builders are regular
+     *  inline functions rather than constexpr.
+     *
+     **/
+    struct NodeSessionEntryKey
+    {
+        uint32_t  nSessionId     = 0;
+        uint256_t hashKeyID      = 0;
+        uint256_t hashGenesis    = 0;
+        bool      fStatelessLive = false;
+        bool      fLegacyLive    = false;
+        uint64_t  nLastActivity  = 0;
+
+        /** Default Constructor **/
+        NodeSessionEntryKey() = default;
+
+        /** Parameterized Constructor **/
+        NodeSessionEntryKey(
+            uint32_t nSessionId_,
+            const uint256_t& hashKeyID_,
+            const uint256_t& hashGenesis_,
+            bool fStatelessLive_,
+            bool fLegacyLive_,
+            uint64_t nLastActivity_
+        )
+            : nSessionId(nSessionId_)
+            , hashKeyID(hashKeyID_)
+            , hashGenesis(hashGenesis_)
+            , fStatelessLive(fStatelessLive_)
+            , fLegacyLive(fLegacyLive_)
+            , nLastActivity(nLastActivity_)
+        {
+        }
+
+        /** WithStatelessLive — returns copy with updated stateless liveness. **/
+        NodeSessionEntryKey WithStatelessLive(bool fLive_) const
+        {
+            NodeSessionEntryKey key = *this;
+            key.fStatelessLive = fLive_;
+            return key;
+        }
+
+        /** WithLegacyLive — returns copy with updated legacy liveness. **/
+        NodeSessionEntryKey WithLegacyLive(bool fLive_) const
+        {
+            NodeSessionEntryKey key = *this;
+            key.fLegacyLive = fLive_;
+            return key;
+        }
+
+        /** WithActivity — returns copy with updated activity timestamp. **/
+        NodeSessionEntryKey WithActivity(uint64_t nTime_) const
+        {
+            NodeSessionEntryKey key = *this;
+            key.nLastActivity = nTime_;
+            return key;
+        }
+
+        /** AnyPortLive — true if either port is connected. **/
+        bool AnyPortLive() const { return fStatelessLive || fLegacyLive; }
+
+        /** GetSessionBinding — returns identity snapshot for comparison. **/
+        SessionBinding GetSessionBinding() const
+        {
+            SessionBinding binding;
+            binding.nSessionId = nSessionId;
+            binding.hashKeyID  = hashKeyID;
+            binding.hashGenesis = hashGenesis;
+            return binding;
+        }
+    };
+
+
     /** NodeSessionEntry
      *
      *  Unified session state shared across both mining server ports (8323 and 9323).
@@ -171,6 +254,19 @@ namespace LLP
          *
          **/
         bool IsExpired(uint64_t nTimeoutSec, uint64_t nNow = 0) const;
+
+        /** ToKey
+         *
+         *  Returns the lightweight identity + liveness key (no MiningContext).
+         *
+         **/
+        NodeSessionEntryKey ToKey() const
+        {
+            return NodeSessionEntryKey(
+                nSessionId, hashKeyID, hashGenesis,
+                fStatelessLive, fLegacyLive, nLastActivity
+            );
+        }
     };
 
 

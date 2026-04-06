@@ -138,6 +138,34 @@ namespace LLP
                 && hashKeyID  != 0
                 && hashGenesis != 0;
         }
+
+        /** FirstMismatch
+         *
+         *  Compare identity fields that are non-zero in BOTH bindings.
+         *  Returns the first SessionConsistencyResult that differs, or Ok if
+         *  every populated field matches.  Fields that are zero in either
+         *  binding are skipped (not yet authoritative).
+         *
+         *  This centralises the "partial match" pattern used in
+         *  ValidateConsistency() and stateless_manager cleanup.
+         *
+         *  @param[in] other  The binding to compare against.
+         *  @return SessionConsistencyResult indicating the first mismatch, or Ok.
+         *
+         **/
+        SessionConsistencyResult FirstMismatch(const SessionBinding& other) const
+        {
+            if(nSessionId != 0 && other.nSessionId != 0 && nSessionId != other.nSessionId)
+                return SessionConsistencyResult::SessionIdMismatch;
+
+            if(hashGenesis != 0 && other.hashGenesis != 0 && hashGenesis != other.hashGenesis)
+                return SessionConsistencyResult::GenesisMismatch;
+
+            if(hashKeyID != 0 && other.hashKeyID != 0 && hashKeyID != other.hashKeyID)
+                return SessionConsistencyResult::FalconKeyMismatch;
+
+            return SessionConsistencyResult::Ok;
+        }
     };
 
     /** CryptoContext

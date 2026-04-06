@@ -122,19 +122,13 @@ namespace LLP
             return contextConsistency;
 
         /* Cross-check: context identity fields must match entry-level fields.
-         * Uses SessionBinding::Matches() to centralize the three-field comparison
-         * (OPT-1), replacing formerly scattered per-field checks.  We only compare
-         * when the context field is non-zero (unset context fields are not yet
-         * authoritative). */
+         * Uses SessionBinding::FirstMismatch() to centralise the partial-match
+         * comparison (OPT-1).  Fields that are zero in the context binding are
+         * skipped — they are not yet authoritative. */
         const SessionBinding ctxBinding = context.GetSessionBinding();
-        if(ctxBinding.nSessionId != 0 && ctxBinding.nSessionId != entryBinding.nSessionId)
-            return SessionConsistencyResult::SessionIdMismatch;
-
-        if(ctxBinding.hashGenesis != 0 && ctxBinding.hashGenesis != entryBinding.hashGenesis)
-            return SessionConsistencyResult::GenesisMismatch;
-
-        if(ctxBinding.hashKeyID != 0 && ctxBinding.hashKeyID != entryBinding.hashKeyID)
-            return SessionConsistencyResult::FalconKeyMismatch;
+        const SessionConsistencyResult crossCheck = ctxBinding.FirstMismatch(entryBinding);
+        if(crossCheck != SessionConsistencyResult::Ok)
+            return crossCheck;
 
         return SessionConsistencyResult::Ok;
     }
