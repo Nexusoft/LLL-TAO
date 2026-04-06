@@ -4202,6 +4202,18 @@ namespace LLP
     }
 
 
+    /* GetWriteTimeout - authenticated miners use a longer write-stall timeout (30s)
+     * because the miner's TCP receive window may temporarily close during
+     * CPU-intensive proof-of-work computation.  A 5-second write stall is normal. */
+    uint32_t StatelessMinerConnection::GetWriteTimeout() const
+    {
+        if(fAuthenticatedAtomic.load(std::memory_order_relaxed))
+            return config::GetArg("-miningwritetimeout", 30000);
+
+        return config::GetArg("-writetimeout", 5000);
+    }
+
+
     MiningContext StatelessMinerConnection::GetContext()
     {
         std::lock_guard<std::mutex> lock(MUTEX);

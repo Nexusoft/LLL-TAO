@@ -871,7 +871,7 @@ namespace LLP
                 nError = WSAGetLastError();
         }
 
-        /* If not all data was sent non-blocking, recurse until it is complete. */
+        /* If not all data was sent non-blocking, buffer the remainder. */
         else if(nSent != vData.size())
         {
             RECURSIVE(SOCKET_MUTEX);
@@ -881,8 +881,16 @@ namespace LLP
 
             /* Set our atomic with size of vector. */
             nBufferSize.store(vBuffer.size());
+
+            /* Update last sent time — partial writes still represent forward
+             * progress.  Without this update, DISCONNECT::TIMEOUT_WRITE can
+             * fire spuriously when large mining templates are being sent in
+             * multiple chunks.  nLastSend must reflect any successful send()
+             * to prevent the DataThread from killing the connection. */
+            if(nSent > 0)
+                nLastSend = runtime::timestamp(true);
         }
-        else //don't update last sent unless all the data was written to the buffer
+        else //all data was written to the kernel buffer in one shot
             nLastSend = runtime::timestamp(true);
 
         return nSent;

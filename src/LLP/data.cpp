@@ -409,26 +409,69 @@ namespace LLP
                         continue;
                     }
 
-                    /* Disconnect if pollin signaled with no data for 1ms consistently (This happens on Linux). */
+                    /* Disconnect if pollin signaled with no data for 1ms consistently (This happens on Linux).
+                     * On Linux, poll() can return POLLIN during TCP keepalive ACK processing,
+                     * half-closed connections (FIN received), or zero-window probe responses
+                     * where ioctl(FIONREAD) returns 0 because no application data is queued.
+                     * The default 1ms grace window (nWait) is sufficient for P2P connections
+                     * but too aggressive for authenticated miners — a single spurious POLLIN
+                     * during kernel keepalive processing would kill a long-running miner.
+                     * Authenticated miners bypass this check via IsTimeoutExempt(). */
                     if((POLLFDS.at(nIndex).revents & POLLIN)
                     && CONNECTION->Timeout(nWait, Socket::READ)
                     && CONNECTION->Available() == 0)
                     {
-                        remove_connection_with_event(nIndex, DISCONNECT::POLL_EMPTY);
-                        continue;
+                        if(CONNECTION->IsTimeoutExempt())
+                        {
+                            /* Log near-miss for authenticated miners — this would have killed
+                             * the connection prior to the IsTimeoutExempt() bypass.  Useful
+                             * for diagnosing spurious POLLIN events from TCP keepalive, etc. */
+                            debug::log(0, FUNCTION, "DataThread[", ID, "]: POLL_EMPTY near-miss for authenticated ",
+                                ProtocolType::Name(), " from ", CONNECTION->GetAddress().ToStringIP(),
+                                " revents=", POLLFDS.at(nIndex).revents,
+                                " Available()=0 — bypassed via IsTimeoutExempt()");
+                        }
+                        else
+                        {
+                            remove_connection_with_event(nIndex, DISCONNECT::POLL_EMPTY);
+                            continue;
+                        }
                     }
 
-                    /* Disconnect if buffer is full and remote host isn't reading at all. */
+                    /* Disconnect if buffer is full and remote host isn't reading at all.
+                     * Authenticated miners bypass this check via IsTimeoutExempt() because
+                     * their receive window can temporarily close during CPU-intensive proof-
+                     * of-work computation.  They use the virtual GetWriteTimeout() which
+                     * returns a longer grace period (default 30s) vs the 5s P2P default. */
                     if(CONNECTION->Buffered()
-                    && CONNECTION->Timeout(5000, Socket::WRITE))
+                    && CONNECTION->Timeout(CONNECTION->GetWriteTimeout(), Socket::WRITE))
                     {
-                        remove_connection_with_event(nIndex, DISCONNECT::TIMEOUT_WRITE);
-                        continue;
+                        if(CONNECTION->IsTimeoutExempt())
+                        {
+                            /* Log near-miss for authenticated miners. */
+                            debug::log(0, FUNCTION, "DataThread[", ID, "]: TIMEOUT_WRITE near-miss for authenticated ",
+                                ProtocolType::Name(), " from ", CONNECTION->GetAddress().ToStringIP(),
+                                " Buffered()=", CONNECTION->Buffered(),
+                                " WriteTimeout=", CONNECTION->GetWriteTimeout(), "ms",
+                                " — bypassed via IsTimeoutExempt()");
+                        }
+                        else
+                        {
+                            remove_connection_with_event(nIndex, DISCONNECT::TIMEOUT_WRITE);
+                            continue;
+                        }
                     }
 
                     /* Check that write buffers aren't overflowed. */
                     if(CONNECTION->Buffered() > CONNECTION->GetMaxSendBuffer())
                     {
+                        /* Log at verbosity 0 for any connection whose buffer overflows. */
+                        debug::log(0, FUNCTION, "DataThread[", ID, "]: BUFFER overflow for ",
+                            ProtocolType::Name(), " from ", CONNECTION->GetAddress().ToStringIP(),
+                            " Buffered()=", CONNECTION->Buffered(),
+                            " MaxSendBuffer=", CONNECTION->GetMaxSendBuffer(),
+                            " IsTimeoutExempt=", CONNECTION->IsTimeoutExempt());
+
                         remove_connection_with_event(nIndex, DISCONNECT::BUFFER);
                         continue;
                     }

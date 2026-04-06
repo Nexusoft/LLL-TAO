@@ -297,6 +297,18 @@ namespace LLP
          **/
         bool IsTimeoutExempt() const final;
 
+        /** GetWriteTimeout
+         *
+         *  Authenticated stateless miners use a longer write-stall timeout
+         *  (30s default, configurable via -miningwritetimeout) because the
+         *  miner's TCP receive window may temporarily close during CPU-intensive
+         *  proof-of-work computation.
+         *
+         *  @return write-stall timeout in milliseconds.
+         *
+         **/
+        uint32_t GetWriteTimeout() const final;
+
         /** GetMaxSendBuffer
          *
          *  Authenticated stateless mining connections use a larger send buffer

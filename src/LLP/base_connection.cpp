@@ -258,7 +258,20 @@ namespace LLP
         }
         else
         {
-            debug::log(4, NODE, "Socket buffer full. Packet size: ", vBytes.size(), " bytes.  Buffered: ", Buffered(), " bytes");
+            /* For authenticated mining connections, packet drops are critical — push
+             * notifications are the primary mechanism for delivering fresh work.
+             * Log at level 0 so operators can see buffer pressure issues.
+             * For P2P connections, keep the existing level 4 to avoid log spam. */
+            if(IsTimeoutExempt())
+            {
+                debug::log(0, NODE, "WARNING: Socket buffer full — packet DROPPED for authenticated miner."
+                    " Packet size: ", vBytes.size(), " bytes.  Buffered: ", Buffered(),
+                    " bytes.  MaxSendBuffer: ", nMaxSendBuffer, " bytes");
+            }
+            else
+            {
+                debug::log(4, NODE, "Socket buffer full. Packet size: ", vBytes.size(), " bytes.  Buffered: ", Buffered(), " bytes");
+            }
 
             /* set buffer to full */
             fBufferFull.store(true);

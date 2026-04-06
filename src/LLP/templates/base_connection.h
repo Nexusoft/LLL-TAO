@@ -96,6 +96,30 @@ namespace LLP
         virtual bool IsTimeoutExempt() const { return false; }
 
 
+        /** GetWriteTimeout
+         *
+         *  Virtual method to return the write-stall timeout in milliseconds.
+         *  The DataThread uses this to decide when to disconnect a connection
+         *  whose send buffer has pending data but no successful Flush() has
+         *  completed within the timeout period (DISCONNECT::TIMEOUT_WRITE).
+         *
+         *  The default is 5 000 ms (5 seconds), suitable for P2P connections.
+         *
+         *  Mining connections override this to return a longer timeout
+         *  (default 30 000 ms) because miners may temporarily stop reading
+         *  during CPU-intensive proof-of-work computation, causing the TCP
+         *  receive window to close.  A 5-second write stall is normal during
+         *  heavy hashing or fork resolution bursts.
+         *
+         *  @return write-stall timeout in milliseconds.
+         *
+         **/
+        virtual uint32_t GetWriteTimeout() const
+        {
+            return config::GetArg("-writetimeout", 5000);
+        }
+
+
         /** GetMaxSendBuffer
          *
          *  Virtual method to return the maximum send buffer size for this

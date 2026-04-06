@@ -598,6 +598,24 @@ namespace LLP
         }
 
 
+        /** GetWriteTimeout
+         *
+         *  Authenticated miners use a longer write-stall timeout (30s default,
+         *  configurable via -miningwritetimeout) because the miner's TCP receive
+         *  window may temporarily close during CPU-intensive hashing.
+         *
+         *  @return write-stall timeout in milliseconds.
+         *
+         **/
+        uint32_t GetWriteTimeout() const final
+        {
+            if(fMinerAuthenticated)
+                return config::GetArg("-miningwritetimeout", 30000);
+
+            return config::GetArg("-writetimeout", 5000);
+        }
+
+
         /** GetMaxSendBuffer
          *
          *  Authenticated legacy mining connections use a larger send buffer
