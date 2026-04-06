@@ -811,8 +811,13 @@ namespace LLP
                     {
                         {
                             std::lock_guard<std::mutex> lock(SESSION_MUTEX);
-                            if(optExisting->nSessionId != 0)
-                                mapSessionKeys[optExisting->nSessionId] = optExisting->vDisposablePubKey;
+                            /* Use the recovered session ID if available; fall back to the
+                             * live context's session ID when the recovered ID is zero
+                             * (recovery container may have lost the session ID). */
+                            const uint32_t nKeySessionId = (optExisting->nSessionId != 0)
+                                ? optExisting->nSessionId : context.nSessionId;
+                            if(nKeySessionId != 0)
+                                mapSessionKeys[nKeySessionId] = optExisting->vDisposablePubKey;
                         }
                         /* Fix 2: Propagate recovered key into context so SaveSession re-persists it */
                         context = context.WithDisposableKey(optExisting->vDisposablePubKey,
@@ -831,8 +836,12 @@ namespace LLP
                         {
                             {
                                 std::lock_guard<std::mutex> lock(SESSION_MUTEX);
-                                if(optExisting->nSessionId != 0)
-                                    mapSessionKeys[optExisting->nSessionId] = vFallbackPubKey;
+                                /* Same fallback logic: prefer recovered ID, fall back to
+                                 * live context ID when the recovered ID is zero. */
+                                const uint32_t nKeySessionId = (optExisting->nSessionId != 0)
+                                    ? optExisting->nSessionId : context.nSessionId;
+                                if(nKeySessionId != 0)
+                                    mapSessionKeys[nKeySessionId] = vFallbackPubKey;
                             }
                             context = context.WithDisposableKey(vFallbackPubKey, hashFallbackKeyID);
                             debug::log(0, FUNCTION, "  Fallback: restored disposable Falcon key from dedicated key store");
@@ -1712,11 +1721,25 @@ namespace LLP
                 /* Continue with existing template lookup and validation... */
                 StatelessMinerManager::Get().IncrementBlocksSubmitted();
 
-                /* Make sure the block was created by this mining server. */
-                if(!find_block(hashMerkle))
+                /* ── Template lookup under MUTEX ─────────────────────────────
+                 *  Capture the shared_ptr<Block> and metadata under lock so that
+                 *  CleanupStaleTemplates (or new_block()) on another thread cannot
+                 *  erase the entry and free the block while the long sign_block() /
+                 *  validation pipeline is running.  MUTEX is released before
+                 *  sign_block() because sign_block() is a heavy operation (builds
+                 *  solved candidate, signs, validates PoW diagnostics).             */
+                std::shared_ptr<TAO::Ledger::Block> pCapturedBlock;
+                uint64_t  nCapturedCreationTime  = 0;
+                uint32_t  nCapturedChannel       = 0;
+                uint32_t  nCapturedChannelHeight = 0;
+                uint32_t  nCapturedHeight        = 0;
                 {
-                    /* Template not found in this connection's mapBlocks. */
+                    LOCK(MUTEX);
+
+                    auto it = mapBlocks.find(hashMerkle);
+                    if(it == mapBlocks.end())
                     {
+                        /* Template not found — diagnostic dump (still under lock). */
                         debug::error(FUNCTION, "════════════════════════════════════════");
                         debug::error(FUNCTION, "   ❌ TEMPLATE NOT FOUND");
                         debug::error(FUNCTION, "════════════════════════════════════════");
@@ -1727,7 +1750,7 @@ namespace LLP
                         debug::error(FUNCTION, "  Synchronizing: ", TAO::Ledger::ChainState::Synchronizing() ? "YES" : "NO");
                         debug::error(FUNCTION, "");
                         debug::error(FUNCTION, "Known templates (", mapBlocks.size(), " total):");
-                        
+
                         if(mapBlocks.empty())
                         {
                             debug::error(FUNCTION, "  (none - all templates expired)");
@@ -1738,9 +1761,9 @@ namespace LLP
                             {
                                 const TemplateMetadata& meta = entry.second;
                                 uint64_t nAge = runtime::unifiedtimestamp() - meta.nCreationTime;
-                                
+
                                 debug::error(FUNCTION, "  ✓ ", entry.first.SubString());
-                                debug::error(FUNCTION, "    Height: ", meta.nHeight, 
+                                debug::error(FUNCTION, "    Height: ", meta.nHeight,
                                            " (current: ", TAO::Ledger::ChainState::nBestHeight.load() + 1, ")");
                                 debug::error(FUNCTION, "    Channel Height: ", meta.nChannelHeight);
                                 debug::error(FUNCTION, "    Age: ", nAge, "s (max: ", LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS, "s)");
@@ -1748,7 +1771,7 @@ namespace LLP
                                 debug::error(FUNCTION, "    Valid: ", !meta.IsStale() ? "YES" : "NO");
                             }
                         }
-                        
+
                         debug::error(FUNCTION, "");
                         debug::error(FUNCTION, "COMMON CAUSES:");
                         debug::error(FUNCTION, "  1. Template expired (height changed during mining)");
@@ -1763,30 +1786,28 @@ namespace LLP
                         debug::error(FUNCTION, "  4. Template cleanup removed it");
                         debug::error(FUNCTION, "     → Solution: Request new template immediately");
                         debug::error(FUNCTION, "════════════════════════════════════════");
-                        
+
                         StatelessPacket response(STATELESS_BLOCK_REJECTED);
                         respond(response);
                         debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Unknown template) ===", ANSI_COLOR_RESET);
                         return true;
                     }
+
+                    /* Capture shared_ptr (extends block lifetime beyond any map erase)
+                     * and snapshot the metadata we need for sign_block / diagnostics. */
+                    pCapturedBlock        = it->second.pBlock;
+                    nCapturedCreationTime = it->second.nCreationTime;
+                    nCapturedChannel      = it->second.nChannel;
+                    nCapturedChannelHeight = it->second.nChannelHeight;
+                    nCapturedHeight       = it->second.nHeight;
                 }
+                /* ── MUTEX released — pCapturedBlock keeps the block alive ── */
+
+                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Found original template (wallet-signed)", ANSI_COLOR_RESET);
 
                 TAO::Ledger::TritiumBlock* pTritium = nullptr;
 
                 {
-                    debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   ✓ Found original template (wallet-signed)", ANSI_COLOR_RESET);
-
-                    /* Get iterator to block template for processing */
-                    auto it = mapBlocks.find(hashMerkle);
-                    if(it == mapBlocks.end())
-                    {
-                        debug::error(FUNCTION, "❌ Template lookup failed (race condition)");
-                        StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                        respond(response);
-                        debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (template lookup failed) ===", ANSI_COLOR_RESET);
-                        return true;
-                    }
-
                     /* ── Canonical pre-check gate (WARN-ONLY) ───────────────────────────
                      *  Use the snapshot captured at GET_BLOCK / push time (MiningContext).
                      *  The ledger validate + accept pipeline remains the final authority on
@@ -1811,7 +1832,7 @@ namespace LLP
                      * Prefer the Falcon-authenticated miner-submitted height (nHeightFromBlock)
                      * when available (full-block-body decode path); fall back to the stored
                      * template height for the legacy wrapper path. */
-                    const uint32_t nTemplateHeight = it->second.pBlock ? it->second.pBlock->nHeight : 0;
+                    const uint32_t nTemplateHeight = pCapturedBlock ? pCapturedBlock->nHeight : 0;
                     const uint32_t nCompareHeight  = fHeightFromBlock ? nHeightFromBlock : nTemplateHeight;
                     if(nCompareHeight > 0 && snap.canonical_unified_height > 0 &&
                        nCompareHeight != snap.canonical_unified_height)
@@ -1833,7 +1854,8 @@ namespace LLP
                 }
 
                     /* Make sure there is no inconsistencies in signing block. */
-                    if(!sign_block(nonce, hashMerkle, vPrimeOffsets))
+                    if(!sign_block(nonce, hashMerkle, vPrimeOffsets, pCapturedBlock.get(),
+                                   nCapturedCreationTime, nCapturedChannel, nCapturedChannelHeight))
                     {
                         debug::error(FUNCTION, "❌ sign_block failed (nonce update failed)");
                         StatelessPacket response(STATELESS_BLOCK_REJECTED);
@@ -1842,7 +1864,7 @@ namespace LLP
                         return true;
                     }
 
-                    pTritium = dynamic_cast<TAO::Ledger::TritiumBlock*>(it->second.pBlock.get());
+                    pTritium = dynamic_cast<TAO::Ledger::TritiumBlock*>(pCapturedBlock.get());
                     if(!pTritium)
                     {
                         debug::error(FUNCTION, "❌ invalid block type (expected TritiumBlock)");
@@ -2019,15 +2041,13 @@ namespace LLP
                 /* Log signature configuration (PR #122) */
                 LogFalconSignatureInfo(context);
 
-                /* Get block for detailed logging */
+                /* Get block for detailed logging (use captured block — no lock needed) */
                 {
-                    auto itLog = mapBlocks.find(hashMerkle);
-                    if(itLog != mapBlocks.end() && itLog->second.pBlock)
+                    if(pCapturedBlock)
                     {
-                        TAO::Ledger::Block *pBlock = itLog->second.pBlock.get();
-                        debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   🎉 Block ", pBlock->nHeight, " submitted to Nexus network", ANSI_COLOR_RESET);
+                        debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "   🎉 Block ", pCapturedBlock->nHeight, " submitted to Nexus network", ANSI_COLOR_RESET);
                         debug::log(0, "   Miner: ", GetAddress().ToStringIP());
-                        debug::log(0, "   Channel: ", pBlock->nChannel, " (", MiningContext::ChannelName(pBlock->nChannel), ")");
+                        debug::log(0, "   Channel: ", pCapturedBlock->nChannel, " (", MiningContext::ChannelName(pCapturedBlock->nChannel), ")");
                     }
                 }
 
@@ -2043,12 +2063,15 @@ namespace LLP
                     /* Invalidate the failed template from the cache so the miner's
                      * follow-up GET_BLOCK receives a fresh template rather than the
                      * stale one that just failed to land. */
-                    auto itFailed = mapBlocks.find(hashMerkle);
-                    if(itFailed != mapBlocks.end())
                     {
-                        debug::log(0, FUNCTION, "Invalidating failed template ",
-                            hashMerkle.SubString(), " from cache — next GET_BLOCK will regenerate");
-                        mapBlocks.erase(itFailed);
+                        LOCK(MUTEX);
+                        auto itFailed = mapBlocks.find(hashMerkle);
+                        if(itFailed != mapBlocks.end())
+                        {
+                            debug::log(0, FUNCTION, "Invalidating failed template ",
+                                hashMerkle.SubString(), " from cache — next GET_BLOCK will regenerate");
+                            mapBlocks.erase(itFailed);
+                        }
                     }
 
                     /* Notify Colin agent on ledger-write failure */
@@ -2629,6 +2652,23 @@ namespace LLP
                         debug::log(0, FUNCTION, "⚠ Cross-port session recovery: Overriding derived sessionId ",
                                    context.nSessionId, " → ", canonicalSessionId,
                                    " (already registered on other port)");
+
+                        /* Migrate mapSessionKeys entry from old derived ID to canonical ID
+                         * so that SUBMIT_BLOCK Falcon signature verification looks up the
+                         * correct pubkey under the canonical session ID. */
+                        {
+                            std::lock_guard<std::mutex> lock(SESSION_MUTEX);
+                            const uint32_t nOldId = context.nSessionId;
+                            auto itOld = mapSessionKeys.find(nOldId);
+                            if(itOld != mapSessionKeys.end())
+                            {
+                                mapSessionKeys[canonicalSessionId] = std::move(itOld->second);
+                                mapSessionKeys.erase(itOld);
+                                debug::log(1, FUNCTION, "✓ Migrated session key: 0x",
+                                           std::hex, nOldId, " → 0x", canonicalSessionId, std::dec);
+                            }
+                        }
+
                         context = context.WithSession(canonicalSessionId);
                     }
 
@@ -3381,83 +3421,55 @@ namespace LLP
     }
 
 
-    /** Sign a block */
-    bool StatelessMinerConnection::sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot, const std::vector<uint8_t>& vOffsets)
+    /** Sign a block.
+     *
+     *  The caller must supply a pre-resolved block pointer and the template
+     *  metadata captured under LOCK(MUTEX).  This avoids a second mapBlocks
+     *  lookup after the lock is released. */
+    bool StatelessMinerConnection::sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot, const std::vector<uint8_t>& vOffsets,
+                                              TAO::Ledger::Block* pBaseBlock, uint64_t nTemplateCreationTime,
+                                              uint32_t nTemplateChannel, uint32_t nTemplateChannelHeight)
     {
         debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "📝 === SIGN_BLOCK: Updating template ===", ANSI_COLOR_RESET);
         debug::log(0, "   Requested merkle root: ", hashMerkleRoot.SubString());
         debug::log(0, "   Nonce: 0x", std::hex, nNonce, std::dec);
-        
-        /* ✅ NEW: Check if any templates exist first */
-        if(mapBlocks.empty())
-        {
-            debug::error(FUNCTION, "════════════════════════════════════════");
-            debug::error(FUNCTION, "   ❌ NO TEMPLATES AVAILABLE");
-            debug::error(FUNCTION, "════════════════════════════════════════");
-            debug::error(FUNCTION, "This means:");
-            debug::error(FUNCTION, "  - Template expired (height changed)");
-            debug::error(FUNCTION, "  - Template was never created");
-            debug::error(FUNCTION, "  - Template cleanup removed it");
-            debug::error(FUNCTION, "");
-            debug::error(FUNCTION, "ACTION: Miner should request new template via GET_BLOCK");
-            debug::error(FUNCTION, "════════════════════════════════════════");
-            return false;
-        }
-        
-        /* ✅ NEW: Look up template by merkle root */
-        auto it = mapBlocks.find(hashMerkleRoot);
-        if(it == mapBlocks.end())
-        {
-            debug::error(FUNCTION, "════════════════════════════════════════");
-            debug::error(FUNCTION, "   ❌ MERKLE ROOT MISMATCH");
-            debug::error(FUNCTION, "════════════════════════════════════════");
-            debug::error(FUNCTION, "Requested merkle: ", hashMerkleRoot.SubString());
-            debug::error(FUNCTION, "");
-            debug::error(FUNCTION, "Known templates in map:");
-            for(const auto& entry : mapBlocks)
-            {
-                const TemplateMetadata& meta = entry.second;
-                uint64_t nAge = runtime::unifiedtimestamp() - meta.nCreationTime;
-                debug::error(FUNCTION, "  ✓ ", entry.first.SubString());
-                debug::error(FUNCTION, "    Height: ", meta.nHeight);
-                debug::error(FUNCTION, "    Age: ", nAge, "s");
-                debug::error(FUNCTION, "    Channel: ", meta.nChannel);
-            }
-            debug::error(FUNCTION, "");
-            debug::error(FUNCTION, "POSSIBLE CAUSES:");
-            debug::error(FUNCTION, "  1. Miner computed wrong merkle root (BUG in miner)");
-            debug::error(FUNCTION, "  2. Miner submitting work from old template");
-            debug::error(FUNCTION, "  3. Height changed between GET_BLOCK and SUBMIT_BLOCK");
-            debug::error(FUNCTION, "  4. Miner's nonce caused merkle to change (overflow?)");
-            debug::error(FUNCTION, "");
-            debug::error(FUNCTION, "ACTION: Miner should poll GET_ROUND and request new template");
-            debug::error(FUNCTION, "════════════════════════════════════════");
-            return false;
-        }
-        
-        /* Validate template is still valid — single combined check that covers both
-         * age staleness and channel-specific height staleness (IsStale() checks both). */
-        const TemplateMetadata& meta = it->second;
-        
-        if(meta.IsStale())
-        {
-            uint64_t nAge = runtime::unifiedtimestamp() - meta.nCreationTime;
-            uint32_t nCurrentHeight = TAO::Ledger::ChainState::nBestHeight.load();
-            debug::error(FUNCTION, "❌ Template is STALE");
-            debug::error(FUNCTION, "   Template age: ", nAge, "s (max: ", LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS, "s)");
-            debug::error(FUNCTION, "   Template unified height: ", meta.nHeight);
-            debug::error(FUNCTION, "   Template channel height: ", meta.nChannelHeight);
-            debug::error(FUNCTION, "   Current blockchain height: ", nCurrentHeight);
-            debug::error(FUNCTION, "   Reason: Channel height changed or age exceeded");
-            return false;
-        }
-        
-        /* ✅ Template is valid - proceed with solved-candidate construction */
-        TAO::Ledger::Block* pBaseBlock = meta.pBlock.get();
+
         if(!pBaseBlock)
         {
             debug::error(FUNCTION, "❌ Template has null block pointer!");
             return false;
+        }
+        
+        /* Staleness check using captured metadata (no mapBlocks access needed). */
+        {
+            uint64_t nAge = runtime::unifiedtimestamp() - nTemplateCreationTime;
+            if(nAge > LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS)
+            {
+                uint32_t nCurrentHeight = TAO::Ledger::ChainState::nBestHeight.load();
+                debug::error(FUNCTION, "❌ Template is STALE (age)");
+                debug::error(FUNCTION, "   Template age: ", nAge, "s (max: ", LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS, "s)");
+                debug::error(FUNCTION, "   Template channel: ", nTemplateChannel);
+                debug::error(FUNCTION, "   Template channel height: ", nTemplateChannelHeight);
+                debug::error(FUNCTION, "   Current blockchain height: ", nCurrentHeight);
+                debug::error(FUNCTION, "   Reason: Age exceeded");
+                return false;
+            }
+
+            /* Channel-height staleness: check if the blockchain has advanced past
+             * the channel height this template was mining for. */
+            TAO::Ledger::BlockState stateCurrent = TAO::Ledger::ChainState::tStateBest.load();
+            TAO::Ledger::BlockState stateChannel = stateCurrent;
+            if(TAO::Ledger::GetLastState(stateChannel, nTemplateChannel))
+            {
+                if(stateChannel.nChannelHeight >= nTemplateChannelHeight)
+                {
+                    debug::error(FUNCTION, "❌ Template is STALE (channel height)");
+                    debug::error(FUNCTION, "   Template channel height: ", nTemplateChannelHeight);
+                    debug::error(FUNCTION, "   Current channel height: ", stateChannel.nChannelHeight);
+                    debug::error(FUNCTION, "   Reason: Channel height changed");
+                    return false;
+                }
+            }
         }
 
         /* If the block dynamically casts to a tritium block, validate the tritium block. */
@@ -3530,8 +3542,8 @@ namespace LLP
             }
 
             debug::log(0, "   ✅ Solved candidate ready");
-            debug::log(0, "      Height: ", meta.nHeight);
-            debug::log(0, "      Age: ", runtime::unifiedtimestamp() - meta.nCreationTime, "s");
+            debug::log(0, "      Height: ", pBlock->nHeight);
+            debug::log(0, "      Age: ", runtime::unifiedtimestamp() - nTemplateCreationTime, "s");
 
             /* ============================================================
              * TRAINING WHEELS MODE: Comprehensive Diagnostic Logging
@@ -3732,7 +3744,7 @@ namespace LLP
     /** Clear the blocks map */
     void StatelessMinerConnection::clear_map()
     {
-        /* Clear the map - unique_ptr automatically deletes all blocks */
+        /* Clear the map - shared_ptr ref-counts drop; blocks freed if no other holders */
         mapBlocks.clear();
     }
 
@@ -3856,7 +3868,7 @@ namespace LLP
 
                 debug::log(2, FUNCTION, "      Age: ", nAge, "s");
                 debug::log(2, FUNCTION, "      Merkle: ", it->first.SubString());
-                it = mapBlocks.erase(it);  // unique_ptr automatically deletes pBlock
+                it = mapBlocks.erase(it);  // shared_ptr ref-count drops; block freed if no other holders
                 ++nRemoved;
                 continue;
             }

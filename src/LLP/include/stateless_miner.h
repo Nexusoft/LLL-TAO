@@ -267,8 +267,14 @@ namespace LLP
         /* CORE TEMPLATE DATA                                                               */
         /* ═══════════════════════════════════════════════════════════════════════════════ */
         
-        /** The block template itself (owned by this struct via unique_ptr) */
-        std::unique_ptr<TAO::Ledger::Block> pBlock;
+        /** The block template itself (shared ownership via shared_ptr).
+         *
+         *  shared_ptr (not unique_ptr) so that the SUBMIT_BLOCK handler can
+         *  capture a reference-counted handle under MUTEX and then release the
+         *  lock before the long sign_block() / validation pipeline runs.
+         *  If CleanupStaleTemplates erases this map entry in the meantime the
+         *  block stays alive via the handler's local shared_ptr copy. */
+        std::shared_ptr<TAO::Ledger::Block> pBlock;
         
         /** When this template was created (unified timestamp in seconds since epoch) */
         uint64_t nCreationTime;
@@ -348,7 +354,7 @@ namespace LLP
          *  Used during template creation in ProcessGetBlock() to construct metadata
          *  with all necessary information for staleness detection.
          *  
-         *  @param pBlock_        Raw block pointer (ownership transferred to unique_ptr)
+         *  @param pBlock_        Raw block pointer (ownership transferred to shared_ptr)
          *  @param nCreationTime_ Unified timestamp when template was created
          *  @param nHeight_       Unified blockchain height at creation
          *  @param nChannelHeight_ Channel-specific height at creation (PR #134)
@@ -360,7 +366,7 @@ namespace LLP
                         uint32_t nHeight_, uint32_t nChannelHeight_,
                         const uint512_t& hashMerkleRoot_, uint32_t nChannel_,
                         const uint1024_t& hashBestChainAtCreation_ = uint1024_t(0))
-            : pBlock(pBlock_)  // unique_ptr takes ownership
+            : pBlock(pBlock_)  // shared_ptr takes ownership
             , nCreationTime(nCreationTime_)
             , nHeight(nHeight_)
             , hashMerkleRoot(hashMerkleRoot_)
@@ -374,7 +380,6 @@ namespace LLP
          *  Move constructor - explicitly defaulted for move-only semantics
          *  
          *  Allows TemplateMetadata to be moved (e.g., when inserting into std::map).
-         *  Required because unique_ptr is move-only.
          */
         TemplateMetadata(TemplateMetadata&& other) noexcept = default;
         
@@ -382,17 +387,14 @@ namespace LLP
          *  Move assignment operator - explicitly defaulted for move-only semantics
          *  
          *  Allows TemplateMetadata to be move-assigned (e.g., std::map[key] = std::move(value)).
-         *  Required because unique_ptr is move-only.
          */
         TemplateMetadata& operator=(TemplateMetadata&& other) noexcept = default;
         
         /** 
          *  Copy constructor - explicitly deleted
          *  
-         *  Copying is disabled because:
-         *  1. unique_ptr cannot be copied (move-only)
-         *  2. Block templates are large objects (~10KB+) - copying would be expensive
-         *  3. Ownership semantics are clearer with move-only design
+         *  Copying is disabled because block templates are large objects (~10KB+).
+         *  Use the shared_ptr<Block> member to share the block without deep-copying.
          */
         TemplateMetadata(const TemplateMetadata&) = delete;
         
