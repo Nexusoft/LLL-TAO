@@ -2897,6 +2897,8 @@ namespace LLP
             }
             else
             {
+                /* AUTH_RESPONSE failures land here; clear the handshake exemption so a
+                 * miner that aborts or retries auth does not stay timeout-exempt forever. */
                 if(PACKET.HEADER == MINER_AUTH_RESPONSE)
                     fHandshakeInProgressAtomic.store(false, std::memory_order_relaxed);
 

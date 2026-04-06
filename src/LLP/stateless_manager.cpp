@@ -392,7 +392,9 @@ namespace LLP
         MiningContext migrated = optFallbackContext.value();
         migrated.strAddress = strAddress;
         /* Preserve monotonic activity timestamps when re-keying an existing miner to
-         * a new exact address so CleanupInactive() never sees a backwards jump. */
+         * a new exact address so CleanupInactive() never sees a backwards jump.
+         * If the recovered context already carries a future timestamp, preserve it
+         * as the authoritative value rather than forcing a local clock regression. */
         migrated.nTimestamp = std::max<uint64_t>(migrated.nTimestamp, runtime::unifiedtimestamp());
 
         const uint8_t nLane = GetMinerLane(strFallbackAddress).value_or(0);

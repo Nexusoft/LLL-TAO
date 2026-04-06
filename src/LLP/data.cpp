@@ -29,6 +29,8 @@ ________________________________________________________________________________
 
 #include <Util/include/hex.h>
 
+#include <type_traits>
+
 
 namespace LLP
 {
@@ -422,7 +424,8 @@ namespace LLP
                     const bool fHasPartialPacket =
                         !CONNECTION->INCOMING.IsNull() && !CONNECTION->PacketComplete();
                     const bool fMiningConnection =
-                        (ProtocolType::Name() == "Miner" || ProtocolType::Name() == "StatelessMiner");
+                        std::is_same<ProtocolType, Miner>::value
+                        || std::is_same<ProtocolType, StatelessMinerConnection>::value;
                     const bool fTimeoutExempt = CONNECTION->IsTimeoutExempt();
                     const uint32_t nPollEmptyTimeout =
                         fMiningConnection ? MINING_POLL_EMPTY_TIMEOUT_MS : nWait;
