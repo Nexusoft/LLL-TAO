@@ -754,9 +754,7 @@ namespace LLP
             debug::log(0, FUNCTION, "DataThread[", ID, "]: Removing AUTHENTICATED mining connection ",
                        CONNECTIONS->at(nIndex)->GetAddress().ToStringIP(),
                        " reason=", pReason,
-                       " buffered=", CONNECTIONS->at(nIndex)->Buffered(),
-                       " last_recv=", CONNECTIONS->at(nIndex)->nLastRecv.load(),
-                       " last_send=", CONNECTIONS->at(nIndex)->nLastSend.load());
+                       " buffered=", CONNECTIONS->at(nIndex)->Buffered());
         }
 
         /* Fire off our disconnect event now. */

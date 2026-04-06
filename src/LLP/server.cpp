@@ -1220,15 +1220,17 @@ namespace LLP
                         /* Check idle-receive time: if the miner hasn't sent
                          * anything for 2× the probe interval, the inbound path
                          * is likely dead.  Try to flush the outbound side to
-                         * force an OS-level TCP error if the path is broken. */
-                        const uint64_t nNow = runtime::timestamp(true);
-                        const uint64_t nIdleRecv = nNow - pConn->nLastRecv.load();
+                         * force an OS-level TCP error if the path is broken.
+                         *
+                         * Timeout(ms, READ) returns true when current_time >
+                         * nLastRecv + ms.  We use 2× probe interval in ms. */
+                        const uint32_t nStaleMs = static_cast<uint32_t>(nProbeInterval) * 2 * 1000;
 
-                        if(nIdleRecv > static_cast<uint64_t>(nProbeInterval) * 2)
+                        if(pConn->Timeout(nStaleMs, Socket::READ))
                         {
                             debug::log(0, FUNCTION, "Health probe: miner ",
                                        pConn->GetAddress().ToStringIP(),
-                                       " idle_recv=", nIdleRecv, "ms",
+                                       " recv idle > ", nStaleMs / 1000, "s",
                                        " buffered=", pConn->Buffered(),
                                        " — flushing to detect dead path");
 
