@@ -249,6 +249,11 @@ namespace LLP
         return c;
     }
 
+    uint32_t MiningContext::DeriveSessionId(const uint256_t& hashKeyID)
+    {
+        return static_cast<uint32_t>(hashKeyID.Get64(0));
+    }
+
     MiningContext MiningContext::WithSession(uint32_t nSessionId_) const
     {
         MiningContext c = *this;
@@ -1321,8 +1326,8 @@ namespace LLP
         if(pAuth)
             hashKeyID = pAuth->DeriveKeyId(context.vMinerPubKey);
 
-        /* Derive session ID from key ID (lower 32 bits) */
-        uint32_t nSessionId = static_cast<uint32_t>(hashKeyID.Get64(0));
+        /* Derive session ID from key ID using canonical derivation */
+        uint32_t nSessionId = MiningContext::DeriveSessionId(hashKeyID);
 
         /* Use genesis from MINER_AUTH_INIT if provided, otherwise check binding */
         uint256_t hashGenesis = context.hashGenesis;  // Already set from INIT

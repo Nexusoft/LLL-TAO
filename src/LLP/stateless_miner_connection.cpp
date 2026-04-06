@@ -811,11 +811,15 @@ namespace LLP
                     {
                         {
                             std::lock_guard<std::mutex> lock(SESSION_MUTEX);
-                            /* Use the recovered session ID if available; fall back to the
-                             * live context's session ID when the recovered ID is zero
+                            /* Use the recovered session ID if available; fall back to
+                             * DeriveSessionId(hashKeyID) as a secondary fallback, and then
+                             * to the live context's session ID when both are zero
                              * (recovery container may have lost the session ID). */
-                            const uint32_t nKeySessionId = (optExisting->nSessionId != 0)
-                                ? optExisting->nSessionId : context.nSessionId;
+                            uint32_t nKeySessionId = optExisting->nSessionId;
+                            if(nKeySessionId == 0 && optExisting->hashKeyID != 0)
+                                nKeySessionId = MiningContext::DeriveSessionId(optExisting->hashKeyID);
+                            if(nKeySessionId == 0)
+                                nKeySessionId = context.nSessionId;
                             if(nKeySessionId != 0)
                                 mapSessionKeys[nKeySessionId] = optExisting->vDisposablePubKey;
                         }
@@ -836,10 +840,13 @@ namespace LLP
                         {
                             {
                                 std::lock_guard<std::mutex> lock(SESSION_MUTEX);
-                                /* Same fallback logic: prefer recovered ID, fall back to
-                                 * live context ID when the recovered ID is zero. */
-                                const uint32_t nKeySessionId = (optExisting->nSessionId != 0)
-                                    ? optExisting->nSessionId : context.nSessionId;
+                                /* Same fallback logic: prefer recovered ID, derive from
+                                 * hashKeyID, fall back to live context ID. */
+                                uint32_t nKeySessionId = optExisting->nSessionId;
+                                if(nKeySessionId == 0 && optExisting->hashKeyID != 0)
+                                    nKeySessionId = MiningContext::DeriveSessionId(optExisting->hashKeyID);
+                                if(nKeySessionId == 0)
+                                    nKeySessionId = context.nSessionId;
                                 if(nKeySessionId != 0)
                                     mapSessionKeys[nKeySessionId] = vFallbackPubKey;
                             }
@@ -959,6 +966,16 @@ namespace LLP
                     else if(context.nSessionId != 0)
                     {
                         debug::log(1, FUNCTION, "✓ Diagnostic: disposable Falcon key verified in mapSessionKeys for session ", context.nSessionId);
+                    }
+                    else
+                    {
+                        /* Bug 5.2 fix: Warn when context.nSessionId is still 0 after recovery.
+                         * This means neither the recovery data nor the live context had a valid
+                         * session ID — block submissions will fail until re-authentication. */
+                        debug::warning(FUNCTION, "⚠ context.nSessionId is 0 after STATELESS_MINER_READY recovery — "
+                                       "block submissions will require re-authentication");
+                        debug::warning(FUNCTION, "  key_id=", FullHexOrUnset(context.hashKeyID),
+                                       " authenticated=", context.fAuthenticated ? "YES" : "NO");
                     }
                 }
 
@@ -2649,8 +2666,9 @@ namespace LLP
                      * We MUST use the canonical ID to prevent session_id=0 bugs on reconnection. */
                     if(canonicalSessionId != context.nSessionId)
                     {
+                        const uint32_t nDerivedId = context.nSessionId;
                         debug::log(0, FUNCTION, "⚠ Cross-port session recovery: Overriding derived sessionId ",
-                                   context.nSessionId, " → ", canonicalSessionId,
+                                   nDerivedId, " → ", canonicalSessionId,
                                    " (already registered on other port)");
 
                         /* Migrate mapSessionKeys entry from old derived ID to canonical ID
@@ -2658,14 +2676,13 @@ namespace LLP
                          * correct pubkey under the canonical session ID. */
                         {
                             std::lock_guard<std::mutex> lock(SESSION_MUTEX);
-                            const uint32_t nOldId = context.nSessionId;
-                            auto itOld = mapSessionKeys.find(nOldId);
+                            auto itOld = mapSessionKeys.find(nDerivedId);
                             if(itOld != mapSessionKeys.end())
                             {
                                 mapSessionKeys[canonicalSessionId] = std::move(itOld->second);
                                 mapSessionKeys.erase(itOld);
                                 debug::log(1, FUNCTION, "✓ Migrated session key: 0x",
-                                           std::hex, nOldId, " → 0x", canonicalSessionId, std::dec);
+                                           std::hex, nDerivedId, " → 0x", canonicalSessionId, std::dec);
                             }
                         }
 
@@ -2698,6 +2715,25 @@ namespace LLP
                         context = context.WithDisposableKey(context.vMinerPubKey,
                                                             LLC::SK256(context.vMinerPubKey));
                         debug::log(1, FUNCTION, "✓ Embedded disposable Falcon key in context for session recovery persistence");
+                    }
+
+                    /* Bug 5.3 fix: Cross-check that mapSessionKeys and vDisposablePubKey hold
+                     * the same key.  AUTH stores vMinerPubKey; recovery restores vDisposablePubKey.
+                     * They MUST be identical for SUBMIT_BLOCK signature verification to succeed.
+                     * If they ever diverge, log the mismatch at level 0 for operators. */
+                    if(!context.vDisposablePubKey.empty() && context.nSessionId != 0)
+                    {
+                        std::lock_guard<std::mutex> lock(SESSION_MUTEX);
+                        auto it = mapSessionKeys.find(context.nSessionId);
+                        if(it != mapSessionKeys.end() && !it->second.empty() &&
+                           it->second != context.vDisposablePubKey)
+                        {
+                            debug::error(FUNCTION, "⚠ KEY DIVERGENCE: mapSessionKeys pubkey differs from vDisposablePubKey");
+                            debug::error(FUNCTION, "  session_id=", context.nSessionId,
+                                         " map_key_size=", it->second.size(),
+                                         " disposable_key_size=", context.vDisposablePubKey.size());
+                            debug::error(FUNCTION, "  This will cause SUBMIT_BLOCK signature verification failures");
+                        }
                     }
 
                     SessionRecoveryManager::Get().SaveSession(context);
