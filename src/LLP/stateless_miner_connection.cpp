@@ -1789,7 +1789,7 @@ namespace LLP
 
                     /* ── Canonical pre-check gate (WARN-ONLY) ───────────────────────────
                      *  Use the snapshot captured at GET_BLOCK / push time (MiningContext).
-                     *  Node's validate_block() + ledger remain the final authority on
+                     *  The ledger validate + accept pipeline remains the final authority on
                      *  acceptance; these checks only emit diagnostic warnings.
                      */
                     {
@@ -3414,23 +3414,16 @@ namespace LLP
             return false;
         }
         
-        /* ✅ NEW: Validate template is still valid */
+        /* Validate template is still valid — single combined check that covers both
+         * age staleness and channel-specific height staleness (IsStale() checks both). */
         const TemplateMetadata& meta = it->second;
         
         if(meta.IsStale())
         {
             uint64_t nAge = runtime::unifiedtimestamp() - meta.nCreationTime;
-            debug::error(FUNCTION, "❌ Template is too old (", nAge, "s)");
-            debug::error(FUNCTION, "   Max age: ", LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS, "s");
-            return false;
-        }
-        
-        /* PR #134: Check channel-specific staleness using IsStale() */
-        /* Note: IsStale() now checks both age and channel height */
-        if(meta.IsStale())
-        {
             uint32_t nCurrentHeight = TAO::Ledger::ChainState::nBestHeight.load();
             debug::error(FUNCTION, "❌ Template is STALE");
+            debug::error(FUNCTION, "   Template age: ", nAge, "s (max: ", LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS, "s)");
             debug::error(FUNCTION, "   Template unified height: ", meta.nHeight);
             debug::error(FUNCTION, "   Template channel height: ", meta.nChannelHeight);
             debug::error(FUNCTION, "   Current blockchain height: ", nCurrentHeight);
@@ -3471,7 +3464,7 @@ namespace LLP
              *   - clears vchBlockSig so FinalizeWalletSignatureForSolvedBlock can re-sign
              *
              * Both helpers do NOT mutate the original template.  The solved candidate
-             * is written back into the template slot so downstream validate_block() /
+             * is written back into the template slot so downstream
              * AcceptMinedBlock() operate on the fully-prepared signed block. */
             if(pBlock->nChannel == TAO::Ledger::CHANNEL::PRIME)
             {
@@ -3690,160 +3683,6 @@ namespace LLP
 
         /* If we get here, the block is null or doesn't exist. */
         return debug::error(FUNCTION, "null block");
-    }
-
-
-    /** Validate a block */
-    bool StatelessMinerConnection::validate_block(const uint512_t& hashMerkleRoot)
-    {
-        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "✅ === VALIDATE_BLOCK: Final consensus validation ===", ANSI_COLOR_RESET);
-
-        /* Safe map access to avoid creating null entry */
-        auto it = mapBlocks.find(hashMerkleRoot);
-        if(it == mapBlocks.end())
-        {
-            debug::error(FUNCTION, "Block not found in map");
-            return false;
-        }
-
-        /* Get block from metadata */
-        const TemplateMetadata& meta = it->second;
-        if(!meta.pBlock)
-        {
-            debug::error(FUNCTION, "Block has null pointer in metadata");
-            return false;
-        }
-
-        TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock*>(meta.pBlock.get());
-        if(pBlock)
-        {
-            debug::log(2, FUNCTION, "Tritium");
-            pBlock->print();
-            
-            /* ============================================================
-             * TRAINING WHEELS MODE: Pre-Check() Diagnostic
-             * ============================================================ */
-            
-            debug::log(0, "");
-            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "🔬 === PRE-CHECK() DIAGNOSTIC ===", ANSI_COLOR_RESET);
-            debug::log(0, "📋 BLOCK STATE BEFORE Check():");
-            debug::log(0, "   Height:      ", pBlock->nHeight);
-            debug::log(0, "   Channel:     ", pBlock->nChannel);
-            debug::log(0, "   nBits:       0x", std::hex, pBlock->nBits, std::dec);
-            debug::log(0, "   nNonce:      0x", std::hex, pBlock->nNonce, std::dec);
-            debug::log(0, "   Merkle root: ", pBlock->hashMerkleRoot.SubString());
-            debug::log(0, "   vOffsets.size(): ", pBlock->vOffsets.size());
-            
-            if(pBlock->nChannel == 1 && !pBlock->vOffsets.empty())
-            {
-                debug::log(0, "   First 5 offsets:");
-                for(size_t i = 0; i < std::min(size_t(5), pBlock->vOffsets.size()); ++i)
-                {
-                    debug::log(0, "      [", i, "] = ", static_cast<int>(pBlock->vOffsets[i]));
-                }
-            }
-            
-            debug::log(0, "");
-            debug::log(0, "🧪 CALLING TritiumBlock::Check()...");
-            
-            /* Call canonical Check() validation */
-            bool fCheckResult = pBlock->Check();
-            
-            debug::log(0, "");
-            if(fCheckResult)
-            {
-                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "✅ Check() PASSED", ANSI_COLOR_RESET);
-                debug::log(0, "   All block validations successful:");
-                debug::log(0, "   ✓ Block structure valid");
-                debug::log(0, "   ✓ Producer transaction valid");
-                debug::log(0, "   ✓ Proof-of-work valid");
-                if(pBlock->nChannel == 1)
-                    debug::log(0, "   ✓ Prime Cunningham chain valid");
-                else if(pBlock->nChannel == 2)
-                    debug::log(0, "   ✓ Hash meets target");
-            }
-            else
-            {
-                debug::log(0, ANSI_COLOR_BRIGHT_RED, "❌ Check() FAILED", ANSI_COLOR_RESET);
-                debug::log(0, "   Block failed consensus validation");
-                
-                /* ✅ ADD: Enhanced Prime channel diagnostics */
-                if(pBlock->nChannel == 1)  // Prime channel
-                {
-                    debug::error(FUNCTION, "════════════════════════════════════════");
-                    debug::error(FUNCTION, "   PRIME CHANNEL VALIDATION FAILED");
-                    debug::error(FUNCTION, "════════════════════════════════════════");
-                    debug::error(FUNCTION, "Block details:");
-                    debug::error(FUNCTION, "  Height: ", pBlock->nHeight);
-                    debug::error(FUNCTION, "  Channel: 1 (Prime)");
-                    debug::error(FUNCTION, "  Merkle: ", pBlock->hashMerkleRoot.SubString());
-                    debug::error(FUNCTION, "  nNonce: ", pBlock->nNonce);
-                    debug::error(FUNCTION, "");
-                    debug::error(FUNCTION, "NOTE: PR #129 added Miller-Rabin primality test");
-                    debug::error(FUNCTION, "If this is a recent build, Check() now uses");
-                    debug::error(FUNCTION, "cryptographically secure primality validation.");
-                    debug::error(FUNCTION, "");
-                    debug::error(FUNCTION, "Common Prime mining failures:");
-                    debug::error(FUNCTION, "  - Empty vOffsets (no valid Cunningham chain)");
-                    debug::error(FUNCTION, "  - Base prime not actually prime");
-                    debug::error(FUNCTION, "  - Chain length insufficient");
-                    debug::error(FUNCTION, "════════════════════════════════════════");
-                }
-                else
-                {
-                    debug::log(0, "   Common failure reasons:");
-                    debug::log(0, "   - Prime: Empty vOffsets or invalid Cunningham chain");
-                    debug::log(0, "   - Hash: Proof hash doesn't meet target");
-                    debug::log(0, "   - Producer transaction invalid");
-                    debug::log(0, "   - Block structure malformed");
-                }
-                
-                debug::error(FUNCTION, "Block failed Check() validation");
-                debug::error(FUNCTION, "  Height: ", pBlock->nHeight);
-                debug::error(FUNCTION, "  Channel: ", pBlock->nChannel);
-                debug::error(FUNCTION, "  Merkle: ", pBlock->hashMerkleRoot.SubString());
-                
-                return false;
-            }
-            
-            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "🔬 === END PRE-CHECK() DIAGNOSTIC ===", ANSI_COLOR_RESET);
-            debug::log(0, "");
-
-            /* Log block found */
-            if(config::nVerbose > 0)
-            {
-                std::string strTimestamp(convert::DateTimeStrFormat(runtime::unifiedtimestamp()));
-                if(pBlock->nChannel == 1)
-                    debug::log(1, FUNCTION, "new prime block found at unified time ", strTimestamp);
-                else
-                    debug::log(1, FUNCTION, "new hash block found at unified time ", strTimestamp);
-            }
-
-            const TAO::Ledger::BlockValidationResult validationResult =
-                TAO::Ledger::ValidateMinedBlock(*pBlock);
-            if(!validationResult.valid)
-            {
-                debug::error(FUNCTION, "ValidateMinedBlock failed: ", validationResult.reason);
-                return false;
-            }
-
-            const TAO::Ledger::BlockAcceptanceResult acceptanceResult =
-                TAO::Ledger::AcceptMinedBlock(*pBlock);
-            if(!acceptanceResult.accepted)
-            {
-                debug::log(0, ANSI_COLOR_BRIGHT_RED, "❌ AcceptMinedBlock rejected block", ANSI_COLOR_RESET);
-                debug::log(0, "   Reason: ", acceptanceResult.reason);
-                debug::log(0, "   Status flags: 0x", std::hex, static_cast<int>(acceptanceResult.status), std::dec);
-                return false;
-            }
-
-            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "✅ AcceptMinedBlock accepted block", ANSI_COLOR_RESET);
-            debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "✅ === VALIDATE_BLOCK: SUCCESS ===", ANSI_COLOR_RESET);
-            return true;
-        }
-
-        debug::error(FUNCTION, "Unexpected non-Tritium block in metadata");
-        return false;
     }
 
 
@@ -4517,15 +4356,18 @@ namespace LLP
             return;
         }
 
-        /* Serialize and validate */
+        /* Serialize and validate — P9: strict 216-byte check matching SendStatelessTemplate() */
         std::vector<uint8_t> vBlockData = pBlock->Serialize();
-        if(vBlockData.empty())
+        if(vBlockData.empty() || vBlockData.size() != 216)
         {
-            debug::error(FUNCTION, "TryAttachBlockTemplate: Serialize() returned empty");
+            debug::error(FUNCTION, "TryAttachBlockTemplate: invalid block serialization: ",
+                         vBlockData.size(), " bytes (expected 216)");
             return;
         }
 
-        /* Build 228-byte payload: 12-byte metadata + 216-byte block */
+        /* Build 228-byte payload: 12-byte metadata + 216-byte block
+         * Uses RoundStateUtility::SerializeTemplateMetadata() for consistent big-endian
+         * serialization across all template-sending paths. */
         TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
         TAO::Ledger::BlockState stateChannel = stateBest;
         uint32_t nChannelHeight = 0;
@@ -4534,25 +4376,12 @@ namespace LLP
 
         const uint32_t nUnifiedHeight = static_cast<uint32_t>(stateBest.nHeight);
 
-        StatelessPacket blockPacket(OpcodeUtility::Stateless::BLOCK_DATA);
-        blockPacket.DATA.reserve(12 + vBlockData.size());
+        std::vector<uint8_t> vMetadata = RoundStateUtility::SerializeTemplateMetadata(
+            nUnifiedHeight, nChannelHeight, pBlock->nBits);
 
-        /* Unified height [0-3] */
-        blockPacket.DATA.push_back((nUnifiedHeight >> 24) & 0xFF);
-        blockPacket.DATA.push_back((nUnifiedHeight >> 16) & 0xFF);
-        blockPacket.DATA.push_back((nUnifiedHeight >>  8) & 0xFF);
-        blockPacket.DATA.push_back((nUnifiedHeight      ) & 0xFF);
-        /* Channel height [4-7] */
-        blockPacket.DATA.push_back((nChannelHeight >> 24) & 0xFF);
-        blockPacket.DATA.push_back((nChannelHeight >> 16) & 0xFF);
-        blockPacket.DATA.push_back((nChannelHeight >>  8) & 0xFF);
-        blockPacket.DATA.push_back((nChannelHeight      ) & 0xFF);
-        /* Difficulty [8-11] */
-        blockPacket.DATA.push_back((pBlock->nBits >> 24) & 0xFF);
-        blockPacket.DATA.push_back((pBlock->nBits >> 16) & 0xFF);
-        blockPacket.DATA.push_back((pBlock->nBits >>  8) & 0xFF);
-        blockPacket.DATA.push_back((pBlock->nBits      ) & 0xFF);
-        /* Block template [12-227] */
+        StatelessPacket blockPacket(OpcodeUtility::Stateless::BLOCK_DATA);
+        blockPacket.DATA.reserve(vMetadata.size() + vBlockData.size());
+        blockPacket.DATA.insert(blockPacket.DATA.end(), vMetadata.begin(), vMetadata.end());
         blockPacket.DATA.insert(blockPacket.DATA.end(), vBlockData.begin(), vBlockData.end());
         blockPacket.LENGTH = static_cast<uint32_t>(blockPacket.DATA.size());
 
@@ -4689,29 +4518,17 @@ namespace LLP
             return;
         }
         
-        /* Build 16-bit opcode packet (228 bytes total: 12 metadata + 216 template) */
-        StatelessPacket notification(StatelessOpcodes::STATELESS_GET_BLOCK);  // 16-bit constructor
-        notification.DATA.reserve(STATELESS_TEMPLATE_SIZE);  // Pre-allocate
-        
-        /* Add 12-byte metadata (big-endian) */
-        // Unified height [0-3]
-        notification.DATA.push_back((stateBest.nHeight >> 24) & 0xFF);
-        notification.DATA.push_back((stateBest.nHeight >> 16) & 0xFF);
-        notification.DATA.push_back((stateBest.nHeight >> 8) & 0xFF);
-        notification.DATA.push_back((stateBest.nHeight >> 0) & 0xFF);
-        
-        // Channel height [4-7]
+        /* Build 16-bit opcode packet (228 bytes total: 12 metadata + 216 template)
+         * Uses RoundStateUtility::SerializeTemplateMetadata() for consistent big-endian
+         * serialization across all template-sending paths. */
         uint32_t nChannelHeight = stateChannel.nChannelHeight;
-        notification.DATA.push_back((nChannelHeight >> 24) & 0xFF);
-        notification.DATA.push_back((nChannelHeight >> 16) & 0xFF);
-        notification.DATA.push_back((nChannelHeight >> 8) & 0xFF);
-        notification.DATA.push_back((nChannelHeight >> 0) & 0xFF);
-        
-        // Difficulty [8-11]
-        notification.DATA.push_back((nDifficulty >> 24) & 0xFF);
-        notification.DATA.push_back((nDifficulty >> 16) & 0xFF);
-        notification.DATA.push_back((nDifficulty >> 8) & 0xFF);
-        notification.DATA.push_back((nDifficulty >> 0) & 0xFF);
+
+        std::vector<uint8_t> vMetadata = RoundStateUtility::SerializeTemplateMetadata(
+            static_cast<uint32_t>(stateBest.nHeight), nChannelHeight, nDifficulty);
+
+        StatelessPacket notification(StatelessOpcodes::STATELESS_GET_BLOCK);  // 16-bit constructor
+        notification.DATA.reserve(vMetadata.size() + vBlockData.size());
+        notification.DATA.insert(notification.DATA.end(), vMetadata.begin(), vMetadata.end());
         
         /* Add 216-byte block template [12-227] */
         notification.DATA.insert(notification.DATA.end(), vBlockData.begin(), vBlockData.end());

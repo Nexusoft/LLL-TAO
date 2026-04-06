@@ -1459,13 +1459,19 @@ namespace LLP
     /*  Clear the blocks map. */
     void Miner::clear_map()
     {
-        /* Delete the dynamically allocated blocks in the map. */
-        for(auto &block : mapBlocks)
+        /* Swap the dynamically allocated blocks to a local map under minimal scope,
+         * then destroy them outside of any contention window.  The swap is O(1)
+         * (pointer swap) and the destructor runs with no lock held. */
+        decltype(mapBlocks) localBlocks;
+        localBlocks.swap(mapBlocks);
+
+        /* Destroy swapped blocks outside any lock contention path. */
+        for(auto &block : localBlocks)
         {
             if(block.second)
                 delete block.second;
         }
-        mapBlocks.clear();
+        /* localBlocks destructor runs here — map nodes freed, no contention */
 
         /* Clear the parallel hash-snapshot map. */
         mapBlockHashes.clear();
