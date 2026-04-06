@@ -54,6 +54,31 @@ namespace LLP
     class StatelessMinerConnection : public StatelessConnection
     {
     private:
+        /* ═══════════════════════════════════════════════════════════════════════
+         * LOCK ORDERING — acquire in this order, never reverse.
+         *
+         *   1. MUTEX                   — per-connection context and mapBlocks.
+         *                                 Each opcode handler acquires its own
+         *                                 scoped { LOCK(MUTEX); } block for the
+         *                                 specific fields it needs (per-opcode
+         *                                 isolation, not a single broad lock).
+         *
+         *   2. SESSION_MUTEX           — session key map (mapSessionKeys).
+         *                                 Only nested inside the fallthrough
+         *                                 MINER_AUTH_RESPONSE handler under MUTEX.
+         *
+         *   3. TEMPLATE_CREATE_MUTEX   — template creation coordination.
+         *                                 Acquired by new_block() which is always
+         *                                 called OUTSIDE of MUTEX (MUTEX is
+         *                                 non-recursive; new_block() acquires
+         *                                 MUTEX internally for mapBlocks access).
+         *
+         * Cross-component locks (independent, never nested with the above):
+         *   - StatelessMinerManager::MUTEX  — global miner registry
+         *   - SessionRecoveryManager        — session persistence
+         *   - SOCKET_MUTEX                  — socket I/O (acquired by WritePacket)
+         * ═══════════════════════════════════════════════════════════════════════ */
+
         /** The current mining context (immutable snapshot) **/
         MiningContext context;
 
@@ -421,17 +446,6 @@ namespace LLP
          *
          **/
         bool sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot, const std::vector<uint8_t>& vOffsets = {});
-
-        /** validate_block
-         *
-         *  Validates the block for the derived miner class.
-         *
-         *  @param[in] hashMerkleRoot The root hash of the merkle tree.
-         *
-         *  @return Returns true if block is valid, false otherwise.
-         *
-         **/
-        bool validate_block(const uint512_t& hashMerkleRoot);
 
         /** is_prime_mod
          *
