@@ -34,6 +34,7 @@ ________________________________________________________________________________
 #include <LLP/include/node_session_registry.h>
 #include <LLP/include/miner_push_dispatcher.h>
 #include <LLP/include/mining_constants.h>
+#include <LLP/include/tcp_keepalive.h>
 
 #include <Util/include/args.h>
 #include <Util/include/signals.h>
@@ -978,6 +979,10 @@ namespace LLP
                     /* Establish a new socket with SSL on or off according to server. */
                     Socket sockNew(hSocket, addr, fSSL);
 
+                    /* Enable TCP keepalive on accepted connections to detect dead
+                     * paths before NAT/firewall idle timers expire silently. */
+                    TcpKeepalive::ApplyKeepalive(hSocket);
+
                     /* Check that an address is banned. */
                     if(DDOS_MAP->count(addr))
                     {
@@ -1178,6 +1183,91 @@ namespace LLP
         {
             runtime::sleep(100);
 
+            /* ── Mining-connection health probe (every 2 minutes) ──────────
+             *
+             * For mining protocols, periodically check all authenticated
+             * connections for staleness.  If no data has been received from
+             * a miner for > 120 s AND the send buffer is empty (so the
+             * connection isn't simply slow to drain), the TCP path is likely
+             * dead (NAT timeout, firewall drop, etc.).  Attempt a Flush() to
+             * trigger an OS-level error on a truly dead socket, which the
+             * DataThread will then clean up via DISCONNECT::TIMEOUT_WRITE or
+             * DISCONNECT::ERRORS.
+             *
+             * This creates guaranteed bidirectional traffic that keeps NAT
+             * mappings alive even when the miner is idle between work units.
+             */
+            if constexpr (is_miner_protocol_v<ProtocolType>)
+            {
+                const int64_t nProbeInterval = config::GetArg(
+                    std::string("-mininghealthprobeinterval"), 120);
+
+                if(CLEANUP_TIMER.Elapsed() >= nProbeInterval)
+                {
+                    /* Get snapshot of all connections for health check. */
+                    std::vector<std::shared_ptr<ProtocolType>> vConnections = GetConnections();
+
+                    uint32_t nProbed = 0;
+                    for(auto& pConn : vConnections)
+                    {
+                        if(!pConn || !pConn->Connected())
+                            continue;
+
+                        /* Only probe authenticated (high-value) mining connections. */
+                        if(!pConn->IsTimeoutExempt())
+                            continue;
+
+                        /* Check idle-receive time: if the miner hasn't sent
+                         * anything for 2× the probe interval, the inbound path
+                         * is likely dead.  Try to flush the outbound side to
+                         * force an OS-level TCP error if the path is broken. */
+                        const uint64_t nNow = runtime::timestamp(true);
+                        const uint64_t nIdleRecv = nNow - pConn->nLastRecv.load();
+
+                        if(nIdleRecv > static_cast<uint64_t>(nProbeInterval) * 2)
+                        {
+                            debug::log(0, FUNCTION, "Health probe: miner ",
+                                       pConn->GetAddress().ToStringIP(),
+                                       " idle_recv=", nIdleRecv, "ms",
+                                       " buffered=", pConn->Buffered(),
+                                       " — flushing to detect dead path");
+
+                            /* A Flush() on a dead socket will return -1 and
+                             * increment nConsecutiveErrors, eventually causing
+                             * DISCONNECT::TIMEOUT_WRITE on the DataThread. */
+                            if(pConn->Buffered() > 0)
+                                pConn->Flush();
+
+                            ++nProbed;
+                        }
+                    }
+
+                    if(nProbed > 0)
+                        debug::log(0, FUNCTION, "Health probe complete: ", nProbed, " stale miners flushed");
+                }
+            }
+
+            /* Periodic cleanup cadence is 10 minutes, but the sweep cadence is not the
+             * expiry threshold itself. Each pass compares entries against the much longer
+             * session/cache timeouts (for example SESSION_LIVENESS_TIMEOUT_SECONDS = 86400s),
+             * so running cleanup every 10 minutes only bounds stale-state retention latency
+             * without shortening the underlying liveness window. */
+            if(CLEANUP_TIMER.Elapsed() >= 600)
+            {
+                AutoCooldownManager::Get().CleanupExpired();
+
+                if constexpr (is_miner_protocol_v<ProtocolType>)
+                {
+                    StatelessMinerManager::Get().CleanupInactive(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
+                    StatelessMinerManager::Get().PurgeInactiveMiners();
+                    SessionRecoveryManager::Get().CleanupExpired(
+                        SessionRecoveryManager::Get().GetSessionTimeout());
+                    NodeSessionRegistry::Get().SweepExpired(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
+                }
+
+                CLEANUP_TIMER.Reset();
+            }
+
             /* Skip metric logging if meters are disabled */
             if(!CONFIG.ENABLE_METERS)
                 continue;
@@ -1219,27 +1309,6 @@ namespace LLP
             ProtocolType::PACKETS.store(0);
             ProtocolType::CONNECTIONS.store(0);
             ProtocolType::DISCONNECTS.store(0);
-            
-            /* Periodic cleanup cadence is 10 minutes, but the sweep cadence is not the
-             * expiry threshold itself. Each pass compares entries against the much longer
-             * session/cache timeouts (for example SESSION_LIVENESS_TIMEOUT_SECONDS = 86400s),
-             * so running cleanup every 10 minutes only bounds stale-state retention latency
-             * without shortening the underlying liveness window. */
-            if(CLEANUP_TIMER.Elapsed() >= 600)
-            {
-                AutoCooldownManager::Get().CleanupExpired();
-
-                if constexpr (is_miner_protocol_v<ProtocolType>)
-                {
-                    StatelessMinerManager::Get().CleanupInactive(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
-                    StatelessMinerManager::Get().PurgeInactiveMiners();
-                    SessionRecoveryManager::Get().CleanupExpired(
-                        SessionRecoveryManager::Get().GetSessionTimeout());
-                    NodeSessionRegistry::Get().SweepExpired(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
-                }
-
-                CLEANUP_TIMER.Reset();
-            }
         }
     }
 

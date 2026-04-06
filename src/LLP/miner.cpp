@@ -1362,7 +1362,37 @@ namespace LLP
                    " - ", GetMinerPacketName(nHeader), " (0x", std::hex, uint32_t(nHeader), std::dec, ")",
                    " length=", vData.size());
 
+        /* If the send buffer is saturated, attempt to drain before writing.
+         * Mining responses are small (keepalive = 32 B, round = 16 B) and
+         * should fit after even a partial flush. */
+        if(fBufferFull.load())
+        {
+            debug::log(0, FUNCTION, "WARNING: send buffer saturated before write "
+                       "(opcode=0x", std::hex, uint32_t(nHeader), std::dec,
+                       " buffered=", Buffered(), "); attempting flush-and-retry");
+
+            for(int nRetry = 0; nRetry < 3 && fBufferFull.load(); ++nRetry)
+            {
+                Flush();
+                if(!fBufferFull.load())
+                    break;
+                runtime::sleep(10);
+            }
+
+            if(fBufferFull.load())
+            {
+                debug::log(0, FUNCTION, "WARNING: flush-and-retry exhausted — packet may be dropped "
+                           "(opcode=0x", std::hex, uint32_t(nHeader), std::dec, ")");
+            }
+        }
+
         this->WritePacket(RESPONSE);
+
+        /* Explicitly flush so mining GET responses reach the wire immediately.
+         * Without this, responses sit in vBuffer until FLUSH_THREAD wakes —
+         * creating an asymmetry vs PUSH notifications that drain reliably. */
+        if(Buffered() > 0)
+            Flush();
     }
 
 

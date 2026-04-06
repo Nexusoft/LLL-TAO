@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <stdio.h>
 
 #include <LLP/include/network.h>
+#include <LLP/include/tcp_keepalive.h>
 #include <LLP/templates/socket.h>
 
 #include <Util/include/runtime.h>
@@ -344,6 +345,11 @@ namespace LLP
             //return false;
         }
 #endif
+
+        /* Enable TCP keepalive to detect dead connections before NAT/firewall
+         * idle timers silently drop the path (typically 30–60 minutes).
+         * Default: first probe at 120 s, then every 30 s, give up after 3. */
+        TcpKeepalive::ApplyKeepalive(fd);
 
         /* Open the socket connection for IPv4 / IPv6. */
         if(addrDest.IsIPv4())

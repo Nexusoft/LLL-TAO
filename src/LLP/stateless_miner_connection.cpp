@@ -2777,17 +2777,43 @@ namespace LLP
          * fBufferFull is set to true by WritePacket() when a write is dropped and reset
          * to false by Socket::Flush() after data drains successfully.  Logging at level 0
          * here makes the saturation condition operator-visible without requiring -v 4. */
-        if(fBufferFull.load() &&
-           (packet.HEADER == OpcodeUtility::Stateless::SESSION_KEEPALIVE  ||
-            packet.HEADER == OpcodeUtility::Stateless::SESSION_STATUS_ACK))
+        if(fBufferFull.load())
         {
-            debug::log(0, FUNCTION, "WARNING: keepalive ACK write may be dropped — "
-                       "send buffer saturated (opcode=0x", std::hex, packet.HEADER, std::dec, "); "
-                       "possible TRANSACTION flood causing send-queue saturation");
+            debug::log(0, FUNCTION, "WARNING: send buffer saturated before write "
+                       "(opcode=0x", std::hex, packet.HEADER, std::dec,
+                       " size=", packet.GetBytes().size(), " buffered=", Buffered(), "); "
+                       "attempting flush-and-retry");
+
+            /* Attempt to drain the buffer before writing.  Small mining responses
+             * (GET_ROUND ≈ 16 B, KEEPALIVE ACK = 32 B, SESSION_STATUS ≈ 16 B)
+             * should easily fit after even a partial flush.  3 attempts × 10 ms
+             * is short enough to avoid blocking the DataThread materially. */
+            for(int nRetry = 0; nRetry < 3 && fBufferFull.load(); ++nRetry)
+            {
+                Flush();
+                if(!fBufferFull.load())
+                    break;
+                runtime::sleep(10);
+            }
+
+            if(fBufferFull.load())
+            {
+                debug::log(0, FUNCTION, "WARNING: flush-and-retry exhausted — packet may be dropped "
+                           "(opcode=0x", std::hex, packet.HEADER, std::dec, ")");
+            }
         }
 
         /* Serialize and write the packet */
         WritePacket(packet);
+
+        /* Explicitly flush the socket buffer so mining GET responses (GET_ROUND,
+         * SESSION_STATUS, KEEPALIVE ACK) are pushed to the wire immediately.
+         * Without this, responses sit in vBuffer until the FLUSH_THREAD wakes —
+         * creating an asymmetry where PUSH notifications (which go through
+         * FLUSH_THREAD's explicit Flush()) drain reliably but request/response
+         * traffic can stall.  This aligns both paths. */
+        if(Buffered() > 0)
+            Flush();
     }
 
 
