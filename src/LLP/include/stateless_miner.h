@@ -127,7 +127,7 @@ namespace LLP
          *
          *  Check that the three core identity fields are all non-zero.
          *  A binding where any identity field is zero represents an
-         *  incomplete or uninitialised session.
+         *  incomplete or uninitialized session.
          *
          *  @return true if nSessionId, hashKeyID, and hashGenesis are all non-zero.
          *
@@ -146,7 +146,7 @@ namespace LLP
          *  every populated field matches.  Fields that are zero in either
          *  binding are skipped (not yet authoritative).
          *
-         *  This centralises the "partial match" pattern used in
+         *  This centralizes the "partial match" pattern used in
          *  ValidateConsistency() and stateless_manager cleanup.
          *
          *  @param[in] other  The binding to compare against.

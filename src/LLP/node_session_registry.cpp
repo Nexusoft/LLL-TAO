@@ -122,8 +122,8 @@ namespace LLP
             return contextConsistency;
 
         /* Cross-check: context identity fields must match entry-level fields.
-         * Uses SessionBinding::FirstMismatch() to centralise the partial-match
-         * comparison (OPT-1).  Fields that are zero in the context binding are
+         * Uses SessionBinding::FirstMismatch() to centralize the partial-match
+         * comparison.  Fields that are zero in the context binding are
          * skipped — they are not yet authoritative. */
         const SessionBinding ctxBinding = context.GetSessionBinding();
         const SessionConsistencyResult crossCheck = ctxBinding.FirstMismatch(entryBinding);

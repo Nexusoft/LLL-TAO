@@ -446,8 +446,8 @@ namespace LLP
 
     SessionConsistencyResult MiningContext::ValidateConsistency() const
     {
-        /* Use SessionBinding::IsValid() to check that all three identity fields
-         * are non-zero when the session is authenticated (OPT-1 migration).
+        /* Use GetSessionBinding() to check the three identity fields
+         * are non-zero when the session is authenticated.
          * Individual error codes are preserved for diagnostics. */
         if(fAuthenticated)
         {

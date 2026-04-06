@@ -331,8 +331,8 @@ namespace LLP
 
     SessionConsistencyResult MinerSessionContainer::ValidateConsistency() const
     {
-        /* Use SessionBinding::IsValid() to check the three identity fields
-         * when authenticated (OPT-1 migration).  Individual error codes preserved. */
+        /* Use GetSessionBinding() to check the three identity fields
+         * when authenticated.  Individual error codes preserved. */
         if(fAuthenticated)
         {
             const SessionBinding binding = GetSessionBinding();

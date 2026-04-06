@@ -2394,8 +2394,8 @@ namespace LLP
             }
             else
             {
-                /* OPT-2: Use the stored hashKeyID member (set at authentication time,
-                 * line ~904) instead of re-deriving SK256(vMinerPubKey) on the hot path. */
+                /* Use the stored hashKeyID member (set during authentication)
+                 * instead of re-deriving SK256(vMinerPubKey) on the hot path. */
                 const uint256_t hashSessionKeyID = hashKeyID != 0
                     ? hashKeyID
                     : (!vMinerPubKey.empty() ? LLC::SK256(vMinerPubKey) : uint256_t(0));

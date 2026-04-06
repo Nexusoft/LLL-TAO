@@ -1024,7 +1024,7 @@ namespace LLP
 
                 /* Brief lock: snapshot full context for ValidateConsistency() check.
                  * This subsumes the former separate nSessionId/fAuthenticated checks
-                 * and adds hashKeyID + hashGenesis validation (Task 1.2). */
+                 * and adds hashKeyID + hashGenesis validation. */
                 MiningContext ctxSnap;
                 {
                     LOCK(MUTEX);
@@ -2725,9 +2725,9 @@ namespace LLP
                        !context.vMinerPubKey.empty() &&
                        context.vDisposablePubKey.empty())
                     {
-                        /* OPT-2: Use the already-stored hashKeyID instead of re-deriving
+                        /* Use the already-stored hashKeyID instead of re-deriving
                          * SK256(context.vMinerPubKey) — they are identical since hashKeyID
-                         * was derived from vMinerPubKey at authentication time. */
+                         * was derived from vMinerPubKey during authentication. */
                         context = context.WithDisposableKey(context.vMinerPubKey,
                                                             context.hashKeyID);
                         debug::log(1, FUNCTION, "✓ Embedded disposable Falcon key in context for session recovery persistence");
