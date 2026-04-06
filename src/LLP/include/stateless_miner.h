@@ -104,6 +104,40 @@ namespace LLP
         {
             return fRewardBound && hashRewardAddress != 0;
         }
+
+        /** Matches
+         *
+         *  Compare the three core identity fields (nSessionId, hashKeyID,
+         *  hashGenesis) against another SessionBinding.  Reward-binding and
+         *  protocol-lane fields are intentionally excluded — those are mutable
+         *  per-session state, not identity.
+         *
+         *  @param[in] other  The binding to compare against.
+         *  @return true if all three identity fields are equal.
+         *
+         **/
+        bool Matches(const SessionBinding& other) const
+        {
+            return nSessionId  == other.nSessionId
+                && hashKeyID   == other.hashKeyID
+                && hashGenesis == other.hashGenesis;
+        }
+
+        /** IsValid
+         *
+         *  Check that the three core identity fields are all non-zero.
+         *  A binding where any identity field is zero represents an
+         *  incomplete or uninitialised session.
+         *
+         *  @return true if nSessionId, hashKeyID, and hashGenesis are all non-zero.
+         *
+         **/
+        bool IsValid() const
+        {
+            return nSessionId != 0
+                && hashKeyID  != 0
+                && hashGenesis != 0;
+        }
     };
 
     /** CryptoContext

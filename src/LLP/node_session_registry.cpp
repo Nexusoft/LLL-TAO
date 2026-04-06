@@ -105,26 +105,35 @@ namespace LLP
 
     SessionConsistencyResult NodeSessionEntry::ValidateConsistency() const
     {
-        if(nSessionId == 0)
+        /* Entry-level identity validation via SessionBinding::IsValid(). */
+        const SessionBinding entryBinding = GetSessionBinding();
+        if(entryBinding.nSessionId == 0)
             return SessionConsistencyResult::MissingSessionId;
 
-        if(hashGenesis == 0)
+        if(entryBinding.hashGenesis == 0)
             return SessionConsistencyResult::MissingGenesis;
 
-        if(hashKeyID == 0)
+        if(entryBinding.hashKeyID == 0)
             return SessionConsistencyResult::MissingFalconKey;
 
+        /* Delegate to the embedded MiningContext's own consistency checks. */
         const SessionConsistencyResult contextConsistency = context.ValidateConsistency();
         if(contextConsistency != SessionConsistencyResult::Ok)
             return contextConsistency;
 
-        if(context.nSessionId != 0 && context.nSessionId != nSessionId)
+        /* Cross-check: context identity fields must match entry-level fields.
+         * Uses SessionBinding::Matches() to centralize the three-field comparison
+         * (OPT-1), replacing formerly scattered per-field checks.  We only compare
+         * when the context field is non-zero (unset context fields are not yet
+         * authoritative). */
+        const SessionBinding ctxBinding = context.GetSessionBinding();
+        if(ctxBinding.nSessionId != 0 && ctxBinding.nSessionId != entryBinding.nSessionId)
             return SessionConsistencyResult::SessionIdMismatch;
 
-        if(context.hashGenesis != 0 && context.hashGenesis != hashGenesis)
+        if(ctxBinding.hashGenesis != 0 && ctxBinding.hashGenesis != entryBinding.hashGenesis)
             return SessionConsistencyResult::GenesisMismatch;
 
-        if(context.hashKeyID != 0 && context.hashKeyID != hashKeyID)
+        if(ctxBinding.hashKeyID != 0 && ctxBinding.hashKeyID != entryBinding.hashKeyID)
             return SessionConsistencyResult::FalconKeyMismatch;
 
         return SessionConsistencyResult::Ok;
@@ -220,7 +229,22 @@ namespace LLP
             context
         );
 
-        /* Store in both maps */
+        /* Store in both maps.
+         * OPT-4: Collision detection — if mapSessionToKey already holds a
+         * *different* hashKeyID for this nSessionId, two distinct Falcon keys
+         * have collided in their lower 32 bits.  Log a WARNING and keep the
+         * newer mapping so the most-recent caller wins. */
+        {
+            auto existingKey = m_mapSessionToKey.Get(nSessionId);
+            if(existingKey && *existingKey != hashKeyID)
+            {
+                debug::warning(FUNCTION,
+                    "mapSessionToKey collision: session ", nSessionId,
+                    " was mapped to key ", existingKey->SubString(),
+                    " but new key ", hashKeyID.SubString(),
+                    " derives the same session ID — overwriting with newer key");
+            }
+        }
         m_mapByKey.InsertOrUpdate(hashKeyID, entry);
         m_mapSessionToKey.InsertOrUpdate(nSessionId, hashKeyID);
 
