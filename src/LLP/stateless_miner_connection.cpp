@@ -1092,12 +1092,10 @@ namespace LLP
                 debug::log(0, "   ✅ Validation passed, delegating to StatelessGetBlockHandler");
 
                 /* Build request for the stateless lane handler.
-                 * Snapshot context under brief lock — handler runs unlocked. */
+                 * Reuse the context snapshot already captured under lock above (ctxSnap)
+                 * rather than re-acquiring MUTEX for a second copy. */
                 StatelessGetBlockRequest gbReq;
-                {
-                    LOCK(MUTEX);
-                    gbReq.context = context;
-                }
+                gbReq.context = ctxSnap;
                 gbReq.fnCreateBlock = [this]() -> TAO::Ledger::Block*
                 {
                     return new_block();
