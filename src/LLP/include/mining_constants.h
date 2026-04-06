@@ -104,6 +104,33 @@ namespace MiningConstants
     constexpr uint32_t GET_BLOCK_COOLDOWN_SECONDS = 1;
 
     //=========================================================================
+    // MINING SEND BUFFER
+    //=========================================================================
+
+    /** Max send buffer for authenticated mining connections (15 MB).
+     *
+     *  Mining push notifications (channel notifications + BLOCK_DATA templates)
+     *  are the primary — and often the only reliable — mechanism for delivering
+     *  fresh work to miners.  Push is NEVER advisory; it is Priority #1.
+     *
+     *  The default MAX_SEND_BUFFER (3 MB) is appropriate for P2P connections
+     *  but far too small for mining: a miner busy hashing may not read its
+     *  socket for several seconds, causing the node's send buffer to fill and
+     *  triggering DISCONNECT::BUFFER — a silent kill from the miner's
+     *  perspective.
+     *
+     *  15 MB accommodates tens of thousands of push notifications and prevents
+     *  the DataThread from killing authenticated miners whose only crime is
+     *  being slow to drain the socket during peak hash-rate periods.
+     *
+     *  Unauthenticated connections still use the default 3 MB limit to prevent
+     *  resource abuse before Falcon authentication completes.
+     *
+     *  Overridable at runtime via -miningmaxsendbuffer=<bytes>.
+     */
+    constexpr uint64_t MINING_MAX_SEND_BUFFER = 15 * 1024 * 1024;
+
+    //=========================================================================
     // DIFFICULTY CACHING
     //=========================================================================
     

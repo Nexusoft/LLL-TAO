@@ -598,6 +598,26 @@ namespace LLP
         }
 
 
+        /** GetMaxSendBuffer
+         *
+         *  Authenticated legacy mining connections use a larger send buffer
+         *  (15 MB default, configurable via -miningmaxsendbuffer) because push
+         *  notifications are the primary delivery mechanism for fresh work.
+         *
+         *  Unauthenticated connections return the default 3 MB limit.
+         *
+         *  @return maximum send buffer size in bytes for this connection.
+         *
+         **/
+        uint64_t GetMaxSendBuffer() const final
+        {
+            if(fMinerAuthenticated)
+                return config::GetArg("-miningmaxsendbuffer", MiningConstants::MINING_MAX_SEND_BUFFER);
+
+            return config::GetArg("-maxsendbuffer", MAX_SEND_BUFFER);
+        }
+
+
         /** ProcessPacketStateless
          *
          *  Handles packets from stateless miners.

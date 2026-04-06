@@ -231,9 +231,10 @@ namespace LLP
     template <class PacketType>
     void BaseConnection<PacketType>::WritePacket(const PacketType& PACKET)
     {
-        /* Only get this value one time. */
-        static const uint64_t nMaxSendBuffer =
-            config::GetArg("-maxsendbuffer", MAX_SEND_BUFFER);
+        /* Per-connection buffer limit — mining connections return a larger value
+         * (15 MB) so push notifications are never dropped due to buffer pressure.
+         * Virtual dispatch; no mutex, minimal overhead on the hot path. */
+        const uint64_t nMaxSendBuffer = GetMaxSendBuffer();
 
         /* Get the bytes of the packet. */
         const std::vector<uint8_t> vBytes = PACKET.GetBytes();
