@@ -368,3 +368,96 @@ TEST_CASE("SIM-LINK: GetMinerContextByIP fallback lookup", "[simlink][session][g
         StatelessMinerManager::Get().RemoveMiner(strAddrNew);
     }
 }
+
+
+TEST_CASE("SIM-LINK: GetMinerContextByAddressOrIP migrates safe port changes", "[simlink][session][address_migration]")
+{
+    SECTION("IP-only canonical stateless entry resolves from IP:port lookup without migration")
+    {
+        const std::string strAddrCanonical = "192.168.7.9";
+        const std::string strLookupAddr = "192.168.7.9:45000";
+
+        MiningContext ctx;
+        ctx.strAddress = strAddrCanonical;
+        ctx.nSessionId = 0x0BADB001;
+        ctx.nTimestamp = 1200;
+        ctx.fAuthenticated = true;
+
+        StatelessMinerManager::Get().UpdateMiner(strAddrCanonical, ctx);
+
+        auto opt = StatelessMinerManager::Get().GetMinerContextByAddressOrIP(
+            strLookupAddr, ctx.nSessionId, true);
+        REQUIRE(opt.has_value());
+        REQUIRE(opt->strAddress == strAddrCanonical);
+        REQUIRE(opt->nSessionId == ctx.nSessionId);
+
+        auto optCanonical = StatelessMinerManager::Get().GetMinerContext(strAddrCanonical);
+        REQUIRE(optCanonical.has_value());
+
+        auto optLookup = StatelessMinerManager::Get().GetMinerContext(strLookupAddr);
+        REQUIRE_FALSE(optLookup.has_value());
+
+        StatelessMinerManager::Get().RemoveMiner(strAddrCanonical);
+    }
+
+    SECTION("Safe session match migrates exact address key")
+    {
+        const std::string strAddrOld = "192.168.7.10:45000";
+        const std::string strAddrNew = "192.168.7.10:45001";
+
+        MiningContext ctx;
+        ctx.strAddress = strAddrOld;
+        ctx.nSessionId = 0x0BADB002;
+        ctx.nTimestamp = 1234;
+        ctx.fAuthenticated = true;
+
+        StatelessMinerManager::Get().UpdateMiner(strAddrOld, ctx);
+
+        auto opt = StatelessMinerManager::Get().GetMinerContextByAddressOrIP(
+            strAddrNew, ctx.nSessionId, true);
+        REQUIRE(opt.has_value());
+        REQUIRE(opt->strAddress == strAddrNew);
+        REQUIRE(opt->nSessionId == ctx.nSessionId);
+
+        auto optNew = StatelessMinerManager::Get().GetMinerContext(strAddrNew);
+        REQUIRE(optNew.has_value());
+        REQUIRE(optNew->strAddress == strAddrNew);
+
+        auto optOld = StatelessMinerManager::Get().GetMinerContext(strAddrOld);
+        REQUIRE_FALSE(optOld.has_value());
+
+        auto optByIP = StatelessMinerManager::Get().GetMinerContextByIP("192.168.7.10");
+        REQUIRE(optByIP.has_value());
+        REQUIRE(optByIP->strAddress == strAddrNew);
+
+        StatelessMinerManager::Get().RemoveMiner(strAddrNew);
+    }
+
+    SECTION("Session mismatch skips migration and preserves fallback context")
+    {
+        const std::string strAddrOld = "192.168.7.11:45000";
+        const std::string strAddrNew = "192.168.7.11:45001";
+
+        MiningContext ctx;
+        ctx.strAddress = strAddrOld;
+        ctx.nSessionId = 0x01020304;
+        ctx.nTimestamp = 4567;
+        ctx.fAuthenticated = true;
+
+        StatelessMinerManager::Get().UpdateMiner(strAddrOld, ctx);
+
+        auto opt = StatelessMinerManager::Get().GetMinerContextByAddressOrIP(
+            strAddrNew, 0x0A0B0C0D, true);
+        REQUIRE(opt.has_value());
+        REQUIRE(opt->strAddress == strAddrOld);
+        REQUIRE(opt->nSessionId == ctx.nSessionId);
+
+        auto optOld = StatelessMinerManager::Get().GetMinerContext(strAddrOld);
+        REQUIRE(optOld.has_value());
+
+        auto optNew = StatelessMinerManager::Get().GetMinerContext(strAddrNew);
+        REQUIRE_FALSE(optNew.has_value());
+
+        StatelessMinerManager::Get().RemoveMiner(strAddrOld);
+    }
+}

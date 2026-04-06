@@ -29,9 +29,16 @@ ________________________________________________________________________________
 
 #include <Util/include/hex.h>
 
+#include <type_traits>
+
 
 namespace LLP
 {
+    namespace
+    {
+        static constexpr uint32_t MINING_POLL_EMPTY_TIMEOUT_MS = 100;
+    }
+
     /** Default Constructor **/
     template <class ProtocolType>
     DataThread<ProtocolType>::DataThread(const uint32_t nID, const bool ffDDOSIn,
@@ -414,12 +421,25 @@ namespace LLP
                      * Available()==0 on a 1 ms window is too aggressive for high-value Falcon-
                      * authenticated sessions.  The 24-hour session timeout and TCP keepalive
                      * probes will catch genuinely dead connections instead. */
-                    if((POLLFDS.at(nIndex).revents & POLLIN)
-                    && CONNECTION->Timeout(nWait, Socket::READ)
-                    && CONNECTION->Available() == 0
-                    && !CONNECTION->IsTimeoutExempt())
+                    const bool fHasPartialPacket =
+                        !CONNECTION->INCOMING.IsNull() && !CONNECTION->PacketComplete();
+                    const bool fMiningConnection =
+                        std::is_same<ProtocolType, Miner>::value
+                        || std::is_same<ProtocolType, StatelessMinerConnection>::value;
+                    const bool fTimeoutExempt = CONNECTION->IsTimeoutExempt();
+                    const uint32_t nPollEmptyTimeout =
+                        fMiningConnection ? MINING_POLL_EMPTY_TIMEOUT_MS : nWait;
+                    /* A partial packet already buffered in INCOMING means progress was made on
+                     * a real frame, so treat the empty poll as transport jitter and never as a
+                     * dead-socket signal.  We still apply the same timeout window first so the
+                     * check only runs after the miner-specific grace period has elapsed. */
+                    const bool fPollEmptyCandidate =
+                        (POLLFDS.at(nIndex).revents & POLLIN)
+                        && CONNECTION->Timeout(nPollEmptyTimeout, Socket::READ)
+                        && CONNECTION->Available() == 0;
+                    if(fPollEmptyCandidate && !fHasPartialPacket)
                     {
-                        if(CONNECTION->IsTimeoutExempt())
+                        if(fTimeoutExempt)
                         {
                             /* Log near-miss for authenticated miners — this would have killed
                              * the connection prior to the IsTimeoutExempt() bypass.  Useful
@@ -427,7 +447,8 @@ namespace LLP
                             debug::log(0, FUNCTION, "DataThread[", ID, "]: POLL_EMPTY near-miss for authenticated ",
                                 ProtocolType::Name(), " from ", CONNECTION->GetAddress().ToStringIP(),
                                 " revents=", POLLFDS.at(nIndex).revents,
-                                " Available()=0 — bypassed via IsTimeoutExempt()");
+                                " Available()=0 timeout=", nPollEmptyTimeout,
+                                "ms — bypassed via IsTimeoutExempt()");
                         }
                         else
                         {

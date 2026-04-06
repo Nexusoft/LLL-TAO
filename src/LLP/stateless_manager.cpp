@@ -330,6 +330,85 @@ namespace LLP
         return mapMiners.Get(optAddress.value());
     }
 
+    std::optional<MiningContext> StatelessMinerManager::GetMinerContextByAddressOrIP(
+        const std::string& strAddress,
+        uint32_t nExpectedSessionId,
+        bool fMigrateAddress
+    )
+    {
+        auto optContext = mapMiners.Get(strAddress);
+        if(optContext.has_value())
+            return optContext;
+
+        const size_t nColon = strAddress.rfind(':');
+        if(nColon == std::string::npos)
+            return std::nullopt;
+
+        const std::string strIP = strAddress.substr(0, nColon);
+        auto optNormalizedContext = mapMiners.Get(strIP);
+        if(optNormalizedContext.has_value())
+            return optNormalizedContext;
+
+        auto optFallbackAddress = mapIPToAddress.Get(strIP);
+        if(!optFallbackAddress.has_value())
+            return std::nullopt;
+
+        const std::string& strFallbackAddress = optFallbackAddress.value();
+        auto optFallbackContext = mapMiners.Get(strFallbackAddress);
+        if(!optFallbackContext.has_value())
+        {
+            mapIPToAddress.Erase(strIP);
+            return std::nullopt;
+        }
+
+        /* Stateless miners are canonically keyed by IP-only addresses, so never rewrite
+         * an IP-only entry to an IP:port key from the legacy lane. Migration is reserved
+         * for fully port-qualified addresses on both sides. */
+        const bool fCanMigrateExactAddress =
+            fMigrateAddress
+            && strFallbackAddress != strAddress
+            && strFallbackAddress.rfind(':') != std::string::npos
+            && strAddress.rfind(':') != std::string::npos;
+        if(!fCanMigrateExactAddress)
+            return optFallbackContext;
+
+        /* Session id 0 is treated as "caller has no authoritative session id yet"
+         * (or the recovered context predates session assignment), so it acts as a
+         * wildcard and only enforces equality when both sides are non-zero. */
+        const bool fSessionMatches =
+            (nExpectedSessionId == 0 ||
+             optFallbackContext->nSessionId == 0 ||
+             optFallbackContext->nSessionId == nExpectedSessionId);
+
+        if(!fSessionMatches)
+        {
+            debug::warning(FUNCTION, "Skipping miner address migration from ",
+                           strFallbackAddress, " to ", strAddress,
+                           " due to session mismatch (expected=", nExpectedSessionId,
+                           ", found=", optFallbackContext->nSessionId, ")");
+            return optFallbackContext;
+        }
+
+        MiningContext migrated = optFallbackContext.value();
+        migrated.strAddress = strAddress;
+        /* Preserve monotonic activity timestamps when re-keying an existing miner to
+         * a new exact address so CleanupInactive() never sees a backwards jump.
+         * If the recovered context already carries a future timestamp, preserve it
+         * as the authoritative value rather than forcing a local clock regression. */
+        migrated.nTimestamp = std::max<uint64_t>(migrated.nTimestamp, runtime::unifiedtimestamp());
+
+        const uint8_t nLane = GetMinerLane(strFallbackAddress).value_or(0);
+
+        RemoveMiner(strFallbackAddress);
+        UpdateMiner(strAddress, migrated, nLane);
+
+        debug::log(1, FUNCTION, "Migrated miner context address ",
+                   strFallbackAddress, " -> ", strAddress,
+                   " via IP-only fallback");
+
+        return mapMiners.Get(strAddress);
+    }
+
     /* Get miner context by session ID */
     std::optional<MiningContext> StatelessMinerManager::GetMinerContextBySessionID(
         uint32_t nSessionId
