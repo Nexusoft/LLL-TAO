@@ -1022,26 +1022,27 @@ namespace LLP
                 debug::log(2, "📥 === GET_BLOCK REQUEST ===");
                 debug::log(0, "   From: ", GetAddress().ToStringIP());
 
-                /* Brief lock: snapshot context fields needed for validation */
-                uint32_t nSessionId_snap;
-                bool fAuthenticated_snap;
-                uint32_t nChannel_snap;
+                /* Brief lock: snapshot full context for ValidateConsistency() check.
+                 * This subsumes the former separate nSessionId/fAuthenticated checks
+                 * and adds hashKeyID + hashGenesis validation. */
+                MiningContext ctxSnap;
                 {
                     LOCK(MUTEX);
-                    nSessionId_snap    = context.nSessionId;
-                    fAuthenticated_snap = context.fAuthenticated;
-                    nChannel_snap      = context.nChannel;
+                    ctxSnap = context;
                 }
+
+                const uint32_t nSessionId_snap    = ctxSnap.nSessionId;
+                const bool     fAuthenticated_snap = ctxSnap.fAuthenticated;
+                const uint32_t nChannel_snap       = ctxSnap.nChannel;
 
                 debug::log(0, "   Authenticated: ", (fAuthenticated_snap ? "YES" : "NO"));
                 debug::log(0, "   Channel: ", nChannel_snap);
                 debug::log(0, "   Session ID: ", nSessionId_snap);
 
-                /* Session validity: only require a non-zero session ID.
-                 * Session liveness is enforced exclusively by CleanupInactive()
-                 * (24-hour 3-way AND check) on a 10-minute sweep cadence.
-                 * Authenticated miners with valid keepalives must never be
-                 * blocked from GET_BLOCK — only DDOS rate limiting applies. */
+                /* Session validity: use full ValidateConsistency() which subsumes the
+                 * former nSessionId == 0 and fAuthenticated checks plus adds hashKeyID
+                 * and hashGenesis validation.  Return the same error codes as before
+                 * (SESSION_INVALID, UNAUTHENTICATED) based on which check triggered. */
                 if(nSessionId_snap == 0)
                 {
                     SendGetBlockControlResponse(GetBlockPolicyReason::SESSION_INVALID, 0, false);
@@ -1054,6 +1055,20 @@ namespace LLP
                     SendGetBlockControlResponse(GetBlockPolicyReason::UNAUTHENTICATED, 0, false);
                     debug::log(2, "📥 === GET_BLOCK: REJECTED (AUTH) ===");
                     return true;
+                }
+
+                /* Full session consistency gate — validates hashKeyID, hashGenesis,
+                 * reward binding, and encryption state are structurally consistent.
+                 * Mirrors the gate in SUBMIT_BLOCK (line ~1324). */
+                {
+                    const SessionConsistencyResult consistency = ctxSnap.ValidateConsistency();
+                    if(consistency != SessionConsistencyResult::Ok)
+                    {
+                        debug::log(0, FUNCTION, "Session consistency violation at GET_BLOCK: ",
+                                   SessionConsistencyResultString(consistency));
+                        SendGetBlockControlResponse(GetBlockPolicyReason::SESSION_INVALID, 0, false);
+                        return true;
+                    }
                 }
 
                 /* ── Stateless Lane: Delegate to StatelessGetBlockHandler ────────────
@@ -1077,12 +1092,10 @@ namespace LLP
                 debug::log(0, "   ✅ Validation passed, delegating to StatelessGetBlockHandler");
 
                 /* Build request for the stateless lane handler.
-                 * Snapshot context under brief lock — handler runs unlocked. */
+                 * Reuse the context snapshot already captured under lock above (ctxSnap)
+                 * rather than re-acquiring MUTEX for a second copy. */
                 StatelessGetBlockRequest gbReq;
-                {
-                    LOCK(MUTEX);
-                    gbReq.context = context;
-                }
+                gbReq.context = ctxSnap;
                 gbReq.fnCreateBlock = [this]() -> TAO::Ledger::Block*
                 {
                     return new_block();
@@ -2712,8 +2725,11 @@ namespace LLP
                        !context.vMinerPubKey.empty() &&
                        context.vDisposablePubKey.empty())
                     {
+                        /* Use the already-stored hashKeyID instead of re-deriving
+                         * SK256(context.vMinerPubKey) — they are identical since hashKeyID
+                         * was derived from vMinerPubKey during authentication. */
                         context = context.WithDisposableKey(context.vMinerPubKey,
-                                                            LLC::SK256(context.vMinerPubKey));
+                                                            context.hashKeyID);
                         debug::log(1, FUNCTION, "✓ Embedded disposable Falcon key in context for session recovery persistence");
                     }
 

@@ -104,6 +104,68 @@ namespace LLP
         {
             return fRewardBound && hashRewardAddress != 0;
         }
+
+        /** Matches
+         *
+         *  Compare the three core identity fields (nSessionId, hashKeyID,
+         *  hashGenesis) against another SessionBinding.  Reward-binding and
+         *  protocol-lane fields are intentionally excluded — those are mutable
+         *  per-session state, not identity.
+         *
+         *  @param[in] other  The binding to compare against.
+         *  @return true if all three identity fields are equal.
+         *
+         **/
+        bool Matches(const SessionBinding& other) const
+        {
+            return nSessionId  == other.nSessionId
+                && hashKeyID   == other.hashKeyID
+                && hashGenesis == other.hashGenesis;
+        }
+
+        /** IsValid
+         *
+         *  Check that the three core identity fields are all non-zero.
+         *  A binding where any identity field is zero represents an
+         *  incomplete or uninitialized session.
+         *
+         *  @return true if nSessionId, hashKeyID, and hashGenesis are all non-zero.
+         *
+         **/
+        bool IsValid() const
+        {
+            return nSessionId != 0
+                && hashKeyID  != 0
+                && hashGenesis != 0;
+        }
+
+        /** FirstMismatch
+         *
+         *  Compare identity fields that are non-zero in BOTH bindings.
+         *  Returns the first SessionConsistencyResult that differs, or Ok if
+         *  every populated field matches.  Fields that are zero in either
+         *  binding are skipped (not yet authoritative).
+         *
+         *  This centralizes the "partial match" pattern used in
+         *  ValidateConsistency() and stateless_manager cleanup.
+         *
+         *  @param[in] other  The binding to compare against.
+         *  @return SessionConsistencyResult indicating the first mismatch, or Ok.
+         *
+         **/
+        SessionConsistencyResult FirstMismatch(const SessionBinding& other) const
+        {
+            if(nSessionId != 0 && other.nSessionId != 0 && nSessionId != other.nSessionId)
+                return SessionConsistencyResult::SessionIdMismatch;
+
+            if(hashGenesis != 0 && other.hashGenesis != 0 && hashGenesis != other.hashGenesis)
+                return SessionConsistencyResult::GenesisMismatch;
+
+            if(hashKeyID != 0 && other.hashKeyID != 0 && hashKeyID != other.hashKeyID)
+                return SessionConsistencyResult::FalconKeyMismatch;
+
+            return SessionConsistencyResult::Ok;
+        }
     };
 
     /** CryptoContext

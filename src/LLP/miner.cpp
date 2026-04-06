@@ -2394,7 +2394,11 @@ namespace LLP
             }
             else
             {
-                const uint256_t hashSessionKeyID = !vMinerPubKey.empty() ? LLC::SK256(vMinerPubKey) : uint256_t(0);
+                /* Use the stored hashKeyID member (set during authentication)
+                 * instead of re-deriving SK256(vMinerPubKey) on the hot path. */
+                const uint256_t hashSessionKeyID = hashKeyID != 0
+                    ? hashKeyID
+                    : (!vMinerPubKey.empty() ? LLC::SK256(vMinerPubKey) : uint256_t(0));
                 const auto optRecovery = SessionRecoveryManager::Get().RecoverSessionByIdentity(
                     hashSessionKeyID,
                     GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort())
