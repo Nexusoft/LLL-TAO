@@ -3464,8 +3464,8 @@ namespace LLP
              *   - clears vchBlockSig so FinalizeWalletSignatureForSolvedBlock can re-sign
              *
              * Both helpers do NOT mutate the original template.  The solved candidate
-             * is written back into the template slot so downstream
-             * AcceptMinedBlock() operate on the fully-prepared signed block. */
+             * is written back into the template slot so downstream ValidateMinedBlock()
+             * and AcceptMinedBlock() operate on the fully-prepared signed block. */
             if(pBlock->nChannel == TAO::Ledger::CHANNEL::PRIME)
             {
                 *pBlock = TAO::Ledger::BuildSolvedPrimeCandidateFromTemplate(*pBlock, nNonce, vOffsets);
@@ -4358,10 +4358,11 @@ namespace LLP
 
         /* Serialize and validate — P9: strict 216-byte check matching SendStatelessTemplate() */
         std::vector<uint8_t> vBlockData = pBlock->Serialize();
-        if(vBlockData.empty() || vBlockData.size() != 216)
+        if(vBlockData.empty() || vBlockData.size() != FalconConstants::FULL_BLOCK_TRITIUM_MIN)
         {
             debug::error(FUNCTION, "TryAttachBlockTemplate: invalid block serialization: ",
-                         vBlockData.size(), " bytes (expected 216)");
+                         vBlockData.size(), " bytes (expected ",
+                         FalconConstants::FULL_BLOCK_TRITIUM_MIN, ")");
             return;
         }
 
