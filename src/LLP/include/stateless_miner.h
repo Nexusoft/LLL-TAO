@@ -718,6 +718,18 @@ namespace LLP
          **/
         MiningContext WithAuth(bool fAuthenticated_) const;
 
+        /** DeriveSessionId
+         *
+         *  Derives a deterministic session ID from a Falcon key ID.
+         *  This is the single canonical derivation formula — all callers MUST
+         *  use this method instead of inlining the bit-extraction.
+         *
+         *  @param[in] hashKeyID  Falcon key identifier.
+         *  @return Lower 32 bits of hashKeyID as the session ID.
+         *
+         **/
+        static uint32_t DeriveSessionId(const uint256_t& hashKeyID);
+
         /** WithSession
          *
          *  Returns a new context with updated session ID.

@@ -178,8 +178,8 @@ namespace LLP
     {
         const uint64_t nNow = runtime::unifiedtimestamp();
 
-        /* Derive session ID from lower 32 bits of hashKeyID (matches ProcessFalconResponse) */
-        const uint32_t nSessionId = static_cast<uint32_t>(hashKeyID.Get64(0));
+        /* Derive session ID using canonical derivation (matches ProcessFalconResponse) */
+        const uint32_t nSessionId = MiningContext::DeriveSessionId(hashKeyID);
 
         /* Check if session exists */
         auto existing = m_mapByKey.Get(hashKeyID);

@@ -809,10 +809,24 @@ namespace LLP
 
                     if(!optExisting->vDisposablePubKey.empty())
                     {
+                        /* Bug 5.2 fix: When the recovered nSessionId is 0 (session saved before
+                         * authentication completed), derive it from hashKeyID so the pubkey can
+                         * still be stored in mapSessionKeys.  Without this, the write silently
+                         * no-ops and SUBMIT_BLOCK will reject with NO_SESSION_KEY. */
+                        uint32_t nRecoveredSessionId = optExisting->nSessionId;
+                        if(nRecoveredSessionId == 0 && optExisting->hashKeyID != 0)
+                        {
+                            nRecoveredSessionId = MiningContext::DeriveSessionId(optExisting->hashKeyID);
+                            debug::warning(FUNCTION, "⚠ Recovery data has nSessionId=0 with valid hashKeyID; "
+                                           "derived fallback sessionId=", nRecoveredSessionId);
+                        }
+
                         {
                             std::lock_guard<std::mutex> lock(SESSION_MUTEX);
-                            if(optExisting->nSessionId != 0)
-                                mapSessionKeys[optExisting->nSessionId] = optExisting->vDisposablePubKey;
+                            if(nRecoveredSessionId != 0)
+                                mapSessionKeys[nRecoveredSessionId] = optExisting->vDisposablePubKey;
+                            else
+                                debug::error(FUNCTION, "⚠ Cannot store recovered pubkey: both nSessionId and hashKeyID are 0");
                         }
                         /* Fix 2: Propagate recovered key into context so SaveSession re-persists it */
                         context = context.WithDisposableKey(optExisting->vDisposablePubKey,
@@ -829,10 +843,21 @@ namespace LLP
                                context.hashKeyID, vFallbackPubKey, hashFallbackKeyID) &&
                            !vFallbackPubKey.empty())
                         {
+                            /* Bug 5.2 fix: Same fallback derivation for the RestoreDisposableKey path */
+                            uint32_t nRecoveredSessionId = optExisting->nSessionId;
+                            if(nRecoveredSessionId == 0 && optExisting->hashKeyID != 0)
+                            {
+                                nRecoveredSessionId = MiningContext::DeriveSessionId(optExisting->hashKeyID);
+                                debug::warning(FUNCTION, "⚠ Recovery fallback: derived sessionId=", nRecoveredSessionId,
+                                               " from hashKeyID (stored nSessionId was 0)");
+                            }
+
                             {
                                 std::lock_guard<std::mutex> lock(SESSION_MUTEX);
-                                if(optExisting->nSessionId != 0)
-                                    mapSessionKeys[optExisting->nSessionId] = vFallbackPubKey;
+                                if(nRecoveredSessionId != 0)
+                                    mapSessionKeys[nRecoveredSessionId] = vFallbackPubKey;
+                                else
+                                    debug::error(FUNCTION, "⚠ Cannot store fallback pubkey: both nSessionId and hashKeyID are 0");
                             }
                             context = context.WithDisposableKey(vFallbackPubKey, hashFallbackKeyID);
                             debug::log(0, FUNCTION, "  Fallback: restored disposable Falcon key from dedicated key store");
@@ -950,6 +975,16 @@ namespace LLP
                     else if(context.nSessionId != 0)
                     {
                         debug::log(1, FUNCTION, "✓ Diagnostic: disposable Falcon key verified in mapSessionKeys for session ", context.nSessionId);
+                    }
+                    else
+                    {
+                        /* Bug 5.2 fix: Warn when context.nSessionId is still 0 after recovery.
+                         * This means neither the recovery data nor the live context had a valid
+                         * session ID — block submissions will fail until re-authentication. */
+                        debug::warning(FUNCTION, "⚠ context.nSessionId is 0 after STATELESS_MINER_READY recovery — "
+                                       "block submissions will require re-authentication");
+                        debug::warning(FUNCTION, "  key_id=", FullHexOrUnset(context.hashKeyID),
+                                       " authenticated=", context.fAuthenticated ? "YES" : "NO");
                     }
                 }
 
@@ -2626,10 +2661,31 @@ namespace LLP
                      * We MUST use the canonical ID to prevent session_id=0 bugs on reconnection. */
                     if(canonicalSessionId != context.nSessionId)
                     {
+                        const uint32_t nDerivedId = context.nSessionId;
                         debug::log(0, FUNCTION, "⚠ Cross-port session recovery: Overriding derived sessionId ",
-                                   context.nSessionId, " → ", canonicalSessionId,
+                                   nDerivedId, " → ", canonicalSessionId,
                                    " (already registered on other port)");
                         context = context.WithSession(canonicalSessionId);
+
+                        /* Bug 5.1 fix: Re-key mapSessionKeys so the pubkey stored at line 2568
+                         * under the derived ID is accessible under the canonical ID that all
+                         * future lookups (SUBMIT_BLOCK, diagnostics) will use. */
+                        {
+                            std::lock_guard<std::mutex> lock(SESSION_MUTEX);
+                            auto it = mapSessionKeys.find(nDerivedId);
+                            if(it != mapSessionKeys.end())
+                            {
+                                mapSessionKeys[canonicalSessionId] = std::move(it->second);
+                                mapSessionKeys.erase(it);
+                                debug::log(0, FUNCTION, "✓ Migrated mapSessionKeys entry: 0x",
+                                           std::hex, nDerivedId, " → 0x", canonicalSessionId, std::dec);
+                            }
+                            else
+                            {
+                                debug::error(FUNCTION, "⚠ mapSessionKeys migration: no entry found under derived ID 0x",
+                                             std::hex, nDerivedId, std::dec, " — pubkey may have been lost");
+                            }
+                        }
                     }
 
                     if(isNew)
@@ -2658,6 +2714,25 @@ namespace LLP
                         context = context.WithDisposableKey(context.vMinerPubKey,
                                                             LLC::SK256(context.vMinerPubKey));
                         debug::log(1, FUNCTION, "✓ Embedded disposable Falcon key in context for session recovery persistence");
+                    }
+
+                    /* Bug 5.3 fix: Cross-check that mapSessionKeys and vDisposablePubKey hold
+                     * the same key.  AUTH stores vMinerPubKey; recovery restores vDisposablePubKey.
+                     * They MUST be identical for SUBMIT_BLOCK signature verification to succeed.
+                     * If they ever diverge, log the mismatch at level 0 for operators. */
+                    if(!context.vDisposablePubKey.empty() && context.nSessionId != 0)
+                    {
+                        std::lock_guard<std::mutex> lock(SESSION_MUTEX);
+                        auto it = mapSessionKeys.find(context.nSessionId);
+                        if(it != mapSessionKeys.end() && !it->second.empty() &&
+                           it->second != context.vDisposablePubKey)
+                        {
+                            debug::error(FUNCTION, "⚠ KEY DIVERGENCE: mapSessionKeys pubkey differs from vDisposablePubKey");
+                            debug::error(FUNCTION, "  session_id=", context.nSessionId,
+                                         " map_key_size=", it->second.size(),
+                                         " disposable_key_size=", context.vDisposablePubKey.size());
+                            debug::error(FUNCTION, "  This will cause SUBMIT_BLOCK signature verification failures");
+                        }
                     }
 
                     SessionRecoveryManager::Get().SaveSession(context);
