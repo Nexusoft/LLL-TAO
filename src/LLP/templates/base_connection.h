@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLP/templates/trigger.h>
 #include <LLP/include/version.h>
 
+#include <Util/include/args.h>
 #include <Util/include/mutex.h>
 #include <Util/templates/datastream.h>
 
@@ -93,6 +94,31 @@ namespace LLP
          *
          **/
         virtual bool IsTimeoutExempt() const { return false; }
+
+
+        /** GetMaxSendBuffer
+         *
+         *  Virtual method to return the maximum send buffer size for this
+         *  connection.  The DataThread uses this to decide when to disconnect
+         *  a connection whose send buffer has overflowed, and WritePacket()
+         *  uses it to decide when to drop outgoing packets.
+         *
+         *  Mining connections override this to return a much larger limit
+         *  (15 MB default) when the miner is authenticated, because push
+         *  notifications are the primary — not advisory — mechanism for
+         *  delivering fresh work to miners.  A slow reader must not trigger
+         *  DISCONNECT::BUFFER merely because it is busy hashing.
+         *
+         *  Unauthenticated connections inherit the default (3 MB) to prevent
+         *  resource abuse before Falcon authentication completes.
+         *
+         *  @return maximum send buffer size in bytes for this connection.
+         *
+         **/
+        virtual uint64_t GetMaxSendBuffer() const
+        {
+            return config::GetArg("-maxsendbuffer", MAX_SEND_BUFFER);
+        }
 
 
         /** Incoming Packet Being Built. **/

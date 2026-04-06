@@ -272,6 +272,21 @@ namespace LLP
          **/
         bool IsTimeoutExempt() const final;
 
+        /** GetMaxSendBuffer
+         *
+         *  Authenticated stateless mining connections use a larger send buffer
+         *  (15 MB default, configurable via -miningmaxsendbuffer) because push
+         *  notifications are the primary delivery mechanism for fresh work.
+         *  A slow-reading miner must not be killed with DISCONNECT::BUFFER
+         *  merely because it is busy hashing.
+         *
+         *  Unauthenticated connections return the default 3 MB limit.
+         *
+         *  @return maximum send buffer size in bytes for this connection.
+         *
+         **/
+        uint64_t GetMaxSendBuffer() const final;
+
         /** GetContext
          *
          *  Get the current mining context (for server-level operations like notifications).
