@@ -512,10 +512,18 @@ TEST_CASE("Socket::Flush returns error on closed peer", "[socket][flush][error]"
          * verify Flush() doesn't crash or hang. */
         int nResult = sock.Flush();
 
-        /* Result is either bytes sent (kernel buffer hadn't noticed yet)
-         * or an error. */
-        REQUIRE((nResult >= 0 || nResult < 0));  /* No crash/hang */
-        REQUIRE(sock.nConsecutiveErrors.load() >= 0);
+        /* After flushing with a closed peer, the socket should either have
+         * sent some data (kernel hadn't noticed yet) or recorded an error. */
+        if(nResult < 0)
+        {
+            REQUIRE(sock.nConsecutiveErrors.load() > 0);
+        }
+        else
+        {
+            /* Kernel accepted the data before noticing the peer closed.
+             * No errors should have accumulated in this path. */
+            REQUIRE(nResult >= 0);
+        }
     }
 }
 
