@@ -131,6 +131,34 @@ namespace MiningConstants
     constexpr uint64_t MINING_MAX_SEND_BUFFER = 15 * 1024 * 1024;
 
     //=========================================================================
+    // CONNECTION HEALTH & KEEPALIVE
+    //=========================================================================
+
+    /** Maximum flush-and-retry attempts in respond() before giving up.
+     *
+     *  When the send buffer is saturated (fBufferFull == true), respond() tries
+     *  to Flush() the socket up to this many times (with a short sleep between
+     *  attempts) before falling through to WritePacket(), which may drop the
+     *  packet.  Mining responses are tiny (16–32 bytes) so even a partial
+     *  flush usually frees enough space.
+     */
+    constexpr int RESPOND_FLUSH_RETRY_COUNT = 3;
+
+    /** Sleep between flush retries in respond() (milliseconds). */
+    constexpr int RESPOND_FLUSH_RETRY_SLEEP_MS = 10;
+
+    /** Default node-side health probe interval (seconds).
+     *
+     *  The Meter thread checks all authenticated mining connections for
+     *  receive-idle staleness at this cadence.  If a miner hasn't sent
+     *  anything for 2× this value, the node flushes the outbound buffer
+     *  to force an OS-level TCP error if the path is truly dead.
+     *
+     *  Overridable at runtime via -mininghealthprobeinterval=<seconds>.
+     */
+    constexpr int64_t NODE_HEALTH_PROBE_INTERVAL_SEC = 120;
+
+    //=========================================================================
     // DIFFICULTY CACHING
     //=========================================================================
     

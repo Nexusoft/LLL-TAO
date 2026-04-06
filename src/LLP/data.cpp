@@ -410,16 +410,14 @@ namespace LLP
                     }
 
                     /* Disconnect if pollin signaled with no data for 1ms consistently (This happens on Linux).
-                     * On Linux, poll() can return POLLIN during TCP keepalive ACK processing,
-                     * half-closed connections (FIN received), or zero-window probe responses
-                     * where ioctl(FIONREAD) returns 0 because no application data is queued.
-                     * The default 1ms grace window (nWait) is sufficient for P2P connections
-                     * but too aggressive for authenticated miners — a single spurious POLLIN
-                     * during kernel keepalive processing would kill a long-running miner.
-                     * Authenticated miners bypass this check via IsTimeoutExempt(). */
+                     * Authenticated mining connections are exempt — a spurious POLLIN with
+                     * Available()==0 on a 1 ms window is too aggressive for high-value Falcon-
+                     * authenticated sessions.  The 24-hour session timeout and TCP keepalive
+                     * probes will catch genuinely dead connections instead. */
                     if((POLLFDS.at(nIndex).revents & POLLIN)
                     && CONNECTION->Timeout(nWait, Socket::READ)
-                    && CONNECTION->Available() == 0)
+                    && CONNECTION->Available() == 0
+                    && !CONNECTION->IsTimeoutExempt())
                     {
                         if(CONNECTION->IsTimeoutExempt())
                         {
@@ -766,6 +764,34 @@ namespace LLP
         /* Check that we have an active connection here. */
         if(!CONNECTIONS->at(nIndex))
             return;
+
+        /* For authenticated mining connections (IsTimeoutExempt == true), log
+         * the disconnect at verbosity 0 with full diagnostic context so that
+         * operators can diagnose silent connection drops in production.
+         * Non-mining / unauthenticated connections still rely on the protocol-
+         * level Event(EVENTS::DISCONNECT) handler for logging. */
+        if(CONNECTIONS->at(nIndex)->IsTimeoutExempt())
+        {
+            /* Human-readable disconnect reason. */
+            const char* pReason = "UNKNOWN";
+            switch(nReason)
+            {
+                case DISCONNECT::TIMEOUT:       pReason = "TIMEOUT (read idle)";       break;
+                case DISCONNECT::ERRORS:        pReason = "ERRORS (socket I/O)";       break;
+                case DISCONNECT::POLL_ERROR:    pReason = "POLL_ERROR";                break;
+                case DISCONNECT::POLL_EMPTY:    pReason = "POLL_EMPTY (spurious POLLIN)"; break;
+                case DISCONNECT::DDOS:          pReason = "DDOS (rate limit)";         break;
+                case DISCONNECT::FORCE:         pReason = "FORCE (server/protocol)";   break;
+                case DISCONNECT::PEER:          pReason = "PEER (remote closed)";      break;
+                case DISCONNECT::BUFFER:        pReason = "BUFFER (send overflow)";    break;
+                case DISCONNECT::TIMEOUT_WRITE: pReason = "TIMEOUT_WRITE (write stall)"; break;
+            }
+
+            debug::log(0, FUNCTION, "DataThread[", ID, "]: Removing AUTHENTICATED mining connection ",
+                       CONNECTIONS->at(nIndex)->GetAddress().ToStringIP(),
+                       " reason=", pReason,
+                       " buffered=", CONNECTIONS->at(nIndex)->Buffered());
+        }
 
         /* Fire off our disconnect event now. */
         CONNECTIONS->at(nIndex)->Event(EVENTS::DISCONNECT, nReason);
