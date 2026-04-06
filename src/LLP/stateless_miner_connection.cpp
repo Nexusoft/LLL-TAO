@@ -106,6 +106,58 @@ namespace LLP
          * session_id (4 bytes little-endian) + hashPrevBlock_lo32 (4 bytes big-endian). */
         static constexpr uint32_t SESSION_KEEPALIVE_PAYLOAD_SIZE = 8;
 
+        bool IsStatelessPreflightBypassOpcode(const uint16_t nOpcode)
+        {
+            switch(nOpcode)
+            {
+                case OpcodeUtility::Stateless::AUTH_INIT:
+                case OpcodeUtility::Stateless::AUTH_RESPONSE:
+                case OpcodeUtility::Stateless::SESSION_START:
+                case OpcodeUtility::Stateless::SESSION_STATUS:
+                case ColinDiagOpcodes::PONG_DIAG_STATELESS:
+                    return true;
+
+                default:
+                    return false;
+            }
+        }
+
+        bool IsStatelessPreflightProtectedOpcode(const uint16_t nOpcode)
+        {
+            switch(nOpcode)
+            {
+                case OpcodeUtility::Stateless::SET_CHANNEL:
+                case OpcodeUtility::Stateless::SESSION_KEEPALIVE:
+                case OpcodeUtility::Stateless::SET_REWARD:
+                case OpcodeUtility::Stateless::STATELESS_MINER_READY:
+                case OpcodeUtility::Stateless::GET_BLOCK:
+                case OpcodeUtility::Stateless::SUBMIT_BLOCK:
+                case OpcodeUtility::Stateless::GET_HEIGHT:
+                case OpcodeUtility::Stateless::GET_REWARD:
+                case OpcodeUtility::Stateless::GET_ROUND:
+                    return true;
+
+                default:
+                    return false;
+            }
+        }
+
+        bool StatelessOpcodeRequiresChannel(const uint16_t nOpcode)
+        {
+            switch(nOpcode)
+            {
+                case OpcodeUtility::Stateless::STATELESS_MINER_READY:
+                case OpcodeUtility::Stateless::GET_BLOCK:
+                case OpcodeUtility::Stateless::SUBMIT_BLOCK:
+                case OpcodeUtility::Stateless::GET_REWARD:
+                case OpcodeUtility::Stateless::GET_ROUND:
+                    return true;
+
+                default:
+                    return false;
+            }
+        }
+
         inline StatelessPacket BuildSessionExpiredResponse(const uint32_t nSessionId, const uint8_t nReason = 0x01)
         {
             StatelessPacket response(OpcodeUtility::Stateless::SESSION_EXPIRED);
@@ -766,6 +818,15 @@ namespace LLP
                 return false;
             }
 
+            MiningContext ctxSnap;
+            {
+                LOCK(MUTEX);
+                ctxSnap = context;
+            }
+
+            if(!PreflightSessionGate(PACKET, ctxSnap))
+                return true;
+
             /* ============================================================================
              * 16-BIT OPCODE HANDLERS (Stateless Mining Protocol for NexusMiner)
              * ============================================================================ */
@@ -777,14 +838,6 @@ namespace LLP
                 debug::log(0, "   From: ", GetAddress().ToStringIP());
                 debug::log(0, "   Authenticated: ", (context.fAuthenticated ? "YES" : "NO"));
                 debug::log(0, "   Channel: ", context.nChannel);
-                
-                /* Validate authentication - required for stateless mining */
-                if (!context.fAuthenticated)
-                {
-                    debug::error(FUNCTION, "STATELESS_MINER_READY: authentication required");
-                    debug::log(2, "📥 === STATELESS_MINER_READY: REJECTED (AUTH) ===");
-                    return false;
-                }
                 
                 /* CRITICAL: Only Prime (1) and Hash (2) support stateless mining */
                 if (context.nChannel != 1 && context.nChannel != 2)
@@ -1022,40 +1075,12 @@ namespace LLP
                 debug::log(2, "📥 === GET_BLOCK REQUEST ===");
                 debug::log(0, "   From: ", GetAddress().ToStringIP());
 
-                /* Brief lock: snapshot full context for ValidateConsistency() check.
-                 * This subsumes the former separate nSessionId/fAuthenticated checks
-                 * and adds hashKeyID + hashGenesis validation. */
-                MiningContext ctxSnap;
-                {
-                    LOCK(MUTEX);
-                    ctxSnap = context;
-                }
-
                 const uint32_t nSessionId_snap    = ctxSnap.nSessionId;
-                const bool     fAuthenticated_snap = ctxSnap.fAuthenticated;
                 const uint32_t nChannel_snap       = ctxSnap.nChannel;
 
-                debug::log(0, "   Authenticated: ", (fAuthenticated_snap ? "YES" : "NO"));
+                debug::log(0, "   Authenticated: ", (ctxSnap.fAuthenticated ? "YES" : "NO"));
                 debug::log(0, "   Channel: ", nChannel_snap);
                 debug::log(0, "   Session ID: ", nSessionId_snap);
-
-                /* Session validity: use full ValidateConsistency() which subsumes the
-                 * former nSessionId == 0 and fAuthenticated checks plus adds hashKeyID
-                 * and hashGenesis validation.  Return the same error codes as before
-                 * (SESSION_INVALID, UNAUTHENTICATED) based on which check triggered. */
-                if(nSessionId_snap == 0)
-                {
-                    SendGetBlockControlResponse(GetBlockPolicyReason::SESSION_INVALID, 0, false);
-                    return true;
-                }
-                
-                /* Check authentication */
-                if(!fAuthenticated_snap)
-                {
-                    SendGetBlockControlResponse(GetBlockPolicyReason::UNAUTHENTICATED, 0, false);
-                    debug::log(2, "📥 === GET_BLOCK: REJECTED (AUTH) ===");
-                    return true;
-                }
 
                 /* Full session consistency gate — validates hashKeyID, hashGenesis,
                  * reward binding, and encryption state are structurally consistent.
@@ -1078,15 +1103,6 @@ namespace LLP
                  * Rate limiting for GET_BLOCK on the stateless lane uses the session-scoped
                  * limiter in CheckRateLimit (called earlier in the packet dispatch).
                  */
-
-                /* Check channel is set — every path below MUST send a wire response. */
-                if(nChannel_snap == 0)
-                {
-                    debug::error(FUNCTION, "Channel not set for authenticated miner; miner must call SET_CHANNEL first — sending TEMPLATE_NOT_READY");
-                    debug::log(2, "📥 === GET_BLOCK: REJECTED (NO CHANNEL) ===");
-                    SendGetBlockControlResponse(GetBlockPolicyReason::TEMPLATE_NOT_READY, MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS, true);
-                    return true;
-                }
 
                 debug::log(2, FUNCTION, "Invariant: authenticated + channel set → BLOCK_DATA MUST follow");
                 debug::log(0, "   ✅ Validation passed, delegating to StatelessGetBlockHandler");
@@ -1283,35 +1299,6 @@ namespace LLP
                 
                 debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "📥 === SUBMIT_BLOCK received ===", ANSI_COLOR_RESET);
                 
-                /* Snapshot context under brief lock — the entire SUBMIT_BLOCK pipeline
-                 * runs unlocked (decryption, verification, sign_block, AcceptMinedBlock).
-                 * Only the final context mutation at the end re-acquires MUTEX. */
-                MiningContext ctxSnap;
-                {
-                    LOCK(MUTEX);
-                    ctxSnap = context;
-                }
-
-                /* Check authentication */
-                if(!ctxSnap.fAuthenticated)
-                {
-                    debug::error(FUNCTION, "❌ Authentication required");
-                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                    respond(response);
-                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (AUTH) ===", ANSI_COLOR_RESET);
-                    return true;
-                }
-                
-                /* Check channel is set */
-                if(context.nChannel == 0)
-                {
-                    debug::error(FUNCTION, "❌ Channel not set");
-                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                    respond(response);
-                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (NO CHANNEL) ===", ANSI_COLOR_RESET);
-                    return true;
-                }
-
                 /* MANDATORY: ChaCha20 encryption required for all modern miners */
                 if(!ctxSnap.fEncryptionReady || ctxSnap.vChaChaKey.empty())
                 {
@@ -2150,27 +2137,10 @@ namespace LLP
             /* Handle GET_HEIGHT - requires authentication */
             if(PACKET.HEADER == GET_HEIGHT)
             {
-                /* Brief lock: snapshot auth and session for validation */
-                bool fAuth_snap;
                 uint32_t nSessionId_snap;
                 std::string strAddress_snap;
-                {
-                    LOCK(MUTEX);
-                    fAuth_snap      = context.fAuthenticated;
-                    nSessionId_snap = context.nSessionId;
-                    strAddress_snap = context.strAddress;
-                }
-
-                /* Check authentication */
-                if(!fAuth_snap)
-                {
-                    debug::error(FUNCTION, "GET_HEIGHT rejected - authentication required");
-                    StatelessPacket response(MINER_AUTH_RESULT);
-                    response.DATA.push_back(0x00);  // Failure
-                    response.LENGTH = 1;
-                    respond(response);
-                    return true;
-                }
+                nSessionId_snap = ctxSnap.nSessionId;
+                strAddress_snap = ctxSnap.strAddress;
 
                 /* Get current blockchain height */
                 uint32_t nCurrentHeight = TAO::Ledger::ChainState::nBestHeight.load();
@@ -2209,41 +2179,12 @@ namespace LLP
             /* Handle GET_REWARD - requires authentication and channel */
             if(PACKET.HEADER == GET_REWARD)
             {
-                /* Brief lock: snapshot auth, channel, session, address for validation */
-                bool fAuth_snap;
                 uint32_t nChannel_snap;
                 uint32_t nSessionId_snap;
                 std::string strAddress_snap;
-                {
-                    LOCK(MUTEX);
-                    fAuth_snap      = context.fAuthenticated;
-                    nChannel_snap   = context.nChannel;
-                    nSessionId_snap = context.nSessionId;
-                    strAddress_snap = context.strAddress;
-                }
-
-                /* Check authentication */
-                if(!fAuth_snap)
-                {
-                    debug::error(FUNCTION, "GET_REWARD rejected - authentication required");
-                    StatelessPacket response(MINER_AUTH_RESULT);
-                    response.DATA.push_back(0x00);  // Failure
-                    response.LENGTH = 1;
-                    respond(response);
-                    return true;
-                }
-
-                /* Check channel is set */
-                if(nChannel_snap == 0)
-                {
-                    debug::error(FUNCTION, "GET_REWARD rejected - channel not set");
-                    debug::error(FUNCTION, "  Required flow: Auth → MINER_SET_REWARD → SET_CHANNEL → GET_REWARD");
-                    
-                    /* Send error response */
-                    StatelessPacket response(BLOCK_REJECTED);
-                    respond(response);
-                    return true;
-                }
+                nChannel_snap = ctxSnap.nChannel;
+                nSessionId_snap = ctxSnap.nSessionId;
+                strAddress_snap = ctxSnap.strAddress;
 
                 debug::log(2, FUNCTION, "GET_REWARD request from ", GetAddress().ToStringIP(),
                            " channel=", nChannel_snap, " sessionId=", nSessionId_snap);
@@ -2302,41 +2243,14 @@ namespace LLP
                     return true;
                 }
 
-                /* Brief lock: snapshot context fields needed for validation and staleness */
-                bool fAuth_snap;
                 uint32_t nChannel_snap;
                 uint1024_t hashLastBlock_snap;
                 uint32_t nLastTemplateUnifiedHeight_snap;
                 std::string strAddress_snap;
-                {
-                    LOCK(MUTEX);
-                    fAuth_snap                       = context.fAuthenticated;
-                    nChannel_snap                    = context.nChannel;
-                    hashLastBlock_snap               = context.hashLastBlock;
-                    nLastTemplateUnifiedHeight_snap   = context.nLastTemplateUnifiedHeight;
-                    strAddress_snap                  = context.strAddress;
-                }
-
-                /* Check authentication */
-                if(!fAuth_snap)
-                {
-                    debug::log(0, FUNCTION, "Unauthenticated miner attempted GET_ROUND from ",
-                               GetAddress().ToStringIP());
-                    StatelessPacket response(StatelessOpcodes::OLD_ROUND);
-                    response.LENGTH = 0;
-                    respond(response);
-                    return true;
-                }
-
-                /* Validate channel (1=Prime, 2=Hash only; Stake uses different mechanism) */
-                if(nChannel_snap == 0)
-                {
-                    debug::error(FUNCTION, "GET_ROUND: Miner has not set channel (use SET_CHANNEL)");
-                    StatelessPacket response(StatelessOpcodes::OLD_ROUND);
-                    response.LENGTH = 0;
-                    respond(response);
-                    return true;
-                }
+                nChannel_snap = ctxSnap.nChannel;
+                hashLastBlock_snap = ctxSnap.hashLastBlock;
+                nLastTemplateUnifiedHeight_snap = ctxSnap.nLastTemplateUnifiedHeight;
+                strAddress_snap = ctxSnap.strAddress;
 
                 /* Capture consistent chain height snapshot via shared utility.
                  * Uses raw GetLastState() and tightly-scoped atomic reads. */
@@ -4004,6 +3918,80 @@ namespace LLP
         debug::log(1, FUNCTION,
             "metric get_block_control_response_total{reason=", GetBlockPolicyReasonCode(eReason),
             "}=", nReasonCount);
+    }
+
+    bool StatelessMinerConnection::PreflightSessionGate(const StatelessPacket& PACKET, const MiningContext& ctxSnap)
+    {
+        if(IsStatelessPreflightBypassOpcode(PACKET.HEADER) || !IsStatelessPreflightProtectedOpcode(PACKET.HEADER))
+            return true;
+
+        if(!ctxSnap.fAuthenticated)
+        {
+            debug::log(0, FUNCTION, "PreflightSessionGate: unauthenticated opcode 0x",
+                       std::hex, uint32_t(PACKET.HEADER), std::dec,
+                       " from ", GetAddress().ToStringIP());
+
+            if(PACKET.HEADER == OpcodeUtility::Stateless::GET_BLOCK)
+                SendGetBlockControlResponse(GetBlockPolicyReason::UNAUTHENTICATED, 0, false);
+            else
+            {
+                StatelessPacket response(OpcodeUtility::Stateless::AUTH_RESULT);
+                response.DATA.push_back(0x00);
+                response.LENGTH = 1;
+                respond(response);
+            }
+
+            return false;
+        }
+
+        const SessionConsistencyResult consistency = ctxSnap.ValidateConsistency();
+        if(consistency != SessionConsistencyResult::Ok)
+        {
+            debug::log(0, FUNCTION, "PreflightSessionGate: session inconsistency on opcode 0x",
+                       std::hex, uint32_t(PACKET.HEADER), std::dec,
+                       " from ", GetAddress().ToStringIP(), " result=",
+                       SessionConsistencyResultString(consistency));
+
+            if(PACKET.HEADER == OpcodeUtility::Stateless::GET_BLOCK)
+                SendGetBlockControlResponse(GetBlockPolicyReason::SESSION_INVALID, 0, false);
+            else
+            {
+                StatelessPacket response(
+                    PACKET.HEADER == OpcodeUtility::Stateless::GET_ROUND
+                        ? OpcodeUtility::Stateless::OLD_ROUND
+                        : OpcodeUtility::Stateless::BLOCK_REJECTED);
+                response.LENGTH = 0;
+                respond(response);
+            }
+
+            return false;
+        }
+
+        if(StatelessOpcodeRequiresChannel(PACKET.HEADER) && ctxSnap.nChannel == 0)
+        {
+            debug::log(0, FUNCTION, "PreflightSessionGate: missing channel for opcode 0x",
+                       std::hex, uint32_t(PACKET.HEADER), std::dec,
+                       " from ", GetAddress().ToStringIP());
+
+            if(PACKET.HEADER == OpcodeUtility::Stateless::GET_BLOCK)
+            {
+                SendGetBlockControlResponse(GetBlockPolicyReason::TEMPLATE_NOT_READY,
+                                            MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS, true);
+            }
+            else
+            {
+                StatelessPacket response(
+                    PACKET.HEADER == OpcodeUtility::Stateless::GET_ROUND
+                        ? OpcodeUtility::Stateless::OLD_ROUND
+                        : OpcodeUtility::Stateless::BLOCK_REJECTED);
+                response.LENGTH = 0;
+                respond(response);
+            }
+
+            return false;
+        }
+
+        return true;
     }
 
     bool StatelessMinerConnection::CheckRateLimit(uint16_t nRequestType, uint32_t* pnRetryAfterMs)

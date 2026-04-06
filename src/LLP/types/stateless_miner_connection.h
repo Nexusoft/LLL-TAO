@@ -546,7 +546,10 @@ namespace LLP
 
         /** Send BLOCK_DATA and enforce authenticated-path non-empty payload invariant. **/
         void SendGetBlockDataResponse(const std::vector<uint8_t>& vPayload, bool fAuthenticatedPath);
-        
+
+        /** Centralized session/auth/channel gate for post-auth mining opcodes. **/
+        bool PreflightSessionGate(const StatelessPacket& PACKET, const MiningContext& ctxSnap);
+
         /** IsThrottled
          *
          *  @brief Check if connection should be in throttle mode
