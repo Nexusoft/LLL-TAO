@@ -2642,6 +2642,10 @@ namespace LLP
 
                 /* Mirror authentication state to atomic flag for lock-free DataThread reads.
                  * Only transitions false → true (write-once); relaxed ordering is sufficient. */
+                /* Handshake timeout state:
+                 *  AUTH_INIT success     -> handshake active
+                 *  AUTH_RESPONSE success -> authenticated, handshake cleared
+                 *  AUTH_RESPONSE failure -> handshake cleared in the error path below */
                 if(context.fAuthenticated)
                 {
                     fAuthenticatedAtomic.store(true, std::memory_order_relaxed);

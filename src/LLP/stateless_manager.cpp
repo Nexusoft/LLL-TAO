@@ -366,6 +366,9 @@ namespace LLP
         || strAddress.rfind(':') == std::string::npos)
             return optFallbackContext;
 
+        /* Session id 0 is treated as "caller has no authoritative session id yet"
+         * (or the recovered context predates session assignment), so it acts as a
+         * wildcard and only enforces equality when both sides are non-zero. */
         const bool fSessionMatches =
             (nExpectedSessionId == 0 ||
              optFallbackContext->nSessionId == 0 ||
@@ -382,6 +385,8 @@ namespace LLP
 
         MiningContext migrated = optFallbackContext.value();
         migrated.strAddress = strAddress;
+        /* Preserve monotonic activity timestamps when re-keying an existing miner to
+         * a new exact address so CleanupInactive() never sees a backwards jump. */
         migrated.nTimestamp = std::max<uint64_t>(migrated.nTimestamp, runtime::unifiedtimestamp());
 
         const uint8_t nLane = GetMinerLane(strFallbackAddress).value_or(0);

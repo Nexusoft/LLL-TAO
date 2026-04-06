@@ -32,6 +32,11 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    namespace
+    {
+        static constexpr uint32_t MINING_POLL_EMPTY_TIMEOUT_MS = 100;
+    }
+
     /** Default Constructor **/
     template <class ProtocolType>
     DataThread<ProtocolType>::DataThread(const uint32_t nID, const bool ffDDOSIn,
@@ -418,7 +423,8 @@ namespace LLP
                         !CONNECTION->INCOMING.IsNull() && !CONNECTION->PacketComplete();
                     const bool fMiningConnection =
                         (ProtocolType::Name() == "Miner" || ProtocolType::Name() == "StatelessMiner");
-                    const uint32_t nPollEmptyTimeout = fMiningConnection ? 100 : nWait;
+                    const uint32_t nPollEmptyTimeout =
+                        fMiningConnection ? MINING_POLL_EMPTY_TIMEOUT_MS : nWait;
                     if((POLLFDS.at(nIndex).revents & POLLIN)
                     && CONNECTION->Timeout(nPollEmptyTimeout, Socket::READ)
                     && CONNECTION->Available() == 0
