@@ -837,18 +837,33 @@ namespace LLP
     {
         int32_t nSent = 0;
 
+        /* Clear stale fBufferFull latch — if the buffer has drained to zero
+         * but fBufferFull is still set (Flush() returned early on empty buffer,
+         * or race window between nBufferSize.store(0) and fBufferFull.store(false)
+         * in Flush()), reset it now so callers (respond()'s retry loop) don't
+         * waste 30 ms on spurious retries. */
+        if(nBufferSize.load() == 0 && fBufferFull.load())
+            fBufferFull.store(false);
+
         /* Check overflow buffer. */
         if(nBufferSize.load() > 0)
         {
             RECURSIVE(SOCKET_MUTEX);
 
-            /* Insert data into the buffer. */
-            vBuffer.insert(vBuffer.end(), vData.begin(), vData.end());
+            /* Re-check under lock: FLUSH_THREAD could have drained the buffer
+             * between the atomic check above and the mutex acquisition.  If the
+             * buffer is now empty, fall through to the direct-send path instead
+             * of needlessly buffering (which would add a Flush round-trip). */
+            if(!vBuffer.empty())
+            {
+                /* Insert data into the buffer. */
+                vBuffer.insert(vBuffer.end(), vData.begin(), vData.end());
 
-            /* Set our atomic with size of vector. */
-            nBufferSize.store(vBuffer.size());
+                /* Set our atomic with size of vector. */
+                nBufferSize.store(vBuffer.size());
 
-            return static_cast<int32_t>(nBytes);
+                return static_cast<int32_t>(nBytes);
+            }
         }
 
         /* Write the packet. */
@@ -911,9 +926,16 @@ namespace LLP
         uint32_t nSize  =
             static_cast<uint32_t>(nBufferSize.load());
 
-        /* Don't flush if buffer doesn't have any data. */
+        /* Don't flush if buffer doesn't have any data.
+         * Clear any stale fBufferFull flag — the buffer has fully drained so the
+         * latch is no longer meaningful.  Without this, a previous overflow can
+         * leave fBufferFull permanently set after the buffer empties, causing
+         * respond()'s retry loop to spin on no-op Flush() calls. */
         if(nSize == 0)
+        {
+            fBufferFull.store(false);
             return 0;
+        }
 
         /* maximum transmission unit. */
         const uint32_t MTU = 16384;
@@ -959,14 +981,21 @@ namespace LLP
 
                 /* Set our atomic with size of vector. */
                 nBufferSize.store(vBuffer.size());
+
+                /* Only clear fBufferFull when the buffer has fully drained.
+                 * Previously this was cleared unconditionally after any
+                 * successful partial send, which caused premature reset:
+                 * e.g. 14 MB buffered → 16 KB sent → fBufferFull cleared
+                 * even though ~14 MB remain.  This made respond()'s retry
+                 * loop skip, leading to packet drops when WritePacket()
+                 * then correctly refused the write. */
+                if(vBuffer.empty())
+                    fBufferFull.store(false);
             }
 
             /* Update socket timers. */
             nLastSend          = runtime::timestamp(true);
             nConsecutiveErrors = 0;
-
-            /* Reset that buffers are full. */
-            fBufferFull.store(false);
         }
 
         return nSent;
