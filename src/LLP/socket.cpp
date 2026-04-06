@@ -841,9 +841,15 @@ namespace LLP
          * but fBufferFull is still set (Flush() returned early on empty buffer,
          * or race window between nBufferSize.store(0) and fBufferFull.store(false)
          * in Flush()), reset it now so callers (respond()'s retry loop) don't
-         * waste 30 ms on spurious retries. */
+         * waste 30 ms on spurious retries.
+         *
+         * Use compare_exchange to avoid clobbering a concurrent
+         * fBufferFull.store(true) from WritePacket() on another thread. */
         if(nBufferSize.load() == 0 && fBufferFull.load())
-            fBufferFull.store(false);
+        {
+            bool expected = true;
+            fBufferFull.compare_exchange_strong(expected, false);
+        }
 
         /* Check overflow buffer. */
         if(nBufferSize.load() > 0)
@@ -918,61 +924,83 @@ namespace LLP
     }
 
 
-    /* Flushes data out of the overflow buffer */
+    /* Flushes data out of the overflow buffer.
+     *
+     * Drains the buffer in a loop, sending up to MTU bytes per iteration,
+     * until the buffer is empty or send() would block (EAGAIN/EWOULDBLOCK).
+     * Previously, Flush() sent at most one MTU (16 KB) per call.  For a
+     * 2 MB buffer that meant ~122 Flush() calls to drain, each requiring
+     * FLUSH_THREAD to wake, evaluate its predicate across all connections,
+     * and go back to sleep.  The loop eliminates that O(N × connections)
+     * overhead by draining as much as the kernel TCP send buffer allows
+     * in a single Flush() invocation.
+     *
+     * Returns total bytes sent (≥ 0) or the last send() error (< 0). */
     int Socket::Flush()
     {
-        int32_t nSent   = 0;
-        uint32_t nBytes = 0;
-        uint32_t nSize  =
-            static_cast<uint32_t>(nBufferSize.load());
+        int32_t nTotalSent = 0;
 
         /* Don't flush if buffer doesn't have any data.
          * Clear any stale fBufferFull flag — the buffer has fully drained so the
          * latch is no longer meaningful.  Without this, a previous overflow can
          * leave fBufferFull permanently set after the buffer empties, causing
          * respond()'s retry loop to spin on no-op Flush() calls. */
-        if(nSize == 0)
+        if(nBufferSize.load() == 0)
         {
-            fBufferFull.store(false);
+            /* Use compare_exchange to avoid clobbering a concurrent
+             * fBufferFull.store(true) from WritePacket(). */
+            bool expected = true;
+            fBufferFull.compare_exchange_strong(expected, false);
             return 0;
         }
 
         /* maximum transmission unit. */
         const uint32_t MTU = 16384;
+        const uint32_t nMaxChunk = std::min((uint32_t)config::GetArg("-maxsendsize", MTU), MTU);
 
-        /* Set the maximum bytes to flush to 2^16 or maximum socket buffers. */
-        nBytes = std::min(nSize, std::min((uint32_t)config::GetArg("-maxsendsize", MTU), MTU));
-
-        /* If there were any errors, handle them gracefully. */
+        /* Batch-drain loop: send MTU-sized chunks until the buffer is empty
+         * or the kernel TCP send buffer is full (send() returns EAGAIN). */
+        while(nBufferSize.load() > 0)
         {
-            RECURSIVE(SOCKET_MUTEX);
+            int32_t  nSent  = 0;
+            uint32_t nSize  = static_cast<uint32_t>(nBufferSize.load());
+            uint32_t nBytes = std::min(nSize, nMaxChunk);
 
-            if(pSSL)
-                nSent = static_cast<int32_t>(SSL_write(pSSL, (int8_t *)&vBuffer[0], nBytes));
-            else
+            /* Send one chunk. */
             {
-            #ifdef WIN32
-                nSent = static_cast<int32_t>(send(fd, (char*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
-            #else
-                nSent = static_cast<int32_t>(send(fd, (int8_t*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
-            #endif
+                RECURSIVE(SOCKET_MUTEX);
+
+                if(pSSL)
+                    nSent = static_cast<int32_t>(SSL_write(pSSL, (int8_t *)&vBuffer[0], nBytes));
+                else
+                {
+                #ifdef WIN32
+                    nSent = static_cast<int32_t>(send(fd, (char*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
+                #else
+                    nSent = static_cast<int32_t>(send(fd, (int8_t*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
+                #endif
+                }
             }
-        }
 
-        /* Handle errors on flush. */
-        if(nSent < 0)
-        {
-            if(pSSL)
-                nError = SSL_get_error(pSSL, nSent);
-            else
-                nError = WSAGetLastError();
+            /* Handle errors on flush — stop draining. */
+            if(nSent < 0)
+            {
+                if(pSSL)
+                    nError = SSL_get_error(pSSL, nSent);
+                else
+                    nError = WSAGetLastError();
 
-            ++nConsecutiveErrors;
-        }
+                ++nConsecutiveErrors;
 
-        /* If not all data was sent non-blocking, recurse until it is complete. */
-        else if(nSent > 0)
-        {
+                /* Return error on first chunk, otherwise return bytes sent so far. */
+                return (nTotalSent > 0) ? nTotalSent : nSent;
+            }
+
+            /* send() returned 0 — kernel buffer is full, stop draining. */
+            if(nSent == 0)
+                break;
+
+            /* Successful send — erase sent bytes from buffer. */
             {
                 RECURSIVE(SOCKET_MUTEX);
 
@@ -983,22 +1011,22 @@ namespace LLP
                 nBufferSize.store(vBuffer.size());
 
                 /* Only clear fBufferFull when the buffer has fully drained.
-                 * Previously this was cleared unconditionally after any
-                 * successful partial send, which caused premature reset:
-                 * e.g. 14 MB buffered → 16 KB sent → fBufferFull cleared
-                 * even though ~14 MB remain.  This made respond()'s retry
-                 * loop skip, leading to packet drops when WritePacket()
-                 * then correctly refused the write. */
+                 * Use compare_exchange to avoid clobbering a concurrent
+                 * fBufferFull.store(true) from WritePacket() on another thread. */
                 if(vBuffer.empty())
-                    fBufferFull.store(false);
+                {
+                    bool expected = true;
+                    fBufferFull.compare_exchange_strong(expected, false);
+                }
             }
 
-            /* Update socket timers. */
+            /* Accumulate total sent and update timers. */
+            nTotalSent        += nSent;
             nLastSend          = runtime::timestamp(true);
             nConsecutiveErrors = 0;
         }
 
-        return nSent;
+        return nTotalSent;
     }
 
 

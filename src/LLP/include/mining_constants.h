@@ -134,17 +134,10 @@ namespace MiningConstants
     // CONNECTION HEALTH & KEEPALIVE
     //=========================================================================
 
-    /** Maximum flush-and-retry attempts in respond() before giving up.
-     *
-     *  When the send buffer is saturated (fBufferFull == true), respond() tries
-     *  to Flush() the socket up to this many times (with a short sleep between
-     *  attempts) before falling through to WritePacket(), which may drop the
-     *  packet.  Mining responses are tiny (16–32 bytes) so even a partial
-     *  flush usually frees enough space.
-     */
-    constexpr int RESPOND_FLUSH_RETRY_COUNT = 3;
-
-    /** Sleep between flush retries in respond() (milliseconds). */
+    /** @deprecated  No longer used — Flush() now drains in a batch loop,
+     *  so respond() calls a single Flush() instead of a retry loop.
+     *  Kept for reference; safe to remove in a future cleanup pass. */
+    constexpr int RESPOND_FLUSH_RETRY_COUNT    = 3;
     constexpr int RESPOND_FLUSH_RETRY_SLEEP_MS = 10;
 
     /** Default node-side health probe interval (seconds).
