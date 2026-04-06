@@ -2884,7 +2884,7 @@ namespace LLP
          * fBufferFull is set to true by WritePacket() when a write is dropped and reset
          * to false by Socket::Flush() after data drains successfully.  Logging at level 0
          * here makes the saturation condition operator-visible without requiring -v 4. */
-        if(fBufferFull.load())
+        if(fBufferFull.load() && Buffered() > 0)
         {
             debug::log(0, FUNCTION, "WARNING: send buffer saturated before write "
                        "(opcode=0x", std::hex, packet.HEADER, std::dec,

@@ -1365,7 +1365,7 @@ namespace LLP
         /* If the send buffer is saturated, attempt to drain before writing.
          * Mining responses are small (keepalive = 32 B, round = 16 B) and
          * should fit after even a partial flush. */
-        if(fBufferFull.load())
+        if(fBufferFull.load() && Buffered() > 0)
         {
             debug::log(0, FUNCTION, "WARNING: send buffer saturated before write "
                        "(opcode=0x", std::hex, uint32_t(nHeader), std::dec,
