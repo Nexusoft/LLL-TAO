@@ -2889,23 +2889,18 @@ namespace LLP
             debug::log(0, FUNCTION, "WARNING: send buffer saturated before write "
                        "(opcode=0x", std::hex, packet.HEADER, std::dec,
                        " size=", packet.GetBytes().size(), " buffered=", Buffered(), "); "
-                       "attempting flush-and-retry");
+                       "attempting flush");
 
-            /* Attempt to drain the buffer before writing.  Small mining responses
-             * (GET_ROUND ≈ 16 B, KEEPALIVE ACK = 32 B, SESSION_STATUS ≈ 16 B)
-             * should easily fit after even a partial flush.  3 attempts × 10 ms
-             * is short enough to avoid blocking the DataThread materially. */
-            for(int nRetry = 0; nRetry < 3 && fBufferFull.load(); ++nRetry)
-            {
-                Flush();
-                if(!fBufferFull.load())
-                    break;
-                runtime::sleep(10);
-            }
+            /* Single batch Flush() now drains as much as the kernel TCP buffer
+             * allows (the old 3×10ms retry loop is no longer needed since
+             * Flush() loops internally until send() would block).  This
+             * eliminates up to 30ms of DataThread blocking per respond() call
+             * under buffer pressure. */
+            Flush();
 
             if(fBufferFull.load())
             {
-                debug::log(0, FUNCTION, "WARNING: flush-and-retry exhausted — packet may be dropped "
+                debug::log(0, FUNCTION, "WARNING: flush did not fully drain buffer — packet may be dropped "
                            "(opcode=0x", std::hex, packet.HEADER, std::dec, ")");
             }
         }

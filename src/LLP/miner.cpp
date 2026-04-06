@@ -1369,19 +1369,18 @@ namespace LLP
         {
             debug::log(0, FUNCTION, "WARNING: send buffer saturated before write "
                        "(opcode=0x", std::hex, uint32_t(nHeader), std::dec,
-                       " buffered=", Buffered(), "); attempting flush-and-retry");
+                       " buffered=", Buffered(), "); attempting flush");
 
-            for(int nRetry = 0; nRetry < 3 && fBufferFull.load(); ++nRetry)
-            {
-                Flush();
-                if(!fBufferFull.load())
-                    break;
-                runtime::sleep(10);
-            }
+            /* Single batch Flush() now drains as much as the kernel TCP buffer
+             * allows (the old 3×10ms retry loop is no longer needed since
+             * Flush() loops internally until send() would block).  This
+             * eliminates up to 30ms of DataThread blocking per respond() call
+             * under buffer pressure. */
+            Flush();
 
             if(fBufferFull.load())
             {
-                debug::log(0, FUNCTION, "WARNING: flush-and-retry exhausted — packet may be dropped "
+                debug::log(0, FUNCTION, "WARNING: flush did not fully drain buffer — packet may be dropped "
                            "(opcode=0x", std::hex, uint32_t(nHeader), std::dec, ")");
             }
         }

@@ -239,9 +239,15 @@ namespace LLP
         /* Get the bytes of the packet. */
         const std::vector<uint8_t> vBytes = PACKET.GetBytes();
 
+        /* Reserve space for critical control messages (keepalive ACK, session
+         * status, round state).  Proportional to buffer size: 1% of max,
+         * minimum 1 KB.  For 3 MB P2P: ~30 KB.  For 15 MB mining: ~150 KB.
+         * The old hardcoded 1 KB was meaningless for large mining buffers. */
+        const uint64_t nReserve = std::max(uint64_t(1024), nMaxSendBuffer / 100);
+
         /* Stop sending packets if send buffer is full. */
-        if(Buffered() + vBytes.size() + 1024 < nMaxSendBuffer //reserve 1Kb of buffer for critical messages
-        || (fBufferFull.load() && Buffered() + vBytes.size() < nMaxSendBuffer)) //catch for critical messages (< 1 Kb)
+        if(Buffered() + vBytes.size() + nReserve < nMaxSendBuffer
+        || (fBufferFull.load() && Buffered() + vBytes.size() < nMaxSendBuffer)) //catch for critical messages (< reserve)
         {
             /* Debug dump of message type. */
             debug::log(4, NODE, "sent packet (", vBytes.size(), " bytes)");
