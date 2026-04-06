@@ -361,9 +361,15 @@ namespace LLP
             return std::nullopt;
         }
 
-        if(!fMigrateAddress || strFallbackAddress == strAddress
-        || strFallbackAddress.rfind(':') == std::string::npos
-        || strAddress.rfind(':') == std::string::npos)
+        /* Stateless miners are canonically keyed by IP-only addresses, so never rewrite
+         * an IP-only entry to an IP:port key from the legacy lane. Migration is reserved
+         * for fully port-qualified addresses on both sides. */
+        const bool fCanMigrateExactAddress =
+            fMigrateAddress
+            && strFallbackAddress != strAddress
+            && strFallbackAddress.rfind(':') != std::string::npos
+            && strAddress.rfind(':') != std::string::npos;
+        if(!fCanMigrateExactAddress)
             return optFallbackContext;
 
         /* Session id 0 is treated as "caller has no authoritative session id yet"

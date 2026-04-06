@@ -423,14 +423,20 @@ namespace LLP
                         !CONNECTION->INCOMING.IsNull() && !CONNECTION->PacketComplete();
                     const bool fMiningConnection =
                         (ProtocolType::Name() == "Miner" || ProtocolType::Name() == "StatelessMiner");
+                    const bool fTimeoutExempt = CONNECTION->IsTimeoutExempt();
                     const uint32_t nPollEmptyTimeout =
                         fMiningConnection ? MINING_POLL_EMPTY_TIMEOUT_MS : nWait;
-                    if((POLLFDS.at(nIndex).revents & POLLIN)
-                    && CONNECTION->Timeout(nPollEmptyTimeout, Socket::READ)
-                    && CONNECTION->Available() == 0
-                    && !fHasPartialPacket)
+                    /* A partial packet already buffered in INCOMING means progress was made on
+                     * a real frame, so treat the empty poll as transport jitter and never as a
+                     * dead-socket signal.  We still apply the same timeout window first so the
+                     * check only runs after the miner-specific grace period has elapsed. */
+                    const bool fPollEmptyCandidate =
+                        (POLLFDS.at(nIndex).revents & POLLIN)
+                        && CONNECTION->Timeout(nPollEmptyTimeout, Socket::READ)
+                        && CONNECTION->Available() == 0;
+                    if(fPollEmptyCandidate && !fHasPartialPacket)
                     {
-                        if(CONNECTION->IsTimeoutExempt())
+                        if(fTimeoutExempt)
                         {
                             /* Log near-miss for authenticated miners — this would have killed
                              * the connection prior to the IsTimeoutExempt() bypass.  Useful
