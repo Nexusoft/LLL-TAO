@@ -588,6 +588,8 @@ namespace LLP
 
                 /* Create initial context with connection address for auth */
                 std::string strAddr = GetAddress().ToStringIP();
+                fAuthenticatedAtomic.store(false, std::memory_order_relaxed);
+                fHandshakeInProgressAtomic.store(false, std::memory_order_relaxed);
                 context = MiningContext()
                     .WithTimestamp(runtime::unifiedtimestamp())
                     .WithAuth(false); // Not authenticated yet
@@ -646,6 +648,9 @@ namespace LLP
             /* On Disconnect Event */
             case EVENTS::DISCONNECT:
             {
+                fAuthenticatedAtomic.store(false, std::memory_order_relaxed);
+                fHandshakeInProgressAtomic.store(false, std::memory_order_relaxed);
+
                 /* Classify disconnect reason as network or software */
                 uint32_t reason = LENGTH;
                 std::string strReason;
@@ -2638,7 +2643,18 @@ namespace LLP
                 /* Mirror authentication state to atomic flag for lock-free DataThread reads.
                  * Only transitions false → true (write-once); relaxed ordering is sufficient. */
                 if(context.fAuthenticated)
+                {
                     fAuthenticatedAtomic.store(true, std::memory_order_relaxed);
+                    fHandshakeInProgressAtomic.store(false, std::memory_order_relaxed);
+                }
+                else if(PACKET.HEADER == MINER_AUTH_INIT)
+                {
+                    fHandshakeInProgressAtomic.store(true, std::memory_order_relaxed);
+                }
+                else if(PACKET.HEADER == MINER_AUTH_RESPONSE)
+                {
+                    fHandshakeInProgressAtomic.store(false, std::memory_order_relaxed);
+                }
 
                 /* Derive ChaCha20 key from genesis using unified helper (same as legacy miner) */
                 if(PACKET.HEADER == MINER_AUTH_RESPONSE && context.fAuthenticated)
@@ -2877,6 +2893,9 @@ namespace LLP
             }
             else
             {
+                if(PACKET.HEADER == MINER_AUTH_RESPONSE)
+                    fHandshakeInProgressAtomic.store(false, std::memory_order_relaxed);
+
                 /* Log error and send failure response to miner for graceful handling */
                 debug::log(0, FUNCTION, "MinerLLP: Processing error: ", result.strError);
                 
@@ -4268,10 +4287,11 @@ namespace LLP
     {
         /* Read the atomic mirror of context.fAuthenticated.
          * This avoids taking MUTEX on the hot DataThread polling path.
-         * The atomic is set once (false → true) under MUTEX when Falcon auth
-         * succeeds, so a relaxed load is sufficient — no ordering with other
-         * fields is required here. */
-        return fAuthenticatedAtomic.load(std::memory_order_relaxed);
+         * The handshake flag protects the narrow AUTH_INIT → AUTH_RESPONSE gap
+         * before authentication flips true. Relaxed loads are sufficient because
+         * timeout exemption does not synchronize access to any other fields. */
+        return fAuthenticatedAtomic.load(std::memory_order_relaxed)
+            || fHandshakeInProgressAtomic.load(std::memory_order_relaxed);
     }
 
 
@@ -4366,7 +4386,12 @@ namespace LLP
             debug::error(FUNCTION, "Failed to get channel state for channel ", nChannel);
             return;
         }
-        
+
+        {
+            LOCK(MUTEX);
+            CleanupStaleTemplates(stateBest.nHeight);
+        }
+
         /* Get difficulty */
         uint32_t nDifficulty = TAO::Ledger::GetNextTargetRequired(stateBest, nChannel);
 

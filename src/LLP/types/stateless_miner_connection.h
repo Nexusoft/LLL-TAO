@@ -95,6 +95,15 @@ namespace LLP
          *  (set to true, never cleared), a relaxed store / relaxed load is safe. **/
         std::atomic<bool> fAuthenticatedAtomic{false};
 
+        /** Tracks a stateless Falcon handshake after AUTH_INIT succeeds and before
+         *  AUTH_RESPONSE either authenticates the miner or fails.
+         *
+         *  This closes the pre-auth timeout gap where a miner has begun the
+         *  handshake but has not yet flipped fAuthenticatedAtomic, so the
+         *  DataThread would otherwise treat it like an ordinary unauthenticated
+         *  connection and aggressively disconnect on spurious POLLIN/POLL_EMPTY. **/
+        std::atomic<bool> fHandshakeInProgressAtomic{false};
+
         /** The map to hold the list of blocks that are being mined with metadata. 
          *  Updated in PR #131 to track template metadata for staleness detection. **/
         std::map<uint512_t, TemplateMetadata> mapBlocks;
@@ -292,7 +301,8 @@ namespace LLP
          *  governs session expiration; the socket timeout must not kill
          *  long-running authenticated miners during extended mining operations.
          *
-         *  @return true if miner is authenticated and should bypass socket timeout.
+         *  @return true if miner is authenticated or is in the auth handshake and
+         *          should bypass aggressive socket timeouts.
          *
          **/
         bool IsTimeoutExempt() const final;

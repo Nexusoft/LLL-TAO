@@ -2268,10 +2268,17 @@ namespace LLP
         uint32_t nCrossLaneSessionId = nSessionId;   /* default: per-connection session */
         {
             const std::string strLookupAddr = GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort());
-            const auto optCtx = StatelessMinerManager::Get().GetMinerContext(strLookupAddr);
+            const auto optCtx = StatelessMinerManager::Get().GetMinerContextByAddressOrIP(
+                strLookupAddr, nSessionId, true);
             if(optCtx.has_value())
             {
                 nCrossLaneSessionId = optCtx->nSessionId;
+                if(optCtx->strAddress != strLookupAddr)
+                {
+                    debug::log(1, FUNCTION, "Legacy lane: resolved session via IP-only fallback from ",
+                               optCtx->strAddress, " to ", strLookupAddr,
+                               ", session=", nCrossLaneSessionId);
+                }
                 const SessionConsistencyResult consistency = optCtx->ValidateConsistency();
                 if(consistency != SessionConsistencyResult::Ok)
                 {
@@ -2283,18 +2290,7 @@ namespace LLP
             }
             else
             {
-                /* Fallback: IP-only lookup (port may have changed on reconnect) */
-                const auto optCtxIP = StatelessMinerManager::Get().GetMinerContextByIP(GetAddress().ToStringIP());
-                if(optCtxIP.has_value())
-                {
-                    nCrossLaneSessionId = optCtxIP->nSessionId;
-                    debug::log(1, FUNCTION, "Legacy lane: resolved session via IP-only fallback, session=",
-                               nCrossLaneSessionId);
-                }
-                else
-                {
-                    debug::log(2, FUNCTION, "Legacy lane: no session context found, cross-lane resolution unavailable");
-                }
+                debug::log(2, FUNCTION, "Legacy lane: no session context found, cross-lane resolution unavailable");
             }
         }
 

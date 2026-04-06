@@ -414,10 +414,15 @@ namespace LLP
                      * Available()==0 on a 1 ms window is too aggressive for high-value Falcon-
                      * authenticated sessions.  The 24-hour session timeout and TCP keepalive
                      * probes will catch genuinely dead connections instead. */
+                    const bool fHasPartialPacket =
+                        !CONNECTION->INCOMING.IsNull() && !CONNECTION->PacketComplete();
+                    const bool fMiningConnection =
+                        (ProtocolType::Name() == "Miner" || ProtocolType::Name() == "StatelessMiner");
+                    const uint32_t nPollEmptyTimeout = fMiningConnection ? 100 : nWait;
                     if((POLLFDS.at(nIndex).revents & POLLIN)
-                    && CONNECTION->Timeout(nWait, Socket::READ)
+                    && CONNECTION->Timeout(nPollEmptyTimeout, Socket::READ)
                     && CONNECTION->Available() == 0
-                    && !CONNECTION->IsTimeoutExempt())
+                    && !fHasPartialPacket)
                     {
                         if(CONNECTION->IsTimeoutExempt())
                         {
@@ -427,7 +432,8 @@ namespace LLP
                             debug::log(0, FUNCTION, "DataThread[", ID, "]: POLL_EMPTY near-miss for authenticated ",
                                 ProtocolType::Name(), " from ", CONNECTION->GetAddress().ToStringIP(),
                                 " revents=", POLLFDS.at(nIndex).revents,
-                                " Available()=0 — bypassed via IsTimeoutExempt()");
+                                " Available()=0 timeout=", nPollEmptyTimeout,
+                                "ms — bypassed via IsTimeoutExempt()");
                         }
                         else
                         {

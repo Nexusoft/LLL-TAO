@@ -217,6 +217,24 @@ namespace LLP
          **/
         std::optional<MiningContext> GetMinerContextByIP(const std::string& strIP) const;
 
+        /** GetMinerContextByAddressOrIP
+         *
+         *  Resolve a miner first by exact IP:port, then by IP-only fallback. When
+         *  the fallback finds a context for the same session on a different port,
+         *  it may migrate the primary address key to the new address.
+         *
+         *  @param[in] strAddress Exact miner address (IP:port)
+         *  @param[in] nExpectedSessionId Optional caller-known session id for safe migration
+         *  @param[in] fMigrateAddress When true, migrate exact-address tracking on safe fallback hit
+         *
+         *  @return Optional MiningContext, empty if not found
+         *
+         **/
+        std::optional<MiningContext> GetMinerContextByAddressOrIP(
+            const std::string& strAddress,
+            uint32_t nExpectedSessionId = 0,
+            bool fMigrateAddress = false);
+
         /** GetMinerContextBySessionID
          *
          *  Retrieve context by session ID.
