@@ -453,11 +453,18 @@ namespace LLP
          *
          *  @param[in] nNonce The nonce secret for the block proof.
          *  @param[in] hashMerkleRoot The root hash of the merkle tree.
+         *  @param[in] vOffsets Prime offsets (empty for Hash channel).
+         *  @param[in] pBlock Pre-resolved block pointer (captured under MUTEX).
+         *  @param[in] nTemplateCreationTime Template creation timestamp for staleness check.
+         *  @param[in] nTemplateChannel Template channel for staleness check.
+         *  @param[in] nTemplateChannelHeight Template channel height for staleness check.
          *
          *  @return True if block is valid, false otherwise.
          *
          **/
-        bool sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot, const std::vector<uint8_t>& vOffsets = {});
+        bool sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot, const std::vector<uint8_t>& vOffsets,
+                        TAO::Ledger::Block* pBlock, uint64_t nTemplateCreationTime,
+                        uint32_t nTemplateChannel, uint32_t nTemplateChannelHeight);
 
         /** is_prime_mod
          *
