@@ -1441,10 +1441,12 @@ namespace LLP
 
         /* Consult the authoritative StatelessMinerManager context when available.
          * Primary: GetMinerContextByAddressOrIP() handles ephemeral port changes (GAP 3).
-         * Fallback: construct from per-connection member variables (pre-manager state). */
+         * Fallback: construct from per-connection member variables (pre-manager state).
+         * Third parameter (fMigrateAddress=false): read-only lookup, do not re-key the
+         * context address in the manager — migration is reserved for SUBMIT_BLOCK. */
         const std::string strLookupAddr = GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort());
         auto optCtx = StatelessMinerManager::Get().GetMinerContextByAddressOrIP(
-            strLookupAddr, nSessionId, false);
+            strLookupAddr, nSessionId, /* fMigrateAddress= */ false);
 
         MiningContext ctx = [&]() -> MiningContext
         {
@@ -1499,10 +1501,9 @@ namespace LLP
             return false;
         }
 
-        /* Use the authoritative channel from the manager context if available,
-         * otherwise fall back to the per-connection atomic. */
-        const uint32_t nEffectiveChannel = optCtx.has_value() ? ctx.nChannel : nChannel.load();
-        if(LegacyOpcodeRequiresChannel(PACKET.HEADER) && nEffectiveChannel == 0)
+        /* Channel check: ctx.nChannel is authoritative regardless of source
+         * (manager context or local state both populate it correctly). */
+        if(LegacyOpcodeRequiresChannel(PACKET.HEADER) && ctx.nChannel == 0)
         {
             debug::log(0, FUNCTION, "PreflightSessionGate: missing channel for opcode 0x",
                        std::hex, uint32_t(PACKET.HEADER), std::dec,
