@@ -521,56 +521,64 @@ void MiningServer::BroadcastNewBlock(uint32_t nChannel)
 
 ### Channel-Specific Height Tracking and Best-Tip Anchoring
 
-The protocol uses two independent staleness axes. A template is stale for two distinct reasons:
+The protocol uses four independent staleness checks. A template is stale for any of these reasons:
 
-1. **`tip_moved`** — The unified best-chain tip advanced (any channel produced a block), so
+1. **Age timeout** — The template is older than 600 seconds (safety net).
+
+2. **`tip_moved`** — The unified best-chain tip advanced (any channel produced a block), so
    `hashBestChain` changed. Any block submitted with the old `hashPrevBlock` will be rejected
    by `Block::Accept()`.
 
-2. **`channel_advanced`** — A new block appeared in the miner's specific channel, so the
+3. **`channel_advanced`** — A new block appeared in the miner's specific channel, so the
    expected `nChannelHeight` target has changed.
+
+4. **`unified_drift`** — The unified blockchain height advanced by more than 1 block since
+   template creation. This catches cross-channel stale templates where stake/other-channel
+   blocks advance `hashBestChain` while the mining channel height stays constant.
 
 `channel_advanced` always implies `tip_moved`, but `tip_moved` does **not** imply
 `channel_advanced`. Miners must refresh templates on `tip_moved` even if their channel has
 not yet produced a new block.
 
 ```cpp
-// Calculate channel height for template (channel target height)
-uint32_t GetChannelTargetHeight(uint32_t nChannel)
-{
-    TAO::Ledger::BlockState stateChannel = TAO::Ledger::ChainState::tStateBest.load();
-    TAO::Ledger::GetLastState(stateChannel, nChannel);
-    return stateChannel.nChannelHeight + 1;  // channel target, not unified height
-}
-
-// Template metadata includes both axes for staleness detection
+// Template metadata includes all axes for staleness detection
 struct TemplateMetadata
 {
-    std::unique_ptr<TAO::Ledger::Block> pBlock;
+    std::shared_ptr<TAO::Ledger::Block> pBlock;  // shared_ptr for safe ref-counted capture
     uint64_t nCreationTime;
-    uint32_t nChannelTarget;   // channel_target at template creation (pBlock->nHeight)
-    uint256_t hashPrev;        // hashBestChain at template creation (pBlock->hashPrevBlock)
+    uint32_t nHeight;                  // unified blockchain height at creation
+    uint32_t nChannelHeight;           // channel-specific height at creation (PR #134)
+    uint512_t hashMerkleRoot;          // expected merkle root for validation
+    uint1024_t hashBestChainAtCreation; // hashBestChain snapshot at creation
     uint32_t nChannel;
 
-    // Two-axis staleness check
+    // Four-axis staleness check
     bool IsStale(uint64_t nNow = 0) const
     {
         if(nNow == 0)
             nNow = runtime::unifiedtimestamp();
 
-        // Age-based timeout (60 seconds)
-        if(nNow - nCreationTime > 60)
+        // Check 1: Age-based timeout (600 second safety net)
+        if(nCreationTime == 0 || nNow < nCreationTime)
+            return true;
+        if(nNow - nCreationTime > FalconConstants::MAX_TEMPLATE_AGE_SECONDS)  // 600s
             return true;
 
-        // Axis 1: tip_moved — authoritative anchoring check
-        if(TAO::Ledger::ChainState::hashBestChain.load() != hashPrev)
-            return true;  // tip_moved: hashPrevBlock no longer points to best tip
+        // Check 2: tip_moved — hash-based chain tip comparison (StakeMinter pattern)
+        if(hashBestChainAtCreation != uint1024_t(0) &&
+           hashBestChainAtCreation != TAO::Ledger::ChainState::hashBestChain.load())
+            return true;  // tip_moved: hashBestChain advanced (new block or reorg)
 
-        // Axis 2: channel_advanced — channel sequence check
+        // Check 3: channel_advanced — channel-specific height comparison (PR #134)
         TAO::Ledger::BlockState stateChannel = TAO::Ledger::ChainState::tStateBest.load();
         TAO::Ledger::GetLastState(stateChannel, nChannel);
-        if(stateChannel.nChannelHeight + 1 != nChannelTarget)
+        if(nChannelHeight == 0 || stateChannel.nChannelHeight != nChannelHeight - 1)
             return true;  // channel_advanced: channel height has moved
+
+        // Check 4: Unified height drift guard — catches cross-channel stale templates
+        const uint32_t nCurrentUnified = TAO::Ledger::ChainState::nBestHeight.load();
+        if(nCurrentUnified > nHeight + 1)
+            return true;  // drift > 1 block: template hashPrevBlock is stale
 
         return false;
     }
