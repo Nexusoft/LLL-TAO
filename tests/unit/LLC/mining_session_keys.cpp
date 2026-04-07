@@ -155,37 +155,37 @@ TEST_CASE("DeriveFalconSessionId Tests", "[mining_session_keys]")
         REQUIRE(sessionId1 != sessionId2);
     }
     
-    SECTION("Timestamp rounding - same hour produces same session ID")
+    SECTION("Timestamp rounding - same day produces same session ID")
     {
         uint256_t hashGenesis;
         hashGenesis.SetHex("8c2cf304e1bb28f03a88c2b5b412a120c58b9dbd40e0e0f38b9dc8ec94c6e2ac");
         
         std::vector<uint8_t> vPubKey(897, 0xAB);
         
-        /* Timestamps within same hour (3600 seconds) */
+        /* Timestamps within same day (86400 seconds) */
         uint64_t nTimestamp1 = 1609459200;      // 2021-01-01 00:00:00
-        uint64_t nTimestamp2 = 1609459200 + 1800;  // 2021-01-01 00:30:00
-        uint64_t nTimestamp3 = 1609459200 + 3599;  // 2021-01-01 00:59:59
+        uint64_t nTimestamp2 = 1609459200 + 43200;  // 2021-01-01 12:00:00
+        uint64_t nTimestamp3 = 1609459200 + 86399;  // 2021-01-01 23:59:59
         
         uint256_t sessionId1 = DeriveFalconSessionId(hashGenesis, vPubKey, nTimestamp1);
         uint256_t sessionId2 = DeriveFalconSessionId(hashGenesis, vPubKey, nTimestamp2);
         uint256_t sessionId3 = DeriveFalconSessionId(hashGenesis, vPubKey, nTimestamp3);
         
-        /* All should be the same (rounded to same hour) */
+        /* All should be the same (rounded to same day) */
         REQUIRE(sessionId1 == sessionId2);
         REQUIRE(sessionId2 == sessionId3);
     }
     
-    SECTION("Different hours produce different session IDs")
+    SECTION("Different days produce different session IDs")
     {
         uint256_t hashGenesis;
         hashGenesis.SetHex("8c2cf304e1bb28f03a88c2b5b412a120c58b9dbd40e0e0f38b9dc8ec94c6e2ac");
         
         std::vector<uint8_t> vPubKey(897, 0xAB);
         
-        /* Timestamps in different hours */
+        /* Timestamps in different days */
         uint64_t nTimestamp1 = 1609459200;      // 2021-01-01 00:00:00
-        uint64_t nTimestamp2 = 1609462800;      // 2021-01-01 01:00:00
+        uint64_t nTimestamp2 = 1609545600;      // 2021-01-02 00:00:00
         
         uint256_t sessionId1 = DeriveFalconSessionId(hashGenesis, vPubKey, nTimestamp1);
         uint256_t sessionId2 = DeriveFalconSessionId(hashGenesis, vPubKey, nTimestamp2);

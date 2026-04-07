@@ -100,7 +100,7 @@ namespace MiningSessionKeys
      *  
      *  This was the ORIGINAL FalconHandshake design for session binding.
      *  Currently used for session recovery and session-specific security.
-     *  The timestamp is rounded to the hour for session stability.
+     *  The timestamp is rounded to the day for session stability.
      *
      *  Algorithm: SK256(genesis || pubkey || rounded_timestamp)
      *  Note: Unlike ChaCha20 keys, this uses SK256 (Skein-Keccak) which is
@@ -129,8 +129,11 @@ namespace MiningSessionKeys
         /* Add miner public key */
         vInput.insert(vInput.end(), vPubKey.begin(), vPubKey.end());
         
-        /* Add timestamp (rounded to hour for session stability) */
-        uint64_t nRoundedTime = (nTimestamp / 3600) * 3600;
+        /* Add timestamp (rounded to day for session stability).
+         * Daily rounding matches SESSION_LIVENESS_TIMEOUT_SECONDS (86400s) and
+         * dramatically reduces boundary-crossing events (1/day vs 24/day with
+         * hourly rounding). */
+        uint64_t nRoundedTime = (nTimestamp / 86400) * 86400;
         for(size_t i = 0; i < 8; ++i)
         {
             vInput.push_back(static_cast<uint8_t>((nRoundedTime >> (i * 8)) & 0xFF));
