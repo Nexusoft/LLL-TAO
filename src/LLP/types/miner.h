@@ -647,7 +647,6 @@ namespace LLP
          **/
         bool ProcessPacketStateless(const Packet& PACKET);
 
-
         /** GetContext
          *
          *  Returns a MiningContext populated from the connection's subscription state.
@@ -688,6 +687,9 @@ namespace LLP
 
 
     private:
+
+        /** Centralized session/auth/channel gate for post-auth stateless mining opcodes. **/
+        bool PreflightSessionGate(const Packet& PACKET);
 
         /** respond
          *

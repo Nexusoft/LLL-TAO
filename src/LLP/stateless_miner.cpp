@@ -1599,6 +1599,9 @@ namespace LLP
         const StatelessPacket& packet
     )
     {
+        if(!context.fAuthenticated)
+            return ProcessResult::Error(context, "SET_CHANNEL: not authenticated");
+
         const std::vector<uint8_t>& vData = packet.DATA;
 
         /* Validate payload size (1 byte or 4+ bytes for legacy compatibility) */
@@ -1651,6 +1654,14 @@ namespace LLP
         /* Require authentication before keepalive */
         if(!context.fAuthenticated)
             return ProcessResult::Error(context, "SESSION_KEEPALIVE: not authenticated");
+
+        const SessionConsistencyResult consistency = context.ValidateConsistency();
+        if(consistency != SessionConsistencyResult::Ok)
+        {
+            debug::log(0, FUNCTION, "SESSION_KEEPALIVE: session corrupt — ",
+                       SessionConsistencyResultString(consistency));
+            return ProcessResult::Error(context, "Session corrupt");
+        }
 
         /* Check if session has been started */
         if(context.nSessionStart == 0)

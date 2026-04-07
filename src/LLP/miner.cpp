@@ -89,6 +89,61 @@ namespace LLP
         using Diagnostics::FullHexOrUnset;
         using Diagnostics::KeyFingerprint;
         using Diagnostics::YesNo;
+
+        bool IsLegacyPreflightBypassOpcode(const uint8_t nOpcode)
+        {
+            switch(nOpcode)
+            {
+                case OpcodeUtility::Opcodes::MINER_AUTH_INIT:
+                case OpcodeUtility::Opcodes::MINER_AUTH_RESPONSE:
+                case OpcodeUtility::Opcodes::MINER_AUTH_RESULT:
+                case OpcodeUtility::Opcodes::SESSION_START:
+                    return true;
+
+                default:
+                    return false;
+            }
+        }
+
+        bool IsLegacyPreflightProtectedOpcode(const uint8_t nOpcode)
+        {
+            switch(nOpcode)
+            {
+                case OpcodeUtility::Opcodes::SET_CHANNEL:
+                case OpcodeUtility::Opcodes::SESSION_KEEPALIVE:
+                case OpcodeUtility::Opcodes::MINER_SET_REWARD:
+                case OpcodeUtility::Opcodes::CLEAR_MAP:
+                case OpcodeUtility::Opcodes::MINER_READY:
+                case OpcodeUtility::Opcodes::GET_HEIGHT:
+                case OpcodeUtility::Opcodes::GET_ROUND:
+                case OpcodeUtility::Opcodes::GET_REWARD:
+                case OpcodeUtility::Opcodes::SUBSCRIBE:
+                case OpcodeUtility::Opcodes::GET_BLOCK:
+                case OpcodeUtility::Opcodes::SUBMIT_BLOCK:
+                case OpcodeUtility::Opcodes::CHECK_BLOCK:
+                    return true;
+
+                default:
+                    return false;
+            }
+        }
+
+        bool LegacyOpcodeRequiresChannel(const uint8_t nOpcode)
+        {
+            switch(nOpcode)
+            {
+                case OpcodeUtility::Opcodes::GET_BLOCK:
+                case OpcodeUtility::Opcodes::SUBMIT_BLOCK:
+                case OpcodeUtility::Opcodes::GET_ROUND:
+                case OpcodeUtility::Opcodes::GET_REWARD:
+                case OpcodeUtility::Opcodes::MINER_READY:
+                case OpcodeUtility::Opcodes::CHECK_BLOCK:
+                    return true;
+
+                default:
+                    return false;
+            }
+        }
     }
 
     /* The last height that the notifications processor was run at.  This is used to ensure that events are only processed once
@@ -731,6 +786,14 @@ namespace LLP
                PACKET.HEADER == MINER_REWARD_RESULT ||    // 214 - node → miner: Reward result
                PACKET.HEADER == MINER_READY)              // 216 - miner → node: Subscribe to push notifications
             {
+                if((PACKET.HEADER == SET_CHANNEL ||
+                    PACKET.HEADER == SESSION_KEEPALIVE ||
+                    PACKET.HEADER == MINER_SET_REWARD) &&
+                   !PreflightSessionGate(PACKET))
+                {
+                    return true;
+                }
+
                 /* Build MiningContext from current connection state */
                 std::string strAddress = GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort());
                 
@@ -1139,6 +1202,9 @@ namespace LLP
         /* Reset connection activity timer to prevent idle disconnection on any packet processing */
         this->Reset();
 
+        if(!PreflightSessionGate(PACKET))
+            return true;
+
         /* Evaluate the packet header to determine what to do. */
         switch(PACKET.HEADER)
         {
@@ -1158,16 +1224,6 @@ namespace LLP
             /* Clear the Block Map if Requested by Client. */
             case CLEAR_MAP:
             {
-                /* Check authentication for stateless miners */
-                if(!fMinerAuthenticated)
-                {
-                    debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted CLEAR_MAP before authentication from ",
-                               GetAddress().ToStringIP(), " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
-                    std::vector<uint8_t> vFail(1, 0x00);
-                    respond(MINER_AUTH_RESULT, vFail);
-                    return debug::error(FUNCTION, "Authentication required for stateless miner commands");
-                }
-
                 LOCK(MUTEX);
                 clear_map();
                 return true;
@@ -1188,16 +1244,6 @@ namespace LLP
             /* Respond to the miner with the new height. */
             case GET_HEIGHT:
             {
-                /* Check authentication for stateless miners */
-                if(!fMinerAuthenticated)
-                {
-                    debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted GET_HEIGHT before authentication from ",
-                               GetAddress().ToStringIP(), " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
-                    std::vector<uint8_t> vFail(1, 0x00);
-                    respond(MINER_AUTH_RESULT, vFail);
-                    return debug::error(FUNCTION, "Authentication required for stateless miner commands");
-                }
-
                 {
                     /* Check the best height before responding. */
                     LOCK(MUTEX);
@@ -1224,16 +1270,6 @@ namespace LLP
             /* Respond with the block reward in a given round. */
             case GET_REWARD:
             {
-                /* Check authentication for stateless miners */
-                if(!fMinerAuthenticated)
-                {
-                    debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted GET_REWARD before authentication from ",
-                               GetAddress().ToStringIP(), " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
-                    std::vector<uint8_t> vFail(1, 0x00);
-                    respond(MINER_AUTH_RESULT, vFail);
-                    return debug::error(FUNCTION, "Authentication required for stateless miner commands");
-                }
-
                 debug::log(2, FUNCTION, "GET_REWARD request from ", GetAddress().ToStringIP());
 
                 /* Get the mining reward amount for the channel currently set. */
@@ -1255,16 +1291,6 @@ namespace LLP
             /* Set the number of subscribed blocks. */
             case SUBSCRIBE:
             {
-                /* Check authentication for stateless miners */
-                if(!fMinerAuthenticated)
-                {
-                    debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted SUBSCRIBE before authentication from ",
-                               GetAddress().ToStringIP(), " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
-                    std::vector<uint8_t> vFail(1, 0x00);
-                    respond(MINER_AUTH_RESULT, vFail);
-                    return debug::error(FUNCTION, "Authentication required for stateless miner commands");
-                }
-
                 /* Don't allow mining llp requests for proof of stake channel */
                 if(nChannel.load() == 0)
                     return debug::error(FUNCTION, "Cannot subscribe to Stake Channel");
@@ -1299,16 +1325,6 @@ namespace LLP
             /* Allows a client to check if a block is part of the main chain. */
             case CHECK_BLOCK:
             {
-                /* Check authentication for stateless miners */
-                if(!fMinerAuthenticated)
-                {
-                    debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted CHECK_BLOCK before authentication from ",
-                               GetAddress().ToStringIP(), " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec);
-                    std::vector<uint8_t> vFail(1, 0x00);
-                    respond(MINER_AUTH_RESULT, vFail);
-                    return debug::error(FUNCTION, "Authentication required for stateless miner commands");
-                }
-
                 uint1024_t hashBlock;
                 TAO::Ledger::BlockState state;
 
@@ -1405,6 +1421,76 @@ namespace LLP
             respond_stateless(OpcodeUtility::Stateless::Mirror(nLegacyOpcode), vData);
         else
             respond(nLegacyOpcode, vData);
+    }
+
+
+    bool Miner::PreflightSessionGate(const Packet& PACKET)
+    {
+        if(IsLegacyPreflightBypassOpcode(PACKET.HEADER) || !IsLegacyPreflightProtectedOpcode(PACKET.HEADER))
+            return true;
+
+        if(!fMinerAuthenticated)
+        {
+            debug::log(0, FUNCTION, "PreflightSessionGate: unauthenticated opcode 0x",
+                       std::hex, uint32_t(PACKET.HEADER), std::dec,
+                       " from ", GetAddress().ToStringIP());
+            std::vector<uint8_t> vFail(1, 0x00);
+            respond_auto(MINER_AUTH_RESULT, vFail);
+            return false;
+        }
+
+        MiningContext ctx(
+            nChannel.load(),
+            nBestHeight,
+            runtime::unifiedtimestamp(),
+            GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort()),
+            1,
+            fMinerAuthenticated.load(),
+            nSessionId,
+            hashKeyID,
+            hashGenesis
+        );
+
+        if(!vMinerPubKey.empty())
+            ctx = ctx.WithPubKey(vMinerPubKey);
+        if(!vAuthNonce.empty())
+            ctx = ctx.WithNonce(vAuthNonce);
+        if(fRewardBound)
+            ctx = ctx.WithRewardAddress(hashRewardAddress);
+        if(fEncryptionReady && !vChaChaKey.empty())
+            ctx = ctx.WithChaChaKey(vChaChaKey);
+
+        const SessionConsistencyResult consistency = ctx.ValidateConsistency();
+        if(consistency != SessionConsistencyResult::Ok)
+        {
+            debug::log(0, FUNCTION, "PreflightSessionGate: session inconsistency on opcode 0x",
+                       std::hex, uint32_t(PACKET.HEADER), std::dec,
+                       " from ", GetAddress().ToStringIP(), " result=",
+                       SessionConsistencyResultString(consistency));
+
+            if(PACKET.HEADER == GET_BLOCK)
+                respond_auto(BLOCK_REJECTED, BuildGetBlockControlPayload(GetBlockPolicyReason::SESSION_INVALID, 0));
+            else
+                respond_auto(BLOCK_REJECTED);
+
+            return false;
+        }
+
+        if(LegacyOpcodeRequiresChannel(PACKET.HEADER) && nChannel.load() == 0)
+        {
+            debug::log(0, FUNCTION, "PreflightSessionGate: missing channel for opcode 0x",
+                       std::hex, uint32_t(PACKET.HEADER), std::dec,
+                       " from ", GetAddress().ToStringIP());
+
+            if(PACKET.HEADER == GET_BLOCK)
+                respond_auto(BLOCK_REJECTED, BuildGetBlockControlPayload(GetBlockPolicyReason::TEMPLATE_NOT_READY, 0));
+            else
+                respond_auto(BLOCK_REJECTED);
+
+            return false;
+        }
+
+        return true;
     }
 
 
@@ -2057,16 +2143,6 @@ namespace LLP
     {
         debug::log(2, FUNCTION, "GET_BLOCK from ", GetAddress().ToStringIP());
 
-        /* Check authentication for stateless miners */
-        if(!fMinerAuthenticated)
-        {
-            debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted GET_BLOCK before authentication from ",
-                       GetAddress().ToStringIP());
-            std::vector<uint8_t> vFail(1, 0x00);
-            respond_auto(MINER_AUTH_RESULT, vFail);
-            return debug::error(FUNCTION, "Authentication required for stateless miner commands");
-        }
-
         /* Check if reward address is bound for stateless miners */
         if(!fRewardBound)
         {
@@ -2189,6 +2265,13 @@ namespace LLP
     {
         debug::log(0, FUNCTION, "MINER_READY received from ", GetAddress().ToStringIP(), " (legacy port)");
 
+        if(!fMinerAuthenticated)
+        {
+            std::vector<uint8_t> vFail(1, 0x00);
+            respond_auto(MINER_AUTH_RESULT, vFail);
+            return debug::error(FUNCTION, "Authentication required for MINER_READY");
+        }
+
         /* Validate channel (1=Prime, 2=Hash only) */
         if(nChannel != 1 && nChannel != 2)
         {
@@ -2248,16 +2331,6 @@ namespace LLP
     /* Stateless handler for SUBMIT_BLOCK - validates and processes a block submission */
     bool Miner::handle_submit_block_stateless(const Packet& PACKET)
     {
-        /* Check authentication for stateless miners */
-        if(!fMinerAuthenticated)
-        {
-            debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted SUBMIT_BLOCK before authentication from ",
-                       GetAddress().ToStringIP());
-            std::vector<uint8_t> vFail(1, 0x00);
-            respond_auto(MINER_AUTH_RESULT, vFail);
-            return debug::error(FUNCTION, "Authentication required for stateless miner commands");
-        }
-
         /* R-02: Session consistency gate — validate the authoritative session context
          * persisted in StatelessMinerManager before proceeding with block processing.
          * The live connection context has hashKeyID=0 for legacy-lane miners; the
@@ -2645,16 +2718,6 @@ namespace LLP
                 return true;
             }
             m_lastGetRoundTime = now;
-        }
-
-        /* Check authentication for stateless miners */
-        if(!fMinerAuthenticated)
-        {
-            debug::log(0, FUNCTION, "MinerLLP: Stateless miner attempted GET_ROUND before authentication from ",
-                       GetAddress().ToStringIP());
-            std::vector<uint8_t> vFail(1, 0x00);
-            respond_auto(MINER_AUTH_RESULT, vFail);
-            return debug::error(FUNCTION, "Authentication required for stateless miner commands");
         }
 
         /* Capture consistent chain height snapshot via shared utility */
