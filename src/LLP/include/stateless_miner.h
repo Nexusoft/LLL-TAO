@@ -390,6 +390,11 @@ namespace LLP
          */
         uint32_t nChannelHeight;
         
+        /** Session generation counter at template creation time.
+         *  Templates with nSessionEpoch < context.nSessionEpoch are from a
+         *  previous authentication and should be treated as stale. */
+        uint64_t nSessionEpoch;
+        
         /* ═══════════════════════════════════════════════════════════════════════════════ */
         /* CONSTRUCTORS (MOVE-ONLY SEMANTICS)                                              */
         /* ═══════════════════════════════════════════════════════════════════════════════ */
@@ -408,6 +413,7 @@ namespace LLP
             , nChannel(0)
             , hashBestChainAtCreation(0)
             , nChannelHeight(0)  // PR #134: Initialize channel height
+            , nSessionEpoch(0)
         {
         }
         
@@ -424,11 +430,13 @@ namespace LLP
          *  @param hashMerkleRoot_ Expected merkle root for validation
          *  @param nChannel_      Mining channel (1=Prime, 2=Hash)
          *  @param hashBestChainAtCreation_ hashBestChain snapshot at template creation
+         *  @param nSessionEpoch_ Session generation counter at creation time
          */
         TemplateMetadata(TAO::Ledger::Block* pBlock_, uint64_t nCreationTime_, 
                         uint32_t nHeight_, uint32_t nChannelHeight_,
                         const uint512_t& hashMerkleRoot_, uint32_t nChannel_,
-                        const uint1024_t& hashBestChainAtCreation_ = uint1024_t(0))
+                        const uint1024_t& hashBestChainAtCreation_ = uint1024_t(0),
+                        uint64_t nSessionEpoch_ = 0)
             : pBlock(pBlock_)  // shared_ptr takes ownership
             , nCreationTime(nCreationTime_)
             , nHeight(nHeight_)
@@ -436,6 +444,7 @@ namespace LLP
             , nChannel(nChannel_)
             , hashBestChainAtCreation(hashBestChainAtCreation_)
             , nChannelHeight(nChannelHeight_)  // PR #134: Store channel height
+            , nSessionEpoch(nSessionEpoch_)
         {
         }
         
