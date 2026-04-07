@@ -186,6 +186,7 @@ namespace LLP
     , hashDisposableKeyID(0)
     , fSubscribedToNotifications(false)
     , nSubscribedChannel(0)
+    , nSessionEpoch(0)
     {
     }
 
@@ -270,6 +271,10 @@ namespace LLP
         }
         /* MergeContext never clears subscription state: once a miner subscribes the server
          * restores the subscription on reconnect until the session expires. */
+
+        /* Carry forward epoch if the live context has one (set by RegisterOrRefresh). */
+        if(context.nSessionEpoch != 0)
+            nSessionEpoch = context.nSessionEpoch;
     }
 
 
@@ -299,6 +304,9 @@ namespace LLP
 
         if(fSubscribedToNotifications && IsValidSubscriptionChannel(nSubscribedChannel))
             context = context.WithSubscription(nSubscribedChannel);
+
+        if(nSessionEpoch != 0)
+            context = context.WithEpoch(nSessionEpoch);
 
         return context;
     }

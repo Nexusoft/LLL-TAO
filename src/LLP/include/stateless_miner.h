@@ -696,6 +696,15 @@ namespace LLP
          *  This is the single source of truth — never compute inline ternaries elsewhere. */
         std::string strChannelName;  // "Prime" | "Hash" | "Unknown(N)"
 
+        /** Session generation counter.
+         *  Monotonically increasing per-hashKeyID.  Starts at 1 on first registration
+         *  in NodeSessionRegistry and increments on each re-authentication.
+         *  Used to detect stale templates from previous session generations
+         *  and to identify zombie session contexts that passed identity checks
+         *  but belong to a dead session generation.
+         *  0 means "not yet registered" (pre-auth default). */
+        uint64_t nSessionEpoch;
+
         /** Default Constructor **/
         MiningContext();
 
@@ -800,6 +809,13 @@ namespace LLP
          *
          **/
         MiningContext WithSession(uint32_t nSessionId_) const;
+
+        /** WithEpoch
+         *
+         *  Returns a new context with updated session epoch.
+         *
+         **/
+        MiningContext WithEpoch(uint64_t nSessionEpoch_) const;
 
         /** WithKeyId
          *

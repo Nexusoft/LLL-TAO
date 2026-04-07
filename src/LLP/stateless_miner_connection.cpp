@@ -2601,12 +2601,16 @@ namespace LLP
                  * One Falcon identity (hashKeyID) maps to one canonical nSessionId across both ports. */
                 if(PACKET.HEADER == MINER_AUTH_RESPONSE && context.fAuthenticated && context.hashKeyID != 0)
                 {
-                    auto [canonicalSessionId, isNew] = NodeSessionRegistry::Get().RegisterOrRefresh(
+                    auto [canonicalSessionId, isNew, epoch] = NodeSessionRegistry::Get().RegisterOrRefresh(
                         context.hashKeyID,
                         context.hashGenesis,
                         context,
                         ProtocolLane::STATELESS
                     );
+
+                    /* Propagate epoch to context so templates and consistency
+                     * checks can detect stale session generations. */
+                    context = context.WithEpoch(epoch);
 
                     /* CRITICAL: If the registry returned a different nSessionId than what we derived,
                      * it means this miner has already authenticated on the other port.

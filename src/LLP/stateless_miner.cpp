@@ -134,6 +134,7 @@ namespace LLP
     , nMinerPrevblockSuffix({})
     , nStakeHeight(0)
     , strChannelName("Unknown")
+    , nSessionEpoch(0)
     {
     }
 
@@ -184,6 +185,7 @@ namespace LLP
     , nMinerPrevblockSuffix({})
     , nStakeHeight(0)
     , strChannelName(MiningContext::ChannelName(nChannel_))
+    , nSessionEpoch(0)
     {
     }
 
@@ -258,6 +260,13 @@ namespace LLP
     {
         MiningContext c = *this;
         c.nSessionId = nSessionId_;
+        return c;
+    }
+
+    MiningContext MiningContext::WithEpoch(uint64_t nSessionEpoch_) const
+    {
+        MiningContext c = *this;
+        c.nSessionEpoch = nSessionEpoch_;
         return c;
     }
 
