@@ -144,6 +144,44 @@ namespace LLP
                     return false;
             }
         }
+
+        /** MinimumStateForLegacyOpcode
+         *
+         *  Returns the minimum MinerSessionState required for a given protected
+         *  legacy opcode.  Used by Miner::PreflightSessionGate for a single
+         *  state >= required comparison.
+         *
+         **/
+        MinerSessionState MinimumStateForLegacyOpcode(const uint8_t nOpcode)
+        {
+            switch(nOpcode)
+            {
+                /* Channel-requiring opcodes need at least CHANNEL_SET */
+                case OpcodeUtility::Opcodes::GET_BLOCK:
+                case OpcodeUtility::Opcodes::SUBMIT_BLOCK:
+                case OpcodeUtility::Opcodes::GET_ROUND:
+                case OpcodeUtility::Opcodes::GET_REWARD:
+                case OpcodeUtility::Opcodes::MINER_READY:
+                case OpcodeUtility::Opcodes::CHECK_BLOCK:
+                    return MinerSessionState::CHANNEL_SET;
+
+                /* Reward binding requires encryption */
+                case OpcodeUtility::Opcodes::MINER_SET_REWARD:
+                    return MinerSessionState::ENCRYPTION_READY;
+
+                /* All other protected opcodes need at least AUTHENTICATED */
+                case OpcodeUtility::Opcodes::SET_CHANNEL:
+                case OpcodeUtility::Opcodes::SESSION_KEEPALIVE:
+                case OpcodeUtility::Opcodes::GET_HEIGHT:
+                case OpcodeUtility::Opcodes::CLEAR_MAP:
+                case OpcodeUtility::Opcodes::SUBSCRIBE:
+                    return MinerSessionState::AUTHENTICATED;
+
+                /* Bypass opcodes — no state required */
+                default:
+                    return MinerSessionState::CONNECTED;
+            }
+        }
     }
 
     /* The last height that the notifications processor was run at.  This is used to ensure that events are only processed once
@@ -1429,16 +1467,8 @@ namespace LLP
         if(IsLegacyPreflightBypassOpcode(PACKET.HEADER) || !IsLegacyPreflightProtectedOpcode(PACKET.HEADER))
             return true;
 
-        if(!fMinerAuthenticated)
-        {
-            debug::log(0, FUNCTION, "PreflightSessionGate: unauthenticated opcode 0x",
-                       std::hex, uint32_t(PACKET.HEADER), std::dec,
-                       " from ", GetAddress().ToStringIP());
-            std::vector<uint8_t> vFail(1, 0x00);
-            respond_auto(MINER_AUTH_RESULT, vFail);
-            return false;
-        }
-
+        /* Build a MiningContext snapshot from the legacy per-connection fields
+         * so we can use the shared state machine and consistency validation. */
         MiningContext ctx(
             nChannel.load(),
             nBestHeight,
@@ -1460,6 +1490,35 @@ namespace LLP
         if(fEncryptionReady && !vChaChaKey.empty())
             ctx = ctx.WithChaChaKey(vChaChaKey);
 
+        /* 2.4: State-based gate — single comparison replaces scattered boolean checks. */
+        const MinerSessionState nRequired = MinimumStateForLegacyOpcode(PACKET.HEADER);
+
+        if(ctx.nSessionState < nRequired)
+        {
+            debug::log(0, FUNCTION, "PreflightSessionGate: session state ",
+                       MinerSessionStateString(ctx.nSessionState),
+                       " < required ", MinerSessionStateString(nRequired),
+                       " for opcode 0x", std::hex, uint32_t(PACKET.HEADER), std::dec,
+                       " from ", GetAddress().ToStringIP());
+
+            if(ctx.nSessionState < MinerSessionState::AUTHENTICATED)
+            {
+                std::vector<uint8_t> vFail(1, 0x00);
+                respond_auto(MINER_AUTH_RESULT, vFail);
+            }
+            else if(PACKET.HEADER == GET_BLOCK)
+            {
+                respond_auto(BLOCK_REJECTED, BuildGetBlockControlPayload(GetBlockPolicyReason::TEMPLATE_NOT_READY, 0));
+            }
+            else
+            {
+                respond_auto(BLOCK_REJECTED);
+            }
+
+            return false;
+        }
+
+        /* Gate 2: Session consistency check */
         const SessionConsistencyResult consistency = ctx.ValidateConsistency();
         if(consistency != SessionConsistencyResult::Ok)
         {
@@ -1470,20 +1529,6 @@ namespace LLP
 
             if(PACKET.HEADER == GET_BLOCK)
                 respond_auto(BLOCK_REJECTED, BuildGetBlockControlPayload(GetBlockPolicyReason::SESSION_INVALID, 0));
-            else
-                respond_auto(BLOCK_REJECTED);
-
-            return false;
-        }
-
-        if(LegacyOpcodeRequiresChannel(PACKET.HEADER) && nChannel.load() == 0)
-        {
-            debug::log(0, FUNCTION, "PreflightSessionGate: missing channel for opcode 0x",
-                       std::hex, uint32_t(PACKET.HEADER), std::dec,
-                       " from ", GetAddress().ToStringIP());
-
-            if(PACKET.HEADER == GET_BLOCK)
-                respond_auto(BLOCK_REJECTED, BuildGetBlockControlPayload(GetBlockPolicyReason::TEMPLATE_NOT_READY, 0));
             else
                 respond_auto(BLOCK_REJECTED);
 

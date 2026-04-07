@@ -70,6 +70,7 @@ namespace LLP
             "MissingFalconKey",
             "RewardBoundMissingHash",
             "EncryptionReadyMissingKey",
+            "DisposableKeyMissing",
             "SessionIdMismatch",
             "GenesisMismatch",
             "FalconKeyMismatch"
@@ -97,9 +98,38 @@ namespace LLP
         return "Unknown";
     }
 
+    const char* MinerSessionStateString(MinerSessionState state)
+    {
+        switch(state)
+        {
+            case MinerSessionState::CONNECTED:        return "CONNECTED";
+            case MinerSessionState::AUTHENTICATED:    return "AUTHENTICATED";
+            case MinerSessionState::ENCRYPTION_READY: return "ENCRYPTION_READY";
+            case MinerSessionState::CHANNEL_SET:      return "CHANNEL_SET";
+            case MinerSessionState::MINING:           return "MINING";
+            default:                                  return "UNKNOWN";
+        }
+    }
+
+    /* Static helper: derive the canonical session state from field values. */
+    MinerSessionState MiningContext::ComputeSessionState(
+        bool fAuth, bool fEncReady, uint32_t nChan, bool fSubscribed)
+    {
+        if(!fAuth)
+            return MinerSessionState::CONNECTED;
+        if(!fEncReady)
+            return MinerSessionState::AUTHENTICATED;
+        if(nChan == 0)
+            return MinerSessionState::ENCRYPTION_READY;
+        if(!fSubscribed)
+            return MinerSessionState::CHANNEL_SET;
+        return MinerSessionState::MINING;
+    }
+
     /* Default constructor */
     MiningContext::MiningContext()
-    : nChannel(0)
+    : nSessionState(MinerSessionState::CONNECTED)
+    , nChannel(0)
     , nHeight(0)
     , nTimestamp(0)
     , strAddress("")
@@ -149,7 +179,8 @@ namespace LLP
         const uint256_t& hashKeyID_,
         const uint256_t& hashGenesis_
     )
-    : nChannel(nChannel_)
+    : nSessionState(ComputeSessionState(fAuthenticated_, false, nChannel_, false))
+    , nChannel(nChannel_)
     , nHeight(nHeight_)
     , nTimestamp(nTimestamp_)
     , strAddress(strAddress_)
@@ -193,6 +224,7 @@ namespace LLP
         MiningContext c = *this;
         c.nChannel = nChannel_;
         c.strChannelName = ChannelName(nChannel_);
+        c.nSessionState = ComputeSessionState(c.fAuthenticated, c.fEncryptionReady, c.nChannel, c.fSubscribedToNotifications);
         return c;
     }
 
@@ -246,6 +278,7 @@ namespace LLP
     {
         MiningContext c = *this;
         c.fAuthenticated = fAuthenticated_;
+        c.nSessionState = ComputeSessionState(c.fAuthenticated, c.fEncryptionReady, c.nChannel, c.fSubscribedToNotifications);
         return c;
     }
 
@@ -370,6 +403,7 @@ namespace LLP
         MiningContext c = *this;
         c.vChaChaKey = vKey_;
         c.fEncryptionReady = !vKey_.empty();
+        c.nSessionState = ComputeSessionState(c.fAuthenticated, c.fEncryptionReady, c.nChannel, c.fSubscribedToNotifications);
         return c;
     }
 
@@ -400,6 +434,7 @@ namespace LLP
         c.nSubscribedChannel = nChannel_;
         c.nLastNotificationTime = 0;
         c.nNotificationsSent = 0;
+        c.nSessionState = ComputeSessionState(c.fAuthenticated, c.fEncryptionReady, c.nChannel, c.fSubscribedToNotifications);
         return c;
     }
 
@@ -460,6 +495,11 @@ namespace LLP
 
             if(binding.hashKeyID == 0)
                 return SessionConsistencyResult::MissingFalconKey;
+
+            /* 2.2: Authenticated sessions must have a disposable key for block
+             * signature verification.  Missing key → submissions will fail. */
+            if(vDisposablePubKey.empty())
+                return SessionConsistencyResult::DisposableKeyMissing;
         }
 
         if(fRewardBound && hashRewardAddress == 0)

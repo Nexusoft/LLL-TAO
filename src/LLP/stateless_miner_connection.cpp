@@ -158,6 +158,44 @@ namespace LLP
             }
         }
 
+        /** MinimumStateForStatelessOpcode
+         *
+         *  Returns the minimum MinerSessionState required for a given protected
+         *  stateless opcode.  Used by PreflightSessionGate for a single
+         *  state >= required comparison.
+         *
+         *  @param[in] nOpcode  The 16-bit stateless opcode
+         *  @return Minimum MinerSessionState required, or CONNECTED for bypass opcodes
+         *
+         **/
+        MinerSessionState MinimumStateForStatelessOpcode(const uint16_t nOpcode)
+        {
+            switch(nOpcode)
+            {
+                /* Channel-requiring opcodes need at least CHANNEL_SET */
+                case OpcodeUtility::Stateless::STATELESS_MINER_READY:
+                case OpcodeUtility::Stateless::GET_BLOCK:
+                case OpcodeUtility::Stateless::SUBMIT_BLOCK:
+                case OpcodeUtility::Stateless::GET_REWARD:
+                case OpcodeUtility::Stateless::GET_ROUND:
+                    return MinerSessionState::CHANNEL_SET;
+
+                /* Encryption-requiring opcodes need ENCRYPTION_READY */
+                case OpcodeUtility::Stateless::SET_REWARD:
+                    return MinerSessionState::ENCRYPTION_READY;
+
+                /* All other protected opcodes need at least AUTHENTICATED */
+                case OpcodeUtility::Stateless::SET_CHANNEL:
+                case OpcodeUtility::Stateless::SESSION_KEEPALIVE:
+                case OpcodeUtility::Stateless::GET_HEIGHT:
+                    return MinerSessionState::AUTHENTICATED;
+
+                /* Bypass opcodes — no state required */
+                default:
+                    return MinerSessionState::CONNECTED;
+            }
+        }
+
         inline StatelessPacket BuildSessionExpiredResponse(const uint32_t nSessionId, const uint8_t nReason = 0x01)
         {
             StatelessPacket response(OpcodeUtility::Stateless::SESSION_EXPIRED);
@@ -3950,25 +3988,56 @@ namespace LLP
         if(IsStatelessPreflightBypassOpcode(PACKET.HEADER) || !IsStatelessPreflightProtectedOpcode(PACKET.HEADER))
             return true;
 
-        if(!ctxSnap.fAuthenticated)
+        /* 2.4: Centralized state-based gate — determine the minimum session state
+         * required for this opcode and compare against the current state. */
+        const MinerSessionState nRequired = MinimumStateForStatelessOpcode(PACKET.HEADER);
+
+        if(ctxSnap.nSessionState < nRequired)
         {
-            debug::log(0, FUNCTION, "PreflightSessionGate: unauthenticated opcode 0x",
-                       std::hex, uint32_t(PACKET.HEADER), std::dec,
+            debug::log(0, FUNCTION, "PreflightSessionGate: session state ",
+                       MinerSessionStateString(ctxSnap.nSessionState),
+                       " < required ", MinerSessionStateString(nRequired),
+                       " for opcode 0x", std::hex, uint32_t(PACKET.HEADER), std::dec,
                        " from ", GetAddress().ToStringIP());
 
-            if(PACKET.HEADER == OpcodeUtility::Stateless::GET_BLOCK)
-                SendGetBlockControlResponse(GetBlockPolicyReason::UNAUTHENTICATED, 0, false);
-            else
+            /* Pick the appropriate rejection response based on what's missing. */
+            if(ctxSnap.nSessionState < MinerSessionState::AUTHENTICATED)
             {
-                StatelessPacket response(OpcodeUtility::Stateless::AUTH_RESULT);
-                response.DATA.push_back(0x00);
-                response.LENGTH = 1;
-                respond(response);
+                /* Not authenticated at all */
+                if(PACKET.HEADER == OpcodeUtility::Stateless::GET_BLOCK)
+                    SendGetBlockControlResponse(GetBlockPolicyReason::UNAUTHENTICATED, 0, false);
+                else
+                {
+                    StatelessPacket response(OpcodeUtility::Stateless::AUTH_RESULT);
+                    response.DATA.push_back(0x00);
+                    response.LENGTH = 1;
+                    respond(response);
+                }
+            }
+            else if(ctxSnap.nSessionState < MinerSessionState::CHANNEL_SET)
+            {
+                /* Authenticated but missing encryption or channel */
+                if(PACKET.HEADER == OpcodeUtility::Stateless::GET_BLOCK)
+                {
+                    SendGetBlockControlResponse(GetBlockPolicyReason::TEMPLATE_NOT_READY,
+                                                MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS, true);
+                }
+                else
+                {
+                    StatelessPacket response(
+                        PACKET.HEADER == OpcodeUtility::Stateless::GET_ROUND
+                            ? OpcodeUtility::Stateless::OLD_ROUND
+                            : OpcodeUtility::Stateless::BLOCK_REJECTED);
+                    response.LENGTH = 0;
+                    respond(response);
+                }
             }
 
             return false;
         }
 
+        /* Gate 2: Session consistency check — validates identity/reward/crypto invariants
+         * even when state progression is correct. */
         const SessionConsistencyResult consistency = ctxSnap.ValidateConsistency();
         if(consistency != SessionConsistencyResult::Ok)
         {
@@ -3979,30 +4048,6 @@ namespace LLP
 
             if(PACKET.HEADER == OpcodeUtility::Stateless::GET_BLOCK)
                 SendGetBlockControlResponse(GetBlockPolicyReason::SESSION_INVALID, 0, false);
-            else
-            {
-                StatelessPacket response(
-                    PACKET.HEADER == OpcodeUtility::Stateless::GET_ROUND
-                        ? OpcodeUtility::Stateless::OLD_ROUND
-                        : OpcodeUtility::Stateless::BLOCK_REJECTED);
-                response.LENGTH = 0;
-                respond(response);
-            }
-
-            return false;
-        }
-
-        if(StatelessOpcodeRequiresChannel(PACKET.HEADER) && ctxSnap.nChannel == 0)
-        {
-            debug::log(0, FUNCTION, "PreflightSessionGate: missing channel for opcode 0x",
-                       std::hex, uint32_t(PACKET.HEADER), std::dec,
-                       " from ", GetAddress().ToStringIP());
-
-            if(PACKET.HEADER == OpcodeUtility::Stateless::GET_BLOCK)
-            {
-                SendGetBlockControlResponse(GetBlockPolicyReason::TEMPLATE_NOT_READY,
-                                            MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS, true);
-            }
             else
             {
                 StatelessPacket response(

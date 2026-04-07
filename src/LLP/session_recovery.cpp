@@ -162,7 +162,8 @@ namespace LLP
 
     /** Default Constructor **/
     MinerSessionContainer::MinerSessionContainer()
-    : miner_id()
+    : nSessionState(MinerSessionState::CONNECTED)
+    , miner_id()
     , nSessionId(0)
     , hashKeyID(0)
     , hashGenesis(0)
@@ -270,6 +271,20 @@ namespace LLP
         }
         /* MergeContext never clears subscription state: once a miner subscribes the server
          * restores the subscription on reconnect until the session expires. */
+
+        /* Recompute the canonical ordered session state from the merged fields. */
+        nSessionState = MiningContext::ComputeSessionState(
+            fAuthenticated, fEncryptionReady, nChannel, fSubscribedToNotifications);
+
+        /* 2.2: Disposable key recovery validation — warn early if the merged
+         * container is authenticated but lacks the disposable key needed for
+         * block signature verification. */
+        if(fAuthenticated && vDisposablePubKey.empty())
+        {
+            debug::warning(FUNCTION, "Post-merge: authenticated session for keyID=",
+                           hashKeyID.SubString(), " is missing disposable Falcon key. "
+                           "Block submissions will fail until miner re-authenticates.");
+        }
     }
 
 
@@ -344,6 +359,11 @@ namespace LLP
 
             if(binding.hashKeyID == 0)
                 return SessionConsistencyResult::MissingFalconKey;
+
+            /* 2.2: Authenticated sessions must have a disposable key for block
+             * signature verification.  Missing key → submissions will fail. */
+            if(vDisposablePubKey.empty())
+                return SessionConsistencyResult::DisposableKeyMissing;
         }
 
         if(fRewardBound && hashRewardAddress == 0)
