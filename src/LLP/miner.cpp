@@ -805,7 +805,7 @@ namespace LLP
                     1,                             // Protocol version
                     fMinerAuthenticated,           // Authentication state
                     nSessionId,                    // Session ID
-                    uint256_t(0),                  // hashKeyID (set to 0, will be derived in StatelessMiner from pubkey)
+                    hashKeyID,                     // Falcon key hash (populated after auth; 0 before auth)
                     hashGenesis                    // Genesis hash
                 );
 
@@ -1439,26 +1439,50 @@ namespace LLP
             return false;
         }
 
-        MiningContext ctx(
-            nChannel.load(),
-            nBestHeight,
-            runtime::unifiedtimestamp(),
-            GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort()),
-            1,
-            fMinerAuthenticated.load(),
-            nSessionId,
-            hashKeyID,
-            hashGenesis
-        );
+        /* Consult the authoritative StatelessMinerManager context when available.
+         * Primary: GetMinerContextByAddressOrIP() handles ephemeral port changes (GAP 3).
+         * Fallback: construct from per-connection member variables (pre-manager state).
+         * Third parameter (fMigrateAddress=false): read-only lookup, do not re-key the
+         * context address in the manager — migration is reserved for SUBMIT_BLOCK. */
+        const std::string strLookupAddr = GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort());
+        auto optCtx = StatelessMinerManager::Get().GetMinerContextByAddressOrIP(
+            strLookupAddr, nSessionId, /* fMigrateAddress= */ false);
 
-        if(!vMinerPubKey.empty())
-            ctx = ctx.WithPubKey(vMinerPubKey);
-        if(!vAuthNonce.empty())
-            ctx = ctx.WithNonce(vAuthNonce);
-        if(fRewardBound)
-            ctx = ctx.WithRewardAddress(hashRewardAddress);
-        if(fEncryptionReady && !vChaChaKey.empty())
-            ctx = ctx.WithChaChaKey(vChaChaKey);
+        MiningContext ctx = [&]() -> MiningContext
+        {
+            if(optCtx.has_value())
+            {
+                debug::log(3, FUNCTION, "PreflightSessionGate: using authoritative manager context for ",
+                           strLookupAddr);
+                return optCtx.value();
+            }
+
+            debug::log(3, FUNCTION, "PreflightSessionGate: falling back to local state for ",
+                       strLookupAddr);
+
+            MiningContext local(
+                nChannel.load(),
+                nBestHeight,
+                runtime::unifiedtimestamp(),
+                strLookupAddr,
+                1,
+                fMinerAuthenticated.load(),
+                nSessionId,
+                hashKeyID,
+                hashGenesis
+            );
+
+            if(!vMinerPubKey.empty())
+                local = local.WithPubKey(vMinerPubKey);
+            if(!vAuthNonce.empty())
+                local = local.WithNonce(vAuthNonce);
+            if(fRewardBound)
+                local = local.WithRewardAddress(hashRewardAddress);
+            if(fEncryptionReady && !vChaChaKey.empty())
+                local = local.WithChaChaKey(vChaChaKey);
+
+            return local;
+        }();
 
         const SessionConsistencyResult consistency = ctx.ValidateConsistency();
         if(consistency != SessionConsistencyResult::Ok)
@@ -1466,7 +1490,8 @@ namespace LLP
             debug::log(0, FUNCTION, "PreflightSessionGate: session inconsistency on opcode 0x",
                        std::hex, uint32_t(PACKET.HEADER), std::dec,
                        " from ", GetAddress().ToStringIP(), " result=",
-                       SessionConsistencyResultString(consistency));
+                       SessionConsistencyResultString(consistency),
+                       " source=", (optCtx.has_value() ? "manager" : "local"));
 
             if(PACKET.HEADER == GET_BLOCK)
                 respond_auto(BLOCK_REJECTED, BuildGetBlockControlPayload(GetBlockPolicyReason::SESSION_INVALID, 0));
@@ -1476,7 +1501,9 @@ namespace LLP
             return false;
         }
 
-        if(LegacyOpcodeRequiresChannel(PACKET.HEADER) && nChannel.load() == 0)
+        /* Channel check: ctx.nChannel is authoritative regardless of source
+         * (manager context or local state both populate it correctly). */
+        if(LegacyOpcodeRequiresChannel(PACKET.HEADER) && ctx.nChannel == 0)
         {
             debug::log(0, FUNCTION, "PreflightSessionGate: missing channel for opcode 0x",
                        std::hex, uint32_t(PACKET.HEADER), std::dec,
