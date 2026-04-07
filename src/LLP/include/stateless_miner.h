@@ -79,7 +79,8 @@ namespace LLP
         EncryptionReadyMissingKey,
         SessionIdMismatch,
         GenesisMismatch,
-        FalconKeyMismatch
+        FalconKeyMismatch,
+        SessionSuperseded       ///< Session epoch is older than the current generation
     };
 
     const char* SessionConsistencyResultString(const SessionConsistencyResult result);
@@ -1023,6 +1024,19 @@ namespace LLP
          *
          **/
         SessionConsistencyResult ValidateConsistency() const;
+
+        /** ValidateConsistency (epoch-aware overload)
+         *
+         *  Performs all structural checks plus a temporal check:
+         *  if nSessionEpoch is set (> 0) and is less than nCurrentEpoch,
+         *  the session has been superseded by a newer generation.
+         *
+         *  @param[in] nCurrentEpoch  The current session epoch from NodeSessionRegistry.
+         *
+         *  @return SessionConsistencyResult (may be SessionSuperseded)
+         *
+         **/
+        SessionConsistencyResult ValidateConsistency(uint64_t nCurrentEpoch) const;
 
         /** GetPayoutAddress
          *

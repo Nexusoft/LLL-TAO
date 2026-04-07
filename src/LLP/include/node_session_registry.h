@@ -259,6 +259,15 @@ namespace LLP
          **/
         SessionConsistencyResult ValidateConsistency() const;
 
+        /** ValidateConsistency (epoch-aware overload)
+         *
+         *  Structural validation plus temporal epoch check.
+         *
+         *  @param[in] nCurrentEpoch  Current epoch for superseded detection.
+         *
+         **/
+        SessionConsistencyResult ValidateConsistency(uint64_t nCurrentEpoch) const;
+
         /** AnyPortLive
          *
          *  Check if any port is currently connected.

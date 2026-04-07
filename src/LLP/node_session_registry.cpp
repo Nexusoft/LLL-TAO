@@ -144,6 +144,21 @@ namespace LLP
         return SessionConsistencyResult::Ok;
     }
 
+    SessionConsistencyResult NodeSessionEntry::ValidateConsistency(uint64_t nCurrentEpoch) const
+    {
+        /* Run all structural checks first. */
+        const SessionConsistencyResult structural = ValidateConsistency();
+        if(structural != SessionConsistencyResult::Ok)
+            return structural;
+
+        /* Temporal check: if this entry's epoch is behind the current epoch,
+         * the session has been superseded by a newer authentication. */
+        if(nSessionEpoch != 0 && nCurrentEpoch != 0 && nSessionEpoch < nCurrentEpoch)
+            return SessionConsistencyResult::SessionSuperseded;
+
+        return SessionConsistencyResult::Ok;
+    }
+
     /** AnyPortLive **/
     bool NodeSessionEntry::AnyPortLive() const
     {

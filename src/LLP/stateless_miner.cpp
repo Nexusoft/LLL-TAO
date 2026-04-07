@@ -72,11 +72,12 @@ namespace LLP
             "EncryptionReadyMissingKey",
             "SessionIdMismatch",
             "GenesisMismatch",
-            "FalconKeyMismatch"
+            "FalconKeyMismatch",
+            "SessionSuperseded"
         };
 
         static_assert(
-            (static_cast<size_t>(SessionConsistencyResult::FalconKeyMismatch) + 1)
+            (static_cast<size_t>(SessionConsistencyResult::SessionSuperseded) + 1)
                 == (sizeof(SESSION_CONSISTENCY_RESULT_STRINGS) / sizeof(SESSION_CONSISTENCY_RESULT_STRINGS[0])),
             "SessionConsistencyResult string table must stay aligned with enum ordering");
     }
@@ -476,6 +477,21 @@ namespace LLP
 
         if(fEncryptionReady && vChaChaKey.empty())
             return SessionConsistencyResult::EncryptionReadyMissingKey;
+
+        return SessionConsistencyResult::Ok;
+    }
+
+    SessionConsistencyResult MiningContext::ValidateConsistency(uint64_t nCurrentEpoch) const
+    {
+        /* Run all structural checks first. */
+        const SessionConsistencyResult structural = ValidateConsistency();
+        if(structural != SessionConsistencyResult::Ok)
+            return structural;
+
+        /* Temporal check: if this context has a session epoch and it is
+         * behind the current epoch, the session has been superseded. */
+        if(nSessionEpoch != 0 && nCurrentEpoch != 0 && nSessionEpoch < nCurrentEpoch)
+            return SessionConsistencyResult::SessionSuperseded;
 
         return SessionConsistencyResult::Ok;
     }
