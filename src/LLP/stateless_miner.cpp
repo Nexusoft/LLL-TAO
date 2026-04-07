@@ -111,7 +111,16 @@ namespace LLP
         }
     }
 
-    /* Static helper: derive the canonical session state from field values. */
+    /* Static helper: derive the canonical session state from field values.
+     *
+     * The state machine enforces a strict ordering:
+     *   CONNECTED → AUTHENTICATED → ENCRYPTION_READY → CHANNEL_SET → MINING
+     *
+     * Each state requires all preceding states.  If a lower-level requirement
+     * is not met (e.g. fAuth is false), the state is capped at that level
+     * regardless of higher-level fields.  This makes impossible states
+     * unrepresentable: e.g. nChan!=0 with fAuth=false still yields CONNECTED.
+     */
     MinerSessionState MiningContext::ComputeSessionState(
         bool fAuth, bool fEncReady, uint32_t nChan, bool fSubscribed)
     {

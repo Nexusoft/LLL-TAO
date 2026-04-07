@@ -4016,7 +4016,7 @@ namespace LLP
             }
             else if(ctxSnap.nSessionState < MinerSessionState::CHANNEL_SET)
             {
-                /* Authenticated but missing encryption or channel */
+                /* Authenticated but not yet CHANNEL_SET (missing encryption or channel) */
                 if(PACKET.HEADER == OpcodeUtility::Stateless::GET_BLOCK)
                 {
                     SendGetBlockControlResponse(GetBlockPolicyReason::TEMPLATE_NOT_READY,
