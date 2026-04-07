@@ -490,7 +490,7 @@ namespace LLP
 
         /* Temporal check: if this context has a session epoch and it is
          * behind the current epoch, the session has been superseded. */
-        if(nSessionEpoch != 0 && nCurrentEpoch != 0 && nSessionEpoch < nCurrentEpoch)
+        if(IsEpochSuperseded(nSessionEpoch, nCurrentEpoch))
             return SessionConsistencyResult::SessionSuperseded;
 
         return SessionConsistencyResult::Ok;

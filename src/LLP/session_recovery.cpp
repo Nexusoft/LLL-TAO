@@ -372,7 +372,7 @@ namespace LLP
 
         /* Temporal check: if this container's epoch is behind the current
          * epoch, the session has been superseded. */
-        if(nSessionEpoch != 0 && nCurrentEpoch != 0 && nSessionEpoch < nCurrentEpoch)
+        if(IsEpochSuperseded(nSessionEpoch, nCurrentEpoch))
             return SessionConsistencyResult::SessionSuperseded;
 
         return SessionConsistencyResult::Ok;

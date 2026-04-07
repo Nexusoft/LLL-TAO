@@ -153,7 +153,7 @@ namespace LLP
 
         /* Temporal check: if this entry's epoch is behind the current epoch,
          * the session has been superseded by a newer authentication. */
-        if(nSessionEpoch != 0 && nCurrentEpoch != 0 && nSessionEpoch < nCurrentEpoch)
+        if(IsEpochSuperseded(nSessionEpoch, nCurrentEpoch))
             return SessionConsistencyResult::SessionSuperseded;
 
         return SessionConsistencyResult::Ok;
@@ -214,7 +214,9 @@ namespace LLP
         auto existing = m_mapByKey.Get(hashKeyID);
         if(existing)
         {
-            /* Session exists - refresh it with incremented epoch (re-authentication) */
+            /* Session exists - refresh it with incremented epoch (re-authentication).
+             * uint64_t overflow is not a concern: at 1 re-auth per second it would
+             * take ~584 billion years to wrap. */
             NodeSessionEntry entry = *existing;
             const uint64_t nNewEpoch = entry.nSessionEpoch + 1;
 

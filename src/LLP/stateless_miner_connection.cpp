@@ -1825,8 +1825,7 @@ namespace LLP
 
                     /* Epoch gate: reject templates from a previous session generation.
                      * A miner that re-authenticated has a new epoch; old templates are invalid. */
-                    if(it->second.nSessionEpoch != 0 && context.nSessionEpoch != 0 &&
-                       it->second.nSessionEpoch < context.nSessionEpoch)
+                    if(IsEpochSuperseded(it->second.nSessionEpoch, context.nSessionEpoch))
                     {
                         debug::log(0, FUNCTION, "⚠ SUBMIT_BLOCK: Rejecting template from superseded session epoch ",
                                    it->second.nSessionEpoch, " (current=", context.nSessionEpoch, ")");
@@ -3860,8 +3859,7 @@ namespace LLP
             /* Epoch check: templates from a previous session generation are stale.
              * context.nSessionEpoch is the current epoch; meta.nSessionEpoch is the
              * epoch when the template was created. */
-            const bool fSupersededEpoch = (meta.nSessionEpoch != 0 && context.nSessionEpoch != 0 &&
-                                           meta.nSessionEpoch < context.nSessionEpoch);
+            const bool fSupersededEpoch = IsEpochSuperseded(meta.nSessionEpoch, context.nSessionEpoch);
 
             if(fTooOldByBlocks || fTooOldByTime || fSupersededEpoch)
             {

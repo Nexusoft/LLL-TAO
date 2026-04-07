@@ -63,6 +63,23 @@ namespace LLP
         }
     }
 
+    /** IsEpochSuperseded
+     *
+     *  Checks whether a session/template epoch has been superseded by a newer
+     *  authentication generation.  Both epochs must be non-zero (i.e. assigned)
+     *  for the check to fire; epoch == 0 means "not yet registered."
+     *
+     *  @param[in] nOldEpoch  Epoch of the object being tested (template, context, etc.)
+     *  @param[in] nCurrentEpoch  Current session epoch from NodeSessionRegistry.
+     *
+     *  @return true if the old epoch is behind the current epoch.
+     *
+     **/
+    inline bool IsEpochSuperseded(uint64_t nOldEpoch, uint64_t nCurrentEpoch)
+    {
+        return (nOldEpoch != 0 && nCurrentEpoch != 0 && nOldEpoch < nCurrentEpoch);
+    }
+
     /** SessionConsistencyResult
      *
      *  Canonical session/container consistency check result shared across mining
