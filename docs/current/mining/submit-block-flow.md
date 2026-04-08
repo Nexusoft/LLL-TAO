@@ -3,7 +3,7 @@
 **Status:** Active  
 **Applies to:** Stateless Lane (port 9323), `StatelessMinerConnection`  
 **Source:** `src/LLP/stateless_miner_connection.cpp`  
-**Last Updated:** 2026-03-01
+**Last Updated:** 2026-04-07
 
 ---
 
@@ -151,12 +151,13 @@ outer packet framing differs:
 ### BLOCK_ACCEPTED / BLOCK_REJECTED (Node → Miner)
 
 ```
-BLOCK_ACCEPTED (0xD082):  0 bytes payload
-BLOCK_REJECTED (0xD083):  1 byte reason code
+BLOCK_ACCEPTED (0xD0C8):  0 bytes payload
+BLOCK_REJECTED (0xD0C9):  1 byte reason code
     0x01 = STALE
     0x08 = Stale Falcon timestamp
     0x0B = ChaCha20 decryption failure
     0x0C = Falcon signature verification failed
+    0x0D = No Falcon session key for this session
     0x0F = Packet too small
     0xFF = Internal error
 ```

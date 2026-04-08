@@ -319,50 +319,95 @@ ifdef UNIT_TESTS
 		   build/Tests_Legacy_utxo.o \
 		   build/Tests_Legacy_mempool.o \
 		   build/Tests_LLC_aes.o \
+		   build/Tests_LLC_argon2.o \
+		   build/Tests_LLC_chacha20_helpers.o \
+		   build/Tests_LLC_chacha20_poly1305.o \
 		   build/Tests_LLC_falcon_qtv_parity_test.o \
+		   build/Tests_LLC_falcon_version_test.o \
+		   build/Tests_LLC_fermat.o \
+		   build/Tests_LLC_mining_session_keys.o \
+		   build/Tests_LLC_qtv_hook_bridge_test.o \
+		   build/Tests_LLC_test_genesis_endianness.o \
+		   build/Tests_LLC_uint1024.o \
 		   build/Tests_LLP_base_address.o \
-		   build/Tests_LLP_falcon_endianness.o \
+		   build/Tests_LLP_canonical_chain_state_tests.o \
+		   build/Tests_LLP_channel_state_manager_tests.o \
+		   build/Tests_LLP_concurrency_testing.o \
+		   build/Tests_LLP_context_immutability_comprehensive.o \
+		   build/Tests_LLP_dual_connection_manager_tests.o \
+		   build/Tests_LLP_dual_identity_comprehensive.o \
+		   build/Tests_LLP_encryption_context_test.o \
+		   build/Tests_LLP_error_handling_comprehensive.o \
+		   build/Tests_LLP_falcon_1024_auth_test.o \
 		   build/Tests_LLP_falcon_1024_detection_test.o \
+		   build/Tests_LLP_falcon_auth_stress.o \
+		   build/Tests_LLP_falcon_endianness.o \
+		   build/Tests_LLP_falcon_full_block_format.o \
+		   build/Tests_LLP_falcon_handshake.o \
+		   build/Tests_LLP_falcon_protocol_integration.o \
+		   build/Tests_LLP_falcon_verify_test.o \
 		   build/Tests_LLP_genesis_validation.o \
+		   build/Tests_LLP_graceful_shutdown_tests.o \
+		   build/Tests_LLP_hash_sign_finalization_tests.o \
+		   build/Tests_LLP_integration_comprehensive.o \
+		   build/Tests_LLP_keepalive_v2_tests.o \
+		   build/Tests_LLP_llp_lane_enforcement_test.o \
+		   build/Tests_LLP_miner_protocol.o \
+		   build/Tests_LLP_mining_config.o \
+		   build/Tests_LLP_mining_server_factory_test.o \
+		   build/Tests_LLP_mining_template_integration.o \
+		   build/Tests_LLP_node_cache.o \
+		   build/Tests_LLP_node_integration_hardening.o \
+		   build/Tests_LLP_node_session_registry_tests.o \
+		   build/Tests_LLP_opcode_alias.o \
 		   build/Tests_LLP_packet_data_payload.o \
+		   build/Tests_LLP_packet_length_validation_test.o \
+		   build/Tests_LLP_packet_processing_comprehensive.o \
 		   build/Tests_LLP_packet_round_response.o \
+		   build/Tests_LLP_prime_sign_finalization_tests.o \
 		   build/Tests_LLP_push_notification_tests.o \
 		   build/Tests_LLP_push_throttle_test.o \
 		   build/Tests_LLP_burst_mode_push_notification_test.o \
-		   build/Tests_LLP_keepalive_v2_tests.o \
 		   build/Tests_LLP_rate_limiting_tests.o \
-		   build/Tests_LLP_test_get_block_response_contract.o \
-		   build/Tests_LLP_test_respond_auto.o \
+		   build/Tests_LLP_reward_address_protocol.o \
+		   build/Tests_LLP_reward_routing.o \
+		   build/Tests_LLP_rewards_payout_verification.o \
+		   build/Tests_LLP_session_error_handling.o \
+		   build/Tests_LLP_session_management_comprehensive.o \
 		   build/Tests_LLP_session_recovery.o \
 		   build/Tests_LLP_session_status_tests.o \
+		   build/Tests_LLP_socket_buffer_tests.o \
 		   build/Tests_LLP_stateless_miner.o \
-		   build/Tests_LLP_dual_connection_manager_tests.o \
-		   build/Tests_LLP_graceful_shutdown_tests.o \
-		   build/Tests_LLP_test_template_staleness.o \
+		   build/Tests_LLP_submit_block_format_test.o \
 		   build/Tests_LLP_template_metadata_channel_height.o \
 		   build/Tests_LLP_test_cleanup_stale_templates.o \
-		   build/Tests_LLP_test_stateless_miner_crypto.o \
-		   build/Tests_LLP_test_simlink_session_rate_limiter.o \
-		   build/Tests_LLP_node_integration_hardening.o \
+		   build/Tests_LLP_test_get_block_response_contract.o \
+		   build/Tests_LLP_test_get_round_schema.o \
 		   build/Tests_LLP_test_heartbeat_refresh.o \
-		   build/Tests_LLP_session_management_comprehensive.o \
-		   build/Tests_LLP_prime_sign_finalization_tests.o \
-		   build/Tests_LLP_hash_sign_finalization_tests.o \
-		   build/Tests_LLP_socket_buffer_tests.o \
+		   build/Tests_LLP_test_protocol_lane.o \
+		   build/Tests_LLP_test_respond_auto.o \
+		   build/Tests_LLP_test_simlink_session_rate_limiter.o \
+		   build/Tests_LLP_test_stateless_miner_crypto.o \
+		   build/Tests_LLP_test_template_staleness.o \
+		   build/Tests_LLP_test_tolerance_verification.o \
+		   build/Tests_LLP_trust_address.o \
 		   build/Tests_TAO_API_assets.o \
+		   build/Tests_TAO_API_crypto.o \
 		   build/Tests_TAO_API_finance.o \
 		   build/Tests_TAO_API_names.o \
 		   build/Tests_TAO_API_supply.o \
 		   build/Tests_TAO_API_tokens.o \
+		   build/Tests_TAO_API_users.o \
 		   build/Tests_TAO_API_util.o \
 		   build/Tests_TAO_Ledger_block.o \
 		   build/Tests_TAO_Ledger_channel_height.o \
 		   build/Tests_TAO_Ledger_create_transaction.o \
 		   build/Tests_TAO_Ledger_stake_sequence.o \
+		   build/Tests_TAO_Ledger_stakepool.o \
 		   build/Tests_TAO_Ledger_validate_vtx_consistency.o \
 		   build/Tests_TAO_Ledger_mempool.o \
 		   build/Tests_TAO_Ledger_prime.o \
-           build/Tests_TAO_Ledger_transaction.o \
+		   build/Tests_TAO_Ledger_transaction.o \
 		   build/Tests_TAO_Ledger_sigchain.o \
 		   build/Tests_TAO_Ledger_stake.o \
 		   build/Tests_TAO_Register_objects.o \
@@ -371,20 +416,22 @@ ifdef UNIT_TESTS
 		   build/Tests_TAO_Operation_conditions.o \
 		   build/Tests_TAO_Operation_contract.o \
 		   build/Tests_TAO_Operation_debit.o \
-           build/Tests_TAO_Operation_credit.o \
+		   build/Tests_TAO_Operation_credit.o \
 		   build/Tests_TAO_Operation_erase.o \
 		   build/Tests_TAO_Operation_fees.o \
 		   build/Tests_TAO_Operation_migrate.o \
 		   build/Tests_TAO_Operation_names.o \
 		   build/Tests_TAO_Operation_register.o \
 		   build/Tests_TAO_Operation_transfer.o \
-           build/Tests_TAO_Operation_claim.o \
+		   build/Tests_TAO_Operation_claim.o \
 		   build/Tests_TAO_Operation_trust.o \
 		   build/Tests_TAO_Operation_validate.o \
 		   build/Tests_TAO_Operation_write.o \
+		   build/Tests_Util_concurrent_hashmap.o \
 		   build/Tests_Util_config.o \
 		   build/Tests_Util_hex.o \
-		   build/Tests_Util_math.o
+		   build/Tests_Util_math.o \
+		   build/Tests_Util_nexus_conf_settings.o
 
 	DEFS += -DUNIT_TESTS
 
