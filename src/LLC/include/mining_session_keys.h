@@ -96,15 +96,20 @@ namespace MiningSessionKeys
 
     /** DeriveFalconSessionId
      *
-     *  Derives a Falcon session identifier from genesis + pubkey + timestamp.
-     *  
+     *  DEPRECATED — Scheduled for removal in a follow-up PR.
+     *
      *  This was the ORIGINAL FalconHandshake design for session binding.
-     *  Currently used for session recovery and session-specific security.
-     *  The timestamp is rounded to the hour for session stability.
+     *  The time-dependent rotation (originally hourly, now daily) caused session
+     *  instability at window boundaries and is NOT the canonical session identity.
+     *
+     *  The canonical session identity is:
+     *    hashKeyID = DeriveKeyId(falcon_pubkey)          [immutable per key]
+     *    nSessionId = MiningContext::DeriveSessionId(hashKeyID) [wire protocol]
+     *
+     *  Only one production caller remains (falcon_handshake.cpp GenerateSessionKey).
+     *  New code MUST NOT call this function — use DeriveKeyId() + DeriveSessionId() instead.
      *
      *  Algorithm: SK256(genesis || pubkey || rounded_timestamp)
-     *  Note: Unlike ChaCha20 keys, this uses SK256 (Skein-Keccak) which is
-     *  Nexus's standard hash function for internal operations.
      *
      *  @param[in] hashGenesis Tritium genesis hash
      *  @param[in] vPubKey Falcon public key bytes
@@ -113,6 +118,7 @@ namespace MiningSessionKeys
      *  @return Session identifier hash
      *
      **/
+    [[deprecated("Use DeriveKeyId() + MiningContext::DeriveSessionId() instead")]]
     inline uint256_t DeriveFalconSessionId(
         const uint256_t& hashGenesis,
         const std::vector<uint8_t>& vPubKey,
@@ -129,8 +135,10 @@ namespace MiningSessionKeys
         /* Add miner public key */
         vInput.insert(vInput.end(), vPubKey.begin(), vPubKey.end());
         
-        /* Add timestamp (rounded to hour for session stability) */
-        uint64_t nRoundedTime = (nTimestamp / 3600) * 3600;
+        /* Add timestamp rounded to day (86400s) to align with SESSION_LIVENESS_TIMEOUT_SECONDS.
+         * Previously used hourly (3600s) rounding which caused session instability at
+         * hour boundaries — sessions would get different IDs after each hour rollover. */
+        uint64_t nRoundedTime = (nTimestamp / 86400) * 86400;
         for(size_t i = 0; i < 8; ++i)
         {
             vInput.push_back(static_cast<uint8_t>((nRoundedTime >> (i * 8)) & 0xFF));

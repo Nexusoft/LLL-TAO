@@ -211,7 +211,13 @@ namespace FalconHandshake
      *
      *  Derive session key from genesis hash and miner public key.
      *
+     *  DEPRECATED — This function wraps the deprecated DeriveFalconSessionId().
+     *  The canonical session identity is MiningContext::DeriveSessionId(hashKeyID).
+     *  This wrapper is preserved only for existing handshake compatibility.
+     *
      **/
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     uint256_t GenerateSessionKey(
         const uint256_t& hashGenesis,
         const std::vector<uint8_t>& vMinerPubKey,
@@ -221,6 +227,7 @@ namespace FalconHandshake
         /* Use unified helper for Falcon session ID derivation */
         return LLC::MiningSessionKeys::DeriveFalconSessionId(hashGenesis, vMinerPubKey, nTimestamp);
     }
+#pragma GCC diagnostic pop
 
 
     /** BuildHandshakePacket

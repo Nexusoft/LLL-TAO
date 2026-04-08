@@ -191,11 +191,19 @@ namespace LLP
             /* Session exists - refresh it */
             NodeSessionEntry entry = *existing;
 
-            /* Update liveness flags based on lane */
+            /* Enforce single-lane operation: a miner can only be on ONE port at a time.
+             * When a lane registers or refreshes, the other lane is marked dead.
+             * This prevents stale dual-lane state from persisting across reconnections. */
             if(lane == ProtocolLane::STATELESS)
+            {
                 entry = entry.WithStatelessLive(true);
+                entry = entry.WithLegacyLive(false);
+            }
             else
+            {
                 entry = entry.WithLegacyLive(true);
+                entry = entry.WithStatelessLive(false);
+            }
 
             /* Update activity timestamp and context */
             entry = entry.WithActivity(nNow);
