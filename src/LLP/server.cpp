@@ -1274,7 +1274,7 @@ namespace LLP
                     /* SweepExpired runs first to mark dead registry entries and
                      * propagate to ActiveSessionBoard.  Then CleanupInactive
                      * catches any orphaned entries in StatelessMinerManager via
-                     * EvictMiner's cross-cache propagation. */
+                     * RemoveMiner's cross-cache propagation. */
                     NodeSessionRegistry::Get().SweepExpired(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
                     StatelessMinerManager::Get().CleanupInactive(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
                     StatelessMinerManager::Get().PurgeInactiveMiners();

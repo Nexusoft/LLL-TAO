@@ -159,28 +159,22 @@ namespace LLP
          **/
         bool HasSwitchedLanes(const std::string& strAddress, uint8_t nNewLane) const;
 
-        /** EvictMiner
+        /** RemoveMiner
          *
-         *  Unified miner removal entry point.  Removes the miner from
-         *  StatelessMinerManager (primary + all 5 secondary indices) and
-         *  propagates the removal to NodeSessionRegistry and
-         *  ActiveSessionBoard, preventing split-brain across the three
-         *  session stores.
+         *  Remove a miner from tracking.  Handles cross-cache cleanup
+         *  (NodeSessionRegistry + ActiveSessionBoard MarkDisconnected)
+         *  internally so callers never need manual propagation.
          *
-         *  All code paths that remove a miner MUST go through this method.
-         *  RemoveMiner() is a private helper that only cleans the local maps.
-         *
-         *  @param[in] strAddress Miner address (IP:port)
+         *  @param[in] strAddress Miner address
          *
          *  @return true if miner was found and removed
          *
          **/
-        bool EvictMiner(const std::string& strAddress);
+        bool RemoveMiner(const std::string& strAddress);
 
         /** RemoveMinerByKeyID
          *
          *  Remove a miner from tracking by Falcon key ID.
-         *  Delegates to EvictMiner() for full cross-cache propagation.
          *
          *  @param[in] hashKeyID Falcon key identifier
          *
@@ -213,27 +207,31 @@ namespace LLP
 
         /** GetMinerContextByIP
          *
+         *  @deprecated Architecturally unsound for NAT environments where multiple
+         *  miners share the same IP.  Use session-ID-based lookups instead.
+         *
          *  Look up a miner context using only the IP address (ignoring port).
-         *  Used as fallback when IP:port lookup misses due to ephemeral port changes.
-         *  If multiple miners share the same IP (e.g. behind NAT), returns the most
-         *  recently active one.
          *
          *  @param[in] strIP   IP address string (no port)
          *
          *  @return Optional MiningContext, empty if not found
          *
          **/
+        [[deprecated("Use session-ID-based lookups; IP-only is unreliable behind NAT")]]
         std::optional<MiningContext> GetMinerContextByIP(const std::string& strIP) const;
 
         /** GetMinerContextByAddressOrIP
          *
-         *  Resolve a miner first by exact IP:port, then by IP-only fallback. When
-         *  the fallback finds a context for the same session on a different port,
-         *  it may migrate the primary address key to the new address.
+         *  Resolve a miner by exact IP:port, then by IP-only key (for stateless
+         *  miners canonically keyed without port).
+         *
+         *  IP-only fallback via mapIPToAddress has been removed because it is
+         *  unreliable behind NAT (multiple miners share the same IP).  Callers
+         *  should use session-ID-based lookups for cross-connection recovery.
          *
          *  @param[in] strAddress Exact miner address (IP:port)
-         *  @param[in] nExpectedSessionId Optional caller-known session id for safe migration
-         *  @param[in] fMigrateAddress When true, migrate exact-address tracking on safe fallback hit
+         *  @param[in] nExpectedSessionId Unused (retained for ABI compatibility)
+         *  @param[in] fMigrateAddress Unused (retained for ABI compatibility)
          *
          *  @return Optional MiningContext, empty if not found
          *
@@ -579,19 +577,6 @@ namespace LLP
     private:
         /** Private constructor for singleton **/
         StatelessMinerManager() = default;
-
-        /** RemoveMiner
-         *
-         *  PRIVATE helper — removes a miner from local maps only (primary +
-         *  5 secondary indices).  Does NOT propagate to NodeSessionRegistry
-         *  or ActiveSessionBoard.  All external callers must use EvictMiner().
-         *
-         *  @param[in] strAddress Miner address
-         *
-         *  @return true if miner was found and removed
-         *
-         **/
-        bool RemoveMiner(const std::string& strAddress);
 
         /** Thread-safe concurrent hash map of miner address to context **/
         util::ConcurrentHashMap<std::string, MiningContext> mapMiners;

@@ -796,11 +796,12 @@ namespace LLP
                 debug::log(0, FUNCTION, "MinerLLP: [", strCategory, "] Disconnected from ", GetAddress().ToStringIP(),
                            " reason: ", strReason);
 
-                /* Unified removal: EvictMiner handles local maps + cross-cache
-                 * propagation to NodeSessionRegistry and ActiveSessionBoard. */
+                /* Remove from StatelessMinerManager tracking.
+                 * RemoveMiner() handles cross-cache cleanup (NodeSessionRegistry +
+                 * ActiveSessionBoard MarkDisconnected) internally. */
                 {
                     LOCK(MUTEX);
-                    StatelessMinerManager::Get().EvictMiner(context.strAddress);
+                    StatelessMinerManager::Get().RemoveMiner(context.strAddress);
                 }
 
                 return;

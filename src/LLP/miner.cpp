@@ -535,7 +535,7 @@ namespace LLP
                 /* Interrupt any in-flight SendChannelNotification() path immediately. */
                 m_shutdownRequested.store(true, std::memory_order_release);
 
-                /* Unified removal: EvictMiner handles local maps + cross-cache
+                /* RemoveMiner handles local maps + cross-cache
                  * propagation to NodeSessionRegistry and ActiveSessionBoard.
                  * Under single-lane policy, the miner may have a
                  * StatelessMinerManager entry from prior stateless activity. */
@@ -543,7 +543,7 @@ namespace LLP
                 {
                     const std::string strMinerAddress = GetAddress().ToStringIP();
                     if(!strMinerAddress.empty())
-                        StatelessMinerManager::Get().EvictMiner(strMinerAddress);
+                        StatelessMinerManager::Get().RemoveMiner(strMinerAddress);
                 }
 
                 /* Notify Colin agent on disconnect (only if genesis was known) */
