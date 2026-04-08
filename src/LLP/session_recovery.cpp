@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/include/session_recovery.h>
+#include <LLP/include/session_store.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 
@@ -462,6 +463,17 @@ namespace LLP
         debug::log(2, FUNCTION, "  recovered_chacha20_key_hash=", Diagnostics::FullHexOrUnset(data.hashChaCha20Key));
         debug::log(2, FUNCTION, "  session_consistency=", SessionConsistencyResultString(data.ValidateConsistency()));
 
+        /* Dual-write: sync recovery state to SessionStore.
+         * SessionStore tracks recovery via fSavedForRecovery flag rather than
+         * copying to a separate store.  Mark the session as recoverable. */
+        SessionStore::Get().Transform(context.hashKeyID, [](const CanonicalSession& cs) {
+            CanonicalSession updated = cs;
+            updated.fSavedForRecovery = true;
+            if(updated.nDisconnectTime == 0)
+                updated.nDisconnectTime = runtime::unifiedtimestamp();
+            return updated;
+        });
+
         return true;
     }
 
@@ -671,6 +683,15 @@ namespace LLP
         }
 
         debug::log(2, FUNCTION, "Removed session for keyID=", hashKeyID.SubString());
+
+        /* Dual-write: clear recovery flag in SessionStore */
+        SessionStore::Get().Transform(hashKeyID, [](const CanonicalSession& cs) {
+            CanonicalSession updated = cs;
+            updated.fSavedForRecovery = false;
+            updated.nDisconnectTime = 0;
+            return updated;
+        });
+
         return true;
     }
 
@@ -725,6 +746,16 @@ namespace LLP
         data.fEncryptionReady = (hashKey != 0);
         data.nChaCha20Nonce = nNonce;
         mapSessionsByKey.Update(hashKeyID, data);
+
+        /* Dual-write: sync ChaCha20 state to SessionStore */
+        SessionStore::Get().Transform(hashKeyID, [&](const CanonicalSession& cs) {
+            CanonicalSession updated = cs;
+            updated.vChaChaKey = hashKey.GetBytes();
+            updated.hashChaCha20Key = hashKey;
+            updated.nChaCha20Nonce = nNonce;
+            updated.fEncryptionReady = (hashKey != 0);
+            return updated;
+        });
 
         return true;
     }

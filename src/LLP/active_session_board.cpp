@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/include/active_session_board.h>
+#include <LLP/include/session_store.h>
 
 #include <Util/include/config.h>
 #include <Util/include/debug.h>
@@ -71,6 +72,18 @@ namespace LLP
                 " channel=", nChannel,
                 " total=", m_mapSessions.size());
         }
+
+        /* Dual-write: sync health fields to SessionStore.
+         * Lookup by session ID since that's what we have here. */
+        SessionStore::Get().TransformBySessionId(nSessionId, [&](const CanonicalSession& cs) {
+            CanonicalSession updated = cs;
+            updated.nFailedPackets = 0;
+            updated.fMarkedDisconnected = false;
+            updated.nLastSuccessfulSend = runtime::unifiedtimestamp();
+            updated.fSubscribedToNotifications = fSubscribed;
+            updated.nSubscribedChannel = nChannel;
+            return updated;
+        });
     }
 
 
@@ -129,6 +142,15 @@ namespace LLP
                 " failures=", nFailed, "/", nThreshold,
                 " — stopped receiving PUSH until re-authentication");
         }
+
+        /* Dual-write: sync failure count and disconnect flag to SessionStore */
+        SessionStore::Get().TransformBySessionId(nSessionId, [nFailed, nThreshold](const CanonicalSession& cs) {
+            CanonicalSession updated = cs;
+            updated.nFailedPackets = nFailed;
+            if(nFailed >= nThreshold)
+                updated.fMarkedDisconnected = true;
+            return updated;
+        });
     }
 
 
@@ -140,6 +162,13 @@ namespace LLP
         auto it = m_mapSessions.find(key);
         if(it != m_mapSessions.end())
             it->second.fMarkedDisconnected.store(true, std::memory_order_relaxed);
+
+        /* Dual-write: mark disconnected in SessionStore */
+        SessionStore::Get().TransformBySessionId(nSessionId, [](const CanonicalSession& cs) {
+            CanonicalSession updated = cs;
+            updated.fMarkedDisconnected = true;
+            return updated;
+        });
     }
 
 
