@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLP/include/node_cache.h>
 #include <LLP/include/node_session_registry.h>
 #include <LLP/include/active_session_board.h>
+#include <LLP/include/mining_timers.h>
 
 #include <TAO/Ledger/types/block.h>
 #include <TAO/Register/types/address.h>
@@ -32,14 +33,9 @@ ________________________________________________________________________________
 namespace LLP
 {
     /* Grace period for keepalive check in smart timeout logic.
-     * Sessions with a keepalive exchange within this window are not considered idle.
-     *
-     * This value is intentionally aligned with the miner's maximum degraded recovery
-     * window: DEGRADED_MODE_HARD_LIMIT_SECONDS (300s) + 2 keepalive intervals (2×60s = 120s).
-     * A miner in DEGRADED MODE sends keepalives every ~60s but may stop sending new
-     * MINER_READY for up to 300s while running its escape ladder. Evicting the session
-     * during that window would cause Stateless=0 on the next BroadcastChannel event. */
-    static const uint64_t KEEPALIVE_GRACE_PERIOD_SEC = 420;
+     * Now sourced from the centralized MiningTimers::KEEPALIVE_GRACE_PERIOD_SEC
+     * constant.  See mining_timers.h for the full rationale. */
+    static constexpr uint64_t KEEPALIVE_GRACE_PERIOD_SEC = MiningTimers::KEEPALIVE_GRACE_PERIOD_SEC;
 
     /* Get singleton instance */
     StatelessMinerManager& StatelessMinerManager::Get()
