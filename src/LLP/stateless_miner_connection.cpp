@@ -796,16 +796,11 @@ namespace LLP
                 debug::log(0, FUNCTION, "MinerLLP: [", strCategory, "] Disconnected from ", GetAddress().ToStringIP(),
                            " reason: ", strReason);
 
-                /* hashKeyID is only considered valid after authenticated Falcon session setup.
-                 * Zero remains the sentinel for "no authenticated session", and the registry
-                 * also safely no-ops if the key was never registered. */
-                if(context.fAuthenticated && context.hashKeyID != 0)
-                    NodeSessionRegistry::Get().MarkDisconnected(context.hashKeyID, ProtocolLane::STATELESS);
-
-                /* Remove from StatelessMinerManager tracking */
+                /* Unified removal: EvictMiner handles local maps + cross-cache
+                 * propagation to NodeSessionRegistry and ActiveSessionBoard. */
                 {
                     LOCK(MUTEX);
-                    StatelessMinerManager::Get().RemoveMiner(context.strAddress);
+                    StatelessMinerManager::Get().EvictMiner(context.strAddress);
                 }
 
                 return;

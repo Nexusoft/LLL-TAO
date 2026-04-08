@@ -340,11 +340,42 @@ namespace LLP
         return true;
     }
 
-    /* Remove a miner by key ID */
+    /* Unified miner removal with cross-cache propagation */
+    bool StatelessMinerManager::EvictMiner(const std::string& strAddress)
+    {
+        /* Peek at the context before removal to capture identity fields.
+         * We need hashKeyID and nSessionId for cross-cache notification. */
+        auto optContext = mapMiners.Get(strAddress);
+
+        /* Remove from local maps (primary + 5 secondary indices) */
+        if(!RemoveMiner(strAddress))
+            return false;
+
+        /* Cross-cache consistency: propagate removal to NodeSessionRegistry
+         * and ActiveSessionBoard so all three stores agree this session is dead. */
+        if(optContext.has_value())
+        {
+            const MiningContext& ctx = optContext.value();
+
+            if(ctx.hashKeyID != 0)
+            {
+                NodeSessionRegistry::Get().MarkDisconnected(ctx.hashKeyID, ProtocolLane::STATELESS);
+                NodeSessionRegistry::Get().MarkDisconnected(ctx.hashKeyID, ProtocolLane::LEGACY);
+            }
+
+            if(ctx.nSessionId != 0)
+            {
+                ActiveSessionBoard::Get().MarkDisconnected(ctx.nSessionId, ProtocolLane::STATELESS);
+                ActiveSessionBoard::Get().MarkDisconnected(ctx.nSessionId, ProtocolLane::LEGACY);
+            }
+        }
+
+        return true;
+    }
     bool StatelessMinerManager::RemoveMinerByKeyID(const uint256_t& hashKeyID)
     {
         /* GetAndRemove is intentionally NOT used here.
-         * RemoveMiner() already guards its mapKeyToAddress erase with a value
+         * EvictMiner() already guards its mapKeyToAddress erase with a value
          * check, so we only need the address lookup (non-destructive Get).
          * The previous code did GetAndRemove + RemoveMiner which double-erased
          * mapKeyToAddress, creating a window where a concurrent UpdateMiner()
@@ -353,7 +384,7 @@ namespace LLP
         if(!optAddress.has_value())
             return false;
 
-        return RemoveMiner(optAddress.value());
+        return EvictMiner(optAddress.value());
     }
 
     /* Get miner context by address */
@@ -459,7 +490,7 @@ namespace LLP
 
         const uint8_t nLane = GetMinerLane(strFallbackAddress).value_or(0);
 
-        RemoveMiner(strFallbackAddress);
+        EvictMiner(strFallbackAddress);
         UpdateMiner(strAddress, migrated, nLane);
 
         debug::log(1, FUNCTION, "Migrated miner context address ",
@@ -600,33 +631,8 @@ namespace LLP
                           "keepalives_rx: ", ctx.nKeepaliveCount, ", ",
                           "keepalives_tx: ", ctx.nKeepaliveSent);
 
-                /* Capture identity fields before RemoveMiner erases the context */
-                const uint256_t hashKeyID = ctx.hashKeyID;
-                const uint32_t nSessionId = ctx.nSessionId;
-
-                if(RemoveMiner(pair.first))
-                {
+                if(EvictMiner(pair.first))
                     ++nRemoved;
-
-                    /* Cross-cache consistency: if the miner had a registered session,
-                     * mark it disconnected in NodeSessionRegistry so SweepExpired()
-                     * agrees this session is dead.  Without this, the session could
-                     * persist in the registry long after StatelessMinerManager removed it,
-                     * creating a split-brain where one store has the session and the other
-                     * does not. */
-                    if(hashKeyID != 0)
-                    {
-                        NodeSessionRegistry::Get().MarkDisconnected(hashKeyID, ProtocolLane::STATELESS);
-                        NodeSessionRegistry::Get().MarkDisconnected(hashKeyID, ProtocolLane::LEGACY);
-                    }
-
-                    /* Also mark on ActiveSessionBoard to stop push notifications */
-                    if(nSessionId != 0)
-                    {
-                        ActiveSessionBoard::Get().MarkDisconnected(nSessionId, ProtocolLane::STATELESS);
-                        ActiveSessionBoard::Get().MarkDisconnected(nSessionId, ProtocolLane::LEGACY);
-                    }
-                }
             }
         }
 
@@ -852,27 +858,8 @@ namespace LLP
                 debug::log(2, FUNCTION, "Purging inactive miner ", ctx.strAddress, 
                           " (inactive for ", (nNow - ctx.nTimestamp), " seconds)");
 
-                /* Capture identity fields before RemoveMiner erases the context */
-                const uint256_t hashKeyID = ctx.hashKeyID;
-                const uint32_t nSessionId = ctx.nSessionId;
-                
-                if(RemoveMiner(pair.first))
-                {
+                if(EvictMiner(pair.first))
                     ++nRemoved;
-
-                    /* Cross-cache consistency: mark session as dead in NodeSessionRegistry
-                     * and ActiveSessionBoard to prevent split-brain. */
-                    if(hashKeyID != 0)
-                    {
-                        NodeSessionRegistry::Get().MarkDisconnected(hashKeyID, ProtocolLane::STATELESS);
-                        NodeSessionRegistry::Get().MarkDisconnected(hashKeyID, ProtocolLane::LEGACY);
-                    }
-                    if(nSessionId != 0)
-                    {
-                        ActiveSessionBoard::Get().MarkDisconnected(nSessionId, ProtocolLane::STATELESS);
-                        ActiveSessionBoard::Get().MarkDisconnected(nSessionId, ProtocolLane::LEGACY);
-                    }
-                }
             }
         }
 
@@ -926,7 +913,7 @@ namespace LLP
             /* Remove unauthenticated miners first */
             if(!ctx.fAuthenticated)
             {
-                if(RemoveMiner(pair.first))
+                if(EvictMiner(pair.first))
                     ++nRemoved;
             }
         }
@@ -945,10 +932,9 @@ namespace LLP
                 if(NodeCache::IsLocalhost(ctx.strAddress))
                     continue;
 
-                /* Remove authenticated miners */
                 if(ctx.fAuthenticated)
                 {
-                    if(RemoveMiner(pair.first))
+                    if(EvictMiner(pair.first))
                         ++nRemoved;
                 }
             }
@@ -962,7 +948,7 @@ namespace LLP
                 if(nRemoved >= nToRemove)
                     break;
 
-                if(RemoveMiner(pair.first))
+                if(EvictMiner(pair.first))
                     ++nRemoved;
             }
         }

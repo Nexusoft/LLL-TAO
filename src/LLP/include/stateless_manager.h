@@ -159,20 +159,28 @@ namespace LLP
          **/
         bool HasSwitchedLanes(const std::string& strAddress, uint8_t nNewLane) const;
 
-        /** RemoveMiner
+        /** EvictMiner
          *
-         *  Remove a miner from tracking.
+         *  Unified miner removal entry point.  Removes the miner from
+         *  StatelessMinerManager (primary + all 5 secondary indices) and
+         *  propagates the removal to NodeSessionRegistry and
+         *  ActiveSessionBoard, preventing split-brain across the three
+         *  session stores.
          *
-         *  @param[in] strAddress Miner address
+         *  All code paths that remove a miner MUST go through this method.
+         *  RemoveMiner() is a private helper that only cleans the local maps.
+         *
+         *  @param[in] strAddress Miner address (IP:port)
          *
          *  @return true if miner was found and removed
          *
          **/
-        bool RemoveMiner(const std::string& strAddress);
+        bool EvictMiner(const std::string& strAddress);
 
         /** RemoveMinerByKeyID
          *
          *  Remove a miner from tracking by Falcon key ID.
+         *  Delegates to EvictMiner() for full cross-cache propagation.
          *
          *  @param[in] hashKeyID Falcon key identifier
          *
@@ -571,6 +579,19 @@ namespace LLP
     private:
         /** Private constructor for singleton **/
         StatelessMinerManager() = default;
+
+        /** RemoveMiner
+         *
+         *  PRIVATE helper — removes a miner from local maps only (primary +
+         *  5 secondary indices).  Does NOT propagate to NodeSessionRegistry
+         *  or ActiveSessionBoard.  All external callers must use EvictMiner().
+         *
+         *  @param[in] strAddress Miner address
+         *
+         *  @return true if miner was found and removed
+         *
+         **/
+        bool RemoveMiner(const std::string& strAddress);
 
         /** Thread-safe concurrent hash map of miner address to context **/
         util::ConcurrentHashMap<std::string, MiningContext> mapMiners;

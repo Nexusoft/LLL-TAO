@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <LLP/include/opcode_utility.h>
 #include <LLP/include/node_cache.h>
 #include <LLP/include/session_recovery.h>
+#include <LLP/include/active_session_board.h>
 #include <LLP/include/get_block_policy.h>
 #include <LLP/include/mining_session_health.h>
 #include <LLP/include/push_notification.h>
@@ -534,10 +535,16 @@ namespace LLP
                 /* Interrupt any in-flight SendChannelNotification() path immediately. */
                 m_shutdownRequested.store(true, std::memory_order_release);
 
-                /* Notify NodeSessionRegistry that this legacy lane miner has disconnected.
-                 * hashKeyID is set during Falcon authentication; zero means never authenticated. */
-                if(fMinerAuthenticated && hashKeyID != 0)
-                    NodeSessionRegistry::Get().MarkDisconnected(hashKeyID, ProtocolLane::LEGACY);
+                /* Unified removal: EvictMiner handles local maps + cross-cache
+                 * propagation to NodeSessionRegistry and ActiveSessionBoard.
+                 * Under single-lane policy, the miner may have a
+                 * StatelessMinerManager entry from prior stateless activity. */
+                if(fMinerAuthenticated)
+                {
+                    const std::string strMinerAddress = GetAddress().ToStringIP();
+                    if(!strMinerAddress.empty())
+                        StatelessMinerManager::Get().EvictMiner(strMinerAddress);
+                }
 
                 /* Notify Colin agent on disconnect (only if genesis was known) */
                 if(hashGenesis != 0)
