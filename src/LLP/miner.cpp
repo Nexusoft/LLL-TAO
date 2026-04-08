@@ -664,6 +664,24 @@ namespace LLP
                 if(transformedCtx.fAuthenticated && transformedCtx.hashKeyID != 0)
                     SessionRecoveryManager::Get().SaveSession(transformedCtx);
 
+                /* CRITICAL FIX: Refresh the canonical session identity in NodeSessionRegistry.
+                 * Previously, keepalive updated MiningContext.nTimestamp and SessionRecoveryManager
+                 * but never touched NodeSessionRegistry.nLastActivity.  SweepExpired() uses
+                 * nLastActivity as the sole expiry clock, so sessions were being reaped after
+                 * 24 hours despite continuous keepalive traffic.
+                 *
+                 * NodeSessionRegistry is the canonical owner of MinerIdentity — all liveness
+                 * refreshes must propagate here to prevent premature session expiration. */
+                if(transformedCtx.fAuthenticated && transformedCtx.hashKeyID != 0)
+                {
+                    NodeSessionRegistry::Get().RegisterOrRefresh(
+                        transformedCtx.hashKeyID,
+                        transformedCtx.hashGenesis,
+                        transformedCtx,
+                        ProtocolLane::LEGACY
+                    );
+                }
+
                 /* Reset connection activity timer to prevent idle disconnection */
                 this->Reset();
 
@@ -843,7 +861,7 @@ namespace LLP
                     1,                             // Protocol version
                     fMinerAuthenticated,           // Authentication state
                     nSessionId,                    // Session ID
-                    uint256_t(0),                  // hashKeyID (set to 0, will be derived in StatelessMiner from pubkey)
+                    hashKeyID,                     // Falcon key hash (populated after auth; 0 before auth)
                     hashGenesis                    // Genesis hash
                 );
 
@@ -1467,28 +1485,60 @@ namespace LLP
         if(IsLegacyPreflightBypassOpcode(PACKET.HEADER) || !IsLegacyPreflightProtectedOpcode(PACKET.HEADER))
             return true;
 
-        /* Build a MiningContext snapshot from the legacy per-connection fields
-         * so we can use the shared state machine and consistency validation. */
-        MiningContext ctx(
-            nChannel.load(),
-            nBestHeight,
-            runtime::unifiedtimestamp(),
-            GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort()),
-            1,
-            fMinerAuthenticated.load(),
-            nSessionId,
-            hashKeyID,
-            hashGenesis
-        );
+        if(!fMinerAuthenticated)
+        {
+            debug::log(0, FUNCTION, "PreflightSessionGate: unauthenticated opcode 0x",
+                       std::hex, uint32_t(PACKET.HEADER), std::dec,
+                       " from ", GetAddress().ToStringIP());
+            std::vector<uint8_t> vFail(1, 0x00);
+            respond_auto(MINER_AUTH_RESULT, vFail);
+            return false;
+        }
 
-        if(!vMinerPubKey.empty())
-            ctx = ctx.WithPubKey(vMinerPubKey);
-        if(!vAuthNonce.empty())
-            ctx = ctx.WithNonce(vAuthNonce);
-        if(fRewardBound)
-            ctx = ctx.WithRewardAddress(hashRewardAddress);
-        if(fEncryptionReady && !vChaChaKey.empty())
-            ctx = ctx.WithChaChaKey(vChaChaKey);
+        /* Consult the authoritative StatelessMinerManager context when available.
+         * Primary: GetMinerContextByAddressOrIP() handles ephemeral port changes (GAP 3).
+         * Fallback: construct from per-connection member variables (pre-manager state).
+         * Third parameter (fMigrateAddress=false): read-only lookup, do not re-key the
+         * context address in the manager — migration is reserved for SUBMIT_BLOCK. */
+        const std::string strLookupAddr = GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort());
+        auto optCtx = StatelessMinerManager::Get().GetMinerContextByAddressOrIP(
+            strLookupAddr, nSessionId, /* fMigrateAddress= */ false);
+
+        MiningContext ctx = [&]() -> MiningContext
+        {
+            if(optCtx.has_value())
+            {
+                debug::log(3, FUNCTION, "PreflightSessionGate: using authoritative manager context for ",
+                           strLookupAddr);
+                return optCtx.value();
+            }
+
+            debug::log(3, FUNCTION, "PreflightSessionGate: falling back to local state for ",
+                       strLookupAddr);
+
+            MiningContext local(
+                nChannel.load(),
+                nBestHeight,
+                runtime::unifiedtimestamp(),
+                strLookupAddr,
+                1,
+                fMinerAuthenticated.load(),
+                nSessionId,
+                hashKeyID,
+                hashGenesis
+            );
+
+            if(!vMinerPubKey.empty())
+                local = local.WithPubKey(vMinerPubKey);
+            if(!vAuthNonce.empty())
+                local = local.WithNonce(vAuthNonce);
+            if(fRewardBound)
+                local = local.WithRewardAddress(hashRewardAddress);
+            if(fEncryptionReady && !vChaChaKey.empty())
+                local = local.WithChaChaKey(vChaChaKey);
+
+            return local;
+        }();
 
         /* 2.4: State-based gate — single comparison replaces scattered boolean checks. */
         const MinerSessionState nRequired = MinimumStateForLegacyOpcode(PACKET.HEADER);
@@ -1525,7 +1575,8 @@ namespace LLP
             debug::log(0, FUNCTION, "PreflightSessionGate: session inconsistency on opcode 0x",
                        std::hex, uint32_t(PACKET.HEADER), std::dec,
                        " from ", GetAddress().ToStringIP(), " result=",
-                       SessionConsistencyResultString(consistency));
+                       SessionConsistencyResultString(consistency),
+                       " source=", (optCtx.has_value() ? "manager" : "local"));
 
             if(PACKET.HEADER == GET_BLOCK)
                 respond_auto(BLOCK_REJECTED, BuildGetBlockControlPayload(GetBlockPolicyReason::SESSION_INVALID, 0));
@@ -1534,6 +1585,7 @@ namespace LLP
 
             return false;
         }
+
 
         return true;
     }

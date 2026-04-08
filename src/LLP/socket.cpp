@@ -840,8 +840,8 @@ namespace LLP
         /* Clear stale fBufferFull latch — if the buffer has drained to zero
          * but fBufferFull is still set (Flush() returned early on empty buffer,
          * or race window between nBufferSize.store(0) and fBufferFull.store(false)
-         * in Flush()), reset it now so callers (respond()'s retry loop) don't
-         * waste 30 ms on spurious retries.
+         * in Flush()), reset it now so subsequent Flush() calls don't
+         * attempt to drain an already-empty buffer.
          *
          * Use compare_exchange to avoid clobbering a concurrent
          * fBufferFull.store(true) from WritePacket() on another thread. */
@@ -944,7 +944,7 @@ namespace LLP
          * Clear any stale fBufferFull flag — the buffer has fully drained so the
          * latch is no longer meaningful.  Without this, a previous overflow can
          * leave fBufferFull permanently set after the buffer empties, causing
-         * respond()'s retry loop to spin on no-op Flush() calls. */
+         * respond() and other callers to perform unnecessary flush attempts. */
         if(nBufferSize.load() == 0)
         {
             /* Use compare_exchange to avoid clobbering a concurrent
