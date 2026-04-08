@@ -797,8 +797,8 @@ namespace LLP
                            " reason: ", strReason);
 
                 /* Remove from StatelessMinerManager tracking.
-                 * RemoveMiner() handles cross-cache cleanup (NodeSessionRegistry +
-                 * ActiveSessionBoard MarkDisconnected) internally. */
+                 * RemoveMiner() handles cross-cache cleanup (NodeSessionRegistry
+                 * MarkDisconnected) internally. */
                 {
                     LOCK(MUTEX);
                     StatelessMinerManager::Get().RemoveMiner(context.strAddress);

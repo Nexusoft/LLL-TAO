@@ -1292,10 +1292,10 @@ namespace LLP
 
                 if constexpr (is_miner_protocol_v<ProtocolType>)
                 {
-                    /* SweepExpired runs first to mark dead registry entries and
-                     * propagate to ActiveSessionBoard.  Then CleanupInactive
-                     * catches any orphaned entries in StatelessMinerManager via
-                     * RemoveMiner's cross-cache propagation. */
+                    /* SweepExpired runs first to mark dead registry entries.
+                     * Then CleanupInactive catches any orphaned entries in
+                     * StatelessMinerManager via RemoveMiner's cross-cache
+                     * propagation. */
                     NodeSessionRegistry::Get().SweepExpired(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
                     StatelessMinerManager::Get().CleanupInactive(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
                     StatelessMinerManager::Get().PurgeInactiveMiners();
