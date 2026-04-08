@@ -366,6 +366,16 @@ namespace LLP
             if(!liveEntry.has_value() || !liveEntry->IsExpired(nTimeoutSec, nNow))
                 continue;
 
+            /* Cross-cache consistency: mark the session as disconnected
+             * on ActiveSessionBoard before removing the registry entry.
+             * Without this, the board continues tracking the session
+             * as active, sending ghost notifications. */
+            if(liveEntry->nSessionId != 0)
+            {
+                ActiveSessionBoard::Get().MarkDisconnected(liveEntry->nSessionId, ProtocolLane::STATELESS);
+                ActiveSessionBoard::Get().MarkDisconnected(liveEntry->nSessionId, ProtocolLane::LEGACY);
+            }
+
             /* Remove from both maps */
             m_mapByKey.Erase(hashKeyID);
             m_mapSessionToKey.Erase(liveEntry->nSessionId);
