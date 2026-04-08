@@ -28,6 +28,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/trust_address.h>
 #include <LLP/include/auto_cooldown_manager.h>
+#include <LLP/include/active_session_board.h>
 #include <LLP/include/node_cache.h>
 #include <LLP/include/stateless_manager.h>
 #include <LLP/include/session_recovery.h>
@@ -1294,12 +1295,15 @@ namespace LLP
                     /* SweepExpired runs first to mark dead registry entries and
                      * propagate to ActiveSessionBoard.  Then CleanupInactive
                      * catches any orphaned entries in StatelessMinerManager via
-                     * RemoveMiner's cross-cache propagation. */
+                     * RemoveMiner's cross-cache propagation.
+                     * SweepStaleEntries runs last to remove orphaned board entries
+                     * that have been disconnected longer than the session timeout. */
                     NodeSessionRegistry::Get().SweepExpired(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
                     StatelessMinerManager::Get().CleanupInactive(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
                     StatelessMinerManager::Get().PurgeInactiveMiners();
                     SessionRecoveryManager::Get().CleanupExpired(
                         SessionRecoveryManager::Get().GetSessionTimeout());
+                    ActiveSessionBoard::Get().SweepStaleEntries(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
                 }
 
                 CLEANUP_TIMER.Reset();

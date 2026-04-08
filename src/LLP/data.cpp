@@ -36,7 +36,19 @@ namespace LLP
 {
     namespace
     {
-        static constexpr uint32_t MINING_POLL_EMPTY_TIMEOUT_MS = 100;
+        /** POLL_EMPTY timeout for mining connections (milliseconds).
+         *
+         *  This is the grace period before a spurious POLLIN + Available()==0
+         *  triggers DISCONNECT::POLL_EMPTY.  Pre-authentication Falcon handshakes
+         *  take ~100-500ms, during which IsTimeoutExempt() returns false.
+         *  A 100ms timeout was killing miners during auth with no diagnostic
+         *  feedback — the miner sees only a TCP RST.
+         *
+         *  5000ms gives ample time for Falcon key exchange to complete and avoids
+         *  false positives from Linux spurious POLLIN events (TCP keepalive ACKs,
+         *  etc.) while still detecting genuinely dead sockets within seconds.
+         */
+        static constexpr uint32_t MINING_POLL_EMPTY_TIMEOUT_MS = 5000;
     }
 
     /** Default Constructor **/

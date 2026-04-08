@@ -24,8 +24,14 @@ ________________________________________________________________________________
  *   - Each active mining session is registered on MINER_READY
  *   - Weak references avoid preventing connection cleanup
  *   - Failed packet delivery increments a failure counter
- *   - After configurable threshold failures, session is marked disconnected
- *   - Marked sessions stop receiving PUSH until re-authentication
+ *   - After configurable threshold failures, session enters AUTO-RECOVERING
+ *     cooldown (default 60s) — NOT a permanent ban
+ *   - Cooldown auto-expires: GetActiveForChannel() checks cooldown timestamp
+ *     and auto-recovers sessions whose cooldown has elapsed
+ *   - Registration version counter prevents AUTH/DISCONNECT race conditions:
+ *     MarkDisconnected() is a no-op if the session has been re-registered
+ *     since the disconnect was initiated
+ *   - SweepStaleEntries() removes orphaned entries during periodic cleanup
  *   - Board doubles as MAX_MINERS enforcement point
  */
 
@@ -57,6 +63,20 @@ namespace LLP
         std::atomic<uint64_t> nLastSuccessfulSend{0};      /* timestamp of last success */
         std::atomic<bool> fMarkedDisconnected{false};      /* soft-disconnect flag */
 
+        /** Cooldown expiry timestamp (epoch seconds).
+         *  When non-zero, this session is in cooldown and excluded from push
+         *  notifications.  Auto-recovers: GetActiveForChannel() clears the flag
+         *  when current time > nCooldownExpiry.  Replaces permanent banning. */
+        std::atomic<uint64_t> nCooldownExpiry{0};
+
+        /** Monotonically increasing version counter.
+         *  Incremented on every Register() call.  MarkDisconnected() compares
+         *  the caller's version against the current version — if they differ,
+         *  the session has been re-registered since the disconnect was initiated
+         *  and the stale MarkDisconnected is silently rejected.
+         *  This prevents the AUTH/DISCONNECT race (BUG 2). */
+        std::atomic<uint64_t> nVersion{0};
+
         ActiveSessionEntry() = default;
         ActiveSessionEntry(uint32_t sid, ProtocolLane lane, uint32_t ch, bool sub)
         : nSessionId(sid)
@@ -66,6 +86,8 @@ namespace LLP
         , nFailedPackets(0)
         , nLastSuccessfulSend(0)
         , fMarkedDisconnected(false)
+        , nCooldownExpiry(0)
+        , nVersion(0)
         {
         }
 
@@ -78,6 +100,8 @@ namespace LLP
         , nFailedPackets(other.nFailedPackets.load(std::memory_order_relaxed))
         , nLastSuccessfulSend(other.nLastSuccessfulSend.load(std::memory_order_relaxed))
         , fMarkedDisconnected(other.fMarkedDisconnected.load(std::memory_order_relaxed))
+        , nCooldownExpiry(other.nCooldownExpiry.load(std::memory_order_relaxed))
+        , nVersion(other.nVersion.load(std::memory_order_relaxed))
         {
         }
 
@@ -99,15 +123,26 @@ namespace LLP
         /** Get singleton instance. **/
         static ActiveSessionBoard& Get();
 
-        /** Consecutive failure threshold before marking session disconnected.
+        /** Consecutive failure threshold before entering cooldown.
          *  Configurable via -maxfailedpackets (default 5). **/
         static constexpr uint32_t DEFAULT_FAILED_PACKET_THRESHOLD = 5;
+
+        /** Default cooldown duration in seconds after exceeding failure threshold.
+         *  After this period, the session auto-recovers and can receive pushes again.
+         *  Configurable via -miningcooldownseconds (default 60).
+         *
+         *  This replaces the previous permanent shadow-ban behavior where a session
+         *  marked disconnected by RecordSendFailure() would NEVER recover until
+         *  node restart. */
+        static constexpr uint64_t DEFAULT_COOLDOWN_DURATION_SEC = 60;
 
         /* ── Registration ───────────────────────────────────────────────────── */
 
         /** Register an active session.  Called on MINER_READY.
-         *  If session+lane already exists, updates fields and resets health counters. **/
-        void Register(uint32_t nSessionId, ProtocolLane lane, uint32_t nChannel,
+         *  If session+lane already exists, updates fields and resets health counters.
+         *  Returns the new registration version (used by MarkDisconnected callers
+         *  to prevent stale disconnects from killing re-registered sessions). **/
+        uint64_t Register(uint32_t nSessionId, ProtocolLane lane, uint32_t nChannel,
                       bool fSubscribed);
 
         /** Unregister a session.  Called on DISCONNECT event. **/
@@ -115,30 +150,50 @@ namespace LLP
 
         /* ── Health tracking ────────────────────────────────────────────────── */
 
-        /** Record a successful send to a session. **/
+        /** Record a successful send to a session.
+         *  Resets failure counter AND clears any active cooldown. **/
         void RecordSendSuccess(uint32_t nSessionId, ProtocolLane lane);
 
         /** Record a failed send to a session.
-         *  If failures >= threshold, session is marked disconnected. **/
+         *  If failures >= threshold, session enters timed cooldown (auto-recovers).
+         *  Does NOT permanently ban — cooldown expires after
+         *  DEFAULT_COOLDOWN_DURATION_SEC seconds. **/
         void RecordSendFailure(uint32_t nSessionId, ProtocolLane lane);
 
-        /** Manually mark a session as disconnected. **/
-        void MarkDisconnected(uint32_t nSessionId, ProtocolLane lane);
+        /** Mark a session as disconnected (version-checked).
+         *  @param nExpectedVersion  The registration version at the time the
+         *         disconnect was initiated.  If the session has been re-registered
+         *         since (version mismatch), the mark is silently rejected.
+         *         Pass 0 to bypass version checking (unconditional mark). **/
+        void MarkDisconnected(uint32_t nSessionId, ProtocolLane lane,
+                              uint64_t nExpectedVersion = 0);
 
         /* ── Queries ────────────────────────────────────────────────────────── */
 
         /** Get session IDs for a specific channel on a specific lane that are
-         *  active (not marked disconnected) and subscribed to notifications. **/
-        std::vector<uint32_t> GetActiveForChannel(uint32_t nChannel, ProtocolLane lane) const;
+         *  active (not disconnected, not in cooldown) and subscribed.
+         *  Auto-recovers sessions whose cooldown has expired. **/
+        std::vector<uint32_t> GetActiveForChannel(uint32_t nChannel, ProtocolLane lane);
 
-        /** Get total number of active (not marked disconnected) sessions. **/
+        /** Get total number of active (not disconnected, not in cooldown) sessions. **/
         uint32_t GetTotalActive() const;
 
-        /** Get total number of registered sessions (including marked disconnected). **/
+        /** Get total number of registered sessions (including disconnected/cooled). **/
         uint32_t GetTotalRegistered() const;
 
-        /** Check if a session+lane is registered and not marked disconnected. **/
+        /** Check if a session+lane is registered and not disconnected/cooled. **/
         bool IsActive(uint32_t nSessionId, ProtocolLane lane) const;
+
+        /** Get the current registration version for a session.
+         *  Returns 0 if session is not registered. **/
+        uint64_t GetVersion(uint32_t nSessionId, ProtocolLane lane) const;
+
+        /* ── Maintenance ────────────────────────────────────────────────────── */
+
+        /** Sweep stale entries that have been disconnected for longer than
+         *  nStaleTimeout seconds.  Called from Meter() periodic cleanup.
+         *  Returns number of entries removed. **/
+        uint32_t SweepStaleEntries(uint64_t nStaleTimeout);
 
 
     private:
@@ -171,6 +226,9 @@ namespace LLP
 
         /** Get failure threshold from config. **/
         uint32_t GetFailedPacketThreshold() const;
+
+        /** Get cooldown duration from config. **/
+        uint64_t GetCooldownDuration() const;
     };
 
 } // namespace LLP
