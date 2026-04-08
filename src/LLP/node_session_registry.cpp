@@ -29,7 +29,6 @@ namespace LLP
         , fStatelessLive(false)
         , fLegacyLive(false)
         , nLastActivity(0)
-        , nSessionEpoch(0)
         , context()
     {
     }
@@ -42,8 +41,7 @@ namespace LLP
         bool fStatelessLive_,
         bool fLegacyLive_,
         uint64_t nLastActivity_,
-        const MiningContext& context_,
-        uint64_t nSessionEpoch_
+        const MiningContext& context_
     )
         : nSessionId(nSessionId_)
         , hashKeyID(hashKeyID_)
@@ -51,7 +49,6 @@ namespace LLP
         , fStatelessLive(fStatelessLive_)
         , fLegacyLive(fLegacyLive_)
         , nLastActivity(nLastActivity_)
-        , nSessionEpoch(nSessionEpoch_)
         , context(context_)
     {
     }
@@ -85,14 +82,6 @@ namespace LLP
     {
         NodeSessionEntry entry = *this;
         entry.context = context_;
-        return entry;
-    }
-
-    /** WithEpoch **/
-    NodeSessionEntry NodeSessionEntry::WithEpoch(uint64_t nEpoch_) const
-    {
-        NodeSessionEntry entry = *this;
-        entry.nSessionEpoch = nEpoch_;
         return entry;
     }
 
@@ -144,21 +133,6 @@ namespace LLP
         return SessionConsistencyResult::Ok;
     }
 
-    SessionConsistencyResult NodeSessionEntry::ValidateConsistency(uint64_t nCurrentEpoch) const
-    {
-        /* Run all structural checks first. */
-        const SessionConsistencyResult structural = ValidateConsistency();
-        if(structural != SessionConsistencyResult::Ok)
-            return structural;
-
-        /* Temporal check: if this entry's epoch is behind the current epoch,
-         * the session has been superseded by a newer authentication. */
-        if(IsEpochSuperseded(nSessionEpoch, nCurrentEpoch))
-            return SessionConsistencyResult::SessionSuperseded;
-
-        return SessionConsistencyResult::Ok;
-    }
-
     /** AnyPortLive **/
     bool NodeSessionEntry::AnyPortLive() const
     {
@@ -198,7 +172,7 @@ namespace LLP
     }
 
     /** RegisterOrRefresh **/
-    std::tuple<uint32_t, bool, uint64_t> NodeSessionRegistry::RegisterOrRefresh(
+    std::pair<uint32_t, bool> NodeSessionRegistry::RegisterOrRefresh(
         const uint256_t& hashKeyID,
         const uint256_t& hashGenesis,
         const MiningContext& context,
@@ -214,11 +188,8 @@ namespace LLP
         auto existing = m_mapByKey.Get(hashKeyID);
         if(existing)
         {
-            /* Session exists - refresh it with incremented epoch (re-authentication).
-             * uint64_t overflow is not a concern: at 1 re-auth per second it would
-             * take ~584 billion years to wrap. */
+            /* Session exists - refresh it */
             NodeSessionEntry entry = *existing;
-            const uint64_t nNewEpoch = entry.nSessionEpoch + 1;
 
             /* Enforce single-lane operation: a miner can only be on ONE port at a time.
              * When a lane registers or refreshes, the other lane is marked dead.
@@ -234,10 +205,9 @@ namespace LLP
                 entry = entry.WithStatelessLive(false);
             }
 
-            /* Update activity timestamp, context, and epoch */
+            /* Update activity timestamp and context */
             entry = entry.WithActivity(nNow);
             entry = entry.WithContext(context);
-            entry = entry.WithEpoch(nNewEpoch);
 
             /* Store updated entry */
             m_mapByKey.InsertOrUpdate(hashKeyID, entry);
@@ -245,14 +215,12 @@ namespace LLP
             debug::log(3, FUNCTION, "Refreshed session ", nSessionId,
                        " for key ", hashKeyID.SubString(),
                        " lane=", (lane == ProtocolLane::STATELESS ? "STATELESS" : "LEGACY"),
-                       " epoch=", nNewEpoch,
                        " consistency=", SessionConsistencyResultString(entry.ValidateConsistency()));
 
-            return {nSessionId, false, nNewEpoch};  // Not new, but epoch incremented
+            return {nSessionId, false};  // Not new
         }
 
-        /* New session - create entry with epoch=1 */
-        const uint64_t nFirstEpoch = 1;
+        /* New session - create entry */
         NodeSessionEntry entry(
             nSessionId,
             hashKeyID,
@@ -260,8 +228,7 @@ namespace LLP
             (lane == ProtocolLane::STATELESS),  // fStatelessLive
             (lane == ProtocolLane::LEGACY),     // fLegacyLive
             nNow,
-            context,
-            nFirstEpoch
+            context
         );
 
         /* Store in both maps.
@@ -287,10 +254,9 @@ namespace LLP
                    " for key ", hashKeyID.SubString(),
                    " lane=", (lane == ProtocolLane::STATELESS ? "STATELESS" : "LEGACY"),
                    " genesis=", hashGenesis.SubString(),
-                   " epoch=", nFirstEpoch,
                    " consistency=", SessionConsistencyResultString(entry.ValidateConsistency()));
 
-        return {nSessionId, true, nFirstEpoch};  // New session
+        return {nSessionId, true};  // New session
     }
 
     /** Lookup **/

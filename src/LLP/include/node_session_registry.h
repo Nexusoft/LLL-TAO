@@ -24,7 +24,6 @@ ________________________________________________________________________________
 #include <string>
 #include <optional>
 #include <atomic>
-#include <tuple>
 
 namespace LLP
 {
@@ -50,7 +49,6 @@ namespace LLP
         bool      fStatelessLive = false;
         bool      fLegacyLive    = false;
         uint64_t  nLastActivity  = 0;
-        uint64_t  nSessionEpoch  = 0;  ///< Monotonically increasing session generation counter
 
         /** Default Constructor **/
         NodeSessionEntryKey() = default;
@@ -62,8 +60,7 @@ namespace LLP
             const uint256_t& hashGenesis_,
             bool fStatelessLive_,
             bool fLegacyLive_,
-            uint64_t nLastActivity_,
-            uint64_t nSessionEpoch_ = 0
+            uint64_t nLastActivity_
         )
             : nSessionId(nSessionId_)
             , hashKeyID(hashKeyID_)
@@ -71,7 +68,6 @@ namespace LLP
             , fStatelessLive(fStatelessLive_)
             , fLegacyLive(fLegacyLive_)
             , nLastActivity(nLastActivity_)
-            , nSessionEpoch(nSessionEpoch_)
         {
         }
 
@@ -96,14 +92,6 @@ namespace LLP
         {
             NodeSessionEntryKey key = *this;
             key.nLastActivity = nTime_;
-            return key;
-        }
-
-        /** WithEpoch — returns copy with updated session epoch. **/
-        NodeSessionEntryKey WithEpoch(uint64_t nEpoch_) const
-        {
-            NodeSessionEntryKey key = *this;
-            key.nSessionEpoch = nEpoch_;
             return key;
         }
 
@@ -167,7 +155,6 @@ namespace LLP
         bool fStatelessLive;           // True if stateless port (9323) is connected
         bool fLegacyLive;              // True if legacy port (8323) is connected
         uint64_t nLastActivity;        // Timestamp of last activity on any port
-        uint64_t nSessionEpoch;        // Monotonically increasing session generation counter
         MiningContext context;         // Canonical mining state (shared across ports)
 
         /** Default Constructor **/
@@ -181,8 +168,7 @@ namespace LLP
             bool fStatelessLive_,
             bool fLegacyLive_,
             uint64_t nLastActivity_,
-            const MiningContext& context_,
-            uint64_t nSessionEpoch_ = 0
+            const MiningContext& context_
         );
 
         /** WithStatelessLive
@@ -229,17 +215,6 @@ namespace LLP
          **/
         NodeSessionEntry WithContext(const MiningContext& context_) const;
 
-        /** WithEpoch
-         *
-         *  Returns a new entry with updated session epoch.
-         *
-         *  @param[in] nEpoch_ New session epoch
-         *
-         *  @return New entry with updated epoch
-         *
-         **/
-        NodeSessionEntry WithEpoch(uint64_t nEpoch_) const;
-
         /** GetSessionBinding
          *
          *  Returns the canonical identity snapshot for node-side comparisons and
@@ -263,15 +238,6 @@ namespace LLP
          *
          **/
         SessionConsistencyResult ValidateConsistency() const;
-
-        /** ValidateConsistency (epoch-aware overload)
-         *
-         *  Structural validation plus temporal epoch check.
-         *
-         *  @param[in] nCurrentEpoch  Current epoch for superseded detection.
-         *
-         **/
-        SessionConsistencyResult ValidateConsistency(uint64_t nCurrentEpoch) const;
 
         /** AnyPortLive
          *
@@ -303,8 +269,7 @@ namespace LLP
         {
             return NodeSessionEntryKey(
                 nSessionId, hashKeyID, hashGenesis,
-                fStatelessLive, fLegacyLive, nLastActivity,
-                nSessionEpoch
+                fStatelessLive, fLegacyLive, nLastActivity
             );
         }
     };
@@ -333,7 +298,7 @@ namespace LLP
      *  USAGE PATTERN:
      *  ==============
      *  1. Authentication (either port):
-     *     auto [sessionId, isNew, epoch] = registry.RegisterOrRefresh(hashKeyID, hashGenesis, context, lane);
+     *     auto [sessionId, isNew] = registry.RegisterOrRefresh(hashKeyID, hashGenesis, context, lane);
      *     // Patch wire response DATA[1..4] with sessionId
      *
      *  2. Keepalive (critical for liveness):
@@ -384,10 +349,10 @@ namespace LLP
          *  @param[in] context Initial mining context
          *  @param[in] lane Protocol lane (LEGACY or STATELESS)
          *
-         *  @return Tuple of (nSessionId, isNewSession, nSessionEpoch)
+         *  @return Pair of (nSessionId, isNewSession)
          *
          **/
-        std::tuple<uint32_t, bool, uint64_t> RegisterOrRefresh(
+        std::pair<uint32_t, bool> RegisterOrRefresh(
             const uint256_t& hashKeyID,
             const uint256_t& hashGenesis,
             const MiningContext& context,

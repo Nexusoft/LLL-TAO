@@ -64,7 +64,6 @@ namespace LLP
         uint256_t hashDisposableKeyID;          // Disposable Falcon session key ID
         bool fSubscribedToNotifications;        // Whether miner subscribed to push notifications (deprecated: use nSessionState)
         uint32_t nSubscribedChannel;            // Channel subscribed to (1=Prime, 2=Hash)
-        uint64_t nSessionEpoch;                 // Session generation counter from NodeSessionRegistry
 
         /** Default Constructor **/
         MinerSessionContainer();
@@ -103,15 +102,6 @@ namespace LLP
          *
          **/
         SessionConsistencyResult ValidateConsistency() const;
-
-        /** ValidateConsistency (epoch-aware overload)
-         *
-         *  Structural validation plus temporal epoch check.
-         *
-         *  @param[in] nCurrentEpoch  Current epoch for superseded detection.
-         *
-         **/
-        SessionConsistencyResult ValidateConsistency(uint64_t nCurrentEpoch) const;
 
         /** ToContext
          *
