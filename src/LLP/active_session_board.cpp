@@ -48,7 +48,7 @@ namespace LLP
 
         const uint64_t nStart = entry.nCooldownStartTime.load(std::memory_order_relaxed);
         if(nStart == 0)
-            return true; /* manually marked (no timestamp) — stays until re-registration */
+            return true; /* MarkDisconnected() path (dead lane) — no auto-expiry */
 
         const uint64_t nNow = runtime::unifiedtimestamp();
         const uint32_t nCooldown = GetPushCooldownSec();
