@@ -382,10 +382,13 @@ namespace LLP
         if (!fOk)
             return false;
 
-        /* Check if indexes need updating */
+        /* Check if indexes need updating.
+         * If the entry was removed concurrently between Transform() and Get(),
+         * the transform still succeeded — return true.  The concurrent Remove()
+         * already cleaned up the indexes. */
         auto optAfter = mapSessions.Get(hashKeyID);
         if (!optAfter)
-            return false;  /* entry was removed concurrently during Transform */
+            return true;  /* transform succeeded; entry removed concurrently — indexes already cleaned */
 
         const auto& before = optBefore.value();
         const auto& after  = optAfter.value();
