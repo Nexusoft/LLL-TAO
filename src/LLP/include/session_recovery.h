@@ -35,6 +35,7 @@ namespace LLP
      **/
     struct MinerSessionContainer
     {
+        MinerSessionState nSessionState;         // Ordered session state (canonical)
         std::string miner_id;                   // Stable miner identity for diagnostics
         uint32_t nSessionId;                    // Session identifier
         uint256_t hashKeyID;                    // Falcon key identifier
@@ -45,14 +46,14 @@ namespace LLP
         std::vector<uint8_t> vPubKey;           // Miner's Falcon public key
         std::string strAddress;                 // Original connection address
         uint32_t nReconnectCount;               // Number of reconnection attempts
-        bool fAuthenticated;                    // Authentication status
+        bool fAuthenticated;                    // Authentication status (deprecated: use nSessionState)
         bool fFreshAuth;                        // true = new auth on this node; false = session recovered
         uint8_t nLastLane;                      // Last known lane (0=Legacy, 1=Stateless)
         ProtocolLane nProtocolLane;             // Canonical protocol lane for this session
         uint256_t hashRewardAddress;            // Bound reward payout identity
-        bool fRewardBound;                      // Whether reward binding is present
+        bool fRewardBound;                      // Whether reward binding is present (orthogonal)
         std::vector<uint8_t> vChaCha20Key;      // Canonical ChaCha20 session key bytes
-        bool fEncryptionReady;                  // Whether ChaCha20 is ready for use
+        bool fEncryptionReady;                  // Whether ChaCha20 is ready for use (deprecated: use nSessionState)
         uint256_t hashChaCha20Key;              // Diagnostic/compatibility mirror of vChaCha20Key
                                                 // Invariant: when vChaCha20Key is populated,
                                                 // hashChaCha20Key mirrors uint256_t(vChaCha20Key).
@@ -61,7 +62,7 @@ namespace LLP
         uint64_t nChaCha20Nonce;                // ChaCha20 nonce counter
         std::vector<uint8_t> vDisposablePubKey; // Disposable Falcon session public key
         uint256_t hashDisposableKeyID;          // Disposable Falcon session key ID
-        bool fSubscribedToNotifications;        // Whether miner subscribed to push notifications
+        bool fSubscribedToNotifications;        // Whether miner subscribed to push notifications (deprecated: use nSessionState)
         uint32_t nSubscribedChannel;            // Channel subscribed to (1=Prime, 2=Hash)
 
         /** Default Constructor **/

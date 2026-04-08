@@ -63,6 +63,40 @@ namespace LLP
         }
     }
 
+    /** MinerSessionState
+     *
+     *  Ordered session state machine for mining connections.
+     *
+     *  The lifecycle progression is:
+     *    CONNECTED → AUTHENTICATED → ENCRYPTION_READY → CHANNEL_SET → MINING
+     *
+     *  Each state implies all preceding states.  Validation is a single
+     *  comparison (nSessionState >= REQUIRED_STATE) instead of checking
+     *  multiple independent booleans.
+     *
+     *  CONNECTED          — TCP connected, no auth yet
+     *  AUTHENTICATED      — Falcon handshake succeeded (fAuthenticated)
+     *  ENCRYPTION_READY   — ChaCha20 key derived & ready (fEncryptionReady)
+     *  CHANNEL_SET        — Mining channel assigned (nChannel != 0)
+     *  MINING             — Subscribed to notifications / actively mining (fSubscribedToNotifications)
+     *
+     **/
+    enum class MinerSessionState : uint8_t
+    {
+        CONNECTED        = 0,
+        AUTHENTICATED    = 1,
+        ENCRYPTION_READY = 2,
+        CHANNEL_SET      = 3,
+        MINING           = 4
+    };
+
+    /** MinerSessionStateString
+     *
+     *  Returns a human-readable name for a MinerSessionState value.
+     *
+     **/
+    const char* MinerSessionStateString(MinerSessionState state);
+
     /** SessionConsistencyResult
      *
      *  Canonical session/container consistency check result shared across mining
@@ -77,6 +111,7 @@ namespace LLP
         MissingFalconKey,
         RewardBoundMissingHash,
         EncryptionReadyMissingKey,
+        DisposableKeyMissing,
         SessionIdMismatch,
         GenesisMismatch,
         FalconKeyMismatch
@@ -591,6 +626,13 @@ namespace LLP
      **/
     struct MiningContext
     {
+        /** Ordered session state — the single source of truth for lifecycle
+         *  progression.  The boolean flags below (fAuthenticated, fEncryptionReady,
+         *  fRewardBound, fSubscribedToNotifications) are kept in sync by the
+         *  With*() builders and should be considered deprecated for new code.
+         *  Prefer comparing nSessionState >= REQUIRED_STATE. */
+        MinerSessionState nSessionState;
+
         uint32_t nChannel;           // Mining channel (1=Prime, 2=Hash)
         /* Session-level unified blockchain height tracking ONLY.
          * Never copy to block.nHeight — that comes from the 216-byte template (bytes[200-203]).
@@ -599,7 +641,7 @@ namespace LLP
         uint64_t nTimestamp;         // Last activity timestamp
         std::string strAddress;      // Miner's network address
         uint32_t nProtocolVersion;   // Protocol version
-        bool fAuthenticated;         // Whether Falcon auth succeeded
+        bool fAuthenticated;         // Whether Falcon auth succeeded (deprecated: use nSessionState)
         uint32_t nSessionId;         // Unique session identifier
         uint256_t hashKeyID;         // Phase 2: Falcon key identifier
         uint256_t hashGenesis;       // Phase 2: Tritium genesis hash (authentication)
@@ -616,11 +658,11 @@ namespace LLP
         
         /* Reward address binding (set via MINER_SET_REWARD) */
         uint256_t hashRewardAddress; // Reward payout address (separate from auth genesis)
-        bool fRewardBound;           // Whether reward address has been set
+        bool fRewardBound;           // Whether reward address has been set (orthogonal to state machine)
 
         /* ChaCha20 encryption state for secure communication */
         std::vector<uint8_t> vChaChaKey; // ChaCha20 session key derived from genesis
-        bool fEncryptionReady;           // Whether ChaCha20 encryption is established
+        bool fEncryptionReady;           // Whether ChaCha20 encryption is established (deprecated: use nSessionState)
 
         /* Falcon version tracking */
         LLC::FalconVersion nFalconVersion;      // Detected Falcon version (512 or 1024)
@@ -632,7 +674,7 @@ namespace LLP
         ProtocolLane nProtocolLane;             // LEGACY (8-bit opcodes) or STATELESS (16-bit opcodes)
 
         /* Push notification subscription state (PR #XXX: Push Notifications) */
-        bool fSubscribedToNotifications;    // MINER_READY received
+        bool fSubscribedToNotifications;    // MINER_READY received (deprecated: use nSessionState >= MINING)
         uint32_t nSubscribedChannel;        // Which channel subscribed to (1=Prime, 2=Hash)
         uint64_t nLastNotificationTime;     // Last notification sent (unix timestamp)
         uint64_t nNotificationsSent;        // Total notifications sent to this session
@@ -1007,6 +1049,15 @@ namespace LLP
          *
          **/
         SessionConsistencyResult ValidateConsistency() const;
+
+        /** ComputeSessionState
+         *
+         *  Derives the canonical MinerSessionState from the current field values.
+         *  Called by With*() builders to keep nSessionState in sync.
+         *
+         **/
+        static MinerSessionState ComputeSessionState(
+            bool fAuth, bool fEncReady, uint32_t nChan, bool fSubscribed);
 
         /** GetPayoutAddress
          *
