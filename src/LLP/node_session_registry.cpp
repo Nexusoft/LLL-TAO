@@ -199,7 +199,7 @@ namespace LLP
              * Also notify ActiveSessionBoard so it stops sending push notifications
              * on the dead lane.  Without this, the board continues tracking the old
              * (sessionId, deadLane) as "active", sending ghost notifications that
-             * increment nFailedPackets and eventually soft-disconnect the session. */
+             * increment nFailedPackets and eventually trigger a push cooldown. */
             if(lane == ProtocolLane::STATELESS)
             {
                 entry = entry.WithStatelessLive(true);

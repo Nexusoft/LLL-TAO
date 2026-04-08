@@ -34,6 +34,44 @@ namespace LLP
     }
 
 
+    uint32_t ActiveSessionBoard::GetPushCooldownSec() const
+    {
+        return static_cast<uint32_t>(
+            config::GetArg("-pushcooldownsec", DEFAULT_PUSH_COOLDOWN_SEC));
+    }
+
+
+    bool ActiveSessionBoard::CheckAndExpireCooldown(ActiveSessionEntry& entry) const
+    {
+        if(!entry.fMarkedDisconnected.load(std::memory_order_relaxed))
+            return false; /* not in cooldown */
+
+        const uint64_t nStart = entry.nCooldownStartTime.load(std::memory_order_relaxed);
+        if(nStart == 0)
+            return true; /* manually marked (no timestamp) — stays until re-registration */
+
+        const uint64_t nNow = runtime::unifiedtimestamp();
+        const uint32_t nCooldown = GetPushCooldownSec();
+
+        if(nNow >= nStart + nCooldown)
+        {
+            /* Cooldown expired — reset and allow push to resume */
+            entry.fMarkedDisconnected.store(false, std::memory_order_relaxed);
+            entry.nCooldownStartTime.store(0, std::memory_order_relaxed);
+            entry.nFailedPackets.store(0, std::memory_order_relaxed);
+
+            debug::log(0, FUNCTION,
+                "Push cooldown expired: session=", entry.nSessionId,
+                " lane=", (entry.nLane == ProtocolLane::STATELESS ? "STATELESS" : "LEGACY"),
+                " — push notifications resumed after ", nCooldown, "s cooldown");
+
+            return false; /* no longer in cooldown */
+        }
+
+        return true; /* still cooling down */
+    }
+
+
     /* ── Registration ───────────────────────────────────────────────────────── */
 
     void ActiveSessionBoard::Register(uint32_t nSessionId, ProtocolLane lane,
@@ -51,6 +89,7 @@ namespace LLP
             it->second.fSubscribedToNotifications = fSubscribed;
             it->second.nFailedPackets.store(0, std::memory_order_relaxed);
             it->second.fMarkedDisconnected.store(false, std::memory_order_relaxed);
+            it->second.nCooldownStartTime.store(0, std::memory_order_relaxed);
             it->second.nLastSuccessfulSend.store(
                 runtime::unifiedtimestamp(), std::memory_order_relaxed);
 
@@ -122,12 +161,16 @@ namespace LLP
         if(nFailed >= nThreshold && !it->second.fMarkedDisconnected.load(std::memory_order_relaxed))
         {
             it->second.fMarkedDisconnected.store(true, std::memory_order_relaxed);
+            it->second.nCooldownStartTime.store(
+                runtime::unifiedtimestamp(), std::memory_order_relaxed);
+
+            const uint32_t nCooldown = GetPushCooldownSec();
 
             debug::log(0, FUNCTION,
-                "Session marked disconnected: session=", nSessionId,
+                "Session entering push cooldown: session=", nSessionId,
                 " lane=", (lane == ProtocolLane::STATELESS ? "STATELESS" : "LEGACY"),
                 " failures=", nFailed, "/", nThreshold,
-                " — stopped receiving PUSH until re-authentication");
+                " — push paused for ", nCooldown, "s (auto-recoverable)");
         }
     }
 
@@ -151,7 +194,7 @@ namespace LLP
         std::vector<uint32_t> vResult;
 
         std::lock_guard<std::mutex> lock(m_mutex);
-        for(const auto& [key, entry] : m_mapSessions)
+        for(auto& [key, entry] : m_mapSessions)
         {
             if(key.nLane != lane)
                 continue;
@@ -159,7 +202,7 @@ namespace LLP
                 continue;
             if(!entry.fSubscribedToNotifications)
                 continue;
-            if(entry.fMarkedDisconnected.load(std::memory_order_relaxed))
+            if(CheckAndExpireCooldown(entry))
                 continue;
 
             vResult.push_back(key.nSessionId);
@@ -174,9 +217,9 @@ namespace LLP
         uint32_t nActive = 0;
 
         std::lock_guard<std::mutex> lock(m_mutex);
-        for(const auto& [key, entry] : m_mapSessions)
+        for(auto& [key, entry] : m_mapSessions)
         {
-            if(!entry.fMarkedDisconnected.load(std::memory_order_relaxed))
+            if(!CheckAndExpireCooldown(entry))
                 ++nActive;
         }
 
@@ -200,7 +243,7 @@ namespace LLP
         if(it == m_mapSessions.end())
             return false;
 
-        return !it->second.fMarkedDisconnected.load(std::memory_order_relaxed);
+        return !CheckAndExpireCooldown(it->second);
     }
 
 } // namespace LLP

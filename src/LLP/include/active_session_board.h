@@ -24,8 +24,10 @@ ________________________________________________________________________________
  *   - Each active mining session is registered on MINER_READY
  *   - Weak references avoid preventing connection cleanup
  *   - Failed packet delivery increments a failure counter
- *   - After configurable threshold failures, session is marked disconnected
- *   - Marked sessions stop receiving PUSH until re-authentication
+ *   - After configurable threshold failures, session enters cooldown
+ *   - Cooldown auto-expires after configurable duration (default 300s)
+ *   - On expiry, failure counter resets and push resumes automatically
+ *   - Re-authentication also clears cooldown immediately
  *   - Board doubles as MAX_MINERS enforcement point
  */
 
@@ -55,7 +57,8 @@ namespace LLP
 
         std::atomic<uint32_t> nFailedPackets{0};           /* consecutive failed sends */
         std::atomic<uint64_t> nLastSuccessfulSend{0};      /* timestamp of last success */
-        std::atomic<bool> fMarkedDisconnected{false};      /* soft-disconnect flag */
+        std::atomic<bool> fMarkedDisconnected{false};      /* soft-disconnect flag (cooldown) */
+        std::atomic<uint64_t> nCooldownStartTime{0};       /* when cooldown began (0 = not set) */
 
         ActiveSessionEntry() = default;
         ActiveSessionEntry(uint32_t sid, ProtocolLane lane, uint32_t ch, bool sub)
@@ -66,6 +69,7 @@ namespace LLP
         , nFailedPackets(0)
         , nLastSuccessfulSend(0)
         , fMarkedDisconnected(false)
+        , nCooldownStartTime(0)
         {
         }
 
@@ -78,6 +82,7 @@ namespace LLP
         , nFailedPackets(other.nFailedPackets.load(std::memory_order_relaxed))
         , nLastSuccessfulSend(other.nLastSuccessfulSend.load(std::memory_order_relaxed))
         , fMarkedDisconnected(other.fMarkedDisconnected.load(std::memory_order_relaxed))
+        , nCooldownStartTime(other.nCooldownStartTime.load(std::memory_order_relaxed))
         {
         }
 
@@ -102,6 +107,11 @@ namespace LLP
         /** Consecutive failure threshold before marking session disconnected.
          *  Configurable via -maxfailedpackets (default 5). **/
         static constexpr uint32_t DEFAULT_FAILED_PACKET_THRESHOLD = 5;
+
+        /** Default cooldown duration before auto-recovery (seconds).
+         *  After this many seconds the session automatically re-enables push.
+         *  Configurable via -pushcooldownsec (default 300 = 5 minutes). **/
+        static constexpr uint32_t DEFAULT_PUSH_COOLDOWN_SEC = 300;
 
         /* ── Registration ───────────────────────────────────────────────────── */
 
@@ -167,10 +177,17 @@ namespace LLP
         };
 
         mutable std::mutex m_mutex;
-        std::unordered_map<SessionKey, ActiveSessionEntry, SessionKeyHash> m_mapSessions;
+        mutable std::unordered_map<SessionKey, ActiveSessionEntry, SessionKeyHash> m_mapSessions;
 
         /** Get failure threshold from config. **/
         uint32_t GetFailedPacketThreshold() const;
+
+        /** Get push cooldown duration from config (seconds). **/
+        uint32_t GetPushCooldownSec() const;
+
+        /** Check if a cooldown-marked entry has expired; if so, clear it.
+         *  Caller must hold m_mutex.  Returns true if entry is still in cooldown. **/
+        bool CheckAndExpireCooldown(ActiveSessionEntry& entry) const;
     };
 
 } // namespace LLP
