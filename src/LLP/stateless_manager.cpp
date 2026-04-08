@@ -806,16 +806,21 @@ namespace LLP
                 return a.second.nTimestamp < b.second.nTimestamp;
             });
 
+        /* Helper: re-read live state to avoid removing a miner that was
+         * refreshed after the snapshot was taken. Returns nullopt if gone. */
+        auto fnGetLive = [this](const std::string& strAddr) -> std::optional<MiningContext>
+        {
+            return mapMiners.Get(strAddr);
+        };
+
         /* Remove least recently active miners first, but prefer unauthenticated and localhost last.
-         * Re-read the live entry before removing to avoid deleting miners that were
-         * refreshed after the snapshot was taken. */
+         * Re-read the live entry before removing to avoid stale-snapshot deletes. */
         for(const auto& pair : vMiners)
         {
             if(nRemoved >= nToRemove)
                 break;
 
-            /* Re-read live state — the snapshot entry may be stale */
-            auto optLive = mapMiners.Get(pair.first);
+            auto optLive = fnGetLive(pair.first);
             if(!optLive.has_value())
                 continue;
             const MiningContext& ctx = optLive.value();
@@ -840,8 +845,7 @@ namespace LLP
                 if(nRemoved >= nToRemove)
                     break;
 
-                /* Re-read live state */
-                auto optLive = mapMiners.Get(pair.first);
+                auto optLive = fnGetLive(pair.first);
                 if(!optLive.has_value())
                     continue;
                 const MiningContext& ctx = optLive.value();
@@ -867,8 +871,7 @@ namespace LLP
                 if(nRemoved >= nToRemove)
                     break;
 
-                /* Re-read live state to avoid removing a refreshed miner */
-                if(!mapMiners.Contains(pair.first))
+                if(!fnGetLive(pair.first).has_value())
                     continue;
 
                 if(RemoveMiner(pair.first))

@@ -360,7 +360,7 @@ namespace util
             const KeyType& key,
             const ValueType& expectedValue,
             std::function<bool(const ValueType&, const ValueType&)> comparator =
-                [](const ValueType& a, const ValueType& b) { return a == b; })
+                std::equal_to<ValueType>{})
         {
             std::unique_lock<std::shared_mutex> lock(MUTEX);
             auto it = mapData.find(key);
