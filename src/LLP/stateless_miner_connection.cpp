@@ -1860,17 +1860,6 @@ namespace LLP
                     nCapturedChannel      = it->second.nChannel;
                     nCapturedChannelHeight = it->second.nChannelHeight;
                     nCapturedHeight       = it->second.nHeight;
-
-                    /* Epoch gate: reject templates from a previous session generation.
-                     * A miner that re-authenticated has a new epoch; old templates are invalid. */
-                    if(IsEpochSuperseded(it->second.nSessionEpoch, context.nSessionEpoch))
-                    {
-                        debug::log(0, FUNCTION, "⚠ SUBMIT_BLOCK: Rejecting template from superseded session epoch ",
-                                   it->second.nSessionEpoch, " (current=", context.nSessionEpoch, ")");
-                        StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                        respond(response);
-                        return true;
-                    }
                 }
                 /* ── MUTEX released — pCapturedBlock keeps the block alive ── */
 
@@ -2650,16 +2639,12 @@ namespace LLP
                  * One Falcon identity (hashKeyID) maps to one canonical nSessionId across both ports. */
                 if(PACKET.HEADER == MINER_AUTH_RESPONSE && context.fAuthenticated && context.hashKeyID != 0)
                 {
-                    auto [canonicalSessionId, isNew, epoch] = NodeSessionRegistry::Get().RegisterOrRefresh(
+                    auto [canonicalSessionId, isNew] = NodeSessionRegistry::Get().RegisterOrRefresh(
                         context.hashKeyID,
                         context.hashGenesis,
                         context,
                         ProtocolLane::STATELESS
                     );
-
-                    /* Propagate epoch to context so templates and consistency
-                     * checks can detect stale session generations. */
-                    context = context.WithEpoch(epoch);
 
                     /* CRITICAL: If the registry returned a different nSessionId than what we derived,
                      * it means this miner has already authenticated on the other port.
@@ -3028,7 +3013,6 @@ namespace LLP
         bool     fRewardBound_snap;
         uint256_t hashRewardAddress_snap;
         uint256_t hashGenesis_snap;
-        uint64_t nSessionEpoch_snap;
         {
             LOCK(MUTEX);
             nChannel_snap         = context.nChannel;
@@ -3037,7 +3021,6 @@ namespace LLP
             fRewardBound_snap     = context.fRewardBound;
             hashRewardAddress_snap = context.hashRewardAddress;
             hashGenesis_snap      = context.hashGenesis;
-            nSessionEpoch_snap    = context.nSessionEpoch;
         }
 
         {
@@ -3415,8 +3398,7 @@ namespace LLP
 
         TemplateMetadata meta(pBlock, nCreationTime, info.nUnifiedHeight, info.nNextChannelHeight, 
                              hashMerkleKey, nChannel_snap,
-                             TAO::Ledger::ChainState::hashBestChain.load(),
-                             nSessionEpoch_snap);
+                             TAO::Ledger::ChainState::hashBestChain.load());
         TAO::Ledger::Block* pStableBlock = nullptr;
         {
             /* Lock ordering: MUTEX protects all mapBlocks writes (and reads in ProcessPacket handlers).
@@ -3894,12 +3876,7 @@ namespace LLP
 
             const bool fTooOldByTime = (meta.GetAge(nNow) > LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS);
 
-            /* Epoch check: templates from a previous session generation are stale.
-             * context.nSessionEpoch is the current epoch; meta.nSessionEpoch is the
-             * epoch when the template was created. */
-            const bool fSupersededEpoch = IsEpochSuperseded(meta.nSessionEpoch, context.nSessionEpoch);
-
-            if(fTooOldByBlocks || fTooOldByTime || fSupersededEpoch)
+            if(fTooOldByBlocks || fTooOldByTime)
             {
                 uint64_t nAge = nNow - meta.nCreationTime;
                 debug::log(2, FUNCTION, "   ❌ Removing stale template (retention window)");
