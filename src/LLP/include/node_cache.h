@@ -71,6 +71,24 @@ namespace NodeCache
      **/
     static constexpr uint64_t LOCALHOST_CACHE_PURGE_TIMEOUT = 2592000;
 
+    /** KEEPALIVE_GRACE_PERIOD_SEC
+     *
+     *  Grace period for keepalive check in smart timeout logic.
+     *  Sessions with a keepalive exchange within this window are not
+     *  considered idle.
+     *
+     *  Aligned with the miner's maximum degraded recovery window:
+     *  DEGRADED_MODE_HARD_LIMIT_SECONDS (300s) + 2 keepalive intervals
+     *  (2×60s = 120s).  A miner in DEGRADED MODE sends keepalives every
+     *  ~60s but may stop sending new MINER_READY for up to 300s while
+     *  running its escape ladder.  Evicting the session during that
+     *  window would cause Stateless=0 on the next BroadcastChannel event.
+     *
+     *  Default: 420 seconds (7 minutes)
+     *
+     **/
+    static constexpr uint64_t KEEPALIVE_GRACE_PERIOD_SEC = 420;
+
     /** LOCALHOST_ADDRESSES
      *
      *  Addresses that qualify for localhost exception handling.

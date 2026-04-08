@@ -346,27 +346,45 @@ namespace LLP
         const uint64_t nNow = runtime::unifiedtimestamp();
         uint32_t nRemoved = 0;
 
-        /* Get all sessions for iteration */
+        /* Take a snapshot for candidate selection.  Because the snapshot may be
+         * stale by the time we act on it (a keepalive or re-auth could refresh
+         * the entry), we re-read the live entry before erasing. */
         auto allSessions = m_mapByKey.GetAllPairs();
 
         for(const auto& pair : allSessions)
         {
             const uint256_t& hashKeyID = pair.first;
-            const NodeSessionEntry& entry = pair.second;
+            const NodeSessionEntry& snapshotEntry = pair.second;
 
-            /* Check if session is expired */
-            if(entry.IsExpired(nTimeoutSec, nNow))
+            /* Candidate from snapshot — may be stale */
+            if(!snapshotEntry.IsExpired(nTimeoutSec, nNow))
+                continue;
+
+            /* Re-read live entry before deleting to avoid removing a session
+             * that was refreshed after the snapshot was taken. */
+            auto liveEntry = m_mapByKey.Get(hashKeyID);
+            if(!liveEntry.has_value() || !liveEntry->IsExpired(nTimeoutSec, nNow))
+                continue;
+
+            /* Cross-cache consistency: mark the session as disconnected
+             * on ActiveSessionBoard before removing the registry entry.
+             * Without this, the board continues tracking the session
+             * as active, sending ghost notifications. */
+            if(liveEntry->nSessionId != 0)
             {
-                /* Remove from both maps */
-                m_mapByKey.Erase(hashKeyID);
-                m_mapSessionToKey.Erase(entry.nSessionId);
-
-                debug::log(2, FUNCTION, "Swept expired session ", entry.nSessionId,
-                           " key=", hashKeyID.SubString(),
-                           " inactiveFor=", (nNow - entry.nLastActivity), "s");
-
-                ++nRemoved;
+                ActiveSessionBoard::Get().MarkDisconnected(liveEntry->nSessionId, ProtocolLane::STATELESS);
+                ActiveSessionBoard::Get().MarkDisconnected(liveEntry->nSessionId, ProtocolLane::LEGACY);
             }
+
+            /* Remove from both maps */
+            m_mapByKey.Erase(hashKeyID);
+            m_mapSessionToKey.Erase(liveEntry->nSessionId);
+
+            debug::log(2, FUNCTION, "Swept expired session ", liveEntry->nSessionId,
+                       " key=", hashKeyID.SubString(),
+                       " inactiveFor=", (nNow - liveEntry->nLastActivity), "s");
+
+            ++nRemoved;
         }
 
         if(nRemoved > 0)

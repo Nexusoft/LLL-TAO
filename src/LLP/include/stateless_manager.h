@@ -161,7 +161,9 @@ namespace LLP
 
         /** RemoveMiner
          *
-         *  Remove a miner from tracking.
+         *  Remove a miner from tracking.  Handles cross-cache cleanup
+         *  (NodeSessionRegistry + ActiveSessionBoard MarkDisconnected)
+         *  internally so callers never need manual propagation.
          *
          *  @param[in] strAddress Miner address
          *
@@ -205,27 +207,31 @@ namespace LLP
 
         /** GetMinerContextByIP
          *
+         *  @deprecated Architecturally unsound for NAT environments where multiple
+         *  miners share the same IP.  Use session-ID-based lookups instead.
+         *
          *  Look up a miner context using only the IP address (ignoring port).
-         *  Used as fallback when IP:port lookup misses due to ephemeral port changes.
-         *  If multiple miners share the same IP (e.g. behind NAT), returns the most
-         *  recently active one.
          *
          *  @param[in] strIP   IP address string (no port)
          *
          *  @return Optional MiningContext, empty if not found
          *
          **/
+        [[deprecated("Use session-ID-based lookups; IP-only is unreliable behind NAT")]]
         std::optional<MiningContext> GetMinerContextByIP(const std::string& strIP) const;
 
         /** GetMinerContextByAddressOrIP
          *
-         *  Resolve a miner first by exact IP:port, then by IP-only fallback. When
-         *  the fallback finds a context for the same session on a different port,
-         *  it may migrate the primary address key to the new address.
+         *  Resolve a miner by exact IP:port, then by IP-only key (for stateless
+         *  miners canonically keyed without port).
+         *
+         *  IP-only fallback via mapIPToAddress has been removed because it is
+         *  unreliable behind NAT (multiple miners share the same IP).  Callers
+         *  should use session-ID-based lookups for cross-connection recovery.
          *
          *  @param[in] strAddress Exact miner address (IP:port)
-         *  @param[in] nExpectedSessionId Optional caller-known session id for safe migration
-         *  @param[in] fMigrateAddress When true, migrate exact-address tracking on safe fallback hit
+         *  @param[in] nExpectedSessionId Unused (retained for ABI compatibility)
+         *  @param[in] fMigrateAddress Unused (retained for ABI compatibility)
          *
          *  @return Optional MiningContext, empty if not found
          *

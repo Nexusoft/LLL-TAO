@@ -1111,6 +1111,27 @@ namespace LLP
          **/
         bool HasValidPayout() const;
 
+        /** IsConsideredInactive
+         *
+         *  Unified inactivity predicate.  Returns true if this context
+         *  should be considered inactive for eviction purposes.
+         *
+         *  Logic:
+         *    1. Recent activity within nTimeoutSec → NOT inactive
+         *    2. Recent keepalive within KEEPALIVE_GRACE_PERIOD_SEC → NOT inactive
+         *    3. Otherwise → inactive
+         *
+         *  This consolidates the 3-way AND from CleanupInactive() into a
+         *  reusable predicate that PurgeInactiveMiners() also uses.
+         *
+         *  @param[in] nNow        Current timestamp
+         *  @param[in] nTimeoutSec Inactivity threshold in seconds
+         *
+         *  @return true if considered inactive
+         *
+         **/
+        bool IsConsideredInactive(uint64_t nNow, uint64_t nTimeoutSec) const;
+
         /** GetSessionDuration
          *
          *  Get the duration of the current session in seconds.
