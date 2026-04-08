@@ -187,6 +187,7 @@ namespace LLP
     , hashDisposableKeyID(0)
     , fSubscribedToNotifications(false)
     , nSubscribedChannel(0)
+    , nSessionEpoch(0)
     {
     }
 
@@ -272,6 +273,10 @@ namespace LLP
         /* MergeContext never clears subscription state: once a miner subscribes the server
          * restores the subscription on reconnect until the session expires. */
 
+        /* Carry forward epoch if the live context has one (set by RegisterOrRefresh). */
+        if(context.nSessionEpoch != 0)
+            nSessionEpoch = context.nSessionEpoch;
+
         /* Recompute the canonical ordered session state from the merged fields. */
         nSessionState = MiningContext::ComputeSessionState(
             fAuthenticated, fEncryptionReady, nChannel, fSubscribedToNotifications);
@@ -314,6 +319,9 @@ namespace LLP
 
         if(fSubscribedToNotifications && IsValidSubscriptionChannel(nSubscribedChannel))
             context = context.WithSubscription(nSubscribedChannel);
+
+        if(nSessionEpoch != 0)
+            context = context.WithEpoch(nSessionEpoch);
 
         return context;
     }
@@ -371,6 +379,21 @@ namespace LLP
 
         if(fEncryptionReady && vChaCha20Key.empty())
             return SessionConsistencyResult::EncryptionReadyMissingKey;
+
+        return SessionConsistencyResult::Ok;
+    }
+
+    SessionConsistencyResult MinerSessionContainer::ValidateConsistency(uint64_t nCurrentEpoch) const
+    {
+        /* Run all structural checks first. */
+        const SessionConsistencyResult structural = ValidateConsistency();
+        if(structural != SessionConsistencyResult::Ok)
+            return structural;
+
+        /* Temporal check: if this container's epoch is behind the current
+         * epoch, the session has been superseded. */
+        if(IsEpochSuperseded(nSessionEpoch, nCurrentEpoch))
+            return SessionConsistencyResult::SessionSuperseded;
 
         return SessionConsistencyResult::Ok;
     }

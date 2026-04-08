@@ -74,11 +74,12 @@ namespace LLP
             "DisposableKeyMissing",
             "SessionIdMismatch",
             "GenesisMismatch",
-            "FalconKeyMismatch"
+            "FalconKeyMismatch",
+            "SessionSuperseded"
         };
 
         static_assert(
-            (static_cast<size_t>(SessionConsistencyResult::FalconKeyMismatch) + 1)
+            (static_cast<size_t>(SessionConsistencyResult::SessionSuperseded) + 1)
                 == (sizeof(SESSION_CONSISTENCY_RESULT_STRINGS) / sizeof(SESSION_CONSISTENCY_RESULT_STRINGS[0])),
             "SessionConsistencyResult string table must stay aligned with enum ordering");
     }
@@ -174,6 +175,7 @@ namespace LLP
     , nMinerPrevblockSuffix({})
     , nStakeHeight(0)
     , strChannelName("Unknown")
+    , nSessionEpoch(0)
     {
     }
 
@@ -225,6 +227,7 @@ namespace LLP
     , nMinerPrevblockSuffix({})
     , nStakeHeight(0)
     , strChannelName(MiningContext::ChannelName(nChannel_))
+    , nSessionEpoch(0)
     {
     }
 
@@ -301,6 +304,13 @@ namespace LLP
     {
         MiningContext c = *this;
         c.nSessionId = nSessionId_;
+        return c;
+    }
+
+    MiningContext MiningContext::WithEpoch(uint64_t nSessionEpoch_) const
+    {
+        MiningContext c = *this;
+        c.nSessionEpoch = nSessionEpoch_;
         return c;
     }
 
@@ -517,6 +527,21 @@ namespace LLP
 
         if(fEncryptionReady && vChaChaKey.empty())
             return SessionConsistencyResult::EncryptionReadyMissingKey;
+
+        return SessionConsistencyResult::Ok;
+    }
+
+    SessionConsistencyResult MiningContext::ValidateConsistency(uint64_t nCurrentEpoch) const
+    {
+        /* Run all structural checks first. */
+        const SessionConsistencyResult structural = ValidateConsistency();
+        if(structural != SessionConsistencyResult::Ok)
+            return structural;
+
+        /* Temporal check: if this context has a session epoch and it is
+         * behind the current epoch, the session has been superseded. */
+        if(IsEpochSuperseded(nSessionEpoch, nCurrentEpoch))
+            return SessionConsistencyResult::SessionSuperseded;
 
         return SessionConsistencyResult::Ok;
     }

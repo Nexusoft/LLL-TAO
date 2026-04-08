@@ -97,6 +97,23 @@ namespace LLP
      **/
     const char* MinerSessionStateString(MinerSessionState state);
 
+    /** IsEpochSuperseded
+     *
+     *  Checks whether a session/template epoch has been superseded by a newer
+     *  authentication generation.  Both epochs must be non-zero (i.e. assigned)
+     *  for the check to fire; epoch == 0 means "not yet registered."
+     *
+     *  @param[in] nOldEpoch  Epoch of the object being tested (template, context, etc.)
+     *  @param[in] nCurrentEpoch  Current session epoch from NodeSessionRegistry.
+     *
+     *  @return true if the old epoch is behind the current epoch.
+     *
+     **/
+    inline bool IsEpochSuperseded(uint64_t nOldEpoch, uint64_t nCurrentEpoch)
+    {
+        return (nOldEpoch != 0 && nCurrentEpoch != 0 && nOldEpoch < nCurrentEpoch);
+    }
+
     /** SessionConsistencyResult
      *
      *  Canonical session/container consistency check result shared across mining
@@ -114,7 +131,8 @@ namespace LLP
         DisposableKeyMissing,
         SessionIdMismatch,
         GenesisMismatch,
-        FalconKeyMismatch
+        FalconKeyMismatch,
+        SessionSuperseded       ///< Session epoch is older than the current generation
     };
 
     const char* SessionConsistencyResultString(const SessionConsistencyResult result);
@@ -424,6 +442,11 @@ namespace LLP
          */
         uint32_t nChannelHeight;
         
+        /** Session generation counter at template creation time.
+         *  Templates with nSessionEpoch < context.nSessionEpoch are from a
+         *  previous authentication and should be treated as stale. */
+        uint64_t nSessionEpoch;
+        
         /* ═══════════════════════════════════════════════════════════════════════════════ */
         /* CONSTRUCTORS (MOVE-ONLY SEMANTICS)                                              */
         /* ═══════════════════════════════════════════════════════════════════════════════ */
@@ -442,6 +465,7 @@ namespace LLP
             , nChannel(0)
             , hashBestChainAtCreation(0)
             , nChannelHeight(0)  // PR #134: Initialize channel height
+            , nSessionEpoch(0)
         {
         }
         
@@ -458,11 +482,13 @@ namespace LLP
          *  @param hashMerkleRoot_ Expected merkle root for validation
          *  @param nChannel_      Mining channel (1=Prime, 2=Hash)
          *  @param hashBestChainAtCreation_ hashBestChain snapshot at template creation
+         *  @param nSessionEpoch_ Session generation counter at creation time
          */
         TemplateMetadata(TAO::Ledger::Block* pBlock_, uint64_t nCreationTime_, 
                         uint32_t nHeight_, uint32_t nChannelHeight_,
                         const uint512_t& hashMerkleRoot_, uint32_t nChannel_,
-                        const uint1024_t& hashBestChainAtCreation_ = uint1024_t(0))
+                        const uint1024_t& hashBestChainAtCreation_ = uint1024_t(0),
+                        uint64_t nSessionEpoch_ = 0)
             : pBlock(pBlock_)  // shared_ptr takes ownership
             , nCreationTime(nCreationTime_)
             , nHeight(nHeight_)
@@ -470,6 +496,7 @@ namespace LLP
             , nChannel(nChannel_)
             , hashBestChainAtCreation(hashBestChainAtCreation_)
             , nChannelHeight(nChannelHeight_)  // PR #134: Store channel height
+            , nSessionEpoch(nSessionEpoch_)
         {
         }
         
@@ -738,6 +765,15 @@ namespace LLP
          *  This is the single source of truth — never compute inline ternaries elsewhere. */
         std::string strChannelName;  // "Prime" | "Hash" | "Unknown(N)"
 
+        /** Session generation counter.
+         *  Monotonically increasing per-hashKeyID.  Starts at 1 on first registration
+         *  in NodeSessionRegistry and increments on each re-authentication.
+         *  Used to detect stale templates from previous session generations
+         *  and to identify zombie session contexts that passed identity checks
+         *  but belong to a dead session generation.
+         *  0 means "not yet registered" (pre-auth default). */
+        uint64_t nSessionEpoch;
+
         /** Default Constructor **/
         MiningContext();
 
@@ -842,6 +878,13 @@ namespace LLP
          *
          **/
         MiningContext WithSession(uint32_t nSessionId_) const;
+
+        /** WithEpoch
+         *
+         *  Returns a new context with updated session epoch.
+         *
+         **/
+        MiningContext WithEpoch(uint64_t nSessionEpoch_) const;
 
         /** WithKeyId
          *
@@ -1049,6 +1092,19 @@ namespace LLP
          *
          **/
         SessionConsistencyResult ValidateConsistency() const;
+
+        /** ValidateConsistency (epoch-aware overload)
+         *
+         *  Performs all structural checks plus a temporal check:
+         *  if nSessionEpoch is set (> 0) and is less than nCurrentEpoch,
+         *  the session has been superseded by a newer generation.
+         *
+         *  @param[in] nCurrentEpoch  The current session epoch from NodeSessionRegistry.
+         *
+         *  @return SessionConsistencyResult (may be SessionSuperseded)
+         *
+         **/
+        SessionConsistencyResult ValidateConsistency(uint64_t nCurrentEpoch) const;
 
         /** ComputeSessionState
          *
