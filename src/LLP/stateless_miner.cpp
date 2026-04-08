@@ -1796,7 +1796,11 @@ namespace LLP
          * 24 hours despite continuous keepalive traffic.
          *
          * NodeSessionRegistry is the canonical owner of MinerIdentity — all liveness
-         * refreshes must propagate here to prevent premature session expiration. */
+         * refreshes must propagate here to prevent premature session expiration.
+         *
+         * Guard: hashKeyID is zero only for unauthenticated sessions.  The fAuthenticated
+         * check at the top of this function prevents reaching here without a valid identity,
+         * but we guard defensively since RegisterOrRefresh() requires a valid key. */
         if(newContext.hashKeyID != 0)
         {
             NodeSessionRegistry::Get().RegisterOrRefresh(

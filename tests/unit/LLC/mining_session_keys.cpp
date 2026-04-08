@@ -105,7 +105,8 @@ TEST_CASE("DeriveChaCha20Key Tests", "[mining_session_keys]")
 }
 
 
-/* Suppress deprecation warnings for testing DeriveFalconSessionId (scheduled for removal) */
+/* Suppress deprecation warnings for testing DeriveFalconSessionId (scheduled for removal).
+ * All test cases using the deprecated function are wrapped in a single pragma block. */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
@@ -261,7 +262,9 @@ TEST_CASE("DeriveKeyId Tests", "[mining_session_keys]")
 }
 
 
-/* Suppress deprecation warnings for testing DeriveFalconSessionId (scheduled for removal) */
+/* Suppress deprecation warnings for the integration test that calls DeriveFalconSessionId.
+ * Separate pragma block from the DeriveFalconSessionId Tests above because the
+ * DeriveKeyId Tests in between don't call any deprecated functions. */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
