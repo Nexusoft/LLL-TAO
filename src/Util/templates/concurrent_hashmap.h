@@ -343,6 +343,34 @@ namespace util
             }
             return nUpdated;
         }
+
+        /** CompareAndErase
+         *
+         *  Atomically erase a key only if its current value equals the expected value.
+         *  Prevents TOCTOU races from separate Get→Check→Erase sequences.
+         *
+         *  @param[in] key The key to erase
+         *  @param[in] expectedValue The expected current value
+         *  @param[in] comparator Equality function (defaults to operator==)
+         *
+         *  @return true if erased, false if key not found or value mismatch
+         *
+         **/
+        bool CompareAndErase(
+            const KeyType& key,
+            const ValueType& expectedValue,
+            std::function<bool(const ValueType&, const ValueType&)> comparator =
+                [](const ValueType& a, const ValueType& b) { return a == b; })
+        {
+            std::unique_lock<std::shared_mutex> lock(MUTEX);
+            auto it = mapData.find(key);
+            if(it == mapData.end())
+                return false;
+            if(!comparator(it->second, expectedValue))
+                return false;
+            mapData.erase(it);
+            return true;
+        }
     };
 
 
