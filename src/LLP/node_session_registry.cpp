@@ -357,6 +357,16 @@ namespace LLP
             /* Check if session is expired */
             if(entry.IsExpired(nTimeoutSec, nNow))
             {
+                /* Cross-cache consistency: mark the session as disconnected
+                 * on ActiveSessionBoard before removing the registry entry.
+                 * Without this, the board continues tracking the session
+                 * as active, sending ghost notifications. */
+                if(entry.nSessionId != 0)
+                {
+                    ActiveSessionBoard::Get().MarkDisconnected(entry.nSessionId, ProtocolLane::STATELESS);
+                    ActiveSessionBoard::Get().MarkDisconnected(entry.nSessionId, ProtocolLane::LEGACY);
+                }
+
                 /* Remove from both maps */
                 m_mapByKey.Erase(hashKeyID);
                 m_mapSessionToKey.Erase(entry.nSessionId);

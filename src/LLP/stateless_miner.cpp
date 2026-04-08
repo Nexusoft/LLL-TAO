@@ -580,6 +580,27 @@ namespace LLP
         return hashGenesis != 0 || !strUserName.empty();
     }
 
+    /* Unified inactivity predicate */
+    bool MiningContext::IsConsideredInactive(uint64_t nNow, uint64_t nTimeoutSec) const
+    {
+        /* 1. Recent activity within the timeout window → not inactive */
+        if((nNow - nTimestamp) <= nTimeoutSec)
+            return false;
+
+        /* 2. Keepalive grace: if the miner has ever sent keepalives AND the
+         *    most recent keepalive is within the grace window, the miner is
+         *    still alive (degraded-mode protection). */
+        if(nKeepaliveCount > 0 && nLastKeepaliveTime > 0)
+        {
+            uint64_t nTimeSinceKeepalive = nNow - nLastKeepaliveTime;
+            if(nTimeSinceKeepalive <= NodeCache::KEEPALIVE_GRACE_PERIOD_SEC)
+                return false;
+        }
+
+        /* 3. All checks failed → considered inactive */
+        return true;
+    }
+
     uint64_t MiningContext::GetSessionDuration(uint64_t nNow) const
     {
         /* Get current time if not provided */
