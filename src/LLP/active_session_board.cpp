@@ -303,8 +303,9 @@ namespace LLP
             {
                 const uint64_t nLastSend = entry.nLastSuccessfulSend.load(std::memory_order_relaxed);
 
-                /* Remove if disconnected for longer than stale timeout */
-                if(nLastSend > 0 && (nNow - nLastSend) > nStaleTimeout)
+                /* Remove if disconnected for longer than stale timeout.
+                 * Guard against clock skew: nNow must exceed nLastSend. */
+                if(nLastSend > 0 && nNow > nLastSend && (nNow - nLastSend) > nStaleTimeout)
                 {
                     debug::log(2, FUNCTION, "Swept stale session=", entry.nSessionId,
                         " lane=", (entry.nLane == ProtocolLane::STATELESS ? "STATELESS" : "LEGACY"),
