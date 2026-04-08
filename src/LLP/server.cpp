@@ -34,6 +34,7 @@ ________________________________________________________________________________
 #include <LLP/include/node_session_registry.h>
 #include <LLP/include/miner_push_dispatcher.h>
 #include <LLP/include/mining_constants.h>
+#include <LLP/include/mining_timers.h>
 #include <LLP/include/tcp_keepalive.h>
 
 #include <Util/include/args.h>
@@ -979,9 +980,23 @@ namespace LLP
                     /* Establish a new socket with SSL on or off according to server. */
                     Socket sockNew(hSocket, addr, fSSL);
 
-                    /* Enable TCP keepalive on accepted connections to detect dead
-                     * paths before NAT/firewall idle timers expire silently. */
-                    TcpKeepalive::ApplyKeepalive(hSocket);
+                    /* Enable TCP keepalive on accepted connections ONLY for non-mining
+                     * protocols.  Mining connections rely exclusively on the application-
+                     * level SESSION_KEEPALIVE opcode (24-hour liveness window) and the
+                     * node-side health probe for dead-path detection.  TCP keepalive is
+                     * disabled on mining ports because:
+                     *
+                     *   1. It operates below the application layer and cannot refresh the
+                     *      session identity tracked by NodeSessionRegistry.
+                     *   2. It masks dead connections by keeping the OS path alive while
+                     *      the application-layer session has already expired.
+                     *   3. It creates confusion with the real 24-hour keepalive timer
+                     *      that governs session liveness.
+                     *
+                     * Non-mining protocols (P2P, API) still benefit from TCP keepalive
+                     * for general connection hygiene. */
+                    if constexpr (!is_miner_protocol_v<ProtocolType>)
+                        TcpKeepalive::ApplyKeepalive(hSocket);
 
                     /* Check that an address is banned. */
                     if(DDOS_MAP->count(addr))
@@ -1208,7 +1223,8 @@ namespace LLP
             if constexpr (is_miner_protocol_v<ProtocolType>)
             {
                 const int64_t nProbeInterval = config::GetArg(
-                    std::string("-mininghealthprobeinterval"), 120);
+                    std::string("-mininghealthprobeinterval"),
+                    MiningTimers::HEALTH_PROBE_INTERVAL_SEC);
 
                 if(HEALTH_PROBE_TIMER.Elapsed() >= nProbeInterval)
                 {
@@ -1260,12 +1276,16 @@ namespace LLP
                 }
             }
 
-            /* Periodic cleanup cadence is 10 minutes, but the sweep cadence is not the
-             * expiry threshold itself. Each pass compares entries against the much longer
-             * session/cache timeouts (for example SESSION_LIVENESS_TIMEOUT_SECONDS = 86400s),
-             * so running cleanup every 10 minutes only bounds stale-state retention latency
-             * without shortening the underlying liveness window. */
-            if(CLEANUP_TIMER.Elapsed() >= 600)
+            /* Periodic cleanup cadence (default 10 minutes), but the sweep cadence
+             * is not the expiry threshold itself. Each pass compares entries against
+             * the much longer session/cache timeouts (e.g. SESSION_LIVENESS_TIMEOUT_SEC
+             * = 86400s), so a shorter sweep cadence simply bounds how long a stale
+             * entry can linger before being reaped. */
+            const int64_t nCleanupInterval = config::GetArg(
+                std::string("-cleanupinterval"),
+                MiningTimers::CLEANUP_SWEEP_INTERVAL_SEC);
+
+            if(CLEANUP_TIMER.Elapsed() >= nCleanupInterval)
             {
                 AutoCooldownManager::Get().CleanupExpired();
 
@@ -1289,7 +1309,7 @@ namespace LLP
             if(!CONFIG.ENABLE_METERS)
                 continue;
 
-            if(TIMER.Elapsed() < 30)
+            if(TIMER.Elapsed() < MiningTimers::METER_STATS_INTERVAL_SEC)
                 continue;
 
             /* Get total connection count. */
