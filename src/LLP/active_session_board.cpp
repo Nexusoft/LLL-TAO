@@ -74,7 +74,9 @@ namespace LLP
         }
 
         /* Dual-write: sync health fields to SessionStore.
-         * Lookup by session ID since that's what we have here. */
+         * Lookup by session ID since that's what we have here.
+         * Return value intentionally unchecked: during dual-write migration the
+         * session may not yet exist in SessionStore (populated by UpdateMiner). */
         SessionStore::Get().TransformBySessionId(nSessionId, [&](const CanonicalSession& cs) {
             CanonicalSession updated = cs;
             updated.nFailedPackets = 0;
@@ -143,7 +145,9 @@ namespace LLP
                 " — stopped receiving PUSH until re-authentication");
         }
 
-        /* Dual-write: sync failure count and disconnect flag to SessionStore */
+        /* Dual-write: sync failure count and disconnect flag to SessionStore.
+         * Return value intentionally unchecked: during dual-write migration the
+         * session may not yet exist in SessionStore (populated by UpdateMiner). */
         SessionStore::Get().TransformBySessionId(nSessionId, [nFailed, nThreshold](const CanonicalSession& cs) {
             CanonicalSession updated = cs;
             updated.nFailedPackets = nFailed;
@@ -163,7 +167,9 @@ namespace LLP
         if(it != m_mapSessions.end())
             it->second.fMarkedDisconnected.store(true, std::memory_order_relaxed);
 
-        /* Dual-write: mark disconnected in SessionStore */
+        /* Dual-write: mark disconnected in SessionStore.
+         * Return value intentionally unchecked: during dual-write migration the
+         * session may not yet exist in SessionStore (populated by UpdateMiner). */
         SessionStore::Get().TransformBySessionId(nSessionId, [](const CanonicalSession& cs) {
             CanonicalSession updated = cs;
             updated.fMarkedDisconnected = true;

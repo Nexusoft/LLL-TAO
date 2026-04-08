@@ -465,7 +465,9 @@ namespace LLP
 
         /* Dual-write: sync recovery state to SessionStore.
          * SessionStore tracks recovery via fSavedForRecovery flag rather than
-         * copying to a separate store.  Mark the session as recoverable. */
+         * copying to a separate store.  Mark the session as recoverable.
+         * Return value intentionally unchecked: during dual-write migration the
+         * session may not yet exist in SessionStore (populated by UpdateMiner). */
         SessionStore::Get().Transform(context.hashKeyID, [](const CanonicalSession& cs) {
             CanonicalSession updated = cs;
             updated.fSavedForRecovery = true;
@@ -684,7 +686,9 @@ namespace LLP
 
         debug::log(2, FUNCTION, "Removed session for keyID=", hashKeyID.SubString());
 
-        /* Dual-write: clear recovery flag in SessionStore */
+        /* Dual-write: clear recovery flag in SessionStore.
+         * Return value intentionally unchecked: during dual-write migration the
+         * session may not exist in SessionStore (e.g. already swept). */
         SessionStore::Get().Transform(hashKeyID, [](const CanonicalSession& cs) {
             CanonicalSession updated = cs;
             updated.fSavedForRecovery = false;
@@ -747,7 +751,9 @@ namespace LLP
         data.nChaCha20Nonce = nNonce;
         mapSessionsByKey.Update(hashKeyID, data);
 
-        /* Dual-write: sync ChaCha20 state to SessionStore */
+        /* Dual-write: sync ChaCha20 state to SessionStore.
+         * Return value intentionally unchecked: during dual-write migration the
+         * session may not yet exist in SessionStore (populated by UpdateMiner). */
         SessionStore::Get().Transform(hashKeyID, [&](const CanonicalSession& cs) {
             CanonicalSession updated = cs;
             updated.vChaChaKey = hashKey.GetBytes();

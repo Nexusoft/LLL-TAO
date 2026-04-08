@@ -385,7 +385,7 @@ namespace LLP
         /* Check if indexes need updating */
         auto optAfter = mapSessions.Get(hashKeyID);
         if (!optAfter)
-            return false;  /* shouldn't happen */
+            return false;  /* entry was removed concurrently during Transform */
 
         const auto& before = optBefore.value();
         const auto& after  = optAfter.value();

@@ -223,7 +223,9 @@ namespace LLP
             /* Store updated entry */
             m_mapByKey.InsertOrUpdate(hashKeyID, entry);
 
-            /* Dual-write: sync liveness flags to SessionStore */
+            /* Dual-write: sync liveness flags to SessionStore.
+             * Return value intentionally unchecked: during dual-write migration the
+             * session may not yet exist in SessionStore (populated by UpdateMiner). */
             SessionStore::Get().Transform(hashKeyID, [&](const CanonicalSession& cs) {
                 CanonicalSession updated = cs;
                 updated.fStatelessLive = entry.fStatelessLive;
@@ -279,7 +281,9 @@ namespace LLP
         m_mapByKey.InsertOrUpdate(hashKeyID, entry);
         m_mapSessionToKey.InsertOrUpdate(nSessionId, hashKeyID);
 
-        /* Dual-write: sync liveness and identity to SessionStore */
+        /* Dual-write: sync liveness and identity to SessionStore.
+         * Return value intentionally unchecked: during dual-write migration the
+         * session may not yet exist in SessionStore (populated by UpdateMiner). */
         SessionStore::Get().Transform(hashKeyID, [&](const CanonicalSession& cs) {
             CanonicalSession updated = cs;
             updated.fStatelessLive = entry.fStatelessLive;
@@ -352,7 +356,9 @@ namespace LLP
         /* Store updated entry */
         m_mapByKey.InsertOrUpdate(hashKeyID, entry);
 
-        /* Dual-write: sync liveness flags to SessionStore */
+        /* Dual-write: sync liveness flags to SessionStore.
+         * Return value intentionally unchecked: during dual-write migration the
+         * session may not yet exist in SessionStore (populated by UpdateMiner). */
         SessionStore::Get().Transform(hashKeyID, [&](const CanonicalSession& cs) {
             CanonicalSession updated = cs;
             if(lane == ProtocolLane::STATELESS)
