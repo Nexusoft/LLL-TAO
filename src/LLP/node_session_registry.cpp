@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/include/node_session_registry.h>
+#include <LLP/include/active_session_board.h>
 #include <Util/include/runtime.h>
 #include <Util/include/debug.h>
 
@@ -193,15 +194,24 @@ namespace LLP
 
             /* Enforce single-lane operation: a miner can only be on ONE port at a time.
              * When a lane registers or refreshes, the other lane is marked dead.
-             * This prevents stale dual-lane state from persisting across reconnections. */
+             * This prevents stale dual-lane state from persisting across reconnections.
+             *
+             * Also notify ActiveSessionBoard so it stops sending push notifications
+             * on the dead lane.  Without this, the board continues tracking the old
+             * (sessionId, deadLane) as "active", sending ghost notifications that
+             * increment nFailedPackets and eventually soft-disconnect the session. */
             if(lane == ProtocolLane::STATELESS)
             {
                 entry = entry.WithStatelessLive(true);
+                if(entry.fLegacyLive)
+                    ActiveSessionBoard::Get().MarkDisconnected(nSessionId, ProtocolLane::LEGACY);
                 entry = entry.WithLegacyLive(false);
             }
             else
             {
                 entry = entry.WithLegacyLive(true);
+                if(entry.fStatelessLive)
+                    ActiveSessionBoard::Get().MarkDisconnected(nSessionId, ProtocolLane::STATELESS);
                 entry = entry.WithStatelessLive(false);
             }
 
@@ -234,8 +244,14 @@ namespace LLP
         /* Store in both maps.
          * OPT-4: Collision detection — if mapSessionToKey already holds a
          * *different* hashKeyID for this nSessionId, two distinct Falcon keys
-         * have collided in their lower 32 bits.  Log a WARNING and keep the
-         * newer mapping so the most-recent caller wins. */
+         * have collided in their lower 32 bits.  The displaced old entry in
+         * m_mapByKey would become orphaned (unreachable via session ID lookup
+         * and never cleaned up by SweepExpired, which iterates m_mapByKey but
+         * relies on m_mapSessionToKey for the reverse mapping).
+         *
+         * Fix: explicitly remove the displaced entry from m_mapByKey so it
+         * doesn't leak memory or cause misattributed blocks.  The newer
+         * key wins since it's the most recently authenticated miner. */
         {
             auto existingKey = m_mapSessionToKey.Get(nSessionId);
             if(existingKey && *existingKey != hashKeyID)
@@ -244,7 +260,10 @@ namespace LLP
                     "mapSessionToKey collision: session ", nSessionId,
                     " was mapped to key ", existingKey->SubString(),
                     " but new key ", hashKeyID.SubString(),
-                    " derives the same session ID — overwriting with newer key");
+                    " derives the same session ID — evicting displaced entry");
+
+                /* Remove displaced entry from primary map to prevent orphaning */
+                m_mapByKey.Erase(*existingKey);
             }
         }
         m_mapByKey.InsertOrUpdate(hashKeyID, entry);

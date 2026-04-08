@@ -654,9 +654,12 @@ namespace LLP
                 std::array<uint8_t, 4> prevSuffix = nMinerPrevblockSuffix;
                 StatelessMinerManager::Get().TransformMinerBySession(nKeepaliveSession,
                     [prevSuffix, &transformedCtx](const MiningContext& current) {
+                        uint64_t nKeepaliveTimestamp = runtime::unifiedtimestamp();
                         transformedCtx = current
-                            .WithTimestamp(runtime::unifiedtimestamp())
+                            .WithTimestamp(nKeepaliveTimestamp)
                             .WithKeepaliveCount(current.nKeepaliveCount + 1)
+                            .WithKeepaliveSent(current.nKeepaliveSent + 1)
+                            .WithLastKeepaliveTime(nKeepaliveTimestamp)
                             .WithMinerPrevblockSuffix(prevSuffix);
                         return transformedCtx;
                     });
