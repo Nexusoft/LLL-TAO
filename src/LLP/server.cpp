@@ -1174,9 +1174,17 @@ namespace LLP
         if(CONFIG.ENABLE_METERS)
             TIMER.Start();
         
-        /* Keep track of cleanup timer (60 seconds for AutoCooldownManager) */
+        /* Keep track of cleanup timer (10 minutes for session sweep/purge) */
         runtime::timer CLEANUP_TIMER;
         CLEANUP_TIMER.Start();
+
+        /* Separate timer for mining health probes so the probe runs at its own
+         * cadence (default 120 s) independently of the 10-minute cleanup sweep.
+         * Previously both checks shared CLEANUP_TIMER, which caused the health
+         * probe to fire on every 100 ms loop iteration from 120 s until the
+         * 600 s cleanup reset — ~4800× more often than intended. */
+        runtime::timer HEALTH_PROBE_TIMER;
+        HEALTH_PROBE_TIMER.Start();
 
         /* Loop until shutdown. */
         while(!config::fShutdown.load())
@@ -1202,7 +1210,7 @@ namespace LLP
                 const int64_t nProbeInterval = config::GetArg(
                     std::string("-mininghealthprobeinterval"), 120);
 
-                if(CLEANUP_TIMER.Elapsed() >= nProbeInterval)
+                if(HEALTH_PROBE_TIMER.Elapsed() >= nProbeInterval)
                 {
                     /* Get snapshot of all connections for health check. */
                     std::vector<std::shared_ptr<ProtocolType>> vConnections = GetConnections();
@@ -1246,6 +1254,9 @@ namespace LLP
 
                     if(nProbed > 0)
                         debug::log(0, FUNCTION, "Health probe complete: ", nProbed, " stale miners flushed");
+
+                    /* Reset so the next probe fires after another full interval. */
+                    HEALTH_PROBE_TIMER.Reset();
                 }
             }
 

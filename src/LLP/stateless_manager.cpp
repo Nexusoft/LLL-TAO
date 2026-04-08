@@ -66,13 +66,42 @@ namespace LLP
             nPrevKeepalives = existing.nKeepaliveCount;
 
             /* Clean up stale secondary index entries when keys/session/genesis change.
-             * Without this, old index entries point to the wrong miner after re-auth. */
+             * Without this, old index entries point to the wrong miner after re-auth.
+             * Guard with value check so we don't erase a concurrent UpdateMiner's entry. */
             if(existing.hashKeyID != 0 && existing.hashKeyID != context.hashKeyID)
-                mapKeyToAddress.Erase(existing.hashKeyID);
+            {
+                auto optAddr = mapKeyToAddress.Get(existing.hashKeyID);
+                if(optAddr.has_value() && optAddr.value() == strAddress)
+                    mapKeyToAddress.Erase(existing.hashKeyID);
+            }
             if(existing.nSessionId != 0 && existing.nSessionId != context.nSessionId)
-                mapSessionToAddress.Erase(existing.nSessionId);
+            {
+                auto optAddr = mapSessionToAddress.Get(existing.nSessionId);
+                if(optAddr.has_value() && optAddr.value() == strAddress)
+                    mapSessionToAddress.Erase(existing.nSessionId);
+            }
             if(existing.hashGenesis != 0 && existing.hashGenesis != context.hashGenesis)
-                mapGenesisToAddress.Erase(existing.hashGenesis);
+            {
+                auto optAddr = mapGenesisToAddress.Get(existing.hashGenesis);
+                if(optAddr.has_value() && optAddr.value() == strAddress)
+                    mapGenesisToAddress.Erase(existing.hashGenesis);
+            }
+
+            /* Clean up stale IP index when the address (IP:port) changes.
+             * Previously UpdateMiner() never cleaned old IP mappings, so after a
+             * NAT port change the old IP→IP:oldPort entry persisted and
+             * GetMinerContextByIP() could return stale data. */
+            if(!existing.strAddress.empty() && existing.strAddress != strAddress)
+            {
+                const size_t nOldColon = existing.strAddress.rfind(':');
+                if(nOldColon != std::string::npos)
+                {
+                    const std::string strOldIP = existing.strAddress.substr(0, nOldColon);
+                    auto optAddr = mapIPToAddress.Get(strOldIP);
+                    if(optAddr.has_value() && optAddr.value() == existing.strAddress)
+                        mapIPToAddress.Erase(strOldIP);
+                }
+            }
         }
 
         /* Enforce cache limit before adding new miner (DDOS protection).
@@ -264,23 +293,46 @@ namespace LLP
         if(ctx.fAuthenticated && nAuthenticatedMiners > 0)
             --nAuthenticatedMiners;
 
-        /* Remove from indices */
+        /* Remove from secondary indices.
+         * Guard each erase with a value check: only remove if the index still
+         * points back to THIS address.  A concurrent UpdateMiner() for the same
+         * key but a different address may have already replaced the mapping,
+         * and blindly erasing would destroy the newer entry. */
         if(ctx.hashKeyID != 0)
-            mapKeyToAddress.Erase(ctx.hashKeyID);
+        {
+            auto optAddr = mapKeyToAddress.Get(ctx.hashKeyID);
+            if(optAddr.has_value() && optAddr.value() == strAddress)
+                mapKeyToAddress.Erase(ctx.hashKeyID);
+        }
 
         if(ctx.nSessionId != 0)
-            mapSessionToAddress.Erase(ctx.nSessionId);
+        {
+            auto optAddr = mapSessionToAddress.Get(ctx.nSessionId);
+            if(optAddr.has_value() && optAddr.value() == strAddress)
+                mapSessionToAddress.Erase(ctx.nSessionId);
+        }
 
         if(ctx.hashGenesis != 0)
-            mapGenesisToAddress.Erase(ctx.hashGenesis);
+        {
+            auto optAddr = mapGenesisToAddress.Get(ctx.hashGenesis);
+            if(optAddr.has_value() && optAddr.value() == strAddress)
+                mapGenesisToAddress.Erase(ctx.hashGenesis);
+        }
 
         mapAddressToLane.Erase(strAddress);
 
-        /* Remove IP index entry */
+        /* Remove IP index entry — only if it still points to THIS address.
+         * Multiple miners behind the same NAT share the same IP prefix;
+         * unconditionally erasing would orphan the other miner's mapping. */
         {
             const size_t nColon = strAddress.rfind(':');
             if(nColon != std::string::npos)
-                mapIPToAddress.Erase(strAddress.substr(0, nColon));
+            {
+                const std::string strIP = strAddress.substr(0, nColon);
+                auto optAddr = mapIPToAddress.Get(strIP);
+                if(optAddr.has_value() && optAddr.value() == strAddress)
+                    mapIPToAddress.Erase(strIP);
+            }
         }
 
         return true;
@@ -289,7 +341,13 @@ namespace LLP
     /* Remove a miner by key ID */
     bool StatelessMinerManager::RemoveMinerByKeyID(const uint256_t& hashKeyID)
     {
-        auto optAddress = mapKeyToAddress.GetAndRemove(hashKeyID);
+        /* GetAndRemove is intentionally NOT used here.
+         * RemoveMiner() already guards its mapKeyToAddress erase with a value
+         * check, so we only need the address lookup (non-destructive Get).
+         * The previous code did GetAndRemove + RemoveMiner which double-erased
+         * mapKeyToAddress, creating a window where a concurrent UpdateMiner()
+         * could have its freshly-inserted index entry silently destroyed. */
+        auto optAddress = mapKeyToAddress.Get(hashKeyID);
         if(!optAddress.has_value())
             return false;
 
