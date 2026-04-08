@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLP/include/genesis_constants.h>
 #include <LLP/include/stateless_manager.h>
 #include <LLP/include/node_cache.h>
+#include <LLP/include/node_session_registry.h>
 #include <LLP/include/session_recovery.h>
 #include <LLP/include/stateless_opcodes.h>
 #include <LLP/include/session_start_packet.h>
@@ -1787,6 +1788,24 @@ namespace LLP
         newContext = newContext
             .WithTimestamp(nNow)
             .WithStakeHeight(nStakeHeight);
+
+        /* CRITICAL FIX: Refresh the canonical session identity in NodeSessionRegistry.
+         * Previously, keepalive updated MiningContext.nTimestamp and SessionRecoveryManager
+         * but never touched NodeSessionRegistry.nLastActivity.  SweepExpired() uses
+         * nLastActivity as the sole expiry clock, so sessions were being reaped after
+         * 24 hours despite continuous keepalive traffic.
+         *
+         * NodeSessionRegistry is the canonical owner of MinerIdentity — all liveness
+         * refreshes must propagate here to prevent premature session expiration. */
+        if(newContext.hashKeyID != 0)
+        {
+            NodeSessionRegistry::Get().RegisterOrRefresh(
+                newContext.hashKeyID,
+                newContext.hashGenesis,
+                newContext,
+                newContext.nProtocolLane
+            );
+        }
 
         return ProcessResult::Success(newContext, response);
     }

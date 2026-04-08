@@ -112,9 +112,15 @@ namespace LLP
 
     /** NodeSessionEntry
      *
-     *  Unified session state shared across both mining server ports (8323 and 9323).
-     *  One Falcon identity (hashKeyID) maps to one canonical MiningContext that any
-     *  connection on any port can look up and inherit.
+     *  Canonical session state for a single mining identity (one Falcon key).
+     *  One Falcon identity (hashKeyID) maps to one canonical MiningContext.
+     *
+     *  SINGLE-LANE POLICY:
+     *  ====================
+     *  A miner can only be on ONE port at a time.  When RegisterOrRefresh()
+     *  activates a lane, the other lane is automatically marked dead.  The
+     *  fStatelessLive / fLegacyLive flags track which port is currently active,
+     *  but only one may be true at any given time.
      *
      *  DESIGN RATIONALE:
      *  =================
@@ -126,15 +132,14 @@ namespace LLP
      *  =============
      *  - nSessionId: Derived from lower 32 bits of hashKeyID (ProcessFalconResponse pattern)
      *  - hashGenesis: Tritium account identity for this miner
-     *  - fStatelessLive / fLegacyLive: Track which ports are currently connected
+     *  - fStatelessLive / fLegacyLive: Track which port is currently connected (mutually exclusive)
      *  - context: Canonical MiningContext with WithXxx() immutable builders
      *
-     *  LIFECYCLE:
-     *  ==========
-     *  1. First auth on either port: Create entry, derive nSessionId from hashKeyID
-     *  2. Second auth on other port: Look up entry, inherit nSessionId
-     *  3. Disconnection: Mark fStatelessLive or fLegacyLive as false
-     *  4. Expiration: SweepExpired() removes entries with no live connections after timeout
+     *  SESSION LIVENESS:
+     *  =================
+     *  nLastActivity is refreshed on every keepalive and authentication event.
+     *  SweepExpired() removes entries only when no ports are live AND nLastActivity
+     *  exceeds SESSION_LIVENESS_TIMEOUT_SECONDS (24 hours).
      *
      *  THREAD SAFETY:
      *  ==============
@@ -272,9 +277,17 @@ namespace LLP
 
     /** NodeSessionRegistry
      *
-     *  Singleton registry managing cross-port mining sessions on the node side.
-     *  Provides unified session lookup and management across legacy (8323) and
-     *  stateless (9323) mining server ports.
+     *  Singleton registry managing canonical mining sessions on the node side.
+     *  Provides unified session lookup and management.  Each miner identity
+     *  (hashKeyID) maps to exactly one session that is active on ONE port
+     *  at a time (single-lane policy).
+     *
+     *  CANONICAL IDENTITY:
+     *  ====================
+     *  hashKeyID = SK256(falcon_pubkey) is the canonical, immutable identity.
+     *  nSessionId = lower 32 bits of hashKeyID (wire protocol).
+     *  All liveness refreshes (keepalive, authentication) must flow through
+     *  RegisterOrRefresh() to keep nLastActivity current.
      *
      *  DESIGN:
      *  =======
@@ -288,10 +301,9 @@ namespace LLP
      *     auto [sessionId, isNew] = registry.RegisterOrRefresh(hashKeyID, hashGenesis, context, lane);
      *     // Patch wire response DATA[1..4] with sessionId
      *
-     *  2. Packet processing (hot path):
-     *     auto entry = registry.Lookup(context.nSessionId);
-     *     if (!entry) { reject; }
-     *     // Use entry->context for processing
+     *  2. Keepalive (critical for liveness):
+     *     registry.RegisterOrRefresh(hashKeyID, hashGenesis, context, lane);
+     *     // Refreshes nLastActivity to prevent SweepExpired() reaping
      *
      *  3. Disconnection:
      *     registry.MarkDisconnected(hashKeyID, lane);
@@ -323,8 +335,14 @@ namespace LLP
          *  Returns the canonical session ID (same for both ports).
          *
          *  BEHAVIOR:
-         *  - If hashKeyID exists: Refresh activity, update context, mark port live
+         *  - If hashKeyID exists: Refresh activity, update context, activate this lane,
+         *    deactivate the other lane (single-lane policy)
          *  - If hashKeyID new: Derive nSessionId from hashKeyID, create entry
+         *
+         *  LIVENESS:
+         *  This method MUST be called on every keepalive and authentication event
+         *  to keep nLastActivity current.  SweepExpired() is the single authority
+         *  for session expiration and uses nLastActivity as the sole clock.
          *
          *  @param[in] hashKeyID Falcon public key hash
          *  @param[in] hashGenesis Tritium genesis hash
