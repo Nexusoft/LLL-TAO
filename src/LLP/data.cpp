@@ -360,12 +360,13 @@ namespace LLP
                     if(!CONNECTION || !CONNECTION->Connected())
                         continue;
                     
-                    /* Detect stateless Miner connections for special handling. */
+                    /* Detect stateless Miner connections for special handling.
+                     * Use compile-time type check instead of runtime string comparison
+                     * (ProtocolType::Name()) to avoid per-packet allocation overhead. */
                     Miner* pMiner = nullptr;
                     bool fStatelessMiner = false;
                     
-                    /* All Miner connections now use stateless protocol (no session required) */
-                    if(ProtocolType::Name() == std::string("Miner"))
+                    if constexpr (std::is_same_v<ProtocolType, Miner>)
                     {
                         pMiner = dynamic_cast<Miner*>(CONNECTION.get());
                         if(pMiner)

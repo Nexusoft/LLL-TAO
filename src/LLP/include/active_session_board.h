@@ -140,6 +140,10 @@ namespace LLP
         /** Check if a session+lane is registered and not marked disconnected. **/
         bool IsActive(uint32_t nSessionId, ProtocolLane lane) const;
 
+        /** Remove all entries that have been marked disconnected.
+         *  Called periodically from Meter cleanup to prevent unbounded growth. **/
+        uint32_t SweepDisconnected();
+
 
     private:
         ActiveSessionBoard() = default;

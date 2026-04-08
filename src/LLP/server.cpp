@@ -28,6 +28,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/trust_address.h>
 #include <LLP/include/auto_cooldown_manager.h>
+#include <LLP/include/active_session_board.h>
 #include <LLP/include/node_cache.h>
 #include <LLP/include/stateless_manager.h>
 #include <LLP/include/session_recovery.h>
@@ -492,6 +493,7 @@ namespace LLP
             uint32_t nNotified = 0;
             uint32_t nSkippedWrongChannel = 0;
             uint32_t nSkippedUnsubscribed = 0;
+            uint32_t nSkippedDisconnected = 0;
             
             /* SERVER-SIDE FILTERING: Only notify miners subscribed to the matching channel */
             for (auto pConnection : vConnections)
@@ -528,6 +530,22 @@ namespace LLP
                     nSkippedWrongChannel++;
                     continue;  // Wrong channel; skip to avoid duplicate notifications
                 }
+
+                /* Session gate: verify the session is still active in the
+                 * ActiveSessionBoard before sending.  A connection whose
+                 * session has been MarkDisconnected() (e.g. by RemoveMiner
+                 * cross-cache cleanup) should not receive new work even if
+                 * the TCP socket hasn't been torn down yet. */
+                constexpr ProtocolLane nLane =
+                    std::is_same_v<ProtocolType, StatelessMinerConnection>
+                        ? ProtocolLane::STATELESS : ProtocolLane::LEGACY;
+
+                if(context.nSessionId != 0
+                && !ActiveSessionBoard::Get().IsActive(context.nSessionId, nLane))
+                {
+                    nSkippedDisconnected++;
+                    continue;
+                }
                 
                 /* Send notification — exactly once per miner per event per lane */
                 pConnection->SendChannelNotification();
@@ -537,7 +555,8 @@ namespace LLP
             /* Log per-lane per-channel result for deduplication verification */
             debug::log(0, FUNCTION, "[PUSH][", strLane, "][", strChannelName, "] Notified ", nNotified,
                        " miners (skipped: ", nSkippedWrongChannel, " wrong-channel, ",
-                       nSkippedUnsubscribed, " polling)");
+                       nSkippedUnsubscribed, " polling, ",
+                       nSkippedDisconnected, " disconnected)");
 
             return nNotified;
         }
@@ -1300,6 +1319,7 @@ namespace LLP
                     StatelessMinerManager::Get().PurgeInactiveMiners();
                     SessionRecoveryManager::Get().CleanupExpired(
                         SessionRecoveryManager::Get().GetSessionTimeout());
+                    ActiveSessionBoard::Get().SweepDisconnected();
                 }
 
                 CLEANUP_TIMER.Reset();

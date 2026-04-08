@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLP/include/node_cache.h>
 #include <LLP/include/node_session_registry.h>
 #include <LLP/include/active_session_board.h>
+#include <LLP/include/session_recovery.h>
 #include <LLP/include/mining_timers.h>
 
 #include <TAO/Ledger/types/block.h>
@@ -304,19 +305,52 @@ namespace LLP
             }
         }
 
-        /* Cross-cache consistency: mark session as dead in NodeSessionRegistry
-         * and ActiveSessionBoard.  Centralised here so that every removal path
-         * (CleanupInactive, PurgeInactiveMiners, EnforceCacheLimit,
-         * RemoveMinerByKeyID, direct disconnects) gets this automatically. */
-        if(ctx.hashKeyID != 0)
+        /* Cross-cache consistency: propagate removal to all subordinate stores.
+         * Centralised here so that every removal path (CleanupInactive,
+         * PurgeInactiveMiners, EnforceCacheLimit, RemoveMinerByKeyID, direct
+         * disconnects) gets this automatically.
+         *
+         * Each call is wrapped individually so that a failure in one store
+         * (e.g. mutex corruption, bad_alloc) does not prevent the remaining
+         * stores from being updated.  Best-effort: log and continue. */
+        try
         {
-            NodeSessionRegistry::Get().MarkDisconnected(ctx.hashKeyID, ProtocolLane::STATELESS);
-            NodeSessionRegistry::Get().MarkDisconnected(ctx.hashKeyID, ProtocolLane::LEGACY);
+            if(ctx.hashKeyID != 0)
+            {
+                NodeSessionRegistry::Get().MarkDisconnected(ctx.hashKeyID, ProtocolLane::STATELESS);
+                NodeSessionRegistry::Get().MarkDisconnected(ctx.hashKeyID, ProtocolLane::LEGACY);
+            }
         }
-        if(ctx.nSessionId != 0)
+        catch(const std::exception& e)
         {
-            ActiveSessionBoard::Get().MarkDisconnected(ctx.nSessionId, ProtocolLane::STATELESS);
-            ActiveSessionBoard::Get().MarkDisconnected(ctx.nSessionId, ProtocolLane::LEGACY);
+            debug::error(FUNCTION, "NodeSessionRegistry cross-cache cleanup failed: ", e.what());
+        }
+
+        try
+        {
+            if(ctx.nSessionId != 0)
+            {
+                ActiveSessionBoard::Get().MarkDisconnected(ctx.nSessionId, ProtocolLane::STATELESS);
+                ActiveSessionBoard::Get().MarkDisconnected(ctx.nSessionId, ProtocolLane::LEGACY);
+            }
+        }
+        catch(const std::exception& e)
+        {
+            debug::error(FUNCTION, "ActiveSessionBoard cross-cache cleanup failed: ", e.what());
+        }
+
+        /* Remove recovery data so stale session state cannot be restored after
+         * the canonical session has been torn down.  Without this, recovery
+         * entries persist for up to 7 days and can cause split-brain state
+         * when a miner reconnects and recovers an orphaned session. */
+        try
+        {
+            if(ctx.hashKeyID != 0)
+                SessionRecoveryManager::Get().RemoveSession(ctx.hashKeyID);
+        }
+        catch(const std::exception& e)
+        {
+            debug::error(FUNCTION, "SessionRecoveryManager cross-cache cleanup failed: ", e.what());
         }
 
         return true;

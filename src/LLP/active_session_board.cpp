@@ -203,4 +203,32 @@ namespace LLP
         return !it->second.fMarkedDisconnected.load(std::memory_order_relaxed);
     }
 
+
+    uint32_t ActiveSessionBoard::SweepDisconnected()
+    {
+        uint32_t nSwept = 0;
+
+        std::lock_guard<std::mutex> lock(m_mutex);
+        for(auto it = m_mapSessions.begin(); it != m_mapSessions.end(); )
+        {
+            if(it->second.fMarkedDisconnected.load(std::memory_order_relaxed))
+            {
+                it = m_mapSessions.erase(it);
+                ++nSwept;
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
+        if(nSwept > 0)
+        {
+            debug::log(2, FUNCTION, "Swept ", nSwept, " disconnected entries, remaining=",
+                m_mapSessions.size());
+        }
+
+        return nSwept;
+    }
+
 } // namespace LLP
