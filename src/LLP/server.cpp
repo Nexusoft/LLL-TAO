@@ -1019,6 +1019,22 @@ namespace LLP
                     }
 
 
+                    /* For mining protocols, also check auto-expiring cooldowns.
+                     * Mining violations use cooldowns instead of escalating DDOS bans,
+                     * so we must reject connections from IPs in cooldown here. */
+                    if constexpr (is_miner_protocol_v<ProtocolType>)
+                    {
+                        if(!addr.IsLocal() && AutoCooldownManager::Get().IsInCooldown(addr))
+                        {
+                            debug::notice(FUNCTION, "Incoming Connection Request ",
+                                addr.ToString(), " refused — in auto-cooldown (will auto-expire).");
+                            sockNew.Close();
+
+                            continue;
+                        }
+                    }
+
+
                     /* Check for errors accepting the connection */
                     if(sockNew.Errors())
                     {

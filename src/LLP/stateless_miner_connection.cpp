@@ -609,14 +609,16 @@ namespace LLP
                                " length=", PACKET.LENGTH);
                 }
 
-                /* DDOS filtering at HEADER stage (before full packet body is read).
+                /* Protocol violation filtering at HEADER stage (before full packet body is read).
                  * Mirrors the legacy lane (miner.cpp) defense-in-depth pattern:
-                 * reject obviously invalid packets before allocating memory for data. */
+                 * reject obviously invalid packets before allocating memory for data.
+                 * Uses auto-expiring cooldown instead of escalating DDOS ban. */
                 if(fDDOS.load() && Incoming())
                 {
                     StatelessPacket PACKET = this->INCOMING;
+                    bool fViolation = false;
 
-                    /* Ban node-to-miner opcodes that miners should never send */
+                    /* Node-to-miner opcodes that miners should never send */
                     if(PACKET.HEADER == OpcodeUtility::Stateless::BLOCK_DATA ||
                        PACKET.HEADER == OpcodeUtility::Stateless::BLOCK_HEIGHT ||
                        PACKET.HEADER == OpcodeUtility::Stateless::BLOCK_ACCEPTED ||
@@ -626,27 +628,43 @@ namespace LLP
                        PACKET.HEADER == OpcodeUtility::Stateless::REWARD_RESULT ||
                        PACKET.HEADER == OpcodeUtility::Stateless::NEW_ROUND ||
                        PACKET.HEADER == OpcodeUtility::Stateless::OLD_ROUND)
-                        DDOS->Ban();
+                        fViolation = true;
 
-                    /* Ban SUBMIT_BLOCK with payload exceeding Falcon+ChaCha20 maximum */
+                    /* SUBMIT_BLOCK with payload exceeding Falcon+ChaCha20 maximum */
                     if(PACKET.HEADER == OpcodeUtility::Stateless::SUBMIT_BLOCK &&
                        PACKET.LENGTH > FalconConstants::SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX)
-                        DDOS->Ban();
+                        fViolation = true;
 
-                    /* Ban oversized AUTH_INIT */
+                    /* Oversized AUTH_INIT */
                     if(PACKET.HEADER == OpcodeUtility::Stateless::AUTH_INIT &&
                        PACKET.LENGTH > FalconConstants::MINER_AUTH_INIT_MAX)
-                        DDOS->Ban();
+                        fViolation = true;
 
-                    /* Ban oversized AUTH_RESPONSE */
+                    /* Oversized AUTH_RESPONSE */
                     if(PACKET.HEADER == OpcodeUtility::Stateless::AUTH_RESPONSE &&
                        PACKET.LENGTH > FalconConstants::AUTH_RESPONSE_ENCRYPTED_MAX)
-                        DDOS->Ban();
+                        fViolation = true;
 
-                    /* Ban SESSION_KEEPALIVE with oversized payload */
+                    /* SESSION_KEEPALIVE with oversized payload */
                     if(PACKET.HEADER == OpcodeUtility::Stateless::SESSION_KEEPALIVE &&
                        PACKET.LENGTH > 8)
-                        DDOS->Ban();
+                        fViolation = true;
+
+                    /* Apply auto-expiring cooldown instead of escalating DDOS ban */
+                    if(fViolation)
+                    {
+                        debug::log(0, FUNCTION, "Mining protocol violation from ",
+                            GetAddress().ToStringIP(),
+                            " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec,
+                            " length=", PACKET.LENGTH,
+                            " — applying ", MiningConstants::AUTOCOOLDOWN_DURATION_SECONDS,
+                            "s cooldown (not a permanent ban)");
+
+                        AutoCooldownManager::Get().AddCooldown(
+                            GetAddress(), MiningConstants::AUTOCOOLDOWN_DURATION_SECONDS);
+                        Disconnect();
+                        return;
+                    }
                 }
                 break;
             }
