@@ -215,7 +215,6 @@ namespace LLP
         if (nNow == 0)
             nNow = runtime::unifiedtimestamp();
 
-
         return (nLastActivity + nTimeoutSec < nNow);
     }
 
