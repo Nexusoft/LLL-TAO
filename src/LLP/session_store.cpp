@@ -205,16 +205,6 @@ namespace LLP
     }
 
 
-    bool CanonicalSession::IsRecoverable(uint64_t nTimeoutSec, uint64_t nNow) const
-    {
-        if (!fSavedForRecovery)
-            return false;
-
-        if (nDisconnectTime == 0)
-            return false;
-
-        return (nNow < nDisconnectTime + nTimeoutSec);
-    }
 
 
     bool CanonicalSession::IsExpired(uint64_t nTimeoutSec, uint64_t nNow) const
@@ -224,10 +214,6 @@ namespace LLP
 
         if (nNow == 0)
             nNow = runtime::unifiedtimestamp();
-
-        /* Not expired if recoverable */
-        if (IsRecoverable(nTimeoutSec, nNow))
-            return false;
 
         return (nLastActivity + nTimeoutSec < nNow);
     }
@@ -518,28 +504,6 @@ namespace LLP
     }
 
 
-    uint32_t SessionStore::SweepRecoveryExpired(uint64_t nTimeoutSec, uint64_t nNow)
-    {
-        if (nNow == 0)
-            nNow = runtime::unifiedtimestamp();
-
-        /* Collect recovery entries that have expired */
-        std::vector<uint256_t> vExpired;
-        mapSessions.ForEach([&](const uint256_t& key, const CanonicalSession& s)
-        {
-            if (s.fSavedForRecovery && !s.AnyPortLive() &&
-                !s.IsRecoverable(nTimeoutSec, nNow))
-            {
-                vExpired.push_back(key);
-            }
-        });
-
-        for (const auto& key : vExpired)
-            Remove(key);
-
-        return static_cast<uint32_t>(vExpired.size());
-    }
-
 
     void SessionStore::Clear()
     {
@@ -550,85 +514,6 @@ namespace LLP
         mapIPToKey.Clear();
     }
 
-
-    /* ──────────────────────────────────────────────────────────────────────────
-     *  Recovery
-     * ────────────────────────────────────────────────────────────────────────── */
-
-    bool SessionStore::SaveForRecovery(const uint256_t& hashKeyID, ProtocolLane lane, uint64_t nNow)
-    {
-        if (nNow == 0)
-            nNow = runtime::unifiedtimestamp();
-
-        return Transform(hashKeyID, [&](const CanonicalSession& s)
-        {
-            CanonicalSession updated = s;
-            updated.fSavedForRecovery = true;
-            updated.nDisconnectTime   = nNow;
-
-            /* Mark the disconnecting lane as dead */
-            if (lane == ProtocolLane::STATELESS)
-                updated.fStatelessLive = false;
-            else
-                updated.fLegacyLive = false;
-
-            return updated;
-        });
-    }
-
-
-    std::optional<CanonicalSession> SessionStore::RecoverSession(
-        const uint256_t& hashKeyID,
-        const std::string& strNewAddress,
-        ProtocolLane lane,
-        uint32_t nMaxReconnects)
-    {
-        auto opt = mapSessions.Get(hashKeyID);
-        if (!opt)
-            return std::nullopt;
-
-        auto& session = opt.value();
-
-        /* Must be saved for recovery */
-        if (!session.fSavedForRecovery)
-            return std::nullopt;
-
-        /* Perform recovery via Transform for atomicity */
-        bool fOk = Transform(hashKeyID, [&](const CanonicalSession& s)
-        {
-            CanonicalSession updated = s;
-            updated.fSavedForRecovery = false;
-            updated.nDisconnectTime   = 0;
-            updated.strAddress        = strNewAddress;
-            updated.strIP             = CanonicalSession::DeriveIP(strNewAddress);
-            updated.nLastActivity     = runtime::unifiedtimestamp();
-            updated.fMarkedDisconnected = false;
-            updated.nFailedPackets    = 0;
-
-            if (lane == ProtocolLane::STATELESS)
-                updated.fStatelessLive = true;
-            else
-                updated.fLegacyLive = true;
-
-            return updated;
-        });
-
-        if (!fOk)
-            return std::nullopt;
-
-        /* Return the updated session */
-        return mapSessions.Get(hashKeyID);
-    }
-
-
-    bool SessionStore::HasRecoverableSession(const uint256_t& hashKeyID) const
-    {
-        auto opt = mapSessions.Get(hashKeyID);
-        if (!opt)
-            return false;
-
-        return opt->fSavedForRecovery;
-    }
 
 
     /* ──────────────────────────────────────────────────────────────────────────

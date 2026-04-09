@@ -175,7 +175,6 @@ namespace LLP
              * is keyed by hashKeyID. Pre-auth sessions stay in mapMiners only. */
             CanonicalSession cs = CanonicalSession::FromMiningContext(context);
             cs.nLastActivity = context.nTimestamp;
-            cs.nLastLane = nLane;
             SessionStore::Get().Register(cs);
         }
     }
@@ -255,7 +254,6 @@ namespace LLP
         {
             CanonicalSession cs = CanonicalSession::FromMiningContext(newCtx);
             cs.nLastActivity = newCtx.nTimestamp;
-            cs.nLastLane = nLane;
             SessionStore::Get().Register(cs);
         }
 

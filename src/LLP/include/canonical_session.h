@@ -113,10 +113,6 @@ namespace LLP
         uint32_t nKeepaliveSent     = 0;
         uint64_t nLastKeepaliveTime = 0;
 
-        /* ── Recovery ───────────────────────────────────────────────────────── */
-        uint8_t  nLastLane          = 0;
-        bool     fSavedForRecovery  = false;   ///< True when session is preserved for reconnect
-        uint64_t nDisconnectTime    = 0;       ///< Timestamp when session was flagged for recovery
 
         /* ── Health (replaces ActiveSessionBoard) ───────────────────────────── */
         uint32_t nFailedPackets      = 0;
@@ -169,8 +165,6 @@ namespace LLP
         /** AnyPortLive — true if either protocol lane is connected. **/
         bool AnyPortLive() const { return fStatelessLive || fLegacyLive; }
 
-        /** IsRecoverable — true if saved for recovery and not yet expired. **/
-        bool IsRecoverable(uint64_t nTimeoutSec, uint64_t nNow) const;
 
         /** IsExpired — true if no ports live and activity older than timeout. **/
         bool IsExpired(uint64_t nTimeoutSec, uint64_t nNow) const;

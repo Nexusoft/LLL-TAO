@@ -374,6 +374,7 @@ ifdef UNIT_TESTS
 		   build/Tests_LLP_rewards_payout_verification.o \
 		   build/Tests_LLP_session_management_comprehensive.o \
 		   build/Tests_LLP_session_status_tests.o \
+		   build/Tests_LLP_session_store_tests.o \
 		   build/Tests_LLP_socket_buffer_tests.o \
 		   build/Tests_LLP_stateless_miner.o \
 		   build/Tests_LLP_submit_block_format_test.o \
