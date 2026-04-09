@@ -22,6 +22,8 @@ ________________________________________________________________________________
 #include <LLP/include/opcode_utility.h>
 #include <LLP/include/node_cache.h>
 #include <LLP/include/get_block_policy.h>
+#include <LLP/include/auto_cooldown_manager.h>
+#include <LLP/include/mining_constants.h>
 #include <LLP/include/mining_session_health.h>
 #include <LLP/include/push_notification.h>
 #include <LLP/include/keepalive_v2.h>
@@ -314,67 +316,66 @@ namespace LLP
                 if(fDDOS.load() && Incoming())
                 {
                     Packet PACKET   = this->INCOMING;
-                    if(PACKET.HEADER == BLOCK_DATA)
-                        DDOS->Ban();
 
+                    /* Check for protocol violations that warrant a cooldown.
+                     * Mining clients that send server-only opcodes or oversized packets
+                     * are misconfigured, not attackers — use a recoverable cooldown
+                     * instead of an escalating DDOS ban. */
+                    bool fViolation = false;
+
+                    /* Node-to-miner opcodes that miners should never send */
+                    if(PACKET.HEADER == BLOCK_DATA      || PACKET.HEADER == BLOCK_HEIGHT  ||
+                       PACKET.HEADER == BLOCK_REWARD    || PACKET.HEADER == GOOD_BLOCK    ||
+                       PACKET.HEADER == ORPHAN_BLOCK    || PACKET.HEADER == BLOCK_ACCEPTED||
+                       PACKET.HEADER == BLOCK_REJECTED  || PACKET.HEADER == COINBASE_SET  ||
+                       PACKET.HEADER == COINBASE_FAIL   || PACKET.HEADER == NEW_ROUND     ||
+                       PACKET.HEADER == OLD_ROUND)
+                        fViolation = true;
+
+                    /* Oversized payloads */
                     if(PACKET.HEADER == SUBMIT_BLOCK &&
                        PACKET.LENGTH > FalconConstants::SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX)
-                        DDOS->Ban();
-
-                    if(PACKET.HEADER == BLOCK_HEIGHT)
-                        DDOS->Ban();
+                        fViolation = true;
 
                     if(PACKET.HEADER == SET_CHANNEL && PACKET.LENGTH > 4)
-                        DDOS->Ban();
-
-                    if(PACKET.HEADER == BLOCK_REWARD)
-                        DDOS->Ban();
+                        fViolation = true;
 
                     if(PACKET.HEADER == SET_COINBASE && PACKET.LENGTH > 20 * 1024)
-                        DDOS->Ban();
-
-                    if(PACKET.HEADER == GOOD_BLOCK)
-                        DDOS->Ban();
-
-                    if(PACKET.HEADER == ORPHAN_BLOCK)
-                        DDOS->Ban();
+                        fViolation = true;
 
                     if(PACKET.HEADER == CHECK_BLOCK && PACKET.LENGTH > 128)
-                        DDOS->Ban();
+                        fViolation = true;
 
                     if(PACKET.HEADER == SUBSCRIBE && PACKET.LENGTH > 4)
-                        DDOS->Ban();
+                        fViolation = true;
 
-                    if(PACKET.HEADER == BLOCK_ACCEPTED)
-                        DDOS->Ban();
-
-                    if(PACKET.HEADER == BLOCK_REJECTED)
-                        DDOS->Ban();
-
-                    if(PACKET.HEADER == COINBASE_SET)
-                        DDOS->Ban();
-
-                    if(PACKET.HEADER == COINBASE_FAIL)
-                        DDOS->Ban();
-
-                    if(PACKET.HEADER == NEW_ROUND)
-                        DDOS->Ban();
-
-                    if(PACKET.HEADER == OLD_ROUND)
-                        DDOS->Ban();
-
-                    /* Ban request opcodes that should never have payloads */
+                    /* Request opcodes that should never have payloads */
                     if(OpcodeUtility::IsHeaderOnlyRequest(PACKET.HEADER) && PACKET.LENGTH > 0)
-                        DDOS->Ban();
+                        fViolation = true;
 
-                    /* Ban SESSION_KEEPALIVE with oversized payload
+                    /* SESSION_KEEPALIVE with oversized payload
                      * Defense-in-depth: This check happens at HEADER stage (before full
                      * packet body is read), allowing immediate rejection of malicious packets.
                      * ValidatePacketLength() provides the same check later, but this early
                      * detection prevents resource allocation for obviously invalid packets. */
                     if(PACKET.HEADER == SESSION_KEEPALIVE && PACKET.LENGTH > 8)
-                        DDOS->Ban();
+                        fViolation = true;
 
+                    /* Apply auto-expiring cooldown instead of escalating DDOS ban */
+                    if(fViolation)
+                    {
+                        debug::log(0, FUNCTION, "Mining protocol violation from ",
+                            GetAddress().ToStringIP(),
+                            " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec,
+                            " length=", PACKET.LENGTH,
+                            " — applying ", MiningConstants::AUTOCOOLDOWN_DURATION_SECONDS,
+                            "s cooldown (not a permanent ban)");
+
+                        AutoCooldownManager::Get().AddCooldown(
+                            GetAddress(), MiningConstants::AUTOCOOLDOWN_DURATION_SECONDS);
+                        Disconnect();
+                        return;
+                    }
                 }
                 break;
             }
@@ -446,6 +447,16 @@ namespace LLP
             /* On Connect Event, Assign the Proper Daemon Handle. */
             case EVENTS::CONNECT:
             {
+                /* Check auto-expiring cooldown before accepting connection */
+                if(AutoCooldownManager::Get().IsInCooldown(GetAddress()))
+                {
+                    debug::log(0, FUNCTION, "Connection rejected — IP in cooldown: ",
+                        GetAddress().ToStringIP(),
+                        " (automated protection, not a ban; will auto-expire)");
+                    Disconnect();
+                    return;
+                }
+
                 /* Log connection details with remote address and port */
                 debug::log(0, FUNCTION, "MinerLLP: New connection accepted from ", GetAddress().ToStringIP(), ":", GetAddress().GetPort());
 

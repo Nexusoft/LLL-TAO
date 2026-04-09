@@ -1859,8 +1859,8 @@ namespace LLP
         /* CRITICAL FIX: Refresh the canonical session identity in NodeSessionRegistry.
          * Previously, keepalive updated MiningContext.nTimestamp but never touched
          * NodeSessionRegistry.nLastActivity.  SweepExpired() uses nLastActivity as
-         * the sole expiry clock, so sessions were being reaped after 24 hours
-         * despite continuous keepalive traffic.
+         * the sole expiry clock, so sessions were being reaped after 24 hours despite
+         * continuous keepalive traffic.
          *
          * NodeSessionRegistry is the canonical owner of MinerIdentity — all liveness
          * refreshes must propagate here to prevent premature session expiration.

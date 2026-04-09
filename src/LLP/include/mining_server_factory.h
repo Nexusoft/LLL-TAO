@@ -99,7 +99,7 @@ namespace LLP
      *  - MAX_CONNECTIONS: 128 total
      *  - MAX_THREADS: configurable via -miningthreads (default 4)
      *  - DDOS_CSCORE: configurable via -miningcscore (default 1)
-     *  - DDOS_RSCORE: configurable via -miningrscore (default 50)
+     *  - DDOS_RSCORE: configurable via -miningrscore (default 500)
      *  - DDOS_TIMESPAN: configurable via -miningtimespan (default 60)
      *  - MANAGER_SLEEP: 0 (disabled)
      *
@@ -239,7 +239,7 @@ namespace LLP
             CONFIG.MAX_CONNECTIONS = 128;
             CONFIG.MAX_THREADS     = config::GetArg(std::string("-miningthreads"), 4);
             CONFIG.DDOS_CSCORE     = config::GetArg(std::string("-miningcscore"), 1);
-            CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-miningrscore"), 50);
+            CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-miningrscore"), 500);
             CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-miningtimespan"), 60);
             CONFIG.MANAGER_SLEEP   = 0;  // Connection manager disabled
 

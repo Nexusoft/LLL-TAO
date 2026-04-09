@@ -338,7 +338,7 @@ namespace LLP
             }
         }
 
-        /* Cross-cache consistency: propagate removal to all session stores.
+        /* Cross-cache consistency: mark session as dead in NodeSessionRegistry.
          * Centralised here so that every removal path
          * (CleanupInactive, PurgeInactiveMiners, EnforceCacheLimit,
          * RemoveMinerByKeyID, direct disconnects) gets this automatically.

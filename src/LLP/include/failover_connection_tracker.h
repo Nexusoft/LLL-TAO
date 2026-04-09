@@ -30,8 +30,7 @@ namespace LLP
      *  DESIGN OVERVIEW:
      *  ================
      *  When a miner switches from its primary node to a failover node, it establishes
-     *  a brand-new connection with NO pre-existing Session ID. The failover node's
-     *  StatelessMinerManager has no entry for this miner's IP.
+     *  a brand-new connection with NO pre-existing Session ID.
      *
      *  This singleton observes that signal (fresh connection from known IP with no
      *  prior session) and records it as a potential failover event.
