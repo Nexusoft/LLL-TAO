@@ -152,7 +152,7 @@ namespace MiningConstants
     constexpr int64_t NODE_HEALTH_PROBE_INTERVAL_SEC = 120;
 
     //=========================================================================
-    // DIFFICULTY CACHING
+    // CONNECTION TIMEOUTS
     //=========================================================================
 
     /** Default read-idle timeout for authenticated mining connections
@@ -169,7 +169,11 @@ namespace MiningConstants
      *  Overridable at runtime via -miningreadtimeout=<ms>.
      */
     constexpr uint32_t DEFAULT_MINING_READ_TIMEOUT_MS = 600000;
-    
+
+    //=========================================================================
+    // DIFFICULTY CACHING
+    //=========================================================================
+
     /** Difficulty cache time-to-live in milliseconds (1 second)
      *  Reduces expensive GetNextTargetRequired() calls during high mining activity
      */
