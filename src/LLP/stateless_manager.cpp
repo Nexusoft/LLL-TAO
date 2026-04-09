@@ -123,7 +123,7 @@ namespace LLP
             size_t nPeak = nPeakSessions.load();
             while(nNewCount > nPeak && !nPeakSessions.compare_exchange_strong(nPeak, nNewCount))
             {
-                /* CAS failed, nPeak is updated with current value, retry */
+                /* Another thread updated peak concurrently; nPeak reloaded, retry */
             }
         }
 
