@@ -4211,7 +4211,7 @@ namespace LLP
     uint32_t StatelessMinerConnection::GetReadTimeout() const
     {
         if(fAuthenticatedAtomic.load(std::memory_order_relaxed))
-            return config::GetArg("-miningreadtimeout", 600000);
+            return config::GetArg("-miningreadtimeout", MiningConstants::DEFAULT_MINING_READ_TIMEOUT_MS);
 
         return 0;  /* Use DataThread default TIMEOUT for unauthenticated connections */
     }

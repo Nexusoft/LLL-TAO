@@ -413,11 +413,12 @@ namespace LLP
                      * while server-initiated PUSH notifications continue to work
                      * (the "shadow ban" scenario). */
                     {
-                        const uint32_t nReadTimeout = CONNECTION->IsTimeoutExempt()
-                            ? CONNECTION->GetReadTimeout()
+                        const uint32_t nCustom = CONNECTION->GetReadTimeout();
+                        const uint32_t nReadTimeout = (CONNECTION->IsTimeoutExempt() && nCustom > 0)
+                            ? nCustom
                             : TIMEOUT * 1000;
 
-                        if(nReadTimeout > 0 && CONNECTION->Timeout(nReadTimeout, Socket::READ))
+                        if(CONNECTION->Timeout(nReadTimeout, Socket::READ))
                         {
                             remove_connection_with_event(nIndex, DISCONNECT::TIMEOUT);
                             continue;

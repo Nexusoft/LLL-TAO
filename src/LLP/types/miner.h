@@ -610,7 +610,7 @@ namespace LLP
         uint32_t GetReadTimeout() const final
         {
             if(fMinerAuthenticated)
-                return config::GetArg("-miningreadtimeout", 600000);
+                return config::GetArg("-miningreadtimeout", MiningConstants::DEFAULT_MINING_READ_TIMEOUT_MS);
 
             return 0;
         }
