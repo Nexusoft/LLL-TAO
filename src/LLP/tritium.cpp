@@ -109,6 +109,13 @@ namespace LLP
     memory::atomic<LLP::BaseAddress> TritiumNode::addrThis;
 
 
+    /* GlobalGetBlockLimiter static member definitions.
+     * Process-wide counters for the global ACTION::GET BLOCK rate cap.
+     * Initialized to 0 so the first window starts on first use. */
+    std::atomic<uint32_t> GlobalGetBlockLimiter::nGlobalBlockCount{0};
+    std::atomic<uint64_t> GlobalGetBlockLimiter::nWindowStartMs{0};
+
+
     /** Default Constructor **/
     TritiumNode::TritiumNode()
     : BaseConnection<MessagePacket>()
@@ -1883,6 +1890,28 @@ namespace LLP
                                     break;
                                 }
                             }
+
+                            /* Global aggregate rate limiter — protects shared LLD I/O for mining.
+                             * Applies after the per-connection guard: even if each peer is within
+                             * its individual budget, the combined aggregate can monopolise
+                             * LLD::Ledger, starving mining template creation (new_block()).
+                             * Cap configurable via -maxglobalgetblocks (default 100/s). */
+                            {
+                                const uint32_t nGlobalMax = static_cast<uint32_t>(
+                                    config::GetArg(std::string("-maxglobalgetblocks"),
+                                        static_cast<int64_t>(GlobalGetBlockLimiter::DEFAULT_MAX_GLOBAL_GET_BLOCKS_PER_SEC)));
+
+                                if(GlobalGetBlockLimiter::ShouldThrottle(nGlobalMax))
+                                {
+                                    debug::log(1, NODE, "ACTION::GET::BLOCK global throttle — aggregate P2P block serving rate exceeded (",
+                                               nGlobalMax, "/s cap)");
+                                    std::this_thread::yield();
+                                    break;
+                                }
+
+                                GlobalGetBlockLimiter::RecordServed();
+                            }
+
                             if(m_getTracker.RecordGetBlock(
                                 static_cast<uint32_t>(config::GetArg(std::string("-getyieldthreshold"),
                                     static_cast<int64_t>(GetRequestRateTracker::DEFAULT_YIELD_SCORE)))))

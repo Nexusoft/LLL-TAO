@@ -175,6 +175,83 @@ namespace LLP
     };
 
 
+    /** GlobalGetBlockLimiter
+     *
+     *  Process-wide (global) rate limiter for ACTION::GET BLOCK serving.
+     *
+     *  Prevents aggregate P2P block sync traffic from monopolising shared
+     *  LLD database I/O, which would starve mining template creation
+     *  (new_block() calls from the DataThread and FLUSH_THREAD).
+     *
+     *  Per-connection GetRequestRateTracker limits each peer individually,
+     *  but with 20+ peers each allowed 500 blocks / 60 s the aggregate
+     *  I/O can reach ~167 reads/s.  This global cap provides a hard ceiling
+     *  that applies across all connections combined.
+     *
+     *  Configurable via -maxglobalgetblocks (default 100 / second).
+     *
+     **/
+    struct GlobalGetBlockLimiter
+    {
+        /** Rolling count of blocks served in the current 1-second window. **/
+        static std::atomic<uint32_t> nGlobalBlockCount;
+
+        /** Start of the current 1-second window (ms since epoch). **/
+        static std::atomic<uint64_t> nWindowStartMs;
+
+        /** Default cap: 100 ACTION::GET BLOCK responses per second across all peers. **/
+        static constexpr uint32_t DEFAULT_MAX_GLOBAL_GET_BLOCKS_PER_SEC = 100;
+
+        /** Window length in milliseconds. **/
+        static constexpr uint64_t WINDOW_MS = 1000;
+
+
+        /** ShouldThrottle
+         *
+         *  Returns true when the global block-serve rate has exceeded the cap.
+         *  Resets the window counter when the window has expired.
+         *  Thread-safe via atomic CAS on the window start.
+         *
+         *  @param[in] nMaxPerSec  Cap from -maxglobalgetblocks.
+         *
+         *  @return true if the caller should skip serving this block.
+         *
+         **/
+        static bool ShouldThrottle(uint32_t nMaxPerSec = DEFAULT_MAX_GLOBAL_GET_BLOCKS_PER_SEC)
+        {
+            const uint64_t tNowMs = static_cast<uint64_t>(
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now().time_since_epoch()).count());
+
+            uint64_t tWindowMs = nWindowStartMs.load(std::memory_order_relaxed);
+
+            if(tNowMs - tWindowMs >= WINDOW_MS)
+            {
+                /* Try to reset: only the first thread to win the CAS resets the counter. */
+                if(nWindowStartMs.compare_exchange_strong(tWindowMs, tNowMs,
+                       std::memory_order_acq_rel, std::memory_order_relaxed))
+                {
+                    nGlobalBlockCount.store(0, std::memory_order_release);
+                }
+            }
+
+            return nGlobalBlockCount.load(std::memory_order_relaxed) >= nMaxPerSec;
+        }
+
+
+        /** RecordServed
+         *
+         *  Increments the global block-serve counter.
+         *  Call after ShouldThrottle() returns false (i.e., we are about to serve).
+         *
+         **/
+        static void RecordServed()
+        {
+            nGlobalBlockCount.fetch_add(1, std::memory_order_relaxed);
+        }
+    };
+
+
     /** TritiumNode
      *
      *  A Node that processes packets and messages for the Tritium Server

@@ -34,6 +34,7 @@ ________________________________________________________________________________
 #include <LLP/include/round_state_utility.h>
 
 #include <LLP/include/stateless_get_block_handler.h>
+#include <LLP/include/template_cache.h>
 #include <LLP/templates/events.h>
 
 #include <LLD/include/global.h>
@@ -1065,16 +1066,96 @@ namespace LLP
                  *
                  * Rate limiting for GET_BLOCK on the stateless lane uses the session-scoped
                  * limiter in CheckRateLimit (called earlier in the packet dispatch).
-                 */
+                 *
+                 * Cache check: If TryAttachBlockTemplate() (PUSH path) already built a
+                 * template for the current unified height, reuse its block bytes to avoid
+                 * a redundant new_block() call and the associated LLD I/O. */
 
                 debug::log(2, FUNCTION, "Invariant: authenticated + channel set → BLOCK_DATA MUST follow");
                 debug::log(0, "   ✅ Validation passed, delegating to StatelessGetBlockHandler");
 
+                /* Check global template cache before calling new_block() */
+                const uint32_t nCurrentUnifiedHeight =
+                    static_cast<uint32_t>(TAO::Ledger::ChainState::nBestHeight.load());
+                auto gbCached = GlobalTemplateCache::Get().GetCachedTemplate(
+                    nChannel_snap, nCurrentUnifiedHeight);
+
                 /* Build request for the stateless lane handler.
-                 * Reuse the context snapshot already captured under lock above (ctxSnap)
-                 * rather than re-acquiring MUTEX for a second copy. */
+                 * If the cache has a valid entry, wrap it in fnCreateBlock so the
+                 * handler can use it without modification.  On a cache miss, fall
+                 * through to the normal new_block() path. */
                 StatelessGetBlockRequest gbReq;
                 gbReq.context = ctxSnap;
+                if(gbCached.fValid)
+                {
+                    /* Cache HIT: create a synthetic block factory that skips new_block().
+                     * We pass the cached block bytes via StatelessGetBlockHandler by
+                     * checking for a pre-built result instead. */
+                    debug::log(2, FUNCTION, "GET_BLOCK: cache HIT channel=", nChannel_snap,
+                               " unified=", nCurrentUnifiedHeight, " — skipping new_block()");
+
+                    /* Build the 228-byte payload directly from cached data */
+                    const uint32_t nCachedUnified = gbCached.nUnifiedHeight;
+                    uint32_t nCacheChanHeight = 0;
+                    {
+                        TAO::Ledger::BlockState stateChanGB = TAO::Ledger::ChainState::tStateBest.load();
+                        if(TAO::Ledger::GetLastState(stateChanGB, nChannel_snap))
+                            nCacheChanHeight = stateChanGB.nChannelHeight;
+                    }
+                    std::vector<uint8_t> vCacheMetadata = RoundStateUtility::SerializeTemplateMetadata(
+                        nCachedUnified, nCacheChanHeight, gbCached.nBits);
+
+                    StatelessGetBlockResult gbResult;
+                    gbResult.fSuccess      = true;
+                    gbResult.vPayload.reserve(vCacheMetadata.size() + gbCached.vBlockData.size());
+                    gbResult.vPayload.insert(gbResult.vPayload.end(), vCacheMetadata.begin(), vCacheMetadata.end());
+                    gbResult.vPayload.insert(gbResult.vPayload.end(), gbCached.vBlockData.begin(), gbCached.vBlockData.end());
+                    gbResult.eReason       = GetBlockPolicyReason::NONE;
+                    gbResult.nRetryAfterMs = 0;
+                    gbResult.nBlockChannel = nChannel_snap;
+                    gbResult.nBlockHeight  = 0;        /* height not tracked in cache */
+                    gbResult.nBlockBits    = gbCached.nBits;
+
+                    debug::log(0, "   📤 Sending BLOCK_DATA (from cache)...");
+                    debug::log(0, "      Packet DATA size: ", gbResult.vPayload.size());
+
+                    /* Jump straight to send path, bypassing handler */
+                    SendGetBlockDataResponse(gbResult.vPayload, true);
+                    debug::log(2, "📥 === GET_BLOCK: SUCCESS (cache) ===");
+
+                    /* Update context anchors */
+                    {
+                        TAO::Ledger::BlockState stateBestGB = TAO::Ledger::ChainState::tStateBest.load();
+                        LOCK(MUTEX);
+                        context = context.WithTimestamp(runtime::unifiedtimestamp())
+                                         .WithHeight(stateBestGB.nHeight)
+                                         .WithLastTemplateUnifiedHeight(stateBestGB.nHeight)
+                                         .WithHashLastBlock(TAO::Ledger::ChainState::hashBestChain.load());
+                    }
+
+                    /* Reset consecutive rate-limit strikes on success */
+                    {
+                        LOCK(MUTEX);
+                        m_rateLimit.nConsecutiveRateLimitStrikes = 0;
+                    }
+
+                    /* Atomic transform */
+                    {
+                        const uint32_t nUH_gb = nCurrentUnifiedHeight;
+                        const uint1024_t hashBest_gb = TAO::Ledger::ChainState::hashBestChain.load();
+                        StatelessMinerManager::Get().TransformMiner(ctxSnap.strAddress,
+                            [nUH_gb, hashBest_gb](const MiningContext& current) {
+                                return current.WithTimestamp(runtime::unifiedtimestamp())
+                                              .WithHeight(nUH_gb)
+                                              .WithLastTemplateUnifiedHeight(nUH_gb)
+                                              .WithHashLastBlock(hashBest_gb);
+                            }, 1);
+                    }
+
+                    return true;
+                }
+
+                /* Cache MISS — proceed with normal new_block() path */
                 gbReq.fnCreateBlock = [this]() -> TAO::Ledger::Block*
                 {
                     return new_block();
@@ -1213,6 +1294,20 @@ namespace LLP
 
                 debug::log(0, "   ✅ Packet sent!");
                 debug::log(2, "📥 === GET_BLOCK: SUCCESS ===");
+
+                /* Populate the global template cache with this newly created block.
+                 * The payload is 12-byte metadata + raw block bytes; extract the block
+                 * bytes (skip first 12 bytes) and store them for future cache hits. */
+                static constexpr size_t METADATA_SIZE = 12;
+                if(gbResult.vPayload.size() > METADATA_SIZE)
+                {
+                    std::vector<uint8_t> vRawBlock(
+                        gbResult.vPayload.begin() + METADATA_SIZE,
+                        gbResult.vPayload.end());
+                    GlobalTemplateCache::Get().CacheTemplate(
+                        gbResult.nBlockChannel, nCurrentUnifiedHeight,
+                        vRawBlock, gbResult.nBlockBits);
+                }
 
                 /* Update context timestamp, height, last template channel height, and
                  * hashLastBlock snapshot (primary staleness anchor, StakeMinter pattern). */
@@ -2230,9 +2325,21 @@ namespace LLP
                 /* GET_ROUND COMPATIBILITY: AUTO-SEND TEMPLATE
                  * Legacy miners polling GET_ROUND expect BLOCK_DATA when height changes.
                  * CRITICAL: Use UNIFIED height — every tip move (any channel) changes
-                 * hashPrevBlock, requiring ALL channels to get fresh templates. */
+                 * hashPrevBlock, requiring ALL channels to get fresh templates.
+                 *
+                 * FIX: Re-read nLastTemplateUnifiedHeight from the LIVE context (under
+                 * MUTEX) rather than the stale snapshot captured at packet dispatch time.
+                 * TryAttachBlockTemplate() (called from FLUSH_THREAD via SendChannelNotification)
+                 * updates context.nLastTemplateUnifiedHeight under MUTEX. Using the
+                 * snapshot value would cause a false-positive "height changed" and trigger a
+                 * redundant new_block() call — the second template of the triple storm. */
+                uint32_t nLiveLastTemplateHeight;
+                {
+                    LOCK(MUTEX);
+                    nLiveLastTemplateHeight = context.nLastTemplateUnifiedHeight;
+                }
                 bool fUnifiedHeightChanged = RoundStateUtility::IsTemplateStale(
-                    nLastTemplateUnifiedHeight_snap, snap);
+                    nLiveLastTemplateHeight, snap);
                 bool fTemplateStale = fUnifiedHeightChanged || fHashChanged;
 
                 debug::log(2, FUNCTION, "GET_ROUND staleness: unified_changed=",
@@ -2242,61 +2349,94 @@ namespace LLP
 
                 if(fTemplateStale)
                 {
-                    /* new_block() acquires MUTEX internally — no outer lock needed. */
-
-                    /* Create block template with retry logic (up to 3 attempts) */
-                    TAO::Ledger::Block* pBlock = nullptr;
+                    /* Check the global template cache first.  TryAttachBlockTemplate()
+                     * (called from the PUSH path on the FLUSH_THREAD) stores a fresh
+                     * template here immediately after building it.  If the cache has a
+                     * valid entry for the current unified height we can serve it without
+                     * calling new_block(), eliminating the LLD I/O contention. */
+                    std::vector<uint8_t> vPayload;
                     bool fTemplateSent = false;
-                    for(int nRetry = 0; nRetry < 3 && !pBlock; ++nRetry)
-                    {
-                        pBlock = new_block();
-                        if(!pBlock && nRetry < 2)
-                        {
-                            debug::log(2, FUNCTION, "GET_ROUND auto-send: new_block() retry ", nRetry + 1, "/3");
-                            runtime::sleep(50);
-                        }
-                    }
 
-                    if(!pBlock)
+                    auto cached = GlobalTemplateCache::Get().GetCachedTemplate(
+                        nChannel_snap, snap.nUnifiedHeight);
+                    if(cached.fValid)
                     {
-                        debug::error(FUNCTION, "GET_ROUND auto-send: new_block() failed after 3 retries");
+                        /* Cache HIT — rebuild payload from cached block bytes and fresh
+                         * metadata.  The metadata (unified height, channel height, nBits)
+                         * is re-serialized so the payload matches current chain state.
+                         * This avoids calling new_block() and hitting LLD again. */
+                        std::vector<uint8_t> vMetadata = RoundStateUtility::SerializeTemplateMetadata(
+                            snap.nUnifiedHeight, nChannelHeight, cached.nBits);
+
+                        vPayload.reserve(vMetadata.size() + cached.vBlockData.size());
+                        vPayload.insert(vPayload.end(), vMetadata.begin(), vMetadata.end());
+                        vPayload.insert(vPayload.end(), cached.vBlockData.begin(), cached.vBlockData.end());
+
+                        debug::log(2, FUNCTION, "GET_ROUND auto-send: cache HIT channel=",
+                                   nChannel_snap, " unified=", snap.nUnifiedHeight,
+                                   " size=", vPayload.size(), "B — skipping new_block()");
                     }
                     else
                     {
-                        try {
-                            std::vector<uint8_t> vBlockData = pBlock->Serialize();
-
-                            if(!vBlockData.empty())
+                        /* Cache MISS — create block template with retry logic (up to 3 attempts) */
+                        TAO::Ledger::Block* pBlock = nullptr;
+                        for(int nRetry = 0; nRetry < 3 && !pBlock; ++nRetry)
+                        {
+                            pBlock = new_block();
+                            if(!pBlock && nRetry < 2)
                             {
-                                /* Build payload: 12-byte metadata + block data using shared utility */
-                                std::vector<uint8_t> vMetadata = RoundStateUtility::SerializeTemplateMetadata(
-                                    snap.nUnifiedHeight, nChannelHeight, pBlock->nBits);
-
-                                std::vector<uint8_t> vPayload;
-                                vPayload.reserve(vMetadata.size() + vBlockData.size());
-                                vPayload.insert(vPayload.end(), vMetadata.begin(), vMetadata.end());
-                                vPayload.insert(vPayload.end(), vBlockData.begin(), vBlockData.end());
-
-                                StatelessPacket blockPacket(OpcodeUtility::Stateless::BLOCK_DATA);
-                                blockPacket.DATA   = vPayload;
-                                blockPacket.LENGTH = static_cast<uint32_t>(vPayload.size());
-                                respond(blockPacket);
-
-                                debug::log(2, FUNCTION, "✅ BLOCK_DATA auto-sent (",
-                                           vPayload.size(), " bytes) channel=", pBlock->nChannel,
-                                           " height=", pBlock->nHeight);
-
-                                StatelessMinerManager::Get().IncrementTemplatesServed();
-                                fTemplateSent = true;
-                            }
-                            else
-                            {
-                                debug::error(FUNCTION, "GET_ROUND auto-send: Serialization returned empty");
+                                debug::log(2, FUNCTION, "GET_ROUND auto-send: new_block() retry ", nRetry + 1, "/3");
+                                runtime::sleep(50);
                             }
                         }
-                        catch(const std::exception& e) {
-                            debug::error(FUNCTION, "GET_ROUND auto-send exception: ", e.what());
+
+                        if(!pBlock)
+                        {
+                            debug::error(FUNCTION, "GET_ROUND auto-send: new_block() failed after 3 retries");
                         }
+                        else
+                        {
+                            try {
+                                std::vector<uint8_t> vBlockData = pBlock->Serialize();
+
+                                if(!vBlockData.empty())
+                                {
+                                    /* Build payload: 12-byte metadata + block data using shared utility */
+                                    std::vector<uint8_t> vMetadata = RoundStateUtility::SerializeTemplateMetadata(
+                                        snap.nUnifiedHeight, nChannelHeight, pBlock->nBits);
+
+                                    vPayload.reserve(vMetadata.size() + vBlockData.size());
+                                    vPayload.insert(vPayload.end(), vMetadata.begin(), vMetadata.end());
+                                    vPayload.insert(vPayload.end(), vBlockData.begin(), vBlockData.end());
+
+                                    /* Store in cache for future requests at this height */
+                                    GlobalTemplateCache::Get().CacheTemplate(
+                                        pBlock->nChannel, snap.nUnifiedHeight, vBlockData, pBlock->nBits);
+                                }
+                                else
+                                {
+                                    debug::error(FUNCTION, "GET_ROUND auto-send: Serialization returned empty");
+                                }
+                            }
+                            catch(const std::exception& e) {
+                                debug::error(FUNCTION, "GET_ROUND auto-send exception: ", e.what());
+                            }
+                        }
+                    }
+
+                    if(!vPayload.empty())
+                    {
+                        StatelessPacket blockPacket(OpcodeUtility::Stateless::BLOCK_DATA);
+                        blockPacket.DATA   = vPayload;
+                        blockPacket.LENGTH = static_cast<uint32_t>(vPayload.size());
+                        respond(blockPacket);
+
+                        debug::log(2, FUNCTION, "✅ BLOCK_DATA auto-sent (",
+                                   vPayload.size(), " bytes) channel=", nChannel_snap,
+                                   " unified=", snap.nUnifiedHeight);
+
+                        StatelessMinerManager::Get().IncrementTemplatesServed();
+                        fTemplateSent = true;
                     }
 
                     /* Brief lock for context mutations */
@@ -4424,6 +4564,11 @@ namespace LLP
                              .WithLastTemplateUnifiedHeight(nUnifiedHeight)
                              .WithHashLastBlock(TAO::Ledger::ChainState::hashBestChain.load());
         }
+
+        /* Cache template so GET_ROUND auto-send and GET_BLOCK can reuse it
+         * without calling new_block() and hitting LLD again. */
+        GlobalTemplateCache::Get().CacheTemplate(
+            pBlock->nChannel, nUnifiedHeight, vBlockData, pBlock->nBits);
 
         StatelessMinerManager::Get().IncrementTemplatesServed();
     }
