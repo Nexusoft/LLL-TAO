@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLP/include/node_cache.h>
 #include <LLP/include/node_session_registry.h>
 #include <LLP/include/mining_timers.h>
+#include <LLP/include/session_store.h>
 
 #include <TAO/Ledger/types/block.h>
 #include <TAO/Register/types/address.h>
@@ -154,6 +155,17 @@ namespace LLP
         {
             mapGenesisToAddress.InsertOrUpdate(context.hashGenesis, strAddress);
         }
+
+        /* Dual-write to SessionStore: keep unified store in sync.
+         * Only write authenticated sessions (hashKeyID != 0) since SessionStore
+         * is keyed by hashKeyID. Pre-auth sessions stay in mapMiners only. */
+        if(context.hashKeyID != 0)
+        {
+            CanonicalSession cs = CanonicalSession::FromMiningContext(context);
+            cs.nLastActivity = context.nTimestamp;
+            cs.nLastLane = nLane;
+            SessionStore::Get().Register(cs);
+        }
     }
 
 
@@ -221,6 +233,15 @@ namespace LLP
             mapSessionToAddress.InsertOrUpdate(newCtx.nSessionId, strAddress);
         if(newCtx.hashGenesis != 0)
             mapGenesisToAddress.InsertOrUpdate(newCtx.hashGenesis, strAddress);
+
+        /* Dual-write to SessionStore: keep unified store in sync. */
+        if(newCtx.hashKeyID != 0)
+        {
+            CanonicalSession cs = CanonicalSession::FromMiningContext(newCtx);
+            cs.nLastActivity = newCtx.nTimestamp;
+            cs.nLastLane = nLane;
+            SessionStore::Get().Register(cs);
+        }
 
         return true;
     }
@@ -309,6 +330,9 @@ namespace LLP
          * RemoveMinerByKeyID, direct disconnects) gets this automatically. */
         if(ctx.hashKeyID != 0)
         {
+            /* Dual-write: remove from unified SessionStore. */
+            SessionStore::Get().Remove(ctx.hashKeyID);
+
             NodeSessionRegistry::Get().MarkDisconnected(ctx.hashKeyID, ProtocolLane::STATELESS);
             NodeSessionRegistry::Get().MarkDisconnected(ctx.hashKeyID, ProtocolLane::LEGACY);
         }

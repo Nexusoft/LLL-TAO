@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/include/node_session_registry.h>
+#include <LLP/include/session_store.h>
 #include <Util/include/runtime.h>
 #include <Util/include/debug.h>
 
@@ -212,6 +213,17 @@ namespace LLP
             /* Store updated entry */
             m_mapByKey.InsertOrUpdate(hashKeyID, entry);
 
+            /* Dual-write: sync liveness flags to SessionStore.
+             * Return value intentionally unchecked: during dual-write migration the
+             * session may not yet exist in SessionStore (populated by UpdateMiner). */
+            SessionStore::Get().Transform(hashKeyID, [&](const CanonicalSession& cs) {
+                CanonicalSession updated = cs;
+                updated.fStatelessLive = entry.fStatelessLive;
+                updated.fLegacyLive    = entry.fLegacyLive;
+                updated.nLastActivity  = entry.nLastActivity;
+                return updated;
+            });
+
             debug::log(3, FUNCTION, "Refreshed session ", nSessionId,
                        " for key ", hashKeyID.SubString(),
                        " lane=", (lane == ProtocolLane::STATELESS ? "STATELESS" : "LEGACY"),
@@ -258,6 +270,17 @@ namespace LLP
         }
         m_mapByKey.InsertOrUpdate(hashKeyID, entry);
         m_mapSessionToKey.InsertOrUpdate(nSessionId, hashKeyID);
+
+        /* Dual-write: sync liveness and identity to SessionStore.
+         * Return value intentionally unchecked: during dual-write migration the
+         * session may not yet exist in SessionStore (populated by UpdateMiner). */
+        SessionStore::Get().Transform(hashKeyID, [&](const CanonicalSession& cs) {
+            CanonicalSession updated = cs;
+            updated.fStatelessLive = entry.fStatelessLive;
+            updated.fLegacyLive    = entry.fLegacyLive;
+            updated.nLastActivity  = entry.nLastActivity;
+            return updated;
+        });
 
         debug::log(2, FUNCTION, "Registered new session ", nSessionId,
                    " for key ", hashKeyID.SubString(),
@@ -323,6 +346,18 @@ namespace LLP
         /* Store updated entry */
         m_mapByKey.InsertOrUpdate(hashKeyID, entry);
 
+        /* Dual-write: sync liveness flags to SessionStore.
+         * Return value intentionally unchecked: during dual-write migration the
+         * session may not yet exist in SessionStore (populated by UpdateMiner). */
+        SessionStore::Get().Transform(hashKeyID, [&](const CanonicalSession& cs) {
+            CanonicalSession updated = cs;
+            if(lane == ProtocolLane::STATELESS)
+                updated.fStatelessLive = false;
+            else
+                updated.fLegacyLive = false;
+            return updated;
+        });
+
         debug::log(3, FUNCTION, "Marked disconnected session ", entry.nSessionId,
                    " lane=", (lane == ProtocolLane::STATELESS ? "STATELESS" : "LEGACY"),
                    " anyLive=", entry.AnyPortLive());
@@ -359,6 +394,9 @@ namespace LLP
             /* Remove from both maps */
             m_mapByKey.Erase(hashKeyID);
             m_mapSessionToKey.Erase(liveEntry->nSessionId);
+
+            /* Dual-write: also remove from SessionStore */
+            SessionStore::Get().Remove(hashKeyID);
 
             debug::log(2, FUNCTION, "Swept expired session ", liveEntry->nSessionId,
                        " key=", hashKeyID.SubString(),
