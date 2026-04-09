@@ -152,9 +152,28 @@ namespace MiningConstants
     constexpr int64_t NODE_HEALTH_PROBE_INTERVAL_SEC = 120;
 
     //=========================================================================
+    // CONNECTION TIMEOUTS
+    //=========================================================================
+
+    /** Default read-idle timeout for authenticated mining connections
+     *  (milliseconds).
+     *
+     *  Authenticated miners use this long but finite timeout instead of the
+     *  shorter server-default socket timeout.  It must be long enough to
+     *  accommodate idle gaps during extended Prime block searches, but finite
+     *  so that a stalled read pipeline is eventually cleaned up — preventing
+     *  the "shadow ban" scenario where PUSH works but all miner→node
+     *  requests are silently dropped.
+     *
+     *  Default: 600 000 ms (10 minutes).
+     *  Overridable at runtime via -miningreadtimeout=<ms>.
+     */
+    constexpr uint32_t DEFAULT_MINING_READ_TIMEOUT_MS = 600000;
+
+    //=========================================================================
     // DIFFICULTY CACHING
     //=========================================================================
-    
+
     /** Difficulty cache time-to-live in milliseconds (1 second)
      *  Reduces expensive GetNextTargetRequired() calls during high mining activity
      */
