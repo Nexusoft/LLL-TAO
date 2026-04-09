@@ -278,12 +278,21 @@ namespace LLP
 
     bool SessionStore::Register(const CanonicalSession& session)
     {
-        bool fNew = mapSessions.Insert(session.hashKeyID, session);
+        /* Pre-populate version for new entries (avoids a redundant Transform). */
+        CanonicalSession sessionToInsert = session;
+        sessionToInsert.nVersion = 1;
+
+        bool fNew = mapSessions.Insert(sessionToInsert.hashKeyID, sessionToInsert);
         if (!fNew)
         {
             /* Update existing entry — bump version and clear negative health
              * state to prevent stale disconnects from killing re-registered
-             * sessions (AUTH/DISCONNECT race fix). */
+             * sessions (AUTH/DISCONNECT race fix).
+             *
+             * Full replacement with incoming session is intentional: Register()
+             * is called from UpdateMiner() which builds a complete CanonicalSession
+             * from the live MiningContext.  The incoming session has all current
+             * fields; we only preserve the version counter from the old entry. */
             Transform(session.hashKeyID, [&](const CanonicalSession& old)
             {
                 CanonicalSession updated = session;
@@ -291,16 +300,6 @@ namespace LLP
                 updated.nFailedPackets = 0;
                 updated.fMarkedDisconnected = false;
                 updated.nCooldownExpiry = 0;
-                return updated;
-            });
-        }
-        else
-        {
-            /* New entry — set version to 1 */
-            Transform(session.hashKeyID, [](const CanonicalSession& s)
-            {
-                CanonicalSession updated = s;
-                updated.nVersion = 1;
                 return updated;
             });
         }
@@ -708,8 +707,6 @@ namespace LLP
     {
         return Transform(hashKeyID, [&](const CanonicalSession& s)
         {
-            CanonicalSession updated = s;
-
             /* Version check: if the session has been re-registered since the
              * caller captured the version, reject this stale disconnect.
              * This prevents the AUTH/DISCONNECT race where an old connection's
@@ -721,9 +718,10 @@ namespace LLP
                     " expected_version=", nExpectedVersion,
                     " current_version=", s.nVersion,
                     " — session was re-registered; disconnect is stale");
-                return updated;  /* No-op: return unmodified */
+                return s;  /* No-op: return unmodified */
             }
 
+            CanonicalSession updated = s;
             updated.fMarkedDisconnected = true;
             return updated;
         });
@@ -836,7 +834,7 @@ namespace LLP
             if (fTransformed)
             {
                 ++nRecovered;
-                debug::log(0, FUNCTION, "Session auto-recovered from cooldown: key=",
+                debug::log(2, FUNCTION, "Session auto-recovered from cooldown: key=",
                     key.SubString());
             }
         }
