@@ -2819,52 +2819,16 @@ namespace LLP
     /** Send a stateless packet response */
     void StatelessMinerConnection::respond(const StatelessPacket& packet)
     {
-        /* INVESTIGATION (2026-03-25): During a sustained ACTION::GET TRANSACTION flood from
-         * suspicious peer 83.8.1.23, the node's send buffer can fill beyond MAX_SEND_BUFFER,
-         * causing BaseConnection<>::WritePacket() to silently drop outbound packets (only
-         * logged at level 4).  This was observed as a 930s SESSION_STATUS_ACK silence
-         * coinciding with a TRANSACTION burst — a possible network-layer attack vector
-         * (send-queue starvation / write-queue saturation).
-         *
-         * Keepalive handler code paths are NOT the root cause: ProcessSessionKeepalive()
-         * and ProcessSessionStatus() are pure/lock-free and build responses correctly.
-         * respond() itself acquires no mutex and calls WritePacket() directly.
-         *
-         * fBufferFull is set to true by WritePacket() when a write is dropped and reset
-         * to false by Socket::Flush() after data drains successfully.  Logging at level 0
-         * here makes the saturation condition operator-visible without requiring -v 4. */
-        if(fBufferFull.load() && Buffered() > 0)
-        {
-            debug::log(0, FUNCTION, "WARNING: send buffer saturated before write "
-                       "(opcode=0x", std::hex, packet.HEADER, std::dec,
-                       " size=", packet.GetBytes().size(), " buffered=", Buffered(), "); "
-                       "attempting flush");
-
-            /* Single batch Flush() now drains as much as the kernel TCP buffer
-             * allows (the old 3×10ms retry loop is no longer needed since
-             * Flush() loops internally until send() would block).  This
-             * eliminates up to 30ms of DataThread blocking per respond() call
-             * under buffer pressure. */
-            Flush();
-
-            if(fBufferFull.load())
-            {
-                debug::log(0, FUNCTION, "WARNING: flush did not fully drain buffer — packet may be dropped "
-                           "(opcode=0x", std::hex, packet.HEADER, std::dec, ")");
-            }
-        }
-
-        /* Serialize and write the packet */
+        /* Write the packet to the socket send buffer.
+         * WritePacket() may buffer data if the kernel send buffer is full.
+         * FLUSH_THREAD will drain the buffer asynchronously — we no longer
+         * call Flush() inline here because that would hold SOCKET_MUTEX on
+         * the notification thread, blocking the DataThread's ReadPacket()
+         * and causing reader-writer contention that starves inbound mining
+         * traffic.  The bounded Flush() in FLUSH_THREAD (max 4 chunks per
+         * call via -maxflushchunks) ensures timely delivery without
+         * monopolizing the mutex. */
         WritePacket(packet);
-
-        /* Explicitly flush the socket buffer so mining GET responses (GET_ROUND,
-         * SESSION_STATUS, KEEPALIVE ACK) are pushed to the wire immediately.
-         * Without this, responses sit in vBuffer until the FLUSH_THREAD wakes —
-         * creating an asymmetry where PUSH notifications (which go through
-         * FLUSH_THREAD's explicit Flush()) drain reliably but request/response
-         * traffic can stall.  This aligns both paths. */
-        if(Buffered() > 0)
-            Flush();
     }
 
 
@@ -4338,8 +4302,11 @@ namespace LLP
         debug::log(2, "      client may fall back to polling GET_ROUND (133/0x85).");
         debug::log(2, "════════════════════════════════════════════════════════════");
 
-        /* Send to miner */
-        respond(notification);
+        /* Enqueue for deferred sending by FLUSH_THREAD.
+         * This decouples the block-acceptance notification thread from
+         * SOCKET_MUTEX contention — the packet is built here but written
+         * to the socket asynchronously on the FLUSH_THREAD. */
+        QueuePacket(notification);
 
         /* Reset connection activity timer — the miner is alive and receiving push notifications.
          * Without this, the node would disconnect active miners during long Prime searches (~2-5 min)
@@ -4421,7 +4388,8 @@ namespace LLP
         blockPacket.DATA.insert(blockPacket.DATA.end(), vBlockData.begin(), vBlockData.end());
         blockPacket.LENGTH = static_cast<uint32_t>(blockPacket.DATA.size());
 
-        respond(blockPacket);
+        /* Enqueue for deferred sending by FLUSH_THREAD (same as notification). */
+        QueuePacket(blockPacket);
 
         debug::log(2, FUNCTION, "Attached BLOCK_DATA to PUSH notification: ",
             blockPacket.DATA.size(), "B channel=", pBlock->nChannel,
@@ -4594,8 +4562,11 @@ namespace LLP
         debug::log(2, "      Template pushed automatically on new blocks");
         debug::log(2, "════════════════════════════════════════════════════════════");
         
-        /* Send to miner */
-        respond(notification);
+        /* Enqueue for deferred sending by FLUSH_THREAD.
+         * Consistent with SendChannelNotification() — avoids SOCKET_MUTEX
+         * contention between the notification thread and DataThread's
+         * ReadPacket() loop. */
+        QueuePacket(notification);
         
         /* Update statistics and store canonical snapshot in context. */
         uint64_t nNotificationTimestamp = runtime::unifiedtimestamp();

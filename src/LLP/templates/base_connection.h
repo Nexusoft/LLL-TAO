@@ -24,6 +24,7 @@ ________________________________________________________________________________
 #include <Util/templates/datastream.h>
 
 #include <vector>
+#include <queue>
 #include <condition_variable>
 
 namespace LLP
@@ -181,6 +182,96 @@ namespace LLP
         std::condition_variable* FLUSH_CONDITION;
 
 
+        /** QueuePacket
+         *
+         *  Enqueues a pre-built packet for deferred sending by FLUSH_THREAD.
+         *  This decouples the caller (e.g., SendChannelNotification on the
+         *  block-acceptance notification thread) from SOCKET_MUTEX contention.
+         *  The caller builds the packet and enqueues it lock-free (relative to
+         *  the socket); FLUSH_THREAD drains the queue on its next iteration,
+         *  performing the actual WritePacket() + Flush() under SOCKET_MUTEX
+         *  without blocking the notification thread or the DataThread's
+         *  ReadPacket() path.
+         *
+         *  @param[in] PACKET The packet to enqueue for deferred sending.
+         *
+         **/
+        void QueuePacket(const PacketType& PACKET)
+        {
+            {
+                LOCK(OUTGOING_MUTEX);
+                OUTGOING_QUEUE.push(PACKET);
+            }
+
+            /* Set atomic flag so HasQueuedPackets() can check lock-free. */
+            fHasOutgoing.store(true, std::memory_order_release);
+
+            /* Wake FLUSH_THREAD to drain the queue. */
+            if(FLUSH_CONDITION)
+                FLUSH_CONDITION->notify_all();
+        }
+
+
+        /** DrainOutgoingQueue
+         *
+         *  Called by FLUSH_THREAD to drain all queued outgoing packets.
+         *  Each packet is written via WritePacket() which serializes it
+         *  and hands it to Socket::Write().
+         *
+         *  @return the number of packets drained.
+         *
+         **/
+        uint32_t DrainOutgoingQueue()
+        {
+            uint32_t nDrained = 0;
+
+            /* Grab all packets under lock, then release lock before writing.
+             * This minimizes contention between QueuePacket() callers and
+             * the FLUSH_THREAD drain path.  Use move-assignment to transfer
+             * ownership of queue contents efficiently. */
+            std::queue<PacketType> qLocal;
+            {
+                LOCK(OUTGOING_MUTEX);
+                qLocal = std::move(OUTGOING_QUEUE);
+
+                /* Reset the underlying queue to a clean empty state after move. */
+                OUTGOING_QUEUE = std::queue<PacketType>();
+            }
+
+            /* Clear atomic flag now that the queue is empty under lock.
+             * A concurrent QueuePacket() may re-set it immediately, which
+             * is correct — the next FLUSH_THREAD iteration will drain it. */
+            fHasOutgoing.store(false, std::memory_order_release);
+
+            /* Write each packet — WritePacket() handles buffering and
+             * SOCKET_MUTEX acquisition internally. */
+            while(!qLocal.empty())
+            {
+                WritePacket(qLocal.front());
+                qLocal.pop();
+                ++nDrained;
+            }
+
+            return nDrained;
+        }
+
+
+        /** HasQueuedPackets
+         *
+         *  Lock-free check for queued outgoing packets.
+         *  Uses an atomic flag updated by QueuePacket() and DrainOutgoingQueue()
+         *  to avoid mutex contention in the FLUSH_THREAD wait predicate
+         *  (which evaluates for every connection on every wakeup).
+         *
+         *  @return true if the outgoing queue is likely non-empty.
+         *
+         **/
+        bool HasQueuedPackets() const
+        {
+            return fHasOutgoing.load(std::memory_order_acquire);
+        }
+
+
         /** Total incoming packets. **/
         static std::atomic<uint64_t> REQUESTS;
 
@@ -217,6 +308,22 @@ namespace LLP
 
         /** Special foreign triggers for connection. **/
         std::map<message_t, Trigger*> TRIGGERS;
+
+
+        /** Mutex to protect the outgoing packet queue. **/
+        std::mutex OUTGOING_MUTEX;
+
+
+        /** Queue of packets enqueued by QueuePacket() for deferred
+         *  sending by FLUSH_THREAD via DrainOutgoingQueue(). **/
+        std::queue<PacketType> OUTGOING_QUEUE;
+
+
+        /** Lock-free flag for HasQueuedPackets() — avoids mutex contention
+         *  in the FLUSH_THREAD wait predicate (evaluated for every connection
+         *  on every wakeup; with 500+ connections this saves ~500 mutex
+         *  acquisitions per predicate evaluation). **/
+        std::atomic<bool> fHasOutgoing{false};
 
 
     public:
