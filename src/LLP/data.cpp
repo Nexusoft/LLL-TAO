@@ -595,9 +595,8 @@ namespace LLP
     }
 
 
-    /*  Thread that handles all the Reading / Writing of Data from Sockets.
-     *  Creates a Packet QUEUE on this connection to be processed by an
-     *  LLP Messaging Thread. */
+    /*  Thread that handles flushing write buffers and draining outgoing
+     *  packet queues for all connections on this DataThread. */
     template <class ProtocolType>
     void DataThread<ProtocolType>::Flush()
     {
@@ -627,7 +626,7 @@ namespace LLP
                 if(!RELAY->empty())
                     return true;
 
-                /* Check for buffered connection. */
+                /* Check for buffered connection or queued outgoing packets. */
                 const uint32_t nSize = CONNECTIONS->size();
                 for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
                 {
@@ -639,6 +638,10 @@ namespace LLP
                         /* Skip over Inactive Connections. */
                         if(!CONNECTION || !CONNECTION->Connected())
                             continue;
+
+                        /* Check for queued outgoing packets (from QueuePacket). */
+                        if(CONNECTION->HasQueuedPackets())
+                            return true;
 
                         /* Check for buffered connection. */
                         if(CONNECTION->Buffered())
@@ -692,6 +695,15 @@ namespace LLP
                     /* Skip over Inactive Connections. */
                     if(!CONNECTION || !CONNECTION->Connected())
                         continue;
+
+                    /* Drain any queued outgoing packets first.
+                     * These were enqueued by QueuePacket() from the notification
+                     * thread (e.g., SendChannelNotification) to decouple template
+                     * building from SOCKET_MUTEX contention.  Draining happens
+                     * here on FLUSH_THREAD where WritePacket() + Flush() naturally
+                     * belong, keeping SOCKET_MUTEX contention away from the
+                     * DataThread's ReadPacket() path. */
+                    CONNECTION->DrainOutgoingQueue();
 
                     /* Relay if there are active subscriptions. */
                     const DataStream ssRelay = CONNECTION->RelayFilter(qRelay.first, qRelay.second);

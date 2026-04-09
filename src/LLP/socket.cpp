@@ -926,14 +926,19 @@ namespace LLP
 
     /* Flushes data out of the overflow buffer.
      *
-     * Drains the buffer in a loop, sending up to MTU bytes per iteration,
-     * until the buffer is empty or send() would block (EAGAIN/EWOULDBLOCK).
-     * Previously, Flush() sent at most one MTU (16 KB) per call.  For a
-     * 2 MB buffer that meant ~122 Flush() calls to drain, each requiring
-     * FLUSH_THREAD to wake, evaluate its predicate across all connections,
-     * and go back to sleep.  The loop eliminates that O(N × connections)
-     * overhead by draining as much as the kernel TCP send buffer allows
-     * in a single Flush() invocation.
+     * Drains the buffer in a bounded loop, sending up to MTU bytes per
+     * iteration, for at most MAX_FLUSH_CHUNKS iterations (default 4).
+     * This caps the maximum time Flush() holds SOCKET_MUTEX, preventing
+     * write-side monopolization that starves the DataThread's ReadPacket()
+     * path on the same connection.
+     *
+     * With 4 × 16 KB chunks = 64 KB per Flush() call, a 2 MB buffer
+     * requires ~32 Flush() calls.  FLUSH_THREAD wakes on each
+     * FLUSH_CONDITION notify and drains incrementally.  Between calls,
+     * SOCKET_MUTEX is released, giving ReadPacket() a window to acquire
+     * the mutex and process inbound data.
+     *
+     * The chunk limit is configurable via -maxflushchunks (min 1, max 64).
      *
      * Returns total bytes sent (≥ 0) or the last send() error (< 0). */
     int Socket::Flush()
@@ -958,9 +963,18 @@ namespace LLP
         const uint32_t MTU = 16384;
         const uint32_t nMaxChunk = std::min((uint32_t)config::GetArg("-maxsendsize", MTU), MTU);
 
-        /* Batch-drain loop: send MTU-sized chunks until the buffer is empty
-         * or the kernel TCP send buffer is full (send() returns EAGAIN). */
-        while(nBufferSize.load() > 0)
+        /* Maximum chunks per Flush() call — bounds SOCKET_MUTEX hold time.
+         * 4 chunks × 16 KB = 64 KB per call.  Remaining data is drained on
+         * subsequent FLUSH_THREAD iterations, giving ReadPacket() a window
+         * to acquire the mutex between calls. */
+        const uint32_t MAX_FLUSH_CHUNKS = static_cast<uint32_t>(
+            std::max(int64_t(1), std::min(int64_t(64), config::GetArg("-maxflushchunks", 4))));
+
+        uint32_t nChunksSent = 0;
+
+        /* Bounded-drain loop: send MTU-sized chunks until the buffer is empty,
+         * the kernel TCP send buffer is full, or the chunk limit is reached. */
+        while(nBufferSize.load() > 0 && nChunksSent < MAX_FLUSH_CHUNKS)
         {
             int32_t  nSent  = 0;
             uint32_t nSize  = static_cast<uint32_t>(nBufferSize.load());
@@ -1024,6 +1038,7 @@ namespace LLP
             nTotalSent        += nSent;
             nLastSend          = runtime::timestamp(true);
             nConsecutiveErrors = 0;
+            ++nChunksSent;
         }
 
         return nTotalSent;

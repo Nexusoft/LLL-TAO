@@ -1434,36 +1434,16 @@ namespace LLP
                    " - ", GetMinerPacketName(nHeader), " (0x", std::hex, uint32_t(nHeader), std::dec, ")",
                    " length=", vData.size());
 
-        /* If the send buffer is saturated, attempt to drain before writing.
-         * Mining responses are small (keepalive = 32 B, round = 16 B) and
-         * should fit after even a partial flush. */
-        if(fBufferFull.load() && Buffered() > 0)
-        {
-            debug::log(0, FUNCTION, "WARNING: send buffer saturated before write "
-                       "(opcode=0x", std::hex, uint32_t(nHeader), std::dec,
-                       " buffered=", Buffered(), "); attempting flush");
-
-            /* Single batch Flush() now drains as much as the kernel TCP buffer
-             * allows (the old 3×10ms retry loop is no longer needed since
-             * Flush() loops internally until send() would block).  This
-             * eliminates up to 30ms of DataThread blocking per respond() call
-             * under buffer pressure. */
-            Flush();
-
-            if(fBufferFull.load())
-            {
-                debug::log(0, FUNCTION, "WARNING: flush did not fully drain buffer — packet may be dropped "
-                           "(opcode=0x", std::hex, uint32_t(nHeader), std::dec, ")");
-            }
-        }
-
+        /* Write the packet to the socket send buffer.
+         * WritePacket() may buffer data if the kernel send buffer is full.
+         * FLUSH_THREAD will drain the buffer asynchronously — we no longer
+         * call Flush() inline here because that would hold SOCKET_MUTEX on
+         * the notification thread, blocking the DataThread's ReadPacket()
+         * and causing reader-writer contention that starves inbound mining
+         * traffic.  The bounded Flush() in FLUSH_THREAD (max 4 chunks per
+         * call via -maxflushchunks) ensures timely delivery without
+         * monopolizing the mutex. */
         this->WritePacket(RESPONSE);
-
-        /* Explicitly flush so mining GET responses reach the wire immediately.
-         * Without this, responses sit in vBuffer until FLUSH_THREAD wakes —
-         * creating an asymmetry vs PUSH notifications that drain reliably. */
-        if(Buffered() > 0)
-            Flush();
     }
 
 
@@ -2120,8 +2100,14 @@ namespace LLP
             nSubscribedChannel, ProtocolLane::LEGACY, stateBest, stateChannel, nDifficulty,
             hashBestChain);
         
-        /* Send to miner */
-        respond(notification.HEADER, notification.DATA);
+        /* Enqueue for deferred sending by FLUSH_THREAD.
+         * This decouples the block-acceptance notification thread from
+         * SOCKET_MUTEX contention — the packet is built here but written
+         * to the socket asynchronously on the FLUSH_THREAD where
+         * WritePacket() + Flush() naturally belong.  This eliminates the
+         * reader-writer SOCKET_MUTEX contention between this notification
+         * path and the DataThread's ReadPacket() loop. */
+        QueuePacket(notification);
         
         debug::log(0, FUNCTION, "[BLOCK CREATE] hashPrevBlock = ", hashBestChain.SubString(),
                    " (template anchor embedded in push notification, unified height ", stateBest.nHeight + 1, ")");
