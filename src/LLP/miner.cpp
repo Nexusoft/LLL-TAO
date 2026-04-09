@@ -2177,6 +2177,10 @@ namespace LLP
             }
         }
 
+        /* Get chain state for metadata */
+        RoundStateUtility::ChainHeightSnapshot snap = RoundStateUtility::CaptureHeights();
+        uint32_t nChannelHeight = RoundStateUtility::GetChannelHeight(snap, nChannelCopy);
+
         /* Create block template */
         TAO::Ledger::Block* pBlock = new_block();
         if(!pBlock)
@@ -2197,10 +2201,6 @@ namespace LLP
             debug::error(FUNCTION, "Invalid block serialization: empty");
             return;
         }
-
-        /* Get chain state for metadata */
-        RoundStateUtility::ChainHeightSnapshot snap = RoundStateUtility::CaptureHeights();
-        uint32_t nChannelHeight = RoundStateUtility::GetChannelHeight(snap, nChannelCopy);
 
         /* Build payload: 12-byte metadata + block data using shared utility */
         std::vector<uint8_t> vMetadata = RoundStateUtility::SerializeTemplateMetadata(
@@ -2790,15 +2790,25 @@ namespace LLP
 
         /* GET_ROUND COMPATIBILITY: AUTO-SEND TEMPLATE
          * CRITICAL: Use UNIFIED height — every tip move (any channel) changes
-         * hashPrevBlock, requiring ALL channels to get fresh templates. */
+         * hashPrevBlock, requiring ALL channels to get fresh templates.
+         *
+         * FIX: Re-read nLastTemplateUnifiedHeight under MUTEX to avoid a data race
+         * with SendLegacyTemplate() which writes nLastTemplateUnifiedHeight from the
+         * FLUSH_THREAD.  Using the live value prevents a false-positive "height changed"
+         * that would trigger a redundant new_block() call. */
         uint32_t nCurrentChannelHeight = RoundStateUtility::GetChannelHeight(snap, nChannel);
+        uint32_t nLiveLastTemplateHeight;
+        {
+            LOCK(MUTEX);
+            nLiveLastTemplateHeight = nLastTemplateUnifiedHeight;
+        }
         bool fUnifiedHeightChanged = RoundStateUtility::IsTemplateStale(
-            nLastTemplateUnifiedHeight, snap);
+            nLiveLastTemplateHeight, snap);
 
         if(fUnifiedHeightChanged)
         {
             debug::log(2, FUNCTION, "Unified height advanced: ",
-                       nLastTemplateUnifiedHeight, " -> ", snap.nUnifiedHeight,
+                       nLiveLastTemplateHeight, " -> ", snap.nUnifiedHeight,
                        " - auto-sending template for channel ", nChannel.load());
 
             TAO::Ledger::Block* pBlock = new_block();
