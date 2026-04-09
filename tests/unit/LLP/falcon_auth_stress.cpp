@@ -15,7 +15,6 @@ ________________________________________________________________________________
 
 #include <LLP/include/falcon_auth.h>
 #include <LLP/include/stateless_miner.h>
-#include <LLP/include/session_recovery.h>
 #include <LLP/packets/packet.h>
 
 #include <LLC/include/random.h>

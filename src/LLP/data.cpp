@@ -361,19 +361,9 @@ namespace LLP
                         continue;
                     
                     /* Detect stateless Miner connections for special handling.
-                     * Use compile-time type check instead of runtime string comparison
-                     * (ProtocolType::Name()) to avoid per-packet allocation overhead. */
-                    Miner* pMiner = nullptr;
-                    bool fStatelessMiner = false;
-                    
-                    if constexpr (std::is_same_v<ProtocolType, Miner>)
-                    {
-                        pMiner = dynamic_cast<Miner*>(CONNECTION.get());
-                        if(pMiner)
-                        {
-                            fStatelessMiner = true;
-                        }
-                    }
+                     * All Miner connections now use stateless protocol (no session required).
+                     * Resolved at compile time since ProtocolType is a template parameter. */
+                    constexpr bool fStatelessMiner = std::is_same<ProtocolType, Miner>::value;
                     
                     /* Log data thread connection assignment at verbose level 3. */
                     if(config::nVerbose.load() >= 3 && CONNECTION->PacketComplete())
