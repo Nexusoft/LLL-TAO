@@ -62,17 +62,13 @@ namespace TAO
         /* Check that the checkpoint is a Descendant of previous Checkpoint.*/
         bool IsDescendant(const BlockState& state)
         {
-            /* Check if we should force our descendant checks. */
-            if(config::GetBoolArg("-forcesync", false))
-                return true;
-
-            /* If no checkpoint defined, return true. */
-            if(ChainState::hashCheckpoint == 0)
-                return true;
-
-            /* Check hard coded checkpoints when syncing. */
+            /* Check hardcoded checkpoints when synchronizing. */
             if(ChainState::Synchronizing())
             {
+                /* If no checkpoint defined, return true. */
+                if(ChainState::hashCheckpoint == 0)
+                    return true;
+
                 /* Check that height isn't exceeded. */
                 if(config::fTestNet || state.nHeight > CHECKPOINT_HEIGHT)
                     return true;
@@ -88,6 +84,10 @@ namespace TAO
                 /* Block must match checkpoints map. */
                 return it->second == state.hashCheckpoint;
             }
+
+            /* Check if we should force our descendant checks. */
+            if(!config::GetBoolArg("-checkpoints", false))
+                return true;
 
             /* Check The Block Hash */
             BlockState check = state;

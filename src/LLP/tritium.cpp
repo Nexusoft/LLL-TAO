@@ -608,7 +608,8 @@ namespace LLP
                     else if(addrCurrent != addr)
                     {
                         //addrCurrent = addr;
-                        debug::warning(NODE, "ACTION::VERSION conflicting address ", addr.ToStringIP(), " != ", addrCurrent.ToStringIP()); //TODO: vAddrThis: can have multiple addr (IPv4/6, LTE, Wifi, etc.)
+                        if(config::nVerbose >= 3)
+                            debug::warning(NODE, "ACTION::VERSION conflicting address ", addr.ToStringIP(), " != ", addrCurrent.ToStringIP()); //TODO: vAddrThis: can have multiple addr (IPv4/6, LTE, Wifi, etc.)
                     }
 
                     /* Respond with version message if incoming connection. */

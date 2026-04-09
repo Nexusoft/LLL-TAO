@@ -280,8 +280,9 @@ namespace TAO::Ledger
              * potentially have difficulty finding a block to add stake, even if they were adding a large amount.
              */
             TAO::Ledger::StakeChange tStakeChange;
-            if(LLD::Local->ReadStakeChange(hashGenesis, tStakeChange))
+            if(LLD::Local->ReadStakeChange(hashGenesis, tStakeChange) && tStakeChange.nAmount > 0)
                 nStake += tStakeChange.nAmount;
+
         }
 
         /* Calculate the minimum Required Energy Efficiency Threshold.
