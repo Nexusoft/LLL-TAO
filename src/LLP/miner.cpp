@@ -22,6 +22,8 @@ ________________________________________________________________________________
 #include <LLP/include/opcode_utility.h>
 #include <LLP/include/node_cache.h>
 #include <LLP/include/get_block_policy.h>
+#include <LLP/include/auto_cooldown_manager.h>
+#include <LLP/include/mining_constants.h>
 #include <LLP/include/mining_session_health.h>
 #include <LLP/include/push_notification.h>
 #include <LLP/include/keepalive_v2.h>
@@ -314,67 +316,66 @@ namespace LLP
                 if(fDDOS.load() && Incoming())
                 {
                     Packet PACKET   = this->INCOMING;
-                    if(PACKET.HEADER == BLOCK_DATA)
-                        DDOS->Ban();
 
+                    /* Check for protocol violations that warrant a cooldown.
+                     * Mining clients that send server-only opcodes or oversized packets
+                     * are misconfigured, not attackers — use a recoverable cooldown
+                     * instead of an escalating DDOS ban. */
+                    bool fViolation = false;
+
+                    /* Node-to-miner opcodes that miners should never send */
+                    if(PACKET.HEADER == BLOCK_DATA      || PACKET.HEADER == BLOCK_HEIGHT  ||
+                       PACKET.HEADER == BLOCK_REWARD    || PACKET.HEADER == GOOD_BLOCK    ||
+                       PACKET.HEADER == ORPHAN_BLOCK    || PACKET.HEADER == BLOCK_ACCEPTED||
+                       PACKET.HEADER == BLOCK_REJECTED  || PACKET.HEADER == COINBASE_SET  ||
+                       PACKET.HEADER == COINBASE_FAIL   || PACKET.HEADER == NEW_ROUND     ||
+                       PACKET.HEADER == OLD_ROUND)
+                        fViolation = true;
+
+                    /* Oversized payloads */
                     if(PACKET.HEADER == SUBMIT_BLOCK &&
                        PACKET.LENGTH > FalconConstants::SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX)
-                        DDOS->Ban();
-
-                    if(PACKET.HEADER == BLOCK_HEIGHT)
-                        DDOS->Ban();
+                        fViolation = true;
 
                     if(PACKET.HEADER == SET_CHANNEL && PACKET.LENGTH > 4)
-                        DDOS->Ban();
-
-                    if(PACKET.HEADER == BLOCK_REWARD)
-                        DDOS->Ban();
+                        fViolation = true;
 
                     if(PACKET.HEADER == SET_COINBASE && PACKET.LENGTH > 20 * 1024)
-                        DDOS->Ban();
-
-                    if(PACKET.HEADER == GOOD_BLOCK)
-                        DDOS->Ban();
-
-                    if(PACKET.HEADER == ORPHAN_BLOCK)
-                        DDOS->Ban();
+                        fViolation = true;
 
                     if(PACKET.HEADER == CHECK_BLOCK && PACKET.LENGTH > 128)
-                        DDOS->Ban();
+                        fViolation = true;
 
                     if(PACKET.HEADER == SUBSCRIBE && PACKET.LENGTH > 4)
-                        DDOS->Ban();
+                        fViolation = true;
 
-                    if(PACKET.HEADER == BLOCK_ACCEPTED)
-                        DDOS->Ban();
-
-                    if(PACKET.HEADER == BLOCK_REJECTED)
-                        DDOS->Ban();
-
-                    if(PACKET.HEADER == COINBASE_SET)
-                        DDOS->Ban();
-
-                    if(PACKET.HEADER == COINBASE_FAIL)
-                        DDOS->Ban();
-
-                    if(PACKET.HEADER == NEW_ROUND)
-                        DDOS->Ban();
-
-                    if(PACKET.HEADER == OLD_ROUND)
-                        DDOS->Ban();
-
-                    /* Ban request opcodes that should never have payloads */
+                    /* Request opcodes that should never have payloads */
                     if(OpcodeUtility::IsHeaderOnlyRequest(PACKET.HEADER) && PACKET.LENGTH > 0)
-                        DDOS->Ban();
+                        fViolation = true;
 
-                    /* Ban SESSION_KEEPALIVE with oversized payload
+                    /* SESSION_KEEPALIVE with oversized payload
                      * Defense-in-depth: This check happens at HEADER stage (before full
                      * packet body is read), allowing immediate rejection of malicious packets.
                      * ValidatePacketLength() provides the same check later, but this early
                      * detection prevents resource allocation for obviously invalid packets. */
                     if(PACKET.HEADER == SESSION_KEEPALIVE && PACKET.LENGTH > 8)
-                        DDOS->Ban();
+                        fViolation = true;
 
+                    /* Apply auto-expiring cooldown instead of escalating DDOS ban */
+                    if(fViolation)
+                    {
+                        debug::log(0, FUNCTION, "Mining protocol violation from ",
+                            GetAddress().ToStringIP(),
+                            " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec,
+                            " length=", PACKET.LENGTH,
+                            " — applying ", MiningConstants::AUTOCOOLDOWN_DURATION_SECONDS,
+                            "s cooldown (not a permanent ban)");
+
+                        AutoCooldownManager::Get().AddCooldown(
+                            GetAddress(), MiningConstants::AUTOCOOLDOWN_DURATION_SECONDS);
+                        Disconnect();
+                        return;
+                    }
                 }
                 break;
             }
@@ -446,6 +447,16 @@ namespace LLP
             /* On Connect Event, Assign the Proper Daemon Handle. */
             case EVENTS::CONNECT:
             {
+                /* Check auto-expiring cooldown before accepting connection */
+                if(AutoCooldownManager::Get().IsInCooldown(GetAddress()))
+                {
+                    debug::log(0, FUNCTION, "Connection rejected — IP in cooldown: ",
+                        GetAddress().ToStringIP(),
+                        " (automated protection, not a ban; will auto-expire)");
+                    Disconnect();
+                    return;
+                }
+
                 /* Log connection details with remote address and port */
                 debug::log(0, FUNCTION, "MinerLLP: New connection accepted from ", GetAddress().ToStringIP(), ":", GetAddress().GetPort());
 
@@ -521,6 +532,10 @@ namespace LLP
                         break;
                     case DISCONNECT::TIMEOUT_WRITE:
                         strReason = "DISCONNECT::TIMEOUT_WRITE (write stall)";
+                        strCategory = "SOFTWARE";
+                        break;
+                    case DISCONNECT::PARTIAL_STALL:
+                        strReason = "DISCONNECT::PARTIAL_STALL (incomplete frame stuck)";
                         strCategory = "SOFTWARE";
                         break;
                     default:
@@ -1423,36 +1438,16 @@ namespace LLP
                    " - ", GetMinerPacketName(nHeader), " (0x", std::hex, uint32_t(nHeader), std::dec, ")",
                    " length=", vData.size());
 
-        /* If the send buffer is saturated, attempt to drain before writing.
-         * Mining responses are small (keepalive = 32 B, round = 16 B) and
-         * should fit after even a partial flush. */
-        if(fBufferFull.load() && Buffered() > 0)
-        {
-            debug::log(0, FUNCTION, "WARNING: send buffer saturated before write "
-                       "(opcode=0x", std::hex, uint32_t(nHeader), std::dec,
-                       " buffered=", Buffered(), "); attempting flush");
-
-            /* Single batch Flush() now drains as much as the kernel TCP buffer
-             * allows (the old 3×10ms retry loop is no longer needed since
-             * Flush() loops internally until send() would block).  This
-             * eliminates up to 30ms of DataThread blocking per respond() call
-             * under buffer pressure. */
-            Flush();
-
-            if(fBufferFull.load())
-            {
-                debug::log(0, FUNCTION, "WARNING: flush did not fully drain buffer — packet may be dropped "
-                           "(opcode=0x", std::hex, uint32_t(nHeader), std::dec, ")");
-            }
-        }
-
+        /* Write the packet to the socket send buffer.
+         * WritePacket() may buffer data if the kernel send buffer is full.
+         * FLUSH_THREAD will drain the buffer asynchronously — we no longer
+         * call Flush() inline here because that would hold SOCKET_MUTEX on
+         * the notification thread, blocking the DataThread's ReadPacket()
+         * and causing reader-writer contention that starves inbound mining
+         * traffic.  The bounded Flush() in FLUSH_THREAD (max 4 chunks per
+         * call via -maxflushchunks) ensures timely delivery without
+         * monopolizing the mutex. */
         this->WritePacket(RESPONSE);
-
-        /* Explicitly flush so mining GET responses reach the wire immediately.
-         * Without this, responses sit in vBuffer until FLUSH_THREAD wakes —
-         * creating an asymmetry vs PUSH notifications that drain reliably. */
-        if(Buffered() > 0)
-            Flush();
     }
 
 
@@ -2110,8 +2105,14 @@ namespace LLP
             nSubscribedChannel, ProtocolLane::LEGACY, stateBest, stateChannel, nDifficulty,
             hashBestChain);
         
-        /* Send to miner */
-        respond(notification.HEADER, notification.DATA);
+        /* Enqueue for deferred sending by FLUSH_THREAD.
+         * This decouples the block-acceptance notification thread from
+         * SOCKET_MUTEX contention — the packet is built here but written
+         * to the socket asynchronously on the FLUSH_THREAD where
+         * WritePacket() + Flush() naturally belong.  This eliminates the
+         * reader-writer SOCKET_MUTEX contention between this notification
+         * path and the DataThread's ReadPacket() loop. */
+        QueuePacket(notification);
         
         debug::log(0, FUNCTION, "[BLOCK CREATE] hashPrevBlock = ", hashBestChain.SubString(),
                    " (template anchor embedded in push notification, unified height ", stateBest.nHeight + 1, ")");

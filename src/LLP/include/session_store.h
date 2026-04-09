@@ -187,61 +187,8 @@ namespace LLP
          **/
         uint32_t SweepExpired(uint64_t nTimeoutSec, uint64_t nNow = 0);
 
-        /** SweepRecoveryExpired
-         *
-         *  Remove sessions that were saved for recovery but have exceeded
-         *  the recovery timeout.
-         *
-         *  @param[in] nTimeoutSec  Recovery timeout (default: CACHE_PURGE_TIMEOUT_SEC).
-         *  @param[in] nNow         Current time.
-         *
-         *  @return Number of recovery entries swept.
-         *
-         **/
-        uint32_t SweepRecoveryExpired(uint64_t nTimeoutSec, uint64_t nNow = 0);
-
         /** Clear — remove all sessions (for testing). **/
         void Clear();
-
-
-        /* ══════════════════════════════════════════════════════════════════════
-         *  Recovery
-         * ══════════════════════════════════════════════════════════════════════ */
-
-        /** SaveForRecovery
-         *
-         *  Mark a session as saved for recovery (flag flip, no data copy).
-         *
-         *  @param[in] hashKeyID  Session to preserve.
-         *  @param[in] lane       Which lane just disconnected.
-         *  @param[in] nNow       Current time.
-         *
-         *  @return true if session was found and flagged.
-         *
-         **/
-        bool SaveForRecovery(const uint256_t& hashKeyID, ProtocolLane lane, uint64_t nNow = 0);
-
-        /** RecoverSession
-         *
-         *  Recover a previously-saved session: reset connection flags,
-         *  bump reconnect count, clear recovery flag.
-         *
-         *  @param[in] hashKeyID      Session to recover.
-         *  @param[in] strNewAddress   New connection address.
-         *  @param[in] lane            Lane reconnecting on.
-         *  @param[in] nMaxReconnects  Maximum allowed reconnect attempts.
-         *
-         *  @return Recovered session if successful, nullopt otherwise.
-         *
-         **/
-        std::optional<CanonicalSession> RecoverSession(
-            const uint256_t& hashKeyID,
-            const std::string& strNewAddress,
-            ProtocolLane lane,
-            uint32_t nMaxReconnects = 10);
-
-        /** HasRecoverableSession — check if a recoverable session exists. **/
-        bool HasRecoverableSession(const uint256_t& hashKeyID) const;
 
 
         /* ══════════════════════════════════════════════════════════════════════

@@ -492,6 +492,7 @@ namespace LLP
             uint32_t nNotified = 0;
             uint32_t nSkippedWrongChannel = 0;
             uint32_t nSkippedUnsubscribed = 0;
+            uint32_t nSkippedDisconnected = 0;
             
             /* SERVER-SIDE FILTERING: Only notify miners subscribed to the matching channel */
             for (auto pConnection : vConnections)
@@ -528,6 +529,18 @@ namespace LLP
                     nSkippedWrongChannel++;
                     continue;  // Wrong channel; skip to avoid duplicate notifications
                 }
+
+                /* Session gate: verify the session is still active in the
+                 * SessionStore before sending.  A connection whose session
+                 * has been MarkDisconnected() (e.g. by RemoveMiner cross-cache
+                 * cleanup) should not receive new work even if the TCP socket
+                 * hasn't been torn down yet. */
+                if(context.nSessionId != 0
+                && !SessionStore::Get().IsActiveBySessionId(context.nSessionId))
+                {
+                    nSkippedDisconnected++;
+                    continue;
+                }
                 
                 /* Send notification — exactly once per miner per event per lane */
                 pConnection->SendChannelNotification();
@@ -537,7 +550,8 @@ namespace LLP
             /* Log per-lane per-channel result for deduplication verification */
             debug::log(0, FUNCTION, "[PUSH][", strLane, "][", strChannelName, "] Notified ", nNotified,
                        " miners (skipped: ", nSkippedWrongChannel, " wrong-channel, ",
-                       nSkippedUnsubscribed, " polling)");
+                       nSkippedUnsubscribed, " polling, ",
+                       nSkippedDisconnected, " disconnected)");
 
             return nNotified;
         }
@@ -1012,6 +1026,22 @@ namespace LLP
                         if(!addr.IsLocal() && DDOS_MAP->at(addr)->Banned())
                         {
                             debug::notice(FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Banned.");
+                            sockNew.Close();
+
+                            continue;
+                        }
+                    }
+
+
+                    /* For mining protocols, also check auto-expiring cooldowns.
+                     * Mining violations use cooldowns instead of escalating DDOS bans,
+                     * so we must reject connections from IPs in cooldown here. */
+                    if constexpr (is_miner_protocol_v<ProtocolType>)
+                    {
+                        if(!addr.IsLocal() && AutoCooldownManager::Get().IsInCooldown(addr))
+                        {
+                            debug::notice(FUNCTION, "Incoming Connection Request ",
+                                addr.ToString(), " refused — in auto-cooldown (will auto-expire).");
                             sockNew.Close();
 
                             continue;

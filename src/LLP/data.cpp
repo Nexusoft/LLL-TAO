@@ -49,6 +49,15 @@ namespace LLP
          *  etc.) while still detecting genuinely dead sockets within seconds.
          */
         static constexpr uint32_t MINING_POLL_EMPTY_TIMEOUT_MS = 5000;
+
+        /** Maximum time (milliseconds) a partial packet (header read but data
+         *  incomplete) may remain stuck before the connection is killed.
+         *  This catches the case where a miner sends a header + length but the
+         *  remaining bytes never arrive, jamming the read pipeline while the
+         *  write pipeline (PUSH notifications) continues to work — the
+         *  "shadow ban" scenario. 30 seconds is generous for any legitimate
+         *  frame over any network link. */
+        static constexpr uint32_t PARTIAL_PACKET_TIMEOUT_MS = 30000;
     }
 
     /** Default Constructor **/
@@ -408,22 +417,32 @@ namespace LLP
                     }
 
                     /* Remove Connection if it has Timed out or had any Errors.
-                     * Authenticated mining connections are exempt — their session-level
-                     * 24-hour keepalive timeout governs expiration, not the socket
-                     * read-idle timer. This prevents the DataThread from killing miners
-                     * that are legitimately idle during long mining operations. */
-                    if(CONNECTION->Timeout(TIMEOUT * 1000, Socket::READ)
-                    && !CONNECTION->IsTimeoutExempt())
+                     * Non-exempt connections use the DataThread TIMEOUT (server-configured).
+                     * Authenticated mining connections (IsTimeoutExempt == true) use the
+                     * virtual GetReadTimeout() which returns a longer but finite value
+                     * (default 600s / 10 minutes, configurable via -miningreadtimeout).
+                     * This prevents a stalled read pipeline from persisting indefinitely
+                     * while server-initiated PUSH notifications continue to work
+                     * (the "shadow ban" scenario). */
                     {
-                        remove_connection_with_event(nIndex, DISCONNECT::TIMEOUT);
-                        continue;
+                        const uint32_t nCustom = CONNECTION->GetReadTimeout();
+                        const uint32_t nReadTimeout = (CONNECTION->IsTimeoutExempt() && nCustom > 0)
+                            ? nCustom
+                            : TIMEOUT * 1000;
+
+                        if(CONNECTION->Timeout(nReadTimeout, Socket::READ))
+                        {
+                            remove_connection_with_event(nIndex, DISCONNECT::TIMEOUT);
+                            continue;
+                        }
                     }
 
                     /* Disconnect if pollin signaled with no data for 1ms consistently (This happens on Linux).
                      * Authenticated mining connections are exempt — a spurious POLLIN with
                      * Available()==0 on a 1 ms window is too aggressive for high-value Falcon-
-                     * authenticated sessions.  The 24-hour session timeout and TCP keepalive
-                     * probes will catch genuinely dead connections instead. */
+                     * authenticated sessions.  The scoped read-idle timeout (GetReadTimeout,
+                     * default 600s) and partial-packet watchdog (30s) will catch genuinely
+                     * dead connections instead. */
                     const bool fHasPartialPacket =
                         !CONNECTION->INCOMING.IsNull() && !CONNECTION->PacketComplete();
                     const bool fMiningConnection =
@@ -495,6 +514,29 @@ namespace LLP
                             " IsTimeoutExempt=", CONNECTION->IsTimeoutExempt());
 
                         remove_connection_with_event(nIndex, DISCONNECT::BUFFER);
+                        continue;
+                    }
+
+                    /* PARTIAL-PACKET WATCHDOG (Option A)
+                     * If a partial packet (header read, data incomplete) has been stuck
+                     * for longer than PARTIAL_PACKET_TIMEOUT_MS, disconnect.  This is
+                     * NOT gated by IsTimeoutExempt() — even authenticated miners get
+                     * disconnected if a frame is stuck mid-read.
+                     *
+                     * The read-idle timer (nLastRecv / Socket::READ) tracks when the
+                     * last bytes arrived on the socket.  If the partial packet's header
+                     * was read but the remaining data bytes have not arrived within the
+                     * timeout window, the frame is considered stalled — a condition
+                     * that can leave the connection alive indefinitely while the write
+                     * pipeline (PUSH) continues to work (shadow ban). */
+                    if(fHasPartialPacket
+                    && CONNECTION->Timeout(PARTIAL_PACKET_TIMEOUT_MS, Socket::READ))
+                    {
+                        debug::log(0, FUNCTION, "DataThread[", ID, "]: PARTIAL_STALL for ",
+                            ProtocolType::Name(), " from ", CONNECTION->GetAddress().ToStringIP(),
+                            " — incomplete frame stuck >", PARTIAL_PACKET_TIMEOUT_MS, "ms, disconnecting");
+
+                        remove_connection_with_event(nIndex, DISCONNECT::PARTIAL_STALL);
                         continue;
                     }
 
@@ -607,9 +649,8 @@ namespace LLP
     }
 
 
-    /*  Thread that handles all the Reading / Writing of Data from Sockets.
-     *  Creates a Packet QUEUE on this connection to be processed by an
-     *  LLP Messaging Thread. */
+    /*  Thread that handles flushing write buffers and draining outgoing
+     *  packet queues for all connections on this DataThread. */
     template <class ProtocolType>
     void DataThread<ProtocolType>::Flush()
     {
@@ -639,7 +680,7 @@ namespace LLP
                 if(!RELAY->empty())
                     return true;
 
-                /* Check for buffered connection. */
+                /* Check for buffered connection or queued outgoing packets. */
                 const uint32_t nSize = CONNECTIONS->size();
                 for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
                 {
@@ -651,6 +692,10 @@ namespace LLP
                         /* Skip over Inactive Connections. */
                         if(!CONNECTION || !CONNECTION->Connected())
                             continue;
+
+                        /* Check for queued outgoing packets (from QueuePacket). */
+                        if(CONNECTION->HasQueuedPackets())
+                            return true;
 
                         /* Check for buffered connection. */
                         if(CONNECTION->Buffered())
@@ -705,6 +750,15 @@ namespace LLP
                     if(!CONNECTION || !CONNECTION->Connected())
                         continue;
 
+                    /* Drain any queued outgoing packets first.
+                     * These were enqueued by QueuePacket() from the notification
+                     * thread (e.g., SendChannelNotification) to decouple template
+                     * building from SOCKET_MUTEX contention.  Draining happens
+                     * here on FLUSH_THREAD where WritePacket() + Flush() naturally
+                     * belong, keeping SOCKET_MUTEX contention away from the
+                     * DataThread's ReadPacket() path. */
+                    CONNECTION->DrainOutgoingQueue();
+
                     /* Relay if there are active subscriptions. */
                     const DataStream ssRelay = CONNECTION->RelayFilter(qRelay.first, qRelay.second);
                     if(ssRelay.size() != 0)
@@ -744,6 +798,10 @@ namespace LLP
                 try { CONNECTION->NotifyEvent(); }
                 catch(const std::exception& e) { }
             }
+
+            /* Advance iterator — without this the loop spins
+             * indefinitely on the first connection. */
+            ++ITT;
         }
     }
 
@@ -809,6 +867,7 @@ namespace LLP
                 case DISCONNECT::PEER:          pReason = "PEER (remote closed)";      break;
                 case DISCONNECT::BUFFER:        pReason = "BUFFER (send overflow)";    break;
                 case DISCONNECT::TIMEOUT_WRITE: pReason = "TIMEOUT_WRITE (write stall)"; break;
+                case DISCONNECT::PARTIAL_STALL: pReason = "PARTIAL_STALL (incomplete frame)"; break;
             }
 
             debug::log(0, FUNCTION, "DataThread[", ID, "]: Removing AUTHENTICATED mining connection ",
