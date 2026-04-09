@@ -114,8 +114,6 @@ namespace LLP
         uint64_t nLastKeepaliveTime = 0;
 
         /* ── Recovery ───────────────────────────────────────────────────────── */
-        uint32_t nReconnectCount    = 0;
-        bool     fFreshAuth         = false;
         uint8_t  nLastLane          = 0;
         bool     fSavedForRecovery  = false;   ///< True when session is preserved for reconnect
         uint64_t nDisconnectTime    = 0;       ///< Timestamp when session was flagged for recovery

@@ -95,9 +95,6 @@ namespace LLP
         ctx.nKeepaliveSent     = nKeepaliveSent;
         ctx.nLastKeepaliveTime = nLastKeepaliveTime;
 
-        /* Recovery */
-        ctx.nReconnectCount = nReconnectCount;
-
         /* Protocol */
         ctx.nProtocolVersion = nProtocolVersion;
 
@@ -164,9 +161,6 @@ namespace LLP
         s.nKeepaliveCount    = ctx.nKeepaliveCount;
         s.nKeepaliveSent     = ctx.nKeepaliveSent;
         s.nLastKeepaliveTime = ctx.nLastKeepaliveTime;
-
-        /* Recovery */
-        s.nReconnectCount = ctx.nReconnectCount;
 
         /* Protocol */
         s.nProtocolVersion = ctx.nProtocolVersion;
@@ -599,14 +593,6 @@ namespace LLP
         if (!session.fSavedForRecovery)
             return std::nullopt;
 
-        /* Check reconnect limit */
-        if (session.nReconnectCount >= nMaxReconnects)
-        {
-            /* Over limit — remove entirely */
-            Remove(hashKeyID);
-            return std::nullopt;
-        }
-
         /* Perform recovery via Transform for atomicity */
         bool fOk = Transform(hashKeyID, [&](const CanonicalSession& s)
         {
@@ -615,7 +601,6 @@ namespace LLP
             updated.nDisconnectTime   = 0;
             updated.strAddress        = strNewAddress;
             updated.strIP             = CanonicalSession::DeriveIP(strNewAddress);
-            updated.nReconnectCount  += 1;
             updated.nLastActivity     = runtime::unifiedtimestamp();
             updated.fMarkedDisconnected = false;
             updated.nFailedPackets    = 0;
