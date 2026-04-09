@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <LLP/include/genesis_constants.h>
 #include <LLP/include/node_cache.h>
 #include <LLP/include/node_session_registry.h>
+#include <LLP/include/session_recovery.h>
 #include <LLP/include/mining_timers.h>
 
 #include <TAO/Ledger/types/block.h>
@@ -119,7 +120,7 @@ namespace LLP
 
             /* Update peak session count if needed (use post-increment value) */
             size_t nPeak = nPeakSessions.load();
-            while(nNewCount > nPeak && !nPeakSessions.compare_exchange_weak(nPeak, nNewCount))
+            while(nNewCount > nPeak && !nPeakSessions.compare_exchange_strong(nPeak, nNewCount))
             {
                 /* CAS failed, nPeak is updated with current value, retry */
             }
@@ -153,6 +154,18 @@ namespace LLP
         if(context.hashGenesis != 0)
         {
             mapGenesisToAddress.InsertOrUpdate(context.hashGenesis, strAddress);
+        }
+
+        /* Consolidation: sync with NodeSessionRegistry so callers don't need to
+         * make a separate RegisterOrRefresh call.  The registry is the canonical
+         * identity/liveness store; keeping it in sync here ensures that every
+         * UpdateMiner path (keepalive, auth, context change) automatically
+         * refreshes registry nLastActivity. */
+        if(context.hashKeyID != 0)
+        {
+            ProtocolLane lane = (nLane == 1) ? ProtocolLane::STATELESS : ProtocolLane::LEGACY;
+            NodeSessionRegistry::Get().RegisterOrRefresh(
+                context.hashKeyID, context.hashGenesis, context, lane);
         }
     }
 
@@ -198,13 +211,17 @@ namespace LLP
                 mapIPToAddress.InsertOrUpdate(strAddress.substr(0, nColon), strAddress);
         }
 
-        /* Clean up stale secondary index entries */
+        /* Clean up stale secondary index entries.
+         * Use CompareAndErase (not plain Erase) to guard against a concurrent
+         * UpdateMiner() that already replaced the mapping with a different address.
+         * Plain Erase would blindly destroy the new writer's freshly-inserted
+         * index entry (BUG-1 fix). */
         if(hashOldKeyID != 0 && hashOldKeyID != newCtx.hashKeyID)
-            mapKeyToAddress.Erase(hashOldKeyID);
+            mapKeyToAddress.CompareAndErase(hashOldKeyID, strAddress);
         if(nOldSessionId != 0 && nOldSessionId != newCtx.nSessionId)
-            mapSessionToAddress.Erase(nOldSessionId);
+            mapSessionToAddress.CompareAndErase(nOldSessionId, strAddress);
         if(hashOldGenesis != 0 && hashOldGenesis != newCtx.hashGenesis)
-            mapGenesisToAddress.Erase(hashOldGenesis);
+            mapGenesisToAddress.CompareAndErase(hashOldGenesis, strAddress);
 
         /* Update authenticated counter */
         if(newCtx.fAuthenticated && !fWasAuthenticated)
@@ -303,14 +320,29 @@ namespace LLP
             }
         }
 
-        /* Cross-cache consistency: mark session as dead in NodeSessionRegistry.
+        /* Cross-cache consistency: propagate removal to all session stores.
          * Centralised here so that every removal path
          * (CleanupInactive, PurgeInactiveMiners, EnforceCacheLimit,
-         * RemoveMinerByKeyID, direct disconnects) gets this automatically. */
+         * RemoveMinerByKeyID, direct disconnects) gets this automatically.
+         *
+         * Each subordinate call is individually try-caught for exception safety:
+         * failure in one store must not prevent cleanup of the others. */
         if(ctx.hashKeyID != 0)
         {
-            NodeSessionRegistry::Get().MarkDisconnected(ctx.hashKeyID, ProtocolLane::STATELESS);
-            NodeSessionRegistry::Get().MarkDisconnected(ctx.hashKeyID, ProtocolLane::LEGACY);
+            try {
+                NodeSessionRegistry::Get().MarkDisconnected(ctx.hashKeyID, ProtocolLane::STATELESS);
+                NodeSessionRegistry::Get().MarkDisconnected(ctx.hashKeyID, ProtocolLane::LEGACY);
+            }
+            catch(const std::exception& e) {
+                debug::error(FUNCTION, "NodeSessionRegistry::MarkDisconnected failed: ", e.what());
+            }
+
+            try {
+                SessionRecoveryManager::Get().RemoveSession(ctx.hashKeyID);
+            }
+            catch(const std::exception& e) {
+                debug::error(FUNCTION, "SessionRecoveryManager::RemoveSession failed: ", e.what());
+            }
         }
 
         return true;
