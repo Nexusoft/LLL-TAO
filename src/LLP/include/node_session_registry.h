@@ -26,12 +26,16 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    /** Hash function for uint256_t for use in unordered containers **/
+    /** Uint256Hash
+     *
+     *  Hash functor for uint256_t keys used in ConcurrentHashMap.
+     *  Combines multiple 64-bit segments for better distribution.
+     *
+     **/
     struct Uint256Hash
     {
         size_t operator()(const uint256_t& key) const
         {
-            /* Combine multiple 64-bit segments for better distribution */
             size_t hash = static_cast<size_t>(key.Get64(0));
             hash ^= static_cast<size_t>(key.Get64(1)) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
             hash ^= static_cast<size_t>(key.Get64(2)) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
@@ -290,10 +294,24 @@ namespace LLP
 
     /** NodeSessionRegistry
      *
-     *  Singleton registry managing canonical mining sessions on the node side.
-     *  Provides unified session lookup and management.  Each miner identity
-     *  (hashKeyID) maps to exactly one session that is active on ONE port
-     *  at a time (single-lane policy).
+     *  CANONICAL SESSION IDENTITY STORE
+     *  =================================
+     *  Singleton registry that is the single source of truth for mining session
+     *  identity and liveness.  StatelessMinerManager is a derived cache whose
+     *  data must agree with this registry.
+     *
+     *  ARCHITECTURE:
+     *  =============
+     *  NodeSessionRegistry is the authoritative owner of:
+     *    - Session identity (hashKeyID → nSessionId mapping)
+     *    - Lane liveness (fStatelessLive / fLegacyLive)
+     *    - Activity timestamp (nLastActivity)
+     *    - Canonical MiningContext snapshot
+     *
+     *  StatelessMinerManager:
+     *    - Thin address-based index (strAddress → hashKeyID) + statistics
+     *    - UpdateMiner() automatically syncs with registry via RegisterOrRefresh()
+     *    - RemoveMiner() propagates to NodeSessionRegistry::MarkDisconnected()
      *
      *  CANONICAL IDENTITY:
      *  ====================
@@ -302,11 +320,18 @@ namespace LLP
      *  All liveness refreshes (keepalive, authentication) must flow through
      *  RegisterOrRefresh() to keep nLastActivity current.
      *
+     *  SINGLE-LANE POLICY:
+     *  ====================
+     *  Each miner identity (hashKeyID) maps to exactly one session that is
+     *  active on ONE port at a time.  When RegisterOrRefresh() activates a
+     *  lane, the other lane is automatically marked dead.
+     *
      *  DESIGN:
      *  =======
      *  - Two-map structure for O(1) lookup by both hashKeyID and nSessionId
      *  - m_mapByKey: Primary storage indexed by Falcon public key hash
      *  - m_mapSessionToKey: Reverse lookup indexed by session ID
+     *  - All mutations use Transform() for atomic read-modify-write (no TOCTOU)
      *
      *  USAGE PATTERN:
      *  ==============
@@ -324,6 +349,11 @@ namespace LLP
      *  4. Periodic cleanup:
      *     registry.SweepExpired(timeoutSec);
      *
+     *  CAPACITY LIMIT:
+     *  ===============
+     *  EnforceCacheLimit() prevents unbounded growth from auth floods.
+     *  Called automatically from RegisterOrRefresh() when 20% over limit.
+     *
      *  THREAD SAFETY:
      *  ==============
      *  Uses ConcurrentHashMap for all storage, providing lock-free reads and
@@ -333,6 +363,9 @@ namespace LLP
     class NodeSessionRegistry
     {
     public:
+        /** Default maximum registry entries before eviction kicks in (BUG-5 fix). */
+        static constexpr size_t DEFAULT_MAX_REGISTRY_SIZE = 1000;
+
         /** Get
          *
          *  Get the global registry instance (singleton).
@@ -448,6 +481,19 @@ namespace LLP
          *
          **/
         size_t CountLive() const;
+
+        /** EnforceCacheLimit
+         *
+         *  Enforce maximum capacity on the registry to prevent unbounded growth
+         *  from auth floods (BUG-5 fix).  Evicts the oldest expired sessions
+         *  first, then the oldest disconnected sessions if still over limit.
+         *
+         *  @param[in] nMaxSize Maximum allowed entries (default: 1000)
+         *
+         *  @return Number of entries evicted
+         *
+         **/
+        uint32_t EnforceCacheLimit(size_t nMaxSize = DEFAULT_MAX_REGISTRY_SIZE);
 
         /** Clear
          *

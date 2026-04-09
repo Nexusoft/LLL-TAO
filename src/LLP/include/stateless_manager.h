@@ -162,8 +162,8 @@ namespace LLP
         /** RemoveMiner
          *
          *  Remove a miner from tracking.  Handles cross-cache cleanup
-         *  (NodeSessionRegistry MarkDisconnected)
-         *  internally so callers never need manual propagation.
+         *  (NodeSessionRegistry MarkDisconnected) internally so callers
+         *  never need manual propagation.
          *
          *  @param[in] strAddress Miner address
          *

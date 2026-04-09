@@ -33,12 +33,13 @@ namespace LLP
      *  a brand-new connection with NO pre-existing Session ID.
      *
      *  This singleton observes that signal (fresh connection from known IP with no
-     *  recoverable session) and records it as a potential failover event.
+     *  prior session) and records it as a potential failover event.
      *
      *  USAGE:
      *  ======
      *  1. In StatelessMinerConnection::Event(EVENTS::CONNECT):
-     *     - For non-localhost IPs: call RecordConnection(strAddr)
+     *     - Check StatelessMinerManager::GetMinerContextByIP()
+     *     - On miss for non-localhost IPs: call RecordConnection(strAddr)
      *
      *  2. After successful MINER_AUTH_RESPONSE:
      *     - If IsFailover(strAddr): call ChannelStateManager::NotifyFailoverConnection()

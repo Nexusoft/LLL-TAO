@@ -360,19 +360,10 @@ namespace LLP
                     if(!CONNECTION || !CONNECTION->Connected())
                         continue;
                     
-                    /* Detect stateless Miner connections for special handling. */
-                    Miner* pMiner = nullptr;
-                    bool fStatelessMiner = false;
-                    
-                    /* All Miner connections now use stateless protocol (no session required) */
-                    if(ProtocolType::Name() == std::string("Miner"))
-                    {
-                        pMiner = dynamic_cast<Miner*>(CONNECTION.get());
-                        if(pMiner)
-                        {
-                            fStatelessMiner = true;
-                        }
-                    }
+                    /* Detect stateless Miner connections for special handling.
+                     * All Miner connections now use stateless protocol (no session required).
+                     * Resolved at compile time since ProtocolType is a template parameter. */
+                    constexpr bool fStatelessMiner = std::is_same<ProtocolType, Miner>::value;
                     
                     /* Log data thread connection assignment at verbose level 3. */
                     if(config::nVerbose.load() >= 3 && CONNECTION->PacketComplete())

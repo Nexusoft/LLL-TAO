@@ -2385,26 +2385,6 @@ namespace LLP
 
         debug::log(0, FUNCTION, "Miner subscribed to channel ", nChannel, " (", GetChannelName(nChannel), ")");
 
-        /* Write-ahead: update and persist the session BEFORE sending the push notification.
-         * If the connection drops after SendChannelNotification but before the session is saved,
-         * the recovery cache would hold a stale channel height.  Persisting first ensures the
-         * recovered session reflects the correct channel height on reconnect. */
-        {
-            const std::string strLookupAddr = GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort());
-            auto optCtx = StatelessMinerManager::Get().GetMinerContext(strLookupAddr);
-            if(optCtx.has_value() && optCtx->fAuthenticated && optCtx->hashKeyID != 0)
-            {
-                MiningContext updatedCtx = optCtx.value();
-
-                /* Record the current unified height so recovery can avoid stale-height throttling */
-                TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
-                updatedCtx = updatedCtx.WithLastTemplateUnifiedHeight(stateBest.nHeight);
-
-                debug::log(2, FUNCTION, "Session updated before push notification: unifiedHeight=",
-                           stateBest.nHeight, " keyID=", updatedCtx.hashKeyID.SubString());
-            }
-        }
-
         /* Send immediate notification.
          * Force-bypass the push throttle — miner explicitly re-subscribed and needs
          * fresh work immediately regardless of when the previous push was sent.

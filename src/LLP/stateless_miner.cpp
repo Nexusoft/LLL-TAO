@@ -153,7 +153,6 @@ namespace LLP
     , vDisposablePubKey()
     , hashDisposableKeyID(0)
     , nSessionStart(0)
-    , nReconnectCount(0)
     , nKeepaliveCount(0)
     , nKeepaliveSent(0)
     , nLastKeepaliveTime(0)
@@ -204,7 +203,6 @@ namespace LLP
     , vDisposablePubKey()
     , hashDisposableKeyID(0)
     , nSessionStart(0)
-    , nReconnectCount(0)
     , nKeepaliveCount(0)
     , nKeepaliveSent(0)
     , nLastKeepaliveTime(0)
@@ -354,13 +352,6 @@ namespace LLP
     {
         MiningContext c = *this;
         c.nSessionStart = nSessionStart_;
-        return c;
-    }
-
-    MiningContext MiningContext::WithReconnectCount(uint32_t nReconnectCount_) const
-    {
-        MiningContext c = *this;
-        c.nReconnectCount = nReconnectCount_;
         return c;
     }
 
@@ -582,6 +573,13 @@ namespace LLP
     /* Unified inactivity predicate */
     bool MiningContext::IsConsideredInactive(uint64_t nNow, uint64_t nTimeoutSec) const
     {
+        /* Guard against non-monotonic timestamps (BUG-4 fix).
+         * If the clock went backwards (nNow < nTimestamp), the unsigned subtraction
+         * wraps to a huge value, falsely marking the session inactive.
+         * Be conservative: treat backwards-clock as "still active". */
+        if(nNow <= nTimestamp)
+            return false;
+
         /* 1. Recent activity within the timeout window → not inactive */
         if((nNow - nTimestamp) <= nTimeoutSec)
             return false;
@@ -589,7 +587,7 @@ namespace LLP
         /* 2. Keepalive grace: if the miner has ever sent keepalives AND the
          *    most recent keepalive is within the grace window, the miner is
          *    still alive (degraded-mode protection). */
-        if(nKeepaliveCount > 0 && nLastKeepaliveTime > 0)
+        if(nKeepaliveCount > 0 && nLastKeepaliveTime > 0 && nNow > nLastKeepaliveTime)
         {
             uint64_t nTimeSinceKeepalive = nNow - nLastKeepaliveTime;
             if(nTimeSinceKeepalive <= NodeCache::KEEPALIVE_GRACE_PERIOD_SEC)
@@ -2108,7 +2106,6 @@ namespace LLP
                    fExistingRewardPresent ? YesNo(fExistingRewardMatches) : "NOT PREVIOUSLY BOUND");
         debug::log(2, FUNCTION, "  ChaCha20 ready: ", YesNo(!vChaChaKey.empty()),
                    " fingerprint=", KeyFingerprint(vChaChaKey));
-        debug::log(1, FUNCTION, "  Consistency result: ", PassFail(fExistingRewardMatches));
 
         /* Build success response (encrypted) */
         std::vector<uint8_t> vSuccessMsg = {0x01};  // Success status

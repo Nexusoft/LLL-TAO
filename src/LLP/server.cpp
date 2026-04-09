@@ -31,6 +31,7 @@ ________________________________________________________________________________
 #include <LLP/include/node_cache.h>
 #include <LLP/include/stateless_manager.h>
 #include <LLP/include/node_session_registry.h>
+#include <LLP/include/session_store.h>
 #include <LLP/include/miner_push_dispatcher.h>
 #include <LLP/include/mining_constants.h>
 #include <LLP/include/mining_timers.h>
@@ -491,6 +492,7 @@ namespace LLP
             uint32_t nNotified = 0;
             uint32_t nSkippedWrongChannel = 0;
             uint32_t nSkippedUnsubscribed = 0;
+            uint32_t nSkippedDisconnected = 0;
             
             /* SERVER-SIDE FILTERING: Only notify miners subscribed to the matching channel */
             for (auto pConnection : vConnections)
@@ -527,6 +529,18 @@ namespace LLP
                     nSkippedWrongChannel++;
                     continue;  // Wrong channel; skip to avoid duplicate notifications
                 }
+
+                /* Session gate: verify the session is still active in the
+                 * SessionStore before sending.  A connection whose session
+                 * has been MarkDisconnected() (e.g. by RemoveMiner cross-cache
+                 * cleanup) should not receive new work even if the TCP socket
+                 * hasn't been torn down yet. */
+                if(context.nSessionId != 0
+                && !SessionStore::Get().IsActiveBySessionId(context.nSessionId))
+                {
+                    nSkippedDisconnected++;
+                    continue;
+                }
                 
                 /* Send notification — exactly once per miner per event per lane */
                 pConnection->SendChannelNotification();
@@ -536,7 +550,8 @@ namespace LLP
             /* Log per-lane per-channel result for deduplication verification */
             debug::log(0, FUNCTION, "[PUSH][", strLane, "][", strChannelName, "] Notified ", nNotified,
                        " miners (skipped: ", nSkippedWrongChannel, " wrong-channel, ",
-                       nSkippedUnsubscribed, " polling)");
+                       nSkippedUnsubscribed, " polling, ",
+                       nSkippedDisconnected, " disconnected)");
 
             return nNotified;
         }
@@ -1308,10 +1323,16 @@ namespace LLP
                 {
                     /* SweepExpired runs first to mark dead registry entries.
                      * Then CleanupInactive catches any orphaned entries in
-                     * StatelessMinerManager via RemoveMiner's cross-cache propagation. */
+                     * StatelessMinerManager via RemoveMiner's cross-cache
+                     * propagation. */
                     NodeSessionRegistry::Get().SweepExpired(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
                     StatelessMinerManager::Get().CleanupInactive(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
                     StatelessMinerManager::Get().PurgeInactiveMiners();
+
+                    /* Unified SessionStore sweep: removes expired sessions
+                     * from the canonical store + all secondary indexes. */
+                    SessionStore::Get().SweepExpired(
+                        NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
                 }
 
                 CLEANUP_TIMER.Reset();
