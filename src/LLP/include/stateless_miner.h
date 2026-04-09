@@ -651,7 +651,6 @@ namespace LLP
         std::vector<uint8_t> vDisposablePubKey; // Disposable Falcon session public key
         uint256_t hashDisposableKeyID;          // Disposable Falcon session key ID
         uint64_t nSessionStart;      // Timestamp when session was established
-        uint32_t nReconnectCount;    // Recovery metadata; live SaveSession refreshes must not reset this implicitly
         uint32_t nKeepaliveCount;    // Number of keepalives received
         uint32_t nKeepaliveSent;     // Number of keepalive responses sent
         uint64_t nLastKeepaliveTime; // Timestamp of last keepalive exchange
@@ -892,15 +891,6 @@ namespace LLP
          *
          **/
         MiningContext WithSessionStart(uint64_t nSessionStart_) const;
-
-        /** WithReconnectCount
-         *
-         *  Returns a new context with updated reconnect count.
-         *  This is recovery metadata and should only be carried forward explicitly
-         *  from authoritative recovery state.
-         *
-         **/
-        MiningContext WithReconnectCount(uint32_t nReconnectCount_) const;
 
         /** WithKeepaliveCount
          *

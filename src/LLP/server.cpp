@@ -30,7 +30,6 @@ ________________________________________________________________________________
 #include <LLP/include/auto_cooldown_manager.h>
 #include <LLP/include/node_cache.h>
 #include <LLP/include/stateless_manager.h>
-#include <LLP/include/session_recovery.h>
 #include <LLP/include/node_session_registry.h>
 #include <LLP/include/miner_push_dispatcher.h>
 #include <LLP/include/mining_constants.h>
@@ -1298,8 +1297,6 @@ namespace LLP
                     NodeSessionRegistry::Get().SweepExpired(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
                     StatelessMinerManager::Get().CleanupInactive(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
                     StatelessMinerManager::Get().PurgeInactiveMiners();
-                    SessionRecoveryManager::Get().CleanupExpired(
-                        SessionRecoveryManager::Get().GetSessionTimeout());
                 }
 
                 CLEANUP_TIMER.Reset();

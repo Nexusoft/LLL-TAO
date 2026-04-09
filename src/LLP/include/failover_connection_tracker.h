@@ -31,17 +31,16 @@ namespace LLP
      *  ================
      *  When a miner switches from its primary node to a failover node, it establishes
      *  a brand-new connection with NO pre-existing Session ID. The failover node's
-     *  SessionRecoveryManager has no entry for this miner, so RecoverSessionByAddress()
-     *  returns std::nullopt.
+     *  StatelessMinerManager has no entry for this miner's IP.
      *
      *  This singleton observes that signal (fresh connection from known IP with no
-     *  recoverable session) and records it as a potential failover event.
+     *  prior session) and records it as a potential failover event.
      *
      *  USAGE:
      *  ======
      *  1. In StatelessMinerConnection::Event(EVENTS::CONNECT):
-     *     - Attempt SessionRecoveryManager::RecoverSessionByAddress()
-     *     - On failure for non-localhost IPs: call RecordConnection(strAddr)
+     *     - Check StatelessMinerManager::GetMinerContextByIP()
+     *     - On miss for non-localhost IPs: call RecordConnection(strAddr)
      *
      *  2. After successful MINER_AUTH_RESPONSE:
      *     - If IsFailover(strAddr): call ChannelStateManager::NotifyFailoverConnection()

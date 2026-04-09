@@ -16,7 +16,6 @@ ________________________________________________________________________________
 #define NEXUS_LLP_INCLUDE_NODE_SESSION_REGISTRY_H
 
 #include <LLP/include/stateless_miner.h>
-#include <LLP/include/session_recovery.h>
 #include <Util/templates/concurrent_hashmap.h>
 #include <LLC/types/uint1024.h>
 
