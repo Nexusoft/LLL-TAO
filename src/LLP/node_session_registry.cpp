@@ -237,7 +237,7 @@ namespace LLP
          * matching the pattern used in StatelessMinerManager. */
         {
             size_t nCurrent = m_mapByKey.Size();
-            size_t nLimit = 1000;
+            size_t nLimit = DEFAULT_MAX_REGISTRY_SIZE;
             if(nCurrent > nLimit + nLimit / 5)
                 EnforceCacheLimit(nLimit);
         }

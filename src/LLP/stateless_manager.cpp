@@ -160,10 +160,13 @@ namespace LLP
          * make a separate RegisterOrRefresh call.  The registry is the canonical
          * identity/liveness store; keeping it in sync here ensures that every
          * UpdateMiner path (keepalive, auth, context change) automatically
-         * refreshes registry nLastActivity. */
+         * refreshes registry nLastActivity.
+         *
+         * Derive ProtocolLane from the context's canonical nProtocolLane field
+         * rather than the raw nLane parameter (which uses uint8_t 0/1 encoding). */
         if(context.hashKeyID != 0)
         {
-            ProtocolLane lane = (nLane == 1) ? ProtocolLane::STATELESS : ProtocolLane::LEGACY;
+            ProtocolLane lane = context.nProtocolLane;
             NodeSessionRegistry::Get().RegisterOrRefresh(
                 context.hashKeyID, context.hashGenesis, context, lane);
         }

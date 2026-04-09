@@ -351,6 +351,9 @@ namespace LLP
     class NodeSessionRegistry
     {
     public:
+        /** Default maximum registry entries before eviction kicks in (BUG-5 fix). */
+        static constexpr size_t DEFAULT_MAX_REGISTRY_SIZE = 1000;
+
         /** Get
          *
          *  Get the global registry instance (singleton).
@@ -478,7 +481,7 @@ namespace LLP
          *  @return Number of entries evicted
          *
          **/
-        uint32_t EnforceCacheLimit(size_t nMaxSize = 1000);
+        uint32_t EnforceCacheLimit(size_t nMaxSize = DEFAULT_MAX_REGISTRY_SIZE);
 
         /** Clear
          *
