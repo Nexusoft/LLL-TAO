@@ -534,6 +534,10 @@ namespace LLP
                         strReason = "DISCONNECT::TIMEOUT_WRITE (write stall)";
                         strCategory = "SOFTWARE";
                         break;
+                    case DISCONNECT::PARTIAL_STALL:
+                        strReason = "DISCONNECT::PARTIAL_STALL (incomplete frame stuck)";
+                        strCategory = "SOFTWARE";
+                        break;
                     default:
                         strReason = "UNKNOWN";
                         strCategory = "UNKNOWN";

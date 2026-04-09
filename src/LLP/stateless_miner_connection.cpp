@@ -794,6 +794,10 @@ namespace LLP
                         strReason = "DISCONNECT::TIMEOUT_WRITE (write stall)";
                         strCategory = "SOFTWARE";
                         break;
+                    case DISCONNECT::PARTIAL_STALL:
+                        strReason = "DISCONNECT::PARTIAL_STALL (incomplete frame stuck)";
+                        strCategory = "SOFTWARE";
+                        break;
                     default:
                         strReason = "UNKNOWN";
                         strCategory = "UNKNOWN";
@@ -4183,7 +4187,10 @@ namespace LLP
      * data races with writers (e.g. in ProcessPacket). Callers get a snapshot
      * of the state and cannot mutate the internal context directly.
      */
-    /* IsTimeoutExempt - authenticated miners bypass socket read-idle timeout */
+    /* IsTimeoutExempt - authenticated miners bypass aggressive POLL_EMPTY and
+     * TIMEOUT_WRITE checks but are still subject to a finite read-idle timeout
+     * via GetReadTimeout().  This avoids the "shadow ban" scenario where a
+     * stalled read pipeline would persist indefinitely. */
     bool StatelessMinerConnection::IsTimeoutExempt() const
     {
         /* Read the atomic mirror of context.fAuthenticated.
@@ -4193,6 +4200,20 @@ namespace LLP
          * timeout exemption does not synchronize access to any other fields. */
         return fAuthenticatedAtomic.load(std::memory_order_relaxed)
             || fHandshakeInProgressAtomic.load(std::memory_order_relaxed);
+    }
+
+
+    /* GetReadTimeout - authenticated miners use a long but finite read-idle
+     * timeout (default 600s / 10 minutes, configurable via -miningreadtimeout).
+     * This replaces the previous infinite exemption from read-idle timeout,
+     * ensuring that a stalled read pipeline is eventually cleaned up rather
+     * than persisting indefinitely while PUSH notifications continue to work. */
+    uint32_t StatelessMinerConnection::GetReadTimeout() const
+    {
+        if(fAuthenticatedAtomic.load(std::memory_order_relaxed))
+            return config::GetArg("-miningreadtimeout", 600000);
+
+        return 0;  /* Use DataThread default TIMEOUT for unauthenticated connections */
     }
 
 

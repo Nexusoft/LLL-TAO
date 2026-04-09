@@ -80,20 +80,40 @@ namespace LLP
         /** IsTimeoutExempt
          *
          *  Virtual method to determine if this connection should be exempted from
-         *  socket read-idle timeout disconnection in the DataThread polling loop.
+         *  the aggressive POLL_EMPTY and TIMEOUT_WRITE checks in the DataThread
+         *  polling loop.
          *
          *  Mining connections override this to return true when the miner has
-         *  completed Falcon authentication. This prevents the socket-level
-         *  DISCONNECT::TIMEOUT from killing authenticated miners that are
-         *  legitimately idle (e.g., during long Prime block searches).
+         *  completed Falcon authentication.  Authenticated miners are still
+         *  subject to a longer, finite read-idle timeout returned by
+         *  GetReadTimeout() — they are NOT exempt from read-idle timeout
+         *  entirely.  This prevents shadow-ban scenarios where a stalled read
+         *  pipeline would leave a connection alive indefinitely while server-
+         *  initiated PUSH notifications continue to succeed.
          *
-         *  The session-level keepalive timeout (24 hours) remains the authority
-         *  for session expiration; the socket timeout is bypassed.
-         *
-         *  @return true if connection should bypass socket read timeout, false otherwise.
+         *  @return true if connection should bypass aggressive socket checks.
          *
          **/
         virtual bool IsTimeoutExempt() const { return false; }
+
+
+        /** GetReadTimeout
+         *
+         *  Virtual method to return the maximum read-idle timeout in
+         *  milliseconds.  The DataThread uses this instead of the fixed
+         *  TIMEOUT * 1000 value when a connection is timeout-exempt
+         *  (authenticated mining connections).
+         *
+         *  The default returns 0, which means "use the DataThread TIMEOUT".
+         *  Mining connections override this to return a long but finite value
+         *  (default 600 000 ms = 10 minutes, configurable via
+         *  -miningreadtimeout) so that a stalled read pipeline is eventually
+         *  cleaned up rather than persisting indefinitely.
+         *
+         *  @return read-idle timeout in milliseconds, or 0 to use the default.
+         *
+         **/
+        virtual uint32_t GetReadTimeout() const { return 0; }
 
 
         /** GetWriteTimeout

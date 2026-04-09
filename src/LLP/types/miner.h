@@ -585,16 +585,34 @@ namespace LLP
 
         /** IsTimeoutExempt
          *
-         *  Authenticated mining connections are exempt from socket read-idle timeout.
-         *  The session-level 24-hour keepalive timeout governs session expiration;
-         *  the socket timeout must not kill long-running authenticated miners.
+         *  Authenticated mining connections bypass aggressive POLL_EMPTY and
+         *  TIMEOUT_WRITE checks.  They are still subject to a finite read-idle
+         *  timeout via GetReadTimeout().
          *
-         *  @return true if miner is authenticated and should bypass socket timeout.
+         *  @return true if miner is authenticated and should bypass aggressive checks.
          *
          **/
         bool IsTimeoutExempt() const final
         {
             return fMinerAuthenticated;
+        }
+
+
+        /** GetReadTimeout
+         *
+         *  Authenticated legacy miners use a long but finite read-idle timeout
+         *  (default 600s / 10 minutes, configurable via -miningreadtimeout).
+         *  This prevents stalled read pipelines from persisting indefinitely.
+         *
+         *  @return read-idle timeout in milliseconds, or 0 for default.
+         *
+         **/
+        uint32_t GetReadTimeout() const final
+        {
+            if(fMinerAuthenticated)
+                return config::GetArg("-miningreadtimeout", 600000);
+
+            return 0;
         }
 
 
