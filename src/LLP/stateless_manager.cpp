@@ -15,8 +15,8 @@ ________________________________________________________________________________
 #include <LLP/include/genesis_constants.h>
 #include <LLP/include/node_cache.h>
 #include <LLP/include/node_session_registry.h>
-#include <LLP/include/active_session_board.h>
 #include <LLP/include/mining_timers.h>
+#include <LLP/include/session_store.h>
 
 #include <TAO/Ledger/types/block.h>
 #include <TAO/Register/types/address.h>
@@ -120,9 +120,9 @@ namespace LLP
 
             /* Update peak session count if needed (use post-increment value) */
             size_t nPeak = nPeakSessions.load();
-            while(nNewCount > nPeak && !nPeakSessions.compare_exchange_weak(nPeak, nNewCount))
+            while(nNewCount > nPeak && !nPeakSessions.compare_exchange_strong(nPeak, nNewCount))
             {
-                /* CAS failed, nPeak is updated with current value, retry */
+                /* Another thread updated peak concurrently; nPeak reloaded, retry */
             }
         }
 
@@ -154,6 +154,29 @@ namespace LLP
         if(context.hashGenesis != 0)
         {
             mapGenesisToAddress.InsertOrUpdate(context.hashGenesis, strAddress);
+        }
+
+        /* Consolidation: sync with NodeSessionRegistry so callers don't need to
+         * make a separate RegisterOrRefresh call.  The registry is the canonical
+         * identity/liveness store; keeping it in sync here ensures that every
+         * UpdateMiner path (keepalive, auth, context change) automatically
+         * refreshes registry nLastActivity.
+         *
+         * Derive ProtocolLane from the context's canonical nProtocolLane field
+         * rather than the raw nLane parameter (which uses uint8_t 0/1 encoding). */
+        if(context.hashKeyID != 0)
+        {
+            ProtocolLane lane = context.nProtocolLane;
+            NodeSessionRegistry::Get().RegisterOrRefresh(
+                context.hashKeyID, context.hashGenesis, context, lane);
+
+            /* Dual-write to SessionStore: keep unified store in sync.
+             * Only write authenticated sessions (hashKeyID != 0) since SessionStore
+             * is keyed by hashKeyID. Pre-auth sessions stay in mapMiners only. */
+            CanonicalSession cs = CanonicalSession::FromMiningContext(context);
+            cs.nLastActivity = context.nTimestamp;
+            cs.nLastLane = nLane;
+            SessionStore::Get().Register(cs);
         }
     }
 
@@ -199,13 +222,17 @@ namespace LLP
                 mapIPToAddress.InsertOrUpdate(strAddress.substr(0, nColon), strAddress);
         }
 
-        /* Clean up stale secondary index entries */
+        /* Clean up stale secondary index entries.
+         * Use CompareAndErase (not plain Erase) to guard against a concurrent
+         * UpdateMiner() that already replaced the mapping with a different address.
+         * Plain Erase would blindly destroy the new writer's freshly-inserted
+         * index entry (BUG-1 fix). */
         if(hashOldKeyID != 0 && hashOldKeyID != newCtx.hashKeyID)
-            mapKeyToAddress.Erase(hashOldKeyID);
+            mapKeyToAddress.CompareAndErase(hashOldKeyID, strAddress);
         if(nOldSessionId != 0 && nOldSessionId != newCtx.nSessionId)
-            mapSessionToAddress.Erase(nOldSessionId);
+            mapSessionToAddress.CompareAndErase(nOldSessionId, strAddress);
         if(hashOldGenesis != 0 && hashOldGenesis != newCtx.hashGenesis)
-            mapGenesisToAddress.Erase(hashOldGenesis);
+            mapGenesisToAddress.CompareAndErase(hashOldGenesis, strAddress);
 
         /* Update authenticated counter */
         if(newCtx.fAuthenticated && !fWasAuthenticated)
@@ -222,6 +249,15 @@ namespace LLP
             mapSessionToAddress.InsertOrUpdate(newCtx.nSessionId, strAddress);
         if(newCtx.hashGenesis != 0)
             mapGenesisToAddress.InsertOrUpdate(newCtx.hashGenesis, strAddress);
+
+        /* Dual-write to SessionStore: keep unified store in sync. */
+        if(newCtx.hashKeyID != 0)
+        {
+            CanonicalSession cs = CanonicalSession::FromMiningContext(newCtx);
+            cs.nLastActivity = newCtx.nTimestamp;
+            cs.nLastLane = nLane;
+            SessionStore::Get().Register(cs);
+        }
 
         return true;
     }
@@ -304,19 +340,30 @@ namespace LLP
             }
         }
 
-        /* Cross-cache consistency: mark session as dead in NodeSessionRegistry
-         * and ActiveSessionBoard.  Centralised here so that every removal path
+        /* Cross-cache consistency: propagate removal to all session stores.
+         * Centralised here so that every removal path
          * (CleanupInactive, PurgeInactiveMiners, EnforceCacheLimit,
-         * RemoveMinerByKeyID, direct disconnects) gets this automatically. */
+         * RemoveMinerByKeyID, direct disconnects) gets this automatically.
+         *
+         * Each subordinate call is individually try-caught for exception safety:
+         * failure in one store must not prevent cleanup of the others. */
         if(ctx.hashKeyID != 0)
         {
-            NodeSessionRegistry::Get().MarkDisconnected(ctx.hashKeyID, ProtocolLane::STATELESS);
-            NodeSessionRegistry::Get().MarkDisconnected(ctx.hashKeyID, ProtocolLane::LEGACY);
-        }
-        if(ctx.nSessionId != 0)
-        {
-            ActiveSessionBoard::Get().MarkDisconnected(ctx.nSessionId, ProtocolLane::STATELESS);
-            ActiveSessionBoard::Get().MarkDisconnected(ctx.nSessionId, ProtocolLane::LEGACY);
+            try {
+                NodeSessionRegistry::Get().MarkDisconnected(ctx.hashKeyID, ProtocolLane::STATELESS);
+                NodeSessionRegistry::Get().MarkDisconnected(ctx.hashKeyID, ProtocolLane::LEGACY);
+            }
+            catch(const std::exception& e) {
+                debug::error(FUNCTION, "NodeSessionRegistry::MarkDisconnected failed: ", e.what());
+            }
+
+            /* Dual-write: remove from unified SessionStore. */
+            try {
+                SessionStore::Get().Remove(ctx.hashKeyID);
+            }
+            catch(const std::exception& e) {
+                debug::error(FUNCTION, "SessionStore::Remove failed: ", e.what());
+            }
         }
 
         return true;
@@ -512,8 +559,8 @@ namespace LLP
                           "keepalives_rx: ", ctx.nKeepaliveCount, ", ",
                           "keepalives_tx: ", ctx.nKeepaliveSent);
 
-                /* RemoveMiner() handles cross-cache cleanup (NodeSessionRegistry +
-                 * ActiveSessionBoard MarkDisconnected) internally. */
+                /* RemoveMiner() handles cross-cache cleanup (NodeSessionRegistry
+                 * MarkDisconnected) internally. */
                 if(RemoveMiner(pair.first))
                     ++nRemoved;
             }
@@ -744,8 +791,8 @@ namespace LLP
                 debug::log(2, FUNCTION, "Purging inactive miner ", ctx.strAddress, 
                           " (inactive for ", (nNow - ctx.nTimestamp), " seconds)");
 
-                /* RemoveMiner() handles cross-cache cleanup (NodeSessionRegistry +
-                 * ActiveSessionBoard MarkDisconnected) internally. */
+                /* RemoveMiner() handles cross-cache cleanup (NodeSessionRegistry
+                 * MarkDisconnected) internally. */
                 if(RemoveMiner(pair.first))
                     ++nRemoved;
             }

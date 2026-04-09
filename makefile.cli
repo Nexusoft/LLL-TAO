@@ -372,9 +372,7 @@ ifdef UNIT_TESTS
 		   build/Tests_LLP_reward_address_protocol.o \
 		   build/Tests_LLP_reward_routing.o \
 		   build/Tests_LLP_rewards_payout_verification.o \
-		   build/Tests_LLP_session_error_handling.o \
 		   build/Tests_LLP_session_management_comprehensive.o \
-		   build/Tests_LLP_session_recovery.o \
 		   build/Tests_LLP_session_status_tests.o \
 		   build/Tests_LLP_socket_buffer_tests.o \
 		   build/Tests_LLP_stateless_miner.o \
@@ -541,13 +539,11 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_stateless_get_block_handler.o \
 		build/LLP_legacy_get_block_handler.o \
 		build/LLP_node_pool_health_monitor.o \
-		build/LLP_active_session_board.o \
 		build/LLP_channel_state_manager.o \
 		build/LLP_falcon_auth.o \
 		build/LLP_disposable_falcon.o \
 		build/LLP_mining_config.o \
 		build/LLP_validation_thread_pool.o \
-		build/LLP_session_recovery.o \
 		build/LLP_node_sync.o \
 		build/LLP_node_cache.o \
 		build/LLP_node_session_registry.o \
@@ -558,6 +554,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_colin_mining_agent.o \
 		build/LLP_failover_connection_tracker.o \
 		build/LLP_miner_push_dispatcher.o \
+		build/LLP_session_store.o \
 		build/API_commands_assets_initialize.o \
 		build/API_commands_assets_json.o \
 		build/API_commands_assets_partial.o \

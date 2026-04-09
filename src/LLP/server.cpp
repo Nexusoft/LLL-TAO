@@ -28,11 +28,10 @@ ________________________________________________________________________________
 
 #include <LLP/include/trust_address.h>
 #include <LLP/include/auto_cooldown_manager.h>
-#include <LLP/include/active_session_board.h>
 #include <LLP/include/node_cache.h>
 #include <LLP/include/stateless_manager.h>
-#include <LLP/include/session_recovery.h>
 #include <LLP/include/node_session_registry.h>
+#include <LLP/include/session_store.h>
 #include <LLP/include/miner_push_dispatcher.h>
 #include <LLP/include/mining_constants.h>
 #include <LLP/include/mining_timers.h>
@@ -1292,18 +1291,18 @@ namespace LLP
 
                 if constexpr (is_miner_protocol_v<ProtocolType>)
                 {
-                    /* SweepExpired runs first to mark dead registry entries and
-                     * propagate to ActiveSessionBoard.  Then CleanupInactive
-                     * catches any orphaned entries in StatelessMinerManager via
-                     * RemoveMiner's cross-cache propagation.
-                     * SweepStaleEntries runs last to remove orphaned board entries
-                     * that have been disconnected longer than the session timeout. */
+                    /* SweepExpired runs first to mark dead registry entries.
+                     * Then CleanupInactive catches any orphaned entries in
+                     * StatelessMinerManager via RemoveMiner's cross-cache
+                     * propagation. */
                     NodeSessionRegistry::Get().SweepExpired(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
                     StatelessMinerManager::Get().CleanupInactive(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
                     StatelessMinerManager::Get().PurgeInactiveMiners();
-                    SessionRecoveryManager::Get().CleanupExpired(
-                        SessionRecoveryManager::Get().GetSessionTimeout());
-                    ActiveSessionBoard::Get().SweepStaleEntries(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
+
+                    /* Unified SessionStore sweep: removes expired sessions
+                     * from the canonical store + all secondary indexes. */
+                    SessionStore::Get().SweepExpired(
+                        NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
                 }
 
                 CLEANUP_TIMER.Reset();
