@@ -12,8 +12,11 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/include/node_session_registry.h>
+#include <LLP/include/session_store.h>
 #include <Util/include/runtime.h>
 #include <Util/include/debug.h>
+
+#include <algorithm>
 
 namespace LLP
 {
@@ -149,6 +152,14 @@ namespace LLP
         if(AnyPortLive())
             return false;
 
+        /* Guard against non-monotonic timestamps (BUG-4 fix).
+         * runtime::unifiedtimestamp() uses system_clock + UNIFIED_AVERAGE_OFFSET,
+         * which can move backwards after time adjustments.  If nNow < nLastActivity,
+         * the unsigned subtraction wraps to a huge value, falsely triggering expiry.
+         * Be conservative: if the clock went backwards, the session is NOT expired. */
+        if(nNow <= nLastActivity)
+            return false;
+
         return (nNow - nLastActivity) > nTimeoutSec;
     }
 
@@ -184,40 +195,63 @@ namespace LLP
         /* Derive session ID using canonical derivation (matches ProcessFalconResponse) */
         const uint32_t nSessionId = MiningContext::DeriveSessionId(hashKeyID);
 
-        /* Check if session exists */
-        auto existing = m_mapByKey.Get(hashKeyID);
-        if(existing)
+        /* Try to atomically refresh an existing session.
+         * Transform() operates on the CURRENT value under the write lock,
+         * eliminating the TOCTOU race of the old snapshot-copy-modify-write
+         * pattern (BUG-2 fix). */
+        bool fTransformed = m_mapByKey.Transform(hashKeyID,
+            [&](const NodeSessionEntry& existing) {
+                NodeSessionEntry entry = existing;
+
+                /* Enforce single-lane operation: a miner can only be on ONE port at a time.
+                 * When a lane registers or refreshes, the other lane is marked dead.
+                 * This prevents stale dual-lane state from persisting across reconnections. */
+                if(lane == ProtocolLane::STATELESS)
+                {
+                    entry = entry.WithStatelessLive(true);
+                    entry = entry.WithLegacyLive(false);
+                }
+                else
+                {
+                    entry = entry.WithLegacyLive(true);
+                    entry = entry.WithStatelessLive(false);
+                }
+
+                /* Update activity timestamp and context */
+                entry = entry.WithActivity(nNow);
+                entry = entry.WithContext(context);
+
+                return entry;
+            });
+
+        if(fTransformed)
         {
-            /* Session exists - refresh it */
-            NodeSessionEntry entry = *existing;
-
-            /* Enforce single-lane operation: a miner can only be on ONE port at a time.
-             * When a lane registers or refreshes, the other lane is marked dead.
-             * This prevents stale dual-lane state from persisting across reconnections. */
-            if(lane == ProtocolLane::STATELESS)
-            {
-                entry = entry.WithStatelessLive(true);
-                entry = entry.WithLegacyLive(false);
-            }
-            else
-            {
-                entry = entry.WithLegacyLive(true);
-                entry = entry.WithStatelessLive(false);
-            }
-
-            /* Update activity timestamp and context */
-            entry = entry.WithActivity(nNow);
-            entry = entry.WithContext(context);
-
-            /* Store updated entry */
-            m_mapByKey.InsertOrUpdate(hashKeyID, entry);
+            /* Dual-write: sync liveness flags to SessionStore.
+             * Return value intentionally unchecked: during dual-write migration the
+             * session may not yet exist in SessionStore (populated by UpdateMiner). */
+            SessionStore::Get().Transform(hashKeyID, [&](const CanonicalSession& cs) {
+                CanonicalSession updated = cs;
+                updated.fStatelessLive = (lane == ProtocolLane::STATELESS);
+                updated.fLegacyLive    = (lane == ProtocolLane::LEGACY);
+                updated.nLastActivity  = nNow;
+                return updated;
+            });
 
             debug::log(3, FUNCTION, "Refreshed session ", nSessionId,
                        " for key ", hashKeyID.SubString(),
-                       " lane=", (lane == ProtocolLane::STATELESS ? "STATELESS" : "LEGACY"),
-                       " consistency=", SessionConsistencyResultString(entry.ValidateConsistency()));
+                       " lane=", (lane == ProtocolLane::STATELESS ? "STATELESS" : "LEGACY"));
 
             return {nSessionId, false};  // Not new
+        }
+
+        /* New session — enforce capacity limit before inserting (BUG-5 fix).
+         * Use a 20% overshoot threshold to amortize the cost of enforcement,
+         * matching the pattern used in StatelessMinerManager. */
+        {
+            size_t nCurrent = m_mapByKey.Size();
+            size_t nLimit = DEFAULT_MAX_REGISTRY_SIZE;
+            if(nCurrent > nLimit + nLimit / 5)
+                EnforceCacheLimit(nLimit);
         }
 
         /* New session - create entry */
@@ -259,6 +293,17 @@ namespace LLP
         m_mapByKey.InsertOrUpdate(hashKeyID, entry);
         m_mapSessionToKey.InsertOrUpdate(nSessionId, hashKeyID);
 
+        /* Dual-write: sync liveness and identity to SessionStore.
+         * Return value intentionally unchecked: during dual-write migration the
+         * session may not yet exist in SessionStore (populated by UpdateMiner). */
+        SessionStore::Get().Transform(hashKeyID, [&](const CanonicalSession& cs) {
+            CanonicalSession updated = cs;
+            updated.fStatelessLive = entry.fStatelessLive;
+            updated.fLegacyLive    = entry.fLegacyLive;
+            updated.nLastActivity  = entry.nLastActivity;
+            return updated;
+        });
+
         debug::log(2, FUNCTION, "Registered new session ", nSessionId,
                    " for key ", hashKeyID.SubString(),
                    " lane=", (lane == ProtocolLane::STATELESS ? "STATELESS" : "LEGACY"),
@@ -288,46 +333,62 @@ namespace LLP
     /** UpdateContext **/
     bool NodeSessionRegistry::UpdateContext(const uint256_t& hashKeyID, const MiningContext& context)
     {
-        auto existing = m_mapByKey.Get(hashKeyID);
-        if(!existing)
-            return false;
+        /* Use Transform() for atomic read-modify-write, eliminating the TOCTOU
+         * race of the old snapshot-copy-modify-write pattern (BUG-2 fix). */
+        bool fTransformed = m_mapByKey.Transform(hashKeyID,
+            [&context](const NodeSessionEntry& existing) {
+                return existing.WithContext(context);
+            });
 
-        NodeSessionEntry entry = existing->WithContext(context);
-        m_mapByKey.InsertOrUpdate(hashKeyID, entry);
+        if(fTransformed)
+        {
+            debug::log(3, FUNCTION, "Updated context for key=", hashKeyID.SubString());
+        }
 
-        debug::log(3, FUNCTION, "Updated context for session ", entry.nSessionId,
-                   " key=", hashKeyID.SubString(),
-                   " consistency=", SessionConsistencyResultString(entry.ValidateConsistency()));
-
-        return true;
+        return fTransformed;
     }
 
     /** MarkDisconnected **/
     bool NodeSessionRegistry::MarkDisconnected(const uint256_t& hashKeyID, ProtocolLane lane)
     {
-        auto existing = m_mapByKey.Get(hashKeyID);
-        if(!existing)
-            return false;
+        /* Use Transform() for atomic read-modify-write, eliminating the TOCTOU
+         * race where a concurrent RegisterOrRefresh() could be clobbered by our
+         * stale snapshot write-back (BUG-2 fix). */
+        bool fTransformed = m_mapByKey.Transform(hashKeyID,
+            [lane](const NodeSessionEntry& existing) {
+                NodeSessionEntry entry = existing;
 
-        NodeSessionEntry entry = *existing;
+                /* Mark the appropriate lane as disconnected */
+                if(lane == ProtocolLane::STATELESS)
+                    entry = entry.WithStatelessLive(false);
+                else
+                    entry = entry.WithLegacyLive(false);
 
-        /* Mark the appropriate lane as disconnected */
-        if(lane == ProtocolLane::STATELESS)
-            entry = entry.WithStatelessLive(false);
-        else
-            entry = entry.WithLegacyLive(false);
+                /* Update activity timestamp */
+                entry = entry.WithActivity(runtime::unifiedtimestamp());
 
-        /* Update activity timestamp */
-        entry = entry.WithActivity(runtime::unifiedtimestamp());
+                return entry;
+            });
 
-        /* Store updated entry */
-        m_mapByKey.InsertOrUpdate(hashKeyID, entry);
+        if(fTransformed)
+        {
+            debug::log(3, FUNCTION, "Marked disconnected key=", hashKeyID.SubString(),
+                       " lane=", (lane == ProtocolLane::STATELESS ? "STATELESS" : "LEGACY"));
+        }
 
-        debug::log(3, FUNCTION, "Marked disconnected session ", entry.nSessionId,
-                   " lane=", (lane == ProtocolLane::STATELESS ? "STATELESS" : "LEGACY"),
-                   " anyLive=", entry.AnyPortLive());
+        /* Dual-write: sync liveness flags to SessionStore.
+         * Return value intentionally unchecked: during dual-write migration the
+         * session may not yet exist in SessionStore (populated by UpdateMiner). */
+        SessionStore::Get().Transform(hashKeyID, [&](const CanonicalSession& cs) {
+            CanonicalSession updated = cs;
+            if(lane == ProtocolLane::STATELESS)
+                updated.fStatelessLive = false;
+            else
+                updated.fLegacyLive = false;
+            return updated;
+        });
 
-        return true;
+        return fTransformed;
     }
 
     /** SweepExpired **/
@@ -360,6 +421,9 @@ namespace LLP
             m_mapByKey.Erase(hashKeyID);
             m_mapSessionToKey.Erase(liveEntry->nSessionId);
 
+            /* Dual-write: also remove from SessionStore */
+            SessionStore::Get().Remove(hashKeyID);
+
             debug::log(2, FUNCTION, "Swept expired session ", liveEntry->nSessionId,
                        " key=", hashKeyID.SubString(),
                        " inactiveFor=", (nNow - liveEntry->nLastActivity), "s");
@@ -384,16 +448,74 @@ namespace LLP
     /** CountLive **/
     size_t NodeSessionRegistry::CountLive() const
     {
+        /* Use ForEach() to iterate under a single shared lock instead of
+         * GetAll() which copies the entire map (BUG-6 fix). */
         size_t nLive = 0;
-        auto allSessions = m_mapByKey.GetAll();
 
-        for(const auto& entry : allSessions)
-        {
+        m_mapByKey.ForEach([&nLive](const uint256_t& /*key*/, const NodeSessionEntry& entry) {
             if(entry.AnyPortLive())
                 ++nLive;
-        }
+        });
 
         return nLive;
+    }
+
+    /** EnforceCacheLimit **/
+    uint32_t NodeSessionRegistry::EnforceCacheLimit(size_t nMaxSize)
+    {
+        if(m_mapByKey.Size() <= nMaxSize)
+            return 0;
+
+        const uint64_t nNow = runtime::unifiedtimestamp();
+        uint32_t nRemoved = 0;
+
+        /* Collect all entries sorted by last activity (oldest first) */
+        auto allSessions = m_mapByKey.GetAllPairs();
+        std::sort(allSessions.begin(), allSessions.end(),
+            [](const auto& a, const auto& b) {
+                return a.second.nLastActivity < b.second.nLastActivity;
+            });
+
+        /* Pass 1: Evict entries with no live connections (oldest first) */
+        for(const auto& pair : allSessions)
+        {
+            if(m_mapByKey.Size() <= nMaxSize)
+                break;
+
+            if(!pair.second.AnyPortLive())
+            {
+                m_mapByKey.Erase(pair.first);
+                m_mapSessionToKey.Erase(pair.second.nSessionId);
+                ++nRemoved;
+            }
+        }
+
+        /* Pass 2: If still over limit, evict oldest entries regardless of liveness */
+        if(m_mapByKey.Size() > nMaxSize)
+        {
+            for(const auto& pair : allSessions)
+            {
+                if(m_mapByKey.Size() <= nMaxSize)
+                    break;
+
+                /* May have been erased in pass 1, check existence */
+                auto liveEntry = m_mapByKey.Get(pair.first);
+                if(!liveEntry.has_value())
+                    continue;
+
+                m_mapByKey.Erase(pair.first);
+                m_mapSessionToKey.Erase(liveEntry->nSessionId);
+                ++nRemoved;
+            }
+        }
+
+        if(nRemoved > 0)
+        {
+            debug::log(1, FUNCTION, "Evicted ", nRemoved,
+                       " sessions to enforce cache limit of ", nMaxSize);
+        }
+
+        return nRemoved;
     }
 
     /** Clear **/

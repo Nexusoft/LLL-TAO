@@ -573,6 +573,13 @@ namespace LLP
     /* Unified inactivity predicate */
     bool MiningContext::IsConsideredInactive(uint64_t nNow, uint64_t nTimeoutSec) const
     {
+        /* Guard against non-monotonic timestamps (BUG-4 fix).
+         * If the clock went backwards (nNow < nTimestamp), the unsigned subtraction
+         * wraps to a huge value, falsely marking the session inactive.
+         * Be conservative: treat backwards-clock as "still active". */
+        if(nNow <= nTimestamp)
+            return false;
+
         /* 1. Recent activity within the timeout window → not inactive */
         if((nNow - nTimestamp) <= nTimeoutSec)
             return false;
@@ -580,7 +587,7 @@ namespace LLP
         /* 2. Keepalive grace: if the miner has ever sent keepalives AND the
          *    most recent keepalive is within the grace window, the miner is
          *    still alive (degraded-mode protection). */
-        if(nKeepaliveCount > 0 && nLastKeepaliveTime > 0)
+        if(nKeepaliveCount > 0 && nLastKeepaliveTime > 0 && nNow > nLastKeepaliveTime)
         {
             uint64_t nTimeSinceKeepalive = nNow - nLastKeepaliveTime;
             if(nTimeSinceKeepalive <= NodeCache::KEEPALIVE_GRACE_PERIOD_SEC)
