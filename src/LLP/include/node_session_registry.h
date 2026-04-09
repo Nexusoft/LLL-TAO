@@ -16,7 +16,6 @@ ________________________________________________________________________________
 #define NEXUS_LLP_INCLUDE_NODE_SESSION_REGISTRY_H
 
 #include <LLP/include/stateless_miner.h>
-#include <LLP/include/session_recovery.h>
 #include <Util/templates/concurrent_hashmap.h>
 #include <LLC/types/uint1024.h>
 
@@ -27,6 +26,24 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    /** Uint256Hash
+     *
+     *  Hash functor for uint256_t keys used in ConcurrentHashMap.
+     *  Combines multiple 64-bit segments for better distribution.
+     *
+     **/
+    struct Uint256Hash
+    {
+        size_t operator()(const uint256_t& key) const
+        {
+            size_t hash = static_cast<size_t>(key.Get64(0));
+            hash ^= static_cast<size_t>(key.Get64(1)) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+            hash ^= static_cast<size_t>(key.Get64(2)) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+            hash ^= static_cast<size_t>(key.Get64(3)) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+            return hash;
+        }
+    };
+
     /** NodeSessionEntryKey
      *
      *  Lightweight identity + liveness tuple extracted from NodeSessionEntry.
@@ -280,9 +297,8 @@ namespace LLP
      *  CANONICAL SESSION IDENTITY STORE
      *  =================================
      *  Singleton registry that is the single source of truth for mining session
-     *  identity and liveness.  All other session stores (StatelessMinerManager,
-     *  SessionRecoveryManager) are derived caches whose data must agree with
-     *  this registry.
+     *  identity and liveness.  StatelessMinerManager is a derived cache whose
+     *  data must agree with this registry.
      *
      *  ARCHITECTURE:
      *  =============
@@ -295,11 +311,7 @@ namespace LLP
      *  StatelessMinerManager:
      *    - Thin address-based index (strAddress → hashKeyID) + statistics
      *    - UpdateMiner() automatically syncs with registry via RegisterOrRefresh()
-     *    - RemoveMiner() propagates to both NodeSessionRegistry and SessionRecoveryManager
-     *
-     *  SessionRecoveryManager:
-     *    - Off-line recovery persistence (crypto keys, disposable Falcon keys)
-     *    - Slated for removal in Phase 2 (full re-auth or merge into registry)
+     *    - RemoveMiner() propagates to NodeSessionRegistry::MarkDisconnected()
      *
      *  CANONICAL IDENTITY:
      *  ====================

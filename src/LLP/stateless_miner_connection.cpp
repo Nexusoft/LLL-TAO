@@ -23,7 +23,6 @@ ________________________________________________________________________________
 #include <LLP/include/falcon_auth.h>
 #include <LLP/include/falcon_verify.h>
 #include <LLP/include/disposable_falcon.h>
-#include <LLP/include/session_recovery.h>
 #include <LLP/include/auto_cooldown_manager.h>
 #include <LLP/include/opcode_utility.h>
 #include <LLP/include/push_notification.h>
@@ -702,31 +701,21 @@ namespace LLP
                 /* Set protocol lane to STATELESS (16-bit opcodes, port 9323) */
                 context = context.WithProtocolLane(ProtocolLane::STATELESS);
 
-                /* Attempt session recovery by IP address.
-                 * If recovery fails for a non-localhost IP, this is a potential failover
-                 * connection — the miner may have switched to this node after its primary
-                 * node dropped.  We record it via FailoverConnectionTracker so that after
-                 * the subsequent fresh Falcon handshake completes we can notify
-                 * ChannelStateManager and update the Colin report. */
-                MiningContext recoveredContext;
-                bool fRecovered = SessionRecoveryManager::Get().RecoverSessionByAddress(strAddr, recoveredContext);
-                if(!fRecovered && strAddr != "127.0.0.1" && strAddr != "::1")
+                /* Check for potential failover connection.
+                 * If we have no prior session for this non-localhost IP, this is potentially
+                 * a miner that has switched to this node after its primary node dropped.
+                 * Record it via FailoverConnectionTracker so that after the subsequent fresh
+                 * Falcon handshake completes we can notify ChannelStateManager and update
+                 * the Colin report. */
+                if(strAddr != "127.0.0.1" && strAddr != "::1")
                 {
-                    FailoverConnectionTracker::Get().RecordConnection(strAddr);
-                    debug::log(0, FUNCTION, "No prior session for ", strAddr,
-                               " — recording as potential failover connection");
-                }
-
-                /* If the session was recovered and the miner was previously subscribed to
-                 * push notifications, restore that subscription state immediately.
-                 * Without this, the miner is invisible to NotifyChannelMiners until it
-                 * explicitly re-sends MINER_READY — causing missed pushes on reconnect
-                 * (e.g. after a reorg-triggered disconnect). */
-                if(fRecovered && recoveredContext.fSubscribedToNotifications)
-                {
-                    context = context.WithSubscription(recoveredContext.nSubscribedChannel);
-                    debug::log(0, FUNCTION, "Session recovered for ", strAddr,
-                               " — subscription state restored (channel=", recoveredContext.nSubscribedChannel, ")");
+                    auto optExistingCtx = StatelessMinerManager::Get().GetMinerContextByIP(strAddr);
+                    if(!optExistingCtx.has_value())
+                    {
+                        FailoverConnectionTracker::Get().RecordConnection(strAddr);
+                        debug::log(0, FUNCTION, "No prior session for ", strAddr,
+                                   " — recording as potential failover connection");
+                    }
                 }
 
                 /* Register with StatelessMinerManager for tracking */
@@ -888,80 +877,8 @@ namespace LLP
                     return false;
                 }
 
-                /* Attempt lane-switch recovery based on live node context */
                 context.strAddress = GetAddress().ToStringIP();
-                auto optExisting = SessionRecoveryManager::Get().RecoverSessionByIdentity(context);
-                if(optExisting.has_value())
-                {
-                    if(optExisting->fRewardBound && optExisting->hashRewardAddress != 0)
-                        context = context.WithRewardAddress(optExisting->hashRewardAddress);
 
-                    if(optExisting->fEncryptionReady && !optExisting->vChaCha20Key.empty())
-                        context = context.WithChaChaKey(optExisting->vChaCha20Key);
-
-                    if(!optExisting->vDisposablePubKey.empty())
-                    {
-                        {
-                            std::lock_guard<std::mutex> lock(SESSION_MUTEX);
-                            /* Use the recovered session ID if available; fall back to
-                             * DeriveSessionId(hashKeyID) as a secondary fallback, and then
-                             * to the live context's session ID when both are zero
-                             * (recovery container may have lost the session ID). */
-                            uint32_t nKeySessionId = optExisting->nSessionId;
-                            if(nKeySessionId == 0 && optExisting->hashKeyID != 0)
-                                nKeySessionId = MiningContext::DeriveSessionId(optExisting->hashKeyID);
-                            if(nKeySessionId == 0)
-                                nKeySessionId = context.nSessionId;
-                            if(nKeySessionId != 0)
-                                mapSessionKeys[nKeySessionId] = optExisting->vDisposablePubKey;
-                        }
-                        /* Fix 2: Propagate recovered key into context so SaveSession re-persists it */
-                        context = context.WithDisposableKey(optExisting->vDisposablePubKey,
-                                                            optExisting->hashDisposableKeyID);
-                    }
-                    else
-                    {
-                        /* Fix 2: Fallback — try RestoreDisposableKey independently in case the
-                         * recovery container lost the key. */
-                        std::vector<uint8_t> vFallbackPubKey;
-                        uint256_t hashFallbackKeyID;
-                        if(context.hashKeyID != 0 &&
-                           SessionRecoveryManager::Get().RestoreDisposableKey(
-                               context.hashKeyID, vFallbackPubKey, hashFallbackKeyID) &&
-                           !vFallbackPubKey.empty())
-                        {
-                            {
-                                std::lock_guard<std::mutex> lock(SESSION_MUTEX);
-                                /* Same fallback logic: prefer recovered ID, derive from
-                                 * hashKeyID, fall back to live context ID. */
-                                uint32_t nKeySessionId = optExisting->nSessionId;
-                                if(nKeySessionId == 0 && optExisting->hashKeyID != 0)
-                                    nKeySessionId = MiningContext::DeriveSessionId(optExisting->hashKeyID);
-                                if(nKeySessionId == 0)
-                                    nKeySessionId = context.nSessionId;
-                                if(nKeySessionId != 0)
-                                    mapSessionKeys[nKeySessionId] = vFallbackPubKey;
-                            }
-                            context = context.WithDisposableKey(vFallbackPubKey, hashFallbackKeyID);
-                            debug::log(0, FUNCTION, "  Fallback: restored disposable Falcon key from dedicated key store");
-                        }
-                        else
-                        {
-                            debug::error(FUNCTION, "  ERROR: disposable Falcon key lost after recovery — block submissions will fail");
-                            debug::error(FUNCTION, "  keyID=", FullHexOrUnset(context.hashKeyID));
-                            debug::error(FUNCTION, "  Miner must re-authenticate to restore block submission capability");
-                        }
-                    }
-
-                    debug::log(0, FUNCTION, "Session recovered from lane switch");
-                    debug::log(0, FUNCTION, "  session state source: SessionRecoveryManager::RecoverSessionByIdentity");
-                    debug::log(0, FUNCTION, "  recovered falcon key id: ", FullHexOrUnset(optExisting->hashKeyID));
-                    debug::log(0, FUNCTION, "  recovered session genesis: ", FullHexOrUnset(optExisting->hashGenesis));
-                    debug::log(0, FUNCTION, "  recovered reward hash: ", FullHexOrUnset(optExisting->hashRewardAddress));
-                    debug::log(0, FUNCTION, "  recovered ChaCha20 key hash: ", FullHexOrUnset(optExisting->hashChaCha20Key));
-                    debug::log(0, FUNCTION, "  recovered disposable Falcon key present: ", YesNo(!context.vDisposablePubKey.empty()));
-                }
-                
                 /* Subscribe to notifications (same logic as 8-bit MINER_READY) */
                 context = context.WithSubscription(context.nChannel);
                 
@@ -979,25 +896,10 @@ namespace LLP
                     debug::log(0, "   Encryption ready: YES");
                 }
                 
-                /* Update last template unified height and persist session BEFORE sending
-                 * the template (write-ahead pattern): even if the connection drops after
-                 * SaveSession but before the template arrives, the recovered session already
-                 * carries the correct unified height, preventing stale-height throttling. */
+                /* Cache the current unified height for stale-height throttling */
                 {
                     TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
                     context = context.WithLastTemplateUnifiedHeight(stateBest.nHeight);
-                }
-
-                /* Persist session and lane state for cross-lane recovery */
-                if(context.fAuthenticated && context.hashKeyID != 0)
-                {
-                    SessionRecoveryManager::Get().SaveSession(context);
-                    SessionRecoveryManager::Get().UpdateLane(context.hashKeyID, 1);
-                    if(context.fEncryptionReady && !context.vChaChaKey.empty())
-                    {
-                        uint256_t hashKey(context.vChaChaKey);
-                        SessionRecoveryManager::Get().SaveChaCha20State(context.hashKeyID, hashKey, 0);
-                    }
                 }
 
                 /* Atomic transform: update MINER_READY state on CURRENT value in mapMiners.
@@ -1518,13 +1420,6 @@ namespace LLP
                                 
                                 if(!fDecrypted)
                                 {
-                                    const auto optRecovery = SessionRecoveryManager::Get().RecoverSessionByIdentity(
-                                        ctxSnap.hashKeyID,
-                                        GetAddress().ToStringIP()
-                                    );
-                                    const bool fRecoveryGenesisMatches = optRecovery.has_value() &&
-                                        optRecovery->hashGenesis == ctxSnap.hashGenesis;
-
                                     debug::log(0, FUNCTION, "ChaCha20 decryption FAILED for SUBMIT_BLOCK");
                                     debug::log(0, FUNCTION, "SUBMIT_BLOCK SESSION DIAGNOSTIC");
                                     debug::log(0, FUNCTION, "- session id: ", ctxSnap.nSessionId);
@@ -1535,10 +1430,6 @@ namespace LLP
                                     debug::log(0, FUNCTION, "- submitted reward hash: NOT AVAILABLE (decryption failed before any standalone reward hash could be observed)");
                                     debug::log(0, FUNCTION, "- session genesis used for KDF: ", ctxSnap.GenesisHex());
                                     debug::log(0, FUNCTION, "- derived key fingerprint: ", KeyFingerprint(ctxSnap.vChaChaKey));
-                                    debug::log(0, FUNCTION, "- session recovery state available: ", YesNo(optRecovery.has_value()));
-                                    debug::log(0, FUNCTION, "- recovered session genesis: ",
-                                               optRecovery.has_value() ? FullHexOrUnset(optRecovery->hashGenesis) : "NOT AVAILABLE");
-                                    debug::log(0, FUNCTION, "- recovered session genesis matches live context: ", YesNo(fRecoveryGenesisMatches));
                                     debug::log(0, FUNCTION, "- AAD used for decryption: '' (0 bytes, empty)");
                                     debug::log(0, FUNCTION, "- encrypted payload size received: ", PACKET.DATA.size(), " bytes");
                                     if(PACKET.DATA.size() >= 12)
@@ -1688,12 +1579,6 @@ namespace LLP
                                 std::vector<uint8_t> decryptedData;
                                 if(!LLC::DecryptPayloadChaCha20(PACKET.DATA, ctxSnap.vChaChaKey, decryptedData))
                                 {
-                                    const auto optRecovery = SessionRecoveryManager::Get().RecoverSessionByIdentity(
-                                        ctxSnap.hashKeyID,
-                                        GetAddress().ToStringIP()
-                                    );
-                                    const bool fRecoveryGenesisMatches = optRecovery.has_value() &&
-                                        optRecovery->hashGenesis == ctxSnap.hashGenesis;
                                     debug::error(FUNCTION, "❌ ChaCha20 decryption FAILED (legacy wrapper)");
                                     debug::log(0, FUNCTION, "SUBMIT_BLOCK SESSION DIAGNOSTIC");
                                     debug::log(0, FUNCTION, "- session id: ", ctxSnap.nSessionId);
@@ -1703,10 +1588,6 @@ namespace LLP
                                     debug::log(0, FUNCTION, "- bound reward source: ", ctxSnap.RewardBindingSource());
                                     debug::log(0, FUNCTION, "- session genesis used for KDF: ", ctxSnap.GenesisHex());
                                     debug::log(0, FUNCTION, "- derived key fingerprint: ", KeyFingerprint(ctxSnap.vChaChaKey));
-                                    debug::log(0, FUNCTION, "- session recovery state available: ", YesNo(optRecovery.has_value()));
-                                    debug::log(0, FUNCTION, "- recovered session genesis: ",
-                                               optRecovery.has_value() ? FullHexOrUnset(optRecovery->hashGenesis) : "NOT AVAILABLE");
-                                    debug::log(0, FUNCTION, "- recovered session genesis matches live context: ", YesNo(fRecoveryGenesisMatches));
                                     debug::log(0, FUNCTION, "- consistency result: FAIL");
                                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                                     response.DATA.push_back(static_cast<uint8_t>(OpcodeUtility::SubmitBlockRejectionReason::CHACHA20_DECRYPTION_FAILED));
@@ -2682,13 +2563,9 @@ namespace LLP
                     }
                 }
 
-                /* Persist session and lane state for cross-lane recovery */
+                /* Ensure vDisposablePubKey is included in context for signature verification */
                 if(context.fAuthenticated && context.hashKeyID != 0)
                 {
-                    /* CRITICAL (Fix 3): Ensure vDisposablePubKey is included in context before
-                     * SaveSession so the recovery cache is created with the Falcon pubkey.
-                     * SaveDisposableKey cannot be called before SaveSession (no session exists
-                     * yet at that point), so we embed the key in context here instead. */
                     if(PACKET.HEADER == MINER_AUTH_RESPONSE &&
                        !context.vMinerPubKey.empty() &&
                        context.vDisposablePubKey.empty())
@@ -2698,13 +2575,12 @@ namespace LLP
                          * was derived from vMinerPubKey during authentication. */
                         context = context.WithDisposableKey(context.vMinerPubKey,
                                                             context.hashKeyID);
-                        debug::log(1, FUNCTION, "✓ Embedded disposable Falcon key in context for session recovery persistence");
+                        debug::log(1, FUNCTION, "✓ Embedded disposable Falcon key in context");
                     }
 
-                    /* Bug 5.3 fix: Cross-check that mapSessionKeys and vDisposablePubKey hold
-                     * the same key.  AUTH stores vMinerPubKey; recovery restores vDisposablePubKey.
-                     * They MUST be identical for SUBMIT_BLOCK signature verification to succeed.
-                     * If they ever diverge, log the mismatch at level 0 for operators. */
+                    /* Cross-check that mapSessionKeys and vDisposablePubKey hold
+                     * the same key.  AUTH stores vMinerPubKey; they MUST be identical
+                     * for SUBMIT_BLOCK signature verification to succeed. */
                     if(!context.vDisposablePubKey.empty() && context.nSessionId != 0)
                     {
                         std::lock_guard<std::mutex> lock(SESSION_MUTEX);
@@ -2718,14 +2594,6 @@ namespace LLP
                                          " disposable_key_size=", context.vDisposablePubKey.size());
                             debug::error(FUNCTION, "  This will cause SUBMIT_BLOCK signature verification failures");
                         }
-                    }
-
-                    SessionRecoveryManager::Get().SaveSession(context);
-                    SessionRecoveryManager::Get().UpdateLane(context.hashKeyID, 1);
-                    if(context.fEncryptionReady && !context.vChaChaKey.empty())
-                    {
-                        uint256_t hashKey(context.vChaChaKey);
-                        SessionRecoveryManager::Get().SaveChaCha20State(context.hashKeyID, hashKey, 0);
                     }
                 }
 
@@ -2773,8 +2641,6 @@ namespace LLP
                     if(FailoverConnectionTracker::Get().IsFailover(context.strAddress))
                     {
                         ChannelStateManager::NotifyFailoverConnection(context.hashKeyID, context.strAddress);
-                        /* Mark session as fresh auth so Colin report can show fresh_auth=true */
-                        SessionRecoveryManager::Get().MarkFreshAuth(context.hashKeyID);
                         /* Clear the pending failover flag now that auth has completed */
                         FailoverConnectionTracker::Get().ClearConnection(context.strAddress);
                     }
@@ -3185,13 +3051,7 @@ namespace LLP
         debug::log(0, "   Determining reward identity for block rewards...");
         uint256_t hashReward = 0;
         std::string strRewardSource = "not configured";
-        const auto optRecovery = SessionRecoveryManager::Get().RecoverSessionByIdentity(
-            context.hashKeyID,
-            context.strAddress
-        );
-        const bool fRecoveryGenesisMatches = optRecovery.has_value() &&
-            optRecovery->hashGenesis == hashGenesis_snap;
-        
+
         if(fRewardBound_snap && hashRewardAddress_snap != 0) {
             hashReward = hashRewardAddress_snap;
             strRewardSource = "current connection context bound reward hash";
@@ -3227,22 +3087,10 @@ namespace LLP
         debug::log(0, FUNCTION, "- bound reward hash from cache/session: ", FullHexOrUnset(hashRewardAddress_snap));
         debug::log(0, FUNCTION, "- bound reward source: ", strRewardSource);
         debug::log(0, FUNCTION, "- session genesis used for ChaCha20 KDF: ", FullHexOrUnset(hashGenesis_snap));
-        debug::log(0, FUNCTION, "- session recovery state available: ", YesNo(optRecovery.has_value()));
-        debug::log(0, FUNCTION, "- recovered session genesis: ",
-                   optRecovery.has_value() ? FullHexOrUnset(optRecovery->hashGenesis) : "NOT AVAILABLE");
-        debug::log(0, FUNCTION, "- recovered session genesis matches current context: ", YesNo(fRecoveryGenesisMatches));
         debug::log(0, FUNCTION, "- reward hash == bound reward hash: ",
                    YesNo(!fRewardBound_snap || hashReward == hashRewardAddress_snap));
         debug::log(0, FUNCTION, "- consistency result: ",
-                   PassFail((!optRecovery.has_value() || fRecoveryGenesisMatches) &&
-                            (!fRewardBound_snap || hashReward == hashRewardAddress_snap)));
-
-        if(optRecovery.has_value() && !fRecoveryGenesisMatches)
-        {
-            debug::warning(FUNCTION, "SESSION RECOVERY GENESIS MISMATCH during template creation: recovered_genesis=",
-                           FullHexOrUnset(optRecovery->hashGenesis),
-                           " current_context_genesis=", FullHexOrUnset(hashGenesis_snap));
-        }
+                   PassFail(!fRewardBound_snap || hashReward == hashRewardAddress_snap));
         
         debug::log(0, "   Block parameters:");
         debug::log(0, "      Channel: ", nChannel_snap);

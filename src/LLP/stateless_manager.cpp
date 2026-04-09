@@ -15,7 +15,6 @@ ________________________________________________________________________________
 #include <LLP/include/genesis_constants.h>
 #include <LLP/include/node_cache.h>
 #include <LLP/include/node_session_registry.h>
-#include <LLP/include/session_recovery.h>
 #include <LLP/include/mining_timers.h>
 #include <LLP/include/session_store.h>
 
@@ -356,13 +355,6 @@ namespace LLP
             }
             catch(const std::exception& e) {
                 debug::error(FUNCTION, "NodeSessionRegistry::MarkDisconnected failed: ", e.what());
-            }
-
-            try {
-                SessionRecoveryManager::Get().RemoveSession(ctx.hashKeyID);
-            }
-            catch(const std::exception& e) {
-                debug::error(FUNCTION, "SessionRecoveryManager::RemoveSession failed: ", e.what());
             }
 
             /* Dual-write: remove from unified SessionStore. */

@@ -33,8 +33,7 @@ namespace LLP
     /** CanonicalSession
      *
      *  Unified session state for a single mining identity (one Falcon key).
-     *  Merges all fields from MiningContext, NodeSessionEntry,
-     *  MinerSessionContainer (SessionRecoveryData), and ActiveSessionEntry
+     *  Merges all fields from MiningContext and NodeSessionEntry
      *  into a single canonical record keyed by hashKeyID.
      *
      *  This struct is the value type for the primary SessionStore map:
@@ -115,8 +114,6 @@ namespace LLP
         uint64_t nLastKeepaliveTime = 0;
 
         /* ── Recovery ───────────────────────────────────────────────────────── */
-        uint32_t nReconnectCount    = 0;
-        bool     fFreshAuth         = false;
         uint8_t  nLastLane          = 0;
         bool     fSavedForRecovery  = false;   ///< True when session is preserved for reconnect
         uint64_t nDisconnectTime    = 0;       ///< Timestamp when session was flagged for recovery

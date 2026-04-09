@@ -13,7 +13,6 @@ ________________________________________________________________________________
 
 #include <LLP/include/colin_mining_agent.h>
 #include <LLP/include/stateless_manager.h>
-#include <LLP/include/session_recovery.h>
 #include <LLP/include/failover_connection_tracker.h>
 
 #include <TAO/Ledger/include/chainstate.h>
@@ -695,7 +694,7 @@ namespace LLP
                               + std::to_string(miners_copy.size())));
         debug::log(0, sep);
 
-        /* ── Miner Session State (StatelessMinerManager + SessionRecoveryManager) ─── */
+        /* ── Miner Session State (StatelessMinerManager) ─── */
         {
             std::vector<MiningContext> vMiners = StatelessMinerManager::Get().ListMiners();
 
@@ -709,17 +708,6 @@ namespace LLP
             {
                 for(const auto& ctx : vMiners)
                 {
-                    /* Use PeekSession (read-only) — NOT RecoverSessionByIdentity (consuming).
-                     * Calling the consuming variant here would exhaust DEFAULT_MAX_RECONNECTS (10)
-                     * in 10 report cycles, silently evicting the session and blocking real recovery.
-                     * Bug documented in PR #375 Technical Error Report. */
-                    /* Check fFreshAuth flag from SessionRecoveryData (set by MarkFreshAuth()
-                     * after a confirmed failover Falcon handshake on this node). */
-                    bool fFreshAuth = false;
-                    auto optSession = SessionRecoveryManager::Get().PeekSession(ctx.hashKeyID);
-                    if(optSession.has_value())
-                        fFreshAuth = optSession->fFreshAuth;
-
                     std::string channel_name = (ctx.nChannel == 1) ? "Prime" :
                                                (ctx.nChannel == 2) ? "Hash"  : "Unknown";
 
@@ -728,8 +716,7 @@ namespace LLP
                          << ctx.nSessionId << std::dec
                          << " | addr=" << ctx.strAddress
                          << " | " << (ctx.fAuthenticated ? "Falcon auth OK" : "unauthenticated")
-                         << " | channel=" << channel_name << " (" << ctx.nChannel << ")"
-                         << " | fresh_auth=" << (fFreshAuth ? "true" : "false");
+                         << " | channel=" << channel_name << " (" << ctx.nChannel << ")";
 
                     debug::log(0, BoxLine(line.str()));
                 }

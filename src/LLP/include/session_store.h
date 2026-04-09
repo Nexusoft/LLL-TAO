@@ -16,7 +16,7 @@ ________________________________________________________________________________
 #define NEXUS_LLP_INCLUDE_SESSION_STORE_H
 
 #include <LLP/include/canonical_session.h>
-#include <LLP/include/session_recovery.h>        /* Uint256Hash */
+#include <LLP/include/node_session_registry.h>   /* Uint256Hash */
 #include <Util/templates/concurrent_hashmap.h>
 
 #include <cstdint>
@@ -37,8 +37,6 @@ namespace LLP
      *  Replaces:
      *    - StatelessMinerManager  (session data portion: mapMiners + 5 reverse indexes)
      *    - NodeSessionRegistry    (m_mapByKey + m_mapSessionToKey)
-     *    - SessionRecoveryManager (mapSessionsByKey + mapAddressToKey)
-     *    - ActiveSessionBoard     (m_mapSessions)
      *
      *  THREAD SAFETY:
      *  ==============

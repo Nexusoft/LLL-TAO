@@ -75,7 +75,6 @@ namespace LLP
          *
          * Cross-component locks (independent, never nested with the above):
          *   - StatelessMinerManager::MUTEX  — global miner registry
-         *   - SessionRecoveryManager        — session persistence
          *   - SOCKET_MUTEX                  — socket I/O (acquired by WritePacket)
          * ═══════════════════════════════════════════════════════════════════════ */
 
