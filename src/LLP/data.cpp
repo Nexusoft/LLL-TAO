@@ -428,8 +428,9 @@ namespace LLP
                     /* Disconnect if pollin signaled with no data for 1ms consistently (This happens on Linux).
                      * Authenticated mining connections are exempt — a spurious POLLIN with
                      * Available()==0 on a 1 ms window is too aggressive for high-value Falcon-
-                     * authenticated sessions.  The 24-hour session timeout and TCP keepalive
-                     * probes will catch genuinely dead connections instead. */
+                     * authenticated sessions.  The scoped read-idle timeout (GetReadTimeout,
+                     * default 600s) and partial-packet watchdog (30s) will catch genuinely
+                     * dead connections instead. */
                     const bool fHasPartialPacket =
                         !CONNECTION->INCOMING.IsNull() && !CONNECTION->PacketComplete();
                     const bool fMiningConnection =
