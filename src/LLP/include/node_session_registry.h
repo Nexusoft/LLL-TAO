@@ -26,6 +26,24 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    /** Uint256Hash
+     *
+     *  Hash functor for uint256_t keys used in ConcurrentHashMap.
+     *  Combines multiple 64-bit segments for better distribution.
+     *
+     **/
+    struct Uint256Hash
+    {
+        size_t operator()(const uint256_t& key) const
+        {
+            size_t hash = static_cast<size_t>(key.Get64(0));
+            hash ^= static_cast<size_t>(key.Get64(1)) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+            hash ^= static_cast<size_t>(key.Get64(2)) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+            hash ^= static_cast<size_t>(key.Get64(3)) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+            return hash;
+        }
+    };
+
     /** NodeSessionEntryKey
      *
      *  Lightweight identity + liveness tuple extracted from NodeSessionEntry.

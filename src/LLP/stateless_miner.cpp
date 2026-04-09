@@ -2036,10 +2036,6 @@ namespace LLP
         debug::log(0, FUNCTION, "- bound reward source: ", context.RewardBindingSource());
         debug::log(0, FUNCTION, "- session genesis used for ChaCha20 KDF: ", context.GenesisHex());
         debug::log(0, FUNCTION, "- derived ChaCha20 key fingerprint: ", KeyFingerprint(vChaChaKey));
-        debug::log(0, FUNCTION, "- session recovery state available: ", YesNo(fRecoveredSessionState));
-        debug::log(0, FUNCTION, "- recovered session genesis: ",
-                   fRecoveredSessionState ? FullHexOrUnset(optRecoveredSession->hashGenesis) : "NOT AVAILABLE");
-        debug::log(0, FUNCTION, "- recovered session genesis matches live context: ", YesNo(fRecoveryGenesisMatches));
         debug::log(0, FUNCTION, "- reward hash == bound reward hash: ",
                    fExistingRewardPresent ? YesNo(fExistingRewardMatches) : "NOT PREVIOUSLY BOUND");
         debug::log(0, FUNCTION, "- decoded reward hash == session genesis: ", YesNo(fRewardEqualsGenesis));
@@ -2050,13 +2046,6 @@ namespace LLP
             debug::warning(FUNCTION, "REWARD BINDING MISMATCH: existing bound reward hash=",
                            FullHexOrUnset(context.hashRewardAddress),
                            " differs from decoded reward hash=", hashReward.GetHex());
-        }
-
-        if(fRecoveredSessionState && !fRecoveryGenesisMatches)
-        {
-            debug::warning(FUNCTION, "SESSION RECOVERY GENESIS MISMATCH: recovered session genesis=",
-                           FullHexOrUnset(optRecoveredSession->hashGenesis),
-                           " differs from live session genesis=", context.GenesisHex());
         }
 
         /* Validate the reward address */
