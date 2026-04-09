@@ -21,8 +21,6 @@ ________________________________________________________________________________
 #include <LLP/include/disposable_falcon.h>
 #include <LLP/include/opcode_utility.h>
 #include <LLP/include/node_cache.h>
-#include <LLP/include/session_recovery.h>
-#include <LLP/include/active_session_board.h>
 #include <LLP/include/get_block_policy.h>
 #include <LLP/include/auto_cooldown_manager.h>
 #include <LLP/include/mining_constants.h>
@@ -547,7 +545,7 @@ namespace LLP
                 m_shutdownRequested.store(true, std::memory_order_release);
 
                 /* RemoveMiner handles local maps + cross-cache
-                 * propagation to NodeSessionRegistry and ActiveSessionBoard.
+                 * propagation to NodeSessionRegistry.
                  * Under single-lane policy, the miner may have a
                  * StatelessMinerManager entry from prior stateless activity. */
                 if(fMinerAuthenticated)
@@ -682,14 +680,11 @@ namespace LLP
                         return transformedCtx;
                     });
 
-                if(transformedCtx.fAuthenticated && transformedCtx.hashKeyID != 0)
-                    SessionRecoveryManager::Get().SaveSession(transformedCtx);
-
                 /* CRITICAL FIX: Refresh the canonical session identity in NodeSessionRegistry.
-                 * Previously, keepalive updated MiningContext.nTimestamp and SessionRecoveryManager
-                 * but never touched NodeSessionRegistry.nLastActivity.  SweepExpired() uses
-                 * nLastActivity as the sole expiry clock, so sessions were being reaped after
-                 * 24 hours despite continuous keepalive traffic.
+                 * Previously, keepalive updated MiningContext.nTimestamp but never touched
+                 * NodeSessionRegistry.nLastActivity.  SweepExpired() uses nLastActivity as
+                 * the sole expiry clock, so sessions were being reaped after 24 hours
+                 * despite continuous keepalive traffic.
                  *
                  * NodeSessionRegistry is the canonical owner of MinerIdentity — all liveness
                  * refreshes must propagate here to prevent premature session expiration. */
@@ -1042,22 +1037,6 @@ namespace LLP
 
                         /* Store hashKeyID as member for DISCONNECT handler cleanup */
                         hashKeyID = updatedContext.hashKeyID;
-                    }
-
-                    /* Persist session and lane state for cross-lane recovery */
-                    if(updatedContext.fAuthenticated && updatedContext.hashKeyID != 0)
-                    {
-                        SessionRecoveryManager::Get().SaveSession(updatedContext);
-                        SessionRecoveryManager::Get().UpdateLane(updatedContext.hashKeyID, 0);
-                        if(fEncryptionReady && !vChaChaKey.empty())
-                        {
-                            uint256_t hashKey(vChaChaKey);
-                            SessionRecoveryManager::Get().SaveChaCha20State(
-                                updatedContext.hashKeyID,
-                                hashKey,
-                                0
-                            );
-                        }
                     }
 
                     /* Atomic transform: apply auth completion state to CURRENT value in mapMiners.
@@ -2421,8 +2400,7 @@ namespace LLP
                 TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
                 updatedCtx = updatedCtx.WithLastTemplateUnifiedHeight(stateBest.nHeight);
 
-                SessionRecoveryManager::Get().SaveSession(updatedCtx);
-                debug::log(2, FUNCTION, "Session saved (write-ahead) before push notification: unifiedHeight=",
+                debug::log(2, FUNCTION, "Session updated before push notification: unifiedHeight=",
                            stateBest.nHeight, " keyID=", updatedCtx.hashKeyID.SubString());
             }
         }
@@ -2581,18 +2559,6 @@ namespace LLP
             }
             else
             {
-                /* Use the stored hashKeyID member (set during authentication)
-                 * instead of re-deriving SK256(vMinerPubKey) on the hot path. */
-                const uint256_t hashSessionKeyID = hashKeyID != 0
-                    ? hashKeyID
-                    : (!vMinerPubKey.empty() ? LLC::SK256(vMinerPubKey) : uint256_t(0));
-                const auto optRecovery = SessionRecoveryManager::Get().RecoverSessionByIdentity(
-                    hashSessionKeyID,
-                    GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort())
-                );
-                const bool fRecoveryGenesisMatches = optRecovery.has_value() &&
-                    optRecovery->hashGenesis == hashGenesis;
-
                 debug::warning(FUNCTION, "SUBMIT_BLOCK: ChaCha20 decryption failed before plaintext fallback");
                 debug::log(0, FUNCTION, "SUBMIT_BLOCK SESSION DIAGNOSTIC");
                 debug::log(0, FUNCTION, "- session id: ", nSessionId);
@@ -2603,10 +2569,6 @@ namespace LLP
                            (fRewardBound && hashRewardAddress != 0) ? "current legacy connection reward binding" : "not configured");
                 debug::log(0, FUNCTION, "- session genesis used for KDF: ", FullHexOrUnset(hashGenesis));
                 debug::log(0, FUNCTION, "- derived key fingerprint: ", KeyFingerprint(vChaChaKey));
-                debug::log(0, FUNCTION, "- session recovery state available: ", YesNo(optRecovery.has_value()));
-                debug::log(0, FUNCTION, "- recovered session genesis: ",
-                           optRecovery.has_value() ? FullHexOrUnset(optRecovery->hashGenesis) : "NOT AVAILABLE");
-                debug::log(0, FUNCTION, "- recovered session genesis matches live context: ", YesNo(fRecoveryGenesisMatches));
                 debug::log(0, FUNCTION, "- consistency result: FAIL");
             }
         }

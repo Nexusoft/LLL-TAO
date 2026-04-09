@@ -36,7 +36,7 @@ namespace LLP
 {
     namespace
     {
-        static constexpr uint32_t MINING_POLL_EMPTY_TIMEOUT_MS = 100;
+        static constexpr uint32_t MINING_POLL_EMPTY_TIMEOUT_MS = 5000;
     }
 
     /** Default Constructor **/

@@ -15,7 +15,6 @@ ________________________________________________________________________________
 #include <LLP/include/genesis_constants.h>
 #include <LLP/include/node_cache.h>
 #include <LLP/include/node_session_registry.h>
-#include <LLP/include/active_session_board.h>
 #include <LLP/include/mining_timers.h>
 
 #include <TAO/Ledger/types/block.h>
@@ -304,19 +303,14 @@ namespace LLP
             }
         }
 
-        /* Cross-cache consistency: mark session as dead in NodeSessionRegistry
-         * and ActiveSessionBoard.  Centralised here so that every removal path
+        /* Cross-cache consistency: mark session as dead in NodeSessionRegistry.
+         * Centralised here so that every removal path
          * (CleanupInactive, PurgeInactiveMiners, EnforceCacheLimit,
          * RemoveMinerByKeyID, direct disconnects) gets this automatically. */
         if(ctx.hashKeyID != 0)
         {
             NodeSessionRegistry::Get().MarkDisconnected(ctx.hashKeyID, ProtocolLane::STATELESS);
             NodeSessionRegistry::Get().MarkDisconnected(ctx.hashKeyID, ProtocolLane::LEGACY);
-        }
-        if(ctx.nSessionId != 0)
-        {
-            ActiveSessionBoard::Get().MarkDisconnected(ctx.nSessionId, ProtocolLane::STATELESS);
-            ActiveSessionBoard::Get().MarkDisconnected(ctx.nSessionId, ProtocolLane::LEGACY);
         }
 
         return true;
@@ -512,8 +506,8 @@ namespace LLP
                           "keepalives_rx: ", ctx.nKeepaliveCount, ", ",
                           "keepalives_tx: ", ctx.nKeepaliveSent);
 
-                /* RemoveMiner() handles cross-cache cleanup (NodeSessionRegistry +
-                 * ActiveSessionBoard MarkDisconnected) internally. */
+                /* RemoveMiner() handles cross-cache cleanup (NodeSessionRegistry
+                 * MarkDisconnected) internally. */
                 if(RemoveMiner(pair.first))
                     ++nRemoved;
             }
@@ -744,8 +738,8 @@ namespace LLP
                 debug::log(2, FUNCTION, "Purging inactive miner ", ctx.strAddress, 
                           " (inactive for ", (nNow - ctx.nTimestamp), " seconds)");
 
-                /* RemoveMiner() handles cross-cache cleanup (NodeSessionRegistry +
-                 * ActiveSessionBoard MarkDisconnected) internally. */
+                /* RemoveMiner() handles cross-cache cleanup (NodeSessionRegistry
+                 * MarkDisconnected) internally. */
                 if(RemoveMiner(pair.first))
                     ++nRemoved;
             }

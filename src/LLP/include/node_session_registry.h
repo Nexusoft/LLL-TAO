@@ -16,7 +16,6 @@ ________________________________________________________________________________
 #define NEXUS_LLP_INCLUDE_NODE_SESSION_REGISTRY_H
 
 #include <LLP/include/stateless_miner.h>
-#include <LLP/include/session_recovery.h>
 #include <Util/templates/concurrent_hashmap.h>
 #include <LLC/types/uint1024.h>
 
@@ -27,6 +26,20 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    /** Hash function for uint256_t for use in unordered containers **/
+    struct Uint256Hash
+    {
+        size_t operator()(const uint256_t& key) const
+        {
+            /* Combine multiple 64-bit segments for better distribution */
+            size_t hash = static_cast<size_t>(key.Get64(0));
+            hash ^= static_cast<size_t>(key.Get64(1)) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+            hash ^= static_cast<size_t>(key.Get64(2)) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+            hash ^= static_cast<size_t>(key.Get64(3)) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+            return hash;
+        }
+    };
+
     /** NodeSessionEntryKey
      *
      *  Lightweight identity + liveness tuple extracted from NodeSessionEntry.

@@ -21,7 +21,6 @@ ________________________________________________________________________________
 #include <LLP/include/stateless_manager.h>
 #include <LLP/include/node_cache.h>
 #include <LLP/include/node_session_registry.h>
-#include <LLP/include/session_recovery.h>
 #include <LLP/include/stateless_opcodes.h>
 #include <LLP/include/session_start_packet.h>
 #include <LLP/include/keepalive_v2.h>
@@ -1860,10 +1859,10 @@ namespace LLP
             .WithStakeHeight(nStakeHeight);
 
         /* CRITICAL FIX: Refresh the canonical session identity in NodeSessionRegistry.
-         * Previously, keepalive updated MiningContext.nTimestamp and SessionRecoveryManager
-         * but never touched NodeSessionRegistry.nLastActivity.  SweepExpired() uses
-         * nLastActivity as the sole expiry clock, so sessions were being reaped after
-         * 24 hours despite continuous keepalive traffic.
+         * Previously, keepalive updated MiningContext.nTimestamp but never touched
+         * NodeSessionRegistry.nLastActivity.  SweepExpired() uses nLastActivity as
+         * the sole expiry clock, so sessions were being reaped after 24 hours despite
+         * continuous keepalive traffic.
          *
          * NodeSessionRegistry is the canonical owner of MinerIdentity — all liveness
          * refreshes must propagate here to prevent premature session expiration.
@@ -1977,13 +1976,6 @@ namespace LLP
 
         /* Derive ChaCha20 session key from genesis */
         std::vector<uint8_t> vChaChaKey = LLC::MiningSessionKeys::DeriveChaCha20Key(context.hashGenesis);
-        const auto optRecoveredSession = SessionRecoveryManager::Get().RecoverSessionByIdentity(
-            context.hashKeyID,
-            context.strAddress
-        );
-        const bool fRecoveredSessionState = optRecoveredSession.has_value();
-        const bool fRecoveryGenesisMatches = fRecoveredSessionState &&
-            optRecoveredSession->hashGenesis == context.hashGenesis;
 
         /* Decrypt the payload */
         std::vector<uint8_t> vDecrypted;
@@ -1997,10 +1989,6 @@ namespace LLP
             debug::log(0, FUNCTION, "- bound reward source: ", context.RewardBindingSource());
             debug::log(0, FUNCTION, "- session genesis used for ChaCha20 KDF: ", context.GenesisHex());
             debug::log(0, FUNCTION, "- derived ChaCha20 key fingerprint: ", KeyFingerprint(vChaChaKey));
-            debug::log(0, FUNCTION, "- session recovery state available: ", YesNo(fRecoveredSessionState));
-            debug::log(0, FUNCTION, "- recovered session genesis: ",
-                       fRecoveredSessionState ? FullHexOrUnset(optRecoveredSession->hashGenesis) : "NOT AVAILABLE");
-            debug::log(0, FUNCTION, "- recovered session genesis matches live context: ", YesNo(fRecoveryGenesisMatches));
             debug::log(0, FUNCTION, "- consistency result: FAIL");
             
             /* Build encrypted error response */
@@ -2057,10 +2045,6 @@ namespace LLP
         debug::log(0, FUNCTION, "- bound reward source: ", context.RewardBindingSource());
         debug::log(0, FUNCTION, "- session genesis used for ChaCha20 KDF: ", context.GenesisHex());
         debug::log(0, FUNCTION, "- derived ChaCha20 key fingerprint: ", KeyFingerprint(vChaChaKey));
-        debug::log(0, FUNCTION, "- session recovery state available: ", YesNo(fRecoveredSessionState));
-        debug::log(0, FUNCTION, "- recovered session genesis: ",
-                   fRecoveredSessionState ? FullHexOrUnset(optRecoveredSession->hashGenesis) : "NOT AVAILABLE");
-        debug::log(0, FUNCTION, "- recovered session genesis matches live context: ", YesNo(fRecoveryGenesisMatches));
         debug::log(0, FUNCTION, "- reward hash == bound reward hash: ",
                    fExistingRewardPresent ? YesNo(fExistingRewardMatches) : "NOT PREVIOUSLY BOUND");
         debug::log(0, FUNCTION, "- decoded reward hash == session genesis: ", YesNo(fRewardEqualsGenesis));
@@ -2071,13 +2055,6 @@ namespace LLP
             debug::warning(FUNCTION, "REWARD BINDING MISMATCH: existing bound reward hash=",
                            FullHexOrUnset(context.hashRewardAddress),
                            " differs from decoded reward hash=", hashReward.GetHex());
-        }
-
-        if(fRecoveredSessionState && !fRecoveryGenesisMatches)
-        {
-            debug::warning(FUNCTION, "SESSION RECOVERY GENESIS MISMATCH: recovered session genesis=",
-                           FullHexOrUnset(optRecoveredSession->hashGenesis),
-                           " differs from live session genesis=", context.GenesisHex());
         }
 
         /* Validate the reward address */
@@ -2121,17 +2098,6 @@ namespace LLP
                 }, 0);
         }
 
-        if(newContext.fAuthenticated && newContext.hashKeyID != 0)
-        {
-            SessionRecoveryManager::Get().SaveSession(newContext);
-            SessionRecoveryManager::Get().UpdateLane(newContext.hashKeyID, 0);
-            if(newContext.fEncryptionReady && !newContext.vChaChaKey.empty())
-            {
-                uint256_t hashKey(newContext.vChaChaKey);
-                SessionRecoveryManager::Get().SaveChaCha20State(newContext.hashKeyID, hashKey, 0);
-            }
-        }
-
         /* Log successful binding */
         debug::log(0, FUNCTION, "✓ Reward binding stored: decoded reward register/account hash=", hashReward.GetHex());
         debug::log(1, FUNCTION, "Session updated:");
@@ -2140,10 +2106,9 @@ namespace LLP
         debug::log(1, FUNCTION, "  Bound reward source: MINER_SET_REWARD decrypted payload");
         debug::log(1, FUNCTION, "  Reward hash == prior bound reward hash: ",
                    fExistingRewardPresent ? YesNo(fExistingRewardMatches) : "NOT PREVIOUSLY BOUND");
-        debug::log(1, FUNCTION, "  Session recovery state available: ", YesNo(fRecoveredSessionState));
         debug::log(2, FUNCTION, "  ChaCha20 ready: ", YesNo(!vChaChaKey.empty()),
                    " fingerprint=", KeyFingerprint(vChaChaKey));
-        debug::log(1, FUNCTION, "  Consistency result: ", PassFail(fExistingRewardMatches && (!fRecoveredSessionState || fRecoveryGenesisMatches)));
+        debug::log(1, FUNCTION, "  Consistency result: ", PassFail(fExistingRewardMatches));
 
         /* Build success response (encrypted) */
         std::vector<uint8_t> vSuccessMsg = {0x01};  // Success status

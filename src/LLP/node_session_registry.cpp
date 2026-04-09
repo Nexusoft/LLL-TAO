@@ -12,7 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/include/node_session_registry.h>
-#include <LLP/include/active_session_board.h>
 #include <Util/include/runtime.h>
 #include <Util/include/debug.h>
 
@@ -194,24 +193,15 @@ namespace LLP
 
             /* Enforce single-lane operation: a miner can only be on ONE port at a time.
              * When a lane registers or refreshes, the other lane is marked dead.
-             * This prevents stale dual-lane state from persisting across reconnections.
-             *
-             * Also notify ActiveSessionBoard so it stops sending push notifications
-             * on the dead lane.  Without this, the board continues tracking the old
-             * (sessionId, deadLane) as "active", sending ghost notifications that
-             * increment nFailedPackets and eventually trigger a push cooldown. */
+             * This prevents stale dual-lane state from persisting across reconnections. */
             if(lane == ProtocolLane::STATELESS)
             {
                 entry = entry.WithStatelessLive(true);
-                if(entry.fLegacyLive)
-                    ActiveSessionBoard::Get().MarkDisconnected(nSessionId, ProtocolLane::LEGACY);
                 entry = entry.WithLegacyLive(false);
             }
             else
             {
                 entry = entry.WithLegacyLive(true);
-                if(entry.fStatelessLive)
-                    ActiveSessionBoard::Get().MarkDisconnected(nSessionId, ProtocolLane::STATELESS);
                 entry = entry.WithStatelessLive(false);
             }
 
@@ -366,16 +356,8 @@ namespace LLP
             if(!liveEntry.has_value() || !liveEntry->IsExpired(nTimeoutSec, nNow))
                 continue;
 
-            /* Cross-cache consistency: mark the session as disconnected
-             * on ActiveSessionBoard before removing the registry entry.
-             * Without this, the board continues tracking the session
-             * as active, sending ghost notifications. */
-            if(liveEntry->nSessionId != 0)
-            {
-                ActiveSessionBoard::Get().MarkDisconnected(liveEntry->nSessionId, ProtocolLane::STATELESS);
-                ActiveSessionBoard::Get().MarkDisconnected(liveEntry->nSessionId, ProtocolLane::LEGACY);
-            }
-
+            /* Cross-cache consistency: remove the expired entry.
+             * The session is dead — clean up both maps. */
             /* Remove from both maps */
             m_mapByKey.Erase(hashKeyID);
             m_mapSessionToKey.Erase(liveEntry->nSessionId);

@@ -30,7 +30,6 @@ ________________________________________________________________________________
 #include <LLP/include/auto_cooldown_manager.h>
 #include <LLP/include/node_cache.h>
 #include <LLP/include/stateless_manager.h>
-#include <LLP/include/session_recovery.h>
 #include <LLP/include/node_session_registry.h>
 #include <LLP/include/miner_push_dispatcher.h>
 #include <LLP/include/mining_constants.h>
@@ -1307,15 +1306,12 @@ namespace LLP
 
                 if constexpr (is_miner_protocol_v<ProtocolType>)
                 {
-                    /* SweepExpired runs first to mark dead registry entries and
-                     * propagate to ActiveSessionBoard.  Then CleanupInactive
-                     * catches any orphaned entries in StatelessMinerManager via
-                     * RemoveMiner's cross-cache propagation. */
+                    /* SweepExpired runs first to mark dead registry entries.
+                     * Then CleanupInactive catches any orphaned entries in
+                     * StatelessMinerManager via RemoveMiner's cross-cache propagation. */
                     NodeSessionRegistry::Get().SweepExpired(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
                     StatelessMinerManager::Get().CleanupInactive(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
                     StatelessMinerManager::Get().PurgeInactiveMiners();
-                    SessionRecoveryManager::Get().CleanupExpired(
-                        SessionRecoveryManager::Get().GetSessionTimeout());
                 }
 
                 CLEANUP_TIMER.Reset();
