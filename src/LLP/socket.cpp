@@ -963,12 +963,19 @@ namespace LLP
         const uint32_t MTU = 16384;
         const uint32_t nMaxChunk = std::min((uint32_t)config::GetArg("-maxsendsize", MTU), MTU);
 
+        /* Configurable bounds for per-call chunk limit. */
+        static constexpr int64_t MIN_FLUSH_CHUNKS = 1;
+        static constexpr int64_t MAX_FLUSH_CHUNKS_LIMIT = 64;
+        static constexpr int64_t DEFAULT_FLUSH_CHUNKS = 4;
+
         /* Maximum chunks per Flush() call — bounds SOCKET_MUTEX hold time.
          * 4 chunks × 16 KB = 64 KB per call.  Remaining data is drained on
          * subsequent FLUSH_THREAD iterations, giving ReadPacket() a window
          * to acquire the mutex between calls. */
         const uint32_t MAX_FLUSH_CHUNKS = static_cast<uint32_t>(
-            std::max(int64_t(1), std::min(int64_t(64), config::GetArg("-maxflushchunks", 4))));
+            std::max(MIN_FLUSH_CHUNKS,
+                std::min(MAX_FLUSH_CHUNKS_LIMIT,
+                    config::GetArg("-maxflushchunks", DEFAULT_FLUSH_CHUNKS))));
 
         uint32_t nChunksSent = 0;
 

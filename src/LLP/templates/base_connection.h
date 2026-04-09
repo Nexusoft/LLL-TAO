@@ -203,6 +203,9 @@ namespace LLP
                 OUTGOING_QUEUE.push(PACKET);
             }
 
+            /* Set atomic flag so HasQueuedPackets() can check lock-free. */
+            fHasOutgoing.store(true, std::memory_order_release);
+
             /* Wake FLUSH_THREAD to drain the queue. */
             if(FLUSH_CONDITION)
                 FLUSH_CONDITION->notify_all();
@@ -224,12 +227,21 @@ namespace LLP
 
             /* Grab all packets under lock, then release lock before writing.
              * This minimizes contention between QueuePacket() callers and
-             * the FLUSH_THREAD drain path. */
+             * the FLUSH_THREAD drain path.  Use move-assignment to transfer
+             * ownership of queue contents efficiently. */
             std::queue<PacketType> qLocal;
             {
                 LOCK(OUTGOING_MUTEX);
-                std::swap(qLocal, OUTGOING_QUEUE);
+                qLocal = std::move(OUTGOING_QUEUE);
+
+                /* Reset the underlying queue to a clean empty state after move. */
+                OUTGOING_QUEUE = std::queue<PacketType>();
             }
+
+            /* Clear atomic flag now that the queue is empty under lock.
+             * A concurrent QueuePacket() may re-set it immediately, which
+             * is correct — the next FLUSH_THREAD iteration will drain it. */
+            fHasOutgoing.store(false, std::memory_order_release);
 
             /* Write each packet — WritePacket() handles buffering and
              * SOCKET_MUTEX acquisition internally. */
@@ -246,15 +258,17 @@ namespace LLP
 
         /** HasQueuedPackets
          *
-         *  Check if there are queued outgoing packets waiting to be drained.
+         *  Lock-free check for queued outgoing packets.
+         *  Uses an atomic flag updated by QueuePacket() and DrainOutgoingQueue()
+         *  to avoid mutex contention in the FLUSH_THREAD wait predicate
+         *  (which evaluates for every connection on every wakeup).
          *
-         *  @return true if the outgoing queue is non-empty.
+         *  @return true if the outgoing queue is likely non-empty.
          *
          **/
         bool HasQueuedPackets() const
         {
-            LOCK(OUTGOING_MUTEX);
-            return !OUTGOING_QUEUE.empty();
+            return fHasOutgoing.load(std::memory_order_acquire);
         }
 
 
@@ -296,14 +310,20 @@ namespace LLP
         std::map<message_t, Trigger*> TRIGGERS;
 
 
-        /** Mutex to protect the outgoing packet queue.
-         *  Mutable so HasQueuedPackets() can be const. **/
-        mutable std::mutex OUTGOING_MUTEX;
+        /** Mutex to protect the outgoing packet queue. **/
+        std::mutex OUTGOING_MUTEX;
 
 
         /** Queue of packets enqueued by QueuePacket() for deferred
          *  sending by FLUSH_THREAD via DrainOutgoingQueue(). **/
         std::queue<PacketType> OUTGOING_QUEUE;
+
+
+        /** Lock-free flag for HasQueuedPackets() — avoids mutex contention
+         *  in the FLUSH_THREAD wait predicate (evaluated for every connection
+         *  on every wakeup; with 500+ connections this saves ~500 mutex
+         *  acquisitions per predicate evaluation). **/
+        std::atomic<bool> fHasOutgoing{false};
 
 
     public:
