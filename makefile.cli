@@ -556,7 +556,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_failover_connection_tracker.o \
 		build/LLP_miner_push_dispatcher.o \
 		build/LLP_session_store.o \
-		build/LLP_template_cache.o \
 		build/API_commands_assets_initialize.o \
 		build/API_commands_assets_json.o \
 		build/API_commands_assets_partial.o \

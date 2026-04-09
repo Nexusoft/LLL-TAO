@@ -31,7 +31,6 @@ ________________________________________________________________________________
 #include <LLP/include/session_status_utility.h>
 #include <LLP/include/session_start_packet.h>
 #include <LLP/include/round_state_utility.h>
-#include <LLP/include/template_cache.h>
 #include <LLP/types/miner.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
@@ -2178,56 +2177,34 @@ namespace LLP
             }
         }
 
-        /* Get chain state for metadata first — needed for cache key and metadata build */
+        /* Get chain state for metadata */
         RoundStateUtility::ChainHeightSnapshot snap = RoundStateUtility::CaptureHeights();
         uint32_t nChannelHeight = RoundStateUtility::GetChannelHeight(snap, nChannelCopy);
 
-        /* Check the global template cache before calling new_block().
-         * TryAttachBlockTemplate() (PUSH path) stores templates here; reusing the
-         * cached block bytes eliminates a redundant new_block() / LLD read. */
-        std::vector<uint8_t> vBlockData;
-        uint32_t nBlockBits = 0;
-
-        auto cached = GlobalTemplateCache::Get().GetCachedTemplate(nChannelCopy, snap.nUnifiedHeight);
-        if(cached.fValid)
+        /* Create block template */
+        TAO::Ledger::Block* pBlock = new_block();
+        if(!pBlock)
         {
-            debug::log(2, FUNCTION, "SendLegacyTemplate: cache HIT channel=", nChannelCopy,
-                       " unified=", snap.nUnifiedHeight, " — skipping new_block()");
-            vBlockData = cached.vBlockData;
-            nBlockBits = cached.nBits;
+            debug::log(2, FUNCTION, "new_block() returned nullptr — retrying once");
+            pBlock = new_block();
         }
-        else
+        if(!pBlock)
         {
-            /* Cache MISS — create block template */
-            TAO::Ledger::Block* pBlock = new_block();
-            if(!pBlock)
-            {
-                debug::log(2, FUNCTION, "new_block() returned nullptr — retrying once");
-                pBlock = new_block();
-            }
-            if(!pBlock)
-            {
-                debug::error(FUNCTION, "Failed to create block template after retry");
-                return;
-            }
+            debug::error(FUNCTION, "Failed to create block template after retry");
+            return;
+        }
 
-            vBlockData = pBlock->Serialize();
-            if(vBlockData.empty())
-            {
-                debug::error(FUNCTION, "Invalid block serialization: empty");
-                return;
-            }
-
-            nBlockBits = pBlock->nBits;
-
-            /* Store in cache for future reuse */
-            GlobalTemplateCache::Get().CacheTemplate(
-                pBlock->nChannel, snap.nUnifiedHeight, vBlockData, nBlockBits);
+        /* Serialize block template */
+        std::vector<uint8_t> vBlockData = pBlock->Serialize();
+        if(vBlockData.empty())
+        {
+            debug::error(FUNCTION, "Invalid block serialization: empty");
+            return;
         }
 
         /* Build payload: 12-byte metadata + block data using shared utility */
         std::vector<uint8_t> vMetadata = RoundStateUtility::SerializeTemplateMetadata(
-            snap.nUnifiedHeight, nChannelHeight, nBlockBits);
+            snap.nUnifiedHeight, nChannelHeight, pBlock->nBits);
 
         std::vector<uint8_t> vPayload;
         vPayload.reserve(vMetadata.size() + vBlockData.size());
@@ -2238,8 +2215,8 @@ namespace LLP
         respond_stateless(OpcodeUtility::Stateless::BLOCK_DATA, vPayload);
 
         debug::log(2, FUNCTION, "✅ Legacy template sent (",
-                   vPayload.size(), " bytes) channel=", nChannelCopy,
-                   " to ", GetAddress().ToStringIP());
+                   vPayload.size(), " bytes) channel=", pBlock->nChannel,
+                   " height=", pBlock->nHeight, " to ", GetAddress().ToStringIP());
 
         StatelessMinerManager::Get().IncrementTemplatesServed();
 
@@ -2834,76 +2811,42 @@ namespace LLP
                        nLiveLastTemplateHeight, " -> ", snap.nUnifiedHeight,
                        " - auto-sending template for channel ", nChannel.load());
 
-            /* Check the global template cache before calling new_block().
-             * TryAttachBlockTemplate() (PUSH path) stores templates here; reusing the
-             * cached block bytes avoids a redundant new_block() / LLD I/O. */
-            std::vector<uint8_t> vPayload;
-            bool fPayloadReady = false;
+            TAO::Ledger::Block* pBlock = new_block();
 
-            const uint32_t nChannelVal = nChannel.load();
-            auto cached = GlobalTemplateCache::Get().GetCachedTemplate(nChannelVal, snap.nUnifiedHeight);
-            if(cached.fValid)
+            if(!pBlock)
             {
-                debug::log(2, FUNCTION, "GET_ROUND auto-send: cache HIT channel=",
-                           nChannelVal, " unified=", snap.nUnifiedHeight, " — skipping new_block()");
-
-                std::vector<uint8_t> vMetadata = RoundStateUtility::SerializeTemplateMetadata(
-                    snap.nUnifiedHeight, nCurrentChannelHeight, cached.nBits);
-
-                vPayload.reserve(vMetadata.size() + cached.vBlockData.size());
-                vPayload.insert(vPayload.end(), vMetadata.begin(), vMetadata.end());
-                vPayload.insert(vPayload.end(), cached.vBlockData.begin(), cached.vBlockData.end());
-                fPayloadReady = true;
+                debug::error(FUNCTION, "GET_ROUND auto-send: new_block() returned nullptr");
             }
             else
             {
-                TAO::Ledger::Block* pBlock = new_block();
+                try {
+                    std::vector<uint8_t> vBlockData = pBlock->Serialize();
 
-                if(!pBlock)
-                {
-                    debug::error(FUNCTION, "GET_ROUND auto-send: new_block() returned nullptr");
-                }
-                else
-                {
-                    try {
-                        std::vector<uint8_t> vBlockData = pBlock->Serialize();
+                    if(!vBlockData.empty())
+                    {
+                        /* Build payload: 12-byte metadata + block data using shared utility */
+                        std::vector<uint8_t> vMetadata = RoundStateUtility::SerializeTemplateMetadata(
+                            snap.nUnifiedHeight, nCurrentChannelHeight, pBlock->nBits);
 
-                        if(!vBlockData.empty())
-                        {
-                            /* Build payload: 12-byte metadata + block data using shared utility */
-                            std::vector<uint8_t> vMetadata = RoundStateUtility::SerializeTemplateMetadata(
-                                snap.nUnifiedHeight, nCurrentChannelHeight, pBlock->nBits);
+                        std::vector<uint8_t> vPayload;
+                        vPayload.reserve(vMetadata.size() + vBlockData.size());
+                        vPayload.insert(vPayload.end(), vMetadata.begin(), vMetadata.end());
+                        vPayload.insert(vPayload.end(), vBlockData.begin(), vBlockData.end());
 
-                            vPayload.reserve(vMetadata.size() + vBlockData.size());
-                            vPayload.insert(vPayload.end(), vMetadata.begin(), vMetadata.end());
-                            vPayload.insert(vPayload.end(), vBlockData.begin(), vBlockData.end());
+                        respond_stateless(OpcodeUtility::Stateless::BLOCK_DATA, vPayload);
 
-                            /* Store in cache for future reuse */
-                            GlobalTemplateCache::Get().CacheTemplate(
-                                pBlock->nChannel, snap.nUnifiedHeight, vBlockData, pBlock->nBits);
+                        debug::log(2, FUNCTION, "Auto-sent BLOCK_DATA (",
+                                   vPayload.size(), " bytes) channel=",
+                                   pBlock->nChannel, " height=", pBlock->nHeight);
 
-                            fPayloadReady = true;
-                        }
-                    }
-                    catch(const std::exception& e) {
-                        debug::error(FUNCTION, "GET_ROUND auto-send exception: ", e.what());
+                        StatelessMinerManager::Get().IncrementTemplatesServed();
+
+                        /* Update last template unified height only after successful send */
+                        nLastTemplateUnifiedHeight = snap.nUnifiedHeight;
                     }
                 }
-            }
-
-            if(fPayloadReady)
-            {
-                respond_stateless(OpcodeUtility::Stateless::BLOCK_DATA, vPayload);
-
-                debug::log(2, FUNCTION, "Auto-sent BLOCK_DATA (",
-                           vPayload.size(), " bytes) channel=", nChannelVal);
-
-                StatelessMinerManager::Get().IncrementTemplatesServed();
-
-                /* Update last template unified height under MUTEX */
-                {
-                    LOCK(MUTEX);
-                    nLastTemplateUnifiedHeight = snap.nUnifiedHeight;
+                catch(const std::exception& e) {
+                    debug::error(FUNCTION, "GET_ROUND auto-send exception: ", e.what());
                 }
             }
         }
