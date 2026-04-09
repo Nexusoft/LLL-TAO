@@ -235,7 +235,7 @@ namespace LLP
                 }
             }
 
-            return nGlobalBlockCount.load(std::memory_order_relaxed) >= nMaxPerSec;
+            return nGlobalBlockCount.load(std::memory_order_acquire) >= nMaxPerSec;
         }
 
 

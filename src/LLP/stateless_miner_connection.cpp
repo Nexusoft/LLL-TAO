@@ -1113,7 +1113,7 @@ namespace LLP
                     gbResult.eReason       = GetBlockPolicyReason::NONE;
                     gbResult.nRetryAfterMs = 0;
                     gbResult.nBlockChannel = nChannel_snap;
-                    gbResult.nBlockHeight  = 0;        /* height not tracked in cache */
+                    gbResult.nBlockHeight  = 0;        /* channel-specific block height not stored in cache; use 0 */
                     gbResult.nBlockBits    = gbCached.nBits;
 
                     debug::log(0, "   📤 Sending BLOCK_DATA (from cache)...");
@@ -1296,9 +1296,13 @@ namespace LLP
                 debug::log(2, "📥 === GET_BLOCK: SUCCESS ===");
 
                 /* Populate the global template cache with this newly created block.
-                 * The payload is 12-byte metadata + raw block bytes; extract the block
-                 * bytes (skip first 12 bytes) and store them for future cache hits. */
-                static constexpr size_t METADATA_SIZE = 12;
+                 * The payload format is: 12-byte metadata (unified_height[4] +
+                 * channel_height[4] + nBits[4]) followed by the raw serialized block.
+                 * Extract just the block bytes (skip the 12-byte metadata header)
+                 * and store them keyed by channel + unified height.
+                 * METADATA_SIZE must match RoundStateUtility::SerializeTemplateMetadata()
+                 * output size (currently 3 × 4-byte big-endian fields = 12 bytes). */
+                static constexpr size_t METADATA_SIZE = 12; /* 3 × uint32_t big-endian */
                 if(gbResult.vPayload.size() > METADATA_SIZE)
                 {
                     std::vector<uint8_t> vRawBlock(
