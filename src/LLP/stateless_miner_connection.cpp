@@ -4562,8 +4562,11 @@ namespace LLP
         debug::log(2, "      Template pushed automatically on new blocks");
         debug::log(2, "════════════════════════════════════════════════════════════");
         
-        /* Send to miner */
-        respond(notification);
+        /* Enqueue for deferred sending by FLUSH_THREAD.
+         * Consistent with SendChannelNotification() — avoids SOCKET_MUTEX
+         * contention between the notification thread and DataThread's
+         * ReadPacket() loop. */
+        QueuePacket(notification);
         
         /* Update statistics and store canonical snapshot in context. */
         uint64_t nNotificationTimestamp = runtime::unifiedtimestamp();

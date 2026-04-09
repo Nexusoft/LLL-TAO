@@ -744,6 +744,10 @@ namespace LLP
                 try { CONNECTION->NotifyEvent(); }
                 catch(const std::exception& e) { }
             }
+
+            /* Advance iterator — without this the loop spins
+             * indefinitely on the first connection. */
+            ++ITT;
         }
     }
 
