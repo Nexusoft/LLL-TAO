@@ -32,6 +32,7 @@ ________________________________________________________________________________
 #include <LLP/include/stateless_manager.h>
 #include <LLP/include/session_recovery.h>
 #include <LLP/include/node_session_registry.h>
+#include <LLP/include/session_store.h>
 #include <LLP/include/miner_push_dispatcher.h>
 #include <LLP/include/mining_constants.h>
 #include <LLP/include/mining_timers.h>
@@ -1299,6 +1300,13 @@ namespace LLP
                     StatelessMinerManager::Get().CleanupInactive(NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
                     StatelessMinerManager::Get().PurgeInactiveMiners();
                     SessionRecoveryManager::Get().CleanupExpired(
+                        SessionRecoveryManager::Get().GetSessionTimeout());
+
+                    /* Unified SessionStore sweep: removes expired sessions
+                     * from the canonical store + all secondary indexes. */
+                    SessionStore::Get().SweepExpired(
+                        NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
+                    SessionStore::Get().SweepRecoveryExpired(
                         SessionRecoveryManager::Get().GetSessionTimeout());
                 }
 
