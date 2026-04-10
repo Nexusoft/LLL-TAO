@@ -114,10 +114,13 @@ namespace LLP
          * pending events, giving O(ready) instead of O(all) per iteration. */
         if constexpr (is_mining_data_thread_v<ProtocolType>)
         {
-            m_nEpollFd = ::epoll_create1(0);
+            m_nEpollFd = ::epoll_create1(EPOLL_CLOEXEC);
             if(m_nEpollFd < 0)
-                debug::error(FUNCTION, "epoll_create1 failed for mining DataThread ", nID, " errno=", errno,
+            {
+                const int nSavedErrno = errno;
+                debug::error(FUNCTION, "epoll_create1 failed for mining DataThread ", nID, " errno=", nSavedErrno,
                              " — falling back to poll()");
+            }
             else
                 debug::log(0, FUNCTION, "Mining DataThread ", nID, " using epoll fd=", m_nEpollFd);
         }
@@ -733,7 +736,10 @@ namespace LLP
                         if(CONNECTION->Buffered())
                             return true;
                     }
-                    catch(const std::exception& e) { }
+                    catch(const std::exception& e)
+                    {
+                        debug::error(FUNCTION, "Exception in flush has_data check: ", e.what());
+                    }
                 }
 
                 return false;
@@ -807,7 +813,10 @@ namespace LLP
                     if(CONNECTION->Buffered() && CONNECTION->Flush() < 0)
                         runtime::sleep(std::min(5u, CONNECTION->nConsecutiveErrors.load() / 1000)); //we want to sleep when we have periodic failures
                 }
-                catch(const std::exception& e) { }
+                catch(const std::exception& e)
+                {
+                    debug::error(FUNCTION, "Exception in flush loop: ", e.what());
+                }
             }
         }
     }
@@ -828,7 +837,10 @@ namespace LLP
             if(CONNECTION)
             {
                 try { CONNECTION->NotifyEvent(); }
-                catch(const std::exception& e) { }
+                catch(const std::exception& e)
+                {
+                    debug::error(FUNCTION, "Exception in NotifyEvent: ", e.what());
+                }
             }
 
             /* Advance iterator — without this the loop spins
@@ -1150,8 +1162,9 @@ namespace LLP
             if(nReady < 0)
             {
                 /* EINTR is normal during signal handling. */
-                if(errno != EINTR)
-                    debug::error(FUNCTION, "epoll_wait failed errno=", errno);
+                const int nSavedErrno = errno;
+                if(nSavedErrno != EINTR)
+                    debug::error(FUNCTION, "epoll_wait failed errno=", nSavedErrno);
                 runtime::sleep(1);
                 continue;
             }
