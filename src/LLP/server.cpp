@@ -958,11 +958,30 @@ namespace LLP
                     continue;
                 }
 
-                /* Attempt to accept the socket connection */
+                /* Attempt to accept the socket connection.
+                 * accept4() with SOCK_CLOEXEC atomically prevents the fd from
+                 * leaking into child processes spawned by std::system().
+                 * Falls back to accept()+fcntl on ENOSYS (very old kernels)
+                 * or on non-Linux platforms. */
                 struct sockaddr_in sockaddr;
+#if defined(__linux__) && defined(SOCK_CLOEXEC)
+                hSocket = accept4(get_listening_socket(fIPv4, fSSL), (struct sockaddr*)&sockaddr, fIPv4 ? &len_v4 : &len_v6, SOCK_CLOEXEC);
+
+                /* Fallback if kernel doesn't support accept4 (ENOSYS). */
+                if(hSocket == INVALID_SOCKET && errno == ENOSYS)
+                    hSocket = accept(get_listening_socket(fIPv4, fSSL), (struct sockaddr*)&sockaddr, fIPv4 ? &len_v4 : &len_v6);
+#else
                 hSocket = accept(get_listening_socket(fIPv4, fSSL), (struct sockaddr*)&sockaddr, fIPv4 ? &len_v4 : &len_v6);
+#endif
                 if (hSocket != INVALID_SOCKET)
+                {
                     addr = BaseAddress(sockaddr);
+#ifndef WIN32
+                    /* Ensure close-on-exec is set via fcntl as a fallback for
+                     * platforms without accept4() or if accept4() returned ENOSYS. */
+                    fcntl(hSocket, F_SETFD, FD_CLOEXEC);
+#endif
+                }
 
 
                 if(hSocket == INVALID_SOCKET)
@@ -1115,13 +1134,24 @@ namespace LLP
         int32_t nOne = 1;
 #endif
 
-        /* Create socket for listening for incoming connections */
+        /* Create socket for listening for incoming connections.
+         * SOCK_CLOEXEC prevents the fd from leaking into child processes
+         * spawned by std::system() (e.g. -blocknotify). */
+#ifdef SOCK_CLOEXEC
+        hListenBase = socket(fIPv4 ? AF_INET : AF_INET6, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP);
+#else
         hListenBase = socket(fIPv4 ? AF_INET : AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+#endif
         if(hListenBase == INVALID_SOCKET)
         {
             debug::error("Couldn't open socket for incoming connections (socket returned error)", WSAGetLastError());
             return false;
         }
+
+#if !defined(SOCK_CLOEXEC) && !defined(WIN32)
+        /* Fallback: set close-on-exec via fcntl when SOCK_CLOEXEC is unavailable (e.g. macOS). */
+        fcntl(hListenBase, F_SETFD, FD_CLOEXEC);
+#endif
 
         /* Different way of disabling SIGPIPE on BSD */
 #ifdef SO_NOSIGPIPE
@@ -1470,7 +1500,7 @@ namespace LLP
     #else
 
         char port[6];
-        sprintf(port, "%d", nPort);
+        snprintf(port, sizeof(port), "%d", nPort);
 
         const char * multicastif = 0;
         const char * minissdpdpath = 0;

@@ -312,19 +312,33 @@ namespace LLP
 
         bool fConnected = false;
 
-        /* Create the Socket Object (Streaming TCP/IP). */
+        /* Create the Socket Object (Streaming TCP/IP).
+         * SOCK_CLOEXEC prevents the fd from leaking into child processes
+         * spawned by std::system() (e.g. -blocknotify). */
         {
             LOCK(ADDRESS_MUTEX);
 
+#ifdef SOCK_CLOEXEC
+            if(addrDest.IsIPv4())
+                fd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP);
+            else
+                fd = socket(AF_INET6, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP);
+#else
             if(addrDest.IsIPv4())
                 fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
             else
                 fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+#endif
 
             /* Catch failure if socket couldn't be initialized. */
             if (fd == INVALID_SOCKET)
                 return false;
         }
+
+#if !defined(SOCK_CLOEXEC) && !defined(WIN32)
+        /* Fallback: set close-on-exec via fcntl when SOCK_CLOEXEC is unavailable (e.g. macOS). */
+        fcntl(fd, F_SETFD, FD_CLOEXEC);
+#endif
 
         /* Set the socket to non blocking. */
     #ifdef WIN32

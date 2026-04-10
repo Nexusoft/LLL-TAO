@@ -440,7 +440,10 @@ namespace LLP
             if constexpr (is_mining_data_thread_v<ProtocolType>)
             {
                 if(m_nEpollFd >= 0 && nFd != static_cast<SOCKET>(INVALID_SOCKET))
-                    ::epoll_ctl(m_nEpollFd, EPOLL_CTL_DEL, static_cast<int>(nFd), nullptr);
+                {
+                    if(::epoll_ctl(m_nEpollFd, EPOLL_CTL_DEL, static_cast<int>(nFd), nullptr) < 0 && errno != ENOENT)
+                        debug::error(FUNCTION, "epoll_ctl DEL failed for fd=", nFd, " errno=", errno);
+                }
             }
 #else
             (void)nFd;
