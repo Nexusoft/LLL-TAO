@@ -304,7 +304,7 @@ namespace LLP
         /* Poll timeout: mining DataThreads use -miningwait (default 1ms) for
          * low-latency I/O even in the poll() fallback path; non-mining threads
          * keep the original 100ms. */
-        const int32_t nPollTimeout = [&]() -> int32_t
+        const int32_t nPollTimeout = []() -> int32_t
         {
             if constexpr (is_mining_data_thread_v<ProtocolType>)
                 return static_cast<int32_t>(config::GetArg("-miningwait", 1));
