@@ -152,6 +152,28 @@ namespace MiningConstants
     constexpr int64_t NODE_HEALTH_PROBE_INTERVAL_SEC = 120;
 
     //=========================================================================
+    // POLL TIMEOUT
+    //=========================================================================
+
+    /** Default poll() timeout for mining DataThreads (milliseconds).
+     *
+     *  The generic DataThread uses a 100 ms poll() timeout which is fine for
+     *  P2P traffic but adds up to 100 ms of latency for mining I/O — the
+     *  single biggest source of mining read-side delay.
+     *
+     *  Mining DataThread instances (Miner, StatelessMinerConnection) use this
+     *  much shorter timeout so that incoming share submissions and protocol
+     *  messages are picked up with minimal delay.  The trade-off is slightly
+     *  higher CPU utilisation on mining threads, but mining DataThreads
+     *  typically serve far fewer connections than P2P threads and the extra
+     *  wakeups are negligible.
+     *
+     *  Default: 10 ms.
+     *  Overridable at runtime via -miningpolltimeout=<ms>.
+     */
+    constexpr uint32_t DEFAULT_MINING_POLL_TIMEOUT_MS = 10;
+
+    //=========================================================================
     // CONNECTION TIMEOUTS
     //=========================================================================
 

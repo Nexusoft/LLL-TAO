@@ -119,6 +119,22 @@ namespace LLP
         uint64_t nLastSuccessfulSend = 0;
         bool     fMarkedDisconnected = false;
 
+        /** Cooldown expiry timestamp (epoch seconds).
+         *  When non-zero, this session is in cooldown and excluded from push
+         *  notifications.  Auto-recovers: GetActiveSessionIdsForChannel() treats
+         *  sessions with expired cooldowns as active.  RecordSendSuccess() clears
+         *  cooldown.  SweepCooldowns() clears expired cooldowns in bulk.
+         *  Replaces permanent banning behavior. */
+        uint64_t nCooldownExpiry = 0;
+
+        /** Monotonically increasing registration version counter.
+         *  Incremented on every Register() call.  MarkDisconnected() compares
+         *  the caller's version against the current version — if they differ,
+         *  the session has been re-registered since the disconnect was initiated
+         *  and the stale MarkDisconnected is silently rejected.
+         *  This prevents the AUTH/DISCONNECT race condition. */
+        uint64_t nVersion = 0;
+
         /* ── Protocol ───────────────────────────────────────────────────────── */
         uint32_t nProtocolVersion = 0;
 

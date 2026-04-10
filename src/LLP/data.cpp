@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/include/base_address.h>
+#include <LLP/include/mining_constants.h>
 #include <LLP/templates/data.h>
 #include <LLP/templates/static.h>
 #include <LLP/templates/socket.h>
@@ -36,7 +37,24 @@ namespace LLP
 {
     namespace
     {
+        /** POLL_EMPTY timeout for mining connections (milliseconds).
+         *
+         *  This is the grace period before a spurious POLLIN + Available()==0
+         *  triggers DISCONNECT::POLL_EMPTY.  Pre-authentication Falcon handshakes
+         *  take ~100-500ms, during which IsTimeoutExempt() returns false.
+         *  A 100ms timeout was killing miners during auth with no diagnostic
+         *  feedback — the miner sees only a TCP RST.
+         *
+         *  5000ms gives ample time for Falcon key exchange to complete and avoids
+         *  false positives from Linux spurious POLLIN events (TCP keepalive ACKs,
+         *  etc.) while still detecting genuinely dead sockets within seconds.
+         */
         static constexpr uint32_t MINING_POLL_EMPTY_TIMEOUT_MS = 5000;
+
+        /** Default poll() timeout for non-mining DataThreads (milliseconds).
+         *  Mining DataThreads use a shorter timeout configured via
+         *  MiningConstants::DEFAULT_MINING_POLL_TIMEOUT_MS. */
+        static constexpr uint32_t DEFAULT_POLL_TIMEOUT_MS = 100;
 
         /** Maximum time (milliseconds) a partial packet (header read but data
          *  incomplete) may remain stuck before the connection is killed.
@@ -46,6 +64,20 @@ namespace LLP
          *  "shadow ban" scenario. 30 seconds is generous for any legitimate
          *  frame over any network link. */
         static constexpr uint32_t PARTIAL_PACKET_TIMEOUT_MS = 30000;
+
+        /** Per-iteration time budget (milliseconds) for the connection for-loop.
+         *  After processing each connection's packet, the elapsed time since the
+         *  start of the for-loop is checked.  If it exceeds this budget, the
+         *  loop breaks early and re-enters poll() so that no single poll()
+         *  iteration monopolises the DataThread.
+         *
+         *  Only applied to non-mining protocol types (TritiumNode) to avoid
+         *  dropping time-sensitive mining submit-block packets.
+         *
+         *  Packets that were ReadPacket()'d but not yet ProcessPacket()'d
+         *  remain in INCOMING and will be processed on the next iteration.
+         *  Configurable via -llptimebudget (default 20ms). */
+        static constexpr uint32_t DEFAULT_LLP_TIME_BUDGET_MS = 20;
     }
 
     /** Default Constructor **/
@@ -413,6 +445,18 @@ namespace LLP
             }
 
 
+            /* Per-iteration time budget: record the start so we can break
+             * early if ProcessPacket() calls cumulatively exceed the budget.
+             * Mining DataThreads are exempt — submit-block latency matters. */
+            const auto tLoopStart = std::chrono::steady_clock::now();
+            const uint32_t nTimeBudgetMs = static_cast<uint32_t>(
+                config::GetArg("-llptimebudget",
+                    static_cast<int64_t>(DEFAULT_LLP_TIME_BUDGET_MS)));
+
+            constexpr bool fMiningProtocol =
+                std::is_same<ProtocolType, Miner>::value
+                || std::is_same<ProtocolType, StatelessMinerConnection>::value;
+
             /* Check all connections for data and packets. */
             for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
@@ -558,6 +602,27 @@ namespace LLP
                         /* Run procssed event for connection triggers. */
                         CONNECTION->Event(EVENTS::PROCESSED);
                         CONNECTION->ResetPacket();
+
+                        /* Time-budget guard: if this poll() iteration has spent more
+                         * than the budget processing packets, break out to re-enter
+                         * poll() and give other connections/threads a chance.
+                         * Mining protocols are exempt to avoid delaying submit-block. */
+                        if(!fMiningProtocol && nTimeBudgetMs > 0)
+                        {
+                            const auto tNow = std::chrono::steady_clock::now();
+                            const uint32_t nElapsedMs = static_cast<uint32_t>(
+                                std::chrono::duration_cast<std::chrono::milliseconds>(
+                                    tNow - tLoopStart).count());
+
+                            if(nElapsedMs >= nTimeBudgetMs)
+                            {
+                                debug::log(3, FUNCTION, "DataThread[", ID,
+                                    "]: time budget exceeded (", nElapsedMs, "ms >= ",
+                                    nTimeBudgetMs, "ms) after connection ", nIndex,
+                                    "/", nSize, " — re-entering poll()");
+                                break;
+                            }
+                        }
                     }
                 }
                 catch(const std::exception& e)

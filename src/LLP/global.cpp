@@ -151,7 +151,7 @@ namespace LLP
             CONFIG.PORT_SSL        = 0; //TODO: this is disabled until SSL code can be refactored
             CONFIG.MAX_INCOMING    = config::GetArg(std::string("-maxincoming"), 84);
             CONFIG.MAX_CONNECTIONS = config::GetArg(std::string("-maxconnections"), 100);
-            CONFIG.MAX_THREADS     = config::GetArg(std::string("-threads"), 8);
+            CONFIG.MAX_THREADS     = config::GetArg(std::string("-threads"), 4);
             CONFIG.DDOS_CSCORE     = config::GetArg(std::string("-cscore"), 1);
             CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-rscore"), 2000);
             CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-timespan"), 20);

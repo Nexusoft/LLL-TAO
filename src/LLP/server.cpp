@@ -1333,6 +1333,11 @@ namespace LLP
                      * from the canonical store + all secondary indexes. */
                     SessionStore::Get().SweepExpired(
                         NodeCache::SESSION_LIVENESS_TIMEOUT_SECONDS);
+
+                    /* Recover sessions whose cooldown has expired.
+                     * This is the periodic cleanup path; sessions are also
+                     * recovered inline during GetActiveSessionIdsForChannel(). */
+                    SessionStore::Get().SweepCooldowns();
                 }
 
                 CLEANUP_TIMER.Reset();

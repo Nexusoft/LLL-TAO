@@ -2230,9 +2230,21 @@ namespace LLP
                 /* GET_ROUND COMPATIBILITY: AUTO-SEND TEMPLATE
                  * Legacy miners polling GET_ROUND expect BLOCK_DATA when height changes.
                  * CRITICAL: Use UNIFIED height — every tip move (any channel) changes
-                 * hashPrevBlock, requiring ALL channels to get fresh templates. */
+                 * hashPrevBlock, requiring ALL channels to get fresh templates.
+                 *
+                 * FIX: Re-read nLastTemplateUnifiedHeight from the LIVE context (under
+                 * MUTEX) rather than the stale snapshot captured at packet dispatch time.
+                 * TryAttachBlockTemplate() (called from FLUSH_THREAD via SendChannelNotification)
+                 * updates context.nLastTemplateUnifiedHeight under MUTEX. Using the
+                 * snapshot value would cause a false-positive "height changed" and trigger a
+                 * redundant new_block() call — the second template of the triple storm. */
+                uint32_t nLiveLastTemplateHeight;
+                {
+                    LOCK(MUTEX);
+                    nLiveLastTemplateHeight = context.nLastTemplateUnifiedHeight;
+                }
                 bool fUnifiedHeightChanged = RoundStateUtility::IsTemplateStale(
-                    nLastTemplateUnifiedHeight_snap, snap);
+                    nLiveLastTemplateHeight, snap);
                 bool fTemplateStale = fUnifiedHeightChanged || fHashChanged;
 
                 debug::log(2, FUNCTION, "GET_ROUND staleness: unified_changed=",
@@ -4241,8 +4253,9 @@ namespace LLP
             else if (m_last_template_push_time != std::chrono::steady_clock::time_point{} &&
                 elapsed < MiningConstants::TEMPLATE_PUSH_MIN_INTERVAL_MS)
             {
-                debug::log(1, FUNCTION, "⏳ Push throttled — ", elapsed, "ms since last push (min ",
-                           MiningConstants::TEMPLATE_PUSH_MIN_INTERVAL_MS, "ms); miner must wait");
+                debug::log(0, FUNCTION, "⏳ Push throttled — ", elapsed, "ms since last push (min ",
+                           MiningConstants::TEMPLATE_PUSH_MIN_INTERVAL_MS, "ms); miner=",
+                           GetAddress().ToStringIP(), " — work delivery delayed");
                 return;
             }
             m_last_template_push_time = now;
@@ -4472,8 +4485,9 @@ namespace LLP
             else if (m_last_template_push_time != std::chrono::steady_clock::time_point{} &&
                 elapsed < MiningConstants::TEMPLATE_PUSH_MIN_INTERVAL_MS)
             {
-                debug::log(1, FUNCTION, "⏳ Push throttled — ", elapsed, "ms since last push (min ",
-                           MiningConstants::TEMPLATE_PUSH_MIN_INTERVAL_MS, "ms); miner must wait");
+                debug::log(0, FUNCTION, "⏳ Push throttled — ", elapsed, "ms since last push (min ",
+                           MiningConstants::TEMPLATE_PUSH_MIN_INTERVAL_MS, "ms); miner=",
+                           GetAddress().ToStringIP(), " — work delivery delayed");
                 return;
             }
             m_last_template_push_time = now;

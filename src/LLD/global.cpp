@@ -50,8 +50,12 @@ namespace LLD
                         77773,
                         nRegisterCacheSize * 1024 * 1024);
 
-        /* Create the ledger database instance. */
-        const uint32_t nLedgerCacheSize = config::GetArg("-ledgercache", 2);
+        /* Create the ledger database instance.
+         * Default cache raised to 64 MB for mining node workloads.
+         * Blocks average 216 bytes, so 64 MB holds ~300K typical blocks in
+         * BinaryLRU cache, dramatically reducing SECTOR_MUTEX contention
+         * between P2P block-serving and mining template creation. */
+        const uint32_t nLedgerCacheSize = config::GetArg("-ledgercache", 64);
         Ledger    = new LedgerDB(
                         FLAGS::CREATE | FLAGS::FORCE,
                         config::fClient.load() ? 77773 : (256 * 256 * 64),
