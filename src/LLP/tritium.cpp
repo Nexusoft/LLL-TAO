@@ -1788,6 +1788,66 @@ namespace LLP
                             uint1024_t hashBlock;
                             ssPacket >> hashBlock;
 
+                            /* ── RATE LIMITING (before any LLD I/O) ──────────────────────
+                             * CRITICAL FIX: All rate-limit checks now fire BEFORE ReadBlock()
+                             * so that no disk I/O / SECTOR_MUTEX contention occurs when we are
+                             * over budget.  Previously the limiters ran AFTER ReadBlock() — the
+                             * I/O had already consumed shared LLD::Ledger SECTOR_MUTEX time by
+                             * the time the throttle was consulted, making it ineffective at
+                             * protecting mining template creation from P2P block-serving floods. */
+
+                            /* Add DDOS filtering first (cheap atomic increment). */
+                            if(DDOS)
+                                DDOS->rSCORE += 50;
+
+                            /* Per-connection GET::BLOCK rate limiting.
+                             * Reset the rolling window if expired, then check whether
+                             * this connection has exceeded the per-window block limit.
+                             * If so, log once and skip the remaining items in this packet
+                             * to protect block validation and mining push notification paths. */
+                            m_getTracker.MaybeResetWindow();
+                            {
+                                const uint32_t nMaxBlocks = static_cast<uint32_t>(
+                                    config::GetArg(std::string("-maxgetblocks"),
+                                        static_cast<int64_t>(GetRequestRateTracker::DEFAULT_MAX_GET_BLOCKS)));
+
+                                if(m_getTracker.ShouldThrottleBlock(nMaxBlocks))
+                                {
+                                    debug::log(0, NODE, "ACTION::GET::BLOCK throttled — peer ",
+                                               GetAddress().ToStringIP(), " exceeded ",
+                                               nMaxBlocks,
+                                               " block requests/", GetRequestRateTracker::WINDOW_SECONDS, "s window");
+                                    break;
+                                }
+                            }
+
+                            /* Global aggregate rate limiter — protects shared LLD I/O for mining.
+                             * Applies after the per-connection guard: even if each peer is within
+                             * its individual budget, the combined aggregate can monopolise
+                             * LLD::Ledger, starving mining template creation (new_block()).
+                             * Cap configurable via -maxglobalgetblocks (default 100/s). */
+                            {
+                                const uint32_t nGlobalMax = static_cast<uint32_t>(
+                                    config::GetArg(std::string("-maxglobalgetblocks"),
+                                        static_cast<int64_t>(GlobalGetBlockLimiter::DEFAULT_MAX_GLOBAL_GET_BLOCKS_PER_SEC)));
+
+                                if(GlobalGetBlockLimiter::ShouldThrottle(nGlobalMax))
+                                {
+                                    debug::log(1, NODE, "ACTION::GET::BLOCK global throttle — aggregate P2P block serving rate exceeded (",
+                                               nGlobalMax, "/s cap)");
+                                    std::this_thread::yield();
+                                    break;
+                                }
+
+                                /* Record BEFORE the I/O so the counter accurately reflects
+                                 * requests that will consume SECTOR_MUTEX time. */
+                                GlobalGetBlockLimiter::RecordServed();
+                            }
+
+                            /* ── LLD I/O (only if under rate limits) ─────────────────────
+                             * Now safe to touch disk: both per-connection and global caps
+                             * passed, so this read won't starve mining template creation. */
+
                             /* Check the database for the block. */
                             TAO::Ledger::BlockState state;
                             if(LLD::Ledger->ReadBlock(hashBlock, state))
@@ -1866,52 +1926,7 @@ namespace LLP
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::GET: BLOCK ", hashBlock.SubString());
 
-                            /* Add DDOS filtering here. */
-                            if(DDOS)
-                                DDOS->rSCORE += 50;
-
-                            /* Per-connection GET::BLOCK rate limiting.
-                             * Reset the rolling window if expired, then check whether
-                             * this connection has exceeded the per-window block limit.
-                             * If so, log once and skip the remaining items in this packet
-                             * to protect block validation and mining push notification paths. */
-                            m_getTracker.MaybeResetWindow();
-                            {
-                                const uint32_t nMaxBlocks = static_cast<uint32_t>(
-                                    config::GetArg(std::string("-maxgetblocks"),
-                                        static_cast<int64_t>(GetRequestRateTracker::DEFAULT_MAX_GET_BLOCKS)));
-
-                                if(m_getTracker.ShouldThrottleBlock(nMaxBlocks))
-                                {
-                                    debug::log(0, NODE, "ACTION::GET::BLOCK throttled — peer ",
-                                               GetAddress().ToStringIP(), " exceeded ",
-                                               nMaxBlocks,
-                                               " block requests/", GetRequestRateTracker::WINDOW_SECONDS, "s window");
-                                    break;
-                                }
-                            }
-
-                            /* Global aggregate rate limiter — protects shared LLD I/O for mining.
-                             * Applies after the per-connection guard: even if each peer is within
-                             * its individual budget, the combined aggregate can monopolise
-                             * LLD::Ledger, starving mining template creation (new_block()).
-                             * Cap configurable via -maxglobalgetblocks (default 100/s). */
-                            {
-                                const uint32_t nGlobalMax = static_cast<uint32_t>(
-                                    config::GetArg(std::string("-maxglobalgetblocks"),
-                                        static_cast<int64_t>(GlobalGetBlockLimiter::DEFAULT_MAX_GLOBAL_GET_BLOCKS_PER_SEC)));
-
-                                if(GlobalGetBlockLimiter::ShouldThrottle(nGlobalMax))
-                                {
-                                    debug::log(1, NODE, "ACTION::GET::BLOCK global throttle — aggregate P2P block serving rate exceeded (",
-                                               nGlobalMax, "/s cap)");
-                                    std::this_thread::yield();
-                                    break;
-                                }
-
-                                GlobalGetBlockLimiter::RecordServed();
-                            }
-
+                            /* Per-second yield scoring (post-I/O, for fairness). */
                             if(m_getTracker.RecordGetBlock(
                                 static_cast<uint32_t>(config::GetArg(std::string("-getyieldthreshold"),
                                     static_cast<int64_t>(GetRequestRateTracker::DEFAULT_YIELD_SCORE)))))

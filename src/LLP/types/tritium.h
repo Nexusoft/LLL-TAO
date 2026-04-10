@@ -70,8 +70,9 @@ namespace LLP
         static constexpr uint32_t WINDOW_SECONDS = 60;
 
         /** Maximum ACTION::GET BLOCK requests per connection per window.
-         *  Configurable via -maxgetblocks (default 500). **/
-        static constexpr uint32_t DEFAULT_MAX_GET_BLOCKS = 500;
+         *  Lowered from 500 to 100 to reduce SECTOR_MUTEX contention with mining.
+         *  Configurable via -maxgetblocks (default 100). **/
+        static constexpr uint32_t DEFAULT_MAX_GET_BLOCKS = 100;
 
         /** Maximum ACTION::GET TRANSACTION requests per connection per window.
          *  Configurable via -maxgettx (default 2000). **/
@@ -334,8 +335,10 @@ namespace LLP
         /** Actions invoke behavior in remote node. **/
         struct ACTION
         {
-            /** Limit for maximum items that can be requested per packet. **/
-            static const uint32_t GET_MAX_ITEMS = 100;
+            /** Limit for maximum items that can be requested per packet.
+             *  Lowered from 100 to 10 to prevent a single burst from
+             *  exhausting the per-connection budget in one packet. **/
+            static const uint32_t GET_MAX_ITEMS = 10;
 
 
             /** Limit for maximum notifications that can be broadcast per packet. **/
