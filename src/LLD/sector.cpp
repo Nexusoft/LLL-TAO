@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <Util/include/filesystem.h>
 #include <Util/include/hex.h>
 
+#include <fstream>
 #include <functional>
 
 namespace LLD
@@ -162,41 +163,30 @@ namespace LLD
         if(pSectorKeys->Get(vKey, cKey))
         {
             {
-                LOCK(SECTOR_MUTEX);
+                SHARED_LOCK(SECTOR_MUTEX);
 
-                /* Find the file stream for LRU cache. */
-                std::fstream* pstream;
-                if(!fileCache->Get(cKey.nSectorFile, pstream))
-                {
-                    /* Set the new stream pointer. */
-                    pstream = new std::fstream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
-                    if(!pstream->is_open())
-                    {
-                        delete pstream;
-                        return debug::error(FUNCTION, "couldn't create stream file");
-                    }
+                /* Use a private read-only stream so that multiple readers can
+                 * proceed concurrently under the shared_lock without racing on
+                 * the shared fileCache's fstream seek/read state. */
+                std::ifstream stream(
+                    debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile),
+                    std::ios::in | std::ios::binary);
 
-                    /* If file not found add to LRU cache. */
-                    fileCache->Put(cKey.nSectorFile, pstream);
-                }
-
-                /* Check stream file is still open. */
-                if(!pstream->is_open())
-                    pstream->open(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                if(!stream.is_open())
+                    return debug::error(FUNCTION, "couldn't open stream file for read");
 
                 /* Get compact size from record. */
                 uint64_t nSize = GetSizeOfCompactSize(cKey.nSectorSize);
 
                 /* Seek to the Sector Position on Disk. */
-                pstream->seekg(cKey.nSectorStart + nSize, std::ios::beg);
+                stream.seekg(cKey.nSectorStart + nSize, std::ios::beg);
 
                 /* Resize for proper record length. */
                 vData.resize(cKey.nSectorSize - nSize);
 
                 /* Read the State and Size of Sector Header. */
-                if(!pstream->read((char*) &vData[0], vData.size()))
-                    return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
-
+                if(!stream.read((char*) &vData[0], vData.size()))
+                    return debug::error(FUNCTION, "only ", stream.gcount(), "/", vData.size(), " bytes read");
             }
 
             /* Add to cache */
@@ -220,7 +210,7 @@ namespace LLD
     bool SectorDatabase<KeychainType, CacheType>::Get(const SectorKey& cKey, std::vector<uint8_t>& vData)
     {
         {
-            LOCK(SECTOR_MUTEX);
+            SHARED_LOCK(SECTOR_MUTEX);
 
             nBytesRead += static_cast<uint32_t>(cKey.vKey.size() + vData.size());
 
@@ -228,40 +218,30 @@ namespace LLD
             if(cachePool->Get(cKey.vKey, vData))
                 return true;
 
-            /* Find the file stream for LRU cache. */
-            std::fstream *pstream;
-            if(!fileCache->Get(cKey.nSectorFile, pstream))
-            {
-                /* Set the new stream pointer. */
-                pstream = new std::fstream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
-                if(!pstream->is_open())
-                {
-                    delete pstream;
-                    return false;
-                }
+            /* Use a private read-only stream so that multiple readers can
+             * proceed concurrently under the shared_lock without racing on
+             * the shared fileCache's fstream seek/read state. */
+            std::ifstream stream(
+                debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile),
+                std::ios::in | std::ios::binary);
 
-                /* If file not found add to LRU cache. */
-                fileCache->Put(cKey.nSectorFile, pstream);
-            }
-
-            /* Check stream file is still open. */
-            if(!pstream->is_open())
-                pstream->open(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+            if(!stream.is_open())
+                return false;
 
             /* Get compact size from record. */
             uint64_t nSize = GetSizeOfCompactSize(cKey.nSectorSize);
 
             /* Seek to the Sector Position on Disk. */
-            pstream->seekg(cKey.nSectorStart + nSize, std::ios::beg);
+            stream.seekg(cKey.nSectorStart + nSize, std::ios::beg);
 
             /* Resize for proper record length. */
             vData.resize(cKey.nSectorSize - nSize);
 
             /* Read the State and Size of Sector Header. */
-            if(!pstream->read((char*) &vData[0], vData.size()))
-                return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
+            if(!stream.read((char*) &vData[0], vData.size()))
+                return debug::error(FUNCTION, "only ", stream.gcount(), "/", vData.size(), " bytes read");
 
-            /* Verboe output. */
+            /* Verbose output. */
             if(config::nVerbose >= 5)
                 debug::log(5, FUNCTION, "Current File: ", cKey.nSectorFile,
                     " | Current File Size: ", cKey.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
@@ -291,7 +271,7 @@ namespace LLD
         cachePool->Put(key, vKey, vData, false);
 
         {
-            LOCK(SECTOR_MUTEX);
+            WRITE_LOCK(SECTOR_MUTEX);
 
             /* Find the file stream for LRU cache. */
             std::fstream* pstream;
@@ -345,9 +325,12 @@ namespace LLD
     {
         if(nFlags & FLAGS::APPEND || !Update(vKey, vData))
         {
+            /* Sector key built inside the lock so that nCurrentFile and
+             * nCurrentFileSize are read and updated atomically. */
+            SectorKey key;
 
             {
-                LOCK(SECTOR_MUTEX);
+                WRITE_LOCK(SECTOR_MUTEX);
 
                 /* Create new file if above current file size. */
                 if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
@@ -396,31 +379,32 @@ namespace LLD
                     return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes written");
 
                 pstream->flush();
+
+                /* Get current size */
+                const uint64_t nSize =
+                    (vData.size() + GetSizeOfCompactSize(vData.size()));
+
+                /* Create the Sector Key while still holding the lock so that
+                 * nCurrentFile and nCurrentFileSize are consistent. */
+                key = SectorKey(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile),
+                                nCurrentFileSize, static_cast<uint32_t>(nSize));
+
+                /* Increment the current filesize (now inside lock). */
+                nCurrentFileSize += static_cast<uint32_t>(nSize);
+
+                /* Records flushed indicator. */
+                ++nRecordsFlushed;
+                nBytesWrote += static_cast<uint32_t>(nSize);
             }
 
-            /* Get current size */
-            const uint64_t nSize =
-                (vData.size() + GetSizeOfCompactSize(vData.size()));
-
-            /* Create a new Sector Key. */
-            const SectorKey key(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile),
-                            nCurrentFileSize, static_cast<uint32_t>(nSize));
-
-            /* Increment the current filesize */
-            nCurrentFileSize += static_cast<uint32_t>(nSize);
-
-            /* Records flushed indicator. */
-            ++nRecordsFlushed;
-            nBytesWrote += static_cast<uint32_t>(nSize);
-
-            /* Assign the Key to Keychain. */
+            /* Assign the Key to Keychain (has its own internal synchronization). */
             if(!pSectorKeys->Put(key))
                 return debug::error(FUNCTION, "failed to write key to keychain");
 
             /* Write the data into the memory cache. */
             cachePool->Put(key, vKey, vData, false);
 
-            /* Verboe output. */
+            /* Verbose output. */
             if(config::nVerbose >= 5)
                 debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
                     " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
@@ -478,7 +462,7 @@ namespace LLD
             return true;
 
         {
-            LOCK(SECTOR_MUTEX);
+            WRITE_LOCK(SECTOR_MUTEX);
 
             /* Find the file stream for LRU cache. */
             std::fstream* pstream;

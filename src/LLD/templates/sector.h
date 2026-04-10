@@ -33,6 +33,7 @@ ________________________________________________________________________________
 #include <atomic>
 #include <thread>
 #include <mutex>
+#include <shared_mutex>
 #include <condition_variable>
 
 namespace LLD
@@ -88,10 +89,11 @@ namespace LLD
         std::condition_variable CONDITION;
 
     protected:
-        /* Mutex for Thread Synchronization.
-            TODO: Lock Mutex based on Read / Writes on a per Sector Basis.
-            Will allow higher efficiency for thread concurrency. */
-        std::mutex SECTOR_MUTEX;
+        /* Reader-writer mutex for Thread Synchronization.
+            Uses std::shared_mutex so that read operations (Get, GetBatch)
+            acquire shared_lock (concurrent readers allowed) while write
+            operations (Update, Force, Delete) acquire unique_lock (exclusive). */
+        mutable std::shared_mutex SECTOR_MUTEX;
         std::mutex BUFFER_MUTEX;
         std::mutex TRANSACTION_MUTEX;
 
@@ -374,7 +376,7 @@ namespace LLD
                     ssData.resize(nBufferSize);
 
                     {
-                        LOCK(SECTOR_MUTEX);
+                        SHARED_LOCK(SECTOR_MUTEX);
 
                         /* Seek stream to beginning. */
                         stream.seekg(nFilePos, std::ios::beg);
