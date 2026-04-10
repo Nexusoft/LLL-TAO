@@ -1788,10 +1788,15 @@ namespace LLP
                             uint1024_t hashBlock;
                             ssPacket >> hashBlock;
 
-                            /* ---- Rate-limit guards (checked BEFORE the expensive ReadBlock) ---- */
+                            /* ── RATE LIMITING (before any LLD I/O) ──────────────────────
+                             * CRITICAL FIX: All rate-limit checks now fire BEFORE ReadBlock()
+                             * so that no disk I/O / SECTOR_MUTEX contention occurs when we are
+                             * over budget.  Previously the limiters ran AFTER ReadBlock() — the
+                             * I/O had already consumed shared LLD::Ledger SECTOR_MUTEX time by
+                             * the time the throttle was consulted, making it ineffective at
+                             * protecting mining template creation from P2P block-serving floods. */
 
-                            /* DDOS scoring: penalise every block request attempt so flood
-                             * traffic is caught before it hits LLD I/O. */
+                            /* Add DDOS filtering first (cheap atomic increment). */
                             if(DDOS)
                                 DDOS->rSCORE += 50;
 
@@ -1834,10 +1839,14 @@ namespace LLP
                                     break;
                                 }
 
+                                /* Record BEFORE the I/O so the counter accurately reflects
+                                 * requests that will consume SECTOR_MUTEX time. */
                                 GlobalGetBlockLimiter::RecordServed();
                             }
 
-                            /* ---- Expensive work: database read + response build ---- */
+                            /* ── LLD I/O (only if under rate limits) ─────────────────────
+                             * Now safe to touch disk: both per-connection and global caps
+                             * passed, so this read won't starve mining template creation. */
 
                             /* Check the database for the block. */
                             TAO::Ledger::BlockState state;
@@ -1916,7 +1925,7 @@ namespace LLP
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::GET: BLOCK ", hashBlock.SubString());
 
-                            /* Record the served block for yield scoring. */
+                            /* Per-second yield scoring (post-I/O, for fairness). */
                             if(m_getTracker.RecordGetBlock(
                                 static_cast<uint32_t>(config::GetArg(std::string("-getyieldthreshold"),
                                     static_cast<int64_t>(GetRequestRateTracker::DEFAULT_YIELD_SCORE)))))

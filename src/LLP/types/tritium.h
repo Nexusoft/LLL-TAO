@@ -70,10 +70,8 @@ namespace LLP
         static constexpr uint32_t WINDOW_SECONDS = 60;
 
         /** Maximum ACTION::GET BLOCK requests per connection per window.
-         *  Configurable via -maxgetblocks (default 100).
-         *  Lowered from 500: with sequential P2P sync as the primary flood
-         *  trigger, 100 blocks/60s still allows steady progress while
-         *  drastically reducing LLD I/O pressure on mining paths. **/
+         *  Lowered from 500 to 100 to reduce SECTOR_MUTEX contention with mining.
+         *  Configurable via -maxgetblocks (default 100). **/
         static constexpr uint32_t DEFAULT_MAX_GET_BLOCKS = 100;
 
         /** Maximum ACTION::GET TRANSACTION requests per connection per window.
@@ -338,10 +336,8 @@ namespace LLP
         struct ACTION
         {
             /** Limit for maximum items that can be requested per packet.
-             *  Lowered from 100 to 10: each item triggers a synchronous BDB
-             *  read, so 100 items per packet could block a DataThread for
-             *  hundreds of milliseconds.  10 keeps sync viable while bounding
-             *  per-packet I/O cost.  Peer sync simply sends more packets. **/
+             *  Lowered from 100 to 10 to prevent a single burst from
+             *  exhausting the per-connection budget in one packet. **/
             static const uint32_t GET_MAX_ITEMS = 10;
 
 
