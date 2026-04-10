@@ -92,12 +92,12 @@ namespace LLP
 
 
         /* LOOKUP_SERVER instance */
-        if(config::GetBoolArg(std::string("-lookup"), true))
+        if(config::GetBoolArg(std::string("-lookup"), true) || config::fClient.load())
         {
             /* Generate our config object and use correct settings. */
             LLP::Config CONFIG     = LLP::Config(GetLookupPort());
             CONFIG.ENABLE_LISTEN   = //we only listen if we have the valid indexes created
-                (!config::fClient.load() && config::fIndexProofs.load() && config::fIndexRegister.load());
+                (!config::fClient.load() && config::GetBoolArg(std::string("-listen"), true) && config::fIndexProofs.load() && config::fIndexRegister.load());
 
             CONFIG.ENABLE_METERS   = false;
             CONFIG.ENABLE_UPNP     = CONFIG.ENABLE_LISTEN;
