@@ -70,7 +70,26 @@ namespace LLP
     , DATA_THREAD     (std::bind(&DataThread::Thread, this))
     , FLUSH_CONDITION ( )
     , FLUSH_THREAD    (std::bind(&DataThread::Flush, this))
+#ifdef __linux__
+    , m_nEpollFd      (-1)
+#endif
     {
+#ifdef __linux__
+        /* Create a dedicated epoll instance for mining DataThreads.
+         * This gives mining I/O complete isolation from the poll()-based
+         * loop used by P2P/API/RPC DataThreads.  epoll_wait() is called
+         * with a 1ms timeout (vs 100ms poll) and only returns fds with
+         * pending events, giving O(ready) instead of O(all) per iteration. */
+        if constexpr (is_mining_data_thread_v<ProtocolType>)
+        {
+            m_nEpollFd = ::epoll_create1(0);
+            if(m_nEpollFd < 0)
+                debug::error(FUNCTION, "epoll_create1 failed for mining DataThread ", nID, " errno=", errno,
+                             " — falling back to poll()");
+            else
+                debug::log(0, FUNCTION, "Mining DataThread ", nID, " using epoll fd=", m_nEpollFd);
+        }
+#endif
     }
 
 
@@ -145,6 +164,15 @@ namespace LLP
         join_with_timeout(DATA_THREAD,  "DATA_THREAD");
         join_with_timeout(FLUSH_THREAD, "FLUSH_THREAD");
 
+#ifdef __linux__
+        /* Close the epoll file descriptor for mining DataThreads. */
+        if(m_nEpollFd >= 0)
+        {
+            ::close(m_nEpollFd);
+            m_nEpollFd = -1;
+        }
+#endif
+
         debug::log(2, FUNCTION, "Data thread ", ID, " shutdown complete");
     }
 
@@ -190,6 +218,9 @@ namespace LLP
                 CONNECTIONS->push_back(std::shared_ptr<ProtocolType>(pnode));
             else
                 CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
+
+            /* Register the socket fd with epoll for mining DataThreads on Linux. */
+            epoll_register(pnode->fd, nSlot);
 
             /* Notify data thread to wake up. */
             CONDITION.notify_all();
@@ -249,6 +280,23 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::Thread()
     {
+#ifdef __linux__
+        /* Mining DataThreads with a valid epoll fd use the dedicated epoll loop.
+         * This provides complete I/O isolation from P2P traffic and O(ready)
+         * instead of O(all-connections) per iteration. */
+        if constexpr (is_mining_data_thread_v<ProtocolType>)
+        {
+            if(m_nEpollFd >= 0)
+            {
+                debug::log(0, FUNCTION, "Mining DataThread ", ID, " entering epoll loop (fd=", m_nEpollFd, ")");
+                ThreadEpoll();
+                return;
+            }
+            /* If epoll_create1 failed, fall through to the poll() path as a fallback. */
+            debug::log(0, FUNCTION, "Mining DataThread ", ID, " falling back to poll() (epoll unavailable)");
+        }
+#endif
+
         /* Cache sleep time if applicable. */
         const uint32_t nSleep = config::GetArg("-llpsleep", 0);
         const uint32_t nWait  = config::GetArg("-llpwait", 1);
@@ -878,6 +926,12 @@ namespace LLP
         if(!CONNECTIONS->at(nIndex))
             return;
 
+        /* Deregister the socket fd from epoll before cleanup.
+         * This is technically optional (epoll auto-removes closed fds), but
+         * doing it explicitly avoids stale-event delivery between the
+         * remove_connection call and the actual socket close. */
+        epoll_deregister(CONNECTIONS->at(nIndex)->fd);
+
         /* Adjust our internal counters for incoming/outbound. */
         if(CONNECTIONS->at(nIndex)->Incoming())
         {
@@ -911,6 +965,345 @@ namespace LLP
 
         return nSize;
     }
+
+
+#ifdef __linux__
+    /*  Epoll-based I/O loop for mining DataThreads on Linux.
+     *
+     *  ARCHITECTURE:
+     *  This loop replaces the generic poll()-based Thread() for mining protocols.
+     *  It provides complete I/O isolation from P2P traffic, ensuring that Tritium
+     *  peers flooding ACTION::GET BLOCK requests cannot starve mining connections.
+     *
+     *  KEY DIFFERENCES FROM poll() PATH:
+     *  1. Uses epoll_wait() with 1ms timeout (vs 100ms poll) for sub-millisecond response
+     *  2. Processes only connections with pending events — O(ready) not O(all)
+     *  3. Health sweeps (timeouts, DDOS, partial stall) run on a 250ms cadence,
+     *     decoupled from the I/O hot path
+     *  4. All the same health checks as the poll() path are preserved
+     *
+     *  THREAD SAFETY:
+     *  - epoll_ctl (ADD/DEL) is called from ListeningThread (via AddConnection)
+     *    and DataThread (via remove_connection). These operations are thread-safe
+     *    with concurrent epoll_wait calls (Linux kernel guarantee).
+     *  - CONNECTIONS vector access uses atomic_lock_unique_ptr (same as poll path).
+     */
+    template <class ProtocolType>
+    void DataThread<ProtocolType>::ThreadEpoll()
+    {
+        /* Configurable epoll timeout — default 1ms for mining.
+         * This is the maximum latency between a miner sending data and the
+         * DataThread processing it. */
+        const int32_t nEpollTimeoutMs = static_cast<int32_t>(
+            config::GetArg("-miningepollwait", 1));
+
+        /* Health sweep interval — how often we scan ALL connections for
+         * time-based conditions (timeouts, partial stalls, buffer overflow).
+         * 250ms balances responsiveness with CPU efficiency. */
+        constexpr uint32_t HEALTH_SWEEP_INTERVAL_MS = 250;
+
+        /* Maximum epoll events per wait call. 128 covers MAX_CONNECTIONS=128. */
+        constexpr int32_t MAX_EPOLL_EVENTS = 128;
+
+        /* The mutex for the condition. */
+        std::mutex CONDITION_MUTEX;
+
+        /* Timestamp of last full health sweep. */
+        auto tLastHealthSweep = std::chrono::steady_clock::now();
+
+        /* Epoll event buffer — stack allocated for zero-alloc hot path. */
+        struct epoll_event vEvents[MAX_EPOLL_EVENTS];
+
+        /* The main mining I/O loop. */
+        while(!fDestruct.load() && !config::fShutdown.load())
+        {
+            /* Keep data threads waiting for work.
+             * Same condition as poll() path: wait until connections exist. */
+            std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
+            CONDITION.wait(CONDITION_LOCK,
+            [this]
+            {
+                if(fDestruct.load() || config::fShutdown.load())
+                    return true;
+
+                if(config::fSuspendProtocol.load())
+                    return false;
+
+                return nIncoming.load() > 0 || nOutbound.load() > 0;
+            });
+
+            /* Check for close. */
+            if(fDestruct.load() || config::fShutdown.load())
+            {
+                debug::log(2, FUNCTION, "Mining DATA_THREAD ", ID, " exiting epoll loop: shutdown requested");
+                return;
+            }
+
+            /* Check if we are suspended. */
+            if(config::fSuspendProtocol.load())
+            {
+                runtime::sleep(100);
+                continue;
+            }
+
+            /* ── EPOLL WAIT ─────────────────────────────────────────────────
+             * Block for at most nEpollTimeoutMs (default 1ms).
+             * Returns only fds with pending events — no scanning idle sockets. */
+            const int32_t nReady = ::epoll_wait(m_nEpollFd, vEvents, MAX_EPOLL_EVENTS, nEpollTimeoutMs);
+
+            if(nReady < 0)
+            {
+                /* EINTR is normal during signal handling. */
+                if(errno != EINTR)
+                    debug::error(FUNCTION, "epoll_wait failed errno=", errno);
+                runtime::sleep(1);
+                continue;
+            }
+
+            /* ── PROCESS READY CONNECTIONS ──────────────────────────────────
+             * Only connections with events are visited. This is the core
+             * advantage over poll(): with 50 miners but only 2 sending data,
+             * we process exactly 2 iterations, not 50. */
+            for(int32_t i = 0; i < nReady; ++i)
+            {
+                /* Break early if shutdown signaled mid-iteration. */
+                if(fDestruct.load() || config::fShutdown.load())
+                    break;
+
+                const uint32_t nIndex = vEvents[i].data.u32;
+
+                /* Bounds check — protects against stale epoll events from
+                 * a slot that was removed and the CONNECTIONS vector shrank. */
+                if(nIndex >= CONNECTIONS->size())
+                    continue;
+
+                std::shared_ptr<ProtocolType> CONNECTION = CONNECTIONS->at(nIndex);
+
+                try
+                {
+                    /* Skip over Inactive Connections. */
+                    if(!CONNECTION || !CONNECTION->Connected())
+                        continue;
+
+                    /* Handle epoll error events. */
+                    if(vEvents[i].events & EPOLLERR)
+                    {
+                        remove_connection_with_event(nIndex, DISCONNECT::POLL_ERROR);
+                        continue;
+                    }
+
+                    /* Handle peer disconnect. */
+                    if(vEvents[i].events & EPOLLHUP)
+                    {
+                        remove_connection_with_event(nIndex, DISCONNECT::PEER);
+                        continue;
+                    }
+
+                    /* Remove Connection if it has socket I/O errors. */
+                    if(CONNECTION->Errors())
+                    {
+                        remove_connection_with_event(nIndex, DISCONNECT::ERRORS);
+                        continue;
+                    }
+
+                    /* Handle EPOLLIN: data ready to read. */
+                    if(vEvents[i].events & EPOLLIN)
+                    {
+                        /* POLLIN with Available()==0 check (same as poll path).
+                         * Mining connections get the generous 5s window. */
+                        if(CONNECTION->Available() == 0)
+                        {
+                            /* Only disconnect if this is a sustained empty-read and
+                             * the connection is not authenticated or has a partial packet. */
+                            const bool fHasPartialPacket =
+                                !CONNECTION->INCOMING.IsNull() && !CONNECTION->PacketComplete();
+
+                            if(!fHasPartialPacket
+                            && !CONNECTION->IsTimeoutExempt()
+                            && CONNECTION->Timeout(MINING_POLL_EMPTY_TIMEOUT_MS, Socket::READ))
+                            {
+                                remove_connection_with_event(nIndex, DISCONNECT::POLL_EMPTY);
+                                continue;
+                            }
+                        }
+
+                        /* Generic event for Connection. */
+                        CONNECTION->Event(EVENTS::GENERIC);
+
+                        /* Read available data into the packet assembler. */
+                        CONNECTION->ReadPacket();
+
+                        /* Handle DDOS scoring. */
+                        if(fDDOS.load() && CONNECTION->DDOS && !CONNECTION->addr.IsLocal())
+                        {
+                            if(CONNECTION->DDOS->rSCORE.Score() > DDOS_rSCORE)
+                                CONNECTION->DDOS->Ban();
+
+                            if(!CONNECTION->GetAddress().IsLocal() && CONNECTION->DDOS->Banned())
+                            {
+                                debug::log(0, ProtocolType::Name(), " BANNED: ", CONNECTION->GetAddress().ToString());
+                                remove_connection_with_event(nIndex, DISCONNECT::DDOS);
+                                continue;
+                            }
+                        }
+
+                        /* If a Packet was received successfully, process it. */
+                        if(CONNECTION->PacketComplete())
+                        {
+                            if(config::nVerbose.load() >= 4)
+                                debug::log(4, FUNCTION, "Received Message (", CONNECTION->INCOMING.GetBytes().size(), " bytes)");
+
+                            if(fMETER)
+                                ++ProtocolType::REQUESTS;
+
+                            /* Process the packet — false return means disconnect. */
+                            if(!CONNECTION->ProcessPacket())
+                            {
+                                remove_connection_with_event(nIndex, DISCONNECT::FORCE);
+                                continue;
+                            }
+
+                            if(fDDOS.load() && CONNECTION->DDOS)
+                                CONNECTION->DDOS->rSCORE += 1;
+
+                            CONNECTION->Event(EVENTS::PROCESSED);
+                            CONNECTION->ResetPacket();
+                        }
+                    }
+                }
+                catch(const std::exception& e)
+                {
+                    /* Handle "Session not found" errors for mining connections.
+                     * Same logic as the poll() path. */
+                    std::string strError = e.what();
+                    bool fSessionError = (strError.find("Session not found") != std::string::npos);
+                    std::string strProtocol = ProtocolType::Name();
+                    bool fMiningConn = (strProtocol == "Miner" || strProtocol == "StatelessMiner");
+
+                    if(fSessionError && fMiningConn)
+                    {
+                        debug::error(FUNCTION, "DataThread[", ID, "]: SESSION::DEFAULT not available"
+                                     " for mining (", strProtocol, ") from ",
+                                     CONNECTION->GetAddress().ToStringIP(), ":",
+                                     CONNECTION->GetAddress().GetPort(),
+                                     " — node requires -autologin=user:pass or manual"
+                                     " unlock. Miner should receive TEMPLATE_SOURCE_UNAVAILABLE.");
+                        continue;
+                    }
+                    else
+                    {
+                        if(CONNECTION)
+                        {
+                            debug::log(1, FUNCTION, "DataThread[", ID, "]: Exception for connection id=", nIndex,
+                                       " type=", strProtocol,
+                                       " from ", CONNECTION->GetAddress().ToStringIP(), ":", CONNECTION->GetAddress().GetPort(),
+                                       " - ", e.what());
+                        }
+                        debug::error(FUNCTION, "Data Connection: ", e.what());
+                        remove_connection_with_event(nIndex, DISCONNECT::ERRORS);
+                    }
+                }
+            }
+
+            /* ── PERIODIC HEALTH SWEEP ─────────────────────────────────────
+             * Every HEALTH_SWEEP_INTERVAL_MS, scan ALL connections for
+             * time-based conditions that epoll events cannot detect:
+             *   - Read-idle timeout (GetReadTimeout / TIMEOUT)
+             *   - Write stall (GetWriteTimeout + Buffered)
+             *   - Send buffer overflow (GetMaxSendBuffer)
+             *   - Partial packet stall (PARTIAL_PACKET_TIMEOUT_MS)
+             *
+             * This runs at 250ms cadence (4×/sec) — fast enough to catch any
+             * stall within the timeout windows, slow enough to not waste CPU. */
+            const auto tNow = std::chrono::steady_clock::now();
+            if(std::chrono::duration_cast<std::chrono::milliseconds>(
+                tNow - tLastHealthSweep).count() >= HEALTH_SWEEP_INTERVAL_MS)
+            {
+                tLastHealthSweep = tNow;
+
+                const uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
+                for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
+                {
+                    if(fDestruct.load() || config::fShutdown.load())
+                        break;
+
+                    std::shared_ptr<ProtocolType> CONNECTION = CONNECTIONS->at(nIndex);
+
+                    try
+                    {
+                        if(!CONNECTION || !CONNECTION->Connected())
+                            continue;
+
+                        /* Read-idle timeout (same logic as poll path). */
+                        {
+                            const uint32_t nCustom = CONNECTION->GetReadTimeout();
+                            const uint32_t nReadTimeout = (CONNECTION->IsTimeoutExempt() && nCustom > 0)
+                                ? nCustom
+                                : TIMEOUT * 1000;
+
+                            if(CONNECTION->Timeout(nReadTimeout, Socket::READ))
+                            {
+                                remove_connection_with_event(nIndex, DISCONNECT::TIMEOUT);
+                                continue;
+                            }
+                        }
+
+                        /* Write stall check. */
+                        if(CONNECTION->Buffered()
+                        && CONNECTION->Timeout(CONNECTION->GetWriteTimeout(), Socket::WRITE))
+                        {
+                            if(CONNECTION->IsTimeoutExempt())
+                            {
+                                debug::log(0, FUNCTION, "DataThread[", ID, "]: TIMEOUT_WRITE near-miss for authenticated ",
+                                    ProtocolType::Name(), " from ", CONNECTION->GetAddress().ToStringIP(),
+                                    " Buffered()=", CONNECTION->Buffered(),
+                                    " WriteTimeout=", CONNECTION->GetWriteTimeout(), "ms",
+                                    " — bypassed via IsTimeoutExempt()");
+                            }
+                            else
+                            {
+                                remove_connection_with_event(nIndex, DISCONNECT::TIMEOUT_WRITE);
+                                continue;
+                            }
+                        }
+
+                        /* Buffer overflow check. */
+                        if(CONNECTION->Buffered() > CONNECTION->GetMaxSendBuffer())
+                        {
+                            debug::log(0, FUNCTION, "DataThread[", ID, "]: BUFFER overflow for ",
+                                ProtocolType::Name(), " from ", CONNECTION->GetAddress().ToStringIP(),
+                                " Buffered()=", CONNECTION->Buffered(),
+                                " MaxSendBuffer=", CONNECTION->GetMaxSendBuffer(),
+                                " IsTimeoutExempt=", CONNECTION->IsTimeoutExempt());
+
+                            remove_connection_with_event(nIndex, DISCONNECT::BUFFER);
+                            continue;
+                        }
+
+                        /* Partial packet stall watchdog. */
+                        const bool fHasPartialPacket =
+                            !CONNECTION->INCOMING.IsNull() && !CONNECTION->PacketComplete();
+
+                        if(fHasPartialPacket
+                        && CONNECTION->Timeout(PARTIAL_PACKET_TIMEOUT_MS, Socket::READ))
+                        {
+                            debug::log(0, FUNCTION, "DataThread[", ID, "]: PARTIAL_STALL for ",
+                                ProtocolType::Name(), " from ", CONNECTION->GetAddress().ToStringIP(),
+                                " — incomplete frame stuck >", PARTIAL_PACKET_TIMEOUT_MS, "ms, disconnecting");
+
+                            remove_connection_with_event(nIndex, DISCONNECT::PARTIAL_STALL);
+                            continue;
+                        }
+                    }
+                    catch(const std::exception& e)
+                    {
+                        debug::error(FUNCTION, "Health sweep exception: ", e.what());
+                    }
+                }
+            }
+        }
+    }
+#endif
 
 
     /* Explicity instantiate all template instances needed for compiler. */
