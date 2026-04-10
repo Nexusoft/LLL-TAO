@@ -960,18 +960,25 @@ namespace LLP
 
                 /* Attempt to accept the socket connection.
                  * accept4() with SOCK_CLOEXEC atomically prevents the fd from
-                 * leaking into child processes spawned by std::system(). */
+                 * leaking into child processes spawned by std::system().
+                 * Falls back to accept()+fcntl on ENOSYS (very old kernels)
+                 * or on non-Linux platforms. */
                 struct sockaddr_in sockaddr;
 #if defined(__linux__) && defined(SOCK_CLOEXEC)
                 hSocket = accept4(get_listening_socket(fIPv4, fSSL), (struct sockaddr*)&sockaddr, fIPv4 ? &len_v4 : &len_v6, SOCK_CLOEXEC);
+
+                /* Fallback if kernel doesn't support accept4 (ENOSYS). */
+                if(hSocket == INVALID_SOCKET && errno == ENOSYS)
+                    hSocket = accept(get_listening_socket(fIPv4, fSSL), (struct sockaddr*)&sockaddr, fIPv4 ? &len_v4 : &len_v6);
 #else
                 hSocket = accept(get_listening_socket(fIPv4, fSSL), (struct sockaddr*)&sockaddr, fIPv4 ? &len_v4 : &len_v6);
 #endif
                 if (hSocket != INVALID_SOCKET)
                 {
                     addr = BaseAddress(sockaddr);
-#if !defined(__linux__) && !defined(WIN32)
-                    /* Fallback: set close-on-exec via fcntl when accept4() is unavailable. */
+#ifndef WIN32
+                    /* Ensure close-on-exec is set via fcntl as a fallback for
+                     * platforms without accept4() or if accept4() returned ENOSYS. */
                     fcntl(hSocket, F_SETFD, FD_CLOEXEC);
 #endif
                 }
