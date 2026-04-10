@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/include/base_address.h>
+#include <LLP/include/mining_constants.h>
 #include <LLP/templates/data.h>
 #include <LLP/templates/static.h>
 #include <LLP/templates/socket.h>
@@ -37,6 +38,11 @@ namespace LLP
     namespace
     {
         static constexpr uint32_t MINING_POLL_EMPTY_TIMEOUT_MS = 5000;
+
+        /** Default poll() timeout for non-mining DataThreads (milliseconds).
+         *  Mining DataThreads use a shorter timeout configured via
+         *  MiningConstants::DEFAULT_MINING_POLL_TIMEOUT_MS. */
+        static constexpr uint32_t DEFAULT_POLL_TIMEOUT_MS = 100;
 
         /** Maximum time (milliseconds) a partial packet (header read but data
          *  incomplete) may remain stuck before the connection is killed.
@@ -267,6 +273,21 @@ namespace LLP
         const uint32_t nSleep = config::GetArg("-llpsleep", 0);
         const uint32_t nWait  = config::GetArg("-llpwait", 1);
 
+        /* Determine the poll() timeout for this DataThread at startup.
+         * Mining DataThreads (Miner, StatelessMinerConnection) use a much
+         * shorter timeout (default 10 ms, configurable via -miningpolltimeout)
+         * to minimize read-side latency for incoming share submissions.
+         * Non-mining DataThreads keep the traditional 100 ms timeout.
+         * Resolved at compile time — zero runtime cost. */
+        constexpr bool fMiningThread =
+            std::is_same<ProtocolType, Miner>::value
+            || std::is_same<ProtocolType, StatelessMinerConnection>::value;
+
+        const int32_t nPollTimeout = fMiningThread
+            ? static_cast<int32_t>(config::GetArg("-miningpolltimeout",
+                  MiningConstants::DEFAULT_MINING_POLL_TIMEOUT_MS))
+            : static_cast<int32_t>(DEFAULT_POLL_TIMEOUT_MS);
+
         /* The mutex for the condition. */
         std::mutex CONDITION_MUTEX;
 
@@ -355,9 +376,9 @@ namespace LLP
 
             /* Poll the sockets. */
 #ifdef WIN32
-            int32_t nPoll = WSAPoll((pollfd*)&POLLFDS[0], nSize, 100);
+            int32_t nPoll = WSAPoll((pollfd*)&POLLFDS[0], nSize, nPollTimeout);
 #else
-            int32_t nPoll = poll((pollfd*)&POLLFDS[0], nSize, 100);
+            int32_t nPoll = poll((pollfd*)&POLLFDS[0], nSize, nPollTimeout);
 #endif
 
             /* Check poll for available sockets. */
