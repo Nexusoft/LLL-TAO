@@ -1911,7 +1911,6 @@ namespace LLP
                                                 if(!LLD::Ledger->ReadTx(proof.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                                     continue;
 
-
                                                 /* Push message of transaction. */
                                                 PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
                                             }
