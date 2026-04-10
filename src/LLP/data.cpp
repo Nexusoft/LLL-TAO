@@ -1002,7 +1002,11 @@ namespace LLP
          * 250ms balances responsiveness with CPU efficiency. */
         constexpr uint32_t HEALTH_SWEEP_INTERVAL_MS = 250;
 
-        /* Maximum epoll events per wait call. 128 covers MAX_CONNECTIONS=128. */
+        /* Maximum epoll events per wait call.  If more fds are ready than
+         * this, the excess will be returned on the next epoll_wait — no data
+         * is lost or truncated.  128 matches the server default MAX_CONNECTIONS
+         * for mining (configurable via -maxconnections, default 128).  This is
+         * a stack-allocated buffer, so it's effectively free. */
         constexpr int32_t MAX_EPOLL_EVENTS = 128;
 
         /* The mutex for the condition. */
