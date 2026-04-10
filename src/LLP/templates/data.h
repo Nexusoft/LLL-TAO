@@ -480,12 +480,30 @@ namespace LLP
         uint32_t find_slot();
 
 
+        /** check_connection_health
+         *
+         *  Runs time-based health checks on a single connection:
+         *  read-idle timeout, write stall, buffer overflow, partial-packet stall,
+         *  and EVENTS::GENERIC dispatch.
+         *
+         *  Shared between the poll()-based Thread() and the epoll-based ThreadEpoll()
+         *  to avoid duplicating ~80 lines of identical logic.
+         *
+         *  @param[in] nIndex    CONNECTIONS vector index.
+         *  @param[in] CONNECTION Shared pointer to the protocol connection.
+         *
+         *  @return true if the connection was disconnected (caller should skip further processing).
+         *
+         **/
+        bool check_connection_health(const uint32_t nIndex, std::shared_ptr<ProtocolType>& CONNECTION);
+
+
 #ifdef __linux__
         /** ThreadEpoll
          *
          *  Epoll-based I/O loop for mining DataThreads on Linux.
-         *  Uses epoll_wait() with 1ms timeout for maximum responsiveness.
-         *  Only processes connections that have events (EPOLLIN/EPOLLERR/EPOLLHUP),
+         *  Uses epoll_wait() with configurable timeout for maximum responsiveness.
+         *  Only processes connections with pending events (EPOLLIN/EPOLLERR/EPOLLHUP),
          *  with periodic health sweeps for timeout-based checks.
          *
          *  Called from Thread() via if-constexpr for mining protocols.

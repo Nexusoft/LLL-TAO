@@ -452,27 +452,6 @@ namespace LLP
                         continue;
                     }
 
-                    /* Remove Connection if it has Timed out or had any Errors.
-                     * Non-exempt connections use the DataThread TIMEOUT (server-configured).
-                     * Authenticated mining connections (IsTimeoutExempt == true) use the
-                     * virtual GetReadTimeout() which returns a longer but finite value
-                     * (default 600s / 10 minutes, configurable via -miningreadtimeout).
-                     * This prevents a stalled read pipeline from persisting indefinitely
-                     * while server-initiated PUSH notifications continue to work
-                     * (the "shadow ban" scenario). */
-                    {
-                        const uint32_t nCustom = CONNECTION->GetReadTimeout();
-                        const uint32_t nReadTimeout = (CONNECTION->IsTimeoutExempt() && nCustom > 0)
-                            ? nCustom
-                            : TIMEOUT * 1000;
-
-                        if(CONNECTION->Timeout(nReadTimeout, Socket::READ))
-                        {
-                            remove_connection_with_event(nIndex, DISCONNECT::TIMEOUT);
-                            continue;
-                        }
-                    }
-
                     /* Disconnect if pollin signaled with no data for 1ms consistently (This happens on Linux).
                      * Authenticated mining connections are exempt — a spurious POLLIN with
                      * Available()==0 on a 1 ms window is too aggressive for high-value Falcon-
@@ -515,69 +494,10 @@ namespace LLP
                         }
                     }
 
-                    /* Disconnect if buffer is full and remote host isn't reading at all.
-                     * Authenticated miners bypass this check via IsTimeoutExempt() because
-                     * their receive window can temporarily close during CPU-intensive proof-
-                     * of-work computation.  They use the virtual GetWriteTimeout() which
-                     * returns a longer grace period (default 30s) vs the 5s P2P default. */
-                    if(CONNECTION->Buffered()
-                    && CONNECTION->Timeout(CONNECTION->GetWriteTimeout(), Socket::WRITE))
-                    {
-                        if(CONNECTION->IsTimeoutExempt())
-                        {
-                            /* Log near-miss for authenticated miners. */
-                            debug::log(0, FUNCTION, "DataThread[", ID, "]: TIMEOUT_WRITE near-miss for authenticated ",
-                                ProtocolType::Name(), " from ", CONNECTION->GetAddress().ToStringIP(),
-                                " Buffered()=", CONNECTION->Buffered(),
-                                " WriteTimeout=", CONNECTION->GetWriteTimeout(), "ms",
-                                " — bypassed via IsTimeoutExempt()");
-                        }
-                        else
-                        {
-                            remove_connection_with_event(nIndex, DISCONNECT::TIMEOUT_WRITE);
-                            continue;
-                        }
-                    }
-
-                    /* Check that write buffers aren't overflowed. */
-                    if(CONNECTION->Buffered() > CONNECTION->GetMaxSendBuffer())
-                    {
-                        /* Log at verbosity 0 for any connection whose buffer overflows. */
-                        debug::log(0, FUNCTION, "DataThread[", ID, "]: BUFFER overflow for ",
-                            ProtocolType::Name(), " from ", CONNECTION->GetAddress().ToStringIP(),
-                            " Buffered()=", CONNECTION->Buffered(),
-                            " MaxSendBuffer=", CONNECTION->GetMaxSendBuffer(),
-                            " IsTimeoutExempt=", CONNECTION->IsTimeoutExempt());
-
-                        remove_connection_with_event(nIndex, DISCONNECT::BUFFER);
+                    /* Shared health checks: read-idle timeout, write stall,
+                     * buffer overflow, partial-packet stall, EVENTS::GENERIC. */
+                    if(check_connection_health(nIndex, CONNECTION))
                         continue;
-                    }
-
-                    /* PARTIAL-PACKET WATCHDOG (Option A)
-                     * If a partial packet (header read, data incomplete) has been stuck
-                     * for longer than PARTIAL_PACKET_TIMEOUT_MS, disconnect.  This is
-                     * NOT gated by IsTimeoutExempt() — even authenticated miners get
-                     * disconnected if a frame is stuck mid-read.
-                     *
-                     * The read-idle timer (nLastRecv / Socket::READ) tracks when the
-                     * last bytes arrived on the socket.  If the partial packet's header
-                     * was read but the remaining data bytes have not arrived within the
-                     * timeout window, the frame is considered stalled — a condition
-                     * that can leave the connection alive indefinitely while the write
-                     * pipeline (PUSH) continues to work (shadow ban). */
-                    if(fHasPartialPacket
-                    && CONNECTION->Timeout(PARTIAL_PACKET_TIMEOUT_MS, Socket::READ))
-                    {
-                        debug::log(0, FUNCTION, "DataThread[", ID, "]: PARTIAL_STALL for ",
-                            ProtocolType::Name(), " from ", CONNECTION->GetAddress().ToStringIP(),
-                            " — incomplete frame stuck >", PARTIAL_PACKET_TIMEOUT_MS, "ms, disconnecting");
-
-                        remove_connection_with_event(nIndex, DISCONNECT::PARTIAL_STALL);
-                        continue;
-                    }
-
-                    /* Generic event for Connection. */
-                    CONNECTION->Event(EVENTS::GENERIC);
 
                     /* Work on Reading a Packet. **/
                     CONNECTION->ReadPacket();
@@ -967,6 +887,100 @@ namespace LLP
     }
 
 
+    /*  Shared health checks for a single connection.
+     *  Covers time-based conditions that both the poll() and epoll paths need:
+     *  read-idle timeout, write stall, buffer overflow, partial-packet stall,
+     *  and EVENTS::GENERIC dispatch.
+     *
+     *  Returns true if the connection was disconnected (caller should skip it). */
+    template <class ProtocolType>
+    bool DataThread<ProtocolType>::check_connection_health(
+        const uint32_t nIndex, std::shared_ptr<ProtocolType>& CONNECTION)
+    {
+        /* Read-idle timeout.
+         * Non-exempt connections use the DataThread TIMEOUT (server-configured).
+         * Authenticated mining connections (IsTimeoutExempt == true) use the
+         * virtual GetReadTimeout() which returns a longer but finite value
+         * (default 600s / 10 minutes, configurable via -miningreadtimeout).
+         * This prevents a stalled read pipeline from persisting indefinitely
+         * while server-initiated PUSH notifications continue to work
+         * (the "shadow ban" scenario). */
+        {
+            const uint32_t nCustom = CONNECTION->GetReadTimeout();
+            const uint32_t nReadTimeout = (CONNECTION->IsTimeoutExempt() && nCustom > 0)
+                ? nCustom
+                : TIMEOUT * 1000;
+
+            if(CONNECTION->Timeout(nReadTimeout, Socket::READ))
+            {
+                remove_connection_with_event(nIndex, DISCONNECT::TIMEOUT);
+                return true;
+            }
+        }
+
+        /* Disconnect if buffer is full and remote host isn't reading at all.
+         * Authenticated miners bypass this check via IsTimeoutExempt() because
+         * their receive window can temporarily close during CPU-intensive proof-
+         * of-work computation.  They use the virtual GetWriteTimeout() which
+         * returns a longer grace period (default 30s) vs the 5s P2P default. */
+        if(CONNECTION->Buffered()
+        && CONNECTION->Timeout(CONNECTION->GetWriteTimeout(), Socket::WRITE))
+        {
+            if(CONNECTION->IsTimeoutExempt())
+            {
+                debug::log(0, FUNCTION, "DataThread[", ID, "]: TIMEOUT_WRITE near-miss for authenticated ",
+                    ProtocolType::Name(), " from ", CONNECTION->GetAddress().ToStringIP(),
+                    " Buffered()=", CONNECTION->Buffered(),
+                    " WriteTimeout=", CONNECTION->GetWriteTimeout(), "ms",
+                    " — bypassed via IsTimeoutExempt()");
+            }
+            else
+            {
+                remove_connection_with_event(nIndex, DISCONNECT::TIMEOUT_WRITE);
+                return true;
+            }
+        }
+
+        /* Check that write buffers aren't overflowed. */
+        if(CONNECTION->Buffered() > CONNECTION->GetMaxSendBuffer())
+        {
+            debug::log(0, FUNCTION, "DataThread[", ID, "]: BUFFER overflow for ",
+                ProtocolType::Name(), " from ", CONNECTION->GetAddress().ToStringIP(),
+                " Buffered()=", CONNECTION->Buffered(),
+                " MaxSendBuffer=", CONNECTION->GetMaxSendBuffer(),
+                " IsTimeoutExempt=", CONNECTION->IsTimeoutExempt());
+
+            remove_connection_with_event(nIndex, DISCONNECT::BUFFER);
+            return true;
+        }
+
+        /* PARTIAL-PACKET WATCHDOG
+         * If a partial packet (header read, data incomplete) has been stuck
+         * for longer than PARTIAL_PACKET_TIMEOUT_MS, disconnect.  This is
+         * NOT gated by IsTimeoutExempt() — even authenticated miners get
+         * disconnected if a frame is stuck mid-read. */
+        const bool fHasPartialPacket =
+            !CONNECTION->INCOMING.IsNull() && !CONNECTION->PacketComplete();
+
+        if(fHasPartialPacket
+        && CONNECTION->Timeout(PARTIAL_PACKET_TIMEOUT_MS, Socket::READ))
+        {
+            debug::log(0, FUNCTION, "DataThread[", ID, "]: PARTIAL_STALL for ",
+                ProtocolType::Name(), " from ", CONNECTION->GetAddress().ToStringIP(),
+                " — incomplete frame stuck >", PARTIAL_PACKET_TIMEOUT_MS, "ms, disconnecting");
+
+            remove_connection_with_event(nIndex, DISCONNECT::PARTIAL_STALL);
+            return true;
+        }
+
+        /* Generic event for Connection — ensures all connections get periodic
+         * generic events regardless of whether they have pending I/O. */
+        CONNECTION->Event(EVENTS::GENERIC);
+
+        return false;
+    }
+
+
 #ifdef __linux__
     /*  Epoll-based I/O loop for mining DataThreads on Linux.
      *
@@ -991,11 +1005,13 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::ThreadEpoll()
     {
-        /* Configurable epoll timeout — default 1ms for mining.
+        /* Configurable mining wait timeout — default 1ms.
+         * Controls both the epoll_wait timeout (this path) and the poll() timeout
+         * (fallback path / non-Linux).  Overridable via -miningwait=<ms>.
          * This is the maximum latency between a miner sending data and the
          * DataThread processing it. */
-        const int32_t nEpollTimeoutMs = static_cast<int32_t>(
-            config::GetArg("-miningepollwait", 1));
+        const int32_t nMiningWaitMs = static_cast<int32_t>(
+            config::GetArg("-miningwait", 1));
 
         /* Health sweep interval — how often we scan ALL connections for
          * time-based conditions (timeouts, partial stalls, buffer overflow).
@@ -1051,9 +1067,9 @@ namespace LLP
             }
 
             /* ── EPOLL WAIT ─────────────────────────────────────────────────
-             * Block for at most nEpollTimeoutMs (default 1ms).
+             * Block for at most nMiningWaitMs (default 1ms).
              * Returns only fds with pending events — no scanning idle sockets. */
-            const int32_t nReady = ::epoll_wait(m_nEpollFd, vEvents, MAX_EPOLL_EVENTS, nEpollTimeoutMs);
+            const int32_t nReady = ::epoll_wait(m_nEpollFd, vEvents, MAX_EPOLL_EVENTS, nMiningWaitMs);
 
             if(nReady < 0)
             {
@@ -1130,9 +1146,6 @@ namespace LLP
                                 continue;
                             }
                         }
-
-                        /* Generic event for Connection. */
-                        CONNECTION->Event(EVENTS::GENERIC);
 
                         /* Read available data into the packet assembler. */
                         CONNECTION->ReadPacket();
@@ -1216,6 +1229,7 @@ namespace LLP
              *   - Write stall (GetWriteTimeout + Buffered)
              *   - Send buffer overflow (GetMaxSendBuffer)
              *   - Partial packet stall (PARTIAL_PACKET_TIMEOUT_MS)
+             *   - EVENTS::GENERIC dispatch for idle connections
              *
              * This runs at 250ms cadence (4×/sec) — fast enough to catch any
              * stall within the timeout windows, slow enough to not waste CPU. */
@@ -1238,66 +1252,9 @@ namespace LLP
                         if(!CONNECTION || !CONNECTION->Connected())
                             continue;
 
-                        /* Read-idle timeout (same logic as poll path). */
-                        {
-                            const uint32_t nCustom = CONNECTION->GetReadTimeout();
-                            const uint32_t nReadTimeout = (CONNECTION->IsTimeoutExempt() && nCustom > 0)
-                                ? nCustom
-                                : TIMEOUT * 1000;
-
-                            if(CONNECTION->Timeout(nReadTimeout, Socket::READ))
-                            {
-                                remove_connection_with_event(nIndex, DISCONNECT::TIMEOUT);
-                                continue;
-                            }
-                        }
-
-                        /* Write stall check. */
-                        if(CONNECTION->Buffered()
-                        && CONNECTION->Timeout(CONNECTION->GetWriteTimeout(), Socket::WRITE))
-                        {
-                            if(CONNECTION->IsTimeoutExempt())
-                            {
-                                debug::log(0, FUNCTION, "DataThread[", ID, "]: TIMEOUT_WRITE near-miss for authenticated ",
-                                    ProtocolType::Name(), " from ", CONNECTION->GetAddress().ToStringIP(),
-                                    " Buffered()=", CONNECTION->Buffered(),
-                                    " WriteTimeout=", CONNECTION->GetWriteTimeout(), "ms",
-                                    " — bypassed via IsTimeoutExempt()");
-                            }
-                            else
-                            {
-                                remove_connection_with_event(nIndex, DISCONNECT::TIMEOUT_WRITE);
-                                continue;
-                            }
-                        }
-
-                        /* Buffer overflow check. */
-                        if(CONNECTION->Buffered() > CONNECTION->GetMaxSendBuffer())
-                        {
-                            debug::log(0, FUNCTION, "DataThread[", ID, "]: BUFFER overflow for ",
-                                ProtocolType::Name(), " from ", CONNECTION->GetAddress().ToStringIP(),
-                                " Buffered()=", CONNECTION->Buffered(),
-                                " MaxSendBuffer=", CONNECTION->GetMaxSendBuffer(),
-                                " IsTimeoutExempt=", CONNECTION->IsTimeoutExempt());
-
-                            remove_connection_with_event(nIndex, DISCONNECT::BUFFER);
-                            continue;
-                        }
-
-                        /* Partial packet stall watchdog. */
-                        const bool fHasPartialPacket =
-                            !CONNECTION->INCOMING.IsNull() && !CONNECTION->PacketComplete();
-
-                        if(fHasPartialPacket
-                        && CONNECTION->Timeout(PARTIAL_PACKET_TIMEOUT_MS, Socket::READ))
-                        {
-                            debug::log(0, FUNCTION, "DataThread[", ID, "]: PARTIAL_STALL for ",
-                                ProtocolType::Name(), " from ", CONNECTION->GetAddress().ToStringIP(),
-                                " — incomplete frame stuck >", PARTIAL_PACKET_TIMEOUT_MS, "ms, disconnecting");
-
-                            remove_connection_with_event(nIndex, DISCONNECT::PARTIAL_STALL);
-                            continue;
-                        }
+                        /* Shared health checks: read-idle timeout, write stall,
+                         * buffer overflow, partial-packet stall, EVENTS::GENERIC. */
+                        check_connection_health(nIndex, CONNECTION);
                     }
                     catch(const std::exception& e)
                     {
