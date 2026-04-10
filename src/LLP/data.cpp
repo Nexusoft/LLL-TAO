@@ -301,6 +301,17 @@ namespace LLP
         const uint32_t nSleep = config::GetArg("-llpsleep", 0);
         const uint32_t nWait  = config::GetArg("-llpwait", 1);
 
+        /* Poll timeout: mining DataThreads use -miningwait (default 1ms) for
+         * low-latency I/O even in the poll() fallback path; non-mining threads
+         * keep the original 100ms. */
+        const int32_t nPollTimeout = [&]() -> int32_t
+        {
+            if constexpr (is_mining_data_thread_v<ProtocolType>)
+                return static_cast<int32_t>(config::GetArg("-miningwait", 1));
+            else
+                return 100;
+        }();
+
         /* The mutex for the condition. */
         std::mutex CONDITION_MUTEX;
 
@@ -389,9 +400,9 @@ namespace LLP
 
             /* Poll the sockets. */
 #ifdef WIN32
-            int32_t nPoll = WSAPoll((pollfd*)&POLLFDS[0], nSize, 100);
+            int32_t nPoll = WSAPoll((pollfd*)&POLLFDS[0], nSize, nPollTimeout);
 #else
-            int32_t nPoll = poll((pollfd*)&POLLFDS[0], nSize, 100);
+            int32_t nPoll = poll((pollfd*)&POLLFDS[0], nSize, nPollTimeout);
 #endif
 
             /* Check poll for available sockets. */
