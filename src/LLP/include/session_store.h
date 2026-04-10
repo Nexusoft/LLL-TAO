@@ -195,16 +195,33 @@ namespace LLP
          *  Health Tracking (replaces ActiveSessionBoard)
          * ══════════════════════════════════════════════════════════════════════ */
 
-        /** RecordSendSuccess — reset failure counter for a session. **/
+        /** Default cooldown duration in seconds after exceeding failure threshold.
+         *  After this period, the session auto-recovers and can receive pushes again.
+         *  Configurable via -miningcooldownseconds (default 60).
+         *
+         *  This replaces the previous permanent shadow-ban behavior where a session
+         *  exceeding the failure threshold was permanently excluded from pushes. */
+        static constexpr uint64_t DEFAULT_COOLDOWN_DURATION_SEC = 60;
+
+        /** RecordSendSuccess — reset failure counter, clear cooldown. **/
         bool RecordSendSuccess(const uint256_t& hashKeyID, uint64_t nNow = 0);
 
-        /** RecordSendFailure — increment failure counter; mark disconnected at threshold. **/
+        /** RecordSendFailure — increment failure counter; enter timed cooldown
+         *  (NOT permanent ban) at threshold. Auto-recovers after cooldown expires. **/
         bool RecordSendFailure(const uint256_t& hashKeyID, uint32_t nThreshold = 5);
 
-        /** MarkDisconnected — manually mark a session as disconnected. **/
-        bool MarkDisconnected(const uint256_t& hashKeyID);
+        /** MarkDisconnected — version-checked disconnect.
+         *  @param nExpectedVersion  The registration version at the time the
+         *         disconnect was initiated.  If the session has been re-registered
+         *         since (version mismatch), the mark is silently rejected.
+         *         Pass 0 to bypass version checking (unconditional mark). **/
+        bool MarkDisconnected(const uint256_t& hashKeyID, uint64_t nExpectedVersion = 0);
 
-        /** IsActive — check if session is registered and not marked disconnected. **/
+        /** GetVersion — get the current registration version for a session.
+         *  Returns 0 if session is not registered. **/
+        uint64_t GetVersion(const uint256_t& hashKeyID) const;
+
+        /** IsActive — check if session is registered, not disconnected, and not in cooldown. **/
         bool IsActive(const uint256_t& hashKeyID) const;
 
         /** IsActiveBySessionId — same as IsActive but by session ID. **/
@@ -213,10 +230,21 @@ namespace LLP
         /** GetActiveForChannel
          *
          *  Get session IDs for a specific channel on a specific lane that are
-         *  active (not marked disconnected) and subscribed to notifications.
+         *  active (not disconnected, not in cooldown) and subscribed.
+         *  Sessions with expired cooldowns are treated as active.
          *
          **/
         std::vector<uint32_t> GetActiveSessionIdsForChannel(uint32_t nChannel, ProtocolLane lane) const;
+
+        /** SweepCooldowns
+         *
+         *  Clear expired cooldowns and reset fMarkedDisconnected on sessions
+         *  whose cooldown has elapsed.  Called from Meter() periodic cleanup.
+         *
+         *  @return Number of sessions recovered from cooldown.
+         *
+         **/
+        uint32_t SweepCooldowns();
 
 
     private:

@@ -16,6 +16,7 @@ ________________________________________________________________________________
 
 #include <Util/include/runtime.h>
 #include <Util/include/debug.h>
+#include <Util/include/config.h>
 
 #include <algorithm>
 
@@ -263,11 +264,30 @@ namespace LLP
 
     bool SessionStore::Register(const CanonicalSession& session)
     {
-        bool fNew = mapSessions.Insert(session.hashKeyID, session);
+        /* Pre-populate version for new entries (avoids a redundant Transform). */
+        CanonicalSession sessionToInsert = session;
+        sessionToInsert.nVersion = 1;
+
+        bool fNew = mapSessions.Insert(sessionToInsert.hashKeyID, sessionToInsert);
         if (!fNew)
         {
-            /* Update existing entry */
-            mapSessions.Update(session.hashKeyID, session);
+            /* Update existing entry — bump version and clear negative health
+             * state to prevent stale disconnects from killing re-registered
+             * sessions (AUTH/DISCONNECT race fix).
+             *
+             * Full replacement with incoming session is intentional: Register()
+             * is called from UpdateMiner() which builds a complete CanonicalSession
+             * from the live MiningContext.  The incoming session has all current
+             * fields; we only preserve the version counter from the old entry. */
+            Transform(session.hashKeyID, [&](const CanonicalSession& old)
+            {
+                CanonicalSession updated = session;
+                updated.nVersion = old.nVersion + 1;
+                updated.nFailedPackets = 0;
+                updated.fMarkedDisconnected = false;
+                updated.nCooldownExpiry = 0;
+                return updated;
+            });
         }
 
         /* Always update indexes to reflect current state */
@@ -530,6 +550,8 @@ namespace LLP
             CanonicalSession updated = s;
             updated.nFailedPackets      = 0;
             updated.nLastSuccessfulSend = nNow;
+            updated.nCooldownExpiry     = 0;
+            updated.fMarkedDisconnected = false;
             return updated;
         });
     }
@@ -541,17 +563,49 @@ namespace LLP
         {
             CanonicalSession updated = s;
             updated.nFailedPackets += 1;
-            if (updated.nFailedPackets >= nThreshold)
+
+            if (updated.nFailedPackets >= nThreshold && updated.nCooldownExpiry == 0)
+            {
+                /* Enter timed cooldown instead of permanent ban.
+                 * The session will auto-recover when the cooldown expires.
+                 * This prevents the permanent shadow-ban that occurred with the old
+                 * fMarkedDisconnected-only approach. */
+                const uint64_t nDuration = static_cast<uint64_t>(
+                    config::GetArg("-miningcooldownseconds",
+                                   SessionStore::DEFAULT_COOLDOWN_DURATION_SEC));
+                const uint64_t nNow = runtime::unifiedtimestamp();
+                updated.nCooldownExpiry = nNow + nDuration;
                 updated.fMarkedDisconnected = true;
+
+                debug::log(0, FUNCTION,
+                    "Session entered cooldown: session=", updated.nSessionId,
+                    " failures=", updated.nFailedPackets, "/", nThreshold,
+                    " cooldown=", nDuration, "s",
+                    " — PUSH paused (will auto-recover)");
+            }
             return updated;
         });
     }
 
 
-    bool SessionStore::MarkDisconnected(const uint256_t& hashKeyID)
+    bool SessionStore::MarkDisconnected(const uint256_t& hashKeyID, uint64_t nExpectedVersion)
     {
-        return Transform(hashKeyID, [](const CanonicalSession& s)
+        return Transform(hashKeyID, [&](const CanonicalSession& s)
         {
+            /* Version check: if the session has been re-registered since the
+             * caller captured the version, reject this stale disconnect.
+             * This prevents the AUTH/DISCONNECT race where an old connection's
+             * DISCONNECT handler kills a freshly re-registered session. */
+            if (nExpectedVersion != 0 && s.nVersion != nExpectedVersion)
+            {
+                debug::log(0, FUNCTION,
+                    "Rejected stale MarkDisconnected: session=", s.nSessionId,
+                    " expected_version=", nExpectedVersion,
+                    " current_version=", s.nVersion,
+                    " — session was re-registered; disconnect is stale");
+                return s;  /* No-op: return unmodified */
+            }
+
             CanonicalSession updated = s;
             updated.fMarkedDisconnected = true;
             return updated;
@@ -564,6 +618,14 @@ namespace LLP
         auto opt = mapSessions.Get(hashKeyID);
         if (!opt)
             return false;
+
+        /* Check cooldown: if expiry is set but has elapsed, treat as active */
+        if (opt->fMarkedDisconnected && opt->nCooldownExpiry != 0)
+        {
+            const uint64_t nNow = runtime::unifiedtimestamp();
+            if (nNow >= opt->nCooldownExpiry)
+                return opt->AnyPortLive();  /* Cooldown expired — session is active */
+        }
 
         return !opt->fMarkedDisconnected && opt->AnyPortLive();
     }
@@ -583,10 +645,19 @@ namespace LLP
         uint32_t nChannel, ProtocolLane lane) const
     {
         std::vector<uint32_t> vResult;
+        const uint64_t nNow = runtime::unifiedtimestamp();
+
         mapSessions.ForEach([&](const uint256_t&, const CanonicalSession& s)
         {
+            /* Check cooldown: if expiry is set and has elapsed, treat as active
+             * (the actual nCooldownExpiry/fMarkedDisconnected reset happens in
+             * SweepCooldowns or RecordSendSuccess — we just read-through here). */
             if (s.fMarkedDisconnected)
-                return;
+            {
+                if (s.nCooldownExpiry == 0 || nNow < s.nCooldownExpiry)
+                    return;  /* Permanently disconnected or still in cooldown */
+                /* else: cooldown expired — treat as active, fall through */
+            }
 
             if (!s.fSubscribedToNotifications)
                 return;
@@ -603,6 +674,60 @@ namespace LLP
             vResult.push_back(s.nSessionId);
         });
         return vResult;
+    }
+
+
+    uint64_t SessionStore::GetVersion(const uint256_t& hashKeyID) const
+    {
+        auto opt = mapSessions.Get(hashKeyID);
+        if (!opt)
+            return 0;
+
+        return opt->nVersion;
+    }
+
+
+    uint32_t SessionStore::SweepCooldowns()
+    {
+        const uint64_t nNow = runtime::unifiedtimestamp();
+        uint32_t nRecovered = 0;
+
+        /* Collect keys that need recovery (can't Transform during ForEach) */
+        std::vector<uint256_t> vExpiredKeys;
+        mapSessions.ForEach([&](const uint256_t& key, const CanonicalSession& s)
+        {
+            if (s.fMarkedDisconnected && s.nCooldownExpiry != 0 && nNow >= s.nCooldownExpiry)
+                vExpiredKeys.push_back(key);
+        });
+
+        /* Transform each expired session to recover it */
+        for (const auto& key : vExpiredKeys)
+        {
+            bool fTransformed = Transform(key, [&](const CanonicalSession& s)
+            {
+                /* Double-check under lock: still in cooldown and still expired */
+                if (!s.fMarkedDisconnected || s.nCooldownExpiry == 0 || nNow < s.nCooldownExpiry)
+                    return s;  /* No-op */
+
+                CanonicalSession updated = s;
+                updated.nCooldownExpiry = 0;
+                updated.fMarkedDisconnected = false;
+                updated.nFailedPackets = 0;
+                return updated;
+            });
+
+            if (fTransformed)
+            {
+                ++nRecovered;
+                debug::log(2, FUNCTION, "Session auto-recovered from cooldown: key=",
+                    key.SubString());
+            }
+        }
+
+        if (nRecovered > 0)
+            debug::log(0, FUNCTION, "Recovered ", nRecovered, " sessions from cooldown");
+
+        return nRecovered;
     }
 
 
