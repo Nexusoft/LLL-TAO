@@ -1,4 +1,7 @@
-# Diagram 4 — Live Container vs Recovery Snapshot
+# [HISTORICAL PROPOSAL] Diagram 4 — Live Container vs Recovery Snapshot
+
+> **⚠️ HISTORICAL:** This proposal references `SessionRecoveryManager` which was
+> **removed** in PR #532.  Retained for design context only.
 
 **Roadmap Item:** R-04  
 **Priority:** 3 (Scaling & Reliability)

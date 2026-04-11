@@ -1,4 +1,10 @@
 # Degraded Mode Recovery — Protocol Flow Diagrams
+
+> **⚠️ Partial Update (2026-04-11):** Diagrams C and D reference
+> `SessionRecoveryManager`, `PeekSession()`, `RecoverSessionByIdentity()`,
+> `nReconnectCount`, and `SaveSession()` — all **removed** in PRs #530–#532.
+> The SESSION_STATUS handler fixes (Diagrams A/B/E) remain accurate.
+
 Version: Post-PR #375  
 Last Updated: 2026-03-13
 

@@ -1,4 +1,7 @@
-# Diagram 11 — `SessionConflictResolver`
+# [HISTORICAL PROPOSAL] Diagram 11 — `SessionConflictResolver`
+
+> **⚠️ HISTORICAL:** This proposal references `SessionRecoveryManager` which was
+> **removed** in PR #532.  Retained for design context only.
 
 **Roadmap Item:** R-11  
 **Priority:** 3 (Scaling & Reliability)

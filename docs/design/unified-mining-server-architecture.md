@@ -1,5 +1,11 @@
 # Unified Mining Server Architecture Design
 
+> **Status:** ✅ Production — this architecture is the current production implementation.  
+> **Last Updated:** 2026-04-11  
+> **Note:** `SessionRecoveryManager` was removed in PR #532; session recovery references
+> in the Future Work section are historical.  See [Recent Changes Summary](../current/mining/recent-changes-summary.md)
+> for the full changelog.
+
 ## Overview
 
 This document describes the unified mining server architecture refactoring implemented to eliminate code duplication and establish a single source of truth for mining server configuration across both protocol lanes.

@@ -1,4 +1,12 @@
-# Failover Re-Authentication Flow
+# [ARCHIVED] Failover Re-Authentication Flow
+
+> **⚠️ ARCHIVED:** This document references `SessionRecoveryManager`,
+> `SessionRecoveryData`, and `fFreshAuth` — all of which were **removed** in
+> PRs #530–#532.  Session recovery is no longer supported; miners perform a
+> full Falcon re-authentication on reconnect.  Retained for historical context.
+>
+> **Current documentation:** See [Recent Changes Summary](../current/mining/recent-changes-summary.md)
+> and [Known Risks and Limitations](../current/mining/known-risks-and-limitations.md).
 
 ## Overview
 
