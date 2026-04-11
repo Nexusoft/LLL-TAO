@@ -613,11 +613,6 @@ namespace LLP
         uint1024_t hashLastIndex;
 
 
-        /** Counter for consecutive identical LASTINDEX notifications.
-         *  Tolerates a few repeats before triggering a node switch. **/
-        uint32_t nConsecutiveLastIndex;
-
-
         /** Counter of total orphans. **/
         uint32_t nConsecutiveOrphans;
 
