@@ -113,7 +113,7 @@ Developing on Nexus has been designed to be powerful, yet simple to use. Tritium
 
 ## License
 
-Nexus is released under the terms of the MIT license. See [COPYING](COPYING.MD) for more
+Nexus is released under the terms of the MIT license. See [LICENSE](LICENSE) for more
 information or see https://opensource.org/licenses/MIT.
 
 ## Documentation & Diagrams
