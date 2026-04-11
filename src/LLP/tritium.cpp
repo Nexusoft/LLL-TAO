@@ -1813,7 +1813,7 @@ namespace LLP
 
                                 if(m_getTracker.ShouldThrottleBlock(nMaxBlocks))
                                 {
-                                    debug::log(0, NODE, "ACTION::GET::BLOCK throttled — peer ",
+                                    debug::log(2, NODE, "ACTION::GET::BLOCK throttled — peer ",
                                                GetAddress().ToStringIP(), " exceeded ",
                                                nMaxBlocks,
                                                " block requests/", GetRequestRateTracker::WINDOW_SECONDS, "s window");
@@ -1996,7 +1996,7 @@ namespace LLP
 
                                 if(m_getTracker.ShouldThrottleTx(nMaxTx))
                                 {
-                                    debug::log(0, NODE, "ACTION::GET::TRANSACTION throttled — peer ",
+                                    debug::log(2, NODE, "ACTION::GET::TRANSACTION throttled — peer ",
                                                GetAddress().ToStringIP(), " exceeded ",
                                                nMaxTx,
                                                " tx requests/", GetRequestRateTracker::WINDOW_SECONDS, "s window");
@@ -2680,7 +2680,7 @@ namespace LLP
                                 ssResponse << uint8_t(TYPES::TRANSACTION) << tx.second;
 
                                 /* Log the missing data. */
-                                debug::log(0, FUNCTION, "requesting missing tx ", tx.second.SubString());
+                                debug::log(2, FUNCTION, "requesting missing tx ", tx.second.SubString());
 
                                 /* Check if we need to create new protocol message. */
                                 if(++nTotalItems >= ACTION::GET_MAX_ITEMS || tx == block.vMissing.back())
@@ -2692,7 +2692,7 @@ namespace LLP
                                         /* Send out another getblocks request. */
                                         try
                                         {
-                                            debug::log(0, FUNCTION, "broadcasting packet with ", nTotalItems, " items to ", pnode->GetAddress().ToStringIP());
+                                            debug::log(2, FUNCTION, "broadcasting packet with ", nTotalItems, " items to ", pnode->GetAddress().ToStringIP());
 
                                             /* Write our packet with our total items. */
                                             pnode->WritePacket(NewMessage(ACTION::GET, ssResponse));
