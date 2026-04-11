@@ -56,7 +56,7 @@ Create a new object register specified by given noun.
 supply/create/noun
 ```
 
-This command only supports the `item`, `raw` `readonly` and `any` nouns.
+This command supports the `item`, `raw`, `readonly` and `any` nouns.
 
 #### create/item
 
@@ -202,7 +202,7 @@ supply/list/noun
 
 This command supports the `item`, `raw`, `readonly` and `any` nouns.
 
-#### list/items
+#### list/item
 
 Lists all the items for object register type.
 
@@ -294,7 +294,7 @@ This method provides the user with the ability to update the object data specifi
 supply/update/noun
 ```
 
-This command only supports the `item` and `raw` nouns.
+This command supports the `item`, `raw` and `any` nouns.
 
 #### update/item
 
@@ -314,7 +314,7 @@ This updates the data value for the raw item register.
 
 `address` : Required to **identify** the item to update by register address. This is optional if the `name` is provided.
 
-`format` : Required to **specify** the format of the asset to update. Values can be `readonly`, `raw`, `basic` and `JSON`. 
+`format` : Required to **specify** the format of the asset to update. Values can be `raw`, `basic` and `JSON`. 
 
 `data` : Required if **format** is `raw`, allows caller to update the data object. 
 
@@ -348,7 +348,7 @@ This will initiate ownership transfer of the specified noun.
 supply/transfer/noun
 ```
 
-This command supports the `item`,  `raw` and `readonly` nouns.
+This command supports the `item`, `raw`, `readonly` and `any` nouns.
 
 #### transfer/item
 
@@ -403,7 +403,7 @@ This method will claim ownership of the item to complete the corresponding trans
 supply/claim/noun
 ```
 
-This command supports the `item`,  `raw` and `readonly` nouns.
+This command supports the `item`, `raw`, `readonly` and `any` nouns.
 
 #### claim/item
 
