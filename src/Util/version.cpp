@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2025
+            (c) Copyright The Nexus Developers 2014 - 2026
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -27,10 +27,10 @@ namespace version
     const uint32_t CLIENT_PATCH = 6;
 
     /* Build version determines release candidate. */
-    const uint32_t CLIENT_REVISION = 2;
+    const uint32_t CLIENT_REVISION = 0;
 
     /* This tells us minor build tweaks rather than release candidate. */
-    const uint32_t CLIENT_BUILD    = 1;
+    const uint32_t CLIENT_BUILD    = 0;
 
 
     /* The version of the actual wallet client. */
@@ -44,7 +44,7 @@ namespace version
 
     /* The version number */
     const std::string CLIENT_VERSION_STRING =
-        debug::safe_printstr(CLIENT_MAJOR, ".", CLIENT_MINOR, ".", CLIENT_PATCH, (CLIENT_REVISION == 0) ? "" : debug::safe_printstr("-rc", CLIENT_REVISION, "-", CLIENT_BUILD));
+        debug::safe_printstr(CLIENT_MAJOR, ".", CLIENT_MINOR, ".", CLIENT_PATCH, (CLIENT_REVISION == 0) ? "" : debug::safe_printstr("-rc", CLIENT_REVISION, " build ", CLIENT_BUILD));
 
 
     /* The interface used Qt, CLI, or Tritium) */

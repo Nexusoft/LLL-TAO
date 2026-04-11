@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2025
+            (c) Copyright The Nexus Developers 2014 - 2026
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -92,12 +92,12 @@ namespace LLP
 
 
         /* LOOKUP_SERVER instance */
-        if(config::GetBoolArg(std::string("-lookup"), true))
+        if(config::GetBoolArg(std::string("-lookup"), true) || config::fClient.load())
         {
             /* Generate our config object and use correct settings. */
             LLP::Config CONFIG     = LLP::Config(GetLookupPort());
             CONFIG.ENABLE_LISTEN   = //we only listen if we have the valid indexes created
-                (!config::fClient.load() && config::fIndexProofs.load() && config::fIndexRegister.load());
+                (!config::fClient.load() && config::GetBoolArg(std::string("-listen"), true) && config::fIndexProofs.load() && config::fIndexRegister.load());
 
             CONFIG.ENABLE_METERS   = false;
             CONFIG.ENABLE_UPNP     = CONFIG.ENABLE_LISTEN;
@@ -128,7 +128,7 @@ namespace LLP
             CONFIG.ENABLE_LISTEN   = config::GetBoolArg(std::string("-listen"), (config::fClient.load() ? false : true));
             CONFIG.ENABLE_UPNP     = true; //we want UPNP for main tritium protocol
             CONFIG.ENABLE_METERS   = config::GetBoolArg(std::string("-meters"), false);
-            CONFIG.ENABLE_DDOS     = config::GetBoolArg(std::string("-ddos"), false);
+            CONFIG.ENABLE_DDOS     = config::GetBoolArg(std::string("-ddos"), true);
             CONFIG.ENABLE_MANAGER  = config::GetBoolArg(std::string("-manager"), true);
             CONFIG.ENABLE_SSL      = config::GetBoolArg(std::string("-ssl"), false);
             CONFIG.ENABLE_REMOTE   = true;
@@ -138,7 +138,7 @@ namespace LLP
             CONFIG.MAX_CONNECTIONS = config::GetArg(std::string("-maxconnections"), 100);
             CONFIG.MAX_THREADS     = config::GetArg(std::string("-threads"), 8);
             CONFIG.DDOS_CSCORE     = config::GetArg(std::string("-cscore"), 1);
-            CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-rscore"), 2000);
+            CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-rscore"), 500);
             CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-timespan"), 20);
             CONFIG.MANAGER_SLEEP   = 1000; //default: 1 second connection attempts
             CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-timeout"), 120);
@@ -187,7 +187,7 @@ namespace LLP
             CONFIG.ENABLE_LISTEN   = true;
             CONFIG.ENABLE_UPNP     = false;
             CONFIG.ENABLE_METERS   = config::GetBoolArg(std::string("-apimeters"), false);
-            CONFIG.ENABLE_DDOS     = config::GetBoolArg(std::string("-apiddos"), true);
+            CONFIG.ENABLE_DDOS     = config::GetBoolArg(std::string("-apiddos"), false);
             CONFIG.ENABLE_MANAGER  = false;
             CONFIG.ENABLE_SSL      = config::GetBoolArg(std::string("-apissl"));
             CONFIG.ENABLE_REMOTE   = config::GetBoolArg(std::string("-apiremote"), false);

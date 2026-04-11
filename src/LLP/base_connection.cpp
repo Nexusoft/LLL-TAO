@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2025
+            (c) Copyright The Nexus Developers 2014 - 2026
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -230,7 +230,8 @@ namespace LLP
     template <class PacketType>
     void BaseConnection<PacketType>::WritePacket(const PacketType& PACKET)
     {
-        /* Only get this value one time. */
+
+        /* Only get this value one time so we don't need to keep accessing the args map. */
         static const uint64_t nMaxSendBuffer =
             config::GetArg("-maxsendbuffer", MAX_SEND_BUFFER);
 

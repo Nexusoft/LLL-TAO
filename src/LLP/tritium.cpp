@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2025
+            (c) Copyright The Nexus Developers 2014 - 2026
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -301,8 +301,23 @@ namespace LLP
 
             case EVENTS::GENERIC:
             {
+                /* Check if no version message within first 5 seconds. */
+                if(nCurrentSession == 0 && nLastPing + 10 < runtime::unifiedtimestamp())
+                {
+                    /* We want to iterate our DDOS values here. */
+                    if(DDOS && fDDOS.load())
+                        DDOS->rSCORE += 500; //make a high penalty for doing this
+
+                    /* Give some debug info that node didn't give version message. */
+                    debug::notice(NODE, "no version message in first 10 seconds");
+
+                    /* Disconnect the node and return from events. */
+                    Disconnect();
+                    return;
+                }
+
                 /* Handle sending the pings to remote node.. */
-                if(nLastPing + 15 < runtime::unifiedtimestamp())
+                if(nCurrentSession != 0 && nLastPing + 15 < runtime::unifiedtimestamp())
                 {
                     /* Create a random nonce. */
                     uint64_t nNonce = LLC::GetRand();
@@ -485,11 +500,13 @@ namespace LLP
                         SwitchNode();
                     }
 
-                    LOCK(SESSIONS_MUTEX);
+                    /* Critical Section changing mapSessions. */
+                    { LOCK(SESSIONS_MUTEX);
 
-                    /* Free the session as long as it is not a duplicate connection that we are closing. */
-                    if(mapSessions.count(nCurrentSession))
-                        mapSessions.erase(nCurrentSession);
+                        /* Free the session as long as it is not a duplicate connection that we are closing. */
+                        if(mapSessions.count(nCurrentSession))
+                            mapSessions.erase(nCurrentSession);
+                    }
 
                     /* Reset session value. */
                     nCurrentSession = 0;
@@ -591,7 +608,8 @@ namespace LLP
                     else if(addrCurrent != addr)
                     {
                         //addrCurrent = addr;
-                        debug::warning(NODE, "ACTION::VERSION conflicting address ", addr.ToStringIP(), " != ", addrCurrent.ToStringIP()); //TODO: vAddrThis: can have multiple addr (IPv4/6, LTE, Wifi, etc.)
+                        if(config::nVerbose >= 3)
+                            debug::warning(NODE, "ACTION::VERSION conflicting address ", addr.ToStringIP(), " != ", addrCurrent.ToStringIP()); //TODO: vAddrThis: can have multiple addr (IPv4/6, LTE, Wifi, etc.)
                     }
 
                     /* Respond with version message if incoming connection. */
@@ -1832,6 +1850,10 @@ namespace LLP
                                                 if(!LLD::Legacy->ReadTx(proof.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                                     continue;
 
+                                                /* We want to iterate our DDOS values here. */
+                                                if(DDOS && fDDOS.load())
+                                                    DDOS->rSCORE += 1;
+
                                                 /* Push message of transaction. */
                                                 PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
                                             }
@@ -1844,6 +1866,9 @@ namespace LLP
                                                 if(!LLD::Ledger->ReadTx(proof.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                                     continue;
 
+                                                /* We want to iterate our DDOS values here. */
+                                                if(DDOS && fDDOS.load())
+                                                    DDOS->rSCORE += 1;
 
                                                 /* Push message of transaction. */
                                                 PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
@@ -1894,14 +1919,11 @@ namespace LLP
                                     /* Check if producer is being asked for, and send block instead. */
                                     if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid())
                                     {
-                                        /* Read block state from disk. */
-                                        TAO::Ledger::BlockState state;
-                                        if(LLD::Ledger->ReadBlock(hashTx, state))
-                                        {
-                                            /* Send off tritium block. */
-                                            TAO::Ledger::TritiumBlock block(state);
-                                            PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::TRITIUM), block);
-                                        }
+                                        /* We want to iterate our DDOS values here. */
+                                        if(DDOS && fDDOS.load())
+                                            DDOS->rSCORE += 100; //make a high penalty for doing this
+
+                                        return debug::drop(NODE, "ACTION::GET: TRANSACTION: cannot request producer without block");
                                     }
                                     else
                                         PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
@@ -3747,15 +3769,21 @@ namespace LLP
     /* Get a node by connected session. */
     std::shared_ptr<TritiumNode> TritiumNode::GetNode(const uint64_t nSession)
     {
-        LOCK(SESSIONS_MUTEX);
+        /* Make a copy of our pair inside the critical section. */
+        std::pair<uint32_t, uint32_t> pair;
 
-        /* Check for connected session. */
-        static std::shared_ptr<TritiumNode> pNULL;
-        if(!mapSessions.count(nSession))
-            return pNULL;
+        {
+            LOCK(SESSIONS_MUTEX);
 
-        /* Get a reference of session. */
-        const std::pair<uint32_t, uint32_t>& pair = mapSessions[nSession];
+            /* Check for connected session. */
+            static std::shared_ptr<TritiumNode> pNULL;
+            if(!mapSessions.count(nSession))
+                return pNULL;
+
+            /* Get a reference of session. */
+            pair = mapSessions[nSession];
+        }
+
         return TRITIUM_SERVER->GetConnection(pair.first, pair.second);
     }
 

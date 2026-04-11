@@ -2,7 +2,7 @@
 
 			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2025
+			(c) Copyright The Nexus Developers 2014 - 2026
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -328,7 +328,7 @@ namespace LLP
                         continue;
                     }
 
-                    /* Check that write buffers aren't overflowed. */
+                    /* Check that write buffers aren't overflowing with too much data. */
                     if(CONNECTION->Buffered() > config::GetArg("-maxsendbuffer", MAX_SEND_BUFFER))
                     {
                         remove_connection_with_event(nIndex, DISCONNECT::BUFFER);

@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2025
+            (c) Copyright The Nexus Developers 2014 - 2026
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -128,6 +128,10 @@ namespace LLP
 
             /** Limit for maximum subscriptions that can be requested per packet. **/
             static const uint32_t SUBSCRIBE_MAX_ITEMS = 100;
+
+
+            /** Limit for the maximum consecutive retries for missing transactions issue. **/
+            static const uint32_t MAX_MISSING_TRANSACTIONS_RETRIES = 50;
 
 
             /* Message enumeration values. */
