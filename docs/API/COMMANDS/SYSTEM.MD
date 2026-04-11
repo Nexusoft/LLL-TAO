@@ -250,11 +250,11 @@ system/list/peers
 
 ### Parameters:
 
-[`Sorting`](//docs/API/SORTING.MD).
+[`Sorting`](/docs/API/SORTING.MD).
 
 [`Filtering`](/docs/API/FILTERING.MD).
 
-[`Operators`](//docs/API/OPERATORS.MD). 
+[`Operators`](/docs/API/OPERATORS.MD). 
 
 ### Results:
 
