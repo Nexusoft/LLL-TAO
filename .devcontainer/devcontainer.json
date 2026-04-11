@@ -12,7 +12,7 @@
       "version": "latest"
     }
   },
-  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "postCreateCommand": "sudo bash .devcontainer/setup.sh",
   "remoteUser": "vscode",
   "customizations": {
     "vscode": {
