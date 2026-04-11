@@ -13,13 +13,19 @@ rpcremote=1
 
 #default API user/pass to blank for private network and disable authentication of API requests
 #WARNING: apiremote enables remote API access and apiauth=0 disables API
-#authentication. Only use this on isolated private networks with strict bind
-#and allowlist settings. Do not expose the API to the public internet, and do
-#not broaden allowlists or bind addresses without appropriate access controls.
+# WARNING: Do not enable remote RPC by default in sample configs.
+# Only enable this together with strict rpcallowip and bind-address settings.
+# Never expose RPC on an internet-facing node without strong access controls.
+#rpcremote=1
+
+#default API user/pass to blank for private network and disable authentication of API requests
 apiauth=0
 apiuser=
 apipassword=
-apiremote=1
+# WARNING: Do not enable remote API by default in sample configs.
+# Only enable this together with strict API allowlisting and bind-address settings.
+# Never expose the API on an internet-facing node without strong access controls.
+#apiremote=1
 
 rpcallowip=127.0.0.1
 testnet=100
