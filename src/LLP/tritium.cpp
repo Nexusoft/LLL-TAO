@@ -138,6 +138,7 @@ namespace LLP
     , hashCheckpoint(0)
     , hashBestChain(0)
     , hashLastIndex(0)
+    , nConsecutiveLastIndex(0)
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
@@ -170,6 +171,7 @@ namespace LLP
     , hashCheckpoint(0)
     , hashBestChain(0)
     , hashLastIndex(0)
+    , nConsecutiveLastIndex(0)
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
@@ -201,6 +203,7 @@ namespace LLP
     , hashCheckpoint(0)
     , hashBestChain(0)
     , hashLastIndex(0)
+    , nConsecutiveLastIndex(0)
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
@@ -1348,7 +1351,7 @@ namespace LLP
 
                         /* Do a sequential read to obtain the list at our set limit. */
                         std::vector<TAO::Ledger::BlockState> vStates;
-                        while(!fBufferFull.load() && --nLimits >= 0 && hashStart != hashStop
+                        while(!fBufferFull.load() && nLimits > 0 && hashStart != hashStop
                             && LLD::Ledger->BatchRead(hashLastRead, "block", vStates, nBatchLimit, true))
                         {
                             /* Loop through all available states. */
@@ -2358,9 +2361,15 @@ namespace LLP
                                         /* Check if we are repeating our last index. */
                                         if(hashLastIndex == hashLast)
                                         {
-                                            SwitchNode();
-                                            return true;
+                                            if(++nConsecutiveLastIndex >= 3)
+                                            {
+                                                nConsecutiveLastIndex = 0;
+                                                SwitchNode();
+                                                return true;
+                                            }
                                         }
+                                        else
+                                            nConsecutiveLastIndex = 0;
 
                                         /* Check for complete synchronization. */
                                         if(hashLast == TAO::Ledger::ChainState::hashBestChain.load()
@@ -2792,8 +2801,6 @@ namespace LLP
                                 uint1024_t(block.hashPrevBlock)
                             );
                         }
-
-                        break;
 
                         /* Log received. */
                         debug::log(3, FUNCTION, "received client block ", block.GetHash().SubString(), " height = ", block.nHeight);
