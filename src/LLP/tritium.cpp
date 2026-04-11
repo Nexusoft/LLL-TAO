@@ -138,7 +138,6 @@ namespace LLP
     , hashCheckpoint(0)
     , hashBestChain(0)
     , hashLastIndex(0)
-    , nConsecutiveLastIndex(0)
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
@@ -171,7 +170,6 @@ namespace LLP
     , hashCheckpoint(0)
     , hashBestChain(0)
     , hashLastIndex(0)
-    , nConsecutiveLastIndex(0)
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
@@ -203,7 +201,6 @@ namespace LLP
     , hashCheckpoint(0)
     , hashBestChain(0)
     , hashLastIndex(0)
-    , nConsecutiveLastIndex(0)
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
@@ -1351,7 +1348,7 @@ namespace LLP
 
                         /* Do a sequential read to obtain the list at our set limit. */
                         std::vector<TAO::Ledger::BlockState> vStates;
-                        while(!fBufferFull.load() && nLimits > 0 && hashStart != hashStop
+                        while(!fBufferFull.load() && --nLimits >= 0 && hashStart != hashStop
                             && LLD::Ledger->BatchRead(hashLastRead, "block", vStates, nBatchLimit, true))
                         {
                             /* Loop through all available states. */
@@ -1816,7 +1813,7 @@ namespace LLP
 
                                 if(m_getTracker.ShouldThrottleBlock(nMaxBlocks))
                                 {
-                                    debug::log(2, NODE, "ACTION::GET::BLOCK throttled — peer ",
+                                    debug::log(0, NODE, "ACTION::GET::BLOCK throttled — peer ",
                                                GetAddress().ToStringIP(), " exceeded ",
                                                nMaxBlocks,
                                                " block requests/", GetRequestRateTracker::WINDOW_SECONDS, "s window");
@@ -1999,7 +1996,7 @@ namespace LLP
 
                                 if(m_getTracker.ShouldThrottleTx(nMaxTx))
                                 {
-                                    debug::log(2, NODE, "ACTION::GET::TRANSACTION throttled — peer ",
+                                    debug::log(0, NODE, "ACTION::GET::TRANSACTION throttled — peer ",
                                                GetAddress().ToStringIP(), " exceeded ",
                                                nMaxTx,
                                                " tx requests/", GetRequestRateTracker::WINDOW_SECONDS, "s window");
@@ -2358,21 +2355,12 @@ namespace LLP
                                     /* Check if is sync node. */
                                     if(nCurrentSession == TAO::Ledger::nSyncSession.load())
                                     {
-                                        /* Check if we are repeating our last index.
-                                         * Tolerate up to 3 consecutive repeats before switching
-                                         * to avoid premature node switches when the peer
-                                         * legitimately has no new blocks beyond this point. */
+                                        /* Check if we are repeating our last index. */
                                         if(hashLastIndex == hashLast)
                                         {
-                                            if(++nConsecutiveLastIndex >= 3)
-                                            {
-                                                nConsecutiveLastIndex = 0;
-                                                SwitchNode();
-                                                return true;
-                                            }
+                                            SwitchNode();
+                                            return true;
                                         }
-                                        else
-                                            nConsecutiveLastIndex = 0;
 
                                         /* Check for complete synchronization. */
                                         if(hashLast == TAO::Ledger::ChainState::hashBestChain.load()
@@ -2692,7 +2680,7 @@ namespace LLP
                                 ssResponse << uint8_t(TYPES::TRANSACTION) << tx.second;
 
                                 /* Log the missing data. */
-                                debug::log(2, FUNCTION, "requesting missing tx ", tx.second.SubString());
+                                debug::log(0, FUNCTION, "requesting missing tx ", tx.second.SubString());
 
                                 /* Check if we need to create new protocol message. */
                                 if(++nTotalItems >= ACTION::GET_MAX_ITEMS || tx == block.vMissing.back())
@@ -2704,7 +2692,7 @@ namespace LLP
                                         /* Send out another getblocks request. */
                                         try
                                         {
-                                            debug::log(2, FUNCTION, "broadcasting packet with ", nTotalItems, " items to ", pnode->GetAddress().ToStringIP());
+                                            debug::log(0, FUNCTION, "broadcasting packet with ", nTotalItems, " items to ", pnode->GetAddress().ToStringIP());
 
                                             /* Write our packet with our total items. */
                                             pnode->WritePacket(NewMessage(ACTION::GET, ssResponse));
@@ -2804,6 +2792,8 @@ namespace LLP
                                 uint1024_t(block.hashPrevBlock)
                             );
                         }
+
+                        break;
 
                         /* Log received. */
                         debug::log(3, FUNCTION, "received client block ", block.GetHash().SubString(), " height = ", block.nHeight);
@@ -3934,29 +3924,6 @@ namespace LLP
     /* Helper function to switch the nodes on sync. */
     void TritiumNode::SwitchNode()
     {
-        /* Limit recursion depth to prevent stack overflow on unstable networks. */
-        static thread_local uint32_t nRecursionDepth = 0;
-        ++nRecursionDepth;
-
-        /* Guard: fall through to reconnection path after 3 retries. */
-        if(nRecursionDepth > 3)
-        {
-            nRecursionDepth = 0;
-
-            /* Reset the current sync node. */
-            TAO::Ledger::nSyncSession.store(0);
-
-            /* Logging to verify (for debugging). */
-            debug::log(0, FUNCTION, "SwitchNode exceeded retry limit, reconnecting to DNS seeds in 3 seconds...");
-
-            /* Brief wait, then attempt fresh connections. */
-            runtime::sleep(3000);
-
-            /* Reconnect to our seed nodes. */
-            LLP::MakeConnections(TRITIUM_SERVER);
-            return;
-        }
-
         /* Track our current sync sessions. */
         std::pair<uint32_t, uint32_t> pairSession;
 
@@ -3966,10 +3933,7 @@ namespace LLP
 
             /* Check for session. */
             if(!mapSessions.count(TAO::Ledger::nSyncSession.load()))
-            {
-                nRecursionDepth = 0;
                 return;
-            }
 
             /* Set the current session. */
             pairSession = mapSessions[TAO::Ledger::nSyncSession.load()];
@@ -3992,13 +3956,10 @@ namespace LLP
 
                 /* Initiate the sync */
                 pnode->Sync();
-
-                /* Success — reset depth. */
-                nRecursionDepth = 0;
             }
             catch(const std::exception& e)
             {
-                /* Recurse on failure (depth-limited). */
+                /* Recurse on failure. */
                 debug::error(FUNCTION, e.what());
 
                 SwitchNode();
@@ -4006,16 +3967,14 @@ namespace LLP
         }
         else
         {
-            nRecursionDepth = 0;
-
             /* Reset the current sync node. */
             TAO::Ledger::nSyncSession.store(0);
 
             /* Logging to verify (for debugging). */
-            debug::log(0, FUNCTION, "No Sync Nodes Available, reconnecting to DNS seeds in 3 seconds...");
+            debug::log(0, FUNCTION, "No Sync Nodes Available, reconnecting to DNS seeds in 15 seconds...");
 
-            /* Brief wait, then attempt fresh connections. */
-            runtime::sleep(3000);
+            /* Wait for timeouts and then restart. */
+            runtime::sleep(15000);
 
             /* Reconnect to our seed nodes. */
             LLP::MakeConnections(TRITIUM_SERVER);
