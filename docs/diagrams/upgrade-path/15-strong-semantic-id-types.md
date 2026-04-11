@@ -1,4 +1,7 @@
-# Diagram 15 — Strong Semantic ID Wrapper Types
+# [HISTORICAL PROPOSAL] Diagram 15 — Strong Semantic ID Wrapper Types
+
+> **⚠️ HISTORICAL:** This proposal references `SessionRecoveryManager` which was
+> **removed** in PR #532.  Retained for design context only.
 
 **Roadmap Item:** R-15  
 **Priority:** 4 (Future Architecture)

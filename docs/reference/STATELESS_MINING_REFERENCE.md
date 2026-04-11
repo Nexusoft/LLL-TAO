@@ -261,7 +261,7 @@ These are the **new classes** introduced in our stateless mining work. They live
 |----------|--------|
 | Channel/Height | `nChannel`, `nHeight`, `nLastTemplateChannelHeight` |
 | Authentication | `fAuthenticated`, `hashKeyID`, `hashGenesis`, `vAuthNonce`, `vMinerPubKey`, `vDisposablePubKey`, `hashDisposableKeyID` |
-| Session | `nSessionId`, `nSessionStart`, `nSessionTimeout`, `nReconnectCount`, `nKeepaliveCount`, `nKeepaliveSent`, `nLastKeepaliveTime` |
+| Session | `nSessionId`, `nSessionStart`, `nSessionTimeout`, `nKeepaliveCount`, `nKeepaliveSent`, `nLastKeepaliveTime` |
 | Reward | `hashRewardAddress`, `fRewardBound` |
 | Encryption | `vChaChaKey`, `fEncryptionReady` |
 | Falcon | `nFalconVersion`, `fFalconVersionDetected`, `vchPhysicalSignature`, `fPhysicalFalconPresent` |

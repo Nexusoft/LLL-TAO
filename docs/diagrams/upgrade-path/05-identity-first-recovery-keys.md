@@ -1,4 +1,7 @@
-# Diagram 5 — Identity-First Recovery Keys
+# [HISTORICAL PROPOSAL] Diagram 5 — Identity-First Recovery Keys
+
+> **⚠️ HISTORICAL:** This proposal references `SessionRecoveryManager` which was
+> **removed** in PR #532.  Retained for design context only.
 
 **Roadmap Item:** R-05  
 **Priority:** 3 (Scaling & Reliability)

@@ -1,4 +1,13 @@
-# Degraded Mode Recovery
+# [ARCHIVED] Degraded Mode Recovery
+
+> **⚠️ ARCHIVED:** This document references `SessionRecoveryManager`,
+> `PeekSession()`, `RecoverSessionByIdentity()`, `nReconnectCount`, and
+> `SaveSession()` — all of which were **removed** in PRs #530–#532.  The
+> SESSION_STATUS handler fixes (BUG 1 & 2) are still in effect, but the
+> recovery infrastructure (BUG 3 & 4 context) no longer applies.  Retained
+> for historical context.
+>
+> **Current documentation:** See [Recent Changes Summary](../current/mining/recent-changes-summary.md).
 
 **Version:** Post-PR #375  
 **Last Updated:** 2026-03-13  

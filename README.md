@@ -98,6 +98,13 @@ The node runs **two mining servers simultaneously**:
 | Stateless | `9323` | 16-bit framing (Phase 2) | NexusMiner (stateless config) |
 | Legacy | `8323` | 8-bit framing (Phase 1) | Backward-compatible miners |
 
+> **Linux Epoll Optimization:** On Linux, mining DataThreads use a dedicated `epoll`
+> event loop with 1 ms timeout for sub-millisecond I/O responsiveness.  Non-Linux
+> platforms fall back to `poll()` with a 10 ms timeout.  Production mining nodes
+> should run on **Linux** for optimal performance.  See
+> [Linux Epoll Mining Architecture](docs/current/mining/linux-epoll-mining-architecture.md)
+> for details.
+
 For a complete reference see [nexus.conf Reference](docs/reference/nexus.conf.md).
 
 ## Developing
@@ -114,6 +121,9 @@ information or see https://opensource.org/licenses/MIT.
 Architecture diagrams, protocol visualizations, and onboarding guides:
 
 - [Diagram Templates & Architecture Diagrams](docs/diagrams/README.md) - 15+ Mermaid and ASCII diagrams
+- [Linux Epoll Mining Architecture](docs/current/mining/linux-epoll-mining-architecture.md) - Why Linux-only epoll for mining I/O
+- [Recent Mining Changes (PRs #502–#545)](docs/current/mining/recent-changes-summary.md) - Change log for future developers
+- [Known Risks & Limitations](docs/current/mining/known-risks-and-limitations.md) - Current risks and escalation triggers
 - [AI-Assisted Developer Onboarding](docs/onboarding/ai-assisted-onboarding.md) - Learning pathways with AI guidance
 - [AI-Human Advancement Thesis](docs/philosophy/ai-human-advancement.md) - Collaboration philosophy
 - [Mining Debug Cheat Sheet](docs/onboarding/cheat-sheets/mining-debug.md)
