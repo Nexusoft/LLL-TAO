@@ -122,7 +122,7 @@ namespace LLP
                              " — falling back to poll()");
             }
             else
-                debug::log(0, FUNCTION, "Mining DataThread ", nID, " using epoll fd=", m_nEpollFd);
+                debug::log(1, FUNCTION, "Mining DataThread ", nID, " using epoll fd=", m_nEpollFd);
         }
 #endif
     }
@@ -323,12 +323,12 @@ namespace LLP
         {
             if(m_nEpollFd >= 0)
             {
-                debug::log(0, FUNCTION, "Mining DataThread ", ID, " entering epoll loop (fd=", m_nEpollFd, ")");
+                debug::log(1, FUNCTION, "Mining DataThread ", ID, " entering epoll loop (fd=", m_nEpollFd, ")");
                 ThreadEpoll();
                 return;
             }
             /* If epoll_create1 failed, fall through to the poll() path as a fallback. */
-            debug::log(0, FUNCTION, "Mining DataThread ", ID, " falling back to poll() (epoll unavailable)");
+            debug::log(1, FUNCTION, "Mining DataThread ", ID, " falling back to poll() (epoll unavailable)");
         }
 #endif
 
@@ -539,7 +539,7 @@ namespace LLP
                             /* Log near-miss for authenticated miners — this would have killed
                              * the connection prior to the IsTimeoutExempt() bypass.  Useful
                              * for diagnosing spurious POLLIN events from TCP keepalive, etc. */
-                            debug::log(0, FUNCTION, "DataThread[", ID, "]: POLL_EMPTY near-miss for authenticated ",
+                            debug::log(3, FUNCTION, "DataThread[", ID, "]: POLL_EMPTY near-miss for authenticated ",
                                 ProtocolType::Name(), " from ", CONNECTION->GetAddress().ToStringIP(),
                                 " revents=", POLLFDS.at(nIndex).revents,
                                 " Available()=0 timeout=", nPollEmptyTimeout,
@@ -811,7 +811,7 @@ namespace LLP
 
                     /* Attempt to flush data when buffer is available. */
                     if(CONNECTION->Buffered() && CONNECTION->Flush() < 0)
-                        runtime::sleep(std::min(5u, CONNECTION->nConsecutiveErrors.load() / 1000)); //we want to sleep when we have periodic failures
+                        runtime::sleep(std::min(1u, CONNECTION->nConsecutiveErrors.load() / 1000)); //we want to sleep when we have periodic failures
                 }
                 catch(const std::exception& e)
                 {
@@ -914,7 +914,7 @@ namespace LLP
                 case DISCONNECT::PARTIAL_STALL: pReason = "PARTIAL_STALL (incomplete frame)"; break;
             }
 
-            debug::log(0, FUNCTION, "DataThread[", ID, "]: Removing AUTHENTICATED mining connection ",
+            debug::log(1, FUNCTION, "DataThread[", ID, "]: Removing AUTHENTICATED mining connection ",
                        CONNECTIONS->at(nIndex)->GetAddress().ToStringIP(),
                        " reason=", pReason,
                        " buffered=", CONNECTIONS->at(nIndex)->Buffered());
@@ -1016,7 +1016,7 @@ namespace LLP
         {
             if(CONNECTION->IsTimeoutExempt())
             {
-                debug::log(0, FUNCTION, "DataThread[", ID, "]: TIMEOUT_WRITE near-miss for authenticated ",
+                debug::log(3, FUNCTION, "DataThread[", ID, "]: TIMEOUT_WRITE near-miss for authenticated ",
                     ProtocolType::Name(), " from ", CONNECTION->GetAddress().ToStringIP(),
                     " Buffered()=", CONNECTION->Buffered(),
                     " WriteTimeout=", CONNECTION->GetWriteTimeout(), "ms",
