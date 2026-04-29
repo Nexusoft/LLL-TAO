@@ -181,6 +181,37 @@ TEST_CASE("VerifySubmittedPrimeOffsets: valid offsets accepted", "[prime][sign_f
     {
         REQUIRE(TAO::Ledger::VerifySubmittedPrimeOffsets(block, MakeChainOffsets(10)) == true);
     }
+
+    SECTION("World-record chain (28 offset bytes = 32 total) at the upper ceiling")
+    {
+        /* 28 chain-offset bytes (all gap=2) + 4 fractional = 32 bytes total.
+         * This is the codified maximum and must be accepted. */
+        std::vector<uint8_t> v = MakeChainOffsets(28);
+        REQUIRE(v.size() == 32);
+        REQUIRE(TAO::Ledger::VerifySubmittedPrimeOffsets(block, v) == true);
+    }
+}
+
+
+TEST_CASE("VerifySubmittedPrimeOffsets: oversized vOffsets rejected", "[prime][sign_finalization]")
+{
+    TAO::Ledger::TritiumBlock block = MakeTestBlock(1, 42u, {});
+
+    SECTION("33 bytes (1 over the ceiling) is rejected")
+    {
+        /* 29 chain-offset bytes + 4 fractional = 33 bytes total.
+         * Exceeds the kMaxSerializedPrimeOffsets = 32 anti-DoS ceiling. */
+        std::vector<uint8_t> v = MakeChainOffsets(29);
+        REQUIRE(v.size() == 33);
+        REQUIRE(TAO::Ledger::VerifySubmittedPrimeOffsets(block, v) == false);
+    }
+
+    SECTION("64 bytes is rejected")
+    {
+        std::vector<uint8_t> v = MakeChainOffsets(60);
+        REQUIRE(v.size() == 64);
+        REQUIRE(TAO::Ledger::VerifySubmittedPrimeOffsets(block, v) == false);
+    }
 }
 
 

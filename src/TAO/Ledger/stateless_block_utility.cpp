@@ -949,6 +949,30 @@ namespace TAO::Ledger
             return debug::error(FUNCTION, "vOffsets too short: ", vOffsets.size(),
                                 " bytes (minimum 5: ≥1 chain offset + 4 fractional)");
 
+        /* Maximum structural ceiling.  This is purely an anti-DoS guardrail —
+         * the consensus PoW gate (VerifyWork → GetPrimeBits) accepts any chain
+         * length, but a runaway / hostile miner could otherwise submit megabytes
+         * of bogus offset bytes which the gap-walk in GetPrimeDifficulty would
+         * have to read before failing on the first byte > 12.
+         *
+         * 32 bytes encodes a Cunningham chain of length 28 (28 chain-offset
+         * bytes + 4 fractional).  No Cunningham chain of that length has ever
+         * been found at any difficulty in any known prime-channel network; the
+         * current world-record dense Cunningham clusters sit well below 20.
+         * The ceiling is therefore generous enough to accommodate all
+         * foreseeable difficulty growth (and any future world-record finds)
+         * while still bounding the validator's worst-case work.
+         *
+         * The wire-level budget SUBMIT_BLOCK_PRIME_OFFSETS_MAX (256 bytes)
+         * remains unchanged and is the outer envelope cap; this 32-byte limit
+         * is the consensus-adjacent structural cap that VerifyWork sees. */
+        constexpr size_t kMaxSerializedPrimeOffsets = 32;
+        if(vOffsets.size() > kMaxSerializedPrimeOffsets)
+            return debug::error(FUNCTION, "vOffsets too long: ", vOffsets.size(),
+                                " bytes (maximum ", kMaxSerializedPrimeOffsets,
+                                ": ≤", kMaxSerializedPrimeOffsets - 4,
+                                " chain offsets + 4 fractional)");
+
         /* Chain-offset bytes are all bytes except the last 4 (fractional difficulty).
          * Each chain-offset encodes the gap to the next prime in the Cunningham chain;
          * the maximum valid gap is 12 (hardcoded in GetOffsets / GetPrimeDifficulty). */
