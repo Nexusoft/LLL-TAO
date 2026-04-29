@@ -210,9 +210,9 @@ namespace LLP
             {
                 pTask->promise.set_value(fResult);
             }
-            catch(...)
+            catch(const std::future_error&)
             {
-                /* Promise may already be fulfilled */
+                /* Promise may already be fulfilled (e.g. abandoned future) */
             }
 
             ++nTasksProcessed;

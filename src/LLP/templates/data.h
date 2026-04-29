@@ -137,12 +137,12 @@ namespace LLP
 
 
         /** Default Constructor. **/
-        DataThread<ProtocolType>(const uint32_t nID, const bool ffDDOSIn, const uint32_t rScore, const uint32_t cScore,
+        DataThread(const uint32_t nID, const bool ffDDOSIn, const uint32_t rScore, const uint32_t cScore,
                                  const uint32_t nTimeout, const bool fMeter = false);
 
 
         /** Default Destructor. **/
-        virtual ~DataThread<ProtocolType>();
+        virtual ~DataThread();
 
 
         /** AddConnection
