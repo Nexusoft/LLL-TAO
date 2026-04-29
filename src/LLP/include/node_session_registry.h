@@ -91,7 +91,7 @@ namespace LLP
         }
 
         /** WithStatelessLive — returns copy with updated stateless liveness. **/
-        NodeSessionEntryKey WithStatelessLive(bool fLive_) const
+        [[nodiscard]] NodeSessionEntryKey WithStatelessLive(bool fLive_) const
         {
             NodeSessionEntryKey key = *this;
             key.fStatelessLive = fLive_;
@@ -99,7 +99,7 @@ namespace LLP
         }
 
         /** WithLegacyLive — returns copy with updated legacy liveness. **/
-        NodeSessionEntryKey WithLegacyLive(bool fLive_) const
+        [[nodiscard]] NodeSessionEntryKey WithLegacyLive(bool fLive_) const
         {
             NodeSessionEntryKey key = *this;
             key.fLegacyLive = fLive_;
@@ -107,7 +107,7 @@ namespace LLP
         }
 
         /** WithActivity — returns copy with updated activity timestamp. **/
-        NodeSessionEntryKey WithActivity(uint64_t nTime_) const
+        [[nodiscard]] NodeSessionEntryKey WithActivity(uint64_t nTime_) const
         {
             NodeSessionEntryKey key = *this;
             key.nLastActivity = nTime_;
@@ -115,10 +115,10 @@ namespace LLP
         }
 
         /** AnyPortLive — true if either port is connected. **/
-        bool AnyPortLive() const { return fStatelessLive || fLegacyLive; }
+        [[nodiscard]] bool AnyPortLive() const { return fStatelessLive || fLegacyLive; }
 
         /** GetSessionBinding — returns identity snapshot for comparison. **/
-        SessionBinding GetSessionBinding() const
+        [[nodiscard]] SessionBinding GetSessionBinding() const
         {
             SessionBinding binding;
             binding.nSessionId = nSessionId;
