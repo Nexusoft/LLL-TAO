@@ -68,23 +68,11 @@ munlock(((void *)(((size_t)(a)) & (~((PAGESIZE)-1)))),\
 template<typename T>
 struct secure_allocator : public std::allocator<T>
 {
-    /* MSVC8 default copy constructor is broken */
-    typedef std::allocator<T> base;
-    typedef typename base::size_type size_type;
-    typedef typename base::difference_type  difference_type;
-    /* C++20 removed pointer/const_pointer/reference/const_reference from
-     * std::allocator; provide the canonical defaults directly so any caller
-     * that still names these typedefs continues to work. */
-    typedef T*       pointer;
-    typedef const T* const_pointer;
-    typedef T&       reference;
-    typedef const T& const_reference;
-    typedef typename base::value_type value_type;
-    secure_allocator() throw() {}
-    secure_allocator(const secure_allocator& a) throw() : base(a) {}
+    secure_allocator() noexcept {}
+    secure_allocator(const secure_allocator& a) noexcept : std::allocator<T>(a) {}
     template <typename U>
-    secure_allocator(const secure_allocator<U>& a) throw() : base(a) {}
-    ~secure_allocator() throw() {}
+    secure_allocator(const secure_allocator<U>& a) noexcept : std::allocator<T>(a) {}
+    ~secure_allocator() noexcept {}
     template<typename _Other> struct rebind
     { typedef secure_allocator<_Other> other; };
 
@@ -129,23 +117,11 @@ struct secure_allocator : public std::allocator<T>
 template<typename T>
 struct zero_after_free_allocator : public std::allocator<T>
 {
-    /* MSVC8 default copy constructor is broken */
-    typedef std::allocator<T> base;
-    typedef typename base::size_type size_type;
-    typedef typename base::difference_type  difference_type;
-    /* C++20 removed pointer/const_pointer/reference/const_reference from
-     * std::allocator; provide the canonical defaults directly so any caller
-     * that still names these typedefs continues to work. */
-    typedef T*       pointer;
-    typedef const T* const_pointer;
-    typedef T&       reference;
-    typedef const T& const_reference;
-    typedef typename base::value_type value_type;
-    zero_after_free_allocator() throw() {}
-    zero_after_free_allocator(const zero_after_free_allocator& a) throw() : base(a) {}
+    zero_after_free_allocator() noexcept {}
+    zero_after_free_allocator(const zero_after_free_allocator& a) noexcept : std::allocator<T>(a) {}
     template <typename U>
-    zero_after_free_allocator(const zero_after_free_allocator<U>& a) throw() : base(a) {}
-    ~zero_after_free_allocator() throw() {}
+    zero_after_free_allocator(const zero_after_free_allocator<U>& a) noexcept : std::allocator<T>(a) {}
+    ~zero_after_free_allocator() noexcept {}
     template<typename _Other> struct rebind
     { typedef zero_after_free_allocator<_Other> other; };
 
