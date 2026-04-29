@@ -100,11 +100,11 @@ namespace LLP
 
 
         /** Constructor **/
-        Server<ProtocolType>(const Config& config);
+        Server(const Config& config);
 
 
         /** Default Destructor **/
-        virtual ~Server<ProtocolType>();
+        virtual ~Server();
 
 
         /** Name

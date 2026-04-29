@@ -56,7 +56,7 @@ namespace LLP
      *  The inline With*() builders return copies with a single field modified,
      *  mirroring the NodeSessionEntry builder API for ergonomic test code.
      *
-     *  NOTE: uint256_t is not constexpr in C++17, so the builders are regular
+     *  NOTE: uint256_t is not constexpr, so the builders are regular
      *  inline functions rather than constexpr.
      *
      **/

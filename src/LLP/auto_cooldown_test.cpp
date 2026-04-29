@@ -17,7 +17,7 @@ ________________________________________________________________________________
  * Stand-alone unit tests for LLP::AutoCoolDown.
  *
  * Build and run independently (no framework required):
- *   g++ -std=c++17 -I<repo_root>/src auto_cooldown_test.cpp -o auto_cooldown_test
+ *   g++ -std=c++20 -I<repo_root>/src auto_cooldown_test.cpp -o auto_cooldown_test
  *   ./auto_cooldown_test
  *
  * Expected output on success:

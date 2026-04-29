@@ -1,7 +1,7 @@
 # Copilot Build Instructions for Nexus LLL-TAO
 
 ## Overview
-Nexus LLL-TAO is a blockchain node implementation written in C++17. It requires specific dependencies for compilation and testing.
+Nexus LLL-TAO is a blockchain node implementation written in C++20. It requires specific dependencies for compilation and testing.
 
 ## Build Environment
 
@@ -13,7 +13,7 @@ Nexus LLL-TAO is a blockchain node implementation written in C++17. It requires 
 ### Compiler Requirements
 - **GCC:** 11.0 or later (recommended: 11.4)
 - **Clang:** 14.0 or later
-- **Standard:** C++17 with full support
+- **Standard:** C++20 with full support
 
 ### Core Dependencies
 

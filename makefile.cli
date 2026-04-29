@@ -861,7 +861,7 @@ CFLAGS:= $(CXXFLAGS)
 CFLAGS+= $(CWARNINGS)
 
 #set -std=c++ for all but c compiling
-CXXFLAGS+=-std=c++17
+CXXFLAGS+=-std=c++20
 CXXFLAGS+= $(CXXWARNINGS)
 
 
@@ -1116,7 +1116,7 @@ CFLAGS:= $(CXXFLAGS)
 CFLAGS+= $(CWARNINGS)
 
 #set -std=c++ for all but c compiling
-CXXFLAGS+=-std=c++17
+CXXFLAGS+=-std=c++20
 CXXFLAGS+= $(CXXWARNINGS)
 
 #OS Specific Targets and instructions
@@ -1184,7 +1184,7 @@ CFLAGS:= $(CXXFLAGS)
 CFLAGS+= $(CWARNINGS)
 
 #set -std=c++ for all but c compiling
-CXXFLAGS+=-std=c++17
+CXXFLAGS+=-std=c++20
 CXXFLAGS+= $(CXXWARNINGS)
 
 #OS Specific Targets and instructions
@@ -1255,7 +1255,7 @@ CFLAGS:= $(CXXFLAGS)
 CFLAGS+= $(CWARNINGS)
 
 #set -std=c++ for all but c compiling
-CXXFLAGS+=-std=c++17
+CXXFLAGS+=-std=c++20
 CXXFLAGS+= $(CXXWARNINGS)
 
 #OS Specific Targets and instructions
@@ -1342,7 +1342,7 @@ CFLAGS:= $(CXXFLAGS)
 CFLAGS+= $(CWARNINGS)
 
 #set -std=c++ for all but c compiling
-CXXFLAGS+=-std=c++17
+CXXFLAGS+=-std=c++20
 CXXFLAGS+= $(CXXWARNINGS)
 
 
