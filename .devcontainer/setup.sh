@@ -26,7 +26,7 @@ cat >"$TMPDIR/dbcheck.cpp" <<'EOF'
 #include <db_cxx.h>
 int main() { return 0; }
 EOF
-g++ -std=c++17 -c "$TMPDIR/dbcheck.cpp" -o "$TMPDIR/dbcheck.o"
+g++ -std=c++20 -c "$TMPDIR/dbcheck.cpp" -o "$TMPDIR/dbcheck.o"
 
 # Clean up apt cache to reduce image size
 echo "Cleaning up..."

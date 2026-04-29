@@ -34,7 +34,7 @@ int main()
 }
 EOF
 
-    if g++ -std=c++17 -c "$tmp_src" -o "$tmp_obj" >/dev/null 2>"$tmp_err"; then
+    if g++ -std=c++20 -c "$tmp_src" -o "$tmp_obj" >/dev/null 2>"$tmp_err"; then
         return 0
     fi
 
