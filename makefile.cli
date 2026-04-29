@@ -28,11 +28,12 @@ ifndef STATIC
 endif
 
 # Configurable C++ language standard.
-# Default to c++17 for downstream compatibility; allow opt-in c++20 validation
-# via `make -f makefile.cli STD=c++20`. Applied uniformly across all platform
+# Default to c++20 (the codebase compiles cleanly under C++20). Opt in to
+# newer standards (e.g. c++23, c++2c) for beta validation via
+# `make -f makefile.cli STD=c++23`. Applied uniformly across all platform
 # sections below (Linux, macOS, iPhone, Android, Windows).
 ifndef STD
-	override STD=c++17
+	override STD=c++20
 endif
 
 ifeq (${STATIC}, 1)
