@@ -26,6 +26,15 @@ endif
 ifndef STATIC
 	override STATIC=0
 endif
+
+# Configurable C++ language standard.
+# Default to c++17 for downstream compatibility; allow opt-in c++20 validation
+# via `make -f makefile.cli STD=c++20`. Applied uniformly across all platform
+# sections below (Linux, macOS, iPhone, Android, Windows).
+ifndef STD
+	override STD=c++17
+endif
+
 ifeq (${STATIC}, 1)
 	DEFS+= -DSTATIC
 	ifeq (${detected_OS},Linux)
@@ -861,7 +870,7 @@ CFLAGS:= $(CXXFLAGS)
 CFLAGS+= $(CWARNINGS)
 
 #set -std=c++ for all but c compiling
-CXXFLAGS+=-std=c++20
+CXXFLAGS+=-std=$(STD)
 CXXFLAGS+= $(CXXWARNINGS)
 
 
@@ -1116,7 +1125,7 @@ CFLAGS:= $(CXXFLAGS)
 CFLAGS+= $(CWARNINGS)
 
 #set -std=c++ for all but c compiling
-CXXFLAGS+=-std=c++20
+CXXFLAGS+=-std=$(STD)
 CXXFLAGS+= $(CXXWARNINGS)
 
 #OS Specific Targets and instructions
@@ -1184,7 +1193,7 @@ CFLAGS:= $(CXXFLAGS)
 CFLAGS+= $(CWARNINGS)
 
 #set -std=c++ for all but c compiling
-CXXFLAGS+=-std=c++20
+CXXFLAGS+=-std=$(STD)
 CXXFLAGS+= $(CXXWARNINGS)
 
 #OS Specific Targets and instructions
@@ -1255,7 +1264,7 @@ CFLAGS:= $(CXXFLAGS)
 CFLAGS+= $(CWARNINGS)
 
 #set -std=c++ for all but c compiling
-CXXFLAGS+=-std=c++20
+CXXFLAGS+=-std=$(STD)
 CXXFLAGS+= $(CXXWARNINGS)
 
 #OS Specific Targets and instructions
@@ -1342,7 +1351,7 @@ CFLAGS:= $(CXXFLAGS)
 CFLAGS+= $(CWARNINGS)
 
 #set -std=c++ for all but c compiling
-CXXFLAGS+=-std=c++20
+CXXFLAGS+=-std=$(STD)
 CXXFLAGS+= $(CXXWARNINGS)
 
 

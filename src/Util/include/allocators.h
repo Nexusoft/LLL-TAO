@@ -64,40 +64,35 @@ munlock(((void *)(((size_t)(a)) & (~((PAGESIZE)-1)))),\
  * Allocator that locks its contents from being paged
  * out of memory and clears its contents before deletion.
  *
+ * Implemented per the C++20 minimal allocator requirements (no inheritance
+ * from std::allocator, no removed legacy typedefs). std::allocator_traits
+ * synthesises the remaining typedefs (pointer, const_pointer, etc.).
+ *
  **/
 template<typename T>
-struct secure_allocator : public std::allocator<T>
+struct secure_allocator
 {
-    /* MSVC8 default copy constructor is broken */
-    typedef std::allocator<T> base;
-    typedef typename base::size_type size_type;
-    typedef typename base::difference_type  difference_type;
-    /* C++20 removed pointer/const_pointer/reference/const_reference from
-     * std::allocator; provide the canonical defaults directly so any caller
-     * that still names these typedefs continues to work. */
-    typedef T*       pointer;
-    typedef const T* const_pointer;
-    typedef T&       reference;
-    typedef const T& const_reference;
-    typedef typename base::value_type value_type;
-    secure_allocator() throw() {}
-    secure_allocator(const secure_allocator& a) throw() : base(a) {}
+    typedef T value_type;
+
+    secure_allocator() noexcept = default;
+    secure_allocator(const secure_allocator&) noexcept = default;
     template <typename U>
-    secure_allocator(const secure_allocator<U>& a) throw() : base(a) {}
-    ~secure_allocator() throw() {}
-    template<typename _Other> struct rebind
-    { typedef secure_allocator<_Other> other; };
+    secure_allocator(const secure_allocator<U>&) noexcept {}
+    ~secure_allocator() noexcept = default;
 
 
     /** allocate
      *
-     *  allocates n elements of type T
+     *  allocates n elements of type T using global operator new and locks
+     *  the resulting memory range so it cannot be paged out.
      *
      **/
     T* allocate(std::size_t n)
     {
-        T *p;
-        p = std::allocator<T>::allocate(n);
+        if(n == 0)
+            return nullptr;
+
+        T* p = static_cast<T*>(::operator new(n * sizeof(T)));
         if(p != nullptr)
             mlock(p, sizeof(T) * n);
         return p;
@@ -106,62 +101,98 @@ struct secure_allocator : public std::allocator<T>
 
     /** deallocate
      *
-     *  frees n elements of type T from pointer p. clears contents before deletion
+     *  Zeroes and unlocks the memory range before releasing it via global
+     *  operator delete.
      *
      **/
-    void deallocate(T* p, std::size_t n)
+    void deallocate(T* p, std::size_t n) noexcept
     {
         if(p != nullptr)
         {
-            memset(p, 0, sizeof(T) * n);
-            munlock(p, sizeof(T) * n);
+            if(n != 0)
+            {
+                memset(p, 0, sizeof(T) * n);
+                munlock(p, sizeof(T) * n);
+            }
         }
-        std::allocator<T>::deallocate(p, n);
+        ::operator delete(p);
     }
 };
+
+
+template<typename T, typename U>
+inline bool operator==(const secure_allocator<T>&, const secure_allocator<U>&) noexcept
+{
+    return true;
+}
+
+template<typename T, typename U>
+inline bool operator!=(const secure_allocator<T>& a, const secure_allocator<U>& b) noexcept
+{
+    return !(a == b);
+}
 
 
 /**
  *
  * Allocator that clears its contents before deletion.
  *
+ * Implemented per the C++20 minimal allocator requirements (no inheritance
+ * from std::allocator, no removed legacy typedefs).
+ *
  **/
 template<typename T>
-struct zero_after_free_allocator : public std::allocator<T>
+struct zero_after_free_allocator
 {
-    /* MSVC8 default copy constructor is broken */
-    typedef std::allocator<T> base;
-    typedef typename base::size_type size_type;
-    typedef typename base::difference_type  difference_type;
-    /* C++20 removed pointer/const_pointer/reference/const_reference from
-     * std::allocator; provide the canonical defaults directly so any caller
-     * that still names these typedefs continues to work. */
-    typedef T*       pointer;
-    typedef const T* const_pointer;
-    typedef T&       reference;
-    typedef const T& const_reference;
-    typedef typename base::value_type value_type;
-    zero_after_free_allocator() throw() {}
-    zero_after_free_allocator(const zero_after_free_allocator& a) throw() : base(a) {}
+    typedef T value_type;
+
+    zero_after_free_allocator() noexcept = default;
+    zero_after_free_allocator(const zero_after_free_allocator&) noexcept = default;
     template <typename U>
-    zero_after_free_allocator(const zero_after_free_allocator<U>& a) throw() : base(a) {}
-    ~zero_after_free_allocator() throw() {}
-    template<typename _Other> struct rebind
-    { typedef zero_after_free_allocator<_Other> other; };
+    zero_after_free_allocator(const zero_after_free_allocator<U>&) noexcept {}
+    ~zero_after_free_allocator() noexcept = default;
+
+
+    /** allocate
+     *
+     *  allocates n elements of type T using global operator new.
+     *
+     **/
+    T* allocate(std::size_t n)
+    {
+        if(n == 0)
+            return nullptr;
+
+        return static_cast<T*>(::operator new(n * sizeof(T)));
+    }
 
 
     /** deallocate
      *
-     *  frees n elements of type T from pointer p. Clears contents before deletion.
+     *  Zeroes the memory range before releasing it via global operator delete.
      *
      **/
-    void deallocate(T* p, std::size_t n)
+    void deallocate(T* p, std::size_t n) noexcept
     {
-        if(p != nullptr)
+        if(p != nullptr && n != 0)
             memset(p, 0, sizeof(T) * n);
-        std::allocator<T>::deallocate(p, n);
+
+        ::operator delete(p);
     }
 };
+
+
+template<typename T, typename U>
+inline bool operator==(const zero_after_free_allocator<T>&, const zero_after_free_allocator<U>&) noexcept
+{
+    return true;
+}
+
+template<typename T, typename U>
+inline bool operator!=(const zero_after_free_allocator<T>& a, const zero_after_free_allocator<U>& b) noexcept
+{
+    return !(a == b);
+}
 
 /* This is exactly like std::string, but with a custom allocator. */
 typedef std::basic_string<char, std::char_traits<char>, secure_allocator<char> > SecureString;
