@@ -89,11 +89,8 @@ struct secure_allocator
      **/
     T* allocate(std::size_t n)
     {
-        if(n == 0)
-            return nullptr;
-
         T* p = static_cast<T*>(::operator new(n * sizeof(T)));
-        if(p != nullptr)
+        if(p != nullptr && n != 0)
             mlock(p, sizeof(T) * n);
         return p;
     }
@@ -107,13 +104,10 @@ struct secure_allocator
      **/
     void deallocate(T* p, std::size_t n) noexcept
     {
-        if(p != nullptr)
+        if(p != nullptr && n != 0)
         {
-            if(n != 0)
-            {
-                memset(p, 0, sizeof(T) * n);
-                munlock(p, sizeof(T) * n);
-            }
+            memset(p, 0, sizeof(T) * n);
+            munlock(p, sizeof(T) * n);
         }
         ::operator delete(p);
     }
@@ -160,9 +154,6 @@ struct zero_after_free_allocator
      **/
     T* allocate(std::size_t n)
     {
-        if(n == 0)
-            return nullptr;
-
         return static_cast<T*>(::operator new(n * sizeof(T)));
     }
 
