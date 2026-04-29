@@ -401,9 +401,11 @@ namespace TAO
          *  This function performs lightweight structural validation only:
          *  - vOffsets must be non-empty.
          *  - vOffsets must have at least 5 bytes (≥1 chain-offset byte + 4 fractional).
-         *  - vOffsets must not exceed 32 bytes (≤28 chain offsets + 4 fractional);
-         *    this is an anti-DoS guardrail well above any foreseeable Cunningham
-         *    chain length found at any current or future network difficulty.
+         *  - vOffsets must not exceed `LLP::FalconConstants::SUBMIT_BLOCK_PRIME_OFFSETS_MAX`
+         *    bytes (currently 22 → ≤18 chain offsets + 4 fractional); this is
+         *    the canonical wire-format ceiling, kept in lockstep with
+         *    NexusMiner PR #675's `PRIME_VOFFSETS_MAX_SIZE` via a
+         *    `static_assert` in the implementation.
          *  - Each chain-offset byte (all except the last 4) must be ≤ 12 (maximum
          *    valid gap in a Cunningham chain).
          *

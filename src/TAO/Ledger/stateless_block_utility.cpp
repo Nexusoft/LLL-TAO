@@ -955,18 +955,23 @@ namespace TAO::Ledger
          * of bogus offset bytes which the gap-walk in GetPrimeDifficulty would
          * have to read before failing on the first byte > 12.
          *
-         * 32 bytes encodes a Cunningham chain of length 28 (28 chain-offset
-         * bytes + 4 fractional).  No Cunningham chain of that length has ever
-         * been found at any difficulty in any known prime-channel network; the
-         * current world-record dense Cunningham clusters sit well below 20.
-         * The ceiling is therefore generous enough to accommodate all
-         * foreseeable difficulty growth (and any future world-record finds)
-         * while still bounding the validator's worst-case work.
+         * The canonical wire-format ceiling lives in
+         * `LLP::FalconConstants::SUBMIT_BLOCK_PRIME_OFFSETS_MAX` (= 22) and is
+         * shared with the miner side (NexusMiner PR #675's
+         * `protocol::FalconConstants::PRIME_VOFFSETS_MAX_SIZE`).  We re-export
+         * it here under the structural-validator name; the single source of
+         * truth means SUBMIT_BLOCK wrapper buffers and this validator cannot
+         * silently disagree.
          *
-         * The wire-level budget SUBMIT_BLOCK_PRIME_OFFSETS_MAX (256 bytes)
-         * remains unchanged and is the outer envelope cap; this 32-byte limit
-         * is the consensus-adjacent structural cap that VerifyWork sees. */
-        constexpr size_t kMaxSerializedPrimeOffsets = 32;
+         * 22 bytes encodes a Cunningham chain of length up to 19 (18
+         * chain-offset bytes + 4 fractional).  No Cunningham chain of that
+         * length has been found at any difficulty in any known prime-channel
+         * network; the current world-record dense Cunningham clusters sit
+         * well below it.  The ceiling is therefore generous enough to
+         * accommodate all foreseeable difficulty growth while still bounding
+         * the validator's worst-case work. */
+        constexpr size_t kMaxSerializedPrimeOffsets =
+            LLP::FalconConstants::SUBMIT_BLOCK_PRIME_OFFSETS_MAX;
         if(vOffsets.size() > kMaxSerializedPrimeOffsets)
             return debug::error(FUNCTION, "vOffsets too long: ", vOffsets.size(),
                                 " bytes (maximum ", kMaxSerializedPrimeOffsets,

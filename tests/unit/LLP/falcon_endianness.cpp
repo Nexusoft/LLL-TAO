@@ -99,16 +99,17 @@ TEST_CASE("Falcon Constants Validation", "[falcon][constants]")
         REQUIRE(SUBMIT_BLOCK_WRAPPER_MIN == 82);
         REQUIRE(SUBMIT_BLOCK_WRAPPER_MIN == MERKLE_ROOT_SIZE + NONCE_SIZE + TIMESTAMP_SIZE + LENGTH_FIELD_SIZE);
         
-        // SUBMIT_BLOCK_WRAPPER_MAX: block_header(220) + prime_offsets(256) + timestamp(8)
-        //   + siglen(2) + Falcon-1024 sig(1577) = 2063 bytes
+        // SUBMIT_BLOCK_WRAPPER_MAX: block_header(220) + prime_offsets(22) + timestamp(8)
+        //   + siglen(2) + Falcon-1024 sig(1577) = 1829 bytes
         // Miners submit block headers only; transactions are NOT included.
-        REQUIRE(SUBMIT_BLOCK_WRAPPER_MAX == 2063);
+        // Per NexusMiner PR #675, prime_offsets is capped at PRIME_VOFFSETS_MAX_SIZE = 22.
+        REQUIRE(SUBMIT_BLOCK_WRAPPER_MAX == 1829);
         REQUIRE(SUBMIT_BLOCK_WRAPPER_MAX ==
             FULL_BLOCK_LEGACY_SIZE + SUBMIT_BLOCK_PRIME_OFFSETS_MAX +
             TIMESTAMP_SIZE + LENGTH_FIELD_SIZE + FALCON1024_SIG_ABSOLUTE_MAX);
         
-        // SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX = 2063 + 28 = 2091 bytes
-        REQUIRE(SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX == 2091);
+        // SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX = 1829 + 28 = 1857 bytes
+        REQUIRE(SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX == 1857);
         REQUIRE(SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX == SUBMIT_BLOCK_WRAPPER_MAX + CHACHA20_OVERHEAD);
     }
 

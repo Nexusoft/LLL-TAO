@@ -182,12 +182,14 @@ TEST_CASE("VerifySubmittedPrimeOffsets: valid offsets accepted", "[prime][sign_f
         REQUIRE(TAO::Ledger::VerifySubmittedPrimeOffsets(block, MakeChainOffsets(10)) == true);
     }
 
-    SECTION("World-record chain (28 offset bytes = 32 total) at the upper ceiling")
+    SECTION("World-record chain (18 offset bytes = 22 total) at the upper ceiling")
     {
-        /* 28 chain-offset bytes (all gap=2) + 4 fractional = 32 bytes total.
-         * This is the codified maximum and must be accepted. */
-        std::vector<uint8_t> v = MakeChainOffsets(28);
-        REQUIRE(v.size() == 32);
+        /* 18 chain-offset bytes (all gap=2) + 4 fractional = 22 bytes total.
+         * This is the codified maximum (LLP::FalconConstants::
+         * SUBMIT_BLOCK_PRIME_OFFSETS_MAX, locked to NexusMiner PR #675's
+         * PRIME_VOFFSETS_MAX_SIZE) and must be accepted. */
+        std::vector<uint8_t> v = MakeChainOffsets(18);
+        REQUIRE(v.size() == 22);
         REQUIRE(TAO::Ledger::VerifySubmittedPrimeOffsets(block, v) == true);
     }
 }
@@ -197,12 +199,12 @@ TEST_CASE("VerifySubmittedPrimeOffsets: oversized vOffsets rejected", "[prime][s
 {
     TAO::Ledger::TritiumBlock block = MakeTestBlock(1, 42u, {});
 
-    SECTION("33 bytes (1 over the ceiling) is rejected")
+    SECTION("23 bytes (1 over the ceiling) is rejected")
     {
-        /* 29 chain-offset bytes + 4 fractional = 33 bytes total.
-         * Exceeds the kMaxSerializedPrimeOffsets = 32 anti-DoS ceiling. */
-        std::vector<uint8_t> v = MakeChainOffsets(29);
-        REQUIRE(v.size() == 33);
+        /* 19 chain-offset bytes + 4 fractional = 23 bytes total.
+         * Exceeds the kMaxSerializedPrimeOffsets = 22 anti-DoS ceiling. */
+        std::vector<uint8_t> v = MakeChainOffsets(19);
+        REQUIRE(v.size() == 23);
         REQUIRE(TAO::Ledger::VerifySubmittedPrimeOffsets(block, v) == false);
     }
 
