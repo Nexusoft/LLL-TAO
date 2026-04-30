@@ -412,8 +412,15 @@ TEST_CASE("PushNotificationBuilder - Real-World Scenarios", "[push_notification]
         REQUIRE(primeNotif.DATA[2] == hashNotif.DATA[2]);
         REQUIRE(primeNotif.DATA[3] == hashNotif.DATA[3]);
         
-        /* Verify different channel heights */
-        REQUIRE(primeNotif.DATA[4] != hashNotif.DATA[4]);
+        /* Verify different channel heights.  The channel-height field is a
+         * 4-byte big-endian integer at DATA[4..7]; only the LSB (DATA[7])
+         * differs for the small heights used here (333 vs 667 both fit in
+         * two bytes, so DATA[4..6] are 0x00 in both cases).  Compare the
+         * full four-byte slice, not just DATA[4]. */
+        REQUIRE((primeNotif.DATA[4] != hashNotif.DATA[4] ||
+                 primeNotif.DATA[5] != hashNotif.DATA[5] ||
+                 primeNotif.DATA[6] != hashNotif.DATA[6] ||
+                 primeNotif.DATA[7] != hashNotif.DATA[7]));
     }
 }
 

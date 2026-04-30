@@ -284,8 +284,9 @@ namespace LLP
     /* Determines if address is a local address. */
     bool BaseAddress::IsLocal() const
     {
-        /* IPv4 loopback */
-        if(IsIPv4() && (GetByte(3) == 127 || GetByte(3) == 0))
+        /* IPv4 loopback (127.0.0.0/8 only — the unspecified address 0.0.0.0/8
+         * is NOT loopback and must not be classified as local). */
+        if(IsIPv4() && GetByte(3) == 127)
             return true;
 
         /* IPv6 loopback (::1/128) */

@@ -504,10 +504,20 @@ namespace LLP
             if(binding.hashKeyID == 0)
                 return SessionConsistencyResult::MissingFalconKey;
 
-            /* 2.2: Authenticated sessions must have a disposable key for block
-             * signature verification.  Missing key → submissions will fail. */
-            if(vDisposablePubKey.empty())
-                return SessionConsistencyResult::DisposableKeyMissing;
+            /* NOTE: We deliberately do NOT enforce a non-empty
+             * vDisposablePubKey here.  An authenticated session may legitimately
+             * exist before the per-block disposable Falcon key has been
+             * exchanged (e.g. just after MINER_AUTH_RESULT and before the first
+             * SUBMIT_BLOCK).  The submission paths in
+             * stateless_miner_connection.cpp (around line 2766) check
+             * vDisposablePubKey.empty() at the point where it actually matters
+             * for signature verification.  Returning DisposableKeyMissing here
+             * over-reports the error and shadows more severe identity
+             * mismatches; see the diagnostic-priority discussion in
+             * NodeSessionEntry::ValidateConsistency.  The
+             * SessionConsistencyResult::DisposableKeyMissing enum value is
+             * retained for callers that wish to surface the condition
+             * explicitly at submission time. */
         }
 
         if(fRewardBound && hashRewardAddress == 0)
