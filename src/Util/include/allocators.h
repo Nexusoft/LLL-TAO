@@ -64,33 +64,36 @@ munlock(((void *)(((size_t)(a)) & (~((PAGESIZE)-1)))),\
  * Allocator that locks its contents from being paged
  * out of memory and clears its contents before deletion.
  *
- * Implemented per the C++20 minimal allocator requirements (no inheritance
- * from std::allocator, no removed legacy typedefs). std::allocator_traits
- * synthesises the remaining typedefs (pointer, const_pointer, etc.).
- *
  **/
 template<typename T>
 struct secure_allocator
 {
-    typedef T value_type;
+    using value_type      = T;
+    using size_type       = std::size_t;
+    using difference_type = std::ptrdiff_t;
+
+    /* Stateless allocators propagate trivially on container ops. */
+    using propagate_on_container_copy_assignment = std::true_type;
+    using propagate_on_container_move_assignment = std::true_type;
+    using propagate_on_container_swap            = std::true_type;
+    using is_always_equal                        = std::true_type;
 
     secure_allocator() noexcept = default;
     secure_allocator(const secure_allocator&) noexcept = default;
-    template <typename U>
+    template<typename U>
     secure_allocator(const secure_allocator<U>&) noexcept {}
     ~secure_allocator() noexcept = default;
 
 
     /** allocate
      *
-     *  allocates n elements of type T using global operator new and locks
-     *  the resulting memory range so it cannot be paged out.
+     *  allocates n elements of type T
      *
      **/
     T* allocate(std::size_t n)
     {
-        T* p = static_cast<T*>(::operator new(n * sizeof(T)));
-        if(p != nullptr && n != 0)
+        T* p = std::allocator<T>{}.allocate(n);
+        if(p != nullptr)
             mlock(p, sizeof(T) * n);
         return p;
     }
@@ -98,92 +101,78 @@ struct secure_allocator
 
     /** deallocate
      *
-     *  Zeroes and unlocks the memory range before releasing it via global
-     *  operator delete.
+     *  frees n elements of type T from pointer p. clears contents before deletion
      *
      **/
     void deallocate(T* p, std::size_t n) noexcept
     {
-        if(p != nullptr && n != 0)
+        if(p != nullptr)
         {
             memset(p, 0, sizeof(T) * n);
             munlock(p, sizeof(T) * n);
         }
-        ::operator delete(p);
+        std::allocator<T>{}.deallocate(p, n);
     }
 };
 
-
 template<typename T, typename U>
-inline bool operator==(const secure_allocator<T>&, const secure_allocator<U>&) noexcept
-{
-    return true;
-}
-
+inline bool operator==(const secure_allocator<T>&, const secure_allocator<U>&) noexcept { return true; }
 template<typename T, typename U>
-inline bool operator!=(const secure_allocator<T>& a, const secure_allocator<U>& b) noexcept
-{
-    return !(a == b);
-}
+inline bool operator!=(const secure_allocator<T>&, const secure_allocator<U>&) noexcept { return false; }
 
 
 /**
  *
  * Allocator that clears its contents before deletion.
  *
- * Implemented per the C++20 minimal allocator requirements (no inheritance
- * from std::allocator, no removed legacy typedefs).
- *
  **/
 template<typename T>
 struct zero_after_free_allocator
 {
-    typedef T value_type;
+    using value_type      = T;
+    using size_type       = std::size_t;
+    using difference_type = std::ptrdiff_t;
+
+    using propagate_on_container_copy_assignment = std::true_type;
+    using propagate_on_container_move_assignment = std::true_type;
+    using propagate_on_container_swap            = std::true_type;
+    using is_always_equal                        = std::true_type;
 
     zero_after_free_allocator() noexcept = default;
     zero_after_free_allocator(const zero_after_free_allocator&) noexcept = default;
-    template <typename U>
+    template<typename U>
     zero_after_free_allocator(const zero_after_free_allocator<U>&) noexcept {}
     ~zero_after_free_allocator() noexcept = default;
 
 
     /** allocate
      *
-     *  allocates n elements of type T using global operator new.
+     *  allocates n elements of type T
      *
      **/
     T* allocate(std::size_t n)
     {
-        return static_cast<T*>(::operator new(n * sizeof(T)));
+        return std::allocator<T>{}.allocate(n);
     }
 
 
     /** deallocate
      *
-     *  Zeroes the memory range before releasing it via global operator delete.
+     *  frees n elements of type T from pointer p. Clears contents before deletion.
      *
      **/
     void deallocate(T* p, std::size_t n) noexcept
     {
-        if(p != nullptr && n != 0)
+        if(p != nullptr)
             memset(p, 0, sizeof(T) * n);
-
-        ::operator delete(p);
+        std::allocator<T>{}.deallocate(p, n);
     }
 };
 
-
 template<typename T, typename U>
-inline bool operator==(const zero_after_free_allocator<T>&, const zero_after_free_allocator<U>&) noexcept
-{
-    return true;
-}
-
+inline bool operator==(const zero_after_free_allocator<T>&, const zero_after_free_allocator<U>&) noexcept { return true; }
 template<typename T, typename U>
-inline bool operator!=(const zero_after_free_allocator<T>& a, const zero_after_free_allocator<U>& b) noexcept
-{
-    return !(a == b);
-}
+inline bool operator!=(const zero_after_free_allocator<T>&, const zero_after_free_allocator<U>&) noexcept { return false; }
 
 /* This is exactly like std::string, but with a custom allocator. */
 typedef std::basic_string<char, std::char_traits<char>, secure_allocator<char> > SecureString;

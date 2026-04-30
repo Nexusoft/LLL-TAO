@@ -264,3 +264,54 @@ TEST_CASE("GetPrimeDifficulty 4-byte fractional round-trip", "[prime][roundtrip]
         REQUIRE(std::abs(fFrac - fExpectedRemainder) < 1e-6);
     }
 }
+
+
+/* Regression: a non-empty but undersized vOffsets (< 5 bytes) must NOT
+ * unsigned-underflow `nSize - 4` in GetPrimeDifficulty, walk the loop off the
+ * end of the buffer, and OOB-read the 4-byte fractional tail.  The defensive
+ * guard returns 0.0 (treated as "not a valid prime cluster"). */
+TEST_CASE("GetPrimeDifficulty rejects undersized vOffsets without OOB", "[prime][underflow]")
+{
+    /* 541 is prime so PrimeCheck() passes; the failure mode under test is
+     * the size guard inside the !vOffsets.empty() branch, not the base
+     * primality check. */
+    uint1024_t knownPrime = 541;
+
+    SECTION("size 1 returns 0.0 (would have underflowed nSize-4)")
+    {
+        std::vector<uint8_t> vOffsets = {0x01};
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, true) == 0.0);
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, false) == 0.0);
+    }
+
+    SECTION("size 2 returns 0.0")
+    {
+        std::vector<uint8_t> vOffsets = {0x01, 0x02};
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, true) == 0.0);
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, false) == 0.0);
+    }
+
+    SECTION("size 3 returns 0.0")
+    {
+        std::vector<uint8_t> vOffsets = {0x01, 0x02, 0x03};
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, true) == 0.0);
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, false) == 0.0);
+    }
+
+    SECTION("size 4 returns 0.0 (boundary: nSize-4 == 0 with no chain bytes)")
+    {
+        std::vector<uint8_t> vOffsets = {0x01, 0x02, 0x03, 0x04};
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, true) == 0.0);
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, false) == 0.0);
+    }
+
+    SECTION("size 5 (minimum well-formed) is NOT rejected by the size guard")
+    {
+        /* One chain-offset byte (gap 2) plus a 4-byte fractional tail.  With
+         * fVerify=false the chain primality / fractional cross-check are
+         * skipped, so the function reaches the difficulty calculation rather
+         * than short-circuiting at 0.0.  We assert the guard does not fire. */
+        std::vector<uint8_t> vOffsets = {0x02, 0x00, 0x00, 0x00, 0x01};
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, false) > 0.0);
+    }
+}
