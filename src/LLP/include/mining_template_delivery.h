@@ -149,9 +149,15 @@ namespace LLP
             }
             for(Entry& e : m_entries)
             {
+                if(e.tPushed == std::chrono::steady_clock::time_point{})
+                    continue;
                 const int64_t nAgeMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                     tNow - e.tPushed).count();
-                if(nAgeMs < 0 || nAgeMs >= TTL_MS)
+                /* Treat clock-skew (negative age) as "still fresh — do not evict",
+                 * matching ContainsRecent which treats negative age as "do not
+                 * match".  This keeps the two methods consistent under clock
+                 * adjustments. */
+                if(nAgeMs >= 0 && nAgeMs >= TTL_MS)
                 {
                     e.hash = hash;
                     e.tPushed = tNow;
