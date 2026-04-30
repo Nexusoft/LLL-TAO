@@ -758,7 +758,7 @@ namespace LLP
          *  Returns a new context with updated channel.
          *
          **/
-        MiningContext WithChannel(uint32_t nChannel_) const;
+        [[nodiscard]] MiningContext WithChannel(uint32_t nChannel_) const;
 
         /** ChannelName
          *
@@ -781,14 +781,14 @@ namespace LLP
          *  @return New context with strChannelName set
          *
          **/
-        MiningContext WithChannelName(uint32_t nChannel_) const;
+        [[nodiscard]] MiningContext WithChannelName(uint32_t nChannel_) const;
 
         /** WithHeight
          *
          *  Returns a new context with updated height.
          *
          **/
-        MiningContext WithHeight(uint32_t nHeight_) const;
+        [[nodiscard]] MiningContext WithHeight(uint32_t nHeight_) const;
 
         /** WithLastTemplateUnifiedHeight
          *
@@ -798,7 +798,7 @@ namespace LLP
          *  hashPrevBlock and ALL channels need fresh templates.
          *
          **/
-        MiningContext WithLastTemplateUnifiedHeight(uint32_t nLastTemplateUnifiedHeight_) const;
+        [[nodiscard]] MiningContext WithLastTemplateUnifiedHeight(uint32_t nLastTemplateUnifiedHeight_) const;
 
         /** WithHashLastBlock
          *
@@ -807,28 +807,28 @@ namespace LLP
          *  ChainState::hashBestChain as the primary staleness anchor (StakeMinter pattern).
          *
          **/
-        MiningContext WithHashLastBlock(const uint1024_t& hashLastBlock_) const;
+        [[nodiscard]] MiningContext WithHashLastBlock(const uint1024_t& hashLastBlock_) const;
 
         /** WithTimestamp
          *
          *  Returns a new context with updated timestamp.
          *
          **/
-        MiningContext WithTimestamp(uint64_t nTimestamp_) const;
+        [[nodiscard]] MiningContext WithTimestamp(uint64_t nTimestamp_) const;
 
         /** WithProtocolVersion
          *
          *  Returns a new context with updated protocol version.
          *
          **/
-        MiningContext WithProtocolVersion(uint32_t nProtocolVersion_) const;
+        [[nodiscard]] MiningContext WithProtocolVersion(uint32_t nProtocolVersion_) const;
 
         /** WithAuth
          *
          *  Returns a new context with updated authentication status.
          *
          **/
-        MiningContext WithAuth(bool fAuthenticated_) const;
+        [[nodiscard]] MiningContext WithAuth(bool fAuthenticated_) const;
 
         /** DeriveSessionId
          *
@@ -847,49 +847,49 @@ namespace LLP
          *  Returns a new context with updated session ID.
          *
          **/
-        MiningContext WithSession(uint32_t nSessionId_) const;
+        [[nodiscard]] MiningContext WithSession(uint32_t nSessionId_) const;
 
         /** WithKeyId
          *
          *  Phase 2: Returns a new context with updated Falcon key ID.
          *
          **/
-        MiningContext WithKeyId(const uint256_t& hashKeyID_) const;
+        [[nodiscard]] MiningContext WithKeyId(const uint256_t& hashKeyID_) const;
 
         /** WithGenesis
          *
          *  Phase 2: Returns a new context with updated Tritium genesis hash.
          *
          **/
-        MiningContext WithGenesis(const uint256_t& hashGenesis_) const;
+        [[nodiscard]] MiningContext WithGenesis(const uint256_t& hashGenesis_) const;
 
         /** WithUserName
          *
          *  Phase 2: Returns a new context with updated username for trust-based addressing.
          *
          **/
-        MiningContext WithUserName(const std::string& strUserName_) const;
+        [[nodiscard]] MiningContext WithUserName(const std::string& strUserName_) const;
 
         /** WithNonce
          *
          *  Returns a new context with updated authentication nonce.
          *
          **/
-        MiningContext WithNonce(const std::vector<uint8_t>& vNonce_) const;
+        [[nodiscard]] MiningContext WithNonce(const std::vector<uint8_t>& vNonce_) const;
 
         /** WithPubKey
          *
          *  Returns a new context with updated miner public key.
          *
          **/
-        MiningContext WithPubKey(const std::vector<uint8_t>& vPubKey_) const;
+        [[nodiscard]] MiningContext WithPubKey(const std::vector<uint8_t>& vPubKey_) const;
 
         /** WithDisposableKey
          *
          *  Returns a new context with updated disposable Falcon session key state.
          *
          **/
-        MiningContext WithDisposableKey(const std::vector<uint8_t>& vPubKey_,
+        [[nodiscard]] MiningContext WithDisposableKey(const std::vector<uint8_t>& vPubKey_,
                                         const uint256_t& hashDisposableKeyID_ = 0) const;
 
         /** WithSessionStart
@@ -897,28 +897,28 @@ namespace LLP
          *  Returns a new context with updated session start timestamp.
          *
          **/
-        MiningContext WithSessionStart(uint64_t nSessionStart_) const;
+        [[nodiscard]] MiningContext WithSessionStart(uint64_t nSessionStart_) const;
 
         /** WithKeepaliveCount
          *
          *  Returns a new context with updated keepalive count.
          *
          **/
-        MiningContext WithKeepaliveCount(uint32_t nKeepaliveCount_) const;
+        [[nodiscard]] MiningContext WithKeepaliveCount(uint32_t nKeepaliveCount_) const;
 
         /** WithKeepaliveSent
          *
          *  Returns a new context with updated keepalive sent count.
          *
          **/
-        MiningContext WithKeepaliveSent(uint32_t nKeepaliveSent_) const;
+        [[nodiscard]] MiningContext WithKeepaliveSent(uint32_t nKeepaliveSent_) const;
 
         /** WithLastKeepaliveTime
          *
          *  Returns a new context with updated last keepalive timestamp.
          *
          **/
-        MiningContext WithLastKeepaliveTime(uint64_t nLastKeepaliveTime_) const;
+        [[nodiscard]] MiningContext WithLastKeepaliveTime(uint64_t nLastKeepaliveTime_) const;
 
         /** WithMinerPrevblockSuffix
          *
@@ -927,7 +927,7 @@ namespace LLP
          *  @param[in] suffixBytes_ Raw bytes [4..7] of the keepalive payload
          *
          **/
-        MiningContext WithMinerPrevblockSuffix(const std::array<uint8_t, 4>& suffixBytes_) const;
+        [[nodiscard]] MiningContext WithMinerPrevblockSuffix(const std::array<uint8_t, 4>& suffixBytes_) const;
 
         /** WithStakeHeight
          *
@@ -938,7 +938,7 @@ namespace LLP
          *  @param[in] h The Stake channel height from the last keepalive response
          *
          **/
-        MiningContext WithStakeHeight(uint32_t h) const;
+        [[nodiscard]] MiningContext WithStakeHeight(uint32_t h) const;
 
         /** WithRewardAddress
          *
@@ -947,7 +947,7 @@ namespace LLP
          *  @param[in] hashReward_ The reward address to set
          *
          **/
-        MiningContext WithRewardAddress(const uint256_t& hashReward_) const;
+        [[nodiscard]] MiningContext WithRewardAddress(const uint256_t& hashReward_) const;
 
         /** WithChaChaKey
          *
@@ -958,7 +958,7 @@ namespace LLP
          *  @param[in] vKey_ The ChaCha20 session key
          *
          **/
-        MiningContext WithChaChaKey(const std::vector<uint8_t>& vKey_) const;
+        [[nodiscard]] MiningContext WithChaChaKey(const std::vector<uint8_t>& vKey_) const;
 
         /** WithFalconVersion
          *
@@ -968,7 +968,7 @@ namespace LLP
          *  @param[in] version_ The detected Falcon version (512 or 1024)
          *
          **/
-        MiningContext WithFalconVersion(LLC::FalconVersion version_) const;
+        [[nodiscard]] MiningContext WithFalconVersion(LLC::FalconVersion version_) const;
 
         /** WithProtocolLane
          *
@@ -980,7 +980,7 @@ namespace LLP
          *  @param[in] lane_ The protocol lane (LEGACY or STATELESS)
          *
          **/
-        MiningContext WithProtocolLane(ProtocolLane lane_) const;
+        [[nodiscard]] MiningContext WithProtocolLane(ProtocolLane lane_) const;
 
         /** IsStateless
          *
@@ -999,7 +999,7 @@ namespace LLP
          *  @param[in] nChannel_ The channel to subscribe to (1=Prime, 2=Hash)
          *
          **/
-        MiningContext WithSubscription(uint32_t nChannel_) const;
+        [[nodiscard]] MiningContext WithSubscription(uint32_t nChannel_) const;
 
         /** WithNotificationSent
          *
@@ -1009,7 +1009,7 @@ namespace LLP
          *  @param[in] nTime_ Timestamp when notification was sent
          *
          **/
-        MiningContext WithNotificationSent(uint64_t nTime_) const;
+        [[nodiscard]] MiningContext WithNotificationSent(uint64_t nTime_) const;
 
         /** WithCanonicalSnap
          *
@@ -1022,7 +1022,7 @@ namespace LLP
          *  @param[in] snap The CanonicalChainState captured at template-issue time
          *
          **/
-        MiningContext WithCanonicalSnap(const CanonicalChainState& snap) const;
+        [[nodiscard]] MiningContext WithCanonicalSnap(const CanonicalChainState& snap) const;
 
         /** GetSessionBinding
          *
