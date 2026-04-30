@@ -59,6 +59,34 @@ munlock(((void *)(((size_t)(a)) & (~((PAGESIZE)-1)))),\
 #endif
 
 
+/** secure_zero
+ *
+ *  Portable best-effort zeroisation of a memory range that the optimiser is
+ *  not permitted to elide. Plain `memset` of a soon-to-be-freed buffer is a
+ *  textbook dead-store and modern compilers (GCC, Clang, MSVC) will remove
+ *  it under -O2, leaking key material into the freelist.
+ *
+ *  - Windows: SecureZeroMemory is documented as DSE-safe.
+ *  - Elsewhere: route memset through a `volatile` function pointer. The
+ *    compiler cannot see through the indirect call to prove the write is
+ *    unobservable, so it must emit the store.
+ *
+ **/
+inline void secure_zero(void* p, std::size_t n) noexcept
+{
+    if(p == nullptr || n == 0)
+        return;
+
+#ifdef WIN32
+    SecureZeroMemory(p, n);
+#else
+    using memset_fn_t = void* (*)(void*, int, std::size_t);
+    static memset_fn_t volatile const memset_v = std::memset;
+    memset_v(p, 0, n);
+#endif
+}
+
+
 /** secure_allocator
  *
  * Allocator that locks its contents from being paged
@@ -108,7 +136,7 @@ struct secure_allocator
     {
         if(p != nullptr)
         {
-            memset(p, 0, sizeof(T) * n);
+            secure_zero(p, sizeof(T) * n);
             munlock(p, sizeof(T) * n);
         }
         std::allocator<T>{}.deallocate(p, n);
@@ -164,7 +192,7 @@ struct zero_after_free_allocator
     void deallocate(T* p, std::size_t n) noexcept
     {
         if(p != nullptr)
-            memset(p, 0, sizeof(T) * n);
+            secure_zero(p, sizeof(T) * n);
         std::allocator<T>{}.deallocate(p, n);
     }
 };
