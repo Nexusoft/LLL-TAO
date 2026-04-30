@@ -57,6 +57,23 @@ namespace TAO
             uint1024_t hashNext = hashPrime;
             if(!vOffsets.empty())
             {
+                /* Defensive guard against malformed offsets vectors.
+                 *
+                 * A well-formed vOffsets is [gap_1 .. gap_(N-1), frac_0 .. frac_3]
+                 * with N >= 2 (chain length 2 or longer), giving size >= 5.
+                 * Any non-empty vector with size < 5 would unsigned-underflow
+                 * `nSize - 4` below, walking the loop off the end of the buffer
+                 * and reading out-of-bounds memory at `&vOffsets[nSize-4]`.
+                 *
+                 * The submission path is shielded by VerifySubmittedPrimeOffsets,
+                 * but GetPrimeDifficulty is also reachable from local-derivation
+                 * paths (e.g. GetOffsets fallback in miner sign_block) where
+                 * GetOffsets() can legitimately return an empty/short vector if
+                 * the base prime fails PrimeCheck.  Returning 0.0 here matches
+                 * the "not a valid prime cluster" semantics used above. */
+                if(vOffsets.size() < 5)
+                    return 0.0;
+
                 /* Loop through offsets pattern. */
                 uint32_t nSize = vOffsets.size();
                 for(uint32_t n = 0; n < nSize - 4; ++n)
