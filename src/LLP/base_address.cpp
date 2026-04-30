@@ -17,10 +17,32 @@ ________________________________________________________________________________
 #include <LLC/hash/SK.h>         //LLC::SK64
 #include <Util/include/debug.h>  //debug::log
 #include <Util/include/memory.h> //memory::compare
-#include <algorithm>             //std::copy
+#include <algorithm>             //std::ranges::copy
+#include <iterator>              //std::begin
+#include <span>                  //std::span — typed byte windows
+#include <type_traits>           //std::is_trivially_copyable_v
 
 namespace LLP
 {
+    /** Local helper: typed byte-view of a trivially-copyable object.
+     *  Lets us drop the C-style `(uint8_t*)&obj` casts that previously
+     *  spelled out the same byte-window manually. */
+    template<typename T>
+    [[nodiscard]] inline std::span<const uint8_t> byte_span(const T& obj) noexcept
+    {
+        static_assert(std::is_trivially_copyable_v<T>,
+                      "byte_span requires a trivially-copyable source object");
+        return {reinterpret_cast<const uint8_t*>(&obj), sizeof(T)};
+    }
+
+    template<typename T>
+    [[nodiscard]] inline std::span<uint8_t> writable_byte_span(T& obj) noexcept
+    {
+        static_assert(std::is_trivially_copyable_v<T>,
+                      "writable_byte_span requires a trivially-copyable target object");
+        return {reinterpret_cast<uint8_t*>(&obj), sizeof(T)};
+    }
+
     static const uint8_t pchIPv4[12] =  {0,0,0,0,0,0,0,0,0,0,0xff,0xff};
     static const uint8_t pchLocal[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1};
     static const uint8_t pchRFC4862[] = {0xFE,0x80,0,0,0,0,0,0};
@@ -60,8 +82,8 @@ namespace LLP
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(port)
     {
-        std::copy((uint8_t*)&pchIPv4[0], (uint8_t*)&pchIPv4[0] + 12, (uint8_t*)&ip[0]);
-        std::copy((uint8_t*)&ipv4Addr, (uint8_t*)&ipv4Addr + 4, (uint8_t*)&ip[0] + 12);
+        std::ranges::copy(pchIPv4, std::begin(ip));
+        std::ranges::copy(byte_span(ipv4Addr), std::begin(ip) + 12);
     }
 
 
@@ -70,7 +92,7 @@ namespace LLP
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(port)
     {
-        std::copy((uint8_t*)&ipv6Addr, (uint8_t*)&ipv6Addr + 16, (uint8_t*)&ip[0]);
+        std::ranges::copy(byte_span(ipv6Addr), std::begin(ip));
     }
 
 
@@ -85,8 +107,8 @@ namespace LLP
             return;
         }
 
-        std::copy((uint8_t*)&pchIPv4[0], (uint8_t*)&pchIPv4[0] + 12, (uint8_t*)&ip[0]);
-        std::copy((uint8_t*)&addr.sin_addr, (uint8_t*)&addr.sin_addr + 4, (uint8_t*)&ip[0] + 12);
+        std::ranges::copy(pchIPv4, std::begin(ip));
+        std::ranges::copy(byte_span(addr.sin_addr), std::begin(ip) + 12);
 
         nPort = ntohs(addr.sin_port);
     }
@@ -103,7 +125,7 @@ namespace LLP
             return;
         }
 
-        std::copy((uint8_t*)&addr.sin6_addr, (uint8_t*)&addr.sin6_addr + 16, (uint8_t*)&ip[0]);
+        std::ranges::copy(byte_span(addr.sin6_addr), std::begin(ip));
 
         nPort = ntohs(addr.sin6_port);
     }
@@ -461,7 +483,8 @@ namespace LLP
         if(!IsIPv4())
             return false;
 
-        std::copy((uint8_t*)&ip[0] + 12, (uint8_t*)&ip[0] + 16, (uint8_t*)pipv4Addr);
+        std::ranges::copy(std::span<const uint8_t, 16>{ip}.subspan(12, 4),
+                          writable_byte_span(*pipv4Addr).begin());
         return true;
     }
 
@@ -469,7 +492,8 @@ namespace LLP
     /* Gets an IPv6 address struct. */
     bool BaseAddress::GetIn6Addr(struct in6_addr* pipv6Addr) const
     {
-        std::copy((uint8_t*)&ip[0], (uint8_t*)&ip[0] + 16, (uint8_t*)pipv6Addr);
+        std::ranges::copy(std::span<const uint8_t, 16>{ip},
+                          writable_byte_span(*pipv6Addr).begin());
         return true;
     }
 
