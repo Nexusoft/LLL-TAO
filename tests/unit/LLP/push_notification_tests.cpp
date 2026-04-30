@@ -415,10 +415,10 @@ TEST_CASE("PushNotificationBuilder - Real-World Scenarios", "[push_notification]
         REQUIRE(primeNotif.DATA[3] == hashNotif.DATA[3]);
         
         /* Verify different channel heights.  The channel-height field is a
-         * 4-byte big-endian integer at DATA[4..7]; only the LSB (DATA[7])
-         * differs for the small heights used here (333 vs 667 both fit in
-         * two bytes, so DATA[4..6] are 0x00 in both cases).  Compare the
-         * full four-byte slice, not just DATA[4]. */
+         * 4-byte big-endian integer at DATA[4..7].  333 = 0x0000014D and
+         * 667 = 0x0000029B, so DATA[4..5] are 0x00 in both cases and
+         * DATA[6..7] hold the differing bytes (0x01,0x4D vs 0x02,0x9B).
+         * Compare the full four-byte slice rather than a single byte. */
         REQUIRE(std::memcmp(&primeNotif.DATA[4], &hashNotif.DATA[4], 4) != 0);
     }
 }
