@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <unit/catch2/catch.hpp>
 
+#include <cstring>
+
 #include <LLP/include/push_notification.h>
 #include <LLP/include/miner_push_dispatcher.h>
 #include <LLP/packets/packet.h>
@@ -417,10 +419,7 @@ TEST_CASE("PushNotificationBuilder - Real-World Scenarios", "[push_notification]
          * differs for the small heights used here (333 vs 667 both fit in
          * two bytes, so DATA[4..6] are 0x00 in both cases).  Compare the
          * full four-byte slice, not just DATA[4]. */
-        REQUIRE((primeNotif.DATA[4] != hashNotif.DATA[4] ||
-                 primeNotif.DATA[5] != hashNotif.DATA[5] ||
-                 primeNotif.DATA[6] != hashNotif.DATA[6] ||
-                 primeNotif.DATA[7] != hashNotif.DATA[7]));
+        REQUIRE(std::memcmp(&primeNotif.DATA[4], &hashNotif.DATA[4], 4) != 0);
     }
 }
 
