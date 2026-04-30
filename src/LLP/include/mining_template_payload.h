@@ -67,9 +67,22 @@ namespace LLP
             return result;
         }
 
+        /* Consistent-snapshot rule: derive every metadata field — height,
+         * channel-height, and hash — from a SINGLE load of stateBest.  The
+         * previous code did three independent atomic reads
+         * (tStateBest.load(), hashBestChain.load(), GetLastState() over the
+         * current chain), which during a fork-resolution storm could
+         * straddle several distinct tips and produce a packet whose
+         * 12-byte metadata header advertised a different height than the
+         * contained 216-byte block body.
+         *
+         * stateBest.GetHash() is computed from the snapshot itself, so
+         * (height, hash) cannot disagree by construction. */
         TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
         TAO::Ledger::BlockState stateChannel = stateBest;
-        const uint1024_t hashBestChain = TAO::Ledger::ChainState::hashBestChain.load();
+        const uint1024_t hashBestChain =
+            stateBest.IsNull() ? TAO::Ledger::ChainState::hashBestChain.load()
+                               : stateBest.GetHash();
         uint32_t nChannelHeight = 0;
         if(TAO::Ledger::GetLastState(stateChannel, pBlock->nChannel))
             nChannelHeight = stateChannel.nChannelHeight;

@@ -2209,7 +2209,8 @@ namespace LLP
 
             const uint1024_t hashPreviousChain = m_hashLastPushedChain;
             const TemplatePushDecision decision = ApplyTemplatePushThrottle(
-                m_last_template_push_time, m_force_next_push, m_hashLastPushedChain, hashBestChain);
+                m_last_template_push_time, m_force_next_push, m_hashLastPushedChain,
+                m_pushedTipHistory, hashBestChain);
             if(decision.eReason == TemplatePushDecisionReason::CHAIN_TIP_CHANGED)
             {
                 /* Hash-change bypass: chain tip advanced — always deliver. */
@@ -2308,7 +2309,8 @@ namespace LLP
              * skip the time floor so miners receive the new template immediately. */
             const uint1024_t hashPreviousChain = m_hashLastPushedChain;
             const TemplatePushDecision decision = ApplyTemplatePushThrottle(
-                m_last_template_push_time, m_force_next_push, m_hashLastPushedChain, hashCurrentChain);
+                m_last_template_push_time, m_force_next_push, m_hashLastPushedChain,
+                m_pushedTipHistory, hashCurrentChain);
             if(decision.eReason == TemplatePushDecisionReason::CHAIN_TIP_CHANGED)
             {
                 /* Hash-change bypass: chain tip advanced — always deliver. */
@@ -2830,6 +2832,19 @@ namespace LLP
                        " hashPrevBlock=", pTritium->hashPrevBlock.SubString(),
                        " merkle=", hashMerkle.SubString());
             respond_auto(BLOCK_ACCEPTED);
+
+            /* Option E — clear the pushed-tip history and force the next
+             * SetBest fan-out to bypass the throttle.  The submitted block
+             * has just superseded the chain; the post-SUBMIT_BLOCK SetBest
+             * cascade may resolve to a tip whose hash the storm earlier
+             * pre-poisoned into the ring.  Clearing here guarantees the
+             * miner that just won always receives the next template
+             * regardless of throttle history. */
+            {
+                LOCK(MUTEX);
+                m_pushedTipHistory.Clear();
+                m_force_next_push = true;
+            }
 
             if(hashGenesis != 0)
             {

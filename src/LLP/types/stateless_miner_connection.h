@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <LLP/include/auto_cooldown.h>
 #include <LLP/include/get_block_policy.h>
 #include <LLP/include/mining_constants.h>
+#include <LLP/include/mining_template_delivery.h>
 #include <TAO/Ledger/types/block.h>
 #include <atomic>
 #include <chrono>
@@ -162,9 +163,21 @@ namespace LLP
         bool m_force_next_push{false};
 
         /** Best-chain hash of the last tip delivered on the stateless push path.
-         *  Protected by MUTEX and used to bypass the time floor whenever the
-         *  chain tip changes, matching the legacy mining lane semantics. */
+         *  Protected by MUTEX.  Retained for diagnostic logging (the
+         *  push-throttle bypass decision is made against m_pushedTipHistory
+         *  below, which is a time-windowed ring that closes the
+         *  fork-storm pre-poison hole that a single-slot field cannot). */
         uint1024_t m_hashLastPushedChain;
+
+        /** Time-windowed ring of recently delivered tips (Option B).
+         *  Protected by MUTEX.  See PushedTipHistory for full rationale —
+         *  briefly: a fork-resolution storm can cycle through tips that
+         *  later recur via SetBest; with a single-slot last-pushed field
+         *  the throttle's hash bypass would falsely fire on the recurrence
+         *  and then silently strand the miner.  The ring records every
+         *  delivered tip for PushedTipHistory::TTL_MS so recurrence is
+         *  correctly time-gated while genuinely new tips bypass immediately. */
+        PushedTipHistory m_pushedTipHistory;
 
         /** 1-second rate-limit floor for GET_BLOCK fallback polling.
          *
