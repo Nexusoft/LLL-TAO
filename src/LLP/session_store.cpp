@@ -212,7 +212,20 @@ namespace LLP
         if (nNow == 0)
             nNow = runtime::unifiedtimestamp();
 
-        return (nLastActivity + nTimeoutSec < nNow);
+        /* Parity with NodeSessionEntry::IsExpired (BUG-4 fix):
+         * runtime::unifiedtimestamp() can move backwards after time
+         * adjustments.  Use strict `<` so that the same-second case
+         * (nNow == nLastActivity) falls through to the comparison below,
+         * preserving the documented `SweepExpired(0)` semantic.  Use `>=`
+         * on the timeout comparison so that nTimeoutSec == 0 means
+         * "expire as soon as nNow has caught up with nLastActivity"
+         * rather than "expire only after at least one second of inactivity".
+         * Both SweepExpired() callers (server.cpp cleanup loop) must
+         * agree to within the same second on which sessions to reap. */
+        if (nNow < nLastActivity)
+            return false;
+
+        return (nNow - nLastActivity) >= nTimeoutSec;
     }
 
 

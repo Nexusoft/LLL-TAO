@@ -652,10 +652,11 @@ namespace LLP
          * Falcon keys per session (a long-lived "physical" key and a per-block
          * "disposable" key), but today's protocol uses ONE key — vMinerPubKey,
          * with hashKeyID as its 256-bit identifier.  See the SUBMIT_BLOCK
-         * signature path (stateless_miner_connection.cpp around line 1640),
-         * which reads the verifying key from mapSessionKeys[nSessionId]
-         * (populated from vMinerPubKey at AUTH time).  The disposable-key
-         * fields had become redundant aliases of vMinerPubKey/hashKeyID. */
+         * case in StatelessMinerConnection::ProcessPacket
+         * (src/LLP/stateless_miner_connection.cpp), which reads the verifying
+         * key from mapSessionKeys[nSessionId] (populated from vMinerPubKey at
+         * AUTH time).  The disposable-key fields had become redundant aliases
+         * of vMinerPubKey/hashKeyID. */
         uint64_t nSessionStart;      // Timestamp when session was established
         uint32_t nKeepaliveCount;    // Number of keepalives received
         uint32_t nKeepaliveSent;     // Number of keepalive responses sent
