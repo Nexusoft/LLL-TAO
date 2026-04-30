@@ -21,6 +21,7 @@ ________________________________________________________________________________
 #include <LLP/include/legacy_lane_handler.h>
 #include <LLP/include/auto_cooldown.h>
 #include <LLP/include/mining_constants.h>
+#include <LLP/include/mining_template_delivery.h>
 #include <LLP/include/get_block_policy.h>
 #include <TAO/Ledger/types/block.h>
 #include <Legacy/types/coinbase.h>
@@ -519,8 +520,20 @@ namespace LLP
          *  a stale template for up to 1 second even though a new best block exists.
          *
          *  Zero-initialized (default uint1024_t{}) so the first push is always
-         *  delivered regardless of the time floor. */
+         *  delivered regardless of the time floor.
+         *
+         *  Retained for diagnostic logging.  The push-throttle bypass decision
+         *  is made against m_pushedTipHistory below, which closes the
+         *  fork-storm pre-poison hole that a single-slot field cannot. */
         uint1024_t m_hashLastPushedChain;
+
+        /** Time-windowed ring of recently delivered tips (Option B).
+         *  Protected by MUTEX.  See LLP::PushedTipHistory for full rationale —
+         *  in short, a fork-resolution storm can cycle through tips and later
+         *  recur via SetBest; the ring records every delivered tip for
+         *  PushedTipHistory::TTL_MS so a recurrence is correctly time-gated
+         *  while a genuinely new tip bypasses the time floor immediately. */
+        PushedTipHistory m_pushedTipHistory;
 
         /** 1-second rate-limit floor for GET_BLOCK fallback polling.
          *
