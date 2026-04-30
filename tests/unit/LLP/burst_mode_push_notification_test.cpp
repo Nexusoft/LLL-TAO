@@ -169,8 +169,15 @@ namespace
         for (uint32_t i = 0; i < nPrime && idx < nTotal; ++i, ++idx)
             vMiners[idx] = { true, 1, true };
 
-        /* Hash subscribers */
-        for (; idx < nPolling + nDisconnected + nSubscribed && idx < nTotal; ++idx)
+        /* Hash subscribers — fill the remaining subscriber slots only.
+         * The previous bound `idx < nPolling + nDisconnected + nSubscribed`
+         * was equivalent to `idx < nTotal`, which made this loop consume the
+         * polling and disconnected slots too, leaving nothing for the
+         * subsequent loops.  As a result nExpPolling and nExpDisconnected
+         * came out as 0 and the invariant `nPrime + nHash < N` failed.
+         * Bound to `nSubscribed` so Hash takes only the subscriber slots
+         * Prime did not claim. */
+        for (; idx < nSubscribed && idx < nTotal; ++idx)
             vMiners[idx] = { true, 2, true };
 
         /* Polling miners (unsubscribed) */

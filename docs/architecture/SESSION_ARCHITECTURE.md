@@ -94,7 +94,7 @@ CanonicalSession
 ├── Connection:    strAddress, strIP, nProtocolLane, fStatelessLive, fLegacyLive
 ├── Lifecycle:     nSessionState, fAuthenticated, nSessionStart, nLastActivity
 ├── Mining:        nChannel, nHeight, hashLastBlock, canonical_snap
-├── Auth/Crypto:   vMinerPubKey, vChaChaKey, nFalconVersion, vDisposablePubKey
+├── Auth/Crypto:   vMinerPubKey, vChaChaKey, nFalconVersion
 ├── Reward:        hashRewardAddress, fRewardBound
 ├── Notifications: fSubscribedToNotifications, nSubscribedChannel
 ├── Keepalive:     nKeepaliveCount, nLastKeepaliveTime

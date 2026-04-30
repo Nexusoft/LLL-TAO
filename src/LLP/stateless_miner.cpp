@@ -71,7 +71,6 @@ namespace LLP
             "MissingFalconKey",
             "RewardBoundMissingHash",
             "EncryptionReadyMissingKey",
-            "DisposableKeyMissing",
             "SessionIdMismatch",
             "GenesisMismatch",
             "FalconKeyMismatch"
@@ -151,8 +150,6 @@ namespace LLP
     , strUserName("")
     , vAuthNonce()
     , vMinerPubKey()
-    , vDisposablePubKey()
-    , hashDisposableKeyID(0)
     , nSessionStart(0)
     , nKeepaliveCount(0)
     , nKeepaliveSent(0)
@@ -201,8 +198,6 @@ namespace LLP
     , strUserName("")
     , vAuthNonce()
     , vMinerPubKey()
-    , vDisposablePubKey()
-    , hashDisposableKeyID(0)
     , nSessionStart(0)
     , nKeepaliveCount(0)
     , nKeepaliveSent(0)
@@ -344,17 +339,7 @@ namespace LLP
         return c;
     }
 
-    MiningContext MiningContext::WithDisposableKey(
-        const std::vector<uint8_t>& vPubKey_,
-        const uint256_t& hashDisposableKeyID_) const
-    {
-        MiningContext c = *this;
-        c.vDisposablePubKey = vPubKey_;
-        c.hashDisposableKeyID = (!vPubKey_.empty() && hashDisposableKeyID_ == 0)
-            ? LLC::SK256(vPubKey_)
-            : hashDisposableKeyID_;
-        return c;
-    }
+    /* WithDisposableKey() removed in the Phase-2 cleanup — see header for rationale. */
 
     MiningContext MiningContext::WithSessionStart(uint64_t nSessionStart_) const
     {
@@ -491,7 +476,22 @@ namespace LLP
     {
         /* Use GetSessionBinding() to check the three identity fields
          * are non-zero when the session is authenticated.
-         * Individual error codes are preserved for diagnostics. */
+         * Individual error codes are preserved for diagnostics.
+         *
+         * NOTE: There is intentionally no separate disposable-key check here.
+         * The disposable Falcon key was a draft-design artifact: the original
+         * stateless-mining sketch envisioned a per-block "disposable" key
+         * distinct from the long-lived "physical" Falcon key
+         * (see docs/falcon-verification.md).  The shipping protocol uses ONE
+         * Falcon key per session — vMinerPubKey, identified by hashKeyID
+         * (the SK256 of the pubkey).  hashKeyID != 0 && fAuthenticated is
+         * therefore the canonical "this session has a usable Falcon key"
+         * predicate, and it is already covered above by the
+         * MissingFalconKey check via SessionBinding.  The vestigial
+         * vDisposablePubKey field was a redundant projection of vMinerPubKey
+         * with no independent identity, and was removed entirely in the
+         * Phase-2 cleanup along with WithDisposableKey() and the
+         * SessionConsistencyResult::DisposableKeyMissing enum value. */
         if(fAuthenticated)
         {
             const SessionBinding binding = GetSessionBinding();
@@ -503,11 +503,6 @@ namespace LLP
 
             if(binding.hashKeyID == 0)
                 return SessionConsistencyResult::MissingFalconKey;
-
-            /* 2.2: Authenticated sessions must have a disposable key for block
-             * signature verification.  Missing key → submissions will fail. */
-            if(vDisposablePubKey.empty())
-                return SessionConsistencyResult::DisposableKeyMissing;
         }
 
         if(fRewardBound && hashRewardAddress == 0)

@@ -119,12 +119,16 @@ namespace LLP
         if(entryBinding.hashKeyID == 0)
             return SessionConsistencyResult::MissingFalconKey;
 
-        /* Delegate to the embedded MiningContext's own consistency checks. */
-        const SessionConsistencyResult contextConsistency = context.ValidateConsistency();
-        if(contextConsistency != SessionConsistencyResult::Ok)
-            return contextConsistency;
-
-        /* Cross-check: context identity fields must match entry-level fields.
+        /* Cross-check FIRST: context identity fields must match entry-level
+         * fields.  Identity divergence is a more severe diagnostic than any
+         * field-completeness error reported by MiningContext::ValidateConsistency
+         * (a peer attempting to bind to a different session ID / genesis /
+         * Falcon key is a security event; a peer that simply hasn't completed
+         * the encryption handshake is operational state).  Reporting the
+         * identity error first preserves the operator triage signal and
+         * matches the diagnostic contract asserted by node_session_registry
+         * unit tests :502 and :540.
+         *
          * Uses SessionBinding::FirstMismatch() to centralize the partial-match
          * comparison.  Fields that are zero in the context binding are
          * skipped — they are not yet authoritative. */
@@ -132,6 +136,12 @@ namespace LLP
         const SessionConsistencyResult crossCheck = ctxBinding.FirstMismatch(entryBinding);
         if(crossCheck != SessionConsistencyResult::Ok)
             return crossCheck;
+
+        /* Then delegate to the embedded MiningContext's own consistency
+         * checks (reward-bound coherence, encryption-ready coherence, etc.). */
+        const SessionConsistencyResult contextConsistency = context.ValidateConsistency();
+        if(contextConsistency != SessionConsistencyResult::Ok)
+            return contextConsistency;
 
         return SessionConsistencyResult::Ok;
     }
@@ -156,11 +166,20 @@ namespace LLP
          * runtime::unifiedtimestamp() uses system_clock + UNIFIED_AVERAGE_OFFSET,
          * which can move backwards after time adjustments.  If nNow < nLastActivity,
          * the unsigned subtraction wraps to a huge value, falsely triggering expiry.
-         * Be conservative: if the clock went backwards, the session is NOT expired. */
-        if(nNow <= nLastActivity)
+         * Be conservative: if the clock went backwards, the session is NOT expired.
+         *
+         * NOTE: Use strict `<` (not `<=`) so that the same-second case
+         * (nNow == nLastActivity) falls through to the comparison below.  This
+         * keeps the documented `SweepExpired(0)` semantic — "expire immediately
+         * after disconnect" — working when the disconnect and the sweep land
+         * in the same wall-clock second. */
+        if(nNow < nLastActivity)
             return false;
 
-        return (nNow - nLastActivity) > nTimeoutSec;
+        /* Use `>=` rather than `>` so that nTimeoutSec == 0 means
+         * "expire as soon as nNow has caught up with nLastActivity" rather
+         * than "expire only after at least one second of inactivity". */
+        return (nNow - nLastActivity) >= nTimeoutSec;
     }
 
 

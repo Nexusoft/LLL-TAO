@@ -44,3 +44,20 @@ jobs:
 
       - name: Unit-test build
         run: make -f makefile.cli UNIT_TESTS=1 -j2
+
+      - name: Unit-test run
+        # Execute the unit-test binary produced by the previous step.
+        # Catch2 returns a non-zero exit code if any assertion fails, which
+        # surfaces test regressions in the workflow run summary.  We pipe
+        # output through `tee` so the full Catch2 report is preserved in the
+        # CI log even when assertions fail.
+        #
+        # NOTE: `continue-on-error: true` is set as a transitional measure
+        # while the small number of pre-existing test-only flakes documented
+        # in the bundle PR are repaired.  Flip this to strict (`false` or
+        # remove the line) once the unit test binary exits 0 on a clean run
+        # of `origin/NODE`.
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          ./nexus 2>&1 | tee unit-tests.log

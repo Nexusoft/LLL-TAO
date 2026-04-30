@@ -53,8 +53,10 @@ TEST_CASE("SET_CHANNEL Payload Parsing Tests", "[miner][llp]")
     
     SECTION("4-byte payload - Channel 1 (Legacy)")
     {
-        /* Create 4-byte little-endian representation of channel 1 */
-        std::vector<uint8_t> vData = {0x01, 0x00, 0x00, 0x00};
+        /* Create 4-byte big-endian representation of channel 1.
+         * convert::bytes2uint reads MSB-first (BYTES[0] << 24 | ... | BYTES[3]),
+         * so channel value 1 is encoded as {0x00, 0x00, 0x00, 0x01}. */
+        std::vector<uint8_t> vData = {0x00, 0x00, 0x00, 0x01};
         
         REQUIRE(vData.size() >= 4);
         
@@ -66,8 +68,8 @@ TEST_CASE("SET_CHANNEL Payload Parsing Tests", "[miner][llp]")
     
     SECTION("4-byte payload - Channel 2 (Legacy)")
     {
-        /* Create 4-byte little-endian representation of channel 2 */
-        std::vector<uint8_t> vData = {0x02, 0x00, 0x00, 0x00};
+        /* Create 4-byte big-endian representation of channel 2 */
+        std::vector<uint8_t> vData = {0x00, 0x00, 0x00, 0x02};
         
         REQUIRE(vData.size() >= 4);
         
@@ -112,8 +114,8 @@ TEST_CASE("SET_CHANNEL Payload Parsing Tests", "[miner][llp]")
     
     SECTION("Large payload - 8 bytes (should parse first 4)")
     {
-        /* Create 8-byte payload where first 4 bytes represent channel 1 */
-        std::vector<uint8_t> vData = {0x01, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF};
+        /* Create 8-byte payload where first 4 bytes (big-endian) represent channel 1 */
+        std::vector<uint8_t> vData = {0x00, 0x00, 0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF};
         
         REQUIRE(vData.size() >= 4);
         

@@ -111,7 +111,6 @@ namespace LLP
         MissingFalconKey,
         RewardBoundMissingHash,
         EncryptionReadyMissingKey,
-        DisposableKeyMissing,
         SessionIdMismatch,
         GenesisMismatch,
         FalconKeyMismatch
@@ -647,9 +646,17 @@ namespace LLP
         uint256_t hashGenesis;       // Phase 2: Tritium genesis hash (authentication)
         std::string strUserName;     // Phase 2: Username for trust-based addressing
         std::vector<uint8_t> vAuthNonce;  // Challenge nonce for authentication
-        std::vector<uint8_t> vMinerPubKey; // Miner's Falcon public key
-        std::vector<uint8_t> vDisposablePubKey; // Disposable Falcon session public key
-        uint256_t hashDisposableKeyID;          // Disposable Falcon session key ID
+        std::vector<uint8_t> vMinerPubKey; // Miner's Falcon public key (canonical session key)
+        /* NOTE: vDisposablePubKey/hashDisposableKeyID were removed in the
+         * Phase-2 cleanup.  An early stateless-mining draft envisioned two
+         * Falcon keys per session (a long-lived "physical" key and a per-block
+         * "disposable" key), but today's protocol uses ONE key — vMinerPubKey,
+         * with hashKeyID as its 256-bit identifier.  See the SUBMIT_BLOCK
+         * case in StatelessMinerConnection::ProcessPacket
+         * (src/LLP/stateless_miner_connection.cpp), which reads the verifying
+         * key from mapSessionKeys[nSessionId] (populated from vMinerPubKey at
+         * AUTH time).  The disposable-key fields had become redundant aliases
+         * of vMinerPubKey/hashKeyID. */
         uint64_t nSessionStart;      // Timestamp when session was established
         uint32_t nKeepaliveCount;    // Number of keepalives received
         uint32_t nKeepaliveSent;     // Number of keepalive responses sent
@@ -884,13 +891,9 @@ namespace LLP
          **/
         [[nodiscard]] MiningContext WithPubKey(const std::vector<uint8_t>& vPubKey_) const;
 
-        /** WithDisposableKey
-         *
-         *  Returns a new context with updated disposable Falcon session key state.
-         *
-         **/
-        [[nodiscard]] MiningContext WithDisposableKey(const std::vector<uint8_t>& vPubKey_,
-                                        const uint256_t& hashDisposableKeyID_ = 0) const;
+        /* NOTE: WithDisposableKey() was removed in the Phase-2 cleanup.  The
+         * disposable Falcon key was a draft-design artifact aliased to
+         * vMinerPubKey; callers should use WithPubKey() and WithKeyId(). */
 
         /** WithSessionStart
          *
