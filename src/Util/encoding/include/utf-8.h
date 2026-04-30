@@ -72,8 +72,11 @@ DEALINGS IN THE SOFTWARE.
     #define UTF_CPP_OVERRIDE override
     #define UTF_CPP_NOEXCEPT noexcept
 #else // C++ 98/03
+    // Note: dynamic-exception-specifications such as throw() were deprecated
+    // in C++17 and removed in C++20. Define UTF_CPP_NOEXCEPT as empty in the
+    // pre-C++11 fallback so the header remains compilable across all standards.
     #define UTF_CPP_OVERRIDE
-    #define UTF_CPP_NOEXCEPT throw()
+    #define UTF_CPP_NOEXCEPT
 #endif // C++ 11 or later
 
 
