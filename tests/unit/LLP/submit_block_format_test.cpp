@@ -162,11 +162,12 @@ TEST_CASE("SUBMIT_BLOCK Full Block Format Detection", "[submit_block]")
         REQUIRE(FalconConstants::FULL_BLOCK_LEGACY_NONCE_OFFSET == 208);
         
         // Main wrapper constants:
-        // SUBMIT_BLOCK_WRAPPER_MAX = legacy_header(220) + prime_offsets(256)
-        //   + timestamp(8) + siglen(2) + Falcon-1024 sig(1577) = 2063 bytes
-        REQUIRE(FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX == 2063);
-        // SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX = 2063 + ChaCha20 overhead(28) = 2091 bytes
-        REQUIRE(FalconConstants::SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX == 2091);
+        // SUBMIT_BLOCK_WRAPPER_MAX = legacy_header(220) + prime_offsets(22)
+        //   + timestamp(8) + siglen(2) + Falcon-1024 sig(1577) = 1829 bytes
+        // Per NexusMiner PR #675, prime_offsets is capped at PRIME_VOFFSETS_MAX_SIZE = 22.
+        REQUIRE(FalconConstants::SUBMIT_BLOCK_WRAPPER_MAX == 1829);
+        // SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX = 1829 + ChaCha20 overhead(28) = 1857 bytes
+        REQUIRE(FalconConstants::SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX == 1857);
         
         // Detailed constants for Tritium/Legacy specific values (Falcon-512, no prime offsets)
         REQUIRE(FalconConstants::SUBMIT_BLOCK_FULL_TRITIUM_WRAPPER_MAX == 1035);

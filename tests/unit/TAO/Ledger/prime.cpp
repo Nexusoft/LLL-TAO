@@ -284,6 +284,20 @@ TEST_CASE("GetPrimeDifficulty rejects undersized vOffsets without OOB", "[prime]
         REQUIRE(TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, false) == 0.0);
     }
 
+    SECTION("size 2 returns 0.0")
+    {
+        std::vector<uint8_t> vOffsets = {0x01, 0x02};
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, true) == 0.0);
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, false) == 0.0);
+    }
+
+    SECTION("size 3 returns 0.0")
+    {
+        std::vector<uint8_t> vOffsets = {0x01, 0x02, 0x03};
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, true) == 0.0);
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, false) == 0.0);
+    }
+
     SECTION("size 4 returns 0.0 (boundary: nSize-4 == 0 with no chain bytes)")
     {
         std::vector<uint8_t> vOffsets = {0x01, 0x02, 0x03, 0x04};

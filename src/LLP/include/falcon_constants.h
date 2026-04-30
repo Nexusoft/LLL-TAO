@@ -314,29 +314,50 @@ namespace FalconConstants
     static const size_t SUBMIT_BLOCK_WRAPPER_MIN = 82;
 
     /** Maximum prime offsets budget for Submit Block packets.
-     *  Prime-channel miners include a vOffsets array (Cunningham chain offsets).
-     *  Typical chains carry 5-20 bytes; 256 bytes provides ample safety margin. */
-    static const size_t SUBMIT_BLOCK_PRIME_OFFSETS_MAX = 256;
+     *
+     *  Prime-channel miners include a vOffsets array describing a Cunningham
+     *  chain.  The wire layout is variable: a chain of length N produces
+     *  exactly (N − 1) chain-offset bytes followed by a fixed 4-byte
+     *  fractional-difficulty tail, i.e. `vOffsets.size() == (N - 1) + 4`.
+     *
+     *  No consumer of the wire format treats this constant as a fixed size.
+     *  The actual on-the-wire `vOffsets` length is derived at runtime by
+     *  callers (e.g. SubmitBlockPayloadInfo / compute_submit_payload_info on
+     *  the miner side; SerializedSize / VerifySubmittedPrimeOffsets here);
+     *  this constant is purely the upper bound used for buffer sizing,
+     *  packet-size validation, and the consensus-adjacent structural ceiling
+     *  enforced by `kMaxSerializedPrimeOffsets` in stateless_block_utility.cpp.
+     *
+     *  Value: 22 bytes  →  Cunningham chain of length up to 19
+     *  ( = 18 chain-offset bytes + 4 fractional-difficulty bytes).
+     *
+     *  This is far above any chain length found at any current or foreseeable
+     *  network difficulty.  It MUST stay in lockstep with the miner-side
+     *  `nexusminer::protocol::FalconConstants::PRIME_VOFFSETS_MAX_SIZE`
+     *  (NexusMiner PR #675) and the node-side
+     *  `kMaxSerializedPrimeOffsets`; a `static_assert` in
+     *  `stateless_block_utility.cpp` enforces that linkage on the node side. */
+    static const size_t SUBMIT_BLOCK_PRIME_OFFSETS_MAX = 22;
     
     /** Submit Block wrapper maximum (no encryption)
-     *  Format: [block_header(max=220)] [prime_offsets(max=256)] [timestamp(8)] [siglen(2)] [sig(max=1577)]
+     *  Format: [block_header(max=220)] [prime_offsets(max=22)] [timestamp(8)] [siglen(2)] [sig(max=1577)]
      *  Note: Miners submit block HEADERS only; transactions are NOT included.
-     *  Max: FULL_BLOCK_LEGACY_SIZE(220) + SUBMIT_BLOCK_PRIME_OFFSETS_MAX(256)
-     *       + TIMESTAMP_SIZE(8) + LENGTH_FIELD_SIZE(2) + FALCON1024_SIG_ABSOLUTE_MAX(1577) = 2063 bytes */
+     *  Max: FULL_BLOCK_LEGACY_SIZE(220) + SUBMIT_BLOCK_PRIME_OFFSETS_MAX(22)
+     *       + TIMESTAMP_SIZE(8) + LENGTH_FIELD_SIZE(2) + FALCON1024_SIG_ABSOLUTE_MAX(1577) = 1829 bytes */
     static const size_t SUBMIT_BLOCK_WRAPPER_MAX =
         FULL_BLOCK_LEGACY_SIZE +          // 220 bytes (max block header, no transactions)
-        SUBMIT_BLOCK_PRIME_OFFSETS_MAX +   // 256 bytes (generous prime offsets budget)
+        SUBMIT_BLOCK_PRIME_OFFSETS_MAX +   // 22 bytes (canonical prime offsets ceiling)
         TIMESTAMP_SIZE +                   // 8 bytes
         LENGTH_FIELD_SIZE +                // 2 bytes
         FALCON1024_SIG_ABSOLUTE_MAX;       // 1577 bytes (Falcon-1024 CT, default)
-    // = 2063 bytes
+    // = 1829 bytes
     
     /** Submit Block wrapper maximum (with ChaCha20-Poly1305 encryption)
      *  Adds ChaCha20-Poly1305 overhead: nonce(12) + auth_tag(16) = 28 bytes
-     *  2063 + 28 = 2091 bytes */
+     *  1829 + 28 = 1857 bytes */
     static const size_t SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX =
         SUBMIT_BLOCK_WRAPPER_MAX + CHACHA20_OVERHEAD;
-    // = 2091 bytes
+    // = 1857 bytes
 
 
     /***************************************************************************
@@ -368,9 +389,20 @@ namespace FalconConstants
      *  Minimum is the Hash-channel size; additional Prime offsets add N bytes. */
     static const size_t SUBMIT_BLOCK_FULL_TRITIUM_PRIME_WRAPPER_MIN = SUBMIT_BLOCK_FULL_TRITIUM_HASH_WRAPPER_MAX;
 
+    /** Prime-channel Tritium wrapper signature (Falcon-512) - localhost, MAX
+     *  MIN(1035) + SUBMIT_BLOCK_PRIME_OFFSETS_MAX(22) = 1057 bytes
+     *  Mirrors NexusMiner PR #675 SUBMIT_BLOCK_WRAPPER_TRITIUM_MAX (Falcon-512 variant). */
+    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_PRIME_WRAPPER_MAX =
+        SUBMIT_BLOCK_FULL_TRITIUM_PRIME_WRAPPER_MIN + SUBMIT_BLOCK_PRIME_OFFSETS_MAX;
+
     /** Prime-channel Tritium wrapper signature (Falcon-512) - encrypted
      *  Minimum is the encrypted Hash-channel size; additional Prime offsets add N bytes. */
     static const size_t SUBMIT_BLOCK_FULL_TRITIUM_PRIME_WRAPPER_ENCRYPTED_MIN = SUBMIT_BLOCK_FULL_TRITIUM_HASH_WRAPPER_ENCRYPTED_MAX;
+
+    /** Prime-channel Tritium wrapper signature (Falcon-512) - encrypted, MAX
+     *  ENCRYPTED_MIN(1063) + SUBMIT_BLOCK_PRIME_OFFSETS_MAX(22) = 1085 bytes */
+    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_PRIME_WRAPPER_ENCRYPTED_MAX =
+        SUBMIT_BLOCK_FULL_TRITIUM_PRIME_WRAPPER_ENCRYPTED_MIN + SUBMIT_BLOCK_PRIME_OFFSETS_MAX;
 
     /** Legacy wrapper signature (Falcon-512) - localhost
      *  Format: [block(220)][timestamp(8)][siglen(2)][sig(809)]
@@ -410,9 +442,21 @@ namespace FalconConstants
      *  Minimum is the Hash-channel size; additional Prime offsets add N bytes. */
     static const size_t SUBMIT_BLOCK_FULL_TRITIUM_PRIME_WRAPPER_FALCON1024_MIN = SUBMIT_BLOCK_FULL_TRITIUM_HASH_WRAPPER_FALCON1024_MAX;
 
+    /** Prime-channel Tritium wrapper signature (Falcon-1024) - localhost, MAX
+     *  MIN(1803) + SUBMIT_BLOCK_PRIME_OFFSETS_MAX(22) = 1825 bytes
+     *  Mirrors NexusMiner PR #675 SUBMIT_BLOCK_WRAPPER_TRITIUM_MAX (1825). */
+    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_PRIME_WRAPPER_FALCON1024_MAX =
+        SUBMIT_BLOCK_FULL_TRITIUM_PRIME_WRAPPER_FALCON1024_MIN + SUBMIT_BLOCK_PRIME_OFFSETS_MAX;
+
     /** Prime-channel Tritium wrapper signature (Falcon-1024) - encrypted
      *  Minimum is the encrypted Hash-channel size; additional Prime offsets add N bytes. */
     static const size_t SUBMIT_BLOCK_FULL_TRITIUM_PRIME_WRAPPER_FALCON1024_ENCRYPTED_MIN = SUBMIT_BLOCK_FULL_TRITIUM_HASH_WRAPPER_FALCON1024_ENCRYPTED_MAX;
+
+    /** Prime-channel Tritium wrapper signature (Falcon-1024) - encrypted, MAX
+     *  ENCRYPTED_MIN(1831) + SUBMIT_BLOCK_PRIME_OFFSETS_MAX(22) = 1853 bytes
+     *  Mirrors NexusMiner PR #675 SUBMIT_BLOCK_WRAPPER_TRITIUM_ENCRYPTED_MAX (1853). */
+    static const size_t SUBMIT_BLOCK_FULL_TRITIUM_PRIME_WRAPPER_FALCON1024_ENCRYPTED_MAX =
+        SUBMIT_BLOCK_FULL_TRITIUM_PRIME_WRAPPER_FALCON1024_ENCRYPTED_MIN + SUBMIT_BLOCK_PRIME_OFFSETS_MAX;
 
     /** Legacy wrapper signature (Falcon-1024) - localhost
      *  Format: [block(220)][timestamp(8)][siglen(2)][sig(1577)]
