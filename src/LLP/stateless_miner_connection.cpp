@@ -2758,39 +2758,13 @@ namespace LLP
                     }
                 }
 
-                /* Ensure vDisposablePubKey is included in context for signature verification */
-                if(context.fAuthenticated && context.hashKeyID != 0)
-                {
-                    if(PACKET.HEADER == MINER_AUTH_RESPONSE &&
-                       !context.vMinerPubKey.empty() &&
-                       context.vDisposablePubKey.empty())
-                    {
-                        /* Use the already-stored hashKeyID instead of re-deriving
-                         * SK256(context.vMinerPubKey) — they are identical since hashKeyID
-                         * was derived from vMinerPubKey during authentication. */
-                        context = context.WithDisposableKey(context.vMinerPubKey,
-                                                            context.hashKeyID);
-                        debug::log(1, FUNCTION, "✓ Embedded disposable Falcon key in context");
-                    }
-
-                    /* Cross-check that mapSessionKeys and vDisposablePubKey hold
-                     * the same key.  AUTH stores vMinerPubKey; they MUST be identical
-                     * for SUBMIT_BLOCK signature verification to succeed. */
-                    if(!context.vDisposablePubKey.empty() && context.nSessionId != 0)
-                    {
-                        std::lock_guard<std::mutex> lock(SESSION_MUTEX);
-                        auto it = mapSessionKeys.find(context.nSessionId);
-                        if(it != mapSessionKeys.end() && !it->second.empty() &&
-                           it->second != context.vDisposablePubKey)
-                        {
-                            debug::error(FUNCTION, "⚠ KEY DIVERGENCE: mapSessionKeys pubkey differs from vDisposablePubKey");
-                            debug::error(FUNCTION, "  session_id=", context.nSessionId,
-                                         " map_key_size=", it->second.size(),
-                                         " disposable_key_size=", context.vDisposablePubKey.size());
-                            debug::error(FUNCTION, "  This will cause SUBMIT_BLOCK signature verification failures");
-                        }
-                    }
-                }
+                /* Phase-2 cleanup: vDisposablePubKey was a redundant projection
+                 * of vMinerPubKey; both fields are gone.  The SUBMIT_BLOCK
+                 * signature-verification path (around line 1640) reads the
+                 * verifying key from mapSessionKeys[nSessionId], which AUTH
+                 * populated from result.context.vMinerPubKey at line 2650.
+                 * No self-heal or cross-check is required — there is only one
+                 * Falcon key per session, with hashKeyID as its identifier. */
 
                 /* Atomic transform: apply auth completion state to CURRENT value in mapMiners.
                  * CRITICAL: This must be done AFTER ChaCha20 key derivation to ensure
@@ -2817,8 +2791,6 @@ namespace LLP
                                 result = result.WithSessionStart(authCtx.nSessionStart);
                             if(authCtx.fEncryptionReady && !authCtx.vChaChaKey.empty())
                                 result = result.WithChaChaKey(authCtx.vChaChaKey);
-                            if(!authCtx.vDisposablePubKey.empty())
-                                result = result.WithDisposableKey(authCtx.vDisposablePubKey, authCtx.hashDisposableKeyID);
                             return result;
                         });
                 }

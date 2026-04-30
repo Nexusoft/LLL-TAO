@@ -78,8 +78,6 @@ namespace LLP
         ctx.nFalconVersion    = nFalconVersion;
         ctx.fFalconVersionDetected = fFalconVersionDetected;
         ctx.vChaChaKey        = vChaChaKey;
-        ctx.vDisposablePubKey = vDisposablePubKey;
-        ctx.hashDisposableKeyID = hashDisposableKeyID;
 
         /* Reward */
         ctx.hashRewardAddress = hashRewardAddress;
@@ -145,8 +143,6 @@ namespace LLP
         s.nFalconVersion    = ctx.nFalconVersion;
         s.fFalconVersionDetected = ctx.fFalconVersionDetected;
         s.vChaChaKey        = ctx.vChaChaKey;
-        s.vDisposablePubKey = ctx.vDisposablePubKey;
-        s.hashDisposableKeyID = ctx.hashDisposableKeyID;
 
         /* Reward */
         s.hashRewardAddress = ctx.hashRewardAddress;

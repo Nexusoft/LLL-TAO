@@ -1150,8 +1150,6 @@ namespace LLP
                                     result = result.WithSessionStart(authCtx.nSessionStart);
                                 if(authCtx.fEncryptionReady && !authCtx.vChaChaKey.empty())
                                     result = result.WithChaChaKey(authCtx.vChaChaKey);
-                                if(!authCtx.vDisposablePubKey.empty())
-                                    result = result.WithDisposableKey(authCtx.vDisposablePubKey, authCtx.hashDisposableKeyID);
                                 return result;
                             }, 0);
                     }

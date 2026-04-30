@@ -260,7 +260,7 @@ These are the **new classes** introduced in our stateless mining work. They live
 | Category | Fields |
 |----------|--------|
 | Channel/Height | `nChannel`, `nHeight`, `nLastTemplateChannelHeight` |
-| Authentication | `fAuthenticated`, `hashKeyID`, `hashGenesis`, `vAuthNonce`, `vMinerPubKey`, `vDisposablePubKey`, `hashDisposableKeyID` |
+| Authentication | `fAuthenticated`, `hashKeyID`, `hashGenesis`, `vAuthNonce`, `vMinerPubKey` |
 | Session | `nSessionId`, `nSessionStart`, `nSessionTimeout`, `nKeepaliveCount`, `nKeepaliveSent`, `nLastKeepaliveTime` |
 | Reward | `hashRewardAddress`, `fRewardBound` |
 | Encryption | `vChaChaKey`, `fEncryptionReady` |
@@ -281,8 +281,7 @@ These are the **new classes** introduced in our stateless mining work. They live
 | `WithGenesis(hash)` | Set Tritium genesis (identity) |
 | `WithUserName(str)` | Set username for trust-based addressing |
 | `WithNonce(bytes)` | Set auth challenge nonce |
-| `WithPubKey(bytes)` | Store miner's Falcon public key |
-| `WithDisposableKey(bytes, hash)` | Store disposable Falcon session key state |
+| `WithPubKey(bytes)` | Store miner's Falcon public key (canonical session key; identified by `hashKeyID`) |
 | `WithSessionStart(t)` | Record session start timestamp |
 | `WithSessionTimeout(t)` | Set inactivity timeout |
 | `WithReconnectCount(n)` | Carry authoritative recovery reconnect metadata |

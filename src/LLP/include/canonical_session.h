@@ -94,8 +94,6 @@ namespace LLP
         bool                 fFalconVersionDetected = false;
         std::vector<uint8_t> vChaChaKey;
         uint64_t             nChaCha20Nonce         = 0;
-        std::vector<uint8_t> vDisposablePubKey;
-        uint256_t            hashDisposableKeyID;
         uint256_t            hashChaCha20Key;        ///< Diagnostic mirror
 
         /* ── Reward ─────────────────────────────────────────────────────────── */
