@@ -318,6 +318,25 @@ TEST_CASE("Mirrored stateless opcodes inherit legacy payload rules", "[llp][pack
         REQUIRE(bValid == false);
         REQUIRE(strError.find("requires exactly 16 bytes") != std::string::npos);
     }
+
+    SECTION("Unmirrored NODE_SHUTDOWN keeps stateless-only fixed-size contract")
+    {
+        StatelessPacket packet(Stateless::NODE_SHUTDOWN);
+        packet.LENGTH = 3;
+
+        std::string strError;
+        bool bValid = ValidatePacketLength(packet, &strError);
+
+        REQUIRE(bValid == false);
+        REQUIRE(strError.find("requires exactly 4 bytes") != std::string::npos);
+
+        packet.LENGTH = 4;
+        strError.clear();
+        bValid = ValidatePacketLength(packet, &strError);
+
+        REQUIRE(bValid == true);
+        REQUIRE(strError.empty());
+    }
 }
 
 TEST_CASE("Packet completion waits for the physical length field read", "[llp][packet][validation][framing]")

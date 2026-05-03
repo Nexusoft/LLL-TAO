@@ -1,6 +1,7 @@
 #include <unit/catch2/catch.hpp>
 
 #include <LLP/include/opcode_utility.h>
+#include <LLP/include/packet_framing.h>
 #include <LLP/packets/packet.h>
 #include <LLP/packets/stateless_packet.h>
 
@@ -91,5 +92,24 @@ TEST_CASE("LLP strict lane opcode mapping", "[llp][lane_enforcement]")
         REQUIRE(statelessBytes[1] == Opcodes::SESSION_START);
         REQUIRE(std::equal(payload.begin(), payload.end(), legacyBytes.begin() + 5));
         REQUIRE(std::equal(payload.begin(), payload.end(), statelessBytes.begin() + 6));
+    }
+
+    SECTION("Shared framing helpers preserve one wire-format difference")
+    {
+        const std::vector<uint8_t> payload = {0xAA, 0xBB};
+        const auto legacyBytes =
+            LLP::PacketFraming::BuildLegacyBytes(Opcodes::BLOCK_REJECTED, payload.size(), payload);
+        const auto statelessBytes =
+            LLP::PacketFraming::BuildStatelessBytes(Stateless::BLOCK_REJECTED, payload.size(), payload);
+
+        REQUIRE(LLP::PacketFraming::LEGACY_HEADER_BYTES == 1u);
+        REQUIRE(LLP::PacketFraming::STATELESS_HEADER_BYTES == 2u);
+        REQUIRE(LLP::PacketFraming::LENGTH_BYTES == 4u);
+        REQUIRE(legacyBytes.size() == statelessBytes.size() - 1u);
+        REQUIRE(legacyBytes[0] == Opcodes::BLOCK_REJECTED);
+        REQUIRE(statelessBytes[0] == 0xD0);
+        REQUIRE(statelessBytes[1] == Opcodes::BLOCK_REJECTED);
+        REQUIRE(std::equal(legacyBytes.begin() + 1, legacyBytes.end(), statelessBytes.begin() + 2));
+        REQUIRE(LLP::PacketFraming::DecodeLength({legacyBytes[1], legacyBytes[2], legacyBytes[3], legacyBytes[4]}) == payload.size());
     }
 }

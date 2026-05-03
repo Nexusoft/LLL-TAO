@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <string>
 
 #include <Util/templates/datastream.h>
+#include <LLP/include/packet_framing.h>
 
 namespace LLP
 {
@@ -219,7 +220,7 @@ namespace LLP
          **/
         void SetLength(const std::vector<uint8_t> &BYTES)
         {
-            LENGTH = (BYTES[0] << 24) + (BYTES[1] << 16) + (BYTES[2] << 8) + (BYTES[3]);
+            LENGTH = PacketFraming::DecodeLength(BYTES);
             fLengthRead = true;
         }
 
@@ -233,23 +234,7 @@ namespace LLP
          **/
         std::vector<uint8_t> GetBytes() const
         {
-            std::vector<uint8_t> BYTES;
-            BYTES.reserve(6 + DATA.size());
-
-            /* Encode 16-bit header (big-endian) */
-            BYTES.push_back(static_cast<uint8_t>(HEADER >> 8));   // High byte
-            BYTES.push_back(static_cast<uint8_t>(HEADER & 0xFF)); // Low byte
-
-            /* Encode 32-bit length (big-endian) */
-            BYTES.push_back(static_cast<uint8_t>(LENGTH >> 24));
-            BYTES.push_back(static_cast<uint8_t>(LENGTH >> 16));
-            BYTES.push_back(static_cast<uint8_t>(LENGTH >> 8));
-            BYTES.push_back(static_cast<uint8_t>(LENGTH));
-
-            /* Append data payload */
-            BYTES.insert(BYTES.end(), DATA.begin(), DATA.end());
-
-            return BYTES;
+            return PacketFraming::BuildStatelessBytes(HEADER, LENGTH, DATA);
         }
 
 

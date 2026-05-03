@@ -180,17 +180,15 @@ namespace OpcodeUtility
         /** NODE_SHUTDOWN (0xD0FF)
          *
          *  Node → Miner: Graceful shutdown notice.
-         *  Sent to all connected miners (both stateless and legacy lanes)
-         *  before the node shuts down, giving them an opportunity to stop
-         *  workers cleanly.
+         *  Stateless-only node → miner graceful shutdown notice.
          *
          *  PAYLOAD (4 bytes, big-endian):
          *    [0-3] uint32_t reason_code
          *      0x00000001 = SHUTDOWN_GRACEFUL    (planned node shutdown)
          *      0x00000002 = SHUTDOWN_MAINTENANCE (maintenance restart)
          *
-         *  Sent on both legacy (port 8323) and stateless (port 9323) lanes.
-         *  NOT mirrored from a legacy opcode.
+         *  NOT mirrored from a legacy opcode. Legacy port 8323 is strict
+         *  8-bit framing and uses its legacy CLOSE opcode instead.
          **/
         static constexpr uint16_t NODE_SHUTDOWN = 0xD0FF;          // DATA-bearing, both lanes
 
