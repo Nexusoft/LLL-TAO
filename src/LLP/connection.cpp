@@ -85,11 +85,11 @@ namespace LLP
                  * This matches the stateless reader's allocation hardening and
                  * prevents malformed header-only packets (for example GET_BLOCK
                  * with LENGTH > 0) from stalling forever as partial packets. */
-                std::string strLengthReason;
-                if(!OpcodeUtility::ValidatePacketLength(INCOMING, &strLengthReason))
+                std::string validationErrorMessage;
+                if(!OpcodeUtility::ValidatePacketLength(INCOMING, &validationErrorMessage))
                 {
                     debug::error(FUNCTION, "Legacy packet length validation failed from ",
-                        GetAddress().ToStringIP(), ": ", strLengthReason);
+                        GetAddress().ToStringIP(), ": ", validationErrorMessage);
                     Disconnect();
                     return;
                 }

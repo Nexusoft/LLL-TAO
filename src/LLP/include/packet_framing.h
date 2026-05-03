@@ -24,6 +24,7 @@ namespace PacketFraming
     static constexpr uint32_t STATELESS_HEADER_BYTES = 2;
     static constexpr uint32_t LENGTH_BYTES           = 4;
 
+    /** Decode a 4-byte big-endian packet payload length field. **/
     inline uint32_t DecodeLength(const uint8_t* pBytes)
     {
         return (static_cast<uint32_t>(pBytes[0]) << 24)
@@ -32,11 +33,13 @@ namespace PacketFraming
              |  static_cast<uint32_t>(pBytes[3]);
     }
 
+    /** Decode a 4-byte big-endian packet payload length field from a byte vector. **/
     inline uint32_t DecodeLength(const std::vector<uint8_t>& vBytes)
     {
         return DecodeLength(vBytes.data());
     }
 
+    /** Append a 4-byte big-endian packet payload length field. **/
     inline void AppendLength(std::vector<uint8_t>& vBytes, uint32_t nLength)
     {
         vBytes.push_back(static_cast<uint8_t>(nLength >> 24));
@@ -45,17 +48,20 @@ namespace PacketFraming
         vBytes.push_back(static_cast<uint8_t>(nLength));
     }
 
+    /** Append the 1-byte legacy packet header. **/
     inline void AppendLegacyHeader(std::vector<uint8_t>& vBytes, uint8_t nHeader)
     {
         vBytes.push_back(nHeader);
     }
 
+    /** Append the 2-byte big-endian stateless packet header. **/
     inline void AppendStatelessHeader(std::vector<uint8_t>& vBytes, uint16_t nHeader)
     {
         vBytes.push_back(static_cast<uint8_t>(nHeader >> 8));
         vBytes.push_back(static_cast<uint8_t>(nHeader & 0xFF));
     }
 
+    /** Build legacy wire bytes as [1-byte header][4-byte length][payload]. **/
     inline std::vector<uint8_t> BuildLegacyBytes(uint8_t nHeader, uint32_t nLength, const std::vector<uint8_t>& vData)
     {
         std::vector<uint8_t> vBytes;
@@ -66,6 +72,7 @@ namespace PacketFraming
         return vBytes;
     }
 
+    /** Build stateless wire bytes as [2-byte header][4-byte length][payload]. **/
     inline std::vector<uint8_t> BuildStatelessBytes(uint16_t nHeader, uint32_t nLength, const std::vector<uint8_t>& vData)
     {
         std::vector<uint8_t> vBytes;
