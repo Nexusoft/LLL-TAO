@@ -30,7 +30,7 @@ namespace PacketFraming
     /** Number of big-endian payload length bytes used by both lanes. **/
     static constexpr uint32_t LENGTH_BYTES           = 4;
 
-    /** DecodeLengthBytes
+    /** DecodeLengthComponents
      *
      *  Decode the shared 4-byte big-endian packet payload length field.
      *
@@ -42,7 +42,7 @@ namespace PacketFraming
      *  @return Decoded uint32_t payload length.
      *
      **/
-    inline uint32_t DecodeLengthBytes(uint8_t nByte0, uint8_t nByte1, uint8_t nByte2, uint8_t nByte3)
+    inline uint32_t DecodeLengthComponents(uint8_t nByte0, uint8_t nByte1, uint8_t nByte2, uint8_t nByte3)
     {
         return (static_cast<uint32_t>(nByte0) << 24)
              | (static_cast<uint32_t>(nByte1) << 16)
@@ -61,7 +61,7 @@ namespace PacketFraming
      **/
     inline uint32_t DecodeLength(const std::array<uint8_t, LENGTH_BYTES>& vBytes)
     {
-        return DecodeLengthBytes(vBytes[0], vBytes[1], vBytes[2], vBytes[3]);
+        return DecodeLengthComponents(vBytes[0], vBytes[1], vBytes[2], vBytes[3]);
     }
 
     /** DecodeLength
@@ -75,7 +75,7 @@ namespace PacketFraming
      **/
     inline uint32_t DecodeLength(const std::vector<uint8_t>& vBytes)
     {
-        return DecodeLengthBytes(vBytes[0], vBytes[1], vBytes[2], vBytes[3]);
+        return DecodeLengthComponents(vBytes[0], vBytes[1], vBytes[2], vBytes[3]);
     }
 
     /** AppendLength
