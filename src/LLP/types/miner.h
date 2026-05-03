@@ -457,11 +457,6 @@ namespace LLP
         uint32_t             nSessionId = 0;     // Session ID derived from Falcon key hash
         uint256_t            hashKeyID = 0;      // Falcon key hash for cross-lane disconnect tracking (0 = unauthenticated)
 
-        /* Protocol lane detection flag.
-         * Set to true after successful Falcon authentication handshake.
-         * When true, respond_auto() uses 16-bit stateless framing; otherwise 8-bit legacy. */
-        bool                 fStatelessProtocol{false};
-
         /* ChaCha20 encryption state (established after Falcon auth) */
         std::vector<uint8_t> vChaChaKey;         // ChaCha20 session key
         bool                 fEncryptionReady;   // ChaCha20 encryption established
@@ -759,9 +754,10 @@ namespace LLP
 
         /** respond_auto
          *
-         *  Unified response dispatch with lane auto-detection.
-         *  Checks fStatelessProtocol to determine whether to send 8-bit legacy
-         *  framing (respond) or 16-bit stateless framing (respond_stateless).
+         *  Legacy response dispatch.
+         *  Port 8323 always sends 8-bit legacy Packet framing. Shared stateless
+         *  handlers may return mirrored opcodes internally, but the legacy
+         *  transport unmirrors them before writing bytes to the socket.
          *
          *  @param[in] nLegacyOpcode The 8-bit legacy opcode to send.
          *  @param[in] vData The payload data to send.

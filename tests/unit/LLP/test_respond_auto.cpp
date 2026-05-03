@@ -16,6 +16,8 @@ ________________________________________________________________________________
 #include <LLP/include/opcode_utility.h>
 #include <LLP/include/push_notification.h>
 #include <LLP/include/stateless_miner.h>
+#include <LLP/packets/packet.h>
+#include <LLP/packets/stateless_packet.h>
 
 /**
  * Test suite for respond_auto() protocol lane detection and
@@ -26,7 +28,7 @@ ________________________________________________________________________________
  * - SubmitBlockRejectionReason enum values match the wire protocol
  * - SubmitBlockRejectionReasonString() returns meaningful names
  * - ProtocolLane detection via MiningContext::IsStateless()
- * - fStatelessProtocol flag semantics (LEGACY default, STATELESS after auth)
+ * - Lane adapters keep transport framing separate from shared opcode semantics
  */
 
 using namespace LLP;
@@ -136,12 +138,12 @@ TEST_CASE("Mirror - Legacy to Stateless Opcode Mapping", "[opcode_utility][respo
 }
 
 /* ===========================================================================
- * ProtocolLane Detection Tests (fStatelessProtocol semantics)
+ * ProtocolLane Detection Tests (transport framing semantics)
  * ===========================================================================*/
 
 TEST_CASE("MiningContext - Protocol Lane for respond_auto", "[mining_context][respond_auto][llp]")
 {
-    SECTION("Default MiningContext has LEGACY lane (fStatelessProtocol=false equivalent)")
+    SECTION("Default MiningContext has LEGACY lane")
     {
         MiningContext ctx;
         REQUIRE(ctx.nProtocolLane == ProtocolLane::LEGACY);
@@ -155,41 +157,29 @@ TEST_CASE("MiningContext - Protocol Lane for respond_auto", "[mining_context][re
         REQUIRE(ctx.IsStateless());
     }
 
-    SECTION("respond_auto dispatch logic: LEGACY lane uses legacy opcode")
+    SECTION("legacy transport keeps 8-bit framing even for mirrored shared semantics")
     {
-        /* Simulate respond_auto logic: if fStatelessProtocol is false, use legacy opcode */
-        bool fStatelessProtocol = false;
-        uint8_t nLegacyOpcode = OpcodeUtility::Opcodes::BLOCK_REJECTED;
+        const uint8_t nLegacyOpcode = OpcodeUtility::Opcodes::BLOCK_REJECTED;
+        Packet legacy(nLegacyOpcode);
+        legacy.LENGTH = 0;
 
-        if(fStatelessProtocol)
-        {
-            uint16_t nStateless = OpcodeUtility::Stateless::Mirror(nLegacyOpcode);
-            /* Would call respond_stateless(nStateless, vData) */
-            REQUIRE(false); /* Should not reach here */
-        }
-        else
-        {
-            /* Would call respond(nLegacyOpcode, vData) */
-            REQUIRE(nLegacyOpcode == OpcodeUtility::Opcodes::BLOCK_REJECTED);
-        }
+        const auto bytes = legacy.GetBytes();
+        REQUIRE(bytes.size() == 5u);
+        REQUIRE(bytes[0] == OpcodeUtility::Opcodes::BLOCK_REJECTED);
+        REQUIRE(bytes[0] != 0xD0);
     }
 
-    SECTION("respond_auto dispatch logic: STATELESS lane mirrors opcode")
+    SECTION("stateless transport mirrors the same semantic opcode into 16-bit framing")
     {
-        /* Simulate respond_auto logic: if fStatelessProtocol is true, mirror to stateless */
-        bool fStatelessProtocol = true;
-        uint8_t nLegacyOpcode = OpcodeUtility::Opcodes::BLOCK_REJECTED;
+        const uint8_t nLegacyOpcode = OpcodeUtility::Opcodes::BLOCK_REJECTED;
+        StatelessPacket stateless(OpcodeUtility::Stateless::Mirror(nLegacyOpcode));
+        stateless.LENGTH = 0;
 
-        if(fStatelessProtocol)
-        {
-            uint16_t nStateless = OpcodeUtility::Stateless::Mirror(nLegacyOpcode);
-            REQUIRE(nStateless == 0xD0C9);
-            REQUIRE(OpcodeUtility::Stateless::IsStateless(nStateless));
-        }
-        else
-        {
-            REQUIRE(false); /* Should not reach here */
-        }
+        const auto bytes = stateless.GetBytes();
+        REQUIRE(bytes.size() == 6u);
+        REQUIRE(bytes[0] == 0xD0);
+        REQUIRE(bytes[1] == OpcodeUtility::Opcodes::BLOCK_REJECTED);
+        REQUIRE(OpcodeUtility::Stateless::IsStateless(stateless.HEADER));
     }
 }
 
