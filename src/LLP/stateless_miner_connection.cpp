@@ -4350,7 +4350,7 @@ namespace LLP
     }
 
 
-    /* GetMaxSendBuffer - authenticated miners use a larger send buffer (15 MB)
+    /* GetMaxSendBuffer - authenticated miners use a larger send buffer (5 MB)
      * because push notifications are the primary delivery mechanism for fresh work.
      * A slow-reading miner must not be killed with DISCONNECT::BUFFER. */
     uint64_t StatelessMinerConnection::GetMaxSendBuffer() const
