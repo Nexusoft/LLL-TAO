@@ -114,7 +114,7 @@ namespace MiningConstants
     // MINING SEND BUFFER
     //=========================================================================
 
-    /** Max send buffer for authenticated mining connections (15 MB).
+    /** Max send buffer for authenticated mining connections (5 MB).
      *
      *  Mining push notifications (channel notifications + BLOCK_DATA templates)
      *  are the primary — and often the only reliable — mechanism for delivering
@@ -126,7 +126,7 @@ namespace MiningConstants
      *  triggering DISCONNECT::BUFFER — a silent kill from the miner's
      *  perspective.
      *
-     *  15 MB accommodates tens of thousands of push notifications and prevents
+     *  5 MB accommodates thousands of push notifications and prevents
      *  the DataThread from killing authenticated miners whose only crime is
      *  being slow to drain the socket during peak hash-rate periods.
      *
@@ -135,7 +135,7 @@ namespace MiningConstants
      *
      *  Overridable at runtime via -miningmaxsendbuffer=<bytes>.
      */
-    constexpr uint64_t MINING_MAX_SEND_BUFFER = 15 * 1024 * 1024;
+    constexpr uint64_t MINING_MAX_SEND_BUFFER = 5 * 1024 * 1024;
 
     //=========================================================================
     // CONNECTION HEALTH & KEEPALIVE

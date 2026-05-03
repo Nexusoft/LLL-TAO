@@ -368,7 +368,7 @@ namespace LLP
         /** GetMaxSendBuffer
          *
          *  Authenticated stateless mining connections use a larger send buffer
-         *  (15 MB default, configurable via -miningmaxsendbuffer) because push
+         *  (5 MB default, configurable via -miningmaxsendbuffer) because push
          *  notifications are the primary delivery mechanism for fresh work.
          *  A slow-reading miner must not be killed with DISCONNECT::BUFFER
          *  merely because it is busy hashing.

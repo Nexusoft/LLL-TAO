@@ -32,13 +32,13 @@ namespace LLP
     std::atomic<uint64_t> MinerPushDispatcher::s_nHashDedup{0};
 
     /* Per-lane async queue storage and synchronisation primitives. */
-    std::queue<std::pair<uint32_t, uint1024_t>> MinerPushDispatcher::s_statelessQueue;
+    std::queue<MinerPushDispatcher::PushEvent> MinerPushDispatcher::s_statelessQueue;
     std::mutex                                   MinerPushDispatcher::s_statelessMutex;
     std::condition_variable                      MinerPushDispatcher::s_statelessCV;
     std::thread                                  MinerPushDispatcher::s_statelessThread;
     std::atomic<bool>                            MinerPushDispatcher::s_statelessRunning{false};
 
-    std::queue<std::pair<uint32_t, uint1024_t>> MinerPushDispatcher::s_legacyQueue;
+    std::queue<MinerPushDispatcher::PushEvent> MinerPushDispatcher::s_legacyQueue;
     std::mutex                                   MinerPushDispatcher::s_legacyMutex;
     std::condition_variable                      MinerPushDispatcher::s_legacyCV;
     std::thread                                  MinerPushDispatcher::s_legacyThread;
@@ -49,6 +49,54 @@ namespace LLP
     static inline uint64_t make_dedup_key(uint32_t nHeight, uint32_t nHashPrefix4)
     {
         return (static_cast<uint64_t>(nHeight) << 32) | static_cast<uint64_t>(nHashPrefix4);
+    }
+
+
+    /* Reserve one channel's push key exactly once across both async workers.
+     *
+     * Dedup belongs before the lane split.  If each lane deduplicates independently,
+     * the first lane to win the CAS can suppress the other lane, or a lane without
+     * a CAS can over-broadcast duplicate events. */
+    bool MinerPushDispatcher::ReserveChannelPush(std::atomic<uint64_t>& nDedupKey,
+                                                 uint64_t nNewKey,
+                                                 const char* strChannel,
+                                                 uint32_t nHeight,
+                                                 uint32_t hashPrefix4)
+    {
+        uint64_t nOld = nDedupKey.load(std::memory_order_acquire);
+        while(nOld != nNewKey)
+        {
+            if(nDedupKey.compare_exchange_weak(nOld, nNewKey,
+                                               std::memory_order_release,
+                                               std::memory_order_acquire))
+                return true;
+        }
+
+        debug::log(1, FUNCTION,
+                   "[PUSH][", strChannel, "] Dedup: already accepted for height=", nHeight,
+                   " hash=", std::hex, hashPrefix4, std::dec, "; skipping");
+        return false;
+    }
+
+
+    /* Build a deduplicated push event.  The returned event may include Prime,
+     * Hash, both, or neither channel depending on which channel keys were newly
+     * accepted.  Both lanes consume the same accepted event, preserving exactly
+     * one send per accepted (channel, lane) pair. */
+    MinerPushDispatcher::PushEvent MinerPushDispatcher::ReservePushEvent(uint32_t nHeight,
+                                                                         const uint1024_t& hashBestChain)
+    {
+        MinerPushDispatcher::PushEvent event;
+        event.nHeight = nHeight;
+        event.hashBestChain = hashBestChain;
+
+        const uint32_t hashPrefix4 =
+            static_cast<uint32_t>(hashBestChain.Get64(0) & 0xffffffffULL);
+        const uint64_t nNewKey = make_dedup_key(nHeight, hashPrefix4);
+
+        event.fPrime = ReserveChannelPush(s_nPrimeDedup, nNewKey, "Prime", nHeight, hashPrefix4);
+        event.fHash = ReserveChannelPush(s_nHashDedup, nNewKey, "Hash", nHeight, hashPrefix4);
+        return event;
     }
 
 
@@ -92,57 +140,37 @@ namespace LLP
     }
 
 
-    /* DispatchStatelessPush — stateless lane dispatch with dedup. */
-    void MinerPushDispatcher::DispatchStatelessPush(uint32_t nHeight,
-                                                     const uint1024_t& hashBestChain)
+    /* DispatchStatelessPush — stateless lane dispatch of an already-deduped event. */
+    void MinerPushDispatcher::DispatchStatelessPush(const PushEvent& event)
     {
         if(config::fShutdown.load())
             return;
 
         const uint32_t hashPrefix4 =
-            static_cast<uint32_t>(hashBestChain.Get64(0) & 0xffffffffULL);
-        const uint64_t nNewKey = make_dedup_key(nHeight, hashPrefix4);
+            static_cast<uint32_t>(event.hashBestChain.Get64(0) & 0xffffffffULL);
 
-        /* Prime channel */
-        {
-            uint64_t nOld = s_nPrimeDedup.load(std::memory_order_acquire);
-            if(nOld != nNewKey &&
-                s_nPrimeDedup.compare_exchange_strong(nOld, nNewKey,
-                                                       std::memory_order_release,
-                                                       std::memory_order_relaxed))
-            {
-                BroadcastStatelessChannel(1, nHeight, hashPrefix4);
-            }
-        }
+        if(event.fPrime)
+            BroadcastStatelessChannel(1, event.nHeight, hashPrefix4);
 
-        /* Hash channel */
-        {
-            uint64_t nOld = s_nHashDedup.load(std::memory_order_acquire);
-            if(nOld != nNewKey &&
-                s_nHashDedup.compare_exchange_strong(nOld, nNewKey,
-                                                      std::memory_order_release,
-                                                      std::memory_order_relaxed))
-            {
-                BroadcastStatelessChannel(2, nHeight, hashPrefix4);
-            }
-        }
+        if(event.fHash)
+            BroadcastStatelessChannel(2, event.nHeight, hashPrefix4);
     }
 
 
-    /* DispatchLegacyPush — legacy lane dispatch. */
-    void MinerPushDispatcher::DispatchLegacyPush(uint32_t nHeight,
-                                                  const uint1024_t& hashBestChain)
+    /* DispatchLegacyPush — legacy lane dispatch of an already-deduped event. */
+    void MinerPushDispatcher::DispatchLegacyPush(const PushEvent& event)
     {
         if(config::fShutdown.load())
             return;
 
         const uint32_t hashPrefix4 =
-            static_cast<uint32_t>(hashBestChain.Get64(0) & 0xffffffffULL);
+            static_cast<uint32_t>(event.hashBestChain.Get64(0) & 0xffffffffULL);
 
-        /* Legacy lane broadcasts both channels.  Dedup is already handled by the
-         * shared atomics (s_nPrimeDedup / s_nHashDedup) at the DispatchPushEvent level. */
-        BroadcastLegacyChannel(1, nHeight, hashPrefix4);
-        BroadcastLegacyChannel(2, nHeight, hashPrefix4);
+        if(event.fPrime)
+            BroadcastLegacyChannel(1, event.nHeight, hashPrefix4);
+
+        if(event.fHash)
+            BroadcastLegacyChannel(2, event.nHeight, hashPrefix4);
     }
 
 
@@ -154,47 +182,12 @@ namespace LLP
         if(config::fShutdown.load())
             return;
 
-        const uint32_t hashPrefix4 =
-            static_cast<uint32_t>(hashBestChain.Get64(0) & 0xffffffffULL);
-        const uint64_t nNewKey = make_dedup_key(nHeight, hashPrefix4);
+        const PushEvent event = ReservePushEvent(nHeight, hashBestChain);
+        if(!event.fPrime && !event.fHash)
+            return;
 
-        /* --- Prime channel dedup + broadcast to both lanes --- */
-        {
-            uint64_t nOldPrime = s_nPrimeDedup.load(std::memory_order_acquire);
-            if(nOldPrime != nNewKey &&
-                s_nPrimeDedup.compare_exchange_strong(nOldPrime, nNewKey,
-                                                       std::memory_order_release,
-                                                       std::memory_order_relaxed))
-            {
-                BroadcastStatelessChannel(1, nHeight, hashPrefix4);
-                BroadcastLegacyChannel(1, nHeight, hashPrefix4);
-            }
-            else if(nOldPrime == nNewKey)
-            {
-                debug::log(1, FUNCTION,
-                           "[PUSH][Prime] Dedup: already dispatched for height=", nHeight,
-                           " hash=", std::hex, hashPrefix4, std::dec, "; skipping");
-            }
-        }
-
-        /* --- Hash channel dedup + broadcast to both lanes --- */
-        {
-            uint64_t nOldHash = s_nHashDedup.load(std::memory_order_acquire);
-            if(nOldHash != nNewKey &&
-                s_nHashDedup.compare_exchange_strong(nOldHash, nNewKey,
-                                                      std::memory_order_release,
-                                                      std::memory_order_relaxed))
-            {
-                BroadcastStatelessChannel(2, nHeight, hashPrefix4);
-                BroadcastLegacyChannel(2, nHeight, hashPrefix4);
-            }
-            else if(nOldHash == nNewKey)
-            {
-                debug::log(1, FUNCTION,
-                           "[PUSH][Hash] Dedup: already dispatched for height=", nHeight,
-                           " hash=", std::hex, hashPrefix4, std::dec, "; skipping");
-            }
-        }
+        DispatchStatelessPush(event);
+        DispatchLegacyPush(event);
     }
 
 
@@ -208,14 +201,18 @@ namespace LLP
         const bool fStatelessUp = s_statelessRunning.load(std::memory_order_acquire);
         const bool fLegacyUp    = s_legacyRunning.load(std::memory_order_acquire);
 
-        /* If either worker is running, enqueue to per-lane queues */
+        /* If either worker is running, accept/dedup once before splitting to lanes. */
         if(fStatelessUp || fLegacyUp)
         {
+            const PushEvent event = ReservePushEvent(nHeight, hashBestChain);
+            if(!event.fPrime && !event.fHash)
+                return;
+
             if(fStatelessUp)
             {
                 {
                     std::lock_guard<std::mutex> lock(s_statelessMutex);
-                    s_statelessQueue.emplace(nHeight, hashBestChain);
+                    s_statelessQueue.emplace(event);
                 }
                 s_statelessCV.notify_one();
             }
@@ -224,7 +221,7 @@ namespace LLP
             {
                 {
                     std::lock_guard<std::mutex> lock(s_legacyMutex);
-                    s_legacyQueue.emplace(nHeight, hashBestChain);
+                    s_legacyQueue.emplace(event);
                 }
                 s_legacyCV.notify_one();
             }
@@ -244,7 +241,7 @@ namespace LLP
 
         while(true)
         {
-            std::pair<uint32_t, uint1024_t> event;
+            PushEvent event;
             bool fGotEvent = false;
 
             {
@@ -264,7 +261,7 @@ namespace LLP
 
             if(fGotEvent)
             {
-                DispatchStatelessPush(event.first, event.second);
+                DispatchStatelessPush(event);
             }
             else if(!s_statelessRunning.load(std::memory_order_acquire))
             {
@@ -275,7 +272,7 @@ namespace LLP
                     event = std::move(s_statelessQueue.front());
                     s_statelessQueue.pop();
                     lock.unlock();
-                    DispatchStatelessPush(event.first, event.second);
+                    DispatchStatelessPush(event);
                     lock.lock();
                 }
                 break;
@@ -293,7 +290,7 @@ namespace LLP
 
         while(true)
         {
-            std::pair<uint32_t, uint1024_t> event;
+            PushEvent event;
             bool fGotEvent = false;
 
             {
@@ -313,7 +310,7 @@ namespace LLP
 
             if(fGotEvent)
             {
-                DispatchLegacyPush(event.first, event.second);
+                DispatchLegacyPush(event);
             }
             else if(!s_legacyRunning.load(std::memory_order_acquire))
             {
@@ -323,7 +320,7 @@ namespace LLP
                     event = std::move(s_legacyQueue.front());
                     s_legacyQueue.pop();
                     lock.unlock();
-                    DispatchLegacyPush(event.first, event.second);
+                    DispatchLegacyPush(event);
                     lock.lock();
                 }
                 break;

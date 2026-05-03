@@ -243,7 +243,7 @@ namespace LLP
     void BaseConnection<PacketType>::WritePacket(const PacketType& PACKET, bool fPriority)
     {
         /* Per-connection buffer limit — mining connections return a larger value
-         * (15 MB) so push notifications are never dropped due to buffer pressure.
+         * (5 MB by default) so push notifications are not dropped due to buffer pressure.
          * Virtual dispatch; no mutex, minimal overhead on the hot path. */
         const uint64_t nMaxSendBuffer = GetMaxSendBuffer();
 
@@ -252,7 +252,7 @@ namespace LLP
 
         /* Reserve space for critical control messages (keepalive ACK, session
          * status, round state).  Proportional to buffer size: 1% of max,
-         * minimum 1 KB.  For 3 MB P2P: ~30 KB.  For 15 MB mining: ~150 KB.
+         * minimum 1 KB.  For 3 MB P2P: ~30 KB.  For 5 MB mining: ~50 KB.
          * The old hardcoded 1 KB was meaningless for large mining buffers. */
         const uint64_t nReserve = std::max(uint64_t(1024), nMaxSendBuffer / 100);
 

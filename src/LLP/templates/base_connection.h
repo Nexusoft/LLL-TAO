@@ -149,7 +149,7 @@ namespace LLP
          *  uses it to decide when to drop outgoing packets.
          *
          *  Mining connections override this to return a much larger limit
-         *  (15 MB default) when the miner is authenticated, because push
+         *  (5 MB default) when the miner is authenticated, because push
          *  notifications are the primary — not advisory — mechanism for
          *  delivering fresh work to miners.  A slow reader must not trigger
          *  DISCONNECT::BUFFER merely because it is busy hashing.
