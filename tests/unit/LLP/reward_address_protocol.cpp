@@ -39,9 +39,9 @@ TEST_CASE("MINER_SET_REWARD Packet Structure Tests", "[miner][reward][protocol]"
         
         REQUIRE(vPayload.size() == 32);
         
-        /* Verify we can reconstruct the address */
+        /* Verify we can reconstruct the display-order address. */
         uint256_t hashReconstructed;
-        std::copy(vPayload.begin(), vPayload.begin() + 32, hashReconstructed.begin());
+        hashReconstructed.SetHex(HexStr(vPayload.begin(), vPayload.end()));
         
         REQUIRE(hashReconstructed == hashReward);
     }

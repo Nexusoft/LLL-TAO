@@ -101,6 +101,26 @@ namespace TAO
         void AddBlockData(const TAO::Ledger::BlockState& tStateBest, const uint32_t nChannel, TAO::Ledger::TritiumBlock& block);
 
 
+        /** CachedMiningTemplateRequiresProducerFinalization
+         *
+         *  Return true when a cached mining block template cannot safely reuse the
+         *  cached producer transaction.  The producer carries miner-specific
+         *  reward routing and extra-nonce data, so a different reward address or
+         *  extra nonce must finalize a fresh producer and merkle root from the
+         *  cached base template.
+         *
+         **/
+        inline bool CachedMiningTemplateRequiresProducerFinalization(
+            const uint256_t& hashCachedDynamicGenesis,
+            const uint256_t& hashRequestedDynamicGenesis,
+            const uint64_t nCachedExtraNonce,
+            const uint64_t nRequestedExtraNonce)
+        {
+            return hashCachedDynamicGenesis != hashRequestedDynamicGenesis
+                || nCachedExtraNonce != nRequestedExtraNonce;
+        }
+
+
         /** CreateBlock
          *
          *  Create a new block object from the chain.

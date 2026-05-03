@@ -50,6 +50,8 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 
+#include <atomic>
+
 /* Global TAO namespace. */
 namespace TAO::Ledger
 {
@@ -67,6 +69,10 @@ namespace TAO::Ledger
 
     /* Create a new block object from the chain.*/
     static memory::atomic<TAO::Ledger::TritiumBlock> tBlockCache[4];
+
+    /* Miner-specific finalization metadata for cached mining templates. */
+    static memory::atomic<uint256_t> tBlockCacheDynamicGenesis[4];
+    static std::atomic<uint64_t> tBlockCacheExtraNonce[4];
 
 
     /* Create a new transaction object from signature chain. */
@@ -465,11 +471,10 @@ namespace TAO::Ledger
         const uint256_t& hashDynamicGenesis)
     {
         /* Cache key: always the signing wallet's genesis (node operator sigchain).
-         * hashDynamicGenesis (miner reward address) flows separately to CreateProducer()
-         * for coinbase routing — it is NOT part of the block structure the cache represents.
-         * Using hashDynamicGenesis here caused the secondary invalidation check to fire on
-         * every call (producer.hashGenesis is always node wallet genesis, never matches
-         * a miner register address), forcing full 1.3s block rebuild on every GET_BLOCK. */
+         * hashDynamicGenesis (miner reward address) flows separately to producer
+         * finalization. Cached templates may be reused only as a base: when the
+         * requested reward address or extra nonce differs from the cached
+         * finalization metadata, the producer and merkle root are rebuilt below. */
         const uint256_t hashGenesis = user->Genesis();
 
         /* Only allow prime, hash, and private channels. */
@@ -490,6 +495,10 @@ namespace TAO::Ledger
         /* Retrieve currently cached block */
         const TAO::Ledger::TritiumBlock tBlockCached =
             tBlockCache[nChannel].load();
+        const uint256_t hashCachedDynamicGenesis =
+            tBlockCacheDynamicGenesis[nChannel].load();
+        const uint64_t nCachedExtraNonce =
+            tBlockCacheExtraNonce[nChannel].load();
 
         /* Cache the best chain before processing. */
         const TAO::Ledger::BlockState tStateBest =
@@ -590,12 +599,29 @@ namespace TAO::Ledger
             /* Add new transactions. */
             AddTransactions(rBlockRet);
 
-            /* Check that the producer isn't going to orphan any transactions. */
+            /* Check that the producer isn't going to orphan any transactions,
+             * and finalize miner-specific reward/extra-nonce data when this
+             * cache hit is being reused as a base template for another miner. */
             TAO::Ledger::Transaction tx;
-            if(mempool.Get(rBlockRet.producer.hashGenesis, tx) && rBlockRet.producer.hashPrevTx != tx.GetHash())
+            const bool fProducerFinalizationRequired =
+                CachedMiningTemplateRequiresProducerFinalization(
+                    hashCachedDynamicGenesis, hashDynamicGenesis,
+                    nCachedExtraNonce, nExtraNonce);
+
+            if(fProducerFinalizationRequired)
+            {
+                debug::log(2, FUNCTION, "Cached block base requires producer finalization"
+                           " for reward=", hashDynamicGenesis != 0 ? hashDynamicGenesis.SubString() : std::string("none (solo)"),
+                           " extra_nonce=", nExtraNonce);
+            }
+
+            if(fProducerFinalizationRequired
+            || (mempool.Get(rBlockRet.producer.hashGenesis, tx) && rBlockRet.producer.hashPrevTx != tx.GetHash()))
             {
                 /* Handle for STALE producer. */
-                debug::log(0, FUNCTION, "Producer is stale, rebuilding...");
+                debug::log(0, FUNCTION, fProducerFinalizationRequired
+                    ? "Producer is miner-specific, finalizing cached base..."
+                    : "Producer is stale, rebuilding...");
 
                 /* Create a new producer transaction for given block.
                  * Pass hashDynamicGenesis (miner reward address) so coinbase is routed
@@ -604,9 +630,6 @@ namespace TAO::Ledger
                     hashDynamicGenesis != 0 ? hashDynamicGenesis.SubString() : std::string("none (solo)"));
                 if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients, hashDynamicGenesis))
                     return debug::error(FUNCTION, "Failed to create producer transactions.");
-
-                /* Store new block cache. */
-                tBlockCache[nChannel].store(rBlockRet);
             }
 
             /* Update the producer timestamp */
@@ -637,6 +660,13 @@ namespace TAO::Ledger
 
             /* Build the block's merkle root. */
             rBlockRet.hashMerkleRoot = rBlockRet.BuildMerkleTree(vHashes);
+
+            /* Store the finalized template and metadata. Later cache hits may
+             * reuse this as a base, but only same reward/extra-nonce requests
+             * may reuse the producer without rebuilding it. */
+            tBlockCache[nChannel].store(rBlockRet);
+            tBlockCacheDynamicGenesis[nChannel].store(hashDynamicGenesis);
+            tBlockCacheExtraNonce[nChannel].store(nExtraNonce);
         }
         else //block not cached, set up new block
         {
@@ -669,6 +699,8 @@ namespace TAO::Ledger
 
             /* Store the cached block. */
             tBlockCache[nChannel].store(rBlockRet);
+            tBlockCacheDynamicGenesis[nChannel].store(hashDynamicGenesis);
+            tBlockCacheExtraNonce[nChannel].store(nExtraNonce);
         }
 
         /* Update the time for the newly created block. */

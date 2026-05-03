@@ -2057,6 +2057,16 @@ namespace LLP
             debug::warning(FUNCTION, "REWARD BINDING MISMATCH: existing bound reward hash=",
                            FullHexOrUnset(context.hashRewardAddress),
                            " differs from decoded reward hash=", hashReward.GetHex());
+
+            std::vector<uint8_t> vErrorMsg = {0x00};
+            std::vector<uint8_t> vEncryptedError = EncryptRewardResult(vErrorMsg, vChaChaKey);
+
+            StatelessPacket errorResponse(REWARD_RESULT);
+            errorResponse.DATA = vEncryptedError;
+            errorResponse.LENGTH = static_cast<uint32_t>(vEncryptedError.size());
+
+            debug::error(FUNCTION, "Reward address is immutable for this miner session; disconnect and reconnect to change it");
+            return ProcessResult::Success(context, errorResponse);
         }
 
         /* Validate the reward address */

@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <unit/catch2/catch.hpp>
 
 #include <LLP/include/mining_server_factory.h>
+#include <LLP/include/mining_constants.h>
 #include <LLP/include/config.h>
 
 #include <Util/include/config.h>
@@ -184,6 +185,24 @@ TEST_CASE("MiningServerFactory per-lane timeout configuration", "[miner][config]
         REQUIRE(stateless.DDOS_RSCORE == legacy.DDOS_RSCORE);
         REQUIRE(stateless.DDOS_TIMESPAN == legacy.DDOS_TIMESPAN);
         REQUIRE(stateless.MANAGER_SLEEP == legacy.MANAGER_SLEEP);
+    }
+
+    SECTION("Mining lane hard defaults cap each lane at 100 miners")
+    {
+        LLP::Config stateless = LLP::MiningServerFactory::BuildConfig(
+            LLP::MiningServerFactory::Lane::STATELESS);
+        LLP::Config legacy = LLP::MiningServerFactory::BuildConfig(
+            LLP::MiningServerFactory::Lane::LEGACY);
+
+        REQUIRE(stateless.MAX_INCOMING == 100);
+        REQUIRE(stateless.MAX_CONNECTIONS == 100);
+        REQUIRE(legacy.MAX_INCOMING == 100);
+        REQUIRE(legacy.MAX_CONNECTIONS == 100);
+    }
+
+    SECTION("Authenticated mining send buffer default is 5 MB")
+    {
+        REQUIRE(LLP::MiningConstants::MINING_MAX_SEND_BUFFER == 5 * 1024 * 1024);
     }
 
     SECTION("Problem case: -miningtimeout=60 no longer clobbers stateless 300s default")
