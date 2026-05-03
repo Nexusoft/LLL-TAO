@@ -2196,6 +2196,7 @@ namespace LLP
          * first SetBest() notification in a burst are dropped, leaving miners
          * on a stale template for up to 1 second.  With it, each distinct tip
          * is delivered immediately regardless of timing. */
+        uint32_t nSubscribedChannelCopy = 0;
         {
             LOCK(MUTEX);
             if(shouldAbortNotification())
@@ -2204,6 +2205,16 @@ namespace LLP
                            " after acquiring lock due to disconnect/shutdown state");
                 return;
             }
+
+            if(!fSubscribedToNotifications)
+                return;
+
+            if(nSubscribedChannel != 1 && nSubscribedChannel != 2)
+            {
+                debug::error(FUNCTION, "Invalid subscribed channel: ", nSubscribedChannel);
+                return;
+            }
+            nSubscribedChannelCopy = nSubscribedChannel;
 
             const uint1024_t hashPreviousChain = m_hashLastPushedChain;
             const TemplatePushDecision decision = ApplyTemplatePushThrottle(
@@ -2227,14 +2238,20 @@ namespace LLP
 
         /* Get channel-specific state */
         TAO::Ledger::BlockState stateChannel = stateBest;
-        if (!TAO::Ledger::GetLastState(stateChannel, nSubscribedChannel))
+        if (!TAO::Ledger::GetLastState(stateChannel, nSubscribedChannelCopy))
         {
-            debug::error(FUNCTION, "Failed to get channel state for channel ", nSubscribedChannel);
+            debug::error(FUNCTION, "Failed to get channel state for channel ", nSubscribedChannelCopy);
             return;
         }
-        
+
         /* Get difficulty */
-        uint32_t nDifficulty = LLP::StatelessMinerConnection::GetCachedDifficulty(nSubscribedChannel);
+        uint32_t nDifficulty = LLP::StatelessMinerConnection::GetCachedDifficulty(nSubscribedChannelCopy);
+        if(nDifficulty == 0)
+        {
+            debug::error(FUNCTION, "GetCachedDifficulty returned 0 for channel ", nSubscribedChannelCopy,
+                         " — aborting legacy push notification to avoid zero-difficulty template");
+            return;
+        }
 
         if(shouldAbortNotification())
         {
@@ -2245,7 +2262,7 @@ namespace LLP
         
         /* Build notification using unified builder (8-bit opcodes for legacy lane) */
         Packet notification = PushNotificationBuilder::BuildChannelNotification<Packet>(
-            nSubscribedChannel, ProtocolLane::LEGACY, stateBest, stateChannel, nDifficulty,
+            nSubscribedChannelCopy, ProtocolLane::LEGACY, stateBest, stateChannel, nDifficulty,
             hashBestChain);
         
         /* Enqueue for deferred sending by FLUSH_THREAD.
@@ -2256,10 +2273,14 @@ namespace LLP
          * reader-writer SOCKET_MUTEX contention between this notification
          * path and the DataThread's ReadPacket() loop. */
         QueuePacket(notification);
+
+        /* Match the stateless lane: a queued push means the miner is still live
+         * even if it stays quiet while hashing for a long Prime search. */
+        this->Reset();
         
         debug::log(3, FUNCTION, "[BLOCK CREATE] hashPrevBlock = ", hashBestChain.SubString(),
                    " (template anchor embedded in push notification, unified height ", stateBest.nHeight + 1, ")");
-        debug::log(2, FUNCTION, "Sent ", GetChannelName(nSubscribedChannel), 
+        debug::log(2, FUNCTION, "Sent ", GetChannelName(nSubscribedChannelCopy),
                    " notification to ", GetAddress().ToStringIP(),
                    " (unified=", stateBest.nHeight, 
                    ", channelHeight=", stateChannel.nChannelHeight,
@@ -2267,7 +2288,7 @@ namespace LLP
 
         /* Notify Colin agent: template pushed via push notification */
         if(hashGenesis != 0)
-            ColinMiningAgent::Get().on_template_pushed(nSubscribedChannel, stateBest.nHeight + 1);
+            ColinMiningAgent::Get().on_template_pushed(nSubscribedChannelCopy, stateBest.nHeight + 1);
     }
 
 
@@ -2345,8 +2366,8 @@ namespace LLP
             return;
         }
 
-        /* Send via stateless framing (16-bit opcode) */
-        respond_stateless(OpcodeUtility::Stateless::BLOCK_DATA, sharedTemplate.vPayload);
+        /* Send using the negotiated framing for this legacy-lane connection. */
+        respond_auto(BLOCK_DATA, sharedTemplate.vPayload);
 
         debug::log(2, FUNCTION, "✅ Legacy template sent (",
                    sharedTemplate.vPayload.size(), " bytes) channel=", sharedTemplate.nBlockChannel,
@@ -2508,7 +2529,7 @@ namespace LLP
 
         debug::log(0, FUNCTION, "Miner subscribed to channel ", nChannel, " (", GetChannelName(nChannel), ")");
 
-        /* Send immediate notification.
+        /* Send immediate template.
          * Force-bypass the push throttle — miner explicitly re-subscribed and needs
          * fresh work immediately regardless of when the previous push was sent.
          * Also reset the AutoCoolDown so the recovery GET_BLOCK is served immediately. */
@@ -2521,7 +2542,7 @@ namespace LLP
             // restores the "never triggered" state where Ready() returns true.
             m_get_block_cooldown = AutoCoolDown(std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS));
         }
-        SendChannelNotification();
+        SendLegacyTemplate();
 
         return true;
     }
@@ -2930,7 +2951,7 @@ namespace LLP
             {
                 try
                 {
-                    respond_stateless(OpcodeUtility::Stateless::BLOCK_DATA, sharedTemplate.vPayload);
+                    respond_auto(BLOCK_DATA, sharedTemplate.vPayload);
 
                     debug::log(2, FUNCTION, "Auto-sent BLOCK_DATA (",
                                sharedTemplate.vPayload.size(), " bytes) channel=",

@@ -21,7 +21,6 @@ ________________________________________________________________________________
 #include <mutex>
 #include <queue>
 #include <thread>
-#include <utility>
 
 #include <LLC/types/uint1024.h>
 
@@ -125,19 +124,39 @@ namespace LLP
 
     private:
 
+        /** Accepted push event after channel-level dedup. */
+        struct PushEvent
+        {
+            uint32_t nHeight{0};
+            uint1024_t hashBestChain;
+            bool fPrime{false};
+            bool fHash{false};
+        };
+
+
         /** Packed dedup key for one channel: high-32 = unified height, low-32 = hash prefix. */
         static std::atomic<uint64_t> s_nPrimeDedup;   /* dedup key for Prime channel */
         static std::atomic<uint64_t> s_nHashDedup;    /* dedup key for Hash  channel */
 
+        /** Reserve one channel's push key exactly once across both async workers. */
+        static bool ReserveChannelPush(std::atomic<uint64_t>& nDedupKey,
+                                       uint64_t nNewKey,
+                                       const char* strChannel,
+                                       uint32_t nHeight,
+                                       uint32_t hashPrefix4);
+
+        /** Build a deduplicated push event for both lanes. */
+        static PushEvent ReservePushEvent(uint32_t nHeight, const uint1024_t& hashBestChain);
+
         /* ── Stateless lane worker ──────────────────────────────────────────── */
-        static std::queue<std::pair<uint32_t, uint1024_t>> s_statelessQueue;
+        static std::queue<PushEvent>                      s_statelessQueue;
         static std::mutex                                   s_statelessMutex;
         static std::condition_variable                      s_statelessCV;
         static std::thread                                  s_statelessThread;
         static std::atomic<bool>                            s_statelessRunning;
 
         /* ── Legacy lane worker ─────────────────────────────────────────────── */
-        static std::queue<std::pair<uint32_t, uint1024_t>> s_legacyQueue;
+        static std::queue<PushEvent>                      s_legacyQueue;
         static std::mutex                                   s_legacyMutex;
         static std::condition_variable                      s_legacyCV;
         static std::thread                                  s_legacyThread;
@@ -159,11 +178,11 @@ namespace LLP
         static void BroadcastLegacyChannel(uint32_t nChannel, uint32_t nHeight, uint32_t hashPrefix4);
 
 
-        /** DispatchStatelessPush — dispatches to stateless lane only. **/
-        static void DispatchStatelessPush(uint32_t nHeight, const uint1024_t& hashBestChain);
+        /** DispatchStatelessPush — dispatches one accepted event to stateless lane only. **/
+        static void DispatchStatelessPush(const PushEvent& event);
 
-        /** DispatchLegacyPush — dispatches to legacy lane only. **/
-        static void DispatchLegacyPush(uint32_t nHeight, const uint1024_t& hashBestChain);
+        /** DispatchLegacyPush — dispatches one accepted event to legacy lane only. **/
+        static void DispatchLegacyPush(const PushEvent& event);
 
 
         /** StatelessWorkerThread — drains stateless queue. **/
