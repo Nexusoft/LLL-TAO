@@ -51,6 +51,8 @@ namespace {
 
     const std::vector<uint8_t> TEST_AAD_REWARD_ADDRESS{
         'R','E','W','A','R','D','_','A','D','D','R','E','S','S'};
+    const std::vector<uint8_t> TEST_AAD_REWARD_RESULT{
+        'R','E','W','A','R','D','_','R','E','S','U','L','T'};
 
     uint256_t CreateTestHashFromHex(const char* pHex)
     {
@@ -372,9 +374,7 @@ TEST_CASE("ProcessSetReward completes successfully and updates context", "[rewar
 
         std::vector<uint8_t> vDecryptedResponse;
         std::vector<uint8_t> vKey = LLC::MiningSessionKeys::DeriveChaCha20Key(testGenesis);
-        const std::vector<uint8_t> vAADRewardResult{
-            'R','E','W','A','R','D','_','R','E','S','U','L','T'};
-        REQUIRE(LLC::DecryptPayloadChaCha20(result.response.DATA, vKey, vDecryptedResponse, vAADRewardResult));
+        REQUIRE(LLC::DecryptPayloadChaCha20(result.response.DATA, vKey, vDecryptedResponse, TEST_AAD_REWARD_RESULT));
         REQUIRE(vDecryptedResponse.size() == 1);
         REQUIRE(vDecryptedResponse[0] == 0x00);
     }
