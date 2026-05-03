@@ -34,8 +34,10 @@ TEST_CASE("MINER_SET_REWARD Packet Structure Tests", "[miner][reward][protocol]"
         uint256_t hashReward;
         hashReward.SetHex("a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122");
         
-        /* Convert to bytes */
-        std::vector<uint8_t> vPayload = hashReward.GetBytes();
+        /* Convert to wire/display-order bytes. MINER_SET_REWARD carries the
+         * 64-character genesis hash decoded left-to-right, not uint256_t's
+         * internal word order. */
+        std::vector<uint8_t> vPayload = ParseHex(hashReward.GetHex());
         
         REQUIRE(vPayload.size() == 32);
         
