@@ -2273,6 +2273,9 @@ namespace LLP
          * reader-writer SOCKET_MUTEX contention between this notification
          * path and the DataThread's ReadPacket() loop. */
         QueuePacket(notification);
+
+        /* Match the stateless lane: a queued push means the miner is still live
+         * even if it stays quiet while hashing for a long Prime search. */
         this->Reset();
         
         debug::log(3, FUNCTION, "[BLOCK CREATE] hashPrevBlock = ", hashBestChain.SubString(),
