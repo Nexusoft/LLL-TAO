@@ -2244,11 +2244,6 @@ namespace LLP
             return;
         }
 
-        {
-            LOCK(MUTEX);
-            CleanupStaleTemplates(stateBest.nHeight);
-        }
-        
         /* Get difficulty */
         uint32_t nDifficulty = LLP::StatelessMinerConnection::GetCachedDifficulty(nSubscribedChannelCopy);
         if(nDifficulty == 0)
