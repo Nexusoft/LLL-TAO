@@ -110,6 +110,6 @@ TEST_CASE("LLP strict lane opcode mapping", "[llp][lane_enforcement]")
         REQUIRE(statelessBytes[0] == 0xD0);
         REQUIRE(statelessBytes[1] == Opcodes::BLOCK_REJECTED);
         REQUIRE(std::equal(legacyBytes.begin() + 1, legacyBytes.end(), statelessBytes.begin() + 2));
-        REQUIRE(LLP::PacketFraming::DecodeLength({legacyBytes[1], legacyBytes[2], legacyBytes[3], legacyBytes[4]}) == payload.size());
+        REQUIRE(LLP::PacketFraming::DecodeLength(legacyBytes.data() + 1) == payload.size());
     }
 }

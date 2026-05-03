@@ -99,8 +99,8 @@ namespace LLP
                  * vector triggers a geometric reallocation (copy of all existing
                  * bytes).  With reserve(), the vector has capacity for the full
                  * payload up front, making every subsequent end-insert O(1).
-                 * Never reserve an oversized wire declaration. */
-                if(INCOMING.LENGTH > 0 && INCOMING.LENGTH <= OpcodeUtility::MAX_ANY_PACKET_LENGTH)
+                 * The declared length has already been validated above. */
+                if(INCOMING.LENGTH > 0)
                     INCOMING.DATA.reserve(INCOMING.LENGTH);
             }
         }

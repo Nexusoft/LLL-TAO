@@ -24,12 +24,17 @@ namespace PacketFraming
     static constexpr uint32_t STATELESS_HEADER_BYTES = 2;
     static constexpr uint32_t LENGTH_BYTES           = 4;
 
+    inline uint32_t DecodeLength(const uint8_t* pBytes)
+    {
+        return (static_cast<uint32_t>(pBytes[0]) << 24)
+             | (static_cast<uint32_t>(pBytes[1]) << 16)
+             | (static_cast<uint32_t>(pBytes[2]) << 8)
+             |  static_cast<uint32_t>(pBytes[3]);
+    }
+
     inline uint32_t DecodeLength(const std::vector<uint8_t>& vBytes)
     {
-        return (static_cast<uint32_t>(vBytes[0]) << 24)
-             | (static_cast<uint32_t>(vBytes[1]) << 16)
-             | (static_cast<uint32_t>(vBytes[2]) << 8)
-             |  static_cast<uint32_t>(vBytes[3]);
+        return DecodeLength(vBytes.data());
     }
 
     inline void AppendLength(std::vector<uint8_t>& vBytes, uint32_t nLength)
