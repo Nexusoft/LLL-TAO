@@ -2065,8 +2065,9 @@ namespace LLP
             errorResponse.DATA = vEncryptedError;
             errorResponse.LENGTH = static_cast<uint32_t>(vEncryptedError.size());
 
-            debug::error(FUNCTION, "Reward address cannot be changed during an active mining session. "
-                                  "Please disconnect and establish a new session to use a different reward address.");
+            debug::error(FUNCTION,
+                "Reward address cannot be changed during an active mining session. "
+                "Please disconnect and establish a new session to use a different reward address.");
             return ProcessResult::Success(context, errorResponse);
         }
 

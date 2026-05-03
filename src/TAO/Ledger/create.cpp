@@ -57,7 +57,7 @@ namespace TAO::Ledger
 {
     namespace
     {
-        constexpr const char* SOLO_REWARD_LABEL = "none (solo)";
+        constexpr const char* SOLO_MINING_REWARD_LABEL = "none (solo)";
 
         bool SequenceDiagnosticsEnabled()
         {
@@ -72,7 +72,9 @@ namespace TAO::Ledger
     /* Create a new block object from the chain.*/
     static memory::atomic<TAO::Ledger::TritiumBlock> tBlockCache[4];
 
-    /* Miner-specific finalization metadata for cached mining templates. */
+    /* Miner-specific finalization metadata for cached mining templates.
+     * uint256_t requires memory::atomic's mutex-backed wrapper; uint64_t can
+     * use std::atomic directly. */
     static memory::atomic<uint256_t> tBlockCacheDynamicGenesis[4];
     static std::atomic<uint64_t> tBlockCacheExtraNonce[4];
 
@@ -610,7 +612,7 @@ namespace TAO::Ledger
                     hashCachedDynamicGenesis, hashDynamicGenesis,
                     nCachedExtraNonce, nExtraNonce);
             const std::string strDynamicReward =
-                hashDynamicGenesis != 0 ? hashDynamicGenesis.SubString() : std::string(SOLO_REWARD_LABEL);
+                hashDynamicGenesis != 0 ? hashDynamicGenesis.SubString() : std::string(SOLO_MINING_REWARD_LABEL);
 
             if(fProducerFinalizationRequired)
             {
@@ -682,7 +684,7 @@ namespace TAO::Ledger
              * Pass hashDynamicGenesis (miner reward address) so coinbase is routed
              * to the remote miner, not the node operator. */
             debug::log(2, FUNCTION, "Creating fresh producer: reward address = ",
-                hashDynamicGenesis != 0 ? hashDynamicGenesis.SubString() : std::string(SOLO_REWARD_LABEL));
+                hashDynamicGenesis != 0 ? hashDynamicGenesis.SubString() : std::string(SOLO_MINING_REWARD_LABEL));
             if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients, hashDynamicGenesis))
                 return debug::error(FUNCTION, "Failed to create producer transactions.");
 

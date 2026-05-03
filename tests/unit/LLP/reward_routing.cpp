@@ -61,7 +61,7 @@ namespace {
         return hash;
     }
 
-    StatelessPacket BuildAndEncryptSetRewardPacket(const uint256_t& hashGenesis, const char* pRewardHex)
+    StatelessPacket CreateEncryptedSetRewardPacket(const uint256_t& hashGenesis, const char* pRewardHex)
     {
         std::vector<uint8_t> vReward = ParseHex(pRewardHex);
         std::vector<uint8_t> vKey = LLC::MiningSessionKeys::DeriveChaCha20Key(hashGenesis);
@@ -362,7 +362,7 @@ TEST_CASE("ProcessSetReward completes successfully and updates context", "[rewar
             .WithTimestamp(runtime::unifiedtimestamp());
         context.strAddress = "127.0.0.1:9330";
 
-        StatelessPacket packet = BuildAndEncryptSetRewardPacket(testGenesis, TEST_REWARD_B_HEX);
+        StatelessPacket packet = CreateEncryptedSetRewardPacket(testGenesis, TEST_REWARD_B_HEX);
         ProcessResult result = StatelessMiner::ProcessSetReward(context, packet);
 
         REQUIRE(result.fSuccess);
