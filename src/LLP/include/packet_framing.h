@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <vector>
 
@@ -24,19 +25,24 @@ namespace PacketFraming
     static constexpr uint32_t STATELESS_HEADER_BYTES = 2;
     static constexpr uint32_t LENGTH_BYTES           = 4;
 
-    /** Decode a 4-byte big-endian packet payload length field. **/
-    inline uint32_t DecodeLength(const uint8_t* pBytes)
+    inline uint32_t DecodeLengthBytes(uint8_t nByte0, uint8_t nByte1, uint8_t nByte2, uint8_t nByte3)
     {
-        return (static_cast<uint32_t>(pBytes[0]) << 24)
-             | (static_cast<uint32_t>(pBytes[1]) << 16)
-             | (static_cast<uint32_t>(pBytes[2]) << 8)
-             |  static_cast<uint32_t>(pBytes[3]);
+        return (static_cast<uint32_t>(nByte0) << 24)
+             | (static_cast<uint32_t>(nByte1) << 16)
+             | (static_cast<uint32_t>(nByte2) << 8)
+             |  static_cast<uint32_t>(nByte3);
+    }
+
+    /** Decode a 4-byte big-endian packet payload length field. **/
+    inline uint32_t DecodeLength(const std::array<uint8_t, LENGTH_BYTES>& vBytes)
+    {
+        return DecodeLengthBytes(vBytes[0], vBytes[1], vBytes[2], vBytes[3]);
     }
 
     /** Decode a 4-byte big-endian packet payload length field from a byte vector. **/
     inline uint32_t DecodeLength(const std::vector<uint8_t>& vBytes)
     {
-        return DecodeLength(vBytes.data());
+        return DecodeLengthBytes(vBytes[0], vBytes[1], vBytes[2], vBytes[3]);
     }
 
     /** Append a 4-byte big-endian packet payload length field. **/

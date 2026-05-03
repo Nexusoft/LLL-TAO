@@ -6,6 +6,7 @@
 #include <LLP/packets/stateless_packet.h>
 
 #include <algorithm>
+#include <array>
 
 TEST_CASE("LLP strict lane opcode mapping", "[llp][lane_enforcement]")
 {
@@ -110,6 +111,9 @@ TEST_CASE("LLP strict lane opcode mapping", "[llp][lane_enforcement]")
         REQUIRE(statelessBytes[0] == 0xD0);
         REQUIRE(statelessBytes[1] == Opcodes::BLOCK_REJECTED);
         REQUIRE(std::equal(legacyBytes.begin() + 1, legacyBytes.end(), statelessBytes.begin() + 2));
-        REQUIRE(LLP::PacketFraming::DecodeLength(legacyBytes.data() + 1) == samplePayload.size());
+
+        const std::array<uint8_t, LLP::PacketFraming::LENGTH_BYTES> lengthBytes =
+            {legacyBytes[1], legacyBytes[2], legacyBytes[3], legacyBytes[4]};
+        REQUIRE(LLP::PacketFraming::DecodeLength(lengthBytes) == samplePayload.size());
     }
 }
