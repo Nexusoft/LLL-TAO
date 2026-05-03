@@ -21,6 +21,7 @@ ________________________________________________________________________________
 
 #include <Util/templates/datastream.h>
 #include <LLP/include/opcode_utility.h>
+#include <LLP/include/packet_framing.h>
 
 namespace LLP
 {
@@ -264,7 +265,7 @@ namespace LLP
          **/
         void SetLength(const std::vector<uint8_t> &BYTES)
         {
-            LENGTH = (BYTES[0] << 24) + (BYTES[1] << 16) + (BYTES[2] << 8) + (BYTES[3]);
+            LENGTH = PacketFraming::DecodeLength(BYTES);
             fLengthRead = true;
         }
 
@@ -278,16 +279,7 @@ namespace LLP
          **/
         std::vector<uint8_t> GetBytes() const
         {
-            std::vector<uint8_t> BYTES;
-            BYTES.reserve(5 + DATA.size());
-            BYTES.push_back(HEADER);
-            BYTES.push_back(static_cast<uint8_t>(LENGTH >> 24));
-            BYTES.push_back(static_cast<uint8_t>(LENGTH >> 16));
-            BYTES.push_back(static_cast<uint8_t>(LENGTH >> 8));
-            BYTES.push_back(static_cast<uint8_t>(LENGTH));
-            BYTES.insert(BYTES.end(), DATA.begin(), DATA.end());
-
-            return BYTES;
+            return PacketFraming::BuildLegacyBytes(HEADER, LENGTH, DATA);
         }
 
 
@@ -307,20 +299,8 @@ namespace LLP
          **/
         std::vector<uint8_t> GetBytesWithDebug(const std::string& strContext = "") const
         {
-            std::vector<uint8_t> BYTES;
-            BYTES.reserve(5 + DATA.size());
-            BYTES.push_back(HEADER);
-
             (void)strContext;
-
-            /* Legacy framing always includes the 4-byte length field. */
-            BYTES.push_back(static_cast<uint8_t>(LENGTH >> 24));
-            BYTES.push_back(static_cast<uint8_t>(LENGTH >> 16));
-            BYTES.push_back(static_cast<uint8_t>(LENGTH >> 8));
-            BYTES.push_back(static_cast<uint8_t>(LENGTH));
-            BYTES.insert(BYTES.end(), DATA.begin(), DATA.end());
-
-            return BYTES;
+            return GetBytes();
         }
 
 

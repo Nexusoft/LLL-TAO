@@ -248,7 +248,6 @@ namespace LLP
     , vAuthNonce()
     , fMinerAuthenticated(false)
     , hashGenesis(0)
-    , fStatelessProtocol(false)
     , vChaChaKey()
     , fEncryptionReady(false)
     , hashRewardAddress(0)
@@ -276,7 +275,6 @@ namespace LLP
     , vAuthNonce()
     , fMinerAuthenticated(false)
     , hashGenesis(0)
-    , fStatelessProtocol(false)
     , vChaChaKey()
     , fEncryptionReady(false)
     , hashRewardAddress(0)
@@ -304,7 +302,6 @@ namespace LLP
     , vAuthNonce()
     , fMinerAuthenticated(false)
     , hashGenesis(0)
-    , fStatelessProtocol(false)
     , vChaChaKey()
     , fEncryptionReady(false)
     , hashRewardAddress(0)
@@ -328,7 +325,6 @@ namespace LLP
         strMinerId.clear();
         vAuthNonce.clear();
         fMinerAuthenticated = false;
-        fStatelessProtocol = false;
         hashKeyID = 0;
 
         /* Send a notification to wake up sleeping thread to finish shutdown process. */
@@ -1044,12 +1040,6 @@ namespace LLP
                     nSessionId = result.context.nSessionId;
                     hashGenesis = result.context.hashGenesis;
 
-                    /* Mark connection as using stateless protocol framing after successful
-                     * Falcon authentication.  All subsequent responses on this connection
-                     * will use 16-bit stateless opcodes via respond_auto(). */
-                    if(!fWasAuthenticated && result.context.fAuthenticated)
-                        fStatelessProtocol = true;
-                    
                     /* Update authentication state */
                     if(!result.context.vAuthNonce.empty())
                         vAuthNonce = result.context.vAuthNonce;
@@ -1204,7 +1194,7 @@ namespace LLP
                         std::vector<uint8_t> vSessionStart = SessionStartPacket::BuildPayload(
                             nSessionId, nLivenessTimeout, hashGenesis);
 
-                        /* Send via respond_auto: uses 16-bit stateless framing after Falcon auth */
+                        /* Send via respond_auto: legacy port 8323 always keeps 8-bit framing. */
                         respond_auto(OpcodeUtility::Opcodes::SESSION_START, vSessionStart);
 
                         debug::log(0, FUNCTION, "SESSION_START: sessionId=", nSessionId,
@@ -1539,16 +1529,13 @@ namespace LLP
     }
 
 
-    /* Unified response dispatch with lane auto-detection.
-     * Checks fStatelessProtocol to determine framing:
-     *   - true:  16-bit stateless framing via respond_stateless()
-     *   - false: 8-bit legacy framing via respond() */
+    /* Legacy-lane response dispatch.
+     * Port 8323 is strict 8-bit Packet framing. It may unmirror/mirror shared
+     * stateless handler opcodes internally, but it must never emit 16-bit
+     * StatelessPacket bytes on this transport. */
     void Miner::respond_auto(uint8_t nLegacyOpcode, const std::vector<uint8_t>& vData)
     {
-        if(fStatelessProtocol)
-            respond_stateless(OpcodeUtility::Stateless::Mirror(nLegacyOpcode), vData);
-        else
-            respond(nLegacyOpcode, vData);
+        respond(nLegacyOpcode, vData);
     }
 
 
@@ -3003,29 +2990,22 @@ namespace LLP
     }
 
 
-    /* SendNodeShutdown - Notify legacy miner of graceful node shutdown via NODE_SHUTDOWN (0xD0FF) */
+    /* SendNodeShutdown - Notify legacy miner of graceful node shutdown via legacy CLOSE. */
     void Miner::SendNodeShutdown(uint32_t nReasonCode)
     {
         if(!m_nodeShutdownNotification.MarkSent())
         {
-            debug::log(1, FUNCTION, "NODE_SHUTDOWN already sent to legacy miner ",
+            debug::log(1, FUNCTION, "Legacy shutdown notice already sent to miner ",
                        GetAddress().ToStringIP(), " - skipping duplicate");
             return;
         }
 
-        /* Build 4-byte reason code payload (big-endian) */
-        std::vector<uint8_t> vData;
-        vData.push_back(static_cast<uint8_t>((nReasonCode >> 24) & 0xFF));
-        vData.push_back(static_cast<uint8_t>((nReasonCode >> 16) & 0xFF));
-        vData.push_back(static_cast<uint8_t>((nReasonCode >>  8) & 0xFF));
-        vData.push_back(static_cast<uint8_t>((nReasonCode >>  0) & 0xFF));
+        debug::log(1, FUNCTION, "Sending legacy CLOSE to miner ",
+                   GetAddress().ToStringIP(), " shutdown_reason=", nReasonCode);
 
-        debug::log(1, FUNCTION, "Sending NODE_SHUTDOWN (0xD0FF) to legacy miner ",
-                   GetAddress().ToStringIP(), " reason=", nReasonCode);
+        respond(OpcodeUtility::Opcodes::CLOSE);
 
-        respond_stateless(OpcodeUtility::Stateless::NODE_SHUTDOWN, vData);
-
-        debug::log(1, FUNCTION, "Queued NODE_SHUTDOWN for legacy miner ", GetAddress().ToStringIP(),
+        debug::log(1, FUNCTION, "Queued legacy CLOSE for miner ", GetAddress().ToStringIP(),
                    " buffered=", Buffered(), " bytes");
     }
 

@@ -600,12 +600,12 @@ namespace LLP
                 }
                 catch(const std::exception& e)
                 {
-                    debug::error(FUNCTION, "Failed to send NODE_SHUTDOWN to legacy miner ",
+                    debug::error(FUNCTION, "Failed to send legacy shutdown notice to miner ",
                                  pConn->GetAddress().ToStringIP(), ": ", e.what());
                 }
                 catch(...)
                 {
-                    debug::error(FUNCTION, "Failed to send NODE_SHUTDOWN to legacy miner ",
+                    debug::error(FUNCTION, "Failed to send legacy shutdown notice to miner ",
                                  pConn->GetAddress().ToStringIP(), ": unknown exception");
                 }
             }

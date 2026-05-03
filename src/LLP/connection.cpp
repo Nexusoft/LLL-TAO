@@ -12,7 +12,9 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/templates/connection.h>
+#include <LLP/include/opcode_utility.h>
 #include <LLP/templates/events.h>
+#include <Util/include/debug.h>
 
 namespace LLP
 {
@@ -79,11 +81,25 @@ namespace LLP
                 Event(EVENTS::HEADER);
                 nAvailable -= 4;
 
+                /* Validate immediately after the 4-byte length field is read.
+                 * This matches the stateless reader's allocation hardening and
+                 * prevents malformed header-only packets (for example PING
+                 * with LENGTH > 0) from stalling forever as partial packets. */
+                std::string strError;
+                if(!OpcodeUtility::ValidatePacketLength(INCOMING, &strError))
+                {
+                    debug::error(FUNCTION, "Legacy packet length validation failed from ",
+                        GetAddress().ToStringIP(), ": ", strError);
+                    Disconnect();
+                    return;
+                }
+
                 /* Pre-allocate the DATA vector to the declared packet length.
                  * Without reserve(), each subsequent insert() into a growing
                  * vector triggers a geometric reallocation (copy of all existing
                  * bytes).  With reserve(), the vector has capacity for the full
-                 * payload up front, making every subsequent end-insert O(1). */
+                 * payload up front, making every subsequent end-insert O(1).
+                 * The declared length has already been validated above. */
                 if(INCOMING.LENGTH > 0)
                     INCOMING.DATA.reserve(INCOMING.LENGTH);
             }

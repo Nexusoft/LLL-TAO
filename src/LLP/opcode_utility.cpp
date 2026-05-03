@@ -429,6 +429,7 @@ namespace OpcodeUtility
         /* Un-mirrored stateless-only opcodes — check before IsStateless() */
         if(nOpcode == Stateless::PING_DIAG)         return "PING_DIAG";
         if(nOpcode == Stateless::PONG_DIAG)         return "PONG_DIAG";
+        if(nOpcode == Stateless::NODE_SHUTDOWN)     return "NODE_SHUTDOWN";
 
         /* Check if it's a mirrored stateless opcode */
         if(Stateless::IsStateless(nOpcode))
@@ -507,6 +508,7 @@ namespace OpcodeUtility
         /* Un-mirrored stateless-only data-bearing opcodes */
         if(nOpcode == Stateless::PING_DIAG)         return true;  // 0xD0E0: 64B
         if(nOpcode == Stateless::PONG_DIAG)         return true;  // 0xD0E1: 64B
+        if(nOpcode == Stateless::NODE_SHUTDOWN)     return true;  // 0xD0FF: 4B
 
         /* For mirrored opcodes, unmirror and delegate to HasDataPayload(uint8_t) */
         if(Stateless::IsStateless(nOpcode))
@@ -522,6 +524,7 @@ namespace OpcodeUtility
         {
             case Stateless::PING_DIAG:         // 0xD0E0
             case Stateless::PONG_DIAG:         // 0xD0E1
+            case Stateless::NODE_SHUTDOWN:     // 0xD0FF
                 return true;
             default:
                 return false;
@@ -535,6 +538,7 @@ namespace OpcodeUtility
         {
             case Stateless::PING_DIAG:           return 64;  // PingFrame
             case Stateless::PONG_DIAG:           return 64;  // PongFrame
+            case Stateless::NODE_SHUTDOWN:       return 4;   // reason_code
             case Stateless::SESSION_STATUS:      return 8;   // session_id(4 LE) + status_flags(4 BE)
             case Stateless::SESSION_STATUS_ACK:  return 16;  // session_id(4 LE) + lane_health(4 BE) + uptime(4 BE) + echo(4 BE)
             default:                             return 0;   // variable or header-only
