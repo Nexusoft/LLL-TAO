@@ -2990,12 +2990,12 @@ namespace LLP
     }
 
 
-    /* SendNodeShutdown - Notify legacy miner of graceful node shutdown via NODE_SHUTDOWN (0xD0FF) */
+    /* SendNodeShutdown - Notify legacy miner of graceful node shutdown via legacy CLOSE. */
     void Miner::SendNodeShutdown(uint32_t nReasonCode)
     {
         if(!m_nodeShutdownNotification.MarkSent())
         {
-            debug::log(1, FUNCTION, "NODE_SHUTDOWN already sent to legacy miner ",
+            debug::log(1, FUNCTION, "Legacy shutdown notice already sent to miner ",
                        GetAddress().ToStringIP(), " - skipping duplicate");
             return;
         }
