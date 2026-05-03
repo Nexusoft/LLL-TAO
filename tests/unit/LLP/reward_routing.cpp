@@ -49,9 +49,9 @@ namespace {
         return hash;
     }
 
-    const std::vector<uint8_t> TEST_AAD_REWARD_ADDRESS{
+    const std::vector<uint8_t> AAD_REWARD_ADDRESS{
         'R','E','W','A','R','D','_','A','D','D','R','E','S','S'};
-    const std::vector<uint8_t> TEST_AAD_REWARD_RESULT{
+    const std::vector<uint8_t> AAD_REWARD_RESULT{
         'R','E','W','A','R','D','_','R','E','S','U','L','T'};
 
     uint256_t CreateTestHashFromHex(const char* pHex)
@@ -67,7 +67,7 @@ namespace {
         std::vector<uint8_t> vKey = LLC::MiningSessionKeys::DeriveChaCha20Key(hashGenesis);
 
         StatelessPacket packet(StatelessOpcodes::SET_REWARD);
-        packet.DATA = LLC::EncryptPayloadChaCha20(vReward, vKey, TEST_AAD_REWARD_ADDRESS);
+        packet.DATA = LLC::EncryptPayloadChaCha20(vReward, vKey, AAD_REWARD_ADDRESS);
         packet.LENGTH = static_cast<uint32_t>(packet.DATA.size());
         return packet;
     }
@@ -374,7 +374,7 @@ TEST_CASE("ProcessSetReward completes successfully and updates context", "[rewar
 
         std::vector<uint8_t> vDecryptedResponse;
         std::vector<uint8_t> vKey = LLC::MiningSessionKeys::DeriveChaCha20Key(testGenesis);
-        REQUIRE(LLC::DecryptPayloadChaCha20(result.response.DATA, vKey, vDecryptedResponse, TEST_AAD_REWARD_RESULT));
+        REQUIRE(LLC::DecryptPayloadChaCha20(result.response.DATA, vKey, vDecryptedResponse, AAD_REWARD_RESULT));
         REQUIRE(vDecryptedResponse.size() == 1);
         REQUIRE(vDecryptedResponse[0] == 0x00);
     }

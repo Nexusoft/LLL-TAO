@@ -69,10 +69,12 @@ namespace TAO::Ledger
     std::condition_variable PRIVATE_CONDITION;
 
 
-    /* Create a new block object from the chain.*/
+    /* Create a new block object from the chain.
+     * Indexed by mining channel: 0=PoS, 1=Prime, 2=Hash, 3=Private. */
     static memory::atomic<TAO::Ledger::TritiumBlock> tBlockCache[4];
 
     /* Miner-specific finalization metadata for cached mining templates.
+     * Indexed with the same channel layout as tBlockCache.
      * uint256_t requires memory::atomic's mutex-backed wrapper; uint64_t can
      * use std::atomic directly. */
     static memory::atomic<uint256_t> tBlockCacheDynamicGenesis[4];
