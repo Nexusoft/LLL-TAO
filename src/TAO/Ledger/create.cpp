@@ -57,7 +57,12 @@ namespace TAO::Ledger
 {
     namespace
     {
-        constexpr const char* SOLO_MINING_REWARD_LABEL = "none (solo)";
+        constexpr const char* kSoloMiningRewardLabel = "none (solo)";
+
+        std::string DynamicRewardLabel(const uint256_t& hashDynamicGenesis)
+        {
+            return hashDynamicGenesis != 0 ? hashDynamicGenesis.SubString() : std::string(kSoloMiningRewardLabel);
+        }
 
         bool SequenceDiagnosticsEnabled()
         {
@@ -613,8 +618,7 @@ namespace TAO::Ledger
                 CachedMiningTemplateRequiresProducerFinalization(
                     hashCachedDynamicGenesis, hashDynamicGenesis,
                     nCachedExtraNonce, nExtraNonce);
-            const std::string strDynamicReward =
-                hashDynamicGenesis != 0 ? hashDynamicGenesis.SubString() : std::string(SOLO_MINING_REWARD_LABEL);
+            const std::string strDynamicReward = DynamicRewardLabel(hashDynamicGenesis);
 
             if(fProducerFinalizationRequired)
             {
@@ -685,8 +689,9 @@ namespace TAO::Ledger
             /* Create the new producer transaction for given block.
              * Pass hashDynamicGenesis (miner reward address) so coinbase is routed
              * to the remote miner, not the node operator. */
+            const std::string strDynamicReward = DynamicRewardLabel(hashDynamicGenesis);
             debug::log(2, FUNCTION, "Creating fresh producer: reward address = ",
-                hashDynamicGenesis != 0 ? hashDynamicGenesis.SubString() : std::string(SOLO_MINING_REWARD_LABEL));
+                strDynamicReward);
             if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients, hashDynamicGenesis))
                 return debug::error(FUNCTION, "Failed to create producer transactions.");
 
