@@ -83,8 +83,8 @@ namespace LLP
 
                 /* Validate immediately after the 4-byte length field is read.
                  * This matches the stateless reader's allocation hardening and
-                 * prevents malformed header-only packets (for example malformed
-                 * GET_BLOCK with LENGTH > 0) from stalling forever as partial packets. */
+                 * prevents malformed header-only packets (for example PING
+                 * with LENGTH > 0) from stalling forever as partial packets. */
                 std::string strError;
                 if(!OpcodeUtility::ValidatePacketLength(INCOMING, &strError))
                 {

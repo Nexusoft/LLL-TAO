@@ -166,6 +166,10 @@ TEST_CASE("MiningContext - Protocol Lane for respond_auto", "[mining_context][re
         const auto bytes = legacy.GetBytes();
         REQUIRE(bytes.size() == 5u);
         REQUIRE(bytes[0] == OpcodeUtility::Opcodes::BLOCK_REJECTED);
+        REQUIRE(bytes[1] == 0x00);
+        REQUIRE(bytes[2] == 0x00);
+        REQUIRE(bytes[3] == 0x00);
+        REQUIRE(bytes[4] == 0x00);
         REQUIRE(bytes[0] != 0xD0);
     }
 
