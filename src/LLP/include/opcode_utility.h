@@ -190,7 +190,7 @@ namespace OpcodeUtility
          *  NOT mirrored from a legacy opcode. Legacy port 8323 is strict
          *  8-bit framing and uses its legacy CLOSE opcode instead.
          **/
-        static constexpr uint16_t NODE_SHUTDOWN = 0xD0FF;          // DATA-bearing, both lanes
+        static constexpr uint16_t NODE_SHUTDOWN = 0xD0FF;          // DATA-bearing, stateless-only
 
         /* Backward compatibility aliases with STATELESS_ prefix */
         static constexpr uint16_t STATELESS_BLOCK_DATA     = BLOCK_DATA;
