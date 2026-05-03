@@ -49,7 +49,10 @@ namespace {
         return hash;
     }
 
-    uint256_t HashFromHex(const char* pHex)
+    const std::vector<uint8_t> TEST_AAD_REWARD_ADDRESS{
+        'R','E','W','A','R','D','_','A','D','D','R','E','S','S'};
+
+    uint256_t CreateTestHashFromHex(const char* pHex)
     {
         uint256_t hash;
         hash.SetHex(pHex);
@@ -59,11 +62,10 @@ namespace {
     StatelessPacket BuildEncryptedSetRewardPacket(const uint256_t& hashGenesis, const char* pRewardHex)
     {
         std::vector<uint8_t> vReward = ParseHex(pRewardHex);
-        std::vector<uint8_t> vAAD{'R','E','W','A','R','D','_','A','D','D','R','E','S','S'};
         std::vector<uint8_t> vKey = LLC::MiningSessionKeys::DeriveChaCha20Key(hashGenesis);
 
         StatelessPacket packet(StatelessOpcodes::SET_REWARD);
-        packet.DATA = LLC::EncryptPayloadChaCha20(vReward, vKey, vAAD);
+        packet.DATA = LLC::EncryptPayloadChaCha20(vReward, vKey, TEST_AAD_REWARD_ADDRESS);
         packet.LENGTH = static_cast<uint32_t>(packet.DATA.size());
         return packet;
     }
@@ -348,8 +350,8 @@ TEST_CASE("ProcessSetReward completes successfully and updates context", "[rewar
     SECTION("ProcessSetReward rejects mid-session reward changes")
     {
         uint256_t testGenesis = GetTestGenesis();
-        uint256_t rewardA = HashFromHex(TEST_REWARD_A_HEX);
-        uint256_t rewardB = HashFromHex(TEST_REWARD_B_HEX);
+        uint256_t rewardA = CreateTestHashFromHex(TEST_REWARD_A_HEX);
+        uint256_t rewardB = CreateTestHashFromHex(TEST_REWARD_B_HEX);
 
         MiningContext context = MiningContext()
             .WithGenesis(testGenesis)
@@ -367,6 +369,14 @@ TEST_CASE("ProcessSetReward completes successfully and updates context", "[rewar
         REQUIRE(result.context.hashRewardAddress != rewardB);
         REQUIRE(!result.response.IsNull());
         REQUIRE(result.response.HEADER == StatelessOpcodes::REWARD_RESULT);
+
+        std::vector<uint8_t> vDecryptedResponse;
+        std::vector<uint8_t> vKey = LLC::MiningSessionKeys::DeriveChaCha20Key(testGenesis);
+        const std::vector<uint8_t> vAADRewardResult{
+            'R','E','W','A','R','D','_','R','E','S','U','L','T'};
+        REQUIRE(LLC::DecryptPayloadChaCha20(result.response.DATA, vKey, vDecryptedResponse, vAADRewardResult));
+        REQUIRE(vDecryptedResponse.size() == 1);
+        REQUIRE(vDecryptedResponse[0] == 0x00);
     }
 }
 
@@ -375,8 +385,8 @@ TEST_CASE("Mining template cache finalization policy", "[reward_routing][mining_
 {
     SECTION("Different reward addresses require producer finalization")
     {
-        uint256_t rewardA = HashFromHex(TEST_REWARD_A_HEX);
-        uint256_t rewardB = HashFromHex(TEST_REWARD_B_HEX);
+        uint256_t rewardA = CreateTestHashFromHex(TEST_REWARD_A_HEX);
+        uint256_t rewardB = CreateTestHashFromHex(TEST_REWARD_B_HEX);
 
         REQUIRE(TAO::Ledger::CachedMiningTemplateRequiresProducerFinalization(
             rewardA, rewardB, 1, 1));
@@ -384,7 +394,7 @@ TEST_CASE("Mining template cache finalization policy", "[reward_routing][mining_
 
     SECTION("Different extra nonce requires producer finalization")
     {
-        uint256_t rewardA = HashFromHex(TEST_REWARD_A_HEX);
+        uint256_t rewardA = CreateTestHashFromHex(TEST_REWARD_A_HEX);
 
         REQUIRE(TAO::Ledger::CachedMiningTemplateRequiresProducerFinalization(
             rewardA, rewardA, 1, 2));
@@ -392,7 +402,7 @@ TEST_CASE("Mining template cache finalization policy", "[reward_routing][mining_
 
     SECTION("Same reward address and extra nonce may reuse finalized producer")
     {
-        uint256_t rewardA = HashFromHex(TEST_REWARD_A_HEX);
+        uint256_t rewardA = CreateTestHashFromHex(TEST_REWARD_A_HEX);
 
         REQUIRE_FALSE(TAO::Ledger::CachedMiningTemplateRequiresProducerFinalization(
             rewardA, rewardA, 7, 7));

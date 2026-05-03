@@ -607,11 +607,13 @@ namespace TAO::Ledger
                 CachedMiningTemplateRequiresProducerFinalization(
                     hashCachedDynamicGenesis, hashDynamicGenesis,
                     nCachedExtraNonce, nExtraNonce);
+            const std::string strDynamicReward =
+                hashDynamicGenesis != 0 ? hashDynamicGenesis.SubString() : std::string("none (solo)");
 
             if(fProducerFinalizationRequired)
             {
                 debug::log(2, FUNCTION, "Cached block base requires producer finalization"
-                           " for reward=", hashDynamicGenesis != 0 ? hashDynamicGenesis.SubString() : std::string("none (solo)"),
+                           " for reward=", strDynamicReward,
                            " extra_nonce=", nExtraNonce);
             }
 
@@ -627,7 +629,7 @@ namespace TAO::Ledger
                  * Pass hashDynamicGenesis (miner reward address) so coinbase is routed
                  * to the remote miner, not the node operator. */
                 debug::log(2, FUNCTION, "Rebuilding stale producer: reward address = ",
-                    hashDynamicGenesis != 0 ? hashDynamicGenesis.SubString() : std::string("none (solo)"));
+                    strDynamicReward);
                 if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients, hashDynamicGenesis))
                     return debug::error(FUNCTION, "Failed to create producer transactions.");
             }
