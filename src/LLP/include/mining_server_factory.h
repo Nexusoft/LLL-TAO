@@ -95,8 +95,8 @@ namespace LLP
      *  - REQUIRE_SSL: configurable via -miningsslrequired
      *  - PORT_SSL: GetMiningSSLPort() for STATELESS (default 9325), GetLegacyMiningSSLPort() for LEGACY (default 8325)
      *              Set to 0 when -miningssl is not enabled (no port stolen).
-     *  - MAX_INCOMING: 128 connections
-     *  - MAX_CONNECTIONS: 128 total
+     *  - MAX_INCOMING: 100 connections
+     *  - MAX_CONNECTIONS: 100 total
      *  - MAX_THREADS: configurable via -miningthreads (default 4)
      *  - DDOS_CSCORE: configurable via -miningcscore (default 1)
      *  - DDOS_RSCORE: configurable via -miningrscore (default 500)
@@ -235,8 +235,8 @@ namespace LLP
             CONFIG.PORT_SSL        = CONFIG.ENABLE_SSL ?
                 ((lane == Lane::STATELESS) ? GetMiningSSLPort() : GetLegacyMiningSSLPort()) :
                 0;
-            CONFIG.MAX_INCOMING    = 128;
-            CONFIG.MAX_CONNECTIONS = 128;
+            CONFIG.MAX_INCOMING    = 100;
+            CONFIG.MAX_CONNECTIONS = 100;
             CONFIG.MAX_THREADS     = config::GetArg(std::string("-miningthreads"), 8);
             CONFIG.DDOS_CSCORE     = config::GetArg(std::string("-miningcscore"), 1);
             CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-miningrscore"), 500);

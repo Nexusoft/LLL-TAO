@@ -243,7 +243,8 @@ namespace LLP
     void BaseConnection<PacketType>::WritePacket(const PacketType& PACKET, bool fPriority)
     {
         /* Per-connection buffer limit — mining connections return a larger value
-         * (5 MB by default) so push notifications are not dropped due to buffer pressure.
+         * (5 MB by default) so push notifications are not dropped under normal
+         * mining pressure.
          * Virtual dispatch; no mutex, minimal overhead on the hot path. */
         const uint64_t nMaxSendBuffer = GetMaxSendBuffer();
 
