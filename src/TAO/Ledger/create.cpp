@@ -74,16 +74,41 @@ namespace TAO::Ledger
     std::condition_variable PRIVATE_CONDITION;
 
 
-    /* Create a new block object from the chain.
-     * Indexed by mining channel: 0=PoS, 1=Prime, 2=Hash, 3=Private. */
-    static memory::atomic<TAO::Ledger::TritiumBlock> tBlockCache[4];
+    /* Mining template cache entry — bundles the cached block with the
+     * miner-specific finalization metadata so a single atomic store/load
+     * publishes the whole tuple consistently.
+     *
+     * Prior implementation used three independent atomics
+     * (tBlockCache, tBlockCacheDynamicGenesis, tBlockCacheExtraNonce).
+     * Concurrent readers between the .load() calls could witness a torn
+     * (block, dynamicGenesis, extraNonce) triple after another miner's
+     * three-step .store() sequence. CachedMiningTemplateRequiresProducerFinalization
+     * would then return the wrong answer for one cycle and serve a stale
+     * producer to miner X with miner Y's reward address.
+     *
+     * The single-struct atomic eliminates that torn-read window. The cache
+     * remains keyed by mining channel (0=PoS, 1=Prime, 2=Hash, 3=Private);
+     * a per-(channel, dynamicGenesis) LRU is a deferrable throughput
+     * optimisation for multi-miner-per-channel deployments and is NOT
+     * required for correctness — the existing
+     * CachedMiningTemplateRequiresProducerFinalization() rebuilds the
+     * producer when the requested reward differs. */
+    struct MiningTemplateCacheEntry
+    {
+        TAO::Ledger::TritiumBlock block;
+        uint256_t                 hashDynamicGenesis;
+        uint64_t                  nExtraNonce;
 
-    /* Miner-specific finalization metadata for cached mining templates.
-     * Indexed with the same channel layout as tBlockCache.
-     * uint256_t requires memory::atomic's mutex-backed wrapper; uint64_t can
-     * use std::atomic directly. */
-    static memory::atomic<uint256_t> tBlockCacheDynamicGenesis[4];
-    static std::atomic<uint64_t> tBlockCacheExtraNonce[4];
+        MiningTemplateCacheEntry()
+        : block()
+        , hashDynamicGenesis(0)
+        , nExtraNonce(0)
+        {
+        }
+    };
+
+    /* Indexed by mining channel: 0=PoS, 1=Prime, 2=Hash, 3=Private. */
+    static memory::atomic<MiningTemplateCacheEntry> tBlockCache[4];
 
 
     /* Create a new transaction object from signature chain. */
@@ -503,13 +528,16 @@ namespace TAO::Ledger
         else
             rBlockRet.nVersion = nCurrent - 1;
 
-        /* Retrieve currently cached block */
-        const TAO::Ledger::TritiumBlock tBlockCached =
+        /* Retrieve currently cached block — single atomic snapshot of the
+         * (block, dynamicGenesis, extraNonce) triple to avoid torn reads. */
+        const MiningTemplateCacheEntry tCachedEntry =
             tBlockCache[nChannel].load();
+        const TAO::Ledger::TritiumBlock& tBlockCached =
+            tCachedEntry.block;
         const uint256_t hashCachedDynamicGenesis =
-            tBlockCacheDynamicGenesis[nChannel].load();
+            tCachedEntry.hashDynamicGenesis;
         const uint64_t nCachedExtraNonce =
-            tBlockCacheExtraNonce[nChannel].load();
+            tCachedEntry.nExtraNonce;
 
         /* Cache the best chain before processing. */
         const TAO::Ledger::BlockState tStateBest =
@@ -673,12 +701,17 @@ namespace TAO::Ledger
             /* Build the block's merkle root. */
             rBlockRet.hashMerkleRoot = rBlockRet.BuildMerkleTree(vHashes);
 
-            /* Store the finalized template and metadata. Later cache hits may
-             * reuse this as a base, but only same reward/extra-nonce requests
-             * may reuse the producer without rebuilding it. */
-            tBlockCache[nChannel].store(rBlockRet);
-            tBlockCacheDynamicGenesis[nChannel].store(hashDynamicGenesis);
-            tBlockCacheExtraNonce[nChannel].store(nExtraNonce);
+            /* Store the finalized template and metadata as a single atomic
+             * triple. Later cache hits may reuse this as a base, but only
+             * same reward/extra-nonce requests may reuse the producer
+             * without rebuilding it. */
+            {
+                MiningTemplateCacheEntry tNewEntry;
+                tNewEntry.block              = rBlockRet;
+                tNewEntry.hashDynamicGenesis = hashDynamicGenesis;
+                tNewEntry.nExtraNonce        = nExtraNonce;
+                tBlockCache[nChannel].store(tNewEntry);
+            }
         }
         else //block not cached, set up new block
         {
@@ -710,10 +743,15 @@ namespace TAO::Ledger
             debug::log(2, FUNCTION, "  nHeight: ", rBlockRet.nHeight);
             debug::log(2, FUNCTION, "  hashPrevBlock: ", rBlockRet.hashPrevBlock.SubString());
 
-            /* Store the cached block. */
-            tBlockCache[nChannel].store(rBlockRet);
-            tBlockCacheDynamicGenesis[nChannel].store(hashDynamicGenesis);
-            tBlockCacheExtraNonce[nChannel].store(nExtraNonce);
+            /* Store the cached block and miner-specific finalization
+             * metadata as a single atomic triple. */
+            {
+                MiningTemplateCacheEntry tNewEntry;
+                tNewEntry.block              = rBlockRet;
+                tNewEntry.hashDynamicGenesis = hashDynamicGenesis;
+                tNewEntry.nExtraNonce        = nExtraNonce;
+                tBlockCache[nChannel].store(tNewEntry);
+            }
         }
 
         /* Update the time for the newly created block. */
