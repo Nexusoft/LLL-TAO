@@ -187,4 +187,28 @@ TEST_CASE("LLP strict lane opcode mapping", "[llp][lane_enforcement]")
             REQUIRE(bytes[5] == 0x00);
         }
     }
+
+    SECTION("Stateless transport encoder preserves payloads for auth/session responses")
+    {
+        const std::vector<uint8_t> payload = {0x01, 0x02, 0x03, 0x04};
+        const std::array<uint8_t, 2> opcodes = {
+            Opcodes::SESSION_KEEPALIVE,
+            Opcodes::MINER_AUTH_RESULT
+        };
+
+        for(const uint8_t opcode : opcodes)
+        {
+            const auto bytes = LLP::MiningTransport::BuildResponseBytes(
+                LLP::MiningTransportLane::STATELESS_9323, opcode, payload);
+
+            REQUIRE(bytes.size() == payload.size() + 6u);
+            REQUIRE(bytes[0] == 0xD0);
+            REQUIRE(bytes[1] == opcode);
+            REQUIRE(bytes[2] == 0x00);
+            REQUIRE(bytes[3] == 0x00);
+            REQUIRE(bytes[4] == 0x00);
+            REQUIRE(bytes[5] == static_cast<uint8_t>(payload.size()));
+            REQUIRE(std::equal(payload.begin(), payload.end(), bytes.begin() + 6));
+        }
+    }
 }

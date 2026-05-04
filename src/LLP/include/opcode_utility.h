@@ -274,7 +274,7 @@ namespace OpcodeUtility
         DUPLICATE             = 4,  // Block already submitted
         FORK                  = 5,  // Block on an alternate chain
         SESSION_INVALID       = 6,  // Missing/invalid authenticated mining session
-        REWARD_NOT_BOUND      = 7,  // Reward address was not bound before mining work
+        REWARD_NOT_BOUND      = 7,  // Reward binding state is incomplete or address is unset
         RATE_LIMITED          = 8,  // Request was throttled/rate limited
         UNKNOWN_TEMPLATE      = 9,  // Merkle root was not found in the lane-local template map
         LOCAL_TEMPLATE_REJECT = 10, // Local pre-validation rejected a stale/mutated template
