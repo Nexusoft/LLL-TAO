@@ -51,8 +51,6 @@ namespace LLP
          *
          *  @param[in] eLane          Transport lane that owns the wire framing.
          *  @param[in] nLegacyOpcode  Canonical 8-bit mining opcode.
-         *  @param[in] vData          Optional payload bytes.
-         *
          *  @return Serialized packet bytes for the selected lane.
          *
          *  Thread-safety: uses only stack-local packet objects and immutable
@@ -62,8 +60,28 @@ namespace LLP
          **/
         static std::vector<uint8_t> BuildResponseBytes(
             MiningTransportLane eLane,
+            uint8_t nLegacyOpcode)
+        {
+            static const std::vector<uint8_t> vEmpty;
+            return BuildResponseBytes(eLane, nLegacyOpcode, vEmpty);
+        }
+
+
+        /** BuildResponseBytes
+         *
+         *  Encode one shared mining semantic response with payload bytes.
+         *
+         *  @param[in] eLane          Transport lane that owns the wire framing.
+         *  @param[in] nLegacyOpcode  Canonical 8-bit mining opcode.
+         *  @param[in] vData          Payload bytes.
+         *
+         *  @return Serialized packet bytes for the selected lane.
+         *
+         **/
+        static std::vector<uint8_t> BuildResponseBytes(
+            MiningTransportLane eLane,
             uint8_t nLegacyOpcode,
-            const std::vector<uint8_t>& vData = std::vector<uint8_t>())
+            const std::vector<uint8_t>& vData)
         {
             if(eLane == MiningTransportLane::STATELESS_9323)
             {

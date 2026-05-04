@@ -121,6 +121,9 @@ TEST_CASE("LLP strict lane opcode mapping", "[llp][lane_enforcement]")
     SECTION("Legacy transport encoder owns 8-bit framing for shared semantic opcodes")
     {
         const std::vector<uint8_t> payload = {0x11};
+        /* These opcodes are shared business semantics returned by auth/session,
+         * template, and rejection handlers; the legacy transport must still
+         * encode each one as an 8-bit Packet frame. */
         const std::array<uint8_t, 5> opcodes = {
             Opcodes::SESSION_START,
             Opcodes::MINER_AUTH_RESULT,

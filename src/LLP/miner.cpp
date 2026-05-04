@@ -2532,7 +2532,7 @@ namespace LLP
         {
             const std::string strLookupAddr = GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort());
             const auto optCtx = StatelessMinerManager::Get().GetMinerContext(strLookupAddr);
-            bool shouldRejectSession = false;
+            bool fShouldRejectSession = false;
             if(optCtx.has_value())
             {
                 const SessionConsistencyResult consistency = optCtx->ValidateConsistency();
@@ -2540,7 +2540,7 @@ namespace LLP
                 {
                     debug::log(0, FUNCTION, "Session consistency violation at SUBMIT_BLOCK (legacy): ",
                                SessionConsistencyResultString(consistency));
-                    shouldRejectSession = true;
+                    fShouldRejectSession = true;
                 }
             }
             else
@@ -2553,10 +2553,10 @@ namespace LLP
             {
                 debug::error(FUNCTION, "SUBMIT_BLOCK session reject: authenticated=",
                              YesNo(fMinerAuthenticated), " session=", nSessionId);
-                shouldRejectSession = true;
+                fShouldRejectSession = true;
             }
 
-            if(shouldRejectSession)
+            if(fShouldRejectSession)
             {
                 respond_auto(BLOCK_REJECTED,
                     BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::SESSION_INVALID));
