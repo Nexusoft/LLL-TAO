@@ -432,6 +432,8 @@ TEST_CASE("Legacy wrong-lane stateless frame heuristic is narrow", "[llp][packet
 
     SECTION("0xD0D8 stateless MINER_READY on legacy lane is diagnosed")
     {
+        /* Bytes [0xD0][0xD8][0][0][0][0] are stateless MINER_READY length 0,
+         * but a legacy reader sees HEADER=0xD0 and LENGTH=0xD8000000. */
         REQUIRE(LooksLikeStatelessFrameOnLegacy(
             0xD0,
             Opcodes::MINER_READY,

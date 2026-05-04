@@ -24,6 +24,10 @@ namespace LLP
 {
 namespace OpcodeUtility
 {
+    namespace
+    {
+        constexpr uint8_t STATELESS_FRAME_PREFIX = 0xD0;
+    }
 
 
     bool IsStatelessMiningOpcode(uint8_t nOpcode)
@@ -350,7 +354,7 @@ namespace OpcodeUtility
 
     bool LooksLikeStatelessFrameOnLegacy(uint8_t nLegacyHeader, uint8_t nLengthFirstByte, uint32_t nDeclaredLength)
     {
-        if(nLegacyHeader != 0xD0)
+        if(nLegacyHeader != STATELESS_FRAME_PREFIX)
             return false;
 
         if(nDeclaredLength <= MAX_ANY_PACKET_LENGTH)

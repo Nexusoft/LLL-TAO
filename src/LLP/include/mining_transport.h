@@ -42,6 +42,20 @@ namespace LLP
     class MiningTransport
     {
     public:
+        /** BuildResponseBytes
+         *
+         *  Encode one shared mining semantic response for the requested lane.
+         *  nLegacyOpcode is always the canonical 8-bit semantic opcode.  The
+         *  legacy lane writes it unchanged in Packet framing; the stateless lane
+         *  mirrors it to 0xD0xx and writes StatelessPacket framing.
+         *
+         *  @param[in] eLane          Transport lane that owns the wire framing.
+         *  @param[in] nLegacyOpcode  Canonical 8-bit mining opcode.
+         *  @param[in] vData          Optional payload bytes.
+         *
+         *  @return Serialized packet bytes for the selected lane.
+         *
+         **/
         static std::vector<uint8_t> BuildResponseBytes(
             MiningTransportLane eLane,
             uint8_t nLegacyOpcode,

@@ -207,6 +207,8 @@ namespace LLP
 
         std::vector<uint8_t> BuildSubmitRejectPayload(const OpcodeUtility::RejectionReason eReason)
         {
+            /* Legacy BLOCK_REJECTED now carries one machine-readable reason byte
+             * for submit/session/template failures instead of an empty payload. */
             return std::vector<uint8_t>{static_cast<uint8_t>(eReason)};
         }
     }
