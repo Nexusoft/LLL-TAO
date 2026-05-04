@@ -425,3 +425,34 @@ TEST_CASE("Large payload attack vectors are blocked", "[llp][packet][security]")
         REQUIRE(bValid == false);
     }
 }
+
+TEST_CASE("LooksLikeStatelessFrameOnLegacy correctly identifies misplaced stateless frames", "[llp][packet][security][lane]")
+{
+    using namespace LLP::OpcodeUtility;
+
+    SECTION("0xD0D8 stateless MINER_READY on legacy lane is diagnosed")
+    {
+        /* Bytes [0xD0][0xD8][0][0][0][0] are stateless MINER_READY length 0,
+         * but a legacy reader sees HEADER=0xD0 and LENGTH=0xD8000000. */
+        REQUIRE(LooksLikeStatelessFrameOnLegacy(
+            0xD0,
+            Opcodes::MINER_READY,
+            0xD8000000u));
+    }
+
+    SECTION("valid legacy MINER_AUTH_CHALLENGE is not diagnosed")
+    {
+        REQUIRE_FALSE(LooksLikeStatelessFrameOnLegacy(
+            Opcodes::MINER_AUTH_CHALLENGE,
+            0x00,
+            32u));
+    }
+
+    SECTION("oversized non-0xD0 legacy packet is not called stateless")
+    {
+        REQUIRE_FALSE(LooksLikeStatelessFrameOnLegacy(
+            Opcodes::GET_BLOCK,
+            0xD8,
+            MAX_ANY_PACKET_LENGTH + 1u));
+    }
+}

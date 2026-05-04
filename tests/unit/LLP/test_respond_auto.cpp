@@ -207,4 +207,13 @@ TEST_CASE("RejectionReason Enum - Existing Values Preserved", "[opcode_utility][
     {
         REQUIRE(static_cast<uint8_t>(OpcodeUtility::RejectionReason::DUPLICATE) == 4);
     }
+
+    SECTION("New machine-readable legacy submit reasons are stable")
+    {
+        REQUIRE(static_cast<uint8_t>(OpcodeUtility::RejectionReason::SESSION_INVALID) == 6);
+        REQUIRE(static_cast<uint8_t>(OpcodeUtility::RejectionReason::REWARD_NOT_BOUND) == 7);
+        REQUIRE(static_cast<uint8_t>(OpcodeUtility::RejectionReason::RATE_LIMITED) == 8);
+        REQUIRE(static_cast<uint8_t>(OpcodeUtility::RejectionReason::UNKNOWN_TEMPLATE) == 9);
+        REQUIRE(static_cast<uint8_t>(OpcodeUtility::RejectionReason::LOCAL_TEMPLATE_REJECT) == 10);
+    }
 }

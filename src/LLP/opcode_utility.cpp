@@ -24,6 +24,10 @@ namespace LLP
 {
 namespace OpcodeUtility
 {
+    namespace
+    {
+        constexpr uint8_t STATELESS_FRAME_PREFIX = 0xD0;
+    }
 
 
     bool IsStatelessMiningOpcode(uint8_t nOpcode)
@@ -345,6 +349,21 @@ namespace OpcodeUtility
         }
         
         return true;
+    }
+
+
+    bool LooksLikeStatelessFrameOnLegacy(uint8_t nLegacyHeader, uint8_t nLengthFirstByte, uint32_t nDeclaredLength)
+    {
+        if(nLegacyHeader != STATELESS_FRAME_PREFIX)
+            return false;
+
+        if(nDeclaredLength <= MAX_ANY_PACKET_LENGTH)
+            return false;
+
+        const uint16_t nLikelyStatelessOpcode =
+            Stateless::Mirror(nLengthFirstByte);
+
+        return Stateless::IsStateless(nLikelyStatelessOpcode);
     }
 
 

@@ -150,26 +150,6 @@ namespace LLP
             }
         }
 
-        bool IsPriorityStatelessOpcode(const uint16_t nOpcode)
-        {
-            switch(nOpcode)
-            {
-                case OpcodeUtility::Stateless::SESSION_KEEPALIVE:
-                case OpcodeUtility::Stateless::SESSION_STATUS_ACK:
-                case OpcodeUtility::Stateless::NEW_ROUND:
-                case OpcodeUtility::Stateless::OLD_ROUND:
-                case OpcodeUtility::Stateless::SESSION_EXPIRED:
-                case OpcodeUtility::Stateless::GOOD_BLOCK:
-                case OpcodeUtility::Stateless::ORPHAN_BLOCK:
-                case OpcodeUtility::Stateless::BLOCK_ACCEPTED:
-                case OpcodeUtility::Stateless::BLOCK_REJECTED:
-                    return true;
-
-                default:
-                    return false;
-            }
-        }
-
         bool LegacyOpcodeRequiresChannel(const uint8_t nOpcode)
         {
             switch(nOpcode)
@@ -223,6 +203,13 @@ namespace LLP
                 default:
                     return MinerSessionState::CONNECTED;
             }
+        }
+
+        std::vector<uint8_t> BuildSubmitRejectPayload(const OpcodeUtility::RejectionReason eReason)
+        {
+            /* Legacy BLOCK_REJECTED now carries one machine-readable reason byte
+             * for submit/session/template failures instead of an empty payload. */
+            return std::vector<uint8_t>{static_cast<uint8_t>(eReason)};
         }
     }
 
@@ -1618,7 +1605,8 @@ namespace LLP
             }
             else
             {
-                respond_auto(BLOCK_REJECTED);
+                respond_auto(BLOCK_REJECTED,
+                    BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::SESSION_INVALID));
             }
 
             return false;
@@ -1637,7 +1625,8 @@ namespace LLP
             if(PACKET.HEADER == GET_BLOCK)
                 respond_auto(BLOCK_REJECTED, BuildGetBlockControlPayload(GetBlockPolicyReason::SESSION_INVALID, 0));
             else
-                respond_auto(BLOCK_REJECTED);
+                respond_auto(BLOCK_REJECTED,
+                    BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::SESSION_INVALID));
 
             return false;
         }
@@ -2543,6 +2532,7 @@ namespace LLP
         {
             const std::string strLookupAddr = GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort());
             const auto optCtx = StatelessMinerManager::Get().GetMinerContext(strLookupAddr);
+            bool fShouldRejectSession = false;
             if(optCtx.has_value())
             {
                 const SessionConsistencyResult consistency = optCtx->ValidateConsistency();
@@ -2550,14 +2540,27 @@ namespace LLP
                 {
                     debug::log(0, FUNCTION, "Session consistency violation at SUBMIT_BLOCK (legacy): ",
                                SessionConsistencyResultString(consistency));
-                    respond_auto(BLOCK_REJECTED);
-                    return true;
+                    fShouldRejectSession = true;
                 }
             }
             else
             {
                 debug::log(2, FUNCTION, "Legacy lane: no exact-address session context found for ",
-                           strLookupAddr, " - relying on local connection state");
+                            strLookupAddr, " - relying on local connection state");
+            }
+
+            if(!fMinerAuthenticated || nSessionId == 0)
+            {
+                debug::error(FUNCTION, "SUBMIT_BLOCK session reject: authenticated=",
+                             YesNo(fMinerAuthenticated), " session=", nSessionId);
+                fShouldRejectSession = true;
+            }
+
+            if(fShouldRejectSession)
+            {
+                respond_auto(BLOCK_REJECTED,
+                    BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::SESSION_INVALID));
+                return true;
             }
         }
 
@@ -2572,7 +2575,8 @@ namespace LLP
         {
             debug::log(0, FUNCTION, "SUBMIT_BLOCK packet too small: ",
                        PACKET.DATA.size(), " < ", MIN_SIZE);
-            respond_auto(BLOCK_REJECTED);
+            respond_auto(BLOCK_REJECTED,
+                BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::INVALID_POW));
             return true;
         }
 
@@ -2580,7 +2584,17 @@ namespace LLP
         {
             debug::log(0, FUNCTION, "SUBMIT_BLOCK packet too large: ",
                        PACKET.DATA.size(), " > ", MAX_SIZE);
-            respond_auto(BLOCK_REJECTED);
+            respond_auto(BLOCK_REJECTED,
+                BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::INVALID_POW));
+            return true;
+        }
+
+        if(!fRewardBound || hashRewardAddress == 0)
+        {
+            debug::error(FUNCTION, "SUBMIT_BLOCK session reject: reward not bound for session ",
+                         nSessionId);
+            respond_auto(BLOCK_REJECTED,
+                BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::REWARD_NOT_BOUND));
             return true;
         }
 
@@ -2617,7 +2631,8 @@ namespace LLP
                 if(vMinerPubKey.empty())
                 {
                     debug::error(FUNCTION, "SUBMIT_BLOCK verify failed: missing Falcon public key");
-                    respond_auto(BLOCK_REJECTED);
+                    respond_auto(BLOCK_REJECTED,
+                        BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::SESSION_INVALID));
                     return true;
                 }
 
@@ -2642,7 +2657,8 @@ namespace LLP
                     if(!DisposableFalcon::VerifyWorkSubmission(vWorkData, vMinerPubKey, submission))
                     {
                         debug::error(FUNCTION, "SUBMIT_BLOCK verify failed: Disposable Falcon signature invalid");
-                        respond_auto(BLOCK_REJECTED);  // auto-detect lane framing
+                        respond_auto(BLOCK_REJECTED,
+                            BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::INVALID_SIG));
                         return true;
                     }
 
@@ -2678,7 +2694,8 @@ namespace LLP
             if(!parseResult.success)
             {
                 debug::error(FUNCTION, "SUBMIT_BLOCK parse failed: ", parseResult.reason);
-                respond_auto(BLOCK_REJECTED);
+                respond_auto(BLOCK_REJECTED,
+                    BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::INVALID_POW));
                 return true;
             }
 
@@ -2706,7 +2723,8 @@ namespace LLP
         {
             debug::log(0, FUNCTION, "📥 === SUBMIT_BLOCK: REJECTED (Unknown template, legacy lane) === ",
                        "merkle=", hashMerkle.SubString());
-            respond_auto(BLOCK_REJECTED);
+            respond_auto(BLOCK_REJECTED,
+                BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::UNKNOWN_TEMPLATE));
             return true;
         }
 
@@ -2717,7 +2735,8 @@ namespace LLP
             if(!sign_block(nonce, hashMerkle, vPrimeOffsets))
             {
                 debug::log(0, FUNCTION, "📥 === SUBMIT_BLOCK: REJECTED (sign_block failed, legacy lane) ===");
-                respond_auto(BLOCK_REJECTED);
+                respond_auto(BLOCK_REJECTED,
+                    BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::LOCAL_TEMPLATE_REJECT));
                 return true;
             }
 
@@ -2728,7 +2747,8 @@ namespace LLP
         {
             debug::error(FUNCTION, "SUBMIT_BLOCK unexpected non-Tritium block for merkle ",
                          hashMerkle.SubString());
-            respond_auto(BLOCK_REJECTED);
+            respond_auto(BLOCK_REJECTED,
+                BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::LOCAL_TEMPLATE_REJECT));
             return true;
         }
 
@@ -2766,7 +2786,8 @@ namespace LLP
         if(!TAO::Ledger::ValidateVtxNotCommitted(*pTritium))
         {
             debug::error(FUNCTION, "SUBMIT_BLOCK: vtx already committed — template stale, rejecting");
-            respond_auto(BLOCK_REJECTED);
+            respond_auto(BLOCK_REJECTED,
+                BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::STALE));
             return true;
         }
 
@@ -2776,7 +2797,8 @@ namespace LLP
         if(!TAO::Ledger::ValidateProducerFreshness(*pTritium))
         {
             debug::error(FUNCTION, "SUBMIT_BLOCK: producer sigchain stale — template stale, rejecting");
-            respond_auto(BLOCK_REJECTED);
+            respond_auto(BLOCK_REJECTED,
+                BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::STALE));
             return true;
         }
 
@@ -2786,7 +2808,8 @@ namespace LLP
         if(!TAO::Ledger::ValidateVtxSigchainConsistency(*pTritium))
         {
             debug::error(FUNCTION, "SUBMIT_BLOCK: vtx sigchain stale — rejecting");
-            respond_auto(BLOCK_REJECTED);
+            respond_auto(BLOCK_REJECTED,
+                BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::STALE));
             return true;
         }
 
@@ -2799,7 +2822,8 @@ namespace LLP
                          " This indicates a regression in the pre-validation pipeline."
                          " frozen=", hashMerkleFrozen.SubString(),
                          " current=", pTritium->hashMerkleRoot.SubString());
-            respond_auto(BLOCK_REJECTED);
+            respond_auto(BLOCK_REJECTED,
+                BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::LOCAL_TEMPLATE_REJECT));
             return true;
         }
 
@@ -2814,7 +2838,8 @@ namespace LLP
                     hashGenesis.SubString(8), pTritium->nChannel,
                     false, validationResult.reason);
             }
-            respond_auto(BLOCK_REJECTED);
+            respond_auto(BLOCK_REJECTED,
+                BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::INVALID_POW));
             return true;
         }
 
@@ -2829,7 +2854,8 @@ namespace LLP
                     hashGenesis.SubString(8), pTritium->nChannel,
                     false, acceptanceResult.reason);
             }
-            respond_auto(BLOCK_REJECTED);
+            respond_auto(BLOCK_REJECTED,
+                BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::LOCAL_TEMPLATE_REJECT));
         }
         else
         {
@@ -2958,35 +2984,6 @@ namespace LLP
         }
 
         return true;
-    }
-
-
-    /* Sends a stateless (16-bit) protocol response packet */
-    void Miner::respond_stateless(uint16_t nOpcode, const std::vector<uint8_t>& vData)
-    {
-        /* Build raw packet with 16-bit opcode (big-endian) and 4-byte length */
-        std::vector<uint8_t> vPacket;
-        vPacket.reserve(6 + vData.size());
-
-        /* Write 16-bit opcode (big-endian) */
-        vPacket.push_back((nOpcode >> 8) & 0xFF);
-        vPacket.push_back(nOpcode & 0xFF);
-
-        /* Write 4-byte length (big-endian) */
-        uint32_t nLength = static_cast<uint32_t>(vData.size());
-        vPacket.push_back((nLength >> 24) & 0xFF);
-        vPacket.push_back((nLength >> 16) & 0xFF);
-        vPacket.push_back((nLength >> 8) & 0xFF);
-        vPacket.push_back(nLength & 0xFF);
-
-        /* Append payload */
-        vPacket.insert(vPacket.end(), vData.begin(), vData.end());
-
-        /* Write raw bytes to connection */
-        Write(vPacket, vPacket.size(), IsPriorityStatelessOpcode(nOpcode));
-
-        debug::log(3, FUNCTION, "Stateless response: opcode=0x", std::hex, nOpcode,
-                   " length=", std::dec, nLength, " to ", GetAddress().ToStringIP());
     }
 
 
