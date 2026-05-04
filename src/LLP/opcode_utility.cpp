@@ -348,6 +348,21 @@ namespace OpcodeUtility
     }
 
 
+    bool LooksLikeStatelessFrameOnLegacy(uint8_t nLegacyHeader, uint8_t nLengthFirstByte, uint32_t nDeclaredLength)
+    {
+        if(nLegacyHeader != 0xD0)
+            return false;
+
+        if(nDeclaredLength <= MAX_ANY_PACKET_LENGTH)
+            return false;
+
+        const uint16_t nLikelyStatelessOpcode =
+            static_cast<uint16_t>(0xD000 | nLengthFirstByte);
+
+        return Stateless::IsStateless(nLikelyStatelessOpcode);
+    }
+
+
     bool ValidateOpcodeForStatelessPort(uint8_t nOpcode, std::string* strReason)
     {
         /* Check if it's a stateless-specific opcode */

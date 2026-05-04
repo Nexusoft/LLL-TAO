@@ -268,11 +268,16 @@ namespace OpcodeUtility
     //=========================================================================
     enum class RejectionReason : uint8_t
     {
-        STALE       = 1,  // hashPrevBlock != hashBestChain (Guard 2 mismatch)
-        INVALID_POW = 2,  // Proof of work failed validation
-        INVALID_SIG = 3,  // Falcon signature verification failed
-        DUPLICATE   = 4,  // Block already submitted
-        FORK        = 5,  // Block on an alternate chain
+        STALE                 = 1,  // hashPrevBlock != hashBestChain (Guard 2 mismatch)
+        INVALID_POW           = 2,  // Proof of work failed validation
+        INVALID_SIG           = 3,  // Falcon signature verification failed
+        DUPLICATE             = 4,  // Block already submitted
+        FORK                  = 5,  // Block on an alternate chain
+        SESSION_INVALID       = 6,  // Missing/invalid authenticated mining session
+        REWARD_NOT_BOUND      = 7,  // Reward address was not bound before mining work
+        RATE_LIMITED          = 8,  // Request was throttled/rate limited
+        UNKNOWN_TEMPLATE      = 9,  // Merkle root was not found in the lane-local template map
+        LOCAL_TEMPLATE_REJECT = 10, // Local pre-validation rejected a stale/mutated template
     };
 
     //=========================================================================
@@ -504,6 +509,18 @@ namespace OpcodeUtility
      *
      **/
     bool ValidatePacketLength(const Packet& packet, std::string* strReason = nullptr);
+
+
+    /** LooksLikeStatelessFrameOnLegacy
+     *
+     *  Heuristic used by the legacy 8323 reader after it has parsed an
+     *  impossible legacy length.  A stateless 16-bit frame such as
+     *  [0xD0][0xD8][len0][len1][len2][len3] is parsed by the legacy reader as
+     *  HEADER=0xD0 and LENGTH=0xD8000000, so this detects likely wrong-lane
+     *  framing without rejecting valid legacy MINER_AUTH_CHALLENGE packets.
+     *
+     **/
+    bool LooksLikeStatelessFrameOnLegacy(uint8_t nLegacyHeader, uint8_t nLengthFirstByte, uint32_t nDeclaredLength);
 
 
     /** ValidatePacketLength

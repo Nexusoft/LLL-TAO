@@ -925,17 +925,6 @@ namespace LLP
         bool handle_get_round_stateless();
 
 
-        /** respond_stateless
-         *
-         *  Sends a stateless (16-bit) protocol response packet.
-         *
-         *  @param[in] nOpcode The 16-bit stateless opcode (e.g., STATELESS_BLOCK_DATA).
-         *  @param[in] vData The payload data to send.
-         *
-         **/
-        void respond_stateless(uint16_t nOpcode, const std::vector<uint8_t>& vData = std::vector<uint8_t>());
-
-
         /** Track whether NODE_SHUTDOWN was already sent on this connection. **/
         GracefulShutdown::NotificationState m_nodeShutdownNotification;
 

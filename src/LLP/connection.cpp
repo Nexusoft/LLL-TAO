@@ -81,6 +81,20 @@ namespace LLP
                 Event(EVENTS::HEADER);
                 nAvailable -= 4;
 
+                if(OpcodeUtility::LooksLikeStatelessFrameOnLegacy(
+                    INCOMING.HEADER, BYTES[0], INCOMING.LENGTH))
+                {
+                    const uint16_t nLikelyOpcode =
+                        static_cast<uint16_t>(0xD000 | BYTES[0]);
+                    debug::error(FUNCTION, "Likely stateless 16-bit frame on legacy 8323 lane from ",
+                        GetAddress().ToStringIP(), ": first bytes look like opcode 0x",
+                        std::hex, nLikelyOpcode, std::dec,
+                        " but legacy parsed length=", INCOMING.LENGTH,
+                        ". Disconnecting wrong-lane transport.");
+                    Disconnect();
+                    return;
+                }
+
                 /* Validate immediately after the 4-byte length field is read.
                  * This matches the stateless reader's allocation hardening and
                  * prevents malformed header-only packets (for example PING

@@ -1,5 +1,6 @@
 #include <unit/catch2/catch.hpp>
 
+#include <LLP/include/mining_transport.h>
 #include <LLP/include/opcode_utility.h>
 #include <LLP/include/packet_framing.h>
 #include <LLP/packets/packet.h>
@@ -115,5 +116,49 @@ TEST_CASE("LLP strict lane opcode mapping", "[llp][lane_enforcement]")
         const std::array<uint8_t, LLP::PacketFraming::LENGTH_BYTES> lengthBytes =
             {legacyBytes[1], legacyBytes[2], legacyBytes[3], legacyBytes[4]};
         REQUIRE(LLP::PacketFraming::DecodeLength(lengthBytes) == payload.size());
+    }
+
+    SECTION("Legacy transport encoder owns 8-bit framing for regression opcodes")
+    {
+        const std::vector<uint8_t> payload = {0x11};
+        const std::array<uint8_t, 5> opcodes = {
+            Opcodes::SESSION_START,
+            Opcodes::MINER_AUTH_RESULT,
+            Opcodes::CHANNEL_ACK,
+            Opcodes::BLOCK_DATA,
+            Opcodes::BLOCK_REJECTED
+        };
+
+        for(const uint8_t opcode : opcodes)
+        {
+            const auto bytes = LLP::MiningTransport::BuildResponseBytes(
+                LLP::MiningTransportLane::LEGACY_8323, opcode, payload);
+
+            REQUIRE(bytes.size() == payload.size() + 5u);
+            REQUIRE(bytes[0] == opcode);
+            REQUIRE(bytes[1] == 0x00);
+            REQUIRE(bytes[2] == 0x00);
+            REQUIRE(bytes[3] == 0x00);
+            REQUIRE(bytes[4] == static_cast<uint8_t>(payload.size()));
+            REQUIRE(std::equal(payload.begin(), payload.end(), bytes.begin() + 5));
+        }
+    }
+
+    SECTION("Stateless transport encoder mirrors the same semantics into 16-bit framing")
+    {
+        const std::vector<uint8_t> payload = {0x22};
+        const auto bytes = LLP::MiningTransport::BuildResponseBytes(
+            LLP::MiningTransportLane::STATELESS_9323,
+            Opcodes::BLOCK_REJECTED,
+            payload);
+
+        REQUIRE(bytes.size() == payload.size() + 6u);
+        REQUIRE(bytes[0] == 0xD0);
+        REQUIRE(bytes[1] == Opcodes::BLOCK_REJECTED);
+        REQUIRE(bytes[2] == 0x00);
+        REQUIRE(bytes[3] == 0x00);
+        REQUIRE(bytes[4] == 0x00);
+        REQUIRE(bytes[5] == static_cast<uint8_t>(payload.size()));
+        REQUIRE(bytes[6] == payload[0]);
     }
 }
