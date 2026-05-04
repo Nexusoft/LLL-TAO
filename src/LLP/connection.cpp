@@ -85,7 +85,7 @@ namespace LLP
                     INCOMING.HEADER, BYTES[0], INCOMING.LENGTH))
                 {
                     const uint16_t nLikelyOpcode =
-                        static_cast<uint16_t>(0xD000 | BYTES[0]);
+                        OpcodeUtility::Stateless::Mirror(BYTES[0]);
                     debug::error(FUNCTION, "Likely stateless 16-bit frame on legacy 8323 lane from ",
                         GetAddress().ToStringIP(), ": first bytes look like opcode 0x",
                         std::hex, nLikelyOpcode, std::dec,

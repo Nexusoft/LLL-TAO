@@ -38,6 +38,10 @@ namespace LLP
      *  this adapter is the only place that decides whether the wire frame is
      *  legacy 8-bit Packet or stateless 16-bit StatelessPacket.
      *
+     *  Thread-safety: BuildResponseBytes() uses only stack-local packet objects
+     *  and immutable inputs, so it is safe to call concurrently from multiple
+     *  mining connections.
+     *
      **/
     class MiningTransport
     {

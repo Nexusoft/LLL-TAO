@@ -361,7 +361,7 @@ namespace OpcodeUtility
             return false;
 
         const uint16_t nLikelyStatelessOpcode =
-            static_cast<uint16_t>(0xD000 | nLengthFirstByte);
+            Stateless::Mirror(nLengthFirstByte);
 
         return Stateless::IsStateless(nLikelyStatelessOpcode);
     }
