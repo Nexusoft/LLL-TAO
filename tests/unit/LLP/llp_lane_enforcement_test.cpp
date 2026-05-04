@@ -118,7 +118,7 @@ TEST_CASE("LLP strict lane opcode mapping", "[llp][lane_enforcement]")
         REQUIRE(LLP::PacketFraming::DecodeLength(lengthBytes) == payload.size());
     }
 
-    SECTION("Legacy transport encoder owns 8-bit framing for regression opcodes")
+    SECTION("Legacy transport encoder owns 8-bit framing for shared semantic opcodes")
     {
         const std::vector<uint8_t> payload = {0x11};
         const std::array<uint8_t, 5> opcodes = {
