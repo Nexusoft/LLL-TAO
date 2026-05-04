@@ -1390,14 +1390,22 @@ namespace LLP
 
         /** ValidateRewardAddress
          *
-         *  Validates that a reward address is non-zero and is a valid TritiumGenesis
-         *  (UserType) address. Register Addresses are explicitly rejected because
-         *  Coinbase::Verify() enforces UserType on all network peers — a block with a
-         *  Register Address as coinbase recipient will be rejected by the whole network.
+         *  Validates that a reward address is non-zero, is a valid TritiumGenesis
+         *  (UserType) address, and (by default) exists on chain. Register Addresses
+         *  are explicitly rejected because Coinbase::Verify() enforces UserType on
+         *  all network peers — a block with a Register Address as coinbase recipient
+         *  will be rejected by the whole network.
+         *
+         *  The on-chain existence check is defense in depth against the silent
+         *  loss-of-funds case: a UserType genesis that does not exist on chain
+         *  passes Coinbase::Verify() on every peer but causes Coinbase::Commit() to
+         *  fall back to event-only mode (no NXS credited) without surfacing an
+         *  error. Operators mining a brand-new sigchain's very first block can
+         *  opt out with `-rewardmustexist=0`.
          *
          *  @param[in] hashReward The reward address to validate
          *
-         *  @return True if the address is a non-zero TritiumGenesis (UserType) hash
+         *  @return True if the address is acceptable as a coinbase recipient
          *
          **/
         static bool ValidateRewardAddress(const uint256_t& hashReward);

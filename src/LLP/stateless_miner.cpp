@@ -1932,6 +1932,35 @@ namespace LLP
             return false;
         }
 
+        /* On-chain existence guard — defense in depth against the silent
+         * loss-of-funds class of incident.  A reward genesis whose type byte is
+         * UserType but which has no transactions on chain passes Coinbase::Verify()
+         * on every network peer (the verifier checks only the type byte) but fails
+         * silently in Coinbase::Commit(): LLD::Register->ReadState() cannot resolve
+         * the trust account, the auto-credit path falls back to event-only mode,
+         * and the miner sees BLOCK_ACCEPTED without ever receiving NXS.
+         *
+         * This check rejects that misconfiguration at MINER_SET_REWARD time so the
+         * miner gets an immediate, encrypted REWARD_RESULT failure instead of
+         * silently losing every reward for the rest of the session.
+         *
+         * Defaulted on; operators can opt out with `-rewardmustexist=0` for the
+         * narrow case of mining a brand-new sigchain's very first block (where
+         * HasFirst() returns false until the first block lands). */
+        if(config::GetBoolArg("-rewardmustexist", true))
+        {
+            if(!GenesisConstants::ExistsOnChain(hashReward))
+            {
+                debug::error(FUNCTION, "Reward address ", hashReward.GetHex(),
+                             " not found on chain — Coinbase::Commit() would silently"
+                             " fall back to event-only mode and NXS would NOT be credited."
+                             " Verify the reward genesis exists (users/get/status genesis=...)"
+                             " or set `-rewardmustexist=0` if mining a brand-new sigchain's"
+                             " first block.");
+                return false;
+            }
+        }
+
         return true;
     }
 
