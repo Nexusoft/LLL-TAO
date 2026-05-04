@@ -1107,9 +1107,18 @@ namespace LLP
                         hashKeyID = updatedContext.hashKeyID;
                     }
 
-                    /* Atomic transform: apply auth completion state to CURRENT value in mapMiners.
-                     * Captures all auth-specific fields from updatedContext and applies them
-                     * atomically, preserving any concurrent height/timestamp updates. */
+                    /* Atomic transform: apply auth/channel/encryption state to CURRENT value in
+                     * mapMiners.  Captures all relevant fields from updatedContext and applies
+                     * them atomically, preserving any concurrent height/timestamp updates.
+                     *
+                     * CRITICAL: WithChannel MUST be included here.  SET_CHANNEL stores the
+                     * chosen channel in result.context (nChannel=1 or 2) but the manager
+                     * previously retained nChannel=0.  ComputeSessionState() requires nChannel!=0
+                     * to advance beyond ENCRYPTION_READY(2), so omitting WithChannel kept the
+                     * manager at ENCRYPTION_READY(2) instead of CHANNEL_SET(3).  That caused
+                     * PreflightSessionGate to reject MINER_READY and GET_BLOCK with
+                     * BLOCK_REJECTED [SESSION_INVALID], breaking the legacy lane after every
+                     * successful SET_CHANNEL. */
                     {
                         MiningContext authCtx = updatedContext;
                         StatelessMinerManager::Get().TransformMiner(updatedContext.strAddress,
@@ -1127,6 +1136,10 @@ namespace LLP
                                     result = result.WithSessionStart(authCtx.nSessionStart);
                                 if(authCtx.fEncryptionReady && !authCtx.vChaChaKey.empty())
                                     result = result.WithChaChaKey(authCtx.vChaChaKey);
+                                /* Propagate channel when non-zero (set by SET_CHANNEL). */
+                                if(authCtx.nChannel != 0)
+                                    result = result.WithChannel(authCtx.nChannel)
+                                                   .WithChannelName(authCtx.nChannel);
                                 return result;
                             }, 0);
                     }
@@ -2499,11 +2512,27 @@ namespace LLP
             return false;
         }
 
-        /* Update subscription state */
+        /* Update local subscription state */
         fSubscribedToNotifications = true;
         nSubscribedChannel = nChannel;
 
         debug::log(0, FUNCTION, "Miner subscribed to channel ", nChannel, " (", GetChannelName(nChannel), ")");
+
+        /* Propagate subscription state to the manager so the canonical context reflects
+         * MINING(4) state.  MINER_READY is handled inside ProcessPacketStateless (not the
+         * shared big-if block), so the TransformMiner in ProcessPacket is not reached here.
+         * Without this update the manager would permanently show CHANNEL_SET(3) instead of
+         * MINING(4) after a successful MINER_READY, giving stale state to any diagnostics
+         * or health checks that read from the manager. */
+        {
+            const uint32_t nChanSnap = nChannel.load();
+            const std::string strAddr =
+                GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort());
+            StatelessMinerManager::Get().TransformMiner(strAddr,
+                [nChanSnap](const MiningContext& current) {
+                    return current.WithSubscription(nChanSnap);
+                }, 0);
+        }
 
         /* Send immediate template.
          * Force-bypass the push throttle — miner explicitly re-subscribed and needs
