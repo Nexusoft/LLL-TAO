@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/falcon_auth.h>
 #include <LLP/include/disposable_falcon.h>
+#include <LLP/include/session_start_packet.h>
 #include <LLP/packets/packet.h>
 #include <LLP/packets/stateless_packet.h>
 #include <LLP/include/stateless_opcodes.h>
@@ -570,6 +571,62 @@ TEST_CASE("StatelessMiner SESSION_START Processing", "[stateless_miner]")
         
         REQUIRE(result.fSuccess == true);
         REQUIRE(result.context.fAuthenticated == true);
+    }
+}
+
+
+TEST_CASE("SessionStartPacket::BuildPayload genesis byte order", "[stateless_miner]")
+{
+    /* Regression test for the SESSION_START genesis endianness bug.
+     *
+     * base_uint::GetBytes() iterates pn[0]…pn[WIDTH-1] (LSW-first), so it
+     * emits the same 32 bytes as GetHex() but in *reversed 4-byte word order*.
+     * NexusMiner parses the genesis field as a plain byte string MSW-first
+     * (byte[0] == type byte), so the node must emit display/GetHex byte order.
+     *
+     * The fix in BuildPayload reverses the word groups after calling GetBytes().
+     * This test pins that byte-for-byte contract so a regression is immediately
+     * visible. */
+    SECTION("genesis bytes in payload match GetHex() display order")
+    {
+        /* Use the genesis hash from the real miner log that demonstrated the bug */
+        const std::string genesisHex =
+            "a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122";
+
+        uint256_t hashGenesis(0);
+        hashGenesis.SetHex(genesisHex);
+
+        const uint32_t nSessionId  = 0x548c90d3;
+        const uint64_t nTimeoutSec = 86400;
+
+        std::vector<uint8_t> vPayload =
+            SessionStartPacket::BuildPayload(nSessionId, nTimeoutSec, hashGenesis);
+
+        /* Payload layout: [1 success][4 session_id][4 timeout][32 genesis] */
+        REQUIRE(vPayload.size() == 41);
+
+        /* Extract the 32 genesis bytes starting at offset 9 */
+        const std::vector<uint8_t> vGenesisWire(vPayload.begin() + 9, vPayload.end());
+        REQUIRE(vGenesisWire.size() == 32);
+
+        /* The wire bytes must equal ParseHex(GetHex()) — big-endian / display order.
+         * byte[0] must be the type byte (0xa1). */
+        const std::vector<uint8_t> vGenesisExpected = ParseHex(genesisHex);
+        REQUIRE(vGenesisWire == vGenesisExpected);
+
+        /* Explicitly verify byte[0] carries the type byte so the test is
+         * self-documenting even if genesisHex is later changed */
+        REQUIRE(vGenesisWire[0] == hashGenesis.GetType());
+    }
+
+    SECTION("zero genesis is omitted from payload")
+    {
+        uint256_t hashZero(0);
+        std::vector<uint8_t> vPayload =
+            SessionStartPacket::BuildPayload(42, 300, hashZero);
+
+        /* Without genesis: 1 + 4 + 4 = 9 bytes */
+        REQUIRE(vPayload.size() == 9);
     }
 }
 
