@@ -2532,6 +2532,7 @@ namespace LLP
         {
             const std::string strLookupAddr = GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort());
             const auto optCtx = StatelessMinerManager::Get().GetMinerContext(strLookupAddr);
+            bool fSessionReject = false;
             if(optCtx.has_value())
             {
                 const SessionConsistencyResult consistency = optCtx->ValidateConsistency();
@@ -2539,15 +2540,27 @@ namespace LLP
                 {
                     debug::log(0, FUNCTION, "Session consistency violation at SUBMIT_BLOCK (legacy): ",
                                SessionConsistencyResultString(consistency));
-                    respond_auto(BLOCK_REJECTED,
-                        BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::SESSION_INVALID));
-                    return true;
+                    fSessionReject = true;
                 }
             }
             else
             {
                 debug::log(2, FUNCTION, "Legacy lane: no exact-address session context found for ",
-                           strLookupAddr, " - relying on local connection state");
+                            strLookupAddr, " - relying on local connection state");
+            }
+
+            if(!fMinerAuthenticated || nSessionId == 0)
+            {
+                debug::error(FUNCTION, "SUBMIT_BLOCK session reject: authenticated=",
+                             YesNo(fMinerAuthenticated), " session=", nSessionId);
+                fSessionReject = true;
+            }
+
+            if(fSessionReject)
+            {
+                respond_auto(BLOCK_REJECTED,
+                    BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::SESSION_INVALID));
+                return true;
             }
         }
 
@@ -2573,15 +2586,6 @@ namespace LLP
                        PACKET.DATA.size(), " > ", MAX_SIZE);
             respond_auto(BLOCK_REJECTED,
                 BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::INVALID_POW));
-            return true;
-        }
-
-        if(!fMinerAuthenticated || nSessionId == 0)
-        {
-            debug::error(FUNCTION, "SUBMIT_BLOCK session reject: authenticated=",
-                         YesNo(fMinerAuthenticated), " session=", nSessionId);
-            respond_auto(BLOCK_REJECTED,
-                BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::SESSION_INVALID));
             return true;
         }
 

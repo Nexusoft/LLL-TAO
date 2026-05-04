@@ -519,6 +519,15 @@ namespace OpcodeUtility
      *  HEADER=0xD0 and LENGTH=0xD8000000, so this detects likely wrong-lane
      *  framing without rejecting valid legacy MINER_AUTH_CHALLENGE packets.
      *
+     *  @param[in] nLegacyHeader      First byte read by the legacy parser.
+     *  @param[in] nLengthFirstByte   First byte of the legacy length field;
+     *                                this would be the low opcode byte in a
+     *                                misplaced 16-bit stateless frame.
+     *  @param[in] nDeclaredLength    Full 32-bit length parsed by the legacy
+     *                                reader from bytes 1-4.
+     *
+     *  @return true if the bytes are likely a stateless frame on legacy 8323.
+     *
      **/
     bool LooksLikeStatelessFrameOnLegacy(uint8_t nLegacyHeader, uint8_t nLengthFirstByte, uint32_t nDeclaredLength);
 

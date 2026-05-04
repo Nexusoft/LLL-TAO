@@ -161,4 +161,27 @@ TEST_CASE("LLP strict lane opcode mapping", "[llp][lane_enforcement]")
         REQUIRE(bytes[5] == static_cast<uint8_t>(payload.size()));
         REQUIRE(bytes[6] == payload[0]);
     }
+
+    SECTION("Stateless transport encoder covers auth/session semantic opcodes")
+    {
+        const std::array<uint8_t, 3> opcodes = {
+            Opcodes::MINER_READY,
+            Opcodes::SESSION_KEEPALIVE,
+            Opcodes::MINER_AUTH_RESULT
+        };
+
+        for(const uint8_t opcode : opcodes)
+        {
+            const auto bytes = LLP::MiningTransport::BuildResponseBytes(
+                LLP::MiningTransportLane::STATELESS_9323, opcode);
+
+            REQUIRE(bytes.size() == 6u);
+            REQUIRE(bytes[0] == 0xD0);
+            REQUIRE(bytes[1] == opcode);
+            REQUIRE(bytes[2] == 0x00);
+            REQUIRE(bytes[3] == 0x00);
+            REQUIRE(bytes[4] == 0x00);
+            REQUIRE(bytes[5] == 0x00);
+        }
+    }
 }
