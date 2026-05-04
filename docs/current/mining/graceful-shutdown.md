@@ -98,5 +98,5 @@ debug::log(0, "Channel: ", MiningContext::ChannelName(pBlock->nChannel));
 | `src/LLP/colin_mining_agent.cpp` | Implemented `on_node_shutdown()` |
 | `src/LLP/global.cpp` | `GracefulDisconnectAllMiners()` sends NODE_SHUTDOWN to both stateless and legacy lanes in one unified sequence |
 | `src/LLP/types/miner.h` | Declared `SendNodeShutdown(uint32_t)` on the legacy `Miner` class |
-| `src/LLP/miner.cpp` | Implemented `Miner::SendNodeShutdown()` via `respond_stateless()` |
+| `src/LLP/miner.cpp` | Implemented `Miner::SendNodeShutdown()` via legacy `respond(CLOSE)` framing |
 | `tests/unit/LLP/graceful_shutdown_tests.cpp` | New unit tests |
