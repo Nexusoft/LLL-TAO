@@ -426,7 +426,7 @@ TEST_CASE("Large payload attack vectors are blocked", "[llp][packet][security]")
     }
 }
 
-TEST_CASE("Legacy wrong-lane stateless frame detection is precise", "[llp][packet][security][lane]")
+TEST_CASE("LooksLikeStatelessFrameOnLegacy correctly identifies misplaced stateless frames", "[llp][packet][security][lane]")
 {
     using namespace LLP::OpcodeUtility;
 
