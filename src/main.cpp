@@ -35,6 +35,7 @@ ________________________________________________________________________________
 #include <Util/include/filesystem.h>
 #include <Util/include/signals.h>
 #include <Util/include/daemon.h>
+#include <Util/include/string.h>
 
 #include <Legacy/include/ambassador.h>
 #include <Legacy/include/global.h>
@@ -69,12 +70,45 @@ void Startup()
             return;
         }
 
+        /* Parse autologin credentials — two formats are supported:
+         *
+         *   Compact (single-arg): autologin=username:password[:pin]
+         *     The value of -autologin itself carries the credentials.
+         *     PIN may be omitted and supplied via the separate -pin arg.
+         *
+         *   Legacy (multi-arg): autologin=1  username=user  password=pass  pin=1234
+         *     Credentials are read from individual -username / -password / -pin args.
+         *
+         * Both formats may coexist; the compact format takes precedence for
+         * username/password when present.
+         */
+        std::string strLoginUser = config::GetArg("-username", "");
+        std::string strLoginPass = config::GetArg("-password", "");
+        std::string strLoginPIN  = config::GetArg("-pin", "");
+
+        /* Detect compact format: value contains ':' (e.g. "alice:s3cr3t" or "alice:s3cr3t:5678") */
+        {
+            const std::string strAutoLoginVal = config::GetArg("-autologin", "");
+            if(strAutoLoginVal.find(':') != std::string::npos)
+            {
+                std::vector<std::string> vCredentials;
+                ParseString(strAutoLoginVal, ':', vCredentials);
+                if(vCredentials.size() >= 2)
+                {
+                    strLoginUser = vCredentials[0];
+                    strLoginPass = vCredentials[1];
+                    if(vCredentials.size() >= 3)
+                        strLoginPIN = vCredentials[2];
+                }
+            }
+        }
+
         /* Create a JSON encoding and call the main API endpoint. */
         encoding::json jParams =
         {
-            { "username", config::GetArg("-username", "") },
-            { "password", config::GetArg("-password", "") },
-            { "pin",      config::GetArg("-pin", "")      }
+            { "username", strLoginUser },
+            { "password", strLoginPass },
+            { "pin",      strLoginPIN  }
         };
 
         /* Handle for -autocreate if specified. */
@@ -126,7 +160,7 @@ void Startup()
                 /* Create a JSON encoding and call the main API endpoint. */
                 encoding::json jUnlock =
                 {
-                    { "pin",  config::GetArg("-pin", "") },
+                    { "pin",  strLoginPIN },
                     { "notifications",              "1" },
                     { "mining",                     "1" },
                     { "staking",                    "1" }
