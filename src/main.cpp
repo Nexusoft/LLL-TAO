@@ -35,7 +35,6 @@ ________________________________________________________________________________
 #include <Util/include/filesystem.h>
 #include <Util/include/signals.h>
 #include <Util/include/daemon.h>
-#include <Util/include/string.h>
 
 #include <Legacy/include/ambassador.h>
 #include <Legacy/include/global.h>
@@ -86,19 +85,35 @@ void Startup()
         std::string strLoginPass = config::GetArg("-password", "");
         std::string strLoginPIN  = config::GetArg("-pin", "");
 
-        /* Detect compact format: value contains ':' (e.g. "alice:s3cr3t" or "alice:s3cr3t:5678") */
+        /* Detect compact format: value contains ':' (e.g. "alice:s3cr3t" or "alice:s3cr3t:5678")
+         * Split on the FIRST colon (username) and SECOND colon (password/pin boundary) only,
+         * so passwords that contain colons are preserved intact. */
         {
             const std::string strAutoLoginVal = config::GetArg("-autologin", "");
-            if(strAutoLoginVal.find(':') != std::string::npos)
+            const size_t nFirstColon = strAutoLoginVal.find(':');
+            if(nFirstColon != std::string::npos)
             {
-                std::vector<std::string> vCredentials;
-                ParseString(strAutoLoginVal, ':', vCredentials);
-                if(vCredentials.size() >= 2)
+                std::string strUser = strAutoLoginVal.substr(0, nFirstColon);
+                std::string strRest = strAutoLoginVal.substr(nFirstColon + 1);
+
+                /* Find optional second colon that separates password from PIN.
+                 * Everything between the first and second colon is the password
+                 * (so passwords may contain colons). */
+                const size_t nSecondColon = strRest.find(':');
+                std::string strPass = (nSecondColon != std::string::npos)
+                                      ? strRest.substr(0, nSecondColon)
+                                      : strRest;
+                std::string strPIN2 = (nSecondColon != std::string::npos)
+                                      ? strRest.substr(nSecondColon + 1)
+                                      : "";
+
+                /* Only apply if username and password are both non-empty. */
+                if(!strUser.empty() && !strPass.empty())
                 {
-                    strLoginUser = vCredentials[0];
-                    strLoginPass = vCredentials[1];
-                    if(vCredentials.size() >= 3)
-                        strLoginPIN = vCredentials[2];
+                    strLoginUser = strUser;
+                    strLoginPass = strPass;
+                    if(!strPIN2.empty())
+                        strLoginPIN = strPIN2;
                 }
             }
         }
