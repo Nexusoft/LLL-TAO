@@ -69,12 +69,61 @@ void Startup()
             return;
         }
 
+        /* Parse autologin credentials — two formats are supported:
+         *
+         *   Compact (single-arg): autologin=username:password[:pin]
+         *     The value of -autologin itself carries the credentials.
+         *     PIN may be omitted and supplied via the separate -pin arg.
+         *
+         *   Legacy (multi-arg): autologin=1  username=user  password=pass  pin=1234
+         *     Credentials are read from individual -username / -password / -pin args.
+         *
+         * Both formats may coexist; the compact format takes precedence for
+         * username/password when present.
+         */
+        std::string strLoginUser = config::GetArg("-username", "");
+        std::string strLoginPass = config::GetArg("-password", "");
+        std::string strLoginPIN  = config::GetArg("-pin", "");
+
+        /* Detect compact format: value contains ':' (e.g. "alice:s3cr3t" or "alice:s3cr3t:5678")
+         * Split on the FIRST colon (username) and SECOND colon (password/pin boundary) only,
+         * so passwords that contain colons are preserved intact. */
+        {
+            const std::string strAutoLoginVal = config::GetArg("-autologin", "");
+            const size_t nFirstColon = strAutoLoginVal.find(':');
+            if(nFirstColon != std::string::npos)
+            {
+                std::string strUser = strAutoLoginVal.substr(0, nFirstColon);
+                std::string strRest = strAutoLoginVal.substr(nFirstColon + 1);
+
+                /* Find optional second colon that separates password from PIN.
+                 * Everything between the first and second colon is the password
+                 * (so passwords may contain colons). */
+                const size_t nSecondColon = strRest.find(':');
+                std::string strPass = (nSecondColon != std::string::npos)
+                                      ? strRest.substr(0, nSecondColon)
+                                      : strRest;
+                std::string strPIN2 = (nSecondColon != std::string::npos)
+                                      ? strRest.substr(nSecondColon + 1)
+                                      : "";
+
+                /* Only apply if username and password are both non-empty. */
+                if(!strUser.empty() && !strPass.empty())
+                {
+                    strLoginUser = strUser;
+                    strLoginPass = strPass;
+                    if(!strPIN2.empty())
+                        strLoginPIN = strPIN2;
+                }
+            }
+        }
+
         /* Create a JSON encoding and call the main API endpoint. */
         encoding::json jParams =
         {
-            { "username", config::GetArg("-username", "") },
-            { "password", config::GetArg("-password", "") },
-            { "pin",      config::GetArg("-pin", "")      }
+            { "username", strLoginUser },
+            { "password", strLoginPass },
+            { "pin",      strLoginPIN  }
         };
 
         /* Handle for -autocreate if specified. */
@@ -126,7 +175,7 @@ void Startup()
                 /* Create a JSON encoding and call the main API endpoint. */
                 encoding::json jUnlock =
                 {
-                    { "pin",  config::GetArg("-pin", "") },
+                    { "pin",  strLoginPIN },
                     { "notifications",              "1" },
                     { "mining",                     "1" },
                     { "staking",                    "1" }
