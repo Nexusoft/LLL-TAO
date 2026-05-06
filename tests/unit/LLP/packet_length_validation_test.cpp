@@ -12,9 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #include <unit/catch2/catch.hpp>
-
-#include <LLP/include/falcon_constants.h>
 #include <LLP/include/opcode_utility.h>
+#include <LLP/include/falcon_constants.h>
 #include <LLP/packets/packet.h>
 #include <LLP/packets/stateless_packet.h>
 
