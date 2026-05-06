@@ -641,8 +641,7 @@ namespace LLP
          **/
         bool IsTimeoutExempt() const final
         {
-            return fMinerAuthenticated.load(std::memory_order_relaxed)
-                || fHandshakeInProgress.load(std::memory_order_relaxed);
+            return fMinerAuthenticated.load(std::memory_order_relaxed) || fHandshakeInProgress.load(std::memory_order_relaxed);
         }
 
 

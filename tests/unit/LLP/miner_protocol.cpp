@@ -12,8 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #include <unit/catch2/catch.hpp>
-#include <Util/include/convert.h>
 #include <LLP/types/miner.h>
+#include <Util/include/convert.h>
 
 #include <vector>
 #include <cstdint>
