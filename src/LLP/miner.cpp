@@ -362,12 +362,10 @@ namespace LLP
                        PACKET.LENGTH > FalconConstants::SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX)
                         fViolation = true;
 
-                    if(PACKET.HEADER == MINER_AUTH_INIT &&
-                       PACKET.LENGTH > FalconConstants::MINER_AUTH_INIT_MAX)
+                    if(PACKET.HEADER == MINER_AUTH_INIT && PACKET.LENGTH > FalconConstants::MINER_AUTH_INIT_MAX)
                         fViolation = true;
 
-                    if(PACKET.HEADER == MINER_AUTH_RESPONSE &&
-                       PACKET.LENGTH > FalconConstants::AUTH_RESPONSE_ENCRYPTED_MAX)
+                    if(PACKET.HEADER == MINER_AUTH_RESPONSE && PACKET.LENGTH > FalconConstants::AUTH_RESPONSE_ENCRYPTED_MAX)
                         fViolation = true;
 
                     if(PACKET.HEADER == SET_CHANNEL && PACKET.LENGTH > 4)
