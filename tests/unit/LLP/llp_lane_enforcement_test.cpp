@@ -254,7 +254,7 @@ TEST_CASE("Payload parity across legacy 8323 and stateless 9323 lanes", "[llp][l
     SECTION("Mirrored response opcodes preserve the same payload on both lanes")
     {
         const std::vector<uint8_t> payload = {0x00, 0x01, 0x7F, 0x80, 0xFF};
-        const std::array<uint8_t, 16> opcodes = {
+        const std::array opcodes = {
             Opcodes::BLOCK_DATA,
             Opcodes::BLOCK_ACCEPTED,
             Opcodes::BLOCK_REJECTED,
@@ -282,7 +282,7 @@ TEST_CASE("Payload parity across legacy 8323 and stateless 9323 lanes", "[llp][l
         /* These opcodes are included in the payload-preservation table above
          * and repeated here with the zero-length packets they use on the wire. */
         const std::vector<uint8_t> empty;
-        const std::array<uint8_t, 7> opcodes = {
+        const std::array opcodes = {
             Opcodes::CHANNEL_ACK,
             Opcodes::MINER_READY,
             Opcodes::PRIME_BLOCK_AVAILABLE,
