@@ -312,6 +312,7 @@ namespace LLP
         strMinerId.clear();
         vAuthNonce.clear();
         fMinerAuthenticated = false;
+        SetHandshakeInProgress(false);
         hashKeyID = 0;
 
         /* Send a notification to wake up sleeping thread to finish shutdown process. */
@@ -359,6 +360,14 @@ namespace LLP
                     /* Oversized payloads */
                     if(PACKET.HEADER == SUBMIT_BLOCK &&
                        PACKET.LENGTH > FalconConstants::SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX)
+                        fViolation = true;
+
+                    /* Falcon auth wrappers have fixed protocol ceilings; reject at
+                     * HEADER stage before allocating the declared payload. */
+                    if(PACKET.HEADER == MINER_AUTH_INIT && PACKET.LENGTH > FalconConstants::MINER_AUTH_INIT_MAX)
+                        fViolation = true;
+
+                    if(PACKET.HEADER == MINER_AUTH_RESPONSE && PACKET.LENGTH > FalconConstants::AUTH_RESPONSE_ENCRYPTED_MAX)
                         fViolation = true;
 
                     if(PACKET.HEADER == SET_CHANNEL && PACKET.LENGTH > 4)
@@ -480,6 +489,7 @@ namespace LLP
 
                 /* Log connection details with remote address and port */
                 debug::log(0, FUNCTION, "MinerLLP: New connection accepted from ", GetAddress().ToStringIP(), ":", GetAddress().GetPort());
+                SetHandshakeInProgress(false);
 
                 try
                 {
@@ -598,6 +608,7 @@ namespace LLP
 
                 /* Interrupt any in-flight SendChannelNotification() path immediately. */
                 m_shutdownRequested.store(true, std::memory_order_release);
+                SetHandshakeInProgress(false);
 
                 /* Remove only THIS legacy-lane endpoint.  RemoveMiner() guards all
                  * secondary indices with CompareAndErase so a reconnect that already
@@ -1048,6 +1059,8 @@ namespace LLP
                         fEncryptionReady = true;
                     }
 
+                    UpdateHandshakeStateForAuthPacket(PACKET.HEADER, fMinerAuthenticated.load(std::memory_order_relaxed));
+
                     /* Update the context with the ChaCha20 key before sending to manager.
                      * CRITICAL: The context returned from StatelessMiner may not include
                      * the ChaCha20 key in all cases:
@@ -1220,7 +1233,10 @@ namespace LLP
                     /* Processing error - log and disconnect */
                     debug::error(FUNCTION, "MinerLLP: Processing error from ", GetAddress().ToStringIP(),
                                 ": ", result.strError);
-                    
+
+                    if(PACKET.HEADER == MINER_AUTH_RESPONSE)
+                        SetHandshakeInProgress(false);
+
                     /* Try to send error response if available */
                     if(!result.response.IsNull())
                     {

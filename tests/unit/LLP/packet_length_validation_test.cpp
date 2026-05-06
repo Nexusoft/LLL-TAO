@@ -12,7 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <unit/catch2/catch.hpp>
-
+#include <LLP/include/falcon_constants.h>
 #include <LLP/include/opcode_utility.h>
 #include <LLP/packets/packet.h>
 #include <LLP/packets/stateless_packet.h>
@@ -251,6 +251,49 @@ TEST_CASE("Fixed-size opcodes have maximum length limits", "[llp][packet][valida
         bool bValid = ValidatePacketLength(packet, &strError);
         
         REQUIRE(bValid == false);
+    }
+}
+
+TEST_CASE("Falcon auth packets enforce legacy and stateless length ceilings", "[llp][packet][validation][auth]")
+{
+    using namespace LLP;
+    using namespace LLP::OpcodeUtility;
+
+    SECTION("Legacy MINER_AUTH_INIT rejects oversized payloads")
+    {
+        Packet packet(Opcodes::MINER_AUTH_INIT);
+        packet.LENGTH = static_cast<uint32_t>(FalconConstants::MINER_AUTH_INIT_MAX + 1);
+
+        std::string strError;
+        REQUIRE_FALSE(ValidatePacketLength(packet, &strError));
+        REQUIRE(strError.find("MINER_AUTH_INIT") != std::string::npos);
+    }
+
+    SECTION("Legacy MINER_AUTH_RESPONSE rejects oversized payloads")
+    {
+        Packet packet(Opcodes::MINER_AUTH_RESPONSE);
+        packet.LENGTH = static_cast<uint32_t>(FalconConstants::AUTH_RESPONSE_ENCRYPTED_MAX + 1);
+
+        std::string strError;
+        REQUIRE_FALSE(ValidatePacketLength(packet, &strError));
+        REQUIRE(strError.find("MINER_AUTH_RESPONSE") != std::string::npos);
+    }
+
+    SECTION("Stateless mirrored auth opcodes inherit the same ceilings")
+    {
+        StatelessPacket init(Stateless::AUTH_INIT);
+        init.LENGTH = static_cast<uint32_t>(FalconConstants::MINER_AUTH_INIT_MAX + 1);
+
+        std::string strError;
+        REQUIRE_FALSE(ValidatePacketLength(init, &strError));
+        REQUIRE(strError.find("MINER_AUTH_INIT") != std::string::npos);
+
+        StatelessPacket response(Stateless::AUTH_RESPONSE);
+        response.LENGTH = static_cast<uint32_t>(FalconConstants::AUTH_RESPONSE_ENCRYPTED_MAX + 1);
+        strError.clear();
+
+        REQUIRE_FALSE(ValidatePacketLength(response, &strError));
+        REQUIRE(strError.find("MINER_AUTH_RESPONSE") != std::string::npos);
     }
 }
 
