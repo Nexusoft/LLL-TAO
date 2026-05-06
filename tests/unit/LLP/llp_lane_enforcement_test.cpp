@@ -299,12 +299,16 @@ TEST_CASE("Payload parity across legacy 8323 and stateless 9323 lanes", "[llp][l
 
     SECTION("SESSION_START payload builder is lane-neutral")
     {
+        constexpr uint32_t TEST_SESSION_ID = 0x12345678u;
+        constexpr uint64_t TEST_TIMEOUT_SEC = 900u;
+
         uint256_t hashGenesis;
+        /* Arbitrary non-zero fixture hash exercises the optional 32-byte genesis payload. */
         hashGenesis.SetHex("a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122");
 
         const auto payload = LLP::SessionStartPacket::BuildPayload(
-            0x12345678u,
-            900u,
+            TEST_SESSION_ID,
+            TEST_TIMEOUT_SEC,
             hashGenesis);
 
         REQUIRE(payload.size() == 41u);
@@ -314,8 +318,10 @@ TEST_CASE("Payload parity across legacy 8323 and stateless 9323 lanes", "[llp][l
 
     SECTION("SESSION_STATUS_ACK payload builder is lane-neutral")
     {
+        constexpr uint32_t TEST_SESSION_ID = 0xAABBCCDDu;
+
         const auto payload = LLP::SessionStatus::BuildAckPayload(
-            0xAABBCCDDu,
+            TEST_SESSION_ID,
             LLP::SessionStatus::LANE_PRIMARY_ALIVE | LLP::SessionStatus::LANE_AUTHENTICATED,
             42u,
             LLP::SessionStatus::MINER_HAS_TEMPLATE | LLP::SessionStatus::MINER_WORKERS_ACTIVE);
