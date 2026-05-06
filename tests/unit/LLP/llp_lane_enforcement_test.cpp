@@ -32,10 +32,10 @@ namespace
 
         REQUIRE(std::equal(vLegacyBytes.begin() + 1, vLegacyBytes.begin() + 5,
                            vStatelessBytes.begin() + 2));
-        REQUIRE(LLP::PacketFraming::DecodeLength(
-            {vLegacyBytes[1], vLegacyBytes[2], vLegacyBytes[3], vLegacyBytes[4]}) == vPayload.size());
-        REQUIRE(LLP::PacketFraming::DecodeLength(
-            {vStatelessBytes[2], vStatelessBytes[3], vStatelessBytes[4], vStatelessBytes[5]}) == vPayload.size());
+        REQUIRE(LLP::PacketFraming::DecodeLengthComponents(
+            vLegacyBytes[1], vLegacyBytes[2], vLegacyBytes[3], vLegacyBytes[4]) == vPayload.size());
+        REQUIRE(LLP::PacketFraming::DecodeLengthComponents(
+            vStatelessBytes[2], vStatelessBytes[3], vStatelessBytes[4], vStatelessBytes[5]) == vPayload.size());
 
         REQUIRE(std::equal(vPayload.begin(), vPayload.end(), vLegacyBytes.begin() + 5));
         REQUIRE(std::equal(vPayload.begin(), vPayload.end(), vStatelessBytes.begin() + 6));
