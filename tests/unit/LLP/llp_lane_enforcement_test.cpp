@@ -303,7 +303,7 @@ TEST_CASE("Payload parity across legacy 8323 and stateless 9323 lanes", "[llp][l
         constexpr uint64_t TEST_TIMEOUT_SEC = 900u;
 
         uint256_t hashGenesis;
-        /* Arbitrary non-zero fixture hash exercises the optional 32-byte genesis payload. */
+        /* Arbitrary non-zero fixture hash exercises SESSION_START's optional 32-byte genesis payload. */
         hashGenesis.SetHex("a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122");
 
         const auto payload = LLP::SessionStartPacket::BuildPayload(

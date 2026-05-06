@@ -312,7 +312,7 @@ namespace LLP
         strMinerId.clear();
         vAuthNonce.clear();
         fMinerAuthenticated = false;
-        fHandshakeInProgressAtomic.store(false, std::memory_order_relaxed);
+        SetHandshakeInProgress(false);
         hashKeyID = 0;
 
         /* Send a notification to wake up sleeping thread to finish shutdown process. */
@@ -489,7 +489,7 @@ namespace LLP
 
                 /* Log connection details with remote address and port */
                 debug::log(0, FUNCTION, "MinerLLP: New connection accepted from ", GetAddress().ToStringIP(), ":", GetAddress().GetPort());
-                fHandshakeInProgressAtomic.store(false, std::memory_order_relaxed);
+                SetHandshakeInProgress(false);
 
                 try
                 {
@@ -608,7 +608,7 @@ namespace LLP
 
                 /* Interrupt any in-flight SendChannelNotification() path immediately. */
                 m_shutdownRequested.store(true, std::memory_order_release);
-                fHandshakeInProgressAtomic.store(false, std::memory_order_relaxed);
+                SetHandshakeInProgress(false);
 
                 /* Remove only THIS legacy-lane endpoint.  RemoveMiner() guards all
                  * secondary indices with CompareAndErase so a reconnect that already
@@ -1059,12 +1059,7 @@ namespace LLP
                         fEncryptionReady = true;
                     }
 
-                    if(fMinerAuthenticated.load(std::memory_order_relaxed))
-                        fHandshakeInProgressAtomic.store(false, std::memory_order_relaxed);
-                    else if(PACKET.HEADER == MINER_AUTH_INIT)
-                        fHandshakeInProgressAtomic.store(true, std::memory_order_relaxed);
-                    else if(PACKET.HEADER == MINER_AUTH_RESPONSE)
-                        fHandshakeInProgressAtomic.store(false, std::memory_order_relaxed);
+                    UpdateHandshakeStateForAuthPacket(PACKET.HEADER, fMinerAuthenticated.load(std::memory_order_relaxed));
 
                     /* Update the context with the ChaCha20 key before sending to manager.
                      * CRITICAL: The context returned from StatelessMiner may not include
@@ -1240,7 +1235,7 @@ namespace LLP
                                 ": ", result.strError);
 
                     if(PACKET.HEADER == MINER_AUTH_RESPONSE)
-                        fHandshakeInProgressAtomic.store(false, std::memory_order_relaxed);
+                        SetHandshakeInProgress(false);
 
                     /* Try to send error response if available */
                     if(!result.response.IsNull())

@@ -458,6 +458,21 @@ namespace LLP
         uint32_t             nSessionId = 0;     // Session ID derived from Falcon key hash
         uint256_t            hashKeyID = 0;      // Falcon key hash for cross-lane disconnect tracking (0 = unauthenticated)
 
+        void SetHandshakeInProgress(bool fInProgress)
+        {
+            fHandshakeInProgressAtomic.store(fInProgress, std::memory_order_relaxed);
+        }
+
+        void UpdateHandshakeStateForAuthPacket(uint8_t nOpcode, bool fAuthenticated)
+        {
+            if(fAuthenticated)
+                SetHandshakeInProgress(false);
+            else if(nOpcode == OpcodeUtility::Opcodes::MINER_AUTH_INIT)
+                SetHandshakeInProgress(true);
+            else if(nOpcode == OpcodeUtility::Opcodes::MINER_AUTH_RESPONSE)
+                SetHandshakeInProgress(false);
+        }
+
         /* ChaCha20 encryption state (established after Falcon auth) */
         std::vector<uint8_t> vChaChaKey;         // ChaCha20 session key
         bool                 fEncryptionReady;   // ChaCha20 encryption established
