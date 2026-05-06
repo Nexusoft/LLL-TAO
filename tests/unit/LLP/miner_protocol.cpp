@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <unit/catch2/catch.hpp>
 
+#include <LLP/types/miner.h>
 #include <Util/include/convert.h>
 
 #include <vector>
@@ -147,5 +148,38 @@ TEST_CASE("SET_CHANNEL Payload Parsing Tests", "[miner][llp]")
         REQUIRE(nChannelValue == 3);
         bool fValidChannel = (nChannelValue == 1 || nChannelValue == 2);
         REQUIRE_FALSE(fValidChannel);
+    }
+}
+
+TEST_CASE("Legacy Miner timeout exemption covers Falcon handshake window", "[miner][llp][timeout]")
+{
+    LLP::Miner miner;
+
+    SECTION("Unauthenticated idle miner is not timeout-exempt")
+    {
+        REQUIRE_FALSE(miner.IsTimeoutExempt());
+    }
+
+    SECTION("Handshake in progress is timeout-exempt before authentication")
+    {
+        miner.SetHandshakeInProgressForTests(true);
+
+        REQUIRE(miner.IsTimeoutExempt());
+    }
+
+    SECTION("Clearing handshake removes pre-auth timeout exemption")
+    {
+        miner.SetHandshakeInProgressForTests(true);
+        REQUIRE(miner.IsTimeoutExempt());
+
+        miner.SetHandshakeInProgressForTests(false);
+        REQUIRE_FALSE(miner.IsTimeoutExempt());
+    }
+
+    SECTION("Authenticated miner remains timeout-exempt")
+    {
+        miner.SetAuthenticatedForTests(true);
+
+        REQUIRE(miner.IsTimeoutExempt());
     }
 }
