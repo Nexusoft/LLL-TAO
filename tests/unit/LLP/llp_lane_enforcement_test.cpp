@@ -16,6 +16,8 @@
 
 namespace
 {
+    /* Verify shared mining responses keep identical length fields and payloads
+     * while legacy 8323 uses 1-byte opcodes and stateless 9323 uses 0xD0xx. */
     void RequireLanePairMatches(const uint8_t nLegacyOpcode, const std::vector<uint8_t>& vPayload)
     {
         const auto vLegacyBytes = LLP::MiningTransport::BuildResponseBytes(
@@ -254,7 +256,7 @@ TEST_CASE("Payload parity across legacy 8323 and stateless 9323 lanes", "[llp][l
     SECTION("Mirrored response opcodes preserve the same payload on both lanes")
     {
         /* Boundary byte values catch signedness, zero, and high-bit payload drift. */
-        const std::vector<uint8_t> payload = {0x00, 0x01, 0x7F, 0x80, 0xFF};
+        const std::vector<uint8_t> boundaryPayload = {0x00, 0x01, 0x7F, 0x80, 0xFF};
         const std::array<uint8_t, 16> opcodes = {
             Opcodes::BLOCK_DATA,
             Opcodes::BLOCK_ACCEPTED,
@@ -275,14 +277,14 @@ TEST_CASE("Payload parity across legacy 8323 and stateless 9323 lanes", "[llp][l
         };
 
         for(const uint8_t opcode : opcodes)
-            RequireLanePairMatches(opcode, payload);
+            RequireLanePairMatches(opcode, boundaryPayload);
     }
 
     SECTION("Header-only control responses differ only by opcode width")
     {
         /* These opcodes are included in the payload-preservation table above
          * and repeated here with the zero-length packets they use on the wire. */
-        const std::vector<uint8_t> empty;
+        const std::vector<uint8_t> emptyPayload;
         const std::array<uint8_t, 7> opcodes = {
             Opcodes::CHANNEL_ACK,
             Opcodes::MINER_READY,
@@ -294,7 +296,7 @@ TEST_CASE("Payload parity across legacy 8323 and stateless 9323 lanes", "[llp][l
         };
 
         for(const uint8_t opcode : opcodes)
-            RequireLanePairMatches(opcode, empty);
+            RequireLanePairMatches(opcode, emptyPayload);
     }
 
     SECTION("SESSION_START payload builder is lane-neutral")
