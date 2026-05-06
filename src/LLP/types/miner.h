@@ -27,6 +27,9 @@ ________________________________________________________________________________
 #include <Legacy/types/coinbase.h>
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
+#include <mutex>
+#include <thread>
 
 //forward declarations
 namespace Legacy { class ReserveKey; }
@@ -411,6 +414,24 @@ namespace LLP
         std::map<uint512_t, TAO::Ledger::Block *> mapBlocks;
 
 
+        /** Async BLOCK_DATA worker for push/GET_ROUND recovery.
+         *  Mirrors the stateless lane: the notification/read path only schedules
+         *  fresh work, while a coalesced background worker builds and queues the
+         *  full 8-bit BLOCK_DATA template. */
+        enum class TemplateWorkReason : uint8_t
+        {
+            PUSH_NOTIFICATION,
+            GET_ROUND_RECOVERY
+        };
+
+        std::mutex m_template_work_mutex;
+        std::condition_variable m_template_work_cv;
+        std::thread m_template_work_thread;
+        bool m_template_worker_running{false};
+        bool m_template_work_pending{false};
+        TemplateWorkReason m_template_work_reason{TemplateWorkReason::PUSH_NOTIFICATION};
+
+
         /** Parallel map: block merkle root → hashBestChain snapshot at template creation.
          *
          *  Populated alongside mapBlocks in handle_get_block_stateless().  Used in
@@ -537,6 +558,13 @@ namespace LLP
          *  is made against m_pushedTipHistory below, which closes the
          *  fork-storm pre-poison hole that a single-slot field cannot. */
         uint1024_t m_hashLastPushedChain;
+
+        /** Best-chain hash snapshot for the last full BLOCK_DATA template sent
+         *  to this legacy miner.  This is distinct from m_hashLastPushedChain:
+         *  push notifications can be throttled/queued independently, but
+         *  GET_ROUND recovery needs to know whether the last actual template is
+         *  anchored to the current best hash.  Protected by MUTEX. */
+        uint1024_t m_hashLastTemplateChain;
 
         /** Time-windowed ring of recently delivered tips (Option B).
          *  Protected by MUTEX.  See LLP::PushedTipHistory for full rationale —
@@ -753,6 +781,19 @@ namespace LLP
 
 
     private:
+
+        /** Start/stop the per-connection legacy BLOCK_DATA worker. **/
+        void StartTemplateWorker();
+        void StopTemplateWorker();
+
+        /** Schedule/coalesce a background full-template send. **/
+        void ScheduleTemplateWork(TemplateWorkReason eReason);
+        void TemplateWorkerLoop();
+        bool QueueCurrentBlockDataTemplate(TemplateWorkReason eReason);
+        void TryAttachBlockTemplate();
+
+        /** Record that a full BLOCK_DATA template was queued/sent to this miner. **/
+        void RecordTemplateDelivery(uint32_t nUnifiedHeight, const uint1024_t& hashBestChain);
 
         /** Centralized session/auth/channel gate for post-auth stateless mining opcodes. **/
         bool PreflightSessionGate(const Packet& PACKET);
