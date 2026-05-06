@@ -1025,7 +1025,7 @@ namespace LLP
 
         void SetHandshakeInProgressForTests(bool fInProgress)
         {
-            fHandshakeInProgressAtomic.store(fInProgress, std::memory_order_relaxed);
+            SetHandshakeInProgress(fInProgress);
         }
 #endif
 

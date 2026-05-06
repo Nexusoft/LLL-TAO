@@ -362,6 +362,8 @@ namespace LLP
                        PACKET.LENGTH > FalconConstants::SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX)
                         fViolation = true;
 
+                    /* Falcon auth wrappers have fixed protocol ceilings; reject at
+                     * HEADER stage before allocating the declared payload. */
                     if(PACKET.HEADER == MINER_AUTH_INIT && PACKET.LENGTH > FalconConstants::MINER_AUTH_INIT_MAX)
                         fViolation = true;
 

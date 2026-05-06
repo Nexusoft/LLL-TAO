@@ -301,6 +301,8 @@ TEST_CASE("Payload parity across legacy 8323 and stateless 9323 lanes", "[llp][l
 
     SECTION("SESSION_START payload builder is lane-neutral")
     {
+        /* Arbitrary fixture values: hex session ID makes byte order visible;
+         * decimal timeout matches how the protocol is documented/logged. */
         constexpr uint32_t TEST_SESSION_ID = 0x12345678u;
         constexpr uint64_t TEST_TIMEOUT_SEC = 900u;
 
