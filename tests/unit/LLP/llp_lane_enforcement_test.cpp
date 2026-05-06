@@ -247,7 +247,7 @@ TEST_CASE("LLP strict lane opcode mapping", "[llp][lane_enforcement]")
 }
 
 
-TEST_CASE("Legacy lane matches stateless semantic payloads with legacy framing", "[llp][lane_enforcement][legacy]")
+TEST_CASE("Payload parity across legacy 8323 and stateless 9323 lanes", "[llp][lane_enforcement][legacy]")
 {
     namespace Opcodes = LLP::OpcodeUtility::Opcodes;
 
@@ -279,6 +279,8 @@ TEST_CASE("Legacy lane matches stateless semantic payloads with legacy framing",
 
     SECTION("Header-only control responses differ only by opcode width")
     {
+        /* These opcodes are included in the payload-preservation table above
+         * and repeated here with the zero-length packets they use on the wire. */
         const std::vector<uint8_t> empty;
         const std::array<uint8_t, 7> opcodes = {
             Opcodes::CHANNEL_ACK,
