@@ -431,10 +431,10 @@ namespace LLP
             return false;
         }
 
-        if(sharedTemplate.vPayload.size() != (TEMPLATE_METADATA_SIZE + FalconConstants::FULL_BLOCK_TRITIUM_MIN))
+        if(sharedTemplate.vPayload.size() < (TEMPLATE_METADATA_SIZE + FalconConstants::FULL_BLOCK_TRITIUM_MIN))
         {
             debug::error(FUNCTION, pReason, ": invalid legacy BLOCK_DATA size ",
-                sharedTemplate.vPayload.size(), " bytes (expected ",
+                sharedTemplate.vPayload.size(), " bytes (minimum ",
                 (TEMPLATE_METADATA_SIZE + FalconConstants::FULL_BLOCK_TRITIUM_MIN), ")");
             return false;
         }
@@ -444,7 +444,6 @@ namespace LLP
         blockPacket.LENGTH = static_cast<uint32_t>(blockPacket.DATA.size());
         QueuePacket(blockPacket);
 
-        this->Reset();
         RecordTemplateDelivery(sharedTemplate.nUnifiedHeight, sharedTemplate.hashBestChain);
         StatelessMinerManager::Get().IncrementTemplatesServed();
 
@@ -465,6 +464,7 @@ namespace LLP
 
     void Miner::RecordTemplateDelivery(uint32_t nUnifiedHeight, const uint1024_t& hashBestChain)
     {
+        const uint64_t nNow = runtime::unifiedtimestamp();
         nLastTemplateUnifiedHeight.store(nUnifiedHeight, std::memory_order_relaxed);
 
         {
@@ -476,9 +476,9 @@ namespace LLP
             GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort());
 
         StatelessMinerManager::Get().TransformMiner(strAddr,
-            [nUnifiedHeight, hashBestChain](const MiningContext& current)
+            [nUnifiedHeight, hashBestChain, nNow](const MiningContext& current)
             {
-                return current.WithTimestamp(runtime::unifiedtimestamp())
+                return current.WithTimestamp(nNow)
                               .WithHeight(nUnifiedHeight)
                               .WithLastTemplateUnifiedHeight(nUnifiedHeight)
                               .WithHashLastBlock(hashBestChain);
