@@ -75,12 +75,10 @@ namespace LLP
          *  maximum accuracy — GET_ROUND is our backup GET_BLOCK system if PUSH
          *  goes down, so up-to-date data matters.
          *
-         *  Both tStateBest and hashBestChain are loaded back-to-back to minimize
-         *  the temporal inconsistency window (BUG 4 mitigation).  Note: these are
-         *  two separate atomic loads, so a chain advance between them is theoretically
-         *  possible but extremely unlikely in practice (microsecond window).  True
-         *  atomic consistency would require a single combined atomic structure which
-         *  is beyond the scope of this utility.
+         *  The best-chain hash is derived from the loaded tStateBest snapshot
+         *  whenever possible.  This ties the reported unified height to its hash
+         *  atomically from one state object instead of straddling tStateBest and
+         *  hashBestChain during SetBest publication.
          *
          *  @return ChainHeightSnapshot with all channel heights and validity flag.
          *
@@ -89,10 +87,12 @@ namespace LLP
         {
             ChainHeightSnapshot snap;
 
-            /* Tightly-scoped atomic reads to minimize temporal inconsistency.
-             * Both reads happen back-to-back with no intervening logic. */
+            /* Derive hash from the same best-state snapshot when available so
+             * height/hash freshness checks use a coherent pair. */
             TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
-            snap.hashBestChain = TAO::Ledger::ChainState::hashBestChain.load();
+            snap.hashBestChain = stateBest.IsNull()
+                ? TAO::Ledger::ChainState::hashBestChain.load()
+                : stateBest.GetHash();
 
             /* Check blockchain readiness */
             if(stateBest.nHeight == 0)

@@ -244,6 +244,7 @@ namespace LLP
     , nLastTemplateUnifiedHeight(0)
     , nMinerPrevblockSuffix({})
     {
+        StartTemplateWorker();
     }
 
 
@@ -271,6 +272,7 @@ namespace LLP
     , nLastTemplateUnifiedHeight(0)
     , nMinerPrevblockSuffix({})
     {
+        StartTemplateWorker();
     }
 
 
@@ -298,12 +300,15 @@ namespace LLP
     , nLastTemplateUnifiedHeight(0)
     , nMinerPrevblockSuffix({})
     {
+        StartTemplateWorker();
     }
 
 
     /* Default Destructor */
     Miner::~Miner()
     {
+        StopTemplateWorker();
+
         LOCK(MUTEX);
         clear_map();
 
@@ -316,6 +321,169 @@ namespace LLP
 
         /* Send a notification to wake up sleeping thread to finish shutdown process. */
         this->NotifyEvent();
+    }
+
+
+    void Miner::StartTemplateWorker()
+    {
+        std::lock_guard<std::mutex> lock(m_template_work_mutex);
+
+        if(m_template_worker_running)
+            return;
+
+        m_template_worker_running = true;
+        m_template_work_pending = false;
+        m_template_work_reason = TemplateWorkReason::PUSH_NOTIFICATION;
+        m_template_work_thread = std::thread(&Miner::TemplateWorkerLoop, this);
+    }
+
+
+    void Miner::StopTemplateWorker()
+    {
+        {
+            std::lock_guard<std::mutex> lock(m_template_work_mutex);
+            m_template_worker_running = false;
+            m_template_work_pending = false;
+        }
+
+        m_template_work_cv.notify_all();
+
+        if(m_template_work_thread.joinable())
+            m_template_work_thread.join();
+    }
+
+
+    void Miner::ScheduleTemplateWork(TemplateWorkReason eReason)
+    {
+        {
+            std::lock_guard<std::mutex> lock(m_template_work_mutex);
+            if(!m_template_worker_running)
+                return;
+
+            m_template_work_pending = true;
+            m_template_work_reason = eReason;
+        }
+
+        m_template_work_cv.notify_one();
+    }
+
+
+    void Miner::TemplateWorkerLoop()
+    {
+        while(true)
+        {
+            TemplateWorkReason eReason = TemplateWorkReason::PUSH_NOTIFICATION;
+
+            {
+                std::unique_lock<std::mutex> lock(m_template_work_mutex);
+                m_template_work_cv.wait(lock,
+                    [this]
+                    {
+                        return m_template_work_pending || !m_template_worker_running;
+                    });
+
+                if(!m_template_worker_running && !m_template_work_pending)
+                    break;
+
+                eReason = m_template_work_reason;
+                m_template_work_pending = false;
+            }
+
+            QueueCurrentBlockDataTemplate(eReason);
+        }
+    }
+
+
+    bool Miner::QueueCurrentBlockDataTemplate(TemplateWorkReason eReason)
+    {
+        static constexpr std::size_t TEMPLATE_METADATA_SIZE = 12;
+
+        if(config::fShutdown.load() || !Connected())
+            return false;
+
+        const char* pReason =
+            (eReason == TemplateWorkReason::GET_ROUND_RECOVERY)
+                ? "Legacy GET_ROUND recovery"
+                : "Legacy push notification";
+
+        uint32_t nChannelCopy = 0;
+        uint32_t nSessionIdCopy = 0;
+        {
+            LOCK(MUTEX);
+
+            if(!fMinerAuthenticated || (nChannel.load() != 1 && nChannel.load() != 2))
+                return false;
+
+            nChannelCopy = nChannel.load();
+            nSessionIdCopy = nSessionId;
+        }
+
+        const SharedTemplatePayloadResult sharedTemplate = BuildSharedTemplatePayloadWithRetry(
+            [this]() -> TAO::Ledger::Block*
+            {
+                return new_block();
+            },
+            pReason);
+        if(!sharedTemplate.fSuccess)
+        {
+            debug::error(FUNCTION, pReason, ": failed to create BLOCK_DATA payload: ",
+                GetBlockPolicyReasonCode(sharedTemplate.eReason));
+            return false;
+        }
+
+        if(sharedTemplate.vPayload.size() != (TEMPLATE_METADATA_SIZE + FalconConstants::FULL_BLOCK_TRITIUM_MIN))
+        {
+            debug::error(FUNCTION, pReason, ": invalid legacy BLOCK_DATA size ",
+                sharedTemplate.vPayload.size(), " bytes (expected ",
+                (TEMPLATE_METADATA_SIZE + FalconConstants::FULL_BLOCK_TRITIUM_MIN), ")");
+            return false;
+        }
+
+        Packet blockPacket(BLOCK_DATA);
+        blockPacket.DATA = sharedTemplate.vPayload;
+        blockPacket.LENGTH = static_cast<uint32_t>(blockPacket.DATA.size());
+        QueuePacket(blockPacket);
+
+        this->Reset();
+        RecordTemplateDelivery(sharedTemplate.nUnifiedHeight, sharedTemplate.hashBestChain);
+        StatelessMinerManager::Get().IncrementTemplatesServed();
+
+        debug::log(2, FUNCTION, "Queued legacy BLOCK_DATA source=", pReason,
+            " bytes=", blockPacket.DATA.size(), " channel=", sharedTemplate.nBlockChannel,
+            " height=", sharedTemplate.nBlockHeight, " session=", nSessionIdCopy,
+            " subscribed_channel=", nChannelCopy, " to ", GetAddress().ToStringIP());
+
+        return true;
+    }
+
+
+    void Miner::TryAttachBlockTemplate()
+    {
+        ScheduleTemplateWork(TemplateWorkReason::PUSH_NOTIFICATION);
+    }
+
+
+    void Miner::RecordTemplateDelivery(uint32_t nUnifiedHeight, const uint1024_t& hashBestChain)
+    {
+        nLastTemplateUnifiedHeight.store(nUnifiedHeight, std::memory_order_relaxed);
+
+        {
+            LOCK(MUTEX);
+            m_hashLastTemplateChain = hashBestChain;
+        }
+
+        const std::string strAddr =
+            GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort());
+
+        StatelessMinerManager::Get().TransformMiner(strAddr,
+            [nUnifiedHeight, hashBestChain](const MiningContext& current)
+            {
+                return current.WithTimestamp(runtime::unifiedtimestamp())
+                              .WithHeight(nUnifiedHeight)
+                              .WithLastTemplateUnifiedHeight(nUnifiedHeight)
+                              .WithHashLastBlock(hashBestChain);
+            },
+            0);
     }
 
 
@@ -2278,6 +2446,12 @@ namespace LLP
         /* Notify Colin agent: template pushed via push notification */
         if(hashGenesis != 0)
             ColinMiningAgent::Get().on_template_pushed(nSubscribedChannelCopy, stateBest.nHeight + 1);
+
+        /* Match the stateless lane: attach a full BLOCK_DATA template to each
+         * accepted PUSH event so miners can resume without a follow-up GET_BLOCK.
+         * The worker builds/queues the template off the notification path and
+         * preserves strict 8-bit legacy framing. */
+        TryAttachBlockTemplate();
     }
 
 
@@ -2355,17 +2529,17 @@ namespace LLP
             return;
         }
 
-        /* Send using the negotiated framing for this legacy-lane connection. */
-        respond_auto(BLOCK_DATA, sharedTemplate.vPayload);
+        Packet blockPacket(BLOCK_DATA);
+        blockPacket.DATA = sharedTemplate.vPayload;
+        blockPacket.LENGTH = static_cast<uint32_t>(blockPacket.DATA.size());
+        QueuePacket(blockPacket);
 
         debug::log(2, FUNCTION, "✅ Legacy template sent (",
-                   sharedTemplate.vPayload.size(), " bytes) channel=", sharedTemplate.nBlockChannel,
-                   " height=", sharedTemplate.nBlockHeight, " to ", GetAddress().ToStringIP());
+            sharedTemplate.vPayload.size(), " bytes) channel=", sharedTemplate.nBlockChannel,
+            " height=", sharedTemplate.nBlockHeight, " to ", GetAddress().ToStringIP());
 
         StatelessMinerManager::Get().IncrementTemplatesServed();
-
-        /* Update last template unified height (atomic store — see nLastTemplateUnifiedHeight comment). */
-        nLastTemplateUnifiedHeight.store(sharedTemplate.nUnifiedHeight, std::memory_order_relaxed);
+        RecordTemplateDelivery(sharedTemplate.nUnifiedHeight, sharedTemplate.hashBestChain);
     }
 
 
@@ -2472,9 +2646,7 @@ namespace LLP
          * Uses UNIFIED height — every tip move changes hashPrevBlock,
          * so ALL channels need fresh templates regardless of which channel mined.
          * Atomic store — see nLastTemplateUnifiedHeight comment in miner.h. */
-        {
-            nLastTemplateUnifiedHeight.store(result.nUnifiedHeight, std::memory_order_relaxed);
-        }
+        RecordTemplateDelivery(result.nUnifiedHeight, result.hashBestChain);
 
         /* Notify Colin agent: template pushed via GET_BLOCK */
         /* Use the snapshot outside MUTEX: hashGenesis is read-only for this
@@ -2968,48 +3140,27 @@ namespace LLP
          * read it safely without holding MUTEX. */
         const uint32_t nLiveLastTemplateHeight =
             nLastTemplateUnifiedHeight.load(std::memory_order_relaxed);
+        uint1024_t hashLastTemplateChain;
+        {
+            LOCK(MUTEX);
+            hashLastTemplateChain = m_hashLastTemplateChain;
+        }
         const TemplateRefreshDecision refreshDecision = EvaluateTemplateRefresh(
-            nLiveLastTemplateHeight, uint1024_t(0), snap);
+            nLiveLastTemplateHeight, hashLastTemplateChain, snap);
 
         if(refreshDecision.fTemplateStale)
         {
-            debug::log(2, FUNCTION, "Unified height advanced: ",
-                       nLiveLastTemplateHeight, " -> ", snap.nUnifiedHeight,
-                       " - auto-sending template for channel ", nChannel.load());
+            debug::log(2, FUNCTION, "Template stale after GET_ROUND: unified_changed=",
+                       (refreshDecision.fUnifiedHeightChanged ? "YES" : "NO"),
+                       " reorg=", (refreshDecision.fReorgDetected ? "YES" : "NO"),
+                       " last_height=", nLiveLastTemplateHeight,
+                       " current_height=", snap.nUnifiedHeight,
+                       " - scheduling template for channel ", nChannel.load());
 
-            const SharedTemplatePayloadResult sharedTemplate = BuildSharedTemplatePayloadWithRetry(
-                [this]() -> TAO::Ledger::Block*
-                {
-                    return new_block();
-                },
-                "Legacy GET_ROUND");
-
-            if(!sharedTemplate.fSuccess)
-            {
-                debug::error(FUNCTION, "GET_ROUND auto-send payload unavailable: ",
-                    GetBlockPolicyReasonCode(sharedTemplate.eReason));
-            }
-            else
-            {
-                try
-                {
-                    respond_auto(BLOCK_DATA, sharedTemplate.vPayload);
-
-                    debug::log(2, FUNCTION, "Auto-sent BLOCK_DATA (",
-                               sharedTemplate.vPayload.size(), " bytes) channel=",
-                               sharedTemplate.nBlockChannel, " height=", sharedTemplate.nBlockHeight);
-
-                    StatelessMinerManager::Get().IncrementTemplatesServed();
-
-                    /* Update last template unified height only after successful send.
-                     * Atomic store — see nLastTemplateUnifiedHeight comment in miner.h. */
-                    nLastTemplateUnifiedHeight.store(sharedTemplate.nUnifiedHeight, std::memory_order_relaxed);
-                }
-                catch(const std::exception& e)
-                {
-                    debug::error(FUNCTION, "GET_ROUND auto-send failed: ", e.what());
-                }
-            }
+            /* Match stateless lane recovery: do not build BLOCK_DATA on the
+             * read path.  Queue a coalesced background template send so a
+             * partial-read or slow template creation cannot stall this socket. */
+            ScheduleTemplateWork(TemplateWorkReason::GET_ROUND_RECOVERY);
         }
 
         return true;
