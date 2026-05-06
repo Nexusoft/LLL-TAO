@@ -253,6 +253,7 @@ TEST_CASE("Payload parity across legacy 8323 and stateless 9323 lanes", "[llp][l
 
     SECTION("Mirrored response opcodes preserve the same payload on both lanes")
     {
+        /* Boundary byte values catch signedness, zero, and high-bit payload drift. */
         const std::vector<uint8_t> payload = {0x00, 0x01, 0x7F, 0x80, 0xFF};
         const std::array opcodes = {
             Opcodes::BLOCK_DATA,
