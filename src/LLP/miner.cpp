@@ -2108,7 +2108,7 @@ namespace LLP
      * callers can release Miner::MUTEX before wallet signing or ledger
      * validation. */
     static bool BuildAndSignSolvedTritiumCandidate(TAO::Ledger::TritiumBlock& block,
-        uint64_t nNonce, const uint512_t& hashMerkleRootForLogging, const std::vector<uint8_t>& vOffsets)
+        uint64_t nNonce, const uint512_t& hashMerkleRoot, const std::vector<uint8_t>& vOffsets)
     {
         /* Build a canonical solved candidate from the immutable template.
          *
@@ -2178,7 +2178,7 @@ namespace LLP
          * behaviour across channels. */
         if(!TAO::Ledger::FinalizeWalletSignatureForSolvedBlock(block))
             return debug::error(FUNCTION, "FinalizeWalletSignatureForSolvedBlock failed for ",
-                                hashMerkleRootForLogging.SubString());
+                                hashMerkleRoot.SubString());
 
         return true;
     }
@@ -2957,13 +2957,17 @@ namespace LLP
             TAO::Ledger::Block* pTemplate = lookup_block(hashMerkle);
             fLocalBlock = (pTemplate != nullptr);
 
-            const TAO::Ledger::TritiumBlock* pTritiumTemplate = fLocalBlock
-                ? dynamic_cast<const TAO::Ledger::TritiumBlock*>(pTemplate)
-                : nullptr;
-            fTritiumBlock = (pTritiumTemplate != nullptr);
-            if(fTritiumBlock)
-                blockSolved = *pTritiumTemplate;
+            if(fLocalBlock)
+            {
+                const TAO::Ledger::TritiumBlock* pTritiumTemplate =
+                    dynamic_cast<const TAO::Ledger::TritiumBlock*>(pTemplate);
+                fTritiumBlock = (pTritiumTemplate != nullptr);
+                if(fTritiumBlock)
+                    blockSolved = *pTritiumTemplate;
+            }
 
+            /* Snapshot callback identity before releasing MUTEX so Colin agent
+             * notifications below do not read connection state lock-free. */
             hashGenesisSnapshot = hashGenesis;
         }
 
