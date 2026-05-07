@@ -2108,7 +2108,7 @@ namespace LLP
      * callers can release Miner::MUTEX before wallet signing or ledger
      * validation. */
     static bool BuildAndSignSolvedTritiumCandidate(TAO::Ledger::TritiumBlock& block,
-        uint64_t nNonce, const uint512_t& hashMerkleRoot, const std::vector<uint8_t>& vOffsets)
+        uint64_t nNonce, const std::vector<uint8_t>& vOffsets)
     {
         /* Build a canonical solved candidate from the immutable template.
          *
@@ -2178,7 +2178,7 @@ namespace LLP
          * behaviour across channels. */
         if(!TAO::Ledger::FinalizeWalletSignatureForSolvedBlock(block))
             return debug::error(FUNCTION, "FinalizeWalletSignatureForSolvedBlock failed for ",
-                                hashMerkleRoot.SubString());
+                                block.hashMerkleRoot.SubString());
 
         return true;
     }
@@ -2216,7 +2216,7 @@ namespace LLP
         /* If the block dynamically casts to a tritium block, validate the tritium block. */
         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(pBaseBlock);
         if(pBlock)
-            return BuildAndSignSolvedTritiumCandidate(*pBlock, nNonce, hashMerkleRoot, vOffsets);
+            return BuildAndSignSolvedTritiumCandidate(*pBlock, nNonce, vOffsets);
 
         /* If we get here, the block is null or doesn't exist. */
         return debug::error(FUNCTION, "null block");
@@ -2989,7 +2989,10 @@ namespace LLP
             return true;
         }
 
-        if(!BuildAndSignSolvedTritiumCandidate(blockSolved, nonce, hashMerkle, vPrimeOffsets))
+        /* The cached template is intentionally left unsigned in mapBlocks — clear_map()
+         * will purge it on the imminent height change from AcceptMinedBlock.  The
+         * success path also prunes this solved template immediately after acceptance. */
+        if(!BuildAndSignSolvedTritiumCandidate(blockSolved, nonce, vPrimeOffsets))
         {
             debug::log(0, FUNCTION, "📥 === SUBMIT_BLOCK: REJECTED (sign_block failed, legacy lane) ===");
             respond_auto(BLOCK_REJECTED,
@@ -3119,6 +3122,7 @@ namespace LLP
              * regardless of throttle history. */
             {
                 LOCK(MUTEX);
+                erase_block_template(hashMerkle);
                 m_pushedTipHistory.Clear();
                 m_force_next_push = true;
             }
