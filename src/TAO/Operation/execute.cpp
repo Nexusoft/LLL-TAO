@@ -495,6 +495,11 @@ namespace TAO::Operation
                     uint256_t hashGenesis;
                     contract >> hashGenesis;
 
+                    /* Get the optional direct-credit account. */
+                    uint256_t hashAccount = 0;
+                    if(Coinbase::HasAutoCreditAccount(contract))
+                        contract >> hashAccount;
+
                     /* Get the coinbase amount. */
                     uint64_t nAmount = 0;
                     contract >> nAmount;
@@ -503,7 +508,7 @@ namespace TAO::Operation
                     contract.Seek(8);
 
                     /* Commit to disk. */
-                    if(contract.Caller() != hashGenesis && !Coinbase::Commit(hashGenesis, nAmount, contract.Hash(), nFlags))
+                    if(contract.Caller() != hashGenesis && !Coinbase::Commit(hashGenesis, nAmount, contract.Hash(), nFlags, hashAccount))
                         return false;
 
                     break;

@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLP/include/genesis_constants.h>
 
 #include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/include/coinbase.h>
 #include <TAO/Operation/types/contract.h>
 
 #include <TAO/Register/include/constants.h>
@@ -264,6 +265,11 @@ namespace TAO
                         uint256_t hashGenesis;
                         contract >> hashGenesis;
 
+                        /* Get the optional direct-credit account. */
+                        uint256_t hashAccount = 0;
+                        if(TAO::Operation::Coinbase::HasAutoCreditAccount(contract))
+                            contract >> hashAccount;
+
                         /* Get the coinbase amount. */
                         uint64_t nAmount = 0;
                         contract >> nAmount;
@@ -277,18 +283,12 @@ namespace TAO
                             /* Check if a proof exists (indicates auto-credit occurred). */
                             if(LLD::Ledger->HasProof(hashGenesis, contract.Hash(), 0, nFlags))
                             {
-                                /* Proof exists - auto-credit was applied, need to rollback balance.
-                                 * 
-                                 * IMPORTANT: In the new Direct Reward Address system, hashGenesis contains
-                                 * the reward account address (not the authentication genesis).
-                                 * 
-                                 * This is because block creation uses the reward address from MINER_SET_REWARD
-                                 * as hashDynamicGenesis, which becomes hashGenesis in the coinbase transaction. */
-                                TAO::Register::Address hashRewardAccount = hashGenesis;
+                                /* Proof exists - auto-credit was applied, need to rollback balance. */
+                                TAO::Register::Address hashRewardAccount = hashAccount;
 
                                 /* Read the current account state. */
                                 TAO::Register::Object account;
-                                if(LLD::Register->ReadState(hashRewardAccount, account, nFlags))
+                                if(hashRewardAccount != 0 && LLD::Register->ReadState(hashRewardAccount, account, nFlags))
                                 {
                                     /* Parse the account. */
                                     if(account.Parse())

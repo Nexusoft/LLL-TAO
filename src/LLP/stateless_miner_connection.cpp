@@ -3022,6 +3022,7 @@ namespace LLP
         bool     fAuthenticated_snap;
         bool     fRewardBound_snap;
         uint256_t hashRewardAddress_snap;
+        uint256_t hashRewardAccount_snap;
         uint256_t hashGenesis_snap;
         {
             LOCK(MUTEX);
@@ -3030,6 +3031,7 @@ namespace LLP
             fAuthenticated_snap   = context.fAuthenticated;
             fRewardBound_snap     = context.fRewardBound;
             hashRewardAddress_snap = context.hashRewardAddress;
+            hashRewardAccount_snap = context.hashRewardAccount;
             hashGenesis_snap      = context.hashGenesis;
         }
 
@@ -3204,6 +3206,9 @@ namespace LLP
             hashReward = hashRewardAddress_snap;
             strRewardSource = "current connection context bound reward hash";
             debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "      Using bound reward hash: ", hashReward.GetHex(), ANSI_COLOR_RESET);
+            if(hashRewardAccount_snap != 0)
+                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "      Using bound reward account: ",
+                           hashRewardAccount_snap.GetHex(), ANSI_COLOR_RESET);
         }
         else if(hashGenesis_snap != 0) {
             hashReward = hashGenesis_snap;
@@ -3301,7 +3306,8 @@ namespace LLP
             pBlock = TAO::Ledger::CreateBlockForStatelessMining(
                 nChannel_snap,
                 extraNonce,
-                hashReward
+                hashReward,
+                hashRewardAccount_snap
             );
             
             if(!pBlock) {
