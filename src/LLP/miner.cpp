@@ -2103,9 +2103,10 @@ namespace LLP
     }
 
 
-    /* Sign a Tritium block candidate that has already been copied from the
-     * connection template cache.  This does not touch mapBlocks, so callers can
-     * release Miner::MUTEX before wallet signing or ledger validation. */
+    /* Build and sign a Tritium block candidate that has already been copied
+     * from the connection template cache.  This does not touch mapBlocks, so
+     * callers can release Miner::MUTEX before wallet signing or ledger
+     * validation. */
     static bool BuildAndSignSolvedTritiumCandidate(TAO::Ledger::TritiumBlock& block,
         uint64_t nNonce, const uint512_t& hashMerkleRoot, const std::vector<uint8_t>& vOffsets)
     {
@@ -2993,28 +2994,23 @@ namespace LLP
             return true;
         }
 
-        /* Keep a local alias so the remainder of the legacy submit pipeline stays
-         * close to the prior pointer-based flow while referring only to the stack
-         * snapshot, not mapBlocks. */
-        TAO::Ledger::TritiumBlock* pTritium = &blockSolved;
-
         /* Diagnostic log — cross-reference with miner's [SUBMIT AUDIT] log. */
         const uint1024_t hashCurrentBest = TAO::Ledger::ChainState::hashBestChain.load();
-        debug::log(0, FUNCTION, "[BLOCK SUBMIT] nHeight=", pTritium->nHeight, " (unified)",
-                   " channel=", pTritium->nChannel,
-                   " hashPrevBlock=", pTritium->hashPrevBlock.SubString(),
+        debug::log(0, FUNCTION, "[BLOCK SUBMIT] nHeight=", blockSolved.nHeight, " (unified)",
+                   " channel=", blockSolved.nChannel,
+                   " hashPrevBlock=", blockSolved.hashPrevBlock.SubString(),
                    " hashBestChain=", hashCurrentBest.SubString(),
-                   " match=", (pTritium->hashPrevBlock == hashCurrentBest));
+                   " match=", (blockSolved.hashPrevBlock == hashCurrentBest));
         /* Full hashPrevBlock hex (MSB-first via GetHex()) for cross-verification with miner's GetBytes()[0..7] log. */
-        debug::log(2, FUNCTION, "[BLOCK SUBMIT] hashPrevBlock FULL (MSB-first): ", pTritium->hashPrevBlock.GetHex());
+        debug::log(2, FUNCTION, "[BLOCK SUBMIT] hashPrevBlock FULL (MSB-first): ", blockSolved.hashPrevBlock.GetHex());
 
         /* Hash-based staleness guard — mirrors StakeMinter pattern.
          * hashPrevBlock is the PRIMARY staleness anchor baked into the template.
          * This catches reorgs at the same integer height that nBestHeight misses. */
-        if(pTritium->hashPrevBlock != hashCurrentBest)
+        if(blockSolved.hashPrevBlock != hashCurrentBest)
         {
             debug::log(0, FUNCTION, "SUBMIT_BLOCK rejected STALE — hashPrevBlock=",
-                       pTritium->hashPrevBlock.SubString(),
+                       blockSolved.hashPrevBlock.SubString(),
                        " != hashBestChain=", hashCurrentBest.SubString());
             respond_auto(ORPHAN_BLOCK);
             return true;
@@ -3024,12 +3020,12 @@ namespace LLP
          * After sign_block() the hashMerkleRoot is frozen: it was part of the
          * ProofHash the miner solved against.  No pre-validation step may
          * mutate it or the proof-of-work becomes invalid. */
-        const uint512_t hashMerkleFrozen = pTritium->hashMerkleRoot;
+        const uint512_t hashMerkleFrozen = blockSolved.hashMerkleRoot;
 
         /* Pre-validation vtx check — detect transactions already committed by
          * another block.  Mutating the block to remove them would change the
          * merkle root and invalidate the proof-of-work. */
-        if(!TAO::Ledger::ValidateVtxNotCommitted(*pTritium))
+        if(!TAO::Ledger::ValidateVtxNotCommitted(blockSolved))
         {
             debug::error(FUNCTION, "SUBMIT_BLOCK: vtx already committed — template stale, rejecting");
             respond_auto(BLOCK_REJECTED,
@@ -3040,7 +3036,7 @@ namespace LLP
         /* Pre-validation producer freshness — detect stale producer sigchain.
          * Mutating the producer would change its hash, changing the merkle root,
          * and invalidating the proof-of-work. */
-        if(!TAO::Ledger::ValidateProducerFreshness(*pTritium))
+        if(!TAO::Ledger::ValidateProducerFreshness(blockSolved))
         {
             debug::error(FUNCTION, "SUBMIT_BLOCK: producer sigchain stale — template stale, rejecting");
             respond_auto(BLOCK_REJECTED,
@@ -3051,7 +3047,7 @@ namespace LLP
         /* Pre-connect vtx sigchain staleness check — detect stale vtx transactions
          * before AcceptMinedBlock() so the miner gets BLOCK_REJECTED and can
          * request a fresh template rather than receiving a false BLOCK_ACCEPTED. */
-        if(!TAO::Ledger::ValidateVtxSigchainConsistency(*pTritium))
+        if(!TAO::Ledger::ValidateVtxSigchainConsistency(blockSolved))
         {
             debug::error(FUNCTION, "SUBMIT_BLOCK: vtx sigchain stale — rejecting");
             respond_auto(BLOCK_REJECTED,
@@ -3062,26 +3058,26 @@ namespace LLP
         /* Merkle root immutability assertion — all pre-validation steps above
          * are detection-only and must NOT have mutated the block.  If this
          * fires, a code change has reintroduced a mutation bug. */
-        if(pTritium->hashMerkleRoot != hashMerkleFrozen)
+        if(blockSolved.hashMerkleRoot != hashMerkleFrozen)
         {
             debug::error(FUNCTION, "SUBMIT_BLOCK BUG: hashMerkleRoot mutated after sign_block!"
                          " This indicates a regression in the pre-validation pipeline."
                          " frozen=", hashMerkleFrozen.SubString(),
-                         " current=", pTritium->hashMerkleRoot.SubString());
+                         " current=", blockSolved.hashMerkleRoot.SubString());
             respond_auto(BLOCK_REJECTED,
                 BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::LOCAL_TEMPLATE_REJECT));
             return true;
         }
 
         TAO::Ledger::BlockValidationResult validationResult =
-            TAO::Ledger::ValidateMinedBlock(*pTritium);
+            TAO::Ledger::ValidateMinedBlock(blockSolved);
         if(!validationResult.valid)
         {
             debug::error(FUNCTION, "SUBMIT_BLOCK rejected: ", validationResult.reason);
             if(hashGenesisSnapshot != 0)
             {
                 ColinMiningAgent::Get().on_block_submitted(
-                    hashGenesisSnapshot.SubString(8), pTritium->nChannel,
+                    hashGenesisSnapshot.SubString(8), blockSolved.nChannel,
                     false, validationResult.reason);
             }
             respond_auto(BLOCK_REJECTED,
@@ -3090,14 +3086,14 @@ namespace LLP
         }
 
         TAO::Ledger::BlockAcceptanceResult acceptanceResult =
-            TAO::Ledger::AcceptMinedBlock(*pTritium);
+            TAO::Ledger::AcceptMinedBlock(blockSolved);
         if(!acceptanceResult.accepted)
         {
             debug::error(FUNCTION, "SUBMIT_BLOCK ledger write failed: ", acceptanceResult.reason);
             if(hashGenesisSnapshot != 0)
             {
                 ColinMiningAgent::Get().on_block_submitted(
-                    hashGenesisSnapshot.SubString(8), pTritium->nChannel,
+                    hashGenesisSnapshot.SubString(8), blockSolved.nChannel,
                     false, acceptanceResult.reason);
             }
             respond_auto(BLOCK_REJECTED,
@@ -3105,9 +3101,9 @@ namespace LLP
         }
         else
         {
-            debug::log(0, FUNCTION, "BLOCK ACCEPTED — unified nHeight=", pTritium->nHeight,
-                       " channel=", pTritium->nChannel,
-                       " hashPrevBlock=", pTritium->hashPrevBlock.SubString(),
+            debug::log(0, FUNCTION, "BLOCK ACCEPTED — unified nHeight=", blockSolved.nHeight,
+                       " channel=", blockSolved.nChannel,
+                       " hashPrevBlock=", blockSolved.hashPrevBlock.SubString(),
                        " merkle=", hashMerkle.SubString());
             respond_auto(BLOCK_ACCEPTED);
 
@@ -3127,7 +3123,7 @@ namespace LLP
             if(hashGenesisSnapshot != 0)
             {
                 ColinMiningAgent::Get().on_block_submitted(
-                    hashGenesisSnapshot.SubString(8), pTritium->nChannel, true, "");
+                    hashGenesisSnapshot.SubString(8), blockSolved.nChannel, true, "");
             }
         }
         return true;
