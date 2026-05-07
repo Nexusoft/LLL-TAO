@@ -2106,7 +2106,7 @@ namespace LLP
     /* Sign a Tritium block candidate that has already been copied from the
      * connection template cache.  This does not touch mapBlocks, so callers can
      * release Miner::MUTEX before wallet signing or ledger validation. */
-    static bool SignSolvedTritiumCandidate(TAO::Ledger::TritiumBlock& block,
+    static bool BuildAndSignSolvedTritiumCandidate(TAO::Ledger::TritiumBlock& block,
         uint64_t nNonce, const uint512_t& hashMerkleRoot, const std::vector<uint8_t>& vOffsets)
     {
         /* Build a canonical solved candidate from the immutable template.
@@ -2215,7 +2215,7 @@ namespace LLP
         /* If the block dynamically casts to a tritium block, validate the tritium block. */
         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(pBaseBlock);
         if(pBlock)
-            return SignSolvedTritiumCandidate(*pBlock, nNonce, hashMerkleRoot, vOffsets);
+            return BuildAndSignSolvedTritiumCandidate(*pBlock, nNonce, hashMerkleRoot, vOffsets);
 
         /* If we get here, the block is null or doesn't exist. */
         return debug::error(FUNCTION, "null block");
@@ -2939,6 +2939,8 @@ namespace LLP
          * Cross-lane block lookup removed — each lane's templates are
          * per-connection only (no shared session block store). */
 
+        /* State captured under MUTEX.  The solved block copy and genesis snapshot
+         * are intentionally used below after MUTEX is released. */
         TAO::Ledger::TritiumBlock blockSolved;
         uint256_t hashGenesisSnapshot = 0;
         bool fLocalBlock = false;
@@ -2983,7 +2985,7 @@ namespace LLP
             return true;
         }
 
-        if(!SignSolvedTritiumCandidate(blockSolved, nonce, hashMerkle, vPrimeOffsets))
+        if(!BuildAndSignSolvedTritiumCandidate(blockSolved, nonce, hashMerkle, vPrimeOffsets))
         {
             debug::log(0, FUNCTION, "📥 === SUBMIT_BLOCK: REJECTED (sign_block failed, legacy lane) ===");
             respond_auto(BLOCK_REJECTED,
@@ -2991,6 +2993,9 @@ namespace LLP
             return true;
         }
 
+        /* Keep a local alias so the remainder of the legacy submit pipeline stays
+         * close to the prior pointer-based flow while referring only to the stack
+         * snapshot, not mapBlocks. */
         TAO::Ledger::TritiumBlock* pTritium = &blockSolved;
 
         /* Diagnostic log — cross-reference with miner's [SUBMIT AUDIT] log. */
