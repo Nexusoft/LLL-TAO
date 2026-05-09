@@ -2230,7 +2230,7 @@ namespace LLP
                     for(uint32_t nContract = 0; nContract < nProducerContracts; ++nContract)
                     {
                         const TAO::Operation::Contract& rContract = pTritium->producer[nContract];
-                        if(rContract.Operations().size() == 0)
+                        if(rContract.Empty())
                             continue;
 
                         if(rContract.Primitive() == TAO::Operation::OP::COINBASE &&
