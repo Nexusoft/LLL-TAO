@@ -278,6 +278,7 @@ namespace OpcodeUtility
         RATE_LIMITED          = 8,  // Request was throttled/rate limited
         UNKNOWN_TEMPLATE      = 9,  // Merkle root was not found in the lane-local template map
         LOCAL_TEMPLATE_REJECT = 10, // Local pre-validation rejected a stale/mutated template
+        MALFORMED_PRODUCER    = 11, // Coinbase contract stream size != 49 (burst-block TOCTOU race)
     };
 
     //=========================================================================

@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLP/include/falcon_auth.h>
 #include <LLP/include/disposable_falcon.h>
 #include <LLP/include/opcode_utility.h>
+#include <LLP/include/coinbase_validation.h>
 #include <LLP/include/node_cache.h>
 #include <LLP/include/get_block_policy.h>
 #include <LLP/include/auto_cooldown_manager.h>
@@ -71,6 +72,8 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/object.h>
+
+#include <TAO/Operation/include/enum.h>
 
 #include <Util/include/config.h>
 #include <Util/include/convert.h>
@@ -156,6 +159,7 @@ namespace LLP
     , nLastTemplateUnifiedHeight(0)
     , nMinerPrevblockSuffix({})
     {
+        StartTemplateWorker();
     }
 
 
@@ -183,6 +187,7 @@ namespace LLP
     , nLastTemplateUnifiedHeight(0)
     , nMinerPrevblockSuffix({})
     {
+        StartTemplateWorker();
     }
 
 
@@ -210,12 +215,15 @@ namespace LLP
     , nLastTemplateUnifiedHeight(0)
     , nMinerPrevblockSuffix({})
     {
+        StartTemplateWorker();
     }
 
 
     /* Default Destructor */
     Miner::~Miner()
     {
+        StopTemplateWorker();
+
         LOCK(MUTEX);
         clear_map();
 
@@ -224,10 +232,174 @@ namespace LLP
         strMinerId.clear();
         vAuthNonce.clear();
         fMinerAuthenticated = false;
+        SetHandshakeInProgress(false);
         hashKeyID = 0;
 
         /* Send a notification to wake up sleeping thread to finish shutdown process. */
         this->NotifyEvent();
+    }
+
+
+    void Miner::StartTemplateWorker()
+    {
+        std::lock_guard<std::mutex> lock(m_template_work_mutex);
+
+        if(m_template_worker_running)
+            return;
+
+        m_template_worker_running = true;
+        m_template_work_pending = false;
+        m_template_work_reason = TemplateWorkReason::PUSH_NOTIFICATION;
+        m_template_work_thread = std::thread(&Miner::TemplateWorkerLoop, this);
+    }
+
+
+    void Miner::StopTemplateWorker()
+    {
+        {
+            std::lock_guard<std::mutex> lock(m_template_work_mutex);
+            m_template_worker_running = false;
+            m_template_work_pending = false;
+        }
+
+        m_template_work_cv.notify_all();
+
+        if(m_template_work_thread.joinable())
+            m_template_work_thread.join();
+    }
+
+
+    void Miner::ScheduleTemplateWork(TemplateWorkReason eReason)
+    {
+        {
+            std::lock_guard<std::mutex> lock(m_template_work_mutex);
+            if(!m_template_worker_running)
+                return;
+
+            m_template_work_pending = true;
+            m_template_work_reason = eReason;
+        }
+
+        m_template_work_cv.notify_one();
+    }
+
+
+    void Miner::TemplateWorkerLoop()
+    {
+        while(true)
+        {
+            TemplateWorkReason eReason = TemplateWorkReason::PUSH_NOTIFICATION;
+
+            {
+                std::unique_lock<std::mutex> lock(m_template_work_mutex);
+                m_template_work_cv.wait(lock,
+                    [this]
+                    {
+                        return m_template_work_pending || !m_template_worker_running;
+                    });
+
+                if(!m_template_worker_running && !m_template_work_pending)
+                    break;
+
+                eReason = m_template_work_reason;
+                m_template_work_pending = false;
+            }
+
+            QueueCurrentBlockDataTemplate(eReason);
+        }
+    }
+
+
+    bool Miner::QueueCurrentBlockDataTemplate(TemplateWorkReason eReason)
+    {
+        static constexpr std::size_t TEMPLATE_METADATA_SIZE = 12;
+
+        if(config::fShutdown.load() || !Connected())
+            return false;
+
+        const char* pReason =
+            (eReason == TemplateWorkReason::GET_ROUND_RECOVERY)
+                ? "Legacy GET_ROUND recovery"
+                : "Legacy push notification";
+
+        uint32_t nChannelCopy = 0;
+        uint32_t nSessionIdCopy = 0;
+        {
+            LOCK(MUTEX);
+
+            if(!fMinerAuthenticated || (nChannel.load() != 1 && nChannel.load() != 2))
+                return false;
+
+            nChannelCopy = nChannel.load();
+            nSessionIdCopy = nSessionId;
+        }
+
+        const SharedTemplatePayloadResult sharedTemplate = BuildSharedTemplatePayloadWithRetry(
+            [this]() -> TAO::Ledger::Block*
+            {
+                return new_block();
+            },
+            pReason);
+        if(!sharedTemplate.fSuccess)
+        {
+            debug::error(FUNCTION, pReason, ": failed to create BLOCK_DATA payload: ",
+                GetBlockPolicyReasonCode(sharedTemplate.eReason));
+            return false;
+        }
+
+        if(sharedTemplate.vPayload.size() < (TEMPLATE_METADATA_SIZE + FalconConstants::FULL_BLOCK_TRITIUM_MIN))
+        {
+            debug::error(FUNCTION, pReason, ": invalid legacy BLOCK_DATA size ",
+                sharedTemplate.vPayload.size(), " bytes (minimum ",
+                (TEMPLATE_METADATA_SIZE + FalconConstants::FULL_BLOCK_TRITIUM_MIN), ")");
+            return false;
+        }
+
+        Packet blockPacket(BLOCK_DATA);
+        blockPacket.DATA = sharedTemplate.vPayload;
+        blockPacket.LENGTH = static_cast<uint32_t>(blockPacket.DATA.size());
+        QueuePacket(blockPacket);
+
+        RecordTemplateDelivery(sharedTemplate.nUnifiedHeight, sharedTemplate.hashBestChain);
+        StatelessMinerManager::Get().IncrementTemplatesServed();
+
+        debug::log(2, FUNCTION, "Queued legacy BLOCK_DATA source=", pReason,
+            " bytes=", blockPacket.DATA.size(), " channel=", sharedTemplate.nBlockChannel,
+            " height=", sharedTemplate.nBlockHeight, " session=", nSessionIdCopy,
+            " subscribed_channel=", nChannelCopy, " to ", GetAddress().ToStringIP());
+
+        return true;
+    }
+
+
+    void Miner::TryAttachBlockTemplate()
+    {
+        ScheduleTemplateWork(TemplateWorkReason::PUSH_NOTIFICATION);
+    }
+
+
+    void Miner::RecordTemplateDelivery(uint32_t nUnifiedHeight, const uint1024_t& hashBestChain)
+    {
+        const uint64_t nNow = runtime::unifiedtimestamp();
+        nLastTemplateUnifiedHeight.store(nUnifiedHeight, std::memory_order_relaxed);
+
+        {
+            LOCK(MUTEX);
+            m_hashLastTemplateChain = hashBestChain;
+        }
+
+        const std::string strAddr =
+            GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort());
+
+        StatelessMinerManager::Get().TransformMiner(strAddr,
+            [nUnifiedHeight, hashBestChain, nNow](const MiningContext& current)
+            {
+                return current.WithTimestamp(nNow)
+                              .WithHeight(nUnifiedHeight)
+                              .WithLastTemplateUnifiedHeight(nUnifiedHeight)
+                              .WithHashLastBlock(hashBestChain);
+            },
+            0);
     }
 
 
@@ -271,6 +443,14 @@ namespace LLP
                     /* Oversized payloads */
                     if(PACKET.HEADER == SUBMIT_BLOCK &&
                        PACKET.LENGTH > FalconConstants::SUBMIT_BLOCK_WRAPPER_ENCRYPTED_MAX)
+                        fViolation = true;
+
+                    /* Falcon auth wrappers have fixed protocol ceilings; reject at
+                     * HEADER stage before allocating the declared payload. */
+                    if(PACKET.HEADER == MINER_AUTH_INIT && PACKET.LENGTH > FalconConstants::MINER_AUTH_INIT_MAX)
+                        fViolation = true;
+
+                    if(PACKET.HEADER == MINER_AUTH_RESPONSE && PACKET.LENGTH > FalconConstants::AUTH_RESPONSE_ENCRYPTED_MAX)
                         fViolation = true;
 
                     if(PACKET.HEADER == SET_CHANNEL && PACKET.LENGTH > 4)
@@ -392,6 +572,7 @@ namespace LLP
 
                 /* Log connection details with remote address and port */
                 debug::log(0, FUNCTION, "MinerLLP: New connection accepted from ", GetAddress().ToStringIP(), ":", GetAddress().GetPort());
+                SetHandshakeInProgress(false);
 
                 try
                 {
@@ -510,6 +691,7 @@ namespace LLP
 
                 /* Interrupt any in-flight SendChannelNotification() path immediately. */
                 m_shutdownRequested.store(true, std::memory_order_release);
+                SetHandshakeInProgress(false);
 
                 /* Remove only THIS legacy-lane endpoint.  RemoveMiner() guards all
                  * secondary indices with CompareAndErase so a reconnect that already
@@ -960,6 +1142,8 @@ namespace LLP
                         fEncryptionReady = true;
                     }
 
+                    UpdateHandshakeStateForAuthPacket(PACKET.HEADER, fMinerAuthenticated.load(std::memory_order_relaxed));
+
                     /* Update the context with the ChaCha20 key before sending to manager.
                      * CRITICAL: The context returned from StatelessMiner may not include
                      * the ChaCha20 key in all cases:
@@ -1021,7 +1205,8 @@ namespace LLP
 
                     /* Atomic transform: commit the FULL post-handler context to mapMiners.
                      *
-                     * BUG FIX (Option 1): The previous implementation built result from
+                     * BUG FIX (Option 1, supersedes the per-field WithChannel patch from
+                     * origin/NODE): the previous implementation built result from
                      *   current.WithAuth(...).WithSession(...)...
                      * — a partial chain that touched only auth-related fields.  Any
                      * field set by the handler that wasn't in the chain (notably
@@ -1036,7 +1221,9 @@ namespace LLP
                      * Fix: assign updatedContext (the full handler result) directly,
                      * preserving only a fresh activity timestamp and the higher of
                      * (current, handler) heights so a concurrent SetBest fan-out is
-                     * not regressed by an in-flight packet.
+                     * not regressed by an in-flight packet.  This implicitly
+                     * propagates nChannel, vChaChaKey, nSessionStart, etc., so the
+                     * narrower per-field fix on origin/NODE is no longer needed.
                      */
                     {
                         MiningContext authCtx = updatedContext;
@@ -1126,7 +1313,10 @@ namespace LLP
                     /* Processing error - log and disconnect */
                     debug::error(FUNCTION, "MinerLLP: Processing error from ", GetAddress().ToStringIP(),
                                 ": ", result.strError);
-                    
+
+                    if(PACKET.HEADER == MINER_AUTH_RESPONSE)
+                        SetHandshakeInProgress(false);
+
                     /* Try to send error response if available */
                     if(!result.response.IsNull())
                     {
@@ -1843,6 +2033,87 @@ namespace LLP
     }
 
 
+    /* Build and sign a Tritium block candidate that has already been copied
+     * from the connection template cache.  This does not touch mapBlocks, so
+     * callers can release Miner::MUTEX before wallet signing or ledger
+     * validation. */
+    static bool BuildAndSignSolvedTritiumCandidate(TAO::Ledger::TritiumBlock& block,
+        uint64_t nNonce, const std::vector<uint8_t>& vOffsets)
+    {
+        /* Build a canonical solved candidate from the immutable template.
+         *
+         * For Prime (channel 1):
+         *   - Copy all consensus-critical template fields unchanged.
+         *   - Apply miner-submitted nNonce and vOffsets.
+         *   - Preserve nTime (ProofHash for Prime excludes nTime).
+         *   - Clear vchBlockSig so FinalizeWalletSignatureForSolvedBlock re-signs.
+         *
+         * For Hash (channel 2):
+         *   - Copy all consensus-critical template fields unchanged.
+         *   - Apply miner-submitted nNonce.
+         *   - Clear vOffsets (Hash channel invariant — no Cunningham chain).
+         *   - Preserve nTime (ProofHash for Hash also excludes nTime).
+         *   - Clear vchBlockSig so FinalizeWalletSignatureForSolvedBlock re-signs.
+         *
+         * The UpdateTime() call previously made here for all channels is removed
+         * for both Prime and Hash: neither ProofHash computation includes nTime,
+         * so mutating nTime after template issuance has no proof-correctness
+         * benefit and can violate the "immutable anchor field" invariant. */
+        if(block.nChannel == TAO::Ledger::CHANNEL::PRIME)
+        {
+            block = TAO::Ledger::BuildSolvedPrimeCandidateFromTemplate(block, nNonce, vOffsets);
+
+            /* Structural validation of miner-submitted Prime offsets.
+             * The prior GetOffsets(GetPrime()) equivalence check was broken: it
+             * returned empty offsets whenever GetPrime() was not itself prime,
+             * causing false rejections for otherwise valid Prime submissions.
+             * VerifySubmittedPrimeOffsets() performs lightweight structural checks
+             * only; the authoritative proof-of-work gate is VerifyWork() in Check().
+             *
+             * The empty check guards the legacy-fallback path below: when the miner
+             * does not submit vOffsets (compact wrapper), we fall through to GetOffsets()
+             * rather than rejecting. Only non-empty submissions are validated here. */
+            if(!block.vOffsets.empty() &&
+               !TAO::Ledger::VerifySubmittedPrimeOffsets(block, block.vOffsets))
+            {
+                return debug::error(FUNCTION, "Prime vOffsets structural validation failed");
+            }
+
+            /* Legacy fallback: derive offsets locally when the miner did not submit
+             * them (compact wrapper path).  This preserves backwards compatibility
+             * with older miners that do not include vOffsets in the payload. */
+            if(block.vOffsets.empty())
+                TAO::Ledger::GetOffsets(block.GetPrime(), block.vOffsets);
+        }
+        else if(block.nChannel == TAO::Ledger::CHANNEL::HASH)
+        {
+            block = TAO::Ledger::BuildSolvedHashCandidateFromTemplate(block, nNonce);
+        }
+        else
+        {
+            /* Unknown channel — apply nNonce and clear offsets as a safe fallback. */
+            block.nNonce = nNonce;
+            block.vOffsets.clear();
+            block.vchBlockSig.clear();
+        }
+
+        /* Generate the canonical block signature using the shared wallet-signature
+         * utility.  FinalizeWalletSignatureForSolvedBlock() unlocks the mining
+         * sigchain and signs SignatureHash() with the producer key (Falcon or
+         * Brainpool), supporting both key types.
+         *
+         * This replaces the prior inline credential unlock + switch/case that was
+         * duplicated here.  The shared function is the canonical signing path for
+         * both the legacy miner lane and the stateless lane, ensuring consistent
+         * behaviour across channels. */
+        if(!TAO::Ledger::FinalizeWalletSignatureForSolvedBlock(block))
+            return debug::error(FUNCTION, "FinalizeWalletSignatureForSolvedBlock failed for ",
+                                block.hashMerkleRoot.SubString());
+
+        return true;
+    }
+
+
     /*  signs the block. */
     bool Miner::sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot, const std::vector<uint8_t>& vOffsets)
     {
@@ -1875,79 +2146,7 @@ namespace LLP
         /* If the block dynamically casts to a tritium block, validate the tritium block. */
         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(pBaseBlock);
         if(pBlock)
-        {
-            /* Build a canonical solved candidate from the immutable template.
-             *
-             * For Prime (channel 1):
-             *   - Copy all consensus-critical template fields unchanged.
-             *   - Apply miner-submitted nNonce and vOffsets.
-             *   - Preserve nTime (ProofHash for Prime excludes nTime).
-             *   - Clear vchBlockSig so FinalizeWalletSignatureForSolvedBlock re-signs.
-             *
-             * For Hash (channel 2):
-             *   - Copy all consensus-critical template fields unchanged.
-             *   - Apply miner-submitted nNonce.
-             *   - Clear vOffsets (Hash channel invariant — no Cunningham chain).
-             *   - Preserve nTime (ProofHash for Hash also excludes nTime).
-             *   - Clear vchBlockSig so FinalizeWalletSignatureForSolvedBlock re-signs.
-             *
-             * The UpdateTime() call previously made here for all channels is removed
-             * for both Prime and Hash: neither ProofHash computation includes nTime,
-             * so mutating nTime after template issuance has no proof-correctness
-             * benefit and can violate the "immutable anchor field" invariant. */
-            if(pBlock->nChannel == TAO::Ledger::CHANNEL::PRIME)
-            {
-                *pBlock = TAO::Ledger::BuildSolvedPrimeCandidateFromTemplate(*pBlock, nNonce, vOffsets);
-
-                /* Structural validation of miner-submitted Prime offsets.
-                 * The prior GetOffsets(GetPrime()) equivalence check was broken: it
-                 * returned empty offsets whenever GetPrime() was not itself prime,
-                 * causing false rejections for otherwise valid Prime submissions.
-                 * VerifySubmittedPrimeOffsets() performs lightweight structural checks
-                 * only; the authoritative proof-of-work gate is VerifyWork() in Check().
-                 *
-                 * The empty check guards the legacy-fallback path below: when the miner
-                 * does not submit vOffsets (compact wrapper), we fall through to GetOffsets()
-                 * rather than rejecting. Only non-empty submissions are validated here. */
-                if(!pBlock->vOffsets.empty() &&
-                   !TAO::Ledger::VerifySubmittedPrimeOffsets(*pBlock, pBlock->vOffsets))
-                {
-                    return debug::error(FUNCTION, "Prime vOffsets structural validation failed");
-                }
-
-                /* Legacy fallback: derive offsets locally when the miner did not submit
-                 * them (compact wrapper path).  This preserves backwards compatibility
-                 * with older miners that do not include vOffsets in the payload. */
-                if(pBlock->vOffsets.empty())
-                    TAO::Ledger::GetOffsets(pBlock->GetPrime(), pBlock->vOffsets);
-            }
-            else if(pBlock->nChannel == TAO::Ledger::CHANNEL::HASH)
-            {
-                *pBlock = TAO::Ledger::BuildSolvedHashCandidateFromTemplate(*pBlock, nNonce);
-            }
-            else
-            {
-                /* Unknown channel — apply nNonce and clear offsets as a safe fallback. */
-                pBlock->nNonce = nNonce;
-                pBlock->vOffsets.clear();
-                pBlock->vchBlockSig.clear();
-            }
-
-            /* Generate the canonical block signature using the shared wallet-signature
-             * utility.  FinalizeWalletSignatureForSolvedBlock() unlocks the mining
-             * sigchain and signs SignatureHash() with the producer key (Falcon or
-             * Brainpool), supporting both key types.
-             *
-             * This replaces the prior inline credential unlock + switch/case that was
-             * duplicated here.  The shared function is the canonical signing path for
-             * both the legacy miner lane and the stateless lane, ensuring consistent
-             * behaviour across channels. */
-            if(!TAO::Ledger::FinalizeWalletSignatureForSolvedBlock(*pBlock))
-                return debug::error(FUNCTION, "FinalizeWalletSignatureForSolvedBlock failed for ",
-                                    hashMerkleRoot.SubString());
-
-            return true;
-        }
+            return BuildAndSignSolvedTritiumCandidate(*pBlock, nNonce, vOffsets);
 
         /* If we get here, the block is null or doesn't exist. */
         return debug::error(FUNCTION, "null block");
@@ -2202,6 +2401,12 @@ namespace LLP
         /* Notify Colin agent: template pushed via push notification */
         if(hashGenesis != 0)
             ColinMiningAgent::Get().on_template_pushed(nSubscribedChannelCopy, stateBest.nHeight + 1);
+
+        /* Match the stateless lane: attach a full BLOCK_DATA template to each
+         * accepted PUSH event so miners can resume without a follow-up GET_BLOCK.
+         * The worker builds/queues the template off the notification path and
+         * preserves strict 8-bit legacy framing. */
+        TryAttachBlockTemplate();
     }
 
 
@@ -2279,17 +2484,17 @@ namespace LLP
             return;
         }
 
-        /* Send using the negotiated framing for this legacy-lane connection. */
-        respond_auto(BLOCK_DATA, sharedTemplate.vPayload);
+        Packet blockPacket(BLOCK_DATA);
+        blockPacket.DATA = sharedTemplate.vPayload;
+        blockPacket.LENGTH = static_cast<uint32_t>(blockPacket.DATA.size());
+        QueuePacket(blockPacket);
 
         debug::log(2, FUNCTION, "✅ Legacy template sent (",
-                   sharedTemplate.vPayload.size(), " bytes) channel=", sharedTemplate.nBlockChannel,
-                   " height=", sharedTemplate.nBlockHeight, " to ", GetAddress().ToStringIP());
+            sharedTemplate.vPayload.size(), " bytes) channel=", sharedTemplate.nBlockChannel,
+            " height=", sharedTemplate.nBlockHeight, " to ", GetAddress().ToStringIP());
 
         StatelessMinerManager::Get().IncrementTemplatesServed();
-
-        /* Update last template unified height (atomic store — see nLastTemplateUnifiedHeight comment). */
-        nLastTemplateUnifiedHeight.store(sharedTemplate.nUnifiedHeight, std::memory_order_relaxed);
+        RecordTemplateDelivery(sharedTemplate.nUnifiedHeight, sharedTemplate.hashBestChain);
     }
 
 
@@ -2396,9 +2601,7 @@ namespace LLP
          * Uses UNIFIED height — every tip move changes hashPrevBlock,
          * so ALL channels need fresh templates regardless of which channel mined.
          * Atomic store — see nLastTemplateUnifiedHeight comment in miner.h. */
-        {
-            nLastTemplateUnifiedHeight.store(result.nUnifiedHeight, std::memory_order_relaxed);
-        }
+        RecordTemplateDelivery(result.nUnifiedHeight, result.hashBestChain);
 
         /* Notify Colin agent: template pushed via GET_BLOCK */
         /* Use the snapshot outside MUTEX: hashGenesis is read-only for this
@@ -2436,11 +2639,27 @@ namespace LLP
             return false;
         }
 
-        /* Update subscription state */
+        /* Update local subscription state */
         fSubscribedToNotifications = true;
         nSubscribedChannel = nChannel;
 
         debug::log(0, FUNCTION, "Miner subscribed to channel ", nChannel, " (", GetChannelName(nChannel), ")");
+
+        /* Propagate subscription state to the manager so the canonical context reflects
+         * MINING(4) state.  MINER_READY is handled inside ProcessPacketStateless (not the
+         * shared big-if block), so the TransformMiner in ProcessPacket is not reached here.
+         * Without this update the manager would permanently show CHANNEL_SET(3) instead of
+         * MINING(4) after a successful MINER_READY, giving stale state to any diagnostics
+         * or health checks that read from the manager. */
+        {
+            const uint32_t nChanSnap = nChannel.load();
+            const std::string strAddr =
+                GetAddress().ToStringIP() + ":" + std::to_string(GetAddress().GetPort());
+            StatelessMinerManager::Get().TransformMiner(strAddr,
+                [nChanSnap](const MiningContext& current) {
+                    return current.WithSubscription(nChanSnap);
+                }, 0);
+        }
 
         /* Send immediate template.
          * Force-bypass the push throttle — miner explicitly re-subscribed and needs
@@ -2651,10 +2870,36 @@ namespace LLP
          * Cross-lane block lookup removed — each lane's templates are
          * per-connection only (no shared session block store). */
 
-        LOCK(MUTEX);
+        /* State captured under MUTEX.  The solved block copy and genesis snapshot
+         * are intentionally used below after MUTEX is released. */
+        TAO::Ledger::TritiumBlock blockSolved;
+        uint256_t hashGenesisSnapshot = 0;
+        bool fLocalBlock = false;
+        bool fTritiumBlock = false;
 
-        /* Make sure the block was created by this mining server. */
-        const bool fLocalBlock = find_block(hashMerkle);
+        {
+            LOCK(MUTEX);
+
+            /* Make sure the block was created by this mining server, and copy the
+             * cached template while protected by the connection lock.  All
+             * signing, validation, ledger writes, callbacks, and network responses
+             * below operate on the copy with MUTEX released. */
+            TAO::Ledger::Block* pTemplate = lookup_block(hashMerkle);
+            fLocalBlock = (pTemplate != nullptr);
+
+            if(fLocalBlock)
+            {
+                const TAO::Ledger::TritiumBlock* pTritiumTemplate =
+                    dynamic_cast<const TAO::Ledger::TritiumBlock*>(pTemplate);
+                fTritiumBlock = (pTritiumTemplate != nullptr);
+                if(fTritiumBlock)
+                    blockSolved = *pTritiumTemplate;
+            }
+
+            /* Snapshot callback identity before releasing MUTEX so Colin agent
+             * notifications below do not read connection state lock-free. */
+            hashGenesisSnapshot = hashGenesis;
+        }
 
         if(!fLocalBlock)
         {
@@ -2665,22 +2910,7 @@ namespace LLP
             return true;
         }
 
-        TAO::Ledger::TritiumBlock* pTritium = nullptr;
-
-        {
-            /* Local path: sign_block mutates the block in-place via mapBlocks */
-            if(!sign_block(nonce, hashMerkle, vPrimeOffsets))
-            {
-                debug::log(0, FUNCTION, "📥 === SUBMIT_BLOCK: REJECTED (sign_block failed, legacy lane) ===");
-                respond_auto(BLOCK_REJECTED,
-                    BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::LOCAL_TEMPLATE_REJECT));
-                return true;
-            }
-
-            pTritium = dynamic_cast<TAO::Ledger::TritiumBlock*>(lookup_block(hashMerkle));
-        }
-
-        if(!pTritium)
+        if(!fTritiumBlock)
         {
             debug::error(FUNCTION, "SUBMIT_BLOCK unexpected non-Tritium block for merkle ",
                          hashMerkle.SubString());
@@ -2689,23 +2919,34 @@ namespace LLP
             return true;
         }
 
+        /* The cached template is intentionally left unsigned in mapBlocks — clear_map()
+         * will purge it on the imminent height change from AcceptMinedBlock.  The
+         * success path also prunes this solved template immediately after acceptance. */
+        if(!BuildAndSignSolvedTritiumCandidate(blockSolved, nonce, vPrimeOffsets))
+        {
+            debug::log(0, FUNCTION, "📥 === SUBMIT_BLOCK: REJECTED (sign_block failed, legacy lane) ===");
+            respond_auto(BLOCK_REJECTED,
+                BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::LOCAL_TEMPLATE_REJECT));
+            return true;
+        }
+
         /* Diagnostic log — cross-reference with miner's [SUBMIT AUDIT] log. */
         const uint1024_t hashCurrentBest = TAO::Ledger::ChainState::hashBestChain.load();
-        debug::log(0, FUNCTION, "[BLOCK SUBMIT] nHeight=", pTritium->nHeight, " (unified)",
-                   " channel=", pTritium->nChannel,
-                   " hashPrevBlock=", pTritium->hashPrevBlock.SubString(),
+        debug::log(0, FUNCTION, "[BLOCK SUBMIT] nHeight=", blockSolved.nHeight, " (unified)",
+                   " channel=", blockSolved.nChannel,
+                   " hashPrevBlock=", blockSolved.hashPrevBlock.SubString(),
                    " hashBestChain=", hashCurrentBest.SubString(),
-                   " match=", (pTritium->hashPrevBlock == hashCurrentBest));
+                   " match=", (blockSolved.hashPrevBlock == hashCurrentBest));
         /* Full hashPrevBlock hex (MSB-first via GetHex()) for cross-verification with miner's GetBytes()[0..7] log. */
-        debug::log(2, FUNCTION, "[BLOCK SUBMIT] hashPrevBlock FULL (MSB-first): ", pTritium->hashPrevBlock.GetHex());
+        debug::log(2, FUNCTION, "[BLOCK SUBMIT] hashPrevBlock FULL (MSB-first): ", blockSolved.hashPrevBlock.GetHex());
 
         /* Hash-based staleness guard — mirrors StakeMinter pattern.
          * hashPrevBlock is the PRIMARY staleness anchor baked into the template.
          * This catches reorgs at the same integer height that nBestHeight misses. */
-        if(pTritium->hashPrevBlock != hashCurrentBest)
+        if(blockSolved.hashPrevBlock != hashCurrentBest)
         {
             debug::log(0, FUNCTION, "SUBMIT_BLOCK rejected STALE — hashPrevBlock=",
-                       pTritium->hashPrevBlock.SubString(),
+                       blockSolved.hashPrevBlock.SubString(),
                        " != hashBestChain=", hashCurrentBest.SubString());
             respond_auto(ORPHAN_BLOCK);
             return true;
@@ -2715,12 +2956,12 @@ namespace LLP
          * After sign_block() the hashMerkleRoot is frozen: it was part of the
          * ProofHash the miner solved against.  No pre-validation step may
          * mutate it or the proof-of-work becomes invalid. */
-        const uint512_t hashMerkleFrozen = pTritium->hashMerkleRoot;
+        const uint512_t hashMerkleFrozen = blockSolved.hashMerkleRoot;
 
         /* Pre-validation vtx check — detect transactions already committed by
          * another block.  Mutating the block to remove them would change the
          * merkle root and invalidate the proof-of-work. */
-        if(!TAO::Ledger::ValidateVtxNotCommitted(*pTritium))
+        if(!TAO::Ledger::ValidateVtxNotCommitted(blockSolved))
         {
             debug::error(FUNCTION, "SUBMIT_BLOCK: vtx already committed — template stale, rejecting");
             respond_auto(BLOCK_REJECTED,
@@ -2731,7 +2972,7 @@ namespace LLP
         /* Pre-validation producer freshness — detect stale producer sigchain.
          * Mutating the producer would change its hash, changing the merkle root,
          * and invalidating the proof-of-work. */
-        if(!TAO::Ledger::ValidateProducerFreshness(*pTritium))
+        if(!TAO::Ledger::ValidateProducerFreshness(blockSolved))
         {
             debug::error(FUNCTION, "SUBMIT_BLOCK: producer sigchain stale — template stale, rejecting");
             respond_auto(BLOCK_REJECTED,
@@ -2742,7 +2983,7 @@ namespace LLP
         /* Pre-connect vtx sigchain staleness check — detect stale vtx transactions
          * before AcceptMinedBlock() so the miner gets BLOCK_REJECTED and can
          * request a fresh template rather than receiving a false BLOCK_ACCEPTED. */
-        if(!TAO::Ledger::ValidateVtxSigchainConsistency(*pTritium))
+        if(!TAO::Ledger::ValidateVtxSigchainConsistency(blockSolved))
         {
             debug::error(FUNCTION, "SUBMIT_BLOCK: vtx sigchain stale — rejecting");
             respond_auto(BLOCK_REJECTED,
@@ -2753,26 +2994,56 @@ namespace LLP
         /* Merkle root immutability assertion — all pre-validation steps above
          * are detection-only and must NOT have mutated the block.  If this
          * fires, a code change has reintroduced a mutation bug. */
-        if(pTritium->hashMerkleRoot != hashMerkleFrozen)
+        if(blockSolved.hashMerkleRoot != hashMerkleFrozen)
         {
             debug::error(FUNCTION, "SUBMIT_BLOCK BUG: hashMerkleRoot mutated after sign_block!"
                          " This indicates a regression in the pre-validation pipeline."
                          " frozen=", hashMerkleFrozen.SubString(),
-                         " current=", pTritium->hashMerkleRoot.SubString());
+                         " current=", blockSolved.hashMerkleRoot.SubString());
             respond_auto(BLOCK_REJECTED,
                 BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::LOCAL_TEMPLATE_REJECT));
             return true;
         }
 
+        /* Coinbase contract stream size guard — shared helper used by BOTH lanes
+         * (Legacy port 8323 + Stateless port 9323).  A well-formed OP::COINBASE
+         * contract is exactly 49 bytes (1 opcode + 32 hashGenesis + 8 nCredit +
+         * 8 nExtraNonce).  Residual bytes cause TAO::Register::Verify to fire
+         * "can not verify PRIMITIVE per contract" deep in AcceptMinedBlock.
+         * The underlying cause was fixed in CreateProducer (see create.cpp); this
+         * guard remains as defense-in-depth and returns a clean MALFORMED_PRODUCER
+         * rejection if any future regression re-introduces the bug. */
+        {
+            const auto malformed =
+                LLP::CoinbaseValidation::DetectMalformedCoinbase(blockSolved);
+
+            if(malformed.malformed)
+            {
+                debug::warning(FUNCTION,
+                    "[BURST_BLOCK_GUARD] Malformed coinbase contract detected"
+                    " — stream_size=", malformed.actual_size,
+                    " expected=", LLP::CoinbaseValidation::COINBASE_STREAM_SIZE,
+                    " contract=", malformed.contract_index,
+                    " nHeight=", blockSolved.nHeight,
+                    " nChannel=", blockSolved.nChannel,
+                    " nNonce=", blockSolved.nNonce,
+                    " — rejecting with MALFORMED_PRODUCER");
+
+                respond_auto(BLOCK_REJECTED,
+                    BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::MALFORMED_PRODUCER));
+                return true;
+            }
+        }
+
         TAO::Ledger::BlockValidationResult validationResult =
-            TAO::Ledger::ValidateMinedBlock(*pTritium);
+            TAO::Ledger::ValidateMinedBlock(blockSolved);
         if(!validationResult.valid)
         {
             debug::error(FUNCTION, "SUBMIT_BLOCK rejected: ", validationResult.reason);
-            if(hashGenesis != 0)
+            if(hashGenesisSnapshot != 0)
             {
                 ColinMiningAgent::Get().on_block_submitted(
-                    hashGenesis.SubString(8), pTritium->nChannel,
+                    hashGenesisSnapshot.SubString(8), blockSolved.nChannel,
                     false, validationResult.reason);
             }
             respond_auto(BLOCK_REJECTED,
@@ -2781,14 +3052,14 @@ namespace LLP
         }
 
         TAO::Ledger::BlockAcceptanceResult acceptanceResult =
-            TAO::Ledger::AcceptMinedBlock(*pTritium);
+            TAO::Ledger::AcceptMinedBlock(blockSolved);
         if(!acceptanceResult.accepted)
         {
             debug::error(FUNCTION, "SUBMIT_BLOCK ledger write failed: ", acceptanceResult.reason);
-            if(hashGenesis != 0)
+            if(hashGenesisSnapshot != 0)
             {
                 ColinMiningAgent::Get().on_block_submitted(
-                    hashGenesis.SubString(8), pTritium->nChannel,
+                    hashGenesisSnapshot.SubString(8), blockSolved.nChannel,
                     false, acceptanceResult.reason);
             }
             respond_auto(BLOCK_REJECTED,
@@ -2796,9 +3067,9 @@ namespace LLP
         }
         else
         {
-            debug::log(0, FUNCTION, "BLOCK ACCEPTED — unified nHeight=", pTritium->nHeight,
-                       " channel=", pTritium->nChannel,
-                       " hashPrevBlock=", pTritium->hashPrevBlock.SubString(),
+            debug::log(0, FUNCTION, "BLOCK ACCEPTED — unified nHeight=", blockSolved.nHeight,
+                       " channel=", blockSolved.nChannel,
+                       " hashPrevBlock=", blockSolved.hashPrevBlock.SubString(),
                        " merkle=", hashMerkle.SubString());
             respond_auto(BLOCK_ACCEPTED);
 
@@ -2811,14 +3082,15 @@ namespace LLP
              * regardless of throttle history. */
             {
                 LOCK(MUTEX);
+                erase_block_template(hashMerkle);
                 m_pushedTipHistory.Clear();
                 m_force_next_push = true;
             }
 
-            if(hashGenesis != 0)
+            if(hashGenesisSnapshot != 0)
             {
                 ColinMiningAgent::Get().on_block_submitted(
-                    hashGenesis.SubString(8), pTritium->nChannel, true, "");
+                    hashGenesisSnapshot.SubString(8), blockSolved.nChannel, true, "");
             }
         }
         return true;
@@ -2876,48 +3148,27 @@ namespace LLP
          * read it safely without holding MUTEX. */
         const uint32_t nLiveLastTemplateHeight =
             nLastTemplateUnifiedHeight.load(std::memory_order_relaxed);
+        uint1024_t hashLastTemplateChain;
+        {
+            LOCK(MUTEX);
+            hashLastTemplateChain = m_hashLastTemplateChain;
+        }
         const TemplateRefreshDecision refreshDecision = EvaluateTemplateRefresh(
-            nLiveLastTemplateHeight, uint1024_t(0), snap);
+            nLiveLastTemplateHeight, hashLastTemplateChain, snap);
 
         if(refreshDecision.fTemplateStale)
         {
-            debug::log(2, FUNCTION, "Unified height advanced: ",
-                       nLiveLastTemplateHeight, " -> ", snap.nUnifiedHeight,
-                       " - auto-sending template for channel ", nChannel.load());
+            debug::log(2, FUNCTION, "Template stale after GET_ROUND: unified_changed=",
+                       (refreshDecision.fUnifiedHeightChanged ? "YES" : "NO"),
+                       " reorg=", (refreshDecision.fReorgDetected ? "YES" : "NO"),
+                       " last_height=", nLiveLastTemplateHeight,
+                       " current_height=", snap.nUnifiedHeight,
+                       " - scheduling template for channel ", nChannel.load());
 
-            const SharedTemplatePayloadResult sharedTemplate = BuildSharedTemplatePayloadWithRetry(
-                [this]() -> TAO::Ledger::Block*
-                {
-                    return new_block();
-                },
-                "Legacy GET_ROUND");
-
-            if(!sharedTemplate.fSuccess)
-            {
-                debug::error(FUNCTION, "GET_ROUND auto-send payload unavailable: ",
-                    GetBlockPolicyReasonCode(sharedTemplate.eReason));
-            }
-            else
-            {
-                try
-                {
-                    respond_auto(BLOCK_DATA, sharedTemplate.vPayload);
-
-                    debug::log(2, FUNCTION, "Auto-sent BLOCK_DATA (",
-                               sharedTemplate.vPayload.size(), " bytes) channel=",
-                               sharedTemplate.nBlockChannel, " height=", sharedTemplate.nBlockHeight);
-
-                    StatelessMinerManager::Get().IncrementTemplatesServed();
-
-                    /* Update last template unified height only after successful send.
-                     * Atomic store — see nLastTemplateUnifiedHeight comment in miner.h. */
-                    nLastTemplateUnifiedHeight.store(sharedTemplate.nUnifiedHeight, std::memory_order_relaxed);
-                }
-                catch(const std::exception& e)
-                {
-                    debug::error(FUNCTION, "GET_ROUND auto-send failed: ", e.what());
-                }
-            }
+            /* Match stateless lane recovery: do not build BLOCK_DATA on the
+             * read path.  Queue a coalesced background template send so a
+             * partial-read or slow template creation cannot stall this socket. */
+            ScheduleTemplateWork(TemplateWorkReason::GET_ROUND_RECOVERY);
         }
 
         return true;

@@ -172,6 +172,7 @@ void LogStartup(int argc, char** argv)
                 /* Check for password/autologin parameters and hide them in the debug output. */
                 if(argItem.first.compare(0, 12, "-rpcpassword") == 0
                 || argItem.first.compare(0, 12, "-apipassword") == 0
+                || argItem.first.compare(0, 10, "-autologin") == 0
                 || argItem.first.compare(0, 9, "-username") == 0
                 || argItem.first.compare(0, 9, "-password") == 0
                 || argItem.first.compare(0, 4, "-pin") == 0
@@ -204,6 +205,9 @@ void LogStartup(int argc, char** argv)
 
         else if(std::string(argv[i]).compare(0, 12, "-apipassword") == 0)
             cmdLineParms += "-apipassword=XXXXXXXX ";
+
+        else if(std::string(argv[i]).compare(0, 10, "-autologin") == 0)
+            cmdLineParms += "-autologin=XXXXXXXX ";
 
         else if(std::string(argv[i]).compare(0, 9, "-username") == 0)
             cmdLineParms += "-username=XXXXXXXX ";

@@ -34,7 +34,8 @@ namespace LLP
      *    [0]       success         (uint8; 0x01 = success)
      *    [1..4]    session_id      (little-endian uint32)
      *    [5..8]    timeout_seconds (little-endian uint32)
-     *    [9..40]   genesis_hash    (32 bytes; optional, only if non-zero)
+     *    [9..40]   genesis_hash    (32 bytes; big-endian / display order, MSW-first;
+     *                              byte[0] == type byte, identical to GetHex())
      *
      *  Total: 9 bytes without genesis, 41 bytes with genesis.
      *
@@ -79,10 +80,38 @@ namespace LLP
             vPayload.push_back(static_cast<uint8_t>((nTimeout32 >> 16) & 0xFF));
             vPayload.push_back(static_cast<uint8_t>((nTimeout32 >> 24) & 0xFF));
 
-            /* Genesis hash (32 bytes, optional) */
+            /* Genesis hash (32 bytes, optional).
+             *
+             * NexusMiner parses the genesis field as a plain byte string in
+             * big-endian / display order — byte[0] carries the type byte,
+             * exactly as printed by GetHex().
+             *
+             * GetBytes() iterates the internal uint32_t array pn[0]…pn[WIDTH-1]
+             * from least-significant word (pn[0]) to most-significant word
+             * (pn[WIDTH-1]), with each 32-bit word serialised big-endian.  That
+             * produces the *word-reversed* form of display order, which is the
+             * source of the "reward_address GENESIS MISMATCH" error visible in
+             * the miner log.
+             *
+             * Fix: reverse the 4-byte word groups after calling GetBytes() so
+             * the wire bytes spell out the hash MSW-first, matching GetHex(). */
             if(hashGenesis != 0)
             {
                 std::vector<uint8_t> vGenesis = hashGenesis.GetBytes();
+                /* uint256_t is stored as eight 32-bit words; each word is
+                 * serialised big-endian by GetBytes(), so reversing the word
+                 * groups (4 bytes each) converts LSW-first to MSW-first. */
+                constexpr size_t WORD_BYTES = 4;
+                const size_t nWords = vGenesis.size() / WORD_BYTES;
+                for(size_t lo = 0, hi = nWords - 1; lo < hi; ++lo, --hi)
+                {
+                    for(size_t b = 0; b < WORD_BYTES; ++b)
+                    {
+                        const uint8_t tmp              = vGenesis[lo * WORD_BYTES + b];
+                        vGenesis[lo * WORD_BYTES + b]  = vGenesis[hi * WORD_BYTES + b];
+                        vGenesis[hi * WORD_BYTES + b]  = tmp;
+                    }
+                }
                 vPayload.insert(vPayload.end(), vGenesis.begin(), vGenesis.end());
             }
 

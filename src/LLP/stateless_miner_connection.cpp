@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <LLP/include/disposable_falcon.h>
 #include <LLP/include/auto_cooldown_manager.h>
 #include <LLP/include/opcode_utility.h>
+#include <LLP/include/coinbase_validation.h>
 #include <LLP/include/push_notification.h>
 #include <LLP/include/mining_constants.h>
 #include <LLP/include/mining_session_health.h>
@@ -51,6 +52,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/types/tritium.h>
 #include <TAO/Ledger/types/mempool.h>
+
+#include <TAO/Operation/include/enum.h>
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/types/authentication.h>
@@ -2213,6 +2216,40 @@ namespace LLP
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
                     return true;
+                }
+
+                /* Coinbase contract stream size guard — shared helper used by BOTH
+                 * lanes (Legacy port 8323 + Stateless port 9323).  A well-formed
+                 * OP::COINBASE contract is exactly 49 bytes (1 opcode + 32
+                 * hashGenesis + 8 nCredit + 8 nExtraNonce).  Residual bytes cause
+                 * TAO::Register::Verify to fire "can not verify PRIMITIVE per
+                 * contract" deep in AcceptMinedBlock.  The underlying cause was
+                 * fixed in CreateProducer (see create.cpp); this guard remains as
+                 * defense-in-depth and returns a clean MALFORMED_PRODUCER rejection
+                 * if any future regression re-introduces the bug. */
+                {
+                    const auto malformed =
+                        LLP::CoinbaseValidation::DetectMalformedCoinbase(*pTritium);
+
+                    if(malformed.malformed)
+                    {
+                        debug::warning(FUNCTION,
+                            "[BURST_BLOCK_GUARD] Malformed coinbase contract detected"
+                            " — stream_size=", malformed.actual_size,
+                            " expected=", LLP::CoinbaseValidation::COINBASE_STREAM_SIZE,
+                            " contract=", malformed.contract_index,
+                            " nHeight=", pTritium->nHeight,
+                            " nChannel=", pTritium->nChannel,
+                            " nNonce=", pTritium->nNonce,
+                            " — rejecting with MALFORMED_PRODUCER");
+
+                        StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                        response.DATA.push_back(
+                            static_cast<uint8_t>(OpcodeUtility::RejectionReason::MALFORMED_PRODUCER));
+                        response.LENGTH = static_cast<uint32_t>(response.DATA.size());
+                        respond(response);
+                        return true;
+                    }
                 }
 
                 TAO::Ledger::BlockValidationResult validationResult =
