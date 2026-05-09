@@ -15,6 +15,10 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/types/contract.h>
 #include <TAO/Operation/include/enum.h>
+#include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/tritium.h>
+
+#include <LLP/include/coinbase_validation.h>
 
 #include <LLC/types/uint1024.h>
 
@@ -247,4 +251,189 @@ TEST_CASE("Coinbase contract: multiple independent slots all produce 49 bytes", 
     REQUIRE(slot0.Operations().size() == COINBASE_STREAM_SIZE);
     REQUIRE(slot1.Operations().size() == COINBASE_STREAM_SIZE);
     REQUIRE(slot2.Operations().size() == COINBASE_STREAM_SIZE);
+}
+
+
+/* ─── Shared helper tests (LLP::CoinbaseValidation) ──────────────────────── */
+
+/** Build a synthetic TritiumBlock whose producer holds the supplied contracts. */
+static TAO::Ledger::TritiumBlock MakeBlockWithProducerContracts(
+    const std::vector<TAO::Operation::Contract>& vContracts)
+{
+    TAO::Ledger::TritiumBlock block;
+    block.nHeight  = 1234567;
+    block.nChannel = 2;       // Hash channel
+    block.nNonce   = 0xfeedface;
+    for(uint32_t i = 0; i < vContracts.size(); ++i)
+        block.producer[i] = vContracts[i];
+    return block;
+}
+
+
+TEST_CASE("CoinbaseValidation: well-formed producer is not flagged", "[coinbase][burst_block][shared_helper]")
+{
+    const uint256_t hashGenesis = uint256_t("a174011c93ca1c80bca5deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdead");
+    std::vector<TAO::Operation::Contract> vContracts;
+    vContracts.push_back(MakeCoinbaseContract(hashGenesis, 1000000000ULL, 0x100000000ULL));
+
+    TAO::Ledger::TritiumBlock block = MakeBlockWithProducerContracts(vContracts);
+
+    const auto result = LLP::CoinbaseValidation::DetectMalformedCoinbase(block);
+    REQUIRE(result.malformed == false);
+}
+
+
+TEST_CASE("CoinbaseValidation: oversized coinbase (98 bytes) is flagged at first slot", "[coinbase][burst_block][shared_helper]")
+{
+    /* This reproduces the exact production failure mode: CreateProducer was called
+     * with a producer that already had a 49-byte coinbase, so the second write
+     * appended a duplicate 49-byte stream giving 98 bytes total.  After the
+     * deterministic fix in CreateProducer (rProducer = Transaction()), this can
+     * no longer happen — but the shared guard remains defense-in-depth. */
+    const uint256_t hashGenesis = uint256_t("deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef");
+
+    TAO::Operation::Contract doubled;
+    doubled << OP_COINBASE; doubled << hashGenesis; doubled << uint64_t(1000000000ULL); doubled << uint64_t(0x100000000ULL);
+    doubled << OP_COINBASE; doubled << hashGenesis; doubled << uint64_t(1000000000ULL); doubled << uint64_t(0x100000000ULL);
+
+    REQUIRE(doubled.Operations().size() == 2 * COINBASE_STREAM_SIZE);
+
+    std::vector<TAO::Operation::Contract> vContracts;
+    vContracts.push_back(doubled);
+    TAO::Ledger::TritiumBlock block = MakeBlockWithProducerContracts(vContracts);
+
+    const auto result = LLP::CoinbaseValidation::DetectMalformedCoinbase(block);
+    REQUIRE(result.malformed == true);
+    REQUIRE(result.contract_index == 0);
+    REQUIRE(result.actual_size == 2 * COINBASE_STREAM_SIZE);
+}
+
+
+TEST_CASE("CoinbaseValidation: malformed slot beyond miner reward is flagged with correct index", "[coinbase][burst_block][shared_helper]")
+{
+    const uint256_t hashMiner       = uint256_t("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    const uint256_t hashCorrupt     = uint256_t("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+
+    std::vector<TAO::Operation::Contract> vContracts;
+    vContracts.push_back(MakeCoinbaseContract(hashMiner, 1000000000ULL, 0x100000000ULL));
+    vContracts.push_back(MakeUndersizedCoinbaseContract(hashCorrupt, 500000000ULL));   // slot 1 short
+
+    TAO::Ledger::TritiumBlock block = MakeBlockWithProducerContracts(vContracts);
+
+    const auto result = LLP::CoinbaseValidation::DetectMalformedCoinbase(block);
+    REQUIRE(result.malformed == true);
+    REQUIRE(result.contract_index == 1);
+    REQUIRE(result.actual_size == 41);
+}
+
+
+TEST_CASE("CoinbaseValidation: ambassador/developer slot (extra_nonce=0) is not flagged", "[coinbase][burst_block][shared_helper]")
+{
+    const uint256_t hashMiner      = uint256_t("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    const uint256_t hashAmbassador = uint256_t("0000000000000000000000000000000000000000000000000000000000000001");
+    const uint256_t hashDeveloper  = uint256_t("0000000000000000000000000000000000000000000000000000000000000002");
+
+    std::vector<TAO::Operation::Contract> vContracts;
+    vContracts.push_back(MakeCoinbaseContract(hashMiner,      1000000000ULL, 0x100000000ULL));
+    vContracts.push_back(MakeCoinbaseContract(hashAmbassador,  500000000ULL, 0));
+    vContracts.push_back(MakeCoinbaseContract(hashDeveloper,    50000000ULL, 0));
+
+    TAO::Ledger::TritiumBlock block = MakeBlockWithProducerContracts(vContracts);
+
+    const auto result = LLP::CoinbaseValidation::DetectMalformedCoinbase(block);
+    REQUIRE(result.malformed == false);
+}
+
+
+TEST_CASE("CoinbaseValidation: empty producer is not flagged", "[coinbase][burst_block][shared_helper]")
+{
+    /* A producer with zero contracts (e.g. PoS channel before stake-minter writes)
+     * must not be flagged as malformed. */
+    TAO::Ledger::TritiumBlock block;
+    block.nHeight  = 1;
+    block.nChannel = 0;
+
+    REQUIRE(block.producer.Size() == 0);
+
+    const auto result = LLP::CoinbaseValidation::DetectMalformedCoinbase(block);
+    REQUIRE(result.malformed == false);
+}
+
+
+/* ─── CreateProducer fix precondition test ───────────────────────────────── */
+
+TEST_CASE("Transaction reset: assigning default-constructed Transaction clears vContracts",
+          "[coinbase][burst_block][create_producer_fix]")
+{
+    /* Regression test for the deterministic CreateProducer fix.
+     *
+     * The fix at the top of TAO::Ledger::CreateProducer is:
+     *
+     *     rProducer = TAO::Ledger::Transaction();
+     *
+     * which relies on the assignment operator clearing vContracts (so that the
+     * subsequent `rProducer[0] << OP::COINBASE; ...` writes start from byte 0
+     * rather than appending to a stale 49-byte stream copied from the cached
+     * block).  This test pins that contract: if anyone changes the assignment
+     * operator to retain old contract state, this test will fail and the
+     * mainnet "can not verify PRIMITIVE per contract" rejection will return.
+     */
+    const uint256_t hashGenesis = uint256_t("a174011c93ca1c80bca5deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdead");
+
+    TAO::Ledger::Transaction tx;
+    tx[0] = MakeCoinbaseContract(hashGenesis, 1000000000ULL, 0x100000000ULL);
+
+    REQUIRE(tx.Size() == 1);
+    REQUIRE(tx[0].Operations().size() == COINBASE_STREAM_SIZE);
+
+    /* Apply the fix's reset. */
+    tx = TAO::Ledger::Transaction();
+
+    /* After reset the producer must be empty so subsequent coinbase writes start
+     * from byte 0 and produce exactly 49 bytes — not 98. */
+    REQUIRE(tx.Size() == 0);
+}
+
+
+TEST_CASE("Transaction reset: re-writing coinbase after reset yields 49 bytes (not 98)",
+          "[coinbase][burst_block][create_producer_fix]")
+{
+    /* End-to-end simulation of the bug → fix path:
+     *
+     *   1. Producer arrives carrying a 49-byte coinbase from a cached template.
+     *   2. CreateProducer (post-fix) resets the producer, then writes the coinbase.
+     *   3. Final coinbase contract must be exactly 49 bytes — not 98.
+     *
+     * Pre-fix, step 2 was just a CreateTransaction call that did NOT reset the
+     * contracts, so step 3 produced a 98-byte stream and the block was rejected
+     * deep in TAO::Register::Verify.
+     */
+    const uint256_t hashGenesisCached = uint256_t("a174011c93ca1c80bca5deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdead");
+    const uint256_t hashGenesisNew    = uint256_t("b285022d04db2d91cdb6cafefacecafefacecafefacecafefacecafefacecafe");
+
+    TAO::Ledger::Transaction txProducer;
+    /* Step 1 — simulate the cached producer copy carrying its old coinbase. */
+    txProducer[0] = MakeCoinbaseContract(hashGenesisCached, 1000000000ULL, 953ULL);
+    REQUIRE(txProducer[0].Operations().size() == COINBASE_STREAM_SIZE);
+
+    /* Step 2 — apply the deterministic fix. */
+    txProducer = TAO::Ledger::Transaction();
+
+    /* Step 3 — write a fresh coinbase for the new miner reward + extra nonce
+     * (this is exactly what CreateProducer does post-CreateTransaction). */
+    txProducer[0] << OP_COINBASE;
+    txProducer[0] << hashGenesisNew;
+    txProducer[0] << uint64_t(1000000000ULL);
+    txProducer[0] << uint64_t(954ULL);
+
+    REQUIRE(txProducer[0].Operations().size() == COINBASE_STREAM_SIZE);
+
+    /* Defense-in-depth: the shared guard would not flag this. */
+    TAO::Ledger::TritiumBlock block;
+    block.nHeight  = 6703531;
+    block.nChannel = 2;
+    block.producer = txProducer;
+
+    const auto result = LLP::CoinbaseValidation::DetectMalformedCoinbase(block);
+    REQUIRE(result.malformed == false);
 }
