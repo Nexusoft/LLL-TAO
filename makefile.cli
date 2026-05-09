@@ -342,6 +342,7 @@ ifdef UNIT_TESTS
 		   build/Tests_LLP_base_address.o \
 		   build/Tests_LLP_canonical_chain_state_tests.o \
 		   build/Tests_LLP_channel_state_manager_tests.o \
+		   build/Tests_LLP_coinbase_contract_size_tests.o \
 		   build/Tests_LLP_concurrency_testing.o \
 		   build/Tests_LLP_context_immutability_comprehensive.o \
 		   build/Tests_LLP_dual_connection_manager_tests.o \

@@ -836,6 +836,11 @@ namespace TAO::Ledger
             /* The extra nonce to coinbase. */
             rProducer[0] << nExtraNonce;
 
+            debug::log(2, FUNCTION, "[COINBASE_STREAM] slot=0"
+                " stream_size=", rProducer[0].Operations().size(),
+                " channel=", nChannel,
+                " recipient=", hashRewardRecipient.SubString());
+
             /* Add coinbase recipient amounts to block producer transaction if any. */
             if(pCoinbaseRecipients && !pCoinbaseRecipients->IsNull())
             {
@@ -868,6 +873,11 @@ namespace TAO::Ledger
                     /* The extra nonce to coinbase. */
                     rProducer[nTx] << nExtraNonce;
 
+                    debug::log(2, FUNCTION, "[COINBASE_STREAM] slot=", nTx,
+                        " stream_size=", rProducer[nTx].Operations().size(),
+                        " channel=", nChannel,
+                        " recipient=", hashGenesis.SubString());
+
                     ++nTx;
                 }
             }
@@ -898,6 +908,10 @@ namespace TAO::Ledger
                             const uint64_t nCredit = (nBalance * it->second.second) / 1000;
                             rProducer[nContract] << nCredit;
                             rProducer[nContract] << uint64_t(0);
+
+                            debug::log(2, FUNCTION, "[COINBASE_STREAM] slot=", nContract,
+                                " stream_size=", rProducer[nContract].Operations().size(),
+                                " channel=", nChannel, " (ambassador payout)");
                         }
                     }
                 }
@@ -925,6 +939,10 @@ namespace TAO::Ledger
                             const uint64_t nCredit = (nBalance * it->second.second) / 1000;
                             rProducer[nContract] << nCredit;
                             rProducer[nContract] << uint64_t(0);
+
+                            debug::log(2, FUNCTION, "[COINBASE_STREAM] slot=", nContract,
+                                " stream_size=", rProducer[nContract].Operations().size(),
+                                " channel=", nChannel, " (developer payout)");
                         }
                     }
                 }

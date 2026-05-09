@@ -72,6 +72,8 @@ ________________________________________________________________________________
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/object.h>
 
+#include <TAO/Operation/include/enum.h>
+
 #include <Util/include/config.h>
 #include <Util/include/convert.h>
 #include <Util/include/args.h>
@@ -3073,6 +3075,42 @@ namespace LLP
             respond_auto(BLOCK_REJECTED,
                 BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::LOCAL_TEMPLATE_REJECT));
             return true;
+        }
+
+        /* Coinbase contract stream size guard — detects TOCTOU burst-block races
+         * where CreateProducer partially overwrites the producer's coinbase while
+         * the submit path is reading it.  A well-formed OP::COINBASE contract is
+         * exactly 49 bytes: 1 (opcode) + 32 (hashGenesis) + 8 (nCredit) + 8 (nExtraNonce).
+         * Residual bytes cause TAO::Register::Verify to fire "can not verify PRIMITIVE
+         * per contract" deep in AcceptMinedBlock — this guard catches it early and
+         * returns a clean MALFORMED_PRODUCER rejection instead. */
+        {
+            static constexpr uint64_t COINBASE_STREAM_SIZE = 49;
+            const uint32_t nProducerContracts = blockSolved.producer.Size();
+            for(uint32_t nContract = 0; nContract < nProducerContracts; ++nContract)
+            {
+                const TAO::Operation::Contract& rContract = blockSolved.producer[nContract];
+                if(rContract.Empty())
+                    continue;
+
+                if(rContract.Primitive() == TAO::Operation::OP::COINBASE &&
+                   rContract.Operations().size() != COINBASE_STREAM_SIZE)
+                {
+                    debug::warning(FUNCTION,
+                        "[BURST_BLOCK_GUARD] Malformed coinbase contract detected"
+                        " — stream_size=", rContract.Operations().size(),
+                        " expected=", COINBASE_STREAM_SIZE,
+                        " contract=", nContract,
+                        " nHeight=", blockSolved.nHeight,
+                        " nChannel=", blockSolved.nChannel,
+                        " nNonce=", blockSolved.nNonce,
+                        " — rejecting with MALFORMED_PRODUCER");
+
+                    respond_auto(BLOCK_REJECTED,
+                        BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::MALFORMED_PRODUCER));
+                    return true;
+                }
+            }
         }
 
         TAO::Ledger::BlockValidationResult validationResult =
