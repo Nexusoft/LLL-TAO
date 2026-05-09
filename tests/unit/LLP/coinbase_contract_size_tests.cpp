@@ -35,7 +35,7 @@ ________________________________________________________________________________
  *
  *  The burst-block TOCTOU race (documented in docs/BURST_BLOCK_COINBASE_PRIMITIVE_OVERFLOW.md)
  *  can produce a coinbase contract stream that is NOT exactly 49 bytes.  The pre-commit guard
- *  in handle_submit_block_stateless (stateless_miner_connection.cpp) and handle_submit_block_stateless (miner.cpp) catches this
+ *  in handle_submit_block_stateless (stateless_miner_connection.cpp) and handle_submit_block_stateless in miner.cpp catches this
  *  before AcceptMinedBlock() and returns BLOCK_REJECTED with reason MALFORMED_PRODUCER (11)
  *  instead of letting it fail deep inside TAO::Register::Verify.
  *
@@ -118,7 +118,7 @@ static TAO::Operation::Contract MakeUndersizedCoinbaseContract(
 
 TEST_CASE("Coinbase contract: well-formed stream is exactly 49 bytes", "[coinbase][burst_block]")
 {
-    const uint256_t hashGenesis = uint256_t("a174011c93ca1c80bca5deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadb");
+    const uint256_t hashGenesis = uint256_t("a174011c93ca1c80bca5deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdead");
     const uint64_t  nCredit     = 1000000000ULL;   // 1 NXS in satoshis
     const uint64_t  nExtraNonce = 0x0000000100000000ULL;
 
