@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLP/include/falcon_auth.h>
 #include <LLP/include/disposable_falcon.h>
 #include <LLP/include/opcode_utility.h>
+#include <LLP/include/coinbase_validation.h>
 #include <LLP/include/node_cache.h>
 #include <LLP/include/get_block_policy.h>
 #include <LLP/include/auto_cooldown_manager.h>
@@ -3077,39 +3078,33 @@ namespace LLP
             return true;
         }
 
-        /* Coinbase contract stream size guard — detects TOCTOU burst-block races
-         * where CreateProducer partially overwrites the producer's coinbase while
-         * the submit path is reading it.  A well-formed OP::COINBASE contract is
-         * exactly 49 bytes: 1 (opcode) + 32 (hashGenesis) + 8 (nCredit) + 8 (nExtraNonce).
-         * Residual bytes cause TAO::Register::Verify to fire "can not verify PRIMITIVE
-         * per contract" deep in AcceptMinedBlock — this guard catches it early and
-         * returns a clean MALFORMED_PRODUCER rejection instead. */
+        /* Coinbase contract stream size guard — shared helper used by BOTH lanes
+         * (Legacy port 8323 + Stateless port 9323).  A well-formed OP::COINBASE
+         * contract is exactly 49 bytes (1 opcode + 32 hashGenesis + 8 nCredit +
+         * 8 nExtraNonce).  Residual bytes cause TAO::Register::Verify to fire
+         * "can not verify PRIMITIVE per contract" deep in AcceptMinedBlock.
+         * The underlying cause was fixed in CreateProducer (see create.cpp); this
+         * guard remains as defense-in-depth and returns a clean MALFORMED_PRODUCER
+         * rejection if any future regression re-introduces the bug. */
         {
-            static constexpr uint64_t COINBASE_STREAM_SIZE = 49;
-            const uint32_t nProducerContracts = blockSolved.producer.Size();
-            for(uint32_t nContract = 0; nContract < nProducerContracts; ++nContract)
+            const auto malformed =
+                LLP::CoinbaseValidation::DetectMalformedCoinbase(blockSolved);
+
+            if(malformed.malformed)
             {
-                const TAO::Operation::Contract& rContract = blockSolved.producer[nContract];
-                if(rContract.Empty())
-                    continue;
+                debug::warning(FUNCTION,
+                    "[BURST_BLOCK_GUARD] Malformed coinbase contract detected"
+                    " — stream_size=", malformed.actual_size,
+                    " expected=", LLP::CoinbaseValidation::COINBASE_STREAM_SIZE,
+                    " contract=", malformed.contract_index,
+                    " nHeight=", blockSolved.nHeight,
+                    " nChannel=", blockSolved.nChannel,
+                    " nNonce=", blockSolved.nNonce,
+                    " — rejecting with MALFORMED_PRODUCER");
 
-                if(rContract.Primitive() == TAO::Operation::OP::COINBASE &&
-                   rContract.Operations().size() != COINBASE_STREAM_SIZE)
-                {
-                    debug::warning(FUNCTION,
-                        "[BURST_BLOCK_GUARD] Malformed coinbase contract detected"
-                        " — stream_size=", rContract.Operations().size(),
-                        " expected=", COINBASE_STREAM_SIZE,
-                        " contract=", nContract,
-                        " nHeight=", blockSolved.nHeight,
-                        " nChannel=", blockSolved.nChannel,
-                        " nNonce=", blockSolved.nNonce,
-                        " — rejecting with MALFORMED_PRODUCER");
-
-                    respond_auto(BLOCK_REJECTED,
-                        BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::MALFORMED_PRODUCER));
-                    return true;
-                }
+                respond_auto(BLOCK_REJECTED,
+                    BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::MALFORMED_PRODUCER));
+                return true;
             }
         }
 
