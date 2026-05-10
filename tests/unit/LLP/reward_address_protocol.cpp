@@ -14,6 +14,10 @@ ________________________________________________________________________________
 #include <unit/catch2/catch.hpp>
 
 #include <LLC/types/uint1024.h>
+#include <TAO/Operation/include/coinbase.h>
+#include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/types/contract.h>
+#include <TAO/Register/types/address.h>
 #include <Util/include/hex.h>
 #include <cstdint>
 #include <cstring>
@@ -46,6 +50,27 @@ TEST_CASE("MINER_SET_REWARD Packet Structure Tests", "[miner][reward][protocol]"
         hashReconstructed.SetHex(HexStr(vPayload.begin(), vPayload.end()));
         
         REQUIRE(hashReconstructed == hashReward);
+    }
+
+    SECTION("Extended reward payload carries genesis plus account name")
+    {
+        const char* hex_sent = "a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122";
+        const std::string strAccount = "default";
+
+        std::vector<uint8_t> vPayload = ParseHex(hex_sent);
+        vPayload.push_back(static_cast<uint8_t>(strAccount.size()));
+        vPayload.insert(vPayload.end(), strAccount.begin(), strAccount.end());
+
+        REQUIRE(vPayload.size() == 32 + 1 + strAccount.size());
+
+        uint256_t hashReward;
+        hashReward.SetHex(HexStr(vPayload.begin(), vPayload.begin() + 32));
+
+        std::string strDecoded(vPayload.begin() + 33, vPayload.end());
+
+        REQUIRE(hashReward.GetHex() == hex_sent);
+        REQUIRE(vPayload[32] == strAccount.size());
+        REQUIRE(strDecoded == strAccount);
     }
     
     SECTION("Byte order: HexStr+SetHex correctly decodes big-endian miner bytes")
@@ -126,6 +151,39 @@ TEST_CASE("MINER_SET_REWARD Packet Structure Tests", "[miner][reward][protocol]"
         bool fValid = (hashReward != 0);
         REQUIRE_FALSE(fValid);
     }
+}
+
+
+TEST_CASE("Extended OP::COINBASE account payload", "[miner][reward][protocol][coinbase]")
+{
+    uint256_t hashGenesis;
+    hashGenesis.SetHex("a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122");
+
+    TAO::Register::Address hashAccount(TAO::Register::Address::ACCOUNT);
+
+    TAO::Operation::Contract contract;
+    contract << uint8_t(TAO::Operation::OP::COINBASE);
+    contract << hashGenesis;
+    contract << uint256_t(hashAccount);
+    contract << uint64_t(100);
+    contract << uint64_t(7);
+
+    REQUIRE(TAO::Operation::Coinbase::HasAutoCreditAccount(contract));
+    contract.SeekToPrimitive(false);
+    REQUIRE(TAO::Operation::Coinbase::Verify(contract));
+
+    uint256_t hashReadGenesis;
+    contract >> hashReadGenesis;
+
+    uint256_t hashReadAccount;
+    contract >> hashReadAccount;
+
+    uint64_t nAmount = 0;
+    contract >> nAmount;
+
+    REQUIRE(hashReadGenesis == hashGenesis);
+    REQUIRE(hashReadAccount == uint256_t(hashAccount));
+    REQUIRE(nAmount == 100);
 }
 
 

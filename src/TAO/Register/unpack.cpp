@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/types/stream.h>
 
 #include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/include/coinbase.h>
 #include <TAO/Operation/include/create.h>
 
 #include <Util/include/hex.h>
@@ -302,6 +303,8 @@ namespace TAO::Register
                 {
                     /* Seek to coinbase/coinstake. */
                     rContract.Seek(32);
+                    if(TAO::Operation::Coinbase::HasAutoCreditAccount(rContract))
+                        rContract.Seek(32);
                     rContract >> nAmount;
 
                     return true;

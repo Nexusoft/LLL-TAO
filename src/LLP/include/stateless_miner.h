@@ -663,7 +663,8 @@ namespace LLP
         uint64_t nLastKeepaliveTime; // Timestamp of last keepalive exchange
         
         /* Reward address binding (set via MINER_SET_REWARD) */
-        uint256_t hashRewardAddress; // Reward payout address (separate from auth genesis)
+        uint256_t hashRewardAddress; // Reward payout sigchain genesis (separate from auth genesis)
+        uint256_t hashRewardAccount; // Optional resolved account register for direct auto-credit
         bool fRewardBound;           // Whether reward address has been set (orthogonal to state machine)
 
         /* ChaCha20 encryption state for secure communication */
@@ -947,10 +948,14 @@ namespace LLP
          *
          *  Returns a new context with updated reward address and bound flag.
          *
-         *  @param[in] hashReward_ The reward address to set
+         *  @param[in] hashReward_ The reward sigchain genesis to set
+         *  @param[in] hashAccount_ Optional resolved account register for direct auto-credit
          *
          **/
         [[nodiscard]] MiningContext WithRewardAddress(const uint256_t& hashReward_) const;
+
+        [[nodiscard]] MiningContext WithRewardAddress(const uint256_t& hashReward_,
+                                                      const uint256_t& hashAccount_) const;
 
         /** WithChaChaKey
          *

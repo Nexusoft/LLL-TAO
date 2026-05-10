@@ -499,7 +499,8 @@ namespace LLP
         bool                 fEncryptionReady;   // ChaCha20 encryption established
 
         /* Reward address binding (can be different from genesis!) */
-        uint256_t            hashRewardAddress;  // Where to send mining rewards
+        uint256_t            hashRewardAddress;  // Where to send mining reward events
+        uint256_t            hashRewardAccount;  // Optional resolved account register for direct auto-credit
         bool                 fRewardBound;       // True after successful MINER_SET_REWARD
 
         /* Push notification subscription state */

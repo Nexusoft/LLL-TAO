@@ -146,7 +146,9 @@ namespace TAO
         TritiumBlock* CreateBlockForStatelessMining(
             const uint32_t nChannel,
             const uint64_t nExtraNonce,
-            const uint256_t& hashRewardAddress);
+            const uint256_t& hashRewardAddress,
+            const uint256_t& hashRewardAccount = uint256_t(0));
+
 
 
         /** ValidateMinedBlock

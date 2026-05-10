@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/coinbase.h>
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Register/include/enum.h>
+#include <TAO/Register/types/address.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
@@ -30,8 +31,23 @@ namespace TAO
     /* Operation Layer namespace. */
     namespace Operation
     {
+        namespace
+        {
+            constexpr size_t COINBASE_LEGACY_OPERATION_SIZE = 1 + 32 + 8 + 8;
+            constexpr size_t COINBASE_AUTOCREDIT_OPERATION_SIZE = 1 + 32 + 32 + 8 + 8;
+        }
+
+
+        /* Check for extended auto-credit account payload. */
+        bool Coinbase::HasAutoCreditAccount(const Contract& contract)
+        {
+            return contract.Operations().size() == COINBASE_AUTOCREDIT_OPERATION_SIZE;
+        }
+
+
         /* Commit the final state to disk. */
-        bool Coinbase::Commit(const uint256_t& hashGenesis, const uint64_t nAmount, const uint512_t& hashTx, const uint8_t nFlags)
+        bool Coinbase::Commit(const uint256_t& hashGenesis, const uint64_t nAmount, const uint512_t& hashTx,
+                              const uint8_t nFlags, const uint256_t& hashAccount)
         {
             /* EVENTS DISABLED for -client mode. */
             if(!config::fClient.load())
@@ -41,66 +57,65 @@ namespace TAO
                 {
                     /* Write the event to the database. */
                     if(!LLD::Ledger->WriteEvent(hashGenesis, hashTx))
-                        return debug::error(FUNCTION, "OP::COINBASE: failed to write event for coinbase");
+                        return debug::error(FUNCTION, "OP::COINBASE: failed to write event for coinbase genesis ",
+                                            hashGenesis.SubString());
 
-                    /* AUTO-CREDIT LOGIC - Direct reward routing
-                     * 
-                     * IMPORTANT: In the new Direct Reward Address system, hashGenesis contains
-                     * the reward account address (not the authentication genesis).
-                     * 
-                     * Flow: Miner sets reward address via MINER_SET_REWARD (encrypted) → 
-                     *       Block creation uses it as hashDynamicGenesis → 
-                     *       hashDynamicGenesis becomes hashGenesis in the block →
-                     *       Coinbase::Commit receives it as hashGenesis parameter
-                     * 
-                     * The reward address is already validated as a valid NXS account. */
-                    if(LLP::GenesisConstants::IsAutoCreditEnabled())
+                    /* Legacy coinbase payloads carry only the sigchain genesis.
+                     * Those rewards are intentionally event-only and are claimed
+                     * by the recipient sigchain's default account when events are
+                     * processed. */
+                    if(hashAccount == 0 || !LLP::GenesisConstants::IsAutoCreditEnabled())
+                        return true;
+
+                    TAO::Register::Address hashRewardAccount = hashAccount;
+                    if(!hashRewardAccount.IsAccount())
                     {
-                        /* hashGenesis is the reward account address (via dynamic routing) */
-                        TAO::Register::Address hashRewardAccount = hashGenesis;
-
-                        /* Read the account state */
-                        TAO::Register::Object account;
-                        if(!LLD::Register->ReadState(hashRewardAccount, account, nFlags))
-                        {
-                            debug::warning(FUNCTION, "AUTO-CREDIT FAILED: cannot read reward account state for ",
-                                          hashRewardAccount.SubString(),
-                                          " — reward address may be a Register Address (not supported) or",
-                                          " account may not exist on chain.",
-                                          " Falling back to event-only mode. NXS will NOT be auto-credited.");
-                            return true;  // Fallback to event-only — upstream validation should prevent this
-                        }
-
-                        /* Parse the account object */
-                        if(!account.Parse())
-                        {
-                            debug::log(1, FUNCTION, "Failed to parse reward account object, using event-only mode");
-                            return true;  // Fallback to event-only
-                        }
-
-                        /* Direct credit to reward account */
-                        uint64_t nBalance = account.get<uint64_t>("balance");
-                        account.Write("balance", nBalance + nAmount);
-                        account.nModified = runtime::unifiedtimestamp();
-                        account.SetChecksum();
-
-                        /* Write updated account state to register database */
-                        if(!LLD::Register->WriteState(hashRewardAccount, account, nFlags))
-                        {
-                            debug::log(0, FUNCTION, "Failed to write account state, using event-only mode");
-                            return true;  // Fallback to event-only
-                        }
-
-                        /* Write proof to prevent double-claim */
-                        if(!LLD::Ledger->WriteProof(hashGenesis, hashTx, 0, nFlags))
-                        {
-                            debug::log(0, FUNCTION, "Failed to write proof, but account credited");
-                            return true;  // Account already credited, continue
-                        }
-
-                        debug::log(0, FUNCTION, "AUTO-CREDIT ", nAmount, " NXS to ", hashRewardAccount.SubString(),
-                                  " (owner: ", account.hashOwner.SubString(), ")");
+                        debug::warning(FUNCTION, "AUTO-CREDIT skipped: recipient account ",
+                                       hashRewardAccount.SubString(), " is not an account register");
+                        return true;
                     }
+
+                    /* Read the account state. */
+                    TAO::Register::Object account;
+                    if(!LLD::Register->ReadState(hashRewardAccount, account, nFlags))
+                    {
+                        debug::warning(FUNCTION, "AUTO-CREDIT skipped: cannot read reward account state for ",
+                                      hashRewardAccount.SubString(),
+                                      ". Falling back to event-only mode.");
+                        return true;
+                    }
+
+                    /* Parse the account object. */
+                    if(!account.Parse() || account.Standard() != TAO::Register::OBJECTS::ACCOUNT)
+                    {
+                        debug::warning(FUNCTION, "AUTO-CREDIT skipped: reward account object is not a valid account ",
+                                       hashRewardAccount.SubString(), ". Falling back to event-only mode.");
+                        return true;
+                    }
+
+                    /* Direct credit to reward account. */
+                    uint64_t nBalance = account.get<uint64_t>("balance");
+                    account.Write("balance", nBalance + nAmount);
+                    account.nModified = runtime::unifiedtimestamp();
+                    account.SetChecksum();
+
+                    /* Write updated account state to register database. */
+                    if(!LLD::Register->WriteState(hashRewardAccount, account, nFlags))
+                    {
+                        debug::warning(FUNCTION, "AUTO-CREDIT skipped: failed to write account state for ",
+                                       hashRewardAccount.SubString(), ". Falling back to event-only mode.");
+                        return true;
+                    }
+
+                    /* Write proof so rollback can distinguish direct-credit from event-only mode. */
+                    if(!LLD::Ledger->WriteProof(hashGenesis, hashTx, 0, nFlags))
+                    {
+                        debug::warning(FUNCTION, "AUTO-CREDIT credited account but failed to write rollback proof");
+                        return true;
+                    }
+
+                    debug::log(0, FUNCTION, "AUTO-CREDIT ", nAmount, " NXS to ", hashRewardAccount.SubString(),
+                              " (owner: ", account.hashOwner.SubString(), ")");
                 }
             }
 
@@ -137,8 +152,25 @@ namespace TAO
                                     " not a Register Address");
             }
 
-            /* Seek read position to first position. */
-            contract.Rewind(32, Contract::OPERATIONS);
+            if(HasAutoCreditAccount(contract))
+            {
+                TAO::Register::Address hashAccount;
+                contract >> hashAccount;
+
+                if(!hashAccount.IsAccount())
+                    return debug::error(FUNCTION, "invalid coinbase auto-credit account: type byte 0x",
+                                        std::hex, static_cast<int>(hashAccount.GetType()), std::dec,
+                                        " expected account register type 0x",
+                                        std::hex, static_cast<int>(TAO::Register::Address::ACCOUNT), std::dec);
+            }
+            else if(contract.Operations().size() != COINBASE_LEGACY_OPERATION_SIZE)
+            {
+                return debug::error(FUNCTION, "invalid coinbase operation size: ",
+                                    contract.Operations().size());
+            }
+
+            /* Seek read position to first position after OP byte. */
+            contract.Rewind(HasAutoCreditAccount(contract) ? 64 : 32, Contract::OPERATIONS);
 
             return true;
         }
