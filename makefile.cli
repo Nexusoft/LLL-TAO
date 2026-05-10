@@ -381,6 +381,7 @@ ifdef UNIT_TESTS
 		   build/Tests_LLP_burst_mode_push_notification_test.o \
 		   build/Tests_LLP_rate_limiting_tests.o \
 		   build/Tests_LLP_reward_address_protocol.o \
+		   build/Tests_LLP_reward_binding_payload_test.o \
 		   build/Tests_LLP_reward_routing.o \
 		   build/Tests_LLP_rewards_payout_verification.o \
 		   build/Tests_LLP_session_management_comprehensive.o \
