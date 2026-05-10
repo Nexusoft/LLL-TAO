@@ -84,6 +84,7 @@ ________________________________________________________________________________
 #include <LLP/include/colin_mining_agent.h>
 #include <LLP/include/node_session_registry.h>
 #include <LLP/include/legacy_get_block_handler.h>
+#include <LLP/include/legacy_opcode_policy.h>
 
 #include <cstring>
 
@@ -96,43 +97,9 @@ namespace LLP
         using Diagnostics::KeyFingerprint;
         using Diagnostics::YesNo;
 
-        bool IsLegacyPreflightBypassOpcode(const uint8_t nOpcode)
-        {
-            switch(nOpcode)
-            {
-                case OpcodeUtility::Opcodes::MINER_AUTH_INIT:
-                case OpcodeUtility::Opcodes::MINER_AUTH_RESPONSE:
-                case OpcodeUtility::Opcodes::MINER_AUTH_RESULT:
-                case OpcodeUtility::Opcodes::SESSION_START:
-                    return true;
-
-                default:
-                    return false;
-            }
-        }
-
-        bool IsLegacyPreflightProtectedOpcode(const uint8_t nOpcode)
-        {
-            switch(nOpcode)
-            {
-                case OpcodeUtility::Opcodes::SET_CHANNEL:
-                case OpcodeUtility::Opcodes::SESSION_KEEPALIVE:
-                case OpcodeUtility::Opcodes::MINER_SET_REWARD:
-                case OpcodeUtility::Opcodes::CLEAR_MAP:
-                case OpcodeUtility::Opcodes::MINER_READY:
-                case OpcodeUtility::Opcodes::GET_HEIGHT:
-                case OpcodeUtility::Opcodes::GET_ROUND:
-                case OpcodeUtility::Opcodes::GET_REWARD:
-                case OpcodeUtility::Opcodes::SUBSCRIBE:
-                case OpcodeUtility::Opcodes::GET_BLOCK:
-                case OpcodeUtility::Opcodes::SUBMIT_BLOCK:
-                case OpcodeUtility::Opcodes::CHECK_BLOCK:
-                    return true;
-
-                default:
-                    return false;
-            }
-        }
+        /* Legacy opcode policy table, bypass/protected/min-state classifiers
+         * and IsLegacyBlockOpcode now live in include/legacy_opcode_policy.h
+         * — they are reused by tests/unit/LLP/legacy_opcode_policy_tests.cpp. */
 
         bool IsPriorityLegacyOpcode(const uint8_t nHeader)
         {
@@ -150,61 +117,6 @@ namespace LLP
 
                 default:
                     return false;
-            }
-        }
-
-        bool LegacyOpcodeRequiresChannel(const uint8_t nOpcode)
-        {
-            switch(nOpcode)
-            {
-                case OpcodeUtility::Opcodes::GET_BLOCK:
-                case OpcodeUtility::Opcodes::SUBMIT_BLOCK:
-                case OpcodeUtility::Opcodes::GET_ROUND:
-                case OpcodeUtility::Opcodes::GET_REWARD:
-                case OpcodeUtility::Opcodes::MINER_READY:
-                case OpcodeUtility::Opcodes::CHECK_BLOCK:
-                    return true;
-
-                default:
-                    return false;
-            }
-        }
-
-        /** MinimumStateForLegacyOpcode
-         *
-         *  Returns the minimum MinerSessionState required for a given protected
-         *  legacy opcode.  Used by Miner::PreflightSessionGate for a single
-         *  state >= required comparison.
-         *
-         **/
-        MinerSessionState MinimumStateForLegacyOpcode(const uint8_t nOpcode)
-        {
-            switch(nOpcode)
-            {
-                /* Channel-requiring opcodes need at least CHANNEL_SET */
-                case OpcodeUtility::Opcodes::GET_BLOCK:
-                case OpcodeUtility::Opcodes::SUBMIT_BLOCK:
-                case OpcodeUtility::Opcodes::GET_ROUND:
-                case OpcodeUtility::Opcodes::GET_REWARD:
-                case OpcodeUtility::Opcodes::MINER_READY:
-                case OpcodeUtility::Opcodes::CHECK_BLOCK:
-                    return MinerSessionState::CHANNEL_SET;
-
-                /* Reward binding requires encryption */
-                case OpcodeUtility::Opcodes::MINER_SET_REWARD:
-                    return MinerSessionState::ENCRYPTION_READY;
-
-                /* All other protected opcodes need at least AUTHENTICATED */
-                case OpcodeUtility::Opcodes::SET_CHANNEL:
-                case OpcodeUtility::Opcodes::SESSION_KEEPALIVE:
-                case OpcodeUtility::Opcodes::GET_HEIGHT:
-                case OpcodeUtility::Opcodes::CLEAR_MAP:
-                case OpcodeUtility::Opcodes::SUBSCRIBE:
-                    return MinerSessionState::AUTHENTICATED;
-
-                /* Bypass opcodes — no state required */
-                default:
-                    return MinerSessionState::CONNECTED;
             }
         }
 
@@ -1291,39 +1203,36 @@ namespace LLP
                         hashKeyID = updatedContext.hashKeyID;
                     }
 
-                    /* Atomic transform: apply auth/channel/encryption state to CURRENT value in
-                     * mapMiners.  Captures all relevant fields from updatedContext and applies
-                     * them atomically, preserving any concurrent height/timestamp updates.
+                    /* Atomic transform: commit the FULL post-handler context to mapMiners.
                      *
-                     * CRITICAL: WithChannel MUST be included here.  SET_CHANNEL stores the
-                     * chosen channel in result.context (nChannel=1 or 2) but the manager
-                     * previously retained nChannel=0.  ComputeSessionState() requires nChannel!=0
-                     * to advance beyond ENCRYPTION_READY(2), so omitting WithChannel kept the
-                     * manager at ENCRYPTION_READY(2) instead of CHANNEL_SET(3).  That caused
-                     * PreflightSessionGate to reject MINER_READY and GET_BLOCK with
-                     * BLOCK_REJECTED [SESSION_INVALID], breaking the legacy lane after every
-                     * successful SET_CHANNEL. */
+                     * BUG FIX (Option 1, supersedes the per-field WithChannel patch from
+                     * origin/NODE): the previous implementation built result from
+                     *   current.WithAuth(...).WithSession(...)...
+                     * — a partial chain that touched only auth-related fields.  Any
+                     * field set by the handler that wasn't in the chain (notably
+                     * nChannel after SET_CHANNEL, keepalive counters after SESSION_KEEPALIVE,
+                     * subscription after SUBSCRIBE) was silently discarded.  This caused
+                     * ComputeSessionState() to cap the cached state at ENCRYPTION_READY
+                     * after a successful SET_CHANNEL, so every subsequent
+                     * channel-requiring opcode failed PreflightSessionGate with
+                     * "state ENCRYPTION_READY < required CHANNEL_SET" → BLOCK_REJECTED
+                     * → POLL_ERROR → disconnect.
+                     *
+                     * Fix: assign updatedContext (the full handler result) directly,
+                     * preserving only a fresh activity timestamp and the higher of
+                     * (current, handler) heights so a concurrent SetBest fan-out is
+                     * not regressed by an in-flight packet.  This implicitly
+                     * propagates nChannel, vChaChaKey, nSessionStart, etc., so the
+                     * narrower per-field fix on origin/NODE is no longer needed.
+                     */
                     {
                         MiningContext authCtx = updatedContext;
                         StatelessMinerManager::Get().TransformMiner(updatedContext.strAddress,
                             [authCtx](const MiningContext& current) {
-                                MiningContext result = current
-                                    .WithAuth(authCtx.fAuthenticated)
-                                    .WithSession(authCtx.nSessionId)
-                                    .WithKeyId(authCtx.hashKeyID)
-                                    .WithGenesis(authCtx.hashGenesis)
-                                    .WithUserName(authCtx.strUserName)
-                                    .WithPubKey(authCtx.vMinerPubKey)
-                                    .WithFalconVersion(authCtx.nFalconVersion)
+                                MiningContext result = authCtx
                                     .WithTimestamp(runtime::unifiedtimestamp());
-                                if(authCtx.nSessionStart != 0)
-                                    result = result.WithSessionStart(authCtx.nSessionStart);
-                                if(authCtx.fEncryptionReady && !authCtx.vChaChaKey.empty())
-                                    result = result.WithChaChaKey(authCtx.vChaChaKey);
-                                /* Propagate channel when non-zero (set by SET_CHANNEL). */
-                                if(authCtx.nChannel != 0)
-                                    result = result.WithChannel(authCtx.nChannel)
-                                                   .WithChannelName(authCtx.nChannel);
+                                if(current.nHeight > result.nHeight)
+                                    result = result.WithHeight(current.nHeight);
                                 return result;
                             }, 0);
                     }
@@ -1794,6 +1703,18 @@ namespace LLP
                        " for opcode 0x", std::hex, uint32_t(PACKET.HEADER), std::dec,
                        " from ", GetAddress().ToStringIP());
 
+            /* Option 4 — rejection framing contract.
+             *
+             * Send opcode-appropriate failure responses only:
+             *   - Unauthenticated  → MINER_AUTH_RESULT(0x00)
+             *   - GET_BLOCK        → BLOCK_REJECTED with 8-byte control payload
+             *   - SUBMIT_BLOCK     → BLOCK_REJECTED with 1-byte rejection reason
+             *   - everything else  → silent (no protocol-violating BLOCK_REJECTED
+             *                        for non-block opcodes such as MINER_READY,
+             *                        SET_CHANNEL, SUBSCRIBE, …).  Legacy clients
+             *                        treat unsolicited BLOCK_REJECTED as fatal
+             *                        and POLL_ERROR-disconnect.
+             */
             if(ctx.nSessionState < MinerSessionState::AUTHENTICATED)
             {
                 std::vector<uint8_t> vFail(1, 0x00);
@@ -1803,11 +1724,14 @@ namespace LLP
             {
                 respond_auto(BLOCK_REJECTED, BuildGetBlockControlPayload(GetBlockPolicyReason::TEMPLATE_NOT_READY, 0));
             }
-            else
+            else if(PACKET.HEADER == SUBMIT_BLOCK)
             {
                 respond_auto(BLOCK_REJECTED,
                     BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::SESSION_INVALID));
             }
+            /* else: silently drop — non-block opcodes do not warrant a
+             * BLOCK_REJECTED reply.  The miner can re-issue once channel
+             * selection completes. */
 
             return false;
         }
@@ -1822,11 +1746,14 @@ namespace LLP
                        SessionConsistencyResultString(consistency),
                        " source=", (optCtx.has_value() ? "manager" : "local"));
 
+            /* Option 4 — same rejection framing contract: only block opcodes
+             * may receive BLOCK_REJECTED. */
             if(PACKET.HEADER == GET_BLOCK)
                 respond_auto(BLOCK_REJECTED, BuildGetBlockControlPayload(GetBlockPolicyReason::SESSION_INVALID, 0));
-            else
+            else if(PACKET.HEADER == SUBMIT_BLOCK)
                 respond_auto(BLOCK_REJECTED,
                     BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::SESSION_INVALID));
+            /* else: silently drop. */
 
             return false;
         }

@@ -363,6 +363,7 @@ ifdef UNIT_TESTS
 		   build/Tests_LLP_integration_comprehensive.o \
 		   build/Tests_LLP_keepalive_v2_tests.o \
 		   build/Tests_LLP_legacy_template_registry_tests.o \
+		   build/Tests_LLP_legacy_opcode_policy_tests.o \
 		   build/Tests_LLP_llp_lane_enforcement_test.o \
 		   build/Tests_LLP_miner_protocol.o \
 		   build/Tests_LLP_mining_config.o \
