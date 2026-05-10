@@ -2095,19 +2095,21 @@ namespace LLP
             return nullptr;
         }
         
-        /* [Bug 3] On-chain existence check at template creation time: warn early if
-         * the reward genesis has no sigchain on disk so the operator sees the warning
-         * before a block is found rather than after (AUTO-CREDIT FAILED at commit time).
-         * Consistent with StatelessMiner::ValidateRewardAddress() on the stateless lane.
-         * Suppressed via -rewardmustexist=0 for brand-new sigchains mining their first block. */
+        /* [Bug 3] On-chain existence check at template creation time: emit a warning early if
+         * the reward genesis has no sigchain on disk so the operator sees the issue before
+         * finding a block rather than after (AUTO-CREDIT FAILED at commit time).
+         * Template serving continues regardless — a valid PoW block is always consensus-correct
+         * even when the coinbase commit falls back to event-only mode.  Operators may suppress
+         * this warning with -rewardmustexist=0 for brand-new sigchains mining their first block. */
         if(config::GetBoolArg("-rewardmustexist", true)
         && !LLD::Ledger->HasFirst(hashReward))
         {
             debug::warning(FUNCTION, "[REWARD_CHECK] Reward genesis ", hashReward.SubString(8),
-                           " has no on-chain first transaction — Coinbase::Commit() would fall back"
-                           " to event-only mode and NXS would NOT be auto-credited."
-                           " Use -rewardmustexist=0 to suppress this check for a brand-new sigchain.");
-            return nullptr;
+                           " has no on-chain first transaction — if a block is found,"
+                           " Coinbase::Commit() will fall back to event-only mode"
+                           " and NXS will NOT be auto-credited."
+                           " Verify the reward genesis exists on chain, or set"
+                           " -rewardmustexist=0 to suppress this warning.");
         }
 
         /* Prime channel optimization */
@@ -2155,7 +2157,12 @@ namespace LLP
                 break;
             }
 
-            /* Prime-mod failed: try the next nonce slot. */
+            /* Prime-mod failed: try the next nonce slot.
+             * nBlockIterator is static std::atomic<uint32_t> (miner.h:469), so
+             * ++nBlockIterator is a safe atomic RMW without MUTEX.  MUTEX is not
+             * needed here because nBlockIterator is itself atomic; the non-atomic
+             * cache field m_nCachedExtraNonce is only updated under LOCK(MUTEX)
+             * (success path above and the tip-change path before the loop). */
             extraNonce = ++nBlockIterator;
             delete pBlock;
             pBlock = nullptr;
