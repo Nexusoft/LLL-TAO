@@ -111,7 +111,7 @@ namespace TAO
                     if(!LLD::Ledger->WriteProof(hashGenesis, hashTx, 0, nFlags))
                     {
                         return debug::error(FUNCTION, "OP::COINBASE: failed to write auto-credit proof for ",
-                                            hashRewardAccount.SubString(), " — balance was written but proof failed; "
+                                            hashRewardAccount.SubString(), " -- balance was written but proof failed; "
                                             "rejecting block to prevent unrollable state");
                     }
 
