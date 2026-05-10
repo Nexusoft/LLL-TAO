@@ -1417,20 +1417,6 @@ namespace LLP
                    " header=0x", std::hex, uint32_t(PACKET.HEADER), std::dec,
                    " length=", PACKET.LENGTH);
 
-        /* Compute local testnet flag (session-free check) */
-        bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
-
-        /* Get current Tritium peer connection count (session-free) */
-        uint16_t nConnections = (TRITIUM_SERVER ? TRITIUM_SERVER->GetConnectionCount() : 0);
-
-        /* Check network connections (skip if local testnet) */
-        if(!fLocalTestnet && nConnections == 0)
-        {
-            debug::log(0, FUNCTION, "MinerLLP: EARLY_EXIT reason=NO_NETWORK (stateless) fLocalTestnet=", fLocalTestnet,
-                       " nConnections=", nConnections);
-            return debug::error(FUNCTION, "No network connections.");
-        }
-
         /* Check if synchronizing */
         if(TAO::Ledger::ChainState::Synchronizing())
         {
