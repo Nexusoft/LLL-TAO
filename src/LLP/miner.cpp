@@ -355,6 +355,19 @@ namespace LLP
             return false;
         }
 
+        /* [Bug 1] Suppress template push when a SUBMIT_BLOCK for this same height is
+         * currently in flight.  AcceptMinedBlock() takes up to ~1 s; without this guard
+         * the template worker fires a new same-height template and the miner restarts its
+         * workers on a block that is already being accepted — wasting ~477 ms of hashing. */
+        {
+            const uint32_t nPending = m_nPendingSubmitHeight.load(std::memory_order_acquire);
+            if(nPending != 0 && sharedTemplate.nBlockHeight == nPending)
+            {
+                debug::log(2, FUNCTION, "Template suppressed — submit pending for height ", nPending);
+                return false;
+            }
+        }
+
         Packet blockPacket(BLOCK_DATA);
         blockPacket.DATA = sharedTemplate.vPayload;
         blockPacket.LENGTH = static_cast<uint32_t>(blockPacket.DATA.size());
@@ -2009,21 +2022,75 @@ namespace LLP
             return nullptr;
         }
         
+        /* [Bug 3] On-chain existence check at template creation time: emit a warning early if
+         * the reward genesis has no sigchain on disk so the operator sees the issue before
+         * finding a block rather than after (AUTO-CREDIT FAILED at commit time).
+         * Template serving continues regardless — a valid PoW block is always consensus-correct
+         * even when the coinbase commit falls back to event-only mode.  Operators may suppress
+         * this warning with -rewardmustexist=0 for brand-new sigchains mining their first block. */
+        if(config::GetBoolArg("-rewardmustexist", true)
+        && !LLD::Ledger->HasFirst(hashReward))
+        {
+            debug::warning(FUNCTION, "[REWARD_CHECK] Reward genesis ", hashReward.SubString(8),
+                           " has no on-chain first transaction — if a block is found,"
+                           " Coinbase::Commit() will fall back to event-only mode"
+                           " and NXS will NOT be auto-credited."
+                           " Verify the reward genesis exists on chain, or set"
+                           " -rewardmustexist=0 to suppress this warning.");
+        }
+
         /* Prime channel optimization */
         const uint32_t nBitMask = config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
         TAO::Ledger::TritiumBlock* pBlock = nullptr;
-        
-        /* Create block using simplified utility */
+
+        /* [Bug 2] Only increment the global nBlockIterator when the chain tip changes.
+         * Same-tip GET_BLOCK calls reuse the cached extra-nonce so
+         * CachedMiningTemplateRequiresProducerFinalization() returns false and the
+         * expensive CreateProducer() sigchain key operation is skipped. */
+        uint32_t extraNonce;
+        {
+            LOCK(MUTEX);
+            const uint1024_t hashCurrentTip = TAO::Ledger::ChainState::hashBestChain.load();
+            if(hashCurrentTip != m_hashLastExtraNonceTip || m_nCachedExtraNonce == 0)
+            {
+                m_nCachedExtraNonce = ++nBlockIterator;
+                m_hashLastExtraNonceTip = hashCurrentTip;
+                debug::log(2, FUNCTION, "[EXTRA_NONCE] Tip changed → allocating nonce=", m_nCachedExtraNonce);
+            }
+            else
+                debug::log(2, FUNCTION, "[EXTRA_NONCE] Tip stable → reusing nonce=", m_nCachedExtraNonce);
+            extraNonce = m_nCachedExtraNonce;
+        }
+
+        /* Create block using simplified utility.
+         * For the prime channel, loop until the proof hash satisfies the prime-mod
+         * bit-pattern filter.  On a tip change the first attempt uses the freshly
+         * allocated nonce; if prime-mod fails, we borrow additional nonces from the
+         * global counter and update the cache so the next poll reuses the
+         * prime-mod-satisfying nonce without rebuilding the producer. */
         while(true) {
             pBlock = TAO::Ledger::CreateBlockForStatelessMining(
                 nChannel.load(),
-                ++nBlockIterator,
+                extraNonce,
                 hashReward
             );
-            
+
             if(!pBlock) return nullptr;
-            if(is_prime_mod(nBitMask, pBlock)) break;
-            
+            if(is_prime_mod(nBitMask, pBlock))
+            {
+                /* Cache the prime-mod-satisfying nonce for this tip. */
+                LOCK(MUTEX);
+                m_nCachedExtraNonce = extraNonce;
+                break;
+            }
+
+            /* Prime-mod failed: try the next nonce slot.
+             * nBlockIterator is static std::atomic<uint32_t> (miner.h:469), so
+             * ++nBlockIterator is a safe atomic RMW without MUTEX.  MUTEX is not
+             * needed here because nBlockIterator is itself atomic; the non-atomic
+             * cache field m_nCachedExtraNonce is only updated under LOCK(MUTEX)
+             * (success path above and the tip-change path before the loop). */
+            extraNonce = ++nBlockIterator;
             delete pBlock;
             pBlock = nullptr;
         }
@@ -3051,6 +3118,13 @@ namespace LLP
             return true;
         }
 
+        /* [Bug 1] Mark the block height as pending so QueueCurrentBlockDataTemplate
+         * suppresses same-height template pushes during the AcceptMinedBlock() window.
+         * AcceptMinedBlock can take ~1 s (wallet signing + Process + SetBest); without
+         * this guard the template worker may push a new same-height template to the
+         * miner, restarting its workers on a block that is already being accepted. */
+        m_nPendingSubmitHeight.store(blockSolved.nHeight, std::memory_order_release);
+
         TAO::Ledger::BlockAcceptanceResult acceptanceResult =
             TAO::Ledger::AcceptMinedBlock(blockSolved);
         if(!acceptanceResult.accepted)
@@ -3062,6 +3136,7 @@ namespace LLP
                     hashGenesisSnapshot.SubString(8), blockSolved.nChannel,
                     false, acceptanceResult.reason);
             }
+            m_nPendingSubmitHeight.store(0, std::memory_order_release);
             respond_auto(BLOCK_REJECTED,
                 BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::LOCAL_TEMPLATE_REJECT));
         }
@@ -3071,6 +3146,7 @@ namespace LLP
                        " channel=", blockSolved.nChannel,
                        " hashPrevBlock=", blockSolved.hashPrevBlock.SubString(),
                        " merkle=", hashMerkle.SubString());
+            m_nPendingSubmitHeight.store(0, std::memory_order_release);
             respond_auto(BLOCK_ACCEPTED);
 
             /* Option E — clear the pushed-tip history and force the next
