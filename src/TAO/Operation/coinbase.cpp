@@ -110,8 +110,9 @@ namespace TAO
                     /* Write proof so rollback can distinguish direct-credit from event-only mode. */
                     if(!LLD::Ledger->WriteProof(hashGenesis, hashTx, 0, nFlags))
                     {
-                        debug::warning(FUNCTION, "AUTO-CREDIT credited account but failed to write rollback proof");
-                        return true;
+                        return debug::error(FUNCTION, "OP::COINBASE: failed to write auto-credit proof for ",
+                                            hashRewardAccount.SubString(), " — balance was written but proof failed; "
+                                            "rejecting block to prevent unrollable state");
                     }
 
                     debug::log(0, FUNCTION, "AUTO-CREDIT ", nAmount, " NXS to ", hashRewardAccount.SubString(),
