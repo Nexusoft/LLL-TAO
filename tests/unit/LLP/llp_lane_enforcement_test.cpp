@@ -1,13 +1,48 @@
 #include <unit/catch2/catch.hpp>
 
+#include <LLP/include/get_block_policy.h>
 #include <LLP/include/mining_transport.h>
 #include <LLP/include/opcode_utility.h>
 #include <LLP/include/packet_framing.h>
+#include <LLP/include/session_start_packet.h>
+#include <LLP/include/session_status.h>
 #include <LLP/packets/packet.h>
 #include <LLP/packets/stateless_packet.h>
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
+#include <vector>
+
+namespace
+{
+    /* Verify shared mining responses keep identical length fields and payloads
+     * while legacy 8323 uses 1-byte opcodes and stateless 9323 uses 0xD0xx. */
+    void RequireLanePairMatches(const uint8_t nLegacyOpcode, const std::vector<uint8_t>& vPayload)
+    {
+        const auto vLegacyBytes = LLP::MiningTransport::BuildResponseBytes(
+            LLP::MiningTransportLane::LEGACY_8323, nLegacyOpcode, vPayload);
+        const auto vStatelessBytes = LLP::MiningTransport::BuildResponseBytes(
+            LLP::MiningTransportLane::STATELESS_9323, nLegacyOpcode, vPayload);
+
+        REQUIRE(vLegacyBytes.size() == vPayload.size() + 5u);
+        REQUIRE(vStatelessBytes.size() == vPayload.size() + 6u);
+
+        REQUIRE(vLegacyBytes[0] == nLegacyOpcode);
+        REQUIRE(vStatelessBytes[0] == 0xD0);
+        REQUIRE(vStatelessBytes[1] == nLegacyOpcode);
+
+        REQUIRE(std::equal(vLegacyBytes.begin() + 1, vLegacyBytes.begin() + 5,
+                           vStatelessBytes.begin() + 2));
+        REQUIRE(LLP::PacketFraming::DecodeLengthComponents(
+            vLegacyBytes[1], vLegacyBytes[2], vLegacyBytes[3], vLegacyBytes[4]) == vPayload.size());
+        REQUIRE(LLP::PacketFraming::DecodeLengthComponents(
+            vStatelessBytes[2], vStatelessBytes[3], vStatelessBytes[4], vStatelessBytes[5]) == vPayload.size());
+
+        REQUIRE(std::equal(vPayload.begin(), vPayload.end(), vLegacyBytes.begin() + 5));
+        REQUIRE(std::equal(vPayload.begin(), vPayload.end(), vStatelessBytes.begin() + 6));
+    }
+}
 
 TEST_CASE("LLP strict lane opcode mapping", "[llp][lane_enforcement]")
 {
@@ -210,5 +245,103 @@ TEST_CASE("LLP strict lane opcode mapping", "[llp][lane_enforcement]")
             REQUIRE(bytes[5] == static_cast<uint8_t>(payload.size()));
             REQUIRE(std::equal(payload.begin(), payload.end(), bytes.begin() + 6));
         }
+    }
+}
+
+
+TEST_CASE("Payload parity across legacy 8323 and stateless 9323 lanes", "[llp][lane_enforcement][legacy]")
+{
+    namespace Opcodes = LLP::OpcodeUtility::Opcodes;
+
+    SECTION("Mirrored response opcodes preserve the same payload on both lanes")
+    {
+        /* Boundary byte values catch signedness, zero, and high-bit payload drift. */
+        const std::vector<uint8_t> boundaryPayload = {0x00, 0x01, 0x7F, 0x80, 0xFF};
+        const std::array<uint8_t, 16> opcodes = {
+            Opcodes::BLOCK_DATA,
+            Opcodes::BLOCK_ACCEPTED,
+            Opcodes::BLOCK_REJECTED,
+            Opcodes::ORPHAN_BLOCK,
+            Opcodes::NEW_ROUND,
+            Opcodes::OLD_ROUND,
+            Opcodes::CHANNEL_ACK,
+            Opcodes::MINER_AUTH_CHALLENGE,
+            Opcodes::MINER_AUTH_RESULT,
+            Opcodes::SESSION_START,
+            Opcodes::SESSION_KEEPALIVE,
+            Opcodes::MINER_REWARD_RESULT,
+            Opcodes::MINER_READY,
+            Opcodes::PRIME_BLOCK_AVAILABLE,
+            Opcodes::HASH_BLOCK_AVAILABLE,
+            Opcodes::SESSION_STATUS_ACK
+        };
+
+        for(const uint8_t opcode : opcodes)
+            RequireLanePairMatches(opcode, boundaryPayload);
+    }
+
+    SECTION("Header-only control responses differ only by opcode width")
+    {
+        /* These opcodes are included in the payload-preservation table above
+         * and repeated here with the zero-length packets they use on the wire. */
+        const std::vector<uint8_t> emptyPayload;
+        const std::array<uint8_t, 7> opcodes = {
+            Opcodes::CHANNEL_ACK,
+            Opcodes::MINER_READY,
+            Opcodes::PRIME_BLOCK_AVAILABLE,
+            Opcodes::HASH_BLOCK_AVAILABLE,
+            Opcodes::SESSION_KEEPALIVE,
+            Opcodes::NEW_ROUND,
+            Opcodes::OLD_ROUND
+        };
+
+        for(const uint8_t opcode : opcodes)
+            RequireLanePairMatches(opcode, emptyPayload);
+    }
+
+    SECTION("SESSION_START payload builder is lane-neutral")
+    {
+        /* Arbitrary fixture values: hex session ID makes byte order visible;
+         * decimal timeout matches how the protocol is documented/logged. */
+        constexpr uint32_t TEST_SESSION_ID = 0x12345678u;
+        constexpr uint64_t TEST_TIMEOUT_SEC = 900u;
+
+        uint256_t hashGenesis;
+        /* Arbitrary non-zero fixture hash exercises SESSION_START's optional 32-byte genesis payload. */
+        hashGenesis.SetHex("a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122");
+
+        const auto payload = LLP::SessionStartPacket::BuildPayload(
+            TEST_SESSION_ID,
+            TEST_TIMEOUT_SEC,
+            hashGenesis);
+
+        REQUIRE(payload.size() == 41u);
+        REQUIRE(payload[0] == 0x01);
+        RequireLanePairMatches(Opcodes::SESSION_START, payload);
+    }
+
+    SECTION("SESSION_STATUS_ACK payload builder is lane-neutral")
+    {
+        constexpr uint32_t TEST_SESSION_ID = 0xAABBCCDDu;
+
+        const auto payload = LLP::SessionStatus::BuildAckPayload(
+            TEST_SESSION_ID,
+            LLP::SessionStatus::LANE_PRIMARY_ALIVE | LLP::SessionStatus::LANE_AUTHENTICATED,
+            42u,
+            LLP::SessionStatus::MINER_HAS_TEMPLATE | LLP::SessionStatus::MINER_WORKERS_ACTIVE);
+
+        REQUIRE(payload.size() == LLP::SessionStatus::ACK_PAYLOAD_SIZE);
+        RequireLanePairMatches(Opcodes::SESSION_STATUS_ACK, payload);
+    }
+
+    SECTION("GET_BLOCK control rejection payload is lane-neutral")
+    {
+        const auto payload = LLP::BuildGetBlockControlPayload(
+            LLP::GetBlockPolicyReason::TEMPLATE_REBUILD_IN_PROGRESS,
+            250u);
+
+        REQUIRE(payload.size() == 8u);
+        REQUIRE(payload[1] == static_cast<uint8_t>(LLP::GetBlockPolicyReason::TEMPLATE_REBUILD_IN_PROGRESS));
+        RequireLanePairMatches(Opcodes::BLOCK_REJECTED, payload);
     }
 }

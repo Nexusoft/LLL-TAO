@@ -342,6 +342,7 @@ ifdef UNIT_TESTS
 		   build/Tests_LLP_base_address.o \
 		   build/Tests_LLP_canonical_chain_state_tests.o \
 		   build/Tests_LLP_channel_state_manager_tests.o \
+		   build/Tests_LLP_coinbase_contract_size_tests.o \
 		   build/Tests_LLP_concurrency_testing.o \
 		   build/Tests_LLP_context_immutability_comprehensive.o \
 		   build/Tests_LLP_dual_connection_manager_tests.o \
@@ -362,6 +363,7 @@ ifdef UNIT_TESTS
 		   build/Tests_LLP_integration_comprehensive.o \
 		   build/Tests_LLP_keepalive_v2_tests.o \
 		   build/Tests_LLP_legacy_template_registry_tests.o \
+		   build/Tests_LLP_legacy_opcode_policy_tests.o \
 		   build/Tests_LLP_llp_lane_enforcement_test.o \
 		   build/Tests_LLP_miner_protocol.o \
 		   build/Tests_LLP_mining_config.o \

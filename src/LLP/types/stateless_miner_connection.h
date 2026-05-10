@@ -179,6 +179,33 @@ namespace LLP
          *  correctly time-gated while genuinely new tips bypass immediately. */
         PushedTipHistory m_pushedTipHistory;
 
+        /** [Bug 1] Height of the SUBMIT_BLOCK currently being accepted by AcceptMinedBlock().
+         *
+         *  Set (to pTritium->nHeight) immediately before AcceptMinedBlock() is called.
+         *  Cleared (to 0) after STATELESS_BLOCK_ACCEPTED or STATELESS_BLOCK_REJECTED is queued.
+         *
+         *  Read lock-free by QueueCurrentBlockDataTemplate() on the template-worker thread.
+         *  If non-zero and the about-to-be-served template targets the same height, the push
+         *  is suppressed — preventing the miner from restarting workers on a block that is
+         *  already being committed (burst-block same-height template blindspot).
+         *  Atomic: written under MUTEX on the data thread, read without MUTEX on the worker. **/
+        std::atomic<uint32_t> m_nPendingSubmitHeight{0};
+
+        /** [Bug 2] Per-connection extra-nonce cache for same-tip GET_BLOCK stability.
+         *
+         *  The global nBlockIterator was previously incremented on every new_block() call,
+         *  causing CachedMiningTemplateRequiresProducerFinalization() to return true on
+         *  every GET_BLOCK and triggering an expensive CreateProducer() sigchain key
+         *  operation 4-6 times per minute.
+         *
+         *  Fix: nBlockIterator is only incremented when hashBestChain changes; same-tip
+         *  calls reuse m_nCachedExtraNonce so the producer cache is valid and
+         *  CreateProducer() is skipped (~99% reduction in steady-state key ops).
+         *
+         *  Protected by TEMPLATE_CREATE_MUTEX (serializes new_block() calls). **/
+        uint32_t   m_nCachedExtraNonce{0};
+        uint1024_t m_hashLastExtraNonceTip;
+
         /** 1-second rate-limit floor for GET_BLOCK fallback polling.
          *
          *  With the event-driven push model the miner should almost never poll.

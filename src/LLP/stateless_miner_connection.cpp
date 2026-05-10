@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <LLP/include/disposable_falcon.h>
 #include <LLP/include/auto_cooldown_manager.h>
 #include <LLP/include/opcode_utility.h>
+#include <LLP/include/coinbase_validation.h>
 #include <LLP/include/push_notification.h>
 #include <LLP/include/mining_constants.h>
 #include <LLP/include/mining_session_health.h>
@@ -51,6 +52,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/types/tritium.h>
 #include <TAO/Ledger/types/mempool.h>
+
+#include <TAO/Operation/include/enum.h>
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/types/authentication.h>
@@ -644,6 +647,19 @@ namespace LLP
                 pReason, ": ", sharedTemplate.vPayload.size(), " bytes (expected ",
                 (TEMPLATE_METADATA_SIZE + FalconConstants::FULL_BLOCK_TRITIUM_MIN), ")");
             return false;
+        }
+
+        /* [Bug 1] Suppress template push when a SUBMIT_BLOCK for this same height is
+         * currently in flight.  AcceptMinedBlock() takes up to ~1 s; without this guard
+         * the template worker fires a new same-height template and the miner restarts its
+         * workers on a block that is already being accepted — wasting ~477 ms of hashing. */
+        {
+            const uint32_t nPending = m_nPendingSubmitHeight.load(std::memory_order_acquire);
+            if(nPending != 0 && sharedTemplate.nBlockHeight == nPending)
+            {
+                debug::log(2, FUNCTION, "Template suppressed — submit pending for height ", nPending);
+                return false;
+            }
         }
 
         StatelessPacket blockPacket(OpcodeUtility::Stateless::BLOCK_DATA);
@@ -2215,6 +2231,40 @@ namespace LLP
                     return true;
                 }
 
+                /* Coinbase contract stream size guard — shared helper used by BOTH
+                 * lanes (Legacy port 8323 + Stateless port 9323).  A well-formed
+                 * OP::COINBASE contract is exactly 49 bytes (1 opcode + 32
+                 * hashGenesis + 8 nCredit + 8 nExtraNonce).  Residual bytes cause
+                 * TAO::Register::Verify to fire "can not verify PRIMITIVE per
+                 * contract" deep in AcceptMinedBlock.  The underlying cause was
+                 * fixed in CreateProducer (see create.cpp); this guard remains as
+                 * defense-in-depth and returns a clean MALFORMED_PRODUCER rejection
+                 * if any future regression re-introduces the bug. */
+                {
+                    const auto malformed =
+                        LLP::CoinbaseValidation::DetectMalformedCoinbase(*pTritium);
+
+                    if(malformed.malformed)
+                    {
+                        debug::warning(FUNCTION,
+                            "[BURST_BLOCK_GUARD] Malformed coinbase contract detected"
+                            " — stream_size=", malformed.actual_size,
+                            " expected=", LLP::CoinbaseValidation::COINBASE_STREAM_SIZE,
+                            " contract=", malformed.contract_index,
+                            " nHeight=", pTritium->nHeight,
+                            " nChannel=", pTritium->nChannel,
+                            " nNonce=", pTritium->nNonce,
+                            " — rejecting with MALFORMED_PRODUCER");
+
+                        StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                        response.DATA.push_back(
+                            static_cast<uint8_t>(OpcodeUtility::RejectionReason::MALFORMED_PRODUCER));
+                        response.LENGTH = static_cast<uint32_t>(response.DATA.size());
+                        respond(response);
+                        return true;
+                    }
+                }
+
                 TAO::Ledger::BlockValidationResult validationResult =
                     TAO::Ledger::ValidateMinedBlock(*pTritium);
                 if(!validationResult.valid)
@@ -2257,12 +2307,20 @@ namespace LLP
                     }
                 }
 
+                /* [Bug 1] Mark the block height as pending so QueueCurrentBlockDataTemplate
+                 * suppresses same-height template pushes during the AcceptMinedBlock() window.
+                 * AcceptMinedBlock can take ~1 s (wallet signing + Process + SetBest); without
+                 * this guard the template worker may push a new same-height template and restart
+                 * miner workers on a block that is already being accepted. */
+                m_nPendingSubmitHeight.store(pTritium->nHeight, std::memory_order_release);
+
                 TAO::Ledger::BlockAcceptanceResult acceptanceResult =
                     TAO::Ledger::AcceptMinedBlock(*pTritium);
                 if(!acceptanceResult.accepted)
                 {
                     debug::error(FUNCTION, "❌ AcceptMinedBlock ledger write failed: ", acceptanceResult.reason);
 
+                    m_nPendingSubmitHeight.store(0, std::memory_order_release);
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
 
@@ -2290,6 +2348,7 @@ namespace LLP
                 }
                 else
                 {
+                    m_nPendingSubmitHeight.store(0, std::memory_order_release);
                     StatelessPacket response(STATELESS_BLOCK_ACCEPTED);
                     respond(response);
 
@@ -3234,6 +3293,26 @@ namespace LLP
             return nullptr;
         }
 
+        /* [Bug 3] On-chain existence check at template creation time: emit a warning early if
+         * the reward genesis has no sigchain on disk so the operator sees the issue before
+         * finding a block rather than after (AUTO-CREDIT FAILED at commit time).
+         * Template serving continues regardless — a valid PoW block is always consensus-correct
+         * even when the coinbase commit falls back to event-only mode.  Operators may suppress
+         * this warning with -rewardmustexist=0 for brand-new sigchains mining their first block.
+         * Defense-in-depth: ValidateRewardAddress() already performs this at MINER_SET_REWARD
+         * bind time; this second guard catches any path that bypasses bind-time validation
+         * (e.g., genesis fallback or node restart with a stale cached reward address). */
+        if(config::GetBoolArg("-rewardmustexist", true)
+        && !LLD::Ledger->HasFirst(hashReward))
+        {
+            debug::warning(FUNCTION, "[REWARD_CHECK] Reward genesis ", hashReward.SubString(8),
+                           " has no on-chain first transaction — if a block is found,"
+                           " Coinbase::Commit() will fall back to event-only mode"
+                           " and NXS will NOT be auto-credited."
+                           " Verify the reward genesis exists on chain, or set"
+                           " -rewardmustexist=0 to suppress this warning.");
+        }
+
         const bool fVerboseTemplateDiagnostics = (config::nVerbose >= 3);
         if(fVerboseTemplateDiagnostics)
         {
@@ -3289,8 +3368,32 @@ namespace LLP
         /* Prime channel optimization */
         const uint32_t nBitMask = config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
         TAO::Ledger::TritiumBlock* pBlock = nullptr;
-        
-        /* Use simplified utility function */
+
+        /* [Bug 2] Only increment the global nBlockIterator when the chain tip changes.
+         * Same-tip new_block() calls reuse the cached extra-nonce so
+         * CachedMiningTemplateRequiresProducerFinalization() returns false and the
+         * expensive CreateProducer() sigchain key operation is skipped.
+         * m_nCachedExtraNonce is protected by TEMPLATE_CREATE_MUTEX (serializes new_block()):
+         * only one thread can be in this section of new_block() at a time. */
+        {
+            const uint1024_t hashCurrentTip = TAO::Ledger::ChainState::hashBestChain.load();
+            if(hashCurrentTip != m_hashLastExtraNonceTip || m_nCachedExtraNonce == 0)
+            {
+                m_nCachedExtraNonce = nBlockIterator.fetch_add(1, std::memory_order_relaxed) + 1;
+                m_hashLastExtraNonceTip = hashCurrentTip;
+                debug::log(2, FUNCTION, "[EXTRA_NONCE] Tip changed → allocating nonce=", m_nCachedExtraNonce);
+            }
+            else
+                debug::log(2, FUNCTION, "[EXTRA_NONCE] Tip stable → reusing nonce=", m_nCachedExtraNonce);
+        }
+        uint32_t extraNonce = m_nCachedExtraNonce;
+
+        /* Use simplified utility function.
+         * For the prime channel, loop until the proof hash satisfies the prime-mod
+         * bit-pattern filter.  On a tip change the first attempt uses the freshly
+         * allocated nonce; if prime-mod fails, borrow additional nonces from the
+         * global counter and update the cache so the next poll reuses the
+         * prime-mod-satisfying nonce without rebuilding the producer. */
         uint32_t nAttempts = 0;
         while(true) {
             /* Check for shutdown during template creation loop */
@@ -3299,27 +3402,30 @@ namespace LLP
                 debug::log(1, FUNCTION, "Shutdown detected during block creation; aborting");
                 return nullptr;
             }
-            
+
             ++nAttempts;
-            const uint32_t extraNonce =
-                nBlockIterator.fetch_add(1, std::memory_order_relaxed) + 1;
             pBlock = TAO::Ledger::CreateBlockForStatelessMining(
                 nChannel_snap,
                 extraNonce,
                 hashReward,
                 hashRewardAccount_snap
             );
-            
+
             if(!pBlock) {
                 debug::log(2, FUNCTION, "CreateBlockForStatelessMining returned nullptr");
                 return nullptr;
             }
-            
+
             if(is_prime_mod(nBitMask, pBlock)) {
+                /* Cache the prime-mod-satisfying nonce for this tip. */
+                m_nCachedExtraNonce = extraNonce;
                 debug::log(3, FUNCTION, "Block created after ", nAttempts, " attempt(s)");
                 break;
             }
-            
+
+            /* Prime-mod failed: try the next nonce slot. */
+            extraNonce = nBlockIterator.fetch_add(1, std::memory_order_relaxed) + 1;
+            m_nCachedExtraNonce = extraNonce;
             delete pBlock;
             pBlock = nullptr;
         }

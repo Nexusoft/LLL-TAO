@@ -800,6 +800,34 @@ namespace TAO::Ledger
                            const uint256_t& hashDynamicGenesis,
                            const uint256_t& hashRewardAccount)
     {
+        /* Defensively reset the producer to a default-constructed state.
+         *
+         * Bug history: the cache-hit + producer-finalization path in CreateBlock()
+         * (above) does `rBlockRet = tBlockCached;` followed by CreateProducer(...,
+         * rBlockRet.producer, ...).  The cached producer already has a fully written
+         * 49-byte OP::COINBASE stream in vContracts[0].  CreateTransaction() below
+         * only assigns scalar fields (nSequence, hashGenesis, hashPrevTx, ...) and
+         * never touches vContracts.  The subsequent `rProducer[0] << OP::COINBASE; ...`
+         * writes (lines below) therefore APPEND a second 49-byte stream onto the
+         * existing one, producing a 98-byte malformed contract.  The block is then
+         * signed and pushed to miners; on SUBMIT_BLOCK, TAO::Register::Verify fires
+         * "can not verify PRIMITIVE per contract" because contract.End() is false
+         * after consuming the first 49 bytes.  This was the root cause of the
+         * mainnet rejection sequence documented in
+         * docs/BURST_BLOCK_COINBASE_PRIMITIVE_OVERFLOW.md (PR #584); the size-check
+         * gate added in that PR catches the symptom — this reset removes the cause.
+         *
+         * Trigger in production was CachedMiningTemplateRequiresProducerFinalization
+         * returning true (different miner reward/extra-nonce vs cached entry), which
+         * routes the call through the cache-hit rebuild branch with a stale producer.
+         *
+         * This unconditional reset is safe in both call sites:
+         *  - Cache-hit rebuild: clears the inherited stale contracts (the fix).
+         *  - Fresh-block path: rProducer is already a default-constructed member of
+         *    a freshly SetNull()'d block, so the reset is a no-op.
+         */
+        rProducer = TAO::Ledger::Transaction();
+
         /* Setup the producer transaction. */
         if(!CreateTransaction(user, pin, rProducer))
             return debug::error(FUNCTION, "Failed to create producer transactions.");
@@ -858,6 +886,11 @@ namespace TAO::Ledger
             /* The extra nonce to coinbase. */
             rProducer[0] << nExtraNonce;
 
+            debug::log(2, FUNCTION, "[COINBASE_STREAM] slot=0"
+                " stream_size=", rProducer[0].Operations().size(),
+                " channel=", nChannel,
+                " recipient=", hashRewardRecipient.SubString());
+
             /* Add coinbase recipient amounts to block producer transaction if any. */
             if(pCoinbaseRecipients && !pCoinbaseRecipients->IsNull())
             {
@@ -890,6 +923,11 @@ namespace TAO::Ledger
                     /* The extra nonce to coinbase. */
                     rProducer[nTx] << nExtraNonce;
 
+                    debug::log(2, FUNCTION, "[COINBASE_STREAM] slot=", nTx,
+                        " stream_size=", rProducer[nTx].Operations().size(),
+                        " channel=", nChannel,
+                        " recipient=", hashGenesis.SubString());
+
                     ++nTx;
                 }
             }
@@ -920,6 +958,10 @@ namespace TAO::Ledger
                             const uint64_t nCredit = (nBalance * it->second.second) / 1000;
                             rProducer[nContract] << nCredit;
                             rProducer[nContract] << uint64_t(0);
+
+                            debug::log(2, FUNCTION, "[COINBASE_STREAM] slot=", nContract,
+                                " stream_size=", rProducer[nContract].Operations().size(),
+                                " channel=", nChannel, " (ambassador payout)");
                         }
                     }
                 }
@@ -947,6 +989,10 @@ namespace TAO::Ledger
                             const uint64_t nCredit = (nBalance * it->second.second) / 1000;
                             rProducer[nContract] << nCredit;
                             rProducer[nContract] << uint64_t(0);
+
+                            debug::log(2, FUNCTION, "[COINBASE_STREAM] slot=", nContract,
+                                " stream_size=", rProducer[nContract].Operations().size(),
+                                " channel=", nChannel, " (developer payout)");
                         }
                     }
                 }
