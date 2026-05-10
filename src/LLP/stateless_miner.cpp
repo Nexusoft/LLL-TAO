@@ -44,6 +44,8 @@ ________________________________________________________________________________
 #include <TAO/Register/include/names.h>
 #include <TAO/Register/types/address.h>
 
+#include <LLP/include/reward_binding_payload.h>
+
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 #include <Util/include/config.h>
@@ -2073,17 +2075,22 @@ namespace LLP
             return ProcessResult::Success(context, errorResponse);
         }
 
-        /* Extract the reward genesis (32 bytes) plus optional account-name extension:
-         * [32-byte genesis][1-byte name length][name bytes]. Legacy miners still send
-         * exactly 32 bytes and remain event-only. */
-        if(vDecrypted.size() != 32 && vDecrypted.size() < 34)
+        /* Extract the reward genesis (32 bytes) plus optional account-name extension
+         * via the shared LLP::RewardBindingPayload parser, used identically by the
+         * Legacy lane (port 8323) and the Stateless lane (port 9323). */
+        uint256_t   hashReward = 0;
+        std::string strRewardAccountName;
+        const RewardBindingPayload::ParseResult eParse =
+            RewardBindingPayload::ParsePayload(vDecrypted, hashReward, strRewardAccountName);
+
+        if(eParse != RewardBindingPayload::ParseResult::Ok)
         {
-            debug::error(FUNCTION, "Invalid reward address payload size: ", vDecrypted.size(),
-                         " (expected 32 or 33+account-name bytes)");
-            
+            debug::error(FUNCTION, "Invalid reward address payload (",
+                         RewardBindingPayload::ResultString(eParse), "): size=", vDecrypted.size());
+
             std::vector<uint8_t> vErrorMsg = {0x00};
             std::vector<uint8_t> vEncryptedError = EncryptRewardResult(vErrorMsg, vChaChaKey);
-            
+
             StatelessPacket errorResponse(REWARD_RESULT);
             errorResponse.DATA = vEncryptedError;
             errorResponse.LENGTH = static_cast<uint32_t>(vEncryptedError.size());
@@ -2092,40 +2099,7 @@ namespace LLP
             return ProcessResult::Success(context, errorResponse);
         }
 
-        /* Parse the 32-byte reward address from decrypted payload.
-         * NexusMiner sends the genesis hash in big-endian / display byte order
-         * (hex_decode_genesis_hash decodes left-to-right: byte[0] == 0xa1 type byte).
-         * uint256_t internal storage is little-endian word order: pn[0] is the least
-         * significant word and pn[WIDTH-1] is the most significant.  GetType() reads
-         * from pn[WIDTH-1], so we must load via SetHex() which performs the correct
-         * reversal — exactly the same pattern used in ProcessMinerAuthInit for genesis.
-         * Do NOT use memcpy(begin(), ...) — that places byte[0] into the least
-         * significant word, causing GetType() to read the wrong byte. */
-        uint256_t hashReward;
-        hashReward.SetHex(HexStr(vDecrypted.begin(), vDecrypted.begin() + 32));
-
         uint256_t hashRewardAccount = 0;
-        std::string strRewardAccountName;
-        if(vDecrypted.size() > 32)
-        {
-            const uint8_t nNameBytes = vDecrypted[32];
-            if(nNameBytes == 0 || vDecrypted.size() != static_cast<size_t>(33 + nNameBytes))
-            {
-                debug::error(FUNCTION, "Invalid reward account-name payload size: ", vDecrypted.size(),
-                             " name_bytes=", static_cast<uint32_t>(nNameBytes));
-
-                std::vector<uint8_t> vErrorMsg = {0x00};
-                std::vector<uint8_t> vEncryptedError = EncryptRewardResult(vErrorMsg, vChaChaKey);
-
-                StatelessPacket errorResponse(REWARD_RESULT);
-                errorResponse.DATA = vEncryptedError;
-                errorResponse.LENGTH = static_cast<uint32_t>(vEncryptedError.size());
-
-                return ProcessResult::Success(context, errorResponse);
-            }
-
-            strRewardAccountName.assign(vDecrypted.begin() + 33, vDecrypted.end());
-        }
 
         debug::log(0, FUNCTION, "Received decoded reward register/account hash: ", hashReward.GetHex());
 
