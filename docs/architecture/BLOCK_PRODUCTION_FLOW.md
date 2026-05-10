@@ -820,6 +820,9 @@ Node: hashPrevBlock vs hashBestChain stale gate → reject if stale
         ↓
 Node: ValidateMinedBlock() → Check() → VerifyWork() + VerifySignature()
         ↓
+Node: AcceptMinedBlock() post-validation stale gate
+      (re-check hashPrevBlock vs hashBestChain immediately before Process())
+        ↓
 Node: AcceptMinedBlock() → Process() → relay canonical TritiumBlock
 ```
 
@@ -845,6 +848,9 @@ Node: sign_block(nNonce, hashMerkle, {})
 Node: hashPrevBlock vs hashBestChain stale gate → reject if stale
         ↓
 Node: ValidateMinedBlock() → Check() → VerifyWork() + VerifySignature()
+        ↓
+Node: AcceptMinedBlock() post-validation stale gate
+      (re-check hashPrevBlock vs hashBestChain immediately before Process())
         ↓
 Node: AcceptMinedBlock() → Process() → relay canonical TritiumBlock
 ```

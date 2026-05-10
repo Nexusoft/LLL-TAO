@@ -659,6 +659,19 @@ namespace TAO::Ledger
         }
         strPIN.clear();
 
+        const uint1024_t hashBestChainNow = TAO::Ledger::ChainState::hashBestChain.load();
+        if(block.hashPrevBlock != hashBestChainNow)
+        {
+            debug::log(0, FUNCTION,
+                       "Post-validation tip-race stale rejection: block.hashPrevBlock=",
+                       block.hashPrevBlock.SubString(),
+                       " bestChain=", hashBestChainNow.SubString(),
+                       " channel=", block.nChannel,
+                       " unified_height=", block.nHeight);
+            result.reason = "submitted block is stale (post-validation tip-race check)";
+            return result;
+        }
+
         uint8_t nStatus = 0;
         /* Pass fSkipCheck=true because ValidateMinedBlock() already ran block.Check()
          * (including the expensive VerifyWork() / PrimeCheck() consensus validation).
