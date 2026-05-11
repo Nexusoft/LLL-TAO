@@ -430,6 +430,9 @@ namespace LLP
         bool m_template_worker_running{false};
         bool m_template_work_pending{false};
         TemplateWorkReason m_template_work_reason{TemplateWorkReason::PUSH_NOTIFICATION};
+        uint1024_t m_template_work_expected_tip;
+        bool       m_template_work_validate_expected_tip{false};
+        std::chrono::steady_clock::time_point m_template_work_scheduled_at;
 
 
         /** Parallel map: block merkle root → hashBestChain snapshot at template creation.
@@ -813,10 +816,15 @@ namespace LLP
         void StopTemplateWorker();
 
         /** Schedule/coalesce a background full-template send. **/
-        void ScheduleTemplateWork(TemplateWorkReason eReason);
+        void ScheduleTemplateWork(TemplateWorkReason eReason,
+                                  const uint1024_t& hashExpectedTip = uint1024_t(0),
+                                  bool fValidateExpectedTip = false);
         void TemplateWorkerLoop();
-        bool QueueCurrentBlockDataTemplate(TemplateWorkReason eReason);
-        void TryAttachBlockTemplate();
+        bool QueueCurrentBlockDataTemplate(TemplateWorkReason eReason,
+                                           const uint1024_t& hashExpectedTip,
+                                           const bool fValidateExpectedTip,
+                                           const std::chrono::steady_clock::time_point& tScheduledAt);
+        void TryAttachBlockTemplate(const uint1024_t& hashExpectedTip);
 
         /** Record that a full BLOCK_DATA template was queued/sent to this miner. **/
         void RecordTemplateDelivery(uint32_t nUnifiedHeight, const uint1024_t& hashBestChain);
@@ -916,7 +924,8 @@ namespace LLP
          *  Adds a new block to the map.
          *
          **/
-        TAO::Ledger::Block *new_block();
+        TAO::Ledger::Block *new_block(const uint1024_t& hashExpectedTip = uint1024_t(0),
+                                      bool fValidateExpectedTip = false);
 
 
         /** validate_block
