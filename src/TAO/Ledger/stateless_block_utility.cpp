@@ -131,8 +131,7 @@ namespace TAO::Ledger
     TritiumBlock* CreateBlockForStatelessMining(
         const uint32_t nChannel,
         const uint64_t nExtraNonce,
-        const uint256_t& hashRewardAddress,
-        const uint256_t& hashRewardAccount)
+        const uint256_t& hashRewardAddress)
     {
         /* Early exit if shutdown is in progress */
         if(config::fShutdown.load())
@@ -211,8 +210,7 @@ namespace TAO::Ledger
                 *pBlock,
                 nExtraNonce,
                 nullptr,           // No coinbase recipients
-                hashRewardAddress, // Route reward events to miner's genesis
-                hashRewardAccount  // Optional direct-credit account
+                hashRewardAddress  // Route reward events to miner's genesis
             );
             
             if (!success) {

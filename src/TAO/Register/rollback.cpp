@@ -265,70 +265,12 @@ namespace TAO
                         uint256_t hashGenesis;
                         contract >> hashGenesis;
 
-                        /* Get the optional direct-credit account. */
-                        uint256_t hashAccount = 0;
-                        if(TAO::Operation::Coinbase::HasAutoCreditAccount(contract))
-                            contract >> hashAccount;
+                        /* Seek to end (skip amount + nExtraNonce). */
+                        contract.Seek(16);
 
-                        /* Get the coinbase amount. */
-                        uint64_t nAmount = 0;
-                        contract >> nAmount;
-
-                        /* Seek to end (skip nExtraNonce which is 8 bytes). */
-                        contract.Seek(8);
-
-                        /* Check if auto-credit was applied by looking for proof. */
+                        /* Erase the event (legacy event-only mode). */
                         if(nFlags == TAO::Ledger::FLAGS::BLOCK && contract.Caller() != hashGenesis)
                         {
-                            /* Check if a proof exists (indicates auto-credit occurred). */
-                            if(LLD::Ledger->HasProof(hashGenesis, contract.Hash(), 0, nFlags))
-                            {
-                                /* Proof exists - auto-credit was applied, need to rollback balance. */
-                                TAO::Register::Address hashRewardAccount = hashAccount;
-
-                                /* Read the current account state. */
-                                TAO::Register::Object account;
-                                if(hashRewardAccount != 0 && LLD::Register->ReadState(hashRewardAccount, account, nFlags))
-                                {
-                                    /* Parse the account. */
-                                    if(account.Parse())
-                                    {
-                                        /* Rollback the balance by subtracting the amount. */
-                                        uint64_t nBalance = account.get<uint64_t>("balance");
-                                        
-                                        /* Check for balance underflow. */
-                                        if(nBalance >= nAmount)
-                                        {
-                                            /* Subtract the amount. */
-                                            account.Write("balance", nBalance - nAmount);
-                                            account.nModified = runtime::unifiedtimestamp();
-                                            account.SetChecksum();
-
-                                            /* Write the rolled back account state. */
-                                            if(!LLD::Register->WriteState(hashRewardAccount, account, nFlags))
-                                                debug::log(0, FUNCTION, "OP::COINBASE: failed to rollback auto-credited balance");
-                                            else
-                                                debug::log(0, FUNCTION, "OP::COINBASE: rolled back ", nAmount, 
-                                                          " NXS from ", hashRewardAccount.SubString());
-                                        }
-                                        else
-                                        {
-                                            debug::log(0, FUNCTION, "OP::COINBASE: balance underflow during rollback, skipping balance adjustment");
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    /* Account was deleted - skip balance adjustment but continue with proof erasure. */
-                                    debug::log(1, FUNCTION, "OP::COINBASE: reward account no longer exists, skipping balance rollback");
-                                }
-
-                                /* Always erase the proof to maintain consistency, even if balance rollback was skipped. */
-                                if(!LLD::Ledger->EraseProof(hashGenesis, contract.Hash(), 0, nFlags))
-                                    return debug::error(FUNCTION, "OP::COINBASE: failed to erase auto-credit proof");
-                            }
-
-                            /* Erase the event (legacy event-only mode). */
                             if(!LLD::Ledger->EraseEvent(hashGenesis))
                                 return false;
                         }

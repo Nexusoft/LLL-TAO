@@ -311,7 +311,7 @@ namespace TAO
                     case TAO::Operation::OP::COINBASE:
                     {
                         /* Seek to end. */
-                        contract.Seek(TAO::Operation::Coinbase::HasAutoCreditAccount(contract) ? 80 : 48);
+                        contract.Seek(48);
 
                         break;
                     }

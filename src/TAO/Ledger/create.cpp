@@ -97,13 +97,11 @@ namespace TAO::Ledger
     {
         TAO::Ledger::TritiumBlock block;
         uint256_t                 hashDynamicGenesis;
-        uint256_t                 hashRewardAccount;
         uint64_t                  nExtraNonce;
 
         MiningTemplateCacheEntry()
         : block()
         , hashDynamicGenesis(0)
-        , hashRewardAccount(0)
         , nExtraNonce(0)
         {
         }
@@ -506,7 +504,7 @@ namespace TAO::Ledger
     /* Create a new block object from the chain. */
     bool CreateBlock(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& pin,
         const uint32_t nChannel, TAO::Ledger::TritiumBlock &rBlockRet, const uint64_t nExtraNonce, Legacy::Coinbase *pCoinbaseRecipients,
-        const uint256_t& hashDynamicGenesis, const uint256_t& hashRewardAccount)
+        const uint256_t& hashDynamicGenesis)
     {
         /* Cache key: always the signing wallet's genesis (node operator sigchain).
          * hashDynamicGenesis (miner reward address) flows separately to producer
@@ -538,8 +536,6 @@ namespace TAO::Ledger
             tCachedEntry.block;
         const uint256_t hashCachedDynamicGenesis =
             tCachedEntry.hashDynamicGenesis;
-        const uint256_t hashCachedRewardAccount =
-            tCachedEntry.hashRewardAccount;
         const uint64_t nCachedExtraNonce =
             tCachedEntry.nExtraNonce;
 
@@ -649,7 +645,6 @@ namespace TAO::Ledger
             const bool fProducerFinalizationRequired =
                 CachedMiningTemplateRequiresProducerFinalization(
                     hashCachedDynamicGenesis, hashDynamicGenesis,
-                    hashCachedRewardAccount, hashRewardAccount,
                     nCachedExtraNonce, nExtraNonce);
             const std::string strDynamicReward = DynamicRewardLabel(hashDynamicGenesis);
 
@@ -673,7 +668,7 @@ namespace TAO::Ledger
                  * to the remote miner, not the node operator. */
                 debug::log(2, FUNCTION, "Rebuilding stale producer: reward address = ",
                     strDynamicReward);
-                if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients, hashDynamicGenesis, hashRewardAccount))
+                if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients, hashDynamicGenesis))
                     return debug::error(FUNCTION, "Failed to create producer transactions.");
             }
 
@@ -714,7 +709,6 @@ namespace TAO::Ledger
                 MiningTemplateCacheEntry tNewEntry;
                 tNewEntry.block              = rBlockRet;
                 tNewEntry.hashDynamicGenesis = hashDynamicGenesis;
-                tNewEntry.hashRewardAccount  = hashRewardAccount;
                 tNewEntry.nExtraNonce        = nExtraNonce;
                 tBlockCache[nChannel].store(tNewEntry);
             }
@@ -731,7 +725,7 @@ namespace TAO::Ledger
             const std::string strDynamicReward = DynamicRewardLabel(hashDynamicGenesis);
             debug::log(2, FUNCTION, "Creating fresh producer: reward address = ",
                 strDynamicReward);
-            if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients, hashDynamicGenesis, hashRewardAccount))
+            if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients, hashDynamicGenesis))
                 return debug::error(FUNCTION, "Failed to create producer transactions.");
 
             /* Update the producer timestamp */
@@ -755,7 +749,6 @@ namespace TAO::Ledger
                 MiningTemplateCacheEntry tNewEntry;
                 tNewEntry.block              = rBlockRet;
                 tNewEntry.hashDynamicGenesis = hashDynamicGenesis;
-                tNewEntry.hashRewardAccount  = hashRewardAccount;
                 tNewEntry.nExtraNonce        = nExtraNonce;
                 tBlockCache[nChannel].store(tNewEntry);
             }
@@ -797,8 +790,7 @@ namespace TAO::Ledger
                            const uint32_t nChannel,
                            const uint64_t nExtraNonce,
                            Legacy::Coinbase *pCoinbaseRecipients,
-                           const uint256_t& hashDynamicGenesis,
-                           const uint256_t& hashRewardAccount)
+                           const uint256_t& hashDynamicGenesis)
     {
         /* Defensively reset the producer to a default-constructed state.
          *
@@ -863,12 +855,6 @@ namespace TAO::Ledger
 
             /* Add the spendable genesis - using dynamic routing if available */
             rProducer[0] << hashRewardRecipient;
-
-            /* Optional direct-credit account resolved from MINER_SET_REWARD's
-             * account-name extension. The genesis remains first for event
-             * notifications and legacy claim semantics. */
-            if(hashRewardAccount != 0)
-                rProducer[0] << hashRewardAccount;
 
             /* The total to be credited. */
             uint64_t nCredit = nBlockReward;
