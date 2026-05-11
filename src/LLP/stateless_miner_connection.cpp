@@ -568,7 +568,8 @@ namespace LLP
     }
 
 
-    void StatelessMinerConnection::ScheduleTemplateWork(TemplateWorkReason eReason)
+    void StatelessMinerConnection::ScheduleTemplateWork(TemplateWorkReason eReason,
+                                                        const uint1024_t& hashExpectedTip)
     {
         {
             std::lock_guard<std::mutex> lock(m_template_work_mutex);
@@ -577,6 +578,8 @@ namespace LLP
 
             m_template_work_pending = true;
             m_template_work_reason = eReason;
+            m_template_work_expected_tip = hashExpectedTip;
+            m_template_work_scheduled_at = std::chrono::steady_clock::now();
         }
 
         m_template_work_cv.notify_one();
@@ -601,15 +604,23 @@ namespace LLP
                     break;
 
                 eReason = m_template_work_reason;
+                const uint1024_t hashExpectedTip = m_template_work_expected_tip;
+                const std::chrono::steady_clock::time_point tScheduledAt =
+                    m_template_work_scheduled_at;
                 m_template_work_pending = false;
-            }
 
-            QueueCurrentBlockDataTemplate(eReason);
+                lock.unlock();
+                QueueCurrentBlockDataTemplate(eReason, hashExpectedTip, tScheduledAt);
+                continue;
+            }
         }
     }
 
 
-    bool StatelessMinerConnection::QueueCurrentBlockDataTemplate(TemplateWorkReason eReason)
+    bool StatelessMinerConnection::QueueCurrentBlockDataTemplate(
+        TemplateWorkReason eReason,
+        const uint1024_t& hashExpectedTip,
+        const std::chrono::steady_clock::time_point& tScheduledAt)
     {
         static constexpr std::size_t TEMPLATE_METADATA_SIZE = 12;
 
@@ -627,17 +638,39 @@ namespace LLP
         }
 
         const char* pReason = TemplateWorkReasonString(eReason);
+        const auto tStart = std::chrono::steady_clock::now();
+        const int64_t nQueuedMs = (tScheduledAt == std::chrono::steady_clock::time_point{})
+            ? 0
+            : std::chrono::duration_cast<std::chrono::milliseconds>(tStart - tScheduledAt).count();
 
-        TAO::Ledger::Block* pBlock = new_block();
+        TAO::Ledger::Block* pBlock = new_block(hashExpectedTip);
+        const auto tBlockReady = std::chrono::steady_clock::now();
+        const int64_t nCreateMs =
+            std::chrono::duration_cast<std::chrono::milliseconds>(tBlockReady - tStart).count();
         if(!pBlock)
         {
             debug::log(2, FUNCTION, "Template worker skipped ", pReason,
-                " for ", GetAddress().ToStringIP(), " — new_block() returned nullptr");
+                " for ", GetAddress().ToStringIP(), " — new_block() returned nullptr",
+                " queued_ms=", nQueuedMs, " create_ms=", nCreateMs);
+            return false;
+        }
+
+        if(hashExpectedTip != uint1024_t(0) && pBlock->hashPrevBlock != hashExpectedTip)
+        {
+            debug::log(1, FUNCTION, "Template worker dropped stale auto-send ", pReason,
+                " for ", GetAddress().ToStringIP(),
+                " expected_tip=", hashExpectedTip.SubString(),
+                " template_prev=", pBlock->hashPrevBlock.SubString(),
+                " height=", pBlock->nHeight,
+                " queued_ms=", nQueuedMs, " create_ms=", nCreateMs);
             return false;
         }
 
         const SharedTemplatePayloadResult sharedTemplate =
             BuildSharedTemplatePayload(pBlock, pReason);
+        const auto tPayloadReady = std::chrono::steady_clock::now();
+        const int64_t nSerializeMs =
+            std::chrono::duration_cast<std::chrono::milliseconds>(tPayloadReady - tBlockReady).count();
         if(!sharedTemplate.fSuccess)
             return false;
 
@@ -667,6 +700,11 @@ namespace LLP
         blockPacket.LENGTH = static_cast<uint32_t>(blockPacket.DATA.size());
 
         QueuePacket(blockPacket);
+        const auto tQueued = std::chrono::steady_clock::now();
+        const int64_t nQueuePacketMs =
+            std::chrono::duration_cast<std::chrono::milliseconds>(tQueued - tPayloadReady).count();
+        const int64_t nTotalMs =
+            std::chrono::duration_cast<std::chrono::milliseconds>(tQueued - tStart).count();
 
         {
             LOCK(MUTEX);
@@ -693,7 +731,12 @@ namespace LLP
 
         debug::log(2, FUNCTION, "Template worker queued BLOCK_DATA source=",
             pReason, " bytes=", blockPacket.DATA.size(), " channel=", pBlock->nChannel,
-            " height=", pBlock->nHeight, " to ", GetAddress().ToStringIP());
+            " height=", pBlock->nHeight, " to ", GetAddress().ToStringIP(),
+            " queued_ms=", nQueuedMs,
+            " create_ms=", nCreateMs,
+            " serialize_ms=", nSerializeMs,
+            " queue_packet_ms=", nQueuePacketMs,
+            " total_worker_ms=", nTotalMs);
 
         return true;
     }
@@ -3054,7 +3097,7 @@ namespace LLP
 
 
     /** Create a new block */
-    TAO::Ledger::Block* StatelessMinerConnection::new_block()
+    TAO::Ledger::Block* StatelessMinerConnection::new_block(const uint1024_t& hashExpectedTip)
     {
         /* Snapshot context fields under MUTEX so that new_block() never races
          * with ProcessPacket() writers when called from the notification thread. */
@@ -3152,6 +3195,17 @@ namespace LLP
                                            " current_best=", nCurrentBest,
                                            " drift=", (nCurrentBest - nTemplateBest),
                                            " — discarding stale cached template");
+                                /* Fall through to create a fresh template below */
+                            }
+                            else if(hashExpectedTip != uint1024_t(0)
+                                 && m_last_created_template->hashPrevBlock != hashExpectedTip)
+                            {
+                                debug::log(1, FUNCTION,
+                                           "Cached template tip mismatch for auto-send: expected_tip=",
+                                           hashExpectedTip.SubString(),
+                                           " cached_prev=",
+                                           m_last_created_template->hashPrevBlock.SubString(),
+                                           " — creating fresh template");
                                 /* Fall through to create a fresh template below */
                             }
                             else
@@ -3389,6 +3443,17 @@ namespace LLP
 
             if(!pBlock) {
                 debug::log(2, FUNCTION, "CreateBlockForStatelessMining returned nullptr");
+                return nullptr;
+            }
+
+            if(hashExpectedTip != uint1024_t(0) && pBlock->hashPrevBlock != hashExpectedTip)
+            {
+                debug::log(1, FUNCTION,
+                           "Discarding freshly-created auto-send template with stale tip",
+                           " expected_tip=", hashExpectedTip.SubString(),
+                           " template_prev=", pBlock->hashPrevBlock.SubString(),
+                           " height=", pBlock->nHeight);
+                delete pBlock;
                 return nullptr;
             }
 
@@ -4627,16 +4692,16 @@ namespace LLP
         /* Work Item 6: Attach block template to PUSH notification.
          * After sending the notification, queue an async BLOCK_DATA build/send
          * so the miner gets fresh work without blocking this notification path. */
-        TryAttachBlockTemplate();
+        TryAttachBlockTemplate(hashBestChain);
     }
 
 
     /* TryAttachBlockTemplate - Best-effort template tag-along with PUSH notification.
      * Schedules a coalesced background BLOCK_DATA build/send so the caller only
      * enqueues work; the async worker performs template creation off the hot path. */
-    void StatelessMinerConnection::TryAttachBlockTemplate()
+    void StatelessMinerConnection::TryAttachBlockTemplate(const uint1024_t& hashExpectedTip)
     {
-        ScheduleTemplateWork(TemplateWorkReason::PUSH_NOTIFICATION);
+        ScheduleTemplateWork(TemplateWorkReason::PUSH_NOTIFICATION, hashExpectedTip);
     }
 
 
