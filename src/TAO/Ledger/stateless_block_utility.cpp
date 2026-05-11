@@ -246,15 +246,6 @@ namespace TAO::Ledger
     }
 
 
-    TritiumBlock* CreateBlockForStatelessMining(
-        const uint32_t nChannel,
-        const uint64_t nExtraNonce,
-        const uint256_t& hashRewardAddress)
-    {
-        return CreateBlockForStatelessMining(nChannel, nExtraNonce, hashRewardAddress, uint256_t(0));
-    }
-
-
     /* Canonical validation entrypoint for mined Tritium blocks. */
     BlockValidationResult ValidateMinedBlock(const TAO::Ledger::TritiumBlock& block)
     {

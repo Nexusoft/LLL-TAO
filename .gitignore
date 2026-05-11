@@ -19,3 +19,4 @@ nexus
 .project
 /.settings/
 _codeql_detected_source_root
+build.err

@@ -775,13 +775,6 @@ namespace TAO::Ledger
     }
 
 
-    bool CreateBlock(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& pin,
-        const uint32_t nChannel, TAO::Ledger::TritiumBlock &rBlockRet, const uint64_t nExtraNonce, Legacy::Coinbase *pCoinbaseRecipients,
-        const uint256_t& hashDynamicGenesis)
-    {
-        return CreateBlock(user, pin, nChannel, rBlockRet, nExtraNonce, pCoinbaseRecipients, hashDynamicGenesis, uint256_t(0));
-    }
-
     /* Create a producer transaction object from signature chain. */
     bool CreateProducer(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& pin,
                            TAO::Ledger::Transaction &rProducer,
@@ -995,20 +988,6 @@ namespace TAO::Ledger
         }
 
         return true;
-    }
-
-
-    bool CreateProducer(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& pin,
-                           TAO::Ledger::Transaction &rProducer,
-                           const TAO::Ledger::BlockState& tStateBest,
-                           const uint32_t nBlockVersion,
-                           const uint32_t nChannel,
-                           const uint64_t nExtraNonce,
-                           Legacy::Coinbase *pCoinbaseRecipients,
-                           const uint256_t& hashDynamicGenesis)
-    {
-        return CreateProducer(user, pin, rProducer, tStateBest, nBlockVersion, nChannel,
-                              nExtraNonce, pCoinbaseRecipients, hashDynamicGenesis, uint256_t(0));
     }
 
 
