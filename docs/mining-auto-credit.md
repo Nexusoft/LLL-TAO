@@ -1,8 +1,29 @@
-# Mining Reward Auto-Credit (Both Lanes)
+# Mining Reward Auto-Credit (Wire Format Reference — Disabled)
 
-This document describes the optional **direct auto-credit** path for mining
-rewards used by the Stateless mining lane (port 9323) and the Legacy mining
-lane (port 8323), and the shared on-the-wire layout that both lanes use.
+> **STATUS — DISABLED.** Direct auto-credit inside `Coinbase::Commit()` is
+> currently **disabled**. Mining rewards are delivered exclusively as
+> coinbase **events** that the recipient sigchain wallet claims through the
+> standard credit/claim flow once the 500-block maturity window elapses.
+> No direct `WriteState` balance writes are performed at block-accept time.
+>
+> The `OP::COINBASE` operation is **always 49 bytes** on the wire (legacy
+> layout: `OP(1) + genesis(32) + amount(8) + extra_nonce(8)`). The 81-byte
+> extended layout described in earlier drafts has been removed.
+>
+> The `MINER_SET_REWARD` packet still **accepts** both the 32-byte legacy
+> payload and the `33+N`-byte extended payload (recipient genesis +
+> account-name extension) via `RewardBindingPayload::ParsePayload`. The
+> account-name from the extended payload is parsed and logged for
+> diagnostics, but the node **does not** resolve it to a register or write
+> it into the coinbase contract.
+>
+> This document is kept as the wire-format reference for the parser and the
+> historical design rationale.
+
+This document originally described the optional **direct auto-credit** path
+for mining rewards used by the Stateless mining lane (port 9323) and the
+Legacy mining lane (port 8323), and the shared on-the-wire layout that both
+lanes use.
 
 The pre-existing event-only behaviour is unchanged: legacy miners that send a
 bare 32-byte reward payload continue to receive their reward as a coinbase
@@ -10,7 +31,7 @@ event that they must claim via the standard credit/claim flow.
 
 ---
 
-## 1. Goal
+## 1. Goal (historical)
 
 Allow a miner to opt-in to **one-shot direct credit** of the block reward into
 a specific account register (e.g. its `:default` NXS account) instead of

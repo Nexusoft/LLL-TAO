@@ -85,34 +85,6 @@ namespace LLP
                 == (sizeof(SESSION_CONSISTENCY_RESULT_STRINGS) / sizeof(SESSION_CONSISTENCY_RESULT_STRINGS[0])),
             "SessionConsistencyResult string table must stay aligned with enum ordering");
 
-        bool ResolveRewardAccount(const uint256_t& hashGenesis, const std::string& strAccountName, uint256_t& hashAccount)
-        {
-            TAO::Register::Object name;
-            if(!TAO::Register::GetNameRegister(hashGenesis, strAccountName, name))
-                return debug::error(FUNCTION, "MINER_SET_REWARD: cannot resolve reward account name ",
-                                    strAccountName, " for genesis ", hashGenesis.SubString());
-
-            if(!name.Parse() || !name.Check("address", TAO::Register::TYPES::UINT256_T, true))
-                return debug::error(FUNCTION, "MINER_SET_REWARD: reward account name ",
-                                    strAccountName, " is not a valid name object");
-
-            TAO::Register::Address account = name.get<uint256_t>("address");
-            if(!account.IsAccount())
-                return debug::error(FUNCTION, "MINER_SET_REWARD: reward name ", strAccountName,
-                                    " resolves to non-account register ", account.SubString());
-
-            TAO::Register::Object accountState;
-            if(!LLD::Register->ReadState(account, accountState, TAO::Ledger::FLAGS::LOOKUP))
-                return debug::error(FUNCTION, "MINER_SET_REWARD: reward account ",
-                                    account.SubString(), " does not exist on chain");
-
-            if(!accountState.Parse() || accountState.Standard() != TAO::Register::OBJECTS::ACCOUNT)
-                return debug::error(FUNCTION, "MINER_SET_REWARD: reward account ",
-                                    account.SubString(), " is not a valid account object");
-
-            hashAccount = account;
-            return true;
-        }
     }
 
     /* AAD (Additional Authenticated Data) strings for ChaCha20-Poly1305 AEAD
@@ -188,7 +160,6 @@ namespace LLP
     , nKeepaliveSent(0)
     , nLastKeepaliveTime(0)
     , hashRewardAddress(0)
-    , hashRewardAccount(0)
     , fRewardBound(false)
     , vChaChaKey()
     , fEncryptionReady(false)
@@ -237,7 +208,6 @@ namespace LLP
     , nKeepaliveSent(0)
     , nLastKeepaliveTime(0)
     , hashRewardAddress(0)
-    , hashRewardAccount(0)
     , fRewardBound(false)
     , vChaChaKey()
     , fEncryptionReady(false)
@@ -420,14 +390,8 @@ namespace LLP
 
     MiningContext MiningContext::WithRewardAddress(const uint256_t& hashReward_) const
     {
-        return WithRewardAddress(hashReward_, uint256_t(0));
-    }
-
-    MiningContext MiningContext::WithRewardAddress(const uint256_t& hashReward_, const uint256_t& hashAccount_) const
-    {
         MiningContext c = *this;
         c.hashRewardAddress = hashReward_;
-        c.hashRewardAccount = hashAccount_;
         c.fRewardBound = true;
         return c;
     }
@@ -2099,8 +2063,6 @@ namespace LLP
             return ProcessResult::Success(context, errorResponse);
         }
 
-        uint256_t hashRewardAccount = 0;
-
         debug::log(0, FUNCTION, "Received decoded reward register/account hash: ", hashReward.GetHex());
 
         const bool fExistingRewardPresent = context.fRewardBound && context.hashRewardAddress != 0;
@@ -2112,7 +2074,9 @@ namespace LLP
         debug::log(0, FUNCTION, "- miner reward string: NOT AVAILABLE (packet carries encrypted 32-byte hash only)");
         debug::log(0, FUNCTION, "- decoded reward register/account hash: ", hashReward.GetHex());
         debug::log(0, FUNCTION, "- requested reward account name: ",
-                   strRewardAccountName.empty() ? "NOT PROVIDED" : strRewardAccountName);
+                   strRewardAccountName.empty()
+                       ? std::string("NOT PROVIDED")
+                       : strRewardAccountName + " (parsed only; direct auto-credit disabled)");
         debug::log(0, FUNCTION, "- bound reward hash from current session: ", FullHexOrUnset(context.hashRewardAddress));
         debug::log(0, FUNCTION, "- bound reward source: ", context.RewardBindingSource());
         debug::log(0, FUNCTION, "- session genesis used for ChaCha20 KDF: ", context.GenesisHex());
@@ -2157,20 +2121,15 @@ namespace LLP
             return ProcessResult::Success(context, errorResponse);
         }
 
-        if(!strRewardAccountName.empty() && !ResolveRewardAccount(hashReward, strRewardAccountName, hashRewardAccount))
+        if(!strRewardAccountName.empty())
         {
-            std::vector<uint8_t> vErrorMsg = {0x00};
-            std::vector<uint8_t> vEncryptedError = EncryptRewardResult(vErrorMsg, vChaChaKey);
-
-            StatelessPacket errorResponse(REWARD_RESULT);
-            errorResponse.DATA = vEncryptedError;
-            errorResponse.LENGTH = static_cast<uint32_t>(vEncryptedError.size());
-
-            return ProcessResult::Success(context, errorResponse);
+            debug::log(0, FUNCTION, "MINER_SET_REWARD: ignoring account-name extension '",
+                       strRewardAccountName, "' — direct auto-credit is disabled, "
+                       "reward will be delivered as a coinbase event.");
         }
 
         /* Bind reward address to context using dedicated field */
-        MiningContext newContext = context.WithRewardAddress(hashReward, hashRewardAccount);
+        MiningContext newContext = context.WithRewardAddress(hashReward);
 
         /* The MINER_SET_REWARD packet already proved the live session can decrypt with the
          * session-derived ChaCha20 key. Persist that same key into the authoritative
@@ -2183,11 +2142,10 @@ namespace LLP
          * avoiding TOCTOU race where NotifyNewRound could overwrite these fields. */
         {
             uint256_t hashRewardCopy = hashReward;
-            uint256_t hashRewardAccountCopy = hashRewardAccount;
             std::vector<uint8_t> vKeyCopy = vChaChaKey;
             StatelessMinerManager::Get().TransformMiner(context.strAddress,
-                [hashRewardCopy, hashRewardAccountCopy, vKeyCopy](const MiningContext& current) {
-                    MiningContext updated = current.WithRewardAddress(hashRewardCopy, hashRewardAccountCopy)
+                [hashRewardCopy, vKeyCopy](const MiningContext& current) {
+                    MiningContext updated = current.WithRewardAddress(hashRewardCopy)
                                                    .WithTimestamp(runtime::unifiedtimestamp());
                     if(!vKeyCopy.empty())
                         updated = updated.WithChaChaKey(vKeyCopy);
@@ -2200,7 +2158,6 @@ namespace LLP
         debug::log(1, FUNCTION, "Session updated:");
         debug::log(1, FUNCTION, "  Session genesis: ", context.GenesisHex());
         debug::log(1, FUNCTION, "  Bound reward hash: ", hashReward.GetHex());
-        debug::log(1, FUNCTION, "  Bound reward account: ", FullHexOrUnset(hashRewardAccount));
         debug::log(1, FUNCTION, "  Bound reward source: MINER_SET_REWARD decrypted payload");
         debug::log(1, FUNCTION, "  Reward hash == prior bound reward hash: ",
                    fExistingRewardPresent ? YesNo(fExistingRewardMatches) : "NOT PREVIOUSLY BOUND");

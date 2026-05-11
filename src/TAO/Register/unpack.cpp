@@ -303,8 +303,6 @@ namespace TAO::Register
                 {
                     /* Seek to coinbase/coinstake. */
                     rContract.Seek(32);
-                    if(TAO::Operation::Coinbase::HasAutoCreditAccount(rContract))
-                        rContract.Seek(32);
                     rContract >> nAmount;
 
                     return true;

@@ -109,14 +109,6 @@ namespace LLP
             }
         }
 
-
-        /* Check if auto-credit feature is enabled. */
-        bool IsAutoCreditEnabled()
-        {
-            /* Auto-credit is enabled by default, disabled with -noautocredit flag. */
-            return !config::GetBoolArg("-noautocredit", false);
-        }
-
     } // namespace GenesisConstants
 
 } // namespace LLP

@@ -153,7 +153,7 @@ namespace LLP
     , vChaChaKey()
     , fEncryptionReady(false)
     , hashRewardAddress(0)
-    , hashRewardAccount(0)
+
     , fRewardBound(false)
     , fSubscribedToNotifications(false)
     , nSubscribedChannel(0)
@@ -182,7 +182,7 @@ namespace LLP
     , vChaChaKey()
     , fEncryptionReady(false)
     , hashRewardAddress(0)
-    , hashRewardAccount(0)
+
     , fRewardBound(false)
     , fSubscribedToNotifications(false)
     , nSubscribedChannel(0)
@@ -211,7 +211,7 @@ namespace LLP
     , vChaChaKey()
     , fEncryptionReady(false)
     , hashRewardAddress(0)
-    , hashRewardAccount(0)
+
     , fRewardBound(false)
     , fSubscribedToNotifications(false)
     , nSubscribedChannel(0)
@@ -1073,9 +1073,9 @@ namespace LLP
                 if(!vMinerPubKey.empty())
                     context = context.WithPubKey(vMinerPubKey);
 
-                /* Add reward address if bound (with optional resolved account) */
+                /* Add reward address if bound */
                 if(fRewardBound)
-                    context = context.WithRewardAddress(hashRewardAddress, hashRewardAccount);
+                    context = context.WithRewardAddress(hashRewardAddress);
 
                 /* Add ChaCha20 key if encryption is ready
                  * CRITICAL: This ensures the context sent to StatelessMiner includes
@@ -1144,11 +1144,10 @@ namespace LLP
                     if(!result.context.vMinerPubKey.empty())
                         vMinerPubKey = result.context.vMinerPubKey;
 
-                    /* Update reward address if bound (and capture optional auto-credit account) */
+                    /* Update reward address if bound */
                     if(result.context.fRewardBound)
                     {
                         hashRewardAddress = result.context.hashRewardAddress;
-                        hashRewardAccount = result.context.hashRewardAccount;
                         fRewardBound = true;
                     }
 
@@ -1688,7 +1687,7 @@ namespace LLP
             if(!vAuthNonce.empty())
                 local = local.WithNonce(vAuthNonce);
             if(fRewardBound)
-                local = local.WithRewardAddress(hashRewardAddress, hashRewardAccount);
+                local = local.WithRewardAddress(hashRewardAddress);
             if(fEncryptionReady && !vChaChaKey.empty())
                 local = local.WithChaChaKey(vChaChaKey);
 
@@ -2057,15 +2056,12 @@ namespace LLP
          * bit-pattern filter.  On a tip change the first attempt uses the freshly
          * allocated nonce; if prime-mod fails, we borrow additional nonces from the
          * global counter and update the cache so the next poll reuses the
-         * prime-mod-satisfying nonce without rebuilding the producer.
-         * Pass through optional auto-credit account so the producer routes the
-         * coinbase contract to it directly when MINER_SET_REWARD opted in. */
+         * prime-mod-satisfying nonce without rebuilding the producer. */
         while(true) {
             pBlock = TAO::Ledger::CreateBlockForStatelessMining(
                 nChannel.load(),
                 extraNonce,
-                hashReward,
-                (fRewardBound ? hashRewardAccount : uint256_t(0))
+                hashReward
             );
 
             if(!pBlock) return nullptr;

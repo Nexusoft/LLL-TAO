@@ -46,26 +46,12 @@ namespace TAO
              *  @param[in] nAmount The coinbase reward amount.
              *  @param[in] hashTx The transaction that is calling coinbase
              *  @param[in] nFlags Flags to the LLD instance.
-             *  @param[in] hashAccount Optional account register to credit directly.
              *
              *  @return true if successful.
              *
              **/
             bool Commit(const uint256_t& hashGenesis, const uint64_t nAmount, const uint512_t& hashTx,
-                        const uint8_t nFlags, const uint256_t& hashAccount = uint256_t(0));
-
-
-            /** HasAutoCreditAccount
-             *
-             *  Check whether a coinbase operation uses the extended payload:
-             *  OP, recipient genesis, recipient account, amount, extra nonce.
-             *
-             *  @param[in] contract The contract to inspect.
-             *
-             *  @return true if the operation contains a recipient account.
-             *
-             **/
-            bool HasAutoCreditAccount(const Contract& contract);
+                        const uint8_t nFlags);
 
 
             /** Verify
