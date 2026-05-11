@@ -128,6 +128,13 @@ namespace LLP
 
             return "unknown";
         }
+
+        bool TemplateTipMismatch(const TAO::Ledger::Block* pBlock, const uint1024_t& hashExpectedTip)
+        {
+            return hashExpectedTip != uint1024_t(0)
+                && pBlock
+                && pBlock->hashPrevBlock != hashExpectedTip;
+        }
     }
 
     namespace
@@ -591,6 +598,8 @@ namespace LLP
         while(true)
         {
             TemplateWorkReason eReason = TemplateWorkReason::PUSH_NOTIFICATION;
+            uint1024_t hashExpectedTip;
+            std::chrono::steady_clock::time_point tScheduledAt;
 
             {
                 std::unique_lock<std::mutex> lock(m_template_work_mutex);
@@ -604,15 +613,12 @@ namespace LLP
                     break;
 
                 eReason = m_template_work_reason;
-                const uint1024_t hashExpectedTip = m_template_work_expected_tip;
-                const std::chrono::steady_clock::time_point tScheduledAt =
-                    m_template_work_scheduled_at;
+                hashExpectedTip = m_template_work_expected_tip;
+                tScheduledAt = m_template_work_scheduled_at;
                 m_template_work_pending = false;
-
-                lock.unlock();
-                QueueCurrentBlockDataTemplate(eReason, hashExpectedTip, tScheduledAt);
-                continue;
             }
+
+            QueueCurrentBlockDataTemplate(eReason, hashExpectedTip, tScheduledAt);
         }
     }
 
@@ -639,9 +645,8 @@ namespace LLP
 
         const char* pReason = TemplateWorkReasonString(eReason);
         const auto tStart = std::chrono::steady_clock::now();
-        const int64_t nQueuedMs = (tScheduledAt == std::chrono::steady_clock::time_point{})
-            ? 0
-            : std::chrono::duration_cast<std::chrono::milliseconds>(tStart - tScheduledAt).count();
+        const int64_t nQueuedMs =
+            std::chrono::duration_cast<std::chrono::milliseconds>(tStart - tScheduledAt).count();
 
         TAO::Ledger::Block* pBlock = new_block(hashExpectedTip);
         const auto tBlockReady = std::chrono::steady_clock::now();
@@ -655,7 +660,7 @@ namespace LLP
             return false;
         }
 
-        if(hashExpectedTip != uint1024_t(0) && pBlock->hashPrevBlock != hashExpectedTip)
+        if(TemplateTipMismatch(pBlock, hashExpectedTip))
         {
             debug::log(1, FUNCTION, "Template worker dropped stale auto-send ", pReason,
                 " for ", GetAddress().ToStringIP(),
@@ -3197,8 +3202,7 @@ namespace LLP
                                            " — discarding stale cached template");
                                 /* Fall through to create a fresh template below */
                             }
-                            else if(hashExpectedTip != uint1024_t(0)
-                                 && m_last_created_template->hashPrevBlock != hashExpectedTip)
+                            else if(TemplateTipMismatch(m_last_created_template, hashExpectedTip))
                             {
                                 debug::log(1, FUNCTION,
                                            "Cached template tip mismatch for auto-send: expected_tip=",
@@ -3446,7 +3450,7 @@ namespace LLP
                 return nullptr;
             }
 
-            if(hashExpectedTip != uint1024_t(0) && pBlock->hashPrevBlock != hashExpectedTip)
+            if(TemplateTipMismatch(pBlock, hashExpectedTip))
             {
                 debug::log(1, FUNCTION,
                            "Discarding freshly-created auto-send template with stale tip",
