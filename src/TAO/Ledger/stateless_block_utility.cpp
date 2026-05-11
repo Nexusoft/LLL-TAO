@@ -40,6 +40,7 @@ ________________________________________________________________________________
 #include <Util/include/convert.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
+#include <chrono>
 #include <sstream>
 
 /* Global TAO namespace. */
@@ -201,6 +202,7 @@ namespace TAO::Ledger
             }
             
             TritiumBlock* pBlock = new TritiumBlock();
+            const auto tCreateStart = std::chrono::steady_clock::now();
             
             // CreateBlock() handles wallet signing per consensus requirements
             bool success = CreateBlock(
@@ -212,6 +214,12 @@ namespace TAO::Ledger
                 nullptr,           // No coinbase recipients
                 hashRewardAddress  // Route reward events to miner's genesis
             );
+            const int64_t nCreateMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - tCreateStart).count();
+            debug::log(1, FUNCTION, "CreateBlockForStatelessMining CreateBlock duration_ms=",
+                       nCreateMs, " channel=", nChannel,
+                       " extra_nonce=", nExtraNonce,
+                       " reward=", hashRewardAddress.SubString());
             
             if (!success) {
                 delete pBlock;

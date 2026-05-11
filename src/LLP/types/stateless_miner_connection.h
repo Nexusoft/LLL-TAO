@@ -146,6 +146,9 @@ namespace LLP
         bool m_template_worker_running{false};
         bool m_template_work_pending{false};
         TemplateWorkReason m_template_work_reason{TemplateWorkReason::PUSH_NOTIFICATION};
+        uint1024_t m_template_work_expected_tip;
+        bool m_template_work_validate_expected_tip{false};
+        std::chrono::steady_clock::time_point m_template_work_scheduled_at;
 
         /** Timestamp of the last template push (SendStatelessTemplate / SendChannelNotification).
          *
@@ -455,7 +458,7 @@ namespace LLP
          *  already sent and the miner will fall back to GET_BLOCK or GET_ROUND.
          *
          **/
-        void TryAttachBlockTemplate();
+        void TryAttachBlockTemplate(const uint1024_t& hashExpectedTip);
 
         /** SendNodeShutdown
          *
@@ -520,7 +523,8 @@ namespace LLP
          *  @return Pointer to newly created block, or nullptr on failure.
          *
          **/
-        TAO::Ledger::Block* new_block();
+        TAO::Ledger::Block* new_block(const uint1024_t& hashExpectedTip = uint1024_t(0),
+                                      bool fValidateExpectedTip = false);
 
         /** find_block
          *
@@ -586,13 +590,18 @@ namespace LLP
         void StopTemplateWorker();
 
         /** Queue one coalesced BLOCK_DATA build/send request. */
-        void ScheduleTemplateWork(TemplateWorkReason eReason);
+        void ScheduleTemplateWork(TemplateWorkReason eReason,
+                                  const uint1024_t& hashExpectedTip = uint1024_t(0),
+                                  bool fValidateExpectedTip = false);
 
         /** Main loop for the async BLOCK_DATA worker. */
         void TemplateWorkerLoop();
 
         /** Build and queue the latest BLOCK_DATA payload from the worker thread. */
-        bool QueueCurrentBlockDataTemplate(TemplateWorkReason eReason);
+        bool QueueCurrentBlockDataTemplate(TemplateWorkReason eReason,
+                                           const uint1024_t& hashExpectedTip,
+                                           bool fValidateExpectedTip,
+                                           const std::chrono::steady_clock::time_point& tScheduledAt);
 
         /** GetChannelManager (PR #136: Fork-Aware Channel State Management)
          *

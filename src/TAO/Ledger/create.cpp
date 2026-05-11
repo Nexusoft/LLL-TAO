@@ -51,6 +51,7 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 
 #include <atomic>
+#include <chrono>
 
 /* Global TAO namespace. */
 namespace TAO::Ledger
@@ -668,8 +669,16 @@ namespace TAO::Ledger
                  * to the remote miner, not the node operator. */
                 debug::log(2, FUNCTION, "Rebuilding stale producer: reward address = ",
                     strDynamicReward);
+                const auto tProducerStart = std::chrono::steady_clock::now();
                 if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients, hashDynamicGenesis))
                     return debug::error(FUNCTION, "Failed to create producer transactions.");
+                const int64_t nProducerMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - tProducerStart).count();
+                debug::log(1, FUNCTION, "CreateProducer cache-finalization duration_ms=", nProducerMs,
+                           " channel=", nChannel,
+                           " height=", tStateBest.nHeight + 1,
+                           " reward=", strDynamicReward,
+                           " extra_nonce=", nExtraNonce);
             }
 
             /* Update the producer timestamp */
@@ -725,8 +734,16 @@ namespace TAO::Ledger
             const std::string strDynamicReward = DynamicRewardLabel(hashDynamicGenesis);
             debug::log(2, FUNCTION, "Creating fresh producer: reward address = ",
                 strDynamicReward);
+            const auto tProducerStart = std::chrono::steady_clock::now();
             if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients, hashDynamicGenesis))
                 return debug::error(FUNCTION, "Failed to create producer transactions.");
+            const int64_t nProducerMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - tProducerStart).count();
+            debug::log(1, FUNCTION, "CreateProducer fresh-template duration_ms=", nProducerMs,
+                       " channel=", nChannel,
+                       " height=", tStateBest.nHeight + 1,
+                       " reward=", strDynamicReward,
+                       " extra_nonce=", nExtraNonce);
 
             /* Update the producer timestamp */
             UpdateProducerTimestamp(rBlockRet.producer);
