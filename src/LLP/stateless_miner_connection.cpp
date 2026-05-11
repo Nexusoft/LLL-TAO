@@ -3595,6 +3595,14 @@ namespace LLP
         }
         creationScope.result = pStableBlock;
 
+        /* Emit Colin canonical snap telemetry at template-build time.
+         * is_stale=false because the template passed the tip check above. */
+        if(hashGenesis_snap != 0)
+        {
+            ColinMiningAgent::Get().on_canonical_snap_updated(
+                hashGenesis_snap.SubString(8), 0, false);
+        }
+
         debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "=== NEW_BLOCK: Complete ===", ANSI_COLOR_RESET);
         return pStableBlock;
     }

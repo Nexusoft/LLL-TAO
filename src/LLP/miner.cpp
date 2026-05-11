@@ -126,6 +126,15 @@ namespace LLP
              * for submit/session/template failures instead of an empty payload. */
             return std::vector<uint8_t>{static_cast<uint8_t>(eReason)};
         }
+
+        bool TemplateTipMismatch(const TAO::Ledger::Block* pBlock,
+                                 const uint1024_t& hashExpectedTip,
+                                 const bool fValidateExpectedTip)
+        {
+            return fValidateExpectedTip
+                && pBlock
+                && pBlock->hashPrevBlock != hashExpectedTip;
+        }
     }
 
     /* The last height that the notifications processor was run at.  This is used to ensure that events are only processed once
@@ -272,7 +281,9 @@ namespace LLP
     }
 
 
-    void Miner::ScheduleTemplateWork(TemplateWorkReason eReason)
+    void Miner::ScheduleTemplateWork(TemplateWorkReason eReason,
+                                     const uint1024_t& hashExpectedTip,
+                                     const bool fValidateExpectedTip)
     {
         {
             std::lock_guard<std::mutex> lock(m_template_work_mutex);
@@ -281,6 +292,9 @@ namespace LLP
 
             m_template_work_pending = true;
             m_template_work_reason = eReason;
+            m_template_work_expected_tip = hashExpectedTip;
+            m_template_work_validate_expected_tip = fValidateExpectedTip;
+            m_template_work_scheduled_at = std::chrono::steady_clock::now();
         }
 
         m_template_work_cv.notify_one();
@@ -292,6 +306,9 @@ namespace LLP
         while(true)
         {
             TemplateWorkReason eReason = TemplateWorkReason::PUSH_NOTIFICATION;
+            uint1024_t hashExpectedTip;
+            bool fValidateExpectedTip = false;
+            std::chrono::steady_clock::time_point tScheduledAt;
 
             {
                 std::unique_lock<std::mutex> lock(m_template_work_mutex);
@@ -305,15 +322,22 @@ namespace LLP
                     break;
 
                 eReason = m_template_work_reason;
+                hashExpectedTip = m_template_work_expected_tip;
+                fValidateExpectedTip = m_template_work_validate_expected_tip;
+                tScheduledAt = m_template_work_scheduled_at;
                 m_template_work_pending = false;
             }
 
-            QueueCurrentBlockDataTemplate(eReason);
+            QueueCurrentBlockDataTemplate(eReason, hashExpectedTip,
+                                          fValidateExpectedTip, tScheduledAt);
         }
     }
 
 
-    bool Miner::QueueCurrentBlockDataTemplate(TemplateWorkReason eReason)
+    bool Miner::QueueCurrentBlockDataTemplate(TemplateWorkReason eReason,
+                                              const uint1024_t& hashExpectedTip,
+                                              const bool fValidateExpectedTip,
+                                              const std::chrono::steady_clock::time_point& tScheduledAt)
     {
         static constexpr std::size_t TEMPLATE_METADATA_SIZE = 12;
 
@@ -337,16 +361,24 @@ namespace LLP
             nSessionIdCopy = nSessionId;
         }
 
+        const auto tStart = std::chrono::steady_clock::now();
+        const int64_t nQueuedMs =
+            std::chrono::duration_cast<std::chrono::milliseconds>(tStart - tScheduledAt).count();
+
         const SharedTemplatePayloadResult sharedTemplate = BuildSharedTemplatePayloadWithRetry(
-            [this]() -> TAO::Ledger::Block*
+            [this, hashExpectedTip, fValidateExpectedTip]() -> TAO::Ledger::Block*
             {
-                return new_block();
+                return new_block(hashExpectedTip, fValidateExpectedTip);
             },
             pReason);
+        const auto tBlockReady = std::chrono::steady_clock::now();
+        const int64_t nCreateMs =
+            std::chrono::duration_cast<std::chrono::milliseconds>(tBlockReady - tStart).count();
         if(!sharedTemplate.fSuccess)
         {
             debug::error(FUNCTION, pReason, ": failed to create BLOCK_DATA payload: ",
-                GetBlockPolicyReasonCode(sharedTemplate.eReason));
+                GetBlockPolicyReasonCode(sharedTemplate.eReason),
+                " queued_ms=", nQueuedMs, " create_ms=", nCreateMs);
             return false;
         }
 
@@ -374,7 +406,16 @@ namespace LLP
         Packet blockPacket(BLOCK_DATA);
         blockPacket.DATA = sharedTemplate.vPayload;
         blockPacket.LENGTH = static_cast<uint32_t>(blockPacket.DATA.size());
+        const auto tPayloadReady = std::chrono::steady_clock::now();
+        const int64_t nSerializeMs =
+            std::chrono::duration_cast<std::chrono::milliseconds>(tPayloadReady - tBlockReady).count();
+
         QueuePacket(blockPacket);
+        const auto tQueued = std::chrono::steady_clock::now();
+        const int64_t nQueuePacketMs =
+            std::chrono::duration_cast<std::chrono::milliseconds>(tQueued - tPayloadReady).count();
+        const int64_t nTotalMs =
+            std::chrono::duration_cast<std::chrono::milliseconds>(tQueued - tStart).count();
 
         RecordTemplateDelivery(sharedTemplate.nUnifiedHeight, sharedTemplate.hashBestChain);
         StatelessMinerManager::Get().IncrementTemplatesServed();
@@ -382,15 +423,20 @@ namespace LLP
         debug::log(2, FUNCTION, "Queued legacy BLOCK_DATA source=", pReason,
             " bytes=", blockPacket.DATA.size(), " channel=", sharedTemplate.nBlockChannel,
             " height=", sharedTemplate.nBlockHeight, " session=", nSessionIdCopy,
-            " subscribed_channel=", nChannelCopy, " to ", GetAddress().ToStringIP());
+            " subscribed_channel=", nChannelCopy, " to ", GetAddress().ToStringIP(),
+            " queued_ms=", nQueuedMs,
+            " create_ms=", nCreateMs,
+            " serialize_ms=", nSerializeMs,
+            " queue_packet_ms=", nQueuePacketMs,
+            " total_worker_ms=", nTotalMs);
 
         return true;
     }
 
 
-    void Miner::TryAttachBlockTemplate()
+    void Miner::TryAttachBlockTemplate(const uint1024_t& hashExpectedTip)
     {
-        ScheduleTemplateWork(TemplateWorkReason::PUSH_NOTIFICATION);
+        ScheduleTemplateWork(TemplateWorkReason::PUSH_NOTIFICATION, hashExpectedTip, true);
     }
 
 
@@ -1955,7 +2001,8 @@ namespace LLP
 
 
     /*  Adds a new block to the map. */
-    TAO::Ledger::Block *Miner::new_block()
+    TAO::Ledger::Block *Miner::new_block(const uint1024_t& hashExpectedTip,
+                                         const bool fValidateExpectedTip)
     {
         /* SESSION::DEFAULT health pre-check: fail fast before diving into
          * CreateBlockForStatelessMining() which requires the wallet session.
@@ -2085,6 +2132,30 @@ namespace LLP
         }
         
         debug::log(3, FUNCTION, "Created block ", pBlock->ProofHash().SubString());
+
+        /* Tip-fence: discard auto-send template if the chain tip moved between
+         * when this push notification was scheduled and when the template was built.
+         * This prevents delivering a stale template anchored to an obsolete tip.
+         * Same guard as StatelessMinerConnection::new_block() (PR #594). */
+        if(TemplateTipMismatch(pBlock, hashExpectedTip, fValidateExpectedTip))
+        {
+            debug::log(1, FUNCTION,
+                       "Discarding freshly-created legacy auto-send template with stale tip",
+                       " expected_tip=", hashExpectedTip.SubString(),
+                       " template_prev=", pBlock->hashPrevBlock.SubString(),
+                       " height=", pBlock->nHeight);
+            delete pBlock;
+            return nullptr;
+        }
+
+        /* Emit Colin canonical snap telemetry at template-build time.
+         * is_stale=false because the template passed the tip check above. */
+        if(hashGenesis != 0)
+        {
+            ColinMiningAgent::Get().on_canonical_snap_updated(
+                hashGenesis.SubString(8), 0, false);
+        }
+
         return register_block_template(pBlock);
     }
 
@@ -2461,8 +2532,10 @@ namespace LLP
         /* Match the stateless lane: attach a full BLOCK_DATA template to each
          * accepted PUSH event so miners can resume without a follow-up GET_BLOCK.
          * The worker builds/queues the template off the notification path and
-         * preserves strict 8-bit legacy framing. */
-        TryAttachBlockTemplate();
+         * preserves strict 8-bit legacy framing.
+         * Fence the auto-send template to the notification tip: discard any template
+         * whose hashPrevBlock differs from hashBestChain at scheduling time. */
+        TryAttachBlockTemplate(hashBestChain);
     }
 
 
