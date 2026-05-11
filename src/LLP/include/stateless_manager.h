@@ -552,7 +552,6 @@ namespace LLP
         /** ValidateMinerGenesis
          *
          *  Validate a miner's genesis hash and resolve default account.
-         *  Used during authentication to validate genesis for auto-credit.
          *
          *  @param[in] strAddress Miner address
          *  @param[out] hashDefault Resolved default account address

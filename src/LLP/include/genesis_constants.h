@@ -97,16 +97,6 @@ namespace LLP
          **/
         std::string GetValidationResultString(ValidationResult result);
 
-
-        /** IsAutoCreditEnabled
-         *
-         *  Check if auto-credit feature is enabled via config.
-         *
-         *  @return True if auto-credit is enabled.
-         *
-         **/
-        bool IsAutoCreditEnabled();
-
     } // namespace GenesisConstants
 
 } // namespace LLP

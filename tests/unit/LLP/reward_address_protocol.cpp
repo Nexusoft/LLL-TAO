@@ -154,35 +154,28 @@ TEST_CASE("MINER_SET_REWARD Packet Structure Tests", "[miner][reward][protocol]"
 }
 
 
-TEST_CASE("Extended OP::COINBASE account payload", "[miner][reward][protocol][coinbase]")
+TEST_CASE("Legacy 49-byte OP::COINBASE payload", "[miner][reward][protocol][coinbase]")
 {
     uint256_t hashGenesis;
     hashGenesis.SetHex("a174011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd122");
 
-    TAO::Register::Address hashAccount(TAO::Register::Address::ACCOUNT);
-
     TAO::Operation::Contract contract;
     contract << uint8_t(TAO::Operation::OP::COINBASE);
     contract << hashGenesis;
-    contract << uint256_t(hashAccount);
     contract << uint64_t(100);
     contract << uint64_t(7);
 
-    REQUIRE(TAO::Operation::Coinbase::HasAutoCreditAccount(contract));
+    REQUIRE(contract.Operations().size() == 49);
     contract.SeekToPrimitive(false);
     REQUIRE(TAO::Operation::Coinbase::Verify(contract));
 
     uint256_t hashReadGenesis;
     contract >> hashReadGenesis;
 
-    uint256_t hashReadAccount;
-    contract >> hashReadAccount;
-
     uint64_t nAmount = 0;
     contract >> nAmount;
 
     REQUIRE(hashReadGenesis == hashGenesis);
-    REQUIRE(hashReadAccount == uint256_t(hashAccount));
     REQUIRE(nAmount == 100);
 }
 

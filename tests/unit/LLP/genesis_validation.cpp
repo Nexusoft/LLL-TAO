@@ -102,17 +102,6 @@ TEST_CASE("Genesis Validation Tests", "[genesis_validation]")
         REQUIRE(GenesisConstants::GetValidationResultString(GenesisConstants::NOT_ON_CHAIN) == "Not found on blockchain");
         REQUIRE(GenesisConstants::GetValidationResultString(GenesisConstants::ZERO_GENESIS) == "Zero genesis");
     }
-
-    SECTION("Auto-credit is enabled by default")
-    {
-        /* Auto-credit should be enabled unless -noautocredit flag is set */
-        bool fEnabled = GenesisConstants::IsAutoCreditEnabled();
-        
-        /* This will return true unless the test is run with -noautocredit flag */
-        /* We can't assert a specific value since it depends on runtime config */
-        /* Just verify the function returns a boolean without crashing */
-        REQUIRE((fEnabled == true || fEnabled == false));
-    }
 }
 
 

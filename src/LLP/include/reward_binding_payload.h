@@ -42,10 +42,10 @@ namespace LLP
      *  Legacy 32-byte payloads remain compatible: parsing succeeds with
      *  hashGenesis populated and strAccountName empty (event-only mode).
      *
-     *  Auto-credit is opt-in per session: a non-empty account-name signals
-     *  the node to resolve <genesis>:<account-name> via the on-chain Name
-     *  index and use the resolved register for direct credit at Coinbase
-     *  Commit time.
+     *  Extended payloads remain valid input: a non-empty account-name is
+     *  parsed and returned to callers, but current node behavior ignores
+     *  the name and keeps coinbase rewards on the standard event/credit
+     *  path. The parser is kept for forward compatibility and diagnostics.
      *
      **/
     struct RewardBindingPayload
@@ -102,7 +102,7 @@ namespace LLP
              * SESSION_START byte-order memory for the same convention. */
             hashGenesisOut.SetHex(HexStr(vDecrypted.begin(), vDecrypted.begin() + 32));
 
-            /* Legacy 32-byte payload — event-only mode, no auto-credit. */
+            /* Legacy 32-byte payload — event-only mode. */
             if(vDecrypted.size() == 32)
                 return ParseResult::Ok;
 

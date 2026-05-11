@@ -103,15 +103,13 @@ TEST_CASE("Reward Address Binding Tests", "[reward_routing]")
         REQUIRE(ctx.fRewardBound == true);
     }
 
-    SECTION("Reward binding can cache resolved account for auto-credit")
+    SECTION("Reward binding stores the bound reward address")
     {
         uint256_t testReward = GetTestGenesis();
-        uint256_t testAccount = CreateTestHashFromHex("d674011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd155");
 
-        MiningContext ctx = MiningContext().WithRewardAddress(testReward, testAccount);
+        MiningContext ctx = MiningContext().WithRewardAddress(testReward);
 
         REQUIRE(ctx.GetPayoutAddress() == testReward);
-        REQUIRE(ctx.hashRewardAccount == testAccount);
         REQUIRE(ctx.fRewardBound == true);
     }
 
@@ -410,16 +408,6 @@ TEST_CASE("Mining template cache finalization policy", "[reward_routing][mining_
 
         REQUIRE(TAO::Ledger::CachedMiningTemplateRequiresProducerFinalization(
             firstRewardAddress, firstRewardAddress, 1, 2));
-    }
-
-    SECTION("Different auto-credit account requires producer finalization")
-    {
-        uint256_t rewardAddress = CreateTestHashFromHex(TEST_REWARD_A_HEX);
-        uint256_t firstAccount = CreateTestHashFromHex("d674011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd155");
-        uint256_t secondAccount = CreateTestHashFromHex("d674011c93ca1c80bca5388382b167cacd33d3154395ea8f45ac99a8308cd166");
-
-        REQUIRE(TAO::Ledger::CachedMiningTemplateRequiresProducerFinalization(
-            rewardAddress, rewardAddress, firstAccount, secondAccount, 7, 7));
     }
 
     SECTION("Same reward address and extra nonce may reuse finalized producer")
