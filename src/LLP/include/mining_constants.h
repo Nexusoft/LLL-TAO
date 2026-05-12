@@ -88,11 +88,9 @@ namespace MiningConstants
      *  window (~100 ms) and below any real block-time floor, so miners always get
      *  a fresh template within 1 s of tip stabilisation.
      *
-     *  Reduced from 2 000 ms to 1 000 ms to close the doom-loop window: when a
-     *  miner re-subscribes (STATELESS_MINER_READY) and simultaneously has its
-     *  GET_BLOCK rate-limited, the node's push throttle was the last gate
-     *  preventing fresh work delivery.  Re-subscription responses bypass this
-     *  throttle entirely via the m_force_next_push flag.
+     *  Reduced from 2 000 ms to 1 000 ms to keep recovery and burst handling
+     *  responsive while preserving a small smoothing window for repeated pushes
+     *  against the same tip.
      */
     constexpr int64_t TEMPLATE_PUSH_MIN_INTERVAL_MS = 1000;
 
@@ -105,8 +103,6 @@ namespace MiningConstants
      *  The per-minute cap (MAX_GET_BLOCK_PER_MINUTE) provides the primary
      *  spam protection (the real firewall); this 1s floor is just burst
      *  smoothing that prevents rapid-fire polling abuse.
-     *  MINER_READY resets it for an immediate first GET_BLOCK after
-     *  re-subscription.
      */
     constexpr uint32_t GET_BLOCK_COOLDOWN_SECONDS = 1;
 
