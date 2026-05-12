@@ -1283,22 +1283,21 @@ namespace LLP
                 debug::log(0, "   Encryption ready: ", (context.fEncryptionReady ? "YES" : "NO"));
                 debug::log(0, "   ChaCha key size: ", context.vChaChaKey.size(), " bytes");
                 
-                /* Send immediate template push using STATELESS_GET_BLOCK (0xD081 = Mirror(129))
-                 * Force-bypass the push throttle — miner explicitly re-subscribed and needs
-                 * fresh work immediately regardless of when the previous push was sent. */
+                /* Reset violation state so a miner that accumulated violations on a
+                 * previous session gets a clean slate after re-authentication.
+                 * fThrottleMode MUST NOT persist across reconnects — it would permanently
+                 * block an authenticated, in-budget miner (violates the "auto-expire"
+                 * reversibility principle).  Rolling window counters are NOT reset here;
+                 * GetBlockRollingLimiter is keyed by session+lane and expires on its own.
+                 *
+                 * Do not auto-send BLOCK_DATA here. MINER_READY only subscribes the miner;
+                 * initial work is delivered by the miner's explicit GET_BLOCK request, and
+                 * sustained work is delivered by push notifications. */
                 {
                     LOCK(MUTEX);
-                    // Reset violation state so a miner that accumulated violations on a
-                    // previous session gets a clean slate after re-authentication.
-                    // fThrottleMode MUST NOT persist across reconnects — it would permanently
-                    // block an authenticated, in-budget miner (violates the "auto-expire"
-                    // reversibility principle).  Rolling window counters are NOT reset here;
-                    // GetBlockRollingLimiter is keyed by session+lane and expires on its own.
                     m_rateLimit.ResetViolationState();
-                    m_force_next_push = true;
                 }
-                SendStatelessTemplate();
-                debug::log(0, FUNCTION, "✓ Recovery template delivered via STATELESS_MINER_READY push — miner should resume mining");
+                debug::log(0, FUNCTION, "✓ MINER_READY accepted — awaiting explicit GET_BLOCK for initial template");
 
                 /* Fix 4: Diagnostic assertion — verify mapSessionKeys is populated after recovery.
                  * A missing key here means SUBMIT_BLOCK signature verification will fail silently. */

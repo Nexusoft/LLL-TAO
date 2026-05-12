@@ -366,7 +366,7 @@ TEST_CASE("MINER_READY Compatibility Opcodes", "[template_staleness][miner_ready
 
 TEST_CASE("MINER_READY Recovery Scenario", "[template_staleness][recovery]")
 {
-    SECTION("MINER_READY should trigger template send and update unified height tracking")
+    SECTION("MINER_READY should not auto-send a template")
     {
         /* Miner enters degraded mode with stale template */
         MiningContext ctx;
@@ -378,17 +378,14 @@ TEST_CASE("MINER_READY Recovery Scenario", "[template_staleness][recovery]")
         /* Current unified height */
         uint32_t nCurrentUnifiedHeight = ChannelHeightConstants::UNIFIED_HEIGHT;
 
-        /* After MINER_READY processing:
-         * 1. Send push notification (PRIME_AVAILABLE)
-         * 2. Auto-send BLOCK_DATA template
-         * 3. Update nLastTemplateUnifiedHeight to current unified height */
-        ctx = ctx.WithLastTemplateUnifiedHeight(nCurrentUnifiedHeight);
+        /* MINER_READY subscribes the miner, but initial work is delivered by
+         * the miner's explicit GET_BLOCK request. */
 
-        REQUIRE(ctx.nLastTemplateUnifiedHeight == ChannelHeightConstants::UNIFIED_HEIGHT);
+        REQUIRE(ctx.nLastTemplateUnifiedHeight == ChannelHeightConstants::UNIFIED_HEIGHT - 10);
 
-        /* Next GET_ROUND should NOT send duplicate template (unified height unchanged) */
+        /* The next GET_BLOCK is responsible for delivering the fresh template. */
         bool fTemplateStale = (ctx.nLastTemplateUnifiedHeight != nCurrentUnifiedHeight);
-        REQUIRE(fTemplateStale == false);
+        REQUIRE(fTemplateStale == true);
     }
 
     SECTION("Recovery works regardless of which MINER_READY opcode was used")
@@ -410,9 +407,8 @@ TEST_CASE("MINER_READY Recovery Scenario", "[template_staleness][recovery]")
 
             REQUIRE(nOpcode == 0xD0D8);
 
-            /* Update unified height after sending template */
-            ctx = ctx.WithLastTemplateUnifiedHeight(nCurrentUnifiedHeight);
-            REQUIRE(ctx.nLastTemplateUnifiedHeight == nCurrentUnifiedHeight);
+            /* MINER_READY remapping must not imply template delivery. */
+            REQUIRE(ctx.nLastTemplateUnifiedHeight == 0);
         }
     }
 }
