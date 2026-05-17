@@ -9,10 +9,13 @@
 # Keep the Windows portable release in the foreground by default.
 daemon=0
 
-# RPC/API credentials. This file is packaged as nexus.conf.example and is not
-# loaded by nexus.exe unless you copy it to the Windows config directory.
-# Replace these placeholders before first use.
-# Do not expose this node to any network until these placeholders are changed.
+###############################################################################
+# REQUIRED SECURITY STEP
+# This file is packaged as nexus.conf.example and is not loaded by nexus.exe
+# unless you copy it to the Windows config directory.
+# Do not start the node from this example, and do not expose it to any network,
+# until every YOUR_*_HERE credential placeholder below has been replaced.
+###############################################################################
 rpcuser=YOUR_RPC_USER_HERE
 rpcpassword=YOUR_RPC_PASSWORD_HERE
 apiuser=YOUR_API_USER_HERE

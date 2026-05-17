@@ -38,6 +38,16 @@ copy_if_missing() {
     fi
 }
 
+list_mingw_runtime_dlls() {
+    ldd "${EXE_PATH}" 2>/dev/null | awk '
+        function is_runtime_dll(path) {
+            return path ~ /\/(mingw64|ucrt64|clang64)\/bin\/.*\.dll$/
+        }
+        /=>/ && is_runtime_dll($3) { print $3 }
+        is_runtime_dll($1) { print $1 }
+    ' | sort -u
+}
+
 copy_runtime_dlls() {
     if [ -n "${DYNAMIC_DLL_DIR:-}" ] && [ -d "${DYNAMIC_DLL_DIR}" ]; then
         while IFS= read -r dll; do
@@ -56,13 +66,7 @@ copy_runtime_dlls() {
                 copy_if_missing "${dll}"
                 ;;
         esac
-    done < <(ldd "${EXE_PATH}" 2>/dev/null | awk '
-        function is_runtime_dll(path) {
-            return path ~ /\/(mingw64|ucrt64|clang64)\/bin\/.*\.dll$/
-        }
-        /=>/ && is_runtime_dll($3) { print $3 }
-        is_runtime_dll($1) { print $1 }
-    ' | sort -u)
+    done < <(list_mingw_runtime_dlls)
 }
 
 copy_runtime_dlls
