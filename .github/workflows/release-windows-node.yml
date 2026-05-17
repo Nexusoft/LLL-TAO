@@ -18,7 +18,7 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: read
-    timeout-minutes: 120
+    timeout-minutes: 60
 
     defaults:
       run:

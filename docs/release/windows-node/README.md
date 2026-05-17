@@ -7,7 +7,15 @@ configuration, and dependency DLLs when the build is dynamically linked.
 
 1. Extract the ZIP to a folder such as `C:\NexusNode`.
 2. Create `%APPDATA%\Nexus` if it does not already exist, then copy
-   `nexus.conf.example` to `%APPDATA%\Nexus\nexus.conf`.
+   `nexus.conf.example` to `%APPDATA%\Nexus\nexus.conf`:
+
+   ```powershell
+   New-Item -ItemType Directory -Force "$env:APPDATA\Nexus"
+   Copy-Item .\nexus.conf.example "$env:APPDATA\Nexus\nexus.conf"
+   ```
+
+   This usually maps to
+   `C:\Users\YourUsername\AppData\Roaming\Nexus\nexus.conf`.
 3. Edit the placeholder RPC/API credentials and any autologin settings.
 4. Start the node:
 
