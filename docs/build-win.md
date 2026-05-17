@@ -156,5 +156,6 @@ and validated on a clean Windows VM.
 
 For MXE release experiments, prefer a static triplet such as
 `x86_64-w64-mingw32.static`. If a dynamic triplet is used, run the packaging
-script in the same environment so required MinGW runtime DLLs are copied into
-the ZIP.
+script from the same shell/container where the Windows-target MinGW DLLs are
+available on disk and `ldd release/nexus.exe` can resolve them, so required
+runtime DLLs are copied into the ZIP.
