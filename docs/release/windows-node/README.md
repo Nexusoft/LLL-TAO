@@ -6,7 +6,8 @@ configuration, and dependency DLLs when the build is dynamically linked.
 ## Quick start
 
 1. Extract the ZIP to a folder such as `C:\NexusNode`.
-2. Copy `nexus.conf.example` to `%APPDATA%\Nexus\nexus.conf`.
+2. Create `%APPDATA%\Nexus` if it does not already exist, then copy
+   `nexus.conf.example` to `%APPDATA%\Nexus\nexus.conf`.
 3. Edit the placeholder RPC/API credentials and any autologin settings.
 4. Start the node:
 

@@ -21,6 +21,9 @@ DEPS_PREFIX is required.
 Point it at the Windows-target dependency prefix that contains include/ and lib/.
 For MXE this is usually similar to:
   DEPS_PREFIX=/opt/mxe/usr/x86_64-w64-mingw32.static
+
+Static MXE triplets are preferred for release candidates. If you use a dynamic
+triplet, package the required runtime DLLs with package-windows-node-release.sh.
 EOF
     exit 1
 fi

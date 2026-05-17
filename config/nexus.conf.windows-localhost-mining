@@ -10,6 +10,7 @@
 daemon=0
 
 # RPC/API credentials. Replace these before enabling remote access.
+# Do not use this example with unchanged CHANGE_ME values in production.
 rpcuser=CHANGE_ME_rpc_user
 rpcpassword=CHANGE_ME_rpc_password
 apiuser=CHANGE_ME_api_user

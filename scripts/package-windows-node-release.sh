@@ -14,7 +14,7 @@ if [ ! -f "${EXE_PATH}" ]; then
 fi
 
 if [ -z "${VERSION}" ]; then
-    VERSION="$(git -C "${REPO_ROOT}" describe --tags --always --dirty 2>/dev/null || date -u +%Y%m%d%H%M%S)"
+    VERSION="$(git -C "${REPO_ROOT}" describe --tags --always --dirty 2>/dev/null || date -u +%Y%m%dT%H%M%SZ)"
 fi
 
 SAFE_VERSION="$(printf '%s' "${VERSION}" | tr -c 'A-Za-z0-9._-' '-')"
@@ -46,8 +46,8 @@ copy_runtime_dlls() {
                 ;;
         esac
     done < <(ldd "${EXE_PATH}" 2>/dev/null | awk '
-        /=>/ && $3 ~ /\.dll$/ { print $3 }
-        /^[[:space:]]*\/.*\.dll/ { print $1 }
+        /=>/ && $3 ~ /\/(mingw64|ucrt64|clang64)\/bin\/.*\.dll$/ { print $3 }
+        /^[[:space:]]*\/.*\/(mingw64|ucrt64|clang64)\/bin\/.*\.dll/ { print $1 }
     ' | sort -u)
 }
 
