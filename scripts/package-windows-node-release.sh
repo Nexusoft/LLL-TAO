@@ -29,9 +29,20 @@ cp "${EXE_PATH}" "${STAGE_DIR}/nexus.exe"
 cp "${REPO_ROOT}/config/nexus.conf.windows-localhost-mining" "${STAGE_DIR}/nexus.conf.example"
 cp "${REPO_ROOT}/docs/release/windows-node/README.md" "${STAGE_DIR}/README.md"
 
+copy_if_missing() {
+    local src="$1"
+    local dest="${STAGE_DIR}/$(basename "${src}")"
+
+    if [ ! -e "${dest}" ]; then
+        cp "${src}" "${dest}"
+    fi
+}
+
 copy_runtime_dlls() {
     if [ -n "${DYNAMIC_DLL_DIR:-}" ] && [ -d "${DYNAMIC_DLL_DIR}" ]; then
-        find "${DYNAMIC_DLL_DIR}" -maxdepth 1 -type f -name '*.dll' -exec cp -n {} "${STAGE_DIR}/" \;
+        while IFS= read -r dll; do
+            copy_if_missing "${dll}"
+        done < <(find "${DYNAMIC_DLL_DIR}" -maxdepth 1 -type f -name '*.dll' | sort)
     fi
 
     if ! command -v ldd >/dev/null 2>&1; then
@@ -42,12 +53,15 @@ copy_runtime_dlls() {
         dll="$(printf '%s' "${dll}" | tr '\\' '/')"
         case "${dll}" in
             */mingw64/bin/*.dll|/mingw64/bin/*.dll|*/ucrt64/bin/*.dll|/ucrt64/bin/*.dll|*/clang64/bin/*.dll|/clang64/bin/*.dll)
-                cp -n "${dll}" "${STAGE_DIR}/"
+                copy_if_missing "${dll}"
                 ;;
         esac
     done < <(ldd "${EXE_PATH}" 2>/dev/null | awk '
-        /=>/ && $3 ~ /\/(mingw64|ucrt64|clang64)\/bin\/.*\.dll$/ { print $3 }
-        /^[[:space:]]*\/.*\/(mingw64|ucrt64|clang64)\/bin\/.*\.dll/ { print $1 }
+        function is_runtime_dll(path) {
+            return path ~ /\/(mingw64|ucrt64|clang64)\/bin\/.*\.dll$/
+        }
+        /=>/ && is_runtime_dll($3) { print $3 }
+        is_runtime_dll($1) { print $1 }
     ' | sort -u)
 }
 

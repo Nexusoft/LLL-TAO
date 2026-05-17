@@ -10,11 +10,11 @@
 daemon=0
 
 # RPC/API credentials. Replace these before enabling remote access.
-# Do not use this example with unchanged REPLACE_THIS_VALUE values in production.
-rpcuser=REPLACE_THIS_VALUE_rpc_user
-rpcpassword=REPLACE_THIS_VALUE_rpc_password
-apiuser=REPLACE_THIS_VALUE_api_user
-apipassword=REPLACE_THIS_VALUE_api_password
+# Do not expose this node to any network until these placeholders are changed.
+rpcuser=YOUR_RPC_USER_HERE
+rpcpassword=YOUR_RPC_PASSWORD_HERE
+apiuser=YOUR_API_USER_HERE
+apipassword=YOUR_API_PASSWORD_HERE
 
 # Enable node services.
 server=1
@@ -41,6 +41,6 @@ log=1
 
 # For unattended mining against an existing sigchain, uncomment and fill in:
 #autologin=1
-#username=REPLACE_THIS_VALUE_username
-#password=REPLACE_THIS_VALUE_password
-#pin=REPLACE_THIS_VALUE_pin
+#username=YOUR_SIGCHAIN_USER_HERE
+#password=YOUR_SIGCHAIN_PASSWORD_HERE
+#pin=YOUR_SIGCHAIN_PIN_HERE

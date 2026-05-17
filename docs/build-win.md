@@ -158,4 +158,3 @@ For MXE release experiments, prefer a static triplet such as
 `x86_64-w64-mingw32.static`. If a dynamic triplet is used, run the packaging
 script in the same environment so required MinGW runtime DLLs are copied into
 the ZIP.
-	
