@@ -151,7 +151,7 @@ scripts/build-windows-node-cross.sh -j"$(nproc)"
 ```
 
 Use the Windows-hosted MSYS2 workflow for release candidates until the MXE
-dependency recipes for Berkeley DB, OpenSSL, and optional MiniUPnPc are locked
+dependency recipes for Berkeley DB, OpenSSL, and optional miniupnpc are locked
 and validated on a clean Windows VM.
 
 For MXE release experiments, prefer a static triplet such as

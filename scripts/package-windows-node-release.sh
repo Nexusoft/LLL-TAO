@@ -14,7 +14,11 @@ if [ ! -f "${EXE_PATH}" ]; then
 fi
 
 if [ -z "${VERSION}" ]; then
-    VERSION="$(git -C "${REPO_ROOT}" describe --tags --always --dirty 2>/dev/null || date -u +%Y%m%dT%H%M%SZ)"
+    VERSION="$(git -C "${REPO_ROOT}" describe --tags --always --dirty 2>/dev/null || true)"
+    if [ -z "${VERSION}" ]; then
+        VERSION="$(date -u +%Y%m%dT%H%M%SZ)"
+        echo "Warning: git metadata unavailable; using timestamp version ${VERSION}. Set VERSION for release builds." >&2
+    fi
 fi
 
 SAFE_VERSION="$(printf '%s' "${VERSION}" | tr -c 'A-Za-z0-9._-' '-')"
@@ -39,6 +43,9 @@ copy_if_missing() {
 }
 
 list_mingw_runtime_dlls() {
+    # Supported MSYS2 environments for this release package are MINGW64, UCRT64,
+    # and CLANG64. System DLLs and unsupported MSYS2 runtimes are intentionally
+    # excluded from the portable ZIP.
     # MSYS2 ldd usually reports mapped DLLs as:
     #   libfoo.dll => /mingw64/bin/libfoo.dll (...)
     # Some MinGW variants can also emit the DLL path as the first field, so

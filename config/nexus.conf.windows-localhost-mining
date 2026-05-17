@@ -14,12 +14,12 @@ daemon=0
 # This file is packaged as nexus.conf.example and is not loaded by nexus.exe
 # unless you copy it to the Windows config directory.
 # Do not start the node from this example, and do not expose it to any network,
-# until every *_BEFORE_USE credential placeholder below has been replaced.
+# until every REPLACE_WITH_* credential placeholder below has been replaced.
 ###############################################################################
-rpcuser=GENERATE_RANDOM_RPC_USER_BEFORE_USE
-rpcpassword=GENERATE_RANDOM_RPC_PASSWORD_BEFORE_USE
-apiuser=GENERATE_RANDOM_API_USER_BEFORE_USE
-apipassword=GENERATE_RANDOM_API_PASSWORD_BEFORE_USE
+rpcuser=REPLACE_WITH_SECURE_RANDOM_RPC_USER
+rpcpassword=REPLACE_WITH_SECURE_RANDOM_RPC_PASSWORD
+apiuser=REPLACE_WITH_SECURE_RANDOM_API_USER
+apipassword=REPLACE_WITH_SECURE_RANDOM_API_PASSWORD
 
 # Enable node services.
 server=1
