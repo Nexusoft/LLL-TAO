@@ -39,6 +39,10 @@ copy_if_missing() {
 }
 
 list_mingw_runtime_dlls() {
+    # MSYS2 ldd usually reports mapped DLLs as:
+    #   libfoo.dll => /mingw64/bin/libfoo.dll (...)
+    # Some MinGW variants can also emit the DLL path as the first field, so
+    # inspect both $3 and $1 and keep only known MinGW runtime directories.
     ldd "${EXE_PATH}" 2>/dev/null | awk '
         function is_runtime_dll(path) {
             return path ~ /\/(mingw64|ucrt64|clang64)\/bin\/.*\.dll$/

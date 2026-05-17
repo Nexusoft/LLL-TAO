@@ -14,12 +14,12 @@ daemon=0
 # This file is packaged as nexus.conf.example and is not loaded by nexus.exe
 # unless you copy it to the Windows config directory.
 # Do not start the node from this example, and do not expose it to any network,
-# until every YOUR_*_HERE credential placeholder below has been replaced.
+# until every *_BEFORE_USE credential placeholder below has been replaced.
 ###############################################################################
-rpcuser=YOUR_RPC_USER_HERE
-rpcpassword=YOUR_RPC_PASSWORD_HERE
-apiuser=YOUR_API_USER_HERE
-apipassword=YOUR_API_PASSWORD_HERE
+rpcuser=GENERATE_RANDOM_RPC_USER_BEFORE_USE
+rpcpassword=GENERATE_RANDOM_RPC_PASSWORD_BEFORE_USE
+apiuser=GENERATE_RANDOM_API_USER_BEFORE_USE
+apipassword=GENERATE_RANDOM_API_PASSWORD_BEFORE_USE
 
 # Enable node services.
 server=1
@@ -46,6 +46,6 @@ log=1
 
 # For unattended mining against an existing sigchain, uncomment and fill in:
 #autologin=1
-#username=YOUR_SIGCHAIN_USER_HERE
-#password=YOUR_SIGCHAIN_PASSWORD_HERE
-#pin=YOUR_SIGCHAIN_PIN_HERE
+#username=ENTER_SIGCHAIN_USER_BEFORE_USE
+#password=ENTER_SIGCHAIN_PASSWORD_BEFORE_USE
+#pin=ENTER_SIGCHAIN_PIN_BEFORE_USE

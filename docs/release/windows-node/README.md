@@ -6,8 +6,8 @@ configuration, and dependency DLLs when the build is dynamically linked.
 ## Quick start
 
 1. Extract the ZIP to a folder such as `C:\NexusNode`.
-2. Create `%APPDATA%\Nexus` if it does not already exist, then copy
-   `nexus.conf.example` to `%APPDATA%\Nexus\nexus.conf`:
+2. Create the Nexus config directory under your Windows APPDATA folder if it
+   does not already exist, then copy `nexus.conf.example` there:
 
    ```powershell
    New-Item -ItemType Directory -Force "$env:APPDATA\Nexus"
