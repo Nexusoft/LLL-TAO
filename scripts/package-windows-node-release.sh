@@ -39,7 +39,7 @@ copy_runtime_dlls() {
     fi
 
     while IFS= read -r dll; do
-        dll="${dll//$'\\'//}"
+        dll="$(printf '%s' "${dll}" | tr '\\' '/')"
         case "${dll}" in
             */mingw64/bin/*.dll|/mingw64/bin/*.dll|*/ucrt64/bin/*.dll|/ucrt64/bin/*.dll|*/clang64/bin/*.dll|/clang64/bin/*.dll)
                 cp -n "${dll}" "${STAGE_DIR}/"

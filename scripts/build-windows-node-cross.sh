@@ -10,7 +10,7 @@ DEPS_PREFIX="${DEPS_PREFIX:-}"
 
 if ! command -v "${CXX}" >/dev/null 2>&1; then
     echo "MinGW compiler not found: ${CXX}" >&2
-    echo "Set CXX or TARGET_TRIPLET to a Linux-hosted MinGW/MXE compiler." >&2
+    echo "Set CXX or TARGET_TRIPLET to a Linux-hosted MinGW/MXE compiler, e.g. x86_64-w64-mingw32-g++." >&2
     exit 1
 fi
 

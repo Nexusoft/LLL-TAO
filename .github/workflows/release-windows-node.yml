@@ -49,7 +49,7 @@ jobs:
       - name: Build nexus.exe
         run: |
           make -f makefile.cli clean || true
-          make -f makefile.cli -j2 \
+          make -f makefile.cli -j"$(nproc)" \
             OPENSSL_LIB_PATH=/mingw64/lib \
             OPENSSL_INCLUDE_PATH=/mingw64/include \
             BDB_LIB_PATH=/mingw64/lib \
