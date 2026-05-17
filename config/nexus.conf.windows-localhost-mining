@@ -1,0 +1,45 @@
+#
+# Example Windows localhost node configuration for running nexus.exe with
+# NexusMiner.exe on the same machine.
+#
+# Copy this file to:
+#   %APPDATA%\Nexus\nexus.conf
+#
+
+# Keep the Windows portable release in the foreground by default.
+daemon=0
+
+# RPC/API credentials. Replace these before enabling remote access.
+rpcuser=CHANGE_ME_rpc_user
+rpcpassword=CHANGE_ME_rpc_password
+apiuser=CHANGE_ME_api_user
+apipassword=CHANGE_ME_api_password
+
+# Enable node services.
+server=1
+listen=1
+maxconnections=16
+
+# Enable both localhost mining lanes used by NexusMiner.
+mining=1
+miningport=9323
+legacyminingport=8323
+llpallowip=127.0.0.1
+
+# Post-quantum miner authentication.
+falcon=1
+
+# Tune for local PRIME CPU mining tests.
+miningthreads=4
+miningstatelesstimeout=300
+mininglegacytimeout=300
+
+# Optional local diagnostics.
+verbose=2
+log=1
+
+# For unattended mining against an existing sigchain, uncomment and fill in:
+#autologin=1
+#username=CHANGE_ME_username
+#password=CHANGE_ME_password
+#pin=CHANGE_ME_pin
