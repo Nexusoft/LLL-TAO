@@ -110,4 +110,52 @@ make -f makefile.cli
 ```
 
 This will create nexus.exe in the release folder.
-	
+
+<br />
+
+### `Portable Windows Release ZIP`
+
+For release candidates, prefer the GitHub Actions workflow named
+`Release Windows Node`. It builds `release/nexus.exe` on a Windows-hosted
+MSYS2/MinGW64 runner, packages a portable ZIP, and uploads the ZIP plus its
+SHA-256 checksum as workflow artifacts.
+
+The package contains:
+
+- `nexus.exe`
+- `nexus.conf.example` for localhost `NexusMiner.exe` testing
+- `README.md`
+- `SHA256SUMS.txt`
+- MinGW runtime DLLs when the build is dynamically linked
+
+The included example config enables the stateless mining server on
+`127.0.0.1:9323` and the legacy mining server on `127.0.0.1:8323`, matching the
+default localhost pairing expected by `NexusMiner.exe`.
+
+<br />
+
+### `Experimental Linux-hosted Windows Cross Build`
+
+The repository also includes `scripts/build-windows-node-cross.sh` for
+Linux-hosted MinGW-w64 or MXE environments. This path is intentionally a thin
+wrapper around `makefile.cli`: it does not build third-party dependencies, but
+it normalizes the `OS=Windows_NT` make invocation and dependency prefix paths.
+
+Example with a prepared MXE prefix:
+
+```sh
+DEPS_PREFIX=/opt/mxe/usr/x86_64-w64-mingw32.static \
+TARGET_TRIPLET=x86_64-w64-mingw32.static \
+PACKAGE=1 \
+scripts/build-windows-node-cross.sh -j"$(nproc)"
+```
+
+Use the Windows-hosted MSYS2 workflow for release candidates until the MXE
+dependency recipes for Berkeley DB, OpenSSL, and optional miniupnpc are locked
+and validated on a clean Windows VM.
+
+For MXE release experiments, prefer a static triplet such as
+`x86_64-w64-mingw32.static`. If a dynamic triplet is used, run the packaging
+script from the same shell/container where the Windows-target MinGW DLLs are
+available on disk and `ldd release/nexus.exe` can resolve them, so required
+runtime DLLs are copied into the ZIP.
