@@ -28,6 +28,7 @@ ________________________________________________________________________________
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <deque>
 #include <mutex>
 #include <map>
 #include <memory>
@@ -143,9 +144,16 @@ namespace LLP
         std::mutex m_template_work_mutex;
         std::condition_variable m_template_work_cv;
         std::thread m_template_work_thread;
-        bool m_template_worker_running{false};
-        bool m_template_work_pending{false};
-        bool m_template_work_in_flight{false};
+
+        /* Option D: lifecycle/state booleans are std::atomic<bool> so callers
+         * that only need a fast lock-free read (telemetry, debug logging,
+         * lifecycle gate from another thread) can observe them without
+         * acquiring m_template_work_mutex.  Writes that mutate them in
+         * concert with other (non-atomic) members are still performed under
+         * the mutex to keep the bool-and-uint1024-tuple consistent. */
+        std::atomic<bool> m_template_worker_running{false};
+        std::atomic<bool> m_template_work_pending{false};
+        std::atomic<bool> m_template_work_in_flight{false};
         TemplateWorkReason m_template_work_reason{TemplateWorkReason::PUSH_NOTIFICATION};
         uint1024_t m_template_work_expected_tip;
         uint1024_t m_template_work_in_flight_tip;
@@ -153,6 +161,23 @@ namespace LLP
         uint32_t m_template_work_channel{0};
         uint32_t m_template_work_in_flight_channel{0};
         std::chrono::steady_clock::time_point m_template_work_scheduled_at;
+
+        /* Option E: bounded queue of pending work requests.
+         * Replaces the previous single-slot pending state so cross-channel
+         * (or otherwise non-coalescable) schedules cannot silently overwrite
+         * an earlier pending request.  Capped at TEMPLATE_WORK_QUEUE_MAX;
+         * drop-oldest with telemetry counter on overflow. */
+        struct TemplateWorkRequest
+        {
+            TemplateWorkReason eReason{TemplateWorkReason::PUSH_NOTIFICATION};
+            uint1024_t hashExpectedTip{};
+            bool fValidateExpectedTip{false};
+            uint32_t nChannel{0};
+            std::chrono::steady_clock::time_point tScheduledAt{};
+        };
+        static constexpr std::size_t TEMPLATE_WORK_QUEUE_MAX = 4;
+        std::deque<TemplateWorkRequest> m_template_work_queue;
+        std::atomic<uint64_t> m_template_work_dropped_total{0};
 
         /** Timestamp of the last template push (SendStatelessTemplate / SendChannelNotification).
          *
