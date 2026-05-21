@@ -21,6 +21,7 @@ ________________________________________________________________________________
 #include <functional>
 #include <mutex>
 #include <thread>
+#include <vector>
 
 namespace
 {
@@ -272,4 +273,98 @@ TEST_CASE("Async PUSH coalescing updates channel when non-PUSH schedule has non-
         tip, 2,
         true, tip, nPendingChannel,
         false, uint1024_t(0), 0));
+}
+
+
+TEST_CASE("Async PUSH burst end-to-end: mid-flight tip change discards T1 then builds T2", "[llp][async_push][template_staleness]")
+{
+    std::mutex gateMutex;
+    std::condition_variable gateCv;
+    bool fFirstBuildEntered = false;
+    bool fReleaseFirstBuild = false;
+    bool fSecondBuildDone = false;
+
+    const uint1024_t tipT1(0xAA);
+    const uint1024_t tipT2(0xBB);
+
+    std::atomic<uint32_t> nBuildCount{0};
+    std::atomic<uint32_t> nQueued{0};
+    std::atomic<uint32_t> nDiscarded{0};
+    std::vector<uint1024_t> vBuildOrder;
+    std::mutex orderMutex;
+
+    uint1024_t hashCurrentTip = tipT1;
+    std::mutex tipMutex;
+
+    SimAsyncPushWorker worker(
+        [&](const uint1024_t& hashExpectedTip, uint32_t)
+        {
+            const uint32_t nBuildIndex = nBuildCount.fetch_add(1, std::memory_order_relaxed);
+            {
+                std::lock_guard<std::mutex> lock(orderMutex);
+                vBuildOrder.push_back(hashExpectedTip);
+            }
+
+            if(nBuildIndex == 0)
+            {
+                std::unique_lock<std::mutex> lock(gateMutex);
+                fFirstBuildEntered = true; /* t=0: T1 build entered */
+                gateCv.notify_all();
+                gateCv.wait(lock, [&](){ return fReleaseFirstBuild; }); /* hold until T2 arrives mid-flight */
+            }
+
+            uint1024_t hashLiveTip;
+            {
+                std::lock_guard<std::mutex> lock(tipMutex);
+                hashLiveTip = hashCurrentTip;
+            }
+
+            if(hashLiveTip != hashExpectedTip)
+                nDiscarded.fetch_add(1, std::memory_order_relaxed);
+            else
+                nQueued.fetch_add(1, std::memory_order_relaxed);
+
+            if(nBuildIndex == 1)
+            {
+                std::lock_guard<std::mutex> lock(gateMutex);
+                fSecondBuildDone = true;
+                gateCv.notify_all();
+            }
+        });
+
+    REQUIRE(worker.SchedulePush(tipT1, 1));
+
+    {
+        std::unique_lock<std::mutex> lock(gateMutex);
+        gateCv.wait(lock, [&](){ return fFirstBuildEntered; });
+    }
+
+    /* t=120: tip advances during T1 build; schedule T2 while T1 is still in-flight. */
+    {
+        std::lock_guard<std::mutex> lock(tipMutex);
+        hashCurrentTip = tipT2;
+    }
+    REQUIRE(worker.SchedulePush(tipT2, 1));
+
+    {
+        std::lock_guard<std::mutex> lock(gateMutex);
+        fReleaseFirstBuild = true; /* t=700: release T1 so tip-fence can discard it, then T2 builds */
+    }
+    gateCv.notify_all();
+
+    {
+        std::unique_lock<std::mutex> lock(gateMutex);
+        gateCv.wait(lock, [&](){ return fSecondBuildDone; });
+    }
+
+    worker.Stop();
+
+    REQUIRE(nBuildCount.load(std::memory_order_relaxed) == 2);
+    REQUIRE(nDiscarded.load(std::memory_order_relaxed) == 1);
+    REQUIRE(nQueued.load(std::memory_order_relaxed) == 1);
+    REQUIRE(worker.CoalescedCount() == 0);
+
+    REQUIRE(vBuildOrder.size() == 2);
+    REQUIRE(vBuildOrder[0] == tipT1);
+    REQUIRE(vBuildOrder[1] == tipT2);
 }
