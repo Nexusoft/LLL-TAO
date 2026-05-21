@@ -259,6 +259,9 @@ namespace LLP
         if(m_template_worker_running)
             return;
 
+        if(m_template_work_thread.joinable())
+            m_template_work_thread.join();
+
         m_template_worker_running = true;
         m_template_work_pending = false;
         m_template_work_in_flight = false;
@@ -315,7 +318,8 @@ namespace LLP
             m_template_work_reason = eReason;
             m_template_work_expected_tip = hashExpectedTip;
             m_template_work_validate_expected_tip = fValidateExpectedTip;
-            m_template_work_channel = nChannel;
+            if(nChannel != 0)
+                m_template_work_channel = nChannel;
             m_template_work_scheduled_at = std::chrono::steady_clock::now();
         }
 
@@ -3385,7 +3389,7 @@ namespace LLP
             /* Match stateless lane recovery: do not build BLOCK_DATA on the
              * read path.  Queue a coalesced background template send so a
              * partial-read or slow template creation cannot stall this socket. */
-            ScheduleTemplateWork(TemplateWorkReason::GET_ROUND_RECOVERY);
+            ScheduleTemplateWork(TemplateWorkReason::GET_ROUND_RECOVERY, uint1024_t(0), false, nChannel.load());
         }
 
         return true;

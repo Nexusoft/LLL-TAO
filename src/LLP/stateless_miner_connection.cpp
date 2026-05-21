@@ -555,6 +555,9 @@ namespace LLP
         if(m_template_worker_running)
             return;
 
+        if(m_template_work_thread.joinable())
+            m_template_work_thread.join();
+
         m_template_worker_running = true;
         m_template_work_pending = false;
         m_template_work_in_flight = false;
@@ -611,7 +614,8 @@ namespace LLP
             m_template_work_reason = eReason;
             m_template_work_expected_tip = hashExpectedTip;
             m_template_work_validate_expected_tip = fValidateExpectedTip;
-            m_template_work_channel = nChannel;
+            if(nChannel != 0)
+                m_template_work_channel = nChannel;
             m_template_work_scheduled_at = std::chrono::steady_clock::now();
         }
 
@@ -2657,7 +2661,7 @@ namespace LLP
                 {
                     /* new_block() acquires MUTEX internally — no outer lock needed. */
 
-                    ScheduleTemplateWork(TemplateWorkReason::GET_ROUND_RECOVERY);
+                    ScheduleTemplateWork(TemplateWorkReason::GET_ROUND_RECOVERY, uint1024_t(0), false, nChannel_snap);
 
                     /* Keep only the activity timestamp here; the async worker
                      * advances template anchors after it actually queues BLOCK_DATA. */

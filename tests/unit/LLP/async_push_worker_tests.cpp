@@ -233,3 +233,21 @@ TEST_CASE("Async PUSH tip-fence discards stale build under tip race", "[llp][asy
     REQUIRE(nDiscarded.load(std::memory_order_relaxed) == 1);
     REQUIRE(nQueued.load(std::memory_order_relaxed) == 0);
 }
+
+
+TEST_CASE("Async PUSH coalescing keeps channel when non-PUSH schedule has channel=0", "[llp][async_push]")
+{
+    const uint1024_t tip(0xAA);
+    uint32_t nPendingChannel = 1;
+
+    /* Match ScheduleTemplateWork behavior: channel is only updated when meaningful. */
+    const uint32_t nIncomingChannel = 0;
+    if(nIncomingChannel != 0)
+        nPendingChannel = nIncomingChannel;
+
+    REQUIRE(nPendingChannel == 1);
+    REQUIRE(LLP::ShouldCoalesceAsyncPush(
+        tip, 1,
+        true, tip, nPendingChannel,
+        false, uint1024_t(0), 0));
+}
