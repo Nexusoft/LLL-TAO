@@ -41,6 +41,13 @@ namespace LLP
     }
 
 
+    std::size_t RecentRewardRegistry::ShardIndex(const uint256_t& hashRewardAddress)
+    {
+        return static_cast<std::size_t>(hashRewardAddress.Get64(0))
+             & (kShards - 1);
+    }
+
+
     void RecentRewardRegistry::Register(uint32_t nChannel, const uint256_t& hashRewardAddress)
     {
         /* Channel 0 is PoS; it does not route through the mining lanes. */
@@ -56,10 +63,12 @@ namespace LLP
         if(!LLP::GenesisConstants::IsValidGenesisType(hashRewardAddress))
             return;
 
-        const auto tNow = std::chrono::steady_clock::now();
+        const auto   tNow      = std::chrono::steady_clock::now();
+        Shard&       shard     = m_shards[ShardIndex(hashRewardAddress)];
+        const std::size_t iMap = (nChannel == 1) ? 0u : 1u;
 
-        std::lock_guard<std::mutex> lock(m_mutex);
-        m_entries[std::make_pair(nChannel, hashRewardAddress)] = tNow;
+        std::lock_guard<std::mutex> lock(shard.mutex);
+        shard.maps[iMap][hashRewardAddress] = tNow;
     }
 
 
@@ -69,18 +78,25 @@ namespace LLP
         const auto tNow = std::chrono::steady_clock::now();
         std::vector<Entry> out;
 
-        std::lock_guard<std::mutex> lock(m_mutex);
-        out.reserve(m_entries.size());
-        for(const auto& kv : m_entries)
+        for(std::size_t s = 0; s < kShards; ++s)
         {
-            if(tNow - kv.second > nTTL)
-                continue;
+            Shard& shard = m_shards[s];
+            std::lock_guard<std::mutex> lock(shard.mutex);
+            for(std::size_t iMap = 0; iMap < shard.maps.size(); ++iMap)
+            {
+                const uint32_t nChannel = (iMap == 0) ? 1u : 2u;
+                for(const auto& kv : shard.maps[iMap])
+                {
+                    if(tNow - kv.second > nTTL)
+                        continue;
 
-            Entry e;
-            e.nChannel           = kv.first.first;
-            e.hashRewardAddress  = kv.first.second;
-            e.tLastSeen          = kv.second;
-            out.push_back(e);
+                    Entry e;
+                    e.nChannel          = nChannel;
+                    e.hashRewardAddress = kv.first;
+                    e.tLastSeen         = kv.second;
+                    out.push_back(e);
+                }
+            }
         }
         return out;
     }
@@ -89,21 +105,33 @@ namespace LLP
     void RecentRewardRegistry::Prune(std::chrono::seconds nTTL)
     {
         const auto tNow = std::chrono::steady_clock::now();
-        std::lock_guard<std::mutex> lock(m_mutex);
-        for(auto it = m_entries.begin(); it != m_entries.end(); )
+        for(std::size_t s = 0; s < kShards; ++s)
         {
-            if(tNow - it->second > nTTL)
-                it = m_entries.erase(it);
-            else
-                ++it;
+            Shard& shard = m_shards[s];
+            std::lock_guard<std::mutex> lock(shard.mutex);
+            for(auto& map : shard.maps)
+            {
+                for(auto it = map.begin(); it != map.end(); )
+                {
+                    if(tNow - it->second > nTTL)
+                        it = map.erase(it);
+                    else
+                        ++it;
+                }
+            }
         }
     }
 
 
     void RecentRewardRegistry::ClearForTesting()
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        m_entries.clear();
+        for(std::size_t s = 0; s < kShards; ++s)
+        {
+            Shard& shard = m_shards[s];
+            std::lock_guard<std::mutex> lock(shard.mutex);
+            for(auto& map : shard.maps)
+                map.clear();
+        }
     }
 
 

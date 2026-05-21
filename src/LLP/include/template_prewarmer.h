@@ -17,15 +17,17 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstddef>
 #include <cstdint>
 #include <deque>
 #include <functional>
-#include <map>
 #include <mutex>
 #include <thread>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -46,7 +48,16 @@ namespace LLP
      *  means the prewarmer will not warm one reward for one tip, never an
      *  incorrect block.
      *
-     *  Thread-safety: every public method is internally synchronised.
+     *  Thread-safety: shard-striped to remove the single-mutex hot-spot.
+     *  `Register()` is called on every miner's `new_block()` (≥ once per
+     *  GET_BLOCK at hundreds of miners), so the registry is divided into
+     *  `kShards == 16` independent shards.  Each shard owns its own
+     *  `std::mutex` and per-channel `std::unordered_map<uint256_t, TimePoint>`.
+     *  Hashing by the low 64 bits of the reward distributes load evenly,
+     *  so peak contention is `N_register_calls / 16` rather than `N`.  The
+     *  per-shard `unordered_map` is also O(1) average vs the previous
+     *  `std::map`'s O(log N), eliminating the red-black-tree walk on the
+     *  hot path.
      *
      **/
     class RecentRewardRegistry
@@ -85,8 +96,38 @@ namespace LLP
     private:
         RecentRewardRegistry() = default;
 
-        mutable std::mutex m_mutex;
-        std::map<std::pair<uint32_t, uint256_t>, std::chrono::steady_clock::time_point> m_entries;
+        /* 16 shards: power of two so the shard index is a single AND.
+         * Sized for hundreds of miners on a multi-core node — well past
+         * the point where a single-mutex registry would contend.  Each
+         * shard is two channels (1 and 2) × one unordered_map. */
+        static constexpr std::size_t kShards = 16;
+
+        struct Shard
+        {
+            mutable std::mutex mutex;
+            struct Uint256Hash
+            {
+                std::size_t operator()(const uint256_t& h) const noexcept
+                {
+                    /* Low 64 bits of the genesis hash are already
+                     * cryptographically uniform — no further mixing needed. */
+                    return static_cast<std::size_t>(h.Get64(0));
+                }
+            };
+            /* Index 0 = channel 1 (Prime), index 1 = channel 2 (Hash). */
+            std::array<std::unordered_map<uint256_t,
+                                          std::chrono::steady_clock::time_point,
+                                          Uint256Hash>, 2> maps;
+        };
+
+        /* Heap-allocated array so the Shard objects are not copyable/movable
+         * dependencies of this class's CTAD/aggregate init. */
+        mutable std::array<Shard, kShards> m_shards;
+
+        /* Pick a shard from the low 64 bits of the reward hash, then mask
+         * to kShards-1.  uint256_t::Get64(0) returns the lowest 64-bit
+         * limb which is already well-distributed for genesis hashes. */
+        static std::size_t ShardIndex(const uint256_t& hashRewardAddress);
     };
 
 
