@@ -48,6 +48,27 @@ namespace LLP
     }
 
 
+    namespace
+    {
+        /* Centralised bidirectional mapping between mining channel numbers
+         * (1=Prime, 2=Hash) and the per-shard `maps` array index (0, 1).
+         * Channels are validated by the caller (Register early-returns for
+         * anything other than 1 or 2), so these helpers can assume the
+         * input is in range. */
+        constexpr std::size_t ChannelToMapIndex(uint32_t nChannel)
+        {
+            /* nChannel ∈ {1, 2} → {0, 1}. */
+            return static_cast<std::size_t>(nChannel - 1u);
+        }
+
+        constexpr uint32_t MapIndexToChannel(std::size_t iMap)
+        {
+            /* iMap ∈ {0, 1} → {1, 2}. */
+            return static_cast<uint32_t>(iMap + 1u);
+        }
+    }
+
+
     void RecentRewardRegistry::Register(uint32_t nChannel, const uint256_t& hashRewardAddress)
     {
         /* Channel 0 is PoS; it does not route through the mining lanes. */
@@ -65,7 +86,7 @@ namespace LLP
 
         const auto   tNow      = std::chrono::steady_clock::now();
         Shard&       shard     = m_shards[ShardIndex(hashRewardAddress)];
-        const std::size_t iMap = (nChannel == 1) ? 0u : 1u;
+        const std::size_t iMap = ChannelToMapIndex(nChannel);
 
         std::lock_guard<std::mutex> lock(shard.mutex);
         shard.maps[iMap][hashRewardAddress] = tNow;
@@ -84,7 +105,7 @@ namespace LLP
             std::lock_guard<std::mutex> lock(shard.mutex);
             for(std::size_t iMap = 0; iMap < shard.maps.size(); ++iMap)
             {
-                const uint32_t nChannel = (iMap == 0) ? 1u : 2u;
+                const uint32_t nChannel = MapIndexToChannel(iMap);
                 for(const auto& kv : shard.maps[iMap])
                 {
                     if(tNow - kv.second > nTTL)
