@@ -274,6 +274,9 @@ TEST_CASE("MiningTemplatePrewarmer worker pool warms in parallel",
     {
         const std::size_t now = nConcurrent.fetch_add(1, std::memory_order_acq_rel) + 1;
         std::size_t prev = nPeakConcurrent.load(std::memory_order_relaxed);
+        /* Standard CAS retry: keep trying to publish `now` as the new
+         * peak until either we win the race or another thread has already
+         * pushed the peak past `now`. */
         while(now > prev
            && !nPeakConcurrent.compare_exchange_weak(prev, now,
                                                       std::memory_order_acq_rel))

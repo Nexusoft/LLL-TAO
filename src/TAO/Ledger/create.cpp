@@ -159,6 +159,10 @@ namespace TAO::Ledger
             EntryPtr pFallback;
             for(const auto& p : m_entries)
             {
+                /* Store() never inserts nullptr, so p is always non-null
+                 * in normal operation.  The guard is purely defensive and
+                 * cheap — it makes the iteration robust to any future
+                 * refactor that adds clear-without-erase semantics. */
                 if(!p)
                     continue;
                 if(pFallback == nullptr)
