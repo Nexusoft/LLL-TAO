@@ -251,3 +251,25 @@ TEST_CASE("Async PUSH coalescing keeps channel when non-PUSH schedule has channe
         true, tip, nPendingChannel,
         false, uint1024_t(0), 0));
 }
+
+
+TEST_CASE("Async PUSH coalescing updates channel when non-PUSH schedule has non-zero channel", "[llp][async_push]")
+{
+    const uint1024_t tip(0xAA);
+    uint32_t nPendingChannel = 1;
+
+    /* Match ScheduleTemplateWork behavior: meaningful channel updates worker channel state. */
+    const uint32_t nIncomingChannel = 2;
+    if(nIncomingChannel != 0)
+        nPendingChannel = nIncomingChannel;
+
+    REQUIRE(nPendingChannel == 2);
+    REQUIRE_FALSE(LLP::ShouldCoalesceAsyncPush(
+        tip, 1,
+        true, tip, nPendingChannel,
+        false, uint1024_t(0), 0));
+    REQUIRE(LLP::ShouldCoalesceAsyncPush(
+        tip, 2,
+        true, tip, nPendingChannel,
+        false, uint1024_t(0), 0));
+}

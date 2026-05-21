@@ -254,13 +254,23 @@ namespace LLP
 
     void Miner::StartTemplateWorker()
     {
+        bool fJoinExistingWorker = false;
+        {
+            std::lock_guard<std::mutex> lock(m_template_work_mutex);
+
+            if(m_template_worker_running)
+                return;
+
+            fJoinExistingWorker = m_template_work_thread.joinable();
+        }
+
+        if(fJoinExistingWorker)
+            m_template_work_thread.join();
+
         std::lock_guard<std::mutex> lock(m_template_work_mutex);
 
         if(m_template_worker_running)
             return;
-
-        if(m_template_work_thread.joinable())
-            m_template_work_thread.join();
 
         m_template_worker_running = true;
         m_template_work_pending = false;
