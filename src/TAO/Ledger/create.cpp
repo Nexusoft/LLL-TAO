@@ -48,6 +48,9 @@ ________________________________________________________________________________
 #include <Util/include/convert.h>
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
+
+#include <list>
+#include <mutex>
 #include <Util/include/runtime.h>
 
 #include <atomic>
@@ -85,15 +88,7 @@ namespace TAO::Ledger
      * (block, dynamicGenesis, extraNonce) triple after another miner's
      * three-step .store() sequence. CachedMiningTemplateRequiresProducerFinalization
      * would then return the wrong answer for one cycle and serve a stale
-     * producer to miner X with miner Y's reward address.
-     *
-     * The single-struct atomic eliminates that torn-read window. The cache
-     * remains keyed by mining channel (0=PoS, 1=Prime, 2=Hash, 3=Private);
-     * a per-(channel, dynamicGenesis) LRU is a deferrable throughput
-     * optimisation for multi-miner-per-channel deployments and is NOT
-     * required for correctness — the existing
-     * CachedMiningTemplateRequiresProducerFinalization() rebuilds the
-     * producer when the requested reward differs. */
+     * producer to miner X with miner Y's reward address. */
     struct MiningTemplateCacheEntry
     {
         TAO::Ledger::TritiumBlock block;
@@ -108,8 +103,118 @@ namespace TAO::Ledger
         }
     };
 
+
+    /* Option A — per-channel multi-entry template cache.
+     *
+     * Each mining channel now holds a small LRU table keyed by
+     * hashDynamicGenesis instead of a single-slot atomic.  Two miners on
+     * the same channel using different reward addresses no longer evict
+     * each other's finalized producer on every alternating GET_BLOCK/PUSH:
+     * the cache-hit path returns the entry whose hashDynamicGenesis matches
+     * the requested reward, so CachedMiningTemplateRequiresProducerFinalization
+     * returns false and the multi-hundred-millisecond CreateProducer call is
+     * skipped.
+     *
+     * If no exact match exists, the most recently used entry is returned so
+     * the caller can still reuse it as a base template and finalize a new
+     * producer (parity with the previous single-slot behaviour).
+     *
+     * Capacity is operator-tunable via `-blockcache.entries` (default 4,
+     * clamped to [1, 64]).  In the common single-miner-per-channel
+     * deployment this collapses to a single entry and is bit-for-bit
+     * equivalent to the prior implementation.
+     *
+     * Thread-safety: an internal std::mutex protects the list.  Lookup and
+     * Store both copy entries by value to and from the caller, so the call
+     * sites do not need to coordinate locking with the cache itself.
+     */
+    class MiningTemplateCacheTable
+    {
+    public:
+        /** Look up the entry preferring an exact hashDynamicGenesis match.
+         *  Falls back to the most-recently-touched entry on this channel if
+         *  no exact match exists.  Returns a default-constructed entry when
+         *  the cache is empty (which preserves the prior load() semantics).
+         **/
+        MiningTemplateCacheEntry Lookup(const uint256_t& hashDynamicGenesis)
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            for(auto it = m_entries.begin(); it != m_entries.end(); ++it)
+            {
+                if(it->hashDynamicGenesis == hashDynamicGenesis)
+                {
+                    /* LRU touch: move to front. */
+                    if(it != m_entries.begin())
+                        m_entries.splice(m_entries.begin(), m_entries, it);
+                    return m_entries.front();
+                }
+            }
+            if(m_entries.empty())
+                return MiningTemplateCacheEntry();
+            return m_entries.front();
+        }
+
+        /** Insert or replace by hashDynamicGenesis, with LRU eviction.
+         *  Most-recently-stored entry becomes the new front; oldest entry
+         *  is evicted once the capacity is exceeded.
+         **/
+        void Store(const MiningTemplateCacheEntry& entry)
+        {
+            const std::size_t cap = Capacity();
+            std::lock_guard<std::mutex> lock(m_mutex);
+            for(auto it = m_entries.begin(); it != m_entries.end(); ++it)
+            {
+                if(it->hashDynamicGenesis == entry.hashDynamicGenesis)
+                {
+                    *it = entry;
+                    if(it != m_entries.begin())
+                        m_entries.splice(m_entries.begin(), m_entries, it);
+                    return;
+                }
+            }
+            m_entries.push_front(entry);
+            while(m_entries.size() > cap)
+                m_entries.pop_back();
+        }
+
+        /** Test/diag: number of entries currently cached. */
+        std::size_t Size() const
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            return m_entries.size();
+        }
+
+        /** Test/diag: drop every cached entry on this channel. */
+        void Clear()
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_entries.clear();
+        }
+
+        /** Resolved capacity from `-blockcache.entries`, clamped to a sane
+         *  range.  Read on every Store() so operators can tune without a
+         *  restart in unit/integration scenarios; the cost is one int64_t
+         *  arg lookup which is negligible compared to producer signing. */
+        static std::size_t Capacity()
+        {
+            const int64_t n = config::GetArg("-blockcache.entries", 4);
+            if(n <= 0)
+                return 1;
+            if(n > 64)
+                return 64;
+            return static_cast<std::size_t>(n);
+        }
+
+    private:
+        mutable std::mutex m_mutex;
+        /* Front = most recent.  std::list provides O(1) splice-to-front
+         * for LRU bookkeeping and stable iterators under concurrent
+         * access serialized by m_mutex. */
+        std::list<MiningTemplateCacheEntry> m_entries;
+    };
+
     /* Indexed by mining channel: 0=PoS, 1=Prime, 2=Hash, 3=Private. */
-    static memory::atomic<MiningTemplateCacheEntry> tBlockCache[4];
+    static MiningTemplateCacheTable tBlockCache[4];
 
 
     /* Create a new transaction object from signature chain. */
@@ -529,10 +634,15 @@ namespace TAO::Ledger
         else
             rBlockRet.nVersion = nCurrent - 1;
 
-        /* Retrieve currently cached block — single atomic snapshot of the
-         * (block, dynamicGenesis, extraNonce) triple to avoid torn reads. */
+        /* Retrieve currently cached block — Option A: per-channel multi-entry
+         * LRU lookup preferring an exact hashDynamicGenesis match.  When two
+         * miners on the same channel use different reward addresses, both
+         * sets of finalized producers coexist instead of evicting each other
+         * on every alternation.  When no exact match exists the most
+         * recently touched entry is returned and finalized below — exactly
+         * the prior single-slot behaviour. */
         const MiningTemplateCacheEntry tCachedEntry =
-            tBlockCache[nChannel].load();
+            tBlockCache[nChannel].Lookup(hashDynamicGenesis);
         const TAO::Ledger::TritiumBlock& tBlockCached =
             tCachedEntry.block;
         const uint256_t hashCachedDynamicGenesis =
@@ -719,7 +829,7 @@ namespace TAO::Ledger
                 tNewEntry.block              = rBlockRet;
                 tNewEntry.hashDynamicGenesis = hashDynamicGenesis;
                 tNewEntry.nExtraNonce        = nExtraNonce;
-                tBlockCache[nChannel].store(tNewEntry);
+                tBlockCache[nChannel].Store(tNewEntry);
             }
         }
         else //block not cached, set up new block
@@ -767,7 +877,7 @@ namespace TAO::Ledger
                 tNewEntry.block              = rBlockRet;
                 tNewEntry.hashDynamicGenesis = hashDynamicGenesis;
                 tNewEntry.nExtraNonce        = nExtraNonce;
-                tBlockCache[nChannel].store(tNewEntry);
+                tBlockCache[nChannel].Store(tNewEntry);
             }
         }
 
