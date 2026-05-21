@@ -185,6 +185,10 @@ TEST_CASE("MiningTemplatePrewarmer deduplicates same-tip requests in the queue",
     config::mapArgs.erase("-prewarm");
     config::mapArgs.erase("-prewarm.reward_ttl");
     config::mapArgs.erase("-prewarm.queue_max");
+    /* Pin to a single worker so the queue-coalescing semantics are
+     * deterministic.  Pool-sizing is exercised by the dedicated
+     * [template_prewarmer][pool] test below. */
+    config::mapArgs["-prewarm.workers"] = "1";
 
     auto& reg    = LLP::RecentRewardRegistry::Instance();
     auto& warmer = LLP::MiningTemplatePrewarmer::Instance();
@@ -237,6 +241,92 @@ TEST_CASE("MiningTemplatePrewarmer deduplicates same-tip requests in the queue",
     warmer.Stop();
     warmer.ResetBuildFnForTesting();
     reg.ClearForTesting();
+    config::mapArgs.erase("-prewarm.workers");
+}
+
+
+TEST_CASE("MiningTemplatePrewarmer worker pool warms in parallel",
+          "[template_prewarmer][pool]")
+{
+    config::mapArgs.erase("-prewarm");
+    config::mapArgs.erase("-prewarm.reward_ttl");
+    config::mapArgs.erase("-prewarm.queue_max");
+    /* Force a 4-worker pool so the test is deterministic regardless of the
+     * host machine's hardware concurrency. */
+    config::mapArgs["-prewarm.workers"] = "4";
+
+    auto& reg    = LLP::RecentRewardRegistry::Instance();
+    auto& warmer = LLP::MiningTemplatePrewarmer::Instance();
+    reg.ClearForTesting();
+
+    /* Block every worker in the builder until we observe peak concurrency,
+     * then release them all.  This proves that more than one builder ran
+     * at the same wall-clock instant — the whole point of the thread pool. */
+    std::mutex                m_gate_mutex;
+    std::condition_variable   m_observed_cv;
+    std::condition_variable   m_release_cv;
+    std::atomic<std::size_t>  nConcurrent{0};
+    std::atomic<std::size_t>  nPeakConcurrent{0};
+    std::atomic<bool>         fRelease{false};
+    std::atomic<std::size_t>  nBuilds{0};
+
+    warmer.SetBuildFnForTesting([&](uint32_t, const uint256_t&, const uint1024_t&)
+    {
+        const std::size_t now = nConcurrent.fetch_add(1, std::memory_order_acq_rel) + 1;
+        std::size_t prev = nPeakConcurrent.load(std::memory_order_relaxed);
+        while(now > prev
+           && !nPeakConcurrent.compare_exchange_weak(prev, now,
+                                                      std::memory_order_acq_rel))
+            ;
+        {
+            std::lock_guard<std::mutex> lock(m_gate_mutex);
+            m_observed_cv.notify_all();
+        }
+        {
+            std::unique_lock<std::mutex> lock(m_gate_mutex);
+            m_release_cv.wait(lock, [&] { return fRelease.load(std::memory_order_acquire); });
+        }
+        nConcurrent.fetch_sub(1, std::memory_order_acq_rel);
+        nBuilds.fetch_add(1, std::memory_order_release);
+    });
+
+    warmer.Start();
+
+    /* Stats expose the pool size so the operator can verify it from RPC. */
+    REQUIRE(warmer.GetStats().nWorkers == 4);
+
+    /* Register four distinct rewards so all four workers can pick up work
+     * in parallel. */
+    for(uint8_t i = 0; i < 4; ++i)
+        reg.Register(1, MakeReward(51 + i));
+
+    warmer.NotifyTipAdvance(500, MakeTip(0x50));
+
+    /* Wait until peak concurrency reaches 4 (the whole pool is busy in
+     * the builder simultaneously). */
+    {
+        std::unique_lock<std::mutex> lock(m_gate_mutex);
+        const bool ok = m_observed_cv.wait_for(lock, std::chrono::seconds(2),
+            [&] { return nPeakConcurrent.load(std::memory_order_acquire) >= 4; });
+        REQUIRE(ok);
+    }
+    REQUIRE(nPeakConcurrent.load(std::memory_order_acquire) == 4);
+
+    /* Release the gate and wait for all builds to complete. */
+    {
+        std::lock_guard<std::mutex> lock(m_gate_mutex);
+        fRelease.store(true, std::memory_order_release);
+    }
+    m_release_cv.notify_all();
+
+    for(int i = 0; i < 200 && nBuilds.load(std::memory_order_acquire) < 4; ++i)
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    REQUIRE(nBuilds.load(std::memory_order_acquire) == 4);
+
+    warmer.Stop();
+    warmer.ResetBuildFnForTesting();
+    reg.ClearForTesting();
+    config::mapArgs.erase("-prewarm.workers");
 }
 
 
@@ -245,6 +335,9 @@ TEST_CASE("MiningTemplatePrewarmer drops oldest when queue exceeds cap",
 {
     /* Tiny cap forces immediate overflow. */
     config::mapArgs["-prewarm.queue_max"] = "2";
+    /* Pin to a single worker so requests pile up in the queue
+     * deterministically before the worker drains them. */
+    config::mapArgs["-prewarm.workers"] = "1";
 
     auto& reg    = LLP::RecentRewardRegistry::Instance();
     auto& warmer = LLP::MiningTemplatePrewarmer::Instance();
@@ -294,6 +387,7 @@ TEST_CASE("MiningTemplatePrewarmer drops oldest when queue exceeds cap",
     warmer.ResetBuildFnForTesting();
     reg.ClearForTesting();
     config::mapArgs.erase("-prewarm.queue_max");
+    config::mapArgs.erase("-prewarm.workers");
 }
 
 

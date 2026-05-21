@@ -23,6 +23,10 @@ ________________________________________________________________________________
 #include <Util/include/config.h>
 #include <Util/include/debug.h>
 
+#include <algorithm>
+#include <thread>
+#include <vector>
+
 namespace LLP
 {
 
@@ -117,15 +121,31 @@ namespace LLP
 
         std::size_t QueueMax()
         {
-            const int64_t n = config::GetArg("-prewarm.queue_max", 16);
+            const int64_t n = config::GetArg("-prewarm.queue_max", 64);
             if(n <= 0)
-                return 16;
+                return 64;
             return static_cast<std::size_t>(n);
         }
 
         bool PrewarmEnabled()
         {
             return config::GetBoolArg("-prewarm", true);
+        }
+
+        /* Worker pool size.  Default scales with hardware so a 16-core node
+         * gets 8 prewarm workers and a 4-core node gets 2.  Bounded at 8 to
+         * avoid contending with consensus/networking threads. */
+        std::size_t WorkerCount()
+        {
+            const int64_t nExplicit = config::GetArg("-prewarm.workers", 0);
+            if(nExplicit > 0)
+                return static_cast<std::size_t>(std::min<int64_t>(nExplicit, 32));
+
+            const unsigned int hw = std::thread::hardware_concurrency();
+            std::size_t n = (hw > 0) ? static_cast<std::size_t>(hw / 2) : 2;
+            if(n < 2) n = 2;
+            if(n > 8) n = 8;
+            return n;
         }
     }
 
@@ -139,20 +159,33 @@ namespace LLP
 
     void MiningTemplatePrewarmer::Start()
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
+        std::size_t nWorkers = 0;
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
 
-        if(m_running.load(std::memory_order_acquire))
-            return;
+            if(m_running.load(std::memory_order_acquire))
+                return;
 
-        if(m_thread.joinable())
-            m_thread.join();
+            /* Join any leftover threads from a previous Stop() before
+             * spawning the new pool, to keep std::vector<std::thread>
+             * lifetime semantics clean. */
+            for(auto& t : m_threads)
+                if(t.joinable())
+                    t.join();
+            m_threads.clear();
 
-        m_queue.clear();
-        m_running.store(true, std::memory_order_release);
-        m_thread = std::thread(&MiningTemplatePrewarmer::WorkerLoop, this);
+            m_queue.clear();
+            m_running.store(true, std::memory_order_release);
 
-        debug::log(0, FUNCTION, "[PREWARM] worker started (enabled=",
+            nWorkers = WorkerCount();
+            m_threads.reserve(nWorkers);
+            for(std::size_t i = 0; i < nWorkers; ++i)
+                m_threads.emplace_back(&MiningTemplatePrewarmer::WorkerLoop, this);
+        }
+
+        debug::log(0, FUNCTION, "[PREWARM] worker pool started (enabled=",
                    PrewarmEnabled() ? "true" : "false",
+                   " workers=", nWorkers,
                    " ttl_s=", RewardTTL().count(),
                    " queue_max=", QueueMax(), ")");
     }
@@ -160,19 +193,23 @@ namespace LLP
 
     void MiningTemplatePrewarmer::Stop()
     {
+        std::vector<std::thread> vJoin;
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             if(!m_running.load(std::memory_order_acquire))
                 return;
             m_running.store(false, std::memory_order_release);
             m_queue.clear();
+            vJoin = std::move(m_threads);
+            m_threads.clear();
         }
         m_cv.notify_all();
 
-        if(m_thread.joinable())
-            m_thread.join();
+        for(auto& t : vJoin)
+            if(t.joinable())
+                t.join();
 
-        debug::log(0, FUNCTION, "[PREWARM] worker stopped"
+        debug::log(0, FUNCTION, "[PREWARM] worker pool stopped"
                    " enqueued=", m_enqueued_total.load(std::memory_order_relaxed),
                    " warmed=",   m_warmed_total.load(std::memory_order_relaxed),
                    " dropped=",  m_dropped_total.load(std::memory_order_relaxed),
@@ -244,7 +281,9 @@ namespace LLP
         if(nEnqueued > 0)
         {
             m_enqueued_total.fetch_add(nEnqueued, std::memory_order_relaxed);
-            m_cv.notify_one();
+            /* Wake every worker — N enqueues may keep N consumers busy in
+             * parallel and notify_all is cheap relative to producer signing. */
+            m_cv.notify_all();
         }
         if(nDropped > 0)
             m_dropped_total.fetch_add(nDropped, std::memory_order_relaxed);
@@ -352,6 +391,10 @@ namespace LLP
         s.nWarmed           = m_warmed_total.load(std::memory_order_relaxed);
         s.nDropped          = m_dropped_total.load(std::memory_order_relaxed);
         s.nStaleTipSkipped  = m_stale_tip_skipped_total.load(std::memory_order_relaxed);
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            s.nWorkers = m_threads.size();
+        }
         return s;
     }
 

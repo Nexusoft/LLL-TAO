@@ -105,7 +105,16 @@ namespace LLP
      *  Operator flags:
      *    -prewarm                = true              (master switch)
      *    -prewarm.reward_ttl     = 300               (seconds)
-     *    -prewarm.queue_max      = 16                (requests)
+     *    -prewarm.queue_max      = 64                (requests)
+     *    -prewarm.workers        = auto              (worker thread count)
+     *
+     *  Worker pool sizing:
+     *    `-prewarm.workers` defaults to `max(2, min(8, hardware_concurrency/2))`
+     *    so that on a node with 100–200 miners the prewarmer can sign
+     *    several producers in parallel and still keep up with the Prime
+     *    channel's ~50 s tip cadence.  Each worker pops from the same
+     *    bounded deque, so adding workers is a pure throughput knob with
+     *    no coalescing impact.
      *
      **/
     class MiningTemplatePrewarmer
@@ -117,17 +126,18 @@ namespace LLP
             uint64_t nWarmed{0};
             uint64_t nDropped{0};
             uint64_t nStaleTipSkipped{0};
+            uint64_t nWorkers{0};
         };
 
         static MiningTemplatePrewarmer& Instance();
 
-        /** Start the background worker thread.  Idempotent. */
+        /** Start the background worker thread pool.  Idempotent. */
         void Start();
 
-        /** Stop the worker, drain pending requests, and join the thread. */
+        /** Stop all workers, drain pending requests, and join all threads. */
         void Stop();
 
-        /** Whether the worker is currently running.  Lock-free. */
+        /** Whether the worker pool is currently running.  Lock-free. */
         bool IsRunning() const { return m_running.load(std::memory_order_acquire); }
 
         /** Called from BlockState::SetBest() after EnqueuePushEvent.
@@ -168,7 +178,7 @@ namespace LLP
 
         mutable std::mutex m_mutex;
         std::condition_variable m_cv;
-        std::thread m_thread;
+        std::vector<std::thread> m_threads;
         std::atomic<bool> m_running{false};
         std::deque<WarmupRequest> m_queue;
 

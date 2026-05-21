@@ -50,7 +50,9 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 
 #include <list>
+#include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <Util/include/runtime.h>
 
 #include <atomic>
@@ -119,60 +121,77 @@ namespace TAO::Ledger
      * the caller can still reuse it as a base template and finalize a new
      * producer (parity with the previous single-slot behaviour).
      *
-     * Capacity is operator-tunable via `-blockcache.entries` (default 4,
-     * clamped to [1, 64]).  In the common single-miner-per-channel
-     * deployment this collapses to a single entry and is bit-for-bit
-     * equivalent to the prior implementation.
+     * Capacity is operator-tunable via `-blockcache.entries` (default 256,
+     * clamped to [1, 1024]).  Default raised from 4 to accommodate
+     * deployments with up to a few hundred miners per channel using distinct
+     * reward addresses — at ~8 KB per cached TritiumBlock, 256 entries cost
+     * ~2 MB per channel × 4 channels ≈ 8 MB resident, which is trivial.
      *
-     * Thread-safety: an internal std::mutex protects the list.  Lookup and
-     * Store both copy entries by value to and from the caller, so the call
-     * sites do not need to coordinate locking with the cache itself.
+     * Thread-safety: `std::shared_mutex` allows concurrent `Lookup` readers
+     * (the common case — 100+ miners per channel calling on every PUSH and
+     * GET_BLOCK) and serialises only `Store` writers.  Entries are held by
+     * `std::shared_ptr<const MiningTemplateCacheEntry>` so `Lookup` only
+     * copies an 8-byte shared_ptr (one ref-count bump) under the lock —
+     * never the multi-KB `TritiumBlock` itself.  The block copy, if needed
+     * by the caller, happens after the lock is released.
      */
     class MiningTemplateCacheTable
     {
     public:
+        using EntryPtr = std::shared_ptr<const MiningTemplateCacheEntry>;
+
         /** Look up the entry preferring an exact hashDynamicGenesis match.
-         *  Falls back to the most-recently-touched entry on this channel if
-         *  no exact match exists.  Returns a default-constructed entry when
-         *  the cache is empty (which preserves the prior load() semantics).
+         *  Falls back to the most-recently-stored entry on this channel if
+         *  no exact match exists.  Returns nullptr only when the cache is
+         *  empty.  Holds only a shared (reader) lock — concurrent readers
+         *  on the same channel do not serialise against each other.
+         *
+         *  LRU bookkeeping is intentionally NOT performed here: the only
+         *  reason a miner would re-Lookup the same hashDynamicGenesis is
+         *  because the surrounding CreateBlock() call also passes the
+         *  refreshed entry back through `Store()` (every cache hit path
+         *  re-stores), so the MRU order is kept correct on Store without
+         *  needing a writer lock on the read path.
          **/
-        MiningTemplateCacheEntry Lookup(const uint256_t& hashDynamicGenesis)
+        EntryPtr Lookup(const uint256_t& hashDynamicGenesis) const
         {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            for(auto it = m_entries.begin(); it != m_entries.end(); ++it)
+            std::shared_lock<std::shared_mutex> lock(m_mutex);
+            EntryPtr pFallback;
+            for(const auto& p : m_entries)
             {
-                if(it->hashDynamicGenesis == hashDynamicGenesis)
-                {
-                    /* LRU touch: move to front. */
-                    if(it != m_entries.begin())
-                        m_entries.splice(m_entries.begin(), m_entries, it);
-                    return m_entries.front();
-                }
+                if(!p)
+                    continue;
+                if(pFallback == nullptr)
+                    pFallback = p; // first non-null = MRU
+                if(p->hashDynamicGenesis == hashDynamicGenesis)
+                    return p;
             }
-            if(m_entries.empty())
-                return MiningTemplateCacheEntry();
-            return m_entries.front();
+            return pFallback;
         }
 
         /** Insert or replace by hashDynamicGenesis, with LRU eviction.
          *  Most-recently-stored entry becomes the new front; oldest entry
-         *  is evicted once the capacity is exceeded.
+         *  is evicted once the capacity is exceeded.  Takes an exclusive
+         *  (writer) lock; the new entry is allocated outside the lock to
+         *  keep the critical section minimal.
          **/
         void Store(const MiningTemplateCacheEntry& entry)
         {
             const std::size_t cap = Capacity();
-            std::lock_guard<std::mutex> lock(m_mutex);
+            auto pNew = std::make_shared<const MiningTemplateCacheEntry>(entry);
+
+            std::unique_lock<std::shared_mutex> lock(m_mutex);
             for(auto it = m_entries.begin(); it != m_entries.end(); ++it)
             {
-                if(it->hashDynamicGenesis == entry.hashDynamicGenesis)
+                if(*it && (*it)->hashDynamicGenesis == entry.hashDynamicGenesis)
                 {
-                    *it = entry;
+                    *it = pNew;
                     if(it != m_entries.begin())
                         m_entries.splice(m_entries.begin(), m_entries, it);
                     return;
                 }
             }
-            m_entries.push_front(entry);
+            m_entries.push_front(pNew);
             while(m_entries.size() > cap)
                 m_entries.pop_back();
         }
@@ -180,37 +199,47 @@ namespace TAO::Ledger
         /** Test/diag: number of entries currently cached. */
         std::size_t Size() const
         {
-            std::lock_guard<std::mutex> lock(m_mutex);
+            std::shared_lock<std::shared_mutex> lock(m_mutex);
             return m_entries.size();
         }
 
         /** Test/diag: drop every cached entry on this channel. */
         void Clear()
         {
-            std::lock_guard<std::mutex> lock(m_mutex);
+            std::unique_lock<std::shared_mutex> lock(m_mutex);
             m_entries.clear();
         }
 
         /** Resolved capacity from `-blockcache.entries`, clamped to a sane
          *  range.  Read on every Store() so operators can tune without a
          *  restart in unit/integration scenarios; the cost is one int64_t
-         *  arg lookup which is negligible compared to producer signing. */
+         *  arg lookup which is negligible compared to producer signing.
+         *
+         *  Default 256 covers up to a few hundred miners per channel with
+         *  distinct reward addresses at 100% hit rate.  Maximum 1024
+         *  bounds resident memory at ~8 MB/channel even when an operator
+         *  cranks the knob for a very large mining pool. */
         static std::size_t Capacity()
         {
-            const int64_t n = config::GetArg("-blockcache.entries", 4);
+            const int64_t n = config::GetArg("-blockcache.entries", 256);
             if(n <= 0)
                 return 1;
-            if(n > 64)
-                return 64;
+            if(n > 1024)
+                return 1024;
             return static_cast<std::size_t>(n);
         }
 
     private:
-        mutable std::mutex m_mutex;
+        mutable std::shared_mutex m_mutex;
         /* Front = most recent.  std::list provides O(1) splice-to-front
          * for LRU bookkeeping and stable iterators under concurrent
-         * access serialized by m_mutex. */
-        std::list<MiningTemplateCacheEntry> m_entries;
+         * shared-lock readers (readers never mutate the list).
+         *
+         * Entries are immutable once stored (shared_ptr<const>) so a
+         * Lookup reader copying a shared_ptr can outlive the writer that
+         * evicts that entry from the list — no use-after-free even though
+         * the writer holds an exclusive lock during eviction. */
+        std::list<EntryPtr> m_entries;
     };
 
     /* Indexed by mining channel: 0=PoS, 1=Prime, 2=Hash, 3=Private. */
@@ -635,14 +664,16 @@ namespace TAO::Ledger
             rBlockRet.nVersion = nCurrent - 1;
 
         /* Retrieve currently cached block — Option A: per-channel multi-entry
-         * LRU lookup preferring an exact hashDynamicGenesis match.  When two
-         * miners on the same channel use different reward addresses, both
-         * sets of finalized producers coexist instead of evicting each other
-         * on every alternation.  When no exact match exists the most
-         * recently touched entry is returned and finalized below — exactly
-         * the prior single-slot behaviour. */
-        const MiningTemplateCacheEntry tCachedEntry =
+         * LRU lookup preferring an exact hashDynamicGenesis match.  Lookup
+         * returns a shared_ptr held under a shared (reader) lock, so 100+
+         * concurrent miners on the same channel never serialise against
+         * each other and the multi-KB TritiumBlock is never copied while
+         * holding the lock. */
+        static const MiningTemplateCacheEntry s_emptyCacheEntry{};
+        const MiningTemplateCacheTable::EntryPtr pCachedEntry =
             tBlockCache[nChannel].Lookup(hashDynamicGenesis);
+        const MiningTemplateCacheEntry& tCachedEntry =
+            pCachedEntry ? *pCachedEntry : s_emptyCacheEntry;
         const TAO::Ledger::TritiumBlock& tBlockCached =
             tCachedEntry.block;
         const uint256_t hashCachedDynamicGenesis =
