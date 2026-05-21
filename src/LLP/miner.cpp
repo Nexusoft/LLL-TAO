@@ -261,8 +261,12 @@ namespace LLP
 
         m_template_worker_running = true;
         m_template_work_pending = false;
+        m_template_work_in_flight = false;
         m_template_work_reason = TemplateWorkReason::PUSH_NOTIFICATION;
         m_template_work_thread = std::thread(&Miner::TemplateWorkerLoop, this);
+
+        debug::log(3, FUNCTION, "[ASYNC_PUSH] TemplateWorker start for ",
+            GetAddress().ToStringIP(), " thread_id=", m_template_work_thread.get_id());
     }
 
 
@@ -272,29 +276,53 @@ namespace LLP
             std::lock_guard<std::mutex> lock(m_template_work_mutex);
             m_template_worker_running = false;
             m_template_work_pending = false;
+            m_template_work_in_flight = false;
         }
 
         m_template_work_cv.notify_all();
 
         if(m_template_work_thread.joinable())
             m_template_work_thread.join();
+
+        debug::log(3, FUNCTION, "[ASYNC_PUSH] TemplateWorker stop for ",
+            GetAddress().ToStringIP());
     }
 
 
     void Miner::ScheduleTemplateWork(TemplateWorkReason eReason,
                                      const uint1024_t& hashExpectedTip,
-                                     const bool fValidateExpectedTip)
+                                     const bool fValidateExpectedTip,
+                                     const uint32_t nChannel)
     {
+        const bool fPushRequest = (eReason == TemplateWorkReason::PUSH_NOTIFICATION);
         {
             std::lock_guard<std::mutex> lock(m_template_work_mutex);
             if(!m_template_worker_running)
                 return;
 
+            if(fPushRequest
+            && ShouldCoalesceAsyncPush(hashExpectedTip, nChannel,
+                                       m_template_work_pending, m_template_work_expected_tip, m_template_work_channel,
+                                       m_template_work_in_flight, m_template_work_in_flight_tip, m_template_work_in_flight_channel))
+            {
+                debug::log(3, FUNCTION, "[ASYNC_PUSH] coalesced duplicate PUSH for same tip — skip"
+                    " tip=", hashExpectedTip.SubString(), " channel=", nChannel,
+                    " miner=", GetAddress().ToStringIP());
+                return;
+            }
+
             m_template_work_pending = true;
             m_template_work_reason = eReason;
             m_template_work_expected_tip = hashExpectedTip;
             m_template_work_validate_expected_tip = fValidateExpectedTip;
+            m_template_work_channel = nChannel;
             m_template_work_scheduled_at = std::chrono::steady_clock::now();
+        }
+
+        if(fPushRequest)
+        {
+            debug::log(3, FUNCTION, "[ASYNC_PUSH] queued auto-send for tip=",
+                hashExpectedTip.SubString(), " channel=", nChannel, " reason=PUSH");
         }
 
         m_template_work_cv.notify_one();
@@ -308,6 +336,7 @@ namespace LLP
             TemplateWorkReason eReason = TemplateWorkReason::PUSH_NOTIFICATION;
             uint1024_t hashExpectedTip;
             bool fValidateExpectedTip = false;
+            uint32_t nChannel = 0;
             std::chrono::steady_clock::time_point tScheduledAt;
 
             {
@@ -324,12 +353,21 @@ namespace LLP
                 eReason = m_template_work_reason;
                 hashExpectedTip = m_template_work_expected_tip;
                 fValidateExpectedTip = m_template_work_validate_expected_tip;
+                nChannel = m_template_work_channel;
                 tScheduledAt = m_template_work_scheduled_at;
                 m_template_work_pending = false;
+                m_template_work_in_flight = true;
+                m_template_work_in_flight_tip = hashExpectedTip;
+                m_template_work_in_flight_channel = nChannel;
             }
 
             QueueCurrentBlockDataTemplate(eReason, hashExpectedTip,
-                                          fValidateExpectedTip, tScheduledAt);
+                                          fValidateExpectedTip, nChannel, tScheduledAt);
+
+            {
+                std::lock_guard<std::mutex> lock(m_template_work_mutex);
+                m_template_work_in_flight = false;
+            }
         }
     }
 
@@ -337,6 +375,7 @@ namespace LLP
     bool Miner::QueueCurrentBlockDataTemplate(TemplateWorkReason eReason,
                                               const uint1024_t& hashExpectedTip,
                                               const bool fValidateExpectedTip,
+                                              uint32_t nScheduledChannel,
                                               const std::chrono::steady_clock::time_point& tScheduledAt)
     {
         static constexpr std::size_t TEMPLATE_METADATA_SIZE = 12;
@@ -410,6 +449,9 @@ namespace LLP
         const int64_t nSerializeMs =
             std::chrono::duration_cast<std::chrono::milliseconds>(tPayloadReady - tBlockReady).count();
 
+        /* WritePacket() is thread-safe (SOCKET_MUTEX in Socket::Write), but
+         * async PUSH stays on QueuePacket() so worker builds never synchronously
+         * contend with socket writes on the DataThread path. */
         QueuePacket(blockPacket);
         const auto tQueued = std::chrono::steady_clock::now();
         const int64_t nQueuePacketMs =
@@ -420,15 +462,37 @@ namespace LLP
         RecordTemplateDelivery(sharedTemplate.nUnifiedHeight, sharedTemplate.hashBestChain);
         StatelessMinerManager::Get().IncrementTemplatesServed();
 
-        debug::log(2, FUNCTION, "Queued legacy BLOCK_DATA source=", pReason,
-            " bytes=", blockPacket.DATA.size(), " channel=", sharedTemplate.nBlockChannel,
-            " height=", sharedTemplate.nBlockHeight, " session=", nSessionIdCopy,
-            " subscribed_channel=", nChannelCopy, " to ", GetAddress().ToStringIP(),
-            " queued_ms=", nQueuedMs,
-            " create_ms=", nCreateMs,
-            " serialize_ms=", nSerializeMs,
-            " queue_packet_ms=", nQueuePacketMs,
-            " total_worker_ms=", nTotalMs);
+        if(eReason == TemplateWorkReason::PUSH_NOTIFICATION)
+        {
+            debug::log(3, FUNCTION, "[ASYNC_PUSH] built+queued packet in ", nTotalMs,
+            "ms, tip=", hashExpectedTip.SubString(), " channel=", nScheduledChannel);
+
+            if(config::nVerbose >= 4)
+            {
+                const int64_t nCreateUs =
+                    std::chrono::duration_cast<std::chrono::microseconds>(tBlockReady - tStart).count();
+                const int64_t nSerializeUs =
+                    std::chrono::duration_cast<std::chrono::microseconds>(tPayloadReady - tBlockReady).count();
+                const int64_t nQueueUs =
+                    std::chrono::duration_cast<std::chrono::microseconds>(tQueued - tPayloadReady).count();
+                const int64_t nTotalUs =
+                    std::chrono::duration_cast<std::chrono::microseconds>(tQueued - tStart).count();
+                debug::log(4, FUNCTION, "[ASYNC_PUSH][us] create=", nCreateUs,
+                    " serialize=", nSerializeUs, " queue=", nQueueUs, " total=", nTotalUs);
+            }
+        }
+        else
+        {
+            debug::log(2, FUNCTION, "Queued legacy BLOCK_DATA source=", pReason,
+                " bytes=", blockPacket.DATA.size(), " channel=", sharedTemplate.nBlockChannel,
+                " height=", sharedTemplate.nBlockHeight, " session=", nSessionIdCopy,
+                " subscribed_channel=", nChannelCopy, " to ", GetAddress().ToStringIP(),
+                " queued_ms=", nQueuedMs,
+                " create_ms=", nCreateMs,
+                " serialize_ms=", nSerializeMs,
+                " queue_packet_ms=", nQueuePacketMs,
+                " total_worker_ms=", nTotalMs);
+        }
 
         return true;
     }
@@ -436,7 +500,12 @@ namespace LLP
 
     void Miner::TryAttachBlockTemplate(const uint1024_t& hashExpectedTip)
     {
-        ScheduleTemplateWork(TemplateWorkReason::PUSH_NOTIFICATION, hashExpectedTip, true);
+        uint32_t nChannelCopy = 0;
+        {
+            LOCK(MUTEX);
+            nChannelCopy = nSubscribedChannel;
+        }
+        ScheduleTemplateWork(TemplateWorkReason::PUSH_NOTIFICATION, hashExpectedTip, true, nChannelCopy);
     }
 
 
@@ -2150,11 +2219,9 @@ namespace LLP
          * Same guard as StatelessMinerConnection::new_block() (PR #594). */
         if(TemplateTipMismatch(pBlock, hashExpectedTip, fValidateExpectedTip))
         {
-            debug::log(1, FUNCTION,
-                       "Discarding freshly-created legacy auto-send template with stale tip",
-                       " expected_tip=", hashExpectedTip.SubString(),
-                       " template_prev=", pBlock->hashPrevBlock.SubString(),
-                       " height=", pBlock->nHeight);
+            debug::log(3, FUNCTION, "[ASYNC_PUSH] discarded build: tip moved during construction",
+                       " (expected=", hashExpectedTip.SubString(),
+                       " current=", pBlock->hashPrevBlock.SubString(), ")");
             delete pBlock;
             return nullptr;
         }
