@@ -276,13 +276,13 @@ TEST_CASE("Async PUSH coalescing updates channel when non-PUSH schedule has non-
 }
 
 
-TEST_CASE("Async PUSH burst end-to-end: mid-flight tip change discards T1 then builds T2", "[llp][async_push][template_staleness]")
+TEST_CASE("Async PUSH burst handles tip change during in-flight build", "[llp][async_push][template_staleness]")
 {
     std::mutex gateMutex;
     std::condition_variable gateCv;
-    bool fFirstBuildEntered = false;
-    bool fReleaseFirstBuild = false;
-    bool fSecondBuildDone = false;
+    bool firstBuildEntered = false;
+    bool releaseFirstBuild = false;
+    bool secondBuildDone = false;
 
     const uint1024_t tipT1(0xAA);
     const uint1024_t tipT2(0xBB);
@@ -308,9 +308,9 @@ TEST_CASE("Async PUSH burst end-to-end: mid-flight tip change discards T1 then b
             if(nBuildIndex == 0)
             {
                 std::unique_lock<std::mutex> lock(gateMutex);
-                fFirstBuildEntered = true; /* t=0: T1 build entered */
+                firstBuildEntered = true; /* Burst phase 1: T1 build entered. */
                 gateCv.notify_all();
-                gateCv.wait(lock, [&](){ return fReleaseFirstBuild; }); /* hold until T2 arrives mid-flight */
+                gateCv.wait(lock, [&](){ return releaseFirstBuild; }); /* Hold T1 until test advances to the next phase. */
             }
 
             uint1024_t hashLiveTip;
@@ -327,7 +327,7 @@ TEST_CASE("Async PUSH burst end-to-end: mid-flight tip change discards T1 then b
             if(nBuildIndex == 1)
             {
                 std::lock_guard<std::mutex> lock(gateMutex);
-                fSecondBuildDone = true;
+                secondBuildDone = true;
                 gateCv.notify_all();
             }
         });
@@ -336,10 +336,10 @@ TEST_CASE("Async PUSH burst end-to-end: mid-flight tip change discards T1 then b
 
     {
         std::unique_lock<std::mutex> lock(gateMutex);
-        gateCv.wait(lock, [&](){ return fFirstBuildEntered; });
+        gateCv.wait(lock, [&](){ return firstBuildEntered; });
     }
 
-    /* t=120: tip advances during T1 build; schedule T2 while T1 is still in-flight. */
+    /* Burst phase 2: tip advances during T1 build; schedule T2 while T1 is still in-flight. */
     {
         std::lock_guard<std::mutex> lock(tipMutex);
         hashCurrentTip = tipT2;
@@ -348,17 +348,18 @@ TEST_CASE("Async PUSH burst end-to-end: mid-flight tip change discards T1 then b
 
     {
         std::lock_guard<std::mutex> lock(gateMutex);
-        fReleaseFirstBuild = true; /* t=700: release T1 so tip-fence can discard it, then T2 builds */
+        releaseFirstBuild = true; /* Burst phase 3: release T1 so tip-fence can discard it, then T2 builds. */
+        gateCv.notify_all();
     }
-    gateCv.notify_all();
 
     {
         std::unique_lock<std::mutex> lock(gateMutex);
-        gateCv.wait(lock, [&](){ return fSecondBuildDone; });
+        gateCv.wait(lock, [&](){ return secondBuildDone; });
     }
 
     worker.Stop();
 
+    INFO("Burst scenario expected: T1 discarded after tip advance, T2 queued");
     REQUIRE(nBuildCount.load(std::memory_order_relaxed) == 2);
     REQUIRE(nDiscarded.load(std::memory_order_relaxed) == 1);
     REQUIRE(nQueued.load(std::memory_order_relaxed) == 1);
