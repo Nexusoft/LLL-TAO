@@ -449,9 +449,10 @@ namespace LLP
         const int64_t nSerializeMs =
             std::chrono::duration_cast<std::chrono::milliseconds>(tPayloadReady - tBlockReady).count();
 
-        /* WritePacket() is thread-safe (SOCKET_MUTEX in Socket::Write), but
-         * async PUSH stays on QueuePacket() so worker builds never synchronously
-         * contend with socket writes on the DataThread path. */
+        /* WritePacket() is thread-safe (SOCKET_MUTEX in Socket::Write). Async
+         * PUSH stays on QueuePacket() so worker build time is off DataThread;
+         * queue insertion is synchronized on OUTGOING_MUTEX, and socket-write
+         * contention is deferred to flush/write service paths. */
         QueuePacket(blockPacket);
         const auto tQueued = std::chrono::steady_clock::now();
         const int64_t nQueuePacketMs =

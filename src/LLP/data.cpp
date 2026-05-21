@@ -125,7 +125,7 @@ namespace LLP
          *  Default is 100ms (configurable via -llptimebudget).  After async PUSH
          *  template delivery moved heavy block construction off DataThread, 20ms
          *  proved over-tuned for legitimate mixed handlers that touch LLD/mempool
-         *  state.  100ms still hard-bounds monopolisation while avoiding noisy,
+         *  state.  100ms still hard-bounds monopolization while avoiding noisy,
          *  non-actionable budget warnings in normal operation. */
         static constexpr uint32_t DEFAULT_LLP_TIME_BUDGET_MS = 100;
     }

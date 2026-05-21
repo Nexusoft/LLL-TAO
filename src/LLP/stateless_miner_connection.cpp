@@ -741,8 +741,9 @@ namespace LLP
         blockPacket.LENGTH = static_cast<uint32_t>(blockPacket.DATA.size());
 
         /* WritePacket() is thread-safe (BaseConnection::WritePacket -> Socket::Write
-         * takes SOCKET_MUTEX), but async PUSH uses QueuePacket() so worker and
-         * DataThread/flush paths never contend synchronously on socket writes. */
+         * takes SOCKET_MUTEX). Async PUSH uses QueuePacket() so packet construction
+         * stays off DataThread; queue insertion is synchronized on OUTGOING_MUTEX,
+         * while socket-write contention is deferred to flush/write service paths. */
         QueuePacket(blockPacket);
         const auto tQueued = std::chrono::steady_clock::now();
         const int64_t nQueuePacketMs =
