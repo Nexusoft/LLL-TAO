@@ -104,20 +104,21 @@ namespace TAO
         /** CachedMiningTemplateRequiresProducerFinalization
          *
          *  Return true when a cached mining block template cannot safely reuse the
-         *  cached producer transaction.  The producer carries miner-specific
-         *  reward routing and extra-nonce data, so a different reward address or
-         *  extra nonce must finalize a fresh producer and merkle root from the
-         *  cached base template.
+         *  cached producer transaction.  Producer finalization is keyed by
+         *  (tip, reward address): a different reward address must finalize a fresh
+         *  producer and merkle root from the cached base template.
+         *
+         *  Extra nonce differences are intentionally ignored so prime-mod retry
+         *  paths can reuse the expensive producer work for the same tip+reward.
          *
          **/
         inline bool CachedMiningTemplateRequiresProducerFinalization(
             const uint256_t& hashCachedDynamicGenesis,
             const uint256_t& hashRequestedDynamicGenesis,
-            const uint64_t nCachedExtraNonce,
-            const uint64_t nRequestedExtraNonce)
+            const uint64_t /*nCachedExtraNonce*/,
+            const uint64_t /*nRequestedExtraNonce*/)
         {
-            return hashCachedDynamicGenesis != hashRequestedDynamicGenesis
-                || nCachedExtraNonce != nRequestedExtraNonce;
+            return hashCachedDynamicGenesis != hashRequestedDynamicGenesis;
         }
 
 

@@ -402,11 +402,11 @@ TEST_CASE("Mining template cache finalization policy", "[reward_routing][mining_
             firstRewardAddress, secondRewardAddress, 1, 1));
     }
 
-    SECTION("Different extra nonce requires producer finalization")
+    SECTION("Different extra nonce reuses producer finalization for same reward")
     {
         uint256_t firstRewardAddress = CreateTestHashFromHex(TEST_REWARD_A_HEX);
 
-        REQUIRE(TAO::Ledger::CachedMiningTemplateRequiresProducerFinalization(
+        REQUIRE_FALSE(TAO::Ledger::CachedMiningTemplateRequiresProducerFinalization(
             firstRewardAddress, firstRewardAddress, 1, 2));
     }
 

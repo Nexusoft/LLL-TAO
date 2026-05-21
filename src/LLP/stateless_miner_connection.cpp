@@ -3427,6 +3427,7 @@ namespace LLP
          * allocated nonce; if prime-mod fails, borrow additional nonces from the
          * global counter and update the cache so the next poll reuses the
          * prime-mod-satisfying nonce without rebuilding the producer. */
+        static constexpr uint32_t MAX_PRIME_MOD_REBUILD_ATTEMPTS = 3;
         uint32_t nAttempts = 0;
         while(true) {
             /* Check for shutdown during template creation loop */
@@ -3466,7 +3467,15 @@ namespace LLP
                 break;
             }
 
-            /* Prime-mod failed: try the next nonce slot. */
+            if(nAttempts >= MAX_PRIME_MOD_REBUILD_ATTEMPTS)
+            {
+                debug::log(3, FUNCTION,
+                           "Prime-mod retries capped at ", MAX_PRIME_MOD_REBUILD_ATTEMPTS,
+                           " attempt(s); using latest template without further extra-nonce rebuild");
+                break;
+            }
+
+            /* Prime-mod failed: try the next nonce slot (bounded retries). */
             extraNonce = nBlockIterator.fetch_add(1, std::memory_order_relaxed) + 1;
             m_nCachedExtraNonce = extraNonce;
             delete pBlock;
