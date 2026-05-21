@@ -429,9 +429,13 @@ namespace LLP
         std::thread m_template_work_thread;
         bool m_template_worker_running{false};
         bool m_template_work_pending{false};
+        bool m_template_work_in_flight{false};
         TemplateWorkReason m_template_work_reason{TemplateWorkReason::PUSH_NOTIFICATION};
         uint1024_t m_template_work_expected_tip;
+        uint1024_t m_template_work_in_flight_tip;
         bool       m_template_work_validate_expected_tip{false};
+        uint32_t   m_template_work_channel{0};
+        uint32_t   m_template_work_in_flight_channel{0};
         std::chrono::steady_clock::time_point m_template_work_scheduled_at;
 
 
@@ -818,11 +822,13 @@ namespace LLP
         /** Schedule/coalesce a background full-template send. **/
         void ScheduleTemplateWork(TemplateWorkReason eReason,
                                   const uint1024_t& hashExpectedTip = uint1024_t(0),
-                                  bool fValidateExpectedTip = false);
+                                  bool fValidateExpectedTip = false,
+                                  uint32_t nChannel = 0);
         void TemplateWorkerLoop();
         bool QueueCurrentBlockDataTemplate(TemplateWorkReason eReason,
                                            const uint1024_t& hashExpectedTip,
                                            const bool fValidateExpectedTip,
+                                           uint32_t nScheduledChannel,
                                            const std::chrono::steady_clock::time_point& tScheduledAt);
         void TryAttachBlockTemplate(const uint1024_t& hashExpectedTip);
 

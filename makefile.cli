@@ -339,6 +339,7 @@ ifdef UNIT_TESTS
 		   build/Tests_LLC_qtv_hook_bridge_test.o \
 		   build/Tests_LLC_test_genesis_endianness.o \
 		   build/Tests_LLC_uint1024.o \
+		   build/Tests_LLP_async_push_worker_tests.o \
 		   build/Tests_LLP_base_address.o \
 		   build/Tests_LLP_canonical_chain_state_tests.o \
 		   build/Tests_LLP_channel_state_manager_tests.o \

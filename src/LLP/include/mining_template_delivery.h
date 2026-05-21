@@ -274,6 +274,35 @@ namespace LLP
         return result;
     }
 
+    /** ShouldCoalesceAsyncPush
+     *
+     *  Returns true when a newly scheduled PUSH auto-send request targets the
+     *  same (channel, tip) already pending or currently being built by the
+     *  per-connection template worker.
+     *
+     *  This keeps bursty duplicate PUSH events from rebuilding the same
+     *  STATELESS_BLOCK_DATA/BLOCK_DATA payload multiple times.
+     */
+    inline bool ShouldCoalesceAsyncPush(const uint1024_t& hashExpectedTip,
+                                        uint32_t nChannel,
+                                        bool fPending,
+                                        const uint1024_t& hashPendingTip,
+                                        uint32_t nPendingChannel,
+                                        bool fInFlight,
+                                        const uint1024_t& hashInFlightTip,
+                                        uint32_t nInFlightChannel)
+    {
+        const bool fPendingDuplicate = fPending
+            && nPendingChannel == nChannel
+            && hashPendingTip == hashExpectedTip;
+
+        const bool fInFlightDuplicate = fInFlight
+            && nInFlightChannel == nChannel
+            && hashInFlightTip == hashExpectedTip;
+
+        return (fPendingDuplicate || fInFlightDuplicate);
+    }
+
 
     struct TemplateRefreshDecision
     {

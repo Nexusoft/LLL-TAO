@@ -121,8 +121,13 @@ namespace LLP
          *
          *  Packets that were ReadPacket()'d but not yet ProcessPacket()'d
          *  remain in INCOMING and will be processed on the next iteration.
-         *  Configurable via -llptimebudget (default 20ms). */
-        static constexpr uint32_t DEFAULT_LLP_TIME_BUDGET_MS = 20;
+         *
+         *  Default is 100ms (configurable via -llptimebudget).  After async PUSH
+         *  template delivery moved heavy block construction off DataThread, 20ms
+         *  proved over-tuned for legitimate mixed handlers that touch LLD/mempool
+         *  state.  100ms still hard-bounds monopolization while avoiding noisy,
+         *  non-actionable budget warnings in normal operation. */
+        static constexpr uint32_t DEFAULT_LLP_TIME_BUDGET_MS = 100;
     }
 
     /** Default Constructor **/
