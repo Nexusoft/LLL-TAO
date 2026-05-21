@@ -510,8 +510,8 @@ namespace TAO::Ledger
         /* Cache key: always the signing wallet's genesis (node operator sigchain).
          * hashDynamicGenesis (miner reward address) flows separately to producer
          * finalization. Cached templates may be reused only as a base: when the
-         * requested reward address or extra nonce differs from the cached
-         * finalization metadata, the producer and merkle root are rebuilt below. */
+         * requested reward address differs from the cached finalization metadata,
+         * the producer and merkle root are rebuilt below. */
         const uint256_t hashGenesis = user->Genesis();
 
         /* Only allow prime, hash, and private channels. */
@@ -640,8 +640,8 @@ namespace TAO::Ledger
             AddTransactions(rBlockRet);
 
             /* Check that the producer isn't going to orphan any transactions,
-             * and finalize miner-specific reward/extra-nonce data when this
-             * cache hit is being reused as a base template for another miner. */
+             * and finalize miner-specific reward data when this cache hit is
+             * being reused as a base template for another miner. */
             TAO::Ledger::Transaction tx;
             const bool fProducerFinalizationRequired =
                 CachedMiningTemplateRequiresProducerFinalization(
