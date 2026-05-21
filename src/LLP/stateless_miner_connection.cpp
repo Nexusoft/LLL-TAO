@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <LLP/templates/ddos.h>
 #include <LLP/packets/stateless_packet.h>
 #include <LLP/include/genesis_constants.h>
+#include <LLP/include/template_prewarmer.h>
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/stateless_manager.h>
 #include <LLP/include/node_cache.h>
@@ -3495,6 +3496,12 @@ namespace LLP
                            " Verify the reward genesis exists on chain, or set"
                            " -rewardmustexist=0 to suppress this warning.");
         }
+
+        /* Register the resolved (channel, reward) tuple with the prewarmer
+         * registry so the next chain tip advance triggers a background warm
+         * for this miner without the per-connection worker paying the
+         * producer signing cost on the critical PUSH→BLOCK_DATA path. */
+        LLP::RecentRewardRegistry::Instance().Register(nChannel_snap, hashReward);
 
         const bool fVerboseTemplateDiagnostics = (config::nVerbose >= 3);
         if(fVerboseTemplateDiagnostics)

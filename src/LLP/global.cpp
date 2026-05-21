@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLP/include/mining_config.h>
 #include <LLP/include/mining_server_factory.h>
 #include <LLP/include/miner_push_dispatcher.h>
+#include <LLP/include/template_prewarmer.h>
 #include <LLP/include/network.h>
 #include <LLP/include/falcon_auth.h>
 #include <LLP/include/colin_mining_agent.h>
@@ -146,6 +147,13 @@ namespace LLP
          * Must be started before any blocks are accepted so that EnqueuePushEvent()
          * routes events to the worker rather than falling back to sync dispatch. */
         MinerPushDispatcher::StartPushWorker();
+
+        /* Start the mining template prewarmer thread.
+         * Warms the per-channel template cache on every chain tip advance for
+         * each recently seen (channel, reward) tuple so the first PUSH→
+         * BLOCK_DATA worker call after a tip change hits a hot producer and
+         * skips the multi-hundred-millisecond signing path. */
+        MiningTemplatePrewarmer::Instance().Start();
 
 
         /* TIME_SERVER instance */
@@ -709,6 +717,11 @@ namespace LLP
         /* Stop the async push-notification worker thread before shutting down
          * the mining servers so any queued notifications are delivered first. */
         MinerPushDispatcher::StopPushWorker();
+
+        /* Stop the prewarmer worker after the push worker so any in-flight
+         * warm requests targeting the just-completed tip are drained or
+         * dropped before the mining servers go away. */
+        MiningTemplatePrewarmer::Instance().Stop();
 
         /* Destroy the runtime-owned servers in the established shutdown order. */
         servers.Reset();

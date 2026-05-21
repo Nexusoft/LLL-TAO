@@ -14,6 +14,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/global.h>
 #include <LLP/include/genesis_constants.h>
+#include <LLP/include/template_prewarmer.h>
 #include <LLP/include/stateless_manager.h>
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/falcon_constants.h>
@@ -2218,6 +2219,12 @@ namespace LLP
                            " Verify the reward genesis exists on chain, or set"
                            " -rewardmustexist=0 to suppress this warning.");
         }
+
+        /* Register the resolved (channel, reward) tuple with the prewarmer
+         * registry so the next chain tip advance triggers a background warm
+         * for this miner without the per-connection worker paying the
+         * producer signing cost on the critical PUSH→BLOCK_DATA path. */
+        LLP::RecentRewardRegistry::Instance().Register(nChannel.load(), hashReward);
 
         /* Prime channel optimization */
         const uint32_t nBitMask = config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
