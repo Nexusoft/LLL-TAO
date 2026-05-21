@@ -466,7 +466,7 @@ namespace LLP
         if(eReason == TemplateWorkReason::PUSH_NOTIFICATION)
         {
             debug::log(3, FUNCTION, "[ASYNC_PUSH] built+queued packet in ", nTotalMs,
-            "ms, tip=", hashExpectedTip.SubString(), " channel=", nScheduledChannel);
+            " ms, tip=", hashExpectedTip.SubString(), " channel=", nScheduledChannel);
 
             if(config::nVerbose >= 4)
             {
