@@ -1013,8 +1013,9 @@ namespace TAO::Ledger
                 if(!(pPublished && pPublished->hashDynamicGenesis == hashDynamicGenesis))
                     return false;
 
-                /* Per PR #598: extra-nonce differences are intentionally ignored —
-                 * producer is keyed by (tip, reward) only. */
+                /* Per PR #598: extra-nonce differences are intentionally ignored
+                 * in this joined-template path to avoid redundant producer rebuild/
+                 * signing work; producer is keyed by (tip, reward) only. */
                 rBlockRet = pPublished->block;
                 debug::log(2, FUNCTION, "[SINGLEFLIGHT] joined in-flight build for reward=",
                            hashDynamicGenesis.SubString(),
