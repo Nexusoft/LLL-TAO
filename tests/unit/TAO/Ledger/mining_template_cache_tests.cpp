@@ -167,7 +167,7 @@ TEST_CASE("Mining template cache singleflight timeout fallback", "[tao][ledger][
 
     uint256_t hashOut = 0;
     const bool fJoined = TAO::Ledger::Testing::WaitForMiningTemplateInFlight(
-        CHANNEL, nWaiterToken, std::chrono::milliseconds(120), hashOut);
+        CHANNEL, nWaiterToken, std::chrono::milliseconds(30), hashOut);
     REQUIRE_FALSE(fJoined);
 
     TAO::Ledger::Testing::StoreMiningTemplateCacheEntryForTesting(CHANNEL, hashReward, 99);
@@ -180,6 +180,7 @@ TEST_CASE("Mining template cache singleflight timeout fallback", "[tao][ledger][
 TEST_CASE("Mining template cache singleflight timeout retry may become new owner", "[tao][ledger][singleflight]")
 {
     constexpr uint32_t CHANNEL = 1;
+    constexpr auto WAITER_TIMEOUT = std::chrono::milliseconds(120);
     const uint256_t hashReward = MakeReward(0x14);
 
     TAO::Ledger::Testing::ClearMiningTemplateCacheForTesting(CHANNEL);
@@ -196,7 +197,7 @@ TEST_CASE("Mining template cache singleflight timeout retry may become new owner
 
     uint256_t hashOut = 0;
     const bool fJoined = TAO::Ledger::Testing::WaitForMiningTemplateInFlight(
-        CHANNEL, nWaiterToken, std::chrono::milliseconds(30), hashOut);
+        CHANNEL, nWaiterToken, WAITER_TIMEOUT, hashOut);
     REQUIRE_FALSE(fJoined);
 
     TAO::Ledger::Testing::AbandonMiningTemplateInFlight(nOwnerToken, CHANNEL);

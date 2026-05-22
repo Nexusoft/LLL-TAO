@@ -1007,8 +1007,8 @@ namespace TAO::Ledger
             bool fSingleflightOwner = false;
             auto pInFlight = tBlockCache[nChannel].BeginOrJoinInFlightBuild(hashDynamicGenesis, fSingleflightOwner);
 
-            auto TryUsePublishedSingleflightEntry = [&](const MiningTemplateCacheTable::EntryPtr& pPublished,
-                                                        const int64_t nWaitMs) -> bool
+            auto TryApplyPublishedTemplate = [&](const MiningTemplateCacheTable::EntryPtr& pPublished,
+                                                 const int64_t nWaitMs) -> bool
             {
                 if(!(pPublished && pPublished->hashDynamicGenesis == hashDynamicGenesis))
                     return false;
@@ -1085,14 +1085,14 @@ namespace TAO::Ledger
                 auto pPublished = tBlockCache[nChannel].WaitForInFlightBuild(pInFlight, std::chrono::milliseconds(2000));
                 const int64_t nWaitMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::steady_clock::now() - tWaitStart).count();
-                if(TryUsePublishedSingleflightEntry(pPublished, nWaitMs))
+                if(TryApplyPublishedTemplate(pPublished, nWaitMs))
                     return true;
 
                 /* Timed out (or observed a stale in-flight handle with no published
                  * result): re-check the cache first, then re-register with singleflight so this caller can
                  * either join a current owner or become the new owner. */
                 auto pCachedRetry = tBlockCache[nChannel].Lookup(hashDynamicGenesis);
-                if(TryUsePublishedSingleflightEntry(pCachedRetry, nWaitMs))
+                if(TryApplyPublishedTemplate(pCachedRetry, nWaitMs))
                     return true;
 
                 pInFlight = tBlockCache[nChannel].BeginOrJoinInFlightBuild(hashDynamicGenesis, fSingleflightOwner);
@@ -1102,7 +1102,7 @@ namespace TAO::Ledger
                     pPublished = tBlockCache[nChannel].WaitForInFlightBuild(pInFlight, std::chrono::milliseconds(2000));
                     const int64_t nRetryWaitMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                         std::chrono::steady_clock::now() - tRetryWaitStart).count();
-                    if(TryUsePublishedSingleflightEntry(pPublished, nRetryWaitMs))
+                    if(TryApplyPublishedTemplate(pPublished, nRetryWaitMs))
                         return true;
                 }
             }
