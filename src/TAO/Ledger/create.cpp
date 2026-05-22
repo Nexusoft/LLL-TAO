@@ -1006,79 +1006,104 @@ namespace TAO::Ledger
         {
             bool fSingleflightOwner = false;
             auto pInFlight = tBlockCache[nChannel].BeginOrJoinInFlightBuild(hashDynamicGenesis, fSingleflightOwner);
+
+            auto TryUsePublishedSingleflightEntry = [&](const MiningTemplateCacheTable::EntryPtr& pPublished,
+                                                        const int64_t nWaitMs) -> bool
+            {
+                if(!(pPublished && pPublished->hashDynamicGenesis == hashDynamicGenesis))
+                    return false;
+
+                const bool fExtraNonceMismatch = (pPublished->nExtraNonce != nExtraNonce);
+                rBlockRet = pPublished->block;
+
+                if(fExtraNonceMismatch)
+                {
+                    /* The owner published a template for the same reward but with a
+                     * different extra nonce (common when prewarmer owns with nonce=0
+                     * and a per-connection caller requested a nonce partition slot).
+                     * Re-finalize from the published base using the caller's nonce so
+                     * miners keep distinct nonce search spaces. */
+                    const std::string strDynamicReward = DynamicRewardLabel(hashDynamicGenesis);
+                    debug::log(2, FUNCTION, "[SINGLEFLIGHT] joined in-flight build for reward=",
+                               hashDynamicGenesis.SubString(),
+                               " but owner extra_nonce=", pPublished->nExtraNonce,
+                               " differs from requested extra_nonce=", nExtraNonce,
+                               " — re-finalizing producer from joined base (waited ", nWaitMs, " ms)");
+
+                    const auto tProducerStart = std::chrono::steady_clock::now();
+                    if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion,
+                                       nChannel, nExtraNonce, pCoinbaseRecipients, hashDynamicGenesis))
+                        return debug::error(FUNCTION, "Failed to re-finalize producer transactions for singleflight join.");
+                    const int64_t nProducerMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - tProducerStart).count();
+                    debug::log(1, FUNCTION, "CreateProducer singleflight-join finalization duration_ms=", nProducerMs,
+                               " channel=", nChannel,
+                               " height=", tStateBest.nHeight + 1,
+                               " reward=", strDynamicReward,
+                               " extra_nonce=", nExtraNonce);
+
+                    UpdateProducerTimestamp(rBlockRet.producer);
+                    rBlockRet.producer.Sign(user->Generate(rBlockRet.producer.nSequence, pin));
+
+                    if(config::GetBoolArg("-safemode", false))
+                    {
+                        const uint256_t hashNext = TAO::Ledger::Transaction::NextHash(
+                            user->Generate(rBlockRet.producer.nSequence + 1, pin, false),
+                            rBlockRet.producer.nNextType);
+                        if(rBlockRet.producer.hashNext != hashNext)
+                            throw debug::exception("-safemode next hash mismatch, broadcast terminated");
+                    }
+
+                    std::vector<uint512_t> vHashes;
+                    for(const auto& txPair : rBlockRet.vtx)
+                        vHashes.push_back(txPair.second);
+                    vHashes.push_back(rBlockRet.producer.GetHash(true));
+                    rBlockRet.hashMerkleRoot = rBlockRet.BuildMerkleTree(vHashes);
+
+                    MiningTemplateCacheEntry tNewEntry;
+                    tNewEntry.block              = rBlockRet;
+                    tNewEntry.hashDynamicGenesis = hashDynamicGenesis;
+                    tNewEntry.nExtraNonce        = nExtraNonce;
+                    tBlockCache[nChannel].Store(tNewEntry);
+                }
+                else
+                {
+                    debug::log(2, FUNCTION, "[SINGLEFLIGHT] joined in-flight build for reward=",
+                               hashDynamicGenesis.SubString(),
+                               " — skipped duplicate CreateProducer (waited ", nWaitMs, " ms)");
+                }
+
+                rBlockRet.UpdateTime();
+                if(rBlockRet.nChannel != nChannel)
+                    rBlockRet.nChannel = nChannel;
+                return true;
+            };
+
             if(!fSingleflightOwner)
             {
                 const auto tWaitStart = std::chrono::steady_clock::now();
                 auto pPublished = tBlockCache[nChannel].WaitForInFlightBuild(pInFlight, std::chrono::milliseconds(2000));
-                if(pPublished && pPublished->hashDynamicGenesis == hashDynamicGenesis)
-                {
-                    const int64_t nWaitMs = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::steady_clock::now() - tWaitStart).count();
-
-                    const bool fExtraNonceMismatch = (pPublished->nExtraNonce != nExtraNonce);
-                    rBlockRet = pPublished->block;
-
-                    if(fExtraNonceMismatch)
-                    {
-                        /* The owner published a template for the same reward but with a
-                         * different extra nonce (common when prewarmer owns with nonce=0
-                         * and a per-connection caller requested a nonce partition slot).
-                         * Re-finalize from the published base using the caller's nonce so
-                         * miners keep distinct nonce search spaces. */
-                        const std::string strDynamicReward = DynamicRewardLabel(hashDynamicGenesis);
-                        debug::log(2, FUNCTION, "[SINGLEFLIGHT] joined in-flight build for reward=",
-                                   hashDynamicGenesis.SubString(),
-                                   " but owner extra_nonce=", pPublished->nExtraNonce,
-                                   " differs from requested extra_nonce=", nExtraNonce,
-                                   " — re-finalizing producer from joined base (waited ", nWaitMs, " ms)");
-
-                        const auto tProducerStart = std::chrono::steady_clock::now();
-                        if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion,
-                                           nChannel, nExtraNonce, pCoinbaseRecipients, hashDynamicGenesis))
-                            return debug::error(FUNCTION, "Failed to re-finalize producer transactions for singleflight join.");
-                        const int64_t nProducerMs = std::chrono::duration_cast<std::chrono::milliseconds>(
-                            std::chrono::steady_clock::now() - tProducerStart).count();
-                        debug::log(1, FUNCTION, "CreateProducer singleflight-join finalization duration_ms=", nProducerMs,
-                                   " channel=", nChannel,
-                                   " height=", tStateBest.nHeight + 1,
-                                   " reward=", strDynamicReward,
-                                   " extra_nonce=", nExtraNonce);
-
-                        UpdateProducerTimestamp(rBlockRet.producer);
-                        rBlockRet.producer.Sign(user->Generate(rBlockRet.producer.nSequence, pin));
-
-                        if(config::GetBoolArg("-safemode", false))
-                        {
-                            const uint256_t hashNext = TAO::Ledger::Transaction::NextHash(
-                                user->Generate(rBlockRet.producer.nSequence + 1, pin, false),
-                                rBlockRet.producer.nNextType);
-                            if(rBlockRet.producer.hashNext != hashNext)
-                                throw debug::exception("-safemode next hash mismatch, broadcast terminated");
-                        }
-
-                        std::vector<uint512_t> vHashes;
-                        for(const auto& txPair : rBlockRet.vtx)
-                            vHashes.push_back(txPair.second);
-                        vHashes.push_back(rBlockRet.producer.GetHash(true));
-                        rBlockRet.hashMerkleRoot = rBlockRet.BuildMerkleTree(vHashes);
-
-                        MiningTemplateCacheEntry tNewEntry;
-                        tNewEntry.block              = rBlockRet;
-                        tNewEntry.hashDynamicGenesis = hashDynamicGenesis;
-                        tNewEntry.nExtraNonce        = nExtraNonce;
-                        tBlockCache[nChannel].Store(tNewEntry);
-                    }
-                    else
-                    {
-                        debug::log(2, FUNCTION, "[SINGLEFLIGHT] joined in-flight build for reward=",
-                                   hashDynamicGenesis.SubString(),
-                                   " — skipped duplicate CreateProducer (waited ", nWaitMs, " ms)");
-                    }
-
-                    rBlockRet.UpdateTime();
-                    if(rBlockRet.nChannel != nChannel)
-                        rBlockRet.nChannel = nChannel;
+                const int64_t nWaitMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - tWaitStart).count();
+                if(TryUsePublishedSingleflightEntry(pPublished, nWaitMs))
                     return true;
+
+                /* Timed out (or observed an unexpected stale handle): re-check the
+                 * cache first, then re-register with singleflight so this caller can
+                 * either join a current owner or become the new owner. */
+                auto pCachedRetry = tBlockCache[nChannel].Lookup(hashDynamicGenesis);
+                if(TryUsePublishedSingleflightEntry(pCachedRetry, nWaitMs))
+                    return true;
+
+                pInFlight = tBlockCache[nChannel].BeginOrJoinInFlightBuild(hashDynamicGenesis, fSingleflightOwner);
+                if(!fSingleflightOwner)
+                {
+                    const auto tRetryWaitStart = std::chrono::steady_clock::now();
+                    pPublished = tBlockCache[nChannel].WaitForInFlightBuild(pInFlight, std::chrono::milliseconds(2000));
+                    const int64_t nRetryWaitMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - tRetryWaitStart).count();
+                    if(TryUsePublishedSingleflightEntry(pPublished, nRetryWaitMs))
+                        return true;
                 }
             }
 

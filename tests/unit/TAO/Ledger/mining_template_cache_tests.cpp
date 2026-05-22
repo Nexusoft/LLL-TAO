@@ -93,12 +93,19 @@ TEST_CASE("Mining template cache singleflight owner abandonment unblocks waiters
 
     TAO::Ledger::Testing::ClearMiningTemplateCacheForTesting(CHANNEL);
 
+    bool fOwner = false;
+    const auto nOwnerToken = TAO::Ledger::Testing::BeginOrJoinMiningTemplateInFlight(CHANNEL, hashReward, fOwner);
+    REQUIRE(fOwner);
+    REQUIRE(nOwnerToken != 0);
+
     std::atomic<int> nTimeouts{0};
+    std::atomic<int> nUnexpectedOwners{0};
+    std::atomic<int> nWaitersReady{0};
 
     std::vector<std::thread> threads;
-    threads.reserve(6);
+    threads.reserve(5);
 
-    for(int i = 0; i < 6; ++i)
+    for(int i = 0; i < 5; ++i)
     {
         threads.emplace_back([&]() {
             bool fIsOwner = false;
@@ -107,11 +114,12 @@ TEST_CASE("Mining template cache singleflight owner abandonment unblocks waiters
 
             if(fIsOwner)
             {
-                std::this_thread::sleep_for(std::chrono::milliseconds(20));
+                ++nUnexpectedOwners;
                 TAO::Ledger::Testing::AbandonMiningTemplateInFlight(nToken, CHANNEL);
             }
             else
             {
+                ++nWaitersReady;
                 uint256_t hashOut = 0;
                 const bool fJoined = TAO::Ledger::Testing::WaitForMiningTemplateInFlight(
                     CHANNEL, nToken, std::chrono::milliseconds(500), hashOut);
@@ -121,10 +129,16 @@ TEST_CASE("Mining template cache singleflight owner abandonment unblocks waiters
         });
     }
 
+    while(nWaitersReady.load() < 5)
+        std::this_thread::yield();
+
+    TAO::Ledger::Testing::AbandonMiningTemplateInFlight(nOwnerToken, CHANNEL);
+
     for(auto& t : threads)
         t.join();
 
     REQUIRE(nTimeouts.load() == 5);
+    REQUIRE(nUnexpectedOwners.load() == 0);
     REQUIRE(TAO::Ledger::Testing::MiningTemplateInFlightCountForTesting(CHANNEL) == 0);
 }
 
@@ -160,6 +174,39 @@ TEST_CASE("Mining template cache singleflight timeout fallback", "[tao][ledger][
 
     owner.join();
 
+    REQUIRE(TAO::Ledger::Testing::MiningTemplateInFlightCountForTesting(CHANNEL) == 0);
+}
+
+TEST_CASE("Mining template cache singleflight timeout retry may become new owner", "[tao][ledger][singleflight]")
+{
+    constexpr uint32_t CHANNEL = 1;
+    const uint256_t hashReward = MakeReward(0x14);
+
+    TAO::Ledger::Testing::ClearMiningTemplateCacheForTesting(CHANNEL);
+
+    bool fOwner = false;
+    const auto nOwnerToken = TAO::Ledger::Testing::BeginOrJoinMiningTemplateInFlight(CHANNEL, hashReward, fOwner);
+    REQUIRE(fOwner);
+    REQUIRE(nOwnerToken != 0);
+
+    bool fWaiterOwner = true;
+    const auto nWaiterToken = TAO::Ledger::Testing::BeginOrJoinMiningTemplateInFlight(CHANNEL, hashReward, fWaiterOwner);
+    REQUIRE_FALSE(fWaiterOwner);
+    REQUIRE(nWaiterToken != 0);
+
+    uint256_t hashOut = 0;
+    const bool fJoined = TAO::Ledger::Testing::WaitForMiningTemplateInFlight(
+        CHANNEL, nWaiterToken, std::chrono::milliseconds(30), hashOut);
+    REQUIRE_FALSE(fJoined);
+
+    TAO::Ledger::Testing::AbandonMiningTemplateInFlight(nOwnerToken, CHANNEL);
+
+    bool fRetryOwner = false;
+    const auto nRetryToken = TAO::Ledger::Testing::BeginOrJoinMiningTemplateInFlight(CHANNEL, hashReward, fRetryOwner);
+    REQUIRE(fRetryOwner);
+    REQUIRE(nRetryToken != 0);
+
+    TAO::Ledger::Testing::CompleteMiningTemplateInFlight(nRetryToken, CHANNEL, hashReward, 10);
     REQUIRE(TAO::Ledger::Testing::MiningTemplateInFlightCountForTesting(CHANNEL) == 0);
 }
 
