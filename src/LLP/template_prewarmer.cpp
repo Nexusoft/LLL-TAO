@@ -361,12 +361,21 @@ namespace LLP
                         || config::fShutdown.load();
                 });
 
+                /* Unconditional break on shutdown / Stop():
+                 *  - Stop() clears m_queue under the same mutex before
+                 *    notify_all(), so under !m_running the queue is already
+                 *    empty by construction.
+                 *  - On global fShutdown, any queued tuples are stale and
+                 *    must be discarded — draining them one-by-one with
+                 *    `continue` would spin the worker in a tight loop
+                 *    burning CPU until the queue empties, and would race
+                 *    Stop()'s m_threads.clear().
+                 * Matches the per-connection TemplateWorkerLoop pattern in
+                 * miner.cpp / stateless_miner_connection.cpp which also
+                 * breaks unconditionally on !running. */
                 if(config::fShutdown.load()
                 || !m_running.load(std::memory_order_acquire))
-                {
-                    if(m_queue.empty())
-                        break;
-                }
+                    break;
 
                 if(m_queue.empty())
                     continue;
