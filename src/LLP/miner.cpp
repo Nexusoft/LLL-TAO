@@ -2231,8 +2231,6 @@ namespace LLP
             return nullptr;
         }
         LogNbTiming("nb_reward_resolved", hashReward.SubString());
-        
-        LogNbTiming("nb_reward_resolved", hashReward.SubString());
 
         /* Follow-up #4: per-template LLD::Ledger->HasFirst(hashReward) disk hit
          * removed — already enforced at MINER_SET_REWARD bind time by
