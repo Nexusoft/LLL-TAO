@@ -1013,6 +1013,19 @@ namespace TAO::Ledger
                 if(!(pPublished && pPublished->hashDynamicGenesis == hashDynamicGenesis))
                     return false;
 
+                const uint1024_t hashBestChain = ChainState::hashBestChain;
+                if(pPublished->block.hashPrevBlock != hashBestChain)
+                {
+                    debug::log(2, FUNCTION, "[SINGLEFLIGHT] rejected stale published template for reward=",
+                               hashDynamicGenesis.SubString(),
+                               " published_prev=", pPublished->block.hashPrevBlock.SubString(),
+                               " current_tip=", hashBestChain.SubString(),
+                               " owner_extra_nonce=", pPublished->nExtraNonce,
+                               " requested_extra_nonce=", nExtraNonce,
+                               " (waited ", nWaitMs, " ms)");
+                    return false;
+                }
+
                 /* Per PR #598: extra-nonce differences are intentionally ignored
                  * in this joined-template path to avoid redundant producer rebuild/
                  * signing work; producer is keyed by (tip, reward) only. */
