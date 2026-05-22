@@ -57,6 +57,8 @@ ________________________________________________________________________________
 
 #include <atomic>
 #include <chrono>
+#include <optional>
+#include <unordered_map>
 
 /* Global TAO namespace. */
 namespace TAO::Ledger
@@ -139,6 +141,16 @@ namespace TAO::Ledger
     {
     public:
         using EntryPtr = std::shared_ptr<const MiningTemplateCacheEntry>;
+        struct InFlightBuild
+        {
+            std::mutex mutex;
+            std::condition_variable cv;
+            bool fComplete{false};
+            EntryPtr pResult{nullptr};
+            std::chrono::steady_clock::time_point tStarted;
+            uint256_t hashDynamicGenesis{0};
+        };
+        using InFlightPtr = std::shared_ptr<InFlightBuild>;
 
         /** Look up the entry preferring an exact hashDynamicGenesis match.
          *  Falls back to the most-recently-stored entry on this channel if
@@ -214,6 +226,108 @@ namespace TAO::Ledger
             m_entries.clear();
         }
 
+        /* Standard singleflight/request-coalescing pattern: one owner builds,
+         * all same-key waiters join and reuse the published result. */
+        InFlightPtr BeginOrJoinInFlightBuild(const uint256_t& hashDynamicGenesis, bool& fIsOwner)
+        {
+            std::unique_lock<std::shared_mutex> lock(m_mutex);
+            const auto it = m_inflight.find(hashDynamicGenesis);
+            if(it != m_inflight.end())
+            {
+                fIsOwner = false;
+                return it->second;
+            }
+
+            auto pHandle = std::make_shared<InFlightBuild>();
+            pHandle->tStarted = std::chrono::steady_clock::now();
+            pHandle->hashDynamicGenesis = hashDynamicGenesis;
+            m_inflight.emplace(hashDynamicGenesis, pHandle);
+            fIsOwner = true;
+            return pHandle;
+        }
+
+        EntryPtr WaitForInFlightBuild(const InFlightPtr& pHandle,
+                                      const std::chrono::milliseconds nTimeout)
+        {
+            if(!pHandle)
+                return nullptr;
+
+            std::unique_lock<std::mutex> lock(pHandle->mutex);
+            const bool fReady = pHandle->cv.wait_for(lock, nTimeout, [&pHandle] {
+                return pHandle->fComplete;
+            });
+            if(!fReady)
+                return nullptr;
+
+            return pHandle->pResult;
+        }
+
+        void CompleteInFlightBuild(const InFlightPtr& pHandle, const MiningTemplateCacheEntry& finalEntry)
+        {
+            if(!pHandle)
+                return;
+
+            const std::size_t cap = Capacity();
+            auto pNew = std::make_shared<const MiningTemplateCacheEntry>(finalEntry);
+
+            {
+                std::unique_lock<std::shared_mutex> lock(m_mutex);
+                for(auto it = m_entries.begin(); it != m_entries.end(); ++it)
+                {
+                    if(*it && (*it)->hashDynamicGenesis == finalEntry.hashDynamicGenesis)
+                    {
+                        *it = pNew;
+                        if(it != m_entries.begin())
+                            m_entries.splice(m_entries.begin(), m_entries, it);
+                        goto inflight_erase;
+                    }
+                }
+                m_entries.push_front(pNew);
+                while(m_entries.size() > cap)
+                    m_entries.pop_back();
+
+            inflight_erase:
+                const auto itInflight = m_inflight.find(pHandle->hashDynamicGenesis);
+                if(itInflight != m_inflight.end() && itInflight->second == pHandle)
+                    m_inflight.erase(itInflight);
+            }
+
+            {
+                std::lock_guard<std::mutex> lock(pHandle->mutex);
+                pHandle->pResult = pNew;
+                pHandle->fComplete = true;
+            }
+            pHandle->cv.notify_all();
+        }
+
+        void AbandonInFlightBuild(const InFlightPtr& pHandle)
+        {
+            if(!pHandle)
+                return;
+
+            {
+                std::unique_lock<std::shared_mutex> lock(m_mutex);
+                const auto itInflight = m_inflight.find(pHandle->hashDynamicGenesis);
+                if(itInflight != m_inflight.end() && itInflight->second == pHandle)
+                    m_inflight.erase(itInflight);
+            }
+
+            {
+                std::lock_guard<std::mutex> lock(pHandle->mutex);
+                pHandle->pResult = nullptr;
+                pHandle->fComplete = true;
+            }
+            pHandle->cv.notify_all();
+        }
+
+#ifdef UNIT_TESTS
+        std::size_t InFlightSize() const
+        {
+            std::shared_lock<std::shared_mutex> lock(m_mutex);
+            return m_inflight.size();
+        }
+#endif
+
         /** Resolved capacity from `-blockcache.entries`, clamped to a sane
          *  range.  Read on every Store() so operators can tune without a
          *  restart in unit/integration scenarios; the cost is one int64_t
@@ -244,10 +358,27 @@ namespace TAO::Ledger
          * evicts that entry from the list — no use-after-free even though
          * the writer holds an exclusive lock during eviction. */
         std::list<EntryPtr> m_entries;
+        struct Uint256Hash
+        {
+            std::size_t operator()(const uint256_t& h) const noexcept
+            {
+                return static_cast<std::size_t>(h.Get64(0));
+            }
+        };
+        std::unordered_map<uint256_t, InFlightPtr, Uint256Hash> m_inflight;
     };
 
     /* Indexed by mining channel: 0=PoS, 1=Prime, 2=Hash, 3=Private. */
     static MiningTemplateCacheTable tBlockCache[4];
+
+#ifdef UNIT_TESTS
+    namespace
+    {
+        std::mutex g_inFlightHandleMutex;
+        std::unordered_map<std::uint64_t, MiningTemplateCacheTable::InFlightPtr> g_inFlightHandles;
+        std::atomic<std::uint64_t> g_nextInFlightToken{1};
+    }
+#endif
 
 
     /* Create a new transaction object from signature chain. */
@@ -869,6 +1000,41 @@ namespace TAO::Ledger
         }
         else //block not cached, set up new block
         {
+            bool fSingleflightOwner = false;
+            auto pInFlight = tBlockCache[nChannel].BeginOrJoinInFlightBuild(hashDynamicGenesis, fSingleflightOwner);
+            if(!fSingleflightOwner)
+            {
+                const auto tWaitStart = std::chrono::steady_clock::now();
+                auto pPublished = tBlockCache[nChannel].WaitForInFlightBuild(pInFlight, std::chrono::milliseconds(2000));
+                if(pPublished && pPublished->hashDynamicGenesis == hashDynamicGenesis)
+                {
+                    const int64_t nWaitMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - tWaitStart).count();
+                    debug::log(2, FUNCTION, "[SINGLEFLIGHT] joined in-flight build for reward=",
+                               hashDynamicGenesis.SubString(),
+                               " — skipped duplicate CreateProducer (waited ", nWaitMs, " ms)");
+                    rBlockRet = pPublished->block;
+                    rBlockRet.UpdateTime();
+                    if(rBlockRet.nChannel != nChannel)
+                        rBlockRet.nChannel = nChannel;
+                    return true;
+                }
+            }
+
+            struct InFlightOwnerGuard
+            {
+                MiningTemplateCacheTable* pCache{nullptr};
+                MiningTemplateCacheTable::InFlightPtr pHandle;
+                bool fOwner{false};
+                bool fCompleted{false};
+
+                ~InFlightOwnerGuard()
+                {
+                    if(fOwner && !fCompleted && pCache != nullptr)
+                        pCache->AbandonInFlightBuild(pHandle);
+                }
+            } guard{&tBlockCache[nChannel], pInFlight, fSingleflightOwner, false};
+
 
             /* Must add transactions first, before creating producer, so producer is sequenced last if user has tx in block */
             AddTransactions(rBlockRet);
@@ -912,7 +1078,11 @@ namespace TAO::Ledger
                 tNewEntry.block              = rBlockRet;
                 tNewEntry.hashDynamicGenesis = hashDynamicGenesis;
                 tNewEntry.nExtraNonce        = nExtraNonce;
-                tBlockCache[nChannel].Store(tNewEntry);
+                if(fSingleflightOwner)
+                    tBlockCache[nChannel].CompleteInFlightBuild(pInFlight, tNewEntry);
+                else
+                    tBlockCache[nChannel].Store(tNewEntry);
+                guard.fCompleted = true;
             }
         }
 
@@ -935,6 +1105,124 @@ namespace TAO::Ledger
 
         return true;
     }
+
+#ifdef UNIT_TESTS
+    namespace Testing
+    {
+        SingleflightToken BeginOrJoinMiningTemplateInFlight(const uint32_t nChannel,
+                                                            const uint256_t& hashDynamicGenesis,
+                                                            bool& fIsOwner)
+        {
+            if(nChannel >= 4)
+                return 0;
+
+            auto pHandle = tBlockCache[nChannel].BeginOrJoinInFlightBuild(hashDynamicGenesis, fIsOwner);
+            const std::uint64_t nToken = g_nextInFlightToken.fetch_add(1, std::memory_order_relaxed);
+            std::lock_guard<std::mutex> lock(g_inFlightHandleMutex);
+            g_inFlightHandles[nToken] = pHandle;
+            return nToken;
+        }
+
+        bool WaitForMiningTemplateInFlight(const uint32_t nChannel,
+                                           const SingleflightToken nToken,
+                                           const std::chrono::milliseconds nTimeout,
+                                           uint256_t& hashOut)
+        {
+            if(nChannel >= 4)
+                return false;
+
+            MiningTemplateCacheTable::InFlightPtr pHandle;
+            {
+                std::lock_guard<std::mutex> lock(g_inFlightHandleMutex);
+                const auto it = g_inFlightHandles.find(nToken);
+                if(it == g_inFlightHandles.end())
+                    return false;
+                pHandle = it->second;
+            }
+
+            auto pEntry = tBlockCache[nChannel].WaitForInFlightBuild(pHandle, nTimeout);
+            {
+                std::lock_guard<std::mutex> lock(g_inFlightHandleMutex);
+                g_inFlightHandles.erase(nToken);
+            }
+            if(!pEntry)
+                return false;
+
+            hashOut = pEntry->hashDynamicGenesis;
+            return true;
+        }
+
+        void CompleteMiningTemplateInFlight(const SingleflightToken nToken,
+                                            const uint32_t nChannel,
+                                            const uint256_t& hashDynamicGenesis,
+                                            const uint64_t nExtraNonce)
+        {
+            if(nChannel >= 4)
+                return;
+
+            MiningTemplateCacheTable::InFlightPtr pHandle;
+            {
+                std::lock_guard<std::mutex> lock(g_inFlightHandleMutex);
+                const auto it = g_inFlightHandles.find(nToken);
+                if(it == g_inFlightHandles.end())
+                    return;
+                pHandle = it->second;
+                g_inFlightHandles.erase(it);
+            }
+
+            MiningTemplateCacheEntry tEntry;
+            tEntry.hashDynamicGenesis = hashDynamicGenesis;
+            tEntry.nExtraNonce = nExtraNonce;
+            tBlockCache[nChannel].CompleteInFlightBuild(pHandle, tEntry);
+        }
+
+        void AbandonMiningTemplateInFlight(const SingleflightToken nToken,
+                                           const uint32_t nChannel)
+        {
+            if(nChannel >= 4)
+                return;
+
+            MiningTemplateCacheTable::InFlightPtr pHandle;
+            {
+                std::lock_guard<std::mutex> lock(g_inFlightHandleMutex);
+                const auto it = g_inFlightHandles.find(nToken);
+                if(it == g_inFlightHandles.end())
+                    return;
+                pHandle = it->second;
+                g_inFlightHandles.erase(it);
+            }
+
+            tBlockCache[nChannel].AbandonInFlightBuild(pHandle);
+        }
+
+        void StoreMiningTemplateCacheEntryForTesting(const uint32_t nChannel,
+                                                     const uint256_t& hashDynamicGenesis,
+                                                     const uint64_t nExtraNonce)
+        {
+            if(nChannel >= 4)
+                return;
+
+            MiningTemplateCacheEntry tEntry;
+            tEntry.hashDynamicGenesis = hashDynamicGenesis;
+            tEntry.nExtraNonce = nExtraNonce;
+            tBlockCache[nChannel].Store(tEntry);
+        }
+
+        void ClearMiningTemplateCacheForTesting(const uint32_t nChannel)
+        {
+            if(nChannel >= 4)
+                return;
+            tBlockCache[nChannel].Clear();
+        }
+
+        std::size_t MiningTemplateInFlightCountForTesting(const uint32_t nChannel)
+        {
+            if(nChannel >= 4)
+                return 0;
+            return tBlockCache[nChannel].InFlightSize();
+        }
+    }
+#endif
 
 
     /* Create a producer transaction object from signature chain. */

@@ -535,6 +535,16 @@ namespace LLP
         const int64_t nTotalMs =
             std::chrono::duration_cast<std::chrono::milliseconds>(tQueued - tStart).count();
 
+        if(config::nVerbose >= 2)
+        {
+            debug::log(2, FUNCTION, "[NB_TIMING] phase=nb_template_queued",
+                       " elapsed_from_start_ms=", nTotalMs,
+                       " elapsed_from_prev_ms=", nQueuePacketMs,
+                       " tip=", hashExpectedTip.SubString(),
+                       " reward=", hashRewardAddress.SubString(),
+                       " miner=", GetAddress().ToStringIP());
+        }
+
         RecordTemplateDelivery(sharedTemplate.nUnifiedHeight, sharedTemplate.hashBestChain);
         StatelessMinerManager::Get().IncrementTemplatesServed();
 
@@ -2149,6 +2159,26 @@ namespace LLP
     TAO::Ledger::Block *Miner::new_block(const uint1024_t& hashExpectedTip,
                                          const bool fValidateExpectedTip)
     {
+        const auto tNbStart = std::chrono::steady_clock::now();
+        auto tNbPrev = tNbStart;
+        auto LogNbTiming = [&](const char* pPhase, const uint256_t& hashReward) {
+            if(config::nVerbose < 2)
+                return;
+            const auto tNow = std::chrono::steady_clock::now();
+            const int64_t nFromStartMs = std::chrono::duration_cast<std::chrono::milliseconds>(tNow - tNbStart).count();
+            const int64_t nFromPrevMs = std::chrono::duration_cast<std::chrono::milliseconds>(tNow - tNbPrev).count();
+            tNbPrev = tNow;
+            debug::log(2, FUNCTION, "[NB_TIMING] phase=", pPhase,
+                       " elapsed_from_start_ms=", nFromStartMs,
+                       " elapsed_from_prev_ms=", nFromPrevMs,
+                       " tip=", hashExpectedTip.SubString(),
+                       " reward=", hashReward.SubString(),
+                       " miner=", GetAddress().ToStringIP());
+        };
+
+        uint256_t hashReward = 0;
+        LogNbTiming("nb_start", hashReward);
+
         /* SESSION::DEFAULT health pre-check: fail fast before diving into
          * CreateBlockForStatelessMining() which requires the wallet session.
          * If the session is unavailable, log clearly and return nullptr so
@@ -2166,8 +2196,6 @@ namespace LLP
          * 2. hashGenesis (fallback from Falcon auth - PR #92)
          * 3. Wallet genesis (legacy TAO API mode)
          */
-        uint256_t hashReward = 0;
-        
         if(fRewardBound && hashRewardAddress != 0) {
             hashReward = hashRewardAddress;
             debug::log(3, FUNCTION, "Reward: explicit address");
@@ -2202,6 +2230,7 @@ namespace LLP
                          " Block creation aborted. Set a valid TritiumGenesis via MINER_SET_REWARD.");
             return nullptr;
         }
+        LogNbTiming("nb_reward_resolved", hashReward);
         
         /* [Bug 3] On-chain existence check at template creation time: emit a warning early if
          * the reward genesis has no sigchain on disk so the operator sees the issue before
@@ -2219,6 +2248,7 @@ namespace LLP
                            " Verify the reward genesis exists on chain, or set"
                            " -rewardmustexist=0 to suppress this warning.");
         }
+        LogNbTiming("nb_reward_binding_pass", hashReward);
 
         /* Register the resolved (channel, reward) tuple with the prewarmer
          * registry so the next chain tip advance triggers a background warm
@@ -2258,12 +2288,16 @@ namespace LLP
         static constexpr uint32_t MAX_PRIME_MOD_REBUILD_ATTEMPTS = 3;
         uint32_t nAttempts = 0;
         while(true) {
+            if(nAttempts == 0)
+                LogNbTiming("nb_pre_createblock", hashReward);
+
             ++nAttempts;
             pBlock = TAO::Ledger::CreateBlockForStatelessMining(
                 nChannel.load(),
                 extraNonce,
                 hashReward
             );
+            LogNbTiming("nb_createblock_returned", hashReward);
 
             if(!pBlock) return nullptr;
             if(is_prime_mod(nBitMask, pBlock))

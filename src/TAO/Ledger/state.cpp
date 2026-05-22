@@ -1183,33 +1183,27 @@ namespace TAO
                                    " (block_ch=", GetChannel(), ")");
                     }
 
-                    /* MinerPushDispatcher — canonical unified pathway for all miner push notifications.
-                     * Broadcasts to BOTH lanes (Stateless + Legacy) for BOTH channels (Prime + Hash).
-                     * Includes deduplication to prevent double-sends from accidental re-entry.
-                     * Produces exactly 4 lane-level sends per push event:
-                     *   1. Prime → Stateless lane
-                     *   2. Prime → Legacy lane
-                     *   3. Hash  → Stateless lane
-                     *   4. Hash  → Legacy lane
-                     *
-                     * Phase 3 Refactor: Replaces inline BroadcastChannelNotification lambda with
-                     * canonical MinerPushDispatcher::DispatchPushEvent() for maintainability and
-                     * unified broadcasting logic across the codebase.
-                     *
-                     * Async dispatch: EnqueuePushEvent() returns immediately after enqueuing the
-                     * event into the push-worker thread's queue.  This prevents a syncing peer's
-                     * flood of ACTION::GET requests from delaying PRIME_BLOCK_AVAILABLE /
-                     * HASH_BLOCK_AVAILABLE notifications to miners. */
-                    LLP::MinerPushDispatcher::EnqueuePushEvent(nHeight, hash);
-
                     /* Pre-warm the per-channel template cache for every
                      * recently seen (channel, reward) tuple now that the
                      * blockchain tip has advanced.  The warmer runs on its
                      * own background thread so the SetBest critical path is
-                     * not slowed down; by the time the per-connection async
-                     * PUSH worker reaches new_block(), the producer is
-                     * likely already cached and signing is skipped. */
+                     * not slowed down.
+                     *
+                     * Ordering matters: fire prewarmer FIRST, then enqueue
+                     * PUSH notifications. This gives prewarmer a small head
+                     * start; combined with create.cpp singleflight coalescing,
+                     * per-connection workers are more likely to join an
+                     * existing in-flight build instead of duplicating Falcon
+                     * CreateProducer signing work. */
                     LLP::MiningTemplatePrewarmer::Instance().NotifyTipAdvance(nHeight, hash);
+
+                    /* MinerPushDispatcher — canonical unified pathway for all
+                     * miner push notifications. Broadcasts to BOTH lanes
+                     * (Stateless + Legacy) for BOTH channels (Prime + Hash),
+                     * with deduplication to prevent double-sends from
+                     * accidental re-entry. EnqueuePushEvent() returns
+                     * immediately after queueing. */
+                    LLP::MinerPushDispatcher::EnqueuePushEvent(nHeight, hash);
 
                     /* Reorg-recovery diagnostic: if this SetBest completed a chain reorganization,
                      * log that the push was enqueued so operators can trace reorg-recovery behavior.
