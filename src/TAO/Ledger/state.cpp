@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLP/include/inv.h>
 #include <LLP/include/channel_state_manager.h>
 #include <LLP/include/miner_push_dispatcher.h>
+#include <LLP/include/template_prewarmer.h>
 
 #include <Legacy/types/legacy.h>
 #include <Legacy/wallet/wallet.h>
@@ -1200,6 +1201,15 @@ namespace TAO
                      * flood of ACTION::GET requests from delaying PRIME_BLOCK_AVAILABLE /
                      * HASH_BLOCK_AVAILABLE notifications to miners. */
                     LLP::MinerPushDispatcher::EnqueuePushEvent(nHeight, hash);
+
+                    /* Pre-warm the per-channel template cache for every
+                     * recently seen (channel, reward) tuple now that the
+                     * blockchain tip has advanced.  The warmer runs on its
+                     * own background thread so the SetBest critical path is
+                     * not slowed down; by the time the per-connection async
+                     * PUSH worker reaches new_block(), the producer is
+                     * likely already cached and signing is skipped. */
+                    LLP::MiningTemplatePrewarmer::Instance().NotifyTipAdvance(nHeight, hash);
 
                     /* Reorg-recovery diagnostic: if this SetBest completed a chain reorganization,
                      * log that the push was enqueued so operators can trace reorg-recovery behavior.

@@ -14,6 +14,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/global.h>
 #include <LLP/include/genesis_constants.h>
+#include <LLP/include/template_prewarmer.h>
 #include <LLP/include/stateless_manager.h>
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/falcon_constants.h>
@@ -258,7 +259,7 @@ namespace LLP
         {
             std::lock_guard<std::mutex> lock(m_template_work_mutex);
 
-            if(m_template_worker_running)
+            if(m_template_worker_running.load(std::memory_order_relaxed))
                 return;
 
             fJoinExistingWorker = m_template_work_thread.joinable();
@@ -269,12 +270,13 @@ namespace LLP
 
         std::lock_guard<std::mutex> lock(m_template_work_mutex);
 
-        if(m_template_worker_running)
+        if(m_template_worker_running.load(std::memory_order_relaxed))
             return;
 
-        m_template_worker_running = true;
-        m_template_work_pending = false;
-        m_template_work_in_flight = false;
+        m_template_worker_running.store(true, std::memory_order_release);
+        m_template_work_pending.store(false, std::memory_order_release);
+        m_template_work_in_flight.store(false, std::memory_order_release);
+        m_template_work_queue.clear();
         m_template_work_reason = TemplateWorkReason::PUSH_NOTIFICATION;
         m_template_work_thread = std::thread(&Miner::TemplateWorkerLoop, this);
 
@@ -287,9 +289,17 @@ namespace LLP
     {
         {
             std::lock_guard<std::mutex> lock(m_template_work_mutex);
-            m_template_worker_running = false;
-            m_template_work_pending = false;
-            m_template_work_in_flight = false;
+            m_template_worker_running.store(false, std::memory_order_release);
+            m_template_work_pending.store(false, std::memory_order_release);
+            m_template_work_in_flight.store(false, std::memory_order_release);
+            const std::size_t nLeftover = m_template_work_queue.size();
+            if(nLeftover > 0)
+            {
+                m_template_work_dropped_total.fetch_add(nLeftover, std::memory_order_relaxed);
+                debug::log(3, FUNCTION, "[ASYNC_PUSH] discarded ", nLeftover,
+                    " pending request(s) on worker stop for ", GetAddress().ToStringIP());
+                m_template_work_queue.clear();
+            }
         }
 
         m_template_work_cv.notify_all();
@@ -308,29 +318,73 @@ namespace LLP
                                      const uint32_t nChannel)
     {
         const bool fPushRequest = (eReason == TemplateWorkReason::PUSH_NOTIFICATION);
+        const auto tScheduledAt = std::chrono::steady_clock::now();
+        bool fNotify = false;
         {
             std::lock_guard<std::mutex> lock(m_template_work_mutex);
-            if(!m_template_worker_running)
+            if(!m_template_worker_running.load(std::memory_order_relaxed))
                 return;
 
-            if(fPushRequest
-            && ShouldCoalesceAsyncPush(hashExpectedTip, nChannel,
-                                       m_template_work_pending, m_template_work_expected_tip, m_template_work_channel,
-                                       m_template_work_in_flight, m_template_work_in_flight_tip, m_template_work_in_flight_channel))
+            /* Option E: coalesce against bounded queue + in-flight slot. */
+            if(fPushRequest)
             {
-                debug::log(3, FUNCTION, "[ASYNC_PUSH] coalesced duplicate PUSH for same tip — skip"
-                    " tip=", hashExpectedTip.SubString(), " channel=", nChannel,
-                    " miner=", GetAddress().ToStringIP());
-                return;
+                const bool fInFlightDuplicate =
+                    m_template_work_in_flight.load(std::memory_order_relaxed)
+                    && m_template_work_in_flight_channel == nChannel
+                    && m_template_work_in_flight_tip == hashExpectedTip;
+
+                bool fQueueDuplicate = false;
+                for(const auto& req : m_template_work_queue)
+                {
+                    if(req.eReason == TemplateWorkReason::PUSH_NOTIFICATION
+                    && req.nChannel == nChannel
+                    && req.hashExpectedTip == hashExpectedTip)
+                    {
+                        fQueueDuplicate = true;
+                        break;
+                    }
+                }
+
+                if(fInFlightDuplicate || fQueueDuplicate)
+                {
+                    debug::log(3, FUNCTION, "[ASYNC_PUSH] coalesced duplicate PUSH for same tip — skip"
+                        " tip=", hashExpectedTip.SubString(), " channel=", nChannel,
+                        " miner=", GetAddress().ToStringIP());
+                    return;
+                }
             }
 
-            m_template_work_pending = true;
+            /* Drop-oldest if queue is full. */
+            if(m_template_work_queue.size() >= TEMPLATE_WORK_QUEUE_MAX)
+            {
+                const TemplateWorkRequest dropped = m_template_work_queue.front();
+                m_template_work_queue.pop_front();
+                m_template_work_dropped_total.fetch_add(1, std::memory_order_relaxed);
+                debug::log(2, FUNCTION, "[ASYNC_PUSH] queue full (cap=", TEMPLATE_WORK_QUEUE_MAX,
+                           ") — dropped oldest reason=",
+                           static_cast<unsigned>(dropped.eReason),
+                           " tip=", dropped.hashExpectedTip.SubString(),
+                           " channel=", dropped.nChannel,
+                           " dropped_total=", m_template_work_dropped_total.load(std::memory_order_relaxed),
+                           " miner=", GetAddress().ToStringIP());
+            }
+
+            TemplateWorkRequest req;
+            req.eReason = eReason;
+            req.hashExpectedTip = hashExpectedTip;
+            req.fValidateExpectedTip = fValidateExpectedTip;
+            req.nChannel = (nChannel != 0) ? nChannel : m_template_work_channel;
+            req.tScheduledAt = tScheduledAt;
+            m_template_work_queue.push_back(req);
+
+            m_template_work_pending.store(true, std::memory_order_release);
             m_template_work_reason = eReason;
             m_template_work_expected_tip = hashExpectedTip;
             m_template_work_validate_expected_tip = fValidateExpectedTip;
             if(nChannel != 0)
                 m_template_work_channel = nChannel;
-            m_template_work_scheduled_at = std::chrono::steady_clock::now();
+            m_template_work_scheduled_at = tScheduledAt;
+            fNotify = true;
         }
 
         if(fPushRequest)
@@ -339,7 +393,8 @@ namespace LLP
                 hashExpectedTip.SubString(), " channel=", nChannel, " reason=PUSH");
         }
 
-        m_template_work_cv.notify_one();
+        if(fNotify)
+            m_template_work_cv.notify_one();
     }
 
 
@@ -347,40 +402,46 @@ namespace LLP
     {
         while(true)
         {
-            TemplateWorkReason eReason = TemplateWorkReason::PUSH_NOTIFICATION;
-            uint1024_t hashExpectedTip;
-            bool fValidateExpectedTip = false;
-            uint32_t nChannel = 0;
-            std::chrono::steady_clock::time_point tScheduledAt;
+            TemplateWorkRequest req;
+            bool fHasRequest = false;
 
             {
                 std::unique_lock<std::mutex> lock(m_template_work_mutex);
                 m_template_work_cv.wait(lock,
                     [this]
                     {
-                        return m_template_work_pending || !m_template_worker_running;
+                        return !m_template_work_queue.empty()
+                            || !m_template_worker_running.load(std::memory_order_relaxed);
                     });
 
-                if(!m_template_worker_running && !m_template_work_pending)
+                if(!m_template_worker_running.load(std::memory_order_relaxed)
+                && m_template_work_queue.empty())
                     break;
 
-                eReason = m_template_work_reason;
-                hashExpectedTip = m_template_work_expected_tip;
-                fValidateExpectedTip = m_template_work_validate_expected_tip;
-                nChannel = m_template_work_channel;
-                tScheduledAt = m_template_work_scheduled_at;
-                m_template_work_pending = false;
-                m_template_work_in_flight = true;
-                m_template_work_in_flight_tip = hashExpectedTip;
-                m_template_work_in_flight_channel = nChannel;
+                if(m_template_work_queue.empty())
+                    continue;
+
+                req = m_template_work_queue.front();
+                m_template_work_queue.pop_front();
+                fHasRequest = true;
+
+                m_template_work_pending.store(!m_template_work_queue.empty(),
+                                              std::memory_order_release);
+                m_template_work_in_flight.store(true, std::memory_order_release);
+                m_template_work_in_flight_tip = req.hashExpectedTip;
+                m_template_work_in_flight_channel = req.nChannel;
             }
 
-            QueueCurrentBlockDataTemplate(eReason, hashExpectedTip,
-                                          fValidateExpectedTip, nChannel, tScheduledAt);
+            if(fHasRequest)
+            {
+                QueueCurrentBlockDataTemplate(req.eReason, req.hashExpectedTip,
+                                              req.fValidateExpectedTip, req.nChannel,
+                                              req.tScheduledAt);
+            }
 
             {
                 std::lock_guard<std::mutex> lock(m_template_work_mutex);
-                m_template_work_in_flight = false;
+                m_template_work_in_flight.store(false, std::memory_order_release);
             }
         }
     }
@@ -2158,6 +2219,12 @@ namespace LLP
                            " Verify the reward genesis exists on chain, or set"
                            " -rewardmustexist=0 to suppress this warning.");
         }
+
+        /* Register the resolved (channel, reward) tuple with the prewarmer
+         * registry so the next chain tip advance triggers a background warm
+         * for this miner without the per-connection worker paying the
+         * producer signing cost on the critical PUSH→BLOCK_DATA path. */
+        LLP::RecentRewardRegistry::Instance().Register(nChannel.load(), hashReward);
 
         /* Prime channel optimization */
         const uint32_t nBitMask = config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
