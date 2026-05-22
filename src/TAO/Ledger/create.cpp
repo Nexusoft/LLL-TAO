@@ -1088,8 +1088,8 @@ namespace TAO::Ledger
                 if(TryUsePublishedSingleflightEntry(pPublished, nWaitMs))
                     return true;
 
-                /* Timed out (or observed an unexpected stale handle): re-check the
-                 * cache first, then re-register with singleflight so this caller can
+                /* Timed out (or observed a stale in-flight handle with no published
+                 * result): re-check the cache first, then re-register with singleflight so this caller can
                  * either join a current owner or become the new owner. */
                 auto pCachedRetry = tBlockCache[nChannel].Lookup(hashDynamicGenesis);
                 if(TryUsePublishedSingleflightEntry(pCachedRetry, nWaitMs))

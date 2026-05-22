@@ -167,7 +167,7 @@ TEST_CASE("Mining template cache singleflight timeout fallback", "[tao][ledger][
 
     uint256_t hashOut = 0;
     const bool fJoined = TAO::Ledger::Testing::WaitForMiningTemplateInFlight(
-        CHANNEL, nWaiterToken, std::chrono::milliseconds(30), hashOut);
+        CHANNEL, nWaiterToken, std::chrono::milliseconds(120), hashOut);
     REQUIRE_FALSE(fJoined);
 
     TAO::Ledger::Testing::StoreMiningTemplateCacheEntryForTesting(CHANNEL, hashReward, 99);
