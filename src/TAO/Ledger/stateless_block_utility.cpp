@@ -155,6 +155,9 @@ namespace TAO::Ledger
             debug::error(FUNCTION, "   Valid channels: 1 (Prime), 2 (Hash)");
             return nullptr;
         }
+
+        const auto tCbsmStart = std::chrono::steady_clock::now();
+        debug::log(1, FUNCTION, "[CBSM_TIMING] phase=entry elapsed_ms=0 reward=", hashRewardAddress.SubString());
         
         /* All blocks MUST be wallet-signed per Nexus consensus */
         if (!TAO::API::Authentication::Unlocked(TAO::Ledger::PinUnlock::MINING))
@@ -165,11 +168,25 @@ namespace TAO::Ledger
             return nullptr;
         }
 
+        {
+            const int64_t nMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - tCbsmStart).count();
+            debug::log(1, FUNCTION, "[CBSM_TIMING] phase=unlocked_checked elapsed_ms=", nMs,
+                       " reward=", hashRewardAddress.SubString());
+        }
+
         debug::log(1, FUNCTION, "Creating wallet-signed block (Nexus consensus requirement)");
         
         try {
             const uint256_t hashSession = uint256_t(TAO::API::Authentication::SESSION::DEFAULT);
             const auto& pCredentials = TAO::API::Authentication::Credentials(hashSession);
+
+            {
+                const int64_t nMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - tCbsmStart).count();
+                debug::log(1, FUNCTION, "[CBSM_TIMING] phase=credentials_resolved elapsed_ms=", nMs,
+                           " reward=", hashRewardAddress.SubString());
+            }
             
             SecureString strPIN;
             RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING, hashSession));
@@ -205,6 +222,13 @@ namespace TAO::Ledger
             const auto tCreateStart = std::chrono::steady_clock::now();
             
             // CreateBlock() handles wallet signing per consensus requirements
+            {
+                const int64_t nMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - tCbsmStart).count();
+                debug::log(1, FUNCTION, "[CBSM_TIMING] phase=pre_createblock elapsed_ms=", nMs,
+                           " reward=", hashRewardAddress.SubString());
+            }
+
             bool success = CreateBlock(
                 pCredentials,
                 strPIN,
@@ -214,6 +238,14 @@ namespace TAO::Ledger
                 nullptr,           // No coinbase recipients
                 hashRewardAddress  // Route reward events to miner's genesis
             );
+
+            {
+                const int64_t nMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - tCbsmStart).count();
+                debug::log(1, FUNCTION, "[CBSM_TIMING] phase=createblock_returned elapsed_ms=", nMs,
+                           " reward=", hashRewardAddress.SubString());
+            }
+
             const int64_t nCreateMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - tCreateStart).count();
             debug::log(1, FUNCTION, "CreateBlockForStatelessMining CreateBlock duration_ms=",
