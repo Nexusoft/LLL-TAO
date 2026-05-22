@@ -111,7 +111,7 @@ TEST_CASE("Mining template cache singleflight owner abandonment unblocks waiters
     std::atomic<int> nTimeouts{0};
     std::atomic<int> nUnexpectedOwners{0};
     std::atomic<int> nWaitersReady{0};
-    std::atomic<int> nInvalidTokens{0};
+    std::atomic<int> nZeroTokens{0};
 
     std::vector<std::thread> threads;
     threads.reserve(5);
@@ -123,7 +123,7 @@ TEST_CASE("Mining template cache singleflight owner abandonment unblocks waiters
             auto nToken = TAO::Ledger::Testing::BeginOrJoinMiningTemplateInFlight(CHANNEL, hashReward, fIsOwner);
             if(nToken == 0)
             {
-                ++nInvalidTokens;
+                ++nZeroTokens;
                 return;
             }
 
@@ -155,7 +155,7 @@ TEST_CASE("Mining template cache singleflight owner abandonment unblocks waiters
     for(auto& t : threads)
         t.join();
 
-    REQUIRE(nInvalidTokens.load() == 0);
+    REQUIRE(nZeroTokens.load() == 0);
     REQUIRE(fAllWaitersReady);
     REQUIRE(nTimeouts.load() == 5);
     REQUIRE(nUnexpectedOwners.load() == 0);
