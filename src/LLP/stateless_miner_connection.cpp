@@ -3266,7 +3266,7 @@ namespace LLP
     {
         const auto tNbStart = std::chrono::steady_clock::now();
         auto tNbPrev = tNbStart;
-        auto LogNbTiming = [&](const char* pPhase, const uint256_t& hashReward) {
+        auto LogNbTiming = [&](const char* pPhase, const std::string& strRewardLabel) {
             if(config::nVerbose < 2)
                 return;
             const auto tNow = std::chrono::steady_clock::now();
@@ -3277,12 +3277,12 @@ namespace LLP
                        " elapsed_from_start_ms=", nFromStartMs,
                        " elapsed_from_prev_ms=", nFromPrevMs,
                        " tip=", hashExpectedTip.SubString(),
-                       " reward=", hashReward.SubString(),
+                       " reward=", strRewardLabel,
                        " miner=", GetAddress().ToStringIP());
         };
 
         uint256_t hashReward = 0;
-        LogNbTiming("nb_start", hashReward);
+        LogNbTiming("nb_start", "unresolved");
 
         /* Snapshot context fields under MUTEX so that new_block() never races
          * with ProcessPacket() writers when called from the notification thread. */
@@ -3507,7 +3507,7 @@ namespace LLP
             debug::log(0, ANSI_COLOR_BRIGHT_RED, "   FAILED: Invalid reward address type byte", ANSI_COLOR_RESET);
             return nullptr;
         }
-        LogNbTiming("nb_reward_resolved", hashReward);
+        LogNbTiming("nb_reward_resolved", hashReward.SubString());
 
         /* [Bug 3] On-chain existence check at template creation time: emit a warning early if
          * the reward genesis has no sigchain on disk so the operator sees the issue before
@@ -3554,7 +3554,7 @@ namespace LLP
             debug::log(2, "      Session ID: ", nSessionId_snap);
             debug::log(2, "      Falcon authenticated: ", fAuthenticated_snap ? "Yes" : "No");
         }
-        LogNbTiming("nb_reward_binding_pass", hashReward);
+        LogNbTiming("nb_reward_binding_pass", hashReward.SubString());
 
         /* SESSION::DEFAULT health pre-check: fail fast before calling
          * CreateBlockForStatelessMining() which requires the wallet session.
@@ -3628,7 +3628,7 @@ namespace LLP
             }
 
             if(nAttempts == 0)
-                LogNbTiming("nb_pre_createblock", hashReward);
+                LogNbTiming("nb_pre_createblock", hashReward.SubString());
 
             ++nAttempts;
             pBlock = TAO::Ledger::CreateBlockForStatelessMining(
@@ -3636,7 +3636,7 @@ namespace LLP
                 extraNonce,
                 hashReward
             );
-            LogNbTiming("nb_createblock_returned", hashReward);
+            LogNbTiming("nb_createblock_returned", hashReward.SubString());
 
             if(!pBlock) {
                 debug::log(2, FUNCTION, "CreateBlockForStatelessMining returned nullptr");

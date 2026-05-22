@@ -2161,7 +2161,7 @@ namespace LLP
     {
         const auto tNbStart = std::chrono::steady_clock::now();
         auto tNbPrev = tNbStart;
-        auto LogNbTiming = [&](const char* pPhase, const uint256_t& hashReward) {
+        auto LogNbTiming = [&](const char* pPhase, const std::string& strRewardLabel) {
             if(config::nVerbose < 2)
                 return;
             const auto tNow = std::chrono::steady_clock::now();
@@ -2172,12 +2172,12 @@ namespace LLP
                        " elapsed_from_start_ms=", nFromStartMs,
                        " elapsed_from_prev_ms=", nFromPrevMs,
                        " tip=", hashExpectedTip.SubString(),
-                       " reward=", hashReward.SubString(),
+                       " reward=", strRewardLabel,
                        " miner=", GetAddress().ToStringIP());
         };
 
         uint256_t hashReward = 0;
-        LogNbTiming("nb_start", hashReward);
+        LogNbTiming("nb_start", "unresolved");
 
         /* SESSION::DEFAULT health pre-check: fail fast before diving into
          * CreateBlockForStatelessMining() which requires the wallet session.
@@ -2230,7 +2230,7 @@ namespace LLP
                          " Block creation aborted. Set a valid TritiumGenesis via MINER_SET_REWARD.");
             return nullptr;
         }
-        LogNbTiming("nb_reward_resolved", hashReward);
+        LogNbTiming("nb_reward_resolved", hashReward.SubString());
         
         /* [Bug 3] On-chain existence check at template creation time: emit a warning early if
          * the reward genesis has no sigchain on disk so the operator sees the issue before
@@ -2248,7 +2248,7 @@ namespace LLP
                            " Verify the reward genesis exists on chain, or set"
                            " -rewardmustexist=0 to suppress this warning.");
         }
-        LogNbTiming("nb_reward_binding_pass", hashReward);
+        LogNbTiming("nb_reward_binding_pass", hashReward.SubString());
 
         /* Register the resolved (channel, reward) tuple with the prewarmer
          * registry so the next chain tip advance triggers a background warm
@@ -2289,7 +2289,7 @@ namespace LLP
         uint32_t nAttempts = 0;
         while(true) {
             if(nAttempts == 0)
-                LogNbTiming("nb_pre_createblock", hashReward);
+                LogNbTiming("nb_pre_createblock", hashReward.SubString());
 
             ++nAttempts;
             pBlock = TAO::Ledger::CreateBlockForStatelessMining(
@@ -2297,7 +2297,7 @@ namespace LLP
                 extraNonce,
                 hashReward
             );
-            LogNbTiming("nb_createblock_returned", hashReward);
+            LogNbTiming("nb_createblock_returned", hashReward.SubString());
 
             if(!pBlock) return nullptr;
             if(is_prime_mod(nBitMask, pBlock))

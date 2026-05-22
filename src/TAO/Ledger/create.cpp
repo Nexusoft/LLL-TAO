@@ -272,6 +272,7 @@ namespace TAO::Ledger
 
             {
                 std::unique_lock<std::shared_mutex> lock(m_mutex);
+                bool fReplaced = false;
                 for(auto it = m_entries.begin(); it != m_entries.end(); ++it)
                 {
                     if(*it && (*it)->hashDynamicGenesis == finalEntry.hashDynamicGenesis)
@@ -279,14 +280,17 @@ namespace TAO::Ledger
                         *it = pNew;
                         if(it != m_entries.begin())
                             m_entries.splice(m_entries.begin(), m_entries, it);
-                        goto inflight_erase;
+                        fReplaced = true;
+                        break;
                     }
                 }
-                m_entries.push_front(pNew);
-                while(m_entries.size() > cap)
-                    m_entries.pop_back();
+                if(!fReplaced)
+                {
+                    m_entries.push_front(pNew);
+                    while(m_entries.size() > cap)
+                        m_entries.pop_back();
+                }
 
-            inflight_erase:
                 const auto itInflight = m_inflight.find(pHandle->hashDynamicGenesis);
                 if(itInflight != m_inflight.end() && itInflight->second == pHandle)
                     m_inflight.erase(itInflight);
