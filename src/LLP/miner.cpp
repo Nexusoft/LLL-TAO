@@ -2231,30 +2231,17 @@ namespace LLP
             return nullptr;
         }
         LogNbTiming("nb_reward_resolved", hashReward.SubString());
-        
-        /* [Bug 3] On-chain existence check at template creation time: emit a warning early if
-         * the reward genesis has no sigchain on disk so the operator sees the issue before
-         * finding a block rather than after (AUTO-CREDIT FAILED at commit time).
-         * Template serving continues regardless — a valid PoW block is always consensus-correct
-         * even when the coinbase commit falls back to event-only mode.  Operators may suppress
-         * this warning with -rewardmustexist=0 for brand-new sigchains mining their first block. */
-        if(config::GetBoolArg("-rewardmustexist", true)
-        && !LLD::Ledger->HasFirst(hashReward))
-        {
-            debug::warning(FUNCTION, "[REWARD_CHECK] Reward genesis ", hashReward.SubString(8),
-                           " has no on-chain first transaction — if a block is found,"
-                           " Coinbase::Commit() will fall back to event-only mode"
-                           " and NXS will NOT be auto-credited."
-                           " Verify the reward genesis exists on chain, or set"
-                           " -rewardmustexist=0 to suppress this warning.");
-        }
+
+        /* Follow-up #4: per-template LLD::Ledger->HasFirst(hashReward) disk hit
+         * removed — already enforced at MINER_SET_REWARD bind time by
+         * ValidateRewardAddress(). */
         LogNbTiming("nb_reward_binding_pass", hashReward.SubString());
 
-        /* Register the resolved (channel, reward) tuple with the prewarmer
-         * registry so the next chain tip advance triggers a background warm
-         * for this miner without the per-connection worker paying the
-         * producer signing cost on the critical PUSH→BLOCK_DATA path. */
-        LLP::RecentRewardRegistry::Instance().Register(nChannel.load(), hashReward);
+        /* Follow-up #3: RecentRewardRegistry::Register() moved out of this
+         * hot path into the MINER_SET_REWARD ack path (StatelessMiner::
+         * ProcessSetReward, shared by Legacy + Stateless lanes).  Registering
+         * once per session bind instead of once per GET_BLOCK removes 200+
+         * mutex acquisitions/second on a busy node. */
 
         /* Prime channel optimization */
         const uint32_t nBitMask = config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;

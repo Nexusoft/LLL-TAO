@@ -149,6 +149,10 @@ namespace TAO::Ledger
             EntryPtr pResult{nullptr};
             std::chrono::steady_clock::time_point tStarted;
             uint256_t hashDynamicGenesis{0};
+            /* Tip the owner is building against.  Used by
+             * BeginOrJoinInFlightBuild() to orphan stale handles whose
+             * tip no longer matches the current chain — see Follow-up #1. */
+            uint1024_t hashBuildTip{0};
         };
         using InFlightPtr = std::shared_ptr<InFlightBuild>;
 
@@ -227,23 +231,56 @@ namespace TAO::Ledger
         }
 
         /* Standard singleflight/request-coalescing pattern: one owner builds,
-         * all same-key waiters join and reuse the published result. */
-        InFlightPtr BeginOrJoinInFlightBuild(const uint256_t& hashDynamicGenesis, bool& fIsOwner)
+         * all same-key waiters join and reuse the published result.
+         *
+         * Tip-aware key (Follow-up #1): an existing in-flight handle whose
+         * `hashBuildTip` differs from the caller's `hashBuildTip` is treated
+         * as ORPHANED — it would publish a born-stale template after the
+         * chain tip advanced.  The orphan is evicted from `m_inflight` and a
+         * fresh handle is installed for the new tip so this caller becomes
+         * owner.  The original owner's eventual CompleteInFlightBuild() /
+         * AbandonInFlightBuild() still notifies its own pre-orphan waiters
+         * via the per-handle CV; the map-identity check at lines below
+         * (`itInflight->second == pHandle`) prevents the orphaned owner
+         * from inadvertently removing the new handle from the map.
+         *
+         * Pass `hashBuildTip == 0` to opt out of tip-awareness (used by
+         * unit-test helpers that don't track a tip). */
+        InFlightPtr BeginOrJoinInFlightBuild(const uint256_t& hashDynamicGenesis,
+                                             const uint1024_t& hashBuildTip,
+                                             bool& fIsOwner)
         {
             std::unique_lock<std::shared_mutex> lock(m_mutex);
             const auto it = m_inflight.find(hashDynamicGenesis);
             if(it != m_inflight.end())
             {
-                fIsOwner = false;
-                return it->second;
+                /* Tip match (or either side opted out with 0): join. */
+                if(hashBuildTip == 0
+                || it->second->hashBuildTip == 0
+                || it->second->hashBuildTip == hashBuildTip)
+                {
+                    fIsOwner = false;
+                    return it->second;
+                }
+
+                /* Tip mismatch — existing build is for a stale tip.
+                 * Orphan it so this caller can build for the new tip. */
+                m_inflight.erase(it);
             }
 
             auto pHandle = std::make_shared<InFlightBuild>();
             pHandle->tStarted = std::chrono::steady_clock::now();
             pHandle->hashDynamicGenesis = hashDynamicGenesis;
+            pHandle->hashBuildTip = hashBuildTip;
             m_inflight.emplace(hashDynamicGenesis, pHandle);
             fIsOwner = true;
             return pHandle;
+        }
+
+        /* Backward-compat overload: tip-agnostic join, used by test helpers. */
+        InFlightPtr BeginOrJoinInFlightBuild(const uint256_t& hashDynamicGenesis, bool& fIsOwner)
+        {
+            return BeginOrJoinInFlightBuild(hashDynamicGenesis, uint1024_t(0), fIsOwner);
         }
 
         EntryPtr WaitForInFlightBuild(const InFlightPtr& pHandle,
@@ -1004,8 +1041,15 @@ namespace TAO::Ledger
         }
         else //block not cached, set up new block
         {
+            /* Capture the build tip up-front so the singleflight key includes
+             * (reward, tip) and waiters won't join builds for stale tips
+             * (Follow-up #1).  This is the same tip captured at line 824
+             * above into tStateBest; recomputing here keeps intent local. */
+            const uint1024_t hashBuildTip = tStateBest.GetHash();
+
             bool fSingleflightOwner = false;
-            auto pInFlight = tBlockCache[nChannel].BeginOrJoinInFlightBuild(hashDynamicGenesis, fSingleflightOwner);
+            auto pInFlight = tBlockCache[nChannel].BeginOrJoinInFlightBuild(
+                hashDynamicGenesis, hashBuildTip, fSingleflightOwner);
 
             auto TryApplyPublishedTemplate = [&rBlockRet, &nChannel, &nExtraNonce, &hashDynamicGenesis](
                 const MiningTemplateCacheTable::EntryPtr& pPublished, const int64_t nWaitMs) -> bool
@@ -1013,7 +1057,7 @@ namespace TAO::Ledger
                 if(!(pPublished && pPublished->hashDynamicGenesis == hashDynamicGenesis))
                     return false;
 
-                const uint1024_t hashBestChain = ChainState::hashBestChain;
+                const uint1024_t hashBestChain = ChainState::hashBestChain.load();
                 if(pPublished->block.hashPrevBlock != hashBestChain)
                 {
                     debug::log(2, FUNCTION, "[SINGLEFLIGHT] rejected stale published template for reward=",
@@ -1058,7 +1102,8 @@ namespace TAO::Ledger
                 if(TryApplyPublishedTemplate(pCachedRetry, nWaitMs))
                     return true;
 
-                pInFlight = tBlockCache[nChannel].BeginOrJoinInFlightBuild(hashDynamicGenesis, fSingleflightOwner);
+                pInFlight = tBlockCache[nChannel].BeginOrJoinInFlightBuild(
+                    hashDynamicGenesis, hashBuildTip, fSingleflightOwner);
                 if(!fSingleflightOwner)
                 {
                     const auto tRetryWaitStart = std::chrono::steady_clock::now();
@@ -1104,6 +1149,29 @@ namespace TAO::Ledger
                        " height=", tStateBest.nHeight + 1,
                        " reward=", strDynamicReward,
                        " extra_nonce=", nExtraNonce);
+
+            /* Follow-up #2: tip-advance abandonment.  Falcon signing took
+             * nProducerMs; if the chain tip moved during that window, the
+             * block we built has a stale hashPrevBlock and cannot be mined.
+             * Abandon the in-flight handle so any pre-orphan waiters fall
+             * through to a fresh build for the new tip, and return failure
+             * so the caller retries with the current tStateBest. */
+            if(fSingleflightOwner)
+            {
+                const uint1024_t hashCurrentTip = ChainState::hashBestChain.load();
+                if(hashCurrentTip != hashBuildTip)
+                {
+                    debug::log(0, FUNCTION, "[SINGLEFLIGHT] tip advanced during fresh-template build,"
+                               " abandoning to avoid publishing stale template",
+                               " build_tip=", hashBuildTip.SubString(),
+                               " current_tip=", hashCurrentTip.SubString(),
+                               " reward=", strDynamicReward,
+                               " producer_ms=", nProducerMs);
+                    tBlockCache[nChannel].AbandonInFlightBuild(pInFlight);
+                    guard.fCompleted = true; // prevent guard dtor from re-abandoning
+                    return debug::error(FUNCTION, "Tip advanced during template build, retry required.");
+                }
+            }
 
             /* Update the producer timestamp */
             UpdateProducerTimestamp(rBlockRet.producer);
