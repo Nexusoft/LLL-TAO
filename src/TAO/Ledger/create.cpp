@@ -1032,12 +1032,10 @@ namespace TAO::Ledger
                                    " differs from requested extra_nonce=", nExtraNonce,
                                    " — re-finalizing producer from joined base (waited ", nWaitMs, " ms)");
 
-                        AddTransactions(rBlockRet);
-
                         const auto tProducerStart = std::chrono::steady_clock::now();
                         if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion,
                                            nChannel, nExtraNonce, pCoinbaseRecipients, hashDynamicGenesis))
-                            return debug::error(FUNCTION, "Failed to create producer transactions.");
+                            return debug::error(FUNCTION, "Failed to re-finalize producer transactions for singleflight join.");
                         const int64_t nProducerMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                             std::chrono::steady_clock::now() - tProducerStart).count();
                         debug::log(1, FUNCTION, "CreateProducer singleflight-join finalization duration_ms=", nProducerMs,
