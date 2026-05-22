@@ -129,14 +129,18 @@ TEST_CASE("Mining template cache singleflight owner abandonment unblocks waiters
         });
     }
 
-    while(nWaitersReady.load() < 5)
+    const auto nWaitersReadyDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while(nWaitersReady.load() < 5 && std::chrono::steady_clock::now() < nWaitersReadyDeadline)
         std::this_thread::yield();
+
+    const bool fAllWaitersReady = (nWaitersReady.load() == 5);
 
     TAO::Ledger::Testing::AbandonMiningTemplateInFlight(nOwnerToken, CHANNEL);
 
     for(auto& t : threads)
         t.join();
 
+    REQUIRE(fAllWaitersReady);
     REQUIRE(nTimeouts.load() == 5);
     REQUIRE(nUnexpectedOwners.load() == 0);
     REQUIRE(TAO::Ledger::Testing::MiningTemplateInFlightCountForTesting(CHANNEL) == 0);
