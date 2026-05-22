@@ -45,6 +45,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/address.h>
 
 #include <LLP/include/reward_binding_payload.h>
+#include <LLP/include/template_prewarmer.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
@@ -2163,6 +2164,17 @@ namespace LLP
                    fExistingRewardPresent ? YesNo(fExistingRewardMatches) : "NOT PREVIOUSLY BOUND");
         debug::log(2, FUNCTION, "  ChaCha20 ready: ", YesNo(!vChaChaKey.empty()),
                    " fingerprint=", KeyFingerprint(vChaChaKey));
+
+        /* Follow-up #3: register the bound reward with the prewarmer registry
+         * exactly once per MINER_SET_REWARD ack (shared by both Legacy and
+         * Stateless lanes via channel_reward_handler.h dispatch).  We register
+         * for BOTH mineable channels (1=Prime, 2=Hash) because the miner may
+         * SET_CHANNEL after binding, or switch channels mid-session.  The
+         * registry's internal dedup makes a second Register() at the same
+         * (channel, reward) a cheap map upsert.  This replaces the per-
+         * new_block() call that previously fired on every GET_BLOCK. */
+        RecentRewardRegistry::Instance().Register(1, hashReward);
+        RecentRewardRegistry::Instance().Register(2, hashReward);
 
         /* Build success response (encrypted) */
         std::vector<uint8_t> vSuccessMsg = {0x01};  // Success status
