@@ -23,7 +23,9 @@ ________________________________________________________________________________
 
 #include <Util/include/allocators.h>
 
+#include <chrono>
 #include <condition_variable>
+#include <cstdint>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -204,6 +206,37 @@ namespace TAO
          *
          **/
         void UpdateProducerTimestamp(TAO::Ledger::TritiumBlock& block);
+
+#ifdef UNIT_TESTS
+        namespace Testing
+        {
+            using SingleflightToken = std::uint64_t;
+
+            SingleflightToken BeginOrJoinMiningTemplateInFlight(const uint32_t nChannel,
+                                                                const uint256_t& hashDynamicGenesis,
+                                                                bool& fIsOwner);
+
+            bool WaitForMiningTemplateInFlight(const uint32_t nChannel,
+                                               const SingleflightToken nToken,
+                                               const std::chrono::milliseconds nTimeout,
+                                               uint256_t& hashOut);
+
+            void CompleteMiningTemplateInFlight(const SingleflightToken nToken,
+                                                const uint32_t nChannel,
+                                                const uint256_t& hashDynamicGenesis,
+                                                const uint64_t nExtraNonce);
+
+            void AbandonMiningTemplateInFlight(const SingleflightToken nToken,
+                                               const uint32_t nChannel);
+
+            void StoreMiningTemplateCacheEntryForTesting(const uint32_t nChannel,
+                                                         const uint256_t& hashDynamicGenesis,
+                                                         const uint64_t nExtraNonce);
+
+            void ClearMiningTemplateCacheForTesting(const uint32_t nChannel);
+            std::size_t MiningTemplateInFlightCountForTesting(const uint32_t nChannel);
+        }
+#endif
     }
 }
 
