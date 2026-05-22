@@ -1007,8 +1007,8 @@ namespace TAO::Ledger
             bool fSingleflightOwner = false;
             auto pInFlight = tBlockCache[nChannel].BeginOrJoinInFlightBuild(hashDynamicGenesis, fSingleflightOwner);
 
-            auto TryApplyPublishedTemplate = [&rBlockRet, &nChannel, &nExtraNonce, &hashDynamicGenesis]
-                (const MiningTemplateCacheTable::EntryPtr& pPublished, const int64_t nWaitMs) -> bool
+            auto TryApplyPublishedTemplate = [&rBlockRet, &nChannel, &nExtraNonce, &hashDynamicGenesis](
+                const MiningTemplateCacheTable::EntryPtr& pPublished, const int64_t nWaitMs) -> bool
             {
                 if(!(pPublished && pPublished->hashDynamicGenesis == hashDynamicGenesis))
                     return false;
