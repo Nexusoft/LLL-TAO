@@ -1013,7 +1013,7 @@ namespace TAO::Ledger
                 if(!(pPublished && pPublished->hashDynamicGenesis == hashDynamicGenesis))
                     return false;
 
-                const uint1024_t hashBestChain = ChainState::hashBestChain;
+                const uint1024_t hashBestChain = ChainState::hashBestChain.load();
                 if(pPublished->block.hashPrevBlock != hashBestChain)
                 {
                     debug::log(2, FUNCTION, "[SINGLEFLIGHT] rejected stale published template for reward=",
