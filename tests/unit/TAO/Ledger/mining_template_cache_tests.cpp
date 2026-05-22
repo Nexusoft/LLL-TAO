@@ -44,6 +44,8 @@ TEST_CASE("Mining template cache singleflight coalesces same reward", "[tao][led
     std::atomic<int> nOwners{0};
     std::atomic<int> nBuilds{0};
     std::atomic<int> nJoined{0};
+    std::atomic<int> nZeroTokens{0};
+    std::atomic<int> nMismatchedRewards{0};
 
     std::vector<std::thread> threads;
     threads.reserve(10);
@@ -53,7 +55,11 @@ TEST_CASE("Mining template cache singleflight coalesces same reward", "[tao][led
         threads.emplace_back([&]() {
             bool fIsOwner = false;
             auto nToken = TAO::Ledger::Testing::BeginOrJoinMiningTemplateInFlight(CHANNEL, hashReward, fIsOwner);
-            REQUIRE(nToken != 0);
+            if(nToken == 0)
+            {
+                ++nZeroTokens;
+                return;
+            }
 
             if(fIsOwner)
             {
@@ -69,8 +75,10 @@ TEST_CASE("Mining template cache singleflight coalesces same reward", "[tao][led
                     CHANNEL, nToken, std::chrono::milliseconds(500), hashOut);
                 if(fJoined)
                 {
-                    REQUIRE(hashOut == hashReward);
-                    ++nJoined;
+                    if(hashOut == hashReward)
+                        ++nJoined;
+                    else
+                        ++nMismatchedRewards;
                 }
             }
         });
@@ -82,6 +90,8 @@ TEST_CASE("Mining template cache singleflight coalesces same reward", "[tao][led
     REQUIRE(nOwners.load() == 1);
     REQUIRE(nBuilds.load() == 1);
     REQUIRE(nJoined.load() == 9);
+    REQUIRE(nZeroTokens.load() == 0);
+    REQUIRE(nMismatchedRewards.load() == 0);
     REQUIRE(TAO::Ledger::Testing::MiningTemplateInFlightCountForTesting(CHANNEL) == 0);
 }
 
