@@ -195,8 +195,8 @@ namespace TAO::Ledger
         
         try {
             const uint256_t hashSession = uint256_t(TAO::API::Authentication::SESSION::DEFAULT);
-            memory::encrypted_ptr<TAO::Ledger::Credentials> pLocalCredentials;
-            const memory::encrypted_ptr<TAO::Ledger::Credentials>* pCredentials = nullptr;
+            memory::encrypted_ptr<TAO::Ledger::Credentials> localCredentialsStorage;
+            const memory::encrypted_ptr<TAO::Ledger::Credentials>* pCredentialsToUse = nullptr;
             if(pCredentialCache != nullptr)
             {
                 const std::shared_ptr<TAO::Ledger::Credentials> pCached =
@@ -204,16 +204,16 @@ namespace TAO::Ledger
 
                 if(!pCached)
                 {
-                    debug::error(FUNCTION, "Session doesn't exist");
+                    debug::error(FUNCTION, "Failed to acquire cached credentials for session ", hashSession.SubString());
                     return nullptr;
                 }
 
-                pLocalCredentials.store(new TAO::Ledger::Credentials(*pCached));
-                pCredentials = &pLocalCredentials;
+                localCredentialsStorage.store(new TAO::Ledger::Credentials(*pCached));
+                pCredentialsToUse = &localCredentialsStorage;
             }
             else
             {
-                pCredentials = &TAO::API::Authentication::Credentials(hashSession);
+                pCredentialsToUse = &TAO::API::Authentication::Credentials(hashSession);
             }
 
             {
@@ -265,7 +265,7 @@ namespace TAO::Ledger
             }
 
             bool success = CreateBlock(
-                *pCredentials,
+                *pCredentialsToUse,
                 strPIN,
                 nChannel,
                 *pBlock,
