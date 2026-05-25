@@ -43,7 +43,15 @@ jobs:
         run: make -f makefile.cli -j2
 
       - name: Unit-test build
-        run: make -f makefile.cli UNIT_TESTS=1 -j2
+        # Clean object files produced by the smoke build before recompiling
+        # with UNIT_TESTS=1.  make has no knowledge that -DUNIT_TESTS was
+        # absent in the previous invocation, so without a clean it considers
+        # every .o up-to-date and skips recompilation.  Ledger_create.o in
+        # particular contains a large #ifdef UNIT_TESTS block whose symbols
+        # (TAO::Ledger::Testing::*) the linker then cannot find.
+        run: |
+          make -f makefile.cli clean
+          make -f makefile.cli UNIT_TESTS=1 -j2
 
       - name: Unit-test run
         # Execute the unit-test binary produced by the previous step.

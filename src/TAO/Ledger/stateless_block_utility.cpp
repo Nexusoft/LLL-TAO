@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/global.h>
+#include <TAO/API/include/credential_cache.h>
 #include <TAO/API/types/authentication.h>
 
 #include <LLD/include/global.h>
@@ -134,6 +135,21 @@ namespace TAO::Ledger
         const uint64_t nExtraNonce,
         const uint256_t& hashRewardAddress)
     {
+        return CreateBlockForStatelessMining(
+            nChannel,
+            nExtraNonce,
+            hashRewardAddress,
+            nullptr);
+    }
+
+
+    /* Create wallet-signed block for stateless mining */
+    TritiumBlock* CreateBlockForStatelessMining(
+        const uint32_t nChannel,
+        const uint64_t nExtraNonce,
+        const uint256_t& hashRewardAddress,
+        TAO::API::CredentialCache* pCredentialCache)
+    {
         /* Early exit if shutdown is in progress */
         if(config::fShutdown.load())
         {
@@ -179,7 +195,26 @@ namespace TAO::Ledger
         
         try {
             const uint256_t hashSession = uint256_t(TAO::API::Authentication::SESSION::DEFAULT);
-            const auto& pCredentials = TAO::API::Authentication::Credentials(hashSession);
+            memory::encrypted_ptr<TAO::Ledger::Credentials> localCredentialsStorage;
+            const memory::encrypted_ptr<TAO::Ledger::Credentials>* pCredentialsToUse = nullptr;
+            if(pCredentialCache != nullptr)
+            {
+                const std::shared_ptr<TAO::Ledger::Credentials> pCached =
+                    pCredentialCache->Acquire(hashSession);
+
+                if(!pCached)
+                {
+                    debug::error(FUNCTION, "Failed to acquire cached credentials for session ", hashSession.SubString());
+                    return nullptr;
+                }
+
+                localCredentialsStorage.store(new TAO::Ledger::Credentials(*pCached));
+                pCredentialsToUse = &localCredentialsStorage;
+            }
+            else
+            {
+                pCredentialsToUse = &TAO::API::Authentication::Credentials(hashSession);
+            }
 
             {
                 const int64_t nMs = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -230,7 +265,7 @@ namespace TAO::Ledger
             }
 
             bool success = CreateBlock(
-                pCredentials,
+                *pCredentialsToUse,
                 strPIN,
                 nChannel,
                 *pBlock,
@@ -238,6 +273,9 @@ namespace TAO::Ledger
                 nullptr,           // No coinbase recipients
                 hashRewardAddress  // Route reward events to miner's genesis
             );
+
+            if(pCredentialCache != nullptr && !pCredentialCache->PostUseCheck())
+                debug::log(2, FUNCTION, "Credential cache epoch drift detected post CreateBlock");
 
             {
                 const int64_t nMs = std::chrono::duration_cast<std::chrono::milliseconds>(

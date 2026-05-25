@@ -19,6 +19,11 @@ ________________________________________________________________________________
 
 #include <string>
 
+namespace TAO::API
+{
+    class CredentialCache;
+}
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -147,6 +152,12 @@ namespace TAO
             const uint32_t nChannel,
             const uint64_t nExtraNonce,
             const uint256_t& hashRewardAddress);
+
+        TritiumBlock* CreateBlockForStatelessMining(
+            const uint32_t nChannel,
+            const uint64_t nExtraNonce,
+            const uint256_t& hashRewardAddress,
+            TAO::API::CredentialCache* pCredentialCache);
 
 
 
