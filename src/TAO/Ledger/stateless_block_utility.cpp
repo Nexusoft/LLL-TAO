@@ -195,7 +195,7 @@ namespace TAO::Ledger
         
         try {
             const uint256_t hashSession = uint256_t(TAO::API::Authentication::SESSION::DEFAULT);
-            memory::encrypted_ptr<TAO::Ledger::Credentials> pCachedCredentials;
+            memory::encrypted_ptr<TAO::Ledger::Credentials> pLocalCredentials;
             const memory::encrypted_ptr<TAO::Ledger::Credentials>* pCredentials = nullptr;
             if(pCredentialCache != nullptr)
             {
@@ -208,8 +208,8 @@ namespace TAO::Ledger
                     return nullptr;
                 }
 
-                pCachedCredentials.store(new TAO::Ledger::Credentials(*pCached));
-                pCredentials = &pCachedCredentials;
+                pLocalCredentials.store(new TAO::Ledger::Credentials(*pCached));
+                pCredentials = &pLocalCredentials;
             }
             else
             {
