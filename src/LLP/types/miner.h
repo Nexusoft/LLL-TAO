@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <LLP/include/mining_constants.h>
 #include <LLP/include/mining_template_delivery.h>
 #include <LLP/include/get_block_policy.h>
+#include <TAO/API/include/credential_cache.h>
 #include <TAO/Ledger/types/block.h>
 #include <Legacy/types/coinbase.h>
 #include <atomic>
@@ -631,6 +632,7 @@ namespace LLP
          *  Protected by MUTEX. **/
         uint32_t   m_nCachedExtraNonce{0};
         uint1024_t m_hashLastExtraNonceTip;
+        TAO::API::CredentialCache m_miningCredentialCache;
 
         /** 1-second rate-limit floor for GET_BLOCK fallback polling.
          *

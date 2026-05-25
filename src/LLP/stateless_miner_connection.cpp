@@ -3616,7 +3616,8 @@ namespace LLP
             pBlock = TAO::Ledger::CreateBlockForStatelessMining(
                 nChannel_snap,
                 extraNonce,
-                hashReward
+                hashReward,
+                &m_miningCredentialCache
             );
             LogNbTiming("nb_createblock_returned", hashReward.SubString());
 
