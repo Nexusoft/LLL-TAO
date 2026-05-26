@@ -607,6 +607,15 @@ namespace TAO::Ledger
 
         /* Loop through the list of transactions. */
         std::set<uint512_t> setDependents;
+
+        /* Option B filter — tracks tx hashes already accepted into this candidate
+         * block. Used by the mempool-only-predecessor gate below to preserve
+         * in-block sigchain chaining (e.g. when both T(n) and T(n+1) for the same
+         * sigchain are selected together, T(n+1)'s predecessor IS in this block
+         * and must not be classified as mempool-only). Contract is exercised by
+         * tests/unit/TAO/Ledger/filter_mempool_only_predecessor.cpp. */
+        std::set<uint512_t> setInBlock;
+
         for(const auto& hash : vMempool)
         {
             /* Check the Size limits of the Current Block. */
@@ -677,8 +686,44 @@ namespace TAO::Ledger
                 continue;
             }
 
+            /* Option B filter — mempool-only-predecessor gate (channel-agnostic).
+             *
+             * Reject any non-first tx whose hashPrevTx is neither on disk nor
+             * already accepted earlier in this same candidate block. Such a
+             * predecessor lives only in mempool and may be superseded between
+             * template build and block sign, producing a dangling hashPrevTx
+             * that ValidateVtxSigchainConsistency would reject as BLOCK_REJECTED.
+             *
+             * Genesis (IsFirst) is exempt — it has no predecessor by design,
+             * and the IsFirst branch above never reaches this check.
+             * In-block chaining is preserved — setInBlock contains hashes
+             * accepted earlier in this loop iteration, which will be persisted
+             * atomically with this tx.
+             *
+             * Applied here inside AddTransactions(), this single insertion
+             * point protects every channel that builds a TritiumBlock: STAKE,
+             * PRIME, HASH, and PRIVATE.
+             *
+             * Design contract pinned by:
+             *   tests/unit/TAO/Ledger/filter_mempool_only_predecessor.cpp
+             */
+            if(!tx.IsFirst())
+            {
+                const bool fInBlock = setInBlock.count(tx.hashPrevTx) > 0;
+                const bool fOnDisk  = LLD::Ledger->HasTx(tx.hashPrevTx, FLAGS::BLOCK);
+                if(!fInBlock && !fOnDisk)
+                {
+                    setDependents.insert(hash);
+
+                    debug::log(2, FUNCTION, "Skipping transaction ", hash.SubString(),
+                        " - predecessor is mempool-only (channel-agnostic filter)");
+                    continue;
+                }
+            }
+
             /* Add the transaction to the block. */
             block.vtx.push_back(std::make_pair(TRANSACTION::TRITIUM, hash));
+            setInBlock.insert(hash);
         }
 
         /* Abort the temporary ACID transaction. */
