@@ -133,15 +133,14 @@ namespace
                 continue;
             }
 
-            /* (4) Mempool-only predecessor — drop. */
-            if(setMempool.count(tx.hashPrevTx))
-                continue;
-
-            /* (5) Predecessor unknown to both disk and mempool. The producer
-             *     of this template should not have selected it, but if it
-             *     did we drop it: AddTransactions() would otherwise carry
-             *     a dangling reference into the block. */
-            continue;
+            /* (4) Mempool-only predecessor — drop.
+             * (5) Predecessor unknown to both disk and mempool — also drop.
+             *     The producer of this template should not have selected an
+             *     unknown predecessor, but if it did we drop it: AddTransactions()
+             *     would otherwise carry a dangling reference into the block.
+             *     Either way, falling off the loop body without push_back drops
+             *     the entry. */
+            (void)setMempool;
         }
 
         return vtxOut;
