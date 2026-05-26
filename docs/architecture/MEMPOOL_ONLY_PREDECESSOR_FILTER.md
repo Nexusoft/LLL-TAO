@@ -181,6 +181,25 @@ There is no channel for which "carry a dangling `hashPrevTx`" is desirable behav
 
 ---
 
+## 7a. Why the bug is universal but the visibility is PoW-specific
+
+The mempool-vs-template TOCTOU race exists on every channel that calls `AddTransactions()`. However, two properties of PoW make it the only channel where the race produces a visible `BLOCK_REJECTED`:
+
+**1. Merkle immutability post-issue (PoW invariant).** Once a PoW template is handed to a remote miner, its merkle root is frozen: a rebuild would invalidate the miner's burned PoW work. Stake builds merkle deferred (post-solution, pre-sign) and can freely rebuild because `StakeHash()` does not include merkle (see `src/TAO/Ledger/stake_minter.cpp::ProcessBlock` — `BuildMerkleTree` runs after the hash-solution loop exits). Private similarly rebuilds in-process. Only PoW commits to a vtx selection that cannot be amended without invalidating the miner's work.
+
+**2. Long template-to-submit window.** PoW miners hash for seconds-to-minutes per template. Stake's `HashBlock()` loop iterates in-process and `CheckStale()` aborts mid-loop on mempool/chain changes (`src/TAO/Ledger/stake_minter.cpp` — `CheckStale()` invoked every iteration of the hash loop). The TOCTOU window for stake is on the order of milliseconds; for PoW it is on the order of the actual hash time.
+
+These two properties produce a same-bug-different-symptom situation:
+
+- **Stake** with stale vtx → `CheckStale()` triggers → rebuild → never submitted.
+- **PoW** with stale vtx → miner solves → submit → `ValidateVtxSigchainConsistency` rejects → wasted PoW work + miner credit loss.
+
+Common amplifier: **burst blocks** (stake bursts or peer-mined block landing during template-build) compress the time between mempool snapshots, increasing the probability that a template built against snapshot N is signed against mempool state N+k. The filter is applied at `AddTransactions()` time inside `CreateBlock`, which is the template-cache key boundary in `MiningTemplateCacheTable`, so cached templates carry the filter's verdict for the full duration of their reuse window — the protection is single-shot at build, not per-reuse.
+
+**Naming convention** — Some readers expect "merkle-immutability invariant" to be filed under PoW because that's where the symptom appears, but the *constraint* belongs to the protocol contract between the node (template issuer) and the remote miner (PoW solver): the merkle root the miner hashed against cannot change. Stake has no remote solver; private has no remote solver. PoW is the only channel that publishes a template across a process boundary, and is therefore the only channel where merkle immutability is load-bearing for correctness.
+
+---
+
 ## 8. Test Matrix
 
 `tests/unit/TAO/Ledger/filter_mempool_only_predecessor.cpp` (Catch2, tag `[filter_mempool_only_predecessor]`) pins the contract independently of LLD/mempool wiring, using an inline simulator:

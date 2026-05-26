@@ -424,6 +424,7 @@ ifdef UNIT_TESTS
 		   build/Tests_TAO_Ledger_stakepool.o \
 		   build/Tests_TAO_Ledger_validate_vtx_consistency.o \
 		   build/Tests_TAO_Ledger_filter_mempool_only_predecessor.o \
+		   build/Tests_TAO_Ledger_filter_binding_to_production.o \
 		   build/Tests_TAO_Ledger_accept_mined_block_tip_race.o \
 		   build/Tests_TAO_Ledger_mempool.o \
 		   build/Tests_TAO_Ledger_prime.o \
