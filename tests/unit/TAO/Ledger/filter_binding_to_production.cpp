@@ -53,6 +53,17 @@ ________________________________________________________________________________
  *           (so the in-block exemption is actually maintained)
  *
  *   Related: docs/architecture/MEMPOOL_ONLY_PREDECESSOR_FILTER.md
+ *
+ *   Note on brittleness — the assertions below are intentionally exact
+ *   string matches against the current production source. A reformat of
+ *   create.cpp (e.g. adding spaces inside `HasTx( ... )` or rewriting
+ *   `if(!tx.IsFirst())` as `if (!tx.IsFirst())`) will fail these tests
+ *   even though the semantics are preserved. This is the *purpose* of a
+ *   binding test: any edit to the gate triggers a CI signal so the
+ *   author confirms the change is intentional. If you reformat
+ *   create.cpp and these tests fail, update the literal patterns here
+ *   to match the new spelling — do not relax the patterns into a fuzzy
+ *   match, which would defeat the binding.
  */
 
 #include <unit/catch2/catch.hpp>
@@ -67,10 +78,10 @@ ________________________________________________________________________________
 namespace
 {
     /* Read the first candidate file that exists into a string. Returns
-     * the empty string if no candidate was readable. The first non-empty
-     * read path is reported through `pathOut` to help diagnose failures
-     * (CI runs may execute from the repo root, from build/, or from
-     * tests/ depending on harness). */
+     * the empty string if no candidate was readable. The path that was
+     * successfully read is written to the `pathOut` out-parameter to
+     * help diagnose failures (CI runs may execute from the repo root,
+     * from build/, or from tests/ depending on harness). */
     std::string ReadFirstAvailable(
         const std::vector<std::string>& vCandidates,
         std::string& pathOut)
