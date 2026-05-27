@@ -852,6 +852,11 @@ namespace TAO::Ledger
                    " at unified height ", block.nHeight);
 
         block.nBits         = GetNextTargetRequired(tStateBest, nChannel, false);
+        debug::log(2, FUNCTION, "[NBITS_BAKED] channel=", nChannel,
+                   " height=", block.nHeight,
+                   " nBits=0x", std::hex, block.nBits, std::dec,
+                   " hashPrevBlock=", block.hashPrevBlock.SubString(),
+                   " tStateBest.nHeight=", tStateBest.nHeight);
         block.nNonce        = 1;
         block.nTime         = std::max(tStateBest.GetBlockTime() + 1, runtime::unifiedtimestamp());
     }
@@ -996,6 +1001,13 @@ namespace TAO::Ledger
             
             /* Diagnostic logging for template validation */
             debug::log(2, FUNCTION, "Using cached block template for channel ", nChannel);
+            debug::log(2, FUNCTION, "[NBITS_CACHE_HIT]",
+                       " channel=", nChannel,
+                       " nBits=0x", std::hex, tBlockCached.nBits, std::dec,
+                       " height=", tBlockCached.nHeight,
+                       " hashPrevBlock=", tBlockCached.hashPrevBlock.SubString(),
+                       " cached_reward=", hashCachedDynamicGenesis.SubString(),
+                       " requested_reward=", hashDynamicGenesis.SubString());
             debug::log(2, FUNCTION, "  nChannel verified: ", rBlockRet.nChannel);
 
             /* Add new transactions. */
