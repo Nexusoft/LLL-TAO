@@ -204,3 +204,52 @@ BLOCK_ACCEPTED / BLOCK_REJECTED
 The mempool-aware `ReadLast()` in `ValidateVtxSigchainConsistency()` ensures the
 pre-check gate matches the state used during template creation, eliminating false
 rejections for valid blocks containing mempool-only vtx transactions.
+
+---
+
+## Regression Update — PR #611
+
+### Symptom
+
+Production logs showed a false STALE rejection where `mempool.hashLast` equalled the
+transaction itself — i.e., the mempool's "latest" for the genesis was the very
+transaction being validated:
+
+```
+ValidateVtxSigchainConsistency: vtx tx stale — sigchain advanced in mempool/disk since template creation:
+  genesis=<G>  tx=<HASH>  tx.hashPrevTx=<PREV>  mempool.hashLast=<HASH>
+```
+
+The self-match occurs because the vtx transaction is already *in* the mempool when
+`ReadLast(genesis, FLAGS::MEMPOOL)` is called — the mempool returns it as the latest
+entry for that genesis.
+
+### Three-Step Fix (Composite C→B Logic)
+
+The inner staleness check in `ValidateVtxSigchainConsistency()` now uses a composite
+resolution sequence instead of a single `ReadLast(FLAGS::MEMPOOL)` call:
+
+1. **Hard MALFORMED invariant** — reject immediately if `tx.hashPrevTx == txHash`
+   (cryptographically impossible; indicates data corruption).
+
+2. **Option C (mempool-first with self-match guard)** — call
+   `ReadLast(genesis, FLAGS::MEMPOOL)`. If the result is NOT the current tx hash,
+   use it as the anchor. If it IS the current tx hash (self-match), fall through.
+
+3. **Option B (disk-only fallback)** — call `ReadLast(genesis)` (disk only).
+   If found, use as anchor. If not found either, defer entirely to `Connect()`.
+
+This sequence correctly handles the production scenario where the tx is already the
+mempool latest (self-match) by falling back to the disk anchor, which holds the
+real predecessor hash.
+
+### New Test Cases (`[validate_vtx_consistency]` tag)
+
+| # | Test Name | Scenario |
+|---|-----------|----------|
+| 1 | MALFORMED self-as-predecessor is rejected | `hashPrevTx == tx.GetHash()` → immediate reject |
+| 2 | Tx IS mempool latest, predecessor on disk → PASS | Self-match in mempool, disk has correct pred |
+| 3 | Tx not mempool latest → legitimate STALE rejection | Mempool advanced past tx → stale |
+| 4 | Real predecessor in mempool (no self-match) → PASS | Mempool has correct pred directly |
+| 5 | No anchor anywhere → defer (returns true) | Self-match + no disk → defer to Connect() |
+| 6 | In-block multi-vtx same genesis preserves mapLast chain | Two vtx entries chain correctly via mapLast |
