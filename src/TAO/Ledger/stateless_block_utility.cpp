@@ -683,7 +683,7 @@ namespace TAO::Ledger
                     }
                     else
                     {
-                        // Option C self-match → fall through to Option B (disk-only)
+                        /* Option C self-match → fall through to Option B (disk-only) */
                         uint512_t hashDiskLast = 0;
                         if(LLD::Ledger->ReadLast(tx.hashGenesis, hashDiskLast))
                         {
@@ -700,7 +700,7 @@ namespace TAO::Ledger
                         }
                         else
                         {
-                            // No anchor anywhere — defer to Connect()
+                            /* No anchor anywhere — defer to Connect() */
                             if(fSeqDiag)
                                 debug::log(0, FUNCTION,
                                     "[NSEQ_DIAG][ValidateVtxSigchainConsistency]"

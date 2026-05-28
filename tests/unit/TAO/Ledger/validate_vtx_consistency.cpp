@@ -77,8 +77,7 @@ namespace
     bool SimulateConsistencyCheck(
         const std::vector<std::pair<uint512_t, TAO::Ledger::Transaction>>& vtxPairs,
         const std::map<uint256_t, uint512_t>& mapMempoolLast,
-        const std::map<uint256_t, uint512_t>& mapDiskLast,
-        const bool useMempoolFlag = true)
+        const std::map<uint256_t, uint512_t>& mapDiskLast)
     {
         /* In-flight map mirrors the mapLast in ValidateVtxSigchainConsistency(). */
         std::map<uint256_t, uint512_t> mapLast;
@@ -194,10 +193,10 @@ TEST_CASE( "ValidateVtxSigchainConsistency: mempool-only predecessor passes with
     };
 
     /* Fixed behaviour (composite C→B): must accept. */
-    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast, true) == true);
+    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast) == true);
 
     /* Composite logic always uses both sources — second call also passes. */
-    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast, false) == true);
+    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast) == true);
 }
 
 
@@ -226,8 +225,8 @@ TEST_CASE( "ValidateVtxSigchainConsistency: disk predecessor accepted by both mo
         {hashSeq1, txSeq1}
     };
 
-    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast, true)  == true);
-    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast, false) == true);
+    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast)  == true);
+    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast) == true);
 }
 
 
@@ -259,8 +258,8 @@ TEST_CASE( "ValidateVtxSigchainConsistency: genuinely stale vtx rejected by both
         {hashSeq1_wrong, txSeq1_wrong}
     };
 
-    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast, true)  == false);
-    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast, false) == false);
+    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast)  == false);
+    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast) == false);
 }
 
 
@@ -297,8 +296,8 @@ TEST_CASE( "ValidateVtxSigchainConsistency: in-flight mapLast tracks same-genesi
 
     /* Both modes must accept because the in-flight mapLast correctly tracks seq=1
      * before checking seq=2. */
-    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast, true)  == true);
-    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast, false) == true);
+    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast)  == true);
+    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast) == true);
 }
 
 
@@ -332,8 +331,8 @@ TEST_CASE( "ValidateVtxSigchainConsistency: in-flight mapLast catches stale seco
 
     /* Both modes must reject: mapLast has hashSeq1 for genesis when checking
      * txSeq2_bad, but txSeq2_bad.hashPrevTx == hashSeq0. */
-    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast, true)  == false);
-    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast, false) == false);
+    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast)  == false);
+    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast) == false);
 }
 
 
@@ -361,8 +360,8 @@ TEST_CASE( "ValidateVtxSigchainConsistency: IsFirst tx skips sequence check", "[
     };
 
     /* Must pass regardless of ReadLast() availability. */
-    REQUIRE(SimulateConsistencyCheck(vtx, emptyMap, emptyMap, true)  == true);
-    REQUIRE(SimulateConsistencyCheck(vtx, emptyMap, emptyMap, false) == true);
+    REQUIRE(SimulateConsistencyCheck(vtx, emptyMap, emptyMap)  == true);
+    REQUIRE(SimulateConsistencyCheck(vtx, emptyMap, emptyMap) == true);
 }
 
 
@@ -410,15 +409,15 @@ TEST_CASE( "ValidateVtxSigchainConsistency: cross-genesis entries are independen
     };
 
     /* Overall check must fail because of B's stale entry. */
-    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast, true)  == false);
-    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast, false) == false);
+    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast)  == false);
+    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast) == false);
 
     /* Block with only valid A must pass. */
     std::vector<std::pair<uint512_t, TAO::Ledger::Transaction>> vtxA_only = {
         {hashA1, txA1}
     };
-    REQUIRE(SimulateConsistencyCheck(vtxA_only, mempoolLast, diskLast, true)  == true);
-    REQUIRE(SimulateConsistencyCheck(vtxA_only, mempoolLast, diskLast, false) == true);
+    REQUIRE(SimulateConsistencyCheck(vtxA_only, mempoolLast, diskLast)  == true);
+    REQUIRE(SimulateConsistencyCheck(vtxA_only, mempoolLast, diskLast) == true);
 }
 
 
@@ -444,8 +443,8 @@ TEST_CASE( "ValidateVtxSigchainConsistency: missing genesis in ReadLast skips en
     };
 
     /* Entry is skipped → check passes (Connect() will handle the error). */
-    REQUIRE(SimulateConsistencyCheck(vtx, emptyMap, emptyMap, true)  == true);
-    REQUIRE(SimulateConsistencyCheck(vtx, emptyMap, emptyMap, false) == true);
+    REQUIRE(SimulateConsistencyCheck(vtx, emptyMap, emptyMap)  == true);
+    REQUIRE(SimulateConsistencyCheck(vtx, emptyMap, emptyMap) == true);
 }
 
 
@@ -637,20 +636,9 @@ TEST_CASE( "In-block multi-vtx same genesis preserves mapLast chain", "[validate
         {hashSeq2, txSeq2}
     };
 
-    /* seq1: mempool has hashSeq2 != hashSeq1 → anchor = hashSeq2?
-     * No — mempool has hashSeq2, and txHash for first entry is hashSeq1.
-     * hashSeq2 != hashSeq1 → uses mempool anchor hashSeq2.
-     * tx.hashPrevTx = hashSeq0 != hashSeq2 → would fail!
-     *
-     * Wait — for multi-vtx, the first tx (seq1) needs to find hashSeq0 as anchor.
-     * Mempool returns hashSeq2 which != hashSeq1 (no self-match) → anchor = hashSeq2.
-     * But tx.hashPrevTx = hashSeq0 != hashSeq2 → FAIL.
-     *
-     * The correct setup: mempool should return hashSeq1 for the self-match on first
-     * entry, OR disk should be the anchor for the first entry.
-     * Let's use mempoolLast = hashSeq1 (self for first entry) → falls to disk (hashSeq0). */
-
-    /* Re-setup: mempool returns hashSeq1 (self-match for first vtx entry seq1). */
+    /* Re-setup with mempool returning hashSeq1 (self-match for first vtx entry).
+     * seq1: mempool=self → disk=hashSeq0 → anchor=hashSeq0. hashPrevTx matches → PASS.
+     * seq2: mapLast[G]=hashSeq1 (in-flight) → anchor=hashSeq1. hashPrevTx matches → PASS. */
     std::map<uint256_t, uint512_t> mempoolLast2 = {{genesis, hashSeq1}};
 
     std::vector<std::pair<uint512_t, TAO::Ledger::Transaction>> vtx2 = {
