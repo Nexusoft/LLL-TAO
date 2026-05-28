@@ -643,42 +643,85 @@ namespace TAO::Ledger
             if(!tx.IsFirst())
             {
                 uint512_t hashLast = 0;
+                bool fAnchorFound = false;
+
+                /* Hard MALFORMED invariant — hashPrevTx must never equal self
+                 * (cryptographically impossible under normal operation). */
+                if(tx.hashPrevTx == txpair.second)
+                {
+                    debug::error(FUNCTION,
+                        "ValidateVtxSigchainConsistency:"
+                        " MALFORMED tx — hashPrevTx equals self (cryptographically impossible):"
+                        " genesis=", tx.hashGenesis.SubString(),
+                        " tx=", txpair.second.SubString(),
+                        " tx.hashPrevTx=", tx.hashPrevTx.SubString(),
+                        " tx.nSequence=", tx.nSequence);
+                    return false;
+                }
 
                 if(mapLast.count(tx.hashGenesis))
                 {
                     /* A prior vtx entry for this genesis will have advanced
                      * WriteLast() by the time Connect() reaches this tx. */
                     hashLast = mapLast[tx.hashGenesis];
+                    fAnchorFound = true;
                 }
                 else
                 {
-                    /* No prior in-block entry: read mempool-aware last hash.
-                     * FLAGS::MEMPOOL checks the mempool first then falls back to
-                     * disk, matching the same state that CreateTransaction() and
-                     * TritiumBlock::Check() use when building/validating the
-                     * sigchain. */
-                    if(!LLD::Ledger->ReadLast(tx.hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+                    /* Option C: mempool-first with self-match guard.
+                     * If mempool returns the tx itself as latest, fall through
+                     * to Option B (disk-only) to find the real predecessor. */
+                    uint512_t hashMempoolLast = 0;
+                    const bool fMempoolReadOk =
+                        LLD::Ledger->ReadLast(tx.hashGenesis, hashMempoolLast,
+                                              TAO::Ledger::FLAGS::MEMPOOL);
+
+                    if(fMempoolReadOk && hashMempoolLast != txpair.second)
                     {
-                        /* Genesis not in mempool or on disk — skip; let
-                         * Connect() report the failure. */
-                        if(fSeqDiag)
-                            debug::log(0, FUNCTION,
-                                "[NSEQ_DIAG][ValidateVtxSigchainConsistency]"
-                                " ReadLast failed for genesis=", tx.hashGenesis.SubString(),
-                                " tx=", txpair.second.SubString(), " — skipping");
-                        continue;
+                        hashLast = hashMempoolLast;
+                        fAnchorFound = true;
+                    }
+                    else
+                    {
+                        /* Option C self-match → fall through to Option B (disk-only) */
+                        uint512_t hashDiskLast = 0;
+                        if(LLD::Ledger->ReadLast(tx.hashGenesis, hashDiskLast))
+                        {
+                            hashLast = hashDiskLast;
+                            fAnchorFound = true;
+
+                            if(fSeqDiag)
+                                debug::log(0, FUNCTION,
+                                    "[NSEQ_DIAG][ValidateVtxSigchainConsistency]"
+                                    " mempool latest is self — falling through to disk anchor:"
+                                    " genesis=", tx.hashGenesis.SubString(),
+                                    " tx=", txpair.second.SubString(),
+                                    " disk_hashLast=", hashDiskLast.SubString());
+                        }
+                        else
+                        {
+                            /* No anchor anywhere — defer to Connect() */
+                            if(fSeqDiag)
+                                debug::log(0, FUNCTION,
+                                    "[NSEQ_DIAG][ValidateVtxSigchainConsistency]"
+                                    " no anchor available (mempool=self, disk=none) — deferring to Connect:"
+                                    " genesis=", tx.hashGenesis.SubString(),
+                                    " tx=", txpair.second.SubString());
+                            mapLast[tx.hashGenesis] = txpair.second;
+                            continue;
+                        }
                     }
                 }
 
-                if(tx.hashPrevTx != hashLast)
+                if(fAnchorFound && tx.hashPrevTx != hashLast)
                 {
                     debug::error(FUNCTION,
                         "ValidateVtxSigchainConsistency:"
-                        " vtx tx stale — sigchain advanced in mempool/disk since template creation:"
+                        " vtx tx STALE — sigchain advanced in mempool/disk since template creation:"
                         " genesis=", tx.hashGenesis.SubString(),
                         " tx=", txpair.second.SubString(),
                         " tx.hashPrevTx=", tx.hashPrevTx.SubString(),
-                        " mempool.hashLast=", hashLast.SubString(),
+                        " anchor.hashLast=", hashLast.SubString(),
                         " tx.nSequence=", tx.nSequence);
                     return false;
                 }
@@ -689,8 +732,9 @@ namespace TAO::Ledger
                         " vtx tx OK:"
                         " genesis=", tx.hashGenesis.SubString(),
                         " tx=", txpair.second.SubString(),
-                        " nSequence=", tx.nSequence,
-                        " hashPrevTx=", tx.hashPrevTx.SubString());
+                        " tx.hashPrevTx=", tx.hashPrevTx.SubString(),
+                        " anchor.hashLast=", hashLast.SubString(),
+                        " tx.nSequence=", tx.nSequence);
             }
 
             /* Track what WriteLast() will write for this genesis. */
