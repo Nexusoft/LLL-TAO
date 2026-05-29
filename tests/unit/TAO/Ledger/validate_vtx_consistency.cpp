@@ -12,17 +12,16 @@
 ____________________________________________________________________________________________*/
 
 /*
- * Regression tests for ValidateVtxSigchainConsistency() mempool-aware ReadLast fix.
+ * Regression tests for ValidateVtxSigchainConsistency() Connect-aligned anchor fix.
  *
- * Bug: the original implementation called ReadLast() without FLAGS::MEMPOOL (disk-only),
- * causing false rejections when the miner's sigchain had a valid mempool transaction
- * that had not yet been flushed to disk.
+ * Bug: mempool-first ReadLast could return a descendant tip and falsely reject
+ * valid mined blocks during submit-time pre-check.
  *
- * Fix: use ReadLast(genesis, hashLast, FLAGS::MEMPOOL) so the pre-check sees the same
- * mempool state that CreateTransaction() and TritiumBlock::Check() used when building
- * and validating the template.
+ * Fix: use Connect-aligned anchor resolution:
+ *  (1) in-block mapLast for earlier same-genesis vtx entries
+ *  (2) disk-only ReadLast(genesis) when no in-block anchor exists.
  *
- * See docs/NSEQ_DIAG_MEMPOOL_READLAST_FIX.md for the full root-cause analysis.
+ * See docs/NSEQ_DIAG_MEMPOOL_READLAST_FIX.md for historical context.
  *
  * These tests use an inline simulation of the consistency-check logic so they do not
  * require a running node, LLD database, or mempool instance — following the same
@@ -59,14 +58,13 @@ namespace
 
     /* Simulate the core consistency-check logic of ValidateVtxSigchainConsistency().
      *
-     * Uses the composite C→B resolution sequence:
+     * Uses the Connect-aligned resolution sequence:
      *   1. Hard MALFORMED invariant: hashPrevTx == self → reject
      *   2. mapLast (in-flight from prior vtx entries)
-     *   3. Option C: mempool-first with self-match guard
-     *   4. Option B: disk-only fallback when mempool returns self
+     *   3. disk-only ReadLast fallback
      *
      * Parameters:
-     *   mapMempoolLast — what FLAGS::MEMPOOL ReadLast would return per genesis
+     *   mapMempoolLast — retained for compatibility with existing tests (unused)
      *   mapDiskLast    — what disk-only ReadLast would return per genesis
      *
      * vtxPairs is the ordered list of (txHash, transaction) entries as they would
@@ -76,7 +74,7 @@ namespace
      */
     bool SimulateConsistencyCheck(
         const std::vector<std::pair<uint512_t, TAO::Ledger::Transaction>>& vtxPairs,
-        const std::map<uint256_t, uint512_t>& mapMempoolLast,
+        const std::map<uint256_t, uint512_t>& /*mapMempoolLast*/,
         const std::map<uint256_t, uint512_t>& mapDiskLast)
     {
         /* In-flight map mirrors the mapLast in ValidateVtxSigchainConsistency(). */
@@ -110,31 +108,18 @@ namespace
             }
             else
             {
-                /* Option C: mempool-first with self-match guard. */
-                const auto itMempool = mapMempoolLast.find(tx.hashGenesis);
-                const bool fMempoolReadOk = (itMempool != mapMempoolLast.end());
-
-                if(fMempoolReadOk && itMempool->second != txHash)
+                /* Connect-aligned fallback: disk-only ReadLast anchor. */
+                const auto itDisk = mapDiskLast.find(tx.hashGenesis);
+                if(itDisk != mapDiskLast.end())
                 {
-                    /* Mempool has a valid anchor (not self). */
-                    hashLast = itMempool->second;
+                    hashLast = itDisk->second;
                     fAnchorFound = true;
                 }
                 else
                 {
-                    /* Option B: fall through to disk-only. */
-                    const auto itDisk = mapDiskLast.find(tx.hashGenesis);
-                    if(itDisk != mapDiskLast.end())
-                    {
-                        hashLast = itDisk->second;
-                        fAnchorFound = true;
-                    }
-                    else
-                    {
-                        /* No anchor anywhere — defer to Connect(). */
-                        mapLast[tx.hashGenesis] = txHash;
-                        continue;
-                    }
+                    /* No disk anchor — defer to Connect(). */
+                    mapLast[tx.hashGenesis] = txHash;
+                    continue;
                 }
             }
 
@@ -651,4 +636,85 @@ TEST_CASE( "In-block multi-vtx same genesis preserves mapLast chain", "[validate
      * seq2: mapLast[G]=hashSeq1 (in-flight) → anchor=hashSeq1.
      * tx.hashPrevTx=hashSeq1 == anchor → PASS. */
     REQUIRE(SimulateConsistencyCheck(vtx2, mempoolLast2, diskLast) == true);
+}
+
+TEST_CASE( "Descendant mempool tip does not stale valid disk anchor", "[validate_vtx_consistency]" )
+{
+    const uint256_t genesis = TAO::Ledger::Genesis(LLC::GetRand256(), true);
+
+    TAO::Ledger::Transaction txNMinus1 = MakeTx(genesis, 9737);
+    const uint512_t hashNMinus1 = txNMinus1.GetHash();
+
+    TAO::Ledger::Transaction txN = MakeTx(genesis, 9738, hashNMinus1);
+    const uint512_t hashN = txN.GetHash();
+
+    TAO::Ledger::Transaction txNPlus1 = MakeTx(genesis, 9739, hashN);
+    const uint512_t hashNPlus1 = txNPlus1.GetHash();
+
+    std::map<uint256_t, uint512_t> mempoolLast = {{genesis, hashNPlus1}};
+    std::map<uint256_t, uint512_t> diskLast    = {{genesis, hashNMinus1}};
+
+    std::vector<std::pair<uint512_t, TAO::Ledger::Transaction>> vtx = {
+        {hashN, txN}
+    };
+
+    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast) == true);
+}
+
+TEST_CASE( "Genuinely stale versus disk is rejected", "[validate_vtx_consistency]" )
+{
+    const uint256_t genesis = TAO::Ledger::Genesis(LLC::GetRand256(), true);
+
+    TAO::Ledger::Transaction txNMinus1 = MakeTx(genesis, 10);
+    const uint512_t hashNMinus1 = txNMinus1.GetHash();
+
+    TAO::Ledger::Transaction txN = MakeTx(genesis, 11, hashNMinus1);
+    const uint512_t hashN = txN.GetHash();
+
+    TAO::Ledger::Transaction txWrong = MakeTx(genesis, 88, hashN);
+    const uint512_t hashWrong = txWrong.GetHash();
+
+    std::map<uint256_t, uint512_t> mempoolLast = {{genesis, hashN}};
+    std::map<uint256_t, uint512_t> diskLast    = {{genesis, hashWrong}};
+
+    std::vector<std::pair<uint512_t, TAO::Ledger::Transaction>> vtx = {
+        {hashN, txN}
+    };
+
+    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast) == false);
+}
+
+TEST_CASE( "Disk-missing anchor defers to Connect", "[validate_vtx_consistency]" )
+{
+    const uint256_t genesis = TAO::Ledger::Genesis(LLC::GetRand256(), true);
+
+    TAO::Ledger::Transaction tx = MakeTx(genesis, 123, uint512_t(LLC::GetRand512()));
+    const uint512_t txHash = tx.GetHash();
+
+    std::map<uint256_t, uint512_t> mempoolLast = {{genesis, uint512_t(LLC::GetRand512())}};
+    std::map<uint256_t, uint512_t> diskLast;
+
+    std::vector<std::pair<uint512_t, TAO::Ledger::Transaction>> vtx = {
+        {txHash, tx}
+    };
+
+    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast) == true);
+}
+
+TEST_CASE( "Malformed self-reference is rejected", "[validate_vtx_consistency]" )
+{
+    const uint256_t genesis = TAO::Ledger::Genesis(LLC::GetRand256(), true);
+
+    TAO::Ledger::Transaction tx = MakeTx(genesis, 42);
+    const uint512_t txHash = tx.GetHash();
+    tx.hashPrevTx = txHash;
+
+    std::map<uint256_t, uint512_t> mempoolLast;
+    std::map<uint256_t, uint512_t> diskLast;
+
+    std::vector<std::pair<uint512_t, TAO::Ledger::Transaction>> vtx = {
+        {txHash, tx}
+    };
+
+    REQUIRE(SimulateConsistencyCheck(vtx, mempoolLast, diskLast) == false);
 }

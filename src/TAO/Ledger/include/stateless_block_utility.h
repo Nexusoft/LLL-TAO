@@ -234,29 +234,22 @@ namespace TAO
          *  ValidateProducerFreshness() and BEFORE AcceptMinedBlock() in both the
          *  stateless (port 9323) and legacy (port 8323) SUBMIT_BLOCK paths.
          *
-         *  Uses FLAGS::MEMPOOL for ReadLast() (mempool first, then disk), matching
-         *  the same state that CreateTransaction() and TritiumBlock::Check() use
-         *  when building and validating the sigchain.  An in-flight mapLast handles
-         *  multiple transactions from the same genesis within the block.
+         *  Resolves the predecessor anchor exactly like Connect():
+         *    (1) in-flight mapLast for earlier same-genesis vtx entries in this block,
+         *    (2) disk-only ReadLast(genesis) (FLAGS::BLOCK default).
          *
-         *  If another transaction has been accepted into the mempool (or committed
-         *  to disk) for a vtx entry's genesis between template creation and this
-         *  call, tx.hashPrevTx != hashLast and the block would be guaranteed to
-         *  fail Connect().  Catching this early lets the miner receive
-         *  BLOCK_REJECTED before the irreversible AcceptMinedBlock() call so it
-         *  can request a fresh template.
+         *  This keeps the submit-time pre-check oracle-consistent with Connect().
+         *  AddTransactions() already filters out non-first vtx entries whose
+         *  predecessor is mempool-only and not in-block, so disk-only anchoring is
+         *  correct for this path.
          *
-         *  NOTE: BlockState::Connect() (state.cpp lines 1266-1277) uses disk-only
-         *  ReadLast() without in-block vtx ordering; that is an upstream
-         *  limitation.  This pre-check using FLAGS::MEMPOOL is correct: if
-         *  mempool says the chain is consistent the block is genuinely valid and
-         *  Connect() will succeed once mempool transactions are flushed to disk
-         *  during block processing.
+         *  If no anchor is found on disk for the genesis, this check defers to
+         *  Connect() rather than rejecting.
          *
          *  @param[in] block  The solved TritiumBlock candidate (const: no mutation).
          *  @return true if all vtx TRITIUM transactions are consistent with
-         *          current mempool/disk sigchain state; false if any are stale
-         *          (caller must reject the block and respond BLOCK_REJECTED).
+         *          Connect-aligned in-block/disk sigchain state; false if any are
+         *          stale or malformed (caller must reject with BLOCK_REJECTED).
          **/
         bool ValidateVtxSigchainConsistency(const TAO::Ledger::TritiumBlock& block);
 
