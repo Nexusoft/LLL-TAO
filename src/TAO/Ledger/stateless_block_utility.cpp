@@ -688,6 +688,12 @@ namespace TAO::Ledger
                             " tx=", txpair.second.SubString(),
                             " tx.hashPrevTx=", tx.hashPrevTx.SubString());
                     }
+
+                    if(!fAnchorFound)
+                    {
+                        mapLast[tx.hashGenesis] = txpair.second;
+                        continue;
+                    }
                 }
 
                 if(fAnchorFound && tx.hashPrevTx != hashLast)
