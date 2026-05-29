@@ -595,19 +595,14 @@ namespace TAO::Ledger
         return false;
     }
 
-    /* Pre-connect vtx sigchain staleness check.  Uses FLAGS::MEMPOOL for
-     * ReadLast() to match the mempool-aware state that CreateTransaction() and
-     * TritiumBlock::Check() see when the template is built.  An in-flight
-     * mapLast handles multiple same-genesis transactions within the block,
-     * mirroring TritiumBlock::Check() logic.  Catches stale vtx entries before
-     * the irreversible AcceptMinedBlock() call.
+    /* Pre-connect vtx sigchain staleness check.  Anchor resolution is kept
+     * oracle-consistent with BlockState::Connect():
+     *   (1) in-flight mapLast for prior same-genesis vtx entries in this block,
+     *   (2) disk-only ReadLast(genesis) (FLAGS::BLOCK default).
      *
-     * NOTE: BlockState::Connect() (state.cpp lines 1266-1277) uses disk-only
-     * ReadLast() without accounting for in-block vtx ordering; that is an
-     * upstream limitation.  Using FLAGS::MEMPOOL here is correct: if mempool
-     * says the chain is consistent the block is genuinely valid and Connect()
-     * will succeed once mempool transactions are flushed to disk during block
-     * processing. */
+     * AddTransactions() already filters non-first vtx entries whose predecessor
+     * is mempool-only and not earlier in-block, so disk-only anchoring is
+     * correct for this submit-time pre-check path. */
     bool ValidateVtxSigchainConsistency(const TAO::Ledger::TritiumBlock& block)
     {
         const bool fSeqDiag = SequenceDiagnosticsEnabled();
@@ -668,48 +663,36 @@ namespace TAO::Ledger
                 }
                 else
                 {
-                    /* Option C: mempool-first with self-match guard.
-                     * If mempool returns the tx itself as latest, fall through
-                     * to Option B (disk-only) to find the real predecessor. */
-                    uint512_t hashMempoolLast = 0;
-                    const bool fMempoolReadOk =
-                        LLD::Ledger->ReadLast(tx.hashGenesis, hashMempoolLast,
-                                              TAO::Ledger::FLAGS::MEMPOOL);
-
-                    if(fMempoolReadOk && hashMempoolLast != txpair.second)
+                    /* Resolve from the same disk oracle Connect() uses. */
+                    uint512_t hashDiskLast = 0;
+                    if(LLD::Ledger->ReadLast(tx.hashGenesis, hashDiskLast))
                     {
-                        hashLast = hashMempoolLast;
+                        hashLast = hashDiskLast;
                         fAnchorFound = true;
-                    }
-                    else
-                    {
-                        /* Option C self-match → fall through to Option B (disk-only) */
-                        uint512_t hashDiskLast = 0;
-                        if(LLD::Ledger->ReadLast(tx.hashGenesis, hashDiskLast))
-                        {
-                            hashLast = hashDiskLast;
-                            fAnchorFound = true;
 
-                            if(fSeqDiag)
-                                debug::log(0, FUNCTION,
-                                    "[NSEQ_DIAG][ValidateVtxSigchainConsistency]"
-                                    " mempool latest is self — falling through to disk anchor:"
-                                    " genesis=", tx.hashGenesis.SubString(),
-                                    " tx=", txpair.second.SubString(),
-                                    " disk_hashLast=", hashDiskLast.SubString());
-                        }
-                        else
-                        {
-                            /* No anchor anywhere — defer to Connect() */
-                            if(fSeqDiag)
-                                debug::log(0, FUNCTION,
-                                    "[NSEQ_DIAG][ValidateVtxSigchainConsistency]"
-                                    " no anchor available (mempool=self, disk=none) — deferring to Connect:"
-                                    " genesis=", tx.hashGenesis.SubString(),
-                                    " tx=", txpair.second.SubString());
-                            mapLast[tx.hashGenesis] = txpair.second;
-                            continue;
-                        }
+                        if(fSeqDiag)
+                            debug::log(0, FUNCTION,
+                                "[NSEQ_DIAG][ValidateVtxSigchainConsistency]"
+                                " using disk anchor (Connect-aligned):"
+                                " genesis=", tx.hashGenesis.SubString(),
+                                " tx=", txpair.second.SubString(),
+                                " disk_hashLast=", hashDiskLast.SubString());
+                    }
+                    else if(fSeqDiag)
+                    {
+                        /* No disk anchor — defer to Connect(). */
+                        debug::log(0, FUNCTION,
+                            "[NSEQ_DIAG][ValidateVtxSigchainConsistency]"
+                            " no disk ReadLast anchor found — deferring to Connect():"
+                            " genesis=", tx.hashGenesis.SubString(),
+                            " tx=", txpair.second.SubString(),
+                            " tx.hashPrevTx=", tx.hashPrevTx.SubString());
+                    }
+
+                    if(!fAnchorFound)
+                    {
+                        mapLast[tx.hashGenesis] = txpair.second;
+                        continue;
                     }
                 }
 
@@ -717,7 +700,7 @@ namespace TAO::Ledger
                 {
                     debug::error(FUNCTION,
                         "ValidateVtxSigchainConsistency:"
-                        " vtx tx STALE — sigchain advanced in mempool/disk since template creation:"
+                        " vtx tx STALE — sigchain advanced relative to Connect-aligned disk/in-block anchor:"
                         " genesis=", tx.hashGenesis.SubString(),
                         " tx=", txpair.second.SubString(),
                         " tx.hashPrevTx=", tx.hashPrevTx.SubString(),
@@ -726,7 +709,7 @@ namespace TAO::Ledger
                     return false;
                 }
 
-                if(fSeqDiag)
+                if(fSeqDiag && fAnchorFound)
                     debug::log(0, FUNCTION,
                         "[NSEQ_DIAG][ValidateVtxSigchainConsistency]"
                         " vtx tx OK:"
@@ -734,6 +717,14 @@ namespace TAO::Ledger
                         " tx=", txpair.second.SubString(),
                         " tx.hashPrevTx=", tx.hashPrevTx.SubString(),
                         " anchor.hashLast=", hashLast.SubString(),
+                        " tx.nSequence=", tx.nSequence);
+                else if(fSeqDiag)
+                    debug::log(0, FUNCTION,
+                        "[NSEQ_DIAG][ValidateVtxSigchainConsistency]"
+                        " no anchor found; deferred to Connect():"
+                        " genesis=", tx.hashGenesis.SubString(),
+                        " tx=", txpair.second.SubString(),
+                        " tx.hashPrevTx=", tx.hashPrevTx.SubString(),
                         " tx.nSequence=", tx.nSequence);
             }
 
