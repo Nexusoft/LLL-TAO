@@ -53,6 +53,7 @@ On a Debian/Ubuntu x86_64 host:
 sudo dpkg --add-architecture riscv64
 sudo apt-get update
 sudo apt-get install -y git make build-essential gcc-riscv64-linux-gnu g++-riscv64-linux-gnu crossbuild-essential-riscv64
+# Berkeley DB base + C++ wrapper are both needed for wallet-enabled builds.
 sudo apt-get install -y libssl-dev:riscv64 libdb5.3-dev:riscv64 libdb5.3++-dev:riscv64 libminiupnpc-dev:riscv64 libevent-dev:riscv64
 ```
 

@@ -63,6 +63,7 @@ Nexus LLL-TAO targets **RV64GC** (64-bit, IMAFD base + Compressed).  Optional ve
 # Install cross-toolchain on Ubuntu host
 sudo dpkg --add-architecture riscv64
 sudo apt-get update
+# Berkeley DB base + C++ wrapper are both needed for wallet-enabled builds.
 sudo apt-get install -y gcc-riscv64-linux-gnu g++-riscv64-linux-gnu crossbuild-essential-riscv64 \
     libssl-dev:riscv64 libdb5.3-dev:riscv64 libdb5.3++-dev:riscv64
 
@@ -77,7 +78,7 @@ make -f makefile.cli RISCV64=1 -j$(nproc)
 For native builds on a RISC-V board (e.g. StarFive VisionFive 2, SiFive HiFive Unmatched):
 
 ```bash
-# Same source code, with the RISC-V build flag
+# Same source code, with RISCV64=1 required to select the RISC-V build path
 sudo apt-get install -y build-essential libssl-dev libdb5.3-dev libdb5.3++-dev
 make -f makefile.cli RISCV64=1 -j$(nproc)
 ```

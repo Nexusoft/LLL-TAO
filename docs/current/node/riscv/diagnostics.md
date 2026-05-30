@@ -123,6 +123,7 @@ jobs:
           CC=riscv64-linux-gnu-gcc CXX=riscv64-linux-gnu-g++ make -f makefile.cli RISCV64=1 -j$(nproc)
       - name: Run self-tests under QEMU
         run: |
+          # -L points QEMU at the RISC-V sysroot for architecture-specific shared libraries.
           qemu-riscv64-static -L /usr/riscv64-linux-gnu ./nexus -testnet -selftest=session_serialisation
           qemu-riscv64-static -L /usr/riscv64-linux-gnu ./nexus -testnet -selftest=chacha20_kat
           qemu-riscv64-static -L /usr/riscv64-linux-gnu ./nexus -testnet -selftest=falcon_roundtrip
