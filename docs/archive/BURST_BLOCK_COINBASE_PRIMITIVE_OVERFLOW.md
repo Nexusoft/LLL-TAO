@@ -19,7 +19,7 @@ The block passes **every other validation check** (PoW, hashPrevBlock, height, d
 
 ### Where the Error Fires
 
-The error fires from [`src/TAO/Register/verify.cpp` lines 799–800](../src/TAO/Register/verify.cpp#L799):
+The error fires from [`src/TAO/Register/verify.cpp` lines 799–800](../../src/TAO/Register/verify.cpp#L799):
 
 ```cpp
 /* Check for end of stream. */
