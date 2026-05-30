@@ -156,6 +156,7 @@ Architecture diagrams, protocol visualizations, and onboarding guides:
 - [AI-Assisted Developer Onboarding](docs/onboarding/ai-assisted-onboarding.md) - Learning pathways with AI guidance
 - [New Coder Repo Guide](docs/onboarding/new-coder-repo-guide.md) - Repo shape, architectural risks, workflow guidance, and AEP/dynAEP assessment
 - [AI-Human Advancement Thesis](docs/philosophy/ai-human-advancement.md) - Collaboration philosophy
+- [Philosophy explorations index](docs/README.md#philosophy) - Includes companion Eden lenses on controlled environments, agency, and discernment
 - [Mining Debug Cheat Sheet](docs/onboarding/cheat-sheets/mining-debug.md)
 - [Consensus Debug Cheat Sheet](docs/onboarding/cheat-sheets/consensus-debug.md)
 - [Performance Tuning](docs/onboarding/cheat-sheets/performance-tuning.md)

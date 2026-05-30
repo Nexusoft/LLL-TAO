@@ -114,3 +114,5 @@ flowchart LR
 - [AI-Assisted Onboarding](../onboarding/ai-assisted-onboarding.md)
 - [Common Tasks Cheat Sheet](../diagrams/ai-collaboration/cheat-sheets/common-tasks.md)
 - [Computing Paradigms: Quantum vs Neural vs Classical](./computing-paradigms.md)
+- [Garden of Eden as a Controlled Environment](./garden-of-eden-controlled-environment.md)
+- [Created Intelligence and the Forbidden Operation](./created-intelligence-and-the-forbidden-operation.md)

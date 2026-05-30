@@ -29,6 +29,13 @@ This directory contains the active Nexus node documentation. Historical notes an
 - [Docker guide](guides/how-to-docker.md)
 - [Mining auto-credit guide](guides/mining-auto-credit.md)
 
+## Philosophy
+
+- [The AI-Human Advancement Thesis](philosophy/ai-human-advancement.md)
+- [Computing Paradigms: Quantum vs Neural vs Classical](philosophy/computing-paradigms.md)
+- [Garden of Eden as a Controlled Environment](philosophy/garden-of-eden-controlled-environment.md)
+- [Created Intelligence and the Forbidden Operation](philosophy/created-intelligence-and-the-forbidden-operation.md)
+
 ## Architecture and design
 
 - [Blockchain flow alignment](BLOCKCHAIN_FLOW_ALIGNMENT.md)

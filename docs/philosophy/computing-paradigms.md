@@ -337,6 +337,8 @@ flowchart TB
 ## Cross-References
 
 - [AI-Human Advancement Thesis](./ai-human-advancement.md) — the collaboration model that governs how this document was produced
+- [Garden of Eden as a Controlled Environment](./garden-of-eden-controlled-environment.md) — theological/developmental lens on controlled environments and consequence
+- [Created Intelligence and the Forbidden Operation](./created-intelligence-and-the-forbidden-operation.md) — created-intelligence lens on invariants, agency, and discernment
 - [SESSION_FRESHNESS_HARDENING.md](../architecture/SESSION_FRESHNESS_HARDENING.md) — ChaCha20 session design, nonce monotonicity, AEAD lifecycle
 - [riscv-build-guide.md](../build/riscv-build-guide.md) — RISC-V compilation and deployment guide
 - [architecture/riscv-design.md](../architecture/riscv-design.md) — RISC-V architecture design decisions for LLL-TAO
