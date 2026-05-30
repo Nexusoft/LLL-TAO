@@ -17,7 +17,7 @@ This keeps `ValidateVtxSigchainConsistency()` aligned with `BlockState::Connect(
 
 ## Why mempool is excluded
 
-A mempool-only predecessor can disappear, be replaced, or become stale after a miner receives a template and before the solved block is submitted. Accepting that predecessor as an authoritative submit-time anchor can allow templates that `Connect()` cannot reproduce from disk state.
+A mempool-only predecessor can disappear, be replaced, or become stale after a miner receives a template and before the solved block is submitted. Accepting that predecessor as an authoritative submit-time anchor can create templates that fail during `Connect()` validation against disk state.
 
 `AddTransactions()` filters non-first transactions whose predecessor is neither already in the candidate block nor on disk. That gate ensures submit-time validation only needs the two Connect-aligned oracles above.
 
