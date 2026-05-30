@@ -1,508 +1,732 @@
-# Nexus Blockchain Flow Alignment: Unified Height Architecture
+# Nexus Tritium Blockchain Flow Alignment
+## Unified Height Contract · Stake as Reference · Mining Channel Template
 
 **Branch:** `STATELESS-NODE`  
-**Document Version:** 1.0 — 2026-02-24 08:03:04  
-**Scope:** `TAO::Ledger` — `create.cpp`, `stake_minter.cpp`, `tritium_minter.cpp`, `genesis_block.cpp`
+**Canonical PRs:** LLL-TAO #274, #278 · NexusMiner #167, #169, #170  
+**Last updated:** 2026-02-24
 
 ---
 
-## 1. Purpose
+## Table of Contents
 
-This document defines the **canonical block production flow** for the Nexus Tritium protocol, using the **Proof-of-Stake (nPoS) channel** as the primary reference implementation. It:
-
-1. Establishes the **Unified Height Contract** — the single rule all channels must follow  
-2. Traces the **complete call chain** from node boot to accepted block  
-3. Documents **all staleness guards** and their correct ordering  
-4. Provides a **mining channel template** derived from the stake model
-
-This document supersedes any inline comments that predated PR #278 (unified height fix).
+1. [Executive Summary](#1-executive-summary)
+2. [The Height Duality Problem](#2-the-height-duality-problem)
+3. [Genesis Block Anchor — Chain Boot Sequence](#3-genesis-block-anchor--chain-boot-sequence)
+4. [Diagram A — Full Chain Boot Sequence](#diagram-a--full-chain-boot-sequence)
+5. [Stake Minter — Reference Implementation Flow](#5-stake-minter--reference-implementation-flow)
+6. [Diagram B — StakeMinter Thread State Machine](#diagram-b--stakeminter-thread-state-machine)
+7. [Diagram C — Block Template Construction (All Channels)](#diagram-c--block-template-construction-all-channels)
+8. [Diagram D — Height Field Lifecycle](#diagram-d--height-field-lifecycle)
+9. [The Unified Height Contract](#9-the-unified-height-contract)
+10. [Mining Channel Template (Channels 1, 2, 3)](#10-mining-channel-template-channels-1-2-3)
+11. [Diagram E — Staleness Guard Layers](#diagram-e--staleness-guard-layers)
+12. [Byte Layout of the 216-byte Block Template](#12-byte-layout-of-the-216-byte-block-template)
+13. [Invariants and Verification Checklist](#13-invariants-and-verification-checklist)
+14. [Field Reference Table](#14-field-reference-table)
 
 ---
 
-## 2. The Unified Height Contract
+## 1. Executive Summary
+
+The Nexus Tritium chain uses **three parallel mining channels** plus **Proof of Stake**, each producing blocks at their own rate, all anchored to a single **unified blockchain height**. A former bug treated channel-specific height (e.g., Prime channel block #2,329,307) as the value for `block.nHeight`, while the consensus rule (`TritiumBlock::Accept()`) and the miner protocol both expected the **unified chain height** (e.g., block #6,604,692). This document records:
+
+- How the genesis block anchors `tStateBest.nHeight` for the entire chain
+- How `StakeMinter` uses `AddBlockData()` as the canonical template builder (reference path)
+- How mining channels (Prime=1, Hash=2, Private=3) follow the identical pattern
+- The two staleness guards that prevent stale blocks from being submitted
+- The exact byte layout of the 216-byte template sent to miners
+
+The **Unified Height Contract** is the central invariant:
 
 ```
-RULE: block.nHeight == tStateBest.nHeight + 1 (UNIFIED chain height)
+block.nHeight  ==  ChainState::tStateBest.nHeight + 1
 ```
 
-### 2.1 Why Unified, Not Channel Height?
+It must hold for every block on every channel, at the moment `AddBlockData()` is called.
 
-The Nexus blockchain uses a **single unified height counter** that increments with every accepted block, regardless of which mining channel (Prime=1, Hash=2, Private=3, Stake=0) produced it.
+---
 
-`TritiumBlock::Accept()` validates:
+## 2. The Height Duality Problem
+
+### Two Heights — One Must Stay Out of the Block Template
+
+Every `BlockState` on disk carries **two** height fields:
+
+| Field | Type | Meaning | In Block Template? |
+|---|---|---|---|
+| `nHeight` | `uint32_t` | Unified chain height (all channels combined) | ✅ YES — baked into 216 bytes |
+| `nChannelHeight` | `uint32_t` | Per-channel block count (Prime/Hash/Stake separately) | ❌ NO — computed post-acceptance |
+
+`nChannelHeight` is computed by `BlockState::SetBest()` → `GetLastState(state, nChannel)` **after** a block is accepted. It is metadata for analytics and ambassador/developer payout thresholds. It is **never** serialized into the 216-byte template.
+
+### The Bug (Pre-PR #278)
 
 ```cpp
-// From src/TAO/Ledger/tritium.cpp — Accept()
-if(statePrev.nHeight + 1 != nHeight)
-    return debug::error(FUNCTION, "incorrect block height");
+// BEFORE — WRONG:
+BlockState stateChannel = tStateBest;
+GetLastState(stateChannel, nChannel);          // walk to last block on this channel
+block.nHeight = stateChannel.nChannelHeight + 1;  // e.g., 2,329,307 for Prime
+// TritiumBlock::Accept() expects: statePrev.nHeight + 1 = 6,604,692
+// ❌ MISMATCH → every mined block rejected
 ```
 
-where `statePrev` is the `BlockState` at `hashPrevBlock` — always a **unified** chain position.
-
-### 2.2 What Channel Height Is (and Is Not)
-
-| Field | Type | Stored In | Used For | In Block Template? |
-|---|---|---|---|---|
-| `nHeight` | Unified chain height | `TritiumBlock`, `BlockState` | `Accept()` validation, NexusMiner contract | ✅ YES — bytes 200-203 |
-| `nChannelHeight` | Per-channel counter | `BlockState` only | Ambassador/Developer payout intervals | ❌ NO — metadata only |
-
-`nChannelHeight` is computed by `BlockState::SetBest()` via `GetLastState()` **after** a block is accepted. It must never be written into a block template.
+```cpp
+// AFTER — CORRECT (PR #278):
+block.nHeight = tStateBest.nHeight + 1;  // e.g., 6,604,692
+// TritiumBlock::Accept(): statePrev.nHeight + 1 = 6,604,692 ✅ MATCH
+```
 
 ---
 
-## 3. Genesis Block Architecture
+## 3. Genesis Block Anchor — Chain Boot Sequence
+
+There are **three genesis block variants** depending on node mode:
+
+### 3a. LegacyGenesis (Full Node — Mainnet & Testnet)
 
 ```
-                    NODE BOOT
-                        │
-                        ▼
-               CreateGenesis()
-              [src/TAO/Ledger/create.cpp:760]
-                        │
-            ┌───────────┼───────────────┐
-            │           │               │
-      fClient      fHybrid        Full Node
-      (mainnet)      │             (default)
-            │         │               │
-     TritiumGenesis() HybridGenesis() LegacyGenesis()
-     nHeight=2944207  nHeight=0      nHeight=0
-     nChannel=1       nChannel=2     nChannel=2
-            │         │               │
-            └─────────┴───────────────┘
-                        │
-                        ▼
-           ChainState::tStateGenesis = state
-           ChainState::tStateBest    = tStateGenesis
-           ChainState::hashBestChain = hashGenesis
-                        │
-                        ▼
-              [SYNC FROM NETWORK]
-              tStateBest advances:
-              nHeight: 0 → ... → 6,604,691
-              hashBestChain: genesis → tip
+File: src/TAO/Ledger/genesis_block.cpp
+
+LegacyGenesis():
+  block.nHeight        = 0          ← Unified chain starts at ZERO
+  block.nChannelHeight = 1          ← Channel counter starts at 1 (sentinel)
+  block.nChannel       = 2          ← Hash channel produced the genesis block
+  block.hashPrevBlock  = 0          ← No predecessor (root of chain)
+  block.nTime          = 1409456199 ← 2014-08-30 (Nexus launch)
 ```
 
-### 3.1 Genesis Block Field Invariants
+### 3b. TritiumGenesis (Client Mode — Mainnet)
 
-| Field | LegacyGenesis | TritiumGenesis (client) | Meaning |
-|---|---|---|---|
-| `hashPrevBlock` | `0` | hardcoded | Sentinel: no ancestor |
-| `nHeight` | `0` | `2,944,207` | First unified height in this genesis variant |
-| `nChannel` | `2` (Hash) | `1` (Prime) | Channel that mined genesis |
-| `nChannelHeight` | `1` | varies | Channel-local counter; starts at 1 |
-| `nNonce` | `2196828850` (main) | hardcoded | Proof-of-work solution |
+```
+File: src/TAO/Ledger/genesis_block.cpp
 
-**Critical:** After full sync, `tStateBest.nHeight` reflects the true current chain tip regardless of which genesis variant was used. All subsequent block template creation uses only `tStateBest.nHeight + 1`.
+TritiumGenesis():
+  block.nHeight        = 2,944,207   ← Snapshot at Tritium activation
+  block.hashPrevBlock  = 0xeacd7b...  ← Hash of Legacy era tip at that point
+  block.nChannel       = (various)    ← Hardcoded from chain history
+  block.nChannelHeight = (various)    ← Hardcoded from chain history
+```
+
+### 3c. HybridGenesis (Private / Hybrid Networks)
+
+```
+File: src/TAO/Ledger/genesis_block.cpp
+
+HybridGenesis():
+  block.nHeight        = 0
+  block.hashPrevBlock  = 0
+  block.nNonce         = (computed via PoW loop)
+```
+
+### 3d. CreateGenesis() Boot Logic
+
+```
+File: src/TAO/Ledger/create.cpp  Lines: 759–831
+
+CreateGenesis()
+  ├─ hashGenesis = ChainState::Genesis()          ← hardcoded 1024-bit value
+  ├─ ReadBlock(hashGenesis, tStateGenesis)?
+  │    YES → genesis already on disk, skip
+  │    NO  → write the appropriate genesis variant
+  │           then:
+  │             ChainState::tStateGenesis = state
+  │             ChainState::hashBestChain = hashGenesis
+  │             ChainState::tStateBest    = tStateGenesis ← THE ANCHOR
+  └─ After full sync: tStateBest.nHeight ≈ 6,604,691
+```
+
+**After full sync from genesis, `tStateBest.nHeight` advances with every accepted block. The next block on any channel will always be `tStateBest.nHeight + 1`.**
 
 ---
 
-## 4. Stake Channel Block Production — Complete Flow
-
-### 4.1 Architecture Overview
+## Diagram A — Full Chain Boot Sequence
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    TritiumMinter Thread                      │
-│  [src/TAO/Ledger/tritium_minter.cpp — StakeMinterThread()]  │
-│                                                              │
-│  PHASE 0: WAIT FOR SYNC                                     │
-│  while(Synchronizing() || connections==0) sleep(5s)         │
-│                                                              │
-│  MAIN LOOP (every ~1s):                                     │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │ 1. hashLastBlock ← hashBestChain.load()  [GUARD-1]  │    │
-│  │ 2. CheckUser()                                       │    │
-│  │ 3. FindTrustAccount(hashGenesis)                     │    │
-│  │    → sets fGenesis flag                              │    │
-│  │ 4. CreateCandidateBlock()                            │    │
-│  │    → CreateStakeBlock(fGenesis)                      │    │
-│  │    → CreateCoinstake(hashGenesis)                    │    │
-│  │ 5. CalculateWeights()                                │    │
-│  │ 6. MintBlock(hashGenesis)                            │    │
-│  │    → CheckInterval() / CheckMempool()                │    │
-│  │    → HashBlock(nRequired)  ←─── GUARD-1 LOOP        │    │
-│  │         → ProcessBlock()  ← on solution found       │    │
-│  │              → GUARD-2: hashPrevBlock check          │    │
-│  │              → Process(block, nStatus)               │    │
-│  └─────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────┘
+NODE STARTUP
+     │
+     ▼
+┌─────────────────────────────────────────────────────────┐
+│  CreateGenesis()                                        │
+│                                                         │
+│  ┌──────────────┐   NO    ┌────────────────────────┐   │
+│  │ ReadBlock(   │────────►│ Select Genesis Variant  │   │
+│  │ hashGenesis) │         │                         │   │
+│  └──────┬───────┘         │  fClient + !fTestNet?   │   │
+│         │ YES             │  → TritiumGenesis()     │   │
+│         │                 │    nHeight=2,944,207    │   │
+│         ▼                 │                         │   │
+│  ┌──────────────┐         │  fHybrid?               │   │
+│  │ Already on   │         │  → HybridGenesis()      │   │
+│  │ disk — skip  │         │    nHeight=0            │   │
+│  └──────────────┘         │                         │   │
+│                           │  else (full node):      │   │
+│                           │  → LegacyGenesis()      │   │
+│                           │    nHeight=0            │   │
+│                           └──────────┬──────────────┘   │
+│                                      │                   ���
+│                                      ▼                   │
+│                           ┌──────────────────────┐       │
+│                           │ WriteBlock(genesis)   │       │
+│                           │ WriteBestChain(hash)  │       │
+│                           │                       │       │
+│                           │ tStateGenesis = state │       │
+│                           │ hashBestChain = hash  │       │
+│                           │ tStateBest    = state │◄──── ANCHOR SET
+│                           └──────────────────────┘       │
+└─────────────────────────────────────────────────────────┘
+     │
+     ▼
+SYNC LOOP (peer connections)
+     │
+     │  For each block received from peers:
+     │    Process(block) → TritiumBlock::Accept()
+     │      → BlockState::SetBest()
+     │           tStateBest.nHeight advances by 1
+     │           tStateBest.nChannelHeight computed per-channel
+     │           hashBestChain = new block hash
+     │
+     ▼
+STEADY STATE
+  tStateBest.nHeight   ≈ 6,604,691   (unified)
+  tStateBest.nChannel  = last accepted channel
+  hashBestChain        = hash of last accepted block
+     │
+     ▼
+MINING / STAKING BEGINS
+  AddBlockData(tStateBest, nChannel, block)
+    block.nHeight = tStateBest.nHeight + 1  ← 6,604,692
 ```
 
-### 4.2 Detailed Phase-by-Phase Flow
+---
 
-#### Phase 1: Block Template Creation
+## 5. Stake Minter — Reference Implementation Flow
 
-```
-CreateCandidateBlock()
-[stake_minter.cpp:351]
-         │
-         ▼
-CreateStakeBlock(pCredentials, pin, block, fGenesis)
-[create.cpp:713]
-         │
-         ├─── if(!fGenesis || fPoolStaking):
-         │         AddTransactions(block)
-         │         [mempool → block.vtx]
-         │
-         ├─── CreateTransaction(user, pin, rProducer)
-         │         [bare producer skeleton — no coinstake op yet]
-         │         Sets: nSequence, hashGenesis, hashPrevTx,
-         │               nKeyType, nNextType, nTimestamp, nVersion
-         │
-         ├─── UpdateProducerTimestamp(rProducer)
-         │         max(rProducer.nTimestamp, tStateBest.GetBlockTime()+1)
-         │
-         ├─── block.producer = rProducer
-         │
-         └─── AddBlockData(tStateBest, nChannel=0, block)
-                   │
-                   ├─── [nChannel==0: SKIP Merkle root]
-                   │    (deferred: nReward unknown until block found)
-                   │
-                   ├─── block.hashPrevBlock = tStateBest.GetHash()
-                   │         ↑ PRIMARY STALENESS ANCHOR
-                   │         Baked into 216-byte template. Immutable.
-                   │
-                   ├─── block.nChannel = 0
-                   │
-                   ├─── block.nHeight = tStateBest.nHeight + 1
-                   │         ↑ UNIFIED HEIGHT — PR #278 fix
-                   │         Passes: TritiumBlock::Accept() check
-                   │         Passes: NexusMiner ValidateTemplate() check
-                   │
-                   ├─── block.nBits = GetNextTargetRequired(tStateBest, 0, false)
-                   │
-                   ├─── block.nNonce = 1
-                   │
-                   └─── block.nTime = max(tStateBest.GetBlockTime()+1, now)
-```
+The Stake Minter (`TritiumMinter`) is the **canonical reference** for correct Tritium block production. Every step it takes is the correct template for all other mining channels.
 
-#### Phase 2: Coinstake Producer Setup
+### 5a. Thread Lifecycle
 
 ```
-CreateCoinstake(hashGenesis)
-[tritium_minter.cpp:134]
-         │
-         ├─── if(!fGenesis):  [TRUST path]
-         │         FindLastStake(hashGenesis, hashLast)
-         │         │
-         │         stateLast ← LLD::Ledger->ReadBlock(hashLast, stateLast)
-         │         │   ↑ LOADED BY BLOCK HASH (not GetLastState!)
-         │         │   stateLast.nHeight = UNIFIED height of last stake block
-         │         │
-         │         tStatePrev ← LLD::Ledger->ReadBlock(block.hashPrevBlock)
-         │         │
-         │         nBlockAge = tStatePrev.GetBlockTime() - stateLast.GetBlockTime()
-         │         nTrust = GetTrustScore(nTrustPrev, nBlockAge, nStake, ...)
-         │         │
-         │         block.producer[0] << OP::TRUST << hashLast << nTrust << nStakeChange
-         │
-         └─── if(fGenesis):  [GENESIS path]
-                   block.producer[0] << OP::GENESIS
-                   [no hashLast — this is the user's first stake]
+TritiumMinter::Start()
+  └─► StakeMinterThread launched on dedicated thread
+        │
+        ├─ WAIT: until !Synchronizing() && connections > 0
+        │
+        └─► MAIN LOOP (every ~1 second):
+              │
+              ├─ hashLastBlock = hashBestChain.load()   ← GUARD 1 ANCHOR
+              ├─ CheckUser()
+              ├─ FindTrustAccount()     → sets fGenesis flag
+              ├─ CreateCandidateBlock() → builds block template
+              ├─ CalculateWeights()     → trust/block weights
+              └─ MintBlock()
+                    ├─ CheckInterval()  (Trust only)
+                    ├─ CheckMempool()   (Genesis only)
+                    └─ HashBlock()      → GUARD 1 loop + GUARD 2 at submit
 ```
 
-#### Phase 3: Proof-of-Stake Hashing (Guard 1)
+### 5b. hashLastBlock — Guard 1 Snapshot
 
+```cpp
+// tritium_minter.cpp:397
+pTritiumMinter->hashLastBlock = TAO::Ledger::ChainState::hashBestChain.load();
 ```
-HashBlock(nRequired)
-[stake_minter.cpp:522]
-         │
-         ▼
-while(!fStop && !fShutdown
-   && hashLastBlock == hashBestChain.load())   ← GUARD 1
+
+This snapshot is taken **once per outer loop iteration**, before `CreateCandidateBlock()`. It becomes the Guard 1 sentinel:
+
+```cpp
+// stake_minter.cpp:534-535  — HashBlock() inner loop
+while(!fStop.load() && !fShutdown.load()
+    && hashLastBlock == ChainState::hashBestChain.load())
 {
-         │
-         ├─── CheckStale()          ← producer orphan check
-         │         mempool.Get(producer.hashGenesis) &&
-         │         producer.hashPrevTx != tx.GetHash()
-         │         → if stale: break (rebuild block)
-         │
-         ├─── block.UpdateTime()
-         │
-         ├─── nThreshold = GetCurrentThreshold(nBlockTime, block.nNonce)
-         │
-         ├─── if(nThreshold < nRequired): sleep(10ms), continue
-         │
-         ├─── hashProof = block.StakeHash()
-         │
-         └─── if(hashProof <= nHashTarget):
-                   ProcessBlock()             ← SOLUTION FOUND
-                   break
+    // mining continues only while chain tip hasn't moved
 }
 ```
 
-#### Phase 4: Block Finalization (Guard 2)
+If a new block arrives from the network, `hashBestChain` changes, the Guard 1 loop exits, and the outer loop restarts with a fresh `hashLastBlock` snapshot.
+
+### 5c. CreateCandidateBlock() → CreateStakeBlock()
 
 ```
-ProcessBlock()
-[stake_minter.cpp:610]
-         │
-         ├─── nReward = CalculateCoinstakeReward(block.GetBlockTime())
-         │         [deferred: uses final block.nTime for exact reward]
-         │
-         ├─── block.producer[0] << nReward
-         │
-         ├─── block.producer.Build()          ← execute pre/post state
-         │
-         ├─── [Build Merkle Root — NOW complete]
-         │         vHashes = block.vtx hashes
-         │         vHashes += block.producer.GetHash()  ← producer LAST
-         │         block.hashMerkleRoot = BuildMerkleTree(vHashes)
-         │
-         ├─── block.producer.Sign(key)
-         │
-         ├─── GUARD 2: Pre-submit staleness check
-         │         if(block.hashPrevBlock != hashBestChain.load())
-         │             return false  ← STALE: chain moved during hashing
-         │
-         └─── TAO::Ledger::Process(block, nStatus)
-                   ├─── TritiumBlock::Check()   ← structural validation
-                   ├─── TritiumBlock::Accept()  ← consensus rules
-                   │         statePrev = ReadBlock(hashPrevBlock)
-                   │         ASSERT: statePrev.nHeight + 1 == block.nHeight
-                   └─── BlockState::SetBest()   ← updates chain state
-                             nChannelHeight computed HERE (not in template)
+StakeMinter::CreateCandidateBlock()
+  │
+  ├─ block = TritiumBlock()                    ← fresh empty block
+  │
+  ├─ CreateStakeBlock(user, pin, block, fGenesis)
+  │     │
+  │     ├─ nChannel = 0                         ← Stake channel
+  │     ├─ block.SetNull()
+  │     ├─ block.nVersion = CurrentBlockVersion()
+  │     ├─ tStateBest = ChainState::tStateBest.load()  ← ATOMIC SNAPSHOT
+  │     │
+  │     ├─ if(!fGenesis || fPoolStaking)
+  │     │     AddTransactions(block)             ← mempool tx selection
+  │     │
+  │     ├─ CreateTransaction(user, pin, rProducer)  ← bare sigchain tx
+  │     ├─ UpdateProducerTimestamp(rProducer)
+  │     ├─ block.producer = rProducer
+  │     │
+  │     │  NOTE: Producer[0] NOT set yet (coinstake op added by CreateCoinstake)
+  │     │  NOTE: hashMerkleRoot NOT set yet (deferred — nReward unknown)
+  │     │
+  │     └─ AddBlockData(tStateBest, nChannel=0, block)
+  │           ├─ if(nChannel != 0): build Merkle  ← SKIPPED for stake
+  │           ├─ block.hashPrevBlock = tStateBest.GetHash()  ← STALENESS ANCHOR
+  │           ├─ block.nChannel      = 0
+  │           ├─ block.nHeight       = tStateBest.nHeight + 1  ← UNIFIED
+  │           ├─ block.nBits         = GetNextTargetRequired(tStateBest, 0, false)
+  │           ├─ block.nNonce        = 1
+  │           └─ block.nTime         = max(prevTime+1, unifiedtimestamp())
+  │
+  └─ CreateCoinstake(hashGenesis)
+        ├─ if(!fGenesis):
+        │     stateLast ← LLD::Ledger->ReadBlock(hashLast, stateLast)
+        │     block.producer[0] << OP::TRUST << hashLast << nTrust << nStakeChange
+        └─ if(fGenesis):
+              block.producer[0] << OP::GENESIS
+        (nReward NOT added yet — deferred to ProcessBlock())
+```
+
+### 5d. ProcessBlock() — Finalization
+
+```
+StakeMinter::ProcessBlock()
+  │
+  ├─ nReward = CalculateCoinstakeReward(block.GetBlockTime())
+  ├─ block.producer[0] << nReward           ← NOW coinstake is complete
+  ├─ block.producer.Build()                 ← pre/post state execution
+  │
+  ├─ vHashes = all vtx hashes + producer.GetHash()
+  ├─ block.hashMerkleRoot = BuildMerkleTree(vHashes)  ← NOW Merkle is set
+  │
+  ├─ block.producer.Sign(credentials)
+  ├─ SignBlock(credentials, pin)            ← block signature
+  │
+  ├─ GUARD 2: if(block.hashPrevBlock != hashBestChain.load())
+  │              → "Generated block is stale" — ABORT
+  │
+  └─ TAO::Ledger::Process(block, nStatus)   ← submit to consensus
+        └─ if(ACCEPTED): relay to network
 ```
 
 ---
 
-## 5. The Two Staleness Guards — Detailed Specification
+## Diagram B — StakeMinter Thread State Machine
 
-### Guard 1: Continuous Mining Loop Guard
-
-```cpp
-// tritium_minter.cpp:397 — snapshot taken at loop start
-hashLastBlock = TAO::Ledger::ChainState::hashBestChain.load();
-
-// stake_minter.cpp:534-535 — continuous check during hashing
-while(...&& hashLastBlock == TAO::Ledger::ChainState::hashBestChain.load())
 ```
-
-**Purpose:** Terminates mining immediately when the chain tip advances. Forces a full block rebuild for the new chain tip.
-
-**When triggered:** Any peer broadcasts a new accepted block while local hashing is in progress.
-
-**Effect:** The outer loop restarts, rebuilding `block` with the new `tStateBest`.
-
-### Guard 2: Pre-Submit Staleness Check
-
-```cpp
-// stake_minter.cpp:674
-if(block.hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
-    return false;
+                    ┌─────────────────────────────────────────────────────┐
+                    │              StakeMinterThread                       │
+                    │                                                      │
+                    │  ┌──────────────────────────────────────────────┐   │
+                    │  │  INITIALIZATION PHASE                        │   │
+                    │  │  Wait: Synchronizing() || no connections     │   │
+                    │  └─────────────────┬────────────────────────────┘   │
+                    │                    │ synced + connected              │
+                    │                    ▼                                 │
+  ┌─────────────────►  ┌──────────────────────────────────────────────┐   │
+  │  (1 sec sleep)  │  │  OUTER LOOP ITERATION                        │   │
+  │                 │  │                                              │   │
+  │                 │  │  1. hashLastBlock = hashBestChain.load() ◄──┼───── GUARD 1 ANCHOR
+  │                 │  │  2. CheckUser()         → break if locked    │   │
+  │                 │  │  3. FindTrustAccount()  → sets fGenesis      │   │
+  │                 │  │  4. CreateCandidateBlock()                   │   │
+  │                 │  │       └─ CreateStakeBlock()                  │   │
+  │                 │  │            └─ AddBlockData()                 │   │
+  │                 │  │                 block.nHeight = N+1 ◄────────┼───── UNIFIED HEIGHT
+  │                 │  │                 block.hashPrevBlock = tip ◄──┼───── STALENESS ANCHOR
+  │                 │  │       └─ CreateCoinstake()                   │   │
+  │                 │  │            └─ OP::GENESIS or OP::TRUST       │   │
+  │                 │  │  5. CalculateWeights()                       │   │
+  │                 │  │  6. MintBlock()                              │   │
+  │                 │  │       ├─ CheckInterval() (Trust)             │   │
+  │                 │  │       ├─ CheckMempool()  (Genesis)           │   │
+  │                 │  │       └─ HashBlock() ───────────────────────►│   │
+  │                 │  └──────────────────────────────────────────────┘   │
+  │                 │                                                      │
+  │                 │  ┌──────────────────────────────────────────────┐   │
+  │                 │  │  HashBlock() INNER LOOP                      │   │
+  │                 │  │                                              │   │
+  │                 │  │  while(hashLastBlock == hashBestChain) {     │◄──── GUARD 1 CHECK
+  │                 │  │    UpdateTime()                              │   │
+  │                 │  │    CheckStale() → break if producer stale    │   │
+  │                 │  │    nThreshold = GetCurrentThreshold(...)     │   │
+  │                 │  │    if(threshold < required) → sleep(10ms)    │   │
+  │                 │  │    hashProof = StakeHash()                   │   │
+  │                 │  │    if(hashProof <= nHashTarget) {            │   │
+  │                 │  │      ProcessBlock()                          │   │
+  │                 │  │        ├─ Finalize coinstake + Merkle        │   │
+  │                 │  │        ├─ Sign block                         │   │
+  │                 │  │        ├─ GUARD 2: hashPrevBlock check ◄─────┼───── STALENESS GUARD 2
+  │                 │  │        └─ Process(block) → network           │   │
+  │                 │  │      break                                   │   │
+  │                 │  │    }                                         │   │
+  │                 │  │    ++nNonce                                  │   │
+  │                 │  │  }                                           │   │
+  │                 │  └──────────────────┬───────────────────────────┘   │
+  └─────────────────────────────────────── ┘ loop back                   │
+                    └─────────────────────────────────────────────────────┘
 ```
-
-**Purpose:** Final safety net after the hash solution is found but before submission. Guards the narrow race window between Guard 1 exiting the loop and `Process()` being called.
-
-**When triggered:** Chain advanced during the final milliseconds of block finalization.
-
-**Effect:** Discards the mined block, returns false. Outer loop rebuilds.
-
-### Guard Comparison Table
-
-| Guard | Location | Trigger | Frequency | Cost if triggered |
-|---|---|---|---|---|
-| **Guard 1** | `HashBlock()` inner while-loop | `hashBestChain` changed | Every iteration (~10ms) | Restart block build |
-| **Guard 2** | `ProcessBlock()` pre-submit | `hashBestChain` changed | Once per solution found | Discard mined block |
 
 ---
 
-## 6. Stake vs. Mining Channel Template Comparison
+## Diagram C — Block Template Construction (All Channels)
 
-### 6.1 Shared Infrastructure (All Channels)
+```
+  AddBlockData(tStateBest, nChannel, block)
+  ═══════════════════════════════════════════════════════════════════
 
-All channels use the same core functions:
+                          nChannel == 0?
+                         (Stake / PoS)
+                        /              \
+                      YES               NO
+                       │                │
+                       │          Build Merkle Root NOW
+                       │          (channels 1, 2, 3 have
+                       │           complete producer)
+                       │
+               Merkle DEFERRED
+               (coinstake nReward
+                not yet known)
+                       │
+                       └──────────────────────────────────┐
+                                                           │
+  ┌──────────────────────────────────────────────────────┐ │
+  │  COMMON FIELDS (ALL CHANNELS)                        │ │
+  │                                                      │ │
+  │  block.hashPrevBlock = tStateBest.GetHash()          │◄┘
+  │     └─► PRIMARY STALENESS ANCHOR                     │
+  │         Compared at submit time vs hashBestChain     │
+  │                                                      │
+  │  block.nChannel = nChannel                           │
+  │     0=Stake  1=Prime  2=Hash  3=Private              │
+  │                                                      │
+  │  block.nHeight = tStateBest.nHeight + 1              │
+  │     └─► UNIFIED BLOCKCHAIN HEIGHT                    │
+  │         Must match TritiumBlock::Accept() check      │
+  │         statePrev.nHeight + 1 == block.nHeight       │
+  │                                                      │
+  │  block.nBits  = GetNextTargetRequired(tStateBest,    │
+  │                                       nChannel, false)│
+  │                                                      │
+  │  block.nNonce = 1                                    │
+  │                                                      │
+  │  block.nTime  = max(prevBlockTime+1,                 │
+  │                     unifiedtimestamp())              │
+  └──────────────────────────────────────────────────────┘
 
-| Function | Stake (ch 0) | Prime (ch 1) | Hash (ch 2) | Private (ch 3) |
-|---|---|---|---|---|
-| `AddBlockData()` | ✅ | ✅ | ✅ | ✅ |
-| `block.nHeight = tStateBest.nHeight + 1` | ✅ | ✅ | ✅ | ✅ |
-| `block.hashPrevBlock = tStateBest.GetHash()` | ✅ | ✅ | ✅ | ✅ |
-| `block.nBits = GetNextTargetRequired(...)` | ✅ | ✅ | ✅ | ✅ |
-| `TritiumBlock::Accept()` height check | ✅ | ✅ | ✅ | ✅ |
 
-### 6.2 Channel-Specific Differences
+  CHANNEL-SPECIFIC PRODUCER CONTENTS:
+  ════════════════════════════════════
 
-| Aspect | Stake (ch 0) | Mining (ch 1, 2) | Private (ch 3) |
+  Channel 0 (Stake/PoS):
+    producer[0] = (bare tx, no op yet)
+    → CreateCoinstake() adds:  OP::GENESIS  or  OP::TRUST << hashLast << nTrust
+    → ProcessBlock()   adds:  << nReward  (deferred until final block time known)
+
+  Channel 1 (Prime) / Channel 2 (Hash):
+    producer[0] = OP::COINBASE << hashRecipient << nBlockReward << nExtraNonce
+    → Optional: ambassador/developer payout contracts at interval thresholds
+
+  Channel 3 (Private/Authorize):
+    producer[0] = OP::AUTHORIZE << hashPrevTx << hashGenesis
+```
+
+---
+
+## Diagram D — Height Field Lifecycle
+
+```
+  GENESIS BOOT
+  ┌────────────────────────────────────────────────────────┐
+  │ LegacyGenesis:  block.nHeight = 0                      │
+  │ TritiumGenesis: block.nHeight = 2,944,207              │
+  │ HybridGenesis:  block.nHeight = 0                      │
+  │                                                        │
+  │ → ChainState::tStateBest.nHeight = genesis.nHeight     │
+  └────────────────────────────────────────────────────────┘
+                           │
+                           │ +1 per accepted block (all channels combined)
+                           ▼
+  SYNC / NORMAL OPERATION
+  ┌────────────────────────────────────────────────────────┐
+  │ Block accepted by TritiumBlock::Accept():              │
+  │   1. Look up statePrev = ReadBlock(hashPrevBlock)      │
+  │   2. ASSERT: statePrev.nHeight + 1 == block.nHeight    │
+  │   3. BlockState::SetBest():                            │
+  │        new_state.nHeight        = block.nHeight        │ ← unified
+  │        new_state.nChannelHeight = prev_channel + 1     │ ← per-channel
+  │        ChainState::tStateBest   = new_state            │
+  │        ChainState::hashBestChain = new_state.GetHash() │
+  └────────────────────────────────────────────────────────┘
+                           │
+                           ▼
+  TEMPLATE CREATION
+  ┌────────────────────────────────────────────────────────┐
+  │ AddBlockData(tStateBest, nChannel, block):             │
+  │   block.nHeight = tStateBest.nHeight + 1               │ ← unified
+  │   (nChannelHeight is NOT touched here)                 │
+  └────────────────────────────────────────────────────────┘
+                           │
+                           │ template sent to miner / stake hash loop
+                           ▼
+  BLOCK SUBMISSION
+  ┌────────────────────────────────────────────────────────┐
+  │ TritiumBlock::Accept():                                │
+  │   statePrev = ReadBlock(block.hashPrevBlock)           │
+  │   CHECK: statePrev.nHeight + 1 == block.nHeight  ✅    │
+  └────────────────────────────────────────────────────────┘
+                           │
+                           ▼
+  POST-ACCEPTANCE (BlockState::SetBest)
+  ┌────────────────────────────────────────────────────────┐
+  │   GetLastState(stateChannel, nChannel)                 │
+  │   new_state.nChannelHeight = stateChannel.nChannelHeight + 1  │
+  │   (THIS is where nChannelHeight is computed — AFTER acceptance) │
+  └────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 9. The Unified Height Contract
+
+### Contract Definition
+
+```
+∀ block B produced by AddBlockData(tStateBest, nChannel, B):
+
+  B.nHeight        == tStateBest.nHeight + 1
+  B.hashPrevBlock  == tStateBest.GetHash()
+  B.nChannel       == nChannel  ∈ {0, 1, 2, 3}
+  B.nBits          == GetNextTargetRequired(tStateBest, nChannel, false)
+
+  And upon acceptance:
+    statePrev = ReadBlock(B.hashPrevBlock)
+    statePrev.nHeight + 1 == B.nHeight    ← consensus enforcement
+```
+
+### Why `nChannelHeight` Must Never Enter `block.nHeight`
+
+1. **`TritiumBlock::Accept()` uses unified height** — it reads `statePrev` via `hashPrevBlock`, which is the unified chain tip. `statePrev.nHeight` is always the unified height.
+
+2. **`nChannelHeight` is not in the block bytes** — it is computed by `SetBest()` *after* the block is accepted. If you put channel height into `block.nHeight`, you get two different values that can never match.
+
+3. **The miner validates the same contract** — NexusMiner PR #170 `ValidateTemplate()` checks:
+   ```
+   block.nHeight == nNodeUnified + 1
+   ```
+   where `nNodeUnified` is `tStateBest.nHeight`. If channel height is used, the miner rejects the template.
+
+4. **`CheckInterval()` depends on unified height** — `block.nHeight - stateLast.nHeight` where `stateLast` is a `BlockState` read from disk, whose `nHeight` is unified. Mixed heights produce incorrect (often nonsensical) intervals.
+
+---
+
+## 10. Mining Channel Template (Channels 1, 2, 3)
+
+Mining channels follow the **identical** `AddBlockData()` path as stake. The differences are:
+
+| Aspect | Stake (Channel 0) | Prime (1) / Hash (2) | Private (3) |
 |---|---|---|---|
-| **Entry point** | `CreateStakeBlock()` | `CreateBlock()` | `CreateBlock()` via `ThreadGenerator()` |
-| **Template cache** | No (rebuilt each iteration) | Yes (`tBlockCache[nChannel]`) | No |
-| **Merkle root in AddBlockData** | ❌ Deferred | ✅ Built immediately | ✅ Built immediately |
-| **When Merkle is built** | `ProcessBlock()` after nReward known | `AddBlockData()` or on cache refresh | `AddBlockData()` |
-| **Producer operation** | `OP::GENESIS` or `OP::TRUST` | `OP::COINBASE` | `OP::AUTHORIZE` |
-| **Reward calculation timing** | After solution found (`ProcessBlock`) | At template creation (`GetCoinbaseReward`) | N/A |
-| **Guard 1 mechanism** | `hashLastBlock` member field | `hashPrevBlock` vs `hashBestChain` in LLP | N/A (condition variable) |
-| **Guard 2 mechanism** | `hashPrevBlock != hashBestChain` | `hashPrevBlock != hashBestChain` in LLP | Implicit via `Process()` |
-| **State for interval check** | `stateLast` (last stake block) | N/A | N/A |
-| **Interval requirement** | `MinStakeInterval(block)` | None | None |
+| `AddBlockData()` call | `CreateStakeBlock()` | `CreateBlock()` | `CreateBlock()` |
+| Producer op | `OP::GENESIS` or `OP::TRUST` | `OP::COINBASE` | `OP::AUTHORIZE` |
+| Merkle root in template | ❌ Deferred (nReward unknown) | ✅ Immediate | ✅ Immediate |
+| Block cache (`tBlockCache[]`) | ❌ Not cached | ✅ Cached per-channel | ✅ Cached |
+| Guard 1 | `hashLastBlock == hashBestChain` loop | `hashPrevBlock == hashBestChain` check at submit | Same |
+| Guard 2 | `hashPrevBlock` check in `ProcessBlock()` | `hashPrevBlock` check at submit | Same |
+| `nHeight` assignment | `tStateBest.nHeight + 1` | `tStateBest.nHeight + 1` | `tStateBest.nHeight + 1` |
 
-### 6.3 Mining Channel Template (Derived from Stake Model)
+### Mining Channel Template Pattern
 
-If implementing a **new mining channel** or refactoring an existing mining server, use this checklist derived from the stake pattern:
-
-```
-MINING CHANNEL BLOCK PRODUCTION CHECKLIST
-==========================================
-
-[ ] 1. SNAPSHOT: hashLastBlock = hashBestChain.load()
-        Before building any template. Atomic load.
-
-[ ] 2. TEMPLATE CREATION via CreateBlock() or CreateStakeBlock():
-        [ ] block.hashPrevBlock = tStateBest.GetHash()
-        [ ] block.nHeight       = tStateBest.nHeight + 1   ← UNIFIED
-        [ ] block.nChannel      = <channel id>
-        [ ] block.nBits         = GetNextTargetRequired(tStateBest, nChannel, false)
-        [ ] block.nNonce        = 1
-        [ ] block.nTime         = max(tStateBest.GetBlockTime() + 1, now)
-        [ ] Merkle root built (unless deferred like stake channel)
-
-[ ] 3. GUARD 1 (continuous loop):
-        while(hashLastBlock == hashBestChain.load()) { mine... }
-        On exit: rebuild template if hashLastBlock != hashLastBlock
-
-[ ] 4. HASHING: nonce or proof-specific iteration
-
-[ ] 5. GUARD 2 (pre-submit):
-        if(block.hashPrevBlock != hashBestChain.load()) discard
-
-[ ] 6. FINALIZE:
-        Complete producer (add reward)
-        Build Merkle root if deferred
-        Sign producer transaction
-        Sign block
-
-[ ] 7. SUBMIT:
-        TAO::Ledger::Process(block, nStatus)
-        Check: nStatus & PROCESS::ACCEPTED
-
-[ ] 8. NEVER:
-        [ ] Never set block.nHeight = nChannelHeight + 1
-        [ ] Never overwrite hashPrevBlock after serialization
-        [ ] Never set block.nHeight from anything other than tStateBest.nHeight + 1
-```
-
----
-
-## 7. CheckInterval() — The Unified Height Dependency
-
-`CheckInterval()` is stake-specific but demonstrates a key cross-channel pattern:
+Any new mining channel implementation MUST:
 
 ```cpp
-// stake_minter.cpp:462
-const uint32_t nInterval = block.nHeight - stateLast.nHeight;
+// Step 1: Snapshot chain state atomically
+const BlockState tStateBest = ChainState::tStateBest.load();
+
+// Step 2: Build producer transaction
+CreateProducer(user, pin, producer, tStateBest, nVersion, nChannel, ...);
+
+// Step 3: Call AddBlockData — this is the ONLY place nHeight is set
+AddBlockData(tStateBest, nChannel, block);
+//   ↑ sets: hashPrevBlock, nHeight (UNIFIED), nChannel, nBits, nNonce, nTime
+
+// Step 4: Guard 1 — continuous staleness detection
+while(hashLastBlock == ChainState::hashBestChain.load()) {
+    // hash / solve
+}
+
+// Step 5: Guard 2 — final staleness check before submit
+if(block.hashPrevBlock != ChainState::hashBestChain.load())
+    return false; // STALE — discard
+
+// Step 6: Submit
+TAO::Ledger::Process(block, nStatus);
 ```
 
-### 7.1 Correctness Requirement
-
-Both `block.nHeight` and `stateLast.nHeight` must be **unified heights** for this subtraction to be meaningful:
-
-| Scenario | block.nHeight | stateLast.nHeight | nInterval | Correct? |
-|---|---|---|---|---|
-| **Before PR #278** | channel height (~2.3M) | unified height (~6.6M) | wraps to ~3.7B | ❌ Always passes |
-| **After PR #278** | unified height (~6.6M) | unified height (~6.6M) | actual gap (~100) | ✅ Correct |
-
-### 7.2 `stateLast` Loading — Critical Detail
-
-`stateLast` is loaded in `TritiumMinter::CreateCoinstake()`:
+### Block Cache Invalidation (Channels 1, 2, 3)
 
 ```cpp
-// tritium_minter.cpp:180-181
-stateLast = BlockState();
-if(!LLD::Ledger->ReadBlock(hashLast, stateLast))  // ← by BLOCK HASH
-    return debug::error(FUNCTION, "Failed to get last block for trust account");
-```
+// CreateBlock() — four invalidation conditions:
+bool fNeedsNewBlock = false;
 
-**`stateLast` is loaded by the hash of the transaction's containing block** — this gives the full `BlockState` with the correct **unified** `nHeight`. It does **not** use `GetLastState()` which would give channel-anchored state.
+// PRIMARY: chain advanced
+if(hashBestChain != tBlockCached.hashPrevBlock)
+    fNeedsNewBlock = true;
 
----
+// SECONDARY: user/genesis changed
+if(hashGenesis != tBlockCached.producer.hashGenesis)
+    fNeedsNewBlock = true;
 
-## 8. Key Data Flows — Height Propagation
+// TERTIARY: safety timeout (default 90 seconds)
+if(unifiedtimestamp() >= tBlockCached.producer.nTimestamp + nExpiration)
+    fNeedsNewBlock = true;
 
-```
-BOOT TIME:
-  LegacyGenesis()  → tStateGenesis.nHeight = 0
-  TritiumGenesis() → tStateGenesis.nHeight = 2,944,207
-                                    │
-                                    ▼
-              ChainState::tStateBest = tStateGenesis
-                                    │
-                              [SYNC LOOP]
-                          P2P blocks received
-                          BlockState::SetBest()
-                                    │
-                                    ▼
-              ChainState::tStateBest.nHeight advances
-              (e.g., 2,944,207 → 6,604,691)
-                                    │
-                    ┌───────────────┘
-                    │
-TEMPLATE TIME:      ▼
-  tStateBest = ChainState::tStateBest.load()   ← ATOMIC SNAPSHOT
-  block.nHeight = tStateBest.nHeight + 1       ← e.g., 6,604,692
-  block.hashPrevBlock = tStateBest.GetHash()   ← e.g., 0xeacd...
-                    │
-                    ▼
-ACCEPT TIME:
-  statePrev = ReadBlock(block.hashPrevBlock)
-  ASSERT: statePrev.nHeight + 1 == block.nHeight
-  → 6,604,691 + 1 == 6,604,692  ✅
-                    │
-                    ▼
-SETBEST TIME:
-  BlockState::SetBest()
-  GetLastState(stateChannel, nChannel)         ← channel-specific walk
-  newState.nChannelHeight = stateChannel.nChannelHeight + 1
-  → nChannelHeight computed from accepted chain, never from template
+// QUATERNARY: sigchain advanced since template was cached (PoW channels only)
+// Catches the case where a different-channel block connected and advanced
+// WriteLast() for the same genesis without triggering the Primary check.
+if(!fNeedsNewBlock && (nChannel == 1 || nChannel == 2) && !tBlockCached.producer.IsFirst()) {
+    uint512_t hashDiskLast = 0;
+    if(LLD::Ledger->ReadLast(tBlockCached.producer.hashGenesis, hashDiskLast)
+       && hashDiskLast != tBlockCached.producer.hashPrevTx)
+        fNeedsNewBlock = true;
+}
 ```
 
 ---
 
-## 9. File Reference Map
-
-| File | Role in Flow | Key Functions |
-|---|---|---|
-| `src/TAO/Ledger/genesis_block.cpp` | Boot genesis block construction | `LegacyGenesis()`, `TritiumGenesis()`, `HybridGenesis()` |
-| `src/TAO/Ledger/create.cpp` | Block template factory | `CreateGenesis()`, `CreateStakeBlock()`, `CreateBlock()`, `AddBlockData()`, `CreateProducer()` |
-| `src/TAO/Ledger/stake_minter.cpp` | Stake minting base class | `CreateCandidateBlock()`, `HashBlock()`, `ProcessBlock()`, `CheckInterval()` |
-| `src/TAO/Ledger/tritium_minter.cpp` | Stake minting implementation | `StakeMinterThread()`, `CreateCoinstake()`, `MintBlock()`, `CalculateCoinstakeReward()` |
-| `src/TAO/Ledger/tritium.cpp` | Block type + Accept() | `TritiumBlock::Accept()` height validation |
-| `src/TAO/Ledger/chainstate.cpp` | Global chain state | `tStateBest`, `hashBestChain`, `tStateGenesis` |
-
----
-
-## 10. Invariants — Compile-Time Checklist
-
-These invariants must hold at all times. Any PR modifying block production must verify all of them:
+## Diagram E — Staleness Guard Layers
 
 ```
-INV-1:  block.nHeight       == ChainState::tStateBest.nHeight + 1
-INV-2:  block.hashPrevBlock == ChainState::tStateBest.GetHash()
-INV-3:  block.nHeight IS unified chain height (not channel height)
-INV-4:  block.hashPrevBlock IS immutable after AddBlockData() returns
-INV-5:  block.nHeight       IS immutable after AddBlockData() returns
-INV-6:  nChannelHeight is NEVER written to block.nHeight
-INV-7:  nChannelHeight is NEVER read from block.nHeight
-INV-8:  Merkle root for channel 0 is built AFTER nReward is final
-INV-9:  Merkle root for channels 1,2,3 is built BEFORE template is sent to miner
-INV-10: stateLast.nHeight is loaded via ReadBlock(hashLast) — by block hash, not GetLastState()
-INV-11: hashLastBlock is snapshotted at loop iteration start (Guard 1 anchor)
-INV-12: hashPrevBlock is compared to hashBestChain immediately before Process() (Guard 2)
+  TEMPLATE CREATED AT TIME T₀
+  ┌────────────────────────────────────────────────────────────────┐
+  │  block.hashPrevBlock = hashBestChain(T₀)                       │
+  │  block.nHeight       = tStateBest.nHeight(T₀) + 1             │
+  └────────────────────────────────────────────────────────────────┘
+                                │
+              ┌─────────────────┼──────────────────┐
+              │                 │                  │
+   ┌──────────▼──────────┐    ┌─▼────────────────┐ │
+   │  GUARD 1            │    │  GUARD 1 (Mining) │ │
+   │  (Stake Minter)     │    │  hashLastBlock    │ │
+   │                     │    │  snapshot in      │ │
+   │  HashBlock() loop:  │    │  outer loop       │ │
+   │  while(             │    │  compared at      │ │
+   │    hashLastBlock ==  │    │  template request │ │
+   │    hashBestChain)   │    │  time             │ │
+   │    { mine... }      │    └───────────────────┘ │
+   │                     │                          │
+   │  If new block        │                          │
+   │  arrives →          │                          │
+   │  hashBestChain ≠    │                          │
+   │  hashLastBlock →    │                          │
+   │  loop exits,        │                          │
+   │  rebuild block      │                          │
+   └─────────────────────┘                          │
+                                                    │
+   ┌──────────────────────────────────────���─────────▼──────────┐
+   │  GUARD 2 — Pre-Submit Check (ALL channels)                │
+   │                                                           │
+   │  if(block.hashPrevBlock != hashBestChain.load())          │
+   │      return false;  // STALE — new block arrived between  │
+   │                     // Guard 1 exit and submission        │
+   │                                                           │
+   │  This catches the race condition:                         │
+   │    T₁: hash found / threshold exceeded                    │
+   │    T₂: new network block arrives                          │
+   │    T₃: submit attempted → BLOCKED by Guard 2             │
+   └───────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 11. Change History
+## 12. Byte Layout of the 216-byte Block Template
 
-| PR | Change | Invariants Affected |
-|---|---|---|
-| **PR #274** | Removed Physical Falcon signature from node | Signature flow only |
-| **PR #278** | `block.nHeight = tStateBest.nHeight + 1` (unified) in `AddBlockData()` and `stateless_block_utility.cpp` | INV-1, INV-3, INV-6 |
-| **PR #278** | `nChannelHeight=0`, `nUnifiedHeight=block.nHeight` in result structs | INV-7 |
-| **PR #278** | Added `MiningContext::hashLastBlock` field for stateless Guard 1 | INV-11 (partial) |
-| **FOLLOW-UP** | Wire `hashLastBlock` Guard 1 loop in stateless miner connection | INV-11 (complete) |
+The block template serialized between node and miner is exactly 216 bytes (for Tritium-era blocks, nVersion ≥ 7). The fields in wire order:
+
+```
+Offset  Size  Field             Type       Notes
+──────  ────  ────────────────  ─────────  ────────────────────────────────────────
+  0       4   nVersion          uint32_t   Block version (LE)
+  4     128   hashPrevBlock     uint1024_t 1024-bit previous block hash (LE)
+132       4   nChannel          uint32_t   0=Stake,1=Prime,2=Hash,3=Private (LE)
+136       4   nHeight           uint32_t   UNIFIED blockchain height (LE) ← KEY FIELD
+140       4   nBits             uint32_t   Packed difficulty target (LE)
+144       8   nNonce            uint64_t   Miner sets this during solving (LE)
+152      64   hashMerkleRoot    uint512_t  Merkle root of all transactions (LE)
+
+Total: 216 bytes
+```
+
+**Critical invariants for `nHeight` (bytes 136–139, Little-Endian uint32_t):**
+
+- Set ONLY by `AddBlockData()` as `tStateBest.nHeight + 1`
+- Never overwritten after serialization
+- Read by miner in `ValidateTemplate()` as `nHeight == nNodeUnified + 1`
+- Checked by `TritiumBlock::Accept()` as `statePrev.nHeight + 1 == nHeight`
+- `nChannelHeight` is NOT in this layout — it is DB metadata only
 
 ---
 
-*Document generated from source audit of `NamecoinGithub/LLL-TAO` branch `STATELESS-NODE`.*  
-*All line references verified against commit `791871609e3509fd22dd418ca273ab6dd9ac686f`.
+## 13. Invariants and Verification Checklist
+
+Use this checklist when reviewing any new block production code:
+
+### Genesis / Boot Invariants
+
+- [ ] `CreateGenesis()` sets `ChainState::tStateBest = tStateGenesis` ✅
+- [ ] `ChainState::hashBestChain` is set to genesis hash ✅
+- [ ] `tStateGenesis.nHeight` correctly reflects the anchor height for the chain type ✅
+- [ ] After full sync, `tStateBest.nHeight` equals the actual current chain height ✅
+
+### Template Creation Invariants
+
+- [ ] `block.nHeight` is set via `AddBlockData()` as `tStateBest.nHeight + 1` ✅
+- [ ] `block.hashPrevBlock` is set via `AddBlockData()` as `tStateBest.GetHash()` ✅
+- [ ] `tStateBest` is taken as a single atomic snapshot before any block fields are set ✅
+- [ ] `nChannelHeight` is NOT written to `block.nHeight` ❌ (would be a bug)
+- [ ] `block.nChannel` is set to the correct channel ID ✅
+- [ ] For stake (channel 0): Merkle root is intentionally deferred ✅
+- [ ] For channels 1–3: Merkle root is built in `AddBlockData()` ✅
+
+### Staleness Guard Invariants
+
+- [ ] Guard 1: `hashLastBlock` snapshot is taken at the START of each outer loop iteration ✅
+- [ ] Guard 1: The hash loop condition compares `hashLastBlock == hashBestChain.load()` ✅
+- [ ] Guard 2: `block.hashPrevBlock != hashBestChain.load()` check immediately before `Process()` ✅
+- [ ] Guard 2 result: return `false` (stale), not `error()` (not a bug, just network race) ✅
+
+### Consensus Invariants
+
+- [ ] `TritiumBlock::Accept()` will find `statePrev` via `hashPrevBlock` ✅
+- [ ] `statePrev.nHeight + 1 == block.nHeight` (unified heights agree) ✅
+- [ ] `statePrev` IS the same block as `tStateBest` at template creation time ✅
+
+### Stake-Specific Invariants
+
+- [ ] `stateLast` is loaded via `LLD::Ledger->ReadBlock(hashLast, stateLast)` (by block hash, not `GetLastState()`) ✅
+- [ ] `CheckInterval()` computes `block.nHeight - stateLast.nHeight` where both are unified ✅
+- [ ] `fGenesis` (trust account flag) is orthogonal to blockchain genesis ✅
+- [ ] `block.producer[0] << nReward` is added in `ProcessBlock()`, not before ✅
+
+---
+
+## 14. Field Reference Table
+
+| Symbol | Type | Where Set | Meaning |
+|---|---|---|---|
+| `tStateBest` | `BlockState` | `ChainState::tStateBest.load()` | Atomic snapshot of current best chain state |
+| `hashBestChain` | `uint1024_t` | `ChainState::hashBestChain.load()` | Hash of current chain tip |
+| `block.nHeight` | `uint32_t` | `AddBlockData()` only | **Unified** block height = `tStateBest.nHeight + 1` |
+| `block.hashPrevBlock` | `uint1024_t` | `AddBlockData()` only | Hash of chain tip at template creation |
+| `block.nChannel` | `uint32_t` | `AddBlockData()` only | 0=Stake, 1=Prime, 2=Hash, 3=Private |
+| `block.nBits` | `uint32_t` | `AddBlockData()` only | Packed difficulty for this channel |
+| `block.nNonce` | `uint64_t` | Init=1 in `AddBlockData()`, miner increments | Proof-of-work/stake nonce |
+| `block.hashMerkleRoot` | `uint512_t` | Channels 1–3: `AddBlockData()`; Channel 0: `ProcessBlock()` | Merkle root of all tx including producer |
+| `stateLast` | `BlockState` | `LLD::Ledger->ReadBlock(hashLast, stateLast)` | Block containing user's last stake tx |
+| `stateLast.nHeight` | `uint32_t` | On-disk unified height | Used in `CheckInterval()` — always unified |
+| `nChannelHeight` | `uint32_t` | `BlockState::SetBest()` post-acceptance | Per-channel counter — NEVER in block.nHeight |
+| `hashLastBlock` | `uint1024_t` | Snapshot at loop start (`hashBestChain.load()`) | Guard 1 sentinel for stale detection |
+| `fGenesis` | `bool` | `StakeMinter::FindTrustAccount()` | True if user has never staked (first stake tx) |
+| `fGenesis` (chain) | n/a | Compile-time genesis block functions | Blockchain genesis — orthogonal to stake fGenesis |
+
+---
+
+*Document generated from codebase audit of `NamecoinGithub/LLL-TAO` branch `STATELESS-NODE` commit `791871609e3509fd22dd418ca273ab6dd9ac686f` and `NamecoinGithub/NexusMiner` PR #167.*
