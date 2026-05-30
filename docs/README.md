@@ -31,7 +31,7 @@ This directory contains the active Nexus node documentation. Historical notes an
 
 ## Architecture and design
 
-- [Blockchain flow alignment](architecture/BLOCKCHAIN_FLOW_ALIGNMENT.md)
+- [Blockchain flow alignment](BLOCKCHAIN_FLOW_ALIGNMENT.md)
 - [Block production flow](architecture/BLOCK_PRODUCTION_FLOW.md)
 - [Mempool-only predecessor filter](architecture/MEMPOOL_ONLY_PREDECESSOR_FILTER.md)
 - [Session architecture](architecture/SESSION_ARCHITECTURE.md)
