@@ -60,27 +60,28 @@ Nexus LLL-TAO targets **RV64GC** (64-bit, IMAFD base + Compressed).  Optional ve
 ## Build Quick-Start (RISC-V cross-compile on x86 host)
 
 ```bash
-# Install cross-toolchain on Ubuntu 22.04 host
-sudo apt-get install -y gcc-riscv64-linux-gnu g++-riscv64-linux-gnu \
-    libboost-all-dev:riscv64 libssl-dev:riscv64 libdb5.3++-dev:riscv64
+# Install cross-toolchain on Ubuntu host
+sudo dpkg --add-architecture riscv64
+sudo apt-get update
+sudo apt-get install -y gcc-riscv64-linux-gnu g++-riscv64-linux-gnu crossbuild-essential-riscv64 \
+    libssl-dev:riscv64 libdb5.3-dev:riscv64 libdb5.3++-dev:riscv64
 
 # Cross-compile the node
 export CC=riscv64-linux-gnu-gcc
 export CXX=riscv64-linux-gnu-g++
-export CROSS_COMPILE=riscv64-linux-gnu-
-make -j$(nproc)
+make -f makefile.cli RISCV64=1 -j$(nproc)
 ```
 
 For native builds on a RISC-V board (e.g. StarFive VisionFive 2, SiFive HiFive Unmatched):
 
 ```bash
-# Same as x86 — no source changes needed
-sudo apt-get install -y build-essential libboost-all-dev libssl-dev libdb5.3++-dev
-make -j$(nproc)
+# Same source code, with the RISC-V build flag
+sudo apt-get install -y build-essential libssl-dev libdb5.3-dev libdb5.3++-dev
+make -f makefile.cli RISCV64=1 -j$(nproc)
 ```
 
 See [docs/build/build-linux.md](../../../build/build-linux.md) for full dependency list.  
-See [docs/build/riscv-build-guide.md](../../../build/riscv-build-guide.md) for RISC-V-specific compiler flag guidance.
+See [docs/build/riscv-build-guide.md](../../../build/riscv-build-guide.md) for the canonical RISC-V build steps and compiler flag guidance.
 
 ---
 
