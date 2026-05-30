@@ -72,6 +72,8 @@ export CXX=riscv64-linux-gnu-g++
 make -f makefile.cli RISCV64=1 -j$(nproc)
 ```
 
+`libdb5.3-dev` is the Berkeley DB base package; `libdb5.3++-dev` is the C++ wrapper package used by wallet-enabled builds.
+
 For native builds on a RISC-V board (e.g. StarFive VisionFive 2, SiFive HiFive Unmatched):
 
 ```bash

@@ -56,6 +56,8 @@ sudo apt-get install -y git make build-essential gcc-riscv64-linux-gnu g++-riscv
 sudo apt-get install -y libssl-dev:riscv64 libdb5.3-dev:riscv64 libdb5.3++-dev:riscv64 libminiupnpc-dev:riscv64 libevent-dev:riscv64
 ```
 
+`libdb5.3-dev` provides the Berkeley DB base headers and libraries; `libdb5.3++-dev` provides the C++ wrapper headers used by wallet-enabled builds.
+
 If your distribution does not provide all `:riscv64` development packages, use a RISC-V sysroot and pass explicit include/library paths as shown below.
 
 ## Native build on RISC-V hardware
