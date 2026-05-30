@@ -19,7 +19,7 @@ The block passes **every other validation check** (PoW, hashPrevBlock, height, d
 
 ### Where the Error Fires
 
-The error fires from [`src/TAO/Register/verify.cpp` lines 799–800](../src/TAO/Register/verify.cpp#L799):
+The error fires from [`src/TAO/Register/verify.cpp` lines 799–800](../../src/TAO/Register/verify.cpp#L799):
 
 ```cpp
 /* Check for end of stream. */
@@ -192,4 +192,4 @@ The **underlying race** (Path A reading the producer while Path B writes it) is 
 | `src/LLP/miner.cpp` | Added coinbase stream size guard before `ValidateMinedBlock`; added `#include <TAO/Operation/include/enum.h>` |
 | `src/TAO/Ledger/create.cpp` | Added `debug::log(2, ...)` after each `nExtraNonce` write in `CreateProducer` |
 | `tests/unit/LLP/coinbase_contract_size_tests.cpp` | New unit tests for coinbase contract stream size invariant |
-| `docs/BURST_BLOCK_COINBASE_PRIMITIVE_OVERFLOW.md` | This document |
+| `docs/archive/BURST_BLOCK_COINBASE_PRIMITIVE_OVERFLOW.md` | This document |

@@ -1,3 +1,5 @@
+> **Historical note — superseded by PR #612:** This write-up describes a mempool-first `ReadLast` approach that was later reverted. Current submit-time validation must use the Connect-aligned oracle: in-block `mapLast` first, then disk `ReadLast(FLAGS::BLOCK)`, with no mempool peek. See [Sigchain Last Resolution](../reference/sigchain-last-resolution.md), [Hard-Won Invariants](../reference/invariants.md), and [PR #612](https://github.com/NamecoinGithub/LLL-TAO/pull/612).
+
 # NSEQ Diagnostic: ValidateVtxSigchainConsistency — Mempool-Aware ReadLast Fix
 
 ## Summary

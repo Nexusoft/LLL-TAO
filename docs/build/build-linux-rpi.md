@@ -98,7 +98,7 @@ git checkout merging
 
 Fourth, If you have done to checkout the branch, Let's compile the code.
 
-You can add the parameters for building. See and check [Build Params Reference](https://github.com/Nexusoft/LLL-TAO/blob/merging/docs/build-params-reference.md).
+You can add the parameters for building. See and check [Build Params Reference](build-params-reference.md).
 ```
 # -j params means the 'Cores' for using the compile. Maximum is '4' on RPi2 Rev 1.2 and above
 # You must input the 'ARM64=1' for recognizing the architecture.

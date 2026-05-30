@@ -799,8 +799,8 @@ GetNotificationOpcode(nChannel, lane):
 
 ### Documentation
 
-- `docs/riscv-design.md` — RISC-V architecture overview
-- `docs/riscv-build-guide.md` — Build instructions for RISC-V
+- `docs/architecture/riscv-design.md` — RISC-V architecture overview
+- `docs/build/riscv-build-guide.md` — Build instructions for RISC-V
 - `docs/diagrams/push-notification-flow.md` — Push notification diagrams
 
 ---

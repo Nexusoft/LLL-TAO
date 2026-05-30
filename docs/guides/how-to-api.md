@@ -66,7 +66,7 @@ The Users API is responsible for maintaining user account level functions. DO NO
 
 The Users API can be found in the following repo path:
 
-[LLL-TAO/docs/API/USERS.MD](API/USERS.MD)
+`LLL-TAO/docs/API/USERS.MD`
 
 **NOTE** : Login sessions do not persist if you restart your node. They are stored in secure allocator in memory only, do not cache them on disk otherwise you could open potential security issues.
 
@@ -77,7 +77,7 @@ The Finance API provides methods for sending and receiving NXS coins or other to
 
 The Finance API can be found in the following repo path:
 
-[LLL-TAO/docs/API/FINANCE.MD](API/FINANCE.MD)
+`LLL-TAO/docs/API/FINANCE.MD`
 
 NOTE: some of the commands in this API require LOGIN. Make sure to use the users API to login before using LOGIN required commands.
 
@@ -89,7 +89,7 @@ The assets API is designed for managing of digital assets, by recording meta-dat
 
 The Assets API can be found in the following repo path:
 
-[LLL-TAO/docs/API/ASSETS.MD](API/ASSETS.MD)
+`LLL-TAO/docs/API/ASSETS.MD`
 
 NOTE: some of the commands in this API require LOGIN. Make sure to use the users API to login before using LOGIN required commands.
 
@@ -100,7 +100,7 @@ The tokens API allows you to create tokens and accounts, in order to send and re
 
 The Tokens API can be found in the following repo path:
 
-[LLL-TAO/docs/API/TOKENS.MD](API/TOKENS.MD)
+`LLL-TAO/docs/API/TOKENS.MD`
 
 NOTE: some of the commands in this API require LOGIN. Make sure to use the users API to login before using LOGIN required commands.
 
@@ -111,7 +111,7 @@ The ledger API provides access to the ledger, primarily to create and retrieve b
 
 The Ledger API can be found in the following repo path:
 
-[LLL-TAO/docs/API/LEDGER.MD](API/LEDGER.MD)
+`LLL-TAO/docs/API/LEDGER.MD`
 
 
 ## Supply API
@@ -120,7 +120,7 @@ The supply API is responsible for handling supply chain logistics. It's main aim
 
 The Supply API can be found in the following repo path:
 
-[LLL-TAO/docs/API/SUPPLY.MD](API/SUPPLY.MD)
+`LLL-TAO/docs/API/SUPPLY.MD`
 
 NOTE: some of the commands in this API require LOGIN. Make sure to use the users API to login before using LOGIN required commands.
 
@@ -131,7 +131,7 @@ The System API provides public access to information about this node.  This incl
 
 The System API can be found in the following repo path:
 
-[LLL-TAO/docs/API/SYSTEM.MD](API/SYSTEM.MD)
+`LLL-TAO/docs/API/SYSTEM.MD`
 
 
 ## Invoices API
@@ -140,4 +140,4 @@ The Invoices API provides users and application developers the ability to issue 
 
 The Invoices API can be found in the following repo path:
 
-[LLL-TAO/docs/API/INVOICES.MD](API/INVOICES.MD)
+`LLL-TAO/docs/API/INVOICES.MD`

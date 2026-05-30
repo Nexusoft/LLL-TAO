@@ -64,7 +64,7 @@ On RISC-V, verify that `old_session_id` and `new_session_id` are decoded with co
 ### Step 1 — Compile and Check for Warnings
 
 ```bash
-make -j$(nproc) 2>&1 | grep -E 'warning:|error:'
+make -f makefile.cli RISCV64=1 -j$(nproc) 2>&1 | grep -E 'warning:|error:'
 ```
 
 Any `-Wstrict-aliasing` or `-Wuninitialized` warning on RISC-V but not on x86 indicates potentially undefined behaviour that may cause different results across architectures.
@@ -120,13 +120,14 @@ jobs:
               qemu-user-static
       - name: Cross-compile
         run: |
-          CC=riscv64-linux-gnu-gcc CXX=riscv64-linux-gnu-g++ make -j$(nproc)
+          CC=riscv64-linux-gnu-gcc CXX=riscv64-linux-gnu-g++ make -f makefile.cli RISCV64=1 -j$(nproc)
       - name: Run self-tests under QEMU
         run: |
-          qemu-riscv64-static ./nexus -testnet -selftest=session_serialisation
-          qemu-riscv64-static ./nexus -testnet -selftest=chacha20_kat
-          qemu-riscv64-static ./nexus -testnet -selftest=falcon_roundtrip
-          qemu-riscv64-static ./nexus -testnet -selftest=template_offsets
+          # -L points QEMU at the RISC-V sysroot for architecture-specific shared libraries.
+          qemu-riscv64-static -L /usr/riscv64-linux-gnu ./nexus -testnet -selftest=session_serialisation
+          qemu-riscv64-static -L /usr/riscv64-linux-gnu ./nexus -testnet -selftest=chacha20_kat
+          qemu-riscv64-static -L /usr/riscv64-linux-gnu ./nexus -testnet -selftest=falcon_roundtrip
+          qemu-riscv64-static -L /usr/riscv64-linux-gnu ./nexus -testnet -selftest=template_offsets
 ```
 
 ---

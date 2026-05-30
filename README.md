@@ -8,25 +8,21 @@ We use a very strict branching logic for our development. The branch 'merging' i
 
 ## Building
 
-We use Make to build our project to multiple platforms. Please read out build documentation for instructions and options.
+Use the build guides under [`docs/build/`](docs/build/):
+
+- [Linux](docs/build/build-linux.md)
+- [Raspberry Pi](docs/build/build-linux-rpi.md)
+- [Windows](docs/build/build-win.md)
+- [OSX](docs/build/build-osx.md)
+- [iPhone OS / Android OS](docs/build/build-mobile.md)
+- [RISC-V](docs/build/riscv-build-guide.md)
+- [Build Options](docs/build/build-params-reference.md)
 
 For deterministic local/Codespaces/Copilot dependency bootstrap on Ubuntu, run:
 
 ```sh
 sudo bash contrib/devtools/install-build-deps.sh
 ```
-
-[Build Options](docs/build-params-reference.md)
-
-[Linux](docs/build-linux.md)
-
-[Windows](docs/build-win.md)
-
-[OSX](docs/build-osx.md)
-
-[iPhone OS / Android OS](docs/build-mobile.md)
-
-[RISC-V](docs/riscv-build-guide.md) - Native and cross-compilation for RV64GC/RV64GCV platforms
 
 ## Mining
 

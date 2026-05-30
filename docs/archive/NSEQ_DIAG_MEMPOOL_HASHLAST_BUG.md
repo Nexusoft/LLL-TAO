@@ -204,7 +204,7 @@ TritiumMinter::StakeMinterThread()  →  CreateCandidateBlock()
 
 Because all block production paths converge on a single `CreateTransaction()`,
 the fix automatically applies to staking.  See
-`docs/SIGCHAIN_SEQUENCE_FIX_VERIFICATION.md` for the full cross-path verification
+`docs/archive/SIGCHAIN_SEQUENCE_FIX_VERIFICATION.md` for the full cross-path verification
 and `docs/diagrams/mining/sigchain-sequence-resolution.md` for flow diagrams.
 
 ---
@@ -288,6 +288,6 @@ make -f makefile.cli test
 
 | Document | Description |
 |----------|-------------|
-| `docs/SIGCHAIN_SEQUENCE_FIX_VERIFICATION.md` | Full cross-path verification (PoW + PoS) |
+| `docs/archive/SIGCHAIN_SEQUENCE_FIX_VERIFICATION.md` | Full cross-path verification (PoW + PoS) |
 | `docs/diagrams/mining/sigchain-sequence-resolution.md` | Flow diagrams for all scenarios |
-| `docs/NSEQ_DIAG_MEMPOOL_READLAST_FIX.md` | ValidateVtxSigchainConsistency fix |
+| `docs/archive/NSEQ_DIAG_MEMPOOL_READLAST_FIX.md` | ValidateVtxSigchainConsistency fix |
