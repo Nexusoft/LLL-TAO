@@ -63,7 +63,7 @@ The protocol state machine in `src/LLP/stateless_miner.cpp`, the AEAD session li
 ### How It Is Built
 
 - **Language:** C++17 with deterministic memory management, explicit threading via ASIO
-- **Compilation targets:** x86-64, ARM64, RISC-V (see [riscv-build-guide.md](../riscv-build-guide.md) and [riscv-design.md](../riscv-design.md))
+- **Compilation targets:** x86-64, ARM64, RISC-V (see [riscv-build-guide.md](../build/riscv-build-guide.md) and [architecture/riscv-design.md](../architecture/riscv-design.md))
 - **Build system:** GNU Make via `makefile.cli`; modular object compilation for fast incremental builds
 - **Crypto:** ChaCha20-Poly1305 AEAD with explicit nonce monotonicity, Falcon-512 post-quantum signatures — coded, not learned
 
@@ -178,7 +178,7 @@ Shor's algorithm, running on a sufficiently powerful fault-tolerant quantum comp
 
 **LLL-TAO's response to this threat is already deployed:** Falcon-512 post-quantum digital signatures. Falcon is a NIST Post-Quantum Cryptography finalist (CRYSTALS-Dilithium and FALCON were standardized in 2024). It is based on lattice problems (specifically NTRU lattices) that have no known efficient quantum algorithm. Shor's algorithm does not apply.
 
-The session transport uses ChaCha20-Poly1305 AEAD — a symmetric cipher. Grover's algorithm provides a quadratic speedup on symmetric key search, effectively halving security. ChaCha20 with a 256-bit key is therefore equivalent to ~128-bit post-quantum security — still secure for the foreseeable future. See [SESSION_FRESHNESS_HARDENING.md](../SESSION_FRESHNESS_HARDENING.md) for the session lifecycle design that relies on this transport.
+The session transport uses ChaCha20-Poly1305 AEAD — a symmetric cipher. Grover's algorithm provides a quadratic speedup on symmetric key search, effectively halving security. ChaCha20 with a 256-bit key is therefore equivalent to ~128-bit post-quantum security — still secure for the foreseeable future. See [SESSION_FRESHNESS_HARDENING.md](../architecture/SESSION_FRESHNESS_HARDENING.md) for the session lifecycle design that relies on this transport.
 
 ### Strengths
 
@@ -270,7 +270,7 @@ bool fValid = TAO::Ledger::BlockState::Check(block)
 
 Open-source blockchain security depends on the ability of independent researchers to read the source code, identify vulnerabilities, and propose fixes. A neural network "validates" blocks → you cannot audit it. A quantum circuit "validates" blocks → you cannot reproduce its results deterministically. Classical C++ → every decision has a line number, a commit hash, and a human who wrote it.
 
-The GET_BLOCK policy enforcement, the rate limiter, the session expiry logic — all of these are in readable, auditable C++ with documented reasons for every design decision. See [SESSION_FRESHNESS_HARDENING.md](../SESSION_FRESHNESS_HARDENING.md) for an example of this explicit documentation culture.
+The GET_BLOCK policy enforcement, the rate limiter, the session expiry logic — all of these are in readable, auditable C++ with documented reasons for every design decision. See [SESSION_FRESHNESS_HARDENING.md](../architecture/SESSION_FRESHNESS_HARDENING.md) for an example of this explicit documentation culture.
 
 ### Debuggability Is Operationally Critical
 
@@ -278,7 +278,7 @@ When a node behaves unexpectedly in production, you need to know why. Classical 
 
 ### The RISC-V Dimension
 
-LLL-TAO explicitly targets RISC-V as a compilation target (see [riscv-build-guide.md](../riscv-build-guide.md) and [riscv-design.md](../riscv-design.md)). RISC-V is an open instruction set architecture — auditable from the ISA spec down to the gate level on open-source implementations like VexRiscv. Running a blockchain node on RISC-V hardware means the entire stack, from silicon to consensus logic, can in principle be audited and verified. This is the classical paradigm's deepest strength: verifiable trust through transparency at every layer.
+LLL-TAO explicitly targets RISC-V as a compilation target (see [riscv-build-guide.md](../build/riscv-build-guide.md) and [architecture/riscv-design.md](../architecture/riscv-design.md)). RISC-V is an open instruction set architecture — auditable from the ISA spec down to the gate level on open-source implementations like VexRiscv. Running a blockchain node on RISC-V hardware means the entire stack, from silicon to consensus logic, can in principle be audited and verified. This is the classical paradigm's deepest strength: verifiable trust through transparency at every layer.
 
 ---
 
@@ -337,6 +337,6 @@ flowchart TB
 ## Cross-References
 
 - [AI-Human Advancement Thesis](./ai-human-advancement.md) — the collaboration model that governs how this document was produced
-- [SESSION_FRESHNESS_HARDENING.md](../SESSION_FRESHNESS_HARDENING.md) — ChaCha20 session design, nonce monotonicity, AEAD lifecycle
-- [riscv-build-guide.md](../riscv-build-guide.md) — RISC-V compilation and deployment guide
-- [riscv-design.md](../riscv-design.md) — RISC-V architecture design decisions for LLL-TAO
+- [SESSION_FRESHNESS_HARDENING.md](../architecture/SESSION_FRESHNESS_HARDENING.md) — ChaCha20 session design, nonce monotonicity, AEAD lifecycle
+- [riscv-build-guide.md](../build/riscv-build-guide.md) — RISC-V compilation and deployment guide
+- [architecture/riscv-design.md](../architecture/riscv-design.md) — RISC-V architecture design decisions for LLL-TAO

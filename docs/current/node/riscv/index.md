@@ -79,8 +79,8 @@ sudo apt-get install -y build-essential libboost-all-dev libssl-dev libdb5.3++-d
 make -j$(nproc)
 ```
 
-See [docs/build-linux.md](../../../build-linux.md) for full dependency list.  
-See [docs/riscv-build-guide.md](../../../riscv-build-guide.md) for RISC-V-specific compiler flag guidance.
+See [docs/build/build-linux.md](../../../build/build-linux.md) for full dependency list.  
+See [docs/build/riscv-build-guide.md](../../../build/riscv-build-guide.md) for RISC-V-specific compiler flag guidance.
 
 ---
 
@@ -112,6 +112,6 @@ See [docs/riscv-build-guide.md](../../../riscv-build-guide.md) for RISC-V-specif
 - [Atomic Operations & Locking](atomic-locking.md)
 - [Diagnostics & Testing Notes](diagnostics.md)
 - [🟣 Julia Programming Language](JuliaProgrammingLanguage/README.md)
-- [RISC-V Design (top-level)](../../../riscv-design.md)
-- [RISC-V Build Guide](../../../riscv-build-guide.md)
+- [RISC-V Design (top-level)](../../../architecture/riscv-design.md)
+- [RISC-V Build Guide](../../../build/riscv-build-guide.md)
 - [Node Architecture Index](../index.md)

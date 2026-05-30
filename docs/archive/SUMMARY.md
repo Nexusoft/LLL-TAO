@@ -39,7 +39,7 @@ This implementation delivers a production-ready dual-mode Tritium block utility 
 - Security and performance analysis
 
 **2. Investigation Findings**
-- `docs/INVESTIGATION_FINDINGS.md` (21KB)
+- `docs/archive/GENESIS_HASH_ENDIANNESS_INVESTIGATION.md` (21KB)
 - Producer transaction deep dive
 - Protocol design analysis
 - Design decision rationale
@@ -446,7 +446,7 @@ makefile.cli                                         modified
 ### Documentation (40+ pages)
 ```
 docs/DUAL_MODE_ARCHITECTURE.md                      15 KB
-docs/INVESTIGATION_FINDINGS.md                      21 KB
+docs/archive/GENESIS_HASH_ENDIANNESS_INVESTIGATION.md                      21 KB
 docs/INTEGRATION_EXAMPLE.md                          8 KB
 docs/COMPARISON_TO_PR84.md                          11 KB
 docs/SUMMARY.md                                      (this file)

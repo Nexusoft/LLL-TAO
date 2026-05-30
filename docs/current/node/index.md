@@ -74,4 +74,4 @@ This section documents the stateless mining node's internal architecture, sessio
 - [Diagrams — Upgrade-Path Series](../../diagrams/upgrade-path/README.md)
 - [Mining Server Architecture](../mining/mining-server.md)
 - [Falcon Verification](../authentication/falcon-verification.md)
-- [RISC-V Design](../../riscv-design.md)
+- [RISC-V Design](../../architecture/riscv-design.md)

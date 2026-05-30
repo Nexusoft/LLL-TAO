@@ -211,7 +211,7 @@ No further code changes are required. The comprehensive documentation and test c
 1. ✅ `tests/unit/LLC/test_genesis_endianness.cpp` - Test suite
 2. ✅ `docs/current/mining/genesis-endianness-fix.md` - Technical documentation
 3. ✅ `docs/current/mining/genesis-endianness-investigation-summary.md` - Summary
-4. ✅ `INVESTIGATION_FINDINGS.md` - This report
+4. ✅ `docs/archive/GENESIS_HASH_ENDIANNESS_INVESTIGATION.md` - This report
 
 ## Related Issues Resolved
 
