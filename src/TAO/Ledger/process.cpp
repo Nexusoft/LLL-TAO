@@ -102,13 +102,7 @@ namespace TAO
                         if(config::GetBoolArg("-syncorphans", false))
                         {
                             /* Ask for list of blocks. */
-                            pnode->PushMessage(LLP::TritiumNode::ACTION::LIST,
-                                uint8_t(LLP::TritiumNode::SPECIFIER::SYNC),
-                                uint8_t(LLP::TritiumNode::TYPES::BLOCK),
-                                uint8_t(LLP::TritiumNode::TYPES::UINT1024_T),
-                                block.hashPrevBlock,
-                                uint1024_t(0)
-                            );
+                            pnode->Sync();
                         }
                         else
                         {
