@@ -74,6 +74,10 @@ namespace TAO
             std::map<uint512_t, TAO::Ledger::Transaction> mapOrphans;
 
 
+            /** Track how many times we ask for an ORPHAN to limit retries. **/
+            std::map<uint512_t, uint64_t> mapRequestCount;
+
+
             /** Record of conflicted transactions in mempool. **/
             std::map<uint512_t, uint512_t> mapClaimed;
 

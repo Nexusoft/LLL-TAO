@@ -49,6 +49,7 @@ namespace TAO
         , mapLedger          ( )
         , mapConflicts       ( )
         , mapOrphans         ( )
+        , mapRequestCount    ( )
         , mapClaimed         ( )
         , mapRejected        ( )
         , mapInputs          ( )
@@ -92,6 +93,10 @@ namespace TAO
 
             try
             {
+                /* Reset our request count if we received it. */
+                if(mapRequestCount.count(hashTx))
+                    mapRequestCount[hashTx] = 0;
+
                 /* Check for transaction on disk. */
                 if(mapLedger.count(hashTx))
                     return false; //NOTE: this was true, but changed to false to prevent relay loops in tritium LLP
@@ -110,6 +115,14 @@ namespace TAO
                     /* Track our starting orphan. */
                     uint512_t hashMissing = hashTx;
 
+                    /* Increment our request count. */
+                    if(!mapRequestCount.count(hashMissing))
+                        mapRequestCount[hashMissing] = 0;
+
+                    /* Check our request count. */
+                    if(mapRequestCount[hashMissing] > LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES)
+                        return true; //so that we don't throw off failure loops
+
                     /* Go back to our last ORPHAN on record. */
                     //while(mapOrphans.count(hashMissing))
                     hashMissing = mapOrphans[hashTx].hashPrevTx;
@@ -126,6 +139,9 @@ namespace TAO
 
                         /* Ask the random node for our orphan data. */
                         pCheck->PushMessage(LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::TRANSACTION), hashMissing);
+
+                        /* Increment our map request count. */
+                        mapRequestCount[hashMissing]++;
                     }
                 }
 
