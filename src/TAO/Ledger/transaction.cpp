@@ -988,7 +988,7 @@ namespace TAO
             for(const auto& contract : vContracts)
             {
                 /* Check for dependants. */
-                if(contract.Dependant(hashPrev, nContract) && nFlags != FLAGS::LOOKUP)
+                if(contract.Dependant(hashPrev, nContract) && nFlags == FLAGS::BLOCK)
                 {
                     /* Read previous transaction from disk. */
                     const TAO::Operation::Contract dependant = LLD::Ledger->ReadContract(hashPrev, nContract, nFlags);
@@ -1011,7 +1011,7 @@ namespace TAO
                     }
 
                     /* Check that the previous transaction is indexed. */
-                    if(nFlags == FLAGS::BLOCK && !LLD::Ledger->HasIndex(hashPrev))
+                    if(!LLD::Ledger->HasIndex(hashPrev))
                         return debug::error(FUNCTION, hashPrev.SubString(), " not indexed");
                 }
 
