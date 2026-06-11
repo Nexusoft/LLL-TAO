@@ -1919,11 +1919,17 @@ namespace LLP
                                     /* Check if producer is being asked for, and send block instead. */
                                     if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid())
                                     {
-                                        /* We want to iterate our DDOS values here. */
-                                        if(DDOS && fDDOS.load())
-                                            DDOS->rSCORE += 100; //make a high penalty for doing this
+                                        /* Read the block from disk. */
+                                        TAO::Ledger::BlockState tBlockState;
+                                        if(!LLD::Ledger->ReadBlock(hashTx, tBlockState))
+                                        {
+                                            debug::notice(FUNCTION, "couldn't read block from producer ", hashTx.SubString());
+                                            break;
+                                        }
 
-                                        return debug::drop(NODE, "ACTION::GET: TRANSACTION: cannot request producer without block");
+                                        /* Push block as response. */
+                                        TAO::Ledger::TritiumBlock block(tBlockState);
+                                        PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::TRITIUM), block);
                                     }
                                     else
                                         PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
