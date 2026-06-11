@@ -96,6 +96,14 @@ namespace TAO
                 if(mapLedger.count(hashTx))
                     return false; //NOTE: this was true, but changed to false to prevent relay loops in tritium LLP
 
+                /* Check for rejected tx. */
+                if(mapRejected.count(tx.hashPrevTx))
+                {
+                    mapRejected.insert(hashTx);
+                    return false;
+                    //return debug::error(FUNCTION, "part of rejected transaction orphan chain");
+                }
+
                 /* If we are already an ORPHAN, keep iterating backwards. */
                 if(mapOrphans.count(hashTx))
                 {
@@ -119,13 +127,6 @@ namespace TAO
                         /* Ask the random node for our orphan data. */
                         pCheck->PushMessage(LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::TRANSACTION), hashMissing);
                     }
-                }
-
-                /* Check for rejected tx. */
-                if(mapRejected.count(tx.hashPrevTx))
-                {
-                    mapRejected.insert(hashTx);
-                    return debug::error(FUNCTION, "part of rejected transaction orphan chain");
                 }
 
                 /* Print the transaction here. */
