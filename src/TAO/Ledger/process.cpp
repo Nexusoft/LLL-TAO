@@ -98,14 +98,29 @@ namespace TAO
                     /* Check if we have an active node. */
                     if(pnode)
                     {
-                        /* Send a request to download the orphaned block. */
-                        pnode->PushMessage(LLP::TritiumNode::ACTION::GET,
+                        /* Special option to sync from ORPHAN blocks. */
+                        if(config::GetBoolArg("-syncorphans", false))
+                        {
+                            /* Ask for list of blocks. */
+                            pnode->PushMessage(LLP::TritiumNode::ACTION::LIST,
+                                uint8_t(LLP::TritiumNode::SPECIFIER::SYNC),
+                                uint8_t(LLP::TritiumNode::TYPES::BLOCK),
+                                uint8_t(LLP::TritiumNode::TYPES::UINT1024_T),
+                                block.hashPrevBlock,
+                                uint1024_t(0)
+                            );
+                        }
+                        else
+                        {
+                            /* Send a request to download the orphaned block. */
+                            pnode->PushMessage(LLP::TritiumNode::ACTION::GET,
 
-                            #ifndef DEBUG_MISSING
-                            uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS),
-                            #endif
+                                #ifndef DEBUG_MISSING
+                                uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS),
+                                #endif
 
-                            uint8_t(LLP::TritiumNode::TYPES::BLOCK), block.hashPrevBlock);
+                                uint8_t(LLP::TritiumNode::TYPES::BLOCK), block.hashPrevBlock);
+                        }
                     }
 
                     return;
