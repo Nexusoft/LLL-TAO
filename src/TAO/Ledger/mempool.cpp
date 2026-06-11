@@ -109,47 +109,9 @@ namespace TAO
                     //return debug::error(FUNCTION, "part of rejected transaction orphan chain");
                 }
 
-                /* If we are already an ORPHAN, keep iterating backwards. */
+                /* If we are already an ORPHAN, skip over. */
                 if(mapOrphans.count(hashTx))
-                {
-                    /* Track our starting orphan. */
-                    uint512_t hashMissing = hashTx;
-
-                    /* Go back to our last ORPHAN on record. */
-                    //while(mapOrphans.count(hashMissing))
-                    hashMissing = mapOrphans[hashTx].hashPrevTx;
-
-                    /* Increment our request count. */
-                    if(!mapRequestCount.count(hashMissing))
-                        mapRequestCount[hashMissing] = 0;
-
-                    /* Check our request count. */
-                    if(mapRequestCount[hashMissing] > 100)
-                        return false;
-
-                    /* Debug output. */
-                    debug::log(0, FUNCTION, "REQUESTING ORPHAN tx ", hashMissing.SubString());
-
-                    /* Ask for our previous transaction now. */
-                    if(LLP::TRITIUM_SERVER)
-                    {
-                        /* Start checking random nodes after 10 failed retries. */
-                        if(mapRequestCount[hashMissing] > 10 || !pnode)
-                        {
-                            /* Get a random node in case we have an unreliable node that gave us an ORPHAN */
-                            std::shared_ptr<LLP::TritiumNode> pCheck =
-                                LLP::TRITIUM_SERVER->RandomConnection();
-
-                            /* Request the random node now. */
-                            pCheck->PushMessage(LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::TRANSACTION), hashMissing);
-                        }
-                        else
-                            pnode->PushMessage(LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::TRANSACTION), hashMissing);
-
-                        /* Increment our map request count. */
-                        mapRequestCount[hashMissing]++;
-                    }
-                }
+                    return false;
 
                 /* Print the transaction here. */
                 if(config::nVerbose >= 3)
