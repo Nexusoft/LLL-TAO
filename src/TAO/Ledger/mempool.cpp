@@ -115,17 +115,17 @@ namespace TAO
                     /* Track our starting orphan. */
                     uint512_t hashMissing = hashTx;
 
+                    /* Go back to our last ORPHAN on record. */
+                    //while(mapOrphans.count(hashMissing))
+                    hashMissing = mapOrphans[hashTx].hashPrevTx;
+
                     /* Increment our request count. */
                     if(!mapRequestCount.count(hashMissing))
                         mapRequestCount[hashMissing] = 0;
 
                     /* Check our request count. */
-                    if(mapRequestCount[hashMissing] > LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES)
-                        return true; //so that we don't throw off failure loops
-
-                    /* Go back to our last ORPHAN on record. */
-                    //while(mapOrphans.count(hashMissing))
-                    hashMissing = mapOrphans[hashTx].hashPrevTx;
+                    if(mapRequestCount[hashMissing] > 100)
+                        return false;
 
                     /* Debug output. */
                     debug::log(0, FUNCTION, "REQUESTING ORPHAN tx ", hashMissing.SubString());
