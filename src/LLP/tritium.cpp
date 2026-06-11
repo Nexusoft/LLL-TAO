@@ -1930,6 +1930,10 @@ namespace LLP
                                         /* Push block as response. */
                                         TAO::Ledger::TritiumBlock block(tBlockState);
                                         PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::TRITIUM), block);
+
+                                        /* Add DDOS filtering here. */
+                                        if(DDOS)
+                                            DDOS->rSCORE += 50;
                                     }
                                     else
                                         PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
@@ -2666,8 +2670,8 @@ namespace LLP
                             return debug::drop(NODE, "TYPES::BLOCK::SYNC: disabled in -client mode");
 
                         /* Check if this is an unsolicited sync block. */
-                        if(nCurrentSession != TAO::Ledger::nSyncSession || fSynchronized.load())
-                            return debug::drop(FUNCTION, "unsolicted sync block");
+                        //if(nCurrentSession != TAO::Ledger::nSyncSession || fSynchronized.load())
+                        //    return debug::drop(FUNCTION, "unsolicted sync block");
 
                         /* Get the block from the stream. */
                         TAO::Ledger::SyncBlock block;

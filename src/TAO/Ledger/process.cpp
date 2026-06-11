@@ -101,11 +101,12 @@ namespace TAO
                         /* Special option to sync from ORPHAN blocks. */
                         if(config::GetBoolArg("-syncorphans", false))
                         {
-                            /* Ask for list of blocks. */
+                            /* Ask for list of blocks if this is current sync node. */
                             pnode->PushMessage(LLP::TritiumNode::ACTION::LIST,
+                                config::fClient.load() ? uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT) : uint8_t(LLP::TritiumNode::SPECIFIER::SYNC),
                                 uint8_t(LLP::TritiumNode::TYPES::BLOCK),
-                                uint8_t(LLP::TritiumNode::TYPES::UINT1024_T),
-                                block.hashPrevBlock,
+                                uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
+                                TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
                                 uint1024_t(0)
                             );
                         }
