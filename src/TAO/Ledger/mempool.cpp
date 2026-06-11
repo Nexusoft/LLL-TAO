@@ -133,12 +133,18 @@ namespace TAO
                     /* Ask for our previous transaction now. */
                     if(LLP::TRITIUM_SERVER)
                     {
-                        /* Get a random node in case we have an unreliable node that gave us an ORPHAN */
-                        std::shared_ptr<LLP::TritiumNode> pCheck =
-                            LLP::TRITIUM_SERVER->RandomConnection();
+                        /* Start checking random nodes after 10 failed retries. */
+                        if(mapRequestCount[hashMissing] > 10 || !pnode)
+                        {
+                            /* Get a random node in case we have an unreliable node that gave us an ORPHAN */
+                            std::shared_ptr<LLP::TritiumNode> pCheck =
+                                LLP::TRITIUM_SERVER->RandomConnection();
 
-                        /* Ask the random node for our orphan data. */
-                        pCheck->PushMessage(LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::TRANSACTION), hashMissing);
+                            /* Request the random node now. */
+                            pCheck->PushMessage(LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::TRANSACTION), hashMissing);
+                        }
+                        else
+                            pnode->PushMessage(LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::TRANSACTION), hashMissing);
 
                         /* Increment our map request count. */
                         mapRequestCount[hashMissing]++;
