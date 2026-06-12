@@ -99,7 +99,7 @@ namespace TAO
                     if(pnode)
                     {
                         /* Special option to sync from ORPHAN blocks. */
-                        if(config::GetBoolArg("-syncorphans", false))
+                        if(config::GetBoolArg("-syncorphans", true))
                         {
                             /* Ask for list of blocks if this is current sync node. */
                             pnode->PushMessage(LLP::TritiumNode::ACTION::LIST,

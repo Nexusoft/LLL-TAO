@@ -2634,10 +2634,10 @@ namespace LLP
                                             debug::log(0, FUNCTION, "broadcasting packet with ", nTotalItems, " items to ", pnode->GetAddress().ToStringIP());
 
                                             /* Write our packet with our total items. */
-                                            pnode->WritePacket(NewMessage(ACTION::GET, ssResponse));
+                                            //pnode->WritePacket(NewMessage(ACTION::GET, ssResponse));
 
                                             /* Expired our missing block last. */
-                                            pnode->PushMessage(ACTION::GET, uint8_t(TYPES::BLOCK), block.hashMissing);
+                                            pnode->PushMessage(ACTION::GET, uint8_t(SPECIFIER::TRANSACTIONS), uint8_t(TYPES::BLOCK),  block.hashMissing);
 
                                             /* Clear our response data. */
                                             ssResponse.clear();
