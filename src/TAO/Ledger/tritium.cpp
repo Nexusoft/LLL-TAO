@@ -699,8 +699,12 @@ namespace TAO
             }
 
             /* Add the producer transaction(s) */
-            if(!LLD::Ledger->WriteTx(producer.GetHash(), producer))
+            const uint512_t hashProducer = producer.GetHash();
+            if(!LLD::Ledger->WriteTx(hashProducer, producer))
                 return debug::error(FUNCTION, "failed to write producer to disk");
+
+            /* Make sure we don't have any orphans to process from the producer. */
+            mempool.ProcessOrphans(hashProducer);
 
             /* Accept the block state. */
             if(!state.Index())

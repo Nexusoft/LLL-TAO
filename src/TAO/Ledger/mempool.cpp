@@ -110,8 +110,8 @@ namespace TAO
                 }
 
                 /* If we are already an ORPHAN, skip over. */
-                if(mapOrphans.count(hashTx))
-                    return false;
+                if(mapOrphans.count(tx.hashPrevTx))
+                    return true;
 
                 /* Print the transaction here. */
                 if(config::nVerbose >= 3)
