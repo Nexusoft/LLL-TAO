@@ -54,6 +54,7 @@ namespace TAO
         , mapRejected        ( )
         , mapInputs          ( )
         , setOrphansByIndex  ( )
+        , mapOrphansByIndex  ( )
         {
         }
 
@@ -163,6 +164,7 @@ namespace TAO
                         /* Push to orphan queue. */
                         mapOrphans[tx.hashPrevTx] = tx;
                         setOrphansByIndex.insert(hashTx);
+                        mapOrphansByIndex[hashTx] = tx;
 
                         /* Increment consecutive orphans. */
                         if(pnode)
@@ -315,6 +317,7 @@ namespace TAO
                     /* Erase the transaction. */
                     mapOrphans.erase(hashTx);
                     setOrphansByIndex.erase(hashThis);
+                    mapOrphansByIndex.erase(hashThis);
 
                     /* Set the hashTx. */
                     hashTx = hashThis;
@@ -337,6 +340,7 @@ namespace TAO
                 /* Erase the transaction. */
                 mapOrphans.erase(hashTx);
                 setOrphansByIndex.erase(hashThis);
+                mapOrphansByIndex.erase(hashThis);
 
                 /* Set the hashTx. */
                 hashTx = hashThis;
@@ -364,6 +368,18 @@ namespace TAO
                 return true;
             }
 
+            /* Check in orphans memory. */
+            if(mapOrphansByIndex.count(hashTx))
+            {
+                /* Get from conflicts map. */
+                tx = mapOrphansByIndex.at(hashTx);
+
+                /* Set our internal cached hash. */
+                tx.hashCache = hashTx;
+
+                return true;
+            }
+
             /* Check in ledger memory. */
             if(mapLedger.count(hashTx))
             {
@@ -383,6 +399,30 @@ namespace TAO
         bool Mempool::Get(const uint512_t& hashTx, TAO::Ledger::Transaction &tx) const
         {
             RECURSIVE(MUTEX);
+
+            /* Check in conflict memory. */
+            if(mapConflicts.count(hashTx))
+            {
+                /* Get from conflicts map. */
+                tx = mapConflicts.at(hashTx);
+
+                /* Set our internal cached hash. */
+                tx.hashCache = hashTx;
+
+                return true;
+            }
+
+            /* Check in orphans memory. */
+            if(mapOrphansByIndex.count(hashTx))
+            {
+                /* Get from conflicts map. */
+                tx = mapOrphansByIndex.at(hashTx);
+
+                /* Set our internal cached hash. */
+                tx.hashCache = hashTx;
+
+                return true;
+            }
 
             /* Check in ledger memory. */
             if(mapLedger.count(hashTx))
@@ -504,6 +544,10 @@ namespace TAO
             /* Erase from orphans memory. */
             if(setOrphansByIndex.count(hashTx))
                 setOrphansByIndex.erase(hashTx);
+
+            /* Erase from orphans index. */
+            if(mapOrphansByIndex.count(hashTx))
+                mapOrphansByIndex.erase(hashTx);
 
             /* Find the transaction in pool. */
             if(mapLedger.count(hashTx))

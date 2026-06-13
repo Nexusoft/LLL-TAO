@@ -74,6 +74,10 @@ namespace TAO
             std::map<uint512_t, TAO::Ledger::Transaction> mapOrphans;
 
 
+            /** MAp of orphan transactions so we can retrieve from memory if we have. **/
+            std::map<uint512_t, TAO::Ledger::Transaction> mapOrphansByIndex;
+
+
             /** Track how many times we ask for an ORPHAN to limit retries. **/
             std::map<uint512_t, uint64_t> mapRequestCount;
 
@@ -92,6 +96,7 @@ namespace TAO
 
             /** Set to keep track of duplicate orphans by index. **/
             std::set<uint512_t> setOrphansByIndex;
+
 
         public:
 
