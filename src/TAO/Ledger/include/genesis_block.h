@@ -12,42 +12,32 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_LEDGER_INCLUDE_GENESIS_H
-#define NEXUS_TAO_LEDGER_INCLUDE_GENESIS_H
 
 #include <TAO/Ledger/types/state.h>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::Ledger
 {
-
-    /* Ledger Layer namespace. */
-    namespace Ledger
-    {
-
-        /** LegacyGenesis
-         *
-         *  Creates the legacy genesis block.
-         *
-         **/
-        const BlockState LegacyGenesis();
+    /** LegacyGenesis
+     *
+     *  Creates the legacy genesis block.
+     *
+     **/
+    const BlockState LegacyGenesis();
 
 
-        /** HybridGenesis
-         *
-         *  Creates the hybrid network genesis block.
-         *
-         **/
-        const BlockState HybridGenesis();
+    /** HybridGenesis
+     *
+     *  Creates the hybrid network genesis block.
+     *
+     **/
+    const BlockState HybridGenesis();
 
 
-        /** TritiumGenesis
-         *
-         *  Creates the tritium genesis block which is the first Tritium block mined.
-         *
-         **/
-        const BlockState TritiumGenesis();
-    }
+    /** TritiumGenesis
+     *
+     *  Creates the tritium genesis block which is the first Tritium block mined.
+     *
+     **/
+    const BlockState TritiumGenesis();
 }
-
-#endif

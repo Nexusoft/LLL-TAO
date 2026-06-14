@@ -17,60 +17,54 @@ ________________________________________________________________________________
 #include <Util/include/args.h>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::Ledger
 {
-
-    /* Ledger Layer namespace. */
-    namespace Ledger
+    /* Default constructor. */
+    Genesis::Genesis()
+    : uint256_t(0)
     {
-
-        /* Default constructor. */
-        Genesis::Genesis()
-        : uint256_t(0)
-        {
-        }
+    }
 
 
-        /* Copy Constructor */
-        Genesis::Genesis(const uint256_t& value, bool fSet)
-        : uint256_t(value)
-        {
-            if(fSet)
-                SetType(GENESIS::UserType());
-        }
+    /* Copy Constructor */
+    Genesis::Genesis(const uint256_t& value, bool fSet)
+    : uint256_t(value)
+    {
+        if(fSet)
+            SetType(GENESIS::UserType());
+    }
 
 
-        /* Move Constructor */
-        Genesis::Genesis(uint256_t&& value) noexcept
-        : uint256_t(std::move(value))
-        {
-        }
+    /* Move Constructor */
+    Genesis::Genesis(uint256_t&& value) noexcept
+    : uint256_t(std::move(value))
+    {
+    }
 
 
-        /* Copy Assignment operator. */
-        Genesis& Genesis::operator=(const uint256_t& value)
-        {
-            for(uint8_t i = 0; i < WIDTH; ++i)
-                pn[i] = value.pn[i];
+    /* Copy Assignment operator. */
+    Genesis& Genesis::operator=(const uint256_t& value)
+    {
+        for(uint8_t i = 0; i < WIDTH; ++i)
+            pn[i] = value.pn[i];
 
-            return *this;
-        }
-
-
-        /* Move Assignment operator. */
-        Genesis& Genesis::operator=(uint256_t&& value) noexcept
-        {
-            for(uint8_t i = 0; i < WIDTH; ++i)
-                pn[i] = std::move(value.pn[i]);
-
-            return *this;
-        }
+        return *this;
+    }
 
 
-        /* Check if genesis has a valid indicator byte.*/
-        bool Genesis::IsValid() const
-        {
-            return GetType() == TAO::Ledger::GENESIS::UserType();
-        }
+    /* Move Assignment operator. */
+    Genesis& Genesis::operator=(uint256_t&& value) noexcept
+    {
+        for(uint8_t i = 0; i < WIDTH; ++i)
+            pn[i] = std::move(value.pn[i]);
+
+        return *this;
+    }
+
+
+    /* Check if genesis has a valid indicator byte.*/
+    bool Genesis::IsValid() const
+    {
+        return GetType() == TAO::Ledger::GENESIS::UserType();
     }
 }

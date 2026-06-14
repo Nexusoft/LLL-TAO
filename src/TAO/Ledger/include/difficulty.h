@@ -12,31 +12,21 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_LEDGER_INCLUDE_DIFFICULTY_H
-#define NEXUS_TAO_LEDGER_INCLUDE_DIFFICULTY_H
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::Ledger
 {
+    /** GetDifficulty
+     *
+     *  Determines the Decimal of nBits per Channel for a decent "Frame of Reference".
+     *  Has no functionality in Network Operation.
+     *
+     *  @param[in] nBits The bits to convert to double
+     *  @param[in] nChannel The channel to get difficulty for.
+     *
+     *  @return the difficulty value.
+     *
+     **/
+    double GetDifficulty(uint32_t nBits, int nChannel);
 
-    /* Ledger Layer namespace. */
-    namespace Ledger
-    {
-
-        /** GetDifficulty
-         *
-         *  Determines the Decimal of nBits per Channel for a decent "Frame of Reference".
-         *  Has no functionality in Network Operation.
-         *
-         *  @param[in] nBits The bits to convert to double
-         *  @param[in] nChannel The channel to get difficulty for.
-         *
-         *  @return the difficulty value.
-         *
-         **/
-        double GetDifficulty(uint32_t nBits, int nChannel);
-
-    }
 }
-
-#endif

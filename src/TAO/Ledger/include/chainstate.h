@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_LEDGER_INCLUDE_CHAINSTATE_H
-#define NEXUS_TAO_LEDGER_INCLUDE_CHAINSTATE_H
 
 #include <LLC/types/uint1024.h>
 
@@ -22,95 +20,86 @@ ________________________________________________________________________________
 #include <Util/include/memory.h>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::Ledger
 {
-
-    /* Ledger Layer namespace. */
-    namespace Ledger
+    /** ChainState
+     *
+     *
+     *
+     **/
+    namespace ChainState
     {
 
-        /** ChainState
+        /** The best block height in the chain. **/
+        extern std::atomic<uint32_t> nBestHeight;
+
+
+        /** The best trust in the chain. **/
+        extern std::atomic<uint64_t> nBestChainTrust;
+
+
+        /** The current checkpoint height. **/
+        extern std::atomic<uint64_t> nCheckpointHeight;
+
+
+        /** Track if the chain is currently undergoing a re-org. */
+        extern std::atomic<bool> fChainReorg;
+
+
+        /** The best hash in the chain. */
+        extern memory::atomic<uint1024_t> hashBestChain;
+
+
+        /** Hardened Checkpoint. **/
+        extern memory::atomic<uint1024_t> hashCheckpoint;
+
+
+        /** Synchronizing
          *
-         *
+         *  Flag to tell if initial blocks are downloading.
          *
          **/
-        namespace ChainState
-        {
-
-            /** The best block height in the chain. **/
-            extern std::atomic<uint32_t> nBestHeight;
+        bool Synchronizing();
 
 
-            /** The best trust in the chain. **/
-            extern std::atomic<uint64_t> nBestChainTrust;
+        /** PercentSynchronized
+         *
+         *  Real value of the total synchronization percent completion.
+         *
+         **/
+        double PercentSynchronized();
 
 
-            /** The current checkpoint height. **/
-            extern std::atomic<uint64_t> nCheckpointHeight;
+        /** SyncProgress
+         *
+         *  Percentage of blocks synchronized since the node started.
+         *
+         **/
+        double SyncProgress();
 
 
-            /** Track if the chain is currently undergoing a re-org. */
-            extern std::atomic<bool> fChainReorg;
+        /** Initialize
+         *
+         *  Initialize the Chain State.
+         *
+         **/
+        bool Initialize();
 
 
-            /** The best hash in the chain. */
-            extern memory::atomic<uint1024_t> hashBestChain;
+        /** Genesis
+         *
+         *  Get the hash of the genesis block.
+         *
+         **/
+        uint1024_t Genesis();
 
 
-            /** Hardened Checkpoint. **/
-            extern memory::atomic<uint1024_t> hashCheckpoint;
+        /** The best block in the chain. **/
+        extern memory::atomic<BlockState> tStateBest;
 
 
-            /** Synchronizing
-             *
-             *  Flag to tell if initial blocks are downloading.
-             *
-             **/
-            bool Synchronizing();
+        /** The best block in the chain. **/
+        extern BlockState tStateGenesis;
 
-
-            /** PercentSynchronized
-             *
-             *  Real value of the total synchronization percent completion.
-             *
-             **/
-            double PercentSynchronized();
-
-
-            /** SyncProgress
-             *
-             *  Percentage of blocks synchronized since the node started.
-             *
-             **/
-            double SyncProgress();
-
-
-            /** Initialize
-             *
-             *  Initialize the Chain State.
-             *
-             **/
-            bool Initialize();
-
-
-            /** Genesis
-             *
-             *  Get the hash of the genesis block.
-             *
-             **/
-            uint1024_t Genesis();
-
-
-            /** The best block in the chain. **/
-            extern memory::atomic<BlockState> tStateBest;
-
-
-            /** The best block in the chain. **/
-            extern BlockState tStateGenesis;
-
-        }
     }
 }
-
-
-#endif

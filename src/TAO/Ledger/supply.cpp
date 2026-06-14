@@ -18,236 +18,231 @@ ________________________________________________________________________________
 #include <Util/include/softfloat.h>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::Ledger
 {
-
-    /* Ledger Layer namespace. */
-    namespace Ledger
+    /* These values reflect the Three Decay Equations for Miners, Ambassadors, and Developers. */
+    const std::vector<std::vector<cv::softdouble>> dDecayValue =
     {
-        /* These values reflect the Three Decay Equations for Miners, Ambassadors, and Developers. */
-        const std::vector<std::vector<cv::softdouble>> dDecayValue =
+        { cv::softdouble(50.0), cv::softdouble(-0.00000110), cv::softdouble(1.000) },
+        { cv::softdouble(10.0), cv::softdouble(-0.00000055), cv::softdouble(1.000) },
+        { cv::softdouble(01.0), cv::softdouble(-0.00000059), cv::softdouble(0.032) }
+    };
+
+
+    /* Helper function to determine temporary subsidy change for 1 year. */
+    bool TemporarySubsidy(const uint32_t nMinutes, const uint8_t nType)
+    {
+        /* Track the minutes past one year. */
+        static const uint32_t YEAR_MINUTES = 525600;
+
+        /* Skip over for type 0 as this only applies to type 1 and type 2. */
+        if(nType == 0)
+            return false;
+
+        /* Calculate our current minute time-lock. */
+        const uint32_t TIMELOCK_MINUTES = //this captures the minutes value at block version 9 time-lock
+            uint32_t((config::fTestNet.load() ? TESTNET_BLOCK_VERSION_TIMELOCK[7] : NETWORK_BLOCK_VERSION_TIMELOCK[7]) / 60);
+
+        /* Check if we have reached this point. */
+        if(nMinutes < TIMELOCK_MINUTES)
+            return false;
+
+        /* Check our time-lock minutes value. */
+        if(nMinutes > TIMELOCK_MINUTES + YEAR_MINUTES)
+            return false;
+
+        return true; //if we reach this, we are between range of TIMELOCK_MINUTES and (TIMELOCK_MINUTES + YEAR_MINUTES)
+    }
+
+
+    /* Get the Total Amount to be Released at a given Minute since the NETWORK_TIMELOCK. */
+    uint64_t GetSubsidy(const uint32_t nMinutes, const uint8_t nType)
+    {
+        /* Calculate our e^x part of the formula. */
+        const cv::softdouble dExp =
+            cv::exp(cv::softdouble(dDecayValue[nType][1]) * cv::softdouble(nMinutes));
+
+        /* Calculate our return value. */
+        const cv::softdouble dRet =
+            ((cv::softdouble(dDecayValue[nType][0]) * dExp) + cv::softdouble(dDecayValue[nType][2])) * cv::softdouble(500000);
+
+        /*  Special rule for subsidy types ratified by following poll:
+         *  https://t.me/NexusOfficial/211386/269954.
+         *
+         *  This poll voted on two items, stake rate increase and developer supply increase.
+         *  This protocol modification is the result of consensus reached related to developer income.
+         *
+         *  24% Increase Developer Income 3x for 1 year or 2% increase in total supply.
+         *  17% Increase Developer Income 2x for 1 year or 1% increase in total supply.
+         *  17% Do not increase Developer Income at all.
+         *
+         */
+        if(TemporarySubsidy(nMinutes, nType))
+            return uint64_t(cvFloor(dRet)) * 3; //as decreed by community poll, 3x income for 1 year
+
+        return uint64_t(cvFloor(dRet));
+    }
+
+
+    /* Calculate the Compounded amount of NXS to be released over the (nInterval) minutes. */
+    uint64_t SubsidyInterval(const uint32_t nMinutes, const uint32_t nInterval)
+    {
+        /* Tally of total money supply. */
+        uint64_t nMoneySupply = 0;
+
+        /* Compound all the minutes of the interval and types. */
+        for(uint32_t nMinute = nMinutes; nMinute < (nInterval + nMinutes); ++nMinute)
         {
-            { cv::softdouble(50.0), cv::softdouble(-0.00000110), cv::softdouble(1.000) },
-            { cv::softdouble(10.0), cv::softdouble(-0.00000055), cv::softdouble(1.000) },
-            { cv::softdouble(01.0), cv::softdouble(-0.00000059), cv::softdouble(0.032) }
-        };
-
-
-        /* Helper function to determine temporary subsidy change for 1 year. */
-        bool TemporarySubsidy(const uint32_t nMinutes, const uint8_t nType)
-        {
-            /* Track the minutes past one year. */
-            static const uint32_t YEAR_MINUTES = 525600;
-
-            /* Skip over for type 0 as this only applies to type 1 and type 2. */
-            if(nType == 0)
-                return false;
-
-            /* Calculate our current minute time-lock. */
-            const uint32_t TIMELOCK_MINUTES = //this captures the minutes value at block version 9 time-lock
-                uint32_t((config::fTestNet.load() ? TESTNET_BLOCK_VERSION_TIMELOCK[7] : NETWORK_BLOCK_VERSION_TIMELOCK[7]) / 60);
-
-            /* Check if we have reached this point. */
-            if(nMinutes < TIMELOCK_MINUTES)
-                return false;
-
-            /* Check our time-lock minutes value. */
-            if(nMinutes > TIMELOCK_MINUTES + YEAR_MINUTES)
-                return false;
-
-            return true; //if we reach this, we are between range of TIMELOCK_MINUTES and (TIMELOCK_MINUTES + YEAR_MINUTES)
+            /* Calculate the total subsidy for all available types. */
+            for(uint8_t nType = 0; nType < dDecayValue.size(); ++nType)
+                nMoneySupply += GetSubsidy(nMinute, nType);
         }
 
-
-        /* Get the Total Amount to be Released at a given Minute since the NETWORK_TIMELOCK. */
-        uint64_t GetSubsidy(const uint32_t nMinutes, const uint8_t nType)
-        {
-            /* Calculate our e^x part of the formula. */
-            const cv::softdouble dExp =
-                cv::exp(cv::softdouble(dDecayValue[nType][1]) * cv::softdouble(nMinutes));
-
-            /* Calculate our return value. */
-            const cv::softdouble dRet =
-                ((cv::softdouble(dDecayValue[nType][0]) * dExp) + cv::softdouble(dDecayValue[nType][2])) * cv::softdouble(500000);
-
-            /*  Special rule for subsidy types ratified by following poll:
-             *  https://t.me/NexusOfficial/211386/269954.
-             *
-             *  This poll voted on two items, stake rate increase and developer supply increase.
-             *  This protocol modification is the result of consensus reached related to developer income.
-             *
-             *  24% Increase Developer Income 3x for 1 year or 2% increase in total supply.
-             *  17% Increase Developer Income 2x for 1 year or 1% increase in total supply.
-             *  17% Do not increase Developer Income at all.
-             *
-             */
-            if(TemporarySubsidy(nMinutes, nType))
-                return uint64_t(cvFloor(dRet)) * 3; //as decreed by community poll, 3x income for 1 year
-
-            return uint64_t(cvFloor(dRet));
-        }
+        return nMoneySupply * 2;
+    }
 
 
-        /* Calculate the Compounded amount of NXS to be released over the (nInterval) minutes. */
-        uint64_t SubsidyInterval(const uint32_t nMinutes, const uint32_t nInterval)
-        {
-            /* Tally of total money supply. */
-            uint64_t nMoneySupply = 0;
+    /* Calculate the Compounded amount of NXS that should "ideally" have been created to this minute. */
+    uint64_t CompoundSubsidy(const uint32_t nMinutes)
+    {
+        static std::mutex MUTEX;
+        static std::pair<uint32_t, uint64_t> pairSupply = std::make_pair(1, 0);
 
-            /* Compound all the minutes of the interval and types. */
-            for(uint32_t nMinute = nMinutes; nMinute < (nInterval + nMinutes); ++nMinute)
-            {
-                /* Calculate the total subsidy for all available types. */
-                for(uint8_t nType = 0; nType < dDecayValue.size(); ++nType)
-                    nMoneySupply += GetSubsidy(nMinute, nType);
-            }
+        { LOCK(MUTEX);
 
-            return nMoneySupply * 2;
-        }
-
-
-        /* Calculate the Compounded amount of NXS that should "ideally" have been created to this minute. */
-        uint64_t CompoundSubsidy(const uint32_t nMinutes)
-        {
-            static std::mutex MUTEX;
-            static std::pair<uint32_t, uint64_t> pairSupply = std::make_pair(1, 0);
-
-            { LOCK(MUTEX);
-
-                /* If one has already completed the round, respond with the cache. */
-                if(pairSupply.first == nMinutes)
-                    return pairSupply.second;
-
-                /* Compound our money supply from our subsidy. */
-                for(uint32_t nMinute = pairSupply.first; nMinute <= nMinutes; ++nMinute)
-                {
-                    /* Loop through our available types. */
-                    for(uint8_t nType = 0; nType < dDecayValue.size(); ++nType)
-                        pairSupply.second += GetSubsidy(nMinute, nType) * 2;
-                }
-
-                /* If we complete, set our new minutes value and returns. */
-                pairSupply.first = nMinutes;
+            /* If one has already completed the round, respond with the cache. */
+            if(pairSupply.first == nMinutes)
                 return pairSupply.second;
-            }
-        }
 
-
-        /* Get the total supply of NXS in the chain from the state. */
-        uint64_t GetMoneySupply(const BlockState& state)
-        {
-            return state.nMoneySupply;
-        }
-
-
-        /* Get the age of the Nexus blockchain in seconds. */
-        uint32_t GetChainAge(const uint64_t nTime)
-        {
-            /* Calculate total seconds since timelock. */
-            const uint32_t nElapsed =
-                (nTime - uint64_t(config::fTestNet.load() ? NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK));
-
-            return nElapsed / uint32_t(60);
-        }
-
-
-        /* Get a fractional reward based on time. */
-        uint64_t GetFractionalSubsidy(const uint32_t nMinutes, const uint8_t nType, const cv::softdouble nFraction)
-        {
-            /* Get our interval floor now. */
-            const uint32_t nInterval = cvFloor(nFraction);
-
-            /* Calculate our remainder. */
-            const cv::softdouble nRemainder =
-                cv::softdouble(nFraction) - cv::softdouble(nInterval);
-
-            /* Use this to calculate our subsidy. */
-            uint64_t nSubsidy = 0;
-            for(uint32_t nMinute = 0; nMinute < nInterval; ++nMinute)
-                nSubsidy += GetSubsidy(nMinutes + nMinute, nType);
-
-            /* Calculate our franctional amount now. */
-            const cv::softdouble dFractional =
-                cv::softdouble(GetSubsidy(nMinutes + nInterval, nType)) * nRemainder;
-
-            return nSubsidy + uint64_t(cvFloor(dFractional));
-        }
-
-
-        /* Get the Coinbase Rewards based on the Reserve Balances to keep the Coinbase rewards under the Reserve Production Rates.*/
-        uint64_t GetCoinbaseReward(const BlockState& state, const uint8_t nChannel, const uint8_t nType)
-        {
-            /* Get Last Block Index [1st block back in Channel]. **/
-            BlockState first = state;
-            if(!GetLastState(first, nChannel))
-                return TAO::Ledger::NXS_COIN;
-
-            /* Get Last Block Index [2nd block back in Channel]. */
-            BlockState last = first.Prev();
-            if(!GetLastState(last, nChannel))
-                return GetSubsidy(1, nType);
-
-            /* Calculate the times between blocks. */
-            const uint64_t nBlockTime = std::max(first.GetBlockTime() - last.GetBlockTime(), uint64_t(1));
-            const uint64_t nMinutes   = ((state.nVersion >= 3) ?
-                GetChainAge(first.GetBlockTime()) : std::min(first.nChannelHeight,  GetChainAge(first.GetBlockTime())));
-
-            /* Block Version 3 Coinbase Tx Calculations. */
-            if(state.nVersion >= 3)
+            /* Compound our money supply from our subsidy. */
+            for(uint32_t nMinute = pairSupply.first; nMinute <= nMinutes; ++nMinute)
             {
-                /* For Block Version 3: Release 3 Minute Reward dDecayValueed at Channel Height when Reserves above 20 Minute Supply. */
-                if(first.nReleasedReserve[nType] > GetFractionalSubsidy(first.nChannelHeight, nType, cv::softdouble(20.0)))
-                    return GetFractionalSubsidy(first.nChannelHeight, nType, cv::softdouble(3.0));
-
-                /* Otherwise release 2.5 Minute Reward dDecayValueed at Chain Age when Reserves are above 4 Minute Supply. */
-                else if(first.nReleasedReserve[nType] > GetFractionalSubsidy(nMinutes, nType, cv::softdouble(4.0)))
-                    return GetFractionalSubsidy(nMinutes, nType, cv::softdouble(2.5));
+                /* Loop through our available types. */
+                for(uint8_t nType = 0; nType < dDecayValue.size(); ++nType)
+                    pairSupply.second += GetSubsidy(nMinute, nType) * 2;
             }
 
-            /* Block Version 1 Coinbase Tx Calculations: Release 2.5 minute reward if supply is behind 4 minutes */
+            /* If we complete, set our new minutes value and returns. */
+            pairSupply.first = nMinutes;
+            return pairSupply.second;
+        }
+    }
+
+
+    /* Get the total supply of NXS in the chain from the state. */
+    uint64_t GetMoneySupply(const BlockState& state)
+    {
+        return state.nMoneySupply;
+    }
+
+
+    /* Get the age of the Nexus blockchain in seconds. */
+    uint32_t GetChainAge(const uint64_t nTime)
+    {
+        /* Calculate total seconds since timelock. */
+        const uint32_t nElapsed =
+            (nTime - uint64_t(config::fTestNet.load() ? NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK));
+
+        return nElapsed / uint32_t(60);
+    }
+
+
+    /* Get a fractional reward based on time. */
+    uint64_t GetFractionalSubsidy(const uint32_t nMinutes, const uint8_t nType, const cv::softdouble nFraction)
+    {
+        /* Get our interval floor now. */
+        const uint32_t nInterval = cvFloor(nFraction);
+
+        /* Calculate our remainder. */
+        const cv::softdouble nRemainder =
+            cv::softdouble(nFraction) - cv::softdouble(nInterval);
+
+        /* Use this to calculate our subsidy. */
+        uint64_t nSubsidy = 0;
+        for(uint32_t nMinute = 0; nMinute < nInterval; ++nMinute)
+            nSubsidy += GetSubsidy(nMinutes + nMinute, nType);
+
+        /* Calculate our franctional amount now. */
+        const cv::softdouble dFractional =
+            cv::softdouble(GetSubsidy(nMinutes + nInterval, nType)) * nRemainder;
+
+        return nSubsidy + uint64_t(cvFloor(dFractional));
+    }
+
+
+    /* Get the Coinbase Rewards based on the Reserve Balances to keep the Coinbase rewards under the Reserve Production Rates.*/
+    uint64_t GetCoinbaseReward(const BlockState& state, const uint8_t nChannel, const uint8_t nType)
+    {
+        /* Get Last Block Index [1st block back in Channel]. **/
+        BlockState first = state;
+        if(!GetLastState(first, nChannel))
+            return TAO::Ledger::NXS_COIN;
+
+        /* Get Last Block Index [2nd block back in Channel]. */
+        BlockState last = first.Prev();
+        if(!GetLastState(last, nChannel))
+            return GetSubsidy(1, nType);
+
+        /* Calculate the times between blocks. */
+        const uint64_t nBlockTime = std::max(first.GetBlockTime() - last.GetBlockTime(), uint64_t(1));
+        const uint64_t nMinutes   = ((state.nVersion >= 3) ?
+            GetChainAge(first.GetBlockTime()) : std::min(first.nChannelHeight,  GetChainAge(first.GetBlockTime())));
+
+        /* Block Version 3 Coinbase Tx Calculations. */
+        if(state.nVersion >= 3)
+        {
+            /* For Block Version 3: Release 3 Minute Reward dDecayValueed at Channel Height when Reserves above 20 Minute Supply. */
+            if(first.nReleasedReserve[nType] > GetFractionalSubsidy(first.nChannelHeight, nType, cv::softdouble(20.0)))
+                return GetFractionalSubsidy(first.nChannelHeight, nType, cv::softdouble(3.0));
+
+            /* Otherwise release 2.5 Minute Reward dDecayValueed at Chain Age when Reserves are above 4 Minute Supply. */
             else if(first.nReleasedReserve[nType] > GetFractionalSubsidy(nMinutes, nType, cv::softdouble(4.0)))
                 return GetFractionalSubsidy(nMinutes, nType, cv::softdouble(2.5));
-
-            /* Calculate the fraction of block time with a minimum of 2.5 minutes. */
-            const cv::softdouble nFraction =
-                std::min(cv::softdouble(nBlockTime) / cv::softdouble(60.0), cv::softdouble(2.5));
-
-            /* Return either fraction or reserve balance, whichever is smallest. */
-            return std::min(GetFractionalSubsidy(nMinutes, nType, nFraction), uint64_t(first.nReleasedReserve[nType]));
         }
 
+        /* Block Version 1 Coinbase Tx Calculations: Release 2.5 minute reward if supply is behind 4 minutes */
+        else if(first.nReleasedReserve[nType] > GetFractionalSubsidy(nMinutes, nType, cv::softdouble(4.0)))
+            return GetFractionalSubsidy(nMinutes, nType, cv::softdouble(2.5));
 
-        /* Release a certain amount of Nexus into the Reserve System at a given Minute of time. */
-        uint64_t ReleaseRewards(const uint32_t nTimespan, const uint32_t nStart, const uint8_t nType)
-        {
-            uint64_t nSubsidy = 0;
-            for(uint32_t nMinutes = nStart; nMinutes < (nStart + nTimespan); ++nMinutes)
-                nSubsidy += GetSubsidy(nMinutes, nType);
+        /* Calculate the fraction of block time with a minimum of 2.5 minutes. */
+        const cv::softdouble nFraction =
+            std::min(cv::softdouble(nBlockTime) / cv::softdouble(60.0), cv::softdouble(2.5));
 
-            return nSubsidy;
-        }
+        /* Return either fraction or reserve balance, whichever is smallest. */
+        return std::min(GetFractionalSubsidy(nMinutes, nType, nFraction), uint64_t(first.nReleasedReserve[nType]));
+    }
 
 
-        /* Get the total amount released into this given reserve by this point in time in the block state */
-        uint64_t GetReleasedReserve(const BlockState& state, const uint8_t nChannel, const uint8_t nType)
-        {
-            /* Get Last Block Index [1st block back in Channel]. **/
-            BlockState first = state;
-            if(!GetLastState(first, nChannel))
-                return TAO::Ledger::NXS_COIN;
+    /* Release a certain amount of Nexus into the Reserve System at a given Minute of time. */
+    uint64_t ReleaseRewards(const uint32_t nTimespan, const uint32_t nStart, const uint8_t nType)
+    {
+        uint64_t nSubsidy = 0;
+        for(uint32_t nMinutes = nStart; nMinutes < (nStart + nTimespan); ++nMinutes)
+            nSubsidy += GetSubsidy(nMinutes, nType);
 
-            /* Get Last Block Index [2nd block back in Channel]. */
-            uint32_t nMinutes = GetChainAge(first.GetBlockTime());
-            BlockState last = first.Prev();
-            if(!GetLastState(last, nChannel))
-                return ReleaseRewards(nMinutes + 5, 1, nType);
+        return nSubsidy;
+    }
 
-            /* Only allow rewards to be released one time per minute */
-            uint32_t nLastMinutes = GetChainAge(last.GetBlockTime());
-            if(nMinutes == nLastMinutes)
-                return 0;
 
-            return ReleaseRewards((nMinutes - nLastMinutes), nLastMinutes, nType);
-        }
+    /* Get the total amount released into this given reserve by this point in time in the block state */
+    uint64_t GetReleasedReserve(const BlockState& state, const uint8_t nChannel, const uint8_t nType)
+    {
+        /* Get Last Block Index [1st block back in Channel]. **/
+        BlockState first = state;
+        if(!GetLastState(first, nChannel))
+            return TAO::Ledger::NXS_COIN;
+
+        /* Get Last Block Index [2nd block back in Channel]. */
+        uint32_t nMinutes = GetChainAge(first.GetBlockTime());
+        BlockState last = first.Prev();
+        if(!GetLastState(last, nChannel))
+            return ReleaseRewards(nMinutes + 5, 1, nType);
+
+        /* Only allow rewards to be released one time per minute */
+        uint32_t nLastMinutes = GetChainAge(last.GetBlockTime());
+        if(nMinutes == nLastMinutes)
+            return 0;
+
+        return ReleaseRewards((nMinutes - nLastMinutes), nLastMinutes, nType);
     }
 }

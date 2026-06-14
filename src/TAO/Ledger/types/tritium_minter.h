@@ -12,8 +12,6 @@ file COPYING or http://www.opensource.org/licenses/mit-license.php.
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_LEDGER_TYPES_TRITIUM_MINTER_H
-#define NEXUS_TAO_LEDGER_TYPES_TRITIUM_MINTER_H
 
 #include <TAO/Ledger/types/stake_minter.h>
 
@@ -26,13 +24,8 @@ ________________________________________________________________________________
 
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::Ledger
 {
-
-    /* Ledger namespace. */
-    namespace Ledger
-    {
-
     /** @class TritiumMinter
      *
      * This class supports solo mining blocks on the Proof of Stake channel.
@@ -205,9 +198,5 @@ namespace TAO
          **/
         static void StakeMinterThread(TritiumMinter* pTritiumMinter);
 
-        };
-
-    }
+    };
 }
-
-#endif

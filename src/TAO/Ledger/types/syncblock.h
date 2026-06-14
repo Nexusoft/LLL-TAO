@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_LEDGER_TYPES_SYNCBLOCK_H
-#define NEXUS_TAO_LEDGER_TYPES_SYNCBLOCK_H
 
 #include <LLC/include/flkey.h>
 
@@ -25,96 +23,88 @@ ________________________________________________________________________________
 #include <Util/templates/serialize.h>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::Ledger
 {
+    class BlockState;
 
-    /* Ledger Layer namespace. */
-    namespace Ledger
+
+    /** TritiumBlock
+     *
+     *  A tritium block contains references to the transactions in blocks.
+     *  These are used to build the merkle tree for checking.
+     *  Transactions are processed before block is recieved, and commit
+     *  When a block is recieved to break up processing requirements.
+     *
+     **/
+    class SyncBlock : public Block
     {
+    public:
 
-        class BlockState;
+        /** The Block's timestamp. This number is locked into the signature hash. **/
+        uint64_t nTime;
 
 
-        /** TritiumBlock
+        /** System Script
          *
-         *  A tritium block contains references to the transactions in blocks.
-         *  These are used to build the merkle tree for checking.
-         *  Transactions are processed before block is recieved, and commit
-         *  When a block is recieved to break up processing requirements.
+         *  The critical system level pre-states and post-states.
          *
          **/
-        class SyncBlock : public Block
-        {
-        public:
-
-            /** The Block's timestamp. This number is locked into the signature hash. **/
-            uint64_t nTime;
+        TAO::Register::Stream  ssSystem;
 
 
-            /** System Script
-             *
-             *  The critical system level pre-states and post-states.
-             *
-             **/
-            TAO::Register::Stream  ssSystem;
+        /** The transaction history.
+         *  uint8_t = TransactionType (per enum)
+         *  std::vector = Serialized byte level data
+         **/
+        std::vector<std::pair<uint8_t, std::vector<uint8_t> > > vtx;
 
 
-            /** The transaction history.
-             *  uint8_t = TransactionType (per enum)
-             *  std::vector = Serialized byte level data
-             **/
-            std::vector<std::pair<uint8_t, std::vector<uint8_t> > > vtx;
+        /** Serialization **/
+        IMPLEMENT_SERIALIZE
+        (
+            READWRITE(nVersion);
+            READWRITE(hashPrevBlock);
+            READWRITE(hashMerkleRoot);
+            READWRITE(nChannel);
+            READWRITE(nHeight);
+            READWRITE(nBits);
+            READWRITE(nNonce);
+
+            READWRITE(nTime);
+            READWRITE(vchBlockSig);
+
+            READWRITE(ssSystem);
+            READWRITE(vOffsets);
+            READWRITE(vtx);
+        )
 
 
-            /** Serialization **/
-            IMPLEMENT_SERIALIZE
-            (
-                READWRITE(nVersion);
-                READWRITE(hashPrevBlock);
-                READWRITE(hashMerkleRoot);
-                READWRITE(nChannel);
-                READWRITE(nHeight);
-                READWRITE(nBits);
-                READWRITE(nNonce);
-
-                READWRITE(nTime);
-                READWRITE(vchBlockSig);
-
-                READWRITE(ssSystem);
-                READWRITE(vOffsets);
-                READWRITE(vtx);
-            )
+        /** The default constructor. **/
+        SyncBlock();
 
 
-            /** The default constructor. **/
-            SyncBlock();
+        /** Copy constructor. **/
+        SyncBlock(const SyncBlock& block);
 
 
-            /** Copy constructor. **/
-            SyncBlock(const SyncBlock& block);
+        /** Move constructor. **/
+        SyncBlock(SyncBlock&& block) noexcept;
 
 
-            /** Move constructor. **/
-            SyncBlock(SyncBlock&& block) noexcept;
+        /** Copy assignment. **/
+        SyncBlock& operator=(const SyncBlock& block);
 
 
-            /** Copy assignment. **/
-            SyncBlock& operator=(const SyncBlock& block);
+        /** Move assignment. **/
+        SyncBlock& operator=(SyncBlock&& block) noexcept;
 
 
-            /** Move assignment. **/
-            SyncBlock& operator=(SyncBlock&& block) noexcept;
+        /** Default Destructor **/
+        virtual ~SyncBlock();
 
 
-            /** Default Destructor **/
-            virtual ~SyncBlock();
+        /** Copy Constructor. **/
+        SyncBlock(const BlockState& state, bool fTransactions = true);
 
-
-            /** Copy Constructor. **/
-            SyncBlock(const BlockState& state, bool fTransactions = true);
-
-        };
-    }
+    };
 }
-
-#endif

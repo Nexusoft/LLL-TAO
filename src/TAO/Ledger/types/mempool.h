@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_LEDGER_TYPES_MEMPOOL_H
-#define NEXUS_TAO_LEDGER_TYPES_MEMPOOL_H
 
 #include <LLC/types/uint1024.h>
 
@@ -32,318 +30,311 @@ namespace LLP
 }
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::Ledger
 {
 
-    /* Ledger Layer namespace. */
-    namespace Ledger
+    /** Mempool
+     *
+     *  The memory pool class where transactions are stored until they are validated
+     *  and added to the ledger.
+     *
+     **/
+    class Mempool
     {
+    public:
 
-        /** Mempool
+        /* Mutex to local access to the mempool */
+        mutable std::recursive_mutex MUTEX;
+
+    private:
+
+        /** The transactions in the ledger memory pool. **/
+        std::map<uint512_t, Legacy::Transaction> mapLegacy;
+
+
+        /** The transactions in conflicted legacy memory pool. */
+        std::map<uint512_t, Legacy::Transaction> mapLegacyConflicts;
+
+
+        /** The transactions in the ledger memory pool. **/
+        std::map<uint512_t, TAO::Ledger::Transaction> mapLedger;
+
+
+        /** The transactions in the conflicted ledger memory pool. **/
+        std::map<uint512_t, TAO::Ledger::Transaction> mapConflicts;
+
+
+        /** Oprhan transactions in queue. **/
+        std::map<uint512_t, TAO::Ledger::Transaction> mapOrphans;
+
+
+        /** MAp of orphan transactions so we can retrieve from memory if we have. **/
+        std::map<uint512_t, TAO::Ledger::Transaction> mapOrphansByIndex;
+
+
+        /** Track how many times we ask for an ORPHAN to limit retries. **/
+        std::map<uint512_t, uint64_t> mapRequestCount;
+
+
+        /** Record of conflicted transactions in mempool. **/
+        std::map<uint512_t, uint512_t> mapClaimed;
+
+
+        /** Record of conflicted transactions in mempool. **/
+        std::set<uint512_t> mapRejected;
+
+
+        /** Record of legacy inputs in the mempool. **/
+        std::map<Legacy::OutPoint, uint512_t> mapInputs;
+
+
+        /** Set to keep track of duplicate orphans by index. **/
+        std::set<uint512_t> setOrphansByIndex;
+
+
+    public:
+
+        /** Default Constructor. **/
+        Mempool();
+
+
+        /** Default Destructor. **/
+        ~Mempool();
+
+
+        /** AddUnchecked.
          *
-         *  The memory pool class where transactions are stored until they are validated
-         *  and added to the ledger.
+         *  Add a transaction to the memory pool without validation checks.
+         *
+         *  @param[in] tx The transaction to add.
+         *
+         *  @return true if added.
          *
          **/
-        class Mempool
-        {
-        public:
-
-            /* Mutex to local access to the mempool */
-            mutable std::recursive_mutex MUTEX;
-
-        private:
-
-            /** The transactions in the ledger memory pool. **/
-            std::map<uint512_t, Legacy::Transaction> mapLegacy;
-
-
-            /** The transactions in conflicted legacy memory pool. */
-            std::map<uint512_t, Legacy::Transaction> mapLegacyConflicts;
-
-
-            /** The transactions in the ledger memory pool. **/
-            std::map<uint512_t, TAO::Ledger::Transaction> mapLedger;
-
-
-            /** The transactions in the conflicted ledger memory pool. **/
-            std::map<uint512_t, TAO::Ledger::Transaction> mapConflicts;
-
-
-            /** Oprhan transactions in queue. **/
-            std::map<uint512_t, TAO::Ledger::Transaction> mapOrphans;
-
-
-            /** MAp of orphan transactions so we can retrieve from memory if we have. **/
-            std::map<uint512_t, TAO::Ledger::Transaction> mapOrphansByIndex;
-
-
-            /** Track how many times we ask for an ORPHAN to limit retries. **/
-            std::map<uint512_t, uint64_t> mapRequestCount;
-
-
-            /** Record of conflicted transactions in mempool. **/
-            std::map<uint512_t, uint512_t> mapClaimed;
-
-
-            /** Record of conflicted transactions in mempool. **/
-            std::set<uint512_t> mapRejected;
-
-
-            /** Record of legacy inputs in the mempool. **/
-            std::map<Legacy::OutPoint, uint512_t> mapInputs;
-
-
-            /** Set to keep track of duplicate orphans by index. **/
-            std::set<uint512_t> setOrphansByIndex;
-
-
-        public:
-
-            /** Default Constructor. **/
-            Mempool();
-
-
-            /** Default Destructor. **/
-            ~Mempool();
-
-
-            /** AddUnchecked.
-             *
-             *  Add a transaction to the memory pool without validation checks.
-             *
-             *  @param[in] tx The transaction to add.
-             *
-             *  @return true if added.
-             *
-             **/
-            bool AddUnchecked(const TAO::Ledger::Transaction& tx);
-
-
-            /** AddUnchecked
-             *
-             *  Add a legacy transaction to the memory pool without validation checks.
-             *
-             *  @param[in] tx The transaction to add.
-             *
-             *  @return true if added.
-             *
-             **/
-            bool AddUnchecked(const Legacy::Transaction& tx);
-
-
-            /** Accept
-             *
-             *  Accepts a transaction with validation rules.
-             *
-             *  @param[in] tx The transaction to add.
-             *  @param[in] pnode The node that transaction is accepted from.
-             *
-             *  @return true if added.
-             *
-             **/
-            bool Accept(const TAO::Ledger::Transaction& tx, LLP::TritiumNode* pnode = nullptr);
-
-
-            /** Accept
-             *
-             *  Accepts a legacy transaction with validation rules.
-             *
-             *  @param[in] tx The transaction to add.
-             *
-             *  @return true if added.
-             *
-             **/
-            bool Accept(const Legacy::Transaction& tx, LLP::TritiumNode* pnode = nullptr);
-
-
-            /** ProcessOrphans
-             *
-             *  Process orphan transactions if triggered in queue.
-             *
-             *  @param[in] hash The hash of spent output
-             *
-             *  @return true if spent.
-             *
-             **/
-            void ProcessOrphans(const uint512_t& hash);
-
-
-            /** IsSpent
-             *
-             *  Checks if a given output is spent in memory.
-             *
-             *  @param[in] hash The hash of spent output
-             *  @param[in] n The output number being checked
-             *
-             *  @return true if spent.
-             *
-             **/
-            bool IsSpent(const uint512_t& hash, const uint32_t n);
-
-
-            /** Get
-             *
-             *  Gets a transaction from mempool including conflicted memory.
-             *
-             *  @param[in] hashTx Hash of transaction to get.
-             *
-             *  @param[out] tx The retrieved transaction
-             *  @param[out] fConflicted Flag to determine if transaction is conflicted
-             *
-             *  @return true if pool contained transaction.
-             *
-             **/
-            bool Get(const uint512_t& hashTx, TAO::Ledger::Transaction &tx, bool &fConflicted) const;
-
-
-            /** Get
-             *
-             *  Gets a transaction from mempool
-             *
-             *  @param[in] hashTx Hash of transaction to get.
-             *
-             *  @param[out] tx The retrieved transaction
-             *
-             *  @return true if pool contained transaction.
-             *
-             **/
-            bool Get(const uint512_t& hashTx, TAO::Ledger::Transaction &tx) const;
-
-
-            /** Get
-             *
-             *  Gets a transaction by genesis.
-             *
-             *  @param[in] hashTx Hash of transaction to get.
-             *
-             *  @param[out] vTx The list of retrieved transaction
-             *
-             *  @return true if pool contained transaction.
-             *
-             **/
-            bool Get(const uint256_t& hashGenesis, std::vector<TAO::Ledger::Transaction> &vTx) const;
-
-
-            /** Get
-             *
-             *  Gets a transaction by genesis.
-             *
-             *  @param[in] hashTx Hash of transaction to get.
-             *
-             *  @param[out] tx The last tx by genesistransaction
-             *
-             *  @return true if pool contained transaction.
-             *
-             **/
-            bool Get(const uint256_t& hashGenesis, TAO::Ledger::Transaction &tx) const;
-
-
-            /** Get
-             *
-             *  Gets a legacy transaction from mempool
-             *
-             *  @param[in] hashTx Hash of legacy transaction to get.
-             *
-             *  @param[out] tx The retrieved legacy transaction
-             *  @param[out] fConflicted Flag to determine if transaction is conflicted
-             *
-             *  @return true if pool contained legacy transaction.
-             *
-             **/
-            bool Get(const uint512_t& hashTx, Legacy::Transaction &tx, bool &fConflicted) const;
-
-
-            /** Get
-             *
-             *  Gets a legacy transaction from mempool
-             *
-             *  @param[in] hashTx Hash of legacy transaction to get.
-             *
-             *  @param[out] tx The retrieved legacy transaction
-             *
-             *  @return true if pool contained legacy transaction.
-             *
-             **/
-            bool Get(const uint512_t& hashTx, Legacy::Transaction &tx) const;
-
-
-            /** Has
-             *
-             *  Checks if a transaction exists.
-             *
-             *  @param[in] hashTx Hash of transaction to check.
-             *
-             *  @return true if transaction in mempool.
-             *
-             **/
-            bool Has(const uint512_t& hashTx) const;
-
-
-            /** Has
-             *
-             *  Checks if a genesis exists.
-             *
-             *  @param[in] hashGenesis Hash of genesis to check.
-             *
-             *  @return true if transaction in mempool.
-             *
-             **/
-            bool Has(const uint256_t& hashGenesis) const;
-
-
-            /** Remove
-             *
-             *  Remove a transaction from pool.
-             *
-             *  @param[in] hashTx Hash of transaction to remove.
-             *
-             *  @return true if removed.
-             *
-             **/
-            bool Remove(const uint512_t& hashTx);
-
-
-            /** Check
-             *
-             *  Check the memory pool for consistency.
-             *
-             **/
-            void Check();
-
-
-            /** List
-             *
-             *  List transactions in memory pool.
-             *
-             *  @param[out] vHashes List of transaction hashes.
-             *  @param[in] nCount The total transactions to get.
-             *
-             *  @return true if list is not empty.
-             *
-             **/
-            bool List(std::vector<uint512_t> &vHashes, uint32_t nCount = std::numeric_limits<uint32_t>::max(), bool fLegacy = false);
-
-
-            /** Size
-             *
-             *  Gets the size of the memory pool.
-             *
-             **/
-            uint32_t Size();
-
-
-            /** Conflicts
-             *
-             *  Gets the size of the conflicts memory pool.
-             *
-             **/
-            uint32_t Conflicts();
-
-        };
-
-        extern Mempool mempool;
-    }
+        bool AddUnchecked(const TAO::Ledger::Transaction& tx);
+
+
+        /** AddUnchecked
+         *
+         *  Add a legacy transaction to the memory pool without validation checks.
+         *
+         *  @param[in] tx The transaction to add.
+         *
+         *  @return true if added.
+         *
+         **/
+        bool AddUnchecked(const Legacy::Transaction& tx);
+
+
+        /** Accept
+         *
+         *  Accepts a transaction with validation rules.
+         *
+         *  @param[in] tx The transaction to add.
+         *  @param[in] pnode The node that transaction is accepted from.
+         *
+         *  @return true if added.
+         *
+         **/
+        bool Accept(const TAO::Ledger::Transaction& tx, LLP::TritiumNode* pnode = nullptr);
+
+
+        /** Accept
+         *
+         *  Accepts a legacy transaction with validation rules.
+         *
+         *  @param[in] tx The transaction to add.
+         *
+         *  @return true if added.
+         *
+         **/
+        bool Accept(const Legacy::Transaction& tx, LLP::TritiumNode* pnode = nullptr);
+
+
+        /** ProcessOrphans
+         *
+         *  Process orphan transactions if triggered in queue.
+         *
+         *  @param[in] hash The hash of spent output
+         *
+         *  @return true if spent.
+         *
+         **/
+        void ProcessOrphans(const uint512_t& hash);
+
+
+        /** IsSpent
+         *
+         *  Checks if a given output is spent in memory.
+         *
+         *  @param[in] hash The hash of spent output
+         *  @param[in] n The output number being checked
+         *
+         *  @return true if spent.
+         *
+         **/
+        bool IsSpent(const uint512_t& hash, const uint32_t n);
+
+
+        /** Get
+         *
+         *  Gets a transaction from mempool including conflicted memory.
+         *
+         *  @param[in] hashTx Hash of transaction to get.
+         *
+         *  @param[out] tx The retrieved transaction
+         *  @param[out] fConflicted Flag to determine if transaction is conflicted
+         *
+         *  @return true if pool contained transaction.
+         *
+         **/
+        bool Get(const uint512_t& hashTx, TAO::Ledger::Transaction &tx, bool &fConflicted) const;
+
+
+        /** Get
+         *
+         *  Gets a transaction from mempool
+         *
+         *  @param[in] hashTx Hash of transaction to get.
+         *
+         *  @param[out] tx The retrieved transaction
+         *
+         *  @return true if pool contained transaction.
+         *
+         **/
+        bool Get(const uint512_t& hashTx, TAO::Ledger::Transaction &tx) const;
+
+
+        /** Get
+         *
+         *  Gets a transaction by genesis.
+         *
+         *  @param[in] hashTx Hash of transaction to get.
+         *
+         *  @param[out] vTx The list of retrieved transaction
+         *
+         *  @return true if pool contained transaction.
+         *
+         **/
+        bool Get(const uint256_t& hashGenesis, std::vector<TAO::Ledger::Transaction> &vTx) const;
+
+
+        /** Get
+         *
+         *  Gets a transaction by genesis.
+         *
+         *  @param[in] hashTx Hash of transaction to get.
+         *
+         *  @param[out] tx The last tx by genesistransaction
+         *
+         *  @return true if pool contained transaction.
+         *
+         **/
+        bool Get(const uint256_t& hashGenesis, TAO::Ledger::Transaction &tx) const;
+
+
+        /** Get
+         *
+         *  Gets a legacy transaction from mempool
+         *
+         *  @param[in] hashTx Hash of legacy transaction to get.
+         *
+         *  @param[out] tx The retrieved legacy transaction
+         *  @param[out] fConflicted Flag to determine if transaction is conflicted
+         *
+         *  @return true if pool contained legacy transaction.
+         *
+         **/
+        bool Get(const uint512_t& hashTx, Legacy::Transaction &tx, bool &fConflicted) const;
+
+
+        /** Get
+         *
+         *  Gets a legacy transaction from mempool
+         *
+         *  @param[in] hashTx Hash of legacy transaction to get.
+         *
+         *  @param[out] tx The retrieved legacy transaction
+         *
+         *  @return true if pool contained legacy transaction.
+         *
+         **/
+        bool Get(const uint512_t& hashTx, Legacy::Transaction &tx) const;
+
+
+        /** Has
+         *
+         *  Checks if a transaction exists.
+         *
+         *  @param[in] hashTx Hash of transaction to check.
+         *
+         *  @return true if transaction in mempool.
+         *
+         **/
+        bool Has(const uint512_t& hashTx) const;
+
+
+        /** Has
+         *
+         *  Checks if a genesis exists.
+         *
+         *  @param[in] hashGenesis Hash of genesis to check.
+         *
+         *  @return true if transaction in mempool.
+         *
+         **/
+        bool Has(const uint256_t& hashGenesis) const;
+
+
+        /** Remove
+         *
+         *  Remove a transaction from pool.
+         *
+         *  @param[in] hashTx Hash of transaction to remove.
+         *
+         *  @return true if removed.
+         *
+         **/
+        bool Remove(const uint512_t& hashTx);
+
+
+        /** Check
+         *
+         *  Check the memory pool for consistency.
+         *
+         **/
+        void Check();
+
+
+        /** List
+         *
+         *  List transactions in memory pool.
+         *
+         *  @param[out] vHashes List of transaction hashes.
+         *  @param[in] nCount The total transactions to get.
+         *
+         *  @return true if list is not empty.
+         *
+         **/
+        bool List(std::vector<uint512_t> &vHashes, uint32_t nCount = std::numeric_limits<uint32_t>::max(), bool fLegacy = false);
+
+
+        /** Size
+         *
+         *  Gets the size of the memory pool.
+         *
+         **/
+        uint32_t Size();
+
+
+        /** Conflicts
+         *
+         *  Gets the size of the conflicts memory pool.
+         *
+         **/
+        uint32_t Conflicts();
+
+    };
+
+    extern Mempool mempool;
 }
-
-#endif

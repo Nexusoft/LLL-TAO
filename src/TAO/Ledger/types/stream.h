@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_OPERATION_TYPES_STREAM_H
-#define NEXUS_TAO_OPERATION_TYPES_STREAM_H
 
 #include <vector>
 #include <cstdint>
@@ -24,119 +22,111 @@ ________________________________________________________________________________
 #include <Util/templates/basestream.h>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::Ledger
 {
-
-    /* Operation Layer namespace. */
-    namespace Operation
+    /** Stream
+     *
+     *  Class to handle the serializaing and deserializing of operations and their types
+     *
+     **/
+    class Stream : public BaseStream
     {
+    public:
 
-        /** Stream
+        /** Default Constructor. **/
+        Stream()
+        : BaseStream()
+        {
+        }
+
+
+        /** Data Constructor.
          *
-         *  Class to handle the serializaing and deserializing of operations and their types
+         *  @param[in] vchDataIn The byte vector to insert.
          *
          **/
-        class Stream : public BaseStream
+        Stream(const std::vector<uint8_t>& vchDataIn)
+        : BaseStream(vchDataIn)
         {
-        public:
-
-            /** Default Constructor. **/
-            Stream()
-            : BaseStream()
-            {
-            }
+        }
 
 
-            /** Data Constructor.
-             *
-             *  @param[in] vchDataIn The byte vector to insert.
-             *
-             **/
-            Stream(const std::vector<uint8_t>& vchDataIn)
-            : BaseStream(vchDataIn)
-            {
-            }
+        /** Copy Constructor. **/
+        Stream(const Stream& stream)
+        : BaseStream(stream.vchData)
+        {
+        }
 
 
-            /** Copy Constructor. **/
-            Stream(const Stream& stream)
-            : BaseStream(stream.vchData)
-            {
-            }
+        /** Move Constructor. **/
+        Stream(Stream&& stream) noexcept
+        : BaseStream(std::move(stream.vchData))
+        {
+        }
 
 
-            /** Move Constructor. **/
-            Stream(Stream&& stream) noexcept
-            : BaseStream(std::move(stream.vchData))
-            {
-            }
+        /** Copy Assignment. **/
+        Stream& operator=(const Stream& stream)
+        {
+            vchData  = stream.vchData;
+            nReadPos = stream.nReadPos;
+
+            return *this;
+        }
 
 
-            /** Copy Assignment. **/
-            Stream& operator=(const Stream& stream)
-            {
-                vchData  = stream.vchData;
-                nReadPos = stream.nReadPos;
+        /** Move Assignment. **/
+        Stream& operator=(Stream&& stream)
+        {
+            vchData  = std::move(stream.vchData);
+            nReadPos = std::move(stream.nReadPos);
 
-                return *this;
-            }
-
-
-            /** Move Assignment. **/
-            Stream& operator=(Stream&& stream)
-            {
-                vchData  = std::move(stream.vchData);
-                nReadPos = std::move(stream.nReadPos);
-
-                return *this;
-            }
+            return *this;
+        }
 
 
-            /** Default Destructor **/
-            virtual ~Stream()
-            {
-            }
+        /** Default Destructor **/
+        virtual ~Stream()
+        {
+        }
 
 
-            IMPLEMENT_SERIALIZE
-            (
-                READWRITE(vchData);
-            )
+        IMPLEMENT_SERIALIZE
+        (
+            READWRITE(vchData);
+        )
 
 
-            /** Operator Overload <<
-             *
-             *  Serializes data into vchOperations
-             *
-             *  @param[in] obj The object to serialize into ledger data
-             *
-             **/
-            template<typename Type>
-            Stream& operator<<(const Type& obj)
-            {
-                /* Serialize to the stream. */
-                ::Serialize(*this, obj, (uint32_t)SER_LEDGER, LLD::DATABASE_VERSION); //temp versinos for now
+        /** Operator Overload <<
+         *
+         *  Serializes data into vchOperations
+         *
+         *  @param[in] obj The object to serialize into ledger data
+         *
+         **/
+        template<typename Type>
+        Stream& operator<<(const Type& obj)
+        {
+            /* Serialize to the stream. */
+            ::Serialize(*this, obj, (uint32_t)SER_LEDGER, LLD::DATABASE_VERSION); //temp versinos for now
 
-                return (*this);
-            }
+            return (*this);
+        }
 
 
-            /** Operator Overload >>
-             *
-             *  Serializes data into vchOperations
-             *
-             *  @param[out] obj The object to de-serialize from ledger data
-             *
-             **/
-            template<typename Type>
-            const Stream& operator>>(Type& obj) const
-            {
-                /* Unserialize from the stream. */
-                ::Unserialize(*this, obj, (uint32_t)SER_LEDGER, LLD::DATABASE_VERSION); //TODO: version should be object version
-                return (*this);
-            }
-        };
-    }
+        /** Operator Overload >>
+         *
+         *  Serializes data into vchOperations
+         *
+         *  @param[out] obj The object to de-serialize from ledger data
+         *
+         **/
+        template<typename Type>
+        const Stream& operator>>(Type& obj) const
+        {
+            /* Unserialize from the stream. */
+            ::Unserialize(*this, obj, (uint32_t)SER_LEDGER, LLD::DATABASE_VERSION); //TODO: version should be object version
+            return (*this);
+        }
+    };
 }
-
-#endif

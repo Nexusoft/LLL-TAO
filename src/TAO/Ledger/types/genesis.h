@@ -12,77 +12,68 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_LEDGER_TYPES_GENESIS_H
-#define NEXUS_TAO_LEDGER_TYPES_GENESIS_H
 
 #include <LLC/types/uint1024.h>
+
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::Ledger
 {
-
-    /* Ledger Layer namespace. */
-    namespace Ledger
+    /** Genesis
+     *
+     *  An object that keeps track of a genesis address type.
+     *
+     **/
+    class Genesis : public uint256_t
     {
+    public:
 
-        /** Genesis
+        /** Default constructor. **/
+        Genesis();
+
+
+        /** Copy Constructor
          *
-         *  An object that keeps track of a genesis address type.
+         *  Build from uint256_t hash.
+         *
+         *  @param[in] hashAddress The hash.
          *
          **/
-        class Genesis : public uint256_t
-        {
-        public:
-
-            /** Default constructor. **/
-            Genesis();
+        Genesis(const uint256_t& value, bool fSet = false);
 
 
-            /** Copy Constructor
-             *
-             *  Build from uint256_t hash.
-             *
-             *  @param[in] hashAddress The hash.
-             *
-             **/
-            Genesis(const uint256_t& value, bool fSet = false);
+        /** Move Constructor
+         *
+         *  Build from uint256_t hash.
+         *
+         *  @param[in] hashAddress The hash.
+         *
+         **/
+        Genesis(uint256_t&& value) noexcept;
 
 
-            /** Move Constructor
-             *
-             *  Build from uint256_t hash.
-             *
-             *  @param[in] hashAddress The hash.
-             *
-             **/
-            Genesis(uint256_t&& value) noexcept;
+        /** Copy Assignment operator.
+         *
+         *  @param[in] value The value to assign this to.
+         *
+         **/
+        Genesis& operator=(const uint256_t& value);
 
 
-            /** Copy Assignment operator.
-             *
-             *  @param[in] value The value to assign this to.
-             *
-             **/
-            Genesis& operator=(const uint256_t& value);
+        /** Move Assignment operator.
+         *
+         *  @param[in] value The value to assign this to.
+         *
+         **/
+        Genesis& operator=(uint256_t&& value) noexcept;
 
 
-            /** Move Assignment operator.
-             *
-             *  @param[in] value The value to assign this to.
-             *
-             **/
-            Genesis& operator=(uint256_t&& value) noexcept;
-
-
-            /** IsValid
-             *
-             *  Check if genesis has a valid indicator byte.
-             *
-             *  @return True if type has valid header byte.
-             *
-             **/
-            bool IsValid() const;
-        };
-    }
+        /** IsValid
+         *
+         *  Check if genesis has a valid indicator byte.
+         *
+         *  @return True if type has valid header byte.
+         *
+         **/
+        bool IsValid() const;
+    };
 }
-
-#endif

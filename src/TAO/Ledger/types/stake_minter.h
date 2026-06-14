@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_LEDGER_TYPES_BASE_MINTER_H
-#define NEXUS_TAO_LEDGER_TYPES_BASE_MINTER_H
 
 
 #include <LLC/types/uint1024.h>
@@ -32,13 +30,8 @@ ________________________________________________________________________________
 
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::Ledger
 {
-
-    /* Ledger namespace. */
-    namespace Ledger
-    {
-
     /** @class StakeMinter
      *
      * This class provides the base class and processes for mining blocks on the Proof of Stake channel.
@@ -480,9 +473,4 @@ namespace TAO
         bool SignBlock(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& strPIN);
 
     };
-
-
-    }
 }
-
-#endif

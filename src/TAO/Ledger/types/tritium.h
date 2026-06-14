@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_LEDGER_TYPES_TRITIUM_H
-#define NEXUS_TAO_LEDGER_TYPES_TRITIUM_H
 
 #include <LLC/include/flkey.h>
 
@@ -25,214 +23,207 @@ ________________________________________________________________________________
 #include <Util/templates/serialize.h>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::Ledger
 {
+    class BlockState;
+    class SyncBlock;
 
-    /* Ledger Layer namespace. */
-    namespace Ledger
+
+    /** TritiumBlock
+     *
+     *  A tritium block contains references to the transactions in blocks.
+     *  These are used to build the merkle tree for checking.
+     *  Transactions are processed before block is recieved, and commit
+     *  When a block is recieved to break up processing requirements.
+     *
+     **/
+    class TritiumBlock : public Block
     {
-        class BlockState;
-        class SyncBlock;
+    public:
+
+        /** The Block's timestamp. This number is locked into the signature hash. **/
+        uint64_t nTime;
 
 
-        /** TritiumBlock
+        /** Producer Transaction.
          *
-         *  A tritium block contains references to the transactions in blocks.
-         *  These are used to build the merkle tree for checking.
-         *  Transactions are processed before block is recieved, and commit
-         *  When a block is recieved to break up processing requirements.
+         *  Transaction responsible for the block producer (pre-version 9).
          *
          **/
-        class TritiumBlock : public Block
-        {
-        public:
-
-            /** The Block's timestamp. This number is locked into the signature hash. **/
-            uint64_t nTime;
+        Transaction producer;
 
 
-            /** Producer Transaction.
-             *
-             *  Transaction responsible for the block producer (pre-version 9).
-             *
-             **/
-            Transaction producer;
+        /** System Script
+         *
+         *  The critical system level pre-states and post-states.
+         *
+         **/
+        TAO::Register::Stream  ssSystem;
 
 
-            /** System Script
-             *
-             *  The critical system level pre-states and post-states.
-             *
-             **/
-            TAO::Register::Stream  ssSystem;
+        /** The transaction history.
+         *  uint8_t = TransactionType (per enum)
+         *  uint512_t = Tx hash
+         **/
+        std::vector<std::pair<uint8_t, uint512_t> > vtx;
 
 
-            /** The transaction history.
-             *  uint8_t = TransactionType (per enum)
-             *  uint512_t = Tx hash
-             **/
-            std::vector<std::pair<uint8_t, uint512_t> > vtx;
+        /** Serialization **/
+        IMPLEMENT_SERIALIZE
+        (
+            READWRITE(nVersion);
+            READWRITE(hashPrevBlock);
+            READWRITE(hashMerkleRoot);
+            READWRITE(nChannel);
+            READWRITE(nHeight);
+            READWRITE(nBits);
+            READWRITE(nNonce);
+            READWRITE(nTime);
+            READWRITE(vchBlockSig);
+            READWRITE(producer);
+            READWRITE(ssSystem);
+            READWRITE(vOffsets);
+            READWRITE(vtx);
+        )
 
 
-            /** Serialization **/
-            IMPLEMENT_SERIALIZE
-            (
-                READWRITE(nVersion);
-                READWRITE(hashPrevBlock);
-                READWRITE(hashMerkleRoot);
-                READWRITE(nChannel);
-                READWRITE(nHeight);
-                READWRITE(nBits);
-                READWRITE(nNonce);
-                READWRITE(nTime);
-                READWRITE(vchBlockSig);
-                READWRITE(producer);
-                READWRITE(ssSystem);
-                READWRITE(vOffsets);
-                READWRITE(vtx);
-            )
+        /** The default constructor. **/
+        TritiumBlock();
 
 
-            /** The default constructor. **/
-            TritiumBlock();
+        /** Copy constructor. **/
+        TritiumBlock(const TritiumBlock& block);
 
 
-            /** Copy constructor. **/
-            TritiumBlock(const TritiumBlock& block);
+        /** Move constructor. **/
+        TritiumBlock(TritiumBlock&& block) noexcept;
 
 
-            /** Move constructor. **/
-            TritiumBlock(TritiumBlock&& block) noexcept;
+        /** Copy assignment. **/
+        TritiumBlock& operator=(const TritiumBlock& block);
 
 
-            /** Copy assignment. **/
-            TritiumBlock& operator=(const TritiumBlock& block);
+        /** Move assignment. **/
+        TritiumBlock& operator=(TritiumBlock&& block) noexcept;
 
 
-            /** Move assignment. **/
-            TritiumBlock& operator=(TritiumBlock&& block) noexcept;
+        /** Default Destructor **/
+        virtual ~TritiumBlock();
 
 
-            /** Default Destructor **/
-            virtual ~TritiumBlock();
+        /** Copy Constructor. **/
+        TritiumBlock(const Block& block);
 
 
-            /** Copy Constructor. **/
-            TritiumBlock(const Block& block);
+        /** Copy Constructor. **/
+        TritiumBlock(const BlockState& state);
 
 
-            /** Copy Constructor. **/
-            TritiumBlock(const BlockState& state);
-
-
-            /** Copy Constructor. **/
-            TritiumBlock(const SyncBlock& block);
+        /** Copy Constructor. **/
+        TritiumBlock(const SyncBlock& block);
 
 
 
-            /** Clone
-             *
-             *  Allows polymorphic copying of blocks
-             *  Overridden to return an instance of the TritiumBlock class.
-             *  Return-type covariance allows us to return the more derived type whilst
-             *  still overriding the virtual base-class method
-             *
-             *  @return A pointer to a copy of this TritiumBlock.
-             *
-             **/
-            virtual TritiumBlock* Clone() const override;
+        /** Clone
+         *
+         *  Allows polymorphic copying of blocks
+         *  Overridden to return an instance of the TritiumBlock class.
+         *  Return-type covariance allows us to return the more derived type whilst
+         *  still overriding the virtual base-class method
+         *
+         *  @return A pointer to a copy of this TritiumBlock.
+         *
+         **/
+        virtual TritiumBlock* Clone() const override;
 
 
-            /** SetNull
-             *
-             *  Set the block to Null state.
-             *
-             **/
-            void SetNull() override;
+        /** SetNull
+         *
+         *  Set the block to Null state.
+         *
+         **/
+        void SetNull() override;
 
 
-            /** UpdateTime
-             *
-             *  Update the blocks timestamp.
-             *
-             **/
-            void UpdateTime();
+        /** UpdateTime
+         *
+         *  Update the blocks timestamp.
+         *
+         **/
+        void UpdateTime();
 
 
-            /** GetBlockTime
-             *
-             *  Returns the current UNIX timestamp of the block.
-             *
-             *  @return 64-bit integer of timestamp.
-             *
-             **/
-            uint64_t GetBlockTime() const;
+        /** GetBlockTime
+         *
+         *  Returns the current UNIX timestamp of the block.
+         *
+         *  @return 64-bit integer of timestamp.
+         *
+         **/
+        uint64_t GetBlockTime() const;
 
 
-            /** Check
-             *
-             *  Check a tritium block for consistency.
-             *
-             **/
-            bool Check() const override;
+        /** Check
+         *
+         *  Check a tritium block for consistency.
+         *
+         **/
+        bool Check() const override;
 
 
-            /** Accept
-             *
-             *  Accept a tritium block with chain state parameters.
-             *
-             **/
-            bool Accept() const override;
+        /** Accept
+         *
+         *  Accept a tritium block with chain state parameters.
+         *
+         **/
+        bool Accept() const override;
 
 
-            /** CheckStake
-             *
-             *  Check the proof of stake calculations.
-             *
-             **/
-            bool CheckStake() const;
+        /** CheckStake
+         *
+         *  Check the proof of stake calculations.
+         *
+         **/
+        bool CheckStake() const;
 
 
-            /** VerifyWork
-             *
-             *  Verify the work was completed by miners as advertised.
-             *
-             *  @return True if work is valid, false otherwise.
-             *
-             **/
-            bool VerifyWork() const override;
+        /** VerifyWork
+         *
+         *  Verify the work was completed by miners as advertised.
+         *
+         *  @return True if work is valid, false otherwise.
+         *
+         **/
+        bool VerifyWork() const override;
 
 
-            /** SignatureHash
-             *
-             *  Get the Signature Hash of the block. Used to verify work claims.
-             *
-             *  @return Returns a 1024-bit signature hash.
-             *
-             **/
-            uint1024_t SignatureHash() const override;
+        /** SignatureHash
+         *
+         *  Get the Signature Hash of the block. Used to verify work claims.
+         *
+         *  @return Returns a 1024-bit signature hash.
+         *
+         **/
+        uint1024_t SignatureHash() const override;
 
 
-            /** StakeHash
-             *
-             *  Prove that you staked a number of seconds based on weight
-             *
-             *  @return 1024-bit stake hash
-             *
-             **/
-            uint1024_t StakeHash() const;
+        /** StakeHash
+         *
+         *  Prove that you staked a number of seconds based on weight
+         *
+         *  @return 1024-bit stake hash
+         *
+         **/
+        uint1024_t StakeHash() const;
 
 
-            /** ToString
-             *
-             *  For debugging Purposes seeing block state data dump
-             *
-             **/
-            std::string ToString() const override;
+        /** ToString
+         *
+         *  For debugging Purposes seeing block state data dump
+         *
+         **/
+        std::string ToString() const override;
 
 
-        };
-    }
+    };
 }
-
-#endif

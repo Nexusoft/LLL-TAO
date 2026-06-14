@@ -18,204 +18,197 @@ ________________________________________________________________________________
 
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::Ledger
 {
-
-    /* Ledger Layer namespace. */
-    namespace Ledger
+    /** PinUnlock
+     *
+     *  Encapsulates the PIN to unlock and allowable actions that can be performed on a signature chain
+     *
+     */
+    class PinUnlock : public memory::encrypted
     {
+    protected:
+
+        /* Bitmask of actions that can be performed on the sigchain when unlocked  */
+        uint8_t nUnlockedActions;
 
 
-        /** PinUnlock
-         *
-         *  Encapsulates the PIN to unlock and allowable actions that can be performed on a signature chain
-         *
-         */
-        class PinUnlock : public memory::encrypted
+        /** The PIN to unlock a signature chain. **/
+        SecureString strPIN;
+
+
+    public:
+
+        /* Enumeration of allowable actions that can be performed on an unlocked signature chain */
+        enum UnlockActions
         {
-        protected:
+            TRANSACTIONS    = (1 << 1),
+            MINING          = (1 << 2),
+            STAKING         = (1 << 3),
+            NOTIFICATIONS   = (1 << 4),
+            NONE            = (0 << 0),
 
-            /* Bitmask of actions that can be performed on the sigchain when unlocked  */
-            uint8_t nUnlockedActions;
-
-
-            /** The PIN to unlock a signature chain. **/
-            SecureString strPIN;
-
-
-        public:
-
-            /* Enumeration of allowable actions that can be performed on an unlocked signature chain */
-            enum UnlockActions
-            {
-                TRANSACTIONS    = (1 << 1),
-                MINING          = (1 << 2),
-                STAKING         = (1 << 3),
-                NOTIFICATIONS   = (1 << 4),
-                NONE            = (0 << 0),
-
-                ALL = TRANSACTIONS | MINING | STAKING | NOTIFICATIONS
-            };
-
-
-            /** Default constructor. **/
-            PinUnlock()
-            : nUnlockedActions (UnlockActions::NONE)
-            , strPIN           ( )
-            {
-            }
-
-
-            /** Copy Constructor. **/
-            PinUnlock(const PinUnlock& pin)
-            : nUnlockedActions (pin.nUnlockedActions)
-            , strPIN           (pin.strPIN)
-            {
-            }
-
-
-            /** Move Constructor. **/
-            PinUnlock(PinUnlock&& pin) noexcept
-            : nUnlockedActions (std::move(pin.nUnlockedActions))
-            , strPIN           (std::move(pin.strPIN))
-            {
-            }
-
-
-            /** Copy Assignment Operator **/
-            PinUnlock& operator=(const PinUnlock& pin)
-            {
-                nUnlockedActions = pin.nUnlockedActions;
-                strPIN           = pin.strPIN;
-
-                return *this;
-            }
-
-
-            /** Move Assignment Operator **/
-            PinUnlock& operator=(PinUnlock&& pin) noexcept
-            {
-                nUnlockedActions = std::move(pin.nUnlockedActions);
-                strPIN           = std::move(pin.strPIN);
-
-                return *this;
-            }
-
-
-            /** Destructor. **/
-            ~PinUnlock()
-            {
-            }
-
-
-            /** Constructor with pin and actions. **/
-            PinUnlock(const SecureString& PIN, uint8_t UnlockedActions)
-            : nUnlockedActions (UnlockedActions)
-            , strPIN           (PIN)
-            {
-            }
-
-
-            /** CanTransact
-             *
-             *  Determins if the PIN can be used for transactions.
-             *
-             *  @return True if the PIN can be used for transactions.
-             *
-             **/
-            bool CanTransact() const
-            {
-                return nUnlockedActions & TRANSACTIONS;
-            }
-
-
-            /** CanMine
-             *
-             *  Determins if the PIN can be used for mining.
-             *
-             *  @return True if the PIN can be used for mining.
-             *
-             **/
-            bool CanMine() const
-            {
-                return nUnlockedActions & MINING;
-            }
-
-
-            /** CanStake
-             *
-             *  Determins if the PIN can be used for staking.
-             *
-             *  @return True if the PIN can be used for staking.
-             *
-             **/
-            bool CanStake() const
-            {
-                return nUnlockedActions & STAKING;
-            }
-
-
-            /** ProcessNotifications
-             *
-             *  Determins if the PIN can be used for processing notifications.
-             *
-             *  @return True if the PIN can be used for processing notifications.
-             *
-             **/
-            bool ProcessNotifications() const
-            {
-                return nUnlockedActions & NOTIFICATIONS;
-            }
-
-
-            /** PIN
-             *
-             *  Accessor for the PIN string.
-             *
-             *  @return the PIN.
-             *
-             **/
-            SecureString PIN() const
-            {
-                return strPIN;
-            }
-
-
-            /** Update
-             *
-             *  Update the PIN and actions internal values.
-             *
-             *  @param[in] strUpdated The PIN secure string to add.
-             *  @param[in] nUpdatedActions The enum to determine what actions are allowed.
-             *
-             **/
-            void Update(const SecureString& strUpdated, const uint8_t nUpdatedActions)
-            {
-                strPIN           = strUpdated;
-                nUnlockedActions = nUpdatedActions;
-            }
-
-
-            /** Encrypt
-             *
-             *  Special method for encrypting specific data types inside class.
-             *
-             **/
-            void Encrypt()
-            {
-                encrypt(strPIN);
-            }
-
-
-            /** UnlockedActions
-             *
-             *  Provides access to the current unlocked actions set on this PIN
-             *
-             **/
-            uint8_t UnlockedActions() const
-            {
-                return nUnlockedActions;
-            }
+            ALL = TRANSACTIONS | MINING | STAKING | NOTIFICATIONS
         };
-    }
+
+
+        /** Default constructor. **/
+        PinUnlock()
+        : nUnlockedActions (UnlockActions::NONE)
+        , strPIN           ( )
+        {
+        }
+
+
+        /** Copy Constructor. **/
+        PinUnlock(const PinUnlock& pin)
+        : nUnlockedActions (pin.nUnlockedActions)
+        , strPIN           (pin.strPIN)
+        {
+        }
+
+
+        /** Move Constructor. **/
+        PinUnlock(PinUnlock&& pin) noexcept
+        : nUnlockedActions (std::move(pin.nUnlockedActions))
+        , strPIN           (std::move(pin.strPIN))
+        {
+        }
+
+
+        /** Copy Assignment Operator **/
+        PinUnlock& operator=(const PinUnlock& pin)
+        {
+            nUnlockedActions = pin.nUnlockedActions;
+            strPIN           = pin.strPIN;
+
+            return *this;
+        }
+
+
+        /** Move Assignment Operator **/
+        PinUnlock& operator=(PinUnlock&& pin) noexcept
+        {
+            nUnlockedActions = std::move(pin.nUnlockedActions);
+            strPIN           = std::move(pin.strPIN);
+
+            return *this;
+        }
+
+
+        /** Destructor. **/
+        ~PinUnlock()
+        {
+        }
+
+
+        /** Constructor with pin and actions. **/
+        PinUnlock(const SecureString& PIN, uint8_t UnlockedActions)
+        : nUnlockedActions (UnlockedActions)
+        , strPIN           (PIN)
+        {
+        }
+
+
+        /** CanTransact
+         *
+         *  Determins if the PIN can be used for transactions.
+         *
+         *  @return True if the PIN can be used for transactions.
+         *
+         **/
+        bool CanTransact() const
+        {
+            return nUnlockedActions & TRANSACTIONS;
+        }
+
+
+        /** CanMine
+         *
+         *  Determins if the PIN can be used for mining.
+         *
+         *  @return True if the PIN can be used for mining.
+         *
+         **/
+        bool CanMine() const
+        {
+            return nUnlockedActions & MINING;
+        }
+
+
+        /** CanStake
+         *
+         *  Determins if the PIN can be used for staking.
+         *
+         *  @return True if the PIN can be used for staking.
+         *
+         **/
+        bool CanStake() const
+        {
+            return nUnlockedActions & STAKING;
+        }
+
+
+        /** ProcessNotifications
+         *
+         *  Determins if the PIN can be used for processing notifications.
+         *
+         *  @return True if the PIN can be used for processing notifications.
+         *
+         **/
+        bool ProcessNotifications() const
+        {
+            return nUnlockedActions & NOTIFICATIONS;
+        }
+
+
+        /** PIN
+         *
+         *  Accessor for the PIN string.
+         *
+         *  @return the PIN.
+         *
+         **/
+        SecureString PIN() const
+        {
+            return strPIN;
+        }
+
+
+        /** Update
+         *
+         *  Update the PIN and actions internal values.
+         *
+         *  @param[in] strUpdated The PIN secure string to add.
+         *  @param[in] nUpdatedActions The enum to determine what actions are allowed.
+         *
+         **/
+        void Update(const SecureString& strUpdated, const uint8_t nUpdatedActions)
+        {
+            strPIN           = strUpdated;
+            nUnlockedActions = nUpdatedActions;
+        }
+
+
+        /** Encrypt
+         *
+         *  Special method for encrypting specific data types inside class.
+         *
+         **/
+        void Encrypt()
+        {
+            encrypt(strPIN);
+        }
+
+
+        /** UnlockedActions
+         *
+         *  Provides access to the current unlocked actions set on this PIN
+         *
+         **/
+        uint8_t UnlockedActions() const
+        {
+            return nUnlockedActions;
+        }
+    };
 }
