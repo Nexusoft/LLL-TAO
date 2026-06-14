@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2025
+            (c) Copyright The Nexus Developers 2014 - 2026
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -86,12 +86,12 @@ namespace LLP
 
 
         /* LOOKUP_SERVER instance */
-        if(config::GetBoolArg(std::string("-lookup"), true))
+        if(config::GetBoolArg(std::string("-lookup"), true) || config::fClient.load())
         {
             /* Generate our config object and use correct settings. */
             LLP::Config CONFIG     = LLP::Config(GetLookupPort());
             CONFIG.ENABLE_LISTEN   = //we only listen if we have the valid indexes created
-                (!config::fClient.load() && config::fIndexProofs.load() && config::fIndexRegister.load());
+                (!config::fClient.load() && config::GetBoolArg(std::string("-listen"), true) && config::fIndexProofs.load() && config::fIndexRegister.load());
 
             CONFIG.ENABLE_METERS   = false;
             CONFIG.ENABLE_UPNP     = CONFIG.ENABLE_LISTEN;
@@ -122,7 +122,7 @@ namespace LLP
             CONFIG.ENABLE_LISTEN   = config::GetBoolArg(std::string("-listen"), (config::fClient.load() ? false : true));
             CONFIG.ENABLE_UPNP     = true; //we want UPNP for main tritium protocol
             CONFIG.ENABLE_METERS   = config::GetBoolArg(std::string("-meters"), false);
-            CONFIG.ENABLE_DDOS     = config::GetBoolArg(std::string("-ddos"), false);
+            CONFIG.ENABLE_DDOS     = config::GetBoolArg(std::string("-ddos"), true);
             CONFIG.ENABLE_MANAGER  = config::GetBoolArg(std::string("-manager"), true);
             CONFIG.ENABLE_SSL      = config::GetBoolArg(std::string("-ssl"), false);
             CONFIG.ENABLE_REMOTE   = true;
@@ -132,7 +132,7 @@ namespace LLP
             CONFIG.MAX_CONNECTIONS = config::GetArg(std::string("-maxconnections"), 100);
             CONFIG.MAX_THREADS     = config::GetArg(std::string("-threads"), 8);
             CONFIG.DDOS_CSCORE     = config::GetArg(std::string("-cscore"), 1);
-            CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-rscore"), 2000);
+            CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-rscore"), 500);
             CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-timespan"), 20);
             CONFIG.MANAGER_SLEEP   = 1000; //default: 1 second connection attempts
             CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-timeout"), 120);
@@ -171,6 +171,77 @@ namespace LLP
             /* We want to post a notice if this parameter is enabled. */
             debug::notice("HTTP SERVER ENABLED: you have set -fileroot=<directory> parameter, listening on port 80.");
         }
+
+
+        /* API_SERVER instance */
+        if((config::HasArg("-apiuser") && config::HasArg("-apipassword")) || !config::GetBoolArg("-apiauth", true))
+        {
+            /* Generate our config object and use correct settings. */
+            LLP::Config CONFIG     = LLP::Config(GetAPIPort());
+            CONFIG.ENABLE_LISTEN   = true;
+            CONFIG.ENABLE_UPNP     = false;
+            CONFIG.ENABLE_METERS   = config::GetBoolArg(std::string("-apimeters"), false);
+            CONFIG.ENABLE_DDOS     = config::GetBoolArg(std::string("-apiddos"), false);
+            CONFIG.ENABLE_MANAGER  = false;
+            CONFIG.ENABLE_SSL      = config::GetBoolArg(std::string("-apissl"));
+            CONFIG.ENABLE_REMOTE   = config::GetBoolArg(std::string("-apiremote"), false);
+            CONFIG.REQUIRE_SSL     = config::GetBoolArg(std::string("-apisslrequired"), false);
+            CONFIG.PORT_SSL        = GetAPIPort(true); //switch API port based on boolean argument
+            CONFIG.MAX_INCOMING    = 128;
+            CONFIG.MAX_CONNECTIONS = 128;
+            CONFIG.MAX_THREADS     = config::GetArg(std::string("-apithreads"), 8);
+            CONFIG.DDOS_CSCORE     = config::GetArg(std::string("-apicscore"), 5);
+            CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-apirscore"), 5);
+            CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-apitimespan"), 60);
+            CONFIG.MANAGER_SLEEP   = 0; //this is disabled
+            CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-apitimeout"), 30);
+
+            /* Create the server instance. */
+            LLP::API_SERVER = new Server<APINode>(CONFIG);
+        }
+        else
+        {
+            /* Output our new warning message if the API was disabled. */
+            debug::notice(ANSI_COLOR_BRIGHT_RED, "API SERVER DISABLED", ANSI_COLOR_RESET);
+            debug::notice(ANSI_COLOR_BRIGHT_YELLOW, "You must set apiuser=<user> and apipassword=<password> configuration.", ANSI_COLOR_RESET);
+            debug::notice(ANSI_COLOR_BRIGHT_YELLOW, "If you intend to run the API server without authenticating, set apiauth=0", ANSI_COLOR_RESET);
+        }
+
+
+        /* RPC_SERVER instance */
+        #ifndef NO_WALLET
+        if(config::HasArg("-rpcuser") && config::HasArg("-rpcpassword"))
+        {
+            /* Generate our config object and use correct settings. */
+            LLP::Config CONFIG     = LLP::Config(GetRPCPort());
+            CONFIG.ENABLE_LISTEN   = true;
+            CONFIG.ENABLE_UPNP     = false;
+            CONFIG.ENABLE_METERS   = config::GetBoolArg(std::string("-rpcmeters"), false);
+            CONFIG.ENABLE_DDOS     = true;
+            CONFIG.ENABLE_MANAGER  = false;
+            CONFIG.ENABLE_SSL      = config::GetBoolArg(std::string("-rpcssl"));
+            CONFIG.ENABLE_REMOTE   = config::GetBoolArg(std::string("-rpcremote"), false);
+            CONFIG.REQUIRE_SSL     = config::GetBoolArg(std::string("-rpcsslrequired"), false);
+            CONFIG.PORT_SSL        = 0; //TODO: this is disabled until SSL code can be refactored
+            CONFIG.MAX_INCOMING    = 128;
+            CONFIG.MAX_CONNECTIONS = 128;
+            CONFIG.MAX_THREADS     = config::GetArg(std::string("-rpcthreads"), 4);
+            CONFIG.DDOS_CSCORE     = config::GetArg(std::string("-rpccscore"), 5);
+            CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-rpcrscore"), 5);
+            CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-rpctimespan"), 60);
+            CONFIG.MANAGER_SLEEP   = 0; //this is disabled
+            CONFIG.SOCKET_TIMEOUT  = 30;
+
+            /* Create the server instance. */
+            RPC_SERVER = new Server<RPCNode>(CONFIG);
+        }
+        else
+        {
+            /* Output our new warning message if the API was disabled. */
+            debug::log(0, ANSI_COLOR_BRIGHT_RED, "RPC SERVER DISABLED", ANSI_COLOR_RESET);
+            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "You must set rpcuser=<user> and rpcpassword=<password> configuration.", ANSI_COLOR_RESET);
+        }
+        #endif
 
 
         /* MINING_SERVER instance */

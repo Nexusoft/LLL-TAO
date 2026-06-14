@@ -2,7 +2,7 @@
 
         Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-        (c) Copyright The Nexus Developers 2014 - 2025
+        (c) Copyright The Nexus Developers 2014 - 2026
 
         Distributed under the MIT software license, see the accompanying
         file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -244,11 +244,11 @@ namespace TAO::Operation
                 return debug::error(FUNCTION, "OP", std::hex, nCode, " deactivated for version ", nVersion);
 
             /* Make sure this is a valid opcode. */
-            if(!Conditions::mapActrivated.count(nCode))
+            if(!Conditions::mapActivated.count(nCode))
                 return debug::error(FUNCTION, "OP", std::hex, nCode, " illegal instruction, malformed binary stream");
 
             /* Check if our opcode has yet to be enabled. */
-            if(Conditions::mapActrivated.at(nCode) < nVersion)
+            if(Conditions::mapActivated.at(nCode) < nVersion)
                 return debug::error(FUNCTION, "OP", std::hex, nCode, " not activated for version ", nVersion);
 
             /* Check for a valid parameter type. */

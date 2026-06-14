@@ -2,7 +2,7 @@
 
 			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2025
+			(c) Copyright The Nexus Developers 2014 - 2026
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -74,6 +74,14 @@ namespace TAO
             std::map<uint512_t, TAO::Ledger::Transaction> mapOrphans;
 
 
+            /** MAp of orphan transactions so we can retrieve from memory if we have. **/
+            std::map<uint512_t, TAO::Ledger::Transaction> mapOrphansByIndex;
+
+
+            /** Track how many times we ask for an ORPHAN to limit retries. **/
+            std::map<uint512_t, uint64_t> mapRequestCount;
+
+
             /** Record of conflicted transactions in mempool. **/
             std::map<uint512_t, uint512_t> mapClaimed;
 
@@ -88,6 +96,7 @@ namespace TAO
 
             /** Set to keep track of duplicate orphans by index. **/
             std::set<uint512_t> setOrphansByIndex;
+
 
         public:
 

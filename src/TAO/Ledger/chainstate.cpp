@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2025
+            (c) Copyright The Nexus Developers 2014 - 2026
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -296,7 +296,7 @@ namespace TAO
             if(tStateBest != tStateGenesis)
             {
                 /* Go back 10 checkpoints on startup. */
-                for(uint32_t i = 0; i < config::GetArg("-checkpoints", 100); ++i)
+                for(uint32_t i = 0; i < config::GetArg("-checkcheckpoints", 100); ++i)
                 {
                     /* Search back until fail or different checkpoint. */
                     BlockState state;

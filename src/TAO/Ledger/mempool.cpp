@@ -2,7 +2,7 @@
 
 			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2025
+			(c) Copyright The Nexus Developers 2014 - 2026
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -49,10 +49,12 @@ namespace TAO
         , mapLedger          ( )
         , mapConflicts       ( )
         , mapOrphans         ( )
+        , mapRequestCount    ( )
         , mapClaimed         ( )
         , mapRejected        ( )
         , mapInputs          ( )
         , setOrphansByIndex  ( )
+        , mapOrphansByIndex  ( )
         {
         }
 
@@ -92,33 +94,25 @@ namespace TAO
 
             try
             {
+                /* Reset our request count if we received it. */
+                if(mapRequestCount.count(hashTx))
+                    mapRequestCount[hashTx] = 0;
+
                 /* Check for transaction on disk. */
                 if(mapLedger.count(hashTx))
                     return false; //NOTE: this was true, but changed to false to prevent relay loops in tritium LLP
-
-                /* Keep adding penalties if we have consecutive orphans. */
-                if(mapOrphans.count(tx.hashPrevTx))
-                {
-                    /* Increment consecutive orphans. */
-                    if(pnode)
-                    {
-                        /* Increment our consecutive orphans here. */
-                        ++pnode->nConsecutiveOrphans;
-
-                        /* Add an additional DDOS penalty. */
-                        if(pnode->DDOS)
-                            pnode->DDOS->rSCORE += 1;
-                    }
-
-                    return false;
-                }
 
                 /* Check for rejected tx. */
                 if(mapRejected.count(tx.hashPrevTx))
                 {
                     mapRejected.insert(hashTx);
                     return false;
+                    //return debug::error(FUNCTION, "part of rejected transaction orphan chain");
                 }
+
+                /* If we are already an ORPHAN, skip over. */
+                if(mapOrphans.count(tx.hashPrevTx))
+                    return true;
 
                 /* Print the transaction here. */
                 if(config::nVerbose >= 3)
@@ -170,14 +164,22 @@ namespace TAO
                         /* Push to orphan queue. */
                         mapOrphans[tx.hashPrevTx] = tx;
                         setOrphansByIndex.insert(hashTx);
+                        mapOrphansByIndex[hashTx] = tx;
 
                         /* Increment consecutive orphans. */
                         if(pnode)
                             ++pnode->nConsecutiveOrphans;
 
-                        /* Ask for the missing transaction. */
-                        if(pnode)
-                            pnode->PushMessage(LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::TRANSACTION), tx.hashPrevTx);
+                        /* Ask for our previous transaction now. */
+                        if(LLP::TRITIUM_SERVER)
+                        {
+                            /* Get a random node in case we have an unreliable node that gave us an ORPHAN */
+                            std::shared_ptr<LLP::TritiumNode> pCheck =
+                                LLP::TRITIUM_SERVER->RandomConnection();
+
+                            /* Ask the random node for our orphan data. */
+                            pCheck->PushMessage(LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::TRANSACTION), tx.hashPrevTx);
+                        }
 
                         return false;
                     }
@@ -185,9 +187,15 @@ namespace TAO
                     /* Check for conflicts. */
                     if(mapClaimed.count(tx.hashPrevTx) || mapConflicts.count(tx.hashPrevTx))
                     {
-                        /* Add to conflicts map. */
-                        debug::error(FUNCTION, "CONFLICT: prev tx ", (mapClaimed.count(tx.hashPrevTx) ? "CLAIMED " : "CONFLICTED "), tx.hashPrevTx.SubString());
-                        mapConflicts[hashTx] = tx;
+                        /* We only need to output debug info and insert if this is a new conflict. */
+                        if(!mapConflicts.count(hashTx))
+                        {
+                            /* Add to conflicts map. */
+                            debug::error(FUNCTION, "CONFLICT: prev tx ", (mapClaimed.count(tx.hashPrevTx) ? "CLAIMED " : "CONFLICTED "), tx.hashPrevTx.SubString());
+
+                            mapConflicts[hashTx] = tx;
+                        }
+
 
                         return false;
                     }
@@ -200,18 +208,26 @@ namespace TAO
                     /* Check for conflicts. */
                     if(tx.hashPrevTx != hashLast)
                     {
-                        /* Add to conflicts map. */
-                        debug::error(FUNCTION, "CONFLICT: hash last mismatch ", tx.hashPrevTx.SubString(), " and ", hashLast.SubString());
-                        mapConflicts[hashTx] = tx;
+                        /* We only need to output debug info and insert if this is a new conflict. */
+                        if(!mapConflicts.count(hashTx))
+                        {
+                            /* Add to conflicts map. */
+                            debug::error(FUNCTION, "CONFLICT: hash last mismatch ", tx.hashPrevTx.SubString(), " and ", hashLast.SubString());
+                            mapConflicts[hashTx] = tx;
+                        }
 
                         return false;
                     }
                 }
                 else if(tx.IsFirst() && LLD::Ledger->HasFirst(tx.hashGenesis))
                 {
-                    /* Add to conflicts map. */
-                    debug::error(FUNCTION, "CONFLICT: duplicate genesis-id ", tx.hashGenesis.SubString());
-                    mapConflicts[hashTx] = tx;
+                    /* We only need to output debug info and insert if this is a new conflict. */
+                    if(!mapConflicts.count(hashTx))
+                    {
+                        /* Add to conflicts map. */
+                        debug::error(FUNCTION, "CONFLICT: duplicate genesis-id ", tx.hashGenesis.SubString());
+                        mapConflicts[hashTx] = tx;
+                    }
 
                     return false;
                 }
@@ -270,8 +286,7 @@ namespace TAO
             }
             catch(const std::exception& e)
             {
-                mapRejected.insert(hashTx);
-                return false; //debug::error(FUNCTION, "REJECTED: exception encountered ", e.what());
+                return debug::error(FUNCTION, "REJECTED: exception encountered ", e.what());
             }
 
             return false;
@@ -302,6 +317,7 @@ namespace TAO
                     /* Erase the transaction. */
                     mapOrphans.erase(hashTx);
                     setOrphansByIndex.erase(hashThis);
+                    mapOrphansByIndex.erase(hashThis);
 
                     /* Set the hashTx. */
                     hashTx = hashThis;
@@ -315,14 +331,16 @@ namespace TAO
                 /* Accept the transaction into memory pool. */
                 if(!Accept(tx))
                 {
-                    debug::log(0, FUNCTION, "ORPHAN tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+                    //mapRejected.insert(hashTx);
+                    debug::log(0, FUNCTION, "ORPHAN tx ", hashTx.SubString(), " REJECTED");
 
-                    break;
+                    return;
                 }
 
                 /* Erase the transaction. */
                 mapOrphans.erase(hashTx);
                 setOrphansByIndex.erase(hashThis);
+                mapOrphansByIndex.erase(hashThis);
 
                 /* Set the hashTx. */
                 hashTx = hashThis;
@@ -350,6 +368,18 @@ namespace TAO
                 return true;
             }
 
+            /* Check in orphans memory. */
+            if(mapOrphansByIndex.count(hashTx))
+            {
+                /* Get from conflicts map. */
+                tx = mapOrphansByIndex.at(hashTx);
+
+                /* Set our internal cached hash. */
+                tx.hashCache = hashTx;
+
+                return true;
+            }
+
             /* Check in ledger memory. */
             if(mapLedger.count(hashTx))
             {
@@ -369,6 +399,30 @@ namespace TAO
         bool Mempool::Get(const uint512_t& hashTx, TAO::Ledger::Transaction &tx) const
         {
             RECURSIVE(MUTEX);
+
+            /* Check in conflict memory. */
+            if(mapConflicts.count(hashTx))
+            {
+                /* Get from conflicts map. */
+                tx = mapConflicts.at(hashTx);
+
+                /* Set our internal cached hash. */
+                tx.hashCache = hashTx;
+
+                return true;
+            }
+
+            /* Check in orphans memory. */
+            if(mapOrphansByIndex.count(hashTx))
+            {
+                /* Get from conflicts map. */
+                tx = mapOrphansByIndex.at(hashTx);
+
+                /* Set our internal cached hash. */
+                tx.hashCache = hashTx;
+
+                return true;
+            }
 
             /* Check in ledger memory. */
             if(mapLedger.count(hashTx))
@@ -490,6 +544,10 @@ namespace TAO
             /* Erase from orphans memory. */
             if(setOrphansByIndex.count(hashTx))
                 setOrphansByIndex.erase(hashTx);
+
+            /* Erase from orphans index. */
+            if(mapOrphansByIndex.count(hashTx))
+                mapOrphansByIndex.erase(hashTx);
 
             /* Find the transaction in pool. */
             if(mapLedger.count(hashTx))

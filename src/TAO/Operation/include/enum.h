@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2025
+            (c) Copyright The Nexus Developers 2014 - 2026
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -220,7 +220,7 @@ namespace TAO::Operation
     struct Conditions
     {
         /** Map to hold opcodes that are activated. **/
-        static const std::map<uint8_t, uint32_t> mapActrivated =
+        static inline const std::map<uint8_t, uint32_t> mapActivated =
         {
             //activated datatypes
             { OP::TYPES::UINT8_T,             1 },
@@ -300,7 +300,7 @@ namespace TAO::Operation
 
 
         /** Map to hold opcodes that need to deactivate. **/
-        static const std::map<uint8_t, uint32_t> mapDeactivated =
+        static inline const std::map<uint8_t, uint32_t> mapDeactivated =
         {
             { OP::LEDGER::HEIGHT,    5 },
             { OP::LEDGER::SUPPLY,    5 },

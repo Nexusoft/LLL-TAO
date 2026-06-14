@@ -2,7 +2,7 @@
 
 		Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-		(c) Copyright The Nexus Developers 2014 - 2025
+		(c) Copyright The Nexus Developers 2014 - 2026
 
 		Distributed under the MIT software license, see the accompanying
 		file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -31,6 +31,10 @@ namespace TAO
     {
         /* Static instantiation of orphan blocks in queue to process. */
         std::map<uint1024_t, std::unique_ptr<TAO::Ledger::Block>> mapOrphans;
+
+
+        /* Track the times we have requested processed missing transactions so we don't loop too much. */
+        std::pair<uint1024_t, uint64_t> pairLastMissing;
 
 
         /* Mutex to protect checking more than one block at a time. */
@@ -94,25 +98,30 @@ namespace TAO
                     /* Check if we have an active node. */
                     if(pnode)
                     {
-                        /* Ask for list of blocks. */
-                        pnode->PushMessage(LLP::TritiumNode::ACTION::LIST,
-                            uint8_t(LLP::TritiumNode::TYPES::BLOCK),
-                            uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
-                            TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
-                            uint1024_t(block.hashPrevBlock)
-                        );
+                        /* Special option to sync from ORPHAN blocks. */
+                        if(config::GetBoolArg("-syncorphans", true))
+                        {
+                            /* Ask for list of blocks if this is current sync node. */
+                            pnode->PushMessage(LLP::TritiumNode::ACTION::LIST,
+                                config::fClient.load() ? uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT) : uint8_t(LLP::TritiumNode::SPECIFIER::SYNC),
+                                uint8_t(LLP::TritiumNode::TYPES::BLOCK),
+                                uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
+                                TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                                uint1024_t(0)
+                            );
+                        }
+                        else
+                        {
+                            /* Send a request to download the orphaned block. */
+                            pnode->PushMessage(LLP::TritiumNode::ACTION::GET,
 
-                        /* Send a request to download the orphaned block.
-                        pnode->PushMessage(LLP::TritiumNode::ACTION::GET,
+                                #ifndef DEBUG_MISSING
+                                uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS),
+                                #endif
 
-                            #ifndef DEBUG_MISSING
-                            uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS),
-                            #endif
-
-                            uint8_t(LLP::TritiumNode::TYPES::BLOCK), block.hashPrevBlock);
-                        */
+                                uint8_t(LLP::TritiumNode::TYPES::BLOCK), block.hashPrevBlock);
+                        }
                     }
-
 
                     return;
                 }
@@ -127,18 +136,38 @@ namespace TAO
                 /* Check if the block is valid. */
                 if(!block.Check())
                 {
-                    /* Check for missing transactions. */
-                    if(block.vMissing.size() == 0)
-                    {
-                        nStatus |= PROCESS::REJECTED;
-                        return;
-                    }
+                    nStatus |= PROCESS::REJECTED;
+                    return;
+                }
+
+                /* Check for missing transactions. */
+                if(block.vMissing.size() != 0)
+                {
+                    /* Give some debug info that we are missing some transactions here. */
+                    debug::notice(FUNCTION, "missing ", block.vMissing.size(), " transactions");
 
                     /* Incomplete blocks can pass through orphan checks. */
                     nStatus |= PROCESS::INCOMPLETE;
 
                     /* Set the missing block. */
                     block.hashMissing = hashBlock;
+
+                    /* Set our last missing. */
+                    if(pairLastMissing.first == hashBlock)
+                    {
+                        /* Increment and check if we have reached limits. */
+                        if(++pairLastMissing.second > LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES)
+                        {
+                            block.vMissing.clear(); //we want to clear so we don't keep re-requesting the transactions
+                            block.hashMissing = 0;
+                        }
+                    }
+                    else
+                    {
+                        /* Reset to current block so we can track consecutive retries. */
+                        pairLastMissing.first  = hashBlock;
+                        pairLastMissing.second = 0;
+                    }
 
                     return;
                 }
@@ -222,11 +251,11 @@ namespace TAO
 
                     /* Check if the block is valid. */
                     if(!pOrphan->Check())
-                    {
-                        /* Check for missing transactions. */
-                        if(pOrphan->vMissing.size() == 0)
-                            return;
+                        return;
 
+                    /* Check for missing transactions for ORPHAN. */
+                    if(pOrphan->vMissing.size() != 0)
+                    {
                         /* Incomplete blocks can pass through orphan checks. */
                         nStatus |= PROCESS::INCOMPLETE;
 

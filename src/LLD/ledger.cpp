@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2025
+            (c) Copyright The Nexus Developers 2014 - 2026
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -145,7 +145,7 @@ namespace LLD
                 throw debug::exception(FUNCTION, "failed to read contract");
 
             /* Check that our dependant was indexed. */
-            if(fCheckIndex && !HasIndex(hashTx))
+            if(nFlags == TAO::Ledger::FLAGS::BLOCK && fCheckIndex && !HasIndex(hashTx))
                 throw debug::exception(FUNCTION, "dependant is not indexed");
 
             /* Get const reference for read-only access. */
@@ -162,7 +162,7 @@ namespace LLD
                 throw debug::exception(FUNCTION, "failed to read contract");
 
             /* Check that our dependant was indexed. */
-            if(fCheckIndex && !HasIndex(hashTx))
+            if(nFlags == TAO::Ledger::FLAGS::BLOCK && fCheckIndex && !HasIndex(hashTx))
                 throw debug::exception(FUNCTION, "dependant is not indexed");
 
             return TAO::Operation::Contract(tx, nContract);
