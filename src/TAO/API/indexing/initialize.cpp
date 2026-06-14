@@ -83,8 +83,8 @@ namespace TAO::API
 
         /* Initialize our thread objects now. */
         Indexing::DISPATCH       = util::atomic::lock_unique_ptr<std::queue<uint512_t>>(new std::queue<uint512_t>());
-        Indexing::EVENTS_THREAD  = std::thread(&Indexing::Manager);
-        Indexing::REFRESH_THREAD = std::thread(&Indexing::RefreshEvents);
+        //Indexing::EVENTS_THREAD  = std::thread(&Indexing::Manager);
+        //Indexing::REFRESH_THREAD = std::thread(&Indexing::RefreshEvents);
 
 
         /* Initialize our indexing thread now. */
