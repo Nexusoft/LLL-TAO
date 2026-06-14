@@ -39,82 +39,82 @@ namespace TAO
 
 
          /* Activated test network at timestamp. */
-        const uint32_t NEXUS_TESTNET_TIMELOCK = 1421250000;        //--- Nexus Testnet Activation:     1/14/2015 08:38:00 GMT - 7
+        const uint32_t NEXUS_TESTNET_TIMELOCK = 1421250000;        //--- Nexus Testnet Activation:     1/14/2015 08:38:00 UTC - 7
 
 
         /* Activated main network at timestamp. */
-        const uint32_t NEXUS_NETWORK_TIMELOCK = 1411510800;        //--- Nexus Network Launch:        09/23/2014 16:20:00 GMT - 7
+        const uint32_t NEXUS_NETWORK_TIMELOCK = 1411510800;        //--- Nexus Network Launch:        09/23/2014 16:20:00 UTC - 7
 
 
         /* Lock for the Nexus block version upgrades. */
         const uint32_t TESTNET_BLOCK_VERSION_TIMELOCK[]   =
         {
-            1412676000,        //--- Block Version 2 Testnet Activation:  10/07/2014 04:00:00 GMT - 7
-            1421293891,        //--- Block Version 3 Testnet Activation:  01/15/2015 07:51:31 GMT - 7
-            1421949600,        //--- Block Version 4 Testnet Activation:  05/10/2015 08:01:00 GMT - 7
-            1536562800,        //--- Block Version 5 Testnet Activation:  09/10/2018 00:00:00 GMT - 7
-            1537167600,        //--- Block Version 6 Testnet Activation:  09/17/2018 00:00:00 GMT - 7
-            1572325200,        //--- Block Version 7 Testnet Activation:  10/28/2019 22:00:00 GMT - 7
-            1582946400,        //--- Block Version 8 Testnet Activation:  02/28/2020 20:20:00 GMT - 7
-            1749171355         //--- Block Version 9 Testnet Activation:  06/05/2025 17:55:55 GMT - 7
+            1412676000,        //--- Block Version 2 Testnet Activation:  10/07/2014 04:00:00 UTC - 7
+            1421293891,        //--- Block Version 3 Testnet Activation:  01/15/2015 07:51:31 UTC - 7
+            1421949600,        //--- Block Version 4 Testnet Activation:  05/10/2015 08:01:00 UTC - 7
+            1536562800,        //--- Block Version 5 Testnet Activation:  09/10/2018 00:00:00 UTC - 7
+            1537167600,        //--- Block Version 6 Testnet Activation:  09/17/2018 00:00:00 UTC - 7
+            1572325200,        //--- Block Version 7 Testnet Activation:  10/28/2019 22:00:00 UTC - 7
+            1582946400,        //--- Block Version 8 Testnet Activation:  02/28/2020 20:20:00 UTC - 7
+            1781763071         //--- Block Version 9 Testnet Activation:  06/17/2026 23:11:11 UTC - 7
         };
 
 
         /* Lock for the Nexus block version upgrades. */
         const uint32_t NETWORK_BLOCK_VERSION_TIMELOCK[]   =
         {
-            1412964000,        //--- Block Version 2 Activation:          10/10/2014 12:00:00 GMT - 7
-            1421949600,        //--- Block Version 3 Activation:          01/22/2015 12:00:00 GMT - 7
-            1438369200,        //--- Block Version 4 Activation:          07/31/2015 12:00:00 GMT - 7
-            1536977460,        //--- Block Version 5 Activation:          09/14/2018 19:11:00 GMT - 7
-            1538791860,        //--- Block Version 6 Activation:          10/05/2018 19:11:00 GMT - 7
-            1573539371,        //--- Block Version 7 Activation:          11/11/2019 23:11:11 GMT - 7
-            1584676140,        //--- Block Version 8 Activation:          03/20/2020 03:49:00 GMT - 7
-            1755910555         //--- Block Version 9 Activation:          08/22/2025 17:55:55 GMT - 7
+            1412964000,        //--- Block Version 2 Activation:          10/10/2014 12:00:00 UTC - 7
+            1421949600,        //--- Block Version 3 Activation:          01/22/2015 12:00:00 UTC - 7
+            1438369200,        //--- Block Version 4 Activation:          07/31/2015 12:00:00 UTC - 7
+            1536977460,        //--- Block Version 5 Activation:          09/14/2018 19:11:00 UTC - 7
+            1538791860,        //--- Block Version 6 Activation:          10/05/2018 19:11:00 UTC - 7
+            1573539371,        //--- Block Version 7 Activation:          11/11/2019 23:11:11 UTC - 7
+            1584676140,        //--- Block Version 8 Activation:          03/20/2020 03:49:00 UTC - 7
+            1783233213         //--- Block Version 9 Activation:          07/04/2026 23:33:33 UTC - 7
         };
 
 
         /* Activated timestamp of first tritium block.*/
-        const uint32_t NEXUS_TRITIUM_TIMELOCK = 1573566343; //---->       11/12/2019 06:45:43 GMT - 7
+        const uint32_t NEXUS_TRITIUM_TIMELOCK = 1573566343; //---->       11/12/2019 06:45:43 UTC - 7
 
 
         /* Lock for the Nexus transaction version upgrades. */
         uint32_t TESTNET_TRANSACTION_VERSION_TIMELOCK[]   =
         {
-            1572325200,        //--- Transaction Version 1 Testnet Activation:  10/28/2019 22:00:00 GMT - 7
-            1582946400,        //--- Transaction Version 2 Testnet Activation:  02/28/2020 20:20:00 GMT - 7
-            1631046780,        //--- Transaction Version 3 Testnet Activation:  09/07/2021 13:33:00 GMT - 7
-            1631563980,        //--- Transaction Version 4 Testnet Activation:  09/13/2021 13:13:00 GMT - 7
-            1749162813         //--- Transaction Version 5 Testnet Activation:  06/05/2025 15:33:33 GMT - 7
+            1572325200,        //--- Transaction Version 1 Testnet Activation:  10/28/2019 22:00:00 UTC - 7
+            1582946400,        //--- Transaction Version 2 Testnet Activation:  02/28/2020 20:20:00 UTC - 7
+            1631046780,        //--- Transaction Version 3 Testnet Activation:  09/07/2021 13:33:00 UTC - 7
+            1631563980,        //--- Transaction Version 4 Testnet Activation:  09/13/2021 13:13:00 UTC - 7
+            1781763071         //--- Transaction Version 5 Testnet Activation:  06/17/2026 23:11:11 UTC - 7
         };
 
 
         /* Lock for the Nexus transaction version upgrades. */
         uint32_t NETWORK_TRANSACTION_VERSION_TIMELOCK[]   =
         {
-            1573539371,        //--- Transaction Version 1 Activation:      11/11/2019 23:11:11 GMT - 7
-            1584676140,        //--- Transaction Version 2 Activation:      03/19/2020 20:49:00 GMT - 7
-            1631301120,        //--- Transaction Version 3 Activation:      09/10/2021 12:12:00 GMT - 7
-            1631819333,        //--- Transaction Version 4 Activation:      09/16/2021 12:08:53 GMT - 7
-            1755909213         //--- Transaction Version 5 Activation:      08/22/2025 15:33:33 GMT - 7
+            1573539371,        //--- Transaction Version 1 Activation:      11/11/2019 23:11:11 UTC - 7
+            1584676140,        //--- Transaction Version 2 Activation:      03/19/2020 20:49:00 UTC - 7
+            1631301120,        //--- Transaction Version 3 Activation:      09/10/2021 12:12:00 UTC - 7
+            1631819333,        //--- Transaction Version 4 Activation:      09/16/2021 12:08:53 UTC - 7
+            1783233213         //--- Transaction Version 5 Activation:      07/04/2026 23:33:33 UTC - 7
         };
 
 
         /* Lock to activate each corresponding proof channel. */
         const uint32_t CHANNEL_TESTNET_TIMELOCK[] =
         {
-            1421949600,        //--- Stake Testnet Activation:            05/10/2015 08:01:00 GMT - 7
-            1411437371,        //--- Prime Testnet Activation:            09/22/2014 18:56:11 GMT - 7
-            1411437371         //--- Hash Testnet Activation:             09/22/2014 18:56:11 GMT - 7
+            1421949600,        //--- Stake Testnet Activation:            05/10/2015 08:01:00 UTC - 7
+            1411437371,        //--- Prime Testnet Activation:            09/22/2014 18:56:11 UTC - 7
+            1411437371         //--- Hash Testnet Activation:             09/22/2014 18:56:11 UTC - 7
         };
 
 
         /* Lock to activate each corresponding proof channel. */
         const uint32_t CHANNEL_NETWORK_TIMELOCK[] =
         {
-            1438369200,        //--- Stake Channel Activation:            07/31/2015 12:00:00 GMT - 7
-            1411510800,        //--- Prime Channel Activation:            09/23/2014 16:20:00 GMT - 7
-            1413914400         //--- Hash Channel Activation:             10/21/2014 12:00:00 GMT - 7
+            1438369200,        //--- Stake Channel Activation:            07/31/2015 12:00:00 UTC - 7
+            1411510800,        //--- Prime Channel Activation:            09/23/2014 16:20:00 UTC - 7
+            1413914400         //--- Hash Channel Activation:             10/21/2014 12:00:00 UTC - 7
         };
 
 
