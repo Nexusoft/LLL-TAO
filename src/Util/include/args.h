@@ -45,6 +45,7 @@ namespace config
     extern std::atomic<bool> fStaking;
     extern std::atomic<bool> fHybrid;
     extern std::atomic<bool> fSister;
+    extern std::atomic<bool> fIndexHeight;
     extern std::atomic<bool> fIndexProofs;
     extern std::atomic<bool> fIndexAddress;
     extern std::atomic<bool> fIndexRegister;

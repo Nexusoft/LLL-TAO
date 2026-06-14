@@ -28,6 +28,14 @@ namespace TAO::API
     void Initialize();
 
 
+    /** RegisterCommands
+     *
+     *  Register the commands and indexes for the API instance.
+     *
+     **/
+    void RegisterCommands();
+
+
     /** Shutdown
      *
      *  Delete global instances of the API.

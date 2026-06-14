@@ -102,6 +102,20 @@ namespace TAO::API
     }
 
 
+    /* List a vector of strings of all the current registered commands. */
+    std::vector<std::string> Indexing::Registered()
+    {
+        /* Initialize our return value. */
+        std::vector<std::string> vRet;
+
+        /* Build the commands list. */
+        for(const auto& strCommand : REGISTERED)
+            vRet.push_back(strCommand);
+
+        return vRet;
+    }
+
+
     /* Default destructor. */
     void Indexing::InitializeThread()
     {

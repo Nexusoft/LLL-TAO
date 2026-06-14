@@ -13,6 +13,9 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/types/commands.h>
+#include <TAO/API/types/indexing.h>
+
 #include <TAO/Register/include/unpack.h>
 
 #include <TAO/Ledger/include/chainstate.h>
@@ -37,7 +40,8 @@ namespace LLD
             { "-indexheight",   2944206 },
             { "-indexaddress",  2944206 },
             { "-indexproofs",   2944206 },
-            { "-indexregister", 2944206 }
+            { "-indexregister", 2944206 },
+            { "-indexevents",   2944206 }
         };
 
         /* Find the lowest height to start at. */
@@ -48,7 +52,8 @@ namespace LLD
         bool fIndexHeightComplete    = true,
              fIndexAddressesComplete = true,
              fIndexProofsComplete    = true,
-             fIndexRegistersComplete = true;
+             fIndexRegistersComplete = true,
+             fIndexEventsComplete    = true;
 
         /* Check where we last left off. */
         uint1024_t hashIndexHeight;
@@ -93,6 +98,9 @@ namespace LLD
                 /* Set indexing argument now. */
                 RECURSIVE(config::ARGS_MUTEX);
                 config::mapArgs["-indexheight"] = "1";
+
+                /* Set our internal configuration value. */
+                config::fIndexHeight.store(true);
             }
         }
         else if(config::GetBoolArg("-indexheight", false))
@@ -255,9 +263,52 @@ namespace LLD
         else if(config::GetBoolArg("-indexregister", false))
             fIndexRegistersComplete = false;
 
+
+        /* Check where we last left off. */
+        uint512_t hashIndexEvents;
+        if(LLD::Logical->ReadLastIndex(hashIndexEvents))
+        {
+            /* Reset our falgs if we have reindexed proofs. */
+            if(config::GetBoolArg("-reindexevents"))
+                fIndexEventsComplete = false;
+            else
+            {
+                /* Read block state of height. */
+                TAO::Ledger::BlockState rState;
+                if(LLD::Ledger->ReadBlock(hashIndexEvents, rState))
+                {
+                    /* Set our heights map. */
+                    mapHeights["-indexevents"] = rState.nHeight;
+
+                    /* If our height is less than current chain we want to scan. */
+                    if(rState.nHeight < TAO::Ledger::ChainState::nBestHeight.load())
+                    {
+                        fIndexEventsComplete = false;
+
+                        /* Check if this is lowest height. */
+                        if(rState.nHeight < pairStartingHash.first)
+                        {
+                            pairStartingHash.first  = rState.nHeight;
+                            pairStartingHash.second = rState.GetHash();
+                        }
+                    }
+
+                    /* Establish we are not complete here. */
+                    debug::notice(FUNCTION, "-indexevents starting at height ", mapHeights["-indexevents"]);
+                }
+            }
+        }
+
         /* We don't need to do any work here if all of our indexes are complete. */
-        if(fIndexHeightComplete && fIndexAddressesComplete && fIndexProofsComplete && fIndexRegistersComplete)
+        if(fIndexHeightComplete && fIndexAddressesComplete && fIndexProofsComplete && fIndexRegistersComplete && fIndexEventsComplete)
+        {
+            debug::log(0, FUNCTION, "Indexing system is up to date");
             return;
+        }
+
+        /* Get our list of registered commands. */
+        const std::vector<std::string> vCommandsIndexes =
+            TAO::API::Indexing::Registered();
 
         /* Our list of transactions to read. */
         std::map<uint512_t, TAO::Ledger::Transaction> mapTransactions;
@@ -514,7 +565,13 @@ namespace LLD
                             }
                         }
 
-
+                        /* Handle if we need to index our events. */
+                        if(!fIndexEventsComplete && state.nHeight > mapHeights["-indexevents"])
+                        {
+                            /* Loop through registered commands indexes. */
+                            for(const auto& strCommands : vCommandsIndexes)
+                                TAO::API::Commands::Instance(strCommands)->Index(rContract, nContract);
+                        }
                     }
 
                     /* Delete processed transaction from memory. */
@@ -582,6 +639,17 @@ namespace LLD
                 //debug::notice("Writing -indexregister at height ", tStateLast.nHeight);
             }
 
+            /* Write the new -indexregister to disk. */
+            if(!fIndexEventsComplete && tStateLast.nHeight > mapHeights["-indexevents"])
+            {
+                /* Write the index to the disk. */
+                LLD::Logical->WriteLastIndex(tStateLast.vtx[0].second);
+
+                /* Update our heights map. */
+                mapHeights["-indexevents"] = tStateLast.nHeight;
+                //debug::notice("Writing -indexevents at height ", tStateLast.nHeight);
+            }
+
             /* Start an ACID transaction based on block batches. */
             LLD::Ledger->TxnCommit();
             LLD::Register->TxnCommit();
@@ -601,19 +669,19 @@ namespace LLD
     void UpdateIndexing(const uint1024_t& hashBlock)
     {
         /* Update our -indexheight indexes. */
-        if(config::GetBoolArg("-indexheight", false))
+        if(config::fIndexHeight.load())
             LLD::Ledger->WriteIndexHeight(hashBlock);
 
         /* Update our -indexproofs indexes. */
-        if(config::GetBoolArg("-indexproofs", false))
+        if(config::fIndexProofs.load())
             LLD::Ledger->WriteIndexProofs(hashBlock);
 
         /* Update our -indexaddress indexes. */
-        if(config::GetBoolArg("-indexaddress", false))
+        if(config::fIndexAddress.load())
             LLD::Register->WriteIndexAddress(hashBlock);
 
         /* Update our -indexregister indexes. */
-        if(config::GetBoolArg("-indexregister", false))
+        if(config::fIndexRegister.load())
             LLD::Logical->WriteIndexRegisters(hashBlock);
     }
 }

@@ -44,6 +44,7 @@ namespace TAO::API
     std::atomic<uint32_t> nRegisterCounter;
     std::atomic<uint32_t> nTransactionCounter;
 
+
     /* Global value to hold the command-set function pointers. */
     std::map<std::string, Base*> Commands::mapTypes;
 
@@ -55,37 +56,6 @@ namespace TAO::API
 
         /* Initialize our authentication system. */
         Authentication::Initialize();
-
-        /* Create the API instances. */
-        Commands::Register<Assets>();
-        //Commands::Register<Crypto>();
-        Commands::Register<Market>(config::fClient.load()); //DISABLED for -client mode
-        Commands::Register<Finance>();
-        Commands::Register<Invoices>();
-        Commands::Register<Ledger>();
-        Commands::Register<Local>();
-        Commands::Register<Network>(config::fClient.load()); //DISABLED for -client mode
-        Commands::Register<Names>();
-        Commands::Register<Profiles>();
-        Commands::Register<Register>(config::fClient.load()); //DISABLED for -client mode
-        Commands::Register<Sessions>();
-        Commands::Register<Supply>();
-        Commands::Register<System>();
-        Commands::Register<Tokens>();
-
-        /* Import our standard objects to Register API. */
-        if(!config::fClient.load())
-        {
-            Commands::Instance<Register>()->Import<Assets>();
-            Commands::Instance<Register>()->Import<Finance>();
-            Commands::Instance<Register>()->Import<Invoices>();
-            Commands::Instance<Register>()->Import<Names>();
-            Commands::Instance<Register>()->Import<Supply>();
-        }
-
-        /* Initialize our indexing services. */
-        Indexing::Register<Market>();
-        Indexing::Register<Names> ();
 
         /* Kick off our indexing sub-system now. */
         Indexing::Initialize();
@@ -126,6 +96,42 @@ namespace TAO::API
             debug::notice(ANSI_COLOR_BRIGHT_YELLOW, "You must set apiuser=<user> and apipassword=<password> configuration.", ANSI_COLOR_RESET);
             debug::notice(ANSI_COLOR_BRIGHT_YELLOW, "If you intend to run the API server without authenticating, set apiauth=0", ANSI_COLOR_RESET);
         }
+    }
+
+
+    /* Register the commands and indexes for the API instance. */
+    void RegisterCommands()
+    {
+        /* Create the API instances. */
+        Commands::Register<Assets>();
+        //Commands::Register<Crypto>();
+        Commands::Register<Market>(config::fClient.load()); //DISABLED for -client mode
+        Commands::Register<Finance>();
+        Commands::Register<Invoices>();
+        Commands::Register<Ledger>();
+        Commands::Register<Local>();
+        Commands::Register<Network>(config::fClient.load()); //DISABLED for -client mode
+        Commands::Register<Names>();
+        Commands::Register<Profiles>();
+        Commands::Register<Register>(config::fClient.load()); //DISABLED for -client mode
+        Commands::Register<Sessions>();
+        Commands::Register<Supply>();
+        Commands::Register<System>();
+        Commands::Register<Tokens>();
+
+        /* Import our standard objects to Register API. */
+        if(!config::fClient.load())
+        {
+            Commands::Instance<Register>()->Import<Assets>();
+            Commands::Instance<Register>()->Import<Finance>();
+            Commands::Instance<Register>()->Import<Invoices>();
+            Commands::Instance<Register>()->Import<Names>();
+            Commands::Instance<Register>()->Import<Supply>();
+        }
+
+        /* Initialize our indexing services. */
+        Indexing::Register<Market>();
+        Indexing::Register<Names> ();
     }
 
 

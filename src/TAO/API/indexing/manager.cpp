@@ -24,15 +24,18 @@ namespace TAO::API
     /*  Index a new block hash to relay thread.*/
     void Indexing::PushTransaction(const uint512_t& hashTx)
     {
-        /* Let's push the sessions indexes in the main processing thread. */
-        if(!TAO::Ledger::ChainState::Synchronizing())
-            IndexSession(hashTx);
+        /* Push indexes on block process thread when not syncing. */
+        //if(!TAO::Ledger::ChainState::Synchronizing())
+        {
+            process_transaction(hashTx);
+            return;
+        }
 
         /* Next lets push to uur manager thread to handle the global indexes. */
         DISPATCH->push(hashTx);
         CONDITION.notify_all();
 
-        debug::log(3, FUNCTION, "Pushing ", hashTx.SubString(), " To Indexing Queue.");
+        //debug::log(3, FUNCTION, "Pushing ", hashTx.SubString(), " To Indexing Queue.");
     }
 
 
@@ -67,35 +70,41 @@ namespace TAO::API
             const uint512_t hashTx = DISPATCH->front();
             DISPATCH->pop();
 
-            /* Check if handling legacy or tritium. */
-            if(hashTx.GetType() == TAO::Ledger::TRITIUM)
+            /* Process from internal dispatch. */
+            process_transaction(hashTx);
+        }
+    }
+
+    /* Helper method used for building indexes. */
+    void Indexing::process_transaction(const uint512_t& hashTx)
+    {
+        /* Check if handling legacy or tritium. */
+        if(hashTx.GetType() == TAO::Ledger::TRITIUM)
+        {
+            /* Index our sessions code when syncing here in seperate thread. */
+            IndexSession(hashTx);
+
+            /* Make sure the transaction is on disk. */
+            TAO::Ledger::Transaction tx;
+            if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
             {
-                /* Index our sessions code when syncing here in seperate thread. */
-                if(TAO::Ledger::ChainState::Synchronizing())
-                    IndexSession(hashTx);
-
-                /* Make sure the transaction is on disk. */
-                TAO::Ledger::Transaction tx;
-                if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                /* Iterate the transaction contracts. */
+                for(uint32_t nContract = 0; nContract < tx.Size(); nContract++)
                 {
-                    /* Iterate the transaction contracts. */
-                    for(uint32_t nContract = 0; nContract < tx.Size(); nContract++)
+                    /* Grab contract reference. */
+                    const TAO::Operation::Contract& rContract = tx[nContract];
+
                     {
-                        /* Grab contract reference. */
-                        const TAO::Operation::Contract& rContract = tx[nContract];
+                        LOCK(REGISTERED_MUTEX);
 
-                        {
-                            LOCK(REGISTERED_MUTEX);
-
-                            /* Loop through registered commands. */
-                            for(const auto& strCommands : REGISTERED)
-                                Commands::Instance(strCommands)->Index(rContract, nContract);
-                        }
+                        /* Loop through registered commands. */
+                        for(const auto& strCommands : REGISTERED)
+                            Commands::Instance(strCommands)->Index(rContract, nContract);
                     }
-
-                    /* Write our last index now. */
-                    LLD::Logical->WriteLastIndex(hashTx);
                 }
+
+                /* Write our last index now. */
+                LLD::Logical->WriteLastIndex(hashTx);
             }
         }
     }

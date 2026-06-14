@@ -50,7 +50,7 @@ namespace TAO::API
 
             /* Check our current op code. */
             if(nCheck != nCode)
-                return debug::error("invalid instruction ", std::hex, uint32_t(nCheck), " expecting ", uint32_t(nCode));
+                return false; //debug::error("invalid instruction ", std::hex, uint32_t(nCheck), " expecting ", uint32_t(nCode));
 
             /* Check for a valid parameter type. */
             switch(nCode)

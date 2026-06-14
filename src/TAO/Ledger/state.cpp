@@ -942,7 +942,7 @@ namespace TAO::Ledger
                     }
 
                     /* Erase our height indexes if we have enabled. */
-                    if(config::GetBoolArg("-indexheight", false))
+                    if(config::fIndexHeight.load())
                         LLD::Ledger->EraseIndex(state.nHeight);
                 }
 
@@ -1117,7 +1117,8 @@ namespace TAO::Ledger
                 return debug::error(FUNCTION, "failed to write best chain");
 
             /* Update our indexing entries if enabled. */
-            LLD::UpdateIndexing(hash);
+            if(nTime > NEXUS_TRITIUM_TIMELOCK)
+                LLD::UpdateIndexing(hash);
 
             /* Reset contract meters. */
             nTotalContracts = 0;
@@ -1300,7 +1301,7 @@ namespace TAO::Ledger
             return debug::error(FUNCTION, "failed to update block state");
 
         /* Index the block by height if enabled. */
-        if(config::GetBoolArg("-indexheight"))
+        if(config::fIndexHeight.load())
             LLD::Ledger->IndexBlock(nHeight, hashBlock);
 
         /* Update chain pointer for previous block. */
@@ -1377,7 +1378,7 @@ namespace TAO::Ledger
         }
 
         /* Erase the index for block by height. */
-        if(config::GetBoolArg("-indexheight"))
+        if(config::fIndexHeight.load())
             LLD::Ledger->EraseIndex(nHeight);
 
         /* Update the previous state's next pointer. */

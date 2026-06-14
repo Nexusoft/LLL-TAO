@@ -54,7 +54,7 @@ namespace TAO::API
         if(CheckParameter(jParams, "height", "string, number"))
         {
             /* Check that the node is configured to index blocks by height */
-            if(!config::GetBoolArg("-indexheight"))
+            if(!config::fIndexHeight.load())
                 throw Exception(-85, "getblock by height requires the daemon to be started with the -indexheight flag.");
 
             /* Convert the incoming height string to an int*/
@@ -90,7 +90,7 @@ namespace TAO::API
         else
         {
             /* Check for indexing by height. */
-            if(config::GetBoolArg("-indexheight"))
+            if(config::fIndexHeight.load())
             {
                 /* Do not search if Chain is at 0 blocks */
                 if(TAO::Ledger::ChainState::nBestHeight.load() == 0)

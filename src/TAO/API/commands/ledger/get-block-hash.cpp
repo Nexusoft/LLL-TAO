@@ -37,7 +37,7 @@ namespace TAO::API
     encoding::json Ledger::GetBlockHash(const encoding::json& jParams, const bool fHelp)
     {
         /* Check that the node is configured to index blocks by height */
-        if(!config::GetBoolArg("-indexheight"))
+        if(!config::fIndexHeight.load())
             throw Exception(-79, "[getblockhash] requires the daemon to be started with the -indexheight flag.");
 
         /* Convert the incoming height string to an int*/

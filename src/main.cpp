@@ -216,6 +216,10 @@ int main(int argc, char** argv)
         TAO::Ledger::ChainState::Initialize();
 
 
+        /* Initialize API Commands. */
+        TAO::API::RegisterCommands();
+
+
         /* Initialize LLD indexing. */
         Initialize::Update("Indexing Database...");
         LLD::Indexing();

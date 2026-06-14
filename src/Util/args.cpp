@@ -47,6 +47,7 @@ namespace config
     std::atomic<bool> fStaking(false);
     std::atomic<bool> fHybrid(false);
     std::atomic<bool> fSister(false);
+    std::atomic<bool> fIndexHeight(false);
     std::atomic<bool> fIndexProofs(false);
     std::atomic<bool> fIndexAddress(false);
     std::atomic<bool> fIndexRegister(false);
@@ -217,9 +218,12 @@ namespace config
         fHybrid                 = (GetArg("-hybrid", "") != ""); //-hybrid=<username> where username is the owner.
         //fSister                 = (GetArg("-sister", "") != ""); NOTE: disabled for now, -sister=<token> for sister network.
 
-        fIndexProofs            = GetBoolArg("-indexproofs");
-        fIndexAddress           = GetBoolArg("-indexaddress");
-        fIndexRegister          = GetBoolArg("-indexregister");
+        /* Handle our indexing flags to dtermine what indexes to build. */
+        fIndexHeight            = GetBoolArg("-indexheight",   false);
+        fIndexProofs            = GetBoolArg("-indexproofs",   false);
+        fIndexAddress           = GetBoolArg("-indexaddress",  false);
+        fIndexRegister          = GetBoolArg("-indexregister", false);
+
         nVerbose                = GetArg("-verbose", 0);
 
         /* Cache our fileserver root if enabled. */

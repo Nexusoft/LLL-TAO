@@ -85,7 +85,7 @@ namespace TAO::API
 
                         /* Write the order to logical database. */
                         if(!LLD::Logical->PushOrder(pairMarket, rContract, nContract))
-                            debug::warning(FUNCTION, "Market indexes failed to be pushed ", rContract.Hash().SubString());
+                            debug::log(3, FUNCTION, "Market indexes failed to be pushed ", rContract.Hash().SubString());
 
                         /* Give a verbose=3 debug log for the indexing entry. */
                         if(config::nVerbose >= 3)

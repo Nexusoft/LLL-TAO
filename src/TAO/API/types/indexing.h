@@ -138,6 +138,16 @@ namespace TAO::API
         }
 
 
+        /** Registered
+         *
+         *  List a vector of strings of all the current registered commands.
+         *
+         *  @return list of registered commands in API.
+         *
+         **/
+        static std::vector<std::string> Registered();
+
+
         /** Manager Thread
          *
          *  Handle indexing of all events for API.
@@ -251,6 +261,19 @@ namespace TAO::API
          *
          **/
         static void Shutdown();
+
+
+    private:
+
+
+        /** process_transaction
+         *
+         *  Helper method used for building indexes.
+         *
+         *  @param[in] hashTx The txid to build indexes for
+         *
+         **/
+        static void process_transaction(const uint512_t& hashTx);
 
 
     };
