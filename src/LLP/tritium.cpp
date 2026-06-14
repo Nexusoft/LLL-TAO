@@ -3936,7 +3936,7 @@ namespace LLP
         TAO::Ledger::nSyncSession.store(nCurrentSession);
 
         /* Reset last time received. */
-        nLastTimeReceived.store(runtime::unifiedtimestamp());
+        nLastTimeReceived.store(runtime::timestamp());
 
         /* Cache the height at the start of the sync */
         if(nSyncStart.load() == 0)
