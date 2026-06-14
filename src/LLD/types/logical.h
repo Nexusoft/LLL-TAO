@@ -298,6 +298,30 @@ namespace LLD
         bool HasPTR(const uint256_t& hashAddress);
 
 
+        /** WriteIndexRegisters
+         *
+         *  Writes the block indexed so far.
+         *
+         *  @param[in] hashBlock The block that we have indexed up to.
+         *
+         *  @return True if the has was written.
+         *
+         **/
+        bool WriteIndexRegisters(const uint1024_t& hashBlock);
+
+
+        /** ReadIndexRegisters
+         *
+         *  Read the block indexed so far.
+         *
+         *  @param[in] hashBlock The block that we have indexed up to.
+         *
+         *  @return  True if the has was read.
+         *
+         **/
+        bool ReadIndexRegisters(uint1024_t &hashBlock);
+
+
         /** Build indexes for transactions over a rolling modulus. For -indexregister flag. **/
         void IndexRegisters();
 

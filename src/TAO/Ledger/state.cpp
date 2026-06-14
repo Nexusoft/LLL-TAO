@@ -1116,6 +1116,9 @@ namespace TAO::Ledger
             if(!LLD::Ledger->WriteBestChain(hash))
                 return debug::error(FUNCTION, "failed to write best chain");
 
+            /* Update our indexing entries if enabled. */
+            LLD::UpdateIndexing(hash);
+
             /* Reset contract meters. */
             nTotalContracts = 0;
             nTotalInputs    = 0;

@@ -241,6 +241,30 @@ namespace LLD
         void IndexAddress();
 
 
+        /** WriteIndexAddress
+         *
+         *  Writes the block indexed so far.
+         *
+         *  @param[in] hashBlock The block that we have indexed up to.
+         *
+         *  @return True if the has was written.
+         *
+         **/
+        bool WriteIndexAddress(const uint1024_t& hashBlock);
+
+
+        /** ReadIndexAddress
+         *
+         *  Read the block indexed so far.
+         *
+         *  @param[in] hashBlock The block that we have indexed up to.
+         *
+         *  @return  True if the has was read.
+         *
+         **/
+        bool ReadIndexAddress(uint1024_t &hashBlock);
+
+
         /** MemoryBegin
          *
          *  Begin a memory transaction following ACID properties.

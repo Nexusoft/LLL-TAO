@@ -861,6 +861,54 @@ namespace LLD
         bool EraseFirst(const uint256_t& hashGenesis);
 
 
+        /** WriteIndexHeight
+         *
+         *  Writes the height indexed so far.
+         *
+         *  @param[in] hashBlock The block that we have indexed up to.
+         *
+         *  @return True if the has was written.
+         *
+         **/
+        bool WriteIndexHeight(const uint1024_t& hashBlock);
+
+
+        /** ReadIndexHeight
+         *
+         *  Read the height indexed so far.
+         *
+         *  @param[in] hashBlock The block that we have indexed up to.
+         *
+         *  @return  True if the has was read.
+         *
+         **/
+        bool ReadIndexHeight(uint1024_t &hashBlock);
+
+
+        /** WriteIndexProofs
+         *
+         *  Writes the block indexed so far.
+         *
+         *  @param[in] hashBlock The block that we have indexed up to.
+         *
+         *  @return True if the has was written.
+         *
+         **/
+        bool WriteIndexProofs(const uint1024_t& hashBlock);
+
+
+        /** ReadIndexProofs
+         *
+         *  Read the block indexed so far.
+         *
+         *  @param[in] hashBlock The block that we have indexed up to.
+         *
+         *  @return  True if the has was read.
+         *
+         **/
+        bool ReadIndexProofs(uint1024_t &hashBlock);
+
+
         /** MemoryBegin
          *
          *  Begin a memory transaction following ACID properties.

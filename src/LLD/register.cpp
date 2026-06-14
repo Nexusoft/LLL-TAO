@@ -487,6 +487,20 @@ namespace LLD
     }
 
 
+    /* Writes the block indexed so far. */
+    bool RegisterDB::WriteIndexAddress(const uint1024_t& hashBlock)
+    {
+        return Write(std::string("index.address.complete"), hashBlock);
+    }
+
+
+    /* Read the block indexed so far. */
+    bool RegisterDB::ReadIndexAddress(uint1024_t &hashBlock)
+    {
+        return Read(std::string("index.address.complete"), hashBlock);
+    }
+
+
     /* Flag to determine if address indexing has completed. For -indexaddress flag. */
     void RegisterDB::IndexAddress()
     {

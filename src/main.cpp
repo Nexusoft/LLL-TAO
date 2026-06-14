@@ -216,13 +216,13 @@ int main(int argc, char** argv)
         TAO::Ledger::ChainState::Initialize();
 
 
+        /* Initialize LLD indexing. */
+        Initialize::Update("Indexing Database...");
+        LLD::Indexing();
+
+
         /* Initialize our API server so we can monitor initialization messages. */
         TAO::API::Initialize();
-
-
-        /* Run our LLD indexing operations. */
-        Initialize::Update("Indexing Databases...");
-        LLD::Indexing();
 
 
         /* Initialize Legacy Environment. */

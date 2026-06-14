@@ -1303,6 +1303,33 @@ namespace LLD
     }
 
 
+    /* Writes the block indexed so far. */
+    bool LedgerDB::WriteIndexHeight(const uint1024_t& hashBlock)
+    {
+        return Write(std::string("index.height.complete"), hashBlock);
+    }
+
+
+    /* Read the block indexed so far. */
+    bool LedgerDB::ReadIndexHeight(uint1024_t &hashBlock)
+    {
+        return Read(std::string("index.height.complete"), hashBlock);
+    }
+
+
+    /* Writes the block indexed so far. */
+    bool LedgerDB::WriteIndexProofs(const uint1024_t& hashBlock)
+    {
+        return Write(std::string("index.proofs.complete"), hashBlock);
+    }
+
+
+    /* Read the block indexed so far. */
+    bool LedgerDB::ReadIndexProofs(uint1024_t &hashBlock)
+    {
+        return Read(std::string("index.proofs.complete"), hashBlock);
+    }
+
     /* Begin a memory transaction following ACID properties. */
     void LedgerDB::MemoryBegin(const uint8_t nFlags)
     {

@@ -56,6 +56,9 @@ namespace LLD
         virtual ~LocalDB();
 
 
+        
+
+
         /** WriteIndex
          *
          *  Writes the txid of the transaction that modified the given register.

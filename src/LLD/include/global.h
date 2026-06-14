@@ -77,6 +77,14 @@ namespace LLD
     void Indexing();
 
 
+    /** UpdateIndexing
+     *
+     *  Global handler to keep indexes up to date on chain.
+     *
+     */
+    void UpdateIndexing(const uint1024_t& hashBlock);
+
+
     /** Shutdown
      *
      *  Shutdown and cleanup the global LLD instances.
@@ -115,6 +123,7 @@ namespace LLD
      *
      */
     void TxnCommit(const uint8_t nFlags = 0, const uint16_t nInstances = INSTANCES::CONSENSUS);
+
 }
 
 #endif

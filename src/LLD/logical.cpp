@@ -445,6 +445,20 @@ namespace LLD
     }
 
 
+    /* Writes the block indexed so far. */
+    bool LogicalDB::WriteIndexRegisters(const uint1024_t& hashBlock)
+    {
+        return Write(std::string("index.registers.complete"), hashBlock);
+    }
+
+
+    /* Read the block indexed so far. */
+    bool LogicalDB::ReadIndexRegisters(uint1024_t &hashBlock)
+    {
+        return Read(std::string("index.registers.complete"), hashBlock);
+    }
+
+
     /* Build indexes for transactions over a rolling modulus. For -indexregister flag. */
     void LogicalDB::IndexRegisters()
     {
@@ -489,7 +503,7 @@ namespace LLD
         if(!LLD::Ledger->ReadBlock(hashBegin, state))
         {
             Write(std::string("register.indexed"));
-            
+
             debug::warning(FUNCTION, "No tritium blocks available ", hashBegin.SubString());
             return;
         }
