@@ -19,10 +19,6 @@ ________________________________________________________________________________
 #include <Legacy/types/coinbase.h>
 #include <Legacy/types/reservekey.h>
 
-#ifndef NO_WALLET
-#include <Legacy/wallet/wallet.h>
-#endif
-
 namespace Legacy
 {
 
@@ -93,42 +89,6 @@ namespace Legacy
      *
      **/
     void AddTransactions(std::vector<Transaction>& vtx);
-
-
-#ifndef NO_WALLET
-
-    /** SignBlock
-     *
-     *  Sign the block with the key that found the block.
-     *
-     *  @param[in, out] block The block to sign
-     *
-     *  @param[in] keystore The wallet containing the key that created the block (Coinbase/Coinstake generator)
-     *
-     *  @return true if the block was successfully signed
-     *
-     **/
-    bool SignBlock(LegacyBlock& block, const KeyStore& keystore);
-
-
-    /** CheckWork
-     *
-     * Work Check Before Submit.
-     * This checks the work as a miner, a lot more conservatively than the network will check it
-     * to ensure that you do not submit a bad block.
-     *
-     * This method does NOT submit the block to the network.
-     *
-     * @param[in] block The newly mined block
-     *
-     * @param[in] wallet Wallet containing key paid by Coinbase/Coinstake transaction
-     *
-     * @return true if the block checks out and is ok to submit
-     *
-     **/
-    bool CheckWork(const LegacyBlock& block, Legacy::Wallet& wallet);
-
-#endif
 
 }
 

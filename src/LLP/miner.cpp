@@ -37,7 +37,6 @@ ________________________________________________________________________________
 
 #include <Legacy/include/create.h>
 #include <Legacy/types/legacy.h>
-#include <Legacy/wallet/wallet.h>
 #include <Legacy/types/reservekey.h>
 
 #include <Util/include/config.h>
@@ -63,12 +62,8 @@ namespace LLP
     , nBestHeight(0)
     , nSubscribed(0)
     , nChannel(0)
-    , pMiningKey(nullptr)
     , nHashLast(0)
     {
-        #ifndef NO_WALLET
-        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::Instance());
-        #endif
     }
 
 
@@ -81,12 +76,8 @@ namespace LLP
     , nBestHeight(0)
     , nSubscribed(0)
     , nChannel(0)
-    , pMiningKey(nullptr)
     , nHashLast(0)
     {
-        #ifndef NO_WALLET
-        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::Instance());
-        #endif
     }
 
 
@@ -99,12 +90,8 @@ namespace LLP
     , nBestHeight(0)
     , nSubscribed(0)
     , nChannel(0)
-    , pMiningKey(nullptr)
     , nHashLast(0)
     {
-        #ifndef NO_WALLET
-        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::Instance());
-        #endif
     }
 
 
@@ -113,14 +100,6 @@ namespace LLP
     {
         LOCK(MUTEX);
         clear_map();
-
-        if(pMiningKey)
-        {
-            #ifndef NO_WALLET
-            pMiningKey->ReturnKey();
-            delete pMiningKey;
-            #endif
-        }
 
         /* Send a notification to wake up sleeping thread to finish shutdown process. */
         this->NotifyEvent();
@@ -865,26 +844,6 @@ namespace LLP
         if(pBaseBlock)
             pBaseBlock->nNonce = nNonce;
 
-        /* If the block dynamically casts to a legacy block, validate the legacy block. */
-        {
-            Legacy::LegacyBlock *pBlock = dynamic_cast<Legacy::LegacyBlock *>(pBaseBlock);
-            if(pBlock)
-            {
-                #ifndef NO_WALLET
-
-                /* Update the block's timestamp. */
-                pBlock->UpdateTime();
-
-                /* Sign the block with a key from wallet. */
-                if(!Legacy::SignBlock(*pBlock, Legacy::Wallet::Instance()))
-                    return debug::error(FUNCTION, "Unable to Sign Legacy Block ", hashMerkleRoot.SubString());
-
-                #endif
-
-                return true;
-            }
-        }
-
         /* If the block dynamically casts to a tritium block, validate the tritium block. */
         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(pBaseBlock);
         if(pBlock)
@@ -959,30 +918,6 @@ namespace LLP
     /*  validates the block. */
     bool Miner::validate_block(const uint512_t& hashMerkleRoot)
     {
-        /* If the block dynamically casts to a legacy block, validate the legacy block. */
-        {
-            Legacy::LegacyBlock *pBlock = dynamic_cast<Legacy::LegacyBlock *>(mapBlocks[hashMerkleRoot]);
-
-            if(pBlock)
-            {
-                debug::log(2, FUNCTION, "Legacy");
-                pBlock->print();
-
-                #ifndef NO_WALLET
-
-                /* Check the Proof of Work for submitted block. */
-                if(!Legacy::CheckWork(*pBlock, Legacy::Wallet::Instance()))
-                    return false;
-
-                /* Block is valid - Tell the wallet to keep this key. */
-                pMiningKey->KeepKey();
-
-                #endif
-
-                return true;
-            }
-        }
-
         /* If the block dynamically casts to a tritium block, validate the tritium block. */
         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock*>(mapBlocks[hashMerkleRoot]);
         if(pBlock)

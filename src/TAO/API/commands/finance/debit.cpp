@@ -11,8 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Legacy/wallet/wallet.h>
-
 #include <LLC/hash/SK.h>
 
 #include <LLD/include/global.h>

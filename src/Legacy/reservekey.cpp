@@ -16,8 +16,6 @@ ________________________________________________________________________________
 #include <Legacy/types/keypoolentry.h>
 #include <Legacy/types/reservekey.h>
 
-#include <Legacy/wallet/wallet.h>
-
 #include <Util/include/debug.h>
 
 #include <memory>
@@ -57,24 +55,6 @@ namespace Legacy
     /* Retrieves the public key value for the currently reserved key. */
     std::vector<uint8_t> ReserveKey::GetReservedKey()
     {
-        #ifndef NO_WALLET
-        if(nPoolIndex == -1)
-        {
-            /* Don't have a reserved key in this instance, yet, so need to reserve one */
-            KeyPoolEntry keypoolEntry;
-            wallet.GetKeyPool().ReserveKeyFromPool(nPoolIndex, keypoolEntry);
-
-            if(nPoolIndex != -1)
-                vchPubKey = keypoolEntry.vchPubKey;
-            else
-            {
-                debug::log(0, FUNCTION, "Warning: Using default key instead of a new key, top up your keypool.");
-                vchPubKey = wallet.GetDefaultKey();
-            }
-        }
-
-        assert(!vchPubKey.empty());
-        #endif
         return vchPubKey;
     }
 
@@ -82,11 +62,6 @@ namespace Legacy
     /* Marks the reserved key as used, removing it from the key pool. */
     void ReserveKey::KeepKey()
     {
-        #ifndef NO_WALLET
-        if(nPoolIndex != -1)
-            wallet.GetKeyPool().KeepKey(nPoolIndex);
-        #endif
-
         nPoolIndex = -1;
         vchPubKey.clear();
     }
@@ -95,11 +70,6 @@ namespace Legacy
     /* Returns a reserved key to the key pool. After call, it is no longer reserved. */
     void ReserveKey::ReturnKey()
     {
-        #ifndef NO_WALLET
-        if(nPoolIndex != -1)
-            wallet.GetKeyPool().ReturnKey(nPoolIndex);
-        #endif
-
         nPoolIndex = -1;
         vchPubKey.clear();
     }

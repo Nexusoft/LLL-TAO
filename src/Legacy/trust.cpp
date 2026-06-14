@@ -15,7 +15,6 @@ ________________________________________________________________________________
 
 #include <Legacy/include/enum.h>
 #include <Legacy/include/evaluate.h>
-#include <Legacy/wallet/wallet.h>
 
 #include <Legacy/types/address.h>
 #include <Legacy/types/transaction.h>

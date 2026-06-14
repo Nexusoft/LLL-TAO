@@ -15,7 +15,7 @@ This instruction was written for LLL-TAO <code>5.1.5-rc14-9</code> of <code>merg
 	* **Below RPi2 Rev 1.1(~ARM Cortex A7) is not supported** because working as 32-bit only, The reason is ARM64(ARMv8) command set is not contained on AP. But after **RPi2 Rev 1.2 contains ARM Cortex A53 that supports 64-bit(aarch64/ARM64)**.
 
 * Minimum **1GB(For Lite Node)/30GB(For Full Node) Free Space** for installing blockchain database
-	* Currently, The extracted full database is about 17GB approximately in size and grows over time. 
+	* Currently, The extracted full database is about 17GB approximately in size and grows over time.
 	* Lite node will only maintains block headers and signature chain data for minimizing the storage impact dramatically, So 250MB approximately on these days and also grows over time.
 
 * **64-bit** Debian-based Linux for Operation System (Ubuntu Server is Recommanded)
@@ -47,7 +47,7 @@ When the installation has finished, Go to next step.
 --------------------------------------------------------------------------------
 ### `Part 2. Cloning Depository and Building Daemon`
 --------------------------------------------------------------------------------
-In this step, We are going to clone the [LLL-TAO](https://github.com/Nexusoft/LLL-TAO) on your destination folder from <code>merging</code> branch, 
+In this step, We are going to clone the [LLL-TAO](https://github.com/Nexusoft/LLL-TAO) on your destination folder from <code>merging</code> branch,
 
 Which is currently latest version except other branches that under developing.
 
@@ -104,10 +104,6 @@ You can add the parameters for building. See and check [Build Params Reference](
 # You must input the 'ARM64=1' for recognizing the architecture.
 # These params are case sensetive.
 make -j 4 -f makefile.cli ARM64=1
-
-# You also can input the NO_WALLET=1 for ignore the legecy Nexus that used databases,
-# This will be default due to deprecating the legacy base, After hard forking to version 6.0.
-make -j 4 -f makefile.cli ARM64=1 NO_WALLET=1
 ```
 This compiling may takes long time.(~10 min approx.) Please wait patiently.
 
@@ -124,7 +120,7 @@ sudo cp ./nexus /usr/bin
 sudo rm /usr/bin/nexus
 ```
 
-When you had added it to environment variable before, Do this after recompiling the core for update or reinstallation purpose. 
+When you had added it to environment variable before, Do this after recompiling the core for update or reinstallation purpose.
 
 If you don't, Old Nexus daemon will be called from <code>/usr/bin</code> and the version that you newly built will be ignored to be called.
 
@@ -145,7 +141,7 @@ mkdir ~/.Nexus
 cd ~/.Nexus
 ```
 
-If you have done, Make <code>nexus.conf</code> file with your favorite text editor. (or using <code>echo '' >> nexus.conf</code>) 
+If you have done, Make <code>nexus.conf</code> file with your favorite text editor. (or using <code>echo '' >> nexus.conf</code>)
 
 On this time, I'm going to use VIM for editing this configuration file.
 ```
@@ -154,7 +150,7 @@ sudo vim nexus.conf
 
 After you have opened the file with the editor(or open the body with using <code>echo</code>), Please fill these section on the file with below paragraph.
 
-You must input the <code>ESSENTIAL</code> marked options for proper setup. 
+You must input the <code>ESSENTIAL</code> marked options for proper setup.
 
 Other options isn't necessary now because these could be turn on and off on the Nexus Interface after installation if API has been connected correctly.
 
@@ -174,13 +170,13 @@ Other options isn't necessary now because these could be turn on and off on the 
 # Other options are optional.
 #
 
-# All of credential-related information will be masked on the log with letter 'X'. 
+# All of credential-related information will be masked on the log with letter 'X'.
 
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # RECOMMANDS & ESSENTIAL OPTIONS
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-# [RECOMMANDED]This option will accept launch the process into the background. 
+# [RECOMMANDED]This option will accept launch the process into the background.
 # You can turn off background process of daemon with './nexus system/stop'. [Default : 0]
 daemon=1
 
@@ -285,7 +281,7 @@ If you have done, Save the file and move to the next step.
 ### `Part 4. Opening API, SSL, RPC Ports`
 --------------------------------------------------------------------------------
 
-Well, This part is for network and firewall configration. 
+Well, This part is for network and firewall configration.
 
 You need to open these 3 ports below;
 
@@ -301,7 +297,7 @@ These ports on this instruction are **default value** that unmodified with overr
 
 If you have overridden these values on <code>nexus.conf</code>, Input the ports as your value properly.
 
-On this instruction, I will show you two methods; One is for editing rules on <code>iptables</code> directly and applying on the <code>netfilter</code>, 
+On this instruction, I will show you two methods; One is for editing rules on <code>iptables</code> directly and applying on the <code>netfilter</code>,
 
 And the other one is for editing rules on <code>UFW(Uncomplicated Firewall)</code>, The front-end interface of <code>iptables</code> which is easier for using firewall configuration.
 
@@ -332,7 +328,7 @@ sudo iptables -I INPUT -p tcp --dport 9336 -j ACCEPT
 sudo iptables -I OUTPUT -p tcp --dport 9336 -j ACCEPT
 ```
 
-Second, Open API port. 
+Second, Open API port.
 
 For better security, You may whitelist the inbound/outbound ip.
 
@@ -412,7 +408,7 @@ It's done for opening ports and ready for running daemon!
 --------------------------------------------------------------------------------
 On this chapter, We are going to start the nexus daemon and learn about how to find the log files for maintaining nodes.
 
-For starting daemon, You should go to the LLL-TAO folder that you compiled the daemon. 
+For starting daemon, You should go to the LLL-TAO folder that you compiled the daemon.
 
 ```
 cd ~/<your_folder_that_made>/LLL-TAO
@@ -422,7 +418,7 @@ And input <code>./nexus</code> and press enter.
 
 Or if you registered the Nexus daemon as environment variable, Just input <code>nexus</code> anywhere.
 
-Once you pressed, It shows the fully logs. 
+Once you pressed, It shows the fully logs.
 ```
 [03:52:52.754] ---------------------------------------------------
 [03:52:52.754] Startup time 2025-XX-XX XX:XX:XX UTC
@@ -457,7 +453,7 @@ First. go to <code>~/.Nexus/log</code> with your shell.
 cd ~/.Nexus/log
 ```
 
-If you are in the <code>log</code> folder, Check the log files with <code>dir</code> command. 
+If you are in the <code>log</code> folder, Check the log files with <code>dir</code> command.
 
 There should be some log files in there.
 
@@ -468,7 +464,7 @@ And if the logs are too long to read, The new file will be created with named as
 You can read these logs with <code>cat</code> command like this;
 ```
 # For checking full latest logs
-cat 0.log 
+cat 0.log
 # For finding the lines that contains specific words.
 cat 0.log | grep -a <magic words>
 ```
@@ -562,7 +558,7 @@ Then you should input these informations on setting that you can see;
 * API password : API password that you set on <code>nexus.conf</code>
 * Log out on close : If you close the wallet (not node), Logging out from session automatically.
 	* Default is false. If you are using stake or mining, turn off this option may help for turning on only nodes without logout. If you are on public, turn this option on for security purpose.
- 
+
 Once it have done and if you set the setting correctly, The login window will be appeared on your Nexus Wallet.
 
 Then you can use the wallet with transaction, staking and mining same method as Desktop Version Wallet.

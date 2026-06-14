@@ -165,16 +165,6 @@ Example:
 STATIC=1
 ```
 
-#### `NO WALLET`
-
-Do not include the legacy Nexus that used Databases
-
-Example:
-
-```
-NO_WALLET=1
-```
-
 #### `IPHONE`
 
 Used to run the iPhone portion of the makefile.

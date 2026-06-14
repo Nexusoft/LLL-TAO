@@ -13,13 +13,8 @@ ________________________________________________________________________________
 
 #pragma once
 
-#include <Legacy/rpc/types/rpc.h>
-
 namespace Legacy
 {
-    #ifndef NO_WALLET
-    extern Legacy::RPC* Commands;
-    #endif
 
     /** Initialize
      *

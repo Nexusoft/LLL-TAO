@@ -15,7 +15,6 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <Legacy/wallet/wallet.h>
 #include <Legacy/types/reservekey.h>
 
 #include <TAO/Operation/include/enum.h>

@@ -245,18 +245,7 @@ namespace TAO::API
                 std::placeholders::_2
             )
         );
-
-        /* Handle for migrate accounts. */
-        mapFunctions["migrate/accounts"] = Function //XXX: we still need to clean this method up
-        (
-            std::bind
-            (
-                &Finance::MigrateAccounts,
-                this,
-                std::placeholders::_1,
-                std::placeholders::_2
-            )
-        );
+        
 
         /* Handle for set/stake. */
         mapFunctions["set/stake"] = Function

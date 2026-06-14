@@ -174,14 +174,6 @@ namespace LLP
             /* Check that the node is initialized. */
             if(!config::fInitialized)
                 throw TAO::API::Exception(-1, "Daemon is still initializing");
-
-            /* Execute the RPC method. */
-            #ifndef NO_WALLET
-            encoding::json jsonResult = Legacy::Commands->Execute(strMethod, jParams, false);
-
-            /* Push the response data with json payload. */
-            PushResponse(200, JSONReply(jsonResult, nullptr, jID).dump());
-            #endif
         }
 
         /* Handle for custom API exceptions. */

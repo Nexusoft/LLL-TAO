@@ -43,12 +43,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/syncblock.h>
 #include <TAO/Ledger/types/credentials.h>
 
-#ifndef NO_WALLET
-#include <Legacy/wallet/wallet.h>
-#else
 #include <Legacy/types/merkle.h>
-#endif
-
 #include <Legacy/include/evaluate.h>
 #include <Legacy/include/constants.h>
 
@@ -329,15 +324,6 @@ namespace LLP
 
                     /* Push new message. */
                     PushMessage(ACTION::PING, nNonce);
-
-                    /* Rebroadcast transactions. */
-                    if(!TAO::Ledger::ChainState::Synchronizing())
-                    {
-                        #ifndef NO_WALLET
-                        if(!config::fClient.load())
-                            Legacy::Wallet::Instance().ResendWalletTransactions();
-                        #endif
-                    }
                 }
 
                 /* Handle subscribing to events from other nodes. */

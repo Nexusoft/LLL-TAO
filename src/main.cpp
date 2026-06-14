@@ -36,7 +36,6 @@ ________________________________________________________________________________
 
 #include <Legacy/include/ambassador.h>
 #include <Legacy/include/global.h>
-#include <Legacy/wallet/wallet.h>
 
 #ifndef WIN32
 #include <sys/resource.h>
@@ -169,7 +168,9 @@ int main(int argc, char** argv)
             if(strEndpoint.find('/') != strEndpoint.npos || config::GetBoolArg(std::string("-api")))
                 return TAO::API::CommandLineAPI(argc, argv, i);
 
-            return TAO::API::CommandLineRPC(argc, argv, i);
+            /* If we don't get proper syntax return with error.*/
+            debug::error("Invalid Syntax for CLI");
+            return 1;
         }
     }
 

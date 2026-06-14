@@ -20,7 +20,6 @@ ________________________________________________________________________________
 #include <LLP/include/inv.h>
 
 #include <Legacy/types/legacy.h>
-#include <Legacy/wallet/wallet.h>
 
 #include <TAO/API/types/indexing.h>
 #include <TAO/API/types/transaction.h>
@@ -1192,11 +1191,6 @@ namespace TAO
                     if(!tx.Connect(FLAGS::BLOCK, this))
                         return debug::error(FUNCTION, "failed to connect transaction");
 
-                    /* Add legacy transactions to the wallet where appropriate */
-                    #ifndef NO_WALLET
-                    Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, *this, true);
-                    #endif
-
                     /* Accumulate the fees. */
                     nFees += tx.Fees();
 
@@ -1266,11 +1260,6 @@ namespace TAO
                     /* Connect the inputs. */
                     if(!tx.Connect(inputs, *this, FLAGS::BLOCK))
                         return debug::error(FUNCTION, "failed to connect inputs");
-
-                    /* Add legacy transactions to the wallet where appropriate */
-                    #ifndef NO_WALLET
-                    Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, *this, true);
-                    #endif
 
                     /* Keep track of total inputs proceessed. */
                     nTotalInputs += tx.vin.size();
@@ -1382,12 +1371,6 @@ namespace TAO
                     /* Disconnect the inputs. */
                     if(!tx.Disconnect(*this))
                         return debug::error(FUNCTION, "failed to disconnect inputs");
-
-                    /* Wallets need to refund inputs when disonnecting coinstake */
-                    #ifndef NO_WALLET
-                    if(tx.IsCoinStake() && Legacy::Wallet::Instance().IsFromMe(tx))
-                       Legacy::Wallet::Instance().DisableTransaction(tx);
-                    #endif
                 }
 
                 /* Write the indexing entries. */

@@ -40,7 +40,6 @@ ________________________________________________________________________________
 #include <Legacy/types/trustkey.h>
 #include <Legacy/types/txin.h>
 #include <Legacy/types/reservekey.h>
-#include <Legacy/wallet/wallet.h>
 #include <Legacy/types/wallettx.h>
 
 #include <unit/catch2/catch.hpp>

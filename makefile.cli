@@ -101,31 +101,6 @@ ifndef OPENSSL_INCLUDE_PATH
 	endif
 endif
 
-ifndef NO_WALLET
-	ifndef BDB_LIB_PATH
-		ifeq ($(detected_OS),Windows)
-			BDB_LIB_PATH= "C:\deps\lib"
-		endif
-		ifeq ($(detected_OS),OSX)
-			BDB_LIB_PATH= /usr/local/opt/db/lib
-		endif
-		ifeq ($(detected_OS),Linux)
-			BDB_LIB_PATH= /usr/lib/x86_64-linux-gnu
-		endif
-	endif
-	ifndef BDB_INCLUDE_PATH
-		ifeq ($(detected_OS),Windows)
-			BDB_INCLUDE_PATH= "C:\deps\include"
-		endif
-		ifeq ($(detected_OS),OSX)
-			BDB_INCLUDE_PATH= /usr/local/opt/db/include
-		endif
-		ifeq ($(detected_OS),Linux)
-			BDB_INCLUDE_PATH= /usr/include
-		endif
-	endif
-endif
-
 ifndef MINIUPNPC_LIB_PATH
 	ifeq ($(detected_OS),Windows)
 		MINIUPNPC_LIB_PATH= "C:\deps\lib"
@@ -179,25 +154,6 @@ ifeq (${USE_UPNP}, 1)
 		LIBS+= -l iphlpapi
 	endif
 	DEFS+= -DMINIUPNP_STATICLIB -DUSE_UPNP=1
-endif
-
-
-#Handle compiling with no wallet enabled
-ifdef NO_WALLET
-DEFS    += -DNO_WALLET
-else
-
-ifneq ($(detected_OS),Windows)
-    INCLUDEPATHS+= -I$(BDB_INCLUDE_PATH)
-endif
-ifeq ($(detected_OS),Windows)
-    INCLUDEPATHS+= -I$(BDB_INCLUDE_PATH)
-endif
-ifneq ($(detected_OS),OSX)
-LIBS+=-ldb_cxx
-endif
-
-LIBPATHS+= -L$(BDB_LIB_PATH)
 endif
 
 #Configure Build Environment
@@ -318,7 +274,6 @@ ifdef UNIT_TESTS
            build/Tests_TAO_Operation_credit.o \
 		   build/Tests_TAO_Operation_erase.o \
 		   build/Tests_TAO_Operation_fees.o \
-		   build/Tests_TAO_Operation_migrate.o \
 		   build/Tests_TAO_Operation_names.o \
 		   build/Tests_TAO_Operation_register.o \
 		   build/Tests_TAO_Operation_transfer.o \
@@ -440,7 +395,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_finance_debit.o \
 		build/API_commands_finance_initialize.o \
 		build/API_commands_finance_json.o \
-		build/API_commands_finance_migrate.o \
 		build/API_commands_finance_set-stake.o \
 		build/API_commands_finance_stake-info.o \
 		build/API_commands_finance_void.o \
@@ -648,30 +602,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Legacy_txin.o \
 		build/Legacy_txout.o \
 		build/Legacy_keystore.o
-
-
-ifndef NO_WALLET
-	OBJS+= 	build/Legacy_rpc_account.o \
-			build/Legacy_rpc_daemon.o \
-			build/Legacy_rpc_info.o \
-			build/Legacy_rpc_network.o \
-			build/Legacy_rpc_rpc.o \
-			build/Legacy_rpc_wallet.o \
-			build/Legacy_account.o \
-			build/Legacy_addressbook.o \
-			build/Legacy_basickeystore.o \
-			build/Legacy_crypter.o \
-			build/Legacy_cryptokeystore.o \
-			build/Legacy_db.o \
-			build/Legacy_keypool.o \
-			build/Legacy_keypoolentry.o \
-			build/Legacy_output.o \
-			build/Legacy_wallet.o \
-			build/Legacy_walletdb.o \
-			build/Legacy_walletkey.o \
-			build/Legacy_wallettx.o
-
-endif
 
 
 #############################
@@ -963,12 +893,6 @@ DEFS+= -DMAC_OSX \
 LIBS+= $(OPENSSL_LIB_PATH)/libssl.a \
 	   $(OPENSSL_LIB_PATH)/libcrypto.a
 
-#Add BDB if wallet is enabled
-ifndef NO_WALLET
-LIBS+= $(BDB_LIB_PATH)/libdb_cxx.a
-endif
-
-
 
 #OS Specific Compiler Flags
 CXXFLAGS+= -mmacosx-version-min=10.09 \
@@ -1132,11 +1056,11 @@ all: iphone.a
 buildall:
 	mkdir -p build/obj
 	echo MAKING DEVICE
-	make -f makefile.cli NO_ANSI=1 STATIC=1 NO_WALLET=1 IPHONE=1 SIMULATOR=0
+	make -f makefile.cli NO_ANSI=1 STATIC=1 IPHONE=1 SIMULATOR=0
 	echo CLEANING
 	make -f makefile.cli IPHONE=1 SIMULATOR=0 clean
 	echo MAKING SIM
-	make -f makefile.cli NO_ANSI=1 STATIC=1 NO_WALLET=1 IPHONE=1 SIMULATOR=1
+	make -f makefile.cli NO_ANSI=1 STATIC=1 IPHONE=1 SIMULATOR=1
 	mkdir build/tempdir
 	echo MOVING HEADERS
 	find ./src -name '*.h' -print | cpio -pvdumB ./build/tempdir
@@ -1230,11 +1154,11 @@ all: android.so
 buildall:
 	mkdir -p build/Nexus.androidframework
 	@echo Making x86_64
-	make -f makefile.cli NO_ANSI=1 STATIC=0 NO_WALLET=1 ANDROID=1 ANDROID_ARCH="x86_64"
+	make -f makefile.cli NO_ANSI=1 STATIC=0 ANDROID=1 ANDROID_ARCH="x86_64"
 	@echo Cleaning
 	make -f makefile.cli ANDROID=1 clean
 	@echo Making aarch64
-	make -f makefile.cli NO_ANSI=1 STATIC=0 NO_WALLET=1 ANDROID=1 ANDROID_ARCH="aarch64"
+	make -f makefile.cli NO_ANSI=1 STATIC=0 ANDROID=1 ANDROID_ARCH="aarch64"
 	mkdir build/tempdir
 	find ./src -name '*.h' -print | cpio -pvdumB ./build/tempdir
 	cp ./src/LLD/hash/xxhash.c ./build/tempdir/src/LLD/hash/xxhash.c

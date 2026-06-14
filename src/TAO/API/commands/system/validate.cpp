@@ -11,8 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Legacy/wallet/wallet.h>
-
 #include <LLD/include/global.h>
 
 #include <TAO/API/types/authentication.h>
@@ -36,34 +34,6 @@ namespace TAO::API
         encoding::json jRet;
         jRet["address"] = strAddress;
         jRet["valid"]   = false;
-
-        /* Build a legacy address for this check. */
-        Legacy::NexusAddress addr =
-            Legacy::NexusAddress(strAddress);
-
-        /* Check that this is a valid legacy address being validated. */
-        if(addr.IsValid())
-        {
-            /* Set our response values. */
-            jRet["valid"] = true;
-            jRet["type"]  = "LEGACY";
-
-            #ifndef NO_WALLET
-            if(!config::fClient.load())
-            {
-                /* Only populate mine field when wallet enabled. */
-                jRet["mine"]  = false;
-
-                /* Check that we have the key in this wallet. */
-                if(Legacy::Wallet::Instance().HaveKey(addr)
-                || Legacy::Wallet::Instance().HaveScript(addr.GetHash256()))
-                    jRet["mine"] = true;
-            }
-
-            #endif
-
-            return jRet;
-        }
 
         /* The decoded register address */
         const TAO::Register::Address hashAddress =

@@ -25,8 +25,6 @@ ________________________________________________________________________________
 
 #include <Util/include/string.h>
 
-#include <Legacy/wallet/wallet.h>
-
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -77,14 +75,6 @@ namespace TAO::API
             /* Add the transaction to the memory pool. */
             if(!TAO::Ledger::mempool.Accept(tx))
                 throw Exception(-150, "Transaction rejected.");
-
-#ifndef NO_WALLET
-
-            /* Add tx to legacy wallet */
-            TAO::Ledger::BlockState tDummy;
-            if(!config::fClient.load())
-                Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, tDummy, true);
-#endif
 
             /* If accepted add txid to returned json. */
             jRet["hash"] = tx.GetHash().ToString();

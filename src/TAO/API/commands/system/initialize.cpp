@@ -12,7 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #include <Legacy/include/money.h>
-#include <Legacy/wallet/wallet.h>
 
 #include <LLP/types/apinode.h>
 #include <LLP/include/network.h>
@@ -181,12 +180,6 @@ namespace TAO
             /* The LLP version*/
             jRet["protocolversion"] = LLP::PROTOCOL_VERSION;
 
-            /* Legacy wallet version*/
-            #ifndef NO_WALLET
-            if(!config::fClient.load())
-                jRet["walletversion"] = Legacy::Wallet::Instance().GetVersion();
-            #endif
-
             /* Current unified time as reported by this node*/
             jRet["timestamp"] = runtime::unifiedtimestamp();
 
@@ -227,11 +220,6 @@ namespace TAO
 
             /* Whether this node is running in client mode */
             jRet["litemode"] = config::fClient.load();
-
-            /* Whether this node is running the legacy wallet */
-            #ifdef NO_WALLET
-            jRet["nolegacy"] = true;
-            #endif
 
             /* The current block height of this node */
             jRet["blocks"]          = TAO::Ledger::ChainState::nBestHeight.load();
