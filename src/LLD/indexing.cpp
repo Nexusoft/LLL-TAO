@@ -85,7 +85,7 @@ namespace LLD
                         }
                     }
 
-                    debug::notice(FUNCTION, "-indexheight starting at height ", mapHeights["-indexheight"]);
+                    //debug::notice(FUNCTION, "-indexheight starting at height ", mapHeights["-indexheight"]);
                 }
             }
 
@@ -137,7 +137,7 @@ namespace LLD
                         }
                     }
 
-                    debug::notice(FUNCTION, "-indexaddress starting at height ", mapHeights["-indexaddress"]);
+                    //debug::notice(FUNCTION, "-indexaddress starting at height ", mapHeights["-indexaddress"]);
                 }
             }
 
@@ -189,7 +189,7 @@ namespace LLD
                         }
                     }
 
-                    debug::notice(FUNCTION, "-indexproofs starting at height ", mapHeights["-indexproofs"]);
+                    //debug::notice(FUNCTION, "-indexproofs starting at height ", mapHeights["-indexproofs"]);
                 }
             }
 
@@ -241,7 +241,7 @@ namespace LLD
                     }
 
                     /* Establish we are not complete here. */
-                    debug::notice(FUNCTION, "-indexregister starting at height ", mapHeights["-indexregister"]);
+                    //debug::notice(FUNCTION, "-indexregister starting at height ", mapHeights["-indexregister"]);
                 }
             }
 
@@ -294,7 +294,7 @@ namespace LLD
                     }
 
                     /* Establish we are not complete here. */
-                    debug::notice(FUNCTION, "-indexevents starting at height ", mapHeights["-indexevents"]);
+                    //debug::notice(FUNCTION, "-indexevents starting at height ", mapHeights["-indexevents"]);
                 }
             }
         }
