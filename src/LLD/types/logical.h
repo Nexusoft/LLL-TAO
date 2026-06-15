@@ -321,9 +321,5 @@ namespace LLD
          **/
         bool ReadIndexRegisters(uint1024_t &hashBlock);
 
-
-        /** Build indexes for transactions over a rolling modulus. For -indexregister flag. **/
-        void IndexRegisters();
-
     };
 }

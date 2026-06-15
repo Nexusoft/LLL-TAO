@@ -48,10 +48,6 @@ namespace TAO::API
     std::thread Indexing::EVENTS_THREAD;
 
 
-    /* Thread for refreshing events. */
-    std::thread Indexing::REFRESH_THREAD;
-
-
     /* Condition variable to wake up the indexing thread. */
     std::condition_variable Indexing::CONDITION;
 
@@ -84,7 +80,6 @@ namespace TAO::API
         /* Initialize our thread objects now. */
         Indexing::DISPATCH       = util::atomic::lock_unique_ptr<std::queue<uint512_t>>(new std::queue<uint512_t>());
         //Indexing::EVENTS_THREAD  = std::thread(&Indexing::Manager);
-        //Indexing::REFRESH_THREAD = std::thread(&Indexing::RefreshEvents);
 
 
         /* Initialize our indexing thread now. */
@@ -195,10 +190,6 @@ namespace TAO::API
         CONDITION.notify_all();
         if(EVENTS_THREAD.joinable())
             EVENTS_THREAD.join();
-
-        /* Cleanup our dispatch thread. */
-        if(REFRESH_THREAD.joinable())
-            REFRESH_THREAD.join();
 
         /* Clear open registrations. */
         {

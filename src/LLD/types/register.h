@@ -231,16 +231,6 @@ namespace LLD
         bool HasState(const uint256_t& hashRegister, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
-        /** IndexAddress
-         *
-         *  Handle a reindexing to add address to sequential reads. For -indexaddress flag.
-         *
-         *  @return true if indexing has completed.
-         *
-         **/
-        void IndexAddress();
-
-
         /** WriteIndexAddress
          *
          *  Writes the block indexed so far.

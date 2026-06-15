@@ -52,10 +52,6 @@ namespace TAO::API
         static std::thread EVENTS_THREAD;
 
 
-        /** Thread for refreshing events. **/
-        static std::thread REFRESH_THREAD;
-
-
         /** Condition variable to wake up the indexing thread. **/
         static std::condition_variable CONDITION;
 
@@ -98,14 +94,6 @@ namespace TAO::API
          *
          **/
         static void Initialize(const uint256_t& hashGenesis);
-
-
-        /** RefreshEvents
-         *
-         *  Checks current events against transaction history to ensure we are up to date.
-         *
-         **/
-        static void RefreshEvents();
 
 
         /** PushTransaction

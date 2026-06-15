@@ -727,14 +727,6 @@ namespace LLD
         bool EraseContract(const uint512_t& hashTx, const uint32_t nContract);
 
 
-        /** IndexProofs
-         *
-         *  Index our proofs as keychain entries to add support to read spending transaction from the proof itself
-         *
-         **/
-        void IndexProofs();
-
-
         /** WriteBlock
          *
          *  Writes a block state object to disk.
