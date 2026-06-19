@@ -194,6 +194,26 @@ namespace TAO
                             debug::error(FUNCTION, "CONFLICT: prev tx ", (mapClaimed.count(tx.hashPrevTx) ? "CLAIMED " : "CONFLICTED "), tx.hashPrevTx.SubString());
 
                             mapConflicts[hashTx] = tx;
+
+                            /* Relay tx if creating ourselves. */
+                            if(!pnode && LLP::TRITIUM_SERVER)
+                            {
+                                /* Relay the transaction notification. */
+                                LLP::TRITIUM_SERVER->Relay
+                                (
+                                    LLP::TritiumNode::ACTION::NOTIFY,
+                                    uint8_t(LLP::TritiumNode::TYPES::TRANSACTION),
+                                    tx.hashPrevTx
+                                );
+
+                                /* Relay the transaction notification. */
+                                LLP::TRITIUM_SERVER->Relay
+                                (
+                                    LLP::TritiumNode::ACTION::NOTIFY,
+                                    uint8_t(LLP::TritiumNode::TYPES::TRANSACTION),
+                                    hashTx
+                                );
+                            }
                         }
 
 
