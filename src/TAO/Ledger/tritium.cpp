@@ -365,10 +365,6 @@ namespace TAO
             if(!producer.Check())
                 return debug::error(FUNCTION, "producer transaction is invalid");
 
-            /* Print the block if it gets this far into processing. */
-            if(config::nVerbose >= 2)
-                debug::log(2, ToString());
-
             /* Proof of stake specific checks. */
             if(IsProofOfStake())
             {

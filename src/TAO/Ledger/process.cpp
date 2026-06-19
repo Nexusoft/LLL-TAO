@@ -34,7 +34,7 @@ namespace TAO
 
 
         /* Track the times we have requested processed missing transactions so we don't loop too much. */
-        std::pair<uint1024_t, uint64_t> pairLastMissing;
+        std::map<uint1024_t, uint64_t> mapLastMissing;
 
 
         /* Mutex to protect checking more than one block at a time. */
@@ -75,12 +75,15 @@ namespace TAO
                     if(!mapOrphans.count(block.hashPrevBlock))
                     {
                         /* Check the checkpoint height. */
-                        if(!config::fTestNet.load() && block.nHeight < TAO::Ledger::ChainState::nCheckpointHeight)
+                        if(config::GetBoolArg("-checkpoints", false))
                         {
-                            /* Set the status. */
-                            nStatus |= PROCESS::IGNORED;
+                            if(!config::fTestNet.load() && block.nHeight < TAO::Ledger::ChainState::nCheckpointHeight)
+                            {
+                                /* Set the status. */
+                                nStatus |= PROCESS::IGNORED;
 
-                            return;
+                                return;
+                            }
                         }
 
                         /* Insert into orphans map. */
@@ -99,7 +102,7 @@ namespace TAO
                     if(pnode)
                     {
                         /* Special option to sync from ORPHAN blocks. */
-                        if(config::GetBoolArg("-syncorphans", true))
+                        if(config::GetBoolArg("-syncorphans", false))
                         {
                             /* Ask for list of blocks if this is current sync node. */
                             pnode->PushMessage(LLP::TritiumNode::ACTION::LIST,
@@ -143,9 +146,6 @@ namespace TAO
                 /* Check for missing transactions. */
                 if(block.vMissing.size() != 0)
                 {
-                    /* Give some debug info that we are missing some transactions here. */
-                    debug::notice(FUNCTION, "missing ", block.vMissing.size(), " transactions");
-
                     /* Incomplete blocks can pass through orphan checks. */
                     nStatus |= PROCESS::INCOMPLETE;
 
@@ -153,32 +153,42 @@ namespace TAO
                     block.hashMissing = hashBlock;
 
                     /* Set our last missing. */
-                    if(pairLastMissing.first == hashBlock)
+                    if(mapLastMissing.count(hashBlock))
                     {
+                        mapLastMissing[hashBlock]++;
+
                         /* Increment and check if we have reached limits. */
-                        if(++pairLastMissing.second > LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES)
+                        if(mapLastMissing[hashBlock] > LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES)
                         {
                             block.vMissing.clear(); //we want to clear so we don't keep re-requesting the transactions
                             block.hashMissing = 0;
                         }
+
+                        /* Give some debug info that we are missing some transactions here. */
+                        else
+                            debug::notice(FUNCTION, "missing ", block.vMissing.size(), " transactions");
                     }
                     else
-                    {
-                        /* Reset to current block so we can track consecutive retries. */
-                        pairLastMissing.first  = hashBlock;
-                        pairLastMissing.second = 0;
-                    }
+                        mapLastMissing[hashBlock] = 1;
 
                     return;
                 }
 
                 /* Check if valid in the chain. */
-                else if(!block.Accept())
+                else
                 {
-                    /* Set the status. */
-                    nStatus |= PROCESS::REJECTED;
+                    /* Print the block if it gets this far into processing. */
+                    if(config::nVerbose >= 2)
+                        debug::log(2, block.ToString());
 
-                    return;
+                    /* Attempt to accept block when we have all the transactions. */
+                    if(!block.Accept())
+                    {
+                        /* Set the status. */
+                        nStatus |= PROCESS::REJECTED;
+
+                        return;
+                    }
                 }
 
                 /* Set the status. */
