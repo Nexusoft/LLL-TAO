@@ -145,7 +145,7 @@ namespace LLD
                 throw debug::exception(FUNCTION, "failed to read contract");
 
             /* Check that our dependant was indexed. */
-            if(nFlags == TAO::Ledger::FLAGS::BLOCK && fCheckIndex && !HasIndex(hashTx))
+            if(fCheckIndex && !HasIndex(hashTx))
                 throw debug::exception(FUNCTION, "dependant is not indexed");
 
             /* Get const reference for read-only access. */
@@ -162,7 +162,7 @@ namespace LLD
                 throw debug::exception(FUNCTION, "failed to read contract");
 
             /* Check that our dependant was indexed. */
-            if(nFlags == TAO::Ledger::FLAGS::BLOCK && fCheckIndex && !HasIndex(hashTx))
+            if(fCheckIndex && !HasIndex(hashTx))
                 throw debug::exception(FUNCTION, "dependant is not indexed");
 
             return TAO::Operation::Contract(tx, nContract);
