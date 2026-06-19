@@ -1923,7 +1923,7 @@ namespace LLP
                                         TAO::Ledger::BlockState tBlockState;
                                         if(!LLD::Ledger->ReadBlock(hashTx, tBlockState))
                                         {
-                                            debug::notice(FUNCTION, "couldn't read block from producer ", hashTx.SubString());
+                                            debug::notice(NODE, " couldn't read block from producer ", hashTx.SubString());
                                             break;
                                         }
 
