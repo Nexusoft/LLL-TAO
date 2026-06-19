@@ -194,6 +194,10 @@ namespace TAO
                 /* Set the status. */
                 nStatus |= PROCESS::ACCEPTED;
 
+                /* Remove our missing from our memory map. */
+                if(mapLastMissing.count(hashBlock))
+                    mapLastMissing.erase(hashBlock);
+
                 /* Special meter for synchronizing. */
                 uint64_t nElapsed = runtime::timestamp(true) - nSynchronizationTimer;
                 if(nElapsed > 3000 && TAO::Ledger::ChainState::Synchronizing())
