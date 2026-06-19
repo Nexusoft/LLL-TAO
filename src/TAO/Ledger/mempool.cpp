@@ -214,6 +214,26 @@ namespace TAO
                             /* Add to conflicts map. */
                             debug::error(FUNCTION, "CONFLICT: hash last mismatch ", tx.hashPrevTx.SubString(), " and ", hashLast.SubString());
                             mapConflicts[hashTx] = tx;
+
+                            /* Relay tx if creating ourselves. */
+                            if(!pnode && LLP::TRITIUM_SERVER)
+                            {
+                                /* Relay the transaction notification. */
+                                LLP::TRITIUM_SERVER->Relay
+                                (
+                                    LLP::TritiumNode::ACTION::NOTIFY,
+                                    uint8_t(LLP::TritiumNode::TYPES::TRANSACTION),
+                                    hashLast
+                                );
+
+                                /* Relay the transaction notification. */
+                                LLP::TRITIUM_SERVER->Relay
+                                (
+                                    LLP::TritiumNode::ACTION::NOTIFY,
+                                    uint8_t(LLP::TritiumNode::TYPES::TRANSACTION),
+                                    hashTx
+                                );
+                            }
                         }
 
                         return false;
@@ -364,18 +384,6 @@ namespace TAO
                 tx.hashCache = hashTx;
 
                 debug::log(0, FUNCTION, "CONFLICTED TRANSACTION: ", hashTx.SubString());
-
-                return true;
-            }
-
-            /* Check in orphans memory. */
-            if(mapOrphansByIndex.count(hashTx))
-            {
-                /* Get from conflicts map. */
-                tx = mapOrphansByIndex.at(hashTx);
-
-                /* Set our internal cached hash. */
-                tx.hashCache = hashTx;
 
                 return true;
             }
