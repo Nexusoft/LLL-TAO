@@ -267,6 +267,10 @@ namespace TAO
                     if(!pOrphan->Check())
                         return;
 
+                    /* Print the block if it gets this far into processing. */
+                    if(config::nVerbose >= 2)
+                        debug::log(2, pOrphan->ToString());
+
                     /* Check for missing transactions for ORPHAN. */
                     if(pOrphan->vMissing.size() != 0)
                     {
