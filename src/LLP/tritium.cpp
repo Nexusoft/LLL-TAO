@@ -2404,7 +2404,7 @@ namespace LLP
                                     if(TRITIUM_SERVER->GetAddressManager()->Has(addr))
                                     {
                                         /* Only notify address logs if more than ten minutes since last connection. */
-                                        const LLP::TrustAddress addrInfo =
+                                        const LLP::TrustAddress& addrInfo =
                                             TRITIUM_SERVER->GetAddressManager()->Get(addr);
 
                                         /* Calculate how long it has been since last connection. */
