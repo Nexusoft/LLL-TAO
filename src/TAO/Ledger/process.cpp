@@ -95,7 +95,28 @@ namespace TAO
 
                         /* Debug output. */
                         if(!ChainState::Synchronizing())
+                        {
                             debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.SubString());
+
+                            /* Ask for our previous transaction now. */
+                            if(LLP::TRITIUM_SERVER)
+                            {
+                                debug::log(0, FUNCTION, "Asking for list of blocks from ORPHAN at height=", block.nHeight);
+
+                                /* Get a random node in case we have an unreliable node that gave us an ORPHAN */
+                                std::shared_ptr<LLP::TritiumNode> pCheck =
+                                    LLP::TRITIUM_SERVER->RandomConnection();
+
+                                /* Ask for list of blocks if this is current sync node. */
+                                pCheck->PushMessage(LLP::TritiumNode::ACTION::LIST,
+                                    config::fClient.load() ? uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT) : uint8_t(LLP::TritiumNode::SPECIFIER::SYNC),
+                                    uint8_t(LLP::TritiumNode::TYPES::BLOCK),
+                                    uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
+                                    TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                                    uint1024_t(0)
+                                );
+                            }
+                        }
                     }
 
                     /* Check if we have an active node. */
