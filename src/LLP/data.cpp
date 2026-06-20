@@ -577,7 +577,10 @@ namespace LLP
             return;
 
         /* Fire off our disconnect event now. */
-        CONNECTIONS->at(nIndex)->Event(EVENTS::DISCONNECT, nReason);
+        std::shared_ptr<ProtocolType> pConnection = CONNECTIONS->at(nIndex);
+
+        /* Fire off the event now. */
+        pConnection->Event(EVENTS::DISCONNECT, nReason);
         remove_connection(nIndex);
     }
 
