@@ -288,6 +288,8 @@ namespace TAO
                          * stall the drain loop indefinitely.  Count attempts against
                          * the orphan's own hash and, once the threshold is reached,
                          * evict it and reject rather than re-requesting forever. */
+                        if(mapMissingAttempts.size() >= 10000 && !mapMissingAttempts.contains(hashPrev))
+                            mapMissingAttempts.clear();
                         const uint32_t nOrphanAttempts = ++mapMissingAttempts[hashPrev];
                         if(nOrphanAttempts >= MAX_MISSING_RETRIES)
                         {
