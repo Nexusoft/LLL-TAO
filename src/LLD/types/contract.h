@@ -23,9 +23,33 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/enum.h>
 
+#include <Util/templates/serialize.h>
+
 
 namespace LLD
 {
+
+    /** ContractData
+     *
+     *  Helper struct for storing contract execution data.
+     *
+     **/
+    struct ContractData
+    {
+        /** The genesis hash of the caller that fulfilled the contract. **/
+        uint256_t hashCaller;
+
+        /** The transaction hash of the execution transaction. **/
+        uint512_t hashExecution;
+
+        /** Serialization **/
+        IMPLEMENT_SERIALIZE
+        (
+            READWRITE(hashCaller);
+            READWRITE(hashExecution);
+        )
+    };
+
 
     /** RegisterTransaction
      *
@@ -37,7 +61,7 @@ namespace LLD
     public:
 
         /** Map of states that are stored in memory mode until commited. **/
-        std::map<std::pair<uint512_t, uint32_t>, uint256_t> mapContracts;
+        std::map<std::pair<uint512_t, uint32_t>, ContractData> mapContracts;
 
 
         /** Set of indexes to remove during commit. **/
@@ -89,13 +113,14 @@ namespace LLD
          *
          *  @param[in] pairContract The origin contract
          *  @param[in] hashCaller The caller that fulfilled agreement.
+         *  @param[in] hashExecution The transaction hash of the execution.
          *  @param[in] nFlags The flags for memory or not.
          *
          *  @return True if written, false otherwise.
          *
          **/
         bool WriteContract(const std::pair<uint512_t, uint32_t>& pair, const uint256_t& hashCaller,
-                           const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+                           const uint512_t& hashExecution, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** EraseContract
@@ -117,13 +142,14 @@ namespace LLD
          *
          *  @param[in] pairContract The origin contract.
          *  @param[out] hashCaller The caller that fulfilled agreement.
+         *  @param[out] hashExecution The transaction hash of the execution.
          *  @param[in] nFlags The flags for memory or not.
          *
          *  @return True if the caller was read, false otherwise.
          *
          **/
         bool ReadContract(const std::pair<uint512_t, uint32_t>& pair, uint256_t& hashCaller,
-                          const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+                          uint512_t& hashExecution, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** HasCaontract

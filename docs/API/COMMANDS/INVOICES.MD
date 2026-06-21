@@ -20,7 +20,8 @@ The following verbs are currently supported by this API command-set:
 [`get`](#get) - Get object of supported type.  
 [`list`](#list) - List all objects owned by given user.  
 [`pay`](#pay) - Issue funds from supported type.  
-[`cancel`](#cancel) - To cancel the created invoice.   
+[`cancel`](#cancel) - To cancel the created invoice.  
+[`reject`](#reject) - To reject an invoice sent to you.  
 [`history`](#history) - Generate the history of all last states.  
 [`transactions`](#transactions) - List all transactions that modified specified object.  
 
@@ -29,10 +30,10 @@ The following verbs are currently supported by this API command-set:
 
 The following nouns are supported for this API command-set:
 
-[`invoice`] - An object register containing a token-id and balance.  
-[`outstanding`] - Generate the history of all last states.  
-[`paid`] - Claim a specified object register.  
-[`cancelled`] - Claim a specified object register.  
+[`invoice`] - An object register containing an invoice.  
+[`outstanding`] - Invoices that have been issued but not yet paid.  
+[`paid`] - Invoices that have been paid by the recipient.  
+[`cancelled`] - Invoices that were cancelled by the issuer.  
 
 
 
@@ -359,6 +360,44 @@ This command only supports the `invoice` and `outstanding` noun.
 
 -----------------------------------
 
+# <a name="reject"></a> `reject`
+
+Rejects an invoice that was sent to you, suppressing it from your notifications.
+
+```
+invoices/reject/noun
+```
+
+This command only supports the `invoice` and `outstanding` noun.
+
+**NOTE:** This does not cancel the invoice - the issuer can still cancel it. This simply removes the invoice from your pending notifications.
+
+### Parameters:
+
+`pin` : Required if **locked**. The PIN to authorize the transaction.
+
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
+
+`name` : Required to **identify** the name of the invoice. The name should be in the format username:name (for local names). This is optional if the `address` is provided
+
+`address` : Required to **identify** the register address of the invoice. This is optional if the `name` is provided.
+
+### Results:
+
+#### Return value JSON object:
+
+```
+{
+    "success": true
+}
+```
+
+#### Return values:
+
+`success` : Boolean flag indicating that the invoice was rejected successfully.
+
+-----------------------------------
+
 # <a name="history"></a> `history`
 
 This will get the history of the transactions for an invoice showing when it was created & transferred (two contracts that happen at the same point in time when the invoice is created) and claimed (paid or cancelled).
@@ -475,7 +514,7 @@ This will list off all of the transactions for the specified noun.
 invoices/transactions/noun
 ```
 
-This command supports the account, trust and token nouns.
+This command supports all the nouns.
 
 ### Parameters:
 

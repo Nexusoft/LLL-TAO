@@ -74,10 +74,11 @@ system/get/info
     "multiuser": false,
     "litemode": false,
     "blocks": 4553990,
-    "synchronizing": false,
-    "synccomplete": 100,
-    "syncprogress": 100,
+    "status": "Synchronized",
+    "synchronized": true,
+    "syncing": false,
     "txtotal": 0,
+    "conflicts": 0,
     "connections": 41
 }
 [Completed in 0.070190 ms]
@@ -95,29 +96,35 @@ system/get/info
 
 `hostname` : The local machine host name.
 
-`ipaddress` : The public IP address of the local machine, as seen by peers that you are connected to. This will be blank until you have at least one peer connection.
+`directory` : The current data directory.
+
+`address` : The public IP address of the local machine, as seen by peers that you are connected to. This will be blank until you have at least one peer connection.
 
 `testnet` : If this node is running on the testnet then this shows the testnet number.
 
 `private` : Whether this node is running in private mode.
 
+`hybrid` : Whether this node is running in hybrid mode.
+
+`latency` : Only returned in hybrid or private mode. The latency parameter value in milliseconds.
+
 `multiuser` : Whether this node is running in multiuser mode.
 
-`sessions` : Only returned in multiuser mode. This shows the number of user sessions currently logged in to the node.
-
-`clientmode` : Flag indicating whether this node is running in client mode.
+`litemode` : Flag indicating whether this node is running in lite (client) mode.
 
 `nolegacy` : Flag indicating whether this node has been compiled with support for the legacy UTxO wallet. If it has not then all of the legacy wallet functions (available via the legacy RPC) are not available. This flag is currently omitted from the response if it has been compiled with legacy support, hence it will only be included if it is true.
 
 `blocks` : The current block height of this node.
 
-`synchronizing` : Flag indicating whether this node is currently syncrhonizing. Not included if private=true.
+`status` : The current status message for this node (e.g., "Synchronized", "Synchronizing", etc.).
 
-`synccomplete` : The percentage of the total blocks downloaded.
+`synchronized` : Flag indicating whether this node is currently synchronized with the network.
 
-`syncprogress` : The percentage of the current sync completed relative to when the node was started.
+`syncing` : Contains sync status information when the node is synchronizing. Returns `false` when not syncing, or an object with sync details when syncing.
 
 `txtotal` : Number of transactions in the node's mempool.
+
+`conflicts` : Number of conflicting transactions in the node's mempool.
 
 `connections` : Number of peer connections.
 
@@ -311,6 +318,8 @@ system/list/peers
 `height` : The current height of the peer.
 
 `best` : Block hash of the peer's best chain
+
+`genesis` : The genesis hash of the peer's logged in profile (if available).
 
 `latency` : The calculated network latency between this node and the peer.
 

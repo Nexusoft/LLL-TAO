@@ -137,12 +137,14 @@ namespace TAO::API
          *
          *  @param[in] rContract The contract to de-serialize
          *  @param[in] pairMarket The market pair ordering.
+         *  @param[in] nExecutionTimestamp Optional execution timestamp for executed orders (0 = use order creation time).
          *
          *  @return the formatted JSON object
          *
          **/
         __attribute__((pure)) encoding::json OrderToJSON(const TAO::Operation::Contract& rContract,
-                                                         const std::pair<uint256_t, uint256_t>& pairMarket);
+                                                         const std::pair<uint256_t, uint256_t>& pairMarket,
+                                                         const uint64_t nExecutionTimestamp = 0);
 
 
         /** OrderToJSON
@@ -151,11 +153,13 @@ namespace TAO::API
          *
          *  @param[in] rContract The contract to de-serialize
          *  @param[in] hashBase The market base pair for ordering.
+         *  @param[in] nExecutionTimestamp Optional execution timestamp for executed orders (0 = use order creation time).
          *
          *  @return the formatted JSON object
          *
          **/
-        __attribute__((pure)) encoding::json OrderToJSON(const TAO::Operation::Contract& rContract, const uint256_t& hashBase);
+        __attribute__((pure)) encoding::json OrderToJSON(const TAO::Operation::Contract& rContract, const uint256_t& hashBase,
+                                                         const uint64_t nExecutionTimestamp = 0);
 
     };
 }

@@ -70,6 +70,8 @@ The following operators are supported for this API command-set:
 
 [`floor`](#floor) - Convert all values in a result to integers by stripping off decimals.
 
+[`lookup`](#lookup) - Resolve a list of register addresses to their full register objects.
+
 [`max`](#max)     - Find the maximum value in the given set, and return this as result.
 
 [`mean`](#mean)   - Calculate the mean or average value across a set of filtered results.  

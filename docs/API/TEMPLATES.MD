@@ -30,14 +30,14 @@ The following list of verbs are templates throughout the Nexus APIs.  While the 
    - Common parameters:
      - `format` : indicates the format of the data being provided to create the item / object (where applicable). Values can be `basic`, `raw`, and `JSON`
      - `scheme` : sets the key type to be used for the given transaction.
-     Values can be `falcon` or `brainbpool`
+     Values can be `falcon` or `brainpool`
 
  * `update`
     - Updates a single resource or object.
     - Common parameters:
       - `format` : indicates the format of the data being provided to create the item / object (where applicable). Values can be `basic`, `raw`, `standard`, and `JSON`
       - `scheme` : sets the key type to be used for the given transaction.
-      Values can be `falcon` or `brainbpool`
+      Values can be `falcon` or `brainpool`
 
 * `transfer`
     - Transfers a single resource or object to another users's profile
@@ -45,7 +45,7 @@ The following list of verbs are templates throughout the Nexus APIs.  While the 
       - `address`: the address of object to transfer
       - `recipient`: the profile-id of the sigchain receiving object.
       - `scheme` : sets the key type to be used for the given transaction.
-      Values can be `falcon` or `brainbpool`
+      Values can be `falcon` or `brainpool`
 
 * `claim`
     - Claims a single resource or object from a given transfer
@@ -53,7 +53,7 @@ The following list of verbs are templates throughout the Nexus APIs.  While the 
       - `address`: the address of object to claim
       - `txid`: the transaction-id of the transfer we are claiming.
       - `scheme` : sets the key type to be used for the given transaction.
-      Values can be `falcon` or `brainbpool`
+      Values can be `falcon` or `brainpool`
 * `history`
     - List the history of state changes for a given object.
     - Common parameters:

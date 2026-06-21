@@ -27,7 +27,8 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Converts an order for marketplace into formatted JSON. */
-    encoding::json Market::OrderToJSON(const TAO::Operation::Contract& rContract, const std::pair<uint256_t, uint256_t>& pairMarket)
+    encoding::json Market::OrderToJSON(const TAO::Operation::Contract& rContract, const std::pair<uint256_t, uint256_t>& pairMarket,
+                                       const uint64_t nExecutionTimestamp)
     {
         /* Start our stream at 0. */
         rContract.Reset();
@@ -63,11 +64,14 @@ namespace TAO::API
                     else
                         strMarket += strName;
 
+                    /* Use execution timestamp if provided, otherwise use order creation time. */
+                    const uint64_t nTimestamp = (nExecutionTimestamp > 0) ? nExecutionTimestamp : rContract.Timestamp();
+
                     /* Build our JSON object. */
                     encoding::json jRet =
                     {
                         { "txid",      rContract.Hash().ToString()   },
-                        { "timestamp", rContract.Timestamp()         },
+                        { "timestamp", nTimestamp                    },
                         { "owner",     rContract.Caller().ToString() },
                         { "market",    strMarket                     }
                     };
@@ -224,7 +228,8 @@ namespace TAO::API
 
 
     /* Converts an order for marketplace into formatted JSON. */
-    encoding::json Market::OrderToJSON(const TAO::Operation::Contract& rContract, const uint256_t& hashBase)
+    encoding::json Market::OrderToJSON(const TAO::Operation::Contract& rContract, const uint256_t& hashBase,
+                                       const uint64_t nExecutionTimestamp)
     {
         /* Start our stream at 0. */
         rContract.Reset();
@@ -299,12 +304,12 @@ namespace TAO::API
                     {
                         /* This is an ask if for native token. */
                         pairMarket.first = hashBuying;
-                        return OrderToJSON(rContract, pairMarket);
+                        return OrderToJSON(rContract, pairMarket, nExecutionTimestamp);
                     }
 
                     /* Otherwise this is a bid. */
                     pairMarket.first = hashSelling;
-                    return OrderToJSON(rContract, pairMarket);
+                    return OrderToJSON(rContract, pairMarket, nExecutionTimestamp);
                 }
                 catch(const std::exception& e)
                 {

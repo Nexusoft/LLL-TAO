@@ -33,7 +33,7 @@ The API supports many different error responses to help you as the developer und
 | -8 | Unable to Extract Input Address |
 | -9 | Session (session) doesn't exist |
 | -10 | Invalid session ID |
-| -11 | User not logged in |
+| -11 | Session not found |
 | -12 | Malformed or missing object encoding for [type] |
 | -13 | Object not found |
 | -14 | Malformed request URL |
@@ -45,7 +45,7 @@ The API supports many different error responses to help you as the developer und
 | -20 | Field [name] is read-only and can't be updated |
 | -21 | Field [name] size exceeds maximum length [size] |
 | -22 | Field [name] is a reserved field name |
-| -23 | Object standard [name] not available for command |
+| -23 | Object standard [name] not available for command (also: Command disabled until sigchain finishes synchronizing) |
 | -24 | No orders found for market |
 | -25 | Market order invalid contract: message |
 | -26 | Invalid parameter [from], [type] requires correct token |
@@ -264,7 +264,6 @@ The API supports many different error responses to help you as the developer und
 | -239 | Invalid item number of units |
 | -240 | Item units must be greater than 0 |
 | -241 | Invoice not found |
-| -242 | Data at this address is not an invoice |
 | -242 | Data exceeds max register size |
 | -243 | Data at this address is not a supply item |
 | -244 | Cannot send invoice to self |
@@ -330,4 +329,5 @@ The API supports many different error responses to help you as the developer und
 | -307 | Failed to download signature chain |
 | -308 | API method only available in client mode |
 | -309 | Error loading session |
-| -310 | Cannot sent to ALL accounts
+| -310 | (reserved) |
+| -333 | Account failed to authenticate |

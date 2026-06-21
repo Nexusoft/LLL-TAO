@@ -299,7 +299,7 @@ namespace LLP
 
                                                 /* Check that we have the contract validated. */
                                                 if(!LLD::Contract->HasContract(std::make_pair(hashTx, nContract)))
-                                                    LLD::Contract->WriteContract(std::make_pair(hashTx, nContract), tx.hashGenesis);
+                                                    LLD::Contract->WriteContract(std::make_pair(hashTx, nContract), tx.hashGenesis, hash);
                                             }
                                             else
                                             {

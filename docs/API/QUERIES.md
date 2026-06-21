@@ -6,11 +6,11 @@ The Query DSL allows you to sort and filter recursively to any logical depth. Th
 
 ## Using wildcards
 
-If you are searching by a string parameter, you can includeM' as an any character wildcard match, so that you can search values
+If you are searching by a string parameter, you can include '*' as an any character wildcard match, so that you can search values
 based on a partial match.
 
 ```
-register/list/accounts WHERE 'results.name=d*'
+register/list/finance:accounts WHERE 'results.name=d*'
 ```
 
 The above will return all accounts that start with a letter 'd'.
@@ -20,7 +20,7 @@ The above will return all accounts that start with a letter 'd'.
 The following demonstrates how to check with wildcards.
 
 ```
-register/list/accounts WHERE 'results.name=*d'
+register/list/finance:accounts WHERE 'results.name=*d'
 ```
 
 This above will return all accounts that have a name ending with letter 'd'.
@@ -30,9 +30,9 @@ This above will return all accounts that have a name ending with letter 'd'.
 
 To filter, you can use where='statements' or follow the command with WHERE string:
 
-### Filtering resultss with WHERE clause
+### Filtering results with WHERE clause
 
-The below clause will filter all name results registers, that are Global names that start with letter 'P', or any resultss that start
+The below clause will filter all name results registers, that are Global names that start with letter 'P', or any results that start
 with letter 'S'.
 
 ```
@@ -41,13 +41,13 @@ register/list/names WHERE '(results.namespace=*GLOBAL* AND results.name=P*) OR r
 
 Using the results class i.e. 'results.namespace' will invoke the filter on the binary results.
 
-### Filtering resultss with where=
+### Filtering results with where=
 
-The below clause will filter all name results registers, that are Global names that start with letter 'P', or any resultss that start
+The below clause will filter all name results registers, that are Global names that start with letter 'P', or any results that start
 with letter 'S'.
 
 ```
-register/list/names where='(results.namespace=*GLOBAL* AND results.name=P*) OR results.name=S*'
+register/list/names where='(results.global=true AND results.name=P*) OR results.name=S*'
 ```
 
 ### Filtering with multiple operators
@@ -55,7 +55,7 @@ register/list/names where='(results.namespace=*GLOBAL* AND results.name=P*) OR r
 The below will return all NXS accounts that have a balance greater than 10 NXS.
 
 ```
-register/list/accounts WHERE 'results.token=0 AND results.balance>10'
+register/list/finance:accounts WHERE 'results.token=0 AND results.balance>10'
 ```
 
 ### Creating logical grouping
@@ -63,7 +63,7 @@ register/list/accounts WHERE 'results.token=0 AND results.balance>10'
 The following demonstrates how to query using multiple recursive levels.
 
 ```
-register/list/accounts WHERE '(results.token=0 AND results.balance>10) OR (results.token=8Ed7Gzybwy3Zf6X7hzD4imJwmA2v1EYjH2MNGoVRdEVCMTCdhdK AND results.balance>1)'
+register/list/finance:accounts WHERE '(results.token=0 AND results.balance>10) OR (results.token=8Ed7Gzybwy3Zf6X7hzD4imJwmA2v1EYjH2MNGoVRdEVCMTCdhdK AND results.balance>1)'
 ```
 
 This will give all NXS accounts with balance greater than 10, or all accounts for token '8Ed7Gzybwy3Zf6X7hzD4imJwmA2v1EYjH2MNGoVRdEVCMTCdhdK' with balance greater than 1.
@@ -74,8 +74,8 @@ This will give all NXS accounts with balance greater than 10, or all accounts fo
 There is no current limit to the number of levels of recursion, such as:
 
 ```
-register/list/names WHERE '((results.name=d* AND results.namespace=~GLOBAL~) OR (results.name=e* AND results.namespace=send.to)) OR results.namespace=*s'
+register/list/names:name WHERE '((results.name=d* AND results.global=true) OR (results.name=e* AND results.namespace=send.to)) OR results.namespace=*s'
 ```
 
-The above command will return all resultss starting with letter 'd' that are global names, or all resultss starting with letter 'e' in
-the 'send.to' namespace, or finally all resultss that are in a namespace that ends with the letter 's'.
+The above command will return all results starting with letter 'd' that are global names, or all results starting with letter 'e' in
+the 'send.to' namespace, or finally all results that are in a namespace that ends with the letter 's'.
