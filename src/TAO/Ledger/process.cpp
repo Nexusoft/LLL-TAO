@@ -49,6 +49,44 @@ namespace TAO
         std::atomic<uint64_t> nProcessedContracts(0);
 
 
+        /* Circuit-breaker state for blocks stuck INCOMPLETE on a permanently
+         * unresolvable missing transaction.
+         *
+         * A block whose vMissing set references a transaction that the network
+         * keeps re-serving but that can never pass Transaction::Check() (e.g. a
+         * tx with a timestamp "too far in the future") causes Process() to
+         * repeatedly flag PROCESS::INCOMPLETE.  The LLP layer then re-requests
+         * the same tx, it fails Check() again for the same reason, and the node
+         * live-locks — never advancing the tip — until it is restarted.
+         *
+         * mapMissingAttempts counts consecutive INCOMPLETE results per offending
+         * block hash (hashMissing).  Once the count reaches MAX_MISSING_RETRIES
+         * the block is rejected and evicted from the orphan pool instead of being
+         * retried forever, allowing the node to continue advancing the real chain
+         * tip from honest peers.  A successful ACCEPT clears that block's attempt
+         * counter so the genuine "transaction simply not seen yet" recovery path is
+         * unaffected.
+         */
+        static std::map<uint1024_t, uint32_t> mapMissingAttempts;
+
+
+        /* Maximum number of consecutive INCOMPLETE results tolerated for a single
+         * stuck block before it is rejected and evicted (circuit-breaker trip). */
+#ifndef UNIT_TESTS
+        static const uint32_t MAX_MISSING_RETRIES = 10;
+#endif
+
+        /* Maximum number of entries in mapMissingAttempts before a full flush is
+         * triggered to prevent unbounded memory growth from many distinct blocks
+         * that each go INCOMPLETE once (memory-DoS protection). */
+        static const uint32_t MAX_MISSING_MAP_ENTRIES = 10000;
+
+        /* Accessor for unit testing — always compiled so the linker can find it
+         * when the test translation units reference it.  The declaration in
+         * process.h is guarded by UNIT_TESTS so production code cannot call it. */
+        std::map<uint1024_t, uint32_t>& GetMissingAttempts() { return mapMissingAttempts; }
+
+
         /* Processes a block incoming over the network. */
         static uint64_t nProcessedBlocks = 0;
         void Process(const TAO::Ledger::Block& block, uint8_t &nStatus, LLP::TritiumNode* pnode, bool fSkipCheck)
@@ -134,6 +172,41 @@ namespace TAO
                         return;
                     }
 
+                    /* Circuit-breaker: count how many times this exact block has
+                     * come back INCOMPLETE.  A block whose missing transaction can
+                     * never pass Check() (e.g. a future-dated tx) would otherwise
+                     * be re-requested forever, wedging the node and preventing the
+                     * tip from advancing.  After MAX_MISSING_RETRIES consecutive
+                     * failures, give up on this block: reject it and evict it from
+                     * the orphan pool so honest blocks can move the tip forward. */
+                    /* Cap the map size to prevent memory-DoS from many distinct
+                     * blocks that each go INCOMPLETE once.  If the cap is reached
+                     * and this is a brand-new hash, flush all stale entries first. */
+                    if(mapMissingAttempts.size() >= MAX_MISSING_MAP_ENTRIES && !mapMissingAttempts.count(hashBlock))
+                        mapMissingAttempts.clear();
+
+                    const uint32_t nAttempts = ++mapMissingAttempts[hashBlock];
+                    if(nAttempts >= MAX_MISSING_RETRIES)
+                    {
+                        debug::error(FUNCTION, "block ", hashBlock.SubString(),
+                            " unresolved after ", nAttempts, " missing-tx attempts (",
+                            block.vMissing.size(), " missing) — circuit-breaker tripped, rejecting");
+
+                        /* Capture the prev-block hash before any erase so we never
+                         * read through a potentially-invalidated reference. */
+                        const uint1024_t hashPrevBlock = block.hashPrevBlock;
+
+                        /* Drop the giving-up block from the orphan pool if present. */
+                        mapOrphans.erase(hashBlock);
+                        mapOrphans.erase(hashPrevBlock);
+
+                        /* Stop tracking it and reject so the node can advance. */
+                        mapMissingAttempts.erase(hashBlock);
+
+                        nStatus |= PROCESS::REJECTED;
+                        return;
+                    }
+
                     /* Incomplete blocks can pass through orphan checks. */
                     nStatus |= PROCESS::INCOMPLETE;
 
@@ -154,6 +227,12 @@ namespace TAO
 
                 /* Set the status. */
                 nStatus |= PROCESS::ACCEPTED;
+
+                /* Block accepted — clear any circuit-breaker attempt counter so the
+                 * genuine "transaction not seen yet" recovery path is unaffected and
+                 * a future stuck block starts counting from zero. */
+                if(!mapMissingAttempts.empty())
+                    mapMissingAttempts.erase(hashBlock);
 
                 /* Special meter for synchronizing. */
                 uint64_t nElapsed = runtime::timestamp(true) - nSynchronizationTimer;
@@ -227,6 +306,30 @@ namespace TAO
                         if(pOrphan->vMissing.size() == 0)
                             return;
 
+                        /* Circuit-breaker for the orphan-drain path: an orphan that
+                         * keeps failing on the same unresolvable missing tx must not
+                         * stall the drain loop indefinitely.  Count attempts against
+                         * the orphan's own hash and, once the threshold is reached,
+                         * evict it and reject rather than re-requesting forever. */
+                        if(mapMissingAttempts.size() >= MAX_MISSING_MAP_ENTRIES && !mapMissingAttempts.contains(hashPrev))
+                            mapMissingAttempts.clear();
+                        const uint32_t nOrphanAttempts = ++mapMissingAttempts[hashPrev];
+                        if(nOrphanAttempts >= MAX_MISSING_RETRIES)
+                        {
+                            debug::error(FUNCTION, "orphan ", hashPrev.SubString(),
+                                " unresolved after ", nOrphanAttempts, " missing-tx attempts — circuit-breaker tripped, evicting");
+
+                            /* Evict the stuck orphan and any dependent orphan
+                             * keyed by its own hash so unreachable chains don't
+                             * accumulate in the orphan pool indefinitely. */
+                            mapOrphans.erase(hash);
+                            mapOrphans.erase(hashPrev);
+                            mapMissingAttempts.erase(hashPrev);
+
+                            nStatus |= PROCESS::REJECTED;
+                            return;
+                        }
+
                         /* Incomplete blocks can pass through orphan checks. */
                         nStatus |= PROCESS::INCOMPLETE;
 
@@ -242,6 +345,9 @@ namespace TAO
                     /* Accept each orphan. */
                     else if(!pOrphan->Accept())
                         return;
+
+                    /* Orphan accepted — clear its circuit-breaker counter. */
+                    mapMissingAttempts.erase(hashPrev);
 
                     /* Erase orphans from map. */
                     mapOrphans.erase(hash);
