@@ -315,3 +315,46 @@ TEST_CASE("GetPrimeDifficulty rejects undersized vOffsets without OOB", "[prime]
         REQUIRE(TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, false) > 0.0);
     }
 }
+
+
+/* Security regression for the mined-block proof gate (force-proof fix).
+ *
+ * The vulnerability: while ChainState::Synchronizing()==true the mined/submit
+ * path evaluated GetPrimeBits(..., fVerify=false), which skips PrimeCheck() on
+ * the base prime and every chain offset.  A block carrying a structurally valid
+ * but non-prime offset set therefore "passed" with a fabricated cluster size.
+ *
+ * ValidateMinedBlock() now calls Check(fForceProof=true) → VerifyWork(true) →
+ * GetPrimeBits(..., fVerify=true), closing the gate.  These cases assert the
+ * underlying fVerify semantics that the fix depends on: fVerify=true rejects a
+ * non-prime base (returns 0 difficulty / 0 bits) whereas fVerify=false — the old
+ * synchronizing fast-path — would accept it. */
+TEST_CASE("Force-proof: fVerify=true rejects non-prime cluster the sync fast-path accepted", "[prime][forceproof][Ledger]")
+{
+    /* 1369 = 37 * 37.  It is NOT divisible by any of the first eleven primes
+     * (2..31), so SmallDivisors() passes and the composite is only caught by the
+     * Miller-Rabin / Fermat stage inside PrimeCheck().  This isolates the
+     * primality gate that fVerify controls. */
+    uint1024_t nComposite = 1369;
+
+    /* Sanity: the base is genuinely composite per PrimeCheck(). */
+    REQUIRE(TAO::Ledger::PrimeCheck(nComposite) == false);
+
+    /* Structurally valid offsets: one chain-offset byte (gap 2) + 4 fractional. */
+    std::vector<uint8_t> vOffsets = {0x02, 0x00, 0x00, 0x00, 0x01};
+
+    SECTION("fVerify=true (force-proof) rejects the non-prime base")
+    {
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(nComposite, vOffsets, true) == 0.0);
+        REQUIRE(TAO::Ledger::GetPrimeBits(nComposite, vOffsets, true) == 0);
+    }
+
+    SECTION("fVerify=false (old synchronizing fast-path) accepts the non-prime base")
+    {
+        /* This is the insecure behaviour the force-proof fix prevents on the
+         * mined path: with verification disabled the cluster is counted and a
+         * non-zero difficulty is reported despite the base being composite. */
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(nComposite, vOffsets, false) > 0.0);
+        REQUIRE(TAO::Ledger::GetPrimeBits(nComposite, vOffsets, false) > 0);
+    }
+}

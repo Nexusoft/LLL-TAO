@@ -288,7 +288,7 @@ namespace Legacy
 
 
     /* Checks if a block is valid if not connected to chain. */
-    bool LegacyBlock::Check() const
+    bool LegacyBlock::Check(bool fForceProof) const
     {
         /* Read ledger DB for duplicate block. */
         if(LLD::Ledger->HasBlock(GetHash()))
@@ -346,8 +346,9 @@ namespace Legacy
             if(vtx.empty() || !vtx[0].IsCoinBase())
                 return debug::error(FUNCTION, "first tx is not coinbase for proof of work");
 
-            /* Check the Proof of Work Claims. */
-            if(!TAO::Ledger::ChainState::Synchronizing() && !VerifyWork())
+            /* Check the Proof of Work Claims.  fForceProof bypasses the
+             * Synchronizing() fast-path for unconditional verification. */
+            if((fForceProof || !TAO::Ledger::ChainState::Synchronizing()) && !VerifyWork(fForceProof))
                 return debug::error(FUNCTION, "invalid proof of work");
         }
 

@@ -375,7 +375,13 @@ namespace TAO::Ledger
             return result;
         }
 
-        if(!block.Check())
+        /* Run the full consistency + proof check.  fForceProof=true bypasses the
+         * Synchronizing() fast-path inside Check()/VerifyWork(): a freshly mined
+         * block extending our own tip is never legitimately "synchronizing", so it
+         * must be fully proof-verified (PoW primality / PoS stake-hash) regardless
+         * of the node's sync state.  This closes the gap where a block submitted
+         * while Synchronizing()==true would commit with zero proof verification. */
+        if(!block.Check(/*fForceProof=*/true))
         {
             result.reason = "block Check() failed";
             return result;

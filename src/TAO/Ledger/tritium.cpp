@@ -323,7 +323,7 @@ namespace TAO
 
 
         /* Checks if a block is valid if not connected to chain. */
-        bool TritiumBlock::Check() const
+        bool TritiumBlock::Check(bool fForceProof) const
         {
             /* Read ledger DB for duplicate block. */
             if(LLD::Ledger->HasBlock(GetHash()))
@@ -388,8 +388,10 @@ namespace TAO
                 if(producer.nTimestamp > GetBlockTime())
                     return debug::error(FUNCTION, "coinstake timestamp is after block timestamp");
 
-                /* Check the Proof of Stake Claims. */
-                if(!TAO::Ledger::ChainState::Synchronizing() && !VerifyWork())
+                /* Check the Proof of Stake Claims.  fForceProof bypasses the
+                 * Synchronizing() fast-path so mined/submitted blocks are always
+                 * fully verified. */
+                if((fForceProof || !TAO::Ledger::ChainState::Synchronizing()) && !VerifyWork(fForceProof))
                     return debug::error(FUNCTION, "invalid proof of stake");
             }
 
@@ -408,8 +410,11 @@ namespace TAO
                 if(GetChannel() != CHANNEL::PRIME && !vOffsets.empty())
                     return debug::error(FUNCTION, "offsets included in non prime block");
 
-                /* Check the Proof of Work Claims. */
-                if(!TAO::Ledger::ChainState::Synchronizing() && !VerifyWork())
+                /* Check the Proof of Work Claims.  fForceProof bypasses the
+                 * Synchronizing() fast-path so mined/submitted blocks are always
+                 * fully verified (closes both the Check() gate and the inner
+                 * GetPrimeBits() primality gate via VerifyWork(fForceProof)). */
+                if((fForceProof || !TAO::Ledger::ChainState::Synchronizing()) && !VerifyWork(fForceProof))
                     return debug::error(FUNCTION, "invalid proof of work");
             }
 
@@ -794,7 +799,7 @@ namespace TAO
 
 
         /* Verify the Proof of Work satisfies network requirements. */
-        bool TritiumBlock::VerifyWork() const
+        bool TritiumBlock::VerifyWork(bool fForceVerify) const
         {
             /* This override adds support for verifying the stake hash on the staking channel */
             if(nChannel == 0)
@@ -812,7 +817,7 @@ namespace TAO
                 return true;
             }
 
-            return Block::VerifyWork();
+            return Block::VerifyWork(fForceVerify);
         }
 
 
