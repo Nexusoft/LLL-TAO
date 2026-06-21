@@ -76,6 +76,11 @@ namespace TAO
         static const uint32_t MAX_MISSING_RETRIES = 10;
 #endif
 
+        /* Maximum number of entries in mapMissingAttempts before a full flush is
+         * triggered to prevent unbounded memory growth from many distinct blocks
+         * that each go INCOMPLETE once (memory-DoS protection). */
+        static const uint32_t MAX_MISSING_MAP_ENTRIES = 10000;
+
         /* Accessor for unit testing — always compiled so the linker can find it
          * when the test translation units reference it.  The declaration in
          * process.h is guarded by UNIT_TESTS so production code cannot call it. */
@@ -177,7 +182,7 @@ namespace TAO
                     /* Cap the map size to prevent memory-DoS from many distinct
                      * blocks that each go INCOMPLETE once.  If the cap is reached
                      * and this is a brand-new hash, flush all stale entries first. */
-                    if(mapMissingAttempts.size() >= 10000 && !mapMissingAttempts.count(hashBlock))
+                    if(mapMissingAttempts.size() >= MAX_MISSING_MAP_ENTRIES && !mapMissingAttempts.count(hashBlock))
                         mapMissingAttempts.clear();
 
                     const uint32_t nAttempts = ++mapMissingAttempts[hashBlock];
@@ -302,7 +307,7 @@ namespace TAO
                          * stall the drain loop indefinitely.  Count attempts against
                          * the orphan's own hash and, once the threshold is reached,
                          * evict it and reject rather than re-requesting forever. */
-                        if(mapMissingAttempts.size() >= 10000 && !mapMissingAttempts.contains(hashPrev))
+                        if(mapMissingAttempts.size() >= MAX_MISSING_MAP_ENTRIES && !mapMissingAttempts.contains(hashPrev))
                             mapMissingAttempts.clear();
                         const uint32_t nOrphanAttempts = ++mapMissingAttempts[hashPrev];
                         if(nOrphanAttempts >= MAX_MISSING_RETRIES)
