@@ -66,12 +66,20 @@ namespace TAO
          * tip from honest peers.  A successful ACCEPT clears that block's attempt
          * counter so the genuine "transaction simply not seen yet" recovery path is
          * unaffected.
+         */
         static std::map<uint1024_t, uint32_t> mapMissingAttempts;
 
 
         /* Maximum number of consecutive INCOMPLETE results tolerated for a single
          * stuck block before it is rejected and evicted (circuit-breaker trip). */
+#ifndef UNIT_TESTS
         static const uint32_t MAX_MISSING_RETRIES = 10;
+#endif
+
+        /* Accessor for unit testing — always compiled so the linker can find it
+         * when the test translation units reference it.  The declaration in
+         * process.h is guarded by UNIT_TESTS so production code cannot call it. */
+        std::map<uint1024_t, uint32_t>& GetMissingAttempts() { return mapMissingAttempts; }
 
 
         /* Processes a block incoming over the network. */
@@ -166,6 +174,12 @@ namespace TAO
                      * tip from advancing.  After MAX_MISSING_RETRIES consecutive
                      * failures, give up on this block: reject it and evict it from
                      * the orphan pool so honest blocks can move the tip forward. */
+                    /* Cap the map size to prevent memory-DoS from many distinct
+                     * blocks that each go INCOMPLETE once.  If the cap is reached
+                     * and this is a brand-new hash, flush all stale entries first. */
+                    if(mapMissingAttempts.size() >= 10000 && !mapMissingAttempts.count(hashBlock))
+                        mapMissingAttempts.clear();
+
                     const uint32_t nAttempts = ++mapMissingAttempts[hashBlock];
                     if(nAttempts >= MAX_MISSING_RETRIES)
                     {
@@ -296,8 +310,11 @@ namespace TAO
                             debug::error(FUNCTION, "orphan ", hashPrev.SubString(),
                                 " unresolved after ", nOrphanAttempts, " missing-tx attempts — circuit-breaker tripped, evicting");
 
-                            /* Evict the stuck orphan and stop tracking it. */
+                            /* Evict the stuck orphan and any dependent orphan
+                             * keyed by its own hash so unreachable chains don't
+                             * accumulate in the orphan pool indefinitely. */
                             mapOrphans.erase(hash);
+                            mapOrphans.erase(hashPrev);
                             mapMissingAttempts.erase(hashPrev);
 
                             nStatus |= PROCESS::REJECTED;

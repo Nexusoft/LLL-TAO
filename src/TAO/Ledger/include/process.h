@@ -82,6 +82,19 @@ namespace TAO
          **/
         void Process(const TAO::Ledger::Block& block, uint8_t &nStatus, LLP::TritiumNode* pnode = nullptr, bool fSkipCheck = false);
 
+#ifdef UNIT_TESTS
+
+        /** Maximum number of consecutive INCOMPLETE results tolerated for a
+         *  single stuck block before it is rejected and evicted.
+         *  Exposed for unit testing. */
+        constexpr uint32_t MAX_MISSING_RETRIES = 10;
+
+        /** Per-block INCOMPLETE attempt counter.
+         *  Exposed for unit testing. */
+        std::map<uint1024_t, uint32_t>& GetMissingAttempts();
+
+#endif
+
     }
 }
 
