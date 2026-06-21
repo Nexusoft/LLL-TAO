@@ -22,9 +22,11 @@ The following verbs are currently supported by this API command-set:
 [`unlock`](#unlock)       - Unlock the session to carry out specified operations.     
 [`lock`](#lock)           - Lock the session to stop a specified operations.  
 [`save`](#save)           - Save a specified session to the local database.     
-[`load`](#load)           - Load a specified session from the local database.     
+[`load`](#load)           - Load a specified session from the local database.  
+[`list`](#list)           - List all active sessions (requires -multiusername).  
 [`terminate`](#terminate) - Terminates a session specified by the noun.          
 [`status`](#status)       - Returns status information for the session specified by the noun.  
+[`validate`](#validate)   - Validates a pin against the current session.  
 
 
 
@@ -33,13 +35,7 @@ The following verbs are currently supported by this API command-set:
 The following nouns are supported for this API command-set:
 
 [`local`] - The location of the session.
-
------------------------------------
-## `Direct Endpoints`
-
-The following commands are direct endpoints and thus do not support the above verb and noun structure available above.
-
-[`validate/pin`](#validate/pin)
+[`pin`] - Used for pin validation operations.
 
 -----------------------------------
 
@@ -160,7 +156,7 @@ These commands only supports the `local` noun.
 
 `staking` : Required for **locking** staking transactions. This boolean value locks the session for staking.
 
-`transactions : Required for **locking** transactions. This boolean value locks the session for creating or claiming transactions.
+`transactions` : Required for **locking** transactions. This boolean value locks the session for creating or claiming transactions.
 
 
 ### Returns:
@@ -281,6 +277,54 @@ These commands only supports the `local` noun.
 
 -----------------------------------
 
+# <a name="list"></a> `list`
+
+This will list all currently active sessions. This command is only available when the `-multiusername` flag is enabled.
+
+```
+sessions/list/noun
+```
+
+This command only supports the `local` noun.
+
+**NOTE:** This command requires the `-multiusername` startup flag to be enabled.
+
+### Parameters:
+
+None.
+
+
+### Results:
+
+#### Return value JSON object:
+
+```
+[
+    {
+        "username": "user1",
+        "genesis": "b7fa11647c02a3a65a72970d8e703d8804eb127c7e7c41d565c3514a4d3fdf13",
+        "session": "2ef9de11b19af82984ddf93275e7ba22c11fe9659d0667f79311c46732bbb7a4",
+        "accessed": 1653680627,
+        "duration": 3600
+    }
+]
+[Completed in 0.072625 ms]
+```
+
+#### Return values:
+
+`username` : The username of the profile for this session.
+
+`genesis` : The profile genesis hash. This is a hash of the profile username.
+
+`session` : The session ID for this active session.
+
+`accessed` : The UNIX timestamp at which the session was last accessed.
+
+`duration` : The number of seconds since the session was last accessed.
+
+-----------------------------------
+
 # <a name="terminate"></a> `terminate`
 
 This will terminate an active session specified by given noun.
@@ -371,13 +415,15 @@ This command only supports the `local` noun.
 
 -----------------------------------
 
-# <a name="validate/pin"></a> `validate/pin`
+# <a name="validate"></a> `validate`
 
 Validates a pin/string against the current logged in session. Uses the internal authentication logic to attempt to authenticate with the supplied string. This allows for UI layers to gatekeep information without executing a command.  
 
 ```
 sessions/validate/pin
 ```
+
+This command only supports the `pin` noun.
 
 ### Parameters:
 
