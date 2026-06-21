@@ -771,6 +771,17 @@ Validates miner-submitted `vOffsets` structurally without the broken equivalence
 describe a valid Cunningham chain starting at `GetPrime()`. Full chain verification is
 deferred to `VerifyWork()`.
 
+> **Force-proof on the mined/submit path (security gate).** `ValidateMinedBlock()`
+> calls `block.Check(/*fForceProof=*/true)`. The `fForceProof` flag is threaded
+> through `Check()` → `VerifyWork(fForceVerify)` → `GetPrimeBits(..., fVerify=true)`
+> so a freshly mined/submitted block is **always** fully proof-verified
+> (PoW primality + fractional difficulty, or PoS stake-hash target) regardless of
+> `ChainState::Synchronizing()`. The `!Synchronizing()` fast-path — which skips
+> `VerifyWork()` and the inner `PrimeCheck()` calls for speed — applies **only** to
+> network blocks during initial block download of already-confirmed history. A block
+> produced by our own miner extends our current tip and is never legitimately
+> "synchronizing", so it does not qualify for that fast-path.
+
 #### `FinalizeWalletSignatureForSolvedBlock(block)`
 
 Generates the canonical `vchBlockSig` for a solved block:

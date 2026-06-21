@@ -155,8 +155,13 @@ namespace TAO
              *
              *  Check a block for consistency.
              *
+             *  @param[in] fForceProof When true, the proof-of-work/stake gate is
+             *             evaluated unconditionally, ignoring the Synchronizing()
+             *             fast-path.  Used by the mined/submitted-block path so a
+             *             freshly produced tip block is always fully verified.
+             *
              **/
-            virtual bool Check() const;
+            virtual bool Check(bool fForceProof = false) const;
 
 
             /** Accept
@@ -345,10 +350,14 @@ namespace TAO
              *
              *  Verify the work was completed by miners as advertised.
              *
+             *  @param[in] fForceVerify When true, primality/fractional-difficulty
+             *             verification is performed unconditionally, ignoring the
+             *             Synchronizing() fast-path that otherwise skips PrimeCheck().
+             *
              *  @return True if work is valid, false otherwise.
              *
              **/
-            virtual bool VerifyWork() const;
+            virtual bool VerifyWork(bool fForceVerify = false) const;
 
 
             /** Generate Signature

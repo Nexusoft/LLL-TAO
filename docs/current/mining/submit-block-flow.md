@@ -72,6 +72,8 @@ MINER                          NODE  (StatelessMinerConnection)
   │                              │
   │                              ├─ 10. ValidateMinedBlock(*pTritium)
   │                              │       checks nBits, ProofHash, channel rules
+  │                              │       Check(fForceProof=true): full PoW/PoS proof
+  │                              │       verified unconditionally (ignores Synchronizing())
   │                              │       FAIL → BLOCK_REJECTED
   │                              │
   │                              ├─ 11. AcceptMinedBlock(*pTritium)

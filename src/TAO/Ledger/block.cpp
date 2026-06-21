@@ -197,7 +197,7 @@ namespace TAO
 
 
         /*  Check a block for consistency. */
-        bool Block::Check() const
+        bool Block::Check(bool fForceProof) const
         {
             return true; /* No implementation in base class. */
         }
@@ -485,7 +485,7 @@ namespace TAO
 
 
         /* Verify the Proof of Work satisfies network requirements. */
-        bool Block::VerifyWork() const
+        bool Block::VerifyWork(bool fForceVerify) const
         {
             /* Check the Prime Number Proof of Work for the Prime Channel. */
             if(nChannel == 1)
@@ -582,8 +582,14 @@ namespace TAO
                     }
                 }
 
-                /* Check proof of work limits. */
-                uint32_t nPrimeBits = GetPrimeBits(nPrimeCandidate, vOffsets, !ChainState::Synchronizing());
+                /* Check proof of work limits.
+                 *
+                 * fVerify forces real primality + fractional-difficulty checks
+                 * whenever the caller demands it (mined/submitted blocks via
+                 * fForceVerify) OR whenever the node is not synchronizing.  During
+                 * genuine IBD of already-confirmed history the check is skipped for
+                 * speed; a freshly mined tip block always passes fForceVerify=true. */
+                uint32_t nPrimeBits = GetPrimeBits(nPrimeCandidate, vOffsets, fForceVerify || !ChainState::Synchronizing());
                 
                 if(fTrainingWheels)
                 {

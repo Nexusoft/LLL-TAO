@@ -173,8 +173,11 @@ namespace TAO
              *
              *  Check a tritium block for consistency.
              *
+             *  @param[in] fForceProof When true, evaluate the proof-of-work/stake
+             *             gate unconditionally (ignore the Synchronizing() fast-path).
+             *
              **/
-            bool Check() const override;
+            bool Check(bool fForceProof = false) const override;
 
 
             /** Accept
@@ -197,10 +200,13 @@ namespace TAO
              *
              *  Verify the work was completed by miners as advertised.
              *
+             *  @param[in] fForceVerify When true, force full primality verification
+             *             regardless of Synchronizing() state.
+             *
              *  @return True if work is valid, false otherwise.
              *
              **/
-            bool VerifyWork() const override;
+            bool VerifyWork(bool fForceVerify = false) const override;
 
 
             /** SignatureHash
