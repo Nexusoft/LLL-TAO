@@ -357,4 +357,19 @@ TEST_CASE("Force-proof: fVerify=true rejects non-prime cluster the sync fast-pat
         REQUIRE(TAO::Ledger::GetPrimeDifficulty(nComposite, vOffsets, false) > 0.0);
         REQUIRE(TAO::Ledger::GetPrimeBits(nComposite, vOffsets, false) > 0);
     }
+
+    SECTION("property holds for a different valid offset pattern (2 chain offsets)")
+    {
+        /* Independence from the specific offset structure: two chain-offset
+         * bytes (gaps 6 and 4, both <= 12) plus a 4-byte fractional tail. */
+        std::vector<uint8_t> vOffsets2 = {0x06, 0x04, 0x00, 0x00, 0x00, 0x01};
+
+        /* Force-proof rejects the non-prime base regardless of offset layout. */
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(nComposite, vOffsets2, true) == 0.0);
+        REQUIRE(TAO::Ledger::GetPrimeBits(nComposite, vOffsets2, true) == 0);
+
+        /* The old fast-path would still have accepted it. */
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(nComposite, vOffsets2, false) > 0.0);
+        REQUIRE(TAO::Ledger::GetPrimeBits(nComposite, vOffsets2, false) > 0);
+    }
 }
