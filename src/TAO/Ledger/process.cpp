@@ -192,9 +192,13 @@ namespace TAO
                             " unresolved after ", nAttempts, " missing-tx attempts (",
                             block.vMissing.size(), " missing) — circuit-breaker tripped, rejecting");
 
+                        /* Capture the prev-block hash before any erase so we never
+                         * read through a potentially-invalidated reference. */
+                        const uint1024_t hashPrevBlock = block.hashPrevBlock;
+
                         /* Drop the giving-up block from the orphan pool if present. */
                         mapOrphans.erase(hashBlock);
-                        mapOrphans.erase(block.hashPrevBlock);
+                        mapOrphans.erase(hashPrevBlock);
 
                         /* Stop tracking it and reject so the node can advance. */
                         mapMissingAttempts.erase(hashBlock);
