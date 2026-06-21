@@ -63,9 +63,9 @@ namespace TAO
          * block hash (hashMissing).  Once the count reaches MAX_MISSING_RETRIES
          * the block is rejected and evicted from the orphan pool instead of being
          * retried forever, allowing the node to continue advancing the real chain
-         * tip from honest peers.  A successful ACCEPT clears the whole ledger so
-         * the genuine "transaction simply not seen yet" recovery path is
-         * unaffected. */
+         * tip from honest peers.  A successful ACCEPT clears that block's attempt
+         * counter so the genuine "transaction simply not seen yet" recovery path is
+         * unaffected.
         static std::map<uint1024_t, uint32_t> mapMissingAttempts;
 
 
