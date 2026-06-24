@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLP/include/template_prewarmer.h>
 
 #include <LLP/include/genesis_constants.h>
+#include <LLP/include/mining_session_health.h>
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/stateless_block_utility.h>
@@ -24,6 +25,7 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 
 #include <algorithm>
+#include <string>
 #include <thread>
 #include <vector>
 
@@ -291,6 +293,20 @@ namespace LLP
         if(hashNewTip == 0)
             return;
 
+        bool fHasBuildHook = false;
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            fHasBuildHook = static_cast<bool>(m_buildFn);
+        }
+
+        if(!fHasBuildHook && !LLP::IsDefaultSessionReady())
+        {
+            debug::log(3, FUNCTION, "[PREWARM] skip tip_advance: SESSION::DEFAULT not ready"
+                       " height=", nUnifiedHeight,
+                       " tip=", hashNewTip.SubString());
+            return;
+        }
+
         /* Snapshot the registry first to keep the queue lock short. */
         const auto vRewards = RecentRewardRegistry::Instance().SnapshotFresh(RewardTTL());
         if(vRewards.empty())
@@ -410,6 +426,15 @@ namespace LLP
                 }
                 else
                 {
+                    if(!LLP::IsDefaultSessionReady())
+                    {
+                        debug::log(3, FUNCTION,
+                                   "[PREWARM] skip warm: SESSION::DEFAULT not ready"
+                                   " channel=", req.nChannel,
+                                   " reward=", req.hashRewardAddress.SubString());
+                        continue;
+                    }
+
                     /* Production path: build a template; its side-effect is
                      * to populate tBlockCache[nChannel] for the wallet/reward
                      * tuple.  We discard the returned pointer because the
@@ -434,9 +459,19 @@ namespace LLP
                 /* Never propagate exceptions out of the worker thread —
                  * warming is best-effort.  Worst case: PUSH worker pays
                  * the producer signing cost itself, exactly as before. */
-                debug::error(FUNCTION, "[PREWARM] exception during warm: ", e.what(),
-                             " channel=", req.nChannel,
-                             " reward=", req.hashRewardAddress.SubString());
+                const std::string strWhat = e.what();
+                if(strWhat.find("Session not found") != std::string::npos)
+                {
+                    debug::log(3, FUNCTION, "[PREWARM] skip warm: ", strWhat,
+                               " channel=", req.nChannel,
+                               " reward=", req.hashRewardAddress.SubString());
+                }
+                else
+                {
+                    debug::error(FUNCTION, "[PREWARM] exception during warm: ", e.what(),
+                                 " channel=", req.nChannel,
+                                 " reward=", req.hashRewardAddress.SubString());
+                }
             }
         }
     }

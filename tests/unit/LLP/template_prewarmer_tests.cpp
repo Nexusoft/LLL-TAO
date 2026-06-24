@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <unit/catch2/catch.hpp>
 
+#include <LLP/include/mining_session_health.h>
 #include <LLP/include/template_prewarmer.h>
 
 #include <Util/include/args.h>
@@ -421,4 +422,41 @@ TEST_CASE("MiningTemplatePrewarmer is a no-op when -prewarm=false",
     warmer.ResetBuildFnForTesting();
     reg.ClearForTesting();
     config::mapArgs.erase("-prewarm");
+}
+
+
+TEST_CASE("MiningTemplatePrewarmer skips notify/build when default session is unavailable",
+          "[template_prewarmer][session]")
+{
+    config::mapArgs.erase("-prewarm");
+    config::mapArgs.erase("-prewarm.reward_ttl");
+    config::mapArgs.erase("-prewarm.queue_max");
+    config::mapArgs.erase("-prewarm.workers");
+
+    if(LLP::IsDefaultSessionReady())
+    {
+        SUCCEED("SESSION::DEFAULT ready; skip unavailable-session regression assertion");
+        return;
+    }
+
+    auto& reg    = LLP::RecentRewardRegistry::Instance();
+    auto& warmer = LLP::MiningTemplatePrewarmer::Instance();
+    reg.ClearForTesting();
+    warmer.ResetBuildFnForTesting();
+
+    warmer.Start();
+    const auto statsBefore = warmer.GetStats();
+
+    reg.Register(1, MakeReward(42));
+    warmer.NotifyTipAdvance(420, MakeTip(0x42));
+
+    /* Allow worker wakeups to occur if anything was enqueued unexpectedly. */
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    const auto statsAfter = warmer.GetStats();
+    REQUIRE(statsAfter.nEnqueued == statsBefore.nEnqueued);
+    REQUIRE(statsAfter.nWarmed == statsBefore.nWarmed);
+
+    warmer.Stop();
+    reg.ClearForTesting();
 }
