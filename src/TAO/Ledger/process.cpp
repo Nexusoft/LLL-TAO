@@ -64,6 +64,11 @@ namespace TAO
         std::atomic<uint64_t> nProcessedContracts(0);
 
 
+        /* Maximum number of unique incomplete-block hashes tracked in
+         * mapLastMissing before the map is cleared to bound memory use. */
+        /* MAX_MISSING_MAP_ENTRIES is declared in include/process.h */
+
+
         /* Processes a block incoming over the network. */
         static uint64_t nProcessedBlocks = 0;
         void Process(const TAO::Ledger::Block& block, uint8_t &nStatus, LLP::TritiumNode* pnode, bool fSkipCheck)
@@ -177,7 +182,15 @@ namespace TAO
                             debug::notice(FUNCTION, "missing ", block.vMissing.size(), " transactions");
                     }
                     else
+                    {
+                        /* Bound the map size before inserting a new entry.
+                         * Clearing the whole map is an intentional cheap DoS
+                         * guard; legitimate incomplete blocks will have resolved
+                         * long before 10 000 unique hashes accumulate. */
+                        if(mapLastMissing.size() >= MAX_MISSING_MAP_ENTRIES)
+                            mapLastMissing.clear();
                         mapLastMissing[hashBlock] = 1;
+                    }
 
                     return;
                 }
@@ -279,8 +292,31 @@ namespace TAO
                         /* Add the missing transactions to this current block. */
                         block.vMissing.insert(block.vMissing.end(), pOrphan->vMissing.begin(), pOrphan->vMissing.end());
 
-                        /* Set the hash missing. */
-                        block.hashMissing = hash; //so that we return here when we get the transactions
+                        /* Set hashMissing to the orphan's own hash so the LLP
+                         * layer re-requests the correct block (not the map key). */
+                        block.hashMissing = hashPrev;
+
+                        /* Track retries so a permanently unresolvable orphan tx
+                         * can't wedge the node forever. */
+                        if(mapLastMissing.count(hashPrev))
+                        {
+                            mapLastMissing[hashPrev]++;
+
+                            if(mapLastMissing[hashPrev] > LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES)
+                            {
+                                block.vMissing.clear();
+                                block.hashMissing = 0;
+                            }
+                            else
+                                debug::notice(FUNCTION, "orphan missing ", pOrphan->vMissing.size(), " transactions");
+                        }
+                        else
+                        {
+                            /* Same intentional clear-all DoS guard as the main path. */
+                            if(mapLastMissing.size() >= MAX_MISSING_MAP_ENTRIES)
+                                mapLastMissing.clear();
+                            mapLastMissing[hashPrev] = 1;
+                        }
 
                         return;
                     }
@@ -288,6 +324,10 @@ namespace TAO
                     /* Accept each orphan. */
                     else if(!pOrphan->Accept())
                         return;
+
+                    /* Orphan accepted — clear any missing-transaction retry counter. */
+                    if(mapLastMissing.count(hashPrev))
+                        mapLastMissing.erase(hashPrev);
 
                     /* Erase orphans from map. */
                     mapOrphans.erase(hash);

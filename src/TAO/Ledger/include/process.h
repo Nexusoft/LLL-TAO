@@ -57,6 +57,16 @@ namespace TAO
         extern std::map<uint1024_t, uint64_t> mapLastMissing;
 
 
+        /** Maximum number of unique incomplete-block hashes tracked in
+         *  mapLastMissing before the entire map is cleared to bound memory use.
+         *  When the map reaches this size and a new (unseen) block hash would be
+         *  inserted, the map is wiped and the new entry starts fresh.  This is an
+         *  intentional cheap DoS guard: clearing all counters at once is O(n) but
+         *  avoids the complexity of LRU eviction.  The vast majority of legitimate
+         *  incomplete blocks will have resolved long before the cap is hit. **/
+        static const uint64_t MAX_MISSING_MAP_ENTRIES = 10000;
+
+
         /** Mutex to protect checking more than one block at a time. **/
         extern std::mutex PROCESSING_MUTEX;
 

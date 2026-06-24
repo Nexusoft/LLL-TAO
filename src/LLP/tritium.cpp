@@ -2688,59 +2688,31 @@ namespace LLP
                         /* Check for missing transactions. */
                         if(nStatus & TAO::Ledger::PROCESS::INCOMPLETE)
                         {
-                            /* Create response data stream. */
-                            DataStream ssResponse(SER_NETWORK, PROTOCOL_VERSION);
-
-                            /* Create a list of requested transactions. */
-                            uint32_t nTotalItems = 0;
+                            /* Log missing tx hashes for diagnostics. */
                             for(const auto& tx : block.vMissing)
+                                debug::log(2, FUNCTION, "missing tx ", tx.second.SubString());
+
+                            /* Re-request the block together with its missing transactions.
+                             * If hashMissing is 0 the retry limit was reached; skip. */
+                            if(block.hashMissing != 0)
                             {
-                                /* Check for legacy. */
-                                if(tx.first == TAO::Ledger::TRANSACTION::LEGACY)
-                                    ssResponse << uint8_t(SPECIFIER::LEGACY);
-
-                                /* Push to stream. */
-                                ssResponse << uint8_t(TYPES::TRANSACTION) << tx.second;
-
-                                /* Log the missing data. */
-                                debug::log(2, FUNCTION, "requesting missing tx ", tx.second.SubString());
-
-                                /* Check if we need to create new protocol message. */
-                                if(++nTotalItems >= ACTION::GET_MAX_ITEMS || tx == block.vMissing.back())
+                                std::shared_ptr<TritiumNode> pnode = TRITIUM_SERVER->RandomConnection();
+                                if(pnode != nullptr)
                                 {
-                                    /* Normal case of asking for a getblocks inventory message. */
-                                    std::shared_ptr<TritiumNode> pnode = TRITIUM_SERVER->RandomConnection();
-                                    if(pnode != nullptr)
+                                    try
                                     {
-                                        /* Send out another getblocks request. */
-                                        try
-                                        {
-                                            debug::log(2, FUNCTION, "broadcasting packet with ", nTotalItems, " items to ", pnode->GetAddress().ToStringIP());
-
-                                            /* Re-request the missing block together with its transactions
-                                             * using SPECIFIER::TRANSACTIONS so the responder pushes each
-                                             * missing tx alongside the block, instead of a plain block
-                                             * re-request plus a separate per-tx chase. */
-                                            pnode->PushMessage(ACTION::GET, uint8_t(SPECIFIER::TRANSACTIONS), uint8_t(TYPES::BLOCK), block.hashMissing);
-
-                                            /* Clear our response data. */
-                                            ssResponse.clear();
-
-                                            /* Reset our counters. */
-                                            nTotalItems = 0;
-
-                                            break;
-                                        }
-                                        catch(const std::exception& e)
-                                        {
-                                            /* Recurse on failure. */
-                                            debug::error(FUNCTION, e.what());
-                                        }
+                                        pnode->PushMessage(ACTION::GET, uint8_t(SPECIFIER::TRANSACTIONS), uint8_t(TYPES::BLOCK), block.hashMissing);
                                     }
-                                    else
-                                        debug::notice(NODE, "could not find random connection for missing transactions");
+                                    catch(const std::exception& e)
+                                    {
+                                        debug::error(FUNCTION, e.what());
+                                    }
                                 }
+                                else
+                                    debug::notice(NODE, "could not find random connection for missing transactions");
                             }
+                            else
+                                debug::log(2, FUNCTION, "retry limit reached or no missing-block hash; skipping re-request");
                         }
 
                         break;
