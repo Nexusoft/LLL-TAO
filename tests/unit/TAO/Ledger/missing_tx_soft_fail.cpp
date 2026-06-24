@@ -272,3 +272,128 @@ TEST_CASE("Missing-transaction retry counter clears on successful ACCEPT", "[led
     TAO::Ledger::mapLastMissing.clear();
     LLD::Ledger->EraseBlock(hashPrev);
 }
+
+
+TEST_CASE("mapLastMissing is bounded at MAX_MISSING_MAP_ENTRIES", "[ledger][process]")
+{
+    LedgerGuard env;
+
+    /* Pre-fill the map to the cap (10 000 entries) by direct insertion so the
+     * test runs in microseconds rather than calling Process() 10 000 times. */
+    TAO::Ledger::mapLastMissing.clear();
+    const uint64_t CAP = 10000;
+    for(uint64_t i = 1; i <= CAP; ++i)
+        TAO::Ledger::mapLastMissing[uint1024_t(i)] = 1;
+
+    REQUIRE(TAO::Ledger::mapLastMissing.size() == CAP);
+
+    /* Write a prev block so the new missing block doesn't take the orphan path. */
+    const uint1024_t hashPrevCap(0xC0DE12345ULL);
+
+    TAO::Ledger::BlockState statePrevCap;
+    statePrevCap.nVersion      = 4;
+    statePrevCap.hashPrevBlock = uint1024_t(0);
+    statePrevCap.nChannel      = 2;
+    statePrevCap.nHeight       = 30;
+    statePrevCap.nBits         = 1;
+    REQUIRE(LLD::Ledger->WriteBlock(hashPrevCap, statePrevCap));
+
+    /* A missing block whose hash is NOT one of the 10 000 pre-filled keys. */
+    MissingBlock capBlock;
+    capBlock.nVersion      = 4;
+    capBlock.hashPrevBlock = hashPrevCap;
+    capBlock.nChannel      = 2;
+    capBlock.nHeight       = 31;
+    capBlock.nBits         = 1;
+    capBlock.nNonce        = 7777;
+
+    const uint1024_t hashCap = capBlock.GetHash();
+    REQUIRE_FALSE(LLD::Ledger->HasBlock(hashCap));
+
+    /* Process the new missing block: should trigger a clear then insert 1 entry. */
+    uint8_t nStatus = 0;
+    TAO::Ledger::Process(capBlock, nStatus);
+
+    REQUIRE((nStatus & TAO::Ledger::PROCESS::INCOMPLETE) != 0);
+    REQUIRE((nStatus & TAO::Ledger::PROCESS::REJECTED)   == 0);
+
+    /* After the cap-clear the map must contain only the single new entry. */
+    REQUIRE(TAO::Ledger::mapLastMissing.size() == 1);
+    REQUIRE(TAO::Ledger::mapLastMissing.count(hashCap) == 1);
+    REQUIRE(TAO::Ledger::mapLastMissing[hashCap] == 1);
+
+    /* Clean up. */
+    TAO::Ledger::mapLastMissing.clear();
+    LLD::Ledger->EraseBlock(hashPrevCap);
+}
+
+
+TEST_CASE("Orphan-drain missing tx sets hashMissing to orphan's own hash", "[ledger][process]")
+{
+    LedgerGuard env;
+
+    TAO::Ledger::mapOrphans.clear();
+    TAO::Ledger::mapLastMissing.clear();
+
+    /* Write a prev block so the accepted parent block doesn't take the orphan
+     * path when Process() is called with it. */
+    const uint1024_t hashPrevOrphan(0xABCD5600ULL);
+
+    TAO::Ledger::BlockState statePrevOrphan;
+    statePrevOrphan.nVersion      = 4;
+    statePrevOrphan.hashPrevBlock = uint1024_t(0);
+    statePrevOrphan.nChannel      = 2;
+    statePrevOrphan.nHeight       = 40;
+    statePrevOrphan.nBits         = 1;
+    REQUIRE(LLD::Ledger->WriteBlock(hashPrevOrphan, statePrevOrphan));
+
+    /* Build the accepted parent PassBlock so we can determine its hash. */
+    PassBlock parentBlock;
+    parentBlock.nVersion      = 4;
+    parentBlock.hashPrevBlock = hashPrevOrphan;
+    parentBlock.nChannel      = 2;
+    parentBlock.nHeight       = 41;
+    parentBlock.nBits         = 1;
+    parentBlock.nNonce        = 2001;
+
+    const uint1024_t hashParent = parentBlock.GetHash();
+    REQUIRE_FALSE(LLD::Ledger->HasBlock(hashParent));
+
+    /* Build the orphan MissingBlock whose parent is the just-accepted block. */
+    MissingBlock orphanBlock;
+    orphanBlock.nVersion      = 4;
+    orphanBlock.hashPrevBlock = hashParent;   /* parent = accepted block */
+    orphanBlock.nChannel      = 2;
+    orphanBlock.nHeight       = 42;
+    orphanBlock.nBits         = 1;
+    orphanBlock.nNonce        = 3001;
+
+    const uint1024_t hashOrphan = orphanBlock.GetHash();
+
+    /* Seed mapOrphans: keyed by the orphan's parent hash (= hashParent). */
+    TAO::Ledger::mapOrphans.insert(
+        std::make_pair(hashParent,
+        std::unique_ptr<TAO::Ledger::Block>(orphanBlock.Clone())));
+
+    /* Process the parent block: it is accepted, then the orphan-drain kicks in
+     * and finds the orphan has missing transactions. */
+    uint8_t nStatus = 0;
+    TAO::Ledger::Process(parentBlock, nStatus);
+
+    /* Parent was accepted, orphan is incomplete. */
+    REQUIRE((nStatus & TAO::Ledger::PROCESS::INCOMPLETE) != 0);
+    REQUIRE((nStatus & TAO::Ledger::PROCESS::REJECTED)   == 0);
+
+    /* hashMissing must be the ORPHAN's own hash, not the parent/map key. */
+    REQUIRE(parentBlock.hashMissing == hashOrphan);
+    REQUIRE(parentBlock.hashMissing != hashParent);
+
+    /* Retry counter should have been started for the orphan's hash. */
+    REQUIRE(TAO::Ledger::mapLastMissing.count(hashOrphan) == 1);
+    REQUIRE(TAO::Ledger::mapLastMissing[hashOrphan] == 1);
+
+    /* Clean up. */
+    TAO::Ledger::mapOrphans.clear();
+    TAO::Ledger::mapLastMissing.clear();
+    LLD::Ledger->EraseBlock(hashPrevOrphan);
+}
