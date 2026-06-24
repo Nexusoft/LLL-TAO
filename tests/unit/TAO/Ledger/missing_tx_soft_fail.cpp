@@ -278,10 +278,10 @@ TEST_CASE("mapLastMissing is bounded at MAX_MISSING_MAP_ENTRIES", "[ledger][proc
 {
     LedgerGuard env;
 
-    /* Pre-fill the map to the cap (10 000 entries) by direct insertion so the
-     * test runs in microseconds rather than calling Process() 10 000 times. */
+    /* Pre-fill the map to the cap by direct insertion so the test runs in
+     * microseconds rather than calling Process() MAX_MISSING_MAP_ENTRIES times. */
     TAO::Ledger::mapLastMissing.clear();
-    const uint64_t CAP = 10000;
+    const uint64_t CAP = TAO::Ledger::MAX_MISSING_MAP_ENTRIES;
     for(uint64_t i = 1; i <= CAP; ++i)
         TAO::Ledger::mapLastMissing[uint1024_t(i)] = 1;
 

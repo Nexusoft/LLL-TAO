@@ -66,7 +66,7 @@ namespace TAO
 
         /* Maximum number of unique incomplete-block hashes tracked in
          * mapLastMissing before the map is cleared to bound memory use. */
-        static const uint64_t MAX_MISSING_MAP_ENTRIES = 10000;
+        /* MAX_MISSING_MAP_ENTRIES is declared in include/process.h */
 
 
         /* Processes a block incoming over the network. */
@@ -183,7 +183,10 @@ namespace TAO
                     }
                     else
                     {
-                        /* Bound the map size before inserting a new entry. */
+                        /* Bound the map size before inserting a new entry.
+                         * Clearing the whole map is an intentional cheap DoS
+                         * guard; legitimate incomplete blocks will have resolved
+                         * long before 10 000 unique hashes accumulate. */
                         if(mapLastMissing.size() >= MAX_MISSING_MAP_ENTRIES)
                             mapLastMissing.clear();
                         mapLastMissing[hashBlock] = 1;
@@ -309,6 +312,7 @@ namespace TAO
                         }
                         else
                         {
+                            /* Same intentional clear-all DoS guard as the main path. */
                             if(mapLastMissing.size() >= MAX_MISSING_MAP_ENTRIES)
                                 mapLastMissing.clear();
                             mapLastMissing[hashPrev] = 1;
