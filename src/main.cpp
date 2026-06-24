@@ -50,7 +50,7 @@ ________________________________________________________________________________
  *  Parse credentials and create/unlock SESSION::DEFAULT for unattended mining.
  *  Handles both credential formats:
  *    Compact  : -autologin=username:password[:pin]
- *    Legacy   : -autologin=1 -username=user -****** -pin=1234
+ *    Legacy   : -autologin=1 -username=user -password -pin=1234
  *
  *  Must only be called after the node is fully synced and when not in
  *  multiuser mode.  Does not start mining template creation; only creates
@@ -66,7 +66,7 @@ static void RunAutoLogin()
      *     PIN may be omitted and supplied via the separate -pin arg.
      *
      *   Legacy (multi-arg): autologin=1  username=user  ******  pin=1234
-     *     Credentials are read from individual -username /****** -pin args.
+     *     Credentials are read from individual -username/-password/-pin args.
      *
      * Both formats may coexist; the compact format takes precedence for
      * username/password when present.
@@ -234,9 +234,10 @@ void Startup()
         {
             debug::log(0, "AUTOLOGIN: waiting for sync to complete before creating SESSION::DEFAULT");
 
-            /* Poll every 3 seconds; respect shutdown signal. */
+            /* Poll at this interval (ms); respect shutdown signal. */
+            static const uint32_t AUTOLOGIN_SYNC_POLL_INTERVAL_MS = 3000;
             while(!config::fShutdown.load() && TAO::Ledger::ChainState::Synchronizing())
-                runtime::sleep(3000);
+                runtime::sleep(AUTOLOGIN_SYNC_POLL_INTERVAL_MS);
 
             /* If we woke up due to shutdown, bail out cleanly. */
             if(config::fShutdown.load())

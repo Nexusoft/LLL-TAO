@@ -500,7 +500,7 @@ autologin=username:password:pin
 ```ini
 autologin=1
 username=YOUR_USERNAME
-******
+password=YOUR_PASSWORD
 pin=YOUR_PIN
 ```
 
