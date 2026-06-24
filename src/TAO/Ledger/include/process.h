@@ -52,6 +52,11 @@ namespace TAO
         extern std::map<uint1024_t, std::unique_ptr<TAO::Ledger::Block>> mapOrphans;
 
 
+        /** Track the times we have requested missing transactions for a block so
+         *  we don't keep re-requesting the same unresolvable transactions. **/
+        extern std::map<uint1024_t, uint64_t> mapLastMissing;
+
+
         /** Mutex to protect checking more than one block at a time. **/
         extern std::mutex PROCESSING_MUTEX;
 
@@ -81,19 +86,6 @@ namespace TAO
          *
          **/
         void Process(const TAO::Ledger::Block& block, uint8_t &nStatus, LLP::TritiumNode* pnode = nullptr, bool fSkipCheck = false);
-
-#ifdef UNIT_TESTS
-
-        /** Maximum number of consecutive INCOMPLETE results tolerated for a
-         *  single stuck block before it is rejected and evicted.
-         *  Exposed for unit testing. */
-        constexpr uint32_t MAX_MISSING_RETRIES = 10;
-
-        /** Per-block INCOMPLETE attempt counter.
-         *  Exposed for unit testing. */
-        std::map<uint1024_t, uint32_t>& GetMissingAttempts();
-
-#endif
 
     }
 }

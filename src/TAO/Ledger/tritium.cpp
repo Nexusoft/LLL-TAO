@@ -537,9 +537,12 @@ namespace TAO
             vHashes.push_back(hashProducer);
             setUnique.insert(hashProducer);
 
-            /* Check for missing transactions. */
-            if(vMissing.size() != 0)
-                return debug::error(FUNCTION, "missing ", vMissing.size(), " transactions");
+            /* NOTE: we deliberately do not hard-fail Check() when vMissing is
+             * non-empty.  Missing transactions are a temporary "incomplete"
+             * condition handled as a soft-fail in TAO::Ledger::Process(); the
+             * transactions are re-requested and the block re-processed once they
+             * arrive.  Failing Check() here would treat a recoverable block as a
+             * permanently invalid one. */
 
             /* Check for duplicate txid's. */
             if(setUnique.size() != vHashes.size())
