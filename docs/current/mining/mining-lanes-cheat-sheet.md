@@ -2,6 +2,10 @@
 
 **Purpose:** fast navigation + keyword/entrypoint map for **legacy vs stateless protocol lanes**, including **Auth/Session/Reward** and **mining/blockchain lifecycle**.
 
+> **Operator note — `-autologin` and sync:** When `-autologin` is set, the node defers creation of `SESSION::DEFAULT` until `ChainState::Synchronizing()` returns false. After a restart that triggers a full resync, mining template creation and prewarming are unavailable until sync completes. Once synced, autologin runs once automatically and mining resumes. Operators will see log messages:
+> - `AUTOLOGIN: waiting for sync to complete before creating SESSION::DEFAULT`
+> - `AUTOLOGIN: sync complete, creating SESSION::DEFAULT`
+
 ---
 
 ## A0) Quick Keywords (Auth/Session/Reward)

@@ -478,13 +478,25 @@ maxoutgoing=16
 
 ### `autologin`
 
-**Type:** Integer (0 or 1)  
+**Type:** Integer (0 or 1) or compact string  
 **Default:** `0`  
 **Description:** Enable automatic login for unattended node operation
 
-When enabled, the node automatically logs in using the credentials specified in `username`, `password`, and `pin`. This is required for mining nodes and pool servers that need to operate without manual intervention.
+When enabled, the node automatically creates and unlocks `SESSION::DEFAULT` for mining, staking, and notifications. This is required for mining nodes and pool servers that need to operate without manual intervention.
 
-**Example:**
+**Sync-deferred behavior:** `SESSION::DEFAULT` is **not** created immediately at startup. The node waits until `ChainState::Synchronizing()` is false before running the autologin flow. This means:
+- After a restart that requires a resync, mining template creation and prewarming are unavailable until sync completes and autologin runs.
+- Once sync finishes, autologin runs exactly once and the mining session becomes available automatically.
+- If the node is already synced when it starts (brief restart), autologin runs immediately with no delay.
+
+**Credential formats:**
+
+*Compact (recommended):*
+```ini
+autologin=username:password:pin
+```
+
+*Legacy (multi-argument):*
 ```ini
 autologin=1
 username=YOUR_USERNAME

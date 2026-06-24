@@ -45,6 +45,155 @@ ________________________________________________________________________________
 #endif
 
 
+/** RunAutoLogin
+ *
+ *  Parse credentials and create/unlock SESSION::DEFAULT for unattended mining.
+ *  Handles both credential formats:
+ *    Compact  : -autologin=username:password[:pin]
+ *    Legacy   : -autologin=1 -username=user -password -pin=1234
+ *
+ *  Must only be called after the node is fully synced and when not in
+ *  multiuser mode.  Does not start mining template creation; only creates
+ *  and unlocks the default session.
+ *
+ **/
+static void RunAutoLogin()
+{
+    /* Parse autologin credentials -- two formats are supported:
+     *
+     *   Compact (single-arg): autologin=username:password[:pin]
+     *     The value of -autologin itself carries the credentials.
+     *     PIN may be omitted and supplied via the separate -pin arg.
+     *
+     *   Legacy (multi-arg): autologin=1  username=user  ******  pin=1234
+     *     Credentials are read from individual -username/-password/-pin args.
+     *
+     * Both formats may coexist; the compact format takes precedence for
+     * username/password when present.
+     */
+    std::string strLoginUser = config::GetArg("-username", "");
+    std::string strLoginPass = config::GetArg("-password", "");
+    std::string strLoginPIN  = config::GetArg("-pin", "");
+
+    /* Detect compact format: value contains ':' (e.g. "alice:s3cr3t" or "alice:s3cr3t:5678")
+     * Split on the FIRST colon (username) and SECOND colon (password/pin boundary) only,
+     * so passwords that contain colons are preserved intact. */
+    {
+        const std::string strAutoLoginVal = config::GetArg("-autologin", "");
+        const size_t nFirstColon = strAutoLoginVal.find(':');
+        if(nFirstColon != std::string::npos)
+        {
+            std::string strUser = strAutoLoginVal.substr(0, nFirstColon);
+            std::string strRest = strAutoLoginVal.substr(nFirstColon + 1);
+
+            /* Find optional second colon that separates password from PIN.
+             * Everything between the first and second colon is the password
+             * (so passwords may contain colons). */
+            const size_t nSecondColon = strRest.find(':');
+            std::string strPass = (nSecondColon != std::string::npos)
+                                  ? strRest.substr(0, nSecondColon)
+                                  : strRest;
+            std::string strPIN2 = (nSecondColon != std::string::npos)
+                                  ? strRest.substr(nSecondColon + 1)
+                                  : "";
+
+            /* Only apply if username and password are both non-empty. */
+            if(!strUser.empty() && !strPass.empty())
+            {
+                strLoginUser = strUser;
+                strLoginPass = strPass;
+                if(!strPIN2.empty())
+                    strLoginPIN = strPIN2;
+            }
+        }
+    }
+
+    /* Create a JSON encoding and call the main API endpoint. */
+    encoding::json jParams =
+    {
+        { "username", strLoginUser },
+        { "password", strLoginPass },
+        { "pin",      strLoginPIN  }
+    };
+
+    /* Handle for -autocreate if specified. */
+    std::string strCreate = "create/master";
+    if(config::GetBoolArg("-autocreate", false))
+    {
+        try { TAO::API::Commands::Invoke("profiles", strCreate, jParams); }
+        catch(const TAO::API::Exception& e){ debug::notice(FUNCTION, "::autocreate:", e.what()); }
+    }
+
+    /* Handle for -autologin if specified. */
+    if(config::GetBoolArg("-autologin", false))
+    {
+        try
+        {
+            /* Create our local session first. */
+            debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "=== AUTOLOGIN: Starting session creation ===", ANSI_COLOR_RESET);
+            std::string strLogin = "create/local";
+            TAO::API::Commands::Invoke("sessions", strLogin, jParams);
+            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "    Session created successfully", ANSI_COLOR_RESET);
+
+            /* Wait for dynamic indexing services. */
+            debug::log(0, "    Waiting for sigchain indexing...");
+            std::string strStatus = "status/local";
+            uint32_t nWaitCount = 0;
+            while(!config::fShutdown.load())
+            {
+                /* Check our current status against indexing services. */
+                const encoding::json jStatus =
+                    TAO::API::Commands::Invoke("sessions", strStatus, jParams);
+
+                /* Break once we have indexed sigchain. */
+                if(!jStatus["indexing"].get<bool>()) //basic spin-lock
+                {
+                    debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "    Indexing complete (waited ", nWaitCount, " seconds)", ANSI_COLOR_RESET);
+                    break;
+                }
+
+                /* Log progress every 5 seconds */
+                if(nWaitCount % 5 == 0)
+                    debug::log(0, "    Still indexing... (", nWaitCount, " seconds)");
+
+                ++nWaitCount;
+
+                /* Make sure we don't spin at 100% of a CPU core. */
+                runtime::sleep(1);
+            }
+
+            /* Create a JSON encoding and call the main API endpoint. */
+            encoding::json jUnlock =
+            {
+                { "pin",  strLoginPIN },
+                { "notifications",              "1" },
+                { "mining",                     "1" },
+                { "staking",                    "1" }
+            };
+
+            /* Unlock our local session now. */
+            debug::log(0, "    Unlocking session for mining/staking/notifications...");
+            std::string strUnlock = "unlock/local";
+            TAO::API::Commands::Invoke("sessions", strUnlock, jUnlock);
+            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "    Session unlocked successfully", ANSI_COLOR_RESET);
+
+            /* Verify Session::DEFAULT is available */
+            if(TAO::API::Authentication::Unlocked(TAO::Ledger::PinUnlock::MINING))
+            {
+                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "    Session::DEFAULT verified (mining ready)", ANSI_COLOR_RESET);
+            }
+            else
+            {
+                debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "    Warning: Session::DEFAULT not unlocked for mining", ANSI_COLOR_RESET);
+            }
+
+            debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "=== AUTOLOGIN: Complete ===", ANSI_COLOR_RESET);
+        }
+        catch(const TAO::API::Exception& e){ debug::notice(FUNCTION, "::autologin: ", e.what()); }
+    }
+}
+
+
 /** Startup
  *
  *  Wrap all our initialization logic here that needs to run in the background after startup.
@@ -69,141 +218,38 @@ void Startup()
             return;
         }
 
-        /* Parse autologin credentials — two formats are supported:
+        /* Defer autologin until the node is fully synchronized.
          *
-         *   Compact (single-arg): autologin=username:password[:pin]
-         *     The value of -autologin itself carries the credentials.
-         *     PIN may be omitted and supplied via the separate -pin arg.
+         * Unattended mining nodes often restart after downtime and begin a
+         * resync before they are ready to sign block templates.  Creating
+         * SESSION::DEFAULT while the chain is still catching up wastes index
+         * work and may produce stale templates.  We wait here -- checking
+         * every few seconds -- and only run autologin once sync completes.
          *
-         *   Legacy (multi-arg): autologin=1  username=user  password=pass  pin=1234
-         *     Credentials are read from individual -username / -password / -pin args.
-         *
-         * Both formats may coexist; the compact format takes precedence for
-         * username/password when present.
+         * If the node is already synced at startup (common for nodes that
+         * were only briefly offline) the check is false immediately and we
+         * fall through without any sleep.
          */
-        std::string strLoginUser = config::GetArg("-username", "");
-        std::string strLoginPass = config::GetArg("-password", "");
-        std::string strLoginPIN  = config::GetArg("-pin", "");
-
-        /* Detect compact format: value contains ':' (e.g. "alice:s3cr3t" or "alice:s3cr3t:5678")
-         * Split on the FIRST colon (username) and SECOND colon (password/pin boundary) only,
-         * so passwords that contain colons are preserved intact. */
+        if(TAO::Ledger::ChainState::Synchronizing())
         {
-            const std::string strAutoLoginVal = config::GetArg("-autologin", "");
-            const size_t nFirstColon = strAutoLoginVal.find(':');
-            if(nFirstColon != std::string::npos)
-            {
-                std::string strUser = strAutoLoginVal.substr(0, nFirstColon);
-                std::string strRest = strAutoLoginVal.substr(nFirstColon + 1);
+            debug::log(0, "AUTOLOGIN: waiting for sync to complete before creating SESSION::DEFAULT");
 
-                /* Find optional second colon that separates password from PIN.
-                 * Everything between the first and second colon is the password
-                 * (so passwords may contain colons). */
-                const size_t nSecondColon = strRest.find(':');
-                std::string strPass = (nSecondColon != std::string::npos)
-                                      ? strRest.substr(0, nSecondColon)
-                                      : strRest;
-                std::string strPIN2 = (nSecondColon != std::string::npos)
-                                      ? strRest.substr(nSecondColon + 1)
-                                      : "";
+            /* Poll at this interval (ms); respect shutdown signal. */
+            static const uint32_t AUTOLOGIN_SYNC_POLL_INTERVAL_MS = 3000;
+            while(!config::fShutdown.load() && TAO::Ledger::ChainState::Synchronizing())
+                runtime::sleep(AUTOLOGIN_SYNC_POLL_INTERVAL_MS);
 
-                /* Only apply if username and password are both non-empty. */
-                if(!strUser.empty() && !strPass.empty())
-                {
-                    strLoginUser = strUser;
-                    strLoginPass = strPass;
-                    if(!strPIN2.empty())
-                        strLoginPIN = strPIN2;
-                }
-            }
+            /* If we woke up due to shutdown, bail out cleanly. */
+            if(config::fShutdown.load())
+                return;
+
+            debug::log(0, "AUTOLOGIN: sync complete, creating SESSION::DEFAULT");
         }
 
-        /* Create a JSON encoding and call the main API endpoint. */
-        encoding::json jParams =
-        {
-            { "username", strLoginUser },
-            { "password", strLoginPass },
-            { "pin",      strLoginPIN  }
-        };
-
-        /* Handle for -autocreate if specified. */
-        std::string strCreate = "create/master";
-        if(config::GetBoolArg("-autocreate", false))
-        {
-            try { TAO::API::Commands::Invoke("profiles", strCreate, jParams); }
-            catch(const TAO::API::Exception& e){ debug::notice(FUNCTION, "::autocreate:", e.what()); }
-        }
-
-        /* Handle for -autologin if specified. */
-        if(config::GetBoolArg("-autologin", false))
-        {
-            try
-            {
-                /* Create our local session first. */
-                debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "=== AUTOLOGIN: Starting session creation ===", ANSI_COLOR_RESET);
-                std::string strLogin = "create/local";
-                TAO::API::Commands::Invoke("sessions", strLogin, jParams);
-                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "    Session created successfully", ANSI_COLOR_RESET);
-
-                /* Wait for dynamic indexing services. */
-                debug::log(0, "    Waiting for sigchain indexing...");
-                std::string strStatus = "status/local";
-                uint32_t nWaitCount = 0;
-                while(!config::fShutdown.load())
-                {
-                    /* Check our current status against indexing services. */
-                    const encoding::json jStatus =
-                        TAO::API::Commands::Invoke("sessions", strStatus, jParams);
-
-                    /* Break once we have indexed sigchain. */
-                    if(!jStatus["indexing"].get<bool>()) //basic spin-lock
-                    {
-                        debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "    Indexing complete (waited ", nWaitCount, " seconds)", ANSI_COLOR_RESET);
-                        break;
-                    }
-
-                    /* Log progress every 5 seconds */
-                    if(nWaitCount % 5 == 0)
-                        debug::log(0, "    Still indexing... (", nWaitCount, " seconds)");
-
-                    ++nWaitCount;
-
-                    /* Make sure we don't spin at 100% of a CPU core. */
-                    runtime::sleep(1);
-                }
-
-                /* Create a JSON encoding and call the main API endpoint. */
-                encoding::json jUnlock =
-                {
-                    { "pin",  strLoginPIN },
-                    { "notifications",              "1" },
-                    { "mining",                     "1" },
-                    { "staking",                    "1" }
-                };
-
-                /* Unlock our local session now. */
-                debug::log(0, "    Unlocking session for mining/staking/notifications...");
-                std::string strUnlock = "unlock/local";
-                TAO::API::Commands::Invoke("sessions", strUnlock, jUnlock);
-                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "    Session unlocked successfully", ANSI_COLOR_RESET);
-                
-                /* Verify Session::DEFAULT is available */
-                if(TAO::API::Authentication::Unlocked(TAO::Ledger::PinUnlock::MINING))
-                {
-                    debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "    Session::DEFAULT verified (mining ready)", ANSI_COLOR_RESET);
-                }
-                else
-                {
-                    debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "    Warning: Session::DEFAULT not unlocked for mining", ANSI_COLOR_RESET);
-                }
-                    
-                debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "=== AUTOLOGIN: Complete ===", ANSI_COLOR_RESET);
-            }
-            catch(const TAO::API::Exception& e){ debug::notice(FUNCTION, "::autologin: ", e.what()); }
-        }
+        /* Run the autologin flow exactly once. */
+        RunAutoLogin();
     }
 }
-
 
 int main(int argc, char** argv)
 {
