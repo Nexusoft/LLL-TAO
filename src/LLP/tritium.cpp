@@ -2717,11 +2717,11 @@ namespace LLP
                                         {
                                             debug::log(2, FUNCTION, "broadcasting packet with ", nTotalItems, " items to ", pnode->GetAddress().ToStringIP());
 
-                                            /* Write our packet with our total items. */
-                                            pnode->WritePacket(NewMessage(ACTION::GET, ssResponse));
-
-                                            /* Expired our missing block last. */
-                                            pnode->PushMessage(ACTION::GET, uint8_t(TYPES::BLOCK), block.hashMissing);
+                                            /* Re-request the missing block together with its transactions
+                                             * using SPECIFIER::TRANSACTIONS so the responder pushes each
+                                             * missing tx alongside the block, instead of a plain block
+                                             * re-request plus a separate per-tx chase. */
+                                            pnode->PushMessage(ACTION::GET, uint8_t(SPECIFIER::TRANSACTIONS), uint8_t(TYPES::BLOCK), block.hashMissing);
 
                                             /* Clear our response data. */
                                             ssResponse.clear();

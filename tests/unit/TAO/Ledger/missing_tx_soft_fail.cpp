@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLP/types/tritium.h>
+
 #include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/enum.h>
@@ -57,33 +59,35 @@ namespace
     };
 
 
-    /** StubBlock
+    /** MissingBlock
      *
-     *  A minimal Block subclass whose Check() always populates vMissing and
-     *  returns false, simulating a block that references a permanently
-     *  unresolvable missing transaction.
+     *  A minimal Block subclass whose Check() passes but populates vMissing,
+     *  simulating a valid block that is temporarily missing a transaction. This
+     *  is the soft-fail "incomplete" condition handled by Process().
      */
-    class StubBlock final : public TAO::Ledger::Block
+    class MissingBlock final : public TAO::Ledger::Block
     {
     public:
-        StubBlock()
+        MissingBlock()
         : TAO::Ledger::Block()
         {
         }
 
-        StubBlock* Clone() const override
+        MissingBlock* Clone() const override
         {
-            return new StubBlock(*this);
+            return new MissingBlock(*this);
         }
 
         bool Check(bool /*fForceProof*/ = false) const override
         {
-            /* Simulate a block whose single vtx can never be found in LLD. */
+            /* Simulate a block whose single vtx is not yet in LLD. Check()
+             * itself succeeds; the missing transaction is reported via vMissing
+             * and handled as a soft incomplete condition. */
             vMissing.clear();
             vMissing.push_back(std::make_pair(
                 TAO::Ledger::TRANSACTION::TRITIUM, uint512_t(0xdeadbeef)));
 
-            return false;
+            return true;
         }
 
         bool Accept() const override
@@ -95,9 +99,8 @@ namespace
 
     /** PassBlock
      *
-     *  A Block subclass whose Check() and Accept() both return true, so that
-     *  Process() can reach the ACCEPTED path and clear the circuit-breaker
-     *  counter.
+     *  A Block subclass whose Check() and Accept() both succeed with no missing
+     *  transactions, so that Process() reaches the ACCEPTED path.
      */
     class PassBlock final : public TAO::Ledger::Block
     {
@@ -114,6 +117,7 @@ namespace
 
         bool Check(bool /*fForceProof*/ = false) const override
         {
+            vMissing.clear();
             return true;
         }
 
@@ -125,7 +129,7 @@ namespace
 }
 
 
-TEST_CASE("Circuit-breaker trips after MAX_MISSING_RETRIES", "[ledger][process]")
+TEST_CASE("Missing transactions yield a soft INCOMPLETE, never a REJECT", "[ledger][process]")
 {
     LedgerGuard env;
 
@@ -143,8 +147,8 @@ TEST_CASE("Circuit-breaker trips after MAX_MISSING_RETRIES", "[ledger][process]"
 
     REQUIRE(LLD::Ledger->WriteBlock(hashPrev, statePrev));
 
-    /* Create the stub block referencing the known prev hash. */
-    StubBlock block;
+    /* Create the missing-tx block referencing the known prev hash. */
+    MissingBlock block;
     block.nVersion      = 4;
     block.hashPrevBlock = hashPrev;
     block.nChannel      = 2;
@@ -157,13 +161,13 @@ TEST_CASE("Circuit-breaker trips after MAX_MISSING_RETRIES", "[ledger][process]"
     /* Ensure the block hash itself is NOT already in LLD (not a duplicate). */
     REQUIRE_FALSE(LLD::Ledger->HasBlock(hashBlock));
 
-    /* Clear any stale circuit-breaker state from previous tests. */
-    auto& mapAttempts = TAO::Ledger::GetMissingAttempts();
-    mapAttempts.clear();
+    /* Clear any stale retry state from previous tests. */
+    TAO::Ledger::mapLastMissing.clear();
 
-    /* Drive the block through Process() MAX_MISSING_RETRIES - 1 times.
-     * Each iteration should return INCOMPLETE (the tx can't be found). */
-    for(uint32_t i = 1; i < TAO::Ledger::MAX_MISSING_RETRIES; ++i)
+    /* Drive the block through Process() up to the retry limit. Each iteration
+     * should return INCOMPLETE (never REJECTED) and increment the retry
+     * counter keyed by the block hash. */
+    for(uint64_t i = 1; i <= LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES; ++i)
     {
         uint8_t nStatus = 0;
         TAO::Ledger::Process(block, nStatus);
@@ -171,29 +175,31 @@ TEST_CASE("Circuit-breaker trips after MAX_MISSING_RETRIES", "[ledger][process]"
         INFO("iteration " << i);
         REQUIRE((nStatus & TAO::Ledger::PROCESS::INCOMPLETE) != 0);
         REQUIRE((nStatus & TAO::Ledger::PROCESS::REJECTED)   == 0);
-        REQUIRE(mapAttempts.count(hashBlock));
-        REQUIRE(mapAttempts[hashBlock] == i);
+        REQUIRE(TAO::Ledger::mapLastMissing.count(hashBlock));
+        REQUIRE(TAO::Ledger::mapLastMissing[hashBlock] == i);
     }
 
-    /* The next call should trip the circuit-breaker: REJECTED, not INCOMPLETE. */
+    /* The next call exceeds the retry limit: still INCOMPLETE (not REJECTED),
+     * but the block's missing-tx requests are cleared so we stop re-requesting
+     * a permanently unresolvable transaction. */
     {
         uint8_t nStatus = 0;
         TAO::Ledger::Process(block, nStatus);
 
-        REQUIRE((nStatus & TAO::Ledger::PROCESS::REJECTED)   != 0);
-        REQUIRE((nStatus & TAO::Ledger::PROCESS::INCOMPLETE) == 0);
-
-        /* The attempt counter for this block should have been cleaned up. */
-        REQUIRE(mapAttempts.count(hashBlock) == 0);
+        REQUIRE((nStatus & TAO::Ledger::PROCESS::INCOMPLETE) != 0);
+        REQUIRE((nStatus & TAO::Ledger::PROCESS::REJECTED)   == 0);
+        REQUIRE(block.vMissing.empty());
+        REQUIRE(block.hashMissing == 0);
     }
 
-    /* Clean up: erase the fake block state from LLD. */
+    /* Clean up. */
+    TAO::Ledger::mapLastMissing.clear();
     LLD::Ledger->EraseBlock(hashBlock);
     LLD::Ledger->EraseBlock(hashPrev);
 }
 
 
-TEST_CASE("Circuit-breaker counter clears on successful ACCEPT", "[ledger][process]")
+TEST_CASE("Missing-transaction retry counter clears on successful ACCEPT", "[ledger][process]")
 {
     LedgerGuard env;
 
@@ -209,33 +215,32 @@ TEST_CASE("Circuit-breaker counter clears on successful ACCEPT", "[ledger][proce
 
     REQUIRE(LLD::Ledger->WriteBlock(hashPrev, statePrev));
 
-    /* Create a stub block that always fails with missing tx. */
-    StubBlock badBlock;
-    badBlock.nVersion      = 4;
-    badBlock.hashPrevBlock = hashPrev;
-    badBlock.nChannel      = 2;
-    badBlock.nHeight       = 11;
-    badBlock.nBits         = 1;
-    badBlock.nNonce        = 99;
+    /* Create a block that is temporarily missing a transaction. */
+    MissingBlock missingBlock;
+    missingBlock.nVersion      = 4;
+    missingBlock.hashPrevBlock = hashPrev;
+    missingBlock.nChannel      = 2;
+    missingBlock.nHeight       = 11;
+    missingBlock.nBits         = 1;
+    missingBlock.nNonce        = 99;
 
-    const uint1024_t hashBad = badBlock.GetHash();
-    REQUIRE_FALSE(LLD::Ledger->HasBlock(hashBad));
+    const uint1024_t hashMissing = missingBlock.GetHash();
+    REQUIRE_FALSE(LLD::Ledger->HasBlock(hashMissing));
 
-    auto& mapAttempts = TAO::Ledger::GetMissingAttempts();
-    mapAttempts.clear();
+    TAO::Ledger::mapLastMissing.clear();
     TAO::Ledger::mapOrphans.clear();
 
     /* Drive a few INCOMPLETE results to build up the counter. */
     for(uint32_t i = 0; i < 3; ++i)
     {
         uint8_t nStatus = 0;
-        TAO::Ledger::Process(badBlock, nStatus);
+        TAO::Ledger::Process(missingBlock, nStatus);
         REQUIRE((nStatus & TAO::Ledger::PROCESS::INCOMPLETE) != 0);
     }
-    REQUIRE(mapAttempts[hashBad] == 3);
+    REQUIRE(TAO::Ledger::mapLastMissing[hashMissing] == 3);
 
-    /* Now process a block that passes Check() and Accept(), confirming
-     * the counter for the accepted block is cleared. */
+    /* Now process a block that passes Check()/Accept() with no missing tx and
+     * confirm its retry counter is cleared on accept. */
     PassBlock goodBlock;
     goodBlock.nVersion      = 4;
     goodBlock.hashPrevBlock = hashPrev;
@@ -248,7 +253,7 @@ TEST_CASE("Circuit-breaker counter clears on successful ACCEPT", "[ledger][proce
     REQUIRE_FALSE(LLD::Ledger->HasBlock(hashGood));
 
     /* Artificially add a counter for the good block's hash. */
-    mapAttempts[hashGood] = 5;
+    TAO::Ledger::mapLastMissing[hashGood] = 5;
 
     {
         uint8_t nStatus = 0;
@@ -256,76 +261,14 @@ TEST_CASE("Circuit-breaker counter clears on successful ACCEPT", "[ledger][proce
 
         REQUIRE((nStatus & TAO::Ledger::PROCESS::ACCEPTED) != 0);
         /* The counter for this block should have been cleared on accept. */
-        REQUIRE(mapAttempts.count(hashGood) == 0);
+        REQUIRE(TAO::Ledger::mapLastMissing.count(hashGood) == 0);
     }
 
-    /* The bad block's counter should still be there (untouched by the good accept). */
-    REQUIRE(mapAttempts[hashBad] == 3);
+    /* The missing block's counter should still be there (untouched by the good
+     * accept). */
+    REQUIRE(TAO::Ledger::mapLastMissing[hashMissing] == 3);
 
     /* Clean up. */
-    mapAttempts.clear();
-    LLD::Ledger->EraseBlock(hashPrev);
-}
-
-
-TEST_CASE("Circuit-breaker evicts orphan on trip", "[ledger][process]")
-{
-    LedgerGuard env;
-
-    /* Set up a prev block in LLD. */
-    const uint1024_t hashPrev(0xaabb0011);
-
-    TAO::Ledger::BlockState statePrev;
-    statePrev.nVersion      = 4;
-    statePrev.hashPrevBlock = uint1024_t(0);
-    statePrev.nChannel      = 2;
-    statePrev.nHeight       = 20;
-    statePrev.nBits         = 1;
-
-    REQUIRE(LLD::Ledger->WriteBlock(hashPrev, statePrev));
-
-    /* Create the failing block. */
-    StubBlock block;
-    block.nVersion      = 4;
-    block.hashPrevBlock = hashPrev;
-    block.nChannel      = 2;
-    block.nHeight       = 21;
-    block.nBits         = 1;
-    block.nNonce        = 77;
-
-    const uint1024_t hashBlock = block.GetHash();
-    REQUIRE_FALSE(LLD::Ledger->HasBlock(hashBlock));
-
-    auto& mapAttempts = TAO::Ledger::GetMissingAttempts();
-    mapAttempts.clear();
-
-    /* Plant the block in the orphan map under both its prev hash and its own
-     * hash to verify eviction covers both keys. */
-    TAO::Ledger::mapOrphans[hashBlock] =
-        std::unique_ptr<TAO::Ledger::Block>(block.Clone());
-    TAO::Ledger::mapOrphans[block.hashPrevBlock] =
-        std::unique_ptr<TAO::Ledger::Block>(block.Clone());
-
-    REQUIRE(TAO::Ledger::mapOrphans.count(hashBlock));
-    REQUIRE(TAO::Ledger::mapOrphans.count(block.hashPrevBlock));
-
-    /* Pre-set the counter to one below the threshold so the next call trips. */
-    mapAttempts[hashBlock] = TAO::Ledger::MAX_MISSING_RETRIES - 1;
-
-    {
-        uint8_t nStatus = 0;
-        TAO::Ledger::Process(block, nStatus);
-
-        REQUIRE((nStatus & TAO::Ledger::PROCESS::REJECTED) != 0);
-    }
-
-    /* Both orphan entries should have been evicted. */
-    REQUIRE(TAO::Ledger::mapOrphans.count(hashBlock) == 0);
-    REQUIRE(TAO::Ledger::mapOrphans.count(block.hashPrevBlock) == 0);
-
-    /* The attempt counter should have been cleaned up. */
-    REQUIRE(mapAttempts.count(hashBlock) == 0);
-
-    /* Clean up. */
+    TAO::Ledger::mapLastMissing.clear();
     LLD::Ledger->EraseBlock(hashPrev);
 }
