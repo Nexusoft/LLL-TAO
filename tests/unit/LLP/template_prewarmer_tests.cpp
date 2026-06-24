@@ -433,11 +433,7 @@ TEST_CASE("MiningTemplatePrewarmer skips notify/build when default session is un
     config::mapArgs.erase("-prewarm.queue_max");
     config::mapArgs.erase("-prewarm.workers");
 
-    if(LLP::IsDefaultSessionReady())
-    {
-        SUCCEED("SESSION::DEFAULT ready; skip unavailable-session regression assertion");
-        return;
-    }
+    REQUIRE_FALSE(LLP::IsDefaultSessionReady());
 
     auto& reg    = LLP::RecentRewardRegistry::Instance();
     auto& warmer = LLP::MiningTemplatePrewarmer::Instance();

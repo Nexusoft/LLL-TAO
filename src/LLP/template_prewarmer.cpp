@@ -164,6 +164,8 @@ namespace LLP
 
     namespace
     {
+        constexpr const char* kSessionNotFoundMsg = "Session not found";
+
         /* Operator-tunable parameters with conservative defaults. */
         std::chrono::seconds RewardTTL()
         {
@@ -299,6 +301,9 @@ namespace LLP
             fHasBuildHook = static_cast<bool>(m_buildFn);
         }
 
+        /* Unit tests inject m_buildFn and are intentionally decoupled from
+         * wallet-session state so queue/pool behavior can be validated without
+         * API session setup. */
         if(!fHasBuildHook && !LLP::IsDefaultSessionReady())
         {
             debug::log(3, FUNCTION, "[PREWARM] skip tip_advance: SESSION::DEFAULT not ready"
@@ -460,7 +465,7 @@ namespace LLP
                  * warming is best-effort.  Worst case: PUSH worker pays
                  * the producer signing cost itself, exactly as before. */
                 const std::string strWhat = e.what();
-                if(strWhat.find("Session not found") != std::string::npos)
+                if(strWhat.find(kSessionNotFoundMsg) != std::string::npos)
                 {
                     debug::log(3, FUNCTION, "[PREWARM] skip warm: ", strWhat,
                                " channel=", req.nChannel,
