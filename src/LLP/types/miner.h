@@ -896,6 +896,12 @@ namespace LLP
          *                             template to invalidate; pass 0 to skip
          *                             cache invalidation (e.g. unknown template).
          *
+         *  Note: SendLegacyTemplate() is best-effort and returns void (matching
+         *  its existing signature used elsewhere in this class); if template
+         *  creation transiently fails, the miner falls back to its own GET_BLOCK
+         *  poll/backoff exactly as it would have without this proactive push, so
+         *  no additional error handling is required here.
+         *
          **/
         void ForceFreshTemplatePush(const uint512_t& hashMerkleStale = uint512_t(0));
 
