@@ -47,10 +47,20 @@ namespace TAO
          *  @param[in] pin The pin number to generate with.
          *  @param[out] tx The traansaction object being created
          *  @param[in] nScheme The key scheme to be used.
+         *  @param[in] pKnownLast Optional authoritative predecessor transaction for this
+         *             sigchain, already selected into the block's vtx by AddTransactions().
+         *             When supplied, this is used verbatim as the chaining predecessor
+         *             instead of independently re-querying sessions/mempool/disk, which
+         *             closes a TOCTOU race where a newer sigchain transaction submitted
+         *             between AddTransactions() and CreateTransaction() could be picked
+         *             as "last" even though it never made it into the block, producing a
+         *             producer.hashPrevTx that disagrees with what Check() validates
+         *             against (see FindProducerGenesisTxInVtx() in create.cpp).
          *
          **/
         bool CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& pin,
-                               TAO::Ledger::Transaction& tx, const uint8_t nScheme = TAO::Ledger::SIGNATURE::BRAINPOOL);
+                               TAO::Ledger::Transaction& tx, const uint8_t nScheme = TAO::Ledger::SIGNATURE::BRAINPOOL,
+                               const TAO::Ledger::Transaction* pKnownLast = nullptr);
 
 
         /** CreateProducer
@@ -68,6 +78,9 @@ namespace TAO
          *  @param[in] nExtraNonce An extra nonce to use for double iterating.
          *  @param[in] pCoinbaseRecipients The coinbase recipients, if any.
          *  @param[in] hashDynamicGenesis Reward recipient genesis (0 = use user genesis)
+         *  @param[in] pKnownLast Optional authoritative predecessor transaction for the
+         *             producer's sigchain, forwarded to CreateTransaction(). See that
+         *             function's documentation for why this closes a sequencing race.
          *
          **/
         bool CreateProducer(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& pin,
@@ -77,7 +90,32 @@ namespace TAO
                                const uint32_t nChannel,
                                const uint64_t nExtraNonce,
                                Legacy::Coinbase *pCoinbaseRecipients = nullptr,
-                               const uint256_t& hashDynamicGenesis = uint256_t(0));
+                               const uint256_t& hashDynamicGenesis = uint256_t(0),
+                               const TAO::Ledger::Transaction* pKnownLast = nullptr);
+
+
+        /** FindProducerGenesisTxInVtx
+         *
+         *  Scans a block's already-selected vtx entries for the transaction whose
+         *  hashGenesis matches the given genesis, returning the entry with the
+         *  highest nSequence (there should be at most one per AddTransactions()'
+         *  per-genesis chaining, but scanning defensively guards against future
+         *  changes to that ordering).
+         *
+         *  This is the authoritative source for producer chaining: it reflects
+         *  exactly what Check() will later validate the producer against, so
+         *  using it to seed CreateTransaction() eliminates the TOCTOU race where
+         *  an independent, later mempool/disk query could disagree with vtx.
+         *
+         *  @param[in] block The block whose vtx has already been populated by AddTransactions().
+         *  @param[in] hashGenesis The sigchain genesis to search for.
+         *  @param[out] txOut The matching transaction, if found.
+         *
+         *  @return true if a matching transaction was found in vtx.
+         *
+         **/
+        bool FindProducerGenesisTxInVtx(const TAO::Ledger::TritiumBlock& block,
+                                        const uint256_t& hashGenesis, TAO::Ledger::Transaction& txOut);
 
 
 
