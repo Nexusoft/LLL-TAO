@@ -2534,6 +2534,27 @@ namespace LLP
                             ctxSnap.hashGenesis.SubString(8), pTritium->nChannel,
                             false, acceptanceResult.reason);
                     }
+
+                    /* [A2] AcceptMinedBlock() failures here (e.g. "block rejected"
+                     * from TritiumBlock::Accept() dropping a late orphan at/below
+                     * the hardened checkpoint, or a "not descendant" check) mean a
+                     * fork/reorg raced ahead of this already PoW-validated
+                     * submission. Previously the node only invalidated the cached
+                     * template and waited for the miner's next GET_BLOCK poll —
+                     * during a fork/orphan storm that poll can be delayed long
+                     * enough for the miner to declare DEGRADED, submit again
+                     * against the same stale tip, and repeat (the "doom loop").
+                     * Immediately force a fresh template push here, reusing the
+                     * same recovery action already proven for SESSION_STATUS
+                     * DEGRADED recovery, so the miner gets valid work right away
+                     * instead of waiting out its own poll/degraded timers. */
+                    {
+                        LOCK(MUTEX);
+                        m_force_next_push = true;
+                        m_get_block_cooldown = AutoCoolDown(std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS));
+                    }
+                    SendStatelessTemplate();
+                    debug::log(0, FUNCTION, "✓ Fresh template pushed after AcceptMinedBlock rejection — miner should resume mining without entering DEGRADED");
                 }
                 else
                 {

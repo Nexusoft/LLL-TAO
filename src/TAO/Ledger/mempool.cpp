@@ -185,9 +185,28 @@ namespace TAO
                     /* Check for conflicts. */
                     if(mapClaimed.count(tx.hashPrevTx) || mapConflicts.count(tx.hashPrevTx))
                     {
-                        /* Add to conflicts map. */
-                        debug::error(FUNCTION, "CONFLICT: prev tx ", (mapClaimed.count(tx.hashPrevTx) ? "CLAIMED " : "CONFLICTED "), tx.hashPrevTx.SubString());
-                        mapConflicts[hashTx] = tx;
+                        /* We only need to output debug info and insert if this is a new conflict.
+                         * [B2] Matches upstream Nexusoft/LLL-TAO: avoids repeated ERROR-level log
+                         * spam for a conflict that has already been recorded, and relays the
+                         * conflicted transaction so peers (and our own re-sync logic) can resolve
+                         * it once the fork/reorg settles instead of it becoming a silent dead end. */
+                        if(!mapConflicts.count(hashTx))
+                        {
+                            /* Add to conflicts map. */
+                            debug::error(FUNCTION, "CONFLICT: prev tx ", (mapClaimed.count(tx.hashPrevTx) ? "CLAIMED " : "CONFLICTED "), tx.hashPrevTx.SubString());
+                            mapConflicts[hashTx] = tx;
+
+                            /* Relay the conflict if we are running over tritium protocol. */
+                            if(pnode && LLP::TRITIUM_SERVER)
+                            {
+                                LLP::TRITIUM_SERVER->Relay
+                                (
+                                    LLP::TritiumNode::ACTION::NOTIFY,
+                                    uint8_t(LLP::TritiumNode::TYPES::TRANSACTION),
+                                    hashTx
+                                );
+                            }
+                        }
 
                         return false;
                     }
@@ -200,18 +219,48 @@ namespace TAO
                     /* Check for conflicts. */
                     if(tx.hashPrevTx != hashLast)
                     {
-                        /* Add to conflicts map. */
-                        debug::error(FUNCTION, "CONFLICT: hash last mismatch ", tx.hashPrevTx.SubString(), " and ", hashLast.SubString());
-                        mapConflicts[hashTx] = tx;
+                        /* We only need to output debug info and insert if this is a new conflict. [B2] */
+                        if(!mapConflicts.count(hashTx))
+                        {
+                            /* Add to conflicts map. */
+                            debug::error(FUNCTION, "CONFLICT: hash last mismatch ", tx.hashPrevTx.SubString(), " and ", hashLast.SubString());
+                            mapConflicts[hashTx] = tx;
+
+                            /* Relay the conflict if we are running over tritium protocol, so the
+                             * genesis's canonical last-hash and the conflicted tx are both
+                             * re-announced. This gives peers (and this node, via its own GET
+                             * follow-up) a chance to re-sync the sigchain once the fork resolves,
+                             * rather than leaving the transaction permanently stranded. */
+                            if(pnode && LLP::TRITIUM_SERVER)
+                            {
+                                LLP::TRITIUM_SERVER->Relay
+                                (
+                                    LLP::TritiumNode::ACTION::NOTIFY,
+                                    uint8_t(LLP::TritiumNode::TYPES::TRANSACTION),
+                                    hashLast
+                                );
+
+                                LLP::TRITIUM_SERVER->Relay
+                                (
+                                    LLP::TritiumNode::ACTION::NOTIFY,
+                                    uint8_t(LLP::TritiumNode::TYPES::TRANSACTION),
+                                    hashTx
+                                );
+                            }
+                        }
 
                         return false;
                     }
                 }
                 else if(tx.IsFirst() && LLD::Ledger->HasFirst(tx.hashGenesis))
                 {
-                    /* Add to conflicts map. */
-                    debug::error(FUNCTION, "CONFLICT: duplicate genesis-id ", tx.hashGenesis.SubString());
-                    mapConflicts[hashTx] = tx;
+                    /* We only need to output debug info and insert if this is a new conflict. [B2] */
+                    if(!mapConflicts.count(hashTx))
+                    {
+                        /* Add to conflicts map. */
+                        debug::error(FUNCTION, "CONFLICT: duplicate genesis-id ", tx.hashGenesis.SubString());
+                        mapConflicts[hashTx] = tx;
+                    }
 
                     return false;
                 }
