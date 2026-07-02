@@ -58,8 +58,8 @@ namespace TAO
             for(uint32_t nMinute = nMinutes; nMinute < (nInterval + nMinutes); ++nMinute)
             {
                 /* Calculate the total subsidy for all available types. */
-                for(uint8_t nType = 0; nType < dDecayValue.size(); ++nType)
-                    nMoneySupply += GetSubsidy(nMinute, nType);
+                for(std::size_t nType = 0; nType < dDecayValue.size(); ++nType)
+                    nMoneySupply += GetSubsidy(nMinute, static_cast<uint8_t>(nType));
             }
 
             return nMoneySupply * 2;
@@ -82,8 +82,8 @@ namespace TAO
                 for(uint32_t nMinute = pairSupply.first; nMinute <= nMinutes; ++nMinute)
                 {
                     /* Loop through our available types. */
-                    for(uint8_t nType = 0; nType < dDecayValue.size(); ++nType)
-                        pairSupply.second += GetSubsidy(nMinute, nType) * 2;
+                    for(std::size_t nType = 0; nType < dDecayValue.size(); ++nType)
+                        pairSupply.second += GetSubsidy(nMinute, static_cast<uint8_t>(nType)) * 2;
                 }
 
                 /* If we complete, set our new minutes value and returns. */
