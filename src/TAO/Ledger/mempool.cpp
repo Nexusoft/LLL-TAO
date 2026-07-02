@@ -815,10 +815,14 @@ namespace TAO
          * -autoforkrecovery (default disabled). */
         bool Mempool::AttemptForkRecovery(const uint256_t& hashGenesis, const uint512_t& hashPrevTx)
         {
-            /* [B4] Enforce a cooldown regardless of outcome so a sigchain that
-             * keeps conflicting can't trigger repeated rollbacks in a tight loop,
-             * each one discarding more chain work than the last recovery attempt
-             * needed to review. */
+            /* [B4] Enforce a cooldown regardless of outcome (including refused
+             * or failed attempts, not just successful rollbacks) so a sigchain
+             * that keeps conflicting can't re-trigger a rollback attempt on
+             * almost every Check() cycle. This is intentionally set up-front
+             * rather than only after a successful SetBest(), so that a refused
+             * attempt (e.g. ancestor not yet found on disk) also backs off for
+             * the same cooldown window instead of retrying immediately once the
+             * miss counter crosses the threshold again. */
             const uint64_t nNow = runtime::timestamp();
             const auto itCooldown = mapLastForkRecoveryAttempt.find(hashGenesis);
             if(itCooldown != mapLastForkRecoveryAttempt.end()
@@ -828,10 +832,17 @@ namespace TAO
             mapLastForkRecoveryAttempt[hashGenesis] = nNow;
 
             /* Read our own disk-committed last transaction for this genesis
-             * (bypassing the mempool cache entirely). */
+             * (bypassing the mempool cache entirely). Failure here means we
+             * have never committed any transaction for this genesis at all
+             * (e.g. it was only ever seen in-mempool and never reached the
+             * best chain), which is unexpected for a genesis old enough to
+             * have accumulated GENESIS_CONFLICT_RECOVERY_THRESHOLD conflict
+             * cycles, so this is logged as an error rather than silently
+             * ignored. */
             uint512_t hashOurLast = 0;
             if(!LLD::Ledger->ReadLast(hashGenesis, hashOurLast))
-                return debug::error(FUNCTION, "genesis ", hashGenesis.SubString(), " has no committed last transaction");
+                return debug::error(FUNCTION, "genesis ", hashGenesis.SubString(),
+                    " has no committed last transaction on disk; cannot compute rollback target");
 
             /* If disk has already caught up with what the conflicting
              * transaction expects, the conflict resolved on its own between the
@@ -914,7 +925,9 @@ namespace TAO
             debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "AUTOMATIC FORK RECOVERY:", ANSI_COLOR_RESET,
                 " genesis ", hashGenesis.SubString(), " rolling back ", nDepth, " blocks from height ", nBestHeight,
                 " to height ", stateAncestor.nHeight, " (", stateAncestor.GetHash().SubString(), ")",
-                fFoundOurs ? debug::safe_printstr(" our conflicting tx was committed at height ", stateOurs.nHeight) : "");
+                fFoundOurs
+                    ? debug::safe_printstr(" our conflicting tx was committed at height ", stateOurs.nHeight)
+                    : std::string(" (our conflicting tx height unknown)"));
 
             LLD::TxnBegin();
             if(!stateAncestor.SetBest())

@@ -42,15 +42,24 @@ namespace TAO
         /** [Option B] Number of consecutive Mempool::Check() reconciliation
          *  cycles a genesis's conflicted transaction(s) must fail to resolve
          *  against disk before AttemptForkRecovery() is triggered for that
-         *  genesis. Chosen well above the transient window normally needed for
-         *  a reorg or mempool race to settle on its own. **/
+         *  genesis. Check() runs on every accepted block plus periodically, so
+         *  20 consecutive misses is well beyond the handful of cycles a normal
+         *  transient reorg or mempool ordering race takes to settle on its own
+         *  (typically 1-3), while still being low enough to recover promptly
+         *  once a genuine structural divergence is detected. **/
         static const uint32_t GENESIS_CONFLICT_RECOVERY_THRESHOLD = 20;
 
 
         /** [Option B] Minimum number of seconds between automatic fork-recovery
-         *  attempts for the same genesis, win or lose, so a sigchain that keeps
-         *  conflicting can't repeatedly trigger chain rollbacks in a tight
-         *  loop. **/
+         *  attempts for the same genesis, win or lose. Check() can run many
+         *  times per minute during active sync, so without this cooldown a
+         *  genesis whose conflict keeps failing to resolve (or whose rollback
+         *  keeps being refused, e.g. because the computed ancestor isn't found
+         *  on disk yet) could re-trigger a rollback attempt on almost every
+         *  cycle. Ten minutes gives a prior rollback's reorg (disconnect/
+         *  connect + mempool resurrection) time to fully settle, and gives a
+         *  refused attempt time for the missing ancestor data to potentially
+         *  arrive from peers, before trying again. **/
         static const uint64_t GENESIS_CONFLICT_RECOVERY_COOLDOWN_SECONDS = 600;
 
 
@@ -59,7 +68,12 @@ namespace TAO
          *  is a hard safety bound: even if a conflicting transaction's disk
          *  ancestor block is found, a rollback deeper than this is refused and
          *  logged for manual review (e.g. -revertblocks) instead of being
-         *  performed automatically. **/
+         *  performed automatically. 1440 is a deliberately generous upper bound
+         *  (comparable to roughly a day of blocks at a ~1 minute average block
+         *  time across channels) chosen to cover realistic sync-stall
+         *  divergences while still making a runaway/malicious rollback
+         *  (e.g. a spoofed conflicting transaction referencing a very old
+         *  ancestor) impossible. **/
         static const uint32_t MAX_AUTO_FORK_RECOVERY_DEPTH = 1440;
 
 
