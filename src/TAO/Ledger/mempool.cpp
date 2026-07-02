@@ -743,6 +743,35 @@ namespace TAO
                     for(const auto& tx : vtx)
                         mapConflicts.erase(tx.GetHash());
                 }
+
+                /* [B3] The conflict has resolved (e.g. after a reorg/fork
+                 * settled) and disk's last-hash for this genesis now matches
+                 * the earliest conflicted transaction. Without this, the
+                 * transaction(s) would remain stranded in mapConflicts
+                 * forever: Get()/ReadTx() would keep returning them as
+                 * permanently conflicted (fConflicted=true) even though they
+                 * are valid again, and they would never be re-added to the
+                 * live mempool or relayed to peers. Re-run full acceptance
+                 * (in sequence order) so each transaction is re-validated,
+                 * re-connected, and moved back into mapLedger. */
+                else
+                {
+                    /* Loop through our transactions in sequence order. */
+                    for(const auto& tx : vtx)
+                    {
+                        /* Cache the hash so we can erase before re-accepting. */
+                        const uint512_t hashTx = tx.GetHash();
+
+                        /* Remove from conflicts first so Accept() doesn't see
+                         * this transaction's own prior conflicted state. */
+                        mapConflicts.erase(hashTx);
+
+                        /* Re-validate and re-admit into the live mempool. */
+                        if(!Accept(tx))
+                            debug::log(0, FUNCTION, "failed to re-admit resolved conflicted tx ", hashTx.SubString(),
+                                " for genesis ", tx.hashGenesis.SubString(), ": ", debug::GetLastError());
+                    }
+                }
             }
         }
 
