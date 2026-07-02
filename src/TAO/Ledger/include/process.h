@@ -89,6 +89,46 @@ namespace TAO
         static const uint64_t MAX_ORPHAN_REQUEST_MAP_ENTRIES = 10000;
 
 
+        /** [Option C] Track consecutive Check()-rejections for the identical
+         *  block hash. A genuinely invalid/malicious block fails Check() the
+         *  same way on every attempt, but a block that is otherwise valid can
+         *  spuriously fail sequencing checks if the local mempool holds a stale
+         *  conflicted transaction for one of the sigchains involved (see the
+         *  disk-backed self-heal in TritiumBlock::Check()). This counter lets
+         *  Process() distinguish "give up immediately" (rare, targeted resync)
+         *  from "this peer is sending us garbage" (escalate / ban). **/
+        extern std::map<uint1024_t, uint32_t> mapCheckRejects;
+
+
+        /** Number of consecutive Check() failures for the same block hash
+         *  before we force an out-of-band mempool conflict-reconciliation pass
+         *  (normally only triggered after a successful block Accept()) and
+         *  retry Check() once. Re-checked on every multiple of this threshold
+         *  (not just once) so a block that keeps arriving from new peers after
+         *  the first resync attempt failed still gets periodic recovery
+         *  attempts instead of being silently rejected forever. **/
+        static const uint32_t CHECK_REJECT_RESYNC_THRESHOLD = 3;
+
+
+        /** Number of consecutive Check() failures for the same block hash
+         *  (including the one-shot resync attempts above) before the sending
+         *  peer is treated as suspect and penalized via its DDOS score. **/
+        static const uint32_t CHECK_REJECT_BAN_THRESHOLD = 6;
+
+
+        /** DDOS score penalty applied to a peer once CHECK_REJECT_BAN_THRESHOLD
+         *  is reached. Matches the penalty already used elsewhere in the LLP
+         *  layer (see LLP::TritiumNode) for other "sent us something invalid
+         *  repeatedly" conditions. **/
+        static const uint32_t CHECK_REJECT_DDOS_SCORE = 50;
+
+
+        /** Maximum number of unique block hashes tracked in mapCheckRejects
+         *  before the map is cleared. Same intentional cheap DoS guard
+         *  rationale as MAX_MISSING_MAP_ENTRIES above. **/
+        static const uint64_t MAX_CHECK_REJECT_MAP_ENTRIES = 10000;
+
+
         /** Mutex to protect checking more than one block at a time. **/
         extern std::mutex PROCESSING_MUTEX;
 

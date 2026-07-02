@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 
 #include <TAO/Ledger/types/locator.h>
+#include <TAO/Ledger/types/mempool.h>
 
 #include <Legacy/types/legacy.h>
 
@@ -48,6 +49,15 @@ namespace TAO
          * the entry so the genuine "transaction simply not seen yet" recovery
          * path is unaffected. */
         std::map<uint1024_t, uint64_t> mapLastMissing;
+
+
+        /* [Option C] Track consecutive Check()-rejections keyed by the exact
+         * block hash. See declaration comment in include/process.h for the
+         * rationale: this distinguishes a block that is genuinely invalid
+         * (fails identically every time) from one that is spuriously failing
+         * due to stale local mempool state (which a targeted resync + one
+         * retry can resolve). */
+        std::map<uint1024_t, uint32_t> mapCheckRejects;
 
 
         /* [C2] Track the last time we asked peers for an orphan ancestor's chain.
@@ -179,9 +189,76 @@ namespace TAO
                 /* Check if the block is valid. Skip when already validated by ValidateMinedBlock(). */
                 if(!fSkipCheck && !block.Check())
                 {
-                    nStatus |= PROCESS::REJECTED;
-                    return;
+                    /* [Option C] Negative/retry cache for Check()-rejected blocks.
+                     * Count consecutive rejections for this exact block hash. */
+                    uint32_t nRejects = 1;
+                    const auto itCheck = mapCheckRejects.find(hashBlock);
+                    if(itCheck != mapCheckRejects.end())
+                        nRejects = ++itCheck->second;
+                    else
+                    {
+                        /* Bound the map size before inserting a new entry, same
+                         * cheap DoS guard rationale as mapLastMissing. */
+                        if(mapCheckRejects.size() >= MAX_CHECK_REJECT_MAP_ENTRIES)
+                            mapCheckRejects.clear();
+                        mapCheckRejects[hashBlock] = nRejects;
+                    }
+
+                    /* After a small number of natural rejections for the identical
+                     * block hash, a genuinely invalid/malicious block would still
+                     * fail identically, so repeated failure of the *same* hash is
+                     * a strong signal of transient local mempool corruption (a
+                     * stale conflicted transaction) rather than a bad block. Force
+                     * the mempool's disk-based conflict-reconciliation pass to run
+                     * out of band (normally only triggered after a successful
+                     * Accept()) and retry Check() once. Re-trigger on every
+                     * multiple of the threshold (not just the first time) so a
+                     * block that keeps arriving from other peers after a failed
+                     * resync attempt still gets periodic recovery attempts,
+                     * rather than being silently rejected forever once nRejects
+                     * passes the threshold. */
+                    bool fRecovered = false;
+                    if(nRejects % CHECK_REJECT_RESYNC_THRESHOLD == 0)
+                    {
+                        debug::warning(FUNCTION, "block ", hashBlock.SubString(), " failed Check() ", nRejects,
+                            " times; forcing targeted mempool resync and retrying");
+
+                        mempool.Check();
+
+                        if(block.Check())
+                        {
+                            fRecovered = true;
+                            debug::log(0, FUNCTION, "block ", hashBlock.SubString(),
+                                " recovered via targeted mempool resync after ", nRejects, " Check() failures");
+                        }
+                    }
+
+                    if(!fRecovered)
+                    {
+                        nStatus |= PROCESS::REJECTED;
+
+                        /* Escalate to the sending peer once a block has failed
+                         * well beyond our resync attempts: if disk-backed
+                         * reconciliation didn't resolve it, this is most likely a
+                         * genuinely invalid block rather than local corruption, so
+                         * penalize the peer that sent it. */
+                        if(pnode && nRejects >= CHECK_REJECT_BAN_THRESHOLD)
+                        {
+                            if(pnode->fDDOS.load() && pnode->DDOS)
+                                pnode->DDOS->rSCORE += CHECK_REJECT_DDOS_SCORE;
+
+                            mapCheckRejects.erase(hashBlock);
+                        }
+
+                        return;
+                    }
+
+                    /* Recovered via targeted resync: drop the counter so a future
+                     * genuine failure of a different block starts counting fresh,
+                     * and fall through to process this block normally. */
+                    mapCheckRejects.erase(hashBlock);
                 }
+
 
                 /* Check for missing transactions. A missing transaction is a
                  * temporary "incomplete" condition, not a validation failure: the

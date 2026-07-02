@@ -450,6 +450,43 @@ namespace TAO
             /* Get list of producer transactions. */
             std::map<uint256_t, uint512_t> mapLast;
 
+            /* [Option B] Track, per genesis, whether the cached predecessor in
+             * mapLast came from a conflicted mempool read (fHasConflict). A
+             * conflicted mempool entry can be stale relative to disk (e.g. the
+             * mempool's own conflict-reconciliation pass hasn't run yet), which
+             * would otherwise cause a legitimate block's producer/tx sequencing
+             * check to fail permanently even though the real on-disk sigchain
+             * state is consistent with this block. This is used to scope a
+             * narrow, disk-backed self-heal to only the specific genesis(es)
+             * that came from a known-conflicted mempool read, so a genuinely
+             * out-of-sequence (malicious or buggy) block is never masked. */
+            std::map<uint256_t, bool> mapLastConflicted;
+
+            /* [Option B] Narrow, disk-backed self-heal helper for a sequencing
+             * mismatch. Only re-derives the true predecessor from disk (bypassing
+             * the mempool cache) when the cached mapLast entry for this genesis
+             * came from a known-conflicted mempool read; otherwise a genuinely
+             * out-of-sequence (malicious or buggy) transaction/producer is never
+             * masked. */
+            auto fSelfHealSequencing = [](const uint256_t& hashGenesis, const uint512_t& hashPrevTx,
+                const std::map<uint256_t, bool>& mapConflictedIn, const char* strEntity) -> bool
+            {
+                const auto it = mapConflictedIn.find(hashGenesis);
+                if(it == mapConflictedIn.end() || !it->second)
+                    return false;
+
+                uint512_t hashLastDisk = 0;
+                if(LLD::Ledger->ReadLast(hashGenesis, hashLastDisk) && hashPrevTx == hashLastDisk)
+                {
+                    debug::log(1, FUNCTION, "self-healed ", strEntity, " sequencing for genesis ",
+                        hashGenesis.SubString(), " via disk ReadLast");
+
+                    return true;
+                }
+
+                return false;
+            };
+
             /* Get the signature operations for legacy tx's. */
             uint32_t nSize = (uint32_t)vtx.size();
             for(uint32_t i = 0; i < nSize; ++i)
@@ -516,18 +553,21 @@ namespace TAO
                         return debug::error(FUNCTION, "cannot have non-producer coinbase / coinstake transaction");
 
                     /* Check the sequencing. */
-                    if(mapLast.count(tx.hashGenesis) && tx.hashPrevTx != mapLast[tx.hashGenesis])
+                    if(mapLast.count(tx.hashGenesis) && tx.hashPrevTx != mapLast[tx.hashGenesis]
+                    && !fSelfHealSequencing(tx.hashGenesis, tx.hashPrevTx, mapLastConflicted, "sigchain"))
                         return debug::error(FUNCTION, "transaction in sigchain out of sequence");
 
                     /* Set the last hash for given genesis. */
-                    mapLast[tx.hashGenesis] = tx.GetHash();
+                    mapLast[tx.hashGenesis]           = tx.GetHash();
+                    mapLastConflicted[tx.hashGenesis]  = fHasConflict;
                 }
                 else
                     return debug::error(FUNCTION, "unknown transaction type");
             }
 
             /* Check producer */
-            if(mapLast.count(producer.hashGenesis) && producer.hashPrevTx != mapLast[producer.hashGenesis])
+            if(mapLast.count(producer.hashGenesis) && producer.hashPrevTx != mapLast[producer.hashGenesis]
+            && !fSelfHealSequencing(producer.hashGenesis, producer.hashPrevTx, mapLastConflicted, "producer"))
                 return debug::error(FUNCTION, "producer transaction out of sequence");
 
             /* Get producer hash. */
