@@ -211,9 +211,14 @@ namespace TAO
                      * stale conflicted transaction) rather than a bad block. Force
                      * the mempool's disk-based conflict-reconciliation pass to run
                      * out of band (normally only triggered after a successful
-                     * Accept()) and retry Check() once. */
+                     * Accept()) and retry Check() once. Re-trigger on every
+                     * multiple of the threshold (not just the first time) so a
+                     * block that keeps arriving from other peers after a failed
+                     * resync attempt still gets periodic recovery attempts,
+                     * rather than being silently rejected forever once nRejects
+                     * passes the threshold. */
                     bool fRecovered = false;
-                    if(nRejects == MAX_CHECK_REJECT_RESYNC_RETRIES)
+                    if(nRejects % CHECK_REJECT_RESYNC_THRESHOLD == 0)
                     {
                         debug::warning(FUNCTION, "block ", hashBlock.SubString(), " failed Check() ", nRejects,
                             " times; forcing targeted mempool resync and retrying");
@@ -221,7 +226,11 @@ namespace TAO
                         mempool.Check();
 
                         if(block.Check())
+                        {
                             fRecovered = true;
+                            debug::log(0, FUNCTION, "block ", hashBlock.SubString(),
+                                " recovered via targeted mempool resync after ", nRejects, " Check() failures");
+                        }
                     }
 
                     if(!fRecovered)
@@ -229,14 +238,14 @@ namespace TAO
                         nStatus |= PROCESS::REJECTED;
 
                         /* Escalate to the sending peer once a block has failed
-                         * well beyond our one-shot resync attempt: if disk-backed
+                         * well beyond our resync attempts: if disk-backed
                          * reconciliation didn't resolve it, this is most likely a
                          * genuinely invalid block rather than local corruption, so
                          * penalize the peer that sent it. */
-                        if(pnode && nRejects >= MAX_CHECK_REJECT_BAN_THRESHOLD)
+                        if(pnode && nRejects >= CHECK_REJECT_BAN_THRESHOLD)
                         {
                             if(pnode->fDDOS.load() && pnode->DDOS)
-                                pnode->DDOS->rSCORE += 50;
+                                pnode->DDOS->rSCORE += CHECK_REJECT_DDOS_SCORE;
 
                             mapCheckRejects.erase(hashBlock);
                         }
@@ -249,6 +258,7 @@ namespace TAO
                      * and fall through to process this block normally. */
                     mapCheckRejects.erase(hashBlock);
                 }
+
 
                 /* Check for missing transactions. A missing transaction is a
                  * temporary "incomplete" condition, not a validation failure: the
