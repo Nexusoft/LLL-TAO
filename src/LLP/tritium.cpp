@@ -2983,7 +2983,20 @@ namespace LLP
 
                 /* Check for orphan limit on node. */
                 if(nConsecutiveOrphans >= 10000)
+                {
+                    /* [C3] Mirror the BLOCK-type orphan-limit handling above:
+                     * a transaction-orphan storm (e.g. out-of-sequence sigchain
+                     * transactions during a fork/reorg) hits this same limit, but
+                     * previously only the BLOCK path would hand synchronization
+                     * off to another node. Without this, a node stuck syncing
+                     * against a peer that is itself behind on a losing fork could
+                     * sit on the tx-orphan limit without ever being told to try a
+                     * different sync source. */
+                    if(TAO::Ledger::ChainState::Synchronizing() && TAO::Ledger::nSyncSession.load() == nCurrentSession)
+                        SwitchNode();
+
                     return debug::drop(NODE, "TX::node reached ORPHAN limit");
+                }
 
                 break;
             }

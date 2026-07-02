@@ -238,16 +238,24 @@ namespace TAO
         /* Determines if given number is Prime. */
         bool PrimeCheck(const uint1024_t& hashTest)
         {
-            /* ✅ Only log diagnostics if debug level >= 2 */
-            bool fDiagnostic = (config::nVerbose >= 2);
-            
+            /* [C1] The verbose per-test diagnostic dump below is expensive (string
+             * formatting + several log calls per candidate) and is normally emitted
+             * once per candidate PER retarget-window on every single connection's
+             * hot path. At the commonly-used -verbose=2 level it competes for
+             * DataThread CPU time with real fork/orphan-storm recovery work
+             * (chain-tip convergence, template regeneration) — exactly when that
+             * time is most needed. Gate it to -verbose>=3 so level 2 keeps its
+             * normal signal-to-noise (e.g. block accept/orphan diagnostics) while
+             * still allowing full PrimeCheck tracing when explicitly requested. */
+            bool fDiagnostic = (config::nVerbose >= 3);
+
             if(fDiagnostic)
             {
-                debug::log(2, FUNCTION, "════════════════════════════════════════");
-                debug::log(2, FUNCTION, "   PRIMECHECK DIAGNOSTIC");
-                debug::log(2, FUNCTION, "════════════════════════════════════════");
-                debug::log(2, FUNCTION, "Input prime (first 64 bytes):");
-                debug::log(2, FUNCTION, "  ", hashTest.ToString().substr(0, 64), "...");
+                debug::log(3, FUNCTION, "════════════════════════════════════════");
+                debug::log(3, FUNCTION, "   PRIMECHECK DIAGNOSTIC");
+                debug::log(3, FUNCTION, "════════════════════════════════════════");
+                debug::log(3, FUNCTION, "Input prime (first 64 bytes):");
+                debug::log(3, FUNCTION, "  ", hashTest.ToString().substr(0, 64), "...");
             }
             
             /* Check A: Small Prime Divisor Tests */
@@ -255,42 +263,42 @@ namespace TAO
             {
                 if(fDiagnostic)
                 {
-                    debug::log(2, FUNCTION, "❌ FAILED: Small divisor test");
-                    debug::log(2, FUNCTION, "   Prime is divisible by 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, or 31");
+                    debug::log(3, FUNCTION, "❌ FAILED: Small divisor test");
+                    debug::log(3, FUNCTION, "   Prime is divisible by 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, or 31");
                 }
                 return false;
             }
             if(fDiagnostic)
-                debug::log(2, FUNCTION, "✅ PASSED: Small divisor test");
+                debug::log(3, FUNCTION, "✅ PASSED: Small divisor test");
 
             /* Check B: Miller-Rabin Test (OpenSSL probabilistic primality test) */
             if(!Miller_Rabin(hashTest))
             {
                 if(fDiagnostic)
                 {
-                    debug::log(2, FUNCTION, "❌ FAILED: Miller-Rabin test");
-                    debug::log(2, FUNCTION, "   Prime failed cryptographic primality test (PR #129)");
+                    debug::log(3, FUNCTION, "❌ FAILED: Miller-Rabin test");
+                    debug::log(3, FUNCTION, "   Prime failed cryptographic primality test (PR #129)");
                 }
                 return false;
             }
             if(fDiagnostic)
-                debug::log(2, FUNCTION, "✅ PASSED: Miller-Rabin test");
+                debug::log(3, FUNCTION, "✅ PASSED: Miller-Rabin test");
 
             /* Check C: Fermat Test */
             if(FermatTest(hashTest) != 1)
             {
                 if(fDiagnostic)
                 {
-                    debug::log(2, FUNCTION, "❌ FAILED: Fermat test");
+                    debug::log(3, FUNCTION, "❌ FAILED: Fermat test");
                 }
                 return false;
             }
             if(fDiagnostic)
             {
-                debug::log(2, FUNCTION, "✅ PASSED: Fermat test");
-                debug::log(2, FUNCTION, "════════════════════════════════════════");
-                debug::log(2, FUNCTION, "✅ PRIME IS VALID");
-                debug::log(2, FUNCTION, "════════════════════════════════════════");
+                debug::log(3, FUNCTION, "✅ PASSED: Fermat test");
+                debug::log(3, FUNCTION, "════════════════════════════════════════");
+                debug::log(3, FUNCTION, "✅ PRIME IS VALID");
+                debug::log(3, FUNCTION, "════════════════════════════════════════");
             }
 
             return true;

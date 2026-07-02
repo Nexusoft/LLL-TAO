@@ -22,6 +22,8 @@ ________________________________________________________________________________
 
 #include <Legacy/types/legacy.h>
 
+#include <Util/include/runtime.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -46,6 +48,11 @@ namespace TAO
          * the entry so the genuine "transaction simply not seen yet" recovery
          * path is unaffected. */
         std::map<uint1024_t, uint64_t> mapLastMissing;
+
+
+        /* [C2] Track the last time we asked peers for an orphan ancestor's chain.
+         * See declaration comment in include/process.h for rationale. */
+        std::map<uint1024_t, uint64_t> mapLastOrphanRequest;
 
 
         /* Mutex to protect checking more than one block at a time. */
@@ -114,13 +121,38 @@ namespace TAO
                     /* Check if we have an active node. */
                     if(pnode)
                     {
-                        /* Ask for list of blocks. */
-                        pnode->PushMessage(LLP::TritiumNode::ACTION::LIST,
-                            uint8_t(LLP::TritiumNode::TYPES::BLOCK),
-                            uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
-                            TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
-                            uint1024_t(block.hashPrevBlock)
-                        );
+                        /* [C2] Throttle repeated LIST re-requests for the same
+                         * missing ancestor. During a fork/orphan storm, many
+                         * descendant blocks (from one or several peers) can all
+                         * resolve to the same missing hashPrevBlock; without this
+                         * guard every single one triggers another LIST round-trip,
+                         * competing for DataThread/socket time with the real work
+                         * of converging the chain tip (which is what actually
+                         * resolves the orphan and unblocks fresh mining templates). */
+                        const uint64_t nNow = runtime::timestamp();
+
+                        bool fShouldRequest = true;
+                        const auto itThrottle = mapLastOrphanRequest.find(block.hashPrevBlock);
+                        if(itThrottle != mapLastOrphanRequest.end()
+                        && (nNow - itThrottle->second) < ORPHAN_REQUEST_THROTTLE_SECONDS)
+                            fShouldRequest = false;
+
+                        if(fShouldRequest)
+                        {
+                            /* Bound the map size before inserting a new entry, same
+                             * cheap DoS guard rationale as mapLastMissing. */
+                            if(mapLastOrphanRequest.size() >= MAX_ORPHAN_REQUEST_MAP_ENTRIES)
+                                mapLastOrphanRequest.clear();
+                            mapLastOrphanRequest[block.hashPrevBlock] = nNow;
+
+                            /* Ask for list of blocks. */
+                            pnode->PushMessage(LLP::TritiumNode::ACTION::LIST,
+                                uint8_t(LLP::TritiumNode::TYPES::BLOCK),
+                                uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
+                                TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                                uint1024_t(block.hashPrevBlock)
+                            );
+                        }
 
                         /* Send a request to download the orphaned block.
                         pnode->PushMessage(LLP::TritiumNode::ACTION::GET,
@@ -328,6 +360,13 @@ namespace TAO
                     /* Orphan accepted — clear any missing-transaction retry counter. */
                     if(mapLastMissing.count(hashPrev))
                         mapLastMissing.erase(hashPrev);
+
+                    /* [C2] Orphan resolved — clear its request throttle entry so a
+                     * future, unrelated orphan chain starting at this same hash
+                     * (unlikely, but cheap to guard) isn't throttled by stale
+                     * bookkeeping. */
+                    if(mapLastOrphanRequest.count(hash))
+                        mapLastOrphanRequest.erase(hash);
 
                     /* Erase orphans from map. */
                     mapOrphans.erase(hash);

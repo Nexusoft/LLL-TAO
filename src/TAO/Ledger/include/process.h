@@ -67,6 +67,28 @@ namespace TAO
         static const uint64_t MAX_MISSING_MAP_ENTRIES = 10000;
 
 
+        /** [C2] Track the last time we asked peers for an orphan ancestor's chain
+         *  (keyed by the missing hashPrevBlock), so a fork/orphan storm that keeps
+         *  delivering blocks descending from the same unknown ancestor doesn't
+         *  cause a LIST re-request to be pushed out on every single one of those
+         *  blocks. This is a lightweight fast path: it does not change what gets
+         *  validated, only how often we re-announce that we're still missing the
+         *  same ancestor, freeing DataThread/socket time for genuine chain-tip
+         *  convergence during the storm. **/
+        extern std::map<uint1024_t, uint64_t> mapLastOrphanRequest;
+
+
+        /** Minimum number of seconds between LIST re-requests for the same missing
+         *  orphan ancestor. **/
+        static const uint64_t ORPHAN_REQUEST_THROTTLE_SECONDS = 3;
+
+
+        /** Maximum number of unique ancestor hashes tracked in mapLastOrphanRequest
+         *  before the map is cleared. Same intentional cheap DoS guard rationale as
+         *  MAX_MISSING_MAP_ENTRIES above. **/
+        static const uint64_t MAX_ORPHAN_REQUEST_MAP_ENTRIES = 10000;
+
+
         /** Mutex to protect checking more than one block at a time. **/
         extern std::mutex PROCESSING_MUTEX;
 
