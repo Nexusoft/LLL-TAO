@@ -875,6 +875,25 @@ namespace LLP
          **/
         void respond(uint8_t nHeader, const std::vector<uint8_t>& vData = std::vector<uint8_t>());
 
+        /** ForceFreshTemplatePush
+         *
+         *  [Option A] Anti-doom-loop hardening for SUBMIT_BLOCK staleness rejections
+         *  on the legacy lane.  Mirrors StatelessMinerConnection::ForceFreshTemplatePush().
+         *
+         *  Any SUBMIT_BLOCK rejection rooted in template staleness (hashPrevBlock
+         *  mismatch, committed/stale vtx, stale producer sigchain, or a failed
+         *  AcceptMinedBlock() ledger write) leaves the miner holding dead work and
+         *  dependent on its own poll/backoff timers to notice.  On a weak network
+         *  that round trip can be slow enough for the miner to declare a
+         *  degraded/stopped state before a fresh template arrives.
+         *
+         *  Arms m_force_next_push + m_get_block_cooldown and immediately calls
+         *  SendLegacyTemplate() so the miner gets valid work right after rejection
+         *  instead of waiting out its own recovery timers.
+         *
+         **/
+        void ForceFreshTemplatePush();
+
 
         /** respond_auto
          *

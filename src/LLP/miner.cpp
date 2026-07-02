@@ -2991,6 +2991,23 @@ namespace LLP
     }
 
 
+    /* ForceFreshTemplatePush - [Option A] Anti-doom-loop hardening (legacy lane).
+     * Mirrors StatelessMinerConnection::ForceFreshTemplatePush(). Arms the
+     * force-push + cooldown state and immediately pushes a fresh template so a
+     * miner rejected for a stale-template reason receives valid work right away
+     * instead of waiting out its own poll/recovery timers. */
+    void Miner::ForceFreshTemplatePush()
+    {
+        {
+            LOCK(MUTEX);
+            m_force_next_push = true;
+            m_get_block_cooldown = AutoCoolDown(std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS));
+        }
+        SendLegacyTemplate();
+        debug::log(0, FUNCTION, "✓ Fresh template pushed after stale SUBMIT_BLOCK rejection (legacy lane) — miner should resume mining without entering DEGRADED");
+    }
+
+
     /* Stateless handler for SUBMIT_BLOCK - validates and processes a block submission */
     bool Miner::handle_submit_block_stateless(const Packet& PACKET)
     {
@@ -3260,6 +3277,17 @@ namespace LLP
                        blockSolved.hashPrevBlock.SubString(),
                        " != hashBestChain=", hashCurrentBest.SubString());
             respond_auto(ORPHAN_BLOCK);
+
+            /* [Option A] Anti-doom-loop: invalidate the stale cached template and
+             * proactively push a fresh one, rather than leaving the miner to
+             * discover staleness on its own next poll/backoff cycle. On a weak
+             * network that round trip can be slow enough to trip the miner's
+             * degraded/stopped recovery timers. */
+            {
+                LOCK(MUTEX);
+                erase_block_template(hashMerkle);
+            }
+            ForceFreshTemplatePush();
             return true;
         }
 
@@ -3277,6 +3305,13 @@ namespace LLP
             debug::error(FUNCTION, "SUBMIT_BLOCK: vtx already committed — template stale, rejecting");
             respond_auto(BLOCK_REJECTED,
                 BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::STALE));
+
+            /* [Option A] Anti-doom-loop — see comment above. */
+            {
+                LOCK(MUTEX);
+                erase_block_template(hashMerkle);
+            }
+            ForceFreshTemplatePush();
             return true;
         }
 
@@ -3288,6 +3323,13 @@ namespace LLP
             debug::error(FUNCTION, "SUBMIT_BLOCK: producer sigchain stale — template stale, rejecting");
             respond_auto(BLOCK_REJECTED,
                 BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::STALE));
+
+            /* [Option A] Anti-doom-loop — see comment above. */
+            {
+                LOCK(MUTEX);
+                erase_block_template(hashMerkle);
+            }
+            ForceFreshTemplatePush();
             return true;
         }
 
@@ -3299,6 +3341,13 @@ namespace LLP
             debug::error(FUNCTION, "SUBMIT_BLOCK: vtx sigchain stale — rejecting");
             respond_auto(BLOCK_REJECTED,
                 BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::STALE));
+
+            /* [Option A] Anti-doom-loop — see comment above. */
+            {
+                LOCK(MUTEX);
+                erase_block_template(hashMerkle);
+            }
+            ForceFreshTemplatePush();
             return true;
         }
 
@@ -3383,6 +3432,21 @@ namespace LLP
             m_nPendingSubmitHeight.store(0, std::memory_order_release);
             respond_auto(BLOCK_REJECTED,
                 BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::LOCAL_TEMPLATE_REJECT));
+
+            /* [Option A] Parity with the stateless lane: AcceptMinedBlock()
+             * failures here (e.g. a fork/reorg racing ahead of this already
+             * PoW-validated submission) mean the miner is holding a template
+             * that just failed to land. Previously the legacy lane only
+             * invalidated the cached template and waited for the miner's next
+             * GET_BLOCK poll — on a weak network that poll can be delayed long
+             * enough for the miner to declare degraded/stopped and repeat the
+             * doom loop. Invalidate the failed template and proactively push a
+             * fresh one immediately instead. */
+            {
+                LOCK(MUTEX);
+                erase_block_template(hashMerkle);
+            }
+            ForceFreshTemplatePush();
         }
         else
         {

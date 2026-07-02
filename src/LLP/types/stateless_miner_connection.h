@@ -547,6 +547,30 @@ namespace LLP
          **/
         void respond(const StatelessPacket& packet);
 
+        /** ForceFreshTemplatePush
+         *
+         *  [Option A] Anti-doom-loop hardening for SUBMIT_BLOCK staleness rejections.
+         *
+         *  Any SUBMIT_BLOCK rejection that stems from the template being stale
+         *  (hashPrevBlock mismatch, committed/stale vtx, stale producer sigchain,
+         *  or a failed AcceptMinedBlock() ledger write) means the miner is now
+         *  sitting on dead work and depends entirely on its own poll/backoff
+         *  timers to notice.  On a weak network that round-trip can be slow
+         *  enough that the miner declares a degraded/stopped state before a
+         *  fresh template arrives.
+         *
+         *  This proactively invalidates the stale cached template, arms
+         *  m_force_next_push + m_get_block_cooldown, and immediately calls
+         *  SendStatelessTemplate() so the miner receives a valid template right
+         *  after rejection instead of waiting out its own recovery timers.
+         *
+         *  Mirrors the pattern already proven for the AcceptMinedBlock()
+         *  failure path; this generalizes it to every staleness-rooted
+         *  SUBMIT_BLOCK rejection.
+         *
+         **/
+        void ForceFreshTemplatePush();
+
         /** new_block
          *
          *  Adds a new block to the map.

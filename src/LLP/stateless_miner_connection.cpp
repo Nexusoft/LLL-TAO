@@ -2330,6 +2330,20 @@ namespace LLP
                     response.LENGTH = static_cast<uint32_t>(response.DATA.size());
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Stale block) ===", ANSI_COLOR_RESET);
+
+                    /* [Option A] Same anti-doom-loop treatment as the AcceptMinedBlock()
+                     * failure path below: this rejection means the miner is holding a
+                     * template whose hashPrevBlock has already been superseded.  On a
+                     * weak network the miner's own GET_BLOCK re-request can be delayed
+                     * long enough to trip its degraded/stopped recovery timers.  Invalidate
+                     * the stale cached template and proactively push a fresh one now. */
+                    {
+                        LOCK(MUTEX);
+                        auto itStale = mapBlocks.find(hashMerkle);
+                        if(itStale != mapBlocks.end())
+                            mapBlocks.erase(itStale);
+                    }
+                    ForceFreshTemplatePush();
                     return true;
                 }
 
@@ -2384,6 +2398,17 @@ namespace LLP
                     debug::error(FUNCTION, "SUBMIT_BLOCK: vtx already committed — template stale, rejecting");
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
+
+                    /* [Option A] Anti-doom-loop: invalidate the stale cached template
+                     * and proactively push a fresh one — see comment at the
+                     * hashPrevBlock STALE check above. */
+                    {
+                        LOCK(MUTEX);
+                        auto itStale = mapBlocks.find(hashMerkle);
+                        if(itStale != mapBlocks.end())
+                            mapBlocks.erase(itStale);
+                    }
+                    ForceFreshTemplatePush();
                     return true;
                 }
 
@@ -2392,6 +2417,15 @@ namespace LLP
                     debug::error(FUNCTION, "SUBMIT_BLOCK: producer sigchain stale — template stale, rejecting");
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
+
+                    /* [Option A] Anti-doom-loop — see comment above. */
+                    {
+                        LOCK(MUTEX);
+                        auto itStale = mapBlocks.find(hashMerkle);
+                        if(itStale != mapBlocks.end())
+                            mapBlocks.erase(itStale);
+                    }
+                    ForceFreshTemplatePush();
                     return true;
                 }
 
@@ -2403,6 +2437,15 @@ namespace LLP
                     debug::error(FUNCTION, "SUBMIT_BLOCK: vtx sigchain stale — rejecting");
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
+
+                    /* [Option A] Anti-doom-loop — see comment above. */
+                    {
+                        LOCK(MUTEX);
+                        auto itStale = mapBlocks.find(hashMerkle);
+                        if(itStale != mapBlocks.end())
+                            mapBlocks.erase(itStale);
+                    }
+                    ForceFreshTemplatePush();
                     return true;
                 }
 
@@ -2547,14 +2590,10 @@ namespace LLP
                      * Immediately force a fresh template push here, reusing the
                      * same recovery action already proven for SESSION_STATUS
                      * DEGRADED recovery, so the miner gets valid work right away
-                     * instead of waiting out its own poll/degraded timers. */
-                    {
-                        LOCK(MUTEX);
-                        m_force_next_push = true;
-                        m_get_block_cooldown = AutoCoolDown(std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS));
-                    }
-                    SendStatelessTemplate();
-                    debug::log(0, FUNCTION, "✓ Fresh template pushed after AcceptMinedBlock rejection — miner should resume mining without entering DEGRADED");
+                     * instead of waiting out its own poll/degraded timers.
+                     * [Option A] Now shared via ForceFreshTemplatePush(), the same
+                     * helper used by the pre-validation staleness rejections above. */
+                    ForceFreshTemplatePush();
                 }
                 else
                 {
@@ -4922,6 +4961,22 @@ namespace LLP
             nChannel = context.nSubscribedChannel;
         }
         ScheduleTemplateWork(TemplateWorkReason::PUSH_NOTIFICATION, hashExpectedTip, true, nChannel);
+    }
+
+
+    /* ForceFreshTemplatePush - [Option A] Anti-doom-loop hardening.
+     * Arms the force-push + cooldown state and immediately pushes a fresh
+     * template so a miner rejected for a stale-template reason receives valid
+     * work right away instead of waiting out its own poll/recovery timers. */
+    void StatelessMinerConnection::ForceFreshTemplatePush()
+    {
+        {
+            LOCK(MUTEX);
+            m_force_next_push = true;
+            m_get_block_cooldown = AutoCoolDown(std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS));
+        }
+        SendStatelessTemplate();
+        debug::log(0, FUNCTION, "✓ Fresh template pushed after stale SUBMIT_BLOCK rejection — miner should resume mining without entering DEGRADED");
     }
 
 
