@@ -2337,13 +2337,7 @@ namespace LLP
                      * weak network the miner's own GET_BLOCK re-request can be delayed
                      * long enough to trip its degraded/stopped recovery timers.  Invalidate
                      * the stale cached template and proactively push a fresh one now. */
-                    {
-                        LOCK(MUTEX);
-                        auto itStale = mapBlocks.find(hashMerkle);
-                        if(itStale != mapBlocks.end())
-                            mapBlocks.erase(itStale);
-                    }
-                    ForceFreshTemplatePush();
+                    ForceFreshTemplatePush(hashMerkle);
                     return true;
                 }
 
@@ -2402,13 +2396,7 @@ namespace LLP
                     /* [Option A] Anti-doom-loop: invalidate the stale cached template
                      * and proactively push a fresh one — see comment at the
                      * hashPrevBlock STALE check above. */
-                    {
-                        LOCK(MUTEX);
-                        auto itStale = mapBlocks.find(hashMerkle);
-                        if(itStale != mapBlocks.end())
-                            mapBlocks.erase(itStale);
-                    }
-                    ForceFreshTemplatePush();
+                    ForceFreshTemplatePush(hashMerkle);
                     return true;
                 }
 
@@ -2419,13 +2407,7 @@ namespace LLP
                     respond(response);
 
                     /* [Option A] Anti-doom-loop — see comment above. */
-                    {
-                        LOCK(MUTEX);
-                        auto itStale = mapBlocks.find(hashMerkle);
-                        if(itStale != mapBlocks.end())
-                            mapBlocks.erase(itStale);
-                    }
-                    ForceFreshTemplatePush();
+                    ForceFreshTemplatePush(hashMerkle);
                     return true;
                 }
 
@@ -2439,13 +2421,7 @@ namespace LLP
                     respond(response);
 
                     /* [Option A] Anti-doom-loop — see comment above. */
-                    {
-                        LOCK(MUTEX);
-                        auto itStale = mapBlocks.find(hashMerkle);
-                        if(itStale != mapBlocks.end())
-                            mapBlocks.erase(itStale);
-                    }
-                    ForceFreshTemplatePush();
+                    ForceFreshTemplatePush(hashMerkle);
                     return true;
                 }
 
@@ -2556,20 +2532,6 @@ namespace LLP
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
                     respond(response);
 
-                    /* Invalidate the failed template from the cache so the miner's
-                     * follow-up GET_BLOCK receives a fresh template rather than the
-                     * stale one that just failed to land. */
-                    {
-                        LOCK(MUTEX);
-                        auto itFailed = mapBlocks.find(hashMerkle);
-                        if(itFailed != mapBlocks.end())
-                        {
-                            debug::log(0, FUNCTION, "Invalidating failed template ",
-                                hashMerkle.SubString(), " from cache — next GET_BLOCK will regenerate");
-                            mapBlocks.erase(itFailed);
-                        }
-                    }
-
                     /* Notify Colin agent on ledger-write failure */
                     if(ctxSnap.hashGenesis != 0)
                     {
@@ -2592,8 +2554,10 @@ namespace LLP
                      * DEGRADED recovery, so the miner gets valid work right away
                      * instead of waiting out its own poll/degraded timers.
                      * [Option A] Now shared via ForceFreshTemplatePush(), the same
-                     * helper used by the pre-validation staleness rejections above. */
-                    ForceFreshTemplatePush();
+                     * helper used by the pre-validation staleness rejections above
+                     * — it also invalidates the failed cached template so the
+                     * follow-up GET_BLOCK receives a fresh one. */
+                    ForceFreshTemplatePush(hashMerkle);
                 }
                 else
                 {
@@ -4965,13 +4929,20 @@ namespace LLP
 
 
     /* ForceFreshTemplatePush - [Option A] Anti-doom-loop hardening.
-     * Arms the force-push + cooldown state and immediately pushes a fresh
-     * template so a miner rejected for a stale-template reason receives valid
-     * work right away instead of waiting out its own poll/recovery timers. */
-    void StatelessMinerConnection::ForceFreshTemplatePush()
+     * Invalidates the stale cached template (if any), arms the force-push +
+     * cooldown state, and immediately pushes a fresh template so a miner
+     * rejected for a stale-template reason receives valid work right away
+     * instead of waiting out its own poll/recovery timers. */
+    void StatelessMinerConnection::ForceFreshTemplatePush(const uint512_t& hashMerkleStale)
     {
         {
             LOCK(MUTEX);
+            if(hashMerkleStale != 0)
+            {
+                auto itStale = mapBlocks.find(hashMerkleStale);
+                if(itStale != mapBlocks.end())
+                    mapBlocks.erase(itStale);
+            }
             m_force_next_push = true;
             m_get_block_cooldown = AutoCoolDown(std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS));
         }

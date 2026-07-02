@@ -2992,14 +2992,17 @@ namespace LLP
 
 
     /* ForceFreshTemplatePush - [Option A] Anti-doom-loop hardening (legacy lane).
-     * Mirrors StatelessMinerConnection::ForceFreshTemplatePush(). Arms the
-     * force-push + cooldown state and immediately pushes a fresh template so a
-     * miner rejected for a stale-template reason receives valid work right away
-     * instead of waiting out its own poll/recovery timers. */
-    void Miner::ForceFreshTemplatePush()
+     * Mirrors StatelessMinerConnection::ForceFreshTemplatePush(). Invalidates the
+     * stale cached template (if any), arms the force-push + cooldown state, and
+     * immediately pushes a fresh template so a miner rejected for a
+     * stale-template reason receives valid work right away instead of waiting
+     * out its own poll/recovery timers. */
+    void Miner::ForceFreshTemplatePush(const uint512_t& hashMerkleStale)
     {
         {
             LOCK(MUTEX);
+            if(hashMerkleStale != 0)
+                erase_block_template(hashMerkleStale);
             m_force_next_push = true;
             m_get_block_cooldown = AutoCoolDown(std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS));
         }
@@ -3283,11 +3286,7 @@ namespace LLP
              * discover staleness on its own next poll/backoff cycle. On a weak
              * network that round trip can be slow enough to trip the miner's
              * degraded/stopped recovery timers. */
-            {
-                LOCK(MUTEX);
-                erase_block_template(hashMerkle);
-            }
-            ForceFreshTemplatePush();
+            ForceFreshTemplatePush(hashMerkle);
             return true;
         }
 
@@ -3307,11 +3306,7 @@ namespace LLP
                 BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::STALE));
 
             /* [Option A] Anti-doom-loop — see comment above. */
-            {
-                LOCK(MUTEX);
-                erase_block_template(hashMerkle);
-            }
-            ForceFreshTemplatePush();
+            ForceFreshTemplatePush(hashMerkle);
             return true;
         }
 
@@ -3325,11 +3320,7 @@ namespace LLP
                 BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::STALE));
 
             /* [Option A] Anti-doom-loop — see comment above. */
-            {
-                LOCK(MUTEX);
-                erase_block_template(hashMerkle);
-            }
-            ForceFreshTemplatePush();
+            ForceFreshTemplatePush(hashMerkle);
             return true;
         }
 
@@ -3343,11 +3334,7 @@ namespace LLP
                 BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::STALE));
 
             /* [Option A] Anti-doom-loop — see comment above. */
-            {
-                LOCK(MUTEX);
-                erase_block_template(hashMerkle);
-            }
-            ForceFreshTemplatePush();
+            ForceFreshTemplatePush(hashMerkle);
             return true;
         }
 
@@ -3442,11 +3429,7 @@ namespace LLP
              * enough for the miner to declare degraded/stopped and repeat the
              * doom loop. Invalidate the failed template and proactively push a
              * fresh one immediately instead. */
-            {
-                LOCK(MUTEX);
-                erase_block_template(hashMerkle);
-            }
-            ForceFreshTemplatePush();
+            ForceFreshTemplatePush(hashMerkle);
         }
         else
         {

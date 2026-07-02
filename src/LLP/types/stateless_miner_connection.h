@@ -559,7 +559,7 @@ namespace LLP
          *  enough that the miner declares a degraded/stopped state before a
          *  fresh template arrives.
          *
-         *  This proactively invalidates the stale cached template, arms
+         *  Invalidates the stale cached template (if any), arms
          *  m_force_next_push + m_get_block_cooldown, and immediately calls
          *  SendStatelessTemplate() so the miner receives a valid template right
          *  after rejection instead of waiting out its own recovery timers.
@@ -568,8 +568,12 @@ namespace LLP
          *  failure path; this generalizes it to every staleness-rooted
          *  SUBMIT_BLOCK rejection.
          *
+         *  @param[in] hashMerkleStale Merkle root of the rejected/stale cached
+         *                             template to invalidate; pass 0 to skip
+         *                             cache invalidation (e.g. unknown template).
+         *
          **/
-        void ForceFreshTemplatePush();
+        void ForceFreshTemplatePush(const uint512_t& hashMerkleStale = uint512_t(0));
 
         /** new_block
          *

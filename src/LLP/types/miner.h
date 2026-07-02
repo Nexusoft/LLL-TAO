@@ -887,12 +887,17 @@ namespace LLP
          *  that round trip can be slow enough for the miner to declare a
          *  degraded/stopped state before a fresh template arrives.
          *
-         *  Arms m_force_next_push + m_get_block_cooldown and immediately calls
+         *  Invalidates the stale cached template (if any), arms
+         *  m_force_next_push + m_get_block_cooldown, and immediately calls
          *  SendLegacyTemplate() so the miner gets valid work right after rejection
          *  instead of waiting out its own recovery timers.
          *
+         *  @param[in] hashMerkleStale Merkle root of the rejected/stale cached
+         *                             template to invalidate; pass 0 to skip
+         *                             cache invalidation (e.g. unknown template).
+         *
          **/
-        void ForceFreshTemplatePush();
+        void ForceFreshTemplatePush(const uint512_t& hashMerkleStale = uint512_t(0));
 
 
         /** respond_auto
