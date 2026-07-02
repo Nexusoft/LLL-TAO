@@ -62,15 +62,17 @@ namespace TAO
         /* Check that the checkpoint is a Descendant of previous Checkpoint.*/
         bool IsDescendant(const BlockState& state)
         {
-            /* Check if we should force our descendant checks. */
-            if(config::GetBoolArg("-forcesync", false))
-                return true;
-
-            /* If no checkpoint defined, return true. */
+            /* If no checkpoint defined, return true (applies to both the synchronizing
+             * hardcoded-checkpoint check and the live disk-walk check below). */
             if(ChainState::hashCheckpoint == 0)
                 return true;
 
-            /* Check hard coded checkpoints when syncing. */
+            /* Check hard coded checkpoints when syncing.
+             *
+             * NOTE: matches upstream Nexusoft/LLL-TAO ordering — hardcoded checkpoint
+             * validation during initial sync always applies, regardless of the
+             * "-checkpoints" opt-in flag below (which only governs live, post-sync
+             * descendant enforcement). */
             if(ChainState::Synchronizing())
             {
                 /* Check that height isn't exceeded. */
@@ -88,6 +90,15 @@ namespace TAO
                 /* Block must match checkpoints map. */
                 return it->second == state.hashCheckpoint;
             }
+
+            /* Live (post-sync) checkpoint-descendant enforcement is opt-in, matching
+             * upstream Nexusoft/LLL-TAO default (disabled). Enforcing this unconditionally
+             * makes any block that lands on or below the local checkpoint height permanently
+             * unacceptable — including a legitimately valid block that merely arrived late
+             * because it was delayed by mempool/sigchain self-healing. Node operators who
+             * want strict deep-reorg protection can opt in with "-checkpoints=1". */
+            if(!config::GetBoolArg("-checkpoints", false))
+                return true;
 
             /* Check The Block Hash */
             BlockState check = state;

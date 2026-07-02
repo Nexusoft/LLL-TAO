@@ -499,19 +499,16 @@ namespace Legacy
         if(nBlockTime <= statePrev.GetBlockTime())
             return debug::error(FUNCTION, "block's timestamp too early Block: ", nBlockTime, " Prev: ", statePrev.GetBlockTime());
 
-        /* Early-out: block is at or below the current hardened checkpoint.
-         * This happens when a late block arrives after the chain has advanced past
-         * its height and hardened a new checkpoint. It cannot be an ancestor of the
-         * current checkpoint, so silently drop as a late orphan — no ERROR needed. */
-        if(!TAO::Ledger::ChainState::Synchronizing() && nHeight <= (uint32_t)TAO::Ledger::ChainState::nCheckpointHeight.load())
-        {
-            debug::log(2, FUNCTION, "Block height=", nHeight,
-                " is at or below checkpointHeight=", TAO::Ledger::ChainState::nCheckpointHeight.load(),
-                " — dropping as late orphan (not an error)");
-            return false;
-        }
-
-        /* Check that Block is Descendant of Hardened Checkpoints. */
+        /* Check that Block is Descendant of Hardened Checkpoints.
+         *
+         * NOTE: IsDescendant() itself is opt-in (gated by "-checkpoints", matching
+         * upstream Nexusoft/LLL-TAO default of disabled) for live, post-sync blocks.
+         * There is deliberately no unconditional "block height <= checkpoint height"
+         * early-out here (unlike a prior version of this fork): that check has no
+         * upstream equivalent and made any legitimately valid block that arrived late
+         * (e.g. delayed by mempool/sigchain self-healing) permanently unacceptable
+         * the moment the checkpoint hardened past its height, with no recovery path
+         * short of -revertblocks. */
         if(!TAO::Ledger::IsDescendant(statePrev))
         {
             /* In-memory gate: only attempt disk repair when tStateBest.hashCheckpoint
