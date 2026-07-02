@@ -768,7 +768,8 @@ namespace TAO
 
                         /* Re-validate and re-admit into the live mempool. */
                         if(!Accept(tx))
-                            debug::log(0, FUNCTION, "failed to re-admit resolved conflicted tx ", hashTx.SubString());
+                            debug::log(0, FUNCTION, "failed to re-admit resolved conflicted tx ", hashTx.SubString(),
+                                " for genesis ", tx.hashGenesis.SubString(), ": ", debug::GetLastError());
                     }
                 }
             }
