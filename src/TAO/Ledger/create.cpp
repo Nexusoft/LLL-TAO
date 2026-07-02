@@ -422,9 +422,88 @@ namespace TAO::Ledger
 #endif
 
 
+    /* Scans a block's already-selected vtx entries for the producer genesis. */
+    bool FindProducerGenesisTxInVtx(const TAO::Ledger::TritiumBlock& block,
+        const uint256_t& hashGenesis, TAO::Ledger::Transaction& txOut)
+    {
+        bool fFound = false;
+
+        for(const auto& vtx : block.vtx)
+        {
+            /* Only tritium transactions carry a sigchain hashGenesis to match against. */
+            if(vtx.first != TRANSACTION::TRITIUM)
+                continue;
+
+            /* The hash was just selected from mempool by AddTransactions(), but fall back
+             * to the ledger database (already mined/indexed but not yet reflected via
+             * ReadLast(), e.g. a just-committed block from another node) for robustness. */
+            TAO::Ledger::Transaction tx;
+            bool fHasConflict = false;
+            if(!mempool.Get(vtx.second, tx) && !LLD::Ledger->ReadTx(vtx.second, tx, fHasConflict, FLAGS::MEMPOOL))
+                continue;
+
+            if(tx.hashGenesis != hashGenesis)
+                continue;
+
+            /* Track the highest-sequence match; AddTransactions() chains at most one
+             * contiguous run per genesis, so this is normally a single hit. */
+            if(!fFound || tx.nSequence > txOut.nSequence)
+            {
+                txOut  = tx;
+                fFound = true;
+            }
+        }
+
+        return fFound;
+    }
+
+
+    /* Option 3 (defense-in-depth): re-validate the producer's chaining predecessor
+     * against the block's vtx immediately after producer creation/signing.  In the
+     * common case this can never fail, since the producer was seeded from the same
+     * FindProducerGenesisTxInVtx() lookup; it guards against future code paths that
+     * might create/rebuild a producer without threading pKnownLast through, silently
+     * reintroducing the TOCTOU race instead of failing loudly at Check() time deep
+     * inside block validation.
+     *
+     * Returns true both when the producer correctly chains to a dependent transaction
+     * in vtx, AND when there is no dependent transaction for this genesis in vtx at all
+     * (nothing to validate against — the producer's predecessor is necessarily whatever
+     * was already on disk/mempool before this block, which is outside vtx's scope). */
+    static bool ValidateProducerAgainstVtx(const TAO::Ledger::TritiumBlock& block)
+    {
+        TAO::Ledger::Transaction txExpected;
+        if(!FindProducerGenesisTxInVtx(block, block.producer.hashGenesis, txExpected))
+            return true; // No dependent transaction for this genesis in the block: nothing to check.
+
+        if(block.producer.hashPrevTx != txExpected.GetHash())
+        {
+            return debug::error(FUNCTION, "producer sequencing disagrees with block vtx:",
+                " producer.hashPrevTx=", block.producer.hashPrevTx.SubString(),
+                " expected(from vtx)=", txExpected.GetHash().SubString(),
+                " genesis=", block.producer.hashGenesis.SubString());
+        }
+
+        return true;
+    }
+
+
+    /* Looks up the authoritative sigchain predecessor for a producer genesis from the
+     * block's already-selected vtx, returning a pointer usable as CreateTransaction()'s/
+     * CreateProducer()'s pKnownLast argument. The returned pointer aliases txOut, which
+     * must outlive the call site (txOut is caller-owned storage). Factored out because
+     * this exact lookup+pointer pattern is needed at every CreateBlock()/CreateStakeBlock()
+     * producer-build call site. */
+    static const TAO::Ledger::Transaction* ResolveKnownLastFromVtx(const TAO::Ledger::TritiumBlock& block,
+        const uint256_t& hashGenesis, TAO::Ledger::Transaction& txOut)
+    {
+        return FindProducerGenesisTxInVtx(block, hashGenesis, txOut) ? &txOut : nullptr;
+    }
+
+
     /* Create a new transaction object from signature chain. */
     bool CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::Credentials>& pCredentials, const SecureString& pin,
-                           TAO::Ledger::Transaction& tx, const uint8_t nScheme)
+                           TAO::Ledger::Transaction& tx, const uint8_t nScheme, const TAO::Ledger::Transaction* pKnownLast)
     {
         const bool fSeqDiag = SequenceDiagnosticsEnabled();
 
@@ -441,7 +520,28 @@ namespace TAO::Ledger
 
         /* Get the last transaction. */
         TAO::API::Transaction txPrev;
-        if(LLD::Sessions->ReadLast(hashGenesis, hashLast))
+
+        /* FIX (producer-out-of-sequence race): when the caller has already selected this
+         * sigchain's authoritative predecessor from the block's vtx (via
+         * FindProducerGenesisTxInVtx()), use it verbatim instead of independently
+         * re-querying sessions/mempool/disk below.  Those queries run at a *later* instant
+         * than AddTransactions()'s own mempool read; if a new transaction for the same
+         * genesis is submitted in that gap, the independent query would return it as "last"
+         * even though it never made it into vtx, producing a producer.hashPrevTx that
+         * Check() rejects with "producer transaction out of sequence" (or, for regular
+         * sigchain producers, "transaction in sigchain out of sequence").  Deriving the
+         * predecessor from the same snapshot Check() validates against makes the two sides
+         * agree by construction.  This also aligns with upstream Nexusoft/LLL-TAO's simpler,
+         * single-source sequencing contract instead of layering cascading fallbacks on top
+         * of a second live query. */
+        if(pKnownLast != nullptr && pKnownLast->hashGenesis == hashGenesis)
+        {
+            txPrev       = *pKnownLast;
+            hashLast     = pKnownLast->GetHash();
+            strSeqSource = "block_vtx";
+            fUsedMempool = true;
+        }
+        else if(LLD::Sessions->ReadLast(hashGenesis, hashLast))
         {
             fUsedSessionIndex = true;
 
@@ -454,7 +554,7 @@ namespace TAO::Ledger
 
         /* If we don't have the indexes available we need to build from ledger state. */
         TAO::Ledger::Transaction txMem;
-        if(mempool.Get(hashGenesis, txMem))
+        if(pKnownLast == nullptr && mempool.Get(hashGenesis, txMem))
         {
             fUsedMempool = true;
 
@@ -489,7 +589,12 @@ namespace TAO::Ledger
          *
          * Now we always check disk.  We use a separate hashDiskLast to avoid clobbering
          * a mempool-set hashLast.  The disk entry only wins if its sequence is strictly
-         * greater than whatever txPrev already holds. */
+         * greater than whatever txPrev already holds.
+         *
+         * Skipped entirely when pKnownLast was supplied: that value is already the
+         * authoritative predecessor selected from the block's vtx, and consulting disk
+         * here could only reintroduce the same TOCTOU this parameter exists to close. */
+        if(pKnownLast == nullptr)
         {
             uint512_t hashDiskLast = 0;
             if(LLD::Ledger->ReadLast(hashGenesis, hashDiskLast))
@@ -1015,8 +1120,21 @@ namespace TAO::Ledger
 
             /* Check that the producer isn't going to orphan any transactions,
              * and finalize miner-specific reward data when this cache hit is
-             * being reused as a base template for another miner. */
-            TAO::Ledger::Transaction tx;
+             * being reused as a base template for another miner.
+             *
+             * FIX (producer-out-of-sequence race, Option 1/2): staleness detection and
+             * the eventual rebuild both now derive the producer's predecessor from the
+             * block's own vtx (FindProducerGenesisTxInVtx()) rather than an independent
+             * mempool.Get(hashGenesis, ...) query.  The previous mempool-only check could
+             * disagree with vtx if a newer sigchain transaction for the same genesis was
+             * submitted between AddTransactions() and this check, causing either a false
+             * "not stale" (leaving a producer that doesn't chain to vtx) or an unnecessary
+             * rebuild racing against a transaction that never made it into the block.
+             * Using vtx as the single source of truth for both decisions closes that gap. */
+            TAO::Ledger::Transaction txVtxLast;
+            const TAO::Ledger::Transaction* pKnownLast =
+                ResolveKnownLastFromVtx(rBlockRet, rBlockRet.producer.hashGenesis, txVtxLast);
+
             const bool fProducerFinalizationRequired =
                 CachedMiningTemplateRequiresProducerFinalization(
                     hashCachedDynamicGenesis, hashDynamicGenesis,
@@ -1031,7 +1149,7 @@ namespace TAO::Ledger
             }
 
             if(fProducerFinalizationRequired
-            || (mempool.Get(rBlockRet.producer.hashGenesis, tx) && rBlockRet.producer.hashPrevTx != tx.GetHash()))
+            || (pKnownLast != nullptr && rBlockRet.producer.hashPrevTx != pKnownLast->GetHash()))
             {
                 /* Handle for STALE producer. */
                 debug::log(0, FUNCTION, fProducerFinalizationRequired
@@ -1044,7 +1162,7 @@ namespace TAO::Ledger
                 debug::log(2, FUNCTION, "Rebuilding stale producer: reward address = ",
                     strDynamicReward);
                 const auto tProducerStart = std::chrono::steady_clock::now();
-                if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients, hashDynamicGenesis))
+                if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients, hashDynamicGenesis, pKnownLast))
                     return debug::error(FUNCTION, "Failed to create producer transactions.");
                 const int64_t nProducerMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::steady_clock::now() - tProducerStart).count();
@@ -1053,6 +1171,12 @@ namespace TAO::Ledger
                            " height=", tStateBest.nHeight + 1,
                            " reward=", strDynamicReward,
                            " extra_nonce=", nExtraNonce);
+
+                /* Option 3 (defense-in-depth): confirm the freshly rebuilt producer
+                 * actually chains to vtx before this template is signed and offered
+                 * for mining. */
+                if(!ValidateProducerAgainstVtx(rBlockRet))
+                    return debug::error(FUNCTION, "Rebuilt producer failed vtx sequencing validation.");
             }
 
             /* Update the producer timestamp */
@@ -1190,6 +1314,13 @@ namespace TAO::Ledger
             /* Must add transactions first, before creating producer, so producer is sequenced last if user has tx in block */
             AddTransactions(rBlockRet);
 
+            /* FIX (producer-out-of-sequence race, Option 1/2): derive the producer's
+             * chaining predecessor from the block's own vtx rather than letting
+             * CreateTransaction() independently re-query mempool/disk afterwards. See
+             * FindProducerGenesisTxInVtx() for the full rationale. */
+            TAO::Ledger::Transaction txVtxLast;
+            const TAO::Ledger::Transaction* pKnownLast = ResolveKnownLastFromVtx(rBlockRet, hashGenesis, txVtxLast);
+
             /* Create the new producer transaction for given block.
              * Pass hashDynamicGenesis (miner reward address) so coinbase is routed
              * to the remote miner, not the node operator. */
@@ -1197,7 +1328,7 @@ namespace TAO::Ledger
             debug::log(2, FUNCTION, "Creating fresh producer: reward address = ",
                 strDynamicReward);
             const auto tProducerStart = std::chrono::steady_clock::now();
-            if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients, hashDynamicGenesis))
+            if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients, hashDynamicGenesis, pKnownLast))
                 return debug::error(FUNCTION, "Failed to create producer transactions.");
             const int64_t nProducerMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - tProducerStart).count();
@@ -1206,6 +1337,12 @@ namespace TAO::Ledger
                        " height=", tStateBest.nHeight + 1,
                        " reward=", strDynamicReward,
                        " extra_nonce=", nExtraNonce);
+
+            /* Option 3 (defense-in-depth): confirm the freshly built producer actually
+             * chains to vtx before this template is signed and offered for mining. */
+            if(!ValidateProducerAgainstVtx(rBlockRet))
+                return debug::error(FUNCTION, "Fresh producer failed vtx sequencing validation.");
+
 
             /* Follow-up #2: tip-advance abandonment.  Falcon signing took
              * nProducerMs; if the chain tip moved during that window, the
@@ -1407,7 +1544,8 @@ namespace TAO::Ledger
                            const uint32_t nChannel,
                            const uint64_t nExtraNonce,
                            Legacy::Coinbase *pCoinbaseRecipients,
-                           const uint256_t& hashDynamicGenesis)
+                           const uint256_t& hashDynamicGenesis,
+                           const TAO::Ledger::Transaction* pKnownLast)
     {
         /* Defensively reset the producer to a default-constructed state.
          *
@@ -1438,7 +1576,7 @@ namespace TAO::Ledger
         rProducer = TAO::Ledger::Transaction();
 
         /* Setup the producer transaction. */
-        if(!CreateTransaction(user, pin, rProducer))
+        if(!CreateTransaction(user, pin, rProducer, TAO::Ledger::SIGNATURE::BRAINPOOL, pKnownLast))
             return debug::error(FUNCTION, "Failed to create producer transactions.");
 
         /* Create the Coinbase Transaction if the Channel specifies. */
@@ -1642,9 +1780,16 @@ namespace TAO::Ledger
         if(!fGenesis || config::fPoolStaking.load())
             AddTransactions(block);
 
+        /* FIX (producer-out-of-sequence race, Option 1/2): derive the producer's
+         * chaining predecessor from the block's own vtx rather than letting
+         * CreateTransaction() independently re-query mempool/disk afterwards. See
+         * FindProducerGenesisTxInVtx() for the full rationale. */
+        TAO::Ledger::Transaction txVtxLast;
+        const TAO::Ledger::Transaction* pKnownLast = ResolveKnownLastFromVtx(block, user->Genesis(), txVtxLast);
+
         /* Create the producer transaction. */
         TAO::Ledger::Transaction rProducer;
-        if(!CreateTransaction(user, pin, rProducer))
+        if(!CreateTransaction(user, pin, rProducer, TAO::Ledger::SIGNATURE::BRAINPOOL, pKnownLast))
             return debug::error(FUNCTION, "failed to create producer transactions");
 
         /* Update the producer timestamp */
@@ -1652,6 +1797,11 @@ namespace TAO::Ledger
 
         /* Add block producer to block */
         block.producer = rProducer;
+
+        /* Option 3 (defense-in-depth): confirm the producer actually chains to vtx
+         * before this block is handed to the stake minter. */
+        if(!ValidateProducerAgainstVtx(block))
+            return debug::error(FUNCTION, "producer failed vtx sequencing validation");
 
         /* NOTE: The remainder of Coinstake producer not configured here. Stake minter must handle it. */
 
