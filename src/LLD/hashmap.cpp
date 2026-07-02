@@ -207,7 +207,7 @@ namespace LLD
         if(!filesystem::exists(file))
         {
             /* Build a vector with empty bytes to flush to disk. */
-            std::vector<uint8_t> vSpace(HASHMAP_TOTAL_BUCKETS * HASHMAP_KEY_ALLOCATION, 0);
+            std::vector<uint8_t> vSpace(static_cast<std::size_t>(HASHMAP_TOTAL_BUCKETS) * HASHMAP_KEY_ALLOCATION, 0);
 
             /* Flush the empty keychain file to disk. */
             std::fstream stream(file, std::ios::out | std::ios::binary | std::ios::trunc);
