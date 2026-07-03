@@ -547,6 +547,40 @@ namespace LLP
          **/
         void respond(const StatelessPacket& packet);
 
+        /** ForceFreshTemplatePush
+         *
+         *  [Option A] Anti-doom-loop hardening for SUBMIT_BLOCK staleness rejections.
+         *
+         *  Any SUBMIT_BLOCK rejection that stems from the template being stale
+         *  (hashPrevBlock mismatch, committed/stale vtx, stale producer sigchain,
+         *  or a failed AcceptMinedBlock() ledger write) means the miner is now
+         *  sitting on dead work and depends entirely on its own poll/backoff
+         *  timers to notice.  On a weak network that round-trip can be slow
+         *  enough that the miner declares a degraded/stopped state before a
+         *  fresh template arrives.
+         *
+         *  Invalidates the stale cached template (if any), arms
+         *  m_force_next_push + m_get_block_cooldown, and immediately calls
+         *  SendStatelessTemplate() so the miner receives a valid template right
+         *  after rejection instead of waiting out its own recovery timers.
+         *
+         *  Mirrors the pattern already proven for the AcceptMinedBlock()
+         *  failure path; this generalizes it to every staleness-rooted
+         *  SUBMIT_BLOCK rejection.
+         *
+         *  @param[in] hashMerkleStale Merkle root of the rejected/stale cached
+         *                             template to invalidate; pass 0 to skip
+         *                             cache invalidation (e.g. unknown template).
+         *
+         *  Note: SendStatelessTemplate() is best-effort and returns void (matching
+         *  its existing signature used elsewhere in this class); if template
+         *  creation transiently fails, the miner falls back to its own GET_BLOCK
+         *  poll/backoff exactly as it would have without this proactive push, so
+         *  no additional error handling is required here.
+         *
+         **/
+        void ForceFreshTemplatePush(const uint512_t& hashMerkleStale = uint512_t(0));
+
         /** new_block
          *
          *  Adds a new block to the map.
