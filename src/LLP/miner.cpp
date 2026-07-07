@@ -2209,17 +2209,22 @@ namespace LLP
             }
 
             uint64_t nAge = 0;
-            if(itCreationTime != mapBlockCreationTimes.end())
+            bool fCreationTimeFuture = false;
+            const bool fCreationTimeKnown = (itCreationTime != mapBlockCreationTimes.end());
+            if(fCreationTimeKnown)
             {
                 if(nNow >= itCreationTime->second)
                     nAge = nNow - itCreationTime->second;
                 else
+                {
+                    fCreationTimeFuture = true;
                     debug::warning(FUNCTION, "Legacy-lane template creation time is in the future ",
                                    hashMerkleRoot.SubString());
+                }
             }
             const bool fTooOldByTime =
-                (itCreationTime != mapBlockCreationTimes.end()) &&
-                (nAge > LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS);
+                fCreationTimeKnown &&
+                (fCreationTimeFuture || nAge > LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS);
             const auto itCurrentHeight = currentChannelHeights.find(pBlock->nChannel);
             const bool fHaveChannelHeights =
                 (itTemplateHeight != mapBlockChannelHeights.end()) &&
