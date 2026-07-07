@@ -427,6 +427,10 @@ ifdef UNIT_TESTS
 		   build/Tests_TAO_Ledger_filter_binding_to_production.o \
 		   build/Tests_TAO_Ledger_accept_mined_block_tip_race.o \
 		   build/Tests_TAO_Ledger_missing_tx_soft_fail.o \
+		   build/Tests_TAO_Ledger_missing_retry_decay.o \
+		   build/Tests_TAO_Ledger_maturity_boundary.o \
+		   build/Tests_TAO_Ledger_stage_pool.o \
+		   build/Tests_TAO_Ledger_tip_stall.o \
 		   build/Tests_TAO_Ledger_mempool.o \
 		   build/Tests_TAO_Ledger_prime.o \
 		   build/Tests_TAO_Ledger_transaction.o \
@@ -760,6 +764,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Ledger_stake.o \
 		build/Ledger_stake_change.o \
 		build/Ledger_stake_minter.o \
+		build/Ledger_stagepool.o \
 		build/Ledger_state.o \
 		build/Ledger_stateless_block_utility.o \
 		build/Ledger_supply.o \
