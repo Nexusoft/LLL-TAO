@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <atomic>
+
 #include <LLC/include/random.h>
 
 #include <LLD/include/global.h>
@@ -68,6 +70,15 @@ namespace LLP
 {
     /* Inventory class to track recent relays with expiring cache. */
     TritiumNode::Inventory TritiumNode::tInventory;
+
+
+    /* [Option 3] Global cooldown timestamp for the periodic, chain-tip-independent
+     * mempool conflict-reconciliation sweep (see EVENTS::GENERIC below). File-scope
+     * with internal linkage rather than function-local static, so it is guaranteed
+     * to be initialized once before any TritiumNode's event loop can reach it,
+     * avoiding any ambiguity around function-local static initialization order in
+     * a multi-threaded context. */
+    static std::atomic<uint64_t> nLastConflictsSweep(0);
 
 
     /* Declaration of client mutex for synchronizing client mode transactions. */
@@ -333,6 +344,45 @@ namespace LLP
                         if(!config::fClient.load())
                             Legacy::Wallet::Instance().ResendWalletTransactions();
                         #endif
+
+                        /* [Option 3] Periodic, chain-tip-independent mempool
+                         * conflict-reconciliation sweep. Mempool::Check()'s
+                         * eviction/re-admission pass over mapConflicts previously
+                         * only ran after a block successfully connected to the
+                         * best chain, so a stalled tip (stuck fork, weak network
+                         * with no recently mined blocks) meant mapConflicts was
+                         * never pruned or re-tested against disk. This fires on
+                         * a fixed global cadence guarded by a single shared
+                         * timestamp (not per-connection), regardless of how many
+                         * peers are connected or whether new blocks are arriving. */
+                        const uint64_t nNowSweep = runtime::unifiedtimestamp();
+                        uint64_t nLastSweep      = nLastConflictsSweep.load();
+
+                        /* Compute the elapsed time as a signed delta rather than
+                         * comparing the raw uint64_t timestamps directly: if the
+                         * system clock ever moves backward (e.g. an NTP
+                         * correction), nNowSweep < nLastSweep and an unsigned
+                         * subtraction would wrap around to a huge positive value,
+                         * making the sweep appear "not due" indefinitely instead
+                         * of firing correctly. */
+                        const int64_t nDeltaSweep = static_cast<int64_t>(nNowSweep) - static_cast<int64_t>(nLastSweep);
+
+                        /* fClockWentBackward: the clock moved backward since the
+                         * last sweep, so treat the sweep as immediately due
+                         * rather than waiting out a bogus (huge) unsigned delta.
+                         * fIntervalElapsed: the normal case, enough real time has
+                         * passed since the last sweep. Only evaluated once
+                         * fClockWentBackward is false, so the cast to uint64_t
+                         * below is always operating on a non-negative value. */
+                        const bool fClockWentBackward = (nDeltaSweep < 0);
+                        const bool fIntervalElapsed    = !fClockWentBackward
+                            && (static_cast<uint64_t>(nDeltaSweep) >= TAO::Ledger::CONFLICTS_SWEEP_INTERVAL_SECONDS);
+
+                        if(fClockWentBackward || fIntervalElapsed)
+                        {
+                            if(nLastConflictsSweep.compare_exchange_strong(nLastSweep, nNowSweep))
+                                TAO::Ledger::mempool.Check();
+                        }
                     }
                 }
 

@@ -67,6 +67,23 @@ namespace TAO
         }
 
 
+        /* [Option 1] Bounds mapConflicts before inserting a new entry. */
+        void Mempool::BoundConflictsMap()
+        {
+            /* Clear the entire map once the cap is hit rather than doing LRU
+             * eviction; matches the existing cheap DoS-guard pattern used for
+             * mapLastMissing/mapCheckRejects. Any conflict still relevant will
+             * simply be re-added the next time the transaction is relayed. */
+            if(mapConflicts.size() >= MAX_CONFLICTS_MAP_ENTRIES)
+            {
+                debug::warning(FUNCTION, "mapConflicts reached ", MAX_CONFLICTS_MAP_ENTRIES,
+                    " entries; clearing to bound memory use");
+
+                mapConflicts.clear();
+            }
+        }
+
+
         /* Add a transaction to the memory pool without validation checks. */
         bool Mempool::AddUnchecked(const TAO::Ledger::Transaction& tx)
         {
@@ -198,6 +215,7 @@ namespace TAO
                         {
                             /* Add to conflicts map. */
                             debug::error(FUNCTION, "CONFLICT: prev tx ", (mapClaimed.count(tx.hashPrevTx) ? "CLAIMED " : "CONFLICTED "), tx.hashPrevTx.SubString());
+                            BoundConflictsMap();
                             mapConflicts[hashTx] = tx;
 
                             /* Relay the conflict if we are running over tritium protocol. */
@@ -228,6 +246,7 @@ namespace TAO
                         {
                             /* Add to conflicts map. */
                             debug::error(FUNCTION, "CONFLICT: hash last mismatch ", tx.hashPrevTx.SubString(), " and ", hashLast.SubString());
+                            BoundConflictsMap();
                             mapConflicts[hashTx] = tx;
 
                             /* Relay the conflict if we are running over tritium protocol, so the
@@ -263,6 +282,7 @@ namespace TAO
                     {
                         /* Add to conflicts map. */
                         debug::error(FUNCTION, "CONFLICT: duplicate genesis-id ", tx.hashGenesis.SubString());
+                        BoundConflictsMap();
                         mapConflicts[hashTx] = tx;
                     }
 
