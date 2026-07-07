@@ -45,7 +45,7 @@ using namespace LLP;
  *  2. Template fresh within retention window (should be kept)
  *  3. Template stale by age (should be removed)
  *  4. Cross-channel block doesn't trigger false cleanup (Prime template safe when Hash advances)
- *  5. Latest template per channel is only kept when it is not stale
+ *  5. Latest template per channel receives no special retention exemption and is removed when stale
  **/
 
 
@@ -359,7 +359,7 @@ TEST_CASE("CleanupStaleTemplates problem statement scenario", "[cleanup][problem
 }
 
 
-TEST_CASE("CleanupStaleTemplates only keeps latest template per channel when fresh", "[cleanup][latest]")
+TEST_CASE("CleanupStaleTemplates applies staleness checks to all templates", "[cleanup][latest]")
 {
     SECTION("Latest template is removed if stale by age or height")
     {
