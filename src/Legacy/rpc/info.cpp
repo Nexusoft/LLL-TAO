@@ -38,6 +38,8 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands/system.h>
 #include <LLP/include/lisp.h>
 
+#include <Util/include/hex.h>
+
 #include <vector>
 
 
@@ -313,8 +315,12 @@ namespace Legacy
                 " whether -autoforkrecovery would act (and how deep) once its"
                 " threshold is reached.");
 
+        const std::string strGenesis = params[0].get<std::string>();
+        if(!IsHex(strGenesis) || strGenesis.size() != 64)
+            throw TAO::API::Exception(-5, "Invalid genesis hash");
+
         uint256_t hashGenesis;
-        hashGenesis.SetHex(params[0].get<std::string>());
+        hashGenesis.SetHex(strGenesis);
 
         const TAO::Ledger::ForkDivergenceInfo tInfo = TAO::Ledger::mempool.ComputeForkDivergence(hashGenesis);
 

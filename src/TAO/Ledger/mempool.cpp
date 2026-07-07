@@ -808,20 +808,35 @@ namespace TAO
 
                                 const ForkDivergenceInfo tInfo = ComputeForkDivergence(hashGenesis, vtx[0].hashPrevTx);
                                 if(tInfo.fAncestorFound && tInfo.fAncestorOnMainChain)
-                                    debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "STUCK FORK CONFLICT:", ANSI_COLOR_RESET,
-                                        " genesis ", hashGenesis.SubString(), " has not resolved against disk for ", nMisses,
-                                        " consecutive Check() cycles. Computed divergence depth is ", tInfo.nDepth, " blocks",
-                                        " (ancestor ", tInfo.hashAncestorBlock.SubString(), " at height ", tInfo.nAncestorHeight, ").",
-                                        tInfo.fExceedsCap
-                                            ? debug::safe_printstr(" This exceeds MAX_AUTO_FORK_RECOVERY_DEPTH=",
-                                                MAX_AUTO_FORK_RECOVERY_DEPTH, "; manual -revertblocks=", tInfo.nDepth, " review required.")
-                                            : debug::safe_printstr(" Enable -autoforkrecovery to have this resolved automatically,",
-                                                " or manually run with -revertblocks=", tInfo.nDepth, "."));
+                                {
+                                    const std::string strAdvice = tInfo.fExceedsCap
+                                        ? debug::safe_printstr("This exceeds MAX_AUTO_FORK_RECOVERY_DEPTH=",
+                                            MAX_AUTO_FORK_RECOVERY_DEPTH, "; manual -revertblocks=", tInfo.nDepth,
+                                            " review required.")
+                                        : debug::safe_printstr("Enable -autoforkrecovery to have this resolved",
+                                            " automatically, or manually run with -revertblocks=", tInfo.nDepth, ".");
+
+                                    const std::string strSummary = debug::safe_printstr(
+                                        "genesis ", hashGenesis.SubString(), " has not resolved against disk for ",
+                                        nMisses, " consecutive Check() cycles. Computed divergence depth is ",
+                                        tInfo.nDepth, " blocks (ancestor ", tInfo.hashAncestorBlock.SubString(),
+                                        " at height ", tInfo.nAncestorHeight, "). ", strAdvice);
+
+                                    debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "STUCK FORK CONFLICT:",
+                                        ANSI_COLOR_RESET, " ", strSummary);
+                                }
                                 else
-                                    debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "STUCK FORK CONFLICT:", ANSI_COLOR_RESET,
-                                        " genesis ", hashGenesis.SubString(), " has not resolved against disk for ", nMisses,
+                                {
+                                    const std::string strReason = tInfo.strError.empty()
+                                        ? std::string(".")
+                                        : debug::safe_printstr(": ", tInfo.strError);
+
+                                    debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "STUCK FORK CONFLICT:",
+                                        ANSI_COLOR_RESET, " genesis ", hashGenesis.SubString(),
+                                        " has not resolved against disk for ", nMisses,
                                         " consecutive Check() cycles, but the divergence depth could not be computed",
-                                        tInfo.strError.empty() ? "." : debug::safe_printstr(": ", tInfo.strError));
+                                        strReason);
+                                }
                             }
                         }
                     }
@@ -1029,11 +1044,14 @@ namespace TAO
              * guessing, rather than only learning the cap was hit. */
             if(tInfo.fExceedsCap)
             {
-                debug::error(FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "FORK RECOVERY DEPTH EXCEEDED:", ANSI_COLOR_RESET,
-                    " genesis ", hashGenesis.SubString(), " computed divergence depth is ", tInfo.nDepth,
+                const std::string strSummary = debug::safe_printstr(
+                    "genesis ", hashGenesis.SubString(), " computed divergence depth is ", tInfo.nDepth,
                     " blocks (ancestor ", tInfo.hashAncestorBlock.SubString(), " at height ", tInfo.nAncestorHeight,
                     "), which exceeds MAX_AUTO_FORK_RECOVERY_DEPTH=", MAX_AUTO_FORK_RECOVERY_DEPTH,
                     "; refusing automatic rollback. Manual review recommended: -revertblocks=", tInfo.nDepth);
+
+                debug::error(FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "FORK RECOVERY DEPTH EXCEEDED:", ANSI_COLOR_RESET,
+                    " ", strSummary);
 
                 return false;
             }
