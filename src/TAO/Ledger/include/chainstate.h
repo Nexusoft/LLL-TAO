@@ -69,31 +69,6 @@ namespace TAO
             bool Synchronizing();
 
 
-            /** SecondsSinceTipChange
-             *
-             *  [Option D] Number of seconds since the best-chain tip hash last
-             *  changed, tracked lazily on each call (the first observation of a
-             *  new tip hash resets the clock).  Used to detect a stalled chain
-             *  (e.g. a wedged incomplete block) so the mining lanes can throttle
-             *  fresh-template pushes instead of hammering the miner with
-             *  templates that cannot become valid until the stall resolves.
-             *
-             *  @return seconds since hashBestChain last changed (0 on first call).
-             *
-             **/
-            uint64_t SecondsSinceTipChange();
-
-
-            /** [Option D] Tip-stall threshold: if the tip hasn't changed for this
-             *  many seconds, the chain is considered stalled. **/
-            const uint64_t TIP_STALL_THRESHOLD_SECONDS = 120;
-
-
-            /** [Option D] Minimum interval between forced fresh-template pushes
-             *  while the chain is stalled. **/
-            const uint64_t STALL_TEMPLATE_PUSH_INTERVAL_SECONDS = 10;
-
-
             /** PercentSynchronized
              *
              *  Real value of the total synchronization percent completion.

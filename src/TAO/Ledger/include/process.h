@@ -67,62 +67,6 @@ namespace TAO
         static const uint64_t MAX_MISSING_MAP_ENTRIES = 10000;
 
 
-        /** [Option C] Track the timestamp of the most recent missing-transaction
-         *  retry per block hash, paired with mapLastMissing's counters.  Used to
-         *  time-decay the retry counter so hitting the retry cap is a temporary
-         *  cool-down rather than a permanent, silent dead-end (the counter used
-         *  to be erased only on ACCEPT, so a block that exhausted its retries
-         *  could never recover without a node restart). **/
-        extern std::map<uint1024_t, uint64_t> mapLastMissingStamp;
-
-
-        /** [Option C] Seconds after the last retry attempt before an exhausted
-         *  (or partially spent) retry counter is reset and re-requesting is
-         *  allowed to resume for that block. **/
-        static const uint64_t MISSING_RETRY_DECAY_SECONDS = 60;
-
-
-        /** UpdateMissingRetry
-         *
-         *  [Option C] Increment (or start, or decay-reset) the missing-transaction
-         *  retry counter for the given block hash, stamping the attempt time.
-         *  Applies the same clear-all bounding as MAX_MISSING_MAP_ENTRIES.
-         *
-         *  @param[in] hashBlock The incomplete block's hash.
-         *
-         *  @return the updated retry count for this block hash.
-         *
-         **/
-        uint64_t UpdateMissingRetry(const uint1024_t& hashBlock);
-
-
-        /** MissingRetryExhausted
-         *
-         *  [Option C] Check whether the given block hash has exhausted its
-         *  missing-transaction retries and is still inside the decay cool-down
-         *  window.  Used by Process() to short-circuit repeated relays of a
-         *  retry-exhausted block without re-running the full (expensive)
-         *  block.Check() on every relay.
-         *
-         *  @param[in] hashBlock The block hash to check.
-         *
-         *  @return true if retries are exhausted and the cool-down has not expired.
-         *
-         **/
-        bool MissingRetryExhausted(const uint1024_t& hashBlock);
-
-
-        /** EraseMissingRetry
-         *
-         *  [Option C] Remove all retry bookkeeping for the given block hash
-         *  (called when the block is finally accepted).
-         *
-         *  @param[in] hashBlock The block hash to clear.
-         *
-         **/
-        void EraseMissingRetry(const uint1024_t& hashBlock);
-
-
         /** [C2] Track the last time we asked peers for an orphan ancestor's chain
          *  (keyed by the missing hashPrevBlock), so a fork/orphan storm that keeps
          *  delivering blocks descending from the same unknown ancestor doesn't

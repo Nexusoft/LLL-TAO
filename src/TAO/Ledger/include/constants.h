@@ -116,20 +116,6 @@ namespace TAO::Ledger
     const uint32_t NEXUS_MATURITY_COINSTAKE = 250;
 
 
-    /** [Option B] Mempool-admission grace window (in blocks) for the coinbase
-     *  maturity policy check.  A transaction spending a coinbase right at the
-     *  maturity boundary is consensus-valid inside its containing block (where
-     *  confirmations are measured at the block's height) but would be rejected
-     *  by any mempool whose tip is 1-2 blocks behind that height, because the
-     *  mempool measures confirmations at the local tip.  That asymmetry can
-     *  deadlock block completion: the block can't complete without the tx, and
-     *  the tx can't mature without the block ("coinbase is immature" loop).
-     *  This grace applies ONLY to mempool admission policy (FLAGS::MEMPOOL with
-     *  no block context); the consensus rule (FLAGS::BLOCK) and the miner
-     *  template path (FLAGS::MINER) remain strict. **/
-    const uint32_t MEMPOOL_MATURITY_GRACE = 2;
-
-
     /** Stake reward rate is annual. Define one year (364 days) of time for reward calculations **/
     const uint32_t ONE_YEAR = 60 * 60 * 24 * 28 * 13;
 
@@ -234,23 +220,4 @@ namespace TAO::Ledger
      *
      **/
     uint32_t MaturityCoinStake(const BlockState& block);
-
-
-    /** MaturityCoinBaseMempool
-     *
-     *  [Option B] Retrieve the coinbase maturity requirement to apply for
-     *  mempool admission policy only.  This is the consensus maturity minus
-     *  MEMPOOL_MATURITY_GRACE (floored at 1 so a 0-confirmation coinbase spend
-     *  can never be admitted), allowing a tx whose coinbase dependency will be
-     *  mature within the grace window to sit in the mempool instead of being
-     *  rejected in a way that can deadlock block completion.  Consensus
-     *  (FLAGS::BLOCK) and miner template (FLAGS::MINER) paths MUST continue to
-     *  use MaturityCoinBase().
-     *
-     *  @param[in] block - Block to which this maturity requirement will apply
-     *
-     *  @return relaxed maturity setting for mempool admission policy
-     *
-     **/
-    uint32_t MaturityCoinBaseMempool(const BlockState& block);
 }
