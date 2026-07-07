@@ -224,8 +224,34 @@ namespace LLP
         }
     };
 
-    /** TemplateMetadata
+    /** TemplateChannelHeightDistance
      * 
+     *  Calculate absolute channel-height distance without signed casts.
+     */
+    inline uint32_t TemplateChannelHeightDistance(const uint32_t nCurrentChannelHeight,
+                                                 const uint32_t nTemplateChannelHeight)
+    {
+        return (nCurrentChannelHeight >= nTemplateChannelHeight)
+            ? (nCurrentChannelHeight - nTemplateChannelHeight)
+            : (nTemplateChannelHeight - nCurrentChannelHeight);
+    }
+
+
+    /** IsTemplateTooOldByChannelHeight
+     *
+     *  Symmetric channel-height staleness check for mining templates.
+     */
+    inline bool IsTemplateTooOldByChannelHeight(const uint32_t nCurrentChannelHeight,
+                                               const uint32_t nTemplateChannelHeight,
+                                               const uint32_t nRetentionBlocks)
+    {
+        return TemplateChannelHeightDistance(nCurrentChannelHeight, nTemplateChannelHeight) >=
+               nRetentionBlocks;
+    }
+
+
+    /** TemplateMetadata
+     *
      *  Tracks metadata about mining templates for enhanced multi-channel staleness detection.
      *  
      *  CRITICAL CONTEXT - THE TEMPLATE STALENESS PROBLEM:

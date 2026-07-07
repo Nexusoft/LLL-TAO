@@ -98,8 +98,9 @@ TEST_CASE("CleanupStaleTemplates uses channel height not unified height", "[clea
          * channel_diff = 2333385 - 2333381 = 4 blocks
          * 4 >= 2 retention blocks → remove (correct!)
          */
-        uint32_t nChannelDiff = nCurrentChannelHeight - nTemplateChannelHeight;
-        bool fCorrectLogicRemoves = (nChannelDiff >= TEMPLATE_RETENTION_BLOCKS);
+        uint32_t nChannelDiff = TemplateChannelHeightDistance(nCurrentChannelHeight, nTemplateChannelHeight);
+        bool fCorrectLogicRemoves =
+            IsTemplateTooOldByChannelHeight(nCurrentChannelHeight, nTemplateChannelHeight, TEMPLATE_RETENTION_BLOCKS);
 
         /* The fix ensures we use channel height, not unified height */
         REQUIRE(fCorrectLogicRemoves == true);  // Template IS stale by channel height
@@ -130,8 +131,9 @@ TEST_CASE("CleanupStaleTemplates channel height scenarios", "[cleanup][scenarios
         /* Current channel height is 2165444 (1 block ahead) */
         uint32_t nCurrentChannelHeight = 2165444;
 
-        uint32_t nDiff = nCurrentChannelHeight - nTemplateChannelHeight;
-        bool fTooOld = (nDiff >= TEMPLATE_RETENTION_BLOCKS);
+        uint32_t nDiff = TemplateChannelHeightDistance(nCurrentChannelHeight, nTemplateChannelHeight);
+        bool fTooOld =
+            IsTemplateTooOldByChannelHeight(nCurrentChannelHeight, nTemplateChannelHeight, TEMPLATE_RETENTION_BLOCKS);
 
         REQUIRE(nDiff == 1);
         REQUIRE(fTooOld == false);  // Within retention window, should be kept
@@ -145,8 +147,9 @@ TEST_CASE("CleanupStaleTemplates channel height scenarios", "[cleanup][scenarios
         /* Current channel height is 2165445 (2 blocks ahead) */
         uint32_t nCurrentChannelHeight = 2165445;
 
-        uint32_t nDiff = nCurrentChannelHeight - nTemplateChannelHeight;
-        bool fTooOld = (nDiff >= TEMPLATE_RETENTION_BLOCKS);
+        uint32_t nDiff = TemplateChannelHeightDistance(nCurrentChannelHeight, nTemplateChannelHeight);
+        bool fTooOld =
+            IsTemplateTooOldByChannelHeight(nCurrentChannelHeight, nTemplateChannelHeight, TEMPLATE_RETENTION_BLOCKS);
 
         REQUIRE(nDiff == 2);
         REQUIRE(fTooOld == true);  // At boundary, should be removed
@@ -160,8 +163,9 @@ TEST_CASE("CleanupStaleTemplates channel height scenarios", "[cleanup][scenarios
         /* Current channel height is 2165450 (7 blocks ahead) */
         uint32_t nCurrentChannelHeight = 2165450;
 
-        uint32_t nDiff = nCurrentChannelHeight - nTemplateChannelHeight;
-        bool fTooOld = (nDiff >= TEMPLATE_RETENTION_BLOCKS);
+        uint32_t nDiff = TemplateChannelHeightDistance(nCurrentChannelHeight, nTemplateChannelHeight);
+        bool fTooOld =
+            IsTemplateTooOldByChannelHeight(nCurrentChannelHeight, nTemplateChannelHeight, TEMPLATE_RETENTION_BLOCKS);
 
         REQUIRE(nDiff == 7);
         REQUIRE(fTooOld == true);  // Far behind, definitely should be removed
@@ -175,8 +179,9 @@ TEST_CASE("CleanupStaleTemplates channel height scenarios", "[cleanup][scenarios
         /* Deep reorg moved the active channel tip back below the template parent */
         uint32_t nCurrentChannelHeight = 2165178;
 
-        uint32_t nDiff = nTemplateChannelHeight - nCurrentChannelHeight;
-        bool fTooOld = (nDiff >= TEMPLATE_RETENTION_BLOCKS);
+        uint32_t nDiff = TemplateChannelHeightDistance(nCurrentChannelHeight, nTemplateChannelHeight);
+        bool fTooOld =
+            IsTemplateTooOldByChannelHeight(nCurrentChannelHeight, nTemplateChannelHeight, TEMPLATE_RETENTION_BLOCKS);
 
         REQUIRE(nDiff == 265);
         REQUIRE(fTooOld == true);  // Backward movement beyond retention is stale
@@ -190,8 +195,9 @@ TEST_CASE("CleanupStaleTemplates channel height scenarios", "[cleanup][scenarios
         /* Current channel is still at 2165443 (no new blocks in this channel) */
         uint32_t nCurrentChannelHeight = 2165443;
 
-        uint32_t nDiff = nCurrentChannelHeight - nTemplateChannelHeight;
-        bool fTooOld = (nDiff >= TEMPLATE_RETENTION_BLOCKS);
+        uint32_t nDiff = TemplateChannelHeightDistance(nCurrentChannelHeight, nTemplateChannelHeight);
+        bool fTooOld =
+            IsTemplateTooOldByChannelHeight(nCurrentChannelHeight, nTemplateChannelHeight, TEMPLATE_RETENTION_BLOCKS);
 
         REQUIRE(nDiff == 0);
         REQUIRE(fTooOld == false);  // Current, should be kept
@@ -214,8 +220,9 @@ TEST_CASE("CleanupStaleTemplates cross-channel independence", "[cleanup][cross_c
         uint32_t nHashPreviousChannelHeight = 4165040;
 
         /* Prime template check (using channel height) */
-        uint32_t nPrimeDiff = nPrimeCurrentChannelHeight - nPrimeTemplateChannelHeight;
-        bool fPrimeStale = (nPrimeDiff >= TEMPLATE_RETENTION_BLOCKS);
+        uint32_t nPrimeDiff = TemplateChannelHeightDistance(nPrimeCurrentChannelHeight, nPrimeTemplateChannelHeight);
+        bool fPrimeStale =
+            IsTemplateTooOldByChannelHeight(nPrimeCurrentChannelHeight, nPrimeTemplateChannelHeight, TEMPLATE_RETENTION_BLOCKS);
 
         REQUIRE(nPrimeDiff == 0);
         REQUIRE(fPrimeStale == false);  // Prime template still fresh
@@ -236,8 +243,9 @@ TEST_CASE("CleanupStaleTemplates cross-channel independence", "[cleanup][cross_c
         uint32_t nPrimePreviousChannelHeight = 2165443;
 
         /* Hash template check */
-        uint32_t nHashDiff = nHashCurrentChannelHeight - nHashTemplateChannelHeight;
-        bool fHashStale = (nHashDiff >= TEMPLATE_RETENTION_BLOCKS);
+        uint32_t nHashDiff = TemplateChannelHeightDistance(nHashCurrentChannelHeight, nHashTemplateChannelHeight);
+        bool fHashStale =
+            IsTemplateTooOldByChannelHeight(nHashCurrentChannelHeight, nHashTemplateChannelHeight, TEMPLATE_RETENTION_BLOCKS);
 
         REQUIRE(nHashDiff == 0);
         REQUIRE(fHashStale == false);  // Hash template still fresh
@@ -263,9 +271,10 @@ TEST_CASE("CleanupStaleTemplates age-based timeout still works", "[cleanup][age]
         /* Template is within channel height retention window */
         uint32_t nTemplateChannelHeight = 2165443;
         uint32_t nCurrentChannelHeight = 2165444;  // Only 1 block ahead
-        uint32_t nChannelDiff = nCurrentChannelHeight - nTemplateChannelHeight;
+        uint32_t nChannelDiff = TemplateChannelHeightDistance(nCurrentChannelHeight, nTemplateChannelHeight);
 
-        bool fTooOldByBlocks = (nChannelDiff >= 2);  // False (1 < 2)
+        bool fTooOldByBlocks =
+            IsTemplateTooOldByChannelHeight(nCurrentChannelHeight, nTemplateChannelHeight, 2);  // False (1 < 2)
         bool fTooOldByTime = ((nNow - nCreationTime) > MAX_TEMPLATE_AGE_SECONDS);  // True (610 > 600)
 
         REQUIRE(fTooOldByBlocks == false);  // Fresh by channel height
@@ -286,9 +295,10 @@ TEST_CASE("CleanupStaleTemplates age-based timeout still works", "[cleanup][age]
         /* Template within retention window */
         uint32_t nTemplateChannelHeight = 2165443;
         uint32_t nCurrentChannelHeight = 2165444;  // 1 block ahead
-        uint32_t nChannelDiff = nCurrentChannelHeight - nTemplateChannelHeight;
+        uint32_t nChannelDiff = TemplateChannelHeightDistance(nCurrentChannelHeight, nTemplateChannelHeight);
 
-        bool fTooOldByBlocks = (nChannelDiff >= 2);
+        bool fTooOldByBlocks =
+            IsTemplateTooOldByChannelHeight(nCurrentChannelHeight, nTemplateChannelHeight, 2);
         bool fTooOldByTime = ((nNow - nCreationTime) > MAX_TEMPLATE_AGE_SECONDS);
 
         REQUIRE(fTooOldByBlocks == false);  // Fresh by height
@@ -319,8 +329,9 @@ TEST_CASE("CleanupStaleTemplates problem statement scenario", "[cleanup][problem
         uint32_t nCurrentChannelHeight = 2333385;
 
         /* With the FIX, these templates should be removed */
-        uint32_t nChannelDiff = nCurrentChannelHeight - nTemplateChannelHeight;
-        bool fTooOldByBlocks = (nChannelDiff >= TEMPLATE_RETENTION_BLOCKS);
+        uint32_t nChannelDiff = TemplateChannelHeightDistance(nCurrentChannelHeight, nTemplateChannelHeight);
+        bool fTooOldByBlocks =
+            IsTemplateTooOldByChannelHeight(nCurrentChannelHeight, nTemplateChannelHeight, TEMPLATE_RETENTION_BLOCKS);
 
         REQUIRE(nChannelDiff == 4);
         REQUIRE(fTooOldByBlocks == true);  // Should be removed!
@@ -360,10 +371,11 @@ TEST_CASE("CleanupStaleTemplates only keeps latest template per channel when fre
         uint32_t nTemplateChannelHeight = 2165443;
         uint32_t nCurrentChannelHeight = 2165450;  // 7 blocks ahead (too far)
 
-        uint32_t nChannelDiff = nCurrentChannelHeight - nTemplateChannelHeight;
+        uint32_t nChannelDiff = TemplateChannelHeightDistance(nCurrentChannelHeight, nTemplateChannelHeight);
         uint64_t nAge = nNow - nCreationTime;
 
-        bool fTooOldByBlocks = (nChannelDiff >= 2);
+        bool fTooOldByBlocks =
+            IsTemplateTooOldByChannelHeight(nCurrentChannelHeight, nTemplateChannelHeight, 2);
         bool fTooOldByTime = (nAge > MAX_TEMPLATE_AGE_SECONDS);
 
         REQUIRE(nChannelDiff == 7);
@@ -372,10 +384,8 @@ TEST_CASE("CleanupStaleTemplates only keeps latest template per channel when fre
         REQUIRE(fTooOldByTime == true);
 
         /* A latest template is not exempt from the staleness checks. */
-        bool fIsLatestTemplate = true;  // Determined by CleanupStaleTemplates
         bool fShouldRemove = (fTooOldByBlocks || fTooOldByTime);
 
-        REQUIRE(fIsLatestTemplate == true);
         REQUIRE(fShouldRemove == true);  // Latest stale template is removed
     }
 
@@ -388,15 +398,14 @@ TEST_CASE("CleanupStaleTemplates only keeps latest template per channel when fre
         uint32_t nTemplateChannelHeight = 2165443;
         uint32_t nCurrentChannelHeight = 2165444;
 
-        uint32_t nChannelDiff = nCurrentChannelHeight - nTemplateChannelHeight;
+        uint32_t nChannelDiff = TemplateChannelHeightDistance(nCurrentChannelHeight, nTemplateChannelHeight);
         uint64_t nAge = nNow - nCreationTime;
 
-        bool fTooOldByBlocks = (nChannelDiff >= 2);
+        bool fTooOldByBlocks =
+            IsTemplateTooOldByChannelHeight(nCurrentChannelHeight, nTemplateChannelHeight, 2);
         bool fTooOldByTime = (nAge > MAX_TEMPLATE_AGE_SECONDS);
-        bool fIsLatestTemplate = true;
         bool fShouldRemove = (fTooOldByBlocks || fTooOldByTime);
 
-        REQUIRE(fIsLatestTemplate == true);
         REQUIRE(fShouldRemove == false);
     }
 }

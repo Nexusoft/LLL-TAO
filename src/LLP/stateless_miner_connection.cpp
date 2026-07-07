@@ -4225,12 +4225,8 @@ namespace LLP
                  * one-way comparison only caught forward advancement; after a deep reorg the
                  * current channel height can move backward below the template's assumed parent
                  * and would otherwise keep an abandoned-fork template indefinitely. */
-                const uint32_t nChannelDistance =
-                    (nCurrentChannelHeight >= meta.nChannelHeight)
-                        ? (nCurrentChannelHeight - meta.nChannelHeight)
-                        : (meta.nChannelHeight - nCurrentChannelHeight);
-
-                if(nChannelDistance >= TEMPLATE_RETENTION_BLOCKS)
+                if(IsTemplateTooOldByChannelHeight(nCurrentChannelHeight, meta.nChannelHeight,
+                                                   TEMPLATE_RETENTION_BLOCKS))
                 {
                     fTooOldByBlocks = true;
                 }
@@ -4248,14 +4244,12 @@ namespace LLP
                 if(itCurrent != currentChannelHeights.end())
                 {
                     const uint32_t nChannelDistance =
-                        (itCurrent->second >= meta.nChannelHeight)
-                            ? (itCurrent->second - meta.nChannelHeight)
-                            : (meta.nChannelHeight - itCurrent->second);
+                        TemplateChannelHeightDistance(itCurrent->second, meta.nChannelHeight);
 
                     debug::log(2, FUNCTION, "      Channel height: ", meta.nChannelHeight,
                               " (current: ", itCurrent->second, ", distance: ", nChannelDistance,
                               ", ", meta.GetChannelName(),
-                              ", keep <= ", TEMPLATE_RETENTION_BLOCKS, " blocks old)");
+                              ", keep < ", TEMPLATE_RETENTION_BLOCKS, " blocks old)");
                 }
                 else
                 {
