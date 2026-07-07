@@ -4175,7 +4175,6 @@ namespace LLP
         /* Keep a short warm window (2 blocks) to survive brief bursts/reorgs without
          * dropping to zero templates, while still pruning old entries quickly. */
         static constexpr uint32_t TEMPLATE_RETENTION_BLOCKS = 2;
-        std::map<uint32_t, std::pair<uint64_t, uint512_t>> latestByChannel;
 
         debug::log(2, FUNCTION, "🧹 Cleaning stale templates...");
         debug::log(2, FUNCTION, "   Current height: ", nCurrentHeight);
@@ -4198,19 +4197,9 @@ namespace LLP
             }
         }
 
-        for(const auto& entry : mapBlocks)
-        {
-            const TemplateMetadata& meta = entry.second;
-            auto itLatest = latestByChannel.find(meta.nChannel);
-            if(itLatest == latestByChannel.end() || meta.nCreationTime > itLatest->second.first)
-                latestByChannel[meta.nChannel] = std::make_pair(meta.nCreationTime, entry.first);
-        }
-
         for(auto it = mapBlocks.begin(); it != mapBlocks.end(); )
         {
             const TemplateMetadata& meta = it->second;
-            const auto itLatest = latestByChannel.find(meta.nChannel);
-            const bool fKeepLatest = (itLatest != latestByChannel.end() && itLatest->second.second == it->first);
 
             /* Check staleness by CHANNEL HEIGHT, not unified height.
              * Template with nChannelHeight=N targets mining block N for that channel.
@@ -4262,11 +4251,6 @@ namespace LLP
                 it = mapBlocks.erase(it);  // shared_ptr ref-count drops; block freed if no other holders
                 ++nRemoved;
                 continue;
-            }
-
-            if(fKeepLatest)
-            {
-                debug::log(3, FUNCTION, "   Keeping latest fresh template for ", meta.GetChannelName());
             }
 
             ++it;

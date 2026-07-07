@@ -62,7 +62,7 @@ TEST_CASE("CleanupStaleTemplates uses channel height not unified height", "[clea
          *
          * FIXED CODE (current):
          *   Get current channel height for template's channel
-         *   if(abs(nCurrentChannelHeight - meta.nChannelHeight) >= TEMPLATE_RETENTION_BLOCKS)
+         *   if(TemplateChannelHeightDistance(nCurrentChannelHeight, meta.nChannelHeight) >= TEMPLATE_RETENTION_BLOCKS)
          *       fTooOldByBlocks = true;
          *
          * The fix ensures that a Prime template at channel_height=2165443 is removed
