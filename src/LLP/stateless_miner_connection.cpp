@@ -4249,7 +4249,7 @@ namespace LLP
                     debug::log(2, FUNCTION, "      Channel height: ", meta.nChannelHeight,
                               " (current: ", itCurrent->second, ", distance: ", nChannelDistance,
                               ", ", meta.GetChannelName(),
-                              ", keep < ", TEMPLATE_RETENTION_BLOCKS, " blocks old)");
+                              ", keep when distance < ", TEMPLATE_RETENTION_BLOCKS, ")");
                 }
                 else
                 {
