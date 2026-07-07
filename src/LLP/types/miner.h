@@ -412,7 +412,13 @@ namespace LLP
         std::mutex MUTEX;
 
 
-        /** The map to hold the list of blocks that are being mined. */
+        /** The map to hold the list of blocks that are being mined.
+         *
+         *  Owns the raw block pointers for the legacy miner lane.  Entries must
+         *  be deleted when removed from the map; clear_map(),
+         *  erase_block_template(), and CleanupStaleTemplates() are the ownership
+         *  release points.
+         */
         std::map<uint512_t, TAO::Ledger::Block *> mapBlocks;
 
 
