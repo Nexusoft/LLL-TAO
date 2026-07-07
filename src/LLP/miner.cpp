@@ -2176,7 +2176,6 @@ namespace LLP
     {
         uint32_t nRemoved = 0;
         const uint64_t nNow = runtime::unifiedtimestamp();
-        static constexpr uint32_t TEMPLATE_RETENTION_BLOCKS = 2;
 
         TAO::Ledger::BlockState stateCurrent = TAO::Ledger::ChainState::tStateBest.load();
         std::map<uint32_t, uint32_t> currentChannelHeights;
@@ -2195,7 +2194,13 @@ namespace LLP
             const auto itCreationTime = mapBlockCreationTimes.find(hashMerkleRoot);
             if(pBlock == nullptr)
             {
-                ++it;
+                debug::error(FUNCTION, "Removing null legacy-lane template entry ",
+                             hashMerkleRoot.SubString());
+                mapBlockHashes.erase(hashMerkleRoot);
+                mapBlockChannelHeights.erase(hashMerkleRoot);
+                mapBlockCreationTimes.erase(hashMerkleRoot);
+                it = mapBlocks.erase(it);
+                ++nRemoved;
                 continue;
             }
 
@@ -2212,7 +2217,7 @@ namespace LLP
                 (itCurrentHeight != currentChannelHeights.end()) &&
                 IsTemplateTooOldByChannelHeight(itCurrentHeight->second,
                                                 itTemplateHeight->second,
-                                                TEMPLATE_RETENTION_BLOCKS);
+                                                MINING_TEMPLATE_RETENTION_BLOCKS);
             if(!fTooOldByBlocks && !fTooOldByTime)
             {
                 ++it;

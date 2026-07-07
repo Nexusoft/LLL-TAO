@@ -224,6 +224,11 @@ namespace LLP
         }
     };
 
+
+    /** Shared mining-template retention window in channel-height blocks. */
+    static constexpr uint32_t MINING_TEMPLATE_RETENTION_BLOCKS = 2;
+
+
     /** TemplateChannelHeightDistance
      * 
      *  Calculate absolute channel-height distance without signed casts.

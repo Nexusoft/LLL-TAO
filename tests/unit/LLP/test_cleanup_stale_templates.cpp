@@ -76,7 +76,7 @@ TEST_CASE("CleanupStaleTemplates uses channel height not unified height", "[clea
          * - Templates should have been removed based on channel height advancement
          */
 
-        const uint32_t TEMPLATE_RETENTION_BLOCKS = 2;
+        const uint32_t TEMPLATE_RETENTION_BLOCKS = MINING_TEMPLATE_RETENTION_BLOCKS;
 
         /* Template metadata (from problem statement) */
         uint32_t nTemplateChannelHeight = 2333381;  // Template targets this channel height
@@ -122,7 +122,7 @@ TEST_CASE("CleanupStaleTemplates uses channel height not unified height", "[clea
 
 TEST_CASE("CleanupStaleTemplates channel height scenarios", "[cleanup][scenarios]")
 {
-    const uint32_t TEMPLATE_RETENTION_BLOCKS = 2;
+    const uint32_t TEMPLATE_RETENTION_BLOCKS = MINING_TEMPLATE_RETENTION_BLOCKS;
 
     SECTION("Template within retention window: should be kept")
     {
@@ -224,7 +224,7 @@ TEST_CASE("CleanupStaleTemplates channel height scenarios", "[cleanup][scenarios
 
 TEST_CASE("CleanupStaleTemplates cross-channel independence", "[cleanup][cross_channel]")
 {
-    const uint32_t TEMPLATE_RETENTION_BLOCKS = 2;
+    const uint32_t TEMPLATE_RETENTION_BLOCKS = MINING_TEMPLATE_RETENTION_BLOCKS;
 
     SECTION("Prime template unaffected when Hash channel advances")
     {
@@ -337,7 +337,7 @@ TEST_CASE("CleanupStaleTemplates problem statement scenario", "[cleanup][problem
          *  but CleanupStaleTemplates isn't cleaning them."
          */
 
-        const uint32_t TEMPLATE_RETENTION_BLOCKS = 2;
+        const uint32_t TEMPLATE_RETENTION_BLOCKS = MINING_TEMPLATE_RETENTION_BLOCKS;
 
         /* 6 stale templates at channel_height 2333381 */
         uint32_t nTemplateChannelHeight = 2333381;

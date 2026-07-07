@@ -4174,7 +4174,6 @@ namespace LLP
         uint64_t nNow = runtime::unifiedtimestamp();
         /* Keep a short warm window (2 blocks) to survive brief bursts/reorgs without
          * dropping to zero templates, while still pruning old entries quickly. */
-        static constexpr uint32_t TEMPLATE_RETENTION_BLOCKS = 2;
 
         debug::log(2, FUNCTION, "🧹 Cleaning stale templates...");
         debug::log(2, FUNCTION, "   Current height: ", nCurrentHeight);
@@ -4215,7 +4214,7 @@ namespace LLP
                  * current channel height can move backward below the template's assumed parent
                  * and would otherwise keep an abandoned-fork template indefinitely. */
                 if(IsTemplateTooOldByChannelHeight(nCurrentChannelHeight, meta.nChannelHeight,
-                                                   TEMPLATE_RETENTION_BLOCKS))
+                                                   MINING_TEMPLATE_RETENTION_BLOCKS))
                 {
                     fTooOldByBlocks = true;
                 }
@@ -4238,7 +4237,7 @@ namespace LLP
                     debug::log(2, FUNCTION, "      Channel height: ", meta.nChannelHeight,
                               " (current: ", itCurrent->second, ", distance: ", nChannelDistance,
                               ", ", meta.GetChannelName(),
-                              ", keep when distance < ", TEMPLATE_RETENTION_BLOCKS, ")");
+                              ", keep when distance < ", MINING_TEMPLATE_RETENTION_BLOCKS, ")");
                 }
                 else
                 {
