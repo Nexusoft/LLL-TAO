@@ -228,8 +228,9 @@ namespace LLP
      * 
      *  Calculate absolute channel-height distance without signed casts.
      */
-    inline uint32_t TemplateChannelHeightDistance(const uint32_t nCurrentChannelHeight,
-                                                 const uint32_t nTemplateChannelHeight)
+    inline uint32_t TemplateChannelHeightDistance(
+        const uint32_t nCurrentChannelHeight,
+        const uint32_t nTemplateChannelHeight)
     {
         return (nCurrentChannelHeight >= nTemplateChannelHeight)
             ? (nCurrentChannelHeight - nTemplateChannelHeight)
@@ -241,9 +242,10 @@ namespace LLP
      *
      *  Symmetric channel-height staleness check for mining templates.
      */
-    inline bool IsTemplateTooOldByChannelHeight(const uint32_t nCurrentChannelHeight,
-                                               const uint32_t nTemplateChannelHeight,
-                                               const uint32_t nRetentionBlocks)
+    inline bool IsTemplateTooOldByChannelHeight(
+        const uint32_t nCurrentChannelHeight,
+        const uint32_t nTemplateChannelHeight,
+        const uint32_t nRetentionBlocks)
     {
         return TemplateChannelHeightDistance(nCurrentChannelHeight, nTemplateChannelHeight) >=
                nRetentionBlocks;
