@@ -3849,18 +3849,20 @@ namespace LLP
                 return false;
             }
 
-            /* Channel-height staleness: check if the blockchain has advanced past
-             * the channel height this template was mining for. */
+            /* Channel-height staleness: use the same symmetric distance check
+             * as CleanupStaleTemplates so submit validation agrees after reorgs. */
             TAO::Ledger::BlockState stateCurrent = TAO::Ledger::ChainState::tStateBest.load();
             TAO::Ledger::BlockState stateChannel = stateCurrent;
             if(TAO::Ledger::GetLastState(stateChannel, nTemplateChannel))
             {
-                if(stateChannel.nChannelHeight >= nTemplateChannelHeight)
+                if(IsTemplateTooOldByChannelHeight(stateChannel.nChannelHeight,
+                                                  nTemplateChannelHeight,
+                                                  MINING_TEMPLATE_RETENTION_BLOCKS))
                 {
                     debug::error(FUNCTION, "❌ Template is STALE (channel height)");
                     debug::error(FUNCTION, "   Template channel height: ", nTemplateChannelHeight);
                     debug::error(FUNCTION, "   Current channel height: ", stateChannel.nChannelHeight);
-                    debug::error(FUNCTION, "   Reason: Channel height changed");
+                    debug::error(FUNCTION, "   Reason: Channel height outside retention window");
                     return false;
                 }
             }
@@ -4174,8 +4176,6 @@ namespace LLP
         uint64_t nNow = runtime::unifiedtimestamp();
         /* Keep a short warm window (2 blocks) to survive brief bursts/reorgs without
          * dropping to zero templates, while still pruning old entries quickly. */
-        static constexpr uint32_t TEMPLATE_RETENTION_BLOCKS = 2;
-        std::map<uint32_t, std::pair<uint64_t, uint512_t>> latestByChannel;
 
         debug::log(2, FUNCTION, "🧹 Cleaning stale templates...");
         debug::log(2, FUNCTION, "   Current height: ", nCurrentHeight);
@@ -4198,42 +4198,25 @@ namespace LLP
             }
         }
 
-        for(const auto& entry : mapBlocks)
-        {
-            const TemplateMetadata& meta = entry.second;
-            auto itLatest = latestByChannel.find(meta.nChannel);
-            if(itLatest == latestByChannel.end() || meta.nCreationTime > itLatest->second.first)
-                latestByChannel[meta.nChannel] = std::make_pair(meta.nCreationTime, entry.first);
-        }
-
         for(auto it = mapBlocks.begin(); it != mapBlocks.end(); )
         {
             const TemplateMetadata& meta = it->second;
-            const auto itLatest = latestByChannel.find(meta.nChannel);
-            const bool fKeepLatest = (itLatest != latestByChannel.end() && itLatest->second.second == it->first);
-
-            /* Keep at least one hot template per channel to avoid full cold regeneration bursts. */
-            if(fKeepLatest)
-            {
-                ++it;
-                continue;
-            }
 
             /* Check staleness by CHANNEL HEIGHT, not unified height.
              * Template with nChannelHeight=N targets mining block N for that channel.
-             * If blockchain's channel is now at height >= N, the template is stale.
-             * Keep templates within TEMPLATE_RETENTION_BLOCKS of the current channel height. */
+             * If the current channel tip has moved too far away from that target in either
+             * direction, the template was built against an unreachable chain context. */
             bool fTooOldByBlocks = false;
             auto itCurrentHeight = currentChannelHeights.find(meta.nChannel);
             if(itCurrentHeight != currentChannelHeights.end())
             {
                 uint32_t nCurrentChannelHeight = itCurrentHeight->second;
-                /* Template targets nChannelHeight (next block in channel).
-                 * If current channel is at nCurrentChannelHeight, and template targets
-                 * nChannelHeight, template is stale if:
-                 * nCurrentChannelHeight >= nChannelHeight + TEMPLATE_RETENTION_BLOCKS */
-                if(nCurrentChannelHeight >= meta.nChannelHeight &&
-                   (nCurrentChannelHeight - meta.nChannelHeight) >= TEMPLATE_RETENTION_BLOCKS)
+                /* Template targets nChannelHeight (next block in channel).  The original
+                 * one-way comparison only caught forward advancement; after a deep reorg the
+                 * current channel height can move backward below the template's assumed parent
+                 * and would otherwise keep an abandoned-fork template indefinitely. */
+                if(IsTemplateTooOldByChannelHeight(nCurrentChannelHeight, meta.nChannelHeight,
+                                                   MINING_TEMPLATE_RETENTION_BLOCKS))
                 {
                     fTooOldByBlocks = true;
                 }
@@ -4250,9 +4233,13 @@ namespace LLP
                 auto itCurrent = currentChannelHeights.find(meta.nChannel);
                 if(itCurrent != currentChannelHeights.end())
                 {
+                    const uint32_t nChannelDistance =
+                        TemplateChannelHeightDistance(itCurrent->second, meta.nChannelHeight);
+
                     debug::log(2, FUNCTION, "      Channel height: ", meta.nChannelHeight,
-                              " (current: ", itCurrent->second, ", ", meta.GetChannelName(),
-                              ", keep <= ", TEMPLATE_RETENTION_BLOCKS, " blocks old)");
+                              " (current: ", itCurrent->second, ", distance: ", nChannelDistance,
+                              ", ", meta.GetChannelName(),
+                              ", keep when distance < ", MINING_TEMPLATE_RETENTION_BLOCKS, ")");
                 }
                 else
                 {

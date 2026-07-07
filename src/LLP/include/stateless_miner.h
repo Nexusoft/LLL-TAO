@@ -224,8 +224,50 @@ namespace LLP
         }
     };
 
-    /** TemplateMetadata
+
+    /** Shared mining-template retention window in channel-height blocks. */
+    static constexpr uint32_t MINING_TEMPLATE_RETENTION_BLOCKS = 2;
+
+
+    /** TemplateChannelHeightDistance
      * 
+     *  Calculate absolute channel-height distance without signed casts.
+     *
+     *  @param nCurrentChannelHeight Current height of the mining channel.
+     *  @param nTemplateChannelHeight Target height from the template.
+     *  @return Absolute difference between the two heights.
+     */
+    inline uint32_t TemplateChannelHeightDistance(
+        const uint32_t nCurrentChannelHeight,
+        const uint32_t nTemplateChannelHeight)
+    {
+        return (nCurrentChannelHeight >= nTemplateChannelHeight)
+            ? (nCurrentChannelHeight - nTemplateChannelHeight)
+            : (nTemplateChannelHeight - nCurrentChannelHeight);
+    }
+
+
+    /** IsTemplateTooOldByChannelHeight
+     *
+     *  Symmetric channel-height staleness check for mining templates.
+     *
+     *  @param nCurrentChannelHeight Current height of the mining channel.
+     *  @param nTemplateChannelHeight Target height from the template.
+     *  @param nRetentionBlocks Maximum allowed distance before marking stale.
+     *  @return true if template is too old/stale, false otherwise.
+     */
+    inline bool IsTemplateTooOldByChannelHeight(
+        const uint32_t nCurrentChannelHeight,
+        const uint32_t nTemplateChannelHeight,
+        const uint32_t nRetentionBlocks)
+    {
+        return TemplateChannelHeightDistance(nCurrentChannelHeight, nTemplateChannelHeight) >=
+               nRetentionBlocks;
+    }
+
+
+    /** TemplateMetadata
+     *
      *  Tracks metadata about mining templates for enhanced multi-channel staleness detection.
      *  
      *  CRITICAL CONTEXT - THE TEMPLATE STALENESS PROBLEM:

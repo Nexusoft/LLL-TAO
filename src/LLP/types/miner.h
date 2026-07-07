@@ -412,7 +412,13 @@ namespace LLP
         std::mutex MUTEX;
 
 
-        /** The map to hold the list of blocks that are being mined. */
+        /** The map to hold the list of blocks that are being mined.
+         *
+         *  Owns the raw block pointers for the legacy miner lane.  Entries must
+         *  be deleted when removed from the map; clear_map(),
+         *  erase_block_template(), and CleanupStaleTemplates() are the ownership
+         *  release points.
+         */
         std::map<uint512_t, TAO::Ledger::Block *> mapBlocks;
 
 
@@ -475,6 +481,23 @@ namespace LLP
          *  together with their mapBlocks counterparts.
          */
         std::map<uint512_t, uint1024_t> mapBlockHashes;
+
+
+        /** Parallel map: block merkle root → target channel height at template creation.
+         *
+         *  Mirrors the stateless miner lane's TemplateMetadata::nChannelHeight so
+         *  legacy-lane templates can be pruned after deep reorgs where the active
+         *  channel tip moves too far in either direction.
+         */
+        std::map<uint512_t, uint32_t> mapBlockChannelHeights;
+
+
+        /** Parallel map: block merkle root → creation time for age-based cleanup. */
+        std::map<uint512_t, uint64_t> mapBlockCreationTimes;
+
+
+        /** Last wall-clock second when same-height cleanup scanned mapBlocks. */
+        uint64_t m_nLastTemplateCleanupTime{0};
 
 
         /** The current best block. **/
@@ -949,6 +972,16 @@ namespace LLP
         void clear_map();
 
 
+        /** CleanupStaleTemplates
+         *
+         *  Remove cached templates whose channel-height target is outside the
+         *  retention window or whose age exceeds the template lifetime.
+         *  Caller must hold MUTEX because this deletes raw mapBlocks pointers.
+         *
+         **/
+        uint32_t CleanupStaleTemplates();
+
+
         /** find_block
          *
          *  Determines if the block exists.
@@ -1164,6 +1197,58 @@ namespace LLP
         void SetHandshakeInProgressForTests(bool fInProgress)
         {
             SetHandshakeInProgress(fInProgress);
+        }
+
+        uint32_t CleanupStaleTemplatesForTests()
+        {
+            std::unique_lock<std::mutex> lk(MUTEX);
+            return CleanupStaleTemplates();
+        }
+
+        std::size_t TemplateBlockCountForTests()
+        {
+            std::unique_lock<std::mutex> lk(MUTEX);
+            return mapBlocks.size();
+        }
+
+        std::size_t TemplateHashCountForTests()
+        {
+            std::unique_lock<std::mutex> lk(MUTEX);
+            return mapBlockHashes.size();
+        }
+
+        std::size_t TemplateChannelHeightCountForTests()
+        {
+            std::unique_lock<std::mutex> lk(MUTEX);
+            return mapBlockChannelHeights.size();
+        }
+
+        std::size_t TemplateCreationTimeCountForTests()
+        {
+            std::unique_lock<std::mutex> lk(MUTEX);
+            return mapBlockCreationTimes.size();
+        }
+
+        bool GetTemplateChannelHeightForTests(const uint512_t& hashMerkleRoot, uint32_t& nChannelHeight)
+        {
+            std::unique_lock<std::mutex> lk(MUTEX);
+            const auto it = mapBlockChannelHeights.find(hashMerkleRoot);
+            if(it == mapBlockChannelHeights.end())
+                return false;
+
+            nChannelHeight = it->second;
+            return true;
+        }
+
+        bool GetTemplateCreationTimeForTests(const uint512_t& hashMerkleRoot, uint64_t& nCreationTime)
+        {
+            std::unique_lock<std::mutex> lk(MUTEX);
+            const auto it = mapBlockCreationTimes.find(hashMerkleRoot);
+            if(it == mapBlockCreationTimes.end())
+                return false;
+
+            nCreationTime = it->second;
+            return true;
         }
 #endif
 
