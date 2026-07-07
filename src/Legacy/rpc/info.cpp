@@ -320,7 +320,7 @@ namespace Legacy
             throw TAO::API::Exception(-5, "genesis parameter must be a valid hex string");
 
         if(strGenesis.size() != 64)
-            throw TAO::API::Exception(-5, "genesis hash must be 64 hex characters");
+            throw TAO::API::Exception(-8, "genesis hash must be 64 hex characters");
 
         uint256_t hashGenesis;
         hashGenesis.SetHex(strGenesis);
