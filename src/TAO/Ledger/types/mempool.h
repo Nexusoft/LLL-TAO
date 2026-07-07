@@ -109,6 +109,57 @@ namespace TAO
         static const uint32_t MAX_AUTO_FORK_RECOVERY_DEPTH = 1440;
 
 
+        /** [C1] Read-only result of computing how far the best chain has
+         *  diverged from a genesis's on-disk expected predecessor
+         *  transaction. Populated by Mempool::ComputeForkDivergence(), which
+         *  performs no rollback and has no side effects (no cooldown, no
+         *  counter mutation), so it is safe to call at any time -- including
+         *  from a diagnostic RPC -- to answer "how deep would an
+         *  -revertblocks=N need to be right now for this genesis?" without
+         *  guessing. **/
+        struct ForkDivergenceInfo
+        {
+            /** True if disk's committed hashLast for the genesis already
+             *  matches hashPrevTx, i.e. there is no divergence to report. **/
+            bool fResolved = false;
+
+            /** True if the block hosting hashPrevTx could be located on disk. **/
+            bool fAncestorFound = false;
+
+            /** True if that ancestor block is part of our current best chain. **/
+            bool fAncestorOnMainChain = false;
+
+            /** True if the computed depth exceeds MAX_AUTO_FORK_RECOVERY_DEPTH,
+             *  i.e. AttemptForkRecovery() would refuse to auto-roll-back even if
+             *  -autoforkrecovery were enabled. **/
+            bool fExceedsCap = false;
+
+            /** Disk-committed last transaction hash for the genesis. **/
+            uint512_t hashOurLast = 0;
+
+            /** The predecessor transaction hash the conflicting/canonical
+             *  transaction expects (input to the computation). **/
+            uint512_t hashPrevTx = 0;
+
+            /** Hash of the block that committed hashPrevTx, if found. **/
+            uint1024_t hashAncestorBlock = 0;
+
+            /** Height of the ancestor block, if found. **/
+            uint32_t nAncestorHeight = 0;
+
+            /** Current best chain height at the time of computation. **/
+            uint32_t nBestHeight = 0;
+
+            /** Number of blocks a rollback to the ancestor would disconnect.
+             *  Only meaningful when fAncestorFound && fAncestorOnMainChain. **/
+            uint32_t nDepth = 0;
+
+            /** Human-readable reason computation could not fully complete
+             *  (empty if fResolved or a valid depth/ancestor was computed). **/
+            std::string strError;
+        };
+
+
         /** Mempool
          *
          *  The memory pool class where transactions are stored until they are validated
@@ -453,6 +504,46 @@ namespace TAO
              *
              **/
             bool AttemptForkRecovery(const uint256_t& hashGenesis, const uint512_t& hashPrevTx);
+
+
+            /** ComputeForkDivergence
+             *
+             *  [C1] Read-only diagnostic: computes how far the best chain has
+             *  diverged from a genesis's on-disk expected predecessor
+             *  transaction, without performing any rollback and without any
+             *  side effects (no cooldown timestamps or miss counters are
+             *  touched). Shares the same ancestor-lookup logic
+             *  AttemptForkRecovery() uses to decide whether a rollback would be
+             *  performed and how deep it would be, so operators (or a
+             *  diagnostic RPC) can answer "how deep would -revertblocks=N need
+             *  to be right now?" without guessing.
+             *
+             *  @param[in] hashGenesis The genesis-id of the sigchain to check.
+             *  @param[in] hashPrevTx The hashPrevTx the conflicting transaction
+             *             expects as its predecessor.
+             *
+             *  @return populated ForkDivergenceInfo describing the divergence.
+             *
+             **/
+            ForkDivergenceInfo ComputeForkDivergence(const uint256_t& hashGenesis, const uint512_t& hashPrevTx);
+
+
+            /** ComputeForkDivergence
+             *
+             *  [C1] Overload that locates the earliest currently-conflicted
+             *  transaction for hashGenesis in mapConflicts itself (rather than
+             *  requiring the caller to already know hashPrevTx), for use by
+             *  diagnostic callers such as the checkforkrecovery RPC that only
+             *  have the genesis-id to go on.
+             *
+             *  @param[in] hashGenesis The genesis-id of the sigchain to check.
+             *
+             *  @return populated ForkDivergenceInfo describing the divergence;
+             *          strError is set if no conflicted transaction is
+             *          currently tracked for this genesis.
+             *
+             **/
+            ForkDivergenceInfo ComputeForkDivergence(const uint256_t& hashGenesis);
 
         };
 

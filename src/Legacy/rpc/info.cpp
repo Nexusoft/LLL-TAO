@@ -294,4 +294,53 @@ namespace Legacy
 
         return obj;
     }
+
+
+    /* checkforkrecovery <genesis>
+    [C1] Read-only diagnostic: reports how far the best chain has diverged
+    from a genesis's currently-conflicted sigchain transaction(s), without
+    performing any rollback. Answers "how deep would -revertblocks=N need
+    to be right now?" so an operator doesn't have to guess. */
+    encoding::json RPC::CheckForkRecovery(const encoding::json& params, const bool fHelp)
+    {
+        if(fHelp || params.size() != 1)
+            return std::string(
+                "checkforkrecovery <genesis>"
+                " - Reports the computed chain divergence depth for a genesis with"
+                " a currently-conflicted sigchain transaction, without performing"
+                " any rollback. Use this to determine the -revertblocks=N depth"
+                " needed to manually recover a stuck sigchain conflict, or to see"
+                " whether -autoforkrecovery would act (and how deep) once its"
+                " threshold is reached.");
+
+        uint256_t hashGenesis;
+        hashGenesis.SetHex(params[0].get<std::string>());
+
+        const TAO::Ledger::ForkDivergenceInfo tInfo = TAO::Ledger::mempool.ComputeForkDivergence(hashGenesis);
+
+        encoding::json obj;
+        obj["genesis"] = hashGenesis.ToString();
+        obj["resolved"] = tInfo.fResolved;
+        obj["ancestorfound"] = tInfo.fAncestorFound;
+        obj["ancestoronmainchain"] = tInfo.fAncestorOnMainChain;
+        obj["exceedsautorecoverycap"] = tInfo.fExceedsCap;
+        obj["maxautorecoverydepth"] = (uint32_t)TAO::Ledger::MAX_AUTO_FORK_RECOVERY_DEPTH;
+        obj["ourlasttx"] = tInfo.hashOurLast.ToString();
+        obj["expectedprevtx"] = tInfo.hashPrevTx.ToString();
+        obj["bestheight"] = tInfo.nBestHeight;
+
+        if(tInfo.fAncestorFound)
+        {
+            obj["ancestorblock"] = tInfo.hashAncestorBlock.ToString();
+            obj["ancestorheight"] = tInfo.nAncestorHeight;
+        }
+
+        if(tInfo.fAncestorFound && tInfo.fAncestorOnMainChain)
+            obj["divergencedepth"] = tInfo.nDepth;
+
+        if(!tInfo.strError.empty())
+            obj["error"] = tInfo.strError;
+
+        return obj;
+    }
 }
