@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/state.h>
 
+#include <set>
 #include <string>
 
 #include <LLD/include/global.h>
@@ -986,6 +987,14 @@ namespace TAO
                         vResurrect.insert(vResurrect.end(), state.vtx.rbegin(), state.vtx.rend());
                 }
 
+                /* Track sigchains whose head resurrect transaction has already conflicted in this
+                 * batch. Mempool::Accept() rejects any transaction whose hashPrevTx is itself
+                 * conflicted, so once a genesis conflicts every remaining descendant of that
+                 * sigchain in vResurrect is guaranteed to conflict as well. Skipping them here
+                 * avoids hundreds of pointless mutex-holding disk reads and ERROR log spam during
+                 * a reorg. */
+                std::set<uint256_t> setConflictedGenesis;
+
                 /* Iterate forward through our transactions to resurrect in ascending order. */
                 for(auto proof = vResurrect.rbegin(); proof != vResurrect.rend(); ++proof)
                 {
@@ -1001,8 +1010,15 @@ namespace TAO
                         if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid())
                             continue;
 
-                        /* Add back into memory pool. */
-                        mempool.Accept(tx);
+                        /* Skip descendants of a sigchain that has already conflicted in this
+                         * resurrect batch, since they are guaranteed to conflict too. */
+                        if(setConflictedGenesis.count(tx.hashGenesis))
+                            continue;
+
+                        /* Add back into memory pool. Track the genesis if it conflicted so we can
+                         * short-circuit its remaining descendants above. */
+                        if(!mempool.Accept(tx) && mempool.Has(tx.GetHash()))
+                            setConflictedGenesis.insert(tx.hashGenesis);
 
                         /* Print transaction on verbose 3. */
                         if(config::nVerbose >= 3)
