@@ -477,6 +477,19 @@ namespace LLP
         std::map<uint512_t, uint1024_t> mapBlockHashes;
 
 
+        /** Parallel map: block merkle root → target channel height at template creation.
+         *
+         *  Mirrors the stateless miner lane's TemplateMetadata::nChannelHeight so
+         *  legacy-lane templates can be pruned after deep reorgs where the active
+         *  channel tip moves too far in either direction.
+         */
+        std::map<uint512_t, uint32_t> mapBlockChannelHeights;
+
+
+        /** Parallel map: block merkle root → creation time for age-based cleanup. */
+        std::map<uint512_t, uint64_t> mapBlockCreationTimes;
+
+
         /** The current best block. **/
         std::atomic<uint32_t> nBestHeight;
 
@@ -947,6 +960,15 @@ namespace LLP
          *
          **/
         void clear_map();
+
+
+        /** CleanupStaleTemplates
+         *
+         *  Remove cached templates whose channel-height target is outside the
+         *  retention window or whose age exceeds the template lifetime.
+         *
+         **/
+        uint32_t CleanupStaleTemplates();
 
 
         /** find_block

@@ -1997,6 +1997,8 @@ namespace LLP
         /* Return early if the height doesn't change. */
         if(nBestHeight == nChainStateHeight)
         {
+            CleanupStaleTemplates();
+
             /* Hash-based staleness check: detect same-height reorgs that nBestHeight misses.
              * mapBlockHashes stores hashBestChain at the moment each template was created.
              * If any stored snapshot differs from the current best, the chain has reorged. */
@@ -2062,6 +2064,8 @@ namespace LLP
 
         /* Clear the parallel hash-snapshot map. */
         mapBlockHashes.clear();
+        mapBlockChannelHeights.clear();
+        mapBlockCreationTimes.clear();
 
         /* Reset the coinbase transaction. */
         tCoinbaseTx.SetNull();
@@ -2125,6 +2129,11 @@ namespace LLP
 
         const uint512_t hashMerkleRoot = pBlock->hashMerkleRoot;
         const uint1024_t hashCurrentBest = TAO::Ledger::ChainState::hashBestChain.load();
+        uint32_t nTemplateChannelHeight = 0;
+
+        TAO::Ledger::BlockState stateChannel = TAO::Ledger::ChainState::tStateBest.load();
+        if(TAO::Ledger::GetLastState(stateChannel, pBlock->nChannel))
+            nTemplateChannelHeight = stateChannel.nChannelHeight + 1;
 
         auto itExisting = mapBlocks.find(hashMerkleRoot);
         if(itExisting != mapBlocks.end() && itExisting->second != pBlock)
@@ -2136,6 +2145,11 @@ namespace LLP
             mapBlocks[hashMerkleRoot] = pBlock;
 
         mapBlockHashes[hashMerkleRoot] = hashCurrentBest;
+        mapBlockCreationTimes[hashMerkleRoot] = runtime::unifiedtimestamp();
+        if(nTemplateChannelHeight != 0)
+            mapBlockChannelHeights[hashMerkleRoot] = nTemplateChannelHeight;
+        else
+            mapBlockChannelHeights.erase(hashMerkleRoot);
 
         return pBlock;
     }
@@ -2152,6 +2166,83 @@ namespace LLP
         }
 
         mapBlockHashes.erase(hashMerkleRoot);
+        mapBlockChannelHeights.erase(hashMerkleRoot);
+        mapBlockCreationTimes.erase(hashMerkleRoot);
+    }
+
+
+    /*  Remove cached legacy-lane templates that are stale by channel height or age. */
+    uint32_t Miner::CleanupStaleTemplates()
+    {
+        uint32_t nRemoved = 0;
+        const uint64_t nNow = runtime::unifiedtimestamp();
+        static constexpr uint32_t TEMPLATE_RETENTION_BLOCKS = 2;
+
+        TAO::Ledger::BlockState stateCurrent = TAO::Ledger::ChainState::tStateBest.load();
+        std::map<uint32_t, uint32_t> currentChannelHeights;
+        for(uint32_t nBlockChannel = 0; nBlockChannel <= 2; ++nBlockChannel)
+        {
+            TAO::Ledger::BlockState stateChannel = stateCurrent;
+            if(TAO::Ledger::GetLastState(stateChannel, nBlockChannel))
+                currentChannelHeights[nBlockChannel] = stateChannel.nChannelHeight;
+        }
+
+        for(auto it = mapBlocks.begin(); it != mapBlocks.end(); )
+        {
+            const uint512_t hashMerkleRoot = it->first;
+            TAO::Ledger::Block* pBlock = it->second;
+            const auto itTemplateHeight = mapBlockChannelHeights.find(hashMerkleRoot);
+            const auto itCreationTime = mapBlockCreationTimes.find(hashMerkleRoot);
+            if(pBlock == nullptr)
+            {
+                ++it;
+                continue;
+            }
+
+            const uint64_t nAge =
+                (itCreationTime != mapBlockCreationTimes.end() && nNow >= itCreationTime->second)
+                    ? (nNow - itCreationTime->second)
+                    : 0;
+            const bool fTooOldByTime =
+                (itCreationTime != mapBlockCreationTimes.end()) &&
+                (nAge > LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS);
+            const auto itCurrentHeight = currentChannelHeights.find(pBlock->nChannel);
+            const bool fTooOldByBlocks =
+                (itTemplateHeight != mapBlockChannelHeights.end()) &&
+                (itCurrentHeight != currentChannelHeights.end()) &&
+                IsTemplateTooOldByChannelHeight(itCurrentHeight->second,
+                                                itTemplateHeight->second,
+                                                TEMPLATE_RETENTION_BLOCKS);
+            if(!fTooOldByBlocks && !fTooOldByTime)
+            {
+                ++it;
+                continue;
+            }
+
+            const uint32_t nChannelDistance =
+                (itTemplateHeight != mapBlockChannelHeights.end() &&
+                 itCurrentHeight != currentChannelHeights.end())
+                    ? TemplateChannelHeightDistance(itCurrentHeight->second, itTemplateHeight->second)
+                    : 0;
+
+            debug::log(2, FUNCTION, "Removing stale legacy-lane template ",
+                       hashMerkleRoot.SubString(), " channel=", pBlock->nChannel,
+                       " target_channel_height=",
+                       (itTemplateHeight != mapBlockChannelHeights.end() ? itTemplateHeight->second : 0),
+                       " current_channel_height=",
+                       (itCurrentHeight != currentChannelHeights.end() ? itCurrentHeight->second : 0),
+                       " distance=", nChannelDistance,
+                       " age=", nAge);
+
+            delete pBlock;
+            mapBlockHashes.erase(hashMerkleRoot);
+            mapBlockChannelHeights.erase(hashMerkleRoot);
+            mapBlockCreationTimes.erase(hashMerkleRoot);
+            it = mapBlocks.erase(it);
+            ++nRemoved;
+        }
+
+        return nRemoved;
     }
 
 
@@ -3210,6 +3301,8 @@ namespace LLP
 
         {
             LOCK(MUTEX);
+
+            CleanupStaleTemplates();
 
             /* Make sure the block was created by this mining server, and copy the
              * cached template while protected by the connection lock.  All

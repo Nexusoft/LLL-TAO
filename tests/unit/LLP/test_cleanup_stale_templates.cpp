@@ -46,6 +46,7 @@ using namespace LLP;
  *  3. Template stale by age (should be removed)
  *  4. Cross-channel block doesn't trigger false cleanup (Prime template safe when Hash advances)
  *  5. Latest template per channel receives no special retention exemption and is removed when stale
+ *  6. Legacy Miner lane uses the same symmetric channel-height stale check
  **/
 
 
@@ -185,6 +186,22 @@ TEST_CASE("CleanupStaleTemplates channel height scenarios", "[cleanup][scenarios
 
         REQUIRE(nDiff == 265);
         REQUIRE(fTooOld == true);  // Backward movement beyond retention is stale
+    }
+
+    SECTION("Legacy Miner lane uses the same backward reorg distance")
+    {
+        const uint32_t nLegacyTemplateChannelHeight = 2333381;
+        const uint32_t nLegacyCurrentChannelHeight = 2333116;
+
+        const uint32_t nDiff =
+            TemplateChannelHeightDistance(nLegacyCurrentChannelHeight, nLegacyTemplateChannelHeight);
+        const bool fTooOld =
+            IsTemplateTooOldByChannelHeight(nLegacyCurrentChannelHeight,
+                                            nLegacyTemplateChannelHeight,
+                                            TEMPLATE_RETENTION_BLOCKS);
+
+        REQUIRE(nDiff == 265);
+        REQUIRE(fTooOld == true);
     }
 
     SECTION("Template at current channel height: should be kept")
