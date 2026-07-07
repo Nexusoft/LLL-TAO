@@ -264,15 +264,44 @@ namespace TAO::Ledger
                            " reward=", hashRewardAddress.SubString());
             }
 
-            bool success = CreateBlock(
-                *pCredentialsToUse,
-                strPIN,
-                nChannel,
-                *pBlock,
-                nExtraNonce,
-                nullptr,           // No coinbase recipients
-                hashRewardAddress  // Route reward events to miner's genesis
-            );
+            /* [Option D] The chain tip can advance while CreateBlock() is
+             * signing the producer (Falcon signing can take 1000+ ms), in
+             * which case CreateBlock() abandons the stale in-flight template
+             * and reports the race via pfTipRaceRetry rather than a real
+             * error. Previously this bubbled straight up to nullptr, and
+             * every caller (Miner, StatelessMinerConnection, the template
+             * prewarmer) simply gave up and waited for the next externally
+             * triggered poll/push -- under a fast-reorging tip this could
+             * livelock the miner out of ever publishing a fresh template.
+             * Retry immediately against the now-current tip instead, bounded
+             * so a persistently unstable tip still surfaces as a failure. */
+            static constexpr uint32_t MAX_TIP_RACE_RETRIES = 5;
+            bool success = false;
+            for(uint32_t nTipRaceAttempt = 0; nTipRaceAttempt <= MAX_TIP_RACE_RETRIES; ++nTipRaceAttempt)
+            {
+                bool fTipRaceRetry = false;
+                success = CreateBlock(
+                    *pCredentialsToUse,
+                    strPIN,
+                    nChannel,
+                    *pBlock,
+                    nExtraNonce,
+                    nullptr,           // No coinbase recipients
+                    hashRewardAddress, // Route reward events to miner's genesis
+                    &fTipRaceRetry
+                );
+
+                if(success || !fTipRaceRetry)
+                    break;
+
+                if(nTipRaceAttempt < MAX_TIP_RACE_RETRIES)
+                    debug::log(1, FUNCTION, "[TIP_RACE] tip advanced during build, retrying template"
+                               " (attempt ", nTipRaceAttempt + 1, "/", MAX_TIP_RACE_RETRIES,
+                               ") reward=", hashRewardAddress.SubString());
+                else
+                    debug::error(FUNCTION, "[TIP_RACE] tip kept advancing across ", MAX_TIP_RACE_RETRIES,
+                                 " retries; giving up for this request reward=", hashRewardAddress.SubString());
+            }
 
             if(pCredentialCache != nullptr && !pCredentialCache->PostUseCheck())
                 debug::log(2, FUNCTION, "Credential cache epoch drift detected post CreateBlock");

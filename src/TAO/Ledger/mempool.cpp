@@ -777,7 +777,7 @@ namespace TAO
 
                     if(nMisses >= GENESIS_CONFLICT_RECOVERY_THRESHOLD)
                     {
-                        if(config::GetBoolArg("-autoforkrecovery", false))
+                        if(config::GetBoolArg("-autoforkrecovery", true))
                         {
                             AttemptForkRecovery(hashGenesis, vtx[0].hashPrevTx);
 
@@ -790,15 +790,16 @@ namespace TAO
                         }
                         else
                         {
-                            /* [B2] -autoforkrecovery is disabled (the default), so no
-                             * rollback will be attempted automatically. Rather than
-                             * silently leaving the operator to notice a stuck
-                             * ORPHAN/CONFLICT loop and guess a -revertblocks depth,
-                             * surface a clear, actionable warning -- including the
-                             * exact computed divergence depth, reusing the same
-                             * read-only lookup AttemptForkRecovery() would use -- on
-                             * the same cooldown cadence a real attempt would use, so
-                             * this doesn't spam the log every Check() cycle. */
+                            /* [B2] -autoforkrecovery has been explicitly disabled by
+                             * the operator (default is now enabled), so no rollback
+                             * will be attempted automatically. Rather than silently
+                             * leaving the operator to notice a stuck ORPHAN/CONFLICT
+                             * loop and guess a -revertblocks depth, surface a clear,
+                             * actionable warning -- including the exact computed
+                             * divergence depth, reusing the same read-only lookup
+                             * AttemptForkRecovery() would use -- on the same cooldown
+                             * cadence a real attempt would use, so this doesn't spam
+                             * the log every Check() cycle. */
                             const uint64_t nNow = runtime::timestamp();
                             const auto itWarned = mapLastForkRecoveryAttempt.find(hashGenesis);
                             if(itWarned == mapLastForkRecoveryAttempt.end()
@@ -980,7 +981,7 @@ namespace TAO
         /* [Option B - EXPERIMENTAL] Attempt an automatic, bounded rollback of the
          * best chain to resolve a sigchain conflict that Check()'s normal disk
          * reconciliation pass cannot resolve on its own. Opt-in via
-         * -autoforkrecovery (default disabled). */
+         * -autoforkrecovery (default enabled; pass -autoforkrecovery=0 to opt out). */
         bool Mempool::AttemptForkRecovery(const uint256_t& hashGenesis, const uint512_t& hashPrevTx)
         {
             /* [B4] Enforce a cooldown regardless of outcome (including refused
