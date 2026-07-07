@@ -358,13 +358,25 @@ namespace LLP
                         const uint64_t nNowSweep = runtime::unifiedtimestamp();
                         uint64_t nLastSweep      = nLastConflictsSweep.load();
 
-                        /* Signed comparison guards against unsigned wrap-around if
-                         * the system clock ever moves backward (e.g. NTP
-                         * correction): a negative delta is treated as "due" rather
-                         * than wrapping to a huge positive value that would skip
-                         * the sweep indefinitely. */
+                        /* Compute the elapsed time as a signed delta rather than
+                         * comparing the raw uint64_t timestamps directly: if the
+                         * system clock ever moves backward (e.g. an NTP
+                         * correction), nNowSweep < nLastSweep and an unsigned
+                         * subtraction would wrap around to a huge positive value,
+                         * making the sweep appear "not due" indefinitely instead
+                         * of firing correctly. */
                         const int64_t nDeltaSweep = static_cast<int64_t>(nNowSweep) - static_cast<int64_t>(nLastSweep);
-                        if(nDeltaSweep < 0 || static_cast<uint64_t>(nDeltaSweep) >= TAO::Ledger::CONFLICTS_SWEEP_INTERVAL_SECONDS)
+
+                        /* fClockWentBackward: the clock moved backward since the
+                         * last sweep, so treat the sweep as immediately due
+                         * rather than waiting out a bogus (huge) unsigned delta.
+                         * fIntervalElapsed: the normal case, enough real time has
+                         * passed since the last sweep. */
+                        const bool fClockWentBackward = (nDeltaSweep < 0);
+                        const bool fIntervalElapsed    = (nDeltaSweep >= 0
+                            && static_cast<uint64_t>(nDeltaSweep) >= TAO::Ledger::CONFLICTS_SWEEP_INTERVAL_SECONDS);
+
+                        if(fClockWentBackward || fIntervalElapsed)
                         {
                             if(nLastConflictsSweep.compare_exchange_strong(nLastSweep, nNowSweep))
                                 TAO::Ledger::mempool.Check();

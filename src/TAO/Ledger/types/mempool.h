@@ -50,7 +50,13 @@ namespace TAO
          *  guard already used for mapLastMissing/mapCheckRejects: clearing all
          *  entries at once is O(n) but avoids the complexity of LRU eviction,
          *  and any conflict wiped here that is still relevant will simply be
-         *  re-added the next time the transaction is relayed/requested. **/
+         *  re-added the next time the transaction is relayed/requested.
+         *  10000 matches the existing MAX_MISSING_MAP_ENTRIES threshold
+         *  used for mapLastMissing (see TAO/Ledger/include/process.h):
+         *  it is chosen for consistency with that already-established
+         *  cap rather than a distinct measurement, since both maps hold
+         *  comparably small, transient, hash-keyed entries and are
+         *  bounded for the same "cheap DoS guard" reason. **/
         static const uint32_t MAX_CONFLICTS_MAP_ENTRIES = 10000;
 
 
