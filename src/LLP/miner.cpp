@@ -2131,9 +2131,9 @@ namespace LLP
         const uint1024_t hashCurrentBest = TAO::Ledger::ChainState::hashBestChain.load();
         uint32_t nTemplateChannelHeight = 0;
 
-        TAO::Ledger::BlockState stateChannel = TAO::Ledger::ChainState::tStateBest.load();
-        if(TAO::Ledger::GetLastState(stateChannel, pBlock->nChannel))
-            nTemplateChannelHeight = stateChannel.nChannelHeight + 1;
+        TAO::Ledger::BlockState stateForChannel = TAO::Ledger::ChainState::tStateBest.load();
+        if(TAO::Ledger::GetLastState(stateForChannel, pBlock->nChannel))
+            nTemplateChannelHeight = stateForChannel.nChannelHeight + 1;
 
         auto itExisting = mapBlocks.find(hashMerkleRoot);
         if(itExisting != mapBlocks.end() && itExisting->second != pBlock)
@@ -2149,7 +2149,11 @@ namespace LLP
         if(nTemplateChannelHeight != 0)
             mapBlockChannelHeights[hashMerkleRoot] = nTemplateChannelHeight;
         else
+        {
+            /* No channel state available: omit height metadata so cleanup falls
+             * back to age-only eviction for this template. */
             mapBlockChannelHeights.erase(hashMerkleRoot);
+        }
 
         return pBlock;
     }
@@ -2179,11 +2183,11 @@ namespace LLP
 
         TAO::Ledger::BlockState stateCurrent = TAO::Ledger::ChainState::tStateBest.load();
         std::map<uint32_t, uint32_t> currentChannelHeights;
-        for(uint32_t nBlockChannel = 0; nBlockChannel <= 2; ++nBlockChannel)
+        for(uint32_t nChannel = 0; nChannel <= 2; ++nChannel)
         {
-            TAO::Ledger::BlockState stateChannel = stateCurrent;
-            if(TAO::Ledger::GetLastState(stateChannel, nBlockChannel))
-                currentChannelHeights[nBlockChannel] = stateChannel.nChannelHeight;
+            TAO::Ledger::BlockState stateForChannel = stateCurrent;
+            if(TAO::Ledger::GetLastState(stateForChannel, nChannel))
+                currentChannelHeights[nChannel] = stateForChannel.nChannelHeight;
         }
 
         for(auto it = mapBlocks.begin(); it != mapBlocks.end(); )
@@ -2204,10 +2208,15 @@ namespace LLP
                 continue;
             }
 
-            const uint64_t nAge =
-                (itCreationTime != mapBlockCreationTimes.end() && nNow >= itCreationTime->second)
-                    ? (nNow - itCreationTime->second)
-                    : 0;
+            uint64_t nAge = 0;
+            if(itCreationTime != mapBlockCreationTimes.end())
+            {
+                if(nNow >= itCreationTime->second)
+                    nAge = nNow - itCreationTime->second;
+                else
+                    debug::warning(FUNCTION, "Legacy-lane template creation time is in the future ",
+                                   hashMerkleRoot.SubString());
+            }
             const bool fTooOldByTime =
                 (itCreationTime != mapBlockCreationTimes.end()) &&
                 (nAge > LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS);
