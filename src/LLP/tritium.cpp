@@ -37,7 +37,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/process.h>
-#include <TAO/Ledger/include/stagepool.h>
 
 #include <TAO/Ledger/types/client.h>
 #include <TAO/Ledger/types/locator.h>
@@ -3007,22 +3006,6 @@ namespace LLP
                                 /* Check for obsolete transaction version and ban accordingly. */
                                 if(!TAO::Ledger::TransactionVersionActive(tx.nTimestamp, tx.nVersion))
                                     return debug::drop(NODE, "invalid transaction version ", tx.nVersion, ", dropping node");
-
-                                /* [Option A] If this tx is wanted by an incomplete
-                                 * block but was rejected by tip-relative mempool
-                                 * policy (e.g. "coinbase is immature" while our tip
-                                 * lags the block's height), stage it for
-                                 * block-context validation so block completion
-                                 * isn't deadlocked by mempool policy.  tx.Check()
-                                 * enforces signature/format validity before
-                                 * staging; full contextual validation happens at
-                                 * block connect. */
-                                if(TAO::Ledger::StagePool::Wanted(hashTx) && tx.Check())
-                                {
-                                    if(TAO::Ledger::StagePool::Stage(tx))
-                                        debug::notice(NODE, "staged tx ", hashTx.SubString(),
-                                            " for block-context validation (mempool policy rejected it)");
-                                }
 
                                 ++nConsecutiveFails;
                             }

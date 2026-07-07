@@ -88,7 +88,6 @@ ________________________________________________________________________________
 #include <algorithm>
 #include <iomanip>
 #include <thread>
-#include <atomic>
 #include <cassert>
 
 namespace LLP
@@ -4936,29 +4935,6 @@ namespace LLP
      * instead of waiting out its own poll/recovery timers. */
     void StatelessMinerConnection::ForceFreshTemplatePush(const uint512_t& hashMerkleStale)
     {
-        /* [Option D] Stall-aware backoff: when the chain tip hasn't moved for
-         * TIP_STALL_THRESHOLD_SECONDS (e.g. a wedged incomplete block), a fresh
-         * template cannot become valid either, so pushing one on every stale
-         * rejection just hammers the miner in a doom loop.  Throttle pushes to
-         * one per STALL_TEMPLATE_PUSH_INTERVAL_SECONDS and surface an explicit
-         * stall status instead. */
-        const uint64_t nStallSeconds = TAO::Ledger::ChainState::SecondsSinceTipChange();
-        if(nStallSeconds > TAO::Ledger::ChainState::TIP_STALL_THRESHOLD_SECONDS)
-        {
-            static std::atomic<uint64_t> nLastStallPush(0);
-            const uint64_t nNow = runtime::timestamp();
-            if(nNow < nLastStallPush.load() + TAO::Ledger::ChainState::STALL_TEMPLATE_PUSH_INTERVAL_SECONDS)
-            {
-                debug::log(2, FUNCTION, "chain stalled at height ", TAO::Ledger::ChainState::nBestHeight.load(),
-                    " for ", nStallSeconds, "s — throttling fresh-template push");
-                return;
-            }
-            nLastStallPush.store(nNow);
-
-            debug::notice(FUNCTION, "chain STALLED at height ", TAO::Ledger::ChainState::nBestHeight.load(),
-                " for ", nStallSeconds, "s — pushing templates at reduced cadence until the tip advances");
-        }
-
         {
             LOCK(MUTEX);
             if(hashMerkleStale != 0)
