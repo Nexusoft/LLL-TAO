@@ -39,7 +39,7 @@ namespace TAO
     namespace Ledger
     {
 
-        /** [Option 1] Maximum number of unique conflicted transaction hashes
+        /** Maximum number of unique conflicted transaction hashes
          *  tracked in Mempool::mapConflicts before the entire map is cleared to
          *  bound memory use. Under normal operation mapConflicts is pruned by
          *  Mempool::Check()'s reconciliation pass (see CONFLICTS_SWEEP_INTERVAL_SECONDS
