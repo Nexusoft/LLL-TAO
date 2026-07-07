@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/stagepool.h>
 
 #include <TAO/Ledger/types/locator.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -49,6 +50,11 @@ namespace TAO
          * the entry so the genuine "transaction simply not seen yet" recovery
          * path is unaffected. */
         std::map<uint1024_t, uint64_t> mapLastMissing;
+
+
+        /* [Option C] Timestamp of the most recent missing-transaction retry per
+         * block hash. See declaration comment in include/process.h. */
+        std::map<uint1024_t, uint64_t> mapLastMissingStamp;
 
 
         /* [Option C] Track consecutive Check()-rejections keyed by the exact
@@ -88,6 +94,81 @@ namespace TAO
 
         /* Processes a block incoming over the network. */
         static uint64_t nProcessedBlocks = 0;
+
+
+        /* [Option C] Increment (or start, or decay-reset) the missing-transaction
+         * retry counter for the given block hash, stamping the attempt time. */
+        uint64_t UpdateMissingRetry(const uint1024_t& hashBlock)
+        {
+            const uint64_t nNow = runtime::timestamp();
+
+            if(mapLastMissing.count(hashBlock))
+            {
+                /* Decay: if the last attempt is older than the cool-down window,
+                 * reset the counter so recovery can resume instead of the block
+                 * being silently dead-ended forever. */
+                if(mapLastMissingStamp.count(hashBlock)
+                && nNow > mapLastMissingStamp[hashBlock] + MISSING_RETRY_DECAY_SECONDS)
+                {
+                    debug::notice(FUNCTION, "retry counter for block ", hashBlock.SubString(),
+                        " decayed after ", MISSING_RETRY_DECAY_SECONDS, "s; resuming missing-transaction requests");
+
+                    mapLastMissing[hashBlock] = 1;
+                }
+                else
+                    mapLastMissing[hashBlock]++;
+            }
+            else
+            {
+                /* Bound the map size before inserting a new entry.  Clearing the
+                 * whole map is an intentional cheap DoS guard; legitimate
+                 * incomplete blocks will have resolved long before 10 000 unique
+                 * hashes accumulate. */
+                if(mapLastMissing.size() >= MAX_MISSING_MAP_ENTRIES)
+                {
+                    mapLastMissing.clear();
+                    mapLastMissingStamp.clear();
+                }
+
+                mapLastMissing[hashBlock] = 1;
+            }
+
+            /* Stamp this attempt. */
+            mapLastMissingStamp[hashBlock] = nNow;
+
+            return mapLastMissing[hashBlock];
+        }
+
+
+        /* [Option C] Check whether retries are exhausted and still cooling down. */
+        bool MissingRetryExhausted(const uint1024_t& hashBlock)
+        {
+            const auto it = mapLastMissing.find(hashBlock);
+            if(it == mapLastMissing.end())
+                return false;
+
+            /* Not exhausted yet. */
+            if(it->second <= LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES)
+                return false;
+
+            /* Exhausted, but past the cool-down: allow recovery to resume. */
+            const auto itStamp = mapLastMissingStamp.find(hashBlock);
+            if(itStamp == mapLastMissingStamp.end()
+            || runtime::timestamp() > itStamp->second + MISSING_RETRY_DECAY_SECONDS)
+                return false;
+
+            return true;
+        }
+
+
+        /* [Option C] Remove all retry bookkeeping for the given block hash. */
+        void EraseMissingRetry(const uint1024_t& hashBlock)
+        {
+            mapLastMissing.erase(hashBlock);
+            mapLastMissingStamp.erase(hashBlock);
+        }
+
+
         void Process(const TAO::Ledger::Block& block, uint8_t &nStatus, LLP::TritiumNode* pnode, bool fSkipCheck)
         {
             LOCK(PROCESSING_MUTEX);
@@ -186,6 +267,25 @@ namespace TAO
                     return;
                 }
 
+                /* [Option C] Short-circuit repeated relays of a block whose
+                 * missing-transaction retries are exhausted and still inside the
+                 * decay cool-down.  Without this, every relay of the stuck block
+                 * re-runs the full (expensive) block.Check() just to rediscover
+                 * the same missing transactions, starving DataThreads (the
+                 * "time budget exceeded" log spam).  Once the cool-down expires,
+                 * processing (and re-requesting) resumes automatically. */
+                if(!fSkipCheck && MissingRetryExhausted(hashBlock))
+                {
+                    nStatus |= PROCESS::INCOMPLETE;
+
+                    /* hashMissing stays 0: the LLP layer must not re-request
+                     * until the cool-down has expired. */
+                    block.hashMissing = 0;
+                    block.vMissing.clear();
+
+                    return;
+                }
+
                 /* Check if the block is valid. Skip when already validated by ValidateMinedBlock(). */
                 if(!fSkipCheck && !block.Check())
                 {
@@ -272,34 +372,45 @@ namespace TAO
                     /* Set the missing block. */
                     block.hashMissing = hashBlock;
 
-                    /* Track how many times we have re-requested this block's
-                     * missing transactions so a permanently unresolvable tx can't
-                     * wedge the node forever. */
-                    if(mapLastMissing.count(hashBlock))
+                    /* [Option A] Register the missing tritium txids with the
+                     * block-context staging pool so that when they arrive but are
+                     * rejected by tip-relative mempool policy (e.g. "coinbase is
+                     * immature"), the LLP layer can stage them for block-context
+                     * validation instead of dropping them (which deadlocks block
+                     * completion). Registration is safe: vMissing is only
+                     * populated by a block that passed every other Check()
+                     * validation, including proof of work. */
+                    for(const auto& missing : block.vMissing)
                     {
-                        mapLastMissing[hashBlock]++;
-
-                        /* Increment and check if we have reached limits. */
-                        if(mapLastMissing[hashBlock] > LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES)
-                        {
-                            block.vMissing.clear(); //we want to clear so we don't keep re-requesting the transactions
-                            block.hashMissing = 0;
-                        }
-
-                        /* Give some debug info that we are missing some transactions here. */
-                        else
-                            debug::notice(FUNCTION, "missing ", block.vMissing.size(), " transactions");
+                        if(missing.first == TAO::Ledger::TRANSACTION::TRITIUM)
+                            StagePool::Register(missing.second);
                     }
+
+                    /* [Option C] Track how many times we have re-requested this
+                     * block's missing transactions so a permanently unresolvable
+                     * tx can't wedge the node forever.  The counter time-decays
+                     * (see UpdateMissingRetry) so hitting the cap is a temporary
+                     * cool-down, not a permanent silent dead-end. */
+                    const uint64_t nRetries = UpdateMissingRetry(hashBlock);
+
+                    /* Check if we have reached limits. */
+                    if(nRetries > LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES)
+                    {
+                        block.vMissing.clear(); //we want to clear so we don't keep re-requesting the transactions
+                        block.hashMissing = 0;
+
+                        /* Escalate visibility on the transition into exhaustion:
+                         * a chain-wedging condition must not be silent. */
+                        if(nRetries == LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES + 1)
+                            debug::notice(FUNCTION, "block ", hashBlock.SubString(), " exhausted ",
+                                uint32_t(LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES),
+                                " missing-transaction retries; cooling down for ",
+                                MISSING_RETRY_DECAY_SECONDS, "s before retrying");
+                    }
+
+                    /* Give some debug info that we are missing some transactions here. */
                     else
-                    {
-                        /* Bound the map size before inserting a new entry.
-                         * Clearing the whole map is an intentional cheap DoS
-                         * guard; legitimate incomplete blocks will have resolved
-                         * long before 10 000 unique hashes accumulate. */
-                        if(mapLastMissing.size() >= MAX_MISSING_MAP_ENTRIES)
-                            mapLastMissing.clear();
-                        mapLastMissing[hashBlock] = 1;
-                    }
+                        debug::notice(FUNCTION, "missing ", block.vMissing.size(), " transactions");
 
                     return;
                 }
@@ -319,8 +430,7 @@ namespace TAO
                 /* Block accepted — remove any missing-transaction retry counter so
                  * the genuine "transaction not seen yet" recovery path is
                  * unaffected and a future stuck block starts counting from zero. */
-                if(mapLastMissing.count(hashBlock))
-                    mapLastMissing.erase(hashBlock);
+                EraseMissingRetry(hashBlock);
 
                 /* Special meter for synchronizing. */
                 uint64_t nElapsed = runtime::timestamp(true) - nSynchronizationTimer;
@@ -405,27 +515,31 @@ namespace TAO
                          * layer re-requests the correct block (not the map key). */
                         block.hashMissing = hashPrev;
 
-                        /* Track retries so a permanently unresolvable orphan tx
-                         * can't wedge the node forever. */
-                        if(mapLastMissing.count(hashPrev))
+                        /* [Option A] Register missing tritium txids for
+                         * block-context staging, same as the main path. */
+                        for(const auto& missing : pOrphan->vMissing)
                         {
-                            mapLastMissing[hashPrev]++;
+                            if(missing.first == TAO::Ledger::TRANSACTION::TRITIUM)
+                                StagePool::Register(missing.second);
+                        }
 
-                            if(mapLastMissing[hashPrev] > LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES)
-                            {
-                                block.vMissing.clear();
-                                block.hashMissing = 0;
-                            }
-                            else
-                                debug::notice(FUNCTION, "orphan missing ", pOrphan->vMissing.size(), " transactions");
+                        /* [Option C] Track retries so a permanently unresolvable
+                         * orphan tx can't wedge the node forever; the counter
+                         * time-decays so exhaustion is a temporary cool-down. */
+                        const uint64_t nRetries = UpdateMissingRetry(hashPrev);
+                        if(nRetries > LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES)
+                        {
+                            block.vMissing.clear();
+                            block.hashMissing = 0;
+
+                            if(nRetries == LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES + 1)
+                                debug::notice(FUNCTION, "orphan ", hashPrev.SubString(), " exhausted ",
+                                    uint32_t(LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES),
+                                    " missing-transaction retries; cooling down for ",
+                                    MISSING_RETRY_DECAY_SECONDS, "s before retrying");
                         }
                         else
-                        {
-                            /* Same intentional clear-all DoS guard as the main path. */
-                            if(mapLastMissing.size() >= MAX_MISSING_MAP_ENTRIES)
-                                mapLastMissing.clear();
-                            mapLastMissing[hashPrev] = 1;
-                        }
+                            debug::notice(FUNCTION, "orphan missing ", pOrphan->vMissing.size(), " transactions");
 
                         return;
                     }
@@ -435,8 +549,7 @@ namespace TAO
                         return;
 
                     /* Orphan accepted — clear any missing-transaction retry counter. */
-                    if(mapLastMissing.count(hashPrev))
-                        mapLastMissing.erase(hashPrev);
+                    EraseMissingRetry(hashPrev);
 
                     /* [C2] Orphan resolved — clear its request throttle entry so a
                      * future, unrelated orphan chain starting at this same hash
