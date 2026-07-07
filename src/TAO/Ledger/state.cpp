@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/state.h>
 
 #include <string>
+#include <unordered_set>
 
 #include <LLD/include/global.h>
 #include <LLP/include/global.h>
@@ -893,9 +894,14 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to find ancestor fork block");
                 }
 
+                /* Track whether this SetBest() call is performing an actual chain reorganization
+                 * (as opposed to a routine tip extension), used below to gate reorg-only logging
+                 * and the [B1] tripwire timer/warning. */
+                const bool fReorgOccurring = (vDisconnect.size() > 0);
+
                 /* Log if there are blocks to disconnect. */
                 uint32_t nTotalDisconnect = 0;
-                if(vDisconnect.size() > 0)
+                if(fReorgOccurring)
                 {
                     debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "REORGANIZE:", ANSI_COLOR_RESET,
                         " Disconnect ", vDisconnect.size(), " blocks; ", fork.GetHash().SubString(),
@@ -914,6 +920,18 @@ namespace TAO
                     /* Track that the chain is undergoing a re-org. */
                     ChainState::fChainReorg.store(true);
                 }
+
+                /* [B1] Tripwire timer for the reorg critical section (disconnect + resurrect +
+                 * connect below). This entire section runs synchronously while the caller holds
+                 * PROCESSING_MUTEX, with no bound or yield point, so a large/deep reorg can stall
+                 * all other block/mining processing for as long as it takes to finish. We
+                 * deliberately don't try to bound or interrupt the work here (that would require a
+                 * larger concurrency redesign), but we start a timer now so a prominent warning can
+                 * be logged below if this reorg is unusually expensive, making such incidents
+                 * diagnosable after the fact. */
+                runtime::timer reorgTimer;
+                if(fReorgOccurring)
+                    reorgTimer.Start();
 
                 /* Keep track of mempool transactions to delete. */
                 std::vector<std::pair<uint8_t, uint512_t>> vResurrect;
@@ -986,6 +1004,14 @@ namespace TAO
                         vResurrect.insert(vResurrect.end(), state.vtx.rbegin(), state.vtx.rend());
                 }
 
+                /* Track sigchains whose head resurrect transaction has already conflicted in this
+                 * batch. Mempool::Accept() rejects any transaction whose hashPrevTx is itself
+                 * conflicted, so once a genesis conflicts every remaining descendant of that
+                 * sigchain in vResurrect is guaranteed to conflict as well. Skipping them here
+                 * avoids hundreds of pointless mutex-holding disk reads and ERROR log spam during
+                 * a reorg. */
+                std::unordered_set<uint256_t> setConflictedGenesis;
+
                 /* Iterate forward through our transactions to resurrect in ascending order. */
                 for(auto proof = vResurrect.rbegin(); proof != vResurrect.rend(); ++proof)
                 {
@@ -1001,8 +1027,19 @@ namespace TAO
                         if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid())
                             continue;
 
-                        /* Add back into memory pool. */
-                        mempool.Accept(tx);
+                        /* Skip descendants of a sigchain that has already conflicted in this
+                         * resurrect batch, since they are guaranteed to conflict too. */
+                        if(setConflictedGenesis.count(tx.hashGenesis))
+                            continue;
+
+                        /* Add back into memory pool. Mempool::Accept() inserts rejected
+                         * transactions into mapConflicts (checked by Has()) only when they
+                         * conflict on hashPrevTx or a duplicate genesis-id; orphaned or otherwise
+                         * invalid transactions are tracked elsewhere and are not conflicts, so
+                         * Has() returning true here specifically identifies a real conflict. Track
+                         * the genesis so we can short-circuit its remaining descendants above. */
+                        if(!mempool.Accept(tx) && mempool.Has(tx.GetHash()))
+                            setConflictedGenesis.insert(tx.hashGenesis);
 
                         /* Print transaction on verbose 3. */
                         if(config::nVerbose >= 3)
@@ -1094,9 +1131,39 @@ namespace TAO
                 for(auto proof = vDelete.begin(); proof != vDelete.end(); ++proof)
                     mempool.Remove(proof->second);
 
-                /* Calculate the total transactions connected. */
+                /* Calculate the total transactions connected. Each connected block contributes
+                 * exactly one producer transaction plus its regular transactions to vDelete, and
+                 * vConnect.size() is the number of connected blocks, so subtracting removes the
+                 * producer transactions and leaves only the non-producer transaction count
+                 * (mirrors how nTotalDisconnect is tallied above for the disconnect side). */
                 const uint32_t nTotalConnected =
                     (vDelete.size() - vConnect.size());
+
+                /* [B1] Emit a prominent, easily greppable tripwire warning if the reorg critical
+                 * section above (disconnect + resurrect + connect, all held under the caller's
+                 * PROCESSING_MUTEX with no yield point) took longer than -reorgwarnms or processed
+                 * more than -reorgwarntx transactions. This doesn't prevent the stall, but ensures
+                 * such incidents are diagnosable instead of silently blocking all other block and
+                 * mining processing for an unbounded amount of time. Uses nTotalConnected (non-producer
+                 * transactions connected) rather than vDelete.size() directly to avoid conflating
+                 * producer transactions with the transaction-volume metric. Reorgs are rare events,
+                 * so the -reorgwarnms/-reorgwarntx config lookups are not cached; this keeps the
+                 * code simple and avoids any ambiguity around static local initialization order. */
+                if(fReorgOccurring)
+                {
+                    const uint64_t nReorgWarnMs    = config::GetArg("-reorgwarnms", 1000);
+                    const uint64_t nReorgWarnTx    = config::GetArg("-reorgwarntx", 1000);
+                    const uint64_t nReorgElapsedMs = reorgTimer.ElapsedMilliseconds();
+                    const uint64_t nReorgTotalTx    =
+                        uint64_t(nTotalDisconnect) + uint64_t(vResurrect.size()) + uint64_t(nTotalConnected);
+
+                    if(nReorgElapsedMs >= nReorgWarnMs || nReorgTotalTx >= nReorgWarnTx)
+                        debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_RED, "REORG TRIPWIRE:", ANSI_COLOR_RESET,
+                            " reorg critical section held the processing lock for ", nReorgElapsedMs, " ms",
+                            " while disconnecting ", vDisconnect.size(), " and connecting ", vConnect.size(),
+                            " block(s) (", nReorgTotalTx, " transactions); other block/mining processing",
+                            " was blocked for the duration");
+                }
 
                 /* Debug output about the best chain. */
                 uint64_t nElapsed      = (GetBlockTime() - ChainState::tStateBest.load().GetBlockTime());
