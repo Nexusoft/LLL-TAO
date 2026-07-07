@@ -60,7 +60,7 @@ namespace TAO
         static const uint32_t MAX_CONFLICTS_MAP_ENTRIES = 10000;
 
 
-        /** [Option 3] Minimum number of seconds between periodic,
+        /** Minimum number of seconds between periodic,
          *  chain-tip-independent calls to Mempool::Check() from
          *  TritiumNode's per-connection GENERIC event handler. Check()'s
          *  conflict-reconciliation/eviction pass previously only ran after a
