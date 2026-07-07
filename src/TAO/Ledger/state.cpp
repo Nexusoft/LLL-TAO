@@ -13,8 +13,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/state.h>
 
-#include <set>
 #include <string>
+#include <unordered_set>
 
 #include <LLD/include/global.h>
 #include <LLP/include/global.h>
@@ -1005,7 +1005,7 @@ namespace TAO
                  * sigchain in vResurrect is guaranteed to conflict as well. Skipping them here
                  * avoids hundreds of pointless mutex-holding disk reads and ERROR log spam during
                  * a reorg. */
-                std::set<uint256_t> setConflictedGenesis;
+                std::unordered_set<uint256_t> setConflictedGenesis;
 
                 /* Iterate forward through our transactions to resurrect in ascending order. */
                 for(auto proof = vResurrect.rbegin(); proof != vResurrect.rend(); ++proof)
@@ -1126,7 +1126,11 @@ namespace TAO
                 for(auto proof = vDelete.begin(); proof != vDelete.end(); ++proof)
                     mempool.Remove(proof->second);
 
-                /* Calculate the total transactions connected. */
+                /* Calculate the total transactions connected. Each connected block contributes
+                 * exactly one producer transaction plus its regular transactions to vDelete, and
+                 * vConnect.size() is the number of connected blocks, so subtracting removes the
+                 * producer transactions and leaves only the non-producer transaction count
+                 * (mirrors how nTotalDisconnect is tallied above for the disconnect side). */
                 const uint32_t nTotalConnected =
                     (vDelete.size() - vConnect.size());
 
@@ -1135,14 +1139,19 @@ namespace TAO
                  * PROCESSING_MUTEX with no yield point) took longer than -reorgwarnms or processed
                  * more than -reorgwarntx transactions. This doesn't prevent the stall, but ensures
                  * such incidents are diagnosable instead of silently blocking all other block and
-                 * mining processing for an unbounded amount of time. */
+                 * mining processing for an unbounded amount of time. Uses nTotalConnected (non-producer
+                 * transactions connected) rather than vDelete.size() directly to avoid conflating
+                 * producer transactions with the transaction-volume metric. The threshold args are
+                 * cached in statics since they are read-only startup config, not expected to change
+                 * at runtime, and a reorg can otherwise repeat the lookup on every occurrence. */
                 if(vDisconnect.size() > 0)
                 {
+                    static const uint64_t nReorgWarnMs = config::GetArg("-reorgwarnms", 1000);
+                    static const uint64_t nReorgWarnTx = config::GetArg("-reorgwarntx", 1000);
+
                     const uint64_t nReorgElapsedMs = reorgTimer.ElapsedMilliseconds();
-                    const uint64_t nReorgWarnMs     = config::GetArg("-reorgwarnms", 1000);
-                    const uint64_t nReorgWarnTx     = config::GetArg("-reorgwarntx", 1000);
                     const uint64_t nReorgTotalTx    =
-                        uint64_t(nTotalDisconnect) + uint64_t(vResurrect.size()) + uint64_t(vDelete.size());
+                        uint64_t(nTotalDisconnect) + uint64_t(vResurrect.size()) + uint64_t(nTotalConnected);
 
                     if(nReorgElapsedMs >= nReorgWarnMs || nReorgTotalTx >= nReorgWarnTx)
                         debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_RED, "REORG TRIPWIRE:", ANSI_COLOR_RESET,
