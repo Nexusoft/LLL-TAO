@@ -23,10 +23,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/genesis_block.h>
 #include <TAO/Ledger/include/timelocks.h>
 
-#include <Util/include/runtime.h>
-
-#include <mutex>
-
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -148,33 +144,10 @@ namespace TAO
         }
 
 
-        /* [Option D] Seconds since the best-chain tip hash last changed, tracked
-         * lazily: the first observation of a new tip hash resets the clock. */
-        uint64_t ChainState::SecondsSinceTipChange()
-        {
-            static std::mutex STALL_MUTEX;
-            static uint1024_t hashLastTip = 0;
-            static uint64_t nTipFirstSeen = 0;
-
-            std::unique_lock<std::mutex> lock(STALL_MUTEX);
-
-            /* Detect a tip change (or first call) and reset the clock. */
-            const uint1024_t hashCurrent = hashBestChain.load();
-            if(hashCurrent != hashLastTip || nTipFirstSeen == 0)
-            {
-                hashLastTip   = hashCurrent;
-                nTipFirstSeen = runtime::timestamp();
-
-                return 0;
-            }
-
-            return runtime::timestamp() - nTipFirstSeen;
-        }
-
-
         /* Real value of the total synchronization percent completion. */
         double ChainState::PercentSynchronized()
-        {            /* The timstamp of the genesis block.   */
+        {
+            /* The timstamp of the genesis block.   */
             static const uint32_t nGenesis =
                 (config::fClient.load() ? TritiumGenesis().nHeight : config::fHybrid.load() ? HybridGenesis().nHeight : LegacyGenesis().nHeight);
 

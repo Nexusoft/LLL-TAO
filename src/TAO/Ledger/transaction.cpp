@@ -1055,22 +1055,8 @@ namespace TAO
                             if(!LLD::Ledger->ReadConfirmations(hashPrev, nConfirms, pblock))
                                 return debug::error(FUNCTION, "failed to read confirmations for coinbase");
 
-                            /* [Option B] Determine the maturity requirement for this
-                             * context.  Consensus (FLAGS::BLOCK with block context) and
-                             * miner template (FLAGS::MINER) paths use the strict
-                             * consensus maturity.  Mempool admission (FLAGS::MEMPOOL,
-                             * no block context) applies a small grace window so a tx
-                             * that is consensus-valid inside a block at the maturity
-                             * boundary isn't policy-rejected by a tip 1-2 blocks
-                             * behind, which would deadlock block completion (the
-                             * "coinbase is immature" re-request loop). */
-                            const uint32_t nMaturity =
-                                (nFlags == FLAGS::MEMPOOL && pblock == nullptr)
-                                    ? MaturityCoinBaseMempool(ChainState::tStateBest.load())
-                                    : MaturityCoinBase((pblock ? *pblock : ChainState::tStateBest.load()));
-
                             /* Check that the previous TX has reached sig chain maturity */
-                            if(nConfirms + 1 < nMaturity)
+                            if(nConfirms + 1 < MaturityCoinBase((pblock ? *pblock : ChainState::tStateBest.load())))
                                 return debug::error(FUNCTION, "coinbase is immature ", nConfirms);
 
                             break;
