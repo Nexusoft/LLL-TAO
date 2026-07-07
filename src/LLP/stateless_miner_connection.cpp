@@ -4212,28 +4212,25 @@ namespace LLP
             const auto itLatest = latestByChannel.find(meta.nChannel);
             const bool fKeepLatest = (itLatest != latestByChannel.end() && itLatest->second.second == it->first);
 
-            /* Keep at least one hot template per channel to avoid full cold regeneration bursts. */
-            if(fKeepLatest)
-            {
-                ++it;
-                continue;
-            }
-
             /* Check staleness by CHANNEL HEIGHT, not unified height.
              * Template with nChannelHeight=N targets mining block N for that channel.
-             * If blockchain's channel is now at height >= N, the template is stale.
-             * Keep templates within TEMPLATE_RETENTION_BLOCKS of the current channel height. */
+             * If the current channel tip has moved too far away from that target in either
+             * direction, the template was built against an unreachable chain context. */
             bool fTooOldByBlocks = false;
             auto itCurrentHeight = currentChannelHeights.find(meta.nChannel);
             if(itCurrentHeight != currentChannelHeights.end())
             {
                 uint32_t nCurrentChannelHeight = itCurrentHeight->second;
-                /* Template targets nChannelHeight (next block in channel).
-                 * If current channel is at nCurrentChannelHeight, and template targets
-                 * nChannelHeight, template is stale if:
-                 * nCurrentChannelHeight >= nChannelHeight + TEMPLATE_RETENTION_BLOCKS */
-                if(nCurrentChannelHeight >= meta.nChannelHeight &&
-                   (nCurrentChannelHeight - meta.nChannelHeight) >= TEMPLATE_RETENTION_BLOCKS)
+                /* Template targets nChannelHeight (next block in channel).  The original
+                 * one-way comparison only caught forward advancement; after a deep reorg the
+                 * current channel height can move backward below the template's assumed parent
+                 * and would otherwise keep an abandoned-fork template indefinitely. */
+                const uint32_t nChannelDistance =
+                    (nCurrentChannelHeight >= meta.nChannelHeight)
+                        ? (nCurrentChannelHeight - meta.nChannelHeight)
+                        : (meta.nChannelHeight - nCurrentChannelHeight);
+
+                if(nChannelDistance >= TEMPLATE_RETENTION_BLOCKS)
                 {
                     fTooOldByBlocks = true;
                 }
@@ -4250,8 +4247,14 @@ namespace LLP
                 auto itCurrent = currentChannelHeights.find(meta.nChannel);
                 if(itCurrent != currentChannelHeights.end())
                 {
+                    const uint32_t nChannelDistance =
+                        (itCurrent->second >= meta.nChannelHeight)
+                            ? (itCurrent->second - meta.nChannelHeight)
+                            : (meta.nChannelHeight - itCurrent->second);
+
                     debug::log(2, FUNCTION, "      Channel height: ", meta.nChannelHeight,
-                              " (current: ", itCurrent->second, ", ", meta.GetChannelName(),
+                              " (current: ", itCurrent->second, ", distance: ", nChannelDistance,
+                              ", ", meta.GetChannelName(),
                               ", keep <= ", TEMPLATE_RETENTION_BLOCKS, " blocks old)");
                 }
                 else
@@ -4265,6 +4268,11 @@ namespace LLP
                 it = mapBlocks.erase(it);  // shared_ptr ref-count drops; block freed if no other holders
                 ++nRemoved;
                 continue;
+            }
+
+            if(fKeepLatest)
+            {
+                debug::log(3, FUNCTION, "   Keeping latest fresh template for ", meta.GetChannelName());
             }
 
             ++it;

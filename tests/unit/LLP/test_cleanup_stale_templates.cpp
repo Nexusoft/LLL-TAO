@@ -45,7 +45,7 @@ using namespace LLP;
  *  2. Template fresh within retention window (should be kept)
  *  3. Template stale by age (should be removed)
  *  4. Cross-channel block doesn't trigger false cleanup (Prime template safe when Hash advances)
- *  5. Latest template per channel is always kept (retention bypass)
+ *  5. Latest template per channel is only kept when it is not stale
  **/
 
 
@@ -62,8 +62,7 @@ TEST_CASE("CleanupStaleTemplates uses channel height not unified height", "[clea
          *
          * FIXED CODE (current):
          *   Get current channel height for template's channel
-         *   if(nCurrentChannelHeight >= meta.nChannelHeight &&
-         *      (nCurrentChannelHeight - meta.nChannelHeight) >= TEMPLATE_RETENTION_BLOCKS)
+         *   if(abs(nCurrentChannelHeight - meta.nChannelHeight) >= TEMPLATE_RETENTION_BLOCKS)
          *       fTooOldByBlocks = true;
          *
          * The fix ensures that a Prime template at channel_height=2165443 is removed
@@ -166,6 +165,21 @@ TEST_CASE("CleanupStaleTemplates channel height scenarios", "[cleanup][scenarios
 
         REQUIRE(nDiff == 7);
         REQUIRE(fTooOld == true);  // Far behind, definitely should be removed
+    }
+
+    SECTION("Template abandoned by deep backward reorg: should be removed")
+    {
+        /* Template targets channel height 2165443 */
+        uint32_t nTemplateChannelHeight = 2165443;
+
+        /* Deep reorg moved the active channel tip back below the template parent */
+        uint32_t nCurrentChannelHeight = 2165178;
+
+        uint32_t nDiff = nTemplateChannelHeight - nCurrentChannelHeight;
+        bool fTooOld = (nDiff >= TEMPLATE_RETENTION_BLOCKS);
+
+        REQUIRE(nDiff == 265);
+        REQUIRE(fTooOld == true);  // Backward movement beyond retention is stale
     }
 
     SECTION("Template at current channel height: should be kept")
@@ -334,17 +348,10 @@ TEST_CASE("CleanupStaleTemplates problem statement scenario", "[cleanup][problem
 }
 
 
-TEST_CASE("CleanupStaleTemplates always keeps latest template per channel", "[cleanup][latest]")
+TEST_CASE("CleanupStaleTemplates only keeps latest template per channel when fresh", "[cleanup][latest]")
 {
-    SECTION("Latest template is kept even if stale by age or height")
+    SECTION("Latest template is removed if stale by age or height")
     {
-        /* The implementation always keeps the most recent template per channel
-         * to avoid "full cold regeneration bursts".
-         *
-         * This is a safety mechanism: even if all templates are stale,
-         * keep the newest one to reduce latency for the next miner request.
-         */
-
         /* Template is stale by BOTH age and height */
         const uint64_t MAX_TEMPLATE_AGE_SECONDS = 600;
         uint64_t nNow = runtime::unifiedtimestamp();
@@ -364,10 +371,32 @@ TEST_CASE("CleanupStaleTemplates always keeps latest template per channel", "[cl
         REQUIRE(fTooOldByBlocks == true);
         REQUIRE(fTooOldByTime == true);
 
-        /* BUT: if this is the LATEST template for the channel, it's kept */
+        /* A latest template is not exempt from the staleness checks. */
         bool fIsLatestTemplate = true;  // Determined by CleanupStaleTemplates
-        bool fShouldRemove = !fIsLatestTemplate && (fTooOldByBlocks || fTooOldByTime);
+        bool fShouldRemove = (fTooOldByBlocks || fTooOldByTime);
 
-        REQUIRE(fShouldRemove == false);  // Latest template is always kept
+        REQUIRE(fIsLatestTemplate == true);
+        REQUIRE(fShouldRemove == true);  // Latest stale template is removed
+    }
+
+    SECTION("Latest template is kept when it passes staleness checks")
+    {
+        const uint64_t MAX_TEMPLATE_AGE_SECONDS = 600;
+        uint64_t nNow = runtime::unifiedtimestamp();
+        uint64_t nCreationTime = nNow - 30;
+
+        uint32_t nTemplateChannelHeight = 2165443;
+        uint32_t nCurrentChannelHeight = 2165444;
+
+        uint32_t nChannelDiff = nCurrentChannelHeight - nTemplateChannelHeight;
+        uint64_t nAge = nNow - nCreationTime;
+
+        bool fTooOldByBlocks = (nChannelDiff >= 2);
+        bool fTooOldByTime = (nAge > MAX_TEMPLATE_AGE_SECONDS);
+        bool fIsLatestTemplate = true;
+        bool fShouldRemove = (fTooOldByBlocks || fTooOldByTime);
+
+        REQUIRE(fIsLatestTemplate == true);
+        REQUIRE(fShouldRemove == false);
     }
 }
