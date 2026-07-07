@@ -2221,9 +2221,11 @@ namespace LLP
                 (itCreationTime != mapBlockCreationTimes.end()) &&
                 (nAge > LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS);
             const auto itCurrentHeight = currentChannelHeights.find(pBlock->nChannel);
-            const bool fTooOldByBlocks =
+            const bool fHaveChannelHeights =
                 (itTemplateHeight != mapBlockChannelHeights.end()) &&
-                (itCurrentHeight != currentChannelHeights.end()) &&
+                (itCurrentHeight != currentChannelHeights.end());
+            const bool fTooOldByBlocks =
+                fHaveChannelHeights &&
                 IsTemplateTooOldByChannelHeight(itCurrentHeight->second,
                                                 itTemplateHeight->second,
                                                 MINING_TEMPLATE_RETENTION_BLOCKS);
@@ -2234,8 +2236,7 @@ namespace LLP
             }
 
             const uint32_t nChannelDistance =
-                (itTemplateHeight != mapBlockChannelHeights.end() &&
-                 itCurrentHeight != currentChannelHeights.end())
+                fHaveChannelHeights
                     ? TemplateChannelHeightDistance(itCurrentHeight->second, itTemplateHeight->second)
                     : 0;
 
