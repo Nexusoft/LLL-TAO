@@ -496,6 +496,10 @@ namespace LLP
         std::map<uint512_t, uint64_t> mapBlockCreationTimes;
 
 
+        /** Last wall-clock second when same-height cleanup scanned mapBlocks. */
+        uint64_t m_nLastTemplateCleanupTime{0};
+
+
         /** The current best block. **/
         std::atomic<uint32_t> nBestHeight;
 

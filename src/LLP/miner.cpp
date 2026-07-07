@@ -1997,7 +1997,12 @@ namespace LLP
         /* Return early if the height doesn't change. */
         if(nBestHeight == nChainStateHeight)
         {
-            CleanupStaleTemplates();
+            const uint64_t nNow = runtime::unifiedtimestamp();
+            if(!mapBlocks.empty() && nNow != m_nLastTemplateCleanupTime)
+            {
+                m_nLastTemplateCleanupTime = nNow;
+                CleanupStaleTemplates();
+            }
 
             /* Hash-based staleness check: detect same-height reorgs that nBestHeight misses.
              * mapBlockHashes stores hashBestChain at the moment each template was created.
@@ -2254,6 +2259,8 @@ namespace LLP
                        " distance=", nChannelDistance,
                        " age=", nAge);
 
+            /* mapBlocks owns this raw pointer; erasing the map entry below
+             * releases the only legacy-lane template owner. */
             delete pBlock;
             mapBlockHashes.erase(hashMerkleRoot);
             mapBlockChannelHeights.erase(hashMerkleRoot);
