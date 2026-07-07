@@ -916,6 +916,18 @@ namespace TAO
                     ChainState::fChainReorg.store(true);
                 }
 
+                /* [B1] Tripwire timer for the reorg critical section (disconnect + resurrect +
+                 * connect below). This entire section runs synchronously while the caller holds
+                 * PROCESSING_MUTEX, with no bound or yield point, so a large/deep reorg can stall
+                 * all other block/mining processing for as long as it takes to finish. We
+                 * deliberately don't try to bound or interrupt the work here (that would require a
+                 * larger concurrency redesign), but we start a timer now so a prominent warning can
+                 * be logged below if this reorg is unusually expensive, making such incidents
+                 * diagnosable after the fact. */
+                runtime::timer reorgTimer;
+                if(vDisconnect.size() > 0)
+                    reorgTimer.Start();
+
                 /* Keep track of mempool transactions to delete. */
                 std::vector<std::pair<uint8_t, uint512_t>> vResurrect;
 
@@ -1117,6 +1129,28 @@ namespace TAO
                 /* Calculate the total transactions connected. */
                 const uint32_t nTotalConnected =
                     (vDelete.size() - vConnect.size());
+
+                /* [B1] Emit a prominent, easily greppable tripwire warning if the reorg critical
+                 * section above (disconnect + resurrect + connect, all held under the caller's
+                 * PROCESSING_MUTEX with no yield point) took longer than -reorgwarnms or processed
+                 * more than -reorgwarntx transactions. This doesn't prevent the stall, but ensures
+                 * such incidents are diagnosable instead of silently blocking all other block and
+                 * mining processing for an unbounded amount of time. */
+                if(vDisconnect.size() > 0)
+                {
+                    const uint64_t nReorgElapsedMs = reorgTimer.ElapsedMilliseconds();
+                    const uint64_t nReorgWarnMs     = config::GetArg("-reorgwarnms", 1000);
+                    const uint64_t nReorgWarnTx     = config::GetArg("-reorgwarntx", 1000);
+                    const uint64_t nReorgTotalTx    =
+                        uint64_t(nTotalDisconnect) + uint64_t(vResurrect.size()) + uint64_t(vDelete.size());
+
+                    if(nReorgElapsedMs >= nReorgWarnMs || nReorgTotalTx >= nReorgWarnTx)
+                        debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_RED, "REORG TRIPWIRE:", ANSI_COLOR_RESET,
+                            " reorg critical section held the processing lock for ", nReorgElapsedMs, " ms",
+                            " while disconnecting ", vDisconnect.size(), " and connecting ", vConnect.size(),
+                            " block(s) (", nReorgTotalTx, " transactions); other block/mining processing",
+                            " was blocked for the duration");
+                }
 
                 /* Debug output about the best chain. */
                 uint64_t nElapsed      = (GetBlockTime() - ChainState::tStateBest.load().GetBlockTime());
