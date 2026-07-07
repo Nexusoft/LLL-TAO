@@ -1015,8 +1015,12 @@ namespace TAO
                         if(setConflictedGenesis.count(tx.hashGenesis))
                             continue;
 
-                        /* Add back into memory pool. Track the genesis if it conflicted so we can
-                         * short-circuit its remaining descendants above. */
+                        /* Add back into memory pool. Mempool::Accept() inserts rejected
+                         * transactions into mapConflicts (checked by Has()) only when they
+                         * conflict on hashPrevTx or a duplicate genesis-id; orphaned or otherwise
+                         * invalid transactions are tracked elsewhere and are not conflicts, so
+                         * Has() returning true here specifically identifies a real conflict. Track
+                         * the genesis so we can short-circuit its remaining descendants above. */
                         if(!mempool.Accept(tx) && mempool.Has(tx.GetHash()))
                             setConflictedGenesis.insert(tx.hashGenesis);
 
