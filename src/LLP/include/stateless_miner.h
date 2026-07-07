@@ -227,6 +227,10 @@ namespace LLP
     /** TemplateChannelHeightDistance
      * 
      *  Calculate absolute channel-height distance without signed casts.
+     *
+     *  @param nCurrentChannelHeight Current height of the mining channel.
+     *  @param nTemplateChannelHeight Target height from the template.
+     *  @return Absolute difference between the two heights.
      */
     inline uint32_t TemplateChannelHeightDistance(
         const uint32_t nCurrentChannelHeight,
@@ -241,6 +245,11 @@ namespace LLP
     /** IsTemplateTooOldByChannelHeight
      *
      *  Symmetric channel-height staleness check for mining templates.
+     *
+     *  @param nCurrentChannelHeight Current height of the mining channel.
+     *  @param nTemplateChannelHeight Target height from the template.
+     *  @param nRetentionBlocks Maximum allowed distance before marking stale.
+     *  @return true if template is too old/stale, false otherwise.
      */
     inline bool IsTemplateTooOldByChannelHeight(
         const uint32_t nCurrentChannelHeight,
