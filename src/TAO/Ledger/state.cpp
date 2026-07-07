@@ -894,9 +894,14 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to find ancestor fork block");
                 }
 
+                /* Track whether this SetBest() call is performing an actual chain reorganization
+                 * (as opposed to a routine tip extension), used below to gate reorg-only logging
+                 * and the [B1] tripwire timer/warning. */
+                const bool fReorgOccurring = (vDisconnect.size() > 0);
+
                 /* Log if there are blocks to disconnect. */
                 uint32_t nTotalDisconnect = 0;
-                if(vDisconnect.size() > 0)
+                if(fReorgOccurring)
                 {
                     debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "REORGANIZE:", ANSI_COLOR_RESET,
                         " Disconnect ", vDisconnect.size(), " blocks; ", fork.GetHash().SubString(),
@@ -925,7 +930,7 @@ namespace TAO
                  * be logged below if this reorg is unusually expensive, making such incidents
                  * diagnosable after the fact. */
                 runtime::timer reorgTimer;
-                if(vDisconnect.size() > 0)
+                if(fReorgOccurring)
                     reorgTimer.Start();
 
                 /* Keep track of mempool transactions to delete. */
@@ -1141,14 +1146,13 @@ namespace TAO
                  * such incidents are diagnosable instead of silently blocking all other block and
                  * mining processing for an unbounded amount of time. Uses nTotalConnected (non-producer
                  * transactions connected) rather than vDelete.size() directly to avoid conflating
-                 * producer transactions with the transaction-volume metric. The threshold args are
-                 * cached in statics since they are read-only startup config, not expected to change
-                 * at runtime, and a reorg can otherwise repeat the lookup on every occurrence. */
-                if(vDisconnect.size() > 0)
+                 * producer transactions with the transaction-volume metric. Reorgs are rare events,
+                 * so the -reorgwarnms/-reorgwarntx config lookups are not cached; this keeps the
+                 * code simple and avoids any ambiguity around static local initialization order. */
+                if(fReorgOccurring)
                 {
-                    static const uint64_t nReorgWarnMs = config::GetArg("-reorgwarnms", 1000);
-                    static const uint64_t nReorgWarnTx = config::GetArg("-reorgwarntx", 1000);
-
+                    const uint64_t nReorgWarnMs    = config::GetArg("-reorgwarnms", 1000);
+                    const uint64_t nReorgWarnTx    = config::GetArg("-reorgwarntx", 1000);
                     const uint64_t nReorgElapsedMs = reorgTimer.ElapsedMilliseconds();
                     const uint64_t nReorgTotalTx    =
                         uint64_t(nTotalDisconnect) + uint64_t(vResurrect.size()) + uint64_t(nTotalConnected);
