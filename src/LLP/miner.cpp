@@ -2136,9 +2136,9 @@ namespace LLP
         const uint1024_t hashCurrentBest = TAO::Ledger::ChainState::hashBestChain.load();
         uint32_t nTemplateChannelHeight = 0;
 
-        TAO::Ledger::BlockState stateForChannel = TAO::Ledger::ChainState::tStateBest.load();
-        if(TAO::Ledger::GetLastState(stateForChannel, pBlock->nChannel))
-            nTemplateChannelHeight = stateForChannel.nChannelHeight + 1;
+        TAO::Ledger::BlockState stateBestForChannel = TAO::Ledger::ChainState::tStateBest.load();
+        if(TAO::Ledger::GetLastState(stateBestForChannel, pBlock->nChannel))
+            nTemplateChannelHeight = stateBestForChannel.nChannelHeight + 1;
 
         auto itExisting = mapBlocks.find(hashMerkleRoot);
         if(itExisting != mapBlocks.end() && itExisting->second != pBlock)
@@ -2190,9 +2190,9 @@ namespace LLP
         std::map<uint32_t, uint32_t> currentChannelHeights;
         for(uint32_t nChannel = 0; nChannel <= 2; ++nChannel)
         {
-            TAO::Ledger::BlockState stateForChannel = stateCurrent;
-            if(TAO::Ledger::GetLastState(stateForChannel, nChannel))
-                currentChannelHeights[nChannel] = stateForChannel.nChannelHeight;
+            TAO::Ledger::BlockState stateBestForChannel = stateCurrent;
+            if(TAO::Ledger::GetLastState(stateBestForChannel, nChannel))
+                currentChannelHeights[nChannel] = stateBestForChannel.nChannelHeight;
         }
 
         for(auto it = mapBlocks.begin(); it != mapBlocks.end(); )
@@ -2229,7 +2229,8 @@ namespace LLP
             }
             const bool fTooOldByTime =
                 fCreationTimeKnown &&
-                (fCreationTimeFuture || nAge > LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS);
+                !fCreationTimeFuture &&
+                (nAge > LLP::FalconConstants::MAX_TEMPLATE_AGE_SECONDS);
             const auto itCurrentHeight = currentChannelHeights.find(pBlock->nChannel);
             const bool fHaveChannelHeights =
                 (itTemplateHeight != mapBlockChannelHeights.end()) &&
@@ -2246,7 +2247,7 @@ namespace LLP
             }
 
             const uint32_t nChannelDistance =
-                fHaveChannelHeights
+                (fTooOldByBlocks && fHaveChannelHeights)
                     ? TemplateChannelHeightDistance(itCurrentHeight->second, itTemplateHeight->second)
                     : 0;
 
