@@ -39,6 +39,44 @@ namespace TAO
     namespace Ledger
     {
 
+        /** [Option B] Number of consecutive Mempool::Check() reconciliation
+         *  cycles a genesis's conflicted transaction(s) must fail to resolve
+         *  against disk before AttemptForkRecovery() is triggered for that
+         *  genesis. Check() runs on every accepted block plus periodically, so
+         *  20 consecutive misses is well beyond the handful of cycles a normal
+         *  transient reorg or mempool ordering race takes to settle on its own
+         *  (typically 1-3), while still being low enough to recover promptly
+         *  once a genuine structural divergence is detected. **/
+        static const uint32_t GENESIS_CONFLICT_RECOVERY_THRESHOLD = 20;
+
+
+        /** [Option B] Minimum number of seconds between automatic fork-recovery
+         *  attempts for the same genesis, win or lose. Check() can run many
+         *  times per minute during active sync, so without this cooldown a
+         *  genesis whose conflict keeps failing to resolve (or whose rollback
+         *  keeps being refused, e.g. because the computed ancestor isn't found
+         *  on disk yet) could re-trigger a rollback attempt on almost every
+         *  cycle. Ten minutes gives a prior rollback's reorg (disconnect/
+         *  connect + mempool resurrection) time to fully settle, and gives a
+         *  refused attempt time for the missing ancestor data to potentially
+         *  arrive from peers, before trying again. **/
+        static const uint64_t GENESIS_CONFLICT_RECOVERY_COOLDOWN_SECONDS = 600;
+
+
+        /** [Option B] Maximum number of blocks AttemptForkRecovery() is allowed
+         *  to roll the best chain back by in a single automatic attempt. This
+         *  is a hard safety bound: even if a conflicting transaction's disk
+         *  ancestor block is found, a rollback deeper than this is refused and
+         *  logged for manual review (e.g. -revertblocks) instead of being
+         *  performed automatically. 1440 is a deliberately generous upper bound
+         *  (comparable to roughly a day of blocks at a ~1 minute average block
+         *  time across channels) chosen to cover realistic sync-stall
+         *  divergences while still making a runaway/malicious rollback
+         *  (e.g. a spoofed conflicting transaction referencing a very old
+         *  ancestor) impossible. **/
+        static const uint32_t MAX_AUTO_FORK_RECOVERY_DEPTH = 1440;
+
+
         /** Mempool
          *
          *  The memory pool class where transactions are stored until they are validated
@@ -88,6 +126,24 @@ namespace TAO
 
             /** Set to keep track of duplicate orphans by index. **/
             std::set<uint512_t> setOrphansByIndex;
+
+
+            /** [Option B] Tracks consecutive Check() cycles where a conflicted
+             *  genesis's earliest queued transaction still doesn't match the
+             *  disk-committed hashLast, keyed by hashGenesis. Unlike the
+             *  per-block-hash counters elsewhere (mapCheckRejects), this survives
+             *  across the many different orphan/candidate block hashes that a
+             *  single stuck sigchain conflict produces, letting us detect a
+             *  structurally diverged sigchain that the existing disk-based
+             *  self-heal / reconciliation paths cannot resolve on their own. **/
+            std::map<uint256_t, uint32_t> mapGenesisConflictMisses;
+
+
+            /** [Option B] Last time (unix timestamp) an automatic fork-recovery
+             *  rollback was attempted for a given genesis. Bounds how often we
+             *  retry (and how much chain work we potentially discard) even if
+             *  the sigchain keeps conflicting. **/
+            std::map<uint256_t, uint64_t> mapLastForkRecoveryAttempt;
 
         public:
 
@@ -330,6 +386,33 @@ namespace TAO
              *
              **/
             uint32_t Conflicts();
+
+
+            /** AttemptForkRecovery
+             *
+             *  [Option B - EXPERIMENTAL, opt-in via -autoforkrecovery, disabled by
+             *  default] Attempts an automatic, bounded rollback of the best chain
+             *  when a sigchain's transactions keep conflicting with the local
+             *  mempool's cached view across many reconciliation cycles in a way
+             *  that never resolves via the normal disk-based self-heal paths
+             *  (TritiumBlock::Check()'s fSelfHealSequencing, Process()'s
+             *  mapCheckRejects resync-and-retry, or this class's own Check()
+             *  reconciliation pass). Rather than requiring a manual
+             *  -revertblocks=N restart with a guessed depth, this computes the
+             *  actual common-ancestor block (by locating the block that hosts the
+             *  disk-committed predecessor the conflicting transaction expects)
+             *  and rolls back to it directly, bounded by
+             *  MAX_AUTO_FORK_RECOVERY_DEPTH so a spoofed/malicious conflict can
+             *  never trigger an unbounded rollback.
+             *
+             *  @param[in] hashGenesis The genesis-id of the stuck sigchain.
+             *  @param[in] hashPrevTx The hashPrevTx the still-conflicting
+             *             transaction expects as its predecessor.
+             *
+             *  @return true if a rollback was performed.
+             *
+             **/
+            bool AttemptForkRecovery(const uint256_t& hashGenesis, const uint512_t& hashPrevTx);
 
         };
 

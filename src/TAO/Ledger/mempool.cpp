@@ -28,8 +28,12 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/state.h>
 
 #include <TAO/Ledger/include/create.h>
+
+#include <Util/include/config.h>
+#include <Util/include/runtime.h>
 
 
 /* Global TAO namespace. */
@@ -739,6 +743,31 @@ namespace TAO
                 /* Check if our conflict chain needs to be evicted. */
                 if(vtx[0].hashPrevTx != hashLastDisk)
                 {
+                    /* [Option B - EXPERIMENTAL] Count consecutive reconciliation
+                     * cycles where this genesis's conflict didn't resolve against
+                     * disk. A transient reorg/mempool race clears on its own
+                     * within a handful of cycles; a structurally diverged
+                     * sigchain will keep failing here indefinitely (this is the
+                     * "stuck loop" scenario), so once the miss count crosses the
+                     * threshold we attempt a bounded, computed automatic
+                     * rollback instead of leaving the conflict stranded forever
+                     * or requiring a manual -revertblocks restart. */
+                    const uint256_t& hashGenesis = rTransaction.first;
+                    uint32_t nMisses = ++mapGenesisConflictMisses[hashGenesis];
+
+                    if(config::GetBoolArg("-autoforkrecovery", false)
+                    && nMisses >= GENESIS_CONFLICT_RECOVERY_THRESHOLD)
+                    {
+                        AttemptForkRecovery(hashGenesis, vtx[0].hashPrevTx);
+
+                        /* Reset the miss counter regardless of outcome: either the
+                         * rollback succeeded (so we should start counting fresh
+                         * against the new tip) or it was refused/failed (in which
+                         * case the cooldown below prevents us from retrying every
+                         * single cycle). */
+                        mapGenesisConflictMisses.erase(hashGenesis);
+                    }
+
                     /* Loop through our transactions and remove them. */
                     for(const auto& tx : vtx)
                         mapConflicts.erase(tx.GetHash());
@@ -756,6 +785,10 @@ namespace TAO
                  * re-connected, and moved back into mapLedger. */
                 else
                 {
+                    /* The genesis's conflict resolved against disk this cycle
+                     * (or never triggered), so drop any stale miss counter. */
+                    mapGenesisConflictMisses.erase(rTransaction.first);
+
                     /* Loop through our transactions in sequence order. */
                     for(const auto& tx : vtx)
                     {
@@ -773,6 +806,141 @@ namespace TAO
                     }
                 }
             }
+        }
+
+
+        /* [Option B - EXPERIMENTAL] Attempt an automatic, bounded rollback of the
+         * best chain to resolve a sigchain conflict that Check()'s normal disk
+         * reconciliation pass cannot resolve on its own. Opt-in via
+         * -autoforkrecovery (default disabled). */
+        bool Mempool::AttemptForkRecovery(const uint256_t& hashGenesis, const uint512_t& hashPrevTx)
+        {
+            /* [B4] Enforce a cooldown regardless of outcome (including refused
+             * or failed attempts, not just successful rollbacks) so a sigchain
+             * that keeps conflicting can't re-trigger a rollback attempt on
+             * almost every Check() cycle. This is intentionally set up-front
+             * rather than only after a successful SetBest(), so that a refused
+             * attempt (e.g. ancestor not yet found on disk) also backs off for
+             * the same cooldown window instead of retrying immediately once the
+             * miss counter crosses the threshold again. */
+            const uint64_t nNow = runtime::timestamp();
+            const auto itCooldown = mapLastForkRecoveryAttempt.find(hashGenesis);
+            if(itCooldown != mapLastForkRecoveryAttempt.end()
+            && (nNow - itCooldown->second) < GENESIS_CONFLICT_RECOVERY_COOLDOWN_SECONDS)
+                return false;
+
+            mapLastForkRecoveryAttempt[hashGenesis] = nNow;
+
+            /* Read our own disk-committed last transaction for this genesis
+             * (bypassing the mempool cache entirely). Failure here means we
+             * have never committed any transaction for this genesis at all
+             * (e.g. it was only ever seen in-mempool and never reached the
+             * best chain), which is unexpected for a genesis old enough to
+             * have accumulated GENESIS_CONFLICT_RECOVERY_THRESHOLD conflict
+             * cycles, so this is logged as an error rather than silently
+             * ignored. */
+            uint512_t hashOurLast = 0;
+            if(!LLD::Ledger->ReadLast(hashGenesis, hashOurLast))
+                return debug::error(FUNCTION, "genesis ", hashGenesis.SubString(),
+                    " has no committed last transaction on disk; cannot compute rollback target");
+
+            /* If disk has already caught up with what the conflicting
+             * transaction expects, the conflict resolved on its own between the
+             * threshold being reached and this call running; nothing to do. */
+            if(hashOurLast == hashPrevTx)
+            {
+                debug::log(0, FUNCTION, "genesis ", hashGenesis.SubString(),
+                    " conflict already resolved against disk; skipping rollback");
+
+                return false;
+            }
+
+            /* Locate the block that committed the predecessor transaction the
+             * conflicting/canonical transaction expects. If we don't have that
+             * transaction on disk at all, we have no safe common-ancestor point
+             * to compute a rollback target from, so refuse rather than guessing
+             * (a blind/unbounded rollback is exactly the failure mode this
+             * feature is meant to avoid). */
+            TAO::Ledger::BlockState stateAncestor;
+            if(!LLD::Ledger->ReadBlock(hashPrevTx, stateAncestor))
+            {
+                debug::warning(FUNCTION, "genesis ", hashGenesis.SubString(),
+                    " conflicting predecessor ", hashPrevTx.SubString(),
+                    " not found on disk; cannot compute safe rollback target");
+
+                return false;
+            }
+
+            /* Locate the block that committed our own conflicting last
+             * transaction, purely for logging / diagnostic context. */
+            TAO::Ledger::BlockState stateOurs;
+            const bool fFoundOurs = LLD::Ledger->ReadBlock(hashOurLast, stateOurs);
+
+            /* Refuse to roll back to a block that isn't part of our current
+             * best chain (e.g. a stale reference from an already-orphaned
+             * branch); there is nothing meaningful to recover to in that case. */
+            if(!stateAncestor.IsInMainChain())
+            {
+                debug::warning(FUNCTION, "genesis ", hashGenesis.SubString(),
+                    " candidate ancestor ", stateAncestor.GetHash().SubString(),
+                    " is not in the main chain; refusing rollback");
+
+                return false;
+            }
+
+            /* Bound the rollback depth as a hard safety limit: even a correctly
+             * computed ancestor is refused if it is deeper than we consider
+             * reasonable for an automatic, unattended recovery. Deeper
+             * divergences require manual review (e.g. -revertblocks=N). */
+            const uint32_t nBestHeight = TAO::Ledger::ChainState::nBestHeight.load();
+            if(nBestHeight < stateAncestor.nHeight)
+            {
+                debug::error(FUNCTION, "genesis ", hashGenesis.SubString(),
+                    " candidate ancestor height ", stateAncestor.nHeight, " is ahead of best height ", nBestHeight);
+
+                return false;
+            }
+
+            const uint32_t nDepth = nBestHeight - stateAncestor.nHeight;
+            if(nDepth == 0)
+            {
+                debug::log(0, FUNCTION, "genesis ", hashGenesis.SubString(), " ancestor already best; nothing to roll back");
+
+                return false;
+            }
+
+            if(nDepth > MAX_AUTO_FORK_RECOVERY_DEPTH)
+            {
+                debug::error(FUNCTION, "genesis ", hashGenesis.SubString(),
+                    " rollback depth ", nDepth, " exceeds MAX_AUTO_FORK_RECOVERY_DEPTH ", MAX_AUTO_FORK_RECOVERY_DEPTH,
+                    "; refusing automatic rollback, manual -revertblocks review required");
+
+                return false;
+            }
+
+            /* Perform the bounded rollback, reusing the same tested SetBest()
+             * reorg machinery -revertblocks / -forkblocks already rely on
+             * (disconnect/connect, mempool resurrection, checkpoint handling)
+             * rather than duplicating any of that logic here. */
+            debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "AUTOMATIC FORK RECOVERY:", ANSI_COLOR_RESET,
+                " genesis ", hashGenesis.SubString(), " rolling back ", nDepth, " blocks from height ", nBestHeight,
+                " to height ", stateAncestor.nHeight, " (", stateAncestor.GetHash().SubString(), ")",
+                fFoundOurs
+                    ? debug::safe_printstr(" our conflicting tx was committed at height ", stateOurs.nHeight)
+                    : std::string(" (our conflicting tx height unknown)"));
+
+            LLD::TxnBegin();
+            if(!stateAncestor.SetBest())
+            {
+                LLD::TxnAbort();
+
+                return debug::error(FUNCTION, "failed to roll back to ancestor ", stateAncestor.GetHash().SubString());
+            }
+            LLD::TxnCommit();
+
+            debug::warning(FUNCTION, "AUTOMATIC FORK RECOVERY complete for genesis ", hashGenesis.SubString());
+
+            return true;
         }
 
 
