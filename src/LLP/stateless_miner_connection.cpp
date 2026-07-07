@@ -3849,18 +3849,20 @@ namespace LLP
                 return false;
             }
 
-            /* Channel-height staleness: check if the blockchain has advanced past
-             * the channel height this template was mining for. */
+            /* Channel-height staleness: use the same symmetric distance check
+             * as CleanupStaleTemplates so submit validation agrees after reorgs. */
             TAO::Ledger::BlockState stateCurrent = TAO::Ledger::ChainState::tStateBest.load();
             TAO::Ledger::BlockState stateChannel = stateCurrent;
             if(TAO::Ledger::GetLastState(stateChannel, nTemplateChannel))
             {
-                if(stateChannel.nChannelHeight >= nTemplateChannelHeight)
+                if(IsTemplateTooOldByChannelHeight(stateChannel.nChannelHeight,
+                                                  nTemplateChannelHeight,
+                                                  MINING_TEMPLATE_RETENTION_BLOCKS))
                 {
                     debug::error(FUNCTION, "❌ Template is STALE (channel height)");
                     debug::error(FUNCTION, "   Template channel height: ", nTemplateChannelHeight);
                     debug::error(FUNCTION, "   Current channel height: ", stateChannel.nChannelHeight);
-                    debug::error(FUNCTION, "   Reason: Channel height changed");
+                    debug::error(FUNCTION, "   Reason: Channel height outside retention window");
                     return false;
                 }
             }

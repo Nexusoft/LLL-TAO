@@ -2180,7 +2180,10 @@ namespace LLP
     }
 
 
-    /*  Remove cached legacy-lane templates that are stale by channel height or age. */
+    /*  Remove cached legacy-lane templates that are stale by channel height or age.
+     *  PRECONDITION: the caller must already hold MUTEX. This function can delete
+     *  raw block pointers owned by mapBlocks, so concurrent serialization or
+     *  submission of those templates would otherwise be unsafe. */
     uint32_t Miner::CleanupStaleTemplates()
     {
         uint32_t nRemoved = 0;

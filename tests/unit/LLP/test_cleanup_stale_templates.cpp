@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <unit/catch2/catch.hpp>
 
 #include <LLP/include/stateless_miner.h>
+#include <LLP/types/miner.h>
 #include <LLP/include/falcon_constants.h>
 #include <TAO/Ledger/types/tritium.h>
 #include <TAO/Ledger/include/chainstate.h>
@@ -21,6 +22,30 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 
 using namespace LLP;
+
+namespace
+{
+    struct ChainStateRestore
+    {
+        uint32_t nBestHeight;
+        uint1024_t hashBestChain;
+        TAO::Ledger::BlockState stateBest;
+
+        ChainStateRestore()
+            : nBestHeight(TAO::Ledger::ChainState::nBestHeight.load())
+            , hashBestChain(TAO::Ledger::ChainState::hashBestChain.load())
+            , stateBest(TAO::Ledger::ChainState::tStateBest.load())
+        {
+        }
+
+        ~ChainStateRestore()
+        {
+            TAO::Ledger::ChainState::nBestHeight.store(nBestHeight);
+            TAO::Ledger::ChainState::hashBestChain.store(hashBestChain);
+            TAO::Ledger::ChainState::tStateBest.store(stateBest);
+        }
+    };
+}
 
 
 /** Test Suite: CleanupStaleTemplates Channel Height Fix
@@ -426,3 +451,56 @@ TEST_CASE("CleanupStaleTemplates applies staleness checks to all templates", "[c
         REQUIRE(fShouldRemove == false);
     }
 }
+
+TEST_CASE("Legacy Miner cleanup removes stale registered templates from all maps", "[cleanup][miner][legacy]")
+{
+    ChainStateRestore restore;
+    LLP::Miner miner;
+
+    const uint32_t nChannel = TAO::Ledger::CHANNEL::HASH;
+    const uint32_t nTemplateChannelHeight = 2333381;
+
+    TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::tStateBest.load();
+    stateBest.nHeight = 6535198;
+    stateBest.nChannel = nChannel;
+    stateBest.nChannelHeight = nTemplateChannelHeight - 1;
+    TAO::Ledger::ChainState::tStateBest.store(stateBest);
+    TAO::Ledger::ChainState::nBestHeight.store(stateBest.nHeight);
+    TAO::Ledger::ChainState::hashBestChain.store(uint1024_t(1001));
+
+    auto* pBlock = new TAO::Ledger::TritiumBlock();
+    pBlock->hashMerkleRoot = uint512_t(2002);
+    pBlock->nChannel = nChannel;
+    pBlock->nHeight = stateBest.nHeight + 1;
+
+    REQUIRE(miner.RegisterTemplateForTests(pBlock) == pBlock);
+    REQUIRE(miner.TemplateBlockCountForTests() == 1);
+    REQUIRE(miner.TemplateHashCountForTests() == 1);
+    REQUIRE(miner.TemplateChannelHeightCountForTests() == 1);
+    REQUIRE(miner.TemplateCreationTimeCountForTests() == 1);
+
+    uint32_t nRecordedChannelHeight = 0;
+    REQUIRE(miner.GetTemplateChannelHeightForTests(pBlock->hashMerkleRoot, nRecordedChannelHeight));
+    REQUIRE(nRecordedChannelHeight == nTemplateChannelHeight);
+
+    uint64_t nRecordedCreationTime = 0;
+    REQUIRE(miner.GetTemplateCreationTimeForTests(pBlock->hashMerkleRoot, nRecordedCreationTime));
+    REQUIRE(nRecordedCreationTime != 0);
+
+    TAO::Ledger::BlockState stateReorg = stateBest;
+    stateReorg.nHeight = 6534933;
+    stateReorg.nChannelHeight = 2333116;
+    TAO::Ledger::ChainState::tStateBest.store(stateReorg);
+    TAO::Ledger::ChainState::nBestHeight.store(stateReorg.nHeight);
+    TAO::Ledger::ChainState::hashBestChain.store(uint1024_t(3003));
+
+    REQUIRE(TemplateChannelHeightDistance(stateReorg.nChannelHeight, nRecordedChannelHeight) == 265);
+    REQUIRE(miner.CleanupStaleTemplatesForTests() == 1);
+
+    REQUIRE(miner.TemplateBlockCountForTests() == 0);
+    REQUIRE(miner.TemplateHashCountForTests() == 0);
+    REQUIRE(miner.TemplateChannelHeightCountForTests() == 0);
+    REQUIRE(miner.TemplateCreationTimeCountForTests() == 0);
+    REQUIRE(miner.LookupTemplateForTests(uint512_t(2002)) == nullptr);
+}
+

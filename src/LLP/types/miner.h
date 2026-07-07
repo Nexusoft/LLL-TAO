@@ -976,6 +976,7 @@ namespace LLP
          *
          *  Remove cached templates whose channel-height target is outside the
          *  retention window or whose age exceeds the template lifetime.
+         *  Caller must hold MUTEX because this deletes raw mapBlocks pointers.
          *
          **/
         uint32_t CleanupStaleTemplates();
@@ -1196,6 +1197,58 @@ namespace LLP
         void SetHandshakeInProgressForTests(bool fInProgress)
         {
             SetHandshakeInProgress(fInProgress);
+        }
+
+        uint32_t CleanupStaleTemplatesForTests()
+        {
+            std::unique_lock<std::mutex> lk(MUTEX);
+            return CleanupStaleTemplates();
+        }
+
+        std::size_t TemplateBlockCountForTests()
+        {
+            std::unique_lock<std::mutex> lk(MUTEX);
+            return mapBlocks.size();
+        }
+
+        std::size_t TemplateHashCountForTests()
+        {
+            std::unique_lock<std::mutex> lk(MUTEX);
+            return mapBlockHashes.size();
+        }
+
+        std::size_t TemplateChannelHeightCountForTests()
+        {
+            std::unique_lock<std::mutex> lk(MUTEX);
+            return mapBlockChannelHeights.size();
+        }
+
+        std::size_t TemplateCreationTimeCountForTests()
+        {
+            std::unique_lock<std::mutex> lk(MUTEX);
+            return mapBlockCreationTimes.size();
+        }
+
+        bool GetTemplateChannelHeightForTests(const uint512_t& hashMerkleRoot, uint32_t& nChannelHeight)
+        {
+            std::unique_lock<std::mutex> lk(MUTEX);
+            const auto it = mapBlockChannelHeights.find(hashMerkleRoot);
+            if(it == mapBlockChannelHeights.end())
+                return false;
+
+            nChannelHeight = it->second;
+            return true;
+        }
+
+        bool GetTemplateCreationTimeForTests(const uint512_t& hashMerkleRoot, uint64_t& nCreationTime)
+        {
+            std::unique_lock<std::mutex> lk(MUTEX);
+            const auto it = mapBlockCreationTimes.find(hashMerkleRoot);
+            if(it == mapBlockCreationTimes.end())
+                return false;
+
+            nCreationTime = it->second;
+            return true;
         }
 #endif
 
