@@ -39,6 +39,34 @@ namespace TAO
     namespace Ledger
     {
 
+        /** [Option 1] Maximum number of unique conflicted transaction hashes
+         *  tracked in Mempool::mapConflicts before the entire map is cleared to
+         *  bound memory use. Under normal operation mapConflicts is pruned by
+         *  Mempool::Check()'s reconciliation pass (see CONFLICTS_SWEEP_INTERVAL_SECONDS
+         *  below for why that pass must not depend solely on new blocks
+         *  connecting), but while the chain tip is stalled that pass runs rarely,
+         *  allowing peers to relay an unbounded number of distinct conflicting
+         *  transactions into this map. This is the same intentional cheap DoS
+         *  guard already used for mapLastMissing/mapCheckRejects: clearing all
+         *  entries at once is O(n) but avoids the complexity of LRU eviction,
+         *  and any conflict wiped here that is still relevant will simply be
+         *  re-added the next time the transaction is relayed/requested. **/
+        static const uint32_t MAX_CONFLICTS_MAP_ENTRIES = 10000;
+
+
+        /** [Option 3] Minimum number of seconds between periodic,
+         *  chain-tip-independent calls to Mempool::Check() from
+         *  TritiumNode's per-connection GENERIC event handler. Check()'s
+         *  conflict-reconciliation/eviction pass previously only ran after a
+         *  block successfully connected to the best chain, so while the tip is
+         *  stalled (e.g. a stuck fork or a weak-network dry spell with no mined
+         *  blocks), mapConflicts was never pruned or re-tested against disk.
+         *  This periodic sweep is a global cooldown (guarded by a single shared
+         *  timestamp, not per-connection) so it fires on a fixed cadence
+         *  regardless of how many peers are connected. **/
+        static const uint64_t CONFLICTS_SWEEP_INTERVAL_SECONDS = 30;
+
+
         /** Mempool
          *
          *  The memory pool class where transactions are stored until they are validated
@@ -68,6 +96,14 @@ namespace TAO
 
             /** The transactions in the conflicted ledger memory pool. **/
             std::map<uint512_t, TAO::Ledger::Transaction> mapConflicts;
+
+
+            /** [Option 1] Bounds mapConflicts before inserting a new entry: if the
+             *  map has reached MAX_CONFLICTS_MAP_ENTRIES, it is cleared first (same
+             *  cheap DoS-guard rationale as mapLastMissing/mapCheckRejects). Call
+             *  this immediately before every `mapConflicts[hash] = tx;` insertion
+             *  so all three call sites in Accept() share one bound. **/
+            void BoundConflictsMap();
 
 
             /** Oprhan transactions in queue. **/

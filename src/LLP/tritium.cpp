@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <atomic>
+
 #include <LLC/include/random.h>
 
 #include <LLD/include/global.h>
@@ -333,6 +335,25 @@ namespace LLP
                         if(!config::fClient.load())
                             Legacy::Wallet::Instance().ResendWalletTransactions();
                         #endif
+
+                        /* [Option 3] Periodic, chain-tip-independent mempool
+                         * conflict-reconciliation sweep. Mempool::Check()'s
+                         * eviction/re-admission pass over mapConflicts previously
+                         * only ran after a block successfully connected to the
+                         * best chain, so a stalled tip (stuck fork, weak network
+                         * with no recently mined blocks) meant mapConflicts was
+                         * never pruned or re-tested against disk. This fires on
+                         * a fixed global cadence guarded by a single shared
+                         * timestamp (not per-connection), regardless of how many
+                         * peers are connected or whether new blocks are arriving. */
+                        static std::atomic<uint64_t> nLastConflictsSweep(0);
+                        const uint64_t nNowSweep    = runtime::unifiedtimestamp();
+                        uint64_t nLastSweep          = nLastConflictsSweep.load();
+                        if((nNowSweep - nLastSweep) >= TAO::Ledger::CONFLICTS_SWEEP_INTERVAL_SECONDS
+                        && nLastConflictsSweep.compare_exchange_strong(nLastSweep, nNowSweep))
+                        {
+                            TAO::Ledger::mempool.Check();
+                        }
                     }
                 }
 

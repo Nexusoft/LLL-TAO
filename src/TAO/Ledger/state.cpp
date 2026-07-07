@@ -1115,6 +1115,21 @@ namespace TAO
                         " | ", (nTotalInputs * 1000000.0) / (nInputsTime + 1), " script/s]",
                         " [", std::setw(3), (::GetSerializeSize(*this, SER_LLD, nVersion) / 1024.0), " kb]");
 
+                /* [Prominent BESTCHAIN log] A single, easily greppable line
+                 * ("=== BESTCHAIN ===") emitted every time our own tip advances,
+                 * so this node's actual height/hash/mempool-conflict state can be
+                 * spotted quickly amid dense peer/NOTIFY/GET log noise -- useful
+                 * for confirming whether this node is tracking the network tip
+                 * or stuck on a stalled/forked chain. Suppressed during initial
+                 * sync (same gate as the detailed log above) to avoid spamming
+                 * one line per block during IBD. */
+                if(!TAO::Ledger::ChainState::Synchronizing())
+                    debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "=== BESTCHAIN ===", ANSI_COLOR_RESET,
+                        " height=", nHeight,
+                        " hash=", hash.SubString(),
+                        " mempool_conflicts=", TAO::Ledger::mempool.Conflicts(),
+                        " mempool_size=", TAO::Ledger::mempool.Size());
+
                 /* Set the best chain variables. */
                 ChainState::tStateBest          = *this; //XXX: we are not getting all the data from connect, consider using pointer
                 ChainState::hashBestChain      = hash;
