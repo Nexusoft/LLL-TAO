@@ -316,8 +316,11 @@ namespace Legacy
                 " threshold is reached.");
 
         const std::string strGenesis = params[0].get<std::string>();
-        if(!IsHex(strGenesis) || strGenesis.size() != 64)
-            throw TAO::API::Exception(-5, "Invalid genesis hash");
+        if(!IsHex(strGenesis))
+            throw TAO::API::Exception(-5, "genesis parameter must be a valid hex string");
+
+        if(strGenesis.size() != 64)
+            throw TAO::API::Exception(-5, "genesis hash must be 64 hex characters");
 
         uint256_t hashGenesis;
         hashGenesis.SetHex(strGenesis);

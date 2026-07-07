@@ -916,8 +916,7 @@ namespace TAO
              * conflicting/canonical transaction expects. If we don't have that
              * transaction on disk at all, we have no safe common-ancestor
              * point to compute a divergence depth from. */
-            TAO::Ledger::BlockState stateAncestor;
-            if(!LLD::Ledger->ReadBlock(hashPrevTx, stateAncestor))
+            if(!LLD::Ledger->ReadBlock(hashPrevTx, tInfo.stateAncestor))
             {
                 tInfo.strError = debug::safe_printstr("conflicting predecessor ", hashPrevTx.SubString(),
                     " not found on disk");
@@ -925,9 +924,9 @@ namespace TAO
             }
 
             tInfo.fAncestorFound     = true;
-            tInfo.hashAncestorBlock  = stateAncestor.GetHash();
-            tInfo.nAncestorHeight    = stateAncestor.nHeight;
-            tInfo.fAncestorOnMainChain = stateAncestor.IsInMainChain();
+            tInfo.hashAncestorBlock  = tInfo.stateAncestor.GetHash();
+            tInfo.nAncestorHeight    = tInfo.stateAncestor.nHeight;
+            tInfo.fAncestorOnMainChain = tInfo.stateAncestor.IsInMainChain();
 
             if(!tInfo.fAncestorOnMainChain)
             {
@@ -1004,13 +1003,11 @@ namespace TAO
              * rather than duplicating the ancestor lookup here. */
             const ForkDivergenceInfo tInfo = ComputeForkDivergence(hashGenesis, hashPrevTx);
 
-            if(!tInfo.strError.empty() && !tInfo.fAncestorFound)
-                return debug::error(FUNCTION, "genesis ", hashGenesis.SubString(), " ", tInfo.strError,
-                    "; cannot compute rollback target");
-
             /* If disk has already caught up with what the conflicting
              * transaction expects, the conflict resolved on its own between the
-             * threshold being reached and this call running; nothing to do. */
+             * threshold being reached and this call running; nothing to do.
+             * Checked first since ComputeForkDivergence() returns early in this
+             * case without attempting the ancestor lookup below. */
             if(tInfo.fResolved)
             {
                 debug::log(0, FUNCTION, "genesis ", hashGenesis.SubString(),
@@ -1018,6 +1015,13 @@ namespace TAO
 
                 return false;
             }
+
+            /* The ancestor lookup itself failed (no committed last tx on disk,
+             * or the conflicting predecessor isn't found on disk at all) --
+             * refuse rather than guessing a rollback target. */
+            if(!tInfo.fAncestorFound)
+                return debug::error(FUNCTION, "genesis ", hashGenesis.SubString(), " ", tInfo.strError,
+                    "; cannot compute rollback target");
 
             /* Refuse to roll back to a block that isn't part of our current
              * best chain (e.g. a stale reference from an already-orphaned
@@ -1061,10 +1065,9 @@ namespace TAO
             TAO::Ledger::BlockState stateOurs;
             const bool fFoundOurs = LLD::Ledger->ReadBlock(tInfo.hashOurLast, stateOurs);
 
-            TAO::Ledger::BlockState stateAncestor;
-            if(!LLD::Ledger->ReadBlock(tInfo.hashAncestorBlock, stateAncestor))
-                return debug::error(FUNCTION, "genesis ", hashGenesis.SubString(),
-                    " failed to re-read ancestor ", tInfo.hashAncestorBlock.SubString(), " for rollback");
+            /* Reuse the ancestor block state cached by ComputeForkDivergence()
+             * rather than re-reading it from disk. */
+            TAO::Ledger::BlockState stateAncestor = tInfo.stateAncestor;
 
             /* Perform the bounded rollback, reusing the same tested SetBest()
              * reorg machinery -revertblocks / -forkblocks already rely on

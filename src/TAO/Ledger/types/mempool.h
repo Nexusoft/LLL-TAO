@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/enum.h>
 
 #include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/state.h>
 #include <Legacy/types/transaction.h>
 
 #include <Legacy/types/outpoint.h>
@@ -143,6 +144,11 @@ namespace TAO
 
             /** Hash of the block that committed hashPrevTx, if found. **/
             uint1024_t hashAncestorBlock = 0;
+
+            /** Full block state of the ancestor block, if found. Cached here
+             *  so a caller that proceeds to perform the rollback (e.g.
+             *  AttemptForkRecovery()) doesn't need to re-read it from disk. **/
+            TAO::Ledger::BlockState stateAncestor;
 
             /** Height of the ancestor block, if found. **/
             uint32_t nAncestorHeight = 0;
