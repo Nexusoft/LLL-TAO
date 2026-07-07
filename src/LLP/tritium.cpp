@@ -371,10 +371,12 @@ namespace LLP
                          * last sweep, so treat the sweep as immediately due
                          * rather than waiting out a bogus (huge) unsigned delta.
                          * fIntervalElapsed: the normal case, enough real time has
-                         * passed since the last sweep. */
+                         * passed since the last sweep. Only evaluated once
+                         * fClockWentBackward is false, so the cast to uint64_t
+                         * below is always operating on a non-negative value. */
                         const bool fClockWentBackward = (nDeltaSweep < 0);
-                        const bool fIntervalElapsed    = (nDeltaSweep >= 0
-                            && static_cast<uint64_t>(nDeltaSweep) >= TAO::Ledger::CONFLICTS_SWEEP_INTERVAL_SECONDS);
+                        const bool fIntervalElapsed    = !fClockWentBackward
+                            && (static_cast<uint64_t>(nDeltaSweep) >= TAO::Ledger::CONFLICTS_SWEEP_INTERVAL_SECONDS);
 
                         if(fClockWentBackward || fIntervalElapsed)
                         {
