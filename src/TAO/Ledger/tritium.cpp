@@ -35,7 +35,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/process.h>
-#include <TAO/Ledger/include/stagepool.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/syncblock.h>
@@ -541,16 +540,8 @@ namespace TAO
                     TAO::Ledger::Transaction tx;
                     if(!LLD::Ledger->ReadTx(vtx[i].second, tx, fHasConflict, FLAGS::MEMPOOL))
                     {
-                        /* [Option A] Fall back to the block-context staging pool:
-                         * a tx rejected by tip-relative mempool policy (e.g.
-                         * "coinbase is immature" at a lagging tip) is staged there
-                         * so the block can complete and validate the tx in proper
-                         * BLOCK context instead of deadlocking. */
-                        if(!StagePool::Get(vtx[i].second, tx))
-                        {
-                            vMissing.push_back(vtx[i]);
-                            continue;
-                        }
+                        vMissing.push_back(vtx[i]);
+                        continue;
                     }
 
                     /* Check for conflicts. */
@@ -725,11 +716,6 @@ namespace TAO
             /* Start the database transaction. */
             LLD::TxnBegin();
 
-            /* [Option A] Track staged transactions committed by this block so
-             * they can be released from the staging pool after a successful
-             * commit (a TxnAbort leaves them staged for the next attempt). */
-            std::vector<uint512_t> vStagedCommitted;
-
             /* Write the transactions. */
             for(const auto& proof : vtx)
             {
@@ -745,16 +731,7 @@ namespace TAO
                     /* Check the memory pool. */
                     TAO::Ledger::Transaction tx;
                     if(!LLD::Ledger->ReadTx(hash, tx, fHasConflict, FLAGS::MEMPOOL))
-                    {
-                        /* [Option A] Fall back to the block-context staging pool
-                         * for txs that mempool policy rejected at a lagging tip;
-                         * full contextual validation still happens when the block
-                         * state connects inside this database transaction. */
-                        if(!StagePool::Get(hash, tx))
-                            return debug::error(FUNCTION, "transaction is not in memory pool");
-
-                        vStagedCommitted.push_back(hash);
-                    }
+                        return debug::error(FUNCTION, "transaction is not in memory pool");
 
                     /* Check for conflicts. */
                     if(fHasConflict)
@@ -813,11 +790,6 @@ namespace TAO
 
             /* Commit the transaction to database. */
             LLD::TxnCommit();
-
-            /* [Option A] Release any staged transactions committed by this block
-             * now that the database transaction is durable. */
-            for(const auto& hashStaged : vStagedCommitted)
-                StagePool::Erase(hashStaged);
 
             /* Check for best chain. */
             if(GetHash() == ChainState::hashBestChain.load())

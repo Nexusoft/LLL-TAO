@@ -59,21 +59,5 @@ namespace TAO
 
             return NEXUS_MATURITY_COINSTAKE;
         }
-
-
-        /* [Option B] Retrieve the relaxed coinbase maturity requirement used for
-         * mempool admission policy only (never for consensus or templates). */
-        uint32_t MaturityCoinBaseMempool(const BlockState& block)
-        {
-            /* Start from the strict consensus requirement. */
-            const uint32_t nMaturity = MaturityCoinBase(block);
-
-            /* Apply the grace window, floored at 1 so a 0-confirmation coinbase
-             * spend can never be admitted to the mempool. */
-            if(nMaturity <= MEMPOOL_MATURITY_GRACE + 1)
-                return 1;
-
-            return nMaturity - MEMPOOL_MATURITY_GRACE;
-        }
     }
 }
