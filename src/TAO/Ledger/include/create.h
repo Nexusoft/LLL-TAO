@@ -181,12 +181,19 @@ namespace TAO
          *  @param[in] nExtraNonce An extra nonce to use for double iterating.
          *  @param[in] pCoinbaseRecipients The coinbase recipients, if any.
          *  @param[in] hashDynamicGenesis Reward recipient genesis (0 = use user genesis)
+         *  @param[out] pfTipRaceRetry If non-null, set to true when this call failed
+         *              specifically because the chain tip advanced while the fresh
+         *              template was being built/signed (a transient race, not a real
+         *              error). Callers may use this to immediately retry against the
+         *              new tip instead of surfacing a hard failure. Left untouched
+         *              (caller should pre-initialize to false) on any other failure.
          *
          **/
         bool CreateBlock(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& pin,
                          const uint32_t nChannel, TAO::Ledger::TritiumBlock& block, const uint64_t nExtraNonce = 0,
                          Legacy::Coinbase *pCoinbaseRecipients = nullptr,
-                         const uint256_t& hashDynamicGenesis = uint256_t(0));
+                         const uint256_t& hashDynamicGenesis = uint256_t(0),
+                         bool* pfTipRaceRetry = nullptr);
 
 
         /** CreateStakeBlock

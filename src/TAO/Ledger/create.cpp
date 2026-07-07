@@ -970,7 +970,7 @@ namespace TAO::Ledger
     /* Create a new block object from the chain. */
     bool CreateBlock(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& pin,
         const uint32_t nChannel, TAO::Ledger::TritiumBlock &rBlockRet, const uint64_t nExtraNonce, Legacy::Coinbase *pCoinbaseRecipients,
-        const uint256_t& hashDynamicGenesis)
+        const uint256_t& hashDynamicGenesis, bool* pfTipRaceRetry)
     {
         /* Cache key: always the signing wallet's genesis (node operator sigchain).
          * hashDynamicGenesis (miner reward address) flows separately to producer
@@ -1363,6 +1363,8 @@ namespace TAO::Ledger
                                " producer_ms=", nProducerMs);
                     tBlockCache[nChannel].AbandonInFlightBuild(pInFlight);
                     guard.fCompleted = true; // prevent guard dtor from re-abandoning
+                    if(pfTipRaceRetry != nullptr)
+                        *pfTipRaceRetry = true;
                     return debug::error(FUNCTION, "Tip advanced during template build, retry required.");
                 }
             }
