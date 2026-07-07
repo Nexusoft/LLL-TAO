@@ -72,6 +72,15 @@ namespace LLP
     TritiumNode::Inventory TritiumNode::tInventory;
 
 
+    /* [Option 3] Global cooldown timestamp for the periodic, chain-tip-independent
+     * mempool conflict-reconciliation sweep (see EVENTS::GENERIC below). File-scope
+     * with internal linkage rather than function-local static, so it is guaranteed
+     * to be initialized once before any TritiumNode's event loop can reach it,
+     * avoiding any ambiguity around function-local static initialization order in
+     * a multi-threaded context. */
+    static std::atomic<uint64_t> nLastConflictsSweep(0);
+
+
     /* Declaration of client mutex for synchronizing client mode transactions. */
     std::mutex TritiumNode::CLIENT_MUTEX;
 
@@ -346,13 +355,19 @@ namespace LLP
                          * a fixed global cadence guarded by a single shared
                          * timestamp (not per-connection), regardless of how many
                          * peers are connected or whether new blocks are arriving. */
-                        static std::atomic<uint64_t> nLastConflictsSweep(0);
-                        const uint64_t nNowSweep    = runtime::unifiedtimestamp();
-                        uint64_t nLastSweep          = nLastConflictsSweep.load();
-                        if((nNowSweep - nLastSweep) >= TAO::Ledger::CONFLICTS_SWEEP_INTERVAL_SECONDS
-                        && nLastConflictsSweep.compare_exchange_strong(nLastSweep, nNowSweep))
+                        const uint64_t nNowSweep = runtime::unifiedtimestamp();
+                        uint64_t nLastSweep      = nLastConflictsSweep.load();
+
+                        /* Signed comparison guards against unsigned wrap-around if
+                         * the system clock ever moves backward (e.g. NTP
+                         * correction): a negative delta is treated as "due" rather
+                         * than wrapping to a huge positive value that would skip
+                         * the sweep indefinitely. */
+                        const int64_t nDeltaSweep = static_cast<int64_t>(nNowSweep) - static_cast<int64_t>(nLastSweep);
+                        if(nDeltaSweep < 0 || static_cast<uint64_t>(nDeltaSweep) >= TAO::Ledger::CONFLICTS_SWEEP_INTERVAL_SECONDS)
                         {
-                            TAO::Ledger::mempool.Check();
+                            if(nLastConflictsSweep.compare_exchange_strong(nLastSweep, nNowSweep))
+                                TAO::Ledger::mempool.Check();
                         }
                     }
                 }
