@@ -2209,18 +2209,18 @@ namespace LLP
             }
 
             uint64_t nAge = 0;
-            bool fCreationTimeFuture = false;
             const bool fCreationTimeKnown = (itCreationTime != mapBlockCreationTimes.end());
+            const bool fCreationTimeFuture =
+                fCreationTimeKnown && (nNow < itCreationTime->second);
             if(fCreationTimeKnown)
             {
-                if(nNow >= itCreationTime->second)
-                    nAge = nNow - itCreationTime->second;
-                else
+                if(fCreationTimeFuture)
                 {
-                    fCreationTimeFuture = true;
                     debug::warning(FUNCTION, "Legacy-lane template creation time is in the future ",
                                    hashMerkleRoot.SubString());
                 }
+                else
+                    nAge = nNow - itCreationTime->second;
             }
             const bool fTooOldByTime =
                 fCreationTimeKnown &&
