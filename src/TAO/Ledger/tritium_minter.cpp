@@ -395,6 +395,9 @@ namespace TAO::Ledger
         uint32_t nUserRetryCounter  = 0;
         uint32_t nTrustRetryCounter = 0;
 
+        /* How often (in loop iterations) to re-log a persistent retry condition below. */
+        static const uint32_t nRetryLogThrottle = 10;
+
         /* Minting thread will continue repeating this loop until stop minter or shutdown */
         while(!StakeMinter::fStop.load() && !config::fShutdown.load())
         {
@@ -421,7 +424,7 @@ namespace TAO::Ledger
                 pTritiumMinter->nSleepTime = 5000;
 
                 /* Throttle the log so a persistent lock doesn't spam it, but still surface it periodically. */
-                if((nUserRetryCounter % 10) == 0)
+                if((nUserRetryCounter % nRetryLogThrottle) == 0)
                     debug::log(0, FUNCTION, "Account not unlocked for staking, will retry.");
 
                 ++nUserRetryCounter;
@@ -439,7 +442,7 @@ namespace TAO::Ledger
             {
                 pTritiumMinter->nSleepTime = 5000;
 
-                if((nTrustRetryCounter % 10) == 0)
+                if((nTrustRetryCounter % nRetryLogThrottle) == 0)
                     debug::log(0, FUNCTION, "Failed to retrieve trust account, will retry.");
 
                 ++nTrustRetryCounter;
