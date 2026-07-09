@@ -32,6 +32,8 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
+        class BlockState;
+
 
         /** Enum values for returning the block's state after processing. **/
         namespace PROCESS
@@ -158,6 +160,48 @@ namespace TAO
          *
          **/
         void Process(const TAO::Ledger::Block& block, uint8_t &nStatus, LLP::TritiumNode* pnode = nullptr, bool fSkipCheck = false);
+
+
+        /** TrackLocalMinedAcceptedBlock
+         *
+         *  Records a locally mined block that was accepted so later same-height
+         *  sibling reorgs can emit explicit diagnostics and recovery logs.
+         *
+         **/
+        void TrackLocalMinedAcceptedBlock(const TAO::Ledger::Block& block);
+
+
+        /** MarkLocalMinedBlockDisconnected
+         *
+         *  Called during SetBest() when a block is disconnected.  If the block
+         *  was locally mined, logs the orphaning event and removes it from the
+         *  local-mined watch set.
+         *
+         **/
+        void MarkLocalMinedBlockDisconnected(const TAO::Ledger::BlockState& state,
+                                             const TAO::Ledger::BlockState& stateNewBest);
+
+
+        /** FinalizeLocalMinedTrackingAfterSetBest
+         *
+         *  Prunes locally mined records that remained on the best chain after a
+         *  later SetBest() and logs that they no longer need orphan tracking.
+         *
+         **/
+        void FinalizeLocalMinedTrackingAfterSetBest(const TAO::Ledger::BlockState& stateNewBest);
+
+
+        /** AttemptPeerBestChainRecovery
+         *
+         *  Bounded ancestry-based recovery for cases where peers advertise a
+         *  different known best hash.  If the advertised branch is better than
+         *  our current best and the disconnect depth is within the auto-recovery
+         *  cap, forces the normal SetBest() path.
+         *
+         **/
+        bool AttemptPeerBestChainRecovery(const uint1024_t& hashPeerBest,
+                                          uint32_t nPeerHeight,
+                                          const char* pszSource = nullptr);
 
     }
 }

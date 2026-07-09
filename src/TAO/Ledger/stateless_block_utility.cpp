@@ -921,6 +921,8 @@ namespace TAO::Ledger
             return result;
         }
 
+        TAO::Ledger::TrackLocalMinedAcceptedBlock(block);
+
         result.reason = "accepted";
         return result;
     }

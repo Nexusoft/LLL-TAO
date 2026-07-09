@@ -590,7 +590,10 @@ namespace LLP
         {
             LOCK(MUTEX);
             nChannelCopy = nSubscribedChannel;
+            clear_map();
         }
+        debug::log(1, FUNCTION, "Legacy cached mining templates flushed before push rebuild"
+            " tip=", hashExpectedTip.SubString(), " channel=", nChannelCopy);
         ScheduleTemplateWork(TemplateWorkReason::PUSH_NOTIFICATION, hashExpectedTip, true, nChannelCopy);
     }
 
