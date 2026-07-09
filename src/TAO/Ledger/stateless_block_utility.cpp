@@ -19,7 +19,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/timelocks.h>
-#include <TAO/Ledger/include/local_mined_block_tracker.h>
 #include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/types/mempool.h>
 
@@ -922,7 +921,7 @@ namespace TAO::Ledger
             return result;
         }
 
-        TAO::Ledger::TrackLocalMinedBlock(block);
+        TAO::Ledger::TrackLocalMinedAcceptedBlock(block);
 
         result.reason = "accepted";
         return result;

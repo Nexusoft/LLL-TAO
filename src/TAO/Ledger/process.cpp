@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/create.h>
 
 #include <TAO/Ledger/types/locator.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -24,6 +25,8 @@ ________________________________________________________________________________
 #include <Legacy/types/legacy.h>
 
 #include <Util/include/runtime.h>
+
+#include <vector>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -65,6 +68,187 @@ namespace TAO
         std::map<uint1024_t, uint64_t> mapLastOrphanRequest;
 
 
+        namespace
+        {
+            /** LocalMinedBlockRecord
+             *
+             *  Memory-only watch record for locally mined blocks that have been
+             *  accepted.  These records are intentionally bounded and short-lived:
+             *  they are removed once the block gains a best-chain descendant or
+             *  is disconnected by a better branch.
+             *
+             **/
+            struct LocalMinedBlockRecord
+            {
+                uint1024_t hashPrevBlock = 0;
+                uint32_t nHeight = 0;
+                uint32_t nChannel = 0;
+                uint64_t nAcceptedAt = 0;
+            };
+
+
+            /** Maximum number of local mined blocks tracked at once.  Local
+             *  mined blocks only need to stay watched until a descendant lands
+             *  or a reorg disconnects them, so a small cap is sufficient and
+             *  keeps oldest-entry eviction cheap. */
+            static const uint64_t MAX_LOCAL_MINED_BLOCK_RECORDS = 256;
+
+
+            /** Maximum number of peer-best recovery cooldown entries tracked. */
+            static const uint64_t MAX_PEER_BEST_RECOVERY_RECORDS = 256;
+
+
+            /** Peer-best recovery cooldown; mirrors autofork recovery's tested bound. */
+            static const uint64_t PEER_BEST_RECOVERY_COOLDOWN_SECONDS =
+                GENESIS_CONFLICT_RECOVERY_COOLDOWN_SECONDS;
+
+
+            /** Last automatic peer-best recovery attempt by advertised best hash. */
+            std::map<uint1024_t, uint64_t> mapLastPeerBestRecoveryAttempt;
+
+
+            /** Locally accepted mined blocks keyed by block hash. */
+            std::map<uint1024_t, LocalMinedBlockRecord> mapLocalMinedBlocks;
+
+
+            /** Mutex protecting local mined/recovery maps. */
+            std::mutex LOCAL_MINED_MUTEX;
+
+
+            bool BetterThanCurrentBest(const TAO::Ledger::BlockState& statePeer,
+                                       const TAO::Ledger::BlockState& stateBest)
+            {
+                if(statePeer.GetHash() == stateBest.GetHash())
+                    return false;
+
+                static const uint32_t MIN_TRITIUM_WEIGHT_VERSION = 7;
+                if(statePeer.nVersion >= MIN_TRITIUM_WEIGHT_VERSION && !statePeer.IsHybrid())
+                {
+                    uint8_t nEquals  = 0;
+                    uint8_t nGreater = 0;
+
+                    for(uint32_t n = 0; n < 3; ++n)
+                    {
+                        if(statePeer.nChannelWeight[n] == stateBest.nChannelWeight[n])
+                            ++nEquals;
+
+                        if(statePeer.nChannelWeight[n] > stateBest.nChannelWeight[n])
+                            ++nGreater;
+                    }
+
+                    /* Mirrors BlockState::Accept(): in a two-channel battle,
+                     * a branch that is more than one unified height ahead gets
+                     * one extra "greater" vote so the heavier branch can win. */
+                    if(statePeer.nHeight > stateBest.nHeight + 1
+                    && (nEquals == 1 && nGreater == 1))
+                        ++nGreater;
+
+                    return ((nEquals == 2 && nGreater == 1) || nGreater > 1);
+                }
+
+                return statePeer.nChainTrust > stateBest.nChainTrust;
+            }
+
+
+            void EvictOldestLocalMinedBlock()
+            {
+                if(mapLocalMinedBlocks.empty())
+                    return;
+
+                auto itOldest = mapLocalMinedBlocks.begin();
+                for(auto it = mapLocalMinedBlocks.begin(); it != mapLocalMinedBlocks.end(); ++it)
+                {
+                    if(it->second.nAcceptedAt < itOldest->second.nAcceptedAt)
+                        itOldest = it;
+                }
+
+                mapLocalMinedBlocks.erase(itOldest);
+            }
+
+
+            void EvictOldestPeerBestCooldown()
+            {
+                if(mapLastPeerBestRecoveryAttempt.empty())
+                    return;
+
+                auto itOldest = mapLastPeerBestRecoveryAttempt.begin();
+                for(auto it = mapLastPeerBestRecoveryAttempt.begin();
+                    it != mapLastPeerBestRecoveryAttempt.end(); ++it)
+                {
+                    if(it->second < itOldest->second)
+                        itOldest = it;
+                }
+
+                mapLastPeerBestRecoveryAttempt.erase(itOldest);
+            }
+
+
+            /* BlockState traversal intentionally takes copies: walking Prev()
+             * mutates the cursor state while preserving the callers' states for
+             * diagnostics and the eventual SetBest() call. */
+            bool FindCommonAncestor(TAO::Ledger::BlockState stateA,
+                                    TAO::Ledger::BlockState stateB,
+                                    TAO::Ledger::BlockState& stateAncestor,
+                                    uint32_t& nADepth,
+                                    uint32_t& nBDepth)
+            {
+                nADepth = 0;
+                nBDepth = 0;
+
+                while(stateA.nHeight > stateB.nHeight)
+                {
+                    stateA = stateA.Prev();
+                    /* BlockState::operator! reports an invalid/null traversal result. */
+                    if(!stateA)
+                        return false;
+                    ++nADepth;
+                }
+
+                while(stateB.nHeight > stateA.nHeight)
+                {
+                    stateB = stateB.Prev();
+                    /* BlockState::operator! reports an invalid/null traversal result. */
+                    if(!stateB)
+                        return false;
+                    ++nBDepth;
+                }
+
+                while(stateA != stateB)
+                {
+                    stateA = stateA.Prev();
+                    stateB = stateB.Prev();
+                    /* BlockState::operator! reports an invalid/null traversal result. */
+                    if(!stateA || !stateB)
+                        return false;
+                    ++nADepth;
+                    ++nBDepth;
+                }
+
+                stateAncestor = stateA;
+                return true;
+            }
+
+
+            /* stateDescendant is a by-value traversal cursor for the same reason:
+             * the function walks it backward without mutating the caller's state. */
+            bool IsAncestorOf(const TAO::Ledger::BlockState& stateAncestor,
+                              TAO::Ledger::BlockState stateDescendant)
+            {
+                if(stateAncestor.nHeight > stateDescendant.nHeight)
+                    return false;
+
+                while(stateDescendant.nHeight > stateAncestor.nHeight)
+                {
+                    stateDescendant = stateDescendant.Prev();
+                    if(!stateDescendant)
+                        return false;
+                }
+
+                return stateDescendant.GetHash() == stateAncestor.GetHash();
+            }
+        }
+
+
         /* Mutex to protect checking more than one block at a time. */
         std::mutex PROCESSING_MUTEX;
 
@@ -79,6 +263,175 @@ namespace TAO
 
         /* Stats variable for syncing. */
         std::atomic<uint64_t> nProcessedContracts(0);
+
+
+        void TrackLocalMinedAcceptedBlock(const TAO::Ledger::Block& block)
+        {
+            const uint1024_t hashBlock = block.GetHash();
+
+            std::lock_guard<std::mutex> lock(LOCAL_MINED_MUTEX);
+            if(mapLocalMinedBlocks.size() >= MAX_LOCAL_MINED_BLOCK_RECORDS
+            && !mapLocalMinedBlocks.count(hashBlock))
+                EvictOldestLocalMinedBlock();
+
+            LocalMinedBlockRecord record;
+            record.hashPrevBlock = block.hashPrevBlock;
+            record.nHeight       = block.nHeight;
+            record.nChannel      = block.nChannel;
+            record.nAcceptedAt   = runtime::timestamp();
+            mapLocalMinedBlocks[hashBlock] = record;
+
+            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "=== LOCAL_MINED_ACCEPTED ===", ANSI_COLOR_RESET,
+                " height=", block.nHeight,
+                " channel=", block.nChannel,
+                " hash=", hashBlock.SubString(),
+                " prev=", block.hashPrevBlock.SubString(),
+                " best=", ChainState::hashBestChain.load().SubString());
+        }
+
+
+        void MarkLocalMinedBlockDisconnected(const TAO::Ledger::BlockState& state,
+                                             const TAO::Ledger::BlockState& stateNewBest)
+        {
+            const uint1024_t hashBlock = state.GetHash();
+
+            std::lock_guard<std::mutex> lock(LOCAL_MINED_MUTEX);
+            const auto it = mapLocalMinedBlocks.find(hashBlock);
+            if(it == mapLocalMinedBlocks.end())
+                return;
+
+            const bool fSameHeightSibling =
+                (state.nHeight == stateNewBest.nHeight)
+                && (it->second.hashPrevBlock == stateNewBest.hashPrevBlock);
+
+            /* Orphaning a locally accepted mined block is operator-actionable in
+             * the same-height race this recovery path targets, so it is emitted
+             * as a warning while routine local acceptance remains an info log. */
+            debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_RED, "=== LOCAL_MINED_ORPHANED ===", ANSI_COLOR_RESET,
+                " local_hash=", hashBlock.SubString(),
+                " local_height=", state.nHeight,
+                " local_channel=", it->second.nChannel,
+                " peer_best=", stateNewBest.GetHash().SubString(),
+                " peer_height=", stateNewBest.nHeight,
+                " peer_channel=", stateNewBest.nChannel,
+                " same_height_sibling=", (fSameHeightSibling ? "yes" : "no"),
+                " accepted_age=", (runtime::timestamp() - it->second.nAcceptedAt), "s");
+
+            mapLocalMinedBlocks.erase(it);
+            ClearMiningTemplateCaches("local mined block orphaned by reorg");
+        }
+
+
+        void FinalizeLocalMinedTrackingAfterSetBest(const TAO::Ledger::BlockState& stateNewBest)
+        {
+            const uint1024_t hashNewBest = stateNewBest.GetHash();
+            std::vector<uint1024_t> vConfirmed;
+
+            {
+                std::lock_guard<std::mutex> lock(LOCAL_MINED_MUTEX);
+                for(const auto& item : mapLocalMinedBlocks)
+                {
+                    if(item.first == hashNewBest)
+                        continue;
+
+                    TAO::Ledger::BlockState stateLocal;
+                    if(!LLD::Ledger->ReadBlock(item.first, stateLocal))
+                    {
+                        vConfirmed.push_back(item.first);
+                        continue;
+                    }
+
+                    if(IsAncestorOf(stateLocal, stateNewBest))
+                    {
+                        debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "=== LOCAL_MINED_CONFIRMED ===", ANSI_COLOR_RESET,
+                            " local_hash=", item.first.SubString(),
+                            " local_height=", item.second.nHeight,
+                            " best_hash=", hashNewBest.SubString(),
+                            " best_height=", stateNewBest.nHeight);
+                        vConfirmed.push_back(item.first);
+                    }
+                }
+
+                for(const auto& hash : vConfirmed)
+                    mapLocalMinedBlocks.erase(hash);
+            }
+        }
+
+
+        bool AttemptPeerBestChainRecovery(const uint1024_t& hashPeerBest,
+                                          uint32_t nPeerHeight,
+                                          const char* pszSource)
+        {
+            if(hashPeerBest == 0 || hashPeerBest == ChainState::hashBestChain.load())
+                return false;
+
+            if(!config::GetBoolArg("-peerbestchainrecovery", true))
+                return false;
+
+            TAO::Ledger::BlockState statePeer;
+            if(!LLD::Ledger->ReadBlock(hashPeerBest, statePeer))
+                return false;
+
+            LOCK(PROCESSING_MUTEX);
+
+            const TAO::Ledger::BlockState stateBest = ChainState::tStateBest.load();
+            if(hashPeerBest == stateBest.GetHash())
+                return false;
+
+            if(!BetterThanCurrentBest(statePeer, stateBest))
+                return false;
+
+            TAO::Ledger::BlockState stateAncestor;
+            uint32_t nConnectDepth = 0;
+            uint32_t nDisconnectDepth = 0;
+            if(!FindCommonAncestor(statePeer, stateBest, stateAncestor, nConnectDepth, nDisconnectDepth))
+                return false;
+
+            if(nDisconnectDepth > MAX_AUTO_FORK_RECOVERY_DEPTH)
+            {
+                debug::warning(FUNCTION,
+                    "peer best recovery refused: disconnect depth ", nDisconnectDepth,
+                    " exceeds cap ", MAX_AUTO_FORK_RECOVERY_DEPTH,
+                    " peer_best=", hashPeerBest.SubString(),
+                    " current_best=", stateBest.GetHash().SubString());
+                return false;
+            }
+
+            const uint64_t nNow = runtime::timestamp();
+            {
+                std::lock_guard<std::mutex> lock(LOCAL_MINED_MUTEX);
+                const auto itCooldown = mapLastPeerBestRecoveryAttempt.find(hashPeerBest);
+                if(itCooldown != mapLastPeerBestRecoveryAttempt.end()
+                && (nNow - itCooldown->second) < PEER_BEST_RECOVERY_COOLDOWN_SECONDS)
+                    return false;
+
+                if(mapLastPeerBestRecoveryAttempt.size() >= MAX_PEER_BEST_RECOVERY_RECORDS)
+                    EvictOldestPeerBestCooldown();
+                mapLastPeerBestRecoveryAttempt[hashPeerBest] = nNow;
+            }
+
+            debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "=== PEER_BEST_RECOVERY ===", ANSI_COLOR_RESET,
+                " source=", (pszSource ? pszSource : "peer"),
+                " peer_best=", hashPeerBest.SubString(),
+                " peer_height=", statePeer.nHeight,
+                " advertised_height=", nPeerHeight,
+                " current_best=", stateBest.GetHash().SubString(),
+                " current_height=", stateBest.nHeight,
+                " ancestor=", stateAncestor.GetHash().SubString(),
+                " disconnect=", nDisconnectDepth,
+                " connect=", nConnectDepth,
+                " action=SetBest");
+
+            if(!statePeer.SetBest())
+                return debug::error(FUNCTION, "peer best recovery failed to set best chain");
+
+            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "=== PEER_BEST_RECOVERED ===", ANSI_COLOR_RESET,
+                " best=", ChainState::hashBestChain.load().SubString(),
+                " height=", ChainState::nBestHeight.load(),
+                " templates=flushed");
+
+            return true;
+        }
 
 
         /* Maximum number of unique incomplete-block hashes tracked in

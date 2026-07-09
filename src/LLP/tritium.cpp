@@ -2513,6 +2513,37 @@ namespace LLP
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::NOTIFY: BESTCHAIN ", hashBestChain.SubString());
 
+                            /* If a peer advertises a different best hash that we
+                             * already have on disk, let the ledger perform a bounded
+                             * ancestry-based recovery if that branch is actually
+                             * heavier.  If the hash is unknown but the peer is at
+                             * our height or ahead, request the branch by locator so
+                             * normal block processing can converge. */
+                            if(hashBestChain != 0
+                            && hashBestChain != TAO::Ledger::ChainState::hashBestChain.load())
+                            {
+                                if(LLD::Ledger->HasBlock(hashBestChain))
+                                {
+                                    TAO::Ledger::AttemptPeerBestChainRecovery(
+                                        hashBestChain, nCurrentHeight, NODE.c_str());
+                                }
+                                else if(nCurrentHeight >= TAO::Ledger::ChainState::nBestHeight.load())
+                                {
+                                    debug::log(1, NODE,
+                                        "ACTION::NOTIFY: BESTCHAIN differs and is unknown; requesting branch ",
+                                        hashBestChain.SubString(),
+                                        " peer_height=", nCurrentHeight,
+                                        " local_height=", TAO::Ledger::ChainState::nBestHeight.load());
+
+                                    PushMessage(ACTION::LIST,
+                                        uint8_t(TYPES::BLOCK),
+                                        uint8_t(TYPES::LOCATOR),
+                                        TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                                        uint1024_t(hashBestChain)
+                                    );
+                                }
+                            }
+
                             break;
                         }
 
