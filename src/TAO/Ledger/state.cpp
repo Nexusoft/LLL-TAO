@@ -41,9 +41,11 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/dispatch.h>
 #include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/include/local_mined_block_tracker.h>
 #include <TAO/Ledger/include/prime.h>
 #include <TAO/Ledger/include/stake_change.h>
 #include <TAO/Ledger/include/supply.h>
@@ -56,7 +58,11 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/client.h>
 
 #include <Util/include/args.h>
+#include <Util/include/runtime.h>
 #include <Util/include/softfloat.h>
+
+#include <map>
+#include <mutex>
 
 
 /* Global TAO namespace. */
@@ -66,6 +72,76 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
+        namespace
+        {
+            struct LocalMinedBlockRecord
+            {
+                uint1024_t hashBlock;
+                uint1024_t hashPrevBlock;
+                uint32_t nHeight{0};
+                uint32_t nChannel{0};
+                uint64_t nAcceptedTime{0};
+            };
+
+            std::mutex LOCAL_MINED_BLOCK_MUTEX;
+            std::map<uint1024_t, LocalMinedBlockRecord> mapLocalMinedBlocks;
+            static const uint64_t MAX_LOCAL_MINED_BLOCK_RECORDS = 1024;
+
+            bool ConsumeLocalMinedBlock(const uint1024_t& hashBlock, LocalMinedBlockRecord& rRecord)
+            {
+                std::lock_guard<std::mutex> lock(LOCAL_MINED_BLOCK_MUTEX);
+
+                const auto it = mapLocalMinedBlocks.find(hashBlock);
+                if(it == mapLocalMinedBlocks.end())
+                    return false;
+
+                rRecord = it->second;
+                mapLocalMinedBlocks.erase(it);
+                return true;
+            }
+
+
+            bool FindReplacementAtHeight(const std::vector<BlockState>& vConnect,
+                                          const uint32_t nHeight,
+                                          BlockState& stateReplacement)
+            {
+                for(const auto& state : vConnect)
+                {
+                    if(state.nHeight == nHeight)
+                    {
+                        stateReplacement = state;
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+        }
+
+
+        void TrackLocalMinedBlock(const TAO::Ledger::TritiumBlock& block)
+        {
+            LocalMinedBlockRecord record;
+            record.hashBlock     = block.GetHash();
+            record.hashPrevBlock = block.hashPrevBlock;
+            record.nHeight       = block.nHeight;
+            record.nChannel      = block.nChannel;
+            record.nAcceptedTime = runtime::timestamp();
+
+            std::lock_guard<std::mutex> lock(LOCAL_MINED_BLOCK_MUTEX);
+            if(mapLocalMinedBlocks.size() >= MAX_LOCAL_MINED_BLOCK_RECORDS)
+                mapLocalMinedBlocks.erase(mapLocalMinedBlocks.begin());
+
+            mapLocalMinedBlocks[record.hashBlock] = record;
+
+            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "=== LOCAL MINED BLOCK ACCEPTED ===", ANSI_COLOR_RESET,
+                " height=", record.nHeight,
+                " channel=", record.nChannel,
+                " hash=", record.hashBlock.SubString(),
+                " hashPrevBlock=", record.hashPrevBlock.SubString(),
+                " note=local acceptance is not final until chain weight keeps this block on best chain");
+        }
+
 
         /* Get the block state object. */
         bool GetLastState(BlockState &state, uint32_t nChannel)
@@ -933,6 +1009,42 @@ namespace TAO
                 if(fReorgOccurring)
                     reorgTimer.Start();
 
+                bool fOrphanedLocalMinedBlock = false;
+                if(fReorgOccurring)
+                {
+                    for(auto& state : vDisconnect)
+                    {
+                        LocalMinedBlockRecord record;
+                        if(!ConsumeLocalMinedBlock(state.GetHash(), record))
+                            continue;
+
+                        fOrphanedLocalMinedBlock = true;
+
+                        BlockState stateReplacement;
+                        const bool fReplacementFound =
+                            FindReplacementAtHeight(vConnect, record.nHeight, stateReplacement);
+                        const bool fSiblingRace =
+                            (fReplacementFound && stateReplacement.hashPrevBlock == record.hashPrevBlock);
+
+                        debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_YELLOW,
+                            "LOCAL MINED BLOCK ORPHANED:", ANSI_COLOR_RESET,
+                            " local_hash=", record.hashBlock.SubString(),
+                            " local_channel=", record.nChannel,
+                            " local_height=", record.nHeight,
+                            " local_prev=", record.hashPrevBlock.SubString(),
+                            fReplacementFound
+                                ? debug::safe_printstr(" replacement_hash=", stateReplacement.GetHash().SubString(),
+                                    " replacement_channel=", uint32_t(stateReplacement.GetChannel()),
+                                    " replacement_prev=", stateReplacement.hashPrevBlock.SubString())
+                                : std::string(" replacement_hash=<none>"),
+                            " classification=", (fReplacementFound ? (fSiblingRace ? "same-prev sibling race" : "different-prev stale/re-fed fork") : "rollback/no same-height replacement"),
+                            " action=following SetBest chain-weight decision and flushing mining templates");
+                    }
+
+                    if(fOrphanedLocalMinedBlock)
+                        ClearMiningTemplateCaches("local mined block orphaned by reorg");
+                }
+
                 /* Keep track of mempool transactions to delete. */
                 std::vector<std::pair<uint8_t, uint512_t>> vResurrect;
 
@@ -1295,6 +1407,13 @@ namespace TAO
                     if(fWasReorg)
                         debug::log(0, FUNCTION, "Reorg-recovery push enqueued at height ", nHeight,
                                    " (disconnect=", vDisconnect.size(), " connect=", vConnect.size(), ")");
+
+                    if(fOrphanedLocalMinedBlock)
+                        debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_YELLOW,
+                            "LOCAL MINED BLOCK RECOVERY COMPLETE:", ANSI_COLOR_RESET,
+                            " best_hash=", hash.SubString(),
+                            " best_height=", nHeight,
+                            " templates_flushed=1 push_enqueued=1");
                 }
 
                 /* Verify unified height consistency using existing ChannelStateManager infrastructure */
