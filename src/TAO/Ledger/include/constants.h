@@ -182,7 +182,7 @@ namespace TAO::Ledger
     const uint32_t DEFAULT_MINIMUM_STAKE_INTERVAL_SECONDS = 10;
 
 
-    /** Number of seconds without a completed stake minting loop iteration before the minter is considered
+    /** Number of seconds without a stake-minter heartbeat/progress update before the minter is considered
      *  stalled by IsStalled(), even though IsStarted() may still report true. Chosen well above the longest
      *  routine per-iteration sleep the minter uses (5 seconds while waiting on interval/mempool conditions)
      *  so normal waiting is never mistaken for a stall. **/

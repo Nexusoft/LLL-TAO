@@ -97,7 +97,7 @@ namespace TAO::API
              * wedged) without ever calling Stop(). Surface this so a GUI can distinguish "actively staking"
              * from "reports enabled but not making progress" instead of assuming staking is healthy
              * indefinitely. "lastactive" is always included while started; a value of 0 means the minting
-             * loop has not yet completed its first iteration since starting (for example, still waiting on
+             * thread has not yet published its first heartbeat since starting (for example, still waiting on
              * initial peer sync/connect), which is a normal startup state, not a stall. */
             jRet["stalled"]    = rStakeMinter.IsStalled();
             jRet["lastactive"] = rStakeMinter.GetLastActiveTime();
