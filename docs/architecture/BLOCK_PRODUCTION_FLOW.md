@@ -208,6 +208,8 @@ TritiumMinter::StakeMinterThread()  [tritium_minter.cpp:356]
      │     │                                                            │
      │     ├─ CheckInterval(): block.nHeight - stateLast.nHeight       │
      │     │   BOTH are unified heights after PR #278 ✅               │
+     │     │   + local wall-clock floor (`-minstakeintervalseconds`)   │
+     │     │     using unifiedtimestamp vs stateLast block time         │
      │     │                                                            │
      │     ├─ CheckMempool(): skip genesis if tx in mempool            │
      │     │                                                            │
@@ -216,6 +218,7 @@ TritiumMinter::StakeMinterThread()  [tritium_minter.cpp:356]
      │           │  [GUARD 1 LOOP]                                     │
      │           │  while(!fStop && hashLastBlock == hashBestChain)    │
      │           │  {                                                   │
+     │           │    Update watchdog heartbeat (periodic)              │
      │           │    CheckStale() → producer orphan check             │
      │           │    block.UpdateTime()                               │
      │           │    nThreshold = GetCurrentThreshold(nBlockTime,     │
@@ -684,9 +687,9 @@ These are the hard invariants enforced by `TritiumBlock::Accept()` that every bl
 | `src/TAO/Ledger/create.cpp` | `CreateTransaction()` | Base producer/sigchain transaction |
 | `src/TAO/Ledger/create.cpp` | `AddTransactions()` | Mempool tx selection into block |
 | `src/TAO/Ledger/stake_minter.cpp` | `CreateCandidateBlock()` | Stake: calls CreateStakeBlock + CreateCoinstake |
-| `src/TAO/Ledger/stake_minter.cpp` | `HashBlock()` | **Guard 1 loop** — hashing with staleness check |
+| `src/TAO/Ledger/stake_minter.cpp` | `HashBlock()` | **Guard 1 loop** — hashing with staleness check and periodic watchdog heartbeat |
 | `src/TAO/Ledger/stake_minter.cpp` | `ProcessBlock()` | Stake finalization: reward, Merkle, sign, **Guard 2**, submit |
-| `src/TAO/Ledger/stake_minter.cpp` | `CheckInterval()` | Minimum block interval check (unified heights) |
+| `src/TAO/Ledger/stake_minter.cpp` | `CheckInterval()` | Minimum block interval check (unified heights) plus local wall-clock floor |
 | `src/TAO/Ledger/stake_minter.cpp` | `FindTrustAccount()` | Sets `fGenesis` flag |
 | `src/TAO/Ledger/tritium_minter.cpp` | `StakeMinterThread()` | Main minting loop, sets `hashLastBlock` |
 | `src/TAO/Ledger/tritium_minter.cpp` | `CreateCoinstake()` | OP::TRUST or OP::GENESIS producer fill; loads `stateLast` via `ReadBlock()` |
