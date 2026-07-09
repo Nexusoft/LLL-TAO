@@ -43,6 +43,7 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 #include <chrono>
+#include <limits>
 #include <memory>
 #include <sstream>
 
@@ -61,7 +62,13 @@ namespace TAO::Ledger
             const int64_t nConfigured =
                 config::GetArg("-primetemplateattempts", nDefaultMax);
 
-            return static_cast<uint32_t>(nConfigured > 0 ? nConfigured : 1);
+            if(nConfigured <= 0)
+                return 1;
+
+            if(nConfigured > std::numeric_limits<uint32_t>::max())
+                return std::numeric_limits<uint32_t>::max();
+
+            return static_cast<uint32_t>(nConfigured);
         }
 
 
@@ -303,7 +310,8 @@ namespace TAO::Ledger
                 return nullptr;
             }
             
-            const uint32_t nPrimeBitMask = PrimeTemplateProofHashBitMask();
+            const uint32_t nPrimeBitMask =
+                (nChannel == 1) ? PrimeTemplateProofHashBitMask() : 0;
             const uint32_t nMaxPrimeAttempts =
                 (nChannel == 1) ? GetPrimeTemplateMaxAttempts() : 1;
             uint64_t nAttemptExtraNonce = nExtraNonce;
@@ -311,6 +319,7 @@ namespace TAO::Ledger
 
             for(uint32_t nPrimeAttempt = 1; nPrimeAttempt <= nMaxPrimeAttempts; ++nPrimeAttempt)
             {
+                pBlock->SetNull();
                 const auto tCreateStart = std::chrono::steady_clock::now();
 
                 // CreateBlock() handles wallet signing per consensus requirements
