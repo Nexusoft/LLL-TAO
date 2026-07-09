@@ -590,6 +590,9 @@ namespace LLP
         {
             LOCK(MUTEX);
             nChannelCopy = nSubscribedChannel;
+
+            /* Best-chain hash changed: discard cached mining templates before
+             * the push worker builds fresh work for this exact tip. */
             clear_map();
         }
         debug::log(1, FUNCTION, "Legacy cached mining templates flushed before push rebuild"

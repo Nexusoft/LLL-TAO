@@ -90,6 +90,11 @@ namespace TAO
             static const uint64_t MAX_LOCAL_MINED_BLOCK_RECORDS = 10000;
 
 
+            /** Peer-best recovery cooldown; mirrors autofork recovery's tested bound. */
+            static const uint64_t PEER_BEST_RECOVERY_COOLDOWN_SECONDS =
+                GENESIS_CONFLICT_RECOVERY_COOLDOWN_SECONDS;
+
+
             /** Last automatic peer-best recovery attempt by advertised best hash. */
             std::map<uint1024_t, uint64_t> mapLastPeerBestRecoveryAttempt;
 
@@ -133,6 +138,42 @@ namespace TAO
             }
 
 
+            void EvictOldestLocalMinedBlock()
+            {
+                if(mapLocalMinedBlocks.empty())
+                    return;
+
+                auto itOldest = mapLocalMinedBlocks.begin();
+                for(auto it = mapLocalMinedBlocks.begin(); it != mapLocalMinedBlocks.end(); ++it)
+                {
+                    if(it->second.nAcceptedAt < itOldest->second.nAcceptedAt)
+                        itOldest = it;
+                }
+
+                mapLocalMinedBlocks.erase(itOldest);
+            }
+
+
+            void EvictOldestPeerBestCooldown()
+            {
+                if(mapLastPeerBestRecoveryAttempt.empty())
+                    return;
+
+                auto itOldest = mapLastPeerBestRecoveryAttempt.begin();
+                for(auto it = mapLastPeerBestRecoveryAttempt.begin();
+                    it != mapLastPeerBestRecoveryAttempt.end(); ++it)
+                {
+                    if(it->second < itOldest->second)
+                        itOldest = it;
+                }
+
+                mapLastPeerBestRecoveryAttempt.erase(itOldest);
+            }
+
+
+            /* BlockState traversal intentionally takes copies: walking Prev()
+             * mutates the cursor state while preserving the callers' states for
+             * diagnostics and the eventual SetBest() call. */
             bool FindCommonAncestor(TAO::Ledger::BlockState stateA,
                                     TAO::Ledger::BlockState stateB,
                                     TAO::Ledger::BlockState& stateAncestor,
@@ -173,6 +214,8 @@ namespace TAO
             }
 
 
+            /* stateDescendant is a by-value traversal cursor for the same reason:
+             * the function walks it backward without mutating the caller's state. */
             bool IsAncestorOf(const TAO::Ledger::BlockState& stateAncestor,
                               TAO::Ledger::BlockState stateDescendant)
             {
@@ -214,7 +257,7 @@ namespace TAO
             std::lock_guard<std::mutex> lock(LOCAL_MINED_MUTEX);
             if(mapLocalMinedBlocks.size() >= MAX_LOCAL_MINED_BLOCK_RECORDS
             && !mapLocalMinedBlocks.count(hashBlock))
-                mapLocalMinedBlocks.clear();
+                EvictOldestLocalMinedBlock();
 
             LocalMinedBlockRecord record;
             record.hashPrevBlock = block.hashPrevBlock;
@@ -340,11 +383,11 @@ namespace TAO
                 std::lock_guard<std::mutex> lock(LOCAL_MINED_MUTEX);
                 const auto itCooldown = mapLastPeerBestRecoveryAttempt.find(hashPeerBest);
                 if(itCooldown != mapLastPeerBestRecoveryAttempt.end()
-                && (nNow - itCooldown->second) < GENESIS_CONFLICT_RECOVERY_COOLDOWN_SECONDS)
+                && (nNow - itCooldown->second) < PEER_BEST_RECOVERY_COOLDOWN_SECONDS)
                     return false;
 
                 if(mapLastPeerBestRecoveryAttempt.size() >= MAX_LOCAL_MINED_BLOCK_RECORDS)
-                    mapLastPeerBestRecoveryAttempt.clear();
+                    EvictOldestPeerBestCooldown();
                 mapLastPeerBestRecoveryAttempt[hashPeerBest] = nNow;
             }
 

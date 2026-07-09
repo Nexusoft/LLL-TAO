@@ -4847,6 +4847,9 @@ namespace LLP
         {
             LOCK(MUTEX);
             nChannel = context.nSubscribedChannel;
+
+            /* Best-chain hash changed: discard cached mining templates before
+             * the push worker builds fresh work for this exact tip. */
             clear_map();
         }
         {
