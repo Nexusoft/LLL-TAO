@@ -4852,6 +4852,11 @@ namespace LLP
              * the push worker builds fresh work for this exact tip. */
             clear_map();
         }
+
+        /* Keep TEMPLATE_CREATE_MUTEX separate from MUTEX: new_block() uses the
+         * template mutex to coordinate in-flight creation, and the connection
+         * mutex only protects the cache map/context above.  Splitting scopes
+         * avoids extending either critical section across unrelated state. */
         {
             std::lock_guard<std::mutex> create_lk(TEMPLATE_CREATE_MUTEX);
             m_last_created_template = nullptr;

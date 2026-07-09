@@ -90,6 +90,10 @@ namespace TAO
             static const uint64_t MAX_LOCAL_MINED_BLOCK_RECORDS = 10000;
 
 
+            /** Maximum number of peer-best recovery cooldown entries tracked. */
+            static const uint64_t MAX_PEER_BEST_RECOVERY_RECORDS = 10000;
+
+
             /** Peer-best recovery cooldown; mirrors autofork recovery's tested bound. */
             static const uint64_t PEER_BEST_RECOVERY_COOLDOWN_SECONDS =
                 GENESIS_CONFLICT_RECOVERY_COOLDOWN_SECONDS;
@@ -289,6 +293,9 @@ namespace TAO
                 (state.nHeight == stateNewBest.nHeight)
                 && (it->second.hashPrevBlock == stateNewBest.hashPrevBlock);
 
+            /* Orphaning a locally accepted mined block is operator-actionable in
+             * the same-height race this recovery path targets, so it is emitted
+             * as a warning while routine local acceptance remains an info log. */
             debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_RED, "=== LOCAL_MINED_ORPHANED ===", ANSI_COLOR_RESET,
                 " local_hash=", hashBlock.SubString(),
                 " local_height=", state.nHeight,
@@ -386,7 +393,7 @@ namespace TAO
                 && (nNow - itCooldown->second) < PEER_BEST_RECOVERY_COOLDOWN_SECONDS)
                     return false;
 
-                if(mapLastPeerBestRecoveryAttempt.size() >= MAX_LOCAL_MINED_BLOCK_RECORDS)
+                if(mapLastPeerBestRecoveryAttempt.size() >= MAX_PEER_BEST_RECOVERY_RECORDS)
                     EvictOldestPeerBestCooldown();
                 mapLastPeerBestRecoveryAttempt[hashPeerBest] = nNow;
             }
