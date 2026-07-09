@@ -4861,7 +4861,7 @@ namespace LLP
             std::lock_guard<std::mutex> create_lk(TEMPLATE_CREATE_MUTEX);
             m_last_created_template = nullptr;
         }
-        debug::log(1, FUNCTION, "Stateless cached mining templates flushed before push rebuild"
+        debug::log(1, FUNCTION, "Stateless cached mining templates flushed before push rebuild",
             " tip=", hashExpectedTip.SubString(), " channel=", nChannel);
         ScheduleTemplateWork(TemplateWorkReason::PUSH_NOTIFICATION, hashExpectedTip, true, nChannel);
     }

@@ -1294,8 +1294,9 @@ namespace TAO
                     LLP::MinerPushDispatcher::EnqueuePushEvent(nHeight, hash);
 
                     /* Only Prime and Hash are listed here because external
-                     * miner templates are served for PoW channels; stake
-                     * minting does not consume these LLP mining templates. */
+                     * miner templates are served for PoW channels. Proof-of-Stake
+                     * (channel 0) is intentionally excluded because stake minting
+                     * does not consume LLP mining templates. */
                     debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_GREEN,
                         "=== MINING_TEMPLATES_FLUSHED ===", ANSI_COLOR_RESET,
                         " best=", hash.SubString(),

@@ -120,7 +120,8 @@ namespace TAO
                 if(statePeer.GetHash() == stateBest.GetHash())
                     return false;
 
-                if(statePeer.nVersion >= 7 && !statePeer.IsHybrid())
+                static const uint32_t MIN_TRITIUM_WEIGHT_VERSION = 7;
+                if(statePeer.nVersion >= MIN_TRITIUM_WEIGHT_VERSION && !statePeer.IsHybrid())
                 {
                     uint8_t nEquals  = 0;
                     uint8_t nGreater = 0;
@@ -134,6 +135,9 @@ namespace TAO
                             ++nGreater;
                     }
 
+                    /* Mirrors BlockState::Accept(): in a two-channel battle,
+                     * a branch that is more than one unified height ahead gets
+                     * one extra "greater" vote so the heavier branch can win. */
                     if(statePeer.nHeight > stateBest.nHeight + 1
                     && (nEquals == 1 && nGreater == 1))
                         ++nGreater;
@@ -193,6 +197,7 @@ namespace TAO
                 while(stateA.nHeight > stateB.nHeight)
                 {
                     stateA = stateA.Prev();
+                    /* BlockState::operator! reports an invalid/null traversal result. */
                     if(!stateA)
                         return false;
                     ++nADepth;
@@ -201,6 +206,7 @@ namespace TAO
                 while(stateB.nHeight > stateA.nHeight)
                 {
                     stateB = stateB.Prev();
+                    /* BlockState::operator! reports an invalid/null traversal result. */
                     if(!stateB)
                         return false;
                     ++nBDepth;
@@ -210,6 +216,7 @@ namespace TAO
                 {
                     stateA = stateA.Prev();
                     stateB = stateB.Prev();
+                    /* BlockState::operator! reports an invalid/null traversal result. */
                     if(!stateA || !stateB)
                         return false;
                     ++nADepth;

@@ -595,7 +595,7 @@ namespace LLP
              * the push worker builds fresh work for this exact tip. */
             clear_map();
         }
-        debug::log(1, FUNCTION, "Legacy cached mining templates flushed before push rebuild"
+        debug::log(1, FUNCTION, "Legacy cached mining templates flushed before push rebuild",
             " tip=", hashExpectedTip.SubString(), " channel=", nChannelCopy);
         ScheduleTemplateWork(TemplateWorkReason::PUSH_NOTIFICATION, hashExpectedTip, true, nChannelCopy);
     }
