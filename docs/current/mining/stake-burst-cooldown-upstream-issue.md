@@ -35,7 +35,7 @@ This should be considered upstream because it may affect network-wide timing, pr
 A universal stake-block cooldown, if adopted, should:
 
 1. Apply to stake-block burst handling, not Prime/Hash mining work submission.
-2. Be short enough to avoid slowing normal mainnet behavior; initial candidate range is 3 to 5 seconds.
+2. Be short enough to avoid slowing normal mainnet behavior; initial candidate range is 3 to 5 seconds, derived from the observed five-blocks-in-ten-seconds burst pattern while leaving extra time for orphan/stale cleanup.
 3. Help nodes drain orphan/stale-tip state before processing the next burst item.
 4. Preserve safety during real reorgs and not hide invalid blocks.
 5. Emit clear command-line diagnostics when cooldown engages, including current tip, candidate block hash, channel, height, orphan status, and cooldown remaining time.

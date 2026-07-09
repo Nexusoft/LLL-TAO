@@ -3410,6 +3410,9 @@ namespace LLP
             debug::error(FUNCTION, "SUBMIT_BLOCK stale pre-check failed: ",
                          TAO::Ledger::SubmitBlockStaleReasonString(staleResult.reason),
                          " — ", staleResult.message);
+            /* Preserve legacy wire behavior: a pure hashPrevBlock tip miss has
+             * historically been reported as ORPHAN_BLOCK, while deeper stale
+             * template failures use BLOCK_REJECTED with STALE reason payload. */
             if(staleResult.reason == TAO::Ledger::SubmitBlockStaleReason::HASH_PREV_BLOCK)
                 respond_auto(ORPHAN_BLOCK);
             else
