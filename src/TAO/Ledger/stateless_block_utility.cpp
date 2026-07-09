@@ -377,7 +377,8 @@ namespace TAO::Ledger
         result.hashMerkleFrozen = hashMerkleFrozen;
         result.hashMerkleCurrent = block.hashMerkleRoot;
 
-        const char* pszLaneName = (pszLane && pszLane[0]) ? pszLane : "unknown";
+        static constexpr const char* DEFAULT_SUBMIT_STALE_LANE = "unknown";
+        const char* pszLaneName = (pszLane && pszLane[0]) ? pszLane : DEFAULT_SUBMIT_STALE_LANE;
 
         auto markStale = [&](const SubmitBlockStaleReason reason, const std::string& message)
         {

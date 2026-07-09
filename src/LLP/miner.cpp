@@ -3395,14 +3395,12 @@ namespace LLP
         /* Full hashPrevBlock hex (MSB-first via GetHex()) for cross-verification with miner's GetBytes()[0..7] log. */
         debug::log(2, FUNCTION, "[BLOCK SUBMIT] hashPrevBlock FULL (MSB-first): ", blockSolved.hashPrevBlock.GetHex());
 
-        /* Shared staleness pre-check.
-         * hashPrevBlock is the PRIMARY staleness anchor baked into the template;
-         * committed vtx, sigchain freshness, and merkle immutability are checked
-         * through the same helper used by the stateless lane. */
         /* ── Merkle root immutability anchor ──
          * After sign_block() the hashMerkleRoot is frozen: it was part of the
          * ProofHash the miner solved against.  No pre-validation step may
-         * mutate it or the proof-of-work becomes invalid. */
+         * mutate it or the proof-of-work becomes invalid.  The shared staleness
+         * helper below enforces hashPrevBlock, committed vtx, sigchain freshness,
+         * and merkle immutability in parity with the stateless lane. */
         const uint512_t hashMerkleFrozen = blockSolved.hashMerkleRoot;
 
         const TAO::Ledger::SubmitBlockStalenessResult staleResult =

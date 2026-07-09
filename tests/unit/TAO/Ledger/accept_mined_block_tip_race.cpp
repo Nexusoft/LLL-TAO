@@ -11,13 +11,12 @@
 
 __________________________________________________________________________________________*/
 
+#include <string>
+
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/stateless_block_utility.h>
 #include <TAO/Ledger/types/tritium.h>
-
 #include <unit/catch2/catch.hpp>
-
-#include <string>
 
 namespace
 {

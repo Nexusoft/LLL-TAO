@@ -2306,9 +2306,8 @@ namespace LLP
                     }
                 }
 
-                /* Hash-based staleness diagnostic.
-                 * hashPrevBlock is the PRIMARY staleness anchor baked into the
-                 * 216-byte template; the shared pre-check below enforces it. */
+                /* Hash-based staleness diagnostic only. Enforcement is performed
+                 * by ValidateSubmitBlockStaleness() after the merkle root is frozen. */
                 const uint1024_t hashCurrentBest = TAO::Ledger::ChainState::hashBestChain.load();
                 debug::log(2, FUNCTION, "[BLOCK SUBMIT] nHeight=", pTritium->nHeight, " (unified)",
                            " channel=", pTritium->nChannel,
