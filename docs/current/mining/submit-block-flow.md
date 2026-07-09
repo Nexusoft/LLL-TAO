@@ -3,7 +3,7 @@
 **Status:** Active  
 **Applies to:** Stateless Lane (port 9323), `StatelessMinerConnection`  
 **Source:** `src/LLP/stateless_miner_connection.cpp`  
-**Last Updated:** 2026-04-07
+**Last Updated:** 2026-07-09
 
 ---
 
@@ -62,8 +62,11 @@ MINER                          NODE  (StatelessMinerConnection)
   │                              ├─ 7. sign_block(nNonce, hashMerkle)
   │                              │      FAIL → BLOCK_REJECTED
   │                              │
-  │                              ├─ 8. hashPrevBlock staleness guard
-  │                              │      block.hashPrevBlock == ChainState::hashBestChain
+  │                              ├─ 8. Shared staleness pre-check
+  │                              │      ValidateSubmitBlockStaleness()
+  │                              │      checks hashPrevBlock, committed vtx,
+  │                              │      producer sigchain, vtx sigchain,
+  │                              │      and merkle immutability
   │                              │      FAIL → BLOCK_REJECTED (0x01 STALE)
   │                              │
   │                              ├─ 9. SIM Link deduplication
@@ -129,6 +132,31 @@ still at the correct height) should **not** be rejected by the pre-check.
 | Network partition caused miner to retry without refresh | Staleness warning |
 | Miner solved a template from a previous round | Both warnings |
 | `canonical_snap` is default-constructed (no GET_BLOCK yet) | Staleness warning only |
+
+---
+
+## Step 8: Shared Staleness Pre-Check — Detail
+
+After `sign_block()` finalizes the candidate and freezes the merkle root, both
+mining lanes call `ValidateSubmitBlockStaleness()`.
+
+The helper is detection-only and rejects stale work before the expensive
+`ValidateMinedBlock()` / `AcceptMinedBlock()` path. It emits a stable
+`[SUBMIT_STALE]` diagnostic with lane, reason code, channel, unified height,
+merkle root, `hashPrevBlock`, and current `hashBestChain`.
+
+Reason codes:
+
+| Code | Meaning |
+|------|---------|
+| `HASH_PREV_BLOCK` | Template extends an old chain tip. |
+| `VTX_ALREADY_COMMITTED` | A transaction in `vtx` is already committed by another block. |
+| `PRODUCER_SIGCHAIN` | Producer transaction no longer follows the authoritative sigchain predecessor. |
+| `VTX_SIGCHAIN` | A `vtx` transaction is stale or malformed relative to the connect-time sigchain anchor. |
+| `MERKLE_MUTATED` | A pre-validation step mutated `hashMerkleRoot`, invalidating the proof. |
+
+Any staleness-rooted rejection invalidates the stale cached template and forces
+a fresh template push so the miner does not wait for its own poll/backoff loop.
 
 ---
 

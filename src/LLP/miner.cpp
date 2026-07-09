@@ -3395,84 +3395,29 @@ namespace LLP
         /* Full hashPrevBlock hex (MSB-first via GetHex()) for cross-verification with miner's GetBytes()[0..7] log. */
         debug::log(2, FUNCTION, "[BLOCK SUBMIT] hashPrevBlock FULL (MSB-first): ", blockSolved.hashPrevBlock.GetHex());
 
-        /* Hash-based staleness guard — mirrors StakeMinter pattern.
-         * hashPrevBlock is the PRIMARY staleness anchor baked into the template.
-         * This catches reorgs at the same integer height that nBestHeight misses. */
-        if(blockSolved.hashPrevBlock != hashCurrentBest)
-        {
-            debug::log(0, FUNCTION, "SUBMIT_BLOCK rejected STALE — hashPrevBlock=",
-                       blockSolved.hashPrevBlock.SubString(),
-                       " != hashBestChain=", hashCurrentBest.SubString());
-            respond_auto(ORPHAN_BLOCK);
-
-            /* [Option A] Anti-doom-loop: invalidate the stale cached template and
-             * proactively push a fresh one, rather than leaving the miner to
-             * discover staleness on its own next poll/backoff cycle. On a weak
-             * network that round trip can be slow enough to trip the miner's
-             * degraded/stopped recovery timers. */
-            ForceFreshTemplatePush(hashMerkle);
-            return true;
-        }
-
+        /* Shared staleness pre-check.
+         * hashPrevBlock is the PRIMARY staleness anchor baked into the template;
+         * committed vtx, sigchain freshness, and merkle immutability are checked
+         * through the same helper used by the stateless lane. */
         /* ── Merkle root immutability anchor ──
          * After sign_block() the hashMerkleRoot is frozen: it was part of the
          * ProofHash the miner solved against.  No pre-validation step may
          * mutate it or the proof-of-work becomes invalid. */
         const uint512_t hashMerkleFrozen = blockSolved.hashMerkleRoot;
 
-        /* Pre-validation vtx check — detect transactions already committed by
-         * another block.  Mutating the block to remove them would change the
-         * merkle root and invalidate the proof-of-work. */
-        if(!TAO::Ledger::ValidateVtxNotCommitted(blockSolved))
+        const TAO::Ledger::SubmitBlockStalenessResult staleResult =
+            TAO::Ledger::ValidateSubmitBlockStaleness(blockSolved, hashMerkleFrozen, "legacy");
+        if(!staleResult.fresh)
         {
-            debug::error(FUNCTION, "SUBMIT_BLOCK: vtx already committed — template stale, rejecting");
-            respond_auto(BLOCK_REJECTED,
-                BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::STALE));
-
-            /* [Option A] Anti-doom-loop — see comment above. */
+            debug::error(FUNCTION, "SUBMIT_BLOCK stale pre-check failed: ",
+                         TAO::Ledger::SubmitBlockStaleReasonString(staleResult.reason),
+                         " — ", staleResult.message);
+            if(staleResult.reason == TAO::Ledger::SubmitBlockStaleReason::HASH_PREV_BLOCK)
+                respond_auto(ORPHAN_BLOCK);
+            else
+                respond_auto(BLOCK_REJECTED,
+                    BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::STALE));
             ForceFreshTemplatePush(hashMerkle);
-            return true;
-        }
-
-        /* Pre-validation producer freshness — detect stale producer sigchain.
-         * Mutating the producer would change its hash, changing the merkle root,
-         * and invalidating the proof-of-work. */
-        if(!TAO::Ledger::ValidateProducerFreshness(blockSolved))
-        {
-            debug::error(FUNCTION, "SUBMIT_BLOCK: producer sigchain stale — template stale, rejecting");
-            respond_auto(BLOCK_REJECTED,
-                BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::STALE));
-
-            /* [Option A] Anti-doom-loop — see comment above. */
-            ForceFreshTemplatePush(hashMerkle);
-            return true;
-        }
-
-        /* Pre-connect vtx sigchain staleness check — detect stale vtx transactions
-         * before AcceptMinedBlock() so the miner gets BLOCK_REJECTED and can
-         * request a fresh template rather than receiving a false BLOCK_ACCEPTED. */
-        if(!TAO::Ledger::ValidateVtxSigchainConsistency(blockSolved))
-        {
-            debug::error(FUNCTION, "SUBMIT_BLOCK: vtx sigchain stale — rejecting");
-            respond_auto(BLOCK_REJECTED,
-                BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::STALE));
-
-            /* [Option A] Anti-doom-loop — see comment above. */
-            ForceFreshTemplatePush(hashMerkle);
-            return true;
-        }
-
-        /* Merkle root immutability assertion — all pre-validation steps above
-         * are detection-only and must NOT have mutated the block.  If this
-         * fires, a code change has reintroduced a mutation bug. */
-        if(blockSolved.hashMerkleRoot != hashMerkleFrozen)
-        {
-            debug::error(FUNCTION, "SUBMIT_BLOCK BUG: hashMerkleRoot mutated after sign_block!"
-                         " This indicates a regression in the pre-validation pipeline."
-                         " frozen=", hashMerkleFrozen.SubString(),
-                         " current=", blockSolved.hashMerkleRoot.SubString());
-            respond_auto(BLOCK_REJECTED,
-                BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::LOCAL_TEMPLATE_REJECT));
             return true;
         }
 
