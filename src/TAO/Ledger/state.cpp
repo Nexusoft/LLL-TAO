@@ -116,10 +116,9 @@ namespace TAO
             std::lock_guard<std::mutex> lock(LOCAL_MINED_BLOCK_MUTEX);
             const bool fNewRecord = !mapLocalMinedBlocks.count(record.hashBlock);
             if(fNewRecord)
+            {
                 queueLocalMinedBlocks.push_back(record.hashBlock);
 
-            if(fNewRecord)
-            {
                 while(mapLocalMinedBlocks.size() >= MAX_LOCAL_MINED_BLOCK_RECORDS
                    && !queueLocalMinedBlocks.empty())
                 {
