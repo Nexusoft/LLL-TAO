@@ -52,6 +52,7 @@ namespace TAO
         /* Initialize static variables */
         std::atomic<bool> StakeMinter::fStarted(false);
         std::atomic<bool> StakeMinter::fStop(false);
+        std::atomic<uint64_t> StakeMinter::nLastActive(0);
 
 
         /* Retrieves the stake minter instance to use for staking. */
@@ -146,6 +147,36 @@ namespace TAO
                 return 0;
 
             return nWaitTime.load();
+        }
+
+
+        /* Retrieves the unix timestamp of the last time the stake minter thread completed a loop iteration. */
+        uint64_t StakeMinter::GetLastActiveTime() const
+        {
+            return nLastActive.load();
+        }
+
+
+        /* Checks whether the stake minter thread appears to be stalled. */
+        bool StakeMinter::IsStalled() const
+        {
+            /* Not stalled if it was never started, or is not currently marked started. */
+            if(!fStarted.load())
+                return false;
+
+            /* Not stalled if the loop has not yet had a chance to run its first iteration. */
+            const uint64_t nActive = nLastActive.load();
+            if(nActive == 0)
+                return false;
+
+            return (runtime::unifiedtimestamp() - nActive) > STAKE_MINTER_STALL_THRESHOLD;
+        }
+
+
+        /* Records the current time as the last active timestamp for the stake minting loop. */
+        void StakeMinter::UpdateLastActive()
+        {
+            nLastActive.store(runtime::unifiedtimestamp());
         }
 
 
@@ -454,7 +485,11 @@ namespace TAO
         bool StakeMinter::CheckInterval()
         {
             static uint32_t nCounter = 0; //Prevents log spam during wait period
-            static const uint32_t nMinInterval = MinStakeInterval(block);
+
+            /* Recomputed every call (not cached) since it depends on the candidate block's version, which
+             * can change across a network upgrade while this process keeps running (for example, a v8->v9
+             * activation that changes the pooled-staking interval requirement). */
+            const uint32_t nMinInterval = MinStakeInterval(block);
 
             /* Check the block interval for trust transactions. */
             if(!fGenesis)
@@ -475,7 +510,37 @@ namespace TAO
 
                     return false;
                 }
-                else if(nSleepTime == 5000)
+
+                /* Minter-side wall-clock floor, in addition to the height-based interval above. This is a
+                 * local self-restraint only (not a consensus rule), so it cannot fork the chain by itself.
+                 * It guards against the height-based interval being bypassed when block height advances
+                 * unusually fast in real time relative to block time -- for example during a multi-channel
+                 * reorg/orphan burst -- which could otherwise let this trust account chain stake blocks in
+                 * rapid real-time succession despite satisfying the height requirement. */
+                const uint32_t nMinSeconds =
+                    config::GetArg("-minstakeintervalseconds", TAO::Ledger::DEFAULT_MINIMUM_STAKE_INTERVAL_SECONDS);
+
+                if(nMinSeconds > 0)
+                {
+                    const uint64_t nBlockTimeLast = stateLast.GetBlockTime();
+                    const uint64_t nBlockTime     = block.GetBlockTime();
+                    const uint64_t nElapsed  = (nBlockTime > nBlockTimeLast) ? (nBlockTime - nBlockTimeLast) : 0;
+
+                    if(nElapsed < nMinSeconds)
+                    {
+                        nSleepTime = 5000;
+
+                        if((nCounter % 100) == 0)
+                            debug::log(0, FUNCTION, "Too soon after last stake block. ",
+                                       (nMinSeconds - nElapsed), " seconds remaining until staking available.");
+
+                        ++nCounter;
+
+                        return false;
+                    }
+                }
+
+                if(nSleepTime == 5000)
                 {
                     /* Reset sleep time after interval requirement met */
                     nSleepTime = 1000;
