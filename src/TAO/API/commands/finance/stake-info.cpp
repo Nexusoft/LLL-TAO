@@ -96,12 +96,11 @@ namespace TAO::API
             /* Watchdog: the minting thread may report started, but be stalled (deadlocked or otherwise
              * wedged) without ever calling Stop(). Surface this so a GUI can distinguish "actively staking"
              * from "reports enabled but not making progress" instead of assuming staking is healthy
-             * indefinitely. */
-            jRet["stalled"] = rStakeMinter.IsStalled();
-
-            const uint64_t nLastActive = rStakeMinter.GetLastActiveTime();
-            if(nLastActive > 0)
-                jRet["lastactive"] = nLastActive;
+             * indefinitely. "lastactive" is always included while started; a value of 0 means the minting
+             * loop has not yet completed its first iteration since starting (for example, still waiting on
+             * initial peer sync/connect), which is a normal startup state, not a stall. */
+            jRet["stalled"]    = rStakeMinter.IsStalled();
+            jRet["lastactive"] = rStakeMinter.GetLastActiveTime();
         }
         else
         {

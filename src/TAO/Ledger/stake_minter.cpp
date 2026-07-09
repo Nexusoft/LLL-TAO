@@ -487,7 +487,8 @@ namespace TAO
             static uint32_t nCounter = 0; //Prevents log spam during wait period
 
             /* Recomputed every call (not cached) since it depends on the candidate block's version, which
-             * can change across a network upgrade while this process keeps running. */
+             * can change across a network upgrade while this process keeps running (for example, a v8->v9
+             * activation that changes the pooled-staking interval requirement). */
             const uint32_t nMinInterval = MinStakeInterval(block);
 
             /* Check the block interval for trust transactions. */
@@ -521,9 +522,9 @@ namespace TAO
 
                 if(nMinSeconds > 0)
                 {
-                    const uint64_t nTimeLast = stateLast.GetBlockTime();
-                    const uint64_t nTimeNow  = block.GetBlockTime();
-                    const uint64_t nElapsed  = (nTimeNow > nTimeLast) ? (nTimeNow - nTimeLast) : 0;
+                    const uint64_t nBlockTimeLast = stateLast.GetBlockTime();
+                    const uint64_t nBlockTime     = block.GetBlockTime();
+                    const uint64_t nElapsed  = (nBlockTime > nBlockTimeLast) ? (nBlockTime - nBlockTimeLast) : 0;
 
                     if(nElapsed < nMinSeconds)
                     {
