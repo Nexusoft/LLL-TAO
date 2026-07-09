@@ -3532,7 +3532,7 @@ namespace LLP
         }
 
         /* Prime channel optimization */
-        const uint32_t nBitMask = config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
+        const uint32_t nBitMask = TAO::Ledger::PrimeTemplateProofHashBitMask();
         TAO::Ledger::TritiumBlock* pBlock = nullptr;
 
         /* [Bug 2] Only increment the global nBlockIterator when the chain tip changes.
@@ -3574,11 +3574,13 @@ namespace LLP
                 LogNbTiming("nb_pre_createblock", hashReward.SubString());
 
             ++nAttempts;
+            uint64_t nActualExtraNonce = extraNonce;
             pBlock = TAO::Ledger::CreateBlockForStatelessMining(
                 nChannel_snap,
                 extraNonce,
                 hashReward,
-                &m_miningCredentialCache
+                &m_miningCredentialCache,
+                &nActualExtraNonce
             );
             LogNbTiming("nb_createblock_returned", hashReward.SubString());
 
@@ -3598,6 +3600,7 @@ namespace LLP
 
             if(is_prime_mod(nBitMask, pBlock)) {
                 /* Cache the prime-mod-satisfying nonce for this tip. */
+                extraNonce = static_cast<uint32_t>(nActualExtraNonce);
                 m_nCachedExtraNonce = extraNonce;
                 debug::log(3, FUNCTION, "Block created after ", nAttempts, " attempt(s)");
                 break;
@@ -3605,10 +3608,12 @@ namespace LLP
 
             if(nAttempts >= MAX_PRIME_MOD_REBUILD_ATTEMPTS)
             {
-                debug::log(3, FUNCTION,
-                           "Prime-mod retries capped at ", MAX_PRIME_MOD_REBUILD_ATTEMPTS,
-                           " attempt(s); using latest template without further extra-nonce rebuild");
-                break;
+                debug::error(FUNCTION,
+                             "Prime template validity retries capped at ", MAX_PRIME_MOD_REBUILD_ATTEMPTS,
+                             " attempt(s); refusing to serve invalid template reason=",
+                             TAO::Ledger::PrimeTemplateProofHashInvalidReason(*pBlock, nBitMask));
+                delete pBlock;
+                return nullptr;
             }
 
             /* Prime-mod failed: try the next nonce slot (bounded retries). */
@@ -4055,22 +4060,10 @@ namespace LLP
     /** Helper function used for prime channel modification rule in loop */
     bool StatelessMinerConnection::is_prime_mod(uint32_t nBitMask, TAO::Ledger::Block *pBlock)
     {
-        /* Get the proof hash. */
-        uint1024_t hashProof = pBlock->ProofHash();
+        if(pBlock == nullptr)
+            return false;
 
-        /* Get channel from context */
-        uint32_t nChannel = context.nChannel;
-
-        /* Skip if not prime channel or version less than 5 */
-        if(nChannel != 1 || pBlock->nVersion < 5)
-            return true;
-
-        /* Exit loop when the block is above minimum prime origins and less than 1024-bit hashes */
-        if(hashProof > TAO::Ledger::bnPrimeMinOrigins.getuint1024() && !hashProof.high_bits(nBitMask))
-            return true;
-
-        /* Otherwise keep looping. */
-        return false;
+        return TAO::Ledger::PrimeTemplateProofHashValid(*pBlock, nBitMask);
     }
 
 

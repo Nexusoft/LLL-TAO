@@ -191,7 +191,40 @@ namespace TAO
             const uint32_t nChannel,
             const uint64_t nExtraNonce,
             const uint256_t& hashRewardAddress,
-            TAO::API::CredentialCache* pCredentialCache);
+            TAO::API::CredentialCache* pCredentialCache,
+            uint64_t* pnActualExtraNonce = nullptr);
+
+
+        /** PrimeTemplateProofHashBitMask
+         *
+         *  Returns the configured high-bit mask for Prime template ProofHash
+         *  pre-screening.
+         *
+         **/
+        uint32_t PrimeTemplateProofHashBitMask();
+
+
+        /** PrimeTemplateProofHashValid
+         *
+         *  Shared node-side validity gate for Prime mining templates. Non-Prime
+         *  channels and pre-v5 blocks are always valid for this specific gate.
+         *
+         *  @param[in] block The block template to validate
+         *  @param[in] nBitMask The configured high-bit mask
+         *
+         *  @return true if this template may be served for mining
+         *
+         **/
+        bool PrimeTemplateProofHashValid(const TAO::Ledger::Block& block, const uint32_t nBitMask);
+
+
+        /** PrimeTemplateProofHashInvalidReason
+         *
+         *  Returns a concise diagnostic for a failed PrimeTemplateProofHashValid
+         *  check.
+         *
+         **/
+        std::string PrimeTemplateProofHashInvalidReason(const TAO::Ledger::Block& block, const uint32_t nBitMask);
 
 
 
