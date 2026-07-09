@@ -61,6 +61,7 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <Util/include/softfloat.h>
 
+#include <deque>
 #include <map>
 #include <mutex>
 
@@ -85,6 +86,7 @@ namespace TAO
 
             std::mutex LOCAL_MINED_BLOCK_MUTEX;
             std::map<uint1024_t, LocalMinedBlockRecord> mapLocalMinedBlocks;
+            std::deque<uint1024_t> queueLocalMinedBlocks;
             static const uint64_t MAX_LOCAL_MINED_BLOCK_RECORDS = 1024;
 
             bool ConsumeLocalMinedBlock(const uint1024_t& hashBlock, LocalMinedBlockRecord& rRecord)
@@ -129,8 +131,17 @@ namespace TAO
             record.nAcceptedTime = runtime::timestamp();
 
             std::lock_guard<std::mutex> lock(LOCAL_MINED_BLOCK_MUTEX);
-            if(mapLocalMinedBlocks.size() >= MAX_LOCAL_MINED_BLOCK_RECORDS)
-                mapLocalMinedBlocks.erase(mapLocalMinedBlocks.begin());
+            const bool fNewRecord = !mapLocalMinedBlocks.count(record.hashBlock);
+            if(fNewRecord)
+                queueLocalMinedBlocks.push_back(record.hashBlock);
+
+            while(fNewRecord
+               && mapLocalMinedBlocks.size() >= MAX_LOCAL_MINED_BLOCK_RECORDS
+               && !queueLocalMinedBlocks.empty())
+            {
+                mapLocalMinedBlocks.erase(queueLocalMinedBlocks.front());
+                queueLocalMinedBlocks.pop_front();
+            }
 
             mapLocalMinedBlocks[record.hashBlock] = record;
 
@@ -1025,6 +1036,16 @@ namespace TAO
                             FindReplacementAtHeight(vConnect, record.nHeight, stateReplacement);
                         const bool fSiblingRace =
                             (fReplacementFound && stateReplacement.hashPrevBlock == record.hashPrevBlock);
+                        const std::string strReplacement =
+                            fReplacementFound
+                                ? debug::safe_printstr(" replacement_hash=", stateReplacement.GetHash().SubString(),
+                                    " replacement_channel=", uint32_t(stateReplacement.GetChannel()),
+                                    " replacement_prev=", stateReplacement.hashPrevBlock.SubString())
+                                : std::string(" replacement_hash=<none>");
+                        const std::string strClassification =
+                            fReplacementFound
+                                ? (fSiblingRace ? "same-prev sibling race" : "different-prev stale/re-fed fork")
+                                : "rollback/no same-height replacement";
 
                         debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_YELLOW,
                             "LOCAL MINED BLOCK ORPHANED:", ANSI_COLOR_RESET,
@@ -1032,12 +1053,8 @@ namespace TAO
                             " local_channel=", record.nChannel,
                             " local_height=", record.nHeight,
                             " local_prev=", record.hashPrevBlock.SubString(),
-                            fReplacementFound
-                                ? debug::safe_printstr(" replacement_hash=", stateReplacement.GetHash().SubString(),
-                                    " replacement_channel=", uint32_t(stateReplacement.GetChannel()),
-                                    " replacement_prev=", stateReplacement.hashPrevBlock.SubString())
-                                : std::string(" replacement_hash=<none>"),
-                            " classification=", (fReplacementFound ? (fSiblingRace ? "same-prev sibling race" : "different-prev stale/re-fed fork") : "rollback/no same-height replacement"),
+                            strReplacement,
+                            " classification=", strClassification,
                             " action=following SetBest chain-weight decision and flushing mining templates");
                     }
 

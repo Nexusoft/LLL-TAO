@@ -418,8 +418,10 @@ namespace TAO::Ledger
         tBlockCache[1].Clear();
         tBlockCache[2].Clear();
 
-        debug::log(0, FUNCTION, "cleared PRIME/HASH mining template caches",
-            pszReason ? debug::safe_printstr(" reason=", pszReason) : std::string());
+        const std::string strReason =
+            pszReason ? debug::safe_printstr(" reason=", pszReason) : std::string();
+
+        debug::log(0, FUNCTION, "cleared PRIME/HASH mining template caches", strReason);
     }
 
 #ifdef UNIT_TESTS
