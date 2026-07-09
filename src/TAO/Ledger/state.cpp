@@ -89,7 +89,7 @@ namespace TAO
             std::deque<uint1024_t> queueLocalMinedBlocks;
             static const uint64_t MAX_LOCAL_MINED_BLOCK_RECORDS = 1024;
 
-            bool ConsumeLocalMinedBlock(const uint1024_t& hashBlock, LocalMinedBlockRecord& rRecord)
+            bool ExtractLocalMinedBlock(const uint1024_t& hashBlock, LocalMinedBlockRecord& rRecord)
             {
                 std::lock_guard<std::mutex> lock(LOCAL_MINED_BLOCK_MUTEX);
 
@@ -100,23 +100,6 @@ namespace TAO
                 rRecord = it->second;
                 mapLocalMinedBlocks.erase(it);
                 return true;
-            }
-
-
-            bool FindReplacementAtHeight(const std::vector<BlockState>& vConnect,
-                                          const uint32_t nHeight,
-                                          BlockState& stateReplacement)
-            {
-                for(const auto& state : vConnect)
-                {
-                    if(state.nHeight == nHeight)
-                    {
-                        stateReplacement = state;
-                        return true;
-                    }
-                }
-
-                return false;
             }
         }
 
@@ -135,17 +118,19 @@ namespace TAO
             if(fNewRecord)
                 queueLocalMinedBlocks.push_back(record.hashBlock);
 
-            while(fNewRecord
-               && mapLocalMinedBlocks.size() >= MAX_LOCAL_MINED_BLOCK_RECORDS
-               && !queueLocalMinedBlocks.empty())
+            if(fNewRecord)
             {
-                mapLocalMinedBlocks.erase(queueLocalMinedBlocks.front());
-                queueLocalMinedBlocks.pop_front();
+                while(mapLocalMinedBlocks.size() >= MAX_LOCAL_MINED_BLOCK_RECORDS
+                   && !queueLocalMinedBlocks.empty())
+                {
+                    mapLocalMinedBlocks.erase(queueLocalMinedBlocks.front());
+                    queueLocalMinedBlocks.pop_front();
+                }
             }
 
             mapLocalMinedBlocks[record.hashBlock] = record;
 
-            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "=== LOCAL MINED BLOCK ACCEPTED ===", ANSI_COLOR_RESET,
+            debug::log(0, "=== LOCAL MINED BLOCK ACCEPTED ===",
                 " height=", record.nHeight,
                 " channel=", record.nChannel,
                 " hash=", record.hashBlock.SubString(),
@@ -1023,17 +1008,23 @@ namespace TAO
                 bool fOrphanedLocalMinedBlock = false;
                 if(fReorgOccurring)
                 {
+                    std::map<uint32_t, BlockState> mapConnectByHeight;
+                    for(const auto& state : vConnect)
+                        mapConnectByHeight[state.nHeight] = state;
+
                     for(auto& state : vDisconnect)
                     {
                         LocalMinedBlockRecord record;
-                        if(!ConsumeLocalMinedBlock(state.GetHash(), record))
+                        if(!ExtractLocalMinedBlock(state.GetHash(), record))
                             continue;
 
                         fOrphanedLocalMinedBlock = true;
 
                         BlockState stateReplacement;
-                        const bool fReplacementFound =
-                            FindReplacementAtHeight(vConnect, record.nHeight, stateReplacement);
+                        const auto itReplacement = mapConnectByHeight.find(record.nHeight);
+                        const bool fReplacementFound = (itReplacement != mapConnectByHeight.end());
+                        if(fReplacementFound)
+                            stateReplacement = itReplacement->second;
                         const bool fSiblingRace =
                             (fReplacementFound && stateReplacement.hashPrevBlock == record.hashPrevBlock);
                         const std::string strReplacement =
