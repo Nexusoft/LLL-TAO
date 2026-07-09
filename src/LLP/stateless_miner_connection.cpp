@@ -4847,7 +4847,22 @@ namespace LLP
         {
             LOCK(MUTEX);
             nChannel = context.nSubscribedChannel;
+
+            /* Best-chain hash changed: discard cached mining templates before
+             * the push worker builds fresh work for this exact tip. */
+            clear_map();
         }
+
+        /* Keep TEMPLATE_CREATE_MUTEX separate from MUTEX: new_block() uses the
+         * template mutex to coordinate in-flight creation, and the connection
+         * mutex only protects the cache map/context above.  Splitting scopes
+         * avoids extending either critical section across unrelated state. */
+        {
+            std::lock_guard<std::mutex> create_lk(TEMPLATE_CREATE_MUTEX);
+            m_last_created_template = nullptr;
+        }
+        debug::log(1, FUNCTION, "Stateless cached mining templates flushed before push rebuild",
+            " tip=", hashExpectedTip.SubString(), " channel=", nChannel);
         ScheduleTemplateWork(TemplateWorkReason::PUSH_NOTIFICATION, hashExpectedTip, true, nChannel);
     }
 

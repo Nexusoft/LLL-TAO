@@ -44,6 +44,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/dispatch.h>
 #include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/prime.h>
 #include <TAO/Ledger/include/stake_change.h>
 #include <TAO/Ledger/include/supply.h>
@@ -951,6 +952,11 @@ namespace TAO
                     if(!state.Disconnect())
                         return debug::error(FUNCTION, "failed to disconnect ", state.GetHash().SubString());
 
+                    /* If this disconnect orphaned a locally accepted mined block,
+                     * emit a prominent diagnostic before continuing the normal
+                     * SetBest() reorg path. */
+                    TAO::Ledger::MarkLocalMinedBlockDisconnected(state, *this);
+
                     /* Erase block if not connecting anything. */
                     if(vConnect.empty())
                     {
@@ -1287,6 +1293,16 @@ namespace TAO
                      * immediately after queueing. */
                     LLP::MinerPushDispatcher::EnqueuePushEvent(nHeight, hash);
 
+                    /* Only Prime and Hash are listed here because external
+                     * miner templates are served for PoW channels. Proof-of-Stake
+                     * (channel 0) is intentionally excluded because stake minting
+                     * does not consume LLP mining templates. */
+                    debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_GREEN,
+                        "=== MINING_TEMPLATES_FLUSHED ===", ANSI_COLOR_RESET,
+                        " best=", hash.SubString(),
+                        " height=", nHeight,
+                        " channels=PRIME,HASH");
+
                     /* Reorg-recovery diagnostic: if this SetBest completed a chain reorganization,
                      * log that the push was enqueued so operators can trace reorg-recovery behavior.
                      * During large reorgs the miner's LLP poll timeout may fire while SetBest() is
@@ -1309,6 +1325,8 @@ namespace TAO
                         /* Fork callbacks have been triggered on all channel managers */
                     }
                 }
+
+                TAO::Ledger::FinalizeLocalMinedTrackingAfterSetBest(*this);
             }
 
             return true;
