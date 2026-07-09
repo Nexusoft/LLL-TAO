@@ -14,6 +14,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/block.h>
 #include <TAO/Ledger/types/tritium.h>
 #include <TAO/Ledger/types/state.h>
+#include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/stateless_block_utility.h>
 
 #include <unit/catch2/catch.hpp>
 
@@ -148,7 +150,7 @@ TEST_CASE( "Prime Calculation - Nonce Endianness (PR #128)", "[ledger][prime][en
         uint1024_t nWrongBE = nProofHash + 0x0063b50702000034ULL;
         REQUIRE(nPrime1 != nWrongBE);
     }
-    
+
     SECTION("Different nonce values produce different primes")
     {
         TAO::Ledger::Block block1(1, 0, 1, 100);
@@ -183,5 +185,57 @@ TEST_CASE( "Prime Calculation - Nonce Endianness (PR #128)", "[ledger][prime][en
         
         /* With nonce=0, prime should equal ProofHash */
         REQUIRE(nPrime == nProofHash);
+    }
+}
+
+
+TEST_CASE( "Prime template ProofHash validity gate", "[ledger][prime][template]")
+{
+    const uint32_t nDefaultMask = 0x80000000;
+    const uint32_t nMaxTestCandidates = 100000;
+
+    SECTION("Non-Prime templates bypass the Prime ProofHash gate")
+    {
+        TAO::Ledger::Block block(5, 0, 2, 100);
+        block.hashMerkleRoot = 1;
+        block.nBits = 1;
+
+        REQUIRE(TAO::Ledger::PrimeTemplateProofHashValid(block, nDefaultMask));
+    }
+
+    SECTION("Prime templates below the 1016-bit origin floor are rejected")
+    {
+        TAO::Ledger::Block block(5, 0, 1, 100);
+        block.nBits = 1;
+
+        bool fFound = false;
+        for(uint32_t nCandidate = 0; nCandidate < nMaxTestCandidates && !fFound; ++nCandidate)
+        {
+            block.hashMerkleRoot = nCandidate;
+            uint1024_t hashProof = block.ProofHash();
+            fFound = hashProof <= TAO::Ledger::bnPrimeMinOrigins.getuint1024();
+        }
+
+        REQUIRE(fFound);
+        REQUIRE_FALSE(TAO::Ledger::PrimeTemplateProofHashValid(block, nDefaultMask));
+        REQUIRE(TAO::Ledger::PrimeTemplateProofHashInvalidReason(block, nDefaultMask).find("Prime origins below 1016-bits") != std::string::npos);
+    }
+
+    SECTION("Prime templates inside the allowed origin range pass")
+    {
+        TAO::Ledger::Block block(5, 0, 1, 100);
+        block.nBits = 1;
+
+        bool fFound = false;
+        for(uint32_t nCandidate = 0; nCandidate < nMaxTestCandidates && !fFound; ++nCandidate)
+        {
+            block.hashMerkleRoot = nCandidate;
+            uint1024_t hashProof = block.ProofHash();
+            fFound = hashProof > TAO::Ledger::bnPrimeMinOrigins.getuint1024()
+                && !hashProof.high_bits(nDefaultMask);
+        }
+
+        REQUIRE(fFound);
+        REQUIRE(TAO::Ledger::PrimeTemplateProofHashValid(block, nDefaultMask));
     }
 }

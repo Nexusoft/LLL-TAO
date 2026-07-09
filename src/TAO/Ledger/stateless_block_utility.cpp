@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/stateless_block_utility.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/prime.h>
 #include <TAO/Ledger/include/supply.h>
@@ -42,6 +43,8 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 #include <chrono>
+#include <limits>
+#include <memory>
 #include <sstream>
 
 /* Global TAO namespace. */
@@ -49,6 +52,26 @@ namespace TAO::Ledger
 {
     namespace
     {
+        static constexpr uint32_t MAX_TIP_RACE_RETRIES = 5;
+
+
+        uint32_t GetPrimeTemplateMaxAttempts()
+        {
+            const int64_t nDefaultMax =
+                config::GetBoolArg("-primemod", false) ? 1024 : 32;
+            const int64_t nConfigured =
+                config::GetArg("-primetemplateattempts", nDefaultMax);
+
+            if(nConfigured <= 0)
+                return 1;
+
+            if(nConfigured > std::numeric_limits<uint32_t>::max())
+                return std::numeric_limits<uint32_t>::max();
+
+            return static_cast<uint32_t>(nConfigured);
+        }
+
+
         bool SequenceDiagnosticsEnabled()
         {
             return config::GetBoolArg("-nseqdiag", false);
@@ -129,6 +152,39 @@ namespace TAO::Ledger
     }
 
 
+    uint32_t PrimeTemplateProofHashBitMask()
+    {
+        return config::GetBoolArg("-primemod", false) ? 0xFE000000 : 0x80000000;
+    }
+
+
+    bool PrimeTemplateProofHashValid(const TAO::Ledger::Block& block, const uint32_t nBitMask)
+    {
+        if(block.nChannel != 1 || block.nVersion < 5)
+            return true;
+
+        uint1024_t hashProof = block.ProofHash();
+        return hashProof > TAO::Ledger::bnPrimeMinOrigins.getuint1024()
+            && !hashProof.high_bits(nBitMask);
+    }
+
+
+    std::string PrimeTemplateProofHashInvalidReason(const TAO::Ledger::Block& block, const uint32_t nBitMask)
+    {
+        if(block.nChannel != 1 || block.nVersion < 5)
+            return "not a v5+ Prime template";
+
+        uint1024_t hashProof = block.ProofHash();
+        if(hashProof <= TAO::Ledger::bnPrimeMinOrigins.getuint1024())
+            return "Prime origins below 1016-bits (ProofHash < bnPrimeMinOrigins)";
+
+        if(hashProof.high_bits(nBitMask))
+            return "Prime ProofHash outside configured template bit range";
+
+        return "Prime template ProofHash is valid";
+    }
+
+
     /* Create wallet-signed block for stateless mining */
     TritiumBlock* CreateBlockForStatelessMining(
         const uint32_t nChannel,
@@ -148,7 +204,8 @@ namespace TAO::Ledger
         const uint32_t nChannel,
         const uint64_t nExtraNonce,
         const uint256_t& hashRewardAddress,
-        TAO::API::CredentialCache* pCredentialCache)
+        TAO::API::CredentialCache* pCredentialCache,
+        uint64_t* pnActualExtraNonce)
     {
         /* Early exit if shutdown is in progress */
         if(config::fShutdown.load())
@@ -253,98 +310,128 @@ namespace TAO::Ledger
                 return nullptr;
             }
             
-            TritiumBlock* pBlock = new TritiumBlock();
-            const auto tCreateStart = std::chrono::steady_clock::now();
-            
-            // CreateBlock() handles wallet signing per consensus requirements
+            const uint32_t nPrimeBitMask =
+                (nChannel == 1) ? PrimeTemplateProofHashBitMask() : 0;
+            const uint32_t nMaxPrimeAttempts =
+                (nChannel == 1) ? GetPrimeTemplateMaxAttempts() : 1;
+            uint64_t nAttemptExtraNonce = nExtraNonce;
+            std::unique_ptr<TritiumBlock> pBlock(new TritiumBlock());
+
+            for(uint32_t nPrimeAttempt = 1; nPrimeAttempt <= nMaxPrimeAttempts; ++nPrimeAttempt)
             {
-                const int64_t nMs = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::steady_clock::now() - tCbsmStart).count();
-                debug::log(1, FUNCTION, "[CBSM_TIMING] phase=pre_createblock elapsed_ms=", nMs,
+                pBlock->SetNull();
+                const auto tCreateStart = std::chrono::steady_clock::now();
+
+                // CreateBlock() handles wallet signing per consensus requirements
+                {
+                    const int64_t nMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - tCbsmStart).count();
+                    debug::log(1, FUNCTION, "[CBSM_TIMING] phase=pre_createblock elapsed_ms=", nMs,
+                               " reward=", hashRewardAddress.SubString(),
+                               " extra_nonce=", nAttemptExtraNonce,
+                               " prime_attempt=", nPrimeAttempt, "/", nMaxPrimeAttempts);
+                }
+
+                /* [Option D] The chain tip can advance while CreateBlock() is
+                 * signing the producer (Falcon signing can take 1000+ ms), in
+                 * which case CreateBlock() abandons the stale in-flight template
+                 * and reports the race via pfTipRaceRetry rather than a real
+                 * error. Previously this bubbled straight up to nullptr, and
+                 * every caller (Miner, StatelessMinerConnection, the template
+                 * prewarmer) simply gave up and waited for the next externally
+                 * triggered poll/push -- under a fast-reorging tip this could
+                 * livelock the miner out of ever publishing a fresh template.
+                 * Retry immediately against the now-current tip instead, bounded
+                 * so a persistently unstable tip still surfaces as a failure. */
+                bool success = false;
+                for(uint32_t nTipRaceAttempt = 0; nTipRaceAttempt <= MAX_TIP_RACE_RETRIES; ++nTipRaceAttempt)
+                {
+                    bool fTipRaceRetry = false;
+                    success = CreateBlock(
+                        *pCredentialsToUse,
+                        strPIN,
+                        nChannel,
+                        *pBlock,
+                        nAttemptExtraNonce,
+                        nullptr,           // No coinbase recipients
+                        hashRewardAddress, // Route reward events to miner's genesis
+                        &fTipRaceRetry
+                    );
+
+                    if(success || !fTipRaceRetry)
+                        break;
+
+                    if(nTipRaceAttempt < MAX_TIP_RACE_RETRIES)
+                        debug::log(1, FUNCTION, "[TIP_RACE] tip advanced during build, retrying template"
+                                   " (attempt ", nTipRaceAttempt + 1, "/", MAX_TIP_RACE_RETRIES,
+                                   ") reward=", hashRewardAddress.SubString());
+                    else
+                        debug::error(FUNCTION, "[TIP_RACE] tip kept advancing across ", MAX_TIP_RACE_RETRIES,
+                                     " retries; giving up for this request reward=", hashRewardAddress.SubString());
+                }
+
+                if(pCredentialCache != nullptr && !pCredentialCache->PostUseCheck())
+                    debug::log(2, FUNCTION, "Credential cache epoch drift detected post CreateBlock");
+
+                {
+                    const int64_t nMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - tCbsmStart).count();
+                    debug::log(1, FUNCTION, "[CBSM_TIMING] phase=createblock_returned elapsed_ms=", nMs,
+                               " reward=", hashRewardAddress.SubString(),
+                               " extra_nonce=", nAttemptExtraNonce);
+                }
+
+                const int64_t nCreateMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - tCreateStart).count();
+                debug::log(1, FUNCTION, "CreateBlockForStatelessMining CreateBlock duration_ms=",
+                           nCreateMs, " channel=", nChannel,
+                           " extra_nonce=", nAttemptExtraNonce,
                            " reward=", hashRewardAddress.SubString());
-            }
 
-            /* [Option D] The chain tip can advance while CreateBlock() is
-             * signing the producer (Falcon signing can take 1000+ ms), in
-             * which case CreateBlock() abandons the stale in-flight template
-             * and reports the race via pfTipRaceRetry rather than a real
-             * error. Previously this bubbled straight up to nullptr, and
-             * every caller (Miner, StatelessMinerConnection, the template
-             * prewarmer) simply gave up and waited for the next externally
-             * triggered poll/push -- under a fast-reorging tip this could
-             * livelock the miner out of ever publishing a fresh template.
-             * Retry immediately against the now-current tip instead, bounded
-             * so a persistently unstable tip still surfaces as a failure. */
-            static constexpr uint32_t MAX_TIP_RACE_RETRIES = 5;
-            bool success = false;
-            for(uint32_t nTipRaceAttempt = 0; nTipRaceAttempt <= MAX_TIP_RACE_RETRIES; ++nTipRaceAttempt)
-            {
-                bool fTipRaceRetry = false;
-                success = CreateBlock(
-                    *pCredentialsToUse,
-                    strPIN,
-                    nChannel,
-                    *pBlock,
-                    nExtraNonce,
-                    nullptr,           // No coinbase recipients
-                    hashRewardAddress, // Route reward events to miner's genesis
-                    &fTipRaceRetry
-                );
+                if(!success)
+                {
+                    debug::error(FUNCTION, "CreateBlock failed");
+                    return nullptr;
+                }
 
-                if(success || !fTipRaceRetry)
-                    break;
+                /* DO NOT call Check() here - the block hasn't been mined yet.
+                 * Check() validates PoW which requires a valid nonce from the miner.
+                 * Validation happens in validate_block() AFTER miner submits solution. */
 
-                if(nTipRaceAttempt < MAX_TIP_RACE_RETRIES)
-                    debug::log(1, FUNCTION, "[TIP_RACE] tip advanced during build, retrying template"
-                               " (attempt ", nTipRaceAttempt + 1, "/", MAX_TIP_RACE_RETRIES,
-                               ") reward=", hashRewardAddress.SubString());
-                else
-                    debug::error(FUNCTION, "[TIP_RACE] tip kept advancing across ", MAX_TIP_RACE_RETRIES,
-                                 " retries; giving up for this request reward=", hashRewardAddress.SubString());
-            }
+                /* Basic sanity check only - verify CreateBlock() produced valid output */
+                if(pBlock->hashMerkleRoot == 0)
+                {
+                    debug::error(FUNCTION, "CreateBlock() produced invalid merkle root");
+                    return nullptr;
+                }
 
-            if(pCredentialCache != nullptr && !pCredentialCache->PostUseCheck())
-                debug::log(2, FUNCTION, "Credential cache epoch drift detected post CreateBlock");
+                if(PrimeTemplateProofHashValid(*pBlock, nPrimeBitMask))
+                {
+                    if(pnActualExtraNonce != nullptr)
+                        *pnActualExtraNonce = nAttemptExtraNonce;
 
-            {
-                const int64_t nMs = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::steady_clock::now() - tCbsmStart).count();
-                debug::log(1, FUNCTION, "[CBSM_TIMING] phase=createblock_returned elapsed_ms=", nMs,
+                    /* Log block creation result */
+                    debug::log(2, FUNCTION, "CreateBlock: channel ", pBlock->nChannel,
+                               " unified height ", pBlock->nHeight);
+                    debug::log(2, FUNCTION, "  Note: PoW validation deferred until miner submits nonce");
+                    debug::log(2, FUNCTION, "  Reward address: ", hashRewardAddress.SubString());
+
+                    return pBlock.release();
+                }
+
+                debug::log(1, FUNCTION, "[PRIME_TEMPLATE_RETRY] rejected template"
+                           " reason=", PrimeTemplateProofHashInvalidReason(*pBlock, nPrimeBitMask),
+                           " attempt=", nPrimeAttempt, "/", nMaxPrimeAttempts,
+                           " extra_nonce=", nAttemptExtraNonce,
+                           " proof=", pBlock->ProofHash().SubString(),
                            " reward=", hashRewardAddress.SubString());
+                ++nAttemptExtraNonce;
             }
 
-            const int64_t nCreateMs = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - tCreateStart).count();
-            debug::log(1, FUNCTION, "CreateBlockForStatelessMining CreateBlock duration_ms=",
-                       nCreateMs, " channel=", nChannel,
-                       " extra_nonce=", nExtraNonce,
-                       " reward=", hashRewardAddress.SubString());
-            
-            if (!success) {
-                delete pBlock;
-                debug::error(FUNCTION, "CreateBlock failed");
-                return nullptr;
-            }
-            
-            /* DO NOT call Check() here - the block hasn't been mined yet.
-             * Check() validates PoW which requires a valid nonce from the miner.
-             * Validation happens in validate_block() AFTER miner submits solution. */
-            
-            /* Basic sanity check only - verify CreateBlock() produced valid output */
-            if(pBlock->hashMerkleRoot == 0)
-            {
-                debug::error(FUNCTION, "CreateBlock() produced invalid merkle root");
-                delete pBlock;
-                return nullptr;
-            }
-            
-            /* Log block creation result */
-            debug::log(2, FUNCTION, "CreateBlock: channel ", pBlock->nChannel, 
-                       " unified height ", pBlock->nHeight);
-            debug::log(2, FUNCTION, "  Note: PoW validation deferred until miner submits nonce");
-            debug::log(2, FUNCTION, "  Reward address: ", hashRewardAddress.SubString());
-
-            return pBlock;
+            debug::error(FUNCTION, "Unable to create valid Prime template after ",
+                         nMaxPrimeAttempts, " attempt(s); refusing to serve invalid work"
+                         " reward=", hashRewardAddress.SubString());
+            return nullptr;
         }
         catch (const std::exception& e) {
             debug::error(FUNCTION, "Block creation failed: ", e.what());

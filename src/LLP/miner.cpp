@@ -2372,14 +2372,14 @@ namespace LLP
          * mutex acquisitions/second on a busy node. */
 
         /* Prime channel optimization */
-        const uint32_t nBitMask = config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
+        const uint32_t nBitMask = TAO::Ledger::PrimeTemplateProofHashBitMask();
         TAO::Ledger::TritiumBlock* pBlock = nullptr;
 
         /* [Bug 2] Only increment the global nBlockIterator when the chain tip changes.
          * Same-tip GET_BLOCK calls reuse the cached extra-nonce so
          * CachedMiningTemplateRequiresProducerFinalization() returns false and the
          * expensive CreateProducer() sigchain key operation is skipped. */
-        uint32_t extraNonce;
+        uint64_t extraNonce;
         {
             LOCK(MUTEX);
             const uint1024_t hashCurrentTip = TAO::Ledger::ChainState::hashBestChain.load();
@@ -2394,55 +2394,37 @@ namespace LLP
             extraNonce = m_nCachedExtraNonce;
         }
 
-        /* Create block using simplified utility.
-         * For the prime channel, loop until the proof hash satisfies the prime-mod
-         * bit-pattern filter.  On a tip change the first attempt uses the freshly
-         * allocated nonce; if prime-mod fails, we borrow additional nonces from the
-         * global counter and update the cache so the next poll reuses the
-         * prime-mod-satisfying nonce without rebuilding the producer. */
-        static constexpr uint32_t MAX_PRIME_MOD_REBUILD_ATTEMPTS = 3;
-        uint32_t nAttempts = 0;
-        while(true) {
-            if(nAttempts == 0)
-                LogNbTiming("nb_pre_createblock", hashReward.SubString());
+        /* CreateBlockForStatelessMining() owns Prime ProofHash validity retries
+         * and refuses to return invalid Prime work. Keep this lane-level check as
+         * a defensive assertion before caching/sending the template. */
+        LogNbTiming("nb_pre_createblock", hashReward.SubString());
+        uint64_t nActualExtraNonce = extraNonce;
+        pBlock = TAO::Ledger::CreateBlockForStatelessMining(
+            nChannel.load(),
+            extraNonce,
+            hashReward,
+            &m_miningCredentialCache,
+            &nActualExtraNonce
+        );
+        LogNbTiming("nb_createblock_returned", hashReward.SubString());
 
-            ++nAttempts;
-            pBlock = TAO::Ledger::CreateBlockForStatelessMining(
-                nChannel.load(),
-                extraNonce,
-                hashReward,
-                &m_miningCredentialCache
-            );
-            LogNbTiming("nb_createblock_returned", hashReward.SubString());
+        if(!pBlock)
+            return nullptr;
 
-            if(!pBlock) return nullptr;
-            if(is_prime_mod(nBitMask, pBlock))
-            {
-                /* Cache the prime-mod-satisfying nonce for this tip. */
-                LOCK(MUTEX);
-                m_nCachedExtraNonce = extraNonce;
-                break;
-            }
-
-            if(nAttempts >= MAX_PRIME_MOD_REBUILD_ATTEMPTS)
-            {
-                debug::log(3, FUNCTION,
-                           "Prime-mod retries capped at ", MAX_PRIME_MOD_REBUILD_ATTEMPTS,
-                           " attempt(s); using latest template without further extra-nonce rebuild");
-                break;
-            }
-
-            /* Prime-mod failed: try the next nonce slot (bounded retries).
-             * nBlockIterator is static std::atomic<uint32_t> (miner.h:469), so
-             * ++nBlockIterator is a safe atomic RMW without MUTEX.  MUTEX is not
-             * needed here because nBlockIterator is itself atomic; the non-atomic
-             * cache field m_nCachedExtraNonce is only updated under LOCK(MUTEX)
-             * (success path above and the tip-change path before the loop). */
-            extraNonce = ++nBlockIterator;
+        if(!is_prime_mod(nBitMask, pBlock))
+        {
+            debug::error(FUNCTION,
+                         "CreateBlockForStatelessMining returned invalid Prime template reason=",
+                         TAO::Ledger::PrimeTemplateProofHashInvalidReason(*pBlock, nBitMask));
             delete pBlock;
-            pBlock = nullptr;
+            return nullptr;
         }
-        
+
+        {
+            LOCK(MUTEX);
+            m_nCachedExtraNonce = nActualExtraNonce;
+        }
+         
         debug::log(3, FUNCTION, "Created block ", pBlock->ProofHash().SubString());
 
         /* Tip-fence: discard auto-send template if the chain tip moved between
@@ -2677,19 +2659,10 @@ namespace LLP
     *  Returns true if the condition is satisfied, false otherwise. */
     bool Miner::is_prime_mod(uint32_t nBitMask, TAO::Ledger::Block *pBlock)
     {
-        /* Get the proof hash. */
-        uint1024_t hashProof = pBlock->ProofHash();
+        if(pBlock == nullptr)
+            return false;
 
-        /* Skip if not prime channel or version less than 5 */
-        if(nChannel.load() != 1 || pBlock->nVersion < 5)
-            return true;
-
-        /* Exit loop when the block is above minimum prime origins and less than 1024-bit hashes */
-        if(hashProof > TAO::Ledger::bnPrimeMinOrigins.getuint1024() && !hashProof.high_bits(nBitMask))
-            return true;
-
-        /* Otherwise keep looping. */
-        return false;
+        return TAO::Ledger::PrimeTemplateProofHashValid(*pBlock, nBitMask);
     }
 
 
