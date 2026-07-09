@@ -490,6 +490,7 @@ namespace TAO
         {
             static uint32_t nCounter = 0;            //Prevents log spam during wait period
             static uint32_t nNegativeArgCounter = 0; //Prevents log spam on invalid config
+            static constexpr uint32_t nLogThrottleInterval = 100;
 
             /* Recomputed every call (not cached) since it depends on the candidate block's version, which
              * can change across a network upgrade while this process keeps running (for example, a v8->v9
@@ -507,7 +508,7 @@ namespace TAO
                     nSleepTime = 5000; //5 second wait is reset below (can't sleep too long or will hang until wakes up on shutdown)
 
                     /* Update log every 100 iterations */
-                    if((nCounter % 100) == 0)
+                    if((nCounter % nLogThrottleInterval) == 0)
                         debug::log(0, FUNCTION, "Too soon after last stake block. ",
                                    (nMinInterval - nInterval + 1), " blocks remaining until staking available.");
 
@@ -523,11 +524,11 @@ namespace TAO
                  * reorg/orphan burst -- which could otherwise let this trust account chain stake blocks in
                  * rapid real-time succession despite satisfying the height requirement. */
                 const int64_t nMinSecondsArg =
-                    config::GetArg("-minstakeintervalseconds", static_cast<int64_t>(TAO::Ledger::DEFAULT_MINIMUM_STAKE_INTERVAL_SECONDS));
+                    config::GetArg("-minstakeintervalseconds", TAO::Ledger::DEFAULT_MINIMUM_STAKE_INTERVAL_SECONDS);
 
                 if(nMinSecondsArg < 0)
                 {
-                    if((nNegativeArgCounter % 100) == 0)
+                    if((nNegativeArgCounter % nLogThrottleInterval) == 0)
                         debug::log(0, FUNCTION, "Ignoring negative -minstakeintervalseconds value (", nMinSecondsArg,
                                    "). Local wall-clock floor disabled for this run.");
 
@@ -546,7 +547,7 @@ namespace TAO
                     {
                         nSleepTime = 5000;
 
-                        if((nCounter % 100) == 0)
+                        if((nCounter % nLogThrottleInterval) == 0)
                             debug::log(0, FUNCTION, "Too soon after last stake block for local wall-clock floor. ",
                                        (nMinSeconds - nElapsed), " seconds remaining until staking available.");
 
@@ -621,7 +622,9 @@ namespace TAO
                 && hashLastBlock == TAO::Ledger::ChainState::hashBestChain.load())
             {
                 const uint64_t nHeartbeatNow = runtime::unifiedtimestamp();
-                if(nHeartbeatLast == 0 || (nHeartbeatNow > nHeartbeatLast && (nHeartbeatNow - nHeartbeatLast) >= 4))
+                if(nHeartbeatLast == 0
+                || (nHeartbeatNow > nHeartbeatLast
+                    && (nHeartbeatNow - nHeartbeatLast) >= TAO::Ledger::STAKE_MINTER_HEARTBEAT_INTERVAL_SECONDS))
                 {
                     nLastActive.store(nHeartbeatNow);
                     nHeartbeatLast = nHeartbeatNow;

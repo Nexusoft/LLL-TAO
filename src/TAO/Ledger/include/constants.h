@@ -189,6 +189,10 @@ namespace TAO::Ledger
     const uint32_t STAKE_MINTER_STALL_THRESHOLD = 120;
 
 
+    /** Cadence in seconds for watchdog heartbeat refresh while HashBlock() is actively running. **/
+    const uint32_t STAKE_MINTER_HEARTBEAT_INTERVAL_SECONDS = 4;
+
+
     /** NXS token default digits. **/
     const uint8_t NXS_DIGITS = 6;
 
