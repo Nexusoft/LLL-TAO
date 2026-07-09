@@ -14,7 +14,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/stateless_block_utility.h>
 #include <TAO/Ledger/types/tritium.h>
-
 #include <unit/catch2/catch.hpp>
 
 namespace
@@ -82,4 +81,32 @@ TEST_CASE("AcceptMinedBlock post-validation guard rejects stale tip-race submiss
 
     REQUIRE_FALSE(result.accepted);
     REQUIRE(result.reason == "submitted block is stale (post-validation tip-race check)");
+}
+
+
+TEST_CASE("Shared SUBMIT_BLOCK staleness helper reports hashPrevBlock mismatch", "[ledger][submit_stale]")
+{
+    const uint1024_t hashOriginal = TAO::Ledger::ChainState::hashBestChain.load();
+    ChainTipRestore restore(hashOriginal);
+
+    const uint1024_t hashInitialTip(11);
+    const uint1024_t hashAdvancedTip(22);
+    const uint512_t hashMerkle(33);
+
+    TAO::Ledger::ChainState::hashBestChain.store(hashAdvancedTip);
+
+    TAO::Ledger::TritiumBlock block;
+    block.nChannel = 1;
+    block.nHeight = 100;
+    block.hashPrevBlock = hashInitialTip;
+    block.hashMerkleRoot = hashMerkle;
+
+    const TAO::Ledger::SubmitBlockStalenessResult result =
+        TAO::Ledger::ValidateSubmitBlockStaleness(block, hashMerkle, "unit");
+
+    REQUIRE_FALSE(result.fresh);
+    REQUIRE(result.reason == TAO::Ledger::SubmitBlockStaleReason::HASH_PREV_BLOCK);
+    REQUIRE(result.hashBestChain == hashAdvancedTip);
+    REQUIRE(result.hashMerkleFrozen == hashMerkle);
+    REQUIRE(result.hashMerkleCurrent == hashMerkle);
 }

@@ -2306,9 +2306,8 @@ namespace LLP
                     }
                 }
 
-                /* Hash-based staleness guard — mirrors StakeMinter pattern.
-                 * hashPrevBlock is the PRIMARY staleness anchor baked into the 216-byte template.
-                 * This catches reorgs at the same integer height that nBestHeight misses. */
+                /* Hash-based staleness diagnostic only. Enforcement is performed
+                 * by ValidateSubmitBlockStaleness() after the merkle root is frozen. */
                 const uint1024_t hashCurrentBest = TAO::Ledger::ChainState::hashBestChain.load();
                 debug::log(2, FUNCTION, "[BLOCK SUBMIT] nHeight=", pTritium->nHeight, " (unified)",
                            " channel=", pTritium->nChannel,
@@ -2317,29 +2316,6 @@ namespace LLP
                            " match=", (pTritium->hashPrevBlock == hashCurrentBest));
                 /* Full hashPrevBlock hex (MSB-first via GetHex()) for cross-verification with miner's GetBytes()[0..7] log. */
                 debug::log(2, FUNCTION, "[BLOCK SUBMIT] hashPrevBlock FULL (MSB-first): ", pTritium->hashPrevBlock.GetHex());
-
-                if(pTritium->hashPrevBlock != hashCurrentBest)
-                {
-                    debug::warning(FUNCTION, "SUBMIT_BLOCK pre-check: hashPrevBlock does not match current hashBestChain: ",
-                                   pTritium->hashPrevBlock.SubString(), " != ", hashCurrentBest.SubString());
-                    debug::log(0, FUNCTION, "SUBMIT_BLOCK rejected STALE — hashPrevBlock=",
-                               pTritium->hashPrevBlock.SubString(),
-                               " != hashBestChain=", hashCurrentBest.SubString());
-                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                    response.DATA.push_back(static_cast<uint8_t>(OpcodeUtility::RejectionReason::STALE));
-                    response.LENGTH = static_cast<uint32_t>(response.DATA.size());
-                    respond(response);
-                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Stale block) ===", ANSI_COLOR_RESET);
-
-                    /* [Option A] Same anti-doom-loop treatment as the AcceptMinedBlock()
-                     * failure path below: this rejection means the miner is holding a
-                     * template whose hashPrevBlock has already been superseded.  On a
-                     * weak network the miner's own GET_BLOCK re-request can be delayed
-                     * long enough to trip its degraded/stopped recovery timers.  Invalidate
-                     * the stale cached template and proactively push a fresh one now. */
-                    ForceFreshTemplatePush(hashMerkle);
-                    return true;
-                }
 
                 /* ── Pre-validation staleness diagnostics ──────────────────────────────
                  *  If block.vtx contains transactions for the same sigchain genesis as the
@@ -2384,58 +2360,19 @@ namespace LLP
                  * may mutate it or the proof-of-work becomes invalid. */
                 const uint512_t hashMerkleFrozen = pTritium->hashMerkleRoot;
 
-                /* Pre-validation vtx check — detect transactions already committed
-                 * by another block.  Mutating the block to remove them would change
-                 * the merkle root and invalidate the proof-of-work. */
-                if(!TAO::Ledger::ValidateVtxNotCommitted(*pTritium))
+                const TAO::Ledger::SubmitBlockStalenessResult staleResult =
+                    TAO::Ledger::ValidateSubmitBlockStaleness(*pTritium, hashMerkleFrozen, "stateless");
+                if(!staleResult.fresh)
                 {
-                    debug::error(FUNCTION, "SUBMIT_BLOCK: vtx already committed — template stale, rejecting");
+                    debug::error(FUNCTION, "SUBMIT_BLOCK stale pre-check failed: ",
+                                 TAO::Ledger::SubmitBlockStaleReasonString(staleResult.reason),
+                                 " — ", staleResult.message);
                     StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                    response.DATA.push_back(static_cast<uint8_t>(OpcodeUtility::RejectionReason::STALE));
+                    response.LENGTH = static_cast<uint32_t>(response.DATA.size());
                     respond(response);
-
-                    /* [Option A] Anti-doom-loop: invalidate the stale cached template
-                     * and proactively push a fresh one — see comment at the
-                     * hashPrevBlock STALE check above. */
+                    debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Stale block) ===", ANSI_COLOR_RESET);
                     ForceFreshTemplatePush(hashMerkle);
-                    return true;
-                }
-
-                if(!TAO::Ledger::ValidateProducerFreshness(*pTritium))
-                {
-                    debug::error(FUNCTION, "SUBMIT_BLOCK: producer sigchain stale — template stale, rejecting");
-                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                    respond(response);
-
-                    /* [Option A] Anti-doom-loop — see comment above. */
-                    ForceFreshTemplatePush(hashMerkle);
-                    return true;
-                }
-
-                /* Pre-connect vtx sigchain staleness check — detect stale vtx
-                 * transactions before AcceptMinedBlock() so the miner receives
-                 * STATELESS_BLOCK_REJECTED and can request a fresh template. */
-                if(!TAO::Ledger::ValidateVtxSigchainConsistency(*pTritium))
-                {
-                    debug::error(FUNCTION, "SUBMIT_BLOCK: vtx sigchain stale — rejecting");
-                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                    respond(response);
-
-                    /* [Option A] Anti-doom-loop — see comment above. */
-                    ForceFreshTemplatePush(hashMerkle);
-                    return true;
-                }
-
-                /* Merkle root immutability assertion — all pre-validation steps
-                 * above are detection-only and must NOT have mutated the block.
-                 * If this fires, a code change has reintroduced a mutation bug. */
-                if(pTritium->hashMerkleRoot != hashMerkleFrozen)
-                {
-                    debug::error(FUNCTION, "SUBMIT_BLOCK BUG: hashMerkleRoot mutated after sign_block!"
-                                 " This indicates a regression in the pre-validation pipeline."
-                                 " frozen=", hashMerkleFrozen.SubString(),
-                                 " current=", pTritium->hashMerkleRoot.SubString());
-                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                    respond(response);
                     return true;
                 }
 

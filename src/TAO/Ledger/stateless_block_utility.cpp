@@ -353,6 +353,92 @@ namespace TAO::Ledger
     }
 
 
+    const char* SubmitBlockStaleReasonString(const SubmitBlockStaleReason reason)
+    {
+        switch(reason)
+        {
+            case SubmitBlockStaleReason::HASH_PREV_BLOCK:        return "HASH_PREV_BLOCK";
+            case SubmitBlockStaleReason::VTX_ALREADY_COMMITTED:  return "VTX_ALREADY_COMMITTED";
+            case SubmitBlockStaleReason::PRODUCER_SIGCHAIN:      return "PRODUCER_SIGCHAIN";
+            case SubmitBlockStaleReason::VTX_SIGCHAIN:           return "VTX_SIGCHAIN";
+            case SubmitBlockStaleReason::MERKLE_MUTATED:         return "MERKLE_MUTATED";
+            default:                                             return "NONE";
+        }
+    }
+
+
+    SubmitBlockStalenessResult ValidateSubmitBlockStaleness(
+        const TAO::Ledger::TritiumBlock& block,
+        const uint512_t& hashMerkleFrozen,
+        const char* pszLane)
+    {
+        SubmitBlockStalenessResult result;
+        result.hashBestChain = TAO::Ledger::ChainState::hashBestChain.load();
+        result.hashMerkleFrozen = hashMerkleFrozen;
+        result.hashMerkleCurrent = block.hashMerkleRoot;
+
+        static constexpr const char* DEFAULT_SUBMIT_STALE_LANE = "unknown";
+        const char* pszLaneName = pszLane ? pszLane : DEFAULT_SUBMIT_STALE_LANE;
+
+        auto markStale = [&](const SubmitBlockStaleReason reason, const std::string& message)
+        {
+            result.fresh = false;
+            result.reason = reason;
+            result.message = message;
+
+            debug::log(0, FUNCTION,
+                "[SUBMIT_STALE]"
+                " lane=", pszLaneName,
+                " reason=", SubmitBlockStaleReasonString(reason),
+                " message=", message,
+                " channel=", block.nChannel,
+                " height=", block.nHeight,
+                " merkle=", block.hashMerkleRoot.SubString(),
+                " hashPrevBlock=", block.hashPrevBlock.SubString(),
+                " hashBestChain=", result.hashBestChain.SubString(),
+                " frozenMerkle=", hashMerkleFrozen.SubString());
+        };
+
+        if(block.hashPrevBlock != result.hashBestChain)
+        {
+            markStale(SubmitBlockStaleReason::HASH_PREV_BLOCK,
+                "hashPrevBlock does not match current chain tip");
+            return result;
+        }
+
+        if(!TAO::Ledger::ValidateVtxNotCommitted(block))
+        {
+            markStale(SubmitBlockStaleReason::VTX_ALREADY_COMMITTED,
+                "vtx contains a transaction already committed by another block");
+            return result;
+        }
+
+        if(!TAO::Ledger::ValidateProducerFreshness(block))
+        {
+            markStale(SubmitBlockStaleReason::PRODUCER_SIGCHAIN,
+                "producer sigchain predecessor is no longer fresh");
+            return result;
+        }
+
+        if(!TAO::Ledger::ValidateVtxSigchainConsistency(block))
+        {
+            markStale(SubmitBlockStaleReason::VTX_SIGCHAIN,
+                "vtx sigchain predecessor is stale or malformed");
+            return result;
+        }
+
+        if(block.hashMerkleRoot != hashMerkleFrozen)
+        {
+            markStale(SubmitBlockStaleReason::MERKLE_MUTATED,
+                "hashMerkleRoot mutated during submit-time pre-validation");
+            return result;
+        }
+
+        result.message = "fresh";
+        return result;
+    }
+
+
     /* Canonical validation entrypoint for mined Tritium blocks. */
     BlockValidationResult ValidateMinedBlock(const TAO::Ledger::TritiumBlock& block)
     {
