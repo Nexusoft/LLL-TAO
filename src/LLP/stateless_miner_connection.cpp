@@ -3554,75 +3554,52 @@ namespace LLP
         }
         uint64_t extraNonce = m_nCachedExtraNonce;
 
-        /* Use simplified utility function.
-         * For the prime channel, loop until the proof hash satisfies the prime-mod
-         * bit-pattern filter.  On a tip change the first attempt uses the freshly
-         * allocated nonce; if prime-mod fails, borrow additional nonces from the
-         * global counter and update the cache so the next poll reuses the
-         * prime-mod-satisfying nonce without rebuilding the producer. */
-        static constexpr uint32_t MAX_PRIME_MOD_REBUILD_ATTEMPTS = 3;
-        uint32_t nAttempts = 0;
-        while(true) {
-            /* Check for shutdown during template creation loop */
-            if (config::fShutdown.load())
-            {
-                debug::log(1, FUNCTION, "Shutdown detected during block creation; aborting");
-                return nullptr;
-            }
-
-            if(nAttempts == 0)
-                LogNbTiming("nb_pre_createblock", hashReward.SubString());
-
-            ++nAttempts;
-            uint64_t nActualExtraNonce = extraNonce;
-            pBlock = TAO::Ledger::CreateBlockForStatelessMining(
-                nChannel_snap,
-                extraNonce,
-                hashReward,
-                &m_miningCredentialCache,
-                &nActualExtraNonce
-            );
-            LogNbTiming("nb_createblock_returned", hashReward.SubString());
-
-            if(!pBlock) {
-                debug::log(2, FUNCTION, "CreateBlockForStatelessMining returned nullptr");
-                return nullptr;
-            }
-
-            if(TemplateTipMismatch(pBlock, hashExpectedTip, fValidateExpectedTip))
-            {
-                debug::log(3, FUNCTION, "[ASYNC_PUSH] discarded build: tip moved during construction",
-                           " (expected=", hashExpectedTip.SubString(),
-                           " current=", pBlock->hashPrevBlock.SubString(), ")");
-                delete pBlock;
-                return nullptr;
-            }
-
-            if(is_prime_mod(nBitMask, pBlock)) {
-                /* Cache the prime-mod-satisfying nonce for this tip. */
-                extraNonce = nActualExtraNonce;
-                m_nCachedExtraNonce = extraNonce;
-                debug::log(3, FUNCTION, "Block created after ", nAttempts, " attempt(s)");
-                break;
-            }
-
-            if(nAttempts >= MAX_PRIME_MOD_REBUILD_ATTEMPTS)
-            {
-                debug::error(FUNCTION,
-                             "Prime template validity retries capped at ", MAX_PRIME_MOD_REBUILD_ATTEMPTS,
-                             " attempt(s); refusing to serve invalid template reason=",
-                             TAO::Ledger::PrimeTemplateProofHashInvalidReason(*pBlock, nBitMask));
-                delete pBlock;
-                return nullptr;
-            }
-
-            /* Prime-mod failed: try the next nonce slot (bounded retries). */
-            extraNonce = nBlockIterator.fetch_add(1, std::memory_order_relaxed) + 1;
-            m_nCachedExtraNonce = extraNonce;
-            delete pBlock;
-            pBlock = nullptr;
+        if(config::fShutdown.load())
+        {
+            debug::log(1, FUNCTION, "Shutdown detected during block creation; aborting");
+            return nullptr;
         }
-        
+
+        /* CreateBlockForStatelessMining() owns Prime ProofHash validity retries
+         * and refuses to return invalid Prime work. Keep this lane-level check as
+         * a defensive assertion before caching/sending the template. */
+        LogNbTiming("nb_pre_createblock", hashReward.SubString());
+        uint64_t nActualExtraNonce = extraNonce;
+        pBlock = TAO::Ledger::CreateBlockForStatelessMining(
+            nChannel_snap,
+            extraNonce,
+            hashReward,
+            &m_miningCredentialCache,
+            &nActualExtraNonce
+        );
+        LogNbTiming("nb_createblock_returned", hashReward.SubString());
+
+        if(!pBlock) {
+            debug::log(2, FUNCTION, "CreateBlockForStatelessMining returned nullptr");
+            return nullptr;
+        }
+
+        if(TemplateTipMismatch(pBlock, hashExpectedTip, fValidateExpectedTip))
+        {
+            debug::log(3, FUNCTION, "[ASYNC_PUSH] discarded build: tip moved during construction",
+                       " (expected=", hashExpectedTip.SubString(),
+                       " current=", pBlock->hashPrevBlock.SubString(), ")");
+            delete pBlock;
+            return nullptr;
+        }
+
+        if(!is_prime_mod(nBitMask, pBlock))
+        {
+            debug::error(FUNCTION,
+                         "CreateBlockForStatelessMining returned invalid Prime template reason=",
+                         TAO::Ledger::PrimeTemplateProofHashInvalidReason(*pBlock, nBitMask));
+            delete pBlock;
+            return nullptr;
+        }
+
+        m_nCachedExtraNonce = nActualExtraNonce;
+        debug::log(3, FUNCTION, "Block created");
+         
         /* PR #136: Use ChannelStateManager for fork-aware state management */
         uint64_t nCreationTime = runtime::unifiedtimestamp();
         

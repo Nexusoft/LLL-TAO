@@ -2394,60 +2394,37 @@ namespace LLP
             extraNonce = m_nCachedExtraNonce;
         }
 
-        /* Create block using simplified utility.
-         * For the prime channel, loop until the proof hash satisfies the prime-mod
-         * bit-pattern filter.  On a tip change the first attempt uses the freshly
-         * allocated nonce; if prime-mod fails, we borrow additional nonces from the
-         * global counter and update the cache so the next poll reuses the
-         * prime-mod-satisfying nonce without rebuilding the producer. */
-        static constexpr uint32_t MAX_PRIME_MOD_REBUILD_ATTEMPTS = 3;
-        uint32_t nAttempts = 0;
-        while(true) {
-            if(nAttempts == 0)
-                LogNbTiming("nb_pre_createblock", hashReward.SubString());
+        /* CreateBlockForStatelessMining() owns Prime ProofHash validity retries
+         * and refuses to return invalid Prime work. Keep this lane-level check as
+         * a defensive assertion before caching/sending the template. */
+        LogNbTiming("nb_pre_createblock", hashReward.SubString());
+        uint64_t nActualExtraNonce = extraNonce;
+        pBlock = TAO::Ledger::CreateBlockForStatelessMining(
+            nChannel.load(),
+            extraNonce,
+            hashReward,
+            &m_miningCredentialCache,
+            &nActualExtraNonce
+        );
+        LogNbTiming("nb_createblock_returned", hashReward.SubString());
 
-            ++nAttempts;
-            uint64_t nActualExtraNonce = extraNonce;
-            pBlock = TAO::Ledger::CreateBlockForStatelessMining(
-                nChannel.load(),
-                extraNonce,
-                hashReward,
-                &m_miningCredentialCache,
-                &nActualExtraNonce
-            );
-            LogNbTiming("nb_createblock_returned", hashReward.SubString());
+        if(!pBlock)
+            return nullptr;
 
-            if(!pBlock) return nullptr;
-            if(is_prime_mod(nBitMask, pBlock))
-            {
-                /* Cache the prime-mod-satisfying nonce for this tip. */
-                LOCK(MUTEX);
-                extraNonce = nActualExtraNonce;
-                m_nCachedExtraNonce = extraNonce;
-                break;
-            }
-
-            if(nAttempts >= MAX_PRIME_MOD_REBUILD_ATTEMPTS)
-            {
-                debug::error(FUNCTION,
-                             "Prime template validity retries capped at ", MAX_PRIME_MOD_REBUILD_ATTEMPTS,
-                             " attempt(s); refusing to serve invalid template reason=",
-                             TAO::Ledger::PrimeTemplateProofHashInvalidReason(*pBlock, nBitMask));
-                delete pBlock;
-                return nullptr;
-            }
-
-            /* Prime-mod failed: try the next nonce slot (bounded retries).
-             * nBlockIterator is static std::atomic<uint32_t> (miner.h:469), so
-             * ++nBlockIterator is a safe atomic RMW without MUTEX.  MUTEX is not
-             * needed here because nBlockIterator is itself atomic; the non-atomic
-             * cache field m_nCachedExtraNonce is only updated under LOCK(MUTEX)
-             * (success path above and the tip-change path before the loop). */
-            extraNonce = ++nBlockIterator;
+        if(!is_prime_mod(nBitMask, pBlock))
+        {
+            debug::error(FUNCTION,
+                         "CreateBlockForStatelessMining returned invalid Prime template reason=",
+                         TAO::Ledger::PrimeTemplateProofHashInvalidReason(*pBlock, nBitMask));
             delete pBlock;
-            pBlock = nullptr;
+            return nullptr;
         }
-        
+
+        {
+            LOCK(MUTEX);
+            m_nCachedExtraNonce = nActualExtraNonce;
+        }
+         
         debug::log(3, FUNCTION, "Created block ", pBlock->ProofHash().SubString());
 
         /* Tip-fence: discard auto-send template if the chain tip moved between

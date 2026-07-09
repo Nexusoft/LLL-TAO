@@ -51,7 +51,10 @@ namespace TAO::Ledger
 {
     namespace
     {
-        uint32_t PrimeTemplateMaxGenerationAttempts()
+        static constexpr uint32_t MAX_TIP_RACE_RETRIES = 5;
+
+
+        uint32_t GetPrimeTemplateMaxAttempts()
         {
             const int64_t nDefaultMax =
                 config::GetBoolArg("-primemod", false) ? 1024 : 32;
@@ -301,11 +304,10 @@ namespace TAO::Ledger
             }
             
             const uint32_t nPrimeBitMask = PrimeTemplateProofHashBitMask();
-            const uint32_t nMaxPrimeAttempts = PrimeTemplateMaxGenerationAttempts();
+            const uint32_t nMaxPrimeAttempts =
+                (nChannel == 1) ? GetPrimeTemplateMaxAttempts() : 1;
             uint64_t nAttemptExtraNonce = nExtraNonce;
             std::unique_ptr<TritiumBlock> pBlock(new TritiumBlock());
-
-            static constexpr uint32_t MAX_TIP_RACE_RETRIES = 5;
 
             for(uint32_t nPrimeAttempt = 1; nPrimeAttempt <= nMaxPrimeAttempts; ++nPrimeAttempt)
             {
