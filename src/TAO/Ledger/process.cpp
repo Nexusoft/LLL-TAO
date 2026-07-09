@@ -86,12 +86,15 @@ namespace TAO
             };
 
 
-            /** Maximum number of local mined blocks tracked at once. */
-            static const uint64_t MAX_LOCAL_MINED_BLOCK_RECORDS = 10000;
+            /** Maximum number of local mined blocks tracked at once.  Local
+             *  mined blocks only need to stay watched until a descendant lands
+             *  or a reorg disconnects them, so a small cap is sufficient and
+             *  keeps oldest-entry eviction cheap. */
+            static const uint64_t MAX_LOCAL_MINED_BLOCK_RECORDS = 256;
 
 
             /** Maximum number of peer-best recovery cooldown entries tracked. */
-            static const uint64_t MAX_PEER_BEST_RECOVERY_RECORDS = 10000;
+            static const uint64_t MAX_PEER_BEST_RECOVERY_RECORDS = 256;
 
 
             /** Peer-best recovery cooldown; mirrors autofork recovery's tested bound. */

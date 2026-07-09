@@ -1079,6 +1079,24 @@ client=1
 
 ---
 
+### `peerbestchainrecovery`
+
+**Type:** Integer (0 or 1)  
+**Default:** `1`  
+**Description:** Enable bounded ancestry-based recovery when peers advertise a different known best-chain hash
+
+When enabled, a node that already has a peer-advertised best block on disk may force the normal `SetBest()` reorg path if that peer branch is heavier than the current local best chain and the disconnect depth is within the automatic recovery cap. This protects mining nodes from staying on a locally accepted block after a better same-height sibling branch wins.
+
+Set to `0` only if you want to disable this automatic recovery path for diagnostics and rely on ordinary block processing/manual intervention.
+
+**Example:**
+```ini
+peerbestchainrecovery=1
+# peerbestchainrecovery=0  # disable automatic peer-best recovery
+```
+
+---
+
 ### `llpsleep`
 
 **Type:** Integer  
