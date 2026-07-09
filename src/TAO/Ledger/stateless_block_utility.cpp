@@ -43,7 +43,6 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 #include <chrono>
-#include <limits>
 #include <memory>
 #include <sstream>
 
@@ -54,22 +53,21 @@ namespace TAO::Ledger
     {
         static constexpr uint32_t MAX_TIP_RACE_RETRIES = 5;
 
-
-        uint32_t GetPrimeTemplateMaxAttempts()
-        {
-            const int64_t nDefaultMax =
-                config::GetBoolArg("-primemod", false) ? 1024 : 32;
-            const int64_t nConfigured =
-                config::GetArg("-primetemplateattempts", nDefaultMax);
-
-            if(nConfigured <= 0)
-                return 1;
-
-            if(nConfigured > std::numeric_limits<uint32_t>::max())
-                return std::numeric_limits<uint32_t>::max();
-
-            return static_cast<uint32_t>(nConfigured);
-        }
+        /* [Option A] Prime templates are pre-screened by ProofHash() (SK1024 over
+         * nVersion..nBits), which is fully determined by hashMerkleRoot -- i.e. by
+         * the producer, not by nExtraNonce. The block-template cache (create.cpp)
+         * intentionally reuses a cached producer verbatim for repeat requests at
+         * the same (tip, reward) -- see CachedMiningTemplateRequiresProducerFinalization
+         * -- so incrementing nExtraNonce and re-calling CreateBlock() while the
+         * cache is warm produced a bit-for-bit identical ProofHash() every time: a
+         * "retry" that could never succeed once it had failed. Looping up to 32
+         * (or 1024 under -primemod) times only added latency with zero chance of a
+         * different outcome. Exactly two attempts are made instead: one
+         * cache-eligible attempt, and if that fails the pre-screen, one forced
+         * rebuild (see InvalidateMiningTemplateCacheEntry()) that is guaranteed to
+         * build a genuinely new producer/merkle root -- a real second chance,
+         * not a no-op. */
+        static constexpr uint32_t MAX_PRIME_TEMPLATE_ATTEMPTS = 2;
 
 
         bool SequenceDiagnosticsEnabled()
@@ -313,7 +311,7 @@ namespace TAO::Ledger
             const uint32_t nPrimeBitMask =
                 (nChannel == 1) ? PrimeTemplateProofHashBitMask() : 0;
             const uint32_t nMaxPrimeAttempts =
-                (nChannel == 1) ? GetPrimeTemplateMaxAttempts() : 1;
+                (nChannel == 1) ? MAX_PRIME_TEMPLATE_ATTEMPTS : 1;
             uint64_t nAttemptExtraNonce = nExtraNonce;
             std::unique_ptr<TritiumBlock> pBlock(new TritiumBlock());
 
@@ -425,7 +423,17 @@ namespace TAO::Ledger
                            " extra_nonce=", nAttemptExtraNonce,
                            " proof=", pBlock->ProofHash().SubString(),
                            " reward=", hashRewardAddress.SubString());
-                ++nAttemptExtraNonce;
+
+                /* Only one retry attempt is made: a plain re-call would reuse
+                 * the same cached producer (and therefore the same ProofHash())
+                 * as this attempt, so it must be preceded by evicting this
+                 * (channel, reward)'s cache entry, forcing CreateBlock() to
+                 * build a genuinely new producer/merkle root next time. */
+                if(nPrimeAttempt < nMaxPrimeAttempts)
+                {
+                    InvalidateMiningTemplateCacheEntry(nChannel, hashRewardAddress);
+                    ++nAttemptExtraNonce;
+                }
             }
 
             debug::error(FUNCTION, "Unable to create valid Prime template after ",
