@@ -114,20 +114,21 @@ namespace TAO
             record.nAcceptedTime = runtime::timestamp();
 
             std::lock_guard<std::mutex> lock(LOCAL_MINED_BLOCK_MUTEX);
-            const bool fNewRecord = !mapLocalMinedBlocks.count(record.hashBlock);
-            if(fNewRecord)
+            auto itRecord = mapLocalMinedBlocks.find(record.hashBlock);
+            if(itRecord == mapLocalMinedBlocks.end())
             {
                 queueLocalMinedBlocks.push_back(record.hashBlock);
+                mapLocalMinedBlocks.emplace(record.hashBlock, record);
 
-                while(mapLocalMinedBlocks.size() >= MAX_LOCAL_MINED_BLOCK_RECORDS
+                while(mapLocalMinedBlocks.size() > MAX_LOCAL_MINED_BLOCK_RECORDS
                    && !queueLocalMinedBlocks.empty())
                 {
                     mapLocalMinedBlocks.erase(queueLocalMinedBlocks.front());
                     queueLocalMinedBlocks.pop_front();
                 }
             }
-
-            mapLocalMinedBlocks[record.hashBlock] = record;
+            else
+                itRecord->second = record;
 
             debug::log(0, "=== LOCAL MINED BLOCK ACCEPTED ===",
                 " height=", record.nHeight,
@@ -1007,9 +1008,9 @@ namespace TAO
                 bool fOrphanedLocalMinedBlock = false;
                 if(fReorgOccurring)
                 {
-                    std::map<uint32_t, BlockState> mapConnectByHeight;
+                    std::map<uint32_t, const BlockState*> mapConnectByHeight;
                     for(const auto& state : vConnect)
-                        mapConnectByHeight[state.nHeight] = state;
+                        mapConnectByHeight[state.nHeight] = &state;
 
                     for(auto& state : vDisconnect)
                     {
@@ -1019,22 +1020,22 @@ namespace TAO
 
                         fOrphanedLocalMinedBlock = true;
 
-                        BlockState stateReplacement;
                         const auto itReplacement = mapConnectByHeight.find(record.nHeight);
                         const bool fReplacementFound = (itReplacement != mapConnectByHeight.end());
-                        if(fReplacementFound)
-                            stateReplacement = itReplacement->second;
+                        const BlockState* pReplacement = fReplacementFound ? itReplacement->second : nullptr;
+                        const uint1024_t hashReplacement =
+                            pReplacement ? pReplacement->GetHash() : uint1024_t(0);
                         const bool fSiblingRace =
-                            (fReplacementFound && stateReplacement.hashPrevBlock == record.hashPrevBlock);
+                            (pReplacement && pReplacement->hashPrevBlock == record.hashPrevBlock);
                         const std::string strReplacement =
-                            fReplacementFound
-                                ? debug::safe_printstr(" replacement_hash=", stateReplacement.GetHash().SubString(),
-                                    " replacement_channel=", uint32_t(stateReplacement.GetChannel()),
-                                    " replacement_prev=", stateReplacement.hashPrevBlock.SubString())
+                            pReplacement
+                                ? debug::safe_printstr(" replacement_hash=", hashReplacement.SubString(),
+                                    " replacement_channel=", uint32_t(pReplacement->GetChannel()),
+                                    " replacement_prev=", pReplacement->hashPrevBlock.SubString())
                                 : std::string(" replacement_hash=<none>");
                         const std::string strClassification =
-                            fReplacementFound
-                                ? (fSiblingRace ? "same-prev sibling race" : "different-prev stale/re-fed fork")
+                            pReplacement
+                                ? (fSiblingRace ? "same-prev sibling race" : "different-prev stale or re-fed fork")
                                 : "rollback/no same-height replacement";
 
                         debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_YELLOW,
