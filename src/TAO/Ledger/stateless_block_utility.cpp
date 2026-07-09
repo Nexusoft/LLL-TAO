@@ -428,7 +428,6 @@ namespace TAO::Ledger
             return result;
         }
 
-        result.hashMerkleCurrent = block.hashMerkleRoot;
         if(block.hashMerkleRoot != hashMerkleFrozen)
         {
             markStale(SubmitBlockStaleReason::MERKLE_MUTATED,

@@ -10,7 +10,9 @@ Investigate universal short cooldown for stake block bursts to reduce orphan/sta
 
 ## Problem statement
 
-Mainnet nodes can receive or produce bursts of stake blocks close together, including repeated patterns around five blocks in ten seconds. During these bursts, local nodes may not clear stale/orphan state quickly enough before the next stake block arrives. The observed symptom is not a clear fatal error; the node can keep running while the blockchain tip refuses to advance from the stuck point, even after multiple `RevertBlock` attempts and restarts.
+Mainnet nodes can receive or produce bursts of stake blocks close together, including repeated patterns around five blocks in ten seconds. During these bursts, local nodes may not clear stale/orphan state quickly enough before the next stake block arrives.
+
+The observed symptom is not a clear fatal error. The node can keep running while the blockchain tip refuses to advance from the stuck point, even after multiple `RevertBlock` attempts and restarts.
 
 The most visible clue in available logs was tied to orphan handling. GUI logs are harder to use for this failure mode than command-line node logs, so the local codebase should improve diagnostics around stale-template and orphan-related rejection paths while preserving the existing ability to process burst stake blocks every second.
 

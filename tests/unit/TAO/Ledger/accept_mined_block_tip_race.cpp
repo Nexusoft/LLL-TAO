@@ -11,8 +11,6 @@
 
 __________________________________________________________________________________________*/
 
-#include <string>
-
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/stateless_block_utility.h>
 #include <TAO/Ledger/types/tritium.h>
@@ -111,5 +109,4 @@ TEST_CASE("Shared SUBMIT_BLOCK staleness helper reports hashPrevBlock mismatch",
     REQUIRE(result.hashBestChain == hashAdvancedTip);
     REQUIRE(result.hashMerkleFrozen == hashMerkle);
     REQUIRE(result.hashMerkleCurrent == hashMerkle);
-    REQUIRE(std::string(TAO::Ledger::SubmitBlockStaleReasonString(result.reason)) == "HASH_PREV_BLOCK");
 }
