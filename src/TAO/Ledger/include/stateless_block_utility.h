@@ -80,6 +80,40 @@ namespace TAO
         };
 
 
+        /** SubmitBlockStaleReason
+         *
+         *  Canonical reason for a SUBMIT_BLOCK candidate being stale before the
+         *  expensive validation/acceptance path. Shared by both mining lanes so
+         *  diagnostics and recovery actions stay in parity.
+         *
+         **/
+        enum class SubmitBlockStaleReason : uint8_t
+        {
+            NONE = 0,
+            HASH_PREV_BLOCK,
+            VTX_ALREADY_COMMITTED,
+            PRODUCER_SIGCHAIN,
+            VTX_SIGCHAIN,
+            MERKLE_MUTATED
+        };
+
+
+        /** SubmitBlockStalenessResult
+         *
+         *  Structured result for shared SUBMIT_BLOCK staleness pre-checks.
+         *
+         **/
+        struct SubmitBlockStalenessResult
+        {
+            bool fresh = true;
+            SubmitBlockStaleReason reason = SubmitBlockStaleReason::NONE;
+            std::string message;
+            uint1024_t hashBestChain = 0;
+            uint512_t hashMerkleFrozen = 0;
+            uint512_t hashMerkleCurrent = 0;
+        };
+
+
         /** ParseResult
          *
          *  Result of parsing a stateless miner work submission.
@@ -183,6 +217,35 @@ namespace TAO
          *
          **/
         BlockAcceptanceResult AcceptMinedBlock(TAO::Ledger::TritiumBlock& block);
+
+
+        /** SubmitBlockStaleReasonString
+         *
+         *  Convert a SubmitBlockStaleReason to a stable diagnostic code.
+         *
+         **/
+        const char* SubmitBlockStaleReasonString(const SubmitBlockStaleReason reason);
+
+
+        /** ValidateSubmitBlockStaleness
+         *
+         *  Shared detection-only SUBMIT_BLOCK staleness pre-check for both the
+         *  stateless (port 9323) and legacy (port 8323) mining lanes.
+         *
+         *  The block must already be signed/finalized. This helper does not
+         *  mutate the block; any failure means the caller should reject the
+         *  submission, invalidate the stale cached template, and push fresh work.
+         *
+         *  @param[in] block             Solved Tritium block candidate.
+         *  @param[in] hashMerkleFrozen  Merkle root captured immediately after signing.
+         *  @param[in] pszLane           Optional lane label for diagnostics.
+         *  @return Structured staleness result.
+         *
+         **/
+        SubmitBlockStalenessResult ValidateSubmitBlockStaleness(
+            const TAO::Ledger::TritiumBlock& block,
+            const uint512_t& hashMerkleFrozen,
+            const char* pszLane = nullptr);
 
 
         /** ValidateProducerFreshness
