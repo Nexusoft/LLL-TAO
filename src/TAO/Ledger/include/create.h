@@ -196,6 +196,15 @@ namespace TAO
                          bool* pfTipRaceRetry = nullptr);
 
 
+        /** ClearMiningTemplateCaches
+         *
+         *  Drops cached PRIME/HASH mining templates so subsequent miner work is
+         *  rebuilt from the current best-chain hash.
+         *
+         **/
+        void ClearMiningTemplateCaches(const char* pszReason = nullptr);
+
+
         /** CreateStakeBlock
          *
          *  Create a new Proof of Stake (channel 0) block object from the chain.

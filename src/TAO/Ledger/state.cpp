@@ -57,7 +57,10 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/client.h>
 
 #include <Util/include/args.h>
+#include <Util/include/runtime.h>
 #include <Util/include/softfloat.h>
+
+#include <map>
 
 
 /* Global TAO namespace. */
@@ -67,7 +70,6 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
-
         /* Get the block state object. */
         bool GetLastState(BlockState &state, uint32_t nChannel)
         {

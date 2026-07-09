@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/create.h>
 
 #include <TAO/Ledger/types/locator.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -317,6 +318,7 @@ namespace TAO
                 " accepted_age=", (runtime::timestamp() - it->second.nAcceptedAt), "s");
 
             mapLocalMinedBlocks.erase(it);
+            ClearMiningTemplateCaches("local mined block orphaned by reorg");
         }
 
 

@@ -50,7 +50,7 @@ minerallowkey=fedcba9876543210...
 
 ### `mining`
 
-**Type:** Integer (0 or 1)  
+**Type:** Integer (0 or 1)
 **Default:** `0`  
 **Description:** Enable the mining server to allow miners to connect
 
@@ -167,7 +167,7 @@ miningthreads=8
 
 ### `miningssl`
 
-**Type:** Integer (0 or 1)  
+**Type:** Integer (0 or 1)
 **Default:** `0`  
 **Description:** Enable SSL/TLS encryption for mining connections
 
@@ -185,7 +185,7 @@ miningssl=1
 
 ### `miningsslrequired`
 
-**Type:** Integer (0 or 1)  
+**Type:** Integer (0 or 1)
 **Default:** `0`  
 **Description:** Require all mining connections to use SSL/TLS
 
@@ -207,7 +207,7 @@ miningsslrequired=1
 
 ### `miningddos`
 
-**Type:** Integer (0 or 1)  
+**Type:** Integer (0 or 1)
 **Default:** `0`  
 **Description:** Enable DDOS protection for mining server
 
@@ -235,7 +235,7 @@ miningtimespan=60
 ### `miningcscore`
 
 **Type:** Integer  
-**Default:** `1`  
+**Default:** `1`
 **Description:** Connection score threshold for DDOS protection
 
 Connections exceeding this score within the timespan will be temporarily banned.
@@ -422,7 +422,7 @@ llpallowip=10.0.0.50
 
 ### `listen`
 
-**Type:** Integer (0 or 1)  
+**Type:** Integer (0 or 1)
 **Default:** `0`  
 **Description:** Enable incoming P2P connections
 
@@ -549,7 +549,7 @@ pin=1234
 
 ### `falcon`
 
-**Type:** Integer (0 or 1)  
+**Type:** Integer (0 or 1)
 **Default:** `0`  
 **Description:** Enable post-quantum Falcon-1024 authentication for mining
 
@@ -626,8 +626,8 @@ apipassword=secure_api_password_here
 
 ### `apiauth`
 
-**Type:** Integer (0 or 1)  
-**Default:** `1`  
+**Type:** Integer (0 or 1)
+**Default:** `1`
 **Description:** Enable API authentication
 
 When disabled, API endpoints are accessible without credentials (not recommended for public nodes).
@@ -642,7 +642,7 @@ apiauth=0
 
 ### `ssl`
 
-**Type:** Integer (0 or 1)  
+**Type:** Integer (0 or 1)
 **Default:** `0`  
 **Description:** Enable SSL/TLS for various services
 
@@ -655,7 +655,7 @@ ssl=1
 
 ### `sslrequired`
 
-**Type:** Integer (0 or 1)  
+**Type:** Integer (0 or 1)
 **Default:** `0`  
 **Description:** Require SSL/TLS for all connections
 
@@ -767,7 +767,7 @@ datadir=/var/nexus/data
 
 ### `reindex`
 
-**Type:** Integer (0 or 1)  
+**Type:** Integer (0 or 1)
 **Default:** `0`  
 **Description:** Rebuild blockchain index on startup
 
@@ -783,7 +783,7 @@ reindex=1
 
 ### `rescan`
 
-**Type:** Integer (0 or 1)  
+**Type:** Integer (0 or 1)
 **Default:** `0`  
 **Description:** Rescan blockchain for wallet transactions
 
@@ -820,8 +820,8 @@ verbose=3
 
 ### `log`
 
-**Type:** Integer (0 or 1)  
-**Default:** `1`  
+**Type:** Integer (0 or 1)
+**Default:** `1`
 **Description:** Enable logging to file
 
 **Example:**
@@ -846,8 +846,8 @@ logfile=/var/log/nexus/debug.log
 
 ### `logtimestamps`
 
-**Type:** Integer (0 or 1)  
-**Default:** `1`  
+**Type:** Integer (0 or 1)
+**Default:** `1`
 **Description:** Include timestamps in log entries
 
 **Example:**
@@ -861,7 +861,7 @@ logtimestamps=1
 
 ### `server`
 
-**Type:** Integer (0 or 1)  
+**Type:** Integer (0 or 1)
 **Default:** `0`  
 **Description:** Enable RPC server
 
@@ -900,8 +900,8 @@ rpcthreads=8
 
 ### `api`
 
-**Type:** Integer (0 or 1)  
-**Default:** `1`  
+**Type:** Integer (0 or 1)
+**Default:** `1`
 **Description:** Enable API server
 
 **Example:**
@@ -952,7 +952,7 @@ apithreads=8
 
 ### `apiremote`
 
-**Type:** Integer (0 or 1)  
+**Type:** Integer (0 or 1)
 **Default:** `0`  
 **Description:** Allow remote API connections
 
@@ -970,7 +970,7 @@ apiremote=1
 
 ### `apiddos`
 
-**Type:** Integer (0 or 1)  
+**Type:** Integer (0 or 1)
 **Default:** `0`  
 **Description:** Enable DDOS protection for API
 
@@ -987,7 +987,7 @@ apitimespan=60
 ### `apicscore`
 
 **Type:** Integer  
-**Default:** `1`  
+**Default:** `1`
 **Description:** Connection score threshold for API DDOS protection
 
 **Example:**
@@ -1040,7 +1040,7 @@ apitimeout=60
 
 ### `daemon`
 
-**Type:** Integer (0 or 1)  
+**Type:** Integer (0 or 1)
 **Default:** `0`  
 **Description:** Run as a background daemon
 
@@ -1053,7 +1053,7 @@ daemon=1
 
 ### `stake`
 
-**Type:** Integer (0 or 1)  
+**Type:** Integer (0 or 1)
 **Default:** `0`  
 **Description:** Enable staking on this node
 
@@ -1068,7 +1068,7 @@ stake=1
 
 ### `client`
 
-**Type:** Integer (0 or 1)  
+**Type:** Integer (0 or 1)
 **Default:** `0`  
 **Description:** Run as a lite client (no mining, limited features)
 
@@ -1081,8 +1081,8 @@ client=1
 
 ### `peerbestchainrecovery`
 
-**Type:** Integer (0 or 1)  
-**Default:** `1`  
+**Type:** Integer (0 or 1)
+**Default:** `1`
 **Description:** Enable bounded ancestry-based recovery when peers advertise a different known best-chain hash
 
 When enabled, a node that already has a peer-advertised best block on disk may force the normal `SetBest()` reorg path if that peer branch is heavier than the current local best chain and the disconnect depth is within the automatic recovery cap. This protects mining nodes from staying on a locally accepted block after a better same-height sibling branch wins.
@@ -1115,7 +1115,7 @@ llpsleep=1
 ### `llpwait`
 
 **Type:** Integer  
-**Default:** `1`  
+**Default:** `1`
 **Description:** Wait time (ms) for LLP data availability
 
 **Example:**

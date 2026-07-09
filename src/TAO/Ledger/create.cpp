@@ -412,6 +412,18 @@ namespace TAO::Ledger
     /* Indexed by mining channel: 0=PoS, 1=Prime, 2=Hash, 3=Private. */
     static MiningTemplateCacheTable tBlockCache[4];
 
+
+    void ClearMiningTemplateCaches(const char* pszReason)
+    {
+        tBlockCache[1].Clear();
+        tBlockCache[2].Clear();
+
+        const std::string strReason =
+            pszReason ? debug::safe_printstr(" reason=", pszReason) : std::string();
+
+        debug::log(0, FUNCTION, "cleared PRIME/HASH mining template caches", strReason);
+    }
+
 #ifdef UNIT_TESTS
     namespace
     {
